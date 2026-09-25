@@ -50,7 +50,7 @@ export function groupSourceDescriptionEvidence(rows) {
 }
 
 /** Labels never choose candidates; all feedback-linked groups are held out of training. */
-export function prepareSourceDescriptionEvaluationCohort(source, options) {
+export function prepareSourceDescriptionEvaluationCohort(source, options, { fixedSampleKeys = null } = {}) {
   const { seed, size } = validateDescriptionBenchmarkOptions(options);
   const { groupByKey, hashesByGroup } = groupSourceDescriptionEvidence(source.rows);
   const { labels, coverage } = prepareInventoryOutcomeLabels(source.operatorFeedbackRows, source.corpus.documents, source.libraries);
@@ -75,7 +75,16 @@ export function prepareSourceDescriptionEvaluationCohort(source, options) {
     .map(([, docs]) => docs.sort((a, b) => Number(corrections.has(b.key)) - Number(corrections.has(a.key)) ||
       compare(digest(`${seed}:${a.key}`), digest(`${seed}:${b.key}`))));
   const selectedGroups = new Set(), sample = [];
-  while (sample.length < size && ordered.some(docs => docs.length)) {
+  if (fixedSampleKeys !== null) {
+    if (!(fixedSampleKeys instanceof Set) || fixedSampleKeys.size > size) throw new Error('source_pair_fixed_cohort_invalid');
+    for (const doc of source.corpus.documents.filter(doc => fixedSampleKeys.has(doc.key))) {
+      const group = groupByKey.get(doc.key);
+      if (selectedGroups.has(group)) throw new Error('source_pair_fixed_cohort_invalid');
+      sample.push(doc); selectedGroups.add(group);
+    }
+    if (sample.length !== fixedSampleKeys.size) throw new Error('source_pair_fixed_cohort_invalid');
+  }
+  while (fixedSampleKeys === null && sample.length < size && ordered.some(docs => docs.length)) {
     for (const docs of ordered) {
       let doc;
       do { doc = docs.shift(); } while (doc && selectedGroups.has(groupByKey.get(doc.key)));

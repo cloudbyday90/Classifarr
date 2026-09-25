@@ -52,7 +52,7 @@ export async function readDestinationOutcomes(client) {
 }
 
 /** Private CLI only. The runtime flags must be set before loading the database module. */
-export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG, automaticStatus = false,
+export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG, automaticStatus = false, automaticSourcePairStatus = false,
   loadDatabase = () => import('../config/database.mjs') } = {}) {
   if (logging.level !== 'fatal' || logging.fileLoggingEnabled !== false ||
       !process.env.PGOPTIONS?.includes('default_transaction_read_only=on')) throw new Error('saved_decisions_private_runtime_required');
@@ -61,6 +61,10 @@ export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG, au
     return await runDatabaseTransaction(await pool.connect(), async client => {
       await client.query("SET LOCAL statement_timeout = '15s'");
       await client.query("SET LOCAL lock_timeout = '1s'");
+      if (automaticSourcePairStatus) {
+        const { readAutomaticSourcePairStatus } = await import('./automaticSourcePairRepository.mjs');
+        return readAutomaticSourcePairStatus(client);
+      }
       if (automaticStatus) {
         const { readAutomaticDestinationEvaluationStatus } = await import('./automaticDestinationEvaluationRepository.mjs');
         return readAutomaticDestinationEvaluationStatus(client);

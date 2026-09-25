@@ -51,6 +51,7 @@ const TASK_CLASS_BY_NAME = Object.freeze({
     'event-loop-delay-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'source-identity-evidence-replay-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'automatic-destination-evaluation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
+    'automatic-source-pair-evaluation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'source-identity-evidence-replay-observation-retention': SCHEDULER_EXECUTION_TASK_CLASS_IDS.RETENTION,
 });
 

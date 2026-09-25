@@ -27,7 +27,7 @@ export async function readCurrentDescriptionRepresentation(query, configKey) {
   const { rows } = await query(`SELECT projection_version, model_name, model_digest, dimensions
     FROM inventory_description_representation_checkpoint
     WHERE singleton_id=1 AND config_digest=$1
-      AND verified_at >= now() - interval '10 minutes'`, [descriptionConfigDigest(configKey)]);
+      AND verified_at >= now() - interval '10 minutes' AND verified_at <= now()`, [descriptionConfigDigest(configKey)]);
   if (!rows.length) return null;
   const row = rows[0];
   const identity = { provider: 'ollama', model: row.model_name, digest: row.model_digest,

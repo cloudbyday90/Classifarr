@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Run cached movie/TV retrieval comparisons automatically on a frozen cohort of up
+  to 300 cases. Reuse background scheduling and restart-safe retries, isolate CPU
+  work with memory/deadline controls, and expose private aggregate status without
+  provider calls or routing changes. Exclude music and keep unknown labels distinct
+  from measured improvements or regressions.
 - Evaluate changed retained movie/TV decisions automatically in the background,
   with coherent bounded reads, restart-safe retry timing, and one private aggregate
   checkpoint. Reuse the existing scheduler, exclude stale/invalid results, and keep

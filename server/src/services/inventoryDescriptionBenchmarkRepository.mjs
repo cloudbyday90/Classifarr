@@ -23,8 +23,8 @@ export function createDescriptionBenchmarkRepository({ withTransaction, includeE
 
 /** Shared capture boundary for ordinary and policy-replay readers. */
 export async function readDescriptionBenchmarkSnapshot(client, identity, includeEvaluationMetadata = false, includeTrainingProvenance = false,
-  { includeSourceItems = false, requireCompleteCache = true } = {}) {
-  await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  { includeSourceItems = false, requireCompleteCache = true, configureTransaction = true } = {}) {
+  if (configureTransaction) await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   await client.query("SET LOCAL statement_timeout = '15s'");
   await client.query("SET LOCAL lock_timeout = '1s'");
   await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");

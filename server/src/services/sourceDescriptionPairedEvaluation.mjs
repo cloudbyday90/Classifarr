@@ -12,11 +12,11 @@ import { createSourceDescriptionMetrics as empty, addSourceDescriptionMetrics as
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 /** One frozen snapshot, one held-out cohort, identical existing scorer, two training populations. */
-export function evaluateSourceDescriptionPair(source, identity, rawOptions = {}) {
+export function evaluateSourceDescriptionPair(source, identity, rawOptions = {}, { fixedSampleKeys = null } = {}) {
   validateDescriptionRepresentation(identity);
   const options = validateDescriptionBenchmarkOptions({ seed: 'source-description-paired-v1', size: 300, ...rawOptions });
   if (options.generateCases || options.excludePriorSize || options.excludePriorSizes.length) throw new Error('source_pair_options_invalid');
-  const cohort = prepareSourceDescriptionEvaluationCohort(source, options);
+  const cohort = prepareSourceDescriptionEvaluationCohort(source, options, { fixedSampleKeys });
   const { sample, corrections, feedbackExcludedHashes, holdoutGroupsByHash } = cohort;
   // Freeze fold assignment before dropping source-only training rows in the baseline.
   const foldPlan = planDescriptionBenchmarkFolds(source.corpus, sample, source.libraries, { seed: options.seed, folds: 3 });

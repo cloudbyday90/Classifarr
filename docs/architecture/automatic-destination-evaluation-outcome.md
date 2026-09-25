@@ -128,3 +128,7 @@ retain paired gains/losses and cost/coverage, and retry missing-cache readiness 
 the existing refresh worker fills it. Do not introduce another benchmark framework,
 mandatory approval screen, or automatic promotion. Deployment through the normal
 release process is still required before collecting production results.
+
+Follow-through: [automatic cached source-pair evaluation](automatic-source-pair-evaluation-outcome.md)
+now implements this next component with a retained cohort, isolated CPU work and
+private aggregate query. Saved-outcome grading and routing authority remain unchanged.

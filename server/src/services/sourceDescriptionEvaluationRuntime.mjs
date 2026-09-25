@@ -7,17 +7,23 @@ import { evaluateSourceDescriptionPair } from './sourceDescriptionPairedEvaluati
 
 export function createSourceDescriptionEvaluationRepository({ withTransaction }) {
   return { async read(identity) {
-    const captured = await withTransaction(async client => {
-      const snapshot = await readDescriptionBenchmarkSnapshot(client, identity, false, false,
-        { includeSourceItems: true, requireCompleteCache: false });
-      const config = (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
-      const operatorFeedbackRows = (await client.query(INVENTORY_OUTCOME_LABEL_SQL)).rows;
-      if (!config || operatorFeedbackRows.length > INVENTORY_OUTCOME_LABEL_LIMIT) throw new Error('source_pair_snapshot_budget');
-      return { snapshot, config, operatorFeedbackRows };
-    });
-    return { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity), rows: captured.snapshot.rows,
-      config: captured.config, operatorFeedbackRows: captured.operatorFeedbackRows };
+    const captured = await withTransaction(client => readSourceDescriptionEvaluationSnapshot(client, identity));
+    return decodeSourceDescriptionEvaluationSnapshot(captured, identity);
   } };
+}
+
+export async function readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction = true } = {}) {
+  const snapshot = await readDescriptionBenchmarkSnapshot(client, identity, false, false,
+    { includeSourceItems: true, requireCompleteCache: false, configureTransaction });
+  const config = (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
+  const operatorFeedbackRows = (await client.query(INVENTORY_OUTCOME_LABEL_SQL)).rows;
+  if (!config || operatorFeedbackRows.length > INVENTORY_OUTCOME_LABEL_LIMIT) throw new Error('source_pair_snapshot_budget');
+  return { snapshot, config, operatorFeedbackRows };
+}
+
+export function decodeSourceDescriptionEvaluationSnapshot(captured, identity) {
+  return { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity), rows: captured.snapshot.rows,
+    config: captured.config, operatorFeedbackRows: captured.operatorFeedbackRows };
 }
 
 /** No model generation, embedding, cache writes, routing or policy loading. */
