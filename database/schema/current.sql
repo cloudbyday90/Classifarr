@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-25T01:33:02.278Z
--- Latest Migration: 20260925_013000_add_automatic_source_pair_evaluation.sql
+-- Generated: 2026-09-25T10:54:34.694Z
+-- Latest Migration: 20260925_110000_add_cached_adjudication_batch.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2189,6 +2189,30 @@ CREATE SEQUENCE public.backup_schedules_id_seq
 --
 
 ALTER SEQUENCE public.backup_schedules_id_seq OWNED BY public.backup_schedules.id;
+
+
+--
+-- Name: cached_adjudication_batch; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cached_adjudication_batch (
+    singleton boolean DEFAULT true NOT NULL,
+    batch jsonb NOT NULL,
+    captured_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT cached_adjudication_batch_batch_check CHECK (((jsonb_typeof(batch) = 'object'::text) AND (octet_length((batch)::text) <= 1048576))),
+    CONSTRAINT cached_adjudication_batch_captured_at_check CHECK (isfinite(captured_at)),
+    CONSTRAINT cached_adjudication_batch_check CHECK (((expires_at > captured_at) AND (expires_at <= (captured_at + '7 days'::interval)))),
+    CONSTRAINT cached_adjudication_batch_expires_at_check CHECK (isfinite(expires_at)),
+    CONSTRAINT cached_adjudication_batch_singleton_check CHECK (singleton)
+);
+
+
+--
+-- Name: TABLE cached_adjudication_batch; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.cached_adjudication_batch IS 'One private, bounded batch of explicitly captured local AI evaluation responses. No prompts or routing authority. Seven-day expiry; exact request hashes and pinned model provenance required for replay.';
 
 
 --
@@ -9358,6 +9382,14 @@ ALTER TABLE ONLY public.backup_audit
 
 ALTER TABLE ONLY public.backup_schedules
     ADD CONSTRAINT backup_schedules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: cached_adjudication_batch cached_adjudication_batch_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cached_adjudication_batch
+    ADD CONSTRAINT cached_adjudication_batch_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -16649,6 +16681,7 @@ FROM unnest(ARRAY[
     '20260924_220000_add_correction_decision_context.sql',
     '20260924_230000_add_feedback_and_intake_decision_snapshots.sql',
     '20260925_002500_add_automatic_destination_evaluation.sql',
-    '20260925_013000_add_automatic_source_pair_evaluation.sql'
+    '20260925_013000_add_automatic_source_pair_evaluation.sql',
+    '20260925_110000_add_cached_adjudication_batch.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

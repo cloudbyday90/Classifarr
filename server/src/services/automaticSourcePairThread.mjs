@@ -4,7 +4,7 @@ import { executeAutomaticSourcePair } from './automaticSourcePairExecution.mjs';
 import { assertOfflineEvaluationClean } from '../config/offlineEvaluation.mjs';
 
 try {
-  const result = await executeAutomaticSourcePair(workerData.snapshot, workerData.state);
+  const result = await executeAutomaticSourcePair(workerData.snapshot, workerData.state, { includePlan: workerData.includePlan === true });
   assertOfflineEvaluationClean();
   parentPort.postMessage({ result });
 } catch {

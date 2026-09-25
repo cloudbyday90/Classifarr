@@ -4,7 +4,7 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { validateDescriptionBenchmarkOptions } from '../services/inventoryDescriptionBenchmarkSelection.mjs';
 
-/** Private, read-only evaluation. No case content or failure detail is printed. */
+/** Private evaluation. Only explicit capture writes its bounded response cache; no domain writes. */
 export async function runOperatorCorrectionPolicyEvaluation({ argv = process.argv.slice(2), evaluate } = {}) {
   const { values } = parseArgs({ args: argv, options: {
     seed: { type: 'string' }, size: { type: 'string' }, folds: { type: 'string' },
@@ -12,7 +12,16 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
     'saved-decisions': { type: 'boolean', default: false },
     'automatic-status': { type: 'boolean', default: false },
     'automatic-source-pair-status': { type: 'boolean', default: false },
+    'capture-source-pair-ai': { type: 'boolean', default: false }, 'max-calls': { type: 'string' },
   } });
+  if (values['capture-source-pair-ai']) {
+    if (Object.entries(values).some(([key, value]) => !['capture-source-pair-ai', 'max-calls'].includes(key) && value !== false) ||
+        !/^(?:[1-9]|[1-4][0-9]|50)$/.test(values['max-calls'] ?? '')) throw new Error('adjudication_capture_requires_explicit_budget');
+    process.env.LOG_LEVEL = 'fatal'; process.env.FILE_LOGGING_ENABLED = 'false';
+    const run = evaluate ?? (await import('../services/cachedAdjudicationCapture.mjs')).runCachedAdjudicationCapture;
+    return run({ maxCalls: Number(values['max-calls']) });
+  }
+  if (values['max-calls'] !== undefined) throw new Error('adjudication_capture_mode_required');
   if (values['saved-decisions'] && Object.entries(values).some(([key, value]) => key !== 'saved-decisions' && value !== false)) {
     throw new Error('saved_decisions_uses_fixed_retention_and_budget');
   }

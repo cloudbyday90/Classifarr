@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { afterEach, beforeEach, expect, test } from '@jest/globals';
+import { afterEach, beforeEach, expect, test, jest } from '@jest/globals';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,9 @@ import { recordDescriptionRepresentation } from '../../services/inventoryDescrip
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
 import { sourcePairFixture, sourcePairIdentity as identity } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
+import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';
+import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRuntime.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -46,6 +49,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE inventory_description_vector_cache(LIKE public.inventory_description_vector_cache INCLUDING ALL);
     CREATE TEMP TABLE inventory_description_representation_checkpoint(LIKE public.inventory_description_representation_checkpoint INCLUDING ALL);
     CREATE TEMP TABLE automatic_source_pair_evaluation(LIKE public.automatic_source_pair_evaluation INCLUDING ALL);
+    CREATE TEMP TABLE cached_adjudication_batch(LIKE public.cached_adjudication_batch INCLUDING ALL);
     INSERT INTO ai_provider_config VALUES(1,true,'same','ollama','test',NULL,NULL,NULL,'localhost',11434,NULL,1);`);
   fixture = sourcePairFixture(48);
   for (const library of fixture.libraries) await client.query('INSERT INTO libraries VALUES($1,$2,$3,true)', [library.id, library.name, library.media_type]);
@@ -65,6 +69,29 @@ beforeEach(async () => {
   repository = createAutomaticSourcePairRepository(database); worker = makeWorker();
 });
 afterEach(() => { worker?.stop(); client?.release(true); client=null; });
+
+test('explicit bounded capture fills exact requests for the automatic worker and expires without model calls', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
+  const generate = jest.fn(async ({ onGenerationCall }) => { onGenerationCall(); return {
+    response: '{"decision":"ABSTAIN","library_number":null}', latencyMs: 5, promptTokens: 100, outputTokens: 10,
+    outputLimitReached: false, contextLimitSuspected: false, inputTruncation: 'unknown' }; });
+  const result = await captureCachedAdjudication({ maxCalls: 3 }, { repository,
+    readConfig: async () => (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0],
+    createClient: () => ({ inspect: async () => ({ model: 'test:latest', digest: 'a'.repeat(64), contextLength: 8192 }), generate }),
+    save: createCachedAdjudicationWriter(database), withAdmission: (callback, { signal }) => callback(signal) });
+  expect(result).toMatchObject({ status: 'complete', calls: 3, stored: 3 });
+  expect(await worker.run()).toEqual({ status: 'evaluated' });
+  const warm = (await status()).report.aiReplay;
+  expect(warm.baseline.hits + warm.sourceAware.hits).toBeGreaterThan(0);
+  expect(warm.limits.providerCalls).toBe(0); expect(generate).toHaveBeenCalledTimes(3);
+  await client.query("UPDATE cached_adjudication_batch SET captured_at=now()-interval '8 days',expires_at=now()-interval '1 day'");
+  await due(); expect(await worker.run()).toEqual({ status: 'evaluated' });
+  expect((await status()).report.aiReplay.baseline.hits).toBe(0);
+  expect((await client.query('SELECT * FROM cached_adjudication_batch')).rows).toHaveLength(0);
+  expect(generate).toHaveBeenCalledTimes(3);
+});
 
 test('real worker automatically compares both media, persists private cohort, and resumes unchanged after restart', async () => {
   await client.query("INSERT INTO policy_feedback_evaluation VALUES(1,'movie',1,2,true,now(),true)");
@@ -91,7 +118,7 @@ test('real policy snapshot replays both arms, filters music, and regrades after 
   const policiesBefore = (await client.query('SELECT * FROM library_policies ORDER BY id')).rows;
   expect((await worker.run()).status).toBe('evaluated');
   const first = await stored();
-  expect(first.report).toMatchObject({ version: 'automatic_source_pair.v2', policyReplay: { status: 'complete',
+  expect(first.report).toMatchObject({ version: 'automatic_source_pair.v3', policyReplay: { status: 'complete',
     eligibleLabels: 1, metrics: { cases: 48, paired: 48, labeledPairs: 1 },
     byMedia: { movie: { cases: 24 }, tv: { cases: 24 } } } });
   expect((await client.query('SELECT * FROM library_policies ORDER BY id')).rows).toEqual(policiesBefore);

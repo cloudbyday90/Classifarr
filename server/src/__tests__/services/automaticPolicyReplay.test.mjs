@@ -10,6 +10,7 @@ import { readAutomaticSourcePairReport } from '../../services/automaticSourcePai
 import { createAutomaticPolicyMetrics, addAutomaticPolicyMetrics, projectAutomaticPolicyOutcome,
   createAutomaticPolicyReport, readAutomaticPolicyReport } from '../../services/automaticPolicyReplayReport.mjs';
 import { createFreshInventoryPolicyEvidence } from '../../services/freshInventoryPolicyEvidence.mjs';
+import { projectAdjudicationConfig } from '../../services/cachedAdjudicationRepository.mjs';
 
 function snapshot(count = 48) {
   const source = sourcePairFixture(count);
@@ -39,7 +40,7 @@ function prepare(source) {
 
 test('real fixed worker replays 300 movie/TV and source-only cases without exporting private evidence', async () => {
   const result = await runAutomaticSourcePairThread(snapshot(400), null);
-  expect(result.report).toMatchObject({ version: 'automatic_source_pair.v2', sampled: 300,
+  expect(result.report).toMatchObject({ version: 'automatic_source_pair.v3', sampled: 300,
     policyReplay: { status: 'complete', correctionLabels: 2, eligibleLabels: 2,
       metrics: { cases: 300, paired: 300, labeledPairs: 2 }, limits: { providerCalls: 0, routingWrites: 0, promotionAllowed: false } } });
   expect(readAutomaticSourcePairReport(result.report)).toBe(result.report);
@@ -58,6 +59,26 @@ test('policy and provenance edits invalidate results while retaining the same co
   expect(recent.report.policyReplay.eligibleLabels).toBe(0); expect(recent.fingerprint).not.toBe(edited.fingerprint);
   const legacy = computeAutomaticSourcePair(input, null);
   expect((await executeAutomaticSourcePair(input, stateOf(legacy))).unchanged).toBe(false);
+});
+
+test('real worker prepares bounded private prompts only on request and replays captured responses without a provider', async () => {
+  const input = snapshot(400), source = input.inputs.source;
+  source.adjudicationConfig = projectAdjudicationConfig({ primary_provider: 'ollama', ollama_model: 'test:latest', ollama_host: 'localhost' });
+  const capture = await runAutomaticSourcePairThread(input, null, undefined, { includePlan: true });
+  expect(capture.plan.length).toBeGreaterThan(0);
+  expect(capture.plan.length).toBeLessThanOrEqual(50);
+  expect(capture.report.aiReplay).toMatchObject({ selected: 25, paired: 0 });
+  source.adjudicationBatch = { version: 'cached_adjudication.v1', configuration: source.adjudicationConfig.fingerprint,
+    identity: { model: 'test:latest', digest: 'a'.repeat(64), contextLength: 8192 },
+    records: capture.plan.map(request => ({ key: request.key, generated: {
+      response: '{"decision":"ABSTAIN","library_number":null}', latencyMs: 1, promptTokens: 100,
+      outputTokens: 10, outputLimitReached: false, contextLimitSuspected: false, inputTruncation: 'unknown' } })) };
+  const result = await runAutomaticSourcePairThread(input, stateOf(capture));
+  expect(result).not.toHaveProperty('plan');
+  expect(result.unchanged).toBe(false);
+  expect(result.report.aiReplay).toMatchObject({ paired: 25, baseline: { abstained: 25 }, sourceAware: { abstained: 25 } });
+  expect(JSON.stringify(result)).not.toMatch(/PRIVATE|prompt"|response"|test:latest/);
+  expect(Buffer.byteLength(JSON.stringify(result.report))).toBeLessThan(16384);
 });
 
 test.each(['cache', 'empty', 'policies'])('missing %s is explicit, and never becomes a quality success', async missing => {

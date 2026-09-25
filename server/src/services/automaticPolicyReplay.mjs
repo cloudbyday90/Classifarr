@@ -8,7 +8,7 @@ import { createAutomaticPolicyMetrics, addAutomaticPolicyMetrics, projectAutomat
 
 /** Both arms reuse the captured production preparation; labels are available only to the reducer. */
 export async function evaluateAutomaticPolicyReplay(source, arms, retrievalReport,
-  { evaluate = evaluateFreshInventoryPolicyCase } = {}) {
+  { evaluate = evaluateFreshInventoryPolicyCase, onOutcomes } = {}) {
   if (retrievalReport.status !== 'complete') return createAutomaticPolicyReport(retrievalReport.status);
   if (!source.policies.length) return createAutomaticPolicyReport('no_policies');
   if (arms.length !== 2) throw new Error('automatic_policy_arms_invalid');
@@ -16,7 +16,7 @@ export async function evaluateAutomaticPolicyReplay(source, arms, retrievalRepor
     feedbackRows: source.operatorFeedbackRows, policies: source.policies, policySourceRevisionRows: source.policySourceRevisionRows });
   const outcomes = [];
   for (const arm of arms) {
-    const { operatorFeedbackRows: _labels, policySourceRevisionRows: _revisions, ...unlabeled } = arm.source;
+    const { operatorFeedbackRows: _labels, policySourceRevisionRows: _revisions, adjudicationBatch: _batch, ...unlabeled } = arm.source;
     const policySource = { ...unlabeled, fingerprint: retrievalReport.snapshotFingerprint,
       policies: source.policies.map(withoutInferredProfileSources) };
     const evidence = createFreshInventoryPolicyEvidence(policySource, arm.prepared, { trainingExcludedKeys: arm.trainingExcludedKeys });
@@ -32,10 +32,11 @@ export async function evaluateAutomaticPolicyReplay(source, arms, retrievalRepor
           return result;
         } catch (error) { failed = true; throw error; }
       } };
-      const { common } = await evaluate(entry, policySource, evidence, undefined, { retriever });
+      const { common, runtime: preparedRuntime } = await evaluate(entry, policySource, evidence, undefined, { retriever });
       if (failed) throw new Error('automatic_policy_retrieval_failed');
       const key = entry.itemIdentity.tmdbId === null ? entry.itemIdentity.sourceKey : `${entry.mediaType}:${entry.itemIdentity.tmdbId}`;
       rows.set(entry.descriptionHash, { key, mediaType: entry.mediaType,
+        ...(onOutcomes ? { common, runtime: preparedRuntime, policies: policySource.policies } : {}),
         outcome: projectAutomaticPolicyOutcome(common, retrieval, source.libraries, entry.mediaType) });
     }
     outcomes.push(rows);
@@ -48,5 +49,6 @@ export async function evaluateAutomaticPolicyReplay(source, arms, retrievalRepor
     if (!b || a.key !== b.key || a.mediaType !== b.mediaType) throw new Error('automatic_policy_cohort_mismatch');
     for (const target of [metrics, byMedia[a.mediaType]]) addAutomaticPolicyMetrics(target, a.outcome, b.outcome, corrections.get(a.key));
   }
+  await onOutcomes?.(outcomes, corrections);
   return createAutomaticPolicyReport('complete', { metrics, byMedia, correctionLabels: arms[0].corrections.size, eligibleLabels: corrections.size });
 }

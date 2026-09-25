@@ -5,6 +5,7 @@ import { readCurrentDescriptionRepresentation, descriptionConfigDigest } from '.
 import { readSourceDescriptionEvaluationSnapshot, decodeSourceDescriptionEvaluationSnapshot } from './sourceDescriptionEvaluationRuntime.mjs';
 import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
 import { validSourcePairCohort } from './automaticSourcePairCohort.mjs';
+import { projectAdjudicationConfig, readCachedAdjudication, PRUNE_ADJUDICATION_SQL } from './cachedAdjudicationRepository.mjs';
 import { READ_SOURCE_PAIR_STATE_SQL, SAVE_SOURCE_PAIR_SQL, FAIL_SOURCE_PAIR_SQL, READ_SOURCE_PAIR_STATUS_SQL } from './automaticSourcePairSql.mjs';
 
 export function createAutomaticSourcePairRepository(database) {
@@ -19,7 +20,10 @@ export function createAutomaticSourcePairRepository(database) {
     return value;
   });
   return {
-    readState: signal => transaction(async client => (await client.query(READ_SOURCE_PAIR_STATE_SQL)).rows[0] ?? null, signal, true),
+    readState: signal => transaction(async client => {
+      await client.query(PRUNE_ADJUDICATION_SQL);
+      return (await client.query(READ_SOURCE_PAIR_STATE_SQL)).rows[0] ?? null;
+    }, signal),
     readSnapshot: signal => transaction(async client => {
       const state = (await client.query(INVENTORY_DESCRIPTION_REFRESH_STATE_SQL)).rows[0];
       if (state?.rag_enabled !== true) throw new Error('disabled');
@@ -30,12 +34,14 @@ export function createAutomaticSourcePairRepository(database) {
       const identity = await readCurrentDescriptionRepresentation((...args) => client.query(...args), configKey);
       if (!identity) throw new Error('representation_unavailable');
       const captured = await readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction: false, includePolicyReplay: true });
+      const adjudicationConfig = projectAdjudicationConfig(captured.config);
+      const adjudicationBatch = await readCachedAdjudication(client, adjudicationConfig?.fingerprint);
       const { rows: [clock] } = await client.query('SELECT transaction_timestamp()::text AS observed_at');
-      return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey) };
-    }, signal, true).then(({ observedAt, captured, identity, configuration }) => {
+      return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey), adjudicationConfig, adjudicationBatch };
+    }, signal, true).then(({ observedAt, captured, identity, configuration, adjudicationConfig, adjudicationBatch }) => {
       signal?.throwIfAborted();
       const { config: _config, ...source } = decodeSourceDescriptionEvaluationSnapshot(captured, identity);
-      return { observedAt, inputs: { source, identity, configuration } };
+      return { observedAt, inputs: { source: { ...source, adjudicationConfig, adjudicationBatch }, identity, configuration } };
     }),
     save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt } = {}) => {
       if (!readAutomaticSourcePairReport(report) || !validSourcePairCohort(cohort) || cohort.length !== report.sampled ||

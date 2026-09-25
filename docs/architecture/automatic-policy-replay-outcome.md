@@ -119,3 +119,7 @@ any inference budget. Measure corrected decisions, remaining deferrals, latency
 and token cost together; do not reward fewer deferrals when errors increase.
 Keep the same frozen evidence and no-routing boundary. This advances into the
 unmeasured AI stage rather than adding another summary screen or approval task.
+
+Follow-through: [cached AI adjudication replay](cached-adjudication-replay-outcome.md)
+now reuses exact captured responses within that worker. Inference requires an
+explicit private capture budget; automatic cache misses do not invoke a provider.

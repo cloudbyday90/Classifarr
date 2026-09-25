@@ -3,11 +3,12 @@ import { Worker } from 'node:worker_threads';
 import { serialize } from 'node:v8';
 import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
 import { validSourcePairCohort } from './automaticSourcePairCohort.mjs';
+import { validAdjudicationPlan } from './cachedAdjudicationContract.mjs';
 
 /** Fixed-code worker, no provider credentials or inherited preloads, always joined before unlock. */
-export async function runAutomaticSourcePairThread(snapshot, state, signal, { WorkerClass = Worker, timeoutMs = 120000 } = {}) {
+export async function runAutomaticSourcePairThread(snapshot, state, signal, { WorkerClass = Worker, timeoutMs = 120000, includePlan = false } = {}) {
   signal?.throwIfAborted();
-  const workerData = { snapshot, state, role: 'automatic-source-pair' };
+  const workerData = { snapshot, state, role: 'automatic-source-pair', includePlan };
   if (serialize(workerData).byteLength > 64 * 1024 * 1024) throw new Error('automatic_source_pair_input_budget');
   const worker = new WorkerClass(new URL('./automaticSourcePairThread.mjs', import.meta.url), {
     workerData, env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true,
@@ -23,7 +24,8 @@ export async function runAutomaticSourcePairThread(snapshot, state, signal, { Wo
       worker.once('message', message => {
         const result = message?.result;
         if (!result || !readAutomaticSourcePairReport(result.report) || !validSourcePairCohort(result.cohort) ||
-          (snapshot.inputs?.source?.policies && result.report.version !== 'automatic_source_pair.v2') ||
+          (snapshot.inputs?.source?.policies && result.report.version !== 'automatic_source_pair.v3') ||
+          (includePlan ? !validAdjudicationPlan(result.plan) : Object.hasOwn(result, 'plan')) ||
           !/^[a-f0-9]{64}$/.test(result.fingerprint) || typeof result.unchanged !== 'boolean') return fail();
         resolve(result);
       });

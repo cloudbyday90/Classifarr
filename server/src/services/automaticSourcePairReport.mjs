@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createSourceDescriptionMetrics, finishSourceDescriptionMetrics } from './sourceDescriptionEvaluationMetrics.mjs';
 import { readAutomaticPolicyReport } from './automaticPolicyReplayReport.mjs';
+import { readCachedAdjudicationReport } from './cachedAdjudicationReport.mjs';
 
 const metrics = finishSourceDescriptionMetrics(createSourceDescriptionMetrics());
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 50000;
@@ -47,6 +48,14 @@ function validMetrics(value) {
 
 /** Exact bounded aggregate: no content, model names, per-item hashes or library identifiers. */
 export function readAutomaticSourcePairReport(value) {
+  if (value?.version === 'automatic_source_pair.v3') {
+    const { aiReplay, ...policy } = value;
+    return readAutomaticSourcePairReport({ ...policy, version: 'automatic_source_pair.v2' }) &&
+      readCachedAdjudicationReport(aiReplay, value.sampled) &&
+      aiReplay.labeledPairs <= value.policyReplay.eligibleLabels &&
+      ['baseline', 'sourceAware'].every(arm => aiReplay[arm].labeledProposals <= value.policyReplay.eligibleLabels) &&
+      (value.policyReplay.status === 'complete' || aiReplay.eligible === 0) ? value : null;
+  }
   if (value?.version === 'automatic_source_pair.v2') {
     const { policyReplay, ...retrieval } = value;
     return readAutomaticSourcePairReport({ ...retrieval, version: 'automatic_source_pair.v1' }) &&

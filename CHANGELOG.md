@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded, exact-response AI adjudication replay to automatic movie/TV
+  evaluation, with explicit local capture budgets, restart-safe seven-day cache
+  retention, and separate proposal quality, deferral and historical usage metrics.
+  Cache misses never trigger inference; live routing remains unchanged.
 - Extend automatic cached movie/TV comparisons through deterministic policy
   scoring, with paired decisions, review/deferral counts and conservatively graded
   correction outcomes. Reuse the frozen cohort and retry checkpoint, support
