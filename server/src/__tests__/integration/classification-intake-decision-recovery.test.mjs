@@ -159,7 +159,8 @@ test('link reconciliation cannot overwrite a live classification link committed 
     expect((await receipt(taskId)).classification_id).toBe(classificationId + 100);
   } finally {
     await writer.query('ROLLBACK');
-    if (repair) await repair.catch(() => {});
+    // Settle outstanding work before releasing the reader; assertions above own its outcome.
+    if (repair) await Promise.allSettled([repair]);
     writer.release(); reader.release();
     await client.query('DELETE FROM classification_queue_decision_witnesses WHERE queue_task_id=$1', [taskId]);
     await client.query('DELETE FROM classification_intake_receipts WHERE queue_task_id=$1', [taskId]);

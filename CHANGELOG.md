@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate changed retained movie/TV decisions automatically in the background,
+  with coherent bounded reads, restart-safe retry timing, and one private aggregate
+  checkpoint. Reuse the existing scheduler, exclude stale/invalid results, and keep
+  missing labels, review, and retry separate from agreement. No extra AI calls,
+  routing changes, or user acknowledgement is required.
 - Recover missing intake decision snapshots automatically from exact retained
   movie/TV originals during existing queue maintenance. Use bounded, retryable
   batches that preserve concurrent writes, skip locked receipts, and leave absent

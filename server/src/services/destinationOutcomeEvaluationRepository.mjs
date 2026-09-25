@@ -28,7 +28,7 @@ export const DESTINATION_INTAKE_COVERAGE_SQL = `
   WHERE queued_at > NOW() - INTERVAL '30 days' AND queued_at <= NOW()
   ORDER BY queued_at, queue_task_id LIMIT $1`;
 
-export async function readDestinationOutcomes(client) {
+export async function readDestinationOutcomeInputs(client) {
   const { rows } = await client.query(CORRECTION_DESTINATION_DECISION_SQL, [DESTINATION_OUTCOME_ROW_LIMIT + 1]);
   const feedback = (await client.query(FEEDBACK_DESTINATION_OUTCOME_SQL, [DESTINATION_OUTCOME_ROW_LIMIT + 1])).rows;
   if (rows.length + feedback.length > DESTINATION_OUTCOME_ROW_LIMIT) throw new Error('saved_decisions_row_budget');
@@ -42,11 +42,17 @@ export async function readDestinationOutcomes(client) {
       selected_library_id: snapshot.selectedLibraryId, decision_context: snapshot.decisionContext, target_available: row.target_available });
   }
   const intake = (await client.query(DESTINATION_INTAKE_COVERAGE_SQL, [DESTINATION_OUTCOME_ROW_LIMIT + 1])).rows;
+  if (intake.length > DESTINATION_OUTCOME_ROW_LIMIT) throw new Error('saved_decisions_intake_budget');
+  return { rows, intake };
+}
+
+export async function readDestinationOutcomes(client) {
+  const { rows, intake } = await readDestinationOutcomeInputs(client);
   return evaluateDestinationOutcomes(rows, intake);
 }
 
 /** Private CLI only. The runtime flags must be set before loading the database module. */
-export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG,
+export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG, automaticStatus = false,
   loadDatabase = () => import('../config/database.mjs') } = {}) {
   if (logging.level !== 'fatal' || logging.fileLoggingEnabled !== false ||
       !process.env.PGOPTIONS?.includes('default_transaction_read_only=on')) throw new Error('saved_decisions_private_runtime_required');
@@ -55,6 +61,10 @@ export async function runDestinationOutcomeEvaluation({ logging = LOG_CONFIG,
     return await runDatabaseTransaction(await pool.connect(), async client => {
       await client.query("SET LOCAL statement_timeout = '15s'");
       await client.query("SET LOCAL lock_timeout = '1s'");
+      if (automaticStatus) {
+        const { readAutomaticDestinationEvaluationStatus } = await import('./automaticDestinationEvaluationRepository.mjs');
+        return readAutomaticDestinationEvaluationStatus(client);
+      }
       return readDestinationOutcomes(client);
     }, { readOnlyRepeatable: true });
   }

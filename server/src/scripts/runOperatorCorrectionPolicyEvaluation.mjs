@@ -10,9 +10,13 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
     seed: { type: 'string' }, size: { type: 'string' }, folds: { type: 'string' },
     'generate-cases': { type: 'string' }, 'max-minutes': { type: 'string' }, 'source-pair': { type: 'boolean', default: false },
     'saved-decisions': { type: 'boolean', default: false },
+    'automatic-status': { type: 'boolean', default: false },
   } });
   if (values['saved-decisions'] && Object.entries(values).some(([key, value]) => key !== 'saved-decisions' && value !== false)) {
     throw new Error('saved_decisions_uses_fixed_retention_and_budget');
+  }
+  if (values['automatic-status'] && Object.entries(values).some(([key, value]) => key !== 'automatic-status' && value !== false)) {
+    throw new Error('automatic_status_uses_fixed_retention_and_budget');
   }
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed ?? 'operator-correction-readonly-v1',
     size: Number(values.size ?? (values['source-pair'] ? 300 : 100)), folds: Number(values.folds ?? 3),
@@ -24,9 +28,9 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
   process.env.LOG_LEVEL = 'fatal';
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000`.trim();
-  if (values['saved-decisions']) {
+  if (values['saved-decisions'] || values['automatic-status']) {
     const run = evaluate ?? (await import('../services/destinationOutcomeEvaluationRepository.mjs')).runDestinationOutcomeEvaluation;
-    return run();
+    return values['automatic-status'] ? run({ automaticStatus: true }) : run();
   }
   const run = evaluate ?? (values['source-pair']
     ? (await import('../services/sourceDescriptionEvaluationRuntime.mjs')).runSourceDescriptionEvaluation

@@ -80,6 +80,11 @@ there was no random open PR to implement. None was merged or substituted.
 
 ## Next step
 
+Follow-through: [automatic destination evaluation](automatic-destination-evaluation-outcome.md)
+now schedules the existing retained-outcome evaluator with change detection and
+restart-safe retry state. The user requested this automation before deployment;
+it does not establish a live accuracy result or supersede the data limitation below.
+
 Complete the separately approved deployment/release process before adding another
 evaluation feature. Then run the existing `--saved-decisions` report against the
 retained window, verify capture and repair are operating, and select one supported

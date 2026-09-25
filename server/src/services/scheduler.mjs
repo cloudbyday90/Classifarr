@@ -74,6 +74,7 @@ import { createInventoryNeighborhoodRecovery } from './inventoryNeighborhoodReco
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
 import { registerReclassificationMoveSchedule } from './reclassificationMoveScheduler.mjs';
 import { registerReclassificationBatchSchedule } from './reclassificationBatchScheduler.mjs';
+import { registerAutomaticDestinationEvaluationSchedule } from './automaticDestinationEvaluationScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -92,6 +93,7 @@ class SchedulerService {
     }
 
     resetState() {
+        this.automaticDestinationEvaluationWorker?.stop();
         this.inventoryDescriptionRefreshWorker?.stop();
         this.inventoryRepresentativeProfileWorker?.stop();
         this.liveMultiScaleWorker?.stop();
@@ -124,6 +126,7 @@ class SchedulerService {
         registerLiveMultiScaleSchedule(this);
         registerReclassificationMoveSchedule(this);
         registerReclassificationBatchSchedule(this);
+        registerAutomaticDestinationEvaluationSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);

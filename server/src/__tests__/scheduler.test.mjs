@@ -222,6 +222,9 @@ describe('SchedulerService', () => {
             scheduler.init();
             const stopDescriptionRefresh = jest.spyOn(scheduler.inventoryDescriptionRefreshWorker, 'stop');
             const stopRepresentativeRefresh = jest.spyOn(scheduler.inventoryRepresentativeProfileWorker, 'stop');
+            const stopAutomaticEvaluation = jest.spyOn(scheduler.automaticDestinationEvaluationWorker, 'stop');
+            expect(scheduler.tasks.has('automatic-destination-evaluation')).toBe(true);
+            expect(scheduler.initialTaskTimers.has('automatic-destination-evaluation')).toBe(true);
 
             expect([...scheduler.initialTaskTimers.keys()]).toEqual(expect.arrayContaining([
                 'gap-analysis',
@@ -236,6 +239,7 @@ describe('SchedulerService', () => {
 
             expect(stopDescriptionRefresh).toHaveBeenCalledTimes(1);
             expect(stopRepresentativeRefresh).toHaveBeenCalledTimes(1);
+            expect(stopAutomaticEvaluation).toHaveBeenCalledTimes(1);
             expect(scheduler.initialTaskTimers.size).toBe(0);
             expect(mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule)
                 .toHaveBeenCalledTimes(1);

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T23:36:42.954Z
--- Latest Migration: 20260924_230000_add_feedback_and_intake_decision_snapshots.sql
+-- Generated: 2026-09-25T00:33:08.915Z
+-- Latest Migration: 20260925_002500_add_automatic_destination_evaluation.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -1996,6 +1996,41 @@ CREATE SEQUENCE public.auto_learned_preferences_id_seq
 --
 
 ALTER SEQUENCE public.auto_learned_preferences_id_seq OWNED BY public.auto_learned_preferences.id;
+
+
+--
+-- Name: automatic_destination_evaluation; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automatic_destination_evaluation (
+    singleton boolean DEFAULT true NOT NULL,
+    status text NOT NULL,
+    input_fingerprint text,
+    report jsonb,
+    observed_at timestamp with time zone NOT NULL,
+    evaluated_at timestamp with time zone,
+    next_check_at timestamp with time zone NOT NULL,
+    failure_count integer DEFAULT 0 NOT NULL,
+    failure_code text,
+    CONSTRAINT automatic_destination_evaluation_check CHECK ((((status = 'complete'::text) AND (input_fingerprint IS NOT NULL) AND (report IS NOT NULL) AND (evaluated_at IS NOT NULL) AND (failure_code IS NULL) AND (failure_count = 0)) OR ((status = 'failed'::text) AND (input_fingerprint IS NULL) AND (report IS NULL) AND (evaluated_at IS NULL) AND (failure_code IS NOT NULL) AND (failure_count > 0)))),
+    CONSTRAINT automatic_destination_evaluation_check1 CHECK (((next_check_at > observed_at) AND ((evaluated_at IS NULL) OR (evaluated_at <= observed_at)))),
+    CONSTRAINT automatic_destination_evaluation_evaluated_at_check CHECK (isfinite(evaluated_at)),
+    CONSTRAINT automatic_destination_evaluation_failure_code_check CHECK ((failure_code = ANY (ARRAY['evidence_budget'::text, 'invalid_feedback'::text, 'evaluation_unavailable'::text]))),
+    CONSTRAINT automatic_destination_evaluation_failure_count_check CHECK (((failure_count >= 0) AND (failure_count <= 5))),
+    CONSTRAINT automatic_destination_evaluation_input_fingerprint_check CHECK ((input_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT automatic_destination_evaluation_next_check_at_check CHECK (isfinite(next_check_at)),
+    CONSTRAINT automatic_destination_evaluation_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT automatic_destination_evaluation_report_check CHECK (((jsonb_typeof(report) = 'object'::text) AND (octet_length((report)::text) <= 16384))),
+    CONSTRAINT automatic_destination_evaluation_singleton_check CHECK (singleton),
+    CONSTRAINT automatic_destination_evaluation_status_check CHECK ((status = ANY (ARRAY['complete'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: TABLE automatic_destination_evaluation; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.automatic_destination_evaluation IS 'One replaceable aggregate evaluation checkpoint. No source content or identifiers, routing authority, or provider calls. Readers hide reports after fifteen minutes without successful revalidation.';
 
 
 --
@@ -9243,6 +9278,14 @@ ALTER TABLE ONLY public.audit_log
 
 ALTER TABLE ONLY public.auto_learned_preferences
     ADD CONSTRAINT auto_learned_preferences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automatic_destination_evaluation automatic_destination_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automatic_destination_evaluation
+    ADD CONSTRAINT automatic_destination_evaluation_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -16556,6 +16599,7 @@ FROM unnest(ARRAY[
     '20260924_170000_add_reclassification_move_operations.sql',
     '20260924_190000_add_reclassification_batch_coordinator.sql',
     '20260924_220000_add_correction_decision_context.sql',
-    '20260924_230000_add_feedback_and_intake_decision_snapshots.sql'
+    '20260924_230000_add_feedback_and_intake_decision_snapshots.sql',
+    '20260925_002500_add_automatic_destination_evaluation.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
