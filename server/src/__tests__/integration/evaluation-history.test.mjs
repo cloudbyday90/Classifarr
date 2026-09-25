@@ -1,8 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, expect, test } from '@jest/globals';
+import { readFile } from 'node:fs/promises';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { evaluationHistoryFixture } from '../fixtures/evaluationHistoryFixture.mjs';
 import { appendEvaluationHistory, readEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from '../../services/evaluationHistoryRepository.mjs';
+import { adjudicationDigest } from '../../services/cachedAdjudicationContract.mjs';
 
 const query = (...args) => getPool().query(...args);
 const database = () => createIntegrationDatabaseModuleMock();
@@ -74,4 +76,40 @@ test('A→B→A outcomes select the latest completed evidence without renewing t
   expect((await readEvaluationHistory(database())).groups[0]).toMatchObject({ gains: 25, regressions: 0 });
   expect((await query('SELECT observed_at FROM automatic_evaluation_history ORDER BY observed_at LIMIT 1')).rows[0].observed_at).toEqual(first);
   expect((await readEvaluationHistory(database())).windows).toBe(2);
+});
+
+test('gap changes deduplicate independently and recover without losing old failure observations', async () => {
+  const missing = evaluationHistoryFixture({ status: 'misses' });
+  await save(missing); await save(missing);
+  const blocked = evaluationHistoryFixture({ status: 'unavailable', gap: 'evidence_unavailable' });
+  await save(blocked);
+  expect((await readEvaluationHistory(database())).groups[0].gaps.evidence_unavailable).toBe(25);
+  await save(missing);
+  expect((await readEvaluationHistory(database())).groups[0].gaps.cache_missing).toBe(25);
+  expect((await readEvaluationHistory(database())).windows).toBe(2);
+  await save(evaluationHistoryFixture());
+  const recovered = await readEvaluationHistory(database());
+  expect(recovered.windows).toBe(3);
+  expect(recovered.groups[0]).toMatchObject({ paired: 25, gaps: { cache_missing: 0, evidence_unavailable: 0 } });
+});
+
+test('upgrade preserves v1 histories and migration is replay-safe without accepting unknown versions', async () => {
+  const originalSql = await readFile(new URL('../../../../database/migrations/20260925_130000_add_automatic_evaluation_history.sql', import.meta.url), 'utf8');
+  // Isolated suite database: start with the actual pre-upgrade table definition.
+  await query('DROP TABLE automatic_evaluation_history');
+  await query(originalSql);
+  const legacy = evaluationHistoryFixture({ status: 'misses' });
+  legacy.version = 'evaluation_history.v1';
+  legacy.revision = adjudicationDigest([legacy.version, legacy.cohortRevision, legacy.evidenceRevision, legacy.modelRevision]);
+  legacy.cases.forEach(entry => { delete entry.gaps; });
+  await save(legacy);
+  await expect(save(evaluationHistoryFixture())).rejects.toMatchObject({ code: '23514' });
+  const sql = await readFile(new URL('../../../../database/migrations/20260925_140000_add_evaluation_coverage_gaps.sql', import.meta.url), 'utf8');
+  await query(sql); await query(sql);
+  await save(evaluationHistoryFixture());
+  const report = await readEvaluationHistory(database());
+  expect(report).toMatchObject({ windows: 2, revisions: 2 });
+  expect(report.groups[1].gaps.unknown).toBe(25);
+  await expect(query(`INSERT INTO automatic_evaluation_history VALUES($1,now(),now(),$2)`,
+    ['f'.repeat(64), JSON.stringify({ ...legacy, version: 'unknown' })])).rejects.toMatchObject({ code: '23514' });
 });

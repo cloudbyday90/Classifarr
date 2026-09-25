@@ -36,6 +36,7 @@
         </p>
         <details>
           <summary>Saved results and scope</summary>
+          <EvaluationCoverageGaps :group="latest" />
           <p>
             {{ latest.selected }} distinct items selected from a {{ latest.sampled }}-item frozen cohort.
             Counts retain the latest completed pair per item, even if its cached responses later expire.
@@ -74,6 +75,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useEvaluationHistory } from '@/composables/useEvaluationHistory'
+import EvaluationCoverageGaps from './EvaluationCoverageGaps.vue'
 const { available, paused, snapshot, isLoading, togglePause, errorMessage } = useEvaluationHistory()
 const latest = computed(() => snapshot.value?.groups[0])
 </script>

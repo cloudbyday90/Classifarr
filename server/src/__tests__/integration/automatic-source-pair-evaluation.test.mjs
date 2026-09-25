@@ -81,6 +81,7 @@ test('recurring capture resumes after a provider interruption, charges unknown a
     INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
     SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
   await worker.run();
+  expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 25, paired: 0, gaps: { cache_missing: 25 } });
   const budget = createAdjudicationBudgetRepository(database);
   await budget.configure({ dailyCalls: 100,dailyTokens: 844800 });
   let attempts = 0, firstPrompt;
@@ -114,7 +115,7 @@ test('recurring capture resumes after a provider interruption, charges unknown a
   expect(generate).toHaveBeenCalledTimes(attempts);
   await due(); await worker.run();
   expect((await status()).report.aiReplay).toMatchObject({ selected: 25,paired: 25,selectionOffset: 0 });
-  expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 25,paired: 25 });
+  expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 25,paired: 25, gaps: { cache_missing: 0 } });
   await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
   captureWorker = makeCapture(); expect((await captureWorker.run()).status).toBe('captured'); captureWorker.stop();
   expect((await budget.read()).selection_offset).toBe(25);

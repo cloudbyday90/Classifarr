@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
+import { normalizeEvaluationGaps } from '../src/utils/evaluationCoverageGaps.js'
 
 test('saved evaluation coverage is compact, keyboard-pausable and clears after lost access', async ({ page }, testInfo) => {
   let paired = 20, denied = false, reads = 0, writes = 0
@@ -20,9 +21,10 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
     if (path === '/api/stats/evaluation-history') {
       reads++
       if (denied) status = 403
-      else data = { version: 'evaluation_history_summary.v1', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
+      else data = { version: 'evaluation_history_summary.v2', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
         groups: [{ latestAt: '2026-09-25T12:00:00Z', windows: 3, sampled: 300, eligible: 120, selected: 50, paired,
-          labeled: 5, gains: 2, regressions: 1, deferralsReduced: 4, deferralsIncreased: 1, moviePaired: paired - 10, tvPaired: 10 }],
+          labeled: 5, gains: 2, regressions: 1, deferralsReduced: 4, deferralsIncreased: 1, moviePaired: paired - 10, tvPaired: 10,
+          gaps: { ...normalizeEvaluationGaps(null, 0, true), cache_missing: 48 - paired, invalid_response: 2 } }],
         providerCalls: 0, routingWrites: 0, promotionAllowed: false, fullPipelineAccuracy: null }
     }
     await route.fulfill({ status, contentType: 'application/json', headers: { 'Cache-Control': 'no-store' }, body: JSON.stringify(data) })
@@ -44,6 +46,9 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await disclosure.focus(); await page.keyboard.press('Enter')
   await expect(panel.locator('details')).toHaveAttribute('open', '')
   await expect(panel).toContainText('historical results, not live model verification')
+  await expect(panel).toContainText('23 — Cached AI response missing')
+  await expect(panel).toContainText('2 — AI response rejected')
+  await expect(panel).toContainText('No retries are started by opening this summary')
   await page.setViewportSize({ width: 390, height: 844 })
   await page.clock.runFor(1000)
   await expect.poll(() => page.locator('aside').evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0)

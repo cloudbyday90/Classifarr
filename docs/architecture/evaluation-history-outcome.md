@@ -107,10 +107,8 @@ the trade-off is finite retention and conservative splitting when evidence chang
 Do not compare different revisions as controlled experiments or promote routing
 based on unlabelled agreement.
 
-Next: **coverage-gap diagnosis and bounded recovery**. Break selected-but-unpaired
-cases into fixed causes (missing cached responses, unsupported preparation,
-invalid provider output), alongside missing reference labels. Persist the aggregate
-gap trend and target the largest recoverable cause with the existing retry/admission
-and configured budget controls. Do not increase inference limits automatically or
-turn missing labels into guessed training truth. This supplies a measurable reason
-for the next automation change instead of repeating infrastructure work.
+Follow-up implemented: [coverage-gap diagnosis](evaluation-coverage-gaps-design.md)
+and [verification outcome](evaluation-coverage-gaps-outcome.md). Selected-but-unpaired
+cases now retain fixed causes alongside separate reference-label coverage. Cache
+backfill stays under existing admission and budget controls; invalid outputs remain
+measured failures, not retries until success. See the outcome for the next component.

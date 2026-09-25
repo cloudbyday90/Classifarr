@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-25T21:12:54.380Z
--- Latest Migration: 20260925_130000_add_automatic_evaluation_history.sql
+-- Generated: 2026-09-25T21:34:44.030Z
+-- Latest Migration: 20260925_140000_add_evaluation_coverage_gaps.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2091,7 +2091,7 @@ CREATE TABLE public.automatic_evaluation_history (
     result jsonb NOT NULL,
     CONSTRAINT automatic_evaluation_history_check CHECK ((isfinite(last_observed_at) AND (last_observed_at >= observed_at))),
     CONSTRAINT automatic_evaluation_history_observed_at_check CHECK (isfinite(observed_at)),
-    CONSTRAINT automatic_evaluation_history_result_check CHECK (COALESCE(((jsonb_typeof(result) = 'object'::text) AND ((result ->> 'version'::text) = 'evaluation_history.v1'::text) AND (jsonb_typeof((result -> 'cases'::text)) = 'array'::text) AND (jsonb_array_length((result -> 'cases'::text)) <= 25) AND (octet_length((result)::text) <= 16384)), false)),
+    CONSTRAINT automatic_evaluation_history_result_check CHECK (COALESCE(((jsonb_typeof(result) = 'object'::text) AND ((result ->> 'version'::text) = ANY (ARRAY['evaluation_history.v1'::text, 'evaluation_history.v2'::text])) AND (jsonb_typeof((result -> 'cases'::text)) = 'array'::text) AND (jsonb_array_length((result -> 'cases'::text)) <= 25) AND (octet_length((result)::text) <= 16384)), false)),
     CONSTRAINT automatic_evaluation_history_result_key_check CHECK ((result_key ~ '^[a-f0-9]{64}$'::text))
 );
 
@@ -16770,6 +16770,7 @@ FROM unnest(ARRAY[
     '20260925_013000_add_automatic_source_pair_evaluation.sql',
     '20260925_110000_add_cached_adjudication_batch.sql',
     '20260925_120000_add_adjudication_capture_budget.sql',
-    '20260925_130000_add_automatic_evaluation_history.sql'
+    '20260925_130000_add_automatic_evaluation_history.sql',
+    '20260925_140000_add_evaluation_coverage_gaps.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

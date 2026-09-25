@@ -9,6 +9,7 @@ import { projectAdjudicationConfig } from '../../services/cachedAdjudicationRepo
 import { runOperatorCorrectionPolicyEvaluation } from '../../scripts/runOperatorCorrectionPolicyEvaluation.mjs';
 import { sourcePairFixture } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { fingerprintAutomaticSourcePairInputs } from '../../services/automaticSourcePairComputation.mjs';
+import { evaluationHistoryCase } from '../../services/evaluationHistoryContract.mjs';
 
 const identity = { model: 'test:latest', digest: 'c'.repeat(64), contextLength: 32768 };
 const generated = (response = '{"decision":"PROPOSE","library_number":2}') => ({ response,
@@ -174,4 +175,37 @@ test('capture CLI requires its own explicit call budget and rejects mixed modes 
   expect(evaluate).not.toHaveBeenCalled();
   await runOperatorCorrectionPolicyEvaluation({ argv: ['--capture-source-pair-ai', '--max-calls', '2'], evaluate });
   expect(evaluate).toHaveBeenCalledWith({ maxCalls: 2 });
+});
+
+test.each(['configuration_unavailable', 'runtime_unavailable', 'not_adjudication', 'scope_unavailable',
+  'evidence_unavailable', 'evidence_changed', 'request_invalid'])('replay retains the actual %s preparation gap without private data', async gap => {
+  const { source, entry, row, outcomes } = fixture();
+  if (gap === 'configuration_unavailable') delete source.adjudicationConfig;
+  if (gap === 'runtime_unavailable') delete row.runtime;
+  if (gap === 'not_adjudication') row.common.mode = 'none';
+  if (gap === 'request_invalid') entry.arms.protected.prompt = 'x'.repeat(30000);
+  const cases = [];
+  const prepare = jest.fn(async () => ['scope_unavailable', 'evidence_unavailable', 'evidence_changed'].includes(gap)
+    ? { status: gap, private: 'PRIVATE' } : entry);
+  await replayCachedAdjudication(outcomes, new Map(), source,
+    { prepare, onCase: (...args) => cases.push(evaluationHistoryCase(...args)) });
+  expect(cases[0]).toMatchObject({ paired: false, gaps: [gap, gap] });
+  expect(JSON.stringify(cases)).not.toContain('PRIVATE');
+  if (['configuration_unavailable', 'runtime_unavailable', 'not_adjudication'].includes(gap)) expect(prepare).not.toHaveBeenCalled();
+});
+
+test('backfill resolves cache gaps while invalid cached output remains a measured failure, not retry-until-success', async () => {
+  const { source, entry, outcomes } = fixture();
+  const cases = [], replay = () => replayCachedAdjudication(outcomes, new Map(), source,
+    { prepare: async () => entry, onCase: (...args) => cases.push(evaluationHistoryCase(...args)) });
+  await replay(); expect(cases.at(-1).gaps).toEqual(['cache_missing', 'cache_missing']);
+  const { snapshot, dependencies, client } = captureFixture();
+  client.generate.mockImplementation(async ({ onGenerationCall }) => { await onGenerationCall(); return generated('PRIVATE invalid'); });
+  dependencies.save.mockImplementation(async batch => { source.adjudicationBatch = batch; snapshot.inputs.source.adjudicationBatch = batch; });
+  await captureCachedAdjudication({ maxCalls: 1 }, dependencies);
+  await replay(); expect(cases.at(-1).gaps).toEqual(['invalid_response', 'invalid_response']);
+  expect(await captureCachedAdjudication({ maxCalls: 1 }, dependencies)).toMatchObject({ calls: 0, reused: 1 });
+  expect(client.generate).toHaveBeenCalledTimes(1);
+  source.adjudicationBatch.records[0].generated = generated();
+  await replay(); expect(cases.at(-1)).toMatchObject({ paired: true, labeled: false, gaps: ['none', 'none'] });
 });

@@ -17,7 +17,8 @@ export async function appendEvaluationHistory(client, history, observedAt) {
       DO UPDATE SET last_observed_at=GREATEST(automatic_evaluation_history.last_observed_at,EXCLUDED.last_observed_at)`,
   [adjudicationDigest([history.version, history.revision, history.sampled, history.eligible, history.offset,
     history.cases.map(row => [row.item, row.mediaType, row.paired, row.labeled, row.gain, row.regression,
-      row.deferralReduced, row.deferralIncreased]).sort(([a], [b]) => a.localeCompare(b))]), observedAt, JSON.stringify(history)]);
+      row.deferralReduced, row.deferralIncreased, ...(history.version === 'evaluation_history.v2' ? [row.gaps] : [])])
+      .sort(([a], [b]) => a.localeCompare(b))]), observedAt, JSON.stringify(history)]);
   await client.query(PRUNE_EVALUATION_HISTORY_SQL);
 }
 

@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import EvaluationHistorySummary from '@/components/command-center/EvaluationHistorySummary.vue'
 import { normalizeEvaluationHistory } from '@/utils/evaluationHistorySummary'
+import { evaluationGapDetails, normalizeEvaluationGaps } from '@/utils/evaluationCoverageGaps'
 import api from '@/api'
 
 vi.mock('@/api', () => ({ default: { getEvaluationHistory: vi.fn() } }))
@@ -96,4 +97,38 @@ it('discards a response after unmount', async () => {
   wrapper = mount(EvaluationHistorySummary)
   wrapper.unmount(); finish(report()); await flushPromises()
   expect(localStorage.getItem('classifarr:v1:swr:evaluation-history')).toBeNull()
+})
+
+it('explains v2 gaps, label limitations and bounded recovery without offering inference actions', async () => {
+  const value = report(); value.version = 'evaluation_history_summary.v2'
+  value.groups[0].gaps = normalizeEvaluationGaps(null, 0, true)
+  Object.assign(value.groups[0].gaps, { cache_missing: 3, invalid_response: 1, evidence_unavailable: 1 })
+  api.getEvaluationHistory.mockResolvedValue(value)
+  wrapper = mount(EvaluationHistorySummary); await flushPromises()
+  expect(wrapper.text()).toContain('25 eligible items have not reached a selected window')
+  expect(wrapper.text()).toContain('5 selected items have no completed comparison')
+  expect(wrapper.text()).toContain('3 — Cached AI response missing')
+  expect(wrapper.text()).toContain('when enabled, admitted and within quota')
+  expect(wrapper.text()).toContain('do not retry until it passes')
+  expect(wrapper.text()).toContain('cannot supply independent ground truth')
+  expect(wrapper.findAll('button')).toHaveLength(1)
+})
+
+it('validates every reason, rejects leaked/contradictory gap payloads and keeps legacy reasons unknown', () => {
+  const legacy = normalizeEvaluationHistory(report())
+  expect(legacy.groups[0].gaps.unknown).toBe(5)
+  for (const key of Object.keys(evaluationGapDetails)) {
+    const value = report(); value.version = 'evaluation_history_summary.v2'
+    value.groups[0].gaps = { ...normalizeEvaluationGaps(null, 0, true), [key]: 5 }
+    expect(normalizeEvaluationHistory(value).groups[0].gaps[key]).toBe(5)
+  }
+  for (const gaps of [null, [], {}, { private: 'PRIVATE' },
+    { ...normalizeEvaluationGaps(null, 0, true), unknown: 6 },
+    { ...normalizeEvaluationGaps(null, 0, true), unknown: -1, cache_missing: 6 },
+    { ...normalizeEvaluationGaps(null, 0, true), unknown: 5.5 },
+    { ...normalizeEvaluationGaps(null, 0, true), unknown: '5' },
+    { ...normalizeEvaluationGaps(null, 0, true), unknown: 5, private: 'PRIVATE' }]) {
+    const value = report(); value.version = 'evaluation_history_summary.v2'; value.groups[0].gaps = gaps
+    expect(normalizeEvaluationHistory(value)).toBeNull()
+  }
 })

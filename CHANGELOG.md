@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain incomplete movie/TV AI comparisons with bounded, private reason codes
+  and clear recovery guidance in the Command Center. Preserve legacy history,
+  distinguish cache backfill from rejected output and missing labels, and retain
+  existing inference budgets and routing safeguards.
 - Retain bounded, deduplicated movie/TV evaluation history across restarts, with
   distinct-item and reference-label coverage kept separate by evidence/model
   revision. Add a protected, read-only Command Center summary with nonpersistent

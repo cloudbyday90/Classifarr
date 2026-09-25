@@ -29,13 +29,19 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
   for (const [hash, a] of selected) {
     const results = [];
     for (const row of [a, sourceAware.get(hash)]) {
-      if (!row.runtime || row.common.mode !== 'adjudicate' || !source.adjudicationConfig) {
-        results.push({ status: 'unavailable' }); continue;
+      if (!source.adjudicationConfig || !row.runtime || row.common.mode !== 'adjudicate') {
+        const gap = !source.adjudicationConfig ? 'configuration_unavailable'
+          : !row.runtime ? 'runtime_unavailable' : 'not_adjudication';
+        results.push({ status: 'unavailable', gap }); continue;
       }
       const entry = await prepare({ metadata: row.runtime.metadata, policyResult: row.common.policyResult },
         { libraries: source.libraries, config: source.adjudicationConfig.promptConfig }, row.runtime);
       const request = entry.status === 'ready' ? adjudicationRequest(entry) : null;
-      if (!request) { results.push({ status: 'unavailable' }); continue; }
+      if (!request) {
+        const gap = ['not_adjudication', 'scope_unavailable', 'evidence_unavailable', 'evidence_changed'].includes(entry.status)
+          ? entry.status : 'request_invalid';
+        results.push({ status: 'unavailable', gap }); continue;
+      }
       plan.set(request.key, request);
       const generated = cache.get(request.key);
       results.push(generated ? reduce({ ...entry, reviewPolicies: row.policies }, 'protected', generated, batch.identity) : { status: 'misses' });

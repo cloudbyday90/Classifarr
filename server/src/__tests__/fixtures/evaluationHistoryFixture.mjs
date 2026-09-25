@@ -2,10 +2,10 @@
 import { adjudicationDigest } from '../../services/cachedAdjudicationContract.mjs';
 import { evaluationHistoryCase } from '../../services/evaluationHistoryContract.mjs';
 
-export function evaluationHistoryFixture({ revision = 'one', offset = 0, status = 'proposed', labeled = true } = {}) {
-  const version = 'evaluation_history.v1', cohortRevision = adjudicationDigest('cohort'),
+export function evaluationHistoryFixture({ revision = 'one', offset = 0, status = 'proposed', labeled = true, gap } = {}) {
+  const version = 'evaluation_history.v2', cohortRevision = adjudicationDigest('cohort'),
     evidenceRevision = adjudicationDigest(revision), modelRevision = adjudicationDigest('model');
-  const result = { status, destinationId: 2, latencyMs: 1, promptTokens: 1, outputTokens: 1 };
+  const result = { status, gap, destinationId: 2, latencyMs: 1, promptTokens: 1, outputTokens: 1 };
   return { version, revision: adjudicationDigest([version, cohortRevision, evidenceRevision, modelRevision]),
     cohortRevision, evidenceRevision, modelRevision, sampled: 60, eligible: 60, offset,
     cases: Array.from({ length: 25 }, (_, index) => evaluationHistoryCase(`item-${offset + index}`,
