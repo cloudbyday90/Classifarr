@@ -83,10 +83,12 @@ These are project-specific applications, not claims of certification.
 
 ## Next component
 
-Separate **zero-inference window progression from AI capture permission**. The
-current budget worker returns disabled when its daily call allowance is zero, so
-it also stops rotating windows that need no provider calls. Reuse existing
-admission, cooldown and checkpoint ownership; do not introduce another queue.
+The follow-up **zero-inference window progression from AI capture permission** is
+implemented in the [progression design](zero-inference-window-progression-design.md),
+with verification in its [outcome](zero-inference-window-progression-outcome.md).
+The capture worker's early disabled return had also stopped rotating windows that
+needed no provider calls. The follow-up reuses admission, cooldown and checkpoint
+ownership rather than introducing another queue.
 
 Acceptance for that follow-up: with AI disabled, completed no-inference windows
 can advance once, restart resumes the right window, missing-cache windows remain

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Advance completed movie/TV evaluation windows without requiring an AI capture
+  allowance. Save progress atomically with evidence, preserve interrupted capture,
+  and fence stale or duplicate advancement across restarts. Missing evidence stays
+  explicit; inference budgets, routing permissions and live data remain unchanged.
 - Complete mixed movie/TV evaluation using validated automatic policy decisions
   directly and cached AI only where needed. Separate deterministic, mixed and
   AI-only coverage, preserve older history, and avoid provider initialization for

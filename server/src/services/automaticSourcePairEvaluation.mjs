@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createAutomaticEvaluationWorker } from './automaticEvaluationWorker.mjs';
 import { runAutomaticSourcePairThread } from './automaticSourcePairThreadClient.mjs';
+import { createProgressingSourcePairEvaluation } from './sourcePairWindowProgression.mjs';
 
 export const AUTOMATIC_SOURCE_PAIR_LOCK = 0x41535045;
 const deferredCodes = ['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable'];
@@ -14,7 +15,8 @@ function failureCode(error) {
 
 export function createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock, withAdmission,
   evaluate = runAutomaticSourcePairThread, now = Date.now }) {
-  return createAutomaticEvaluationWorker({ repository, withSessionAdvisoryLock, now, runEvaluation: evaluate,
+  return createAutomaticEvaluationWorker({ repository, withSessionAdvisoryLock, now,
+    runEvaluation: createProgressingSourcePairEvaluation({ repository, evaluate }),
     lock: AUTOMATIC_SOURCE_PAIR_LOCK, failureCode, deferredCodes,
     withEvaluation: (callback, signal) => withAdmission(callback,
       { signal: AbortSignal.any([signal, AbortSignal.timeout(120000)]) }),

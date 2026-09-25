@@ -17,6 +17,8 @@ import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRunt
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
 import { readEvaluationHistory } from '../../services/evaluationHistoryRepository.mjs';
+import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
+import { createProgressingSourcePairEvaluation } from '../../services/sourcePairWindowProgression.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -116,11 +118,81 @@ test('recurring capture resumes after a provider interruption, charges unknown a
   await due(); await worker.run();
   expect((await status()).report.aiReplay).toMatchObject({ selected: 25,paired: 25,selectionOffset: 0 });
   expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 25,paired: 25, gaps: { cache_missing: 0 } });
+  expect(await budget.read()).toMatchObject({ selection_offset: 25, revision: complete.revision + 1, published_fingerprint: null });
   await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
   captureWorker = makeCapture(); expect((await captureWorker.run()).status).toBe('captured'); captureWorker.stop();
   expect((await budget.read()).selection_offset).toBe(25);
   await due(); await worker.run();
   expect((await status()).report.aiReplay).toMatchObject({ selected: 23,selectionOffset: 25 });
+});
+
+// Seed exact synthetic responses directly; no provider client or capture permission is involved.
+async function fillCurrentWindow(response = '{"decision":"ABSTAIN","library_number":null}') {
+  const snapshot = await repository.readSnapshot(), state = await repository.readState();
+  const prepared = await runAutomaticSourcePairThread(snapshot, state, new AbortController().signal, { includePlan: true });
+  expect(prepared.plan.length).toBeGreaterThan(0);
+  await createCachedAdjudicationWriter(database)({ version: 'cached_adjudication.v1',
+    configuration: snapshot.inputs.source.adjudicationConfig.fingerprint,
+    identity: { model: 'test:latest', digest: 'a'.repeat(64), contextLength: 8192 },
+    records: prepared.plan.map(request => ({ key: request.key, generated: { response,
+      latencyMs: 5, promptTokens: 100, outputTokens: 10, outputLimitReached: false,
+      contextLimitSuspected: false, inputTruncation: 'unknown' } })) });
+}
+
+test('disabled capture advances complete cached windows, resumes at missing evidence after restart and wraps safely', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries;
+    INSERT INTO libraries VALUES(5,'Music','music',true);
+    INSERT INTO media_server_items(library_id,media_server_id,external_id,media_type,metadata)
+    VALUES(5,1,'music','music','{"overview":"Excluded music"}');
+    DELETE FROM adjudication_capture_budget`);
+  const dataBefore = (await client.query('SELECT * FROM media_server_items ORDER BY id')).rows;
+  const policiesBefore = (await client.query('SELECT * FROM library_policies ORDER BY id')).rows;
+  const budget = createAdjudicationBudgetRepository(database);
+  await fillCurrentWindow(); await worker.run();
+  expect((await status()).report.aiReplay).toMatchObject({ selected: 25, paired: 25, selectionOffset: 0 });
+  expect(await budget.read()).toMatchObject({ revision: 1, selection_offset: 25, daily_calls: 0, calls_reserved: 0, status: 'disabled' });
+  const first = await stored();
+  expect(await worker.run()).toEqual({ status: 'cooldown' });
+  worker.stop(); worker = makeWorker(); await due(); await worker.run();
+  expect((await status()).report.aiReplay).toMatchObject({ selected: 23, paired: 0, selectionOffset: 25 });
+  expect((await budget.read()).revision).toBe(1);
+  // Invalid responses are retained as failures rather than retried until success.
+  await fillCurrentWindow('not valid JSON'); await due(); await worker.run();
+  expect((await status()).report.aiReplay).toMatchObject({ selected: 23, paired: 0, selectionOffset: 25,
+    baseline: { hits: 23, invalid: 23, misses: 0 }, sourceAware: { hits: 23, invalid: 23, misses: 0 } });
+  expect(await budget.read()).toMatchObject({ revision: 2, selection_offset: 0, daily_calls: 0, calls_reserved: 0, tokens_reserved: 0 });
+  expect((await stored()).cohort).toEqual(first.cohort);
+  expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 48, paired: 25 });
+  expect((await client.query('SELECT * FROM media_server_items ORDER BY id')).rows).toEqual(dataBefore);
+  expect((await client.query('SELECT * FROM library_policies ORDER BY id')).rows).toEqual(policiesBefore);
+});
+
+test('cursor failure rolls back report and history; older publication cannot advance after a successful save', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
+  await fillCurrentWindow();
+  const snapshot = await repository.readSnapshot(), signal = new AbortController().signal;
+  const result = await createProgressingSourcePairEvaluation({ repository, evaluate: runAutomaticSourcePairThread })(snapshot, null, signal);
+  expect(result.replayWindow).toEqual({ revision: 0, selectionOffset: 0, nextOffset: 25 });
+  await client.query('ALTER TABLE adjudication_capture_budget ADD CONSTRAINT test_no_advance CHECK (selection_offset=0)');
+  await expect(repository.save(result.fingerprint, result.report, snapshot.observedAt, signal, result)).rejects.toMatchObject({ code: '23514' });
+  expect(await stored()).toBeUndefined();
+  expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
+  expect((await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget')).rows[0]).toEqual({ revision: 0, selection_offset: 0 });
+  await client.query('ALTER TABLE adjudication_capture_budget DROP CONSTRAINT test_no_advance');
+  expect(await repository.save(result.fingerprint, result.report, snapshot.observedAt, signal, result)).toBe(true);
+  expect((await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget')).rows[0]).toEqual({ revision: 1, selection_offset: 25 });
+  const before = (await client.query('SELECT * FROM automatic_evaluation_history')).rows;
+  expect(await repository.save(result.fingerprint, result.report, snapshot.observedAt, signal, result)).toBe(true);
+  expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toEqual(before);
+  expect((await client.query('SELECT revision FROM adjudication_capture_budget')).rows[0].revision).toBe(1);
+  const earlier = new Date(Date.parse(snapshot.observedAt) - 1).toISOString();
+  expect(await repository.save(result.fingerprint, result.report, earlier, signal,
+    { ...result, cohortCreatedAt: new Date(Date.parse(earlier) - 1000).toISOString() })).toBe(false);
+  expect((await client.query('SELECT revision FROM adjudication_capture_budget')).rows[0].revision).toBe(1);
 });
 
 test('explicit bounded capture fills exact requests for the automatic worker and expires without model calls', async () => {
