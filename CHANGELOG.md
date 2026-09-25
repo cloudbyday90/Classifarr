@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add opt-in recurring local AI evaluation capture with durable daily allowances,
+  restart-safe response checkpoints, and movie/TV window rotation after replay.
+  Automatic inference stays disabled until configured; routing is unchanged.
 - Add bounded, exact-response AI adjudication replay to automatic movie/TV
   evaluation, with explicit local capture budgets, restart-safe seven-day cache
   retention, and separate proposal quality, deferral and historical usage metrics.

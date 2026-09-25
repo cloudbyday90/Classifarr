@@ -15,10 +15,14 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
       a.outcome.action !== b.outcome.action || a.outcome.destination !== b.outcome.destination);
   }).sort(([a], [b]) => a.localeCompare(b));
   const media = ['movie', 'tv'].map(type => eligible.filter(([, row]) => row.mediaType === type));
-  const selected = [];
-  for (let index = 0; selected.length < ADJUDICATION_PAIR_LIMIT && index < Math.max(...media.map(rows => rows.length)); index++) {
-    for (const rows of media) if (rows[index] && selected.length < ADJUDICATION_PAIR_LIMIT) selected.push(rows[index]);
+  const ordered = [];
+  for (let index = 0; index < Math.max(...media.map(rows => rows.length)); index++) {
+    for (const rows of media) if (rows[index]) ordered.push(rows[index]);
   }
+  const offset = source.adjudicationSelectionOffset ?? 0;
+  if (!Number.isInteger(offset) || offset < 0 || offset > 299) throw new Error('adjudication_selection_invalid');
+  report.selectionOffset = offset < ordered.length ? offset : 0;
+  const selected = ordered.slice(report.selectionOffset, report.selectionOffset + ADJUDICATION_PAIR_LIMIT);
   report.eligible = eligible.length; report.selected = selected.length; report.budgetSkipped = eligible.length - selected.length;
   const batch = readAdjudicationBatch(source.adjudicationBatch, source.adjudicationConfig?.fingerprint);
   const cache = new Map(batch?.records.map(row => [row.key, row.generated]) ?? []);

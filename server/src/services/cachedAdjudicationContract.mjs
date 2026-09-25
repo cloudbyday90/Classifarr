@@ -5,6 +5,14 @@ import { CANDIDATE_ADJUDICATION_RESPONSE_VERSION } from './candidateAdjudication
 export const ADJUDICATION_CAPTURE_CONTEXT = 8192;
 export const ADJUDICATION_PAIR_LIMIT = 25;
 export const adjudicationDigest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+/** JSONB object-key ordering and response insertion order are not evidence changes. */
+export function adjudicationBatchDigest(batch) {
+  if (!batch) return null;
+  return adjudicationDigest([batch.version,batch.configuration,
+    [batch.identity.model,batch.identity.digest,batch.identity.contextLength],
+    batch.records.map(({ key,generated: g }) => [key,g.response,g.latencyMs,g.promptTokens,g.outputTokens,
+      g.outputLimitReached,g.inputTruncation,g.contextLimitSuspected]).sort(([a],[b]) => a.localeCompare(b))]);
+}
 const hex = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));

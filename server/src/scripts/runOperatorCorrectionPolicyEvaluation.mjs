@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { validateDescriptionBenchmarkOptions } from '../services/inventoryDescriptionBenchmarkSelection.mjs';
+import { parseAdjudicationBudgetCommand } from '../services/adjudicationBudgetCommand.mjs';
 
 /** Private evaluation. Only explicit capture writes its bounded response cache; no domain writes. */
 export async function runOperatorCorrectionPolicyEvaluation({ argv = process.argv.slice(2), evaluate } = {}) {
@@ -13,7 +14,16 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
     'automatic-status': { type: 'boolean', default: false },
     'automatic-source-pair-status': { type: 'boolean', default: false },
     'capture-source-pair-ai': { type: 'boolean', default: false }, 'max-calls': { type: 'string' },
+    'configure-source-pair-ai-budget': { type: 'boolean', default: false },
+    'source-pair-ai-budget-status': { type: 'boolean', default: false },
+    'daily-calls': { type: 'string' }, 'daily-tokens': { type: 'string' },
   } });
+  const budgetOptions = parseAdjudicationBudgetCommand(values);
+  if (budgetOptions) {
+    process.env.LOG_LEVEL = 'fatal'; process.env.FILE_LOGGING_ENABLED = 'false';
+    const run = evaluate ?? (await import('../services/adjudicationBudgetCommand.mjs')).runAdjudicationBudgetCommand;
+    return run(budgetOptions);
+  }
   if (values['capture-source-pair-ai']) {
     if (Object.entries(values).some(([key, value]) => !['capture-source-pair-ai', 'max-calls'].includes(key) && value !== false) ||
         !/^(?:[1-9]|[1-4][0-9]|50)$/.test(values['max-calls'] ?? '')) throw new Error('adjudication_capture_requires_explicit_budget');

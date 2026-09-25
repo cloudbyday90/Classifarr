@@ -1,13 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { consensusFixture, consensusConfig } from '../fixtures/policyCandidateConsensusFixture.mjs';
-import { adjudicationRequest, readAdjudicationBatch, validAdjudicationPlan } from '../../services/cachedAdjudicationContract.mjs';
+import { adjudicationRequest, readAdjudicationBatch, validAdjudicationPlan, adjudicationBatchDigest } from '../../services/cachedAdjudicationContract.mjs';
 import { replayCachedAdjudication } from '../../services/cachedAdjudicationReplay.mjs';
 import { readCachedAdjudicationReport } from '../../services/cachedAdjudicationReport.mjs';
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { projectAdjudicationConfig } from '../../services/cachedAdjudicationRepository.mjs';
 import { runOperatorCorrectionPolicyEvaluation } from '../../scripts/runOperatorCorrectionPolicyEvaluation.mjs';
 import { sourcePairFixture } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { fingerprintAutomaticSourcePairInputs } from '../../services/automaticSourcePairComputation.mjs';
 
 const identity = { model: 'test:latest', digest: 'c'.repeat(64), contextLength: 32768 };
 const generated = (response = '{"decision":"PROPOSE","library_number":2}') => ({ response,
@@ -40,6 +41,17 @@ test('exact requests, schema bounds, candidate order and provenance prevent unre
     value => { value.records[0].generated.promptTokens = 8193; }, value => { value.records[0].generated.latencyMs = -1; }]) {
     const invalid = structuredClone(batch); mutate(invalid); expect(readAdjudicationBatch(invalid, batch.configuration)).toBeNull();
   }
+});
+
+test('batch evidence fingerprints ignore JSONB object-key and record insertion order, not response changes', () => {
+  const { batch } = fixture(); batch.records.push({ ...batch.records[0],key: 'f'.repeat(64) });
+  const reordered = JSON.parse(JSON.stringify(batch));
+  reordered.records.reverse();
+  reordered.records[0].generated = Object.fromEntries(Object.entries(reordered.records[0].generated).reverse());
+  reordered.identity = Object.fromEntries(Object.entries(reordered.identity).reverse());
+  expect(adjudicationBatchDigest(reordered)).toBe(adjudicationBatchDigest(batch));
+  reordered.records[0].generated.response += 'changed';
+  expect(adjudicationBatchDigest(reordered)).not.toBe(adjudicationBatchDigest(batch));
 });
 
 test('cold cache becomes explicit misses; exact replay uses the production reducer with no routing authority', async () => {
@@ -141,6 +153,16 @@ test('database vector order is not semantic drift, but changed vectors reject pu
   dependencies.repository.readSnapshot.mockReset().mockResolvedValueOnce(snapshot).mockResolvedValue(changed);
   await expect(captureCachedAdjudication({ maxCalls: 1 }, dependencies)).rejects.toThrow('source_changed');
   expect(dependencies.save).not.toHaveBeenCalled();
+});
+
+test('rotation completion identifies the captured evidence even if source data changes immediately after publication', async () => {
+  const { snapshot,dependencies } = captureFixture(), original = structuredClone(snapshot), onPublished = jest.fn();
+  dependencies.save.mockImplementation(async () => { snapshot.inputs.source.rows[0].overview += 'newer source'; });
+  await captureCachedAdjudication({ maxCalls: 1 },{ ...dependencies,onPublished });
+  original.inputs.source.adjudicationBatch = dependencies.save.mock.calls[0][0];
+  expect(onPublished).toHaveBeenCalledWith(fingerprintAutomaticSourcePairInputs(original,{}),true,expect.anything());
+  snapshot.inputs.source.adjudicationBatch = original.inputs.source.adjudicationBatch;
+  expect(onPublished.mock.calls[0][0]).not.toBe(fingerprintAutomaticSourcePairInputs(snapshot,{}));
 });
 
 test('capture CLI requires its own explicit call budget and rejects mixed modes before loading a runtime', async () => {

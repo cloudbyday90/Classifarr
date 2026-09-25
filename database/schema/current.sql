@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-25T10:54:34.694Z
--- Latest Migration: 20260925_110000_add_cached_adjudication_batch.sql
+-- Generated: 2026-09-25T19:21:12.734Z
+-- Latest Migration: 20260925_120000_add_adjudication_capture_budget.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -725,6 +725,53 @@ $$;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: adjudication_capture_budget; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.adjudication_capture_budget (
+    singleton boolean DEFAULT true NOT NULL,
+    revision integer DEFAULT 0 NOT NULL,
+    daily_calls integer DEFAULT 0 NOT NULL,
+    daily_tokens integer DEFAULT 0 NOT NULL,
+    quota_day date DEFAULT ((CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text))::date NOT NULL,
+    calls_reserved integer DEFAULT 0 NOT NULL,
+    tokens_reserved integer DEFAULT 0 NOT NULL,
+    selection_offset integer DEFAULT 0 NOT NULL,
+    next_check_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    status text DEFAULT 'disabled'::text NOT NULL,
+    published_fingerprint text,
+    progress_key text,
+    progress jsonb,
+    captured_at timestamp with time zone,
+    expires_at timestamp with time zone,
+    CONSTRAINT adjudication_capture_budget_calls_reserved_check CHECK (((calls_reserved >= 0) AND (calls_reserved <= 200))),
+    CONSTRAINT adjudication_capture_budget_captured_at_check CHECK (isfinite(captured_at)),
+    CONSTRAINT adjudication_capture_budget_check CHECK ((tokens_reserved = (calls_reserved * 8448))),
+    CONSTRAINT adjudication_capture_budget_check1 CHECK ((((daily_calls = 0) AND (daily_tokens = 0)) OR ((daily_calls > 0) AND (daily_tokens >= 8448)))),
+    CONSTRAINT adjudication_capture_budget_check2 CHECK ((((progress IS NULL) AND (progress_key IS NULL) AND (captured_at IS NULL) AND (expires_at IS NULL)) OR ((progress IS NOT NULL) AND (progress_key IS NOT NULL) AND (captured_at IS NOT NULL) AND (expires_at IS NOT NULL) AND (expires_at > captured_at) AND (expires_at <= (captured_at + '7 days'::interval))))),
+    CONSTRAINT adjudication_capture_budget_daily_calls_check CHECK (((daily_calls >= 0) AND (daily_calls <= 200))),
+    CONSTRAINT adjudication_capture_budget_daily_tokens_check CHECK (((daily_tokens >= 0) AND (daily_tokens <= 1689600))),
+    CONSTRAINT adjudication_capture_budget_expires_at_check CHECK (isfinite(expires_at)),
+    CONSTRAINT adjudication_capture_budget_next_check_at_check CHECK (isfinite(next_check_at)),
+    CONSTRAINT adjudication_capture_budget_progress_check CHECK (((jsonb_typeof(progress) = 'object'::text) AND (octet_length((progress)::text) <= 1048576))),
+    CONSTRAINT adjudication_capture_budget_progress_key_check CHECK ((progress_key ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT adjudication_capture_budget_published_fingerprint_check CHECK ((published_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT adjudication_capture_budget_quota_day_check CHECK (isfinite(quota_day)),
+    CONSTRAINT adjudication_capture_budget_revision_check CHECK ((revision >= 0)),
+    CONSTRAINT adjudication_capture_budget_selection_offset_check CHECK (((selection_offset >= 0) AND (selection_offset <= 299))),
+    CONSTRAINT adjudication_capture_budget_singleton_check CHECK (singleton),
+    CONSTRAINT adjudication_capture_budget_status_check CHECK ((status = ANY (ARRAY['disabled'::text, 'ready'::text, 'captured'::text, 'waiting_for_replay'::text, 'budget_exhausted'::text, 'deferred'::text, 'unavailable'::text])))
+);
+
+
+--
+-- Name: TABLE adjudication_capture_budget; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.adjudication_capture_budget IS 'Opt-in local AI evaluation quota and resumable exact-response progress. UTC reservations survive restart; unknown calls are not refunded. No prompts or routing authority.';
+
 
 --
 -- Name: ai_provider_capability_metrics; Type: TABLE; Schema: public; Owner: -
@@ -9233,6 +9280,14 @@ ALTER TABLE ONLY public.webhook_log ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: adjudication_capture_budget adjudication_capture_budget_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.adjudication_capture_budget
+    ADD CONSTRAINT adjudication_capture_budget_pkey PRIMARY KEY (singleton);
+
+
+--
 -- Name: ai_provider_capability_metrics ai_provider_capability_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -16682,6 +16737,7 @@ FROM unnest(ARRAY[
     '20260924_230000_add_feedback_and_intake_decision_snapshots.sql',
     '20260925_002500_add_automatic_destination_evaluation.sql',
     '20260925_013000_add_automatic_source_pair_evaluation.sql',
-    '20260925_110000_add_cached_adjudication_batch.sql'
+    '20260925_110000_add_cached_adjudication_batch.sql',
+    '20260925_120000_add_adjudication_capture_budget.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -72,8 +72,9 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
         }
       };
       await check();
+      await onGenerationCall();
+      signal?.throwIfAborted();
       const start = now();
-      onGenerationCall();
       const result = await request('/api/generate', { model, prompt, stream: false, think: false, keep_alive: '5m',
         format: gradeSchema ?? (responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : buildCandidateAdjudicationResponseSchema(count)) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
           required: ['candidate'], additionalProperties: false }),

@@ -14,6 +14,8 @@ import { sourcePairFixture, sourcePairIdentity as identity } from '../fixtures/s
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRuntime.mjs';
+import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -50,6 +52,8 @@ beforeEach(async () => {
     CREATE TEMP TABLE inventory_description_representation_checkpoint(LIKE public.inventory_description_representation_checkpoint INCLUDING ALL);
     CREATE TEMP TABLE automatic_source_pair_evaluation(LIKE public.automatic_source_pair_evaluation INCLUDING ALL);
     CREATE TEMP TABLE cached_adjudication_batch(LIKE public.cached_adjudication_batch INCLUDING ALL);
+    CREATE TEMP TABLE adjudication_capture_budget(LIKE public.adjudication_capture_budget INCLUDING ALL);
+    INSERT INTO adjudication_capture_budget(singleton) VALUES(true);
     INSERT INTO ai_provider_config VALUES(1,true,'same','ollama','test',NULL,NULL,NULL,'localhost',11434,NULL,1);`);
   fixture = sourcePairFixture(48);
   for (const library of fixture.libraries) await client.query('INSERT INTO libraries VALUES($1,$2,$3,true)', [library.id, library.name, library.media_type]);
@@ -69,6 +73,51 @@ beforeEach(async () => {
   repository = createAutomaticSourcePairRepository(database); worker = makeWorker();
 });
 afterEach(() => { worker?.stop(); client?.release(true); client=null; });
+
+test('recurring capture resumes after a provider interruption, charges unknown attempts, and rotates only after replay', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
+  await worker.run();
+  const budget = createAdjudicationBudgetRepository(database);
+  await budget.configure({ dailyCalls: 100,dailyTokens: 844800 });
+  let attempts = 0, firstPrompt;
+  const generate = jest.fn(async ({ prompt,onGenerationCall }) => {
+    await onGenerationCall(); attempts++;
+    if (attempts === 1) firstPrompt = prompt;
+    if (attempts === 2) throw new Error('PRIVATE interrupted provider response');
+    return { response: '{"decision":"ABSTAIN","library_number":null}',latencyMs: 5,promptTokens: 100,outputTokens: 10,
+      outputLimitReached: false,contextLimitSuspected: false,inputTruncation: 'unknown' };
+  });
+  const makeCapture = () => createAdjudicationBudgetWorker({ budget,repository,
+    withAdmission: createInventoryDiscoveryAdmission({ ...database,readMemory: () => ({ available: 4e9,constrained: 8e9,total: 8e9 }) }),
+    readConfig: async () => (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0],
+    createClient: () => ({ inspect: async () => ({ model: 'test:latest',digest: 'a'.repeat(64),contextLength: 8192 }),generate }) });
+  let captureWorker = makeCapture();
+  expect(await captureWorker.run()).toEqual({ status: 'unavailable' }); captureWorker.stop();
+  expect((await budget.read()).calls_reserved).toBe(2);
+  expect((await client.query('SELECT jsonb_array_length(progress->\'records\') AS total FROM adjudication_capture_budget')).rows[0].total).toBe(1);
+  for (let attempt = 0; attempt < 12 && !(await budget.read()).published_fingerprint; attempt++) {
+    await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
+    captureWorker = makeCapture();
+    expect((await captureWorker.run()).status).toBe('captured'); captureWorker.stop();
+  }
+  const complete = await budget.read(); expect(complete.published_fingerprint).toMatch(/^[a-f0-9]{64}$/);
+  expect(complete.calls_reserved).toBe(attempts);
+  expect(generate.mock.calls.filter(([input]) => input.prompt === firstPrompt)).toHaveLength(1);
+  expect(complete.selection_offset).toBe(0);
+  // Before replay consumes this cache, no new generation or rotation is permitted.
+  await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
+  captureWorker = makeCapture(); expect(await captureWorker.run()).toEqual({ status: 'waiting_for_replay' }); captureWorker.stop();
+  expect(generate).toHaveBeenCalledTimes(attempts);
+  await due(); await worker.run();
+  expect((await status()).report.aiReplay).toMatchObject({ selected: 25,paired: 25,selectionOffset: 0 });
+  await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
+  captureWorker = makeCapture(); expect((await captureWorker.run()).status).toBe('captured'); captureWorker.stop();
+  expect((await budget.read()).selection_offset).toBe(25);
+  await due(); await worker.run();
+  expect((await status()).report.aiReplay).toMatchObject({ selected: 23,selectionOffset: 25 });
+});
 
 test('explicit bounded capture fills exact requests for the automatic worker and expires without model calls', async () => {
   await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';

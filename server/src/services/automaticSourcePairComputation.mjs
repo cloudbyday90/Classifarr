@@ -4,6 +4,7 @@ import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshot
 import { evaluateSourceDescriptionPair } from './sourceDescriptionPairedEvaluation.mjs';
 import { freezeAutomaticSourcePairCohort, AUTOMATIC_SOURCE_PAIR_OPTIONS } from './automaticSourcePairCohort.mjs';
 import { projectAutomaticSourcePairReport, readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
+import { adjudicationBatchDigest } from './cachedAdjudicationContract.mjs';
 
 /** Private input stays within this fixed computation; only bounded aggregate output escapes. */
 export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluateSourceDescriptionPair } = {}) {
@@ -22,9 +23,10 @@ export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluat
 /** Logical evidence identity; Map transport order is not evidence drift. */
 export function fingerprintAutomaticSourcePairInputs(snapshot, frozen) {
   const { source, identity, configuration } = snapshot.inputs;
-  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v1',
+  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v2',
     identity, configuration, cohort: frozen.cohort, cohortCreatedAt: frozen.cohortCreatedAt,
-    adjudicationConfig: source.adjudicationConfig, adjudicationBatch: source.adjudicationBatch,
+    adjudicationConfig: source.adjudicationConfig, adjudicationBatch: adjudicationBatchDigest(source.adjudicationBatch),
+    adjudicationSelectionOffset: source.adjudicationSelectionOffset ?? 0,
     policies: source.policies, policySourceRevisions: source.policySourceRevisionRows,
     snapshot: describeInventorySnapshotDigests(source, source.vectors) }));
   for (const row of source.rows) hash.update(JSON.stringify(row)).update('\n');

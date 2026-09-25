@@ -136,6 +136,10 @@ merged.
 
 ## Next component
 
+The follow-up is implemented in
+[recurring capture budgets](recurring-adjudication-budget-outcome.md). The proposal
+below records the original handoff, not an outstanding implementation request.
+
 Add an opt-in, durable recurring inference budget for cache filling: daily call/token
 ceilings, one in-flight capture, cooldowns, cancellation and resumable work keyed to
 the frozen request/model. Track coverage and rotate label-independent strata across

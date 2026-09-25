@@ -36,12 +36,14 @@ export function createAutomaticSourcePairRepository(database) {
       const captured = await readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction: false, includePolicyReplay: true });
       const adjudicationConfig = projectAdjudicationConfig(captured.config);
       const adjudicationBatch = await readCachedAdjudication(client, adjudicationConfig?.fingerprint);
+      const { rows: [budget] } = await client.query('SELECT selection_offset FROM adjudication_capture_budget WHERE singleton=true');
       const { rows: [clock] } = await client.query('SELECT transaction_timestamp()::text AS observed_at');
-      return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey), adjudicationConfig, adjudicationBatch };
-    }, signal, true).then(({ observedAt, captured, identity, configuration, adjudicationConfig, adjudicationBatch }) => {
+      return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey), adjudicationConfig, adjudicationBatch,
+        adjudicationSelectionOffset: budget?.selection_offset ?? 0 };
+    }, signal, true).then(({ observedAt, captured, identity, configuration, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset }) => {
       signal?.throwIfAborted();
       const { config: _config, ...source } = decodeSourceDescriptionEvaluationSnapshot(captured, identity);
-      return { observedAt, inputs: { source: { ...source, adjudicationConfig, adjudicationBatch }, identity, configuration } };
+      return { observedAt, inputs: { source: { ...source, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset }, identity, configuration } };
     }),
     save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt } = {}) => {
       if (!readAutomaticSourcePairReport(report) || !validSourcePairCohort(cohort) || cohort.length !== report.sampled ||

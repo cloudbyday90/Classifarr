@@ -1,13 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import * as db from '../config/database.mjs';
-import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
-import { createAutomaticSourcePairEvaluation } from './automaticSourcePairEvaluation.mjs';
-import { createAutomaticSourcePairRepository } from './automaticSourcePairRepository.mjs';
+import { createAutomaticSourcePairWorkers } from './automaticSourcePairWorkers.mjs';
 
 export const AUTOMATIC_SOURCE_PAIR_TASK = 'automatic-source-pair-evaluation';
 export function registerAutomaticSourcePairSchedule(scheduler, {
-  worker = createAutomaticSourcePairEvaluation({ repository: createAutomaticSourcePairRepository(db),
-    withSessionAdvisoryLock: db.withSessionAdvisoryLock, withAdmission: createInventoryDiscoveryAdmission(db) }),
+  worker = createAutomaticSourcePairWorkers(db),
 } = {}) {
   scheduler.automaticSourcePairWorker?.stop();
   scheduler.automaticSourcePairWorker = worker;

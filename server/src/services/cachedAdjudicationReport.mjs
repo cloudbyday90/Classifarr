@@ -2,7 +2,7 @@
 const arm = () => ({ hits: 0, misses: 0, unavailable: 0, proposed: 0, abstained: 0, invalid: 0,
   labeledProposals: 0, correctProposals: 0, wrongProposals: 0,
   historicalLatencyMs: 0, historicalPromptTokens: 0, historicalOutputTokens: 0 });
-export const createCachedAdjudicationReport = () => ({ version: 'cached_adjudication_report.v1',
+export const createCachedAdjudicationReport = () => ({ version: 'cached_adjudication_report.v2', selectionOffset: 0,
   eligible: 0, selected: 0, budgetSkipped: 0, paired: 0, labeledPairs: 0,
   changedProposals: 0, deferralsReduced: 0, deferralsIncreased: 0, correctGains: 0, correctRegressions: 0,
   baseline: arm(), sourceAware: arm(),
@@ -38,6 +38,10 @@ export function addCachedAdjudicationPair(report, results, label) {
 }
 
 export function readCachedAdjudicationReport(value, sampled) {
+  if (value?.version === 'cached_adjudication_report.v1') {
+    if (Object.hasOwn(value, 'selectionOffset')) return null;
+    return readCachedAdjudicationReport({ ...value, version: 'cached_adjudication_report.v2', selectionOffset: 0 }, sampled) ? value : null;
+  }
   const template = createCachedAdjudicationReport();
   const exact = (object, shape) => object && typeof object === 'object' && !Array.isArray(object) &&
     Object.keys(object).length === Object.keys(shape).length && Object.keys(shape).every(key => Object.hasOwn(object, key));
@@ -46,6 +50,7 @@ export function readCachedAdjudicationReport(value, sampled) {
       Object.entries(template.limits).some(([key, expected]) => value.limits[key] !== expected)) return null;
   const { baseline, sourceAware, limits: _limits, version: _version, ...counts } = value;
   if (!Object.values(counts).every(count) || value.eligible > sampled || value.selected > 25 ||
+      value.selectionOffset > 299 || value.selectionOffset + value.selected > value.eligible ||
       value.selected + value.budgetSkipped !== value.eligible || value.paired > value.selected ||
       value.labeledPairs > value.paired || value.changedProposals > value.paired ||
       value.deferralsReduced + value.deferralsIncreased > value.paired ||

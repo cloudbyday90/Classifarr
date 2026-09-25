@@ -13,7 +13,7 @@ const sameIdentity = (a, b) => a?.model === b?.model && a?.digest === b?.digest 
 
 /** Explicit local inference only. Domain writes and partial-cache publication are absent. */
 export async function captureCachedAdjudication({ maxCalls }, { repository, readConfig, createClient, save,
-  withAdmission, runThread = runAutomaticSourcePairThread, signal } = {}) {
+  withAdmission, runThread = runAutomaticSourcePairThread, signal, checkpoint, onPublished } = {}) {
   if (!Number.isInteger(maxCalls) || maxCalls < 1 || maxCalls > 50) throw new Error('adjudication_capture_budget_invalid');
   const deadline = AbortSignal.any([AbortSignal.timeout(20 * 60000), ...[signal].filter(Boolean)]);
   return withAdmission(async abort => {
@@ -24,9 +24,14 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
     if (!configuration || projectAdjudicationConfig(config)?.fingerprint !== configuration) throw new Error('adjudication_capture_config_changed');
     const prepared = await runThread(snapshot, state, abort, { includePlan: true });
     if (!validAdjudicationPlan(prepared.plan)) throw new Error('adjudication_capture_plan_invalid');
-    if (!prepared.plan.length) return { status: 'no_eligible_cases', calls: 0, reused: 0, stored: 0, routingWrites: 0 };
+    if (!prepared.plan.length) {
+      await onPublished?.(fingerprintAutomaticSourcePairInputs(snapshot, prepared), true, abort);
+      return { status: 'no_eligible_cases', calls: 0, reused: 0, stored: 0, routingWrites: 0 };
+    }
     const client = createClient(config), identity = await client.inspect(abort);
-    const previous = readAdjudicationBatch(snapshot.inputs.source.adjudicationBatch, configuration);
+    const previous = checkpoint ? await checkpoint.open(prepared.plan,
+      { version: 'cached_adjudication.v1', configuration, identity, records: [] }, abort)
+      : readAdjudicationBatch(snapshot.inputs.source.adjudicationBatch, configuration);
     const cache = new Map(sameIdentity(identity, previous?.identity) ? previous.records.map(row => [row.key, row.generated]) : []);
     const records = []; let calls = 0, reused = 0;
     for (const request of prepared.plan) {
@@ -37,7 +42,11 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
         if (calls >= maxCalls) continue;
         generated = await client.generate({ prompt: request.prompt, count: request.count,
           context: ADJUDICATION_CAPTURE_CONTEXT, identity, signal: abort, responseContract: 'adjudication',
-          onGenerationCall: () => { if (++calls > maxCalls) throw new Error('adjudication_capture_budget_exceeded'); } });
+          onGenerationCall: () => {
+            if (++calls > maxCalls) throw new Error('adjudication_capture_budget_exceeded');
+            return checkpoint?.reserve(abort);
+          } });
+        await checkpoint?.record({ key: request.key, generated }, abort);
       }
       records.push({ key: request.key, generated });
     }
@@ -48,6 +57,10 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
     }
     const batch = { version: 'cached_adjudication.v1', configuration, identity, records };
     await save(batch, abort);
+    // Pin completion to the evidence actually used, not a newer snapshot observed after publication.
+    const published = { ...snapshot, inputs: { ...snapshot.inputs,
+      source: { ...snapshot.inputs.source, adjudicationBatch: batch } } };
+    await onPublished?.(fingerprintAutomaticSourcePairInputs(published, prepared), records.length === prepared.plan.length, abort);
     return { status: 'complete', calls, reused, stored: records.length,
       missing: prepared.plan.length - records.length, routingWrites: 0 };
   }, { signal: deadline });
