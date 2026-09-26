@@ -128,9 +128,12 @@ more inference or another scheduler. The cost is bounded replay CPU and delibera
 study interruption when frozen inputs change. Do not add another dashboard or
 increase sample requests before measuring actual coverage.
 
-Next: run one protocol-bound coverage audit and blinded reference review, then
-produce the first honest quality readout. Reuse existing reviewer submission
-infrastructure. If the 300-case cohort lacks responses because capture selected
+Follow-up: the [coverage audit outcome](quality-coverage-audit-outcome.md) records
+the live deployment prerequisite and provides a read-only audit command. The
+older reviewer submission infrastructure cannot directly accept this new packet;
+a protocol-bound adapter is needed before reusing its submission workflow.
+Once installed, run the audit and blinded reference review to produce the first
+honest quality readout. If the 300-case cohort lacks responses because capture selected
 different cases, the next code component is a **budget-neutral, protocol-bound
 capture selector** within the existing worker—not another queue or a higher budget.
 Retention cannot create missing evidence, and synthetic tests do not demonstrate

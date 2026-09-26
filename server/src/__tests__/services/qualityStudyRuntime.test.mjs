@@ -76,3 +76,19 @@ test('private runtime guard and stored contracts fail closed', async () => {
   expect(() => createQualityEvidenceRepository(database).start({})).toThrow('quality_protocol_invalid');
   expect(() => createQualityEvidenceRepository(database).stop({})).toThrow('quality_protocol_invalid');
 });
+
+test('audit bypasses busy admission and never reads source snapshots or invokes a worker', async () => {
+  const { dependencies, database, query } = fixture();
+  query.mockImplementation(async sql => ({ rows: sql.startsWith('SELECT transaction_timestamp') ? [{ observed_at: '2026-09-26T12:00:00.000Z' }] : [] }));
+  database.withSessionAdvisoryLock = jest.fn(() => { throw new Error('busy'); });
+  expect(await runQualityStudyRuntime({ operation: 'audit' }, dependencies)).toMatchObject({ status: 'upgrade_required' });
+  expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
+  expect(dependencies.readSnapshot).not.toHaveBeenCalled(); expect(dependencies.runThread).not.toHaveBeenCalled();
+  expect(database.pool.end).toHaveBeenCalledTimes(1);
+  expect(query.mock.calls.every(([sql]) => /^(SET|SELECT) /.test(sql))).toBe(true);
+  await expect(runQualityStudyRuntime({ operation: 'audit' }, { ...dependencies, signal: AbortSignal.abort() })).rejects.toThrow();
+  expect(database.pool.end).toHaveBeenCalledTimes(2);
+  query.mockRejectedValue(new Error('database unavailable'));
+  await expect(runQualityStudyRuntime({ operation: 'audit' }, dependencies)).rejects.toThrow('database unavailable');
+  expect(database.pool.end).toHaveBeenCalledTimes(3);
+});

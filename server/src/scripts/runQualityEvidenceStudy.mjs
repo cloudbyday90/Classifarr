@@ -4,10 +4,11 @@ import { readPrivateStudyJsonFile, writePrivateStudyJsonFile } from './privateSt
 import { validQualityProtocol, exactQualityKeys } from '../services/sourcePairQualityContract.mjs';
 import { validSourcePairQualityReport } from '../services/sourcePairQualityReport.mjs';
 import { validQualityReviewPacket } from '../services/qualityReviewPacket.mjs';
+import { validQualityCoverageAudit } from '../services/qualityCoverageAuditContract.mjs';
 
 function parse(argv) {
   const operation = argv[0]?.replace(/^--/, '');
-  if (!['start', 'collect', 'report', 'packet', 'stop'].includes(operation) || argv[0] !== `--${operation}`) throw new Error('quality_arguments_invalid');
+  if (!['start', 'collect', 'report', 'packet', 'stop', 'audit'].includes(operation) || argv[0] !== `--${operation}`) throw new Error('quality_arguments_invalid');
   const options = { operation };
   for (let index = 1; index < argv.length; index += 2) {
     const key = argv[index], value = argv[index + 1];
@@ -17,7 +18,7 @@ function parse(argv) {
   const lifecycle = ['start', 'stop'].includes(operation);
   if (!lifecycle && !options['--output-file'] || lifecycle && (!options['--protocol-file'] || options['--output-file']) ||
       options['--protocol-file'] && !lifecycle ||
-      options['--reference-file'] && operation !== 'report') throw new Error('quality_arguments_invalid');
+      options['--reference-file'] && !['report', 'audit'].includes(operation)) throw new Error('quality_arguments_invalid');
   return options;
 }
 
@@ -28,10 +29,15 @@ export async function runQualityEvidenceStudyCommand({ argv = process.argv.slice
   if (protocol !== null && !validQualityProtocol(protocol)) throw new Error('quality_protocol_invalid');
   const reference = args['--reference-file'] ? await readJson(args['--reference-file']) : null;
   process.env.LOG_LEVEL = 'fatal'; process.env.FILE_LOGGING_ENABLED = 'false';
-  const readOnly = ['report', 'packet'].includes(operation);
+  const readOnly = ['report', 'packet', 'audit'].includes(operation);
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=${readOnly ? 'on' : 'off'} -c statement_timeout=15000 -c lock_timeout=1000`.trim();
   const run = evaluate ?? (await import('../services/qualityStudyRuntime.mjs')).runQualityStudyRuntime;
   const result = await run({ operation, protocol, reference });
+  if (operation === 'audit') {
+    if (!validQualityCoverageAudit(result)) throw new Error('quality_result_invalid');
+    await writeJson(args['--output-file'], result, { label: 'Quality audit' });
+    return { operation, status: result.status, guidance: result.guidance, ...result.limits };
+  }
   if (operation === 'stop') {
     if (!exactQualityKeys(result, ['stopped']) || typeof result.stopped !== 'boolean') throw new Error('quality_result_invalid');
     return { ...result, providerCalls: 0, routingWrites: 0 };
@@ -53,6 +59,7 @@ export async function runQualityEvidenceStudyCommand({ argv = process.argv.slice
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runQualityEvidenceStudyCommand().then(result => {
     process.stdout.write(`${JSON.stringify(result)}\n`);
-    if (result.status && (result.studyState !== 'active' || result.status !== 'measured')) process.exitCode = 2;
+    if (result.operation === 'audit') { if (result.status !== 'report_available') process.exitCode = 2; }
+    else if (result.status && (result.studyState !== 'active' || result.status !== 'measured')) process.exitCode = 2;
   }).catch(() => { process.stderr.write('Quality study did not complete. No routing changes were made.\n'); process.exitCode = 1; });
 }

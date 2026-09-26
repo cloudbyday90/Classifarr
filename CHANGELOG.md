@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a private, read-only quality coverage audit with actionable schema, study,
+  backfill, blocker, and reference-review guidance. Distinguish unavailable evidence
+  from zero coverage without starting AI capture, changing budgets, or routing media.
 - Retain opt-in movie/TV quality evidence across bounded AI cache windows and
   restarts, with fixed expiry, deduplicated usage, and fail-closed drift/conflict
   handling. Add private blinded review packets and accumulated reports without

@@ -10,11 +10,12 @@ import { qualitySnapshot } from '../fixtures/sourcePairQualityFixture.mjs';
 import { prepareSourcePairQualityProtocol } from '../../services/sourcePairQualityProtocol.mjs';
 import { emptyQualityEvidence } from '../../services/qualityEvidenceContract.mjs';
 import { reportQualityEvidence } from '../../services/qualityEvidenceReport.mjs';
+import { buildQualityCoverageAudit } from '../../services/qualityCoverageAudit.mjs';
 
 const saved = Object.fromEntries(['LOG_LEVEL', 'FILE_LOGGING_ENABLED', 'PGOPTIONS'].map(key => [key, process.env[key]]));
 afterEach(() => { for (const [key, value] of Object.entries(saved)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } });
 const protocol = prepareSourcePairQualityProtocol(qualitySnapshot()).protocol;
-test.each([[], ['--start'], ['--unknown'], ['--stop'], ['--start', '--output-file', '.tmp/x.json'],
+test.each([[], ['--start'], ['--unknown'], ['--stop'], ['--audit'], ['--audit', '--output-file', '.tmp/x.json', '--protocol-file', '.tmp/p.json'], ['--start', '--output-file', '.tmp/x.json'],
   ['--collect', '--output-file', '.tmp/x.json', '--reference-file', '.tmp/ref.json'],
   ['--report', '--output-file', '.tmp/x.json', '--output-file', '.tmp/x.json'],
   ['--packet', '--output-file', '.tmp/x.json', '--protocol-file', '.tmp/a.json'],
@@ -63,4 +64,22 @@ test('CLI import is silent and failure output omits private data', async () => {
   expect(loaded.stdout + loaded.stderr).toBe('');
   await expect(promisify(execFile)(process.execPath, [fileURLToPath(script), '--PRIVATE'])).rejects.toMatchObject({
     code: 1, stdout: '', stderr: 'Quality study did not complete. No routing changes were made.\n' });
+});
+
+test('audit uses read-only connections, exclusive private output, and fixed guidance', async () => {
+  const result = buildQualityCoverageAudit({ observedAt: protocol.createdAt,
+    capabilities: { study: false, cache: false, evaluation: false, budget: false } });
+  const path = `.tmp/quality-audit-${randomUUID()}.json`, reference = { private: 'not echoed in receipt' };
+  const evaluate = jest.fn(async input => {
+    expect(process.env.PGOPTIONS).toContain('default_transaction_read_only=on');
+    expect(input).toEqual({ operation: 'audit', protocol: null, reference }); return result;
+  });
+  const options = { argv: ['--audit', '--reference-file', '.tmp/ref.json', '--output-file', path], evaluate, readJson: async () => reference };
+  expect(await runQualityEvidenceStudyCommand(options)).toEqual({ operation: 'audit', status: 'upgrade_required', guidance: result.guidance, ...result.limits });
+  expect(await readPrivateStudyJsonFile(path)).toEqual(result);
+  await expect(runQualityEvidenceStudyCommand(options)).rejects.toThrow();
+  expect(await readPrivateStudyJsonFile(path)).toEqual(result);
+  const writeJson = jest.fn(); result.secret = 'never written';
+  await expect(runQualityEvidenceStudyCommand({ ...options, writeJson })).rejects.toThrow('quality_result_invalid');
+  expect(writeJson).not.toHaveBeenCalled();
 });

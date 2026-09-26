@@ -6,16 +6,18 @@ import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission
 import { runSourcePairQualityThread } from './sourcePairQualityThreadClient.mjs';
 import { reportQualityEvidence } from './qualityEvidenceReport.mjs';
 import { LOG_CONFIG } from '../utils/logging/logConfig.mjs';
+import { readQualityCoverageAudit } from './qualityCoverageAuditRepository.mjs';
 
 /** Explicit private study lifecycle; registration/collection never authorizes capture or routing. */
 export async function runQualityStudyRuntime({ operation, protocol = null, reference = null },
   { signal, logging = LOG_CONFIG, loadDatabase = () => import('../config/database.mjs'), runThread = runSourcePairQualityThread,
     readSnapshot = (database, abort) => createAutomaticSourcePairRepository(database).readSnapshot(abort) } = {}) {
-  if (!['start', 'collect', 'report', 'packet', 'stop'].includes(operation) || logging.level !== 'fatal' || logging.fileLoggingEnabled !== false) {
+  if (!['start', 'collect', 'report', 'packet', 'stop', 'audit'].includes(operation) || logging.level !== 'fatal' || logging.fileLoggingEnabled !== false) {
     throw new Error('quality_private_runtime_required');
   }
   const database = await loadDatabase();
   try {
+    if (operation === 'audit') return await readQualityCoverageAudit(database, { signal, reference });
     const study = createQualityEvidenceRepository(database);
     return await createInventoryDiscoveryAdmission(database)(async abort => {
       if (operation === 'stop') {
