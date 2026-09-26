@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { ADJUDICATION_CAPTURE_CONTEXT, readAdjudicationBatch, validAdjudicationPlan } from './cachedAdjudicationContract.mjs';
+import { ADJUDICATION_CAPTURE_CONTEXT, readAdjudicationBatch, adjudicationBatchDigest, adjudicationDigest } from './cachedAdjudicationContract.mjs';
+import { validCaptureAdmission, planCaptureAdmission } from './adjudicationCaptureAdmission.mjs';
 import { projectAdjudicationConfig, createCachedAdjudicationWriter } from './cachedAdjudicationRepository.mjs';
 import { createAutomaticSourcePairRepository } from './automaticSourcePairRepository.mjs';
 import { runAutomaticSourcePairThread } from './automaticSourcePairThreadClient.mjs';
@@ -20,7 +21,7 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
     abort.throwIfAborted();
     const state = await repository.readState(abort), snapshot = await repository.readSnapshot(abort);
     const prepared = await runThread(snapshot, state, abort, { includePlan: true });
-    if (!validAdjudicationPlan(prepared.plan)) throw new Error('adjudication_capture_plan_invalid');
+    if (!validCaptureAdmission(prepared.captureAdmission, prepared.plan)) throw new Error('adjudication_capture_plan_invalid');
     if (!prepared.plan.length) {
       abort.throwIfAborted();
       if (fingerprintAutomaticSourcePairInputs(await repository.readSnapshot(abort), prepared) !==
@@ -35,13 +36,28 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
     const previous = checkpoint ? await checkpoint.open(prepared.plan,
       { version: 'cached_adjudication.v1', configuration, identity, records: [] }, abort)
       : readAdjudicationBatch(snapshot.inputs.source.adjudicationBatch, configuration);
-    const cache = new Map(sameIdentity(identity, previous?.identity) ? previous.records.map(row => [row.key, row.generated]) : []);
-    const records = []; let calls = 0, reused = 0;
-    for (const request of prepared.plan) {
+    const retained = sameIdentity(identity, previous?.identity) ? previous
+      : { version: 'cached_adjudication.v1', configuration, identity, records: [] };
+    const cache = new Map(retained.records.map(row => [row.key, row.generated]));
+    let admission = prepared.captureAdmission;
+    if (adjudicationBatchDigest(retained) !== adjudicationBatchDigest(snapshot.inputs.source.adjudicationBatch)) {
+      const refreshed = await runThread({ ...snapshot, inputs: { ...snapshot.inputs,
+        source: { ...snapshot.inputs.source, adjudicationBatch: retained } } }, state, abort, { includePlan: true });
+      if (!validCaptureAdmission(refreshed.captureAdmission, refreshed.plan) ||
+          adjudicationDigest(refreshed.plan) !== adjudicationDigest(prepared.plan)) throw new Error('adjudication_capture_plan_changed');
+      admission = refreshed.captureAdmission;
+    }
+    const order = planCaptureAdmission(admission, prepared.plan), requests = new Map(prepared.plan.map(row => [row.key, row]));
+    abort.throwIfAborted();
+    if (fingerprintAutomaticSourcePairInputs(await repository.readSnapshot(abort), prepared) !==
+        fingerprintAutomaticSourcePairInputs(snapshot, prepared)) throw new Error('adjudication_capture_source_changed');
+    let calls = 0;
+    const reused = prepared.plan.filter(request => cache.has(request.key)).length;
+    for (const key of order) {
+      const request = requests.get(key);
       abort.throwIfAborted();
       let generated = cache.get(request.key);
-      if (generated) reused++;
-      else {
+      if (!generated) {
         if (calls >= maxCalls) continue;
         generated = await client.generate({ prompt: request.prompt, count: request.count,
           context: ADJUDICATION_CAPTURE_CONTEXT, identity, signal: abort, responseContract: 'adjudication',
@@ -50,22 +66,24 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
             return checkpoint?.reserve(abort);
           } });
         await checkpoint?.record({ key: request.key, generated }, abort);
+        cache.set(request.key, generated);
       }
-      records.push({ key: request.key, generated });
     }
     abort.throwIfAborted();
     if (fingerprintAutomaticSourcePairInputs(await repository.readSnapshot(abort), prepared) !==
         fingerprintAutomaticSourcePairInputs(snapshot, prepared) || !sameIdentity(identity, await client.inspect(abort))) {
       throw new Error('adjudication_capture_source_changed');
     }
+    const records = prepared.plan.filter(request => cache.has(request.key)).map(request => ({ key: request.key, generated: cache.get(request.key) }));
+    const missing = order.filter(key => !cache.has(key)).length;
     const batch = { version: 'cached_adjudication.v1', configuration, identity, records };
     await save(batch, abort);
     // Pin completion to the evidence actually used, not a newer snapshot observed after publication.
     const published = { ...snapshot, inputs: { ...snapshot.inputs,
       source: { ...snapshot.inputs.source, adjudicationBatch: batch } } };
-    await onPublished?.(fingerprintAutomaticSourcePairInputs(published, prepared), records.length === prepared.plan.length, abort);
+    await onPublished?.(fingerprintAutomaticSourcePairInputs(published, prepared), missing === 0, abort);
     return { status: 'complete', calls, reused, stored: records.length,
-      missing: prepared.plan.length - records.length, routingWrites: 0 };
+      missing, routingWrites: 0 };
   }, { signal: deadline });
 }
 

@@ -4,11 +4,13 @@ import { reducePolicyShortlistReplayResponse } from './policyShortlistReplay.mjs
 import { adjudicationRequest, readAdjudicationBatch, ADJUDICATION_PAIR_LIMIT } from './cachedAdjudicationContract.mjs';
 import { createCachedAdjudicationReport, addCachedAdjudicationPair } from './cachedAdjudicationReport.mjs';
 import { automaticEvaluationOutcome } from './mixedPolicyReplayOutcome.mjs';
+import { captureAdmissionCase } from './adjudicationCaptureAdmission.mjs';
 
 /** No labels influence admission; one stable interleaved movie/TV subset, never implicit inference. */
-export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase,
+export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase, onAdmission,
   prepare = preparePolicyShortlistReplayCase, reduce = reducePolicyShortlistReplayResponse } = {}) {
-  const report = createCachedAdjudicationReport(), plan = new Map();
+  const report = createCachedAdjudicationReport(), plan = new Map(), admission = [];
+  const membership = new Map(onAdmission ? source.corpus?.documents.map(doc => [doc.key, doc.libraryIds]) ?? [] : []);
   const [baseline, sourceAware] = outcomes;
   const eligible = [...baseline].filter(([hash, a]) => {
     const b = sourceAware.get(hash);
@@ -28,8 +30,9 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
   const batch = readAdjudicationBatch(source.adjudicationBatch, source.adjudicationConfig?.fingerprint);
   const cache = new Map(batch?.records.map(row => [row.key, row.generated]) ?? []);
   for (const [hash, a] of selected) {
-    const results = [];
+    const results = [], requestKeys = [];
     for (const row of [a, sourceAware.get(hash)]) {
+      const index = results.length; requestKeys.push(null);
       const automatic = automaticEvaluationOutcome(row, source.libraries);
       if (automatic) { results.push(automatic); continue; }
       if (!source.adjudicationConfig || !row.runtime || row.common.mode !== 'adjudicate') {
@@ -46,12 +49,15 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
         results.push({ status: 'unavailable', gap }); continue;
       }
       plan.set(request.key, request);
+      requestKeys[index] = request.key;
       const generated = cache.get(request.key);
       results.push(generated ? reduce({ ...entry, reviewPolicies: row.policies }, 'protected', generated, batch.identity) : { status: 'misses' });
     }
     addCachedAdjudicationPair(report, results, corrections.get(a.key));
     onCase?.(a.key, a.mediaType, results, corrections.get(a.key));
+    if (onAdmission) admission.push(captureAdmissionCase(a.key, a.mediaType, membership.get(a.key) ?? [], results, requestKeys));
   }
   onPlan?.([...plan.values()]);
+  onAdmission?.(admission);
   return report;
 }

@@ -94,6 +94,9 @@ test('real worker prepares bounded private prompts only on request and replays c
   const capture = await runAutomaticSourcePairThread(input, null, undefined, { includePlan: true });
   expect(capture.plan.length).toBeGreaterThan(0);
   expect(capture.plan.length).toBeLessThanOrEqual(50);
+  expect(capture.captureAdmission).toHaveLength(25);
+  expect(new Set(capture.captureAdmission.map(row => row.mediaType))).toEqual(new Set(['movie', 'tv']));
+  expect(JSON.stringify(capture.captureAdmission)).not.toMatch(/PRIVATE|prompt|response|destination|libraryId/);
   expect(capture.report.aiReplay).toMatchObject({ selected: 25, paired: 0 });
   source.adjudicationBatch = { version: 'cached_adjudication.v1', configuration: source.adjudicationConfig.fingerprint,
     identity: { model: 'test:latest', digest: 'a'.repeat(64), contextLength: 8192 },
@@ -102,6 +105,7 @@ test('real worker prepares bounded private prompts only on request and replays c
       outputTokens: 10, outputLimitReached: false, contextLimitSuspected: false, inputTruncation: 'unknown' } })) };
   const result = await runAutomaticSourcePairThread(input, stateOf(capture));
   expect(result).not.toHaveProperty('plan');
+  expect(result).not.toHaveProperty('captureAdmission');
   expect(result.unchanged).toBe(false);
   expect(result.report.aiReplay).toMatchObject({ paired: 25, baseline: { abstained: 25 }, sourceAware: { abstained: 25 } });
   expect(result.history.cases).toHaveLength(25);

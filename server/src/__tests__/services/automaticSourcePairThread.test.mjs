@@ -40,3 +40,19 @@ test('refuses pre-cancelled and over-budget work before creating a worker', asyn
   await expect(runAutomaticSourcePairThread({ private: 'x'.repeat(65 * 1024 * 1024) }, null, undefined, { WorkerClass })).rejects.toThrow('input_budget');
   expect(WorkerClass).not.toHaveBeenCalled();
 });
+
+test.each(['missing', 'invalid', 'unexpected', 'valid'])('private capture admission boundary: %s', async mode => {
+  let worker;
+  class FakeWorker extends EventEmitter {
+    constructor() { super(); worker = this; this.terminate = jest.fn(async () => 0); }
+  }
+  const result = computeAutomaticSourcePair(snapshot(), null);
+  if (mode !== 'unexpected') result.plan = [];
+  if (mode !== 'missing') result.captureAdmission = mode === 'invalid' ? [{ private: 'PRIVATE' }] : [];
+  const promise = runAutomaticSourcePairThread(snapshot(), null, undefined, { WorkerClass: FakeWorker, includePlan: mode !== 'unexpected' });
+  const assertion = mode === 'valid' ? expect(promise).resolves.toMatchObject({ plan: [], captureAdmission: [] })
+    : expect(promise).rejects.toThrow('automatic_source_pair_worker_unavailable');
+  worker.emit('message', { result });
+  await assertion;
+  expect(worker.terminate).toHaveBeenCalledTimes(1);
+});

@@ -5,6 +5,7 @@ import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
 import { validSourcePairCohort } from './automaticSourcePairCohort.mjs';
 import { validAdjudicationPlan } from './cachedAdjudicationContract.mjs';
 import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
+import { validCaptureAdmission } from './adjudicationCaptureAdmission.mjs';
 
 /** Fixed-code worker, no provider credentials or inherited preloads, always joined before unlock. */
 export async function runAutomaticSourcePairThread(snapshot, state, signal, { WorkerClass = Worker, timeoutMs = 120000, includePlan = false } = {}) {
@@ -28,7 +29,8 @@ export async function runAutomaticSourcePairThread(snapshot, state, signal, { Wo
           (snapshot.inputs?.source?.policies && result.report.version !== 'automatic_source_pair.v3') ||
           (Object.hasOwn(result, 'history') && !validEvaluationHistory(result.history, result.report)) ||
           (result.report.policyReplay?.status === 'complete' && !result.unchanged && !result.history) ||
-          (includePlan ? !validAdjudicationPlan(result.plan) : Object.hasOwn(result, 'plan')) ||
+          (includePlan ? !validAdjudicationPlan(result.plan) || !validCaptureAdmission(result.captureAdmission, result.plan)
+            : Object.hasOwn(result, 'plan') || Object.hasOwn(result, 'captureAdmission')) ||
           !/^[a-f0-9]{64}$/.test(result.fingerprint) || typeof result.unchanged !== 'boolean') return fail();
         resolve(result);
       });

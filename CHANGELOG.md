@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Prioritize missing movie/TV AI responses that can complete comparisons within
+  the existing capture allowance. Preserve interrupted checkpoints, balance
+  equal-cost opportunities, and avoid spending calls on known blocked pairs.
+  Rejected output stays visible; budgets and routing permissions are unchanged.
 - Survey the frozen movie/TV evaluation cohort in bounded, restart-safe windows
   even when early items lack cached evidence. Keep diagnostic progress independent
   of unfinished AI capture, retain explicit gaps, and atomically fence stale or

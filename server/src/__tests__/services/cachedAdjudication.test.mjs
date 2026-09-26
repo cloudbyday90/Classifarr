@@ -147,10 +147,16 @@ function captureFixture() {
   const snapshot = { inputs: { source: { ...sourcePairFixture(), ...source } } };
   const dependencies = { repository: { readState: jest.fn(async () => null), readSnapshot: jest.fn(async () => structuredClone(snapshot)) },
     readConfig: jest.fn(async () => config), save: jest.fn(),
-    withAdmission: (callback, { signal }) => callback(signal), runThread: jest.fn(async () => ({ plan: [request] })) };
+    withAdmission: (callback, { signal }) => callback(signal), runThread: jest.fn(async supplied => capturePlan([request], supplied)) };
   const client = { inspect: jest.fn(async () => identity), generate: jest.fn(async ({ onGenerationCall }) => { onGenerationCall(); return generated(); }) };
   dependencies.createClient = jest.fn(() => client);
   return { snapshot, dependencies, client, batch };
+}
+
+function capturePlan(plan, snapshot) {
+  const cached = new Set(snapshot?.inputs.source.adjudicationBatch?.records.map(row => row.key) ?? []);
+  return { plan, captureAdmission: plan.map(request => ({ item: request.key, mediaType: 'movie', stratum: 'a'.repeat(64),
+    arms: [0, 1].map(() => ({ key: request.key, gap: cached.has(request.key) ? 'none' : 'cache_missing' })) })) };
 }
 
 test('explicit capture budgets generation, atomically stores responses only, and reuses a matching model artifact', async () => {
@@ -165,11 +171,11 @@ test('explicit capture budgets generation, atomically stores responses only, and
 test('capture never exceeds the explicit call budget and empty admission never creates a provider client', async () => {
   const { dependencies, client } = captureFixture();
   const request = fixture().request;
-  dependencies.runThread.mockResolvedValue({ plan: Array.from({ length: 6 }, (_, index) =>
-    ({ ...request, key: String(index).repeat(64) })) });
+  dependencies.runThread.mockImplementation(async supplied => capturePlan(Array.from({ length: 6 }, (_, index) =>
+    ({ ...request, key: String(index).repeat(64) })), supplied));
   expect(await captureCachedAdjudication({ maxCalls: 2 }, dependencies)).toMatchObject({ calls: 2, stored: 2, missing: 4 });
   expect(client.generate).toHaveBeenCalledTimes(2);
-  dependencies.createClient.mockClear(); dependencies.runThread.mockResolvedValue({ plan: [] });
+  dependencies.createClient.mockClear(); dependencies.runThread.mockResolvedValue(capturePlan([]));
   expect(await captureCachedAdjudication({ maxCalls: 2 }, dependencies)).toMatchObject({ status: 'no_eligible_cases', calls: 0 });
   expect(dependencies.createClient).not.toHaveBeenCalled();
 });
@@ -177,7 +183,7 @@ test('capture never exceeds the explicit call budget and empty admission never c
 test('empty capture plans need no configuration or model but still reject source drift before completion', async () => {
   const { snapshot, dependencies } = captureFixture();
   delete snapshot.inputs.source.adjudicationConfig;
-  dependencies.runThread.mockResolvedValue({ plan: [] }); dependencies.onPublished = jest.fn();
+  dependencies.runThread.mockResolvedValue(capturePlan([])); dependencies.onPublished = jest.fn();
   expect(await captureCachedAdjudication({ maxCalls: 1 }, dependencies)).toMatchObject({ calls: 0 });
   expect(dependencies.readConfig).not.toHaveBeenCalled(); expect(dependencies.createClient).not.toHaveBeenCalled();
   expect(dependencies.onPublished).toHaveBeenCalledTimes(1);

@@ -109,6 +109,10 @@ allowance**, rather than adding another status panel or increasing the allowance
 
 This is follow-up work, not an enabled inference change in this commit.
 
+Subsequent implementation: [gap-directed capture design](gap-directed-capture-design.md)
+and [outcome](gap-directed-capture-outcome.md) preserve canonical checkpoint
+identity while prioritizing repairable missing responses within each window.
+
 ## PR, upgrade and release scope
 
 Two GitHub MCP queries found no open PR in `cloudbyday90/Classifarr` on September
