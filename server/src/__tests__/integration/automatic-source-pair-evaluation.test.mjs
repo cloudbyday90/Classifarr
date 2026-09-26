@@ -20,6 +20,8 @@ import { readEvaluationHistory } from '../../services/evaluationHistoryRepositor
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
 import { createProgressingSourcePairEvaluation } from '../../services/sourcePairWindowProgression.mjs';
 import { selectSourcePairSweepSnapshot } from '../../services/sourcePairCoverageSweep.mjs';
+import { runSourcePairQualityRuntime } from '../../services/sourcePairQualityRuntime.mjs';
+import { validSourcePairQualityReport } from '../../services/sourcePairQualityReport.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -79,6 +81,39 @@ beforeEach(async () => {
   repository = createAutomaticSourcePairRepository(database); worker = makeWorker();
 });
 afterEach(() => { worker?.stop(); client?.release(true); client=null; });
+
+test('private quality experiment reads a coherent snapshot without changing evaluation, capture or retention state', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
+  await worker.run(); await fillCurrentWindow();
+  const sql = `SELECT jsonb_build_object('evaluation',(SELECT jsonb_agg(t) FROM automatic_source_pair_evaluation t),
+    'sweep',(SELECT jsonb_agg(t) FROM automatic_source_pair_sweep t),
+    'history',(SELECT jsonb_agg(t) FROM automatic_evaluation_history t),
+    'budget',(SELECT jsonb_agg(t) FROM adjudication_capture_budget t),
+    'cache',(SELECT jsonb_agg(t) FROM cached_adjudication_batch t)) AS state`;
+  const before = (await client.query(sql)).rows[0].state, statements = [];
+  const originalOptions = process.env.PGOPTIONS, end = jest.fn();
+  const local = { ...database, pool: { end }, readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }),
+    withTransaction: callback => database.withTransaction(transaction => callback({ query: (...args) => {
+      statements.push(args[0]); return transaction.query(...args);
+    } })) };
+  const dependencies = { logging: { level: 'fatal', fileLoggingEnabled: false }, loadDatabase: async () => local };
+  try {
+    process.env.PGOPTIONS = '-c default_transaction_read_only=on';
+    const protocol = await runSourcePairQualityRuntime({}, dependencies);
+    const report = await runSourcePairQualityRuntime({ protocol }, dependencies);
+    expect(report).toMatchObject({ status: 'insufficient_reference_labels', total: { sampled: 48, paired: 25 },
+      limits: { providerCalls: 0, routingWrites: 0 } });
+    expect(validSourcePairQualityReport(report)).toBe(true);
+    expect((await client.query(sql)).rows[0].state).toEqual(before);
+    expect(statements.filter(value => value === 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY')).toHaveLength(2);
+    expect(statements.join(' ')).not.toMatch(/\b(DELETE|INSERT|UPDATE)\b/);
+    expect(end).toHaveBeenCalledTimes(2);
+  } finally {
+    if (originalOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = originalOptions;
+  }
+});
 
 test('recurring capture resumes after a provider interruption, charges unknown attempts, and rotates only after replay', async () => {
   await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';

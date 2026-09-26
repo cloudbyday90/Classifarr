@@ -7,12 +7,13 @@ import { automaticEvaluationOutcome } from './mixedPolicyReplayOutcome.mjs';
 import { captureAdmissionCase } from './adjudicationCaptureAdmission.mjs';
 
 /** No labels influence admission; one stable interleaved movie/TV subset, never implicit inference. */
-export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase, onAdmission,
+export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase, onAdmission, includeAllCases = false,
   prepare = preparePolicyShortlistReplayCase, reduce = reducePolicyShortlistReplayResponse } = {}) {
   const report = createCachedAdjudicationReport(), plan = new Map(), admission = [];
   const membership = new Map(onAdmission ? source.corpus?.documents.map(doc => [doc.key, doc.libraryIds]) ?? [] : []);
   const [baseline, sourceAware] = outcomes;
   const eligible = [...baseline].filter(([hash, a]) => {
+    if (includeAllCases) return true;
     const b = sourceAware.get(hash);
     return a.outcome && b?.outcome && (a.outcome.kind !== 'automatic' || b.outcome.kind !== 'automatic' ||
       a.outcome.action !== b.outcome.action || a.outcome.destination !== b.outcome.destination);
@@ -54,7 +55,7 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
       results.push(generated ? reduce({ ...entry, reviewPolicies: row.policies }, 'protected', generated, batch.identity) : { status: 'misses' });
     }
     addCachedAdjudicationPair(report, results, corrections.get(a.key));
-    onCase?.(a.key, a.mediaType, results, corrections.get(a.key));
+    onCase?.(a.key, a.mediaType, results, corrections.get(a.key), requestKeys);
     if (onAdmission) admission.push(captureAdmissionCase(a.key, a.mediaType, membership.get(a.key) ?? [], results, requestKeys));
   }
   onPlan?.([...plan.values()]);

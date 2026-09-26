@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a private, cache-only movie/TV quality experiment with frozen evidence,
+  separate reference labels, paired correctness and abstention metrics, and
+  explicit missing/conflicting evidence. Preserve read-only execution, count
+  shared historical usage once, and distinguish synthetic tests from measured
+  quality. No new inference, routing permission, deployment or release.
 - Prioritize missing movie/TV AI responses that can complete comparisons within
   the existing capture allowance. Preserve interrupted checkpoints, balance
   equal-cost opportunities, and avoid spending calls on known blocked pairs.

@@ -110,6 +110,10 @@ behavior is preserved; this is not a claim of full accessibility certification.
 
 ## Next component: independently labeled paired quality experiment
 
+Implementation follow-through: [quality experiment design](source-pair-quality-experiment-design.md)
+and [outcome and usage](source-pair-quality-experiment-outcome.md). Independent
+labels are not supplied yet; no live quality improvement has been established.
+
 The next milestone should answer **whether the decisions improve**, not add more
 scheduling infrastructure. Build on the existing reference-set and evaluation
 tools with one predeclared paired movie/TV experiment:
