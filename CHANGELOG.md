@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add protocol-bound independent review worksheets and consensus export for up to
+  300 movie/TV quality cases. Preserve missing and disputed judgments, validate
+  third-review bindings, and safely resume identical private output without
+  generating labels, invoking AI, or changing routing.
 - Add a private, read-only quality coverage audit with actionable schema, study,
   backfill, blocker, and reference-review guidance. Distinguish unavailable evidence
   from zero coverage without starting AI capture, changing budgets, or routing media.

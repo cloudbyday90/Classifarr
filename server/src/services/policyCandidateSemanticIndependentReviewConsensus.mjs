@@ -15,6 +15,7 @@ import {
 import {
   createPolicyCandidateSemanticSnapshotFingerprint,
 } from './policyCandidateSemanticSnapshotFingerprint.mjs';
+import { resolveIndependentReviewDecision } from './independentReviewDecision.mjs';
 
 export const POLICY_CANDIDATE_SEMANTIC_REVIEWER_SUBMISSION_VERSION =
   'policy.candidate_semantic_reviewer_submission.v1';
@@ -223,14 +224,14 @@ function completeReferenceSet({
   const labels = Array.from(firstDecisions.keys()).sort(compareIdentifiers).map((fixtureId) => {
     const firstDecision = firstDecisions.get(fixtureId);
     const secondDecision = secondDecisions.get(fixtureId);
-    const disputed = firstDecision !== secondDecision;
+    const decision = resolveIndependentReviewDecision(firstDecision, secondDecision, adjudicationDecisions.get(fixtureId));
     return Object.freeze({
-      consensusStatusId: disputed
+      consensusStatusId: decision.consensus === 'adjudicated'
         ? POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_CONSENSUS_STATUS_IDS.ADJUDICATED
         : POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_CONSENSUS_STATUS_IDS.UNANIMOUS,
       fixtureId,
-      referenceDecisionId: disputed ? adjudicationDecisions.get(fixtureId) : firstDecision,
-      reviewerCount: disputed ? 3 : 2,
+      referenceDecisionId: decision.value,
+      reviewerCount: decision.reviewerCount,
     });
   });
   return Object.freeze({

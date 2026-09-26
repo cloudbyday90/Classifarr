@@ -109,12 +109,12 @@ The immediate operational prerequisite is a separately authorized release and
 controlled deployment using the existing upgrade/recovery checks. This commit
 does not create that release or rebuild/restart the live installation.
 
-The next code component should adapt **independent reviewer submissions to the
-300-case frozen protocol**. Reuse the existing private-file and consensus utilities,
-but add an explicit new packet adapter: validate protocol/case membership, keep
-submissions separate and blinded, detect duplicate reviewers, and retain unresolved
-disagreements. The older 24–32-case held-out packet cannot be silently relabeled.
-Test this adapter offline; do not manufacture actual reviewer judgments.
+The recommended **independent reviewer submission adapter for the 300-case frozen
+protocol** is now implemented and tested offline. See its separate
+[design](quality-review-adapter-design.md) and
+[outcome and reviewer workflow](quality-review-adapter-outcome.md). It reuses the
+private-file boundary and consensus primitive without relabeling the older
+24–32-case contract or manufacturing actual reviewer judgments.
 
 After installation, run one registered study and the audit to obtain the first
 honest movie/TV quality baseline. Add a budget-neutral protocol-bound capture

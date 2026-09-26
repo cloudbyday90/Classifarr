@@ -4,7 +4,7 @@
  */
 
 import { resolve } from 'node:path';
-import { isDeepStrictEqual } from 'node:util';
+import { writeOrVerifyPrivateStudyJsonFile } from './privateStudyFileReplay.mjs';
 
 import {
   composeHeldOutSemanticStudyReviewerReferenceSet,
@@ -59,20 +59,9 @@ function publicReport(result, referenceSetWritten) {
 }
 
 async function writeOrVerifyReferenceSet(outputFile, document, { readJson, writeJson }) {
-  const options = { label: 'Reviewer reference set' };
-  try {
-    await writeJson(outputFile, document, options);
-  } catch (error) {
-    if (error?.code !== 'EEXIST') throw error;
-    // Consensus was recomputed from the current packet and submissions. Reuse
-    // only the exact resulting document, with all existing read protections.
-    const existing = await readJson(outputFile, options);
-    if (!isDeepStrictEqual(existing, document)) {
-      throw Object.assign(new Error('Existing reference set differs from current reviewer consensus.'), {
-        code: 'STUDY_REFERENCE_SET_CONFLICT',
-      });
-    }
-  }
+  await writeOrVerifyPrivateStudyJsonFile(outputFile, document, { readJson, writeJson,
+    options: { label: 'Reviewer reference set' }, conflictCode: 'STUDY_REFERENCE_SET_CONFLICT',
+    conflictMessage: 'Existing reference set differs from current reviewer consensus.' });
 }
 
 /**
