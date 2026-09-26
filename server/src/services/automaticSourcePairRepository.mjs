@@ -10,6 +10,7 @@ import { READ_SOURCE_PAIR_STATE_SQL, SAVE_SOURCE_PAIR_SQL, FAIL_SOURCE_PAIR_SQL,
 import { appendEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from './evaluationHistoryRepository.mjs';
 import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 import { advanceEvaluatedSourcePairWindow } from './sourcePairWindowProgressionRepository.mjs';
+import { readSourcePairSweepCursor, advanceSourcePairSweep } from './sourcePairCoverageSweepRepository.mjs';
 
 export function createAutomaticSourcePairRepository(database) {
   const transaction = (callback, signal, readOnly = false) => database.withTransaction(async client => {
@@ -41,16 +42,17 @@ export function createAutomaticSourcePairRepository(database) {
       const adjudicationConfig = projectAdjudicationConfig(captured.config);
       const adjudicationBatch = await readCachedAdjudication(client, adjudicationConfig?.fingerprint);
       const { rows: [budget] } = await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget WHERE singleton=true');
+      const sweepCursor = await readSourcePairSweepCursor(client);
       const { rows: [clock] } = await client.query('SELECT transaction_timestamp()::text AS observed_at');
       return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey), adjudicationConfig, adjudicationBatch,
-        adjudicationSelectionOffset: budget?.selection_offset ?? 0, adjudicationBudgetRevision: budget?.revision ?? 0 };
-    }, signal, true).then(({ observedAt, captured, identity, configuration, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset, adjudicationBudgetRevision }) => {
+        adjudicationSelectionOffset: budget?.selection_offset ?? 0, adjudicationBudgetRevision: budget?.revision ?? 0, sweepCursor };
+    }, signal, true).then(({ observedAt, captured, identity, configuration, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset, adjudicationBudgetRevision, sweepCursor }) => {
       signal?.throwIfAborted();
       const { config: _config, ...source } = decodeSourceDescriptionEvaluationSnapshot(captured, identity);
-      return { observedAt, adjudicationBudgetRevision,
+      return { observedAt, adjudicationBudgetRevision, sweepCursor,
         inputs: { source: { ...source, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset }, identity, configuration } };
     }),
-    save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt, history, replayWindow } = {}) => {
+    save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt, history, replayWindow, sweepWindow } = {}) => {
       if (!readAutomaticSourcePairReport(report) || !validSourcePairCohort(cohort) || cohort.length !== report.sampled ||
         !Number.isFinite(Date.parse(cohortCreatedAt)) || Date.parse(cohortCreatedAt) > Date.parse(observedAt) ||
         (history !== undefined && !validEvaluationHistory(history, report))) {
@@ -60,7 +62,10 @@ export function createAutomaticSourcePairRepository(database) {
         const saved = await client.query(SAVE_SOURCE_PAIR_SQL,
           [fingerprint, JSON.stringify(report), observedAt, JSON.stringify(cohort), cohortCreatedAt]);
         if (saved.rowCount === 1 && history) await appendEvaluationHistory(client, history, observedAt);
-        if (saved.rowCount === 1 && replayWindow) await advanceEvaluatedSourcePairWindow(client, fingerprint, report, replayWindow);
+        if (saved.rowCount === 1) {
+          const sweepSaved = !sweepWindow || await advanceSourcePairSweep(client, report, sweepWindow);
+          if (sweepSaved && replayWindow) await advanceEvaluatedSourcePairWindow(client, fingerprint, report, replayWindow);
+        }
         return saved.rowCount === 1;
       }, signal);
     },

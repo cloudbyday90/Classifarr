@@ -3,8 +3,8 @@ import { sourcePairFixture, sourcePairIdentity } from './sourceDescriptionPairFi
 import { executeAutomaticSourcePair } from '../../services/automaticSourcePairExecution.mjs';
 import { createCachedAdjudicationReport } from '../../services/cachedAdjudicationReport.mjs';
 
-export async function sourcePairWindowFixture() {
-  const source = sourcePairFixture();
+export async function sourcePairWindowFixture(count = 48) {
+  const source = sourcePairFixture(count);
   source.evaluationRows = source.rows.map(row => ({ ...row, title: 'Synthetic item', year: 2020 }));
   source.rows = source.evaluationRows;
   source.policies = source.libraries.map(library => ({ id: library.id, library_id: library.id, enabled: true,

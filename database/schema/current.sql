@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-25T22:29:25.148Z
--- Latest Migration: 20260925_150000_add_mixed_evaluation_history.sql
+-- Generated: 2026-09-26T00:07:18.010Z
+-- Latest Migration: 20260925_160000_add_source_pair_sweep.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2134,6 +2134,29 @@ CREATE TABLE public.automatic_source_pair_evaluation (
 --
 
 COMMENT ON TABLE public.automatic_source_pair_evaluation IS 'One replaceable cached retrieval-pair aggregate and up to 300 opaque cohort references. No source content, credentials, routing authority or provider calls. Reports expire after fifteen minutes; cohorts rotate after thirty days.';
+
+
+--
+-- Name: automatic_source_pair_sweep; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automatic_source_pair_sweep (
+    singleton boolean DEFAULT true NOT NULL,
+    revision integer DEFAULT 0 NOT NULL,
+    selection_offset integer DEFAULT 0 NOT NULL,
+    evidence_revision text,
+    CONSTRAINT automatic_source_pair_sweep_evidence_revision_check CHECK ((evidence_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT automatic_source_pair_sweep_revision_check CHECK ((revision >= 0)),
+    CONSTRAINT automatic_source_pair_sweep_selection_offset_check CHECK (((selection_offset >= 0) AND (selection_offset <= 299))),
+    CONSTRAINT automatic_source_pair_sweep_singleton_check CHECK (singleton)
+);
+
+
+--
+-- Name: TABLE automatic_source_pair_sweep; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.automatic_source_pair_sweep IS 'Private bounded diagnostic coverage cursor. Independent of inference quota and unfinished capture. No routing authority or content.';
 
 
 --
@@ -9437,6 +9460,14 @@ ALTER TABLE ONLY public.automatic_evaluation_history
 
 ALTER TABLE ONLY public.automatic_source_pair_evaluation
     ADD CONSTRAINT automatic_source_pair_evaluation_pkey PRIMARY KEY (singleton);
+
+
+--
+-- Name: automatic_source_pair_sweep automatic_source_pair_sweep_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automatic_source_pair_sweep
+    ADD CONSTRAINT automatic_source_pair_sweep_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -16772,6 +16803,7 @@ FROM unnest(ARRAY[
     '20260925_120000_add_adjudication_capture_budget.sql',
     '20260925_130000_add_automatic_evaluation_history.sql',
     '20260925_140000_add_evaluation_coverage_gaps.sql',
-    '20260925_150000_add_mixed_evaluation_history.sql'
+    '20260925_150000_add_mixed_evaluation_history.sql',
+    '20260925_160000_add_source_pair_sweep.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

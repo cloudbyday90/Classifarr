@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { adjudicationDigest, readAdjudicationBatch } from './cachedAdjudicationContract.mjs';
 import { addCachedAdjudicationPair, createCachedAdjudicationReport } from './cachedAdjudicationReport.mjs';
-import { fingerprintAutomaticSourcePairInputs } from './automaticSourcePairComputation.mjs';
+import { fingerprintSourcePairEvidence } from './automaticSourcePairComputation.mjs';
 import { evaluationArmGap, validEvaluationGaps } from './evaluationCoverageGaps.mjs';
 import { evaluationPairKind } from './mixedPolicyReplayOutcome.mjs';
 
@@ -23,8 +23,7 @@ export function evaluationHistoryCase(key, mediaType, results, label) {
 
 export function createEvaluationHistory(snapshot, result, cases) {
   const { source } = snapshot.inputs;
-  const evidenceRevision = fingerprintAutomaticSourcePairInputs({ ...snapshot, inputs: { ...snapshot.inputs,
-    source: { ...source, adjudicationBatch: null, adjudicationSelectionOffset: 0 } } }, result);
+  const evidenceRevision = fingerprintSourcePairEvidence(snapshot, result);
   const cohortRevision = adjudicationDigest([result.cohort, result.cohortCreatedAt]);
   const identity = readAdjudicationBatch(source.adjudicationBatch, source.adjudicationConfig?.fingerprint)?.identity;
   const modelRevision = adjudicationDigest(identity ? [identity.model, identity.digest, identity.contextLength] : null);

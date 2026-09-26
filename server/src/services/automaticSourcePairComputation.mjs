@@ -33,3 +33,9 @@ export function fingerprintAutomaticSourcePairInputs(snapshot, frozen) {
   for (const row of source.operatorFeedbackRows) hash.update(JSON.stringify(row)).update('\n');
   return hash.digest('hex');
 }
+
+/** Stable survey/history scope: response backfill and cursor movement are not evidence drift. */
+export function fingerprintSourcePairEvidence(snapshot, frozen) {
+  return fingerprintAutomaticSourcePairInputs({ ...snapshot, inputs: { ...snapshot.inputs,
+    source: { ...snapshot.inputs.source, adjudicationBatch: null, adjudicationSelectionOffset: 0 } } }, frozen);
+}

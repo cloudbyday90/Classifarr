@@ -82,6 +82,10 @@ Use normal deployment backups; do not delete retained evidence on upgrade.
 
 ## Next component: coverage-first, inference-free sweep
 
+Follow-up implementation and verification are now recorded in the
+[inference-free coverage sweep outcome](inference-free-coverage-sweep-outcome.md).
+The rationale and acceptance criteria below describe the handoff from this change.
+
 The next useful step is a **bounded coverage planner across the frozen cohort**.
 This change intentionally holds an incomplete window. Consequently, a missing
 response near the beginning can still hide later deterministic or already cached

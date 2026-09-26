@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Survey the frozen movie/TV evaluation cohort in bounded, restart-safe windows
+  even when early items lack cached evidence. Keep diagnostic progress independent
+  of unfinished AI capture, retain explicit gaps, and atomically fence stale or
+  duplicate updates. No inference, routing permission, or music support is added.
 - Advance completed movie/TV evaluation windows without requiring an AI capture
   allowance. Save progress atomically with evidence, preserve interrupted capture,
   and fence stale or duplicate advancement across restarts. Missing evidence stays

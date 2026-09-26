@@ -2,6 +2,7 @@
 import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
 import { fingerprintAutomaticSourcePairInputs } from './automaticSourcePairComputation.mjs';
 import { ADJUDICATION_PAIR_LIMIT } from './cachedAdjudicationContract.mjs';
+import { selectSourcePairSweepSnapshot, planSourcePairSweepAdvance, sameSourcePairSweepCursor } from './sourcePairCoverageSweep.mjs';
 
 /** Internal scheduling intent, never inference permission or a public report field. */
 export function planSourcePairWindowAdvance(report, revision, selectionOffset) {
@@ -20,17 +21,22 @@ export function planSourcePairWindowAdvance(report, revision, selectionOffset) {
 
 export function createProgressingSourcePairEvaluation({ repository, evaluate }) {
   return async (snapshot, state, signal) => {
-    const result = await evaluate(snapshot, state, signal);
+    const selected = selectSourcePairSweepSnapshot(snapshot, state);
+    const result = await evaluate(selected, state, signal);
     signal.throwIfAborted();
     const replayWindow = planSourcePairWindowAdvance(result.report, snapshot.adjudicationBudgetRevision,
       snapshot.inputs.source.adjudicationSelectionOffset);
-    if (!replayWindow) return result;
+    const sweepWindow = planSourcePairSweepAdvance(result.report, snapshot.sweepCursor, selected.sweepEvidenceRevision);
+    if (!replayWindow && !sweepWindow) return result;
     // Admission remains held. Quota changes fence ownership, not the evidence fingerprint.
     const current = await repository.readSnapshot(signal);
     signal.throwIfAborted();
-    if (current.adjudicationBudgetRevision !== replayWindow.revision ||
-        current.inputs.source.adjudicationSelectionOffset !== replayWindow.selectionOffset ||
-        fingerprintAutomaticSourcePairInputs(current, result) !== result.fingerprint) return result;
-    return { ...result, replayWindow };
+    const fresh = selectSourcePairSweepSnapshot(current, state, result);
+    if (fingerprintAutomaticSourcePairInputs(fresh, result) !== result.fingerprint ||
+        (snapshot.sweepCursor && !sameSourcePairSweepCursor(snapshot.sweepCursor, current.sweepCursor))) return result;
+    const captureCurrent = replayWindow && current.adjudicationBudgetRevision === replayWindow.revision &&
+      current.inputs.source.adjudicationSelectionOffset === replayWindow.selectionOffset;
+    if (!captureCurrent && !sweepWindow) return result;
+    return { ...result, ...(captureCurrent ? { replayWindow } : {}), ...(sweepWindow ? { sweepWindow } : {}) };
   };
 }
