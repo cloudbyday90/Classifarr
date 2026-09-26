@@ -11,7 +11,7 @@ import { QUALITY_LIMITS } from './sourcePairQualityReport.mjs';
 
 /** Fixed read-only experiment: no capture/client capabilities, and labels never enter preparation. */
 export async function executeSourcePairQualityExperiment(snapshot, protocol = null, reference = null,
-  { evaluateRetrieval = evaluateSourceDescriptionPair, evaluatePolicy = evaluateAutomaticPolicyReplay, replay = replayCachedAdjudication } = {}) {
+  { evaluateRetrieval = evaluateSourceDescriptionPair, evaluatePolicy = evaluateAutomaticPolicyReplay, replay = replayCachedAdjudication, onEvidence } = {}) {
   const prepared = prepareSourcePairQualityProtocol(snapshot, protocol);
   if (!protocol) {
     if (reference !== null) throw new Error('quality_protocol_required');
@@ -26,7 +26,7 @@ export async function executeSourcePairQualityExperiment(snapshot, protocol = nu
       for (let offset = 0; offset < protocol.cases.length; offset += 25) {
         await replay(outcomes, corrections, { ...source, adjudicationSelectionOffset: offset }, { includeAllCases: true,
           onCase: (key, mediaType, results, correction, requestKeys) => {
-            cases.push({ item: qualityHash(key), mediaType, results,
+            cases.push({ item: qualityHash(key), mediaType, results, requestKeys,
               correctionTarget: correction ? qualityTarget(mediaType, correction.libraryId) : null });
             for (const key of requestKeys) if (key !== null) used.add(key);
           } });
@@ -43,6 +43,7 @@ export async function executeSourcePairQualityExperiment(snapshot, protocol = nu
   const metrics = summarizeSourcePairQuality(cases, references);
   const batch = readAdjudicationBatch(source.adjudicationBatch, source.adjudicationConfig?.fingerprint);
   const records = batch?.records.filter(row => used.has(row.key)) ?? [];
+  onEvidence?.({ cases, records });
   const status = !cases.length ? 'no_eligible_cases' : !metrics.total.independent.labels ? 'insufficient_reference_labels'
     : references.provenance === 'synthetic_fixture.v1' ? 'synthetic_only'
       : metrics.total.independent.unpaired ? 'incomplete_evidence'

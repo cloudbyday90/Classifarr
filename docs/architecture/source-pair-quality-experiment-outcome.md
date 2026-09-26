@@ -131,6 +131,9 @@ Then collect genuine independent references and use this same metric contract fo
 one complete comparison. Do not sum overlapping aggregate reports or repeatedly
 raise sampling counts without retaining the evidence needed to grade them.
 
+Implemented in the subsequent [quality evidence retention outcome](quality-evidence-retention-outcome.md).
+Its next step is a real coverage audit and independent review, not a larger cache.
+
 GitHub MCP was checked twice during this work and returned no open pull requests
 for `cloudbyday90/Classifarr`. No PR could be randomly selected or implemented;
 none was merged. No release, tag or version change is included.

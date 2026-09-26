@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain opt-in movie/TV quality evidence across bounded AI cache windows and
+  restarts, with fixed expiry, deduplicated usage, and fail-closed drift/conflict
+  handling. Add private blinded review packets and accumulated reports without
+  increasing inference budgets, enabling routing, or creating a release.
 - Add a private, cache-only movie/TV quality experiment with frozen evidence,
   separate reference labels, paired correctness and abstention metrics, and
   explicit missing/conflicting evidence. Preserve read-only execution, count

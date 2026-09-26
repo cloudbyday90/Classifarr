@@ -22,6 +22,9 @@ import { createProgressingSourcePairEvaluation } from '../../services/sourcePair
 import { selectSourcePairSweepSnapshot } from '../../services/sourcePairCoverageSweep.mjs';
 import { runSourcePairQualityRuntime } from '../../services/sourcePairQualityRuntime.mjs';
 import { validSourcePairQualityReport } from '../../services/sourcePairQualityReport.mjs';
+import { runSourcePairQualityThread } from '../../services/sourcePairQualityThreadClient.mjs';
+import { createQualityEvidenceRepository } from '../../services/qualityEvidenceRepository.mjs';
+import { reportQualityEvidence } from '../../services/qualityEvidenceReport.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -61,6 +64,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE cached_adjudication_batch(LIKE public.cached_adjudication_batch INCLUDING ALL);
     CREATE TEMP TABLE adjudication_capture_budget(LIKE public.adjudication_capture_budget INCLUDING ALL);
     CREATE TEMP TABLE automatic_evaluation_history(LIKE public.automatic_evaluation_history INCLUDING ALL);
+    CREATE TEMP TABLE quality_evidence_study(LIKE public.quality_evidence_study INCLUDING ALL);
     INSERT INTO adjudication_capture_budget(singleton) VALUES(true);
     INSERT INTO ai_provider_config VALUES(1,true,'same','ollama','test',NULL,NULL,NULL,'localhost',11434,NULL,1);`);
   fixture = sourcePairFixture(48);
@@ -113,6 +117,30 @@ test('private quality experiment reads a coherent snapshot without changing eval
   } finally {
     if (originalOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = originalOptions;
   }
+});
+
+test('quality evidence survives cache rotation and process restart without changing capture authorization', async () => {
+  await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';
+    INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries`);
+  await fillCurrentWindow();
+  const snapshot = await repository.readSnapshot(), protocol = await runSourcePairQualityThread(snapshot);
+  const study = createQualityEvidenceRepository(database); await study.start(protocol);
+  const budgetBefore = await createAdjudicationBudgetRepository(database).read();
+  await repository.collectQuality(snapshot);
+  const first = await study.read();
+  expect(reportQualityEvidence(first.evidence, protocol).total.paired).toBe(25);
+  await client.query('UPDATE adjudication_capture_budget SET selection_offset=25');
+  await fillCurrentWindow();
+  await createAutomaticSourcePairRepository(database).collectQuality(await repository.readSnapshot());
+  const retained = await createQualityEvidenceRepository(database).read();
+  expect(reportQualityEvidence(retained.evidence, protocol)).toMatchObject({ total: { sampled: 48, paired: 48 },
+    limits: { providerCalls: 0, routingWrites: 0, promotionAllowed: false } });
+  expect(await createAdjudicationBudgetRepository(database).read()).toEqual({ ...budgetBefore, selection_offset: 25 });
+  const expiry = (await client.query('SELECT expires_at FROM quality_evidence_study')).rows[0].expires_at;
+  await repository.collectQuality(await repository.readSnapshot());
+  expect((await client.query('SELECT expires_at FROM quality_evidence_study')).rows[0].expires_at).toEqual(expiry);
+  expect((await study.read()).evidence.requests).toEqual(retained.evidence.requests);
 });
 
 test('recurring capture resumes after a provider interruption, charges unknown attempts, and rotates only after replay', async () => {

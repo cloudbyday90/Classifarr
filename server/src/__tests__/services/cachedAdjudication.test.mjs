@@ -159,6 +159,29 @@ function capturePlan(plan, snapshot) {
     arms: [0, 1].map(() => ({ key: request.key, gap: cached.has(request.key) ? 'none' : 'cache_missing' })) })) };
 }
 
+test('quality collection brackets publication and failure prevents completion acknowledgement', async () => {
+  const { dependencies, snapshot, client } = captureFixture(), events = [];
+  dependencies.repository.collectQuality = jest.fn(async supplied => {
+    events.push(supplied.inputs.source.adjudicationBatch ? 'collect-new' : 'collect-old');
+  });
+  dependencies.save = jest.fn(async batch => { events.push('save'); snapshot.inputs.source.adjudicationBatch = batch; });
+  dependencies.onPublished = jest.fn(async () => events.push('ack'));
+  await captureCachedAdjudication({ maxCalls: 1 }, dependencies);
+  expect(events).toEqual(['collect-old', 'save', 'collect-new', 'ack']);
+  events.length = 0;
+  dependencies.repository.collectQuality.mockRejectedValueOnce(new Error('retention unavailable'));
+  await expect(captureCachedAdjudication({ maxCalls: 1 }, dependencies)).rejects.toThrow('retention unavailable');
+  expect(events).toEqual([]); expect(client.generate).toHaveBeenCalledTimes(1);
+  // A crash after cache publication must leave the completion checkpoint unacknowledged.
+  dependencies.repository.collectQuality.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('post-publish crash'));
+  await expect(captureCachedAdjudication({ maxCalls: 1 }, dependencies)).rejects.toThrow('post-publish crash');
+  expect(dependencies.onPublished).toHaveBeenCalledTimes(1);
+  dependencies.repository.collectQuality.mockImplementation(async () => events.push('recovered'));
+  await captureCachedAdjudication({ maxCalls: 1 }, dependencies);
+  expect(dependencies.onPublished).toHaveBeenCalledTimes(2);
+  expect(client.generate).toHaveBeenCalledTimes(1);
+});
+
 test('explicit capture budgets generation, atomically stores responses only, and reuses a matching model artifact', async () => {
   const { snapshot, dependencies, client, batch } = captureFixture();
   expect(await captureCachedAdjudication({ maxCalls: 1 }, dependencies)).toMatchObject({ status: 'complete', calls: 1, stored: 1 });

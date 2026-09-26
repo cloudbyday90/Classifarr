@@ -42,7 +42,7 @@ function sumsMatch(total, movie, tv) {
 /** Strict worker egress allowlist: no titles, destinations, prompts, paths or responses. */
 export function validSourcePairQualityReport(value) {
   if (!exactQualityKeys(value, ['version', 'protocolId', 'cacheRevision', 'status', 'provenance', 'total', 'byMedia', 'usage', 'limits']) ||
-      value.version !== 'source_pair_quality_report.v1' || ![value.protocolId, value.cacheRevision].every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash)) ||
+      !['source_pair_quality_report.v1', 'source_pair_quality_report.v2'].includes(value.version) || ![value.protocolId, value.cacheRevision].every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash)) ||
       !['no_eligible_cases', 'insufficient_reference_labels', 'synthetic_only', 'incomplete_evidence', 'partial_reference_coverage', 'measured'].includes(value.status) ||
       !['none', 'independent_human.v1', 'synthetic_fixture.v1'].includes(value.provenance) || !validCoverage(value.total) ||
       !exactQualityKeys(value.byMedia, ['movie', 'tv']) || !Object.values(value.byMedia).every(validCoverage) ||
@@ -50,7 +50,7 @@ export function validSourcePairQualityReport(value) {
       Object.entries(QUALITY_LIMITS).some(([key, expected]) => value.limits[key] !== expected) ||
       !exactQualityKeys(value.usage, ['uniqueCachedResponses', 'historicalPromptTokens', 'historicalOutputTokens', 'historicalLatencyMs'])) return false;
   const usage = value.usage;
-  if (!count(usage.uniqueCachedResponses, 50) || !count(usage.historicalPromptTokens, usage.uniqueCachedResponses * 8192) ||
+  if (!count(usage.uniqueCachedResponses, value.version === 'source_pair_quality_report.v2' ? 600 : 50) || !count(usage.historicalPromptTokens, usage.uniqueCachedResponses * 8192) ||
       !count(usage.historicalOutputTokens, usage.uniqueCachedResponses * 256) || !count(usage.historicalLatencyMs, usage.uniqueCachedResponses * 600000)) return false;
   const expected = !value.total.sampled ? 'no_eligible_cases' : !value.total.independent.labels ? 'insufficient_reference_labels'
     : value.provenance === 'synthetic_fixture.v1' ? 'synthetic_only' : value.total.independent.unpaired ? 'incomplete_evidence'

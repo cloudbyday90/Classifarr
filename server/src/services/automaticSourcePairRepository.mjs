@@ -11,6 +11,8 @@ import { appendEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from './evaluat
 import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 import { advanceEvaluatedSourcePairWindow } from './sourcePairWindowProgressionRepository.mjs';
 import { readSourcePairSweepCursor, advanceSourcePairSweep } from './sourcePairCoverageSweepRepository.mjs';
+import { PRUNE_QUALITY_STUDY_SQL } from './qualityEvidenceRepository.mjs';
+import { collectActiveQualityStudy } from './qualityEvidenceCollector.mjs';
 
 export function createAutomaticSourcePairRepository(database) {
   const transaction = (callback, signal, readOnly = false) => database.withTransaction(async client => {
@@ -24,9 +26,11 @@ export function createAutomaticSourcePairRepository(database) {
     return value;
   });
   return {
+    collectQuality: (snapshot, signal) => collectActiveQualityStudy(database, snapshot, signal),
     readState: signal => transaction(async client => {
       await client.query(PRUNE_ADJUDICATION_SQL);
       await client.query(PRUNE_EVALUATION_HISTORY_SQL);
+      await client.query(PRUNE_QUALITY_STUDY_SQL);
       return (await client.query(READ_SOURCE_PAIR_STATE_SQL)).rows[0] ?? null;
     }, signal),
     readSnapshot: signal => transaction(async client => {

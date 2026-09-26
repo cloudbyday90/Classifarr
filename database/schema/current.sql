@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-26T00:07:18.010Z
--- Latest Migration: 20260925_160000_add_source_pair_sweep.sql
+-- Generated: 2026-09-26T20:09:45.340Z
+-- Latest Migration: 20260926_100000_add_quality_evidence_study.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7169,6 +7169,35 @@ COMMENT ON TABLE public.profile_refresh_worker_progress IS 'Single operational w
 
 
 --
+-- Name: quality_evidence_study; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.quality_evidence_study (
+    singleton boolean DEFAULT true NOT NULL,
+    generation uuid DEFAULT gen_random_uuid() NOT NULL,
+    protocol_id text NOT NULL,
+    protocol jsonb NOT NULL,
+    evidence jsonb NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT quality_evidence_study_check CHECK ((expires_at = (created_at + '720:00:00'::interval))),
+    CONSTRAINT quality_evidence_study_evidence_check CHECK (((jsonb_typeof(evidence) = 'object'::text) AND (octet_length((evidence)::text) <= 1048576))),
+    CONSTRAINT quality_evidence_study_protocol_check CHECK (((jsonb_typeof(protocol) = 'object'::text) AND (octet_length((protocol)::text) <= 262144))),
+    CONSTRAINT quality_evidence_study_protocol_id_check CHECK ((protocol_id ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT quality_evidence_study_singleton_check CHECK (singleton),
+    CONSTRAINT quality_evidence_study_status_check CHECK ((status = ANY (ARRAY['active'::text, 'drifted'::text, 'conflicted'::text])))
+);
+
+
+--
+-- Name: TABLE quality_evidence_study; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.quality_evidence_study IS 'Explicitly started singleton movie/TV quality study. Bounded hashed outcomes and usage only; no labels, prompts, raw responses or routing authority. Original 30-day expiry is never renewed.';
+
+
+--
 -- Name: queue_startup_performance_receipts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10876,6 +10905,14 @@ ALTER TABLE ONLY public.post_upgrade_tasks
 
 ALTER TABLE ONLY public.profile_refresh_worker_progress
     ADD CONSTRAINT profile_refresh_worker_progress_pkey PRIMARY KEY (singleton_id);
+
+
+--
+-- Name: quality_evidence_study quality_evidence_study_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.quality_evidence_study
+    ADD CONSTRAINT quality_evidence_study_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -16804,6 +16841,7 @@ FROM unnest(ARRAY[
     '20260925_130000_add_automatic_evaluation_history.sql',
     '20260925_140000_add_evaluation_coverage_gaps.sql',
     '20260925_150000_add_mixed_evaluation_history.sql',
-    '20260925_160000_add_source_pair_sweep.sql'
+    '20260925_160000_add_source_pair_sweep.sql',
+    '20260926_100000_add_quality_evidence_study.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

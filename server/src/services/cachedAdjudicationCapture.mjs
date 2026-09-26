@@ -20,6 +20,7 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
   return withAdmission(async abort => {
     abort.throwIfAborted();
     const state = await repository.readState(abort), snapshot = await repository.readSnapshot(abort);
+    await repository.collectQuality?.(snapshot, abort);
     const prepared = await runThread(snapshot, state, abort, { includePlan: true });
     if (!validCaptureAdmission(prepared.captureAdmission, prepared.plan)) throw new Error('adjudication_capture_plan_invalid');
     if (!prepared.plan.length) {
@@ -81,6 +82,7 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
     // Pin completion to the evidence actually used, not a newer snapshot observed after publication.
     const published = { ...snapshot, inputs: { ...snapshot.inputs,
       source: { ...snapshot.inputs.source, adjudicationBatch: batch } } };
+    await repository.collectQuality?.(published, abort);
     await onPublished?.(fingerprintAutomaticSourcePairInputs(published, prepared), missing === 0, abort);
     return { status: 'complete', calls, reused, stored: records.length,
       missing, routingWrites: 0 };

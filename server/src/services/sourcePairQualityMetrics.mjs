@@ -19,12 +19,13 @@ const arm = () => ({ correct: 0, wrong: 0, abstained: 0, correctShare: null, wro
 const slice = () => ({ labels: 0, paired: 0, unpaired: 0, gains: 0, regressions: 0, netCorrectShare: null, baseline: arm(), sourceAware: arm() });
 const coverage = () => ({ sampled: 0, paired: 0, missingLabels: 0, conflictingLabels: 0, independent: slice(), corrections: slice(),
   baseline: { completed: 0, abstained: 0, cacheMissing: 0, blocked: 0 }, sourceAware: { completed: 0, abstained: 0, cacheMissing: 0, blocked: 0 } });
-function grade(target, results, label, mediaType) {
+function grade(target, results, label, mediaType, hashedDestinations) {
   if (!label) return;
   target.labels++;
   if (!results.every(isCompletedEvaluationOutcome)) { target.unpaired++; return; }
   target.paired++;
-  const correct = results.map(result => evaluationDestination(result) !== null && qualityTarget(mediaType, evaluationDestination(result)) === label);
+  const correct = results.map(result => evaluationDestination(result) !== null &&
+    (hashedDestinations ? evaluationDestination(result) : qualityTarget(mediaType, evaluationDestination(result))) === label);
   for (const [index, name] of ['baseline', 'sourceAware'].entries()) {
     target[name][results[index].status === 'abstained' ? 'abstained' : correct[index] ? 'correct' : 'wrong']++;
   }
@@ -42,7 +43,7 @@ function finish(target) {
   return target;
 }
 
-export function summarizeSourcePairQuality(cases, references) {
+export function summarizeSourcePairQuality(cases, references, { hashedDestinations = false } = {}) {
   const total = coverage(), byMedia = { movie: coverage(), tv: coverage() };
   for (const row of cases) {
     for (const counts of [total, byMedia[row.mediaType]]) {
@@ -54,8 +55,8 @@ export function summarizeSourcePairQuality(cases, references) {
         counts[name][gap === 'none' ? 'completed' : gap === 'cache_missing' ? 'cacheMissing' : 'blocked']++;
         counts[name].abstained += Number(row.results[index].status === 'abstained');
       }
-      grade(counts.independent, row.results, references.labels.get(row.item), row.mediaType);
-      grade(counts.corrections, row.results, row.correctionTarget, row.mediaType);
+      grade(counts.independent, row.results, references.labels.get(row.item), row.mediaType, hashedDestinations);
+      grade(counts.corrections, row.results, row.correctionTarget, row.mediaType, hashedDestinations);
     }
   }
   return { total: finish(total), byMedia: { movie: finish(byMedia.movie), tv: finish(byMedia.tv) } };

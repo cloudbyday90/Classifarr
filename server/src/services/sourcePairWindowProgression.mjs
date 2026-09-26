@@ -21,6 +21,7 @@ export function planSourcePairWindowAdvance(report, revision, selectionOffset) {
 
 export function createProgressingSourcePairEvaluation({ repository, evaluate }) {
   return async (snapshot, state, signal) => {
+    await repository.collectQuality?.(snapshot, signal);
     const selected = selectSourcePairSweepSnapshot(snapshot, state);
     const result = await evaluate(selected, state, signal);
     signal.throwIfAborted();
