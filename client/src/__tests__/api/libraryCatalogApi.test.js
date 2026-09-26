@@ -38,6 +38,7 @@ import {
   getLibraryUpgradeReadiness,
   getLibraryEvidenceCoverage,
   getLibrarySourceObservations,
+  getLibrarySourceIdentityIssues,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
   getLibrary,
@@ -47,6 +48,13 @@ import {
 } from '../../api/libraryCatalogApi'
 
 describe('libraryCatalogApi', () => {
+  it('loads a matching source issue page through the central GET helper', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ items: [] })
+    expect(await getLibrarySourceIdentityIssues(50)).toEqual({ items: [] })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/source-identity-issues', { params: { offset: 50 } })
+    await getLibrarySourceIdentityIssues()
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/libraries/source-identity-issues', { params: { offset: 0 } })
+  })
   it('loads source observations through the central GET helper', async () => {
     const result = { libraries: [] }
     mockGetDataRequest.mockResolvedValueOnce(result)

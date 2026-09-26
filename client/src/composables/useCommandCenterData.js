@@ -41,10 +41,14 @@ export function useCommandCenterData({ router }) {
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
   )
 
-  const { data: pendingClassificationData, isStale: pendingClassificationsStale, refresh: refreshPendingClassifications, cacheTimestamp: pendingClassificationsTimestamp } = useSWR(
+  const { data: pendingClassificationData, error: pendingClassificationsError, isStale: pendingClassificationsStale, refresh: refreshPendingClassifications, cacheTimestamp: pendingClassificationsTimestamp } = useSWR(
     'command-center:pending-classifications',
-    async () => (await api.getPendingClassifications()) ?? { items: [] },
-    { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
+    async () => {
+      const result = await api.getPendingClassifications()
+      if (!Array.isArray(result?.items)) throw new TypeError('Invalid pending classification snapshot')
+      return result
+    },
+    { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true, persist: false }
   )
 
   const { data: aiGenerationStatusData, isStale: aiGenerationStatusStale, refresh: refreshAiGenerationStatus, cacheTimestamp: aiGenerationStatusTimestamp } = useSWR(
@@ -124,6 +128,8 @@ export function useCommandCenterData({ router }) {
   const upNextCount = computed(() => pendingQueueTasks.value.length)
   const failedQueueTasks = computed(() => Array.isArray(failedTasksData.value) ? failedTasksData.value : [])
   const needsAttentionItems = computed(() => Array.isArray(pendingClassificationData.value?.items) ? pendingClassificationData.value.items : [])
+  const pendingDecisionCount = computed(() => pendingClassificationsError?.value ||
+    !Array.isArray(pendingClassificationData.value?.items) ? null : needsAttentionItems.value.length)
   const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
@@ -353,6 +359,7 @@ export function useCommandCenterData({ router }) {
     liveFeedItems,
     liveStats,
     needsAttentionItems,
+    pendingDecisionCount,
     aiGenerationStatus,
     aiGenerationTelemetryLine,
     pendingQueueTasks,

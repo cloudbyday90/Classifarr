@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Replace the dense Command Center library summary with a visual freshness ring,
+  clear issue/decision counts, and one suggested next step. Metadata drill-downs
+  now use the counted source population and show item-level retry evidence and
+  source-review guidance without changing routing or starting recovery work.
 - Add protocol-bound independent review worksheets and consensus export for up to
   300 movie/TV quality cases. Preserve missing and disputed judgments, validate
   third-review bindings, and safely resume identical private output without

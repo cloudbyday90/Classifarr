@@ -4,8 +4,14 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { libraryObservationHealthLimiterConfig } from '../config/rateLimits.mjs';
 import { readSourceObservationSummary } from '../services/mediaSourceObservationSummary.mjs';
+import { parseSourceIdentityIssueOffset, readSourceIdentityIssues } from '../services/sourceIdentityIssues.mjs';
 
 export function registerSourceObservationRoutes(router, { db }) {
+  router.get('/source-identity-issues', (req, res, next) => {
+    res.set('Cache-Control', 'no-store'); next();
+  }, rateLimit(libraryObservationHealthLimiterConfig), asyncHandler(async (req, res) => {
+    res.json(await readSourceIdentityIssues(db, parseSourceIdentityIssueOffset(req.query)));
+  }));
   router.get('/source-observations', (req, res, next) => {
     res.set('Cache-Control', 'no-store'); next();
   }, rateLimit(libraryObservationHealthLimiterConfig), asyncHandler(async (req, res) => {

@@ -267,6 +267,7 @@
 
   <section
     id="libraries"
+    tabindex="-1"
     class="secondary-section"
   >
     <div

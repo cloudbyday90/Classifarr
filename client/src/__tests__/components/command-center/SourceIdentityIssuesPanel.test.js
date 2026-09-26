@@ -1,0 +1,63 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import SourceIdentityIssuesPanel from '@/components/command-center/SourceIdentityIssuesPanel.vue'
+import { getLibrarySourceIdentityIssues } from '@/api/libraryCatalogApi'
+import { sourceIssuePage } from '../../fixtures/sourceIdentityIssues'
+
+vi.mock('@/api/libraryCatalogApi', () => ({ getLibrarySourceIdentityIssues: vi.fn() }))
+let wrapper
+beforeEach(() => { vi.clearAllMocks() })
+afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks() })
+const render = () => {
+  wrapper = mount(SourceIdentityIssuesPanel, { props: { expectedCount: 1 }, global: { stubs: { RouterLink: true } } })
+  return wrapper
+}
+it('loads only matching items, escapes source text, and does not persist titles', async () => {
+  const report = sourceIssuePage()
+  report.items[0].title = '<img src=x onerror=alert(1)>'
+  vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValue(report)
+  render()
+  expect(wrapper.text()).toContain('Loading the matching items')
+  await flushPromises()
+  expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
+  expect(wrapper.find('img').exists()).toBe(false)
+  expect(wrapper.text()).toContain('Recovery not confirmed')
+  expect(localStorage.getItem('classifarr:v1:swr:command-center:source-identity-issues')).toBeNull()
+  expect(getLibrarySourceIdentityIssues).toHaveBeenCalledWith(0)
+})
+it('paginates, explains changed totals, and clears details on access loss', async () => {
+  vi.mocked(getLibrarySourceIdentityIssues).mockImplementation(async offset => sourceIssuePage(offset, 51))
+  render(); await flushPromises()
+  expect(wrapper.text()).toContain('The overview showed 1')
+  await wrapper.findAll('button').find(button => button.text() === 'Next').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('51–51 of 51')
+  expect(wrapper.text()).not.toContain('Fixture title 1')
+  await wrapper.findAll('button').find(button => button.text() === 'First page').trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('1–50 of 51')
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.mocked(getLibrarySourceIdentityIssues).mockRejectedValue({ response: { status: 403 } })
+  await wrapper.find('button').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('Metadata issues are unavailable')
+  expect(wrapper.text()).not.toContain('Fixture title')
+})
+it('does not let an older response appear as the requested page', async () => {
+  let release
+  vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValueOnce(sourceIssuePage(0, 51))
+  render(); await flushPromises()
+  vi.mocked(getLibrarySourceIdentityIssues).mockImplementationOnce(() => new Promise(resolve => { release = resolve }))
+  await wrapper.find('button').trigger('click')
+  // Pagination during a refresh is disabled; only one page request can be active.
+  expect(wrapper.findAll('button').find(button => button.text() === 'Next').attributes('disabled')).toBeDefined()
+  release(sourceIssuePage(0, 51)); await flushPromises()
+  expect(wrapper.text()).toContain('1–50 of 51')
+})
+it('withholds malformed snapshots instead of claiming zero issues', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValue({ total: 0 })
+  render(); await flushPromises()
+  expect(wrapper.text()).toContain('Metadata issues are unavailable')
+  expect(wrapper.text()).not.toContain('No metadata issues')
+})

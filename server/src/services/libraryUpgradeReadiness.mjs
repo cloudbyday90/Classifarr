@@ -5,6 +5,7 @@ import { assessProfileRefreshWorkerHealth } from './profileRefreshWorkerHealth.m
 import { POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS } from './policyProfileRefreshOutboxVocabulary.mjs';
 import { POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS } from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
 import { projectLibraryUnderstandingSummary } from './libraryUnderstandingSummary.mjs';
+import { COMPLETE_SOURCE_CAPTURES_CTE, CURRENT_SOURCE_ISSUE_JOIN } from './sourceIdentityIssueScope.mjs';
 
 export const LIBRARY_UPGRADE_READINESS_VERSION = 'library.upgrade_readiness.v1';
 
@@ -64,23 +65,13 @@ const READINESS_SQL = `WITH library_state AS MATERIALIZED (
         COUNT(*) FILTER (WHERE recovery_reason_id='worker_overdue')::integer AS worker_overdue_count,
         COUNT(*) FILTER (WHERE recovery_reason_id='lease_recovery_overdue')::integer AS lease_recovery_overdue_count
     FROM classified
-), complete_captures AS MATERIALIZED (
-    SELECT c.library_id, c.media_server_id, c.generation
-    FROM media_source_capture_state c JOIN libraries l ON l.id=c.library_id
-    WHERE l.is_active AND c.media_server_id=l.media_server_id
-        AND c.phase='complete' AND c.mode='full'
-        AND c.omitted_count=0 AND c.uncapturable_count=0
-        AND c.started_at >= statement_timestamp()-INTERVAL '30 days'
-), source_totals AS (
+), ${COMPLETE_SOURCE_CAPTURES_CTE}, source_totals AS (
     SELECT (SELECT COUNT(*)::integer FROM complete_captures) AS covered_count,
         COUNT(*)::integer AS issue_count,
         COUNT(*) FILTER (WHERE o.identity_issue='conflicting_provider_ids')::integer AS conflict_count,
         COUNT(*) FILTER (WHERE o.identity_issue='invalid_provider_ids')::integer AS invalid_provider_count,
         COUNT(*) FILTER (WHERE o.identity_issue='invalid_media_type')::integer AS invalid_type_count
-    FROM complete_captures c JOIN media_source_observations o
-        ON o.library_id=c.library_id AND o.media_server_id=c.media_server_id
-        AND o.generation=c.generation
-        AND o.last_seen_at >= statement_timestamp()-INTERVAL '30 days'
+    ${CURRENT_SOURCE_ISSUE_JOIN}
 ), claimable_work AS (
     SELECT COUNT(*)::integer AS claimable_count,
         MIN(CASE WHEN o.processing_state='pending' THEN o.available_at

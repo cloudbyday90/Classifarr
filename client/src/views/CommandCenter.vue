@@ -50,7 +50,7 @@
             class="status-stat"
             :class="{ 'status-stat-alert': needsAttentionItems.length > 0 }"
           >
-            <span class="status-stat-value">{{ needsAttentionItems.length }}</span>
+            <span class="status-stat-value">{{ pendingDecisionCount ?? '—' }}</span>
             <span class="status-stat-label">Action</span>
           </div>
         </div>
@@ -129,6 +129,7 @@
         <LibraryUnderstandingSummary
           :summary="profileUpgradeReadiness?.understanding"
           :loading="profileRefreshLoading"
+          :pending-decision-count="pendingDecisionCount"
           @open-library-status="!expandedSections.libraries && toggleSection('libraries')"
         />
 
@@ -191,6 +192,7 @@
 
           <section
             id="needs-attention"
+            tabindex="-1"
             class="panel panel-action"
           >
             <div class="panel-header">
@@ -388,6 +390,7 @@ const {
   isAnyDataStale,
   lastUpdatedText,
   needsAttentionItems,
+  pendingDecisionCount,
   aiGenerationTelemetryLine,
   pendingQueueTasks,
   primaryActiveTask,

@@ -46,6 +46,10 @@ export function getLibrarySourceObservations() {
   return getDataRequest('/libraries/source-observations')
 }
 
+export function getLibrarySourceIdentityIssues(offset = 0) {
+  return getDataRequest('/libraries/source-identity-issues', { params: { offset } })
+}
+
 export function getLibrarySourceRepairWorklist() {
   return getDataRequest('/libraries/source-repair-worklist')
 }
@@ -79,6 +83,7 @@ const libraryCatalogApi = {
   getLibraryUpgradeReadiness,
   getLibraryEvidenceCoverage,
   getLibrarySourceObservations,
+  getLibrarySourceIdentityIssues,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
   getLibrary,

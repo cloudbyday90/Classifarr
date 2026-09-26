@@ -29,4 +29,15 @@ describe('Command Center evaluation SWR wiring', () => {
     live.state.data.value = { queue: {} }
     expect(result.libraryEvaluation.value).toBeUndefined()
   })
+  it('does not report unavailable pending decisions as zero or persist them', () => {
+    swr.calls.length = 0
+    const result = useCommandCenterData({ router: { push: vi.fn() } })
+    const pending = swr.calls.find(call => call.key === 'command-center:pending-classifications')
+    expect(pending.options.persist).toBe(false)
+    expect(result.pendingDecisionCount.value).toBeNull()
+    pending.state.data.value = { items: [{ id: 1 }] }
+    expect(result.pendingDecisionCount.value).toBe(1)
+    pending.state.error.value = { message: 'denied' }
+    expect(result.pendingDecisionCount.value).toBeNull()
+  })
 })
