@@ -801,17 +801,23 @@ describe('MediaSyncService', () => {
     describe('full-sync pruning helpers', () => {
         it('scheduled discovery ignores music before inserting libraries', async () => {
             const film = { external_id: 'film-library', name: 'Music documentaries', media_type: 'movie' };
-            const getLibraries = jest.fn().mockResolvedValue([
-                { external_id: 'audio-library', name: 'Audio', media_type: 'music' }, film,
+            const getLibraryCatalog = jest.fn().mockResolvedValue([
+                { external_id: 'audio-library', name: 'Audio', media_type: null }, film,
             ]);
-            mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, type: 'plex', url: 'http://source', api_key: 'token' }] })
-                .mockResolvedValueOnce({ rows: [{ ...film, id: 2 }] });
+            const source = { id: 1, type: 'plex', url: 'http://source', api_key: 'token' };
+            mockDb.query.mockImplementation(async sql => {
+                if (sql.includes('FROM media_server')) return { rows: [source] };
+                if (sql.includes('FROM libraries')) return { rows: [] };
+                if (sql.includes('INSERT INTO libraries(')) return { rows: [{ ...film, id: 2, is_active: true }] };
+                return { rows: [] };
+            });
             const instance = new MediaSyncService({ mediaServerServices: {
-                getMediaServerService: () => ({ getLibraries }),
+                getMediaServerService: () => ({ getLibraryCatalog }),
             } });
-            expect(await instance.syncLibrariesFromMediaServer()).toEqual([{ ...film, id: 2 }]);
-            expect(mockDb.query).toHaveBeenCalledTimes(2);
-            expect(mockDb.query.mock.calls[1][1]).toEqual([1, 'film-library', 'Music documentaries', 'movie', 'radarr']);
+            expect(await instance.syncLibrariesFromMediaServer()).toEqual([{ ...film, id: 2, is_active: true }]);
+            const insert = mockDb.query.mock.calls.filter(([sql]) => sql.includes('INSERT INTO libraries('));
+            expect(insert).toHaveLength(1);
+            expect(insert[0][1]).toEqual([1, 'film-library', 'Music documentaries', 'movie', 'radarr']);
             expect(mockLogger.warn).not.toHaveBeenCalled();
         });
 

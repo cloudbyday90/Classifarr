@@ -52,17 +52,17 @@ const { createMediaServerRouter } = await import('../routes/mediaServer.mjs');
 
 const mockPlexService = {
     testConnection: jest.fn(),
-    getLibraries: jest.fn()
+    getLibraryCatalog: jest.fn()
 };
 
 const mockEmbyService = {
     testConnection: jest.fn(),
-    getLibraries: jest.fn()
+    getLibraryCatalog: jest.fn()
 };
 
 const mockJellyfinService = {
     testConnection: jest.fn(),
-    getLibraries: jest.fn()
+    getLibraryCatalog: jest.fn()
 };
 
 const mockGetMediaServerService = jest.fn((type) => {
@@ -107,11 +107,11 @@ describe('Media Server API', () => {
 
         mockGetMediaServerService.mockClear();
         mockPlexService.testConnection.mockReset();
-        mockPlexService.getLibraries.mockReset();
+        mockPlexService.getLibraryCatalog.mockReset();
         mockEmbyService.testConnection.mockReset();
-        mockEmbyService.getLibraries.mockReset();
+        mockEmbyService.getLibraryCatalog.mockReset();
         mockJellyfinService.testConnection.mockReset();
-        mockJellyfinService.getLibraries.mockReset();
+        mockJellyfinService.getLibraryCatalog.mockReset();
         mockQueueService.refillQueue.mockReset();
         mockMaskToken.mockClear();
         mockIsMaskedToken.mockClear();
@@ -240,114 +240,36 @@ describe('Media Server API', () => {
     });
 
     describe('POST /api/media-server/sync - Library Sync', () => {
-        const plexService = mockPlexService;
-
-        test('should DELETE existing libraries before inserting new ones', async () => {
-            const serverId = 1;
-            const mockLibraries = [
-                { external_id: 'lib-1', name: 'Movies', media_type: 'movie' },
-                { external_id: 'lib-2', name: 'TV Shows', media_type: 'tv' }
-            ];
-
-            plexService.getLibraries.mockResolvedValue(mockLibraries);
-
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{
-                    id: serverId,
-                    type: 'plex',
-                    url: 'http://plex:32400',
-                    api_key: 'test-key'
-                }]
-            });
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 10, external_id: 'old-1' }, { id: 11, external_id: 'old-2' }, { id: 12, external_id: 'old-3' }]
-            });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 3 });
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 1, name: 'Movies', media_type: 'movie', external_id: 'lib-1' }]
-            });
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 2, name: 'TV Shows', media_type: 'tv', external_id: 'lib-2' }]
-            });
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({});
-
-            mockClient.query.mockResolvedValue({ rows: [{ error_id: 1 }] });
-
-            const response = await request(app).post('/api/media-server/sync');
-
-            expect(response.status).toBe(200);
-            expect(response.body.success).toBe(true);
-            expect(response.body.libraries).toHaveLength(2);
-
-            const deleteCall = mockClient.query.mock.calls.find(call =>
-                call[0] && call[0].includes('DELETE FROM libraries')
-            );
-            expect(deleteCall).toBeDefined();
-            expect(deleteCall[1]).toEqual([[10, 11, 12]]);
-
-            const insertCalls = mockClient.query.mock.calls.filter(call =>
-                call[0] && call[0].includes('INSERT INTO libraries')
-            );
-            expect(insertCalls).toHaveLength(2);
-            insertCalls.forEach(call => {
-                expect(call[0]).not.toContain('ON CONFLICT');
+        const source = { id: 1, type: 'plex', url: 'http://plex:32400', api_key: 'test-key', is_active: true };
+        beforeEach(() => {
+            db.query.mockReset().mockResolvedValue({ rows: [source] });
+            mockClient.query.mockReset().mockImplementation(async (sql, params) => {
+                if (sql.includes('FROM media_server WHERE')) return { rows: [source] };
+                if (sql.includes('FROM libraries')) return { rows: [{ id: 99, external_id: 'old-key', name: 'Movies' }] };
+                if (sql.includes('INSERT INTO libraries(')) return { rows: [{ id: 100, external_id: params[1], name: params[2], is_active: true }] };
+                return { rows: [], rowCount: 1 };
             });
         });
-
-        test('should handle sync after Plex database rebuild (changed external IDs)', async () => {
-            const serverId = 1;
-            const newLibraries = [
-                { external_id: 'NEW-lib-uuid-1', name: 'Movies', media_type: 'movie' }
-            ];
-
-            plexService.getLibraries.mockResolvedValue(newLibraries);
-
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{
-                    id: serverId,
-                    type: 'plex',
-                    url: 'http://plex:32400',
-                    api_key: 'test-key'
-                }]
-            });
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 99, external_id: 'OLD-lib-uuid-1' }]
-            });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 0 });
-            mockClient.query.mockResolvedValueOnce({ rowCount: 1 });
-            mockClient.query.mockResolvedValueOnce({
-                rows: [{ id: 100, name: 'Movies', media_type: 'movie', external_id: 'NEW-lib-uuid-1' }]
-            });
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({});
-
+        test('preserves old identities after a source rebuild instead of deleting by absence', async () => {
+            mockPlexService.getLibraryCatalog.mockResolvedValue([{ external_id: 'new-key', name: 'Movies', media_type: 'movie' }]);
             const response = await request(app).post('/api/media-server/sync');
-
             expect(response.status).toBe(200);
-            expect(response.body.success).toBe(true);
-            expect(response.body.libraries[0].external_id).toBe('NEW-lib-uuid-1');
+            expect(response.body.libraries[0].external_id).toBe('new-key');
+            expect(response.body.preservedLibraries).toEqual([{ id: 99, name: 'Movies' }]);
+            expect(mockClient.query.mock.calls.some(([sql]) => /DELETE|classification_history/.test(sql))).toBe(false);
         });
-
-        test('should return 404 when no active server configured', async () => {
-            mockClient.query.mockResolvedValueOnce({});
-            mockClient.query.mockResolvedValueOnce({ rows: [] });
-            mockClient.query.mockResolvedValueOnce({});
-
+        test('valid empty catalogs preserve existing libraries without starting content sync', async () => {
+            mockPlexService.getLibraryCatalog.mockResolvedValue([]);
             const response = await request(app).post('/api/media-server/sync');
-
-            expect(response.status).toBe(404);
-            expect(response.body.error).toBe('No active media server configured');
+            expect(response.status).toBe(200);
+            expect(response.body.libraries).toEqual([]);
+            expect(response.body.preservedLibraries).toHaveLength(1);
+            expect(mockSyncLibrary).not.toHaveBeenCalled();
+        });
+        test('no configured source returns 404 without opening a write transaction', async () => {
+            db.query.mockResolvedValue({ rows: [] });
+            expect((await request(app).post('/api/media-server/sync')).status).toBe(404);
+            expect(mockClient.query).not.toHaveBeenCalled();
         });
     });
 

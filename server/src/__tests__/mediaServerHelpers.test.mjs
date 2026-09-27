@@ -6,10 +6,8 @@
  * See LICENSE file for details.
  */
 
-import { jest } from '@jest/globals';
 import {
   computeLibraryDiff,
-  markCompletedClassificationHistoryForLibraryDeletion,
 } from '../services/mediaServerLibrarySync.mjs';
 
 describe('computeLibraryDiff', () => {
@@ -32,7 +30,7 @@ describe('computeLibraryDiff', () => {
   describe('empty inputs', () => {
     test('returns all empty when both arrays are empty', () => {
       const result = computeLibraryDiff([], []);
-      expect(result).toEqual({ toInsert: [], toUpdate: [], toDelete: [], retained: [] });
+      expect(result).toEqual({ toInsert: [], toUpdate: [], unobserved: [], retained: [] });
     });
 
     test('returns all remote as toInsert when no existing rows', () => {
@@ -42,14 +40,14 @@ describe('computeLibraryDiff', () => {
       expect(result.toInsert[0]).toMatchObject({ external_id: 'ext-1', arrType: 'radarr' });
       expect(result.toInsert[1]).toMatchObject({ external_id: 'ext-2', arrType: 'sonarr' });
       expect(result.toUpdate).toHaveLength(0);
-      expect(result.toDelete).toHaveLength(0);
+      expect(result.unobserved).toHaveLength(0);
       expect(result.retained).toHaveLength(0);
     });
 
-    test('returns all existing as toDelete when remote is empty', () => {
+    test('returns all existing as unobserved when remote is empty', () => {
       const existing = [makeExisting(), makeExisting({ id: 2, external_id: 'ext-2' })];
       const result = computeLibraryDiff([], existing);
-      expect(result.toDelete).toHaveLength(2);
+      expect(result.unobserved).toHaveLength(2);
       expect(result.toInsert).toHaveLength(0);
       expect(result.toUpdate).toHaveLength(0);
       expect(result.retained).toHaveLength(0);
@@ -63,7 +61,7 @@ describe('computeLibraryDiff', () => {
       const result = computeLibraryDiff(remote, existing);
       expect(result.toInsert).toHaveLength(0);
       expect(result.toUpdate).toHaveLength(0);
-      expect(result.toDelete).toHaveLength(0);
+      expect(result.unobserved).toHaveLength(0);
       expect(result.retained).toHaveLength(1);
       expect(result.retained[0]).toMatchObject({ external_id: 'ext-1', name: 'Movies' });
     });
@@ -77,6 +75,7 @@ describe('computeLibraryDiff', () => {
       expect(result.toUpdate).toHaveLength(1);
       expect(result.toUpdate[0]).toEqual({
         id: 1,
+        external_id: 'ext-1',
         name: 'New Name',
         media_type: 'movie',
         arr_type: 'radarr',
@@ -109,26 +108,26 @@ describe('computeLibraryDiff', () => {
     });
 
     test('ignores music instead of creating a destination without an ARR type', () => {
-      const result = computeLibraryDiff([makeRemote({ media_type: 'music' })], []);
-      expect(result).toEqual({ toInsert: [], toUpdate: [], toDelete: [], retained: [] });
+      const result = computeLibraryDiff([makeRemote({ media_type: null })], []);
+      expect(result).toEqual({ toInsert: [], toUpdate: [], unobserved: [], retained: [] });
     });
 
     test('admits movies by type regardless of music-related library names', () => {
       const result = computeLibraryDiff([
         makeRemote({ name: 'Music documentaries' }),
-        makeRemote({ external_id: 'audio', media_type: 'music' }),
+        makeRemote({ external_id: 'audio', media_type: null }),
       ], []);
       expect(result.toInsert).toEqual([expect.objectContaining({ name: 'Music documentaries', arrType: 'radarr' })]);
     });
 
     test('does not mutate or delete an existing library on an unsupported type observation', () => {
-      expect(computeLibraryDiff([makeRemote({ media_type: 'music' })], [makeExisting()]))
-        .toEqual({ toInsert: [], toUpdate: [], toDelete: [], retained: [] });
+      expect(computeLibraryDiff([makeRemote({ media_type: null })], [makeExisting()]))
+        .toEqual({ toInsert: [], toUpdate: [], unobserved: [], retained: [] });
     });
   });
 
   describe('partial sync', () => {
-    test('handles mixed insert, update, retain and delete in one call', () => {
+    test('handles mixed insert, update, retain and preserve in one call', () => {
       const existing = [
         makeExisting({ id: 1, external_id: 'keep', name: 'Keep', media_type: 'movie', arr_type: 'radarr' }),
         makeExisting({ id: 2, external_id: 'update', name: 'Old', media_type: 'movie', arr_type: 'radarr' }),
@@ -147,10 +146,10 @@ describe('computeLibraryDiff', () => {
       expect(result.toInsert[0].arrType).toBe('sonarr');
 
       expect(result.toUpdate).toHaveLength(1);
-      expect(result.toUpdate[0]).toEqual({ id: 2, name: 'Updated', media_type: 'movie', arr_type: 'radarr' });
+      expect(result.toUpdate[0]).toEqual({ id: 2, external_id: 'update', name: 'Updated', media_type: 'movie', arr_type: 'radarr' });
 
-      expect(result.toDelete).toHaveLength(1);
-      expect(result.toDelete[0].external_id).toBe('gone');
+      expect(result.unobserved).toHaveLength(1);
+      expect(result.unobserved[0].external_id).toBe('gone');
 
       expect(result.retained).toHaveLength(2);
       const retainedIds = result.retained.map((r) => r.external_id);
@@ -168,38 +167,5 @@ describe('computeLibraryDiff', () => {
       expect(result.retained[0].name).toBe('New');
       expect(result.retained[0].extra_field).toBe('db-value');
     });
-  });
-});
-
-describe('markCompletedClassificationHistoryForLibraryDeletion', () => {
-  test('skips database work when no libraries are being deleted', async () => {
-    const client = { query: jest.fn() };
-
-    const result = await markCompletedClassificationHistoryForLibraryDeletion({
-      client,
-      libraryIds: [],
-    });
-
-    expect(result).toEqual({ rowCount: 0 });
-    expect(client.query).not.toHaveBeenCalled();
-  });
-
-  test('marks completed history rows failed before library deletion can null the foreign key', async () => {
-    const client = { query: jest.fn().mockResolvedValue({ rowCount: 2 }) };
-
-    const result = await markCompletedClassificationHistoryForLibraryDeletion({
-      client,
-      libraryIds: [10, 11],
-    });
-
-    expect(result).toEqual({ rowCount: 2 });
-    expect(client.query).toHaveBeenCalledWith(
-      expect.stringContaining("ch.status = 'completed'"),
-      [[10, 11]],
-    );
-    const sql = client.query.mock.calls[0][0];
-    expect(sql).toContain("status = 'failed'");
-    expect(sql).toContain('Library was deleted after this item was classified');
-    expect(sql).toContain('library_name = COALESCE(ch.library_name, l.name)');
   });
 });

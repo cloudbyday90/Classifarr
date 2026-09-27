@@ -12,6 +12,8 @@ import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
 import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs';
 import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
 import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
+import { LIBRARY_CATALOG_REQUEST, readEmbyLibraryCatalog } from './libraryCatalog.mjs';
+import { ServiceUnavailableError } from '../../../utils/appError.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -46,20 +48,20 @@ class EmbyLikeService {
   }
 
   async getLibraries(url, apiKey) {
+    return (await this.getLibraryCatalog(url, apiKey)).filter(library => library.media_type !== null);
+  }
+
+  async getLibraryCatalog(url, apiKey) {
     try {
       const response = await httpGet(`${url}/Library/VirtualFolders`, {
+        ...LIBRARY_CATALOG_REQUEST,
         headers: buildHeaders(apiKey),
       });
 
-      return response.data
-        .filter((library) => library.CollectionType === 'movies' || library.CollectionType === 'tvshows')
-        .map((library) => ({
-          external_id: library.ItemId,
-          name: library.Name,
-          media_type: library.CollectionType === 'tvshows' ? 'tv' : 'movie',
-        }));
+      return readEmbyLibraryCatalog(response.data);
     } catch (error) {
-      throw new Error(`Failed to fetch ${this.displayName} libraries: ${error.message}`);
+      if (error?.code === 'library_catalog_invalid') throw error;
+      throw new ServiceUnavailableError(`Failed to fetch ${this.displayName} libraries. Check the media server connection and access; existing libraries were preserved.`, { code: 'library_catalog_unavailable' });
     }
   }
 

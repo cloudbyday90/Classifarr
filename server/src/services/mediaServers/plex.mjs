@@ -14,6 +14,8 @@ import { sourceIdentityRecoveryEvidence } from '../sourceIdentityRecoveryEvidenc
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
 import { readPlexSourcePage, sourcePageRequest } from './shared/sourcePage.mjs';
 import { SourceEnumerationError } from '../sourceEnumerationError.mjs';
+import { LIBRARY_CATALOG_REQUEST, readPlexLibraryCatalog } from './shared/libraryCatalog.mjs';
+import { ServiceUnavailableError } from '../../utils/appError.mjs';
 
 const logger = createLogger('PlexService');
 
@@ -57,22 +59,20 @@ class PlexService {
   }
 
   async getLibraries(url, apiKey) {
+    return (await this.getLibraryCatalog(url, apiKey)).filter(library => library.media_type !== null);
+  }
+
+  async getLibraryCatalog(url, apiKey) {
     try {
       const response = await httpGet(
         `${url}/library/sections`,
-        buildRequestConfig(apiKey, { timeout: 10000 }),
+        buildRequestConfig(apiKey, LIBRARY_CATALOG_REQUEST),
       );
 
-      const sections = response.data?.MediaContainer?.Directory || [];
-      return sections
-        .filter((section) => section.type === 'movie' || section.type === 'show')
-        .map((section) => ({
-          external_id: section.key,
-          name: section.title,
-          media_type: section.type === 'show' ? 'tv' : 'movie',
-        }));
+      return readPlexLibraryCatalog(response.data);
     } catch (error) {
-      throw new Error(`Failed to fetch Plex libraries: ${error.message}`);
+      if (error?.code === 'library_catalog_invalid') throw error;
+      throw new ServiceUnavailableError('Failed to fetch Plex libraries. Check the media server connection and access; existing libraries were preserved.', { code: 'library_catalog_unavailable' });
     }
   }
 

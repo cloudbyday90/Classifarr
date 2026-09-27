@@ -189,6 +189,20 @@ describe('Libraries.vue', () => {
   })
 
   describe('Rendering', () => {
+    it('labels archives and links preserved libraries after discovery', async () => {
+      state.libraries[1].archived_at = '2026-09-27'
+      apiMock.syncMediaServer.mockResolvedValueOnce({ data: {
+        message: '1 unobserved library preserved.', preservedLibraries: [{ id: 2, name: 'TV Shows' }],
+      } })
+      const wrapper = createWrapper()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Archived')
+      const sync = wrapper.findAll('button').find(button => button.text().includes('Sync Libraries'))
+      await sync.trigger('click'); await flushPromises()
+      expect(wrapper.get('[role=status]').text()).toContain('1 unobserved library preserved')
+      expect(wrapper.get('[role=status]').text()).toContain('TV Shows — preserved; review connection or archive')
+      wrapper.unmount()
+    })
     it('renders the page heading', async () => {
       const wrapper = createWrapper()
       await flushPromises()

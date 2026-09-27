@@ -18,6 +18,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
+import { registerLibraryArchiveRoutes } from './mediaServerRouteArchive.mjs';
 
 export function createMediaServerRouter({
   express,
@@ -30,6 +31,7 @@ export function createMediaServerRouter({
   logger,
 }) {
   const router = express.Router();
+  registerLibraryArchiveRoutes(router, { db, getMediaServerServiceByType });
 
   router.get('/', asyncHandler(async (_req, res) => {
     const mediaServer = await getActiveMediaServerConfig({ db });
@@ -64,7 +66,7 @@ export function createMediaServerRouter({
   }));
 
   router.post('/sync', asyncHandler(async (_req, res) => {
-    const libraries = await syncMediaServerLibraries({
+    const result = await syncMediaServerLibraries({
       db,
       getMediaServerServiceByType,
       mediaSyncService,
@@ -72,8 +74,8 @@ export function createMediaServerRouter({
     });
 
     return sendSuccess(res, {
-      libraries,
-      message: `Found ${libraries.length} libraries. Content sync started in background.`,
+      ...result,
+      message: `Found ${result.libraries.length} libraries. ${result.preservedLibraries.length} unobserved libraries preserved. Content sync starts only for enabled libraries.`,
     });
   }));
 

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T15:43:05.751Z
--- Latest Migration: 20260927_180000_index_ingestion_reconciliation_receipts.sql
+-- Generated: 2026-09-27T22:28:00.000Z
+-- Latest Migration: 20260928_010000_add_library_archive.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3998,8 +3998,10 @@ CREATE TABLE public.libraries (
     classified_count integer DEFAULT 0,
     avg_confidence numeric(5,2) DEFAULT 0,
     last_analyzed_at timestamp with time zone,
+    archived_at timestamp with time zone,
     CONSTRAINT libraries_arr_type_check CHECK (((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text]))),
-    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])))
+    CONSTRAINT libraries_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
+    CONSTRAINT library_archive_disabled CHECK (((archived_at IS NULL) OR (is_active IS FALSE)))
 );
 
 
@@ -13629,6 +13631,13 @@ CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_typ
 
 
 --
+-- Name: library_archive_request_receipt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX library_archive_request_receipt ON public.audit_log USING btree (((metadata ->> 'requestId'::text))) WHERE ((action)::text = 'library_archive_changed'::text);
+
+
+--
 -- Name: candidate_bound_verification_capability_receipts cbv_capability_receipts_append_only; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -17132,6 +17141,7 @@ FROM unnest(ARRAY[
     '20260927_150000_add_inventory_credential_wakeup.sql',
     '20260927_160000_add_inventory_recovery_progress.sql',
     '20260927_170000_add_library_ingestion_ownership.sql',
-    '20260927_180000_index_ingestion_reconciliation_receipts.sql'
+    '20260927_180000_index_ingestion_reconciliation_receipts.sql',
+    '20260928_010000_add_library_archive.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

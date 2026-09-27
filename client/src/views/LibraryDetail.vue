@@ -60,6 +60,7 @@
             <input
               v-model="library.is_active"
               type="checkbox"
+              :disabled="!!library.archived_at"
             >
             <span>Library enabled</span>
           </label>
@@ -76,6 +77,12 @@
       </Card>
 
       <LibraryEvidenceCoverage :library-id="library.id" />
+      <p
+        v-if="library.archived_at"
+        role="status"
+      >
+        Archived — data is preserved. Restore below before enabling.
+      </p>
 
       <!-- Sync Status / Empty State -->
       <div
@@ -124,6 +131,10 @@
         v-if="showLegacyReview"
         :library-id="library.id"
         @reconciled="refreshSyncStatus"
+      />
+      <LibraryArchiveReview
+        :library-id="library.id"
+        @changed="refreshArchiveState"
       />
 
       <!-- Radarr Settings for Movie Libraries -->
@@ -483,6 +494,7 @@ import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
 import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
 import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
+import LibraryArchiveReview from '@/components/library/LibraryArchiveReview.vue'
 import { useLibraryIngestionStatus } from '@/composables/useLibraryIngestionStatus'
 import { librarySyncResultMessage } from '@/utils/libraryIngestionStatus'
 import Select from '@/components/common/Select.vue'
@@ -720,6 +732,13 @@ watch(() => library.value?.ingestion_status, status => {
   if (status?.needsReconciliation || status?.state === 'legacy_owner_unknown') showLegacyReview.value = true
 }, { immediate: true })
 const { isSyncing, unavailable: syncReadFailed, refresh: refreshSyncStatus } = useLibraryIngestionStatus(library, syncing)
+const refreshArchiveState = async () => {
+  const id = library.value.id
+  const current = await api.getLibrary(id)
+  if (library.value?.id !== id) return
+  Object.assign(library.value, { archived_at: current.archived_at, is_active: current.is_active })
+  await refreshSyncStatus()
+}
 
 const handleSync = async () => {
   syncing.value = true

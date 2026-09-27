@@ -1,9 +1,8 @@
 import { mediaSyncDatabase as db, requireOwnedMediaSyncDatabase } from './mediaSyncDatabaseScope.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
-import { canonicalMediaType } from './mediaIdentityValues.mjs';
+import { reconcileMediaServerLibraries } from './mediaServerLibrarySync.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -111,44 +110,7 @@ export async function getLibraryItems(libraryId, options = {}) {
 
 export async function syncLibrariesFromMediaServer(getMediaServerService) {
     return withServiceCatch(logger, 'Failed to sync libraries from media server', async () => {
-        const serverResult = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
-
-        if (serverResult.rows.length === 0) {
-            throw new ServiceUnavailableError('No active media server configured');
-        }
-
-        const server = serverResult.rows[0];
-        const service = await getMediaServerService(server.type);
-        const libraries = await service.getLibraries(server.url, server.api_key);
-
-        const syncedLibraries = [];
-        for (const library of libraries) {
-            const mediaType = canonicalMediaType(library?.media_type);
-            if (!mediaType) continue;
-            let arrType = null;
-            if (mediaType === 'movie') {
-                arrType = 'radarr';
-            } else if (mediaType === 'tv') {
-                arrType = 'sonarr';
-            }
-
-            const result = await db.query(
-                `INSERT INTO libraries (media_server_id, external_id, name, media_type, arr_type)
-                 VALUES ($1, $2, $3, $4, $5)
-                 ON CONFLICT (media_server_id, external_id) 
-                 DO UPDATE SET name = EXCLUDED.name, media_type = EXCLUDED.media_type, arr_type = EXCLUDED.arr_type
-                 RETURNING *`,
-                [server.id, library.external_id, library.name, mediaType, arrType],
-            );
-
-            syncedLibraries.push(result.rows[0]);
-        }
-
-        logger.info('Synced libraries from media server', {
-            mediaServer: server.type,
-            count: syncedLibraries.length,
-        });
-
-        return syncedLibraries;
+        const result = await reconcileMediaServerLibraries({ db, getMediaServerServiceByType: getMediaServerService });
+        return result.libraries.filter(library => library.is_active === true);
     });
 }

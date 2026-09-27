@@ -12,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { requireRow } from './routeHelpers.mjs';
 import { LIBRARY_INGESTION_STATUS_SQL } from '../services/libraryIngestionStatus.mjs';
 import { readSourcePreflightDiagnostic } from '../services/sourcePreflightDiagnostic.mjs';
+import { ConflictError } from '../utils/appError.mjs';
 
 export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHandler(async (req, res) => {
         const result = await db.query(`
@@ -106,11 +107,12 @@ export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHan
                quality_profile_id = COALESCE($6, quality_profile_id),
                is_active = COALESCE($7, is_active),
                updated_at = NOW()
-           WHERE id = $8
+           WHERE id = $8 AND (archived_at IS NULL OR $7::boolean IS DISTINCT FROM true)
            RETURNING *`,
             [name, priority, arr_type, arr_id, root_folder, quality_profile_id, is_active, id]
         );
 
+        if (!result.rows.length && is_active === true) throw new ConflictError('Library unavailable or archived. Restore an archived library before enabling it.');
         requireRow(result, 'Library not found');
 
         res.json(result.rows[0]);

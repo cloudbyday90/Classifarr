@@ -47,6 +47,26 @@
       </div>
     </div>
 
+    <div
+      v-if="discoveryResult"
+      role="status"
+      class="border border-gray-600 rounded-lg p-4"
+    >
+      <p>{{ discoveryResult.message }}</p>
+      <ul
+        v-if="discoveryResult.preservedLibraries?.length"
+        class="list-disc pl-5"
+      >
+        <li
+          v-for="library in discoveryResult.preservedLibraries"
+          :key="library.id"
+        >
+          <RouterLink :to="`/libraries/${library.id}`">
+            {{ library.name }} — preserved; review connection or archive
+          </RouterLink>
+        </li>
+      </ul>
+    </div>
     <!-- Progress bar during sync -->
     <div
       v-if="syncStore.isRunning"
@@ -104,7 +124,7 @@
               </p>
             </div>
             <Badge :variant="library.is_active ? 'success' : 'default'">
-              {{ library.is_active ? 'Active' : 'Inactive' }}
+              {{ library.archived_at ? 'Archived' : library.is_active ? 'Active' : 'Inactive' }}
             </Badge>
           </div>
 
@@ -134,7 +154,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
@@ -161,6 +181,7 @@ const { libraries, loading } = storeToRefs(librariesStore)
 
 const syncStore = useSyncStatusStore()
 const toast = useToast()
+const discoveryResult = ref(null)
 
 // Service lockdown for media server
 const { canUseFeature: canSyncLibraries, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['mediaServer'])
@@ -186,8 +207,10 @@ const handleSyncClick = () => {
 }
 
 const syncLibraries = async () => {
+  discoveryResult.value = null
   try {
-    await api.syncMediaServer()
+    const result = await api.syncMediaServer()
+    discoveryResult.value = result?.data ?? null
     await librariesStore.fetchLibraries()
   } catch (error) {
     if (error.response?.status === HTTP_CONFLICT) {

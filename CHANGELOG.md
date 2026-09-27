@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve local library data when discovery returns a reduced or empty catalog;
+  reject malformed catalogs before changes and share the safe merge path across
+  manual and scheduled discovery. Add reviewed, reversible library archiving with
+  administrator confirmation, import-owner checks and audit receipts. Archived
+  libraries stay disabled until explicitly restored and separately enabled.
 - Automatically adopt populated legacy libraries into controlled full backfill,
   not only empty libraries. Keep learning waiting through unfinished imports,
   preserve unknown-owner safeguards, and expose backfill/recovery status with
