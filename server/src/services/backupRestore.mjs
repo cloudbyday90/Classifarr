@@ -162,11 +162,11 @@ export async function restoreAllTables(client, backupData, mode) {
   }
 
   await restoreConfidenceSettings(client, backupData.data.confidenceSettings);
-  await restoreMediaServers(client, backupData.data.mediaServers);
+  const serverIdMap = await restoreMediaServers(client, backupData.data.mediaServers);
   await restoreRadarrConfigs(client, backupData.data.radarrConfigs);
   await restoreSonarrConfigs(client, backupData.data.sonarrConfigs);
 
-  const libraryIdMap = await restoreLibraries(client, backupData.data.libraries);
+  const libraryIdMap = await restoreLibraries(client, backupData.data.libraries, serverIdMap);
 
   const policyIdMap = await restoreLibraryPolicies(client, backupData.data.libraryPolicies, libraryIdMap);
   const nativePolicyIntentStats = await restoreNativePolicyIntentStorage(

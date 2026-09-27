@@ -60,11 +60,19 @@ const reconciliationLifecycle = {
 };
 const recordBackupRestoreVerification = jest.fn();
 
+function useSnapshotClient() {
+    db.pool.connect.mockResolvedValue({
+        query: (...args) => db.query(...args),
+        release: jest.fn(),
+    });
+}
+
 describe('BackupService evidence integration', () => {
     beforeEach(() => {
         jest.restoreAllMocks();
         db.query.mockReset();
         db.pool.connect.mockReset();
+        useSnapshotClient();
         db.withTransaction.mockClear();
         classificationEvidenceService.listLegacyPatterns.mockReset();
         classificationEvidenceService.purgeAllLegacyPatterns.mockReset();
@@ -105,12 +113,43 @@ describe('BackupService evidence integration', () => {
 
         const result = await backupService.collectBackupData({ includePatterns: true });
 
-        expect(classificationEvidenceService.listLegacyPatterns).toHaveBeenCalledWith();
+        expect(classificationEvidenceService.listLegacyPatterns).toHaveBeenCalledWith({
+            client: expect.objectContaining({ query: expect.any(Function) }),
+        });
         expect(result.data.learningPatterns).toEqual([{ id: 1 }, { id: 2 }]);
         expect(result.meta.learningPatternsCount).toBe(2);
         expect(db.query.mock.calls.map(([sql]) => sql).join('\n')).not.toMatch(
             /held_out_semantic_study_lifecycle_(reaudit_state|source_checkpoint)/,
         );
+    });
+
+    test('does not publish a backup file when snapshot collection fails', async () => {
+        const failure = new Error('snapshot unavailable');
+        db.query.mockImplementation(async sql => {
+            if (sql.includes('FROM libraries')) throw failure;
+            return { rows: [] };
+        });
+        mockFs.promises.mkdir.mockResolvedValue(undefined);
+        mockFs.promises.writeFile.mockClear();
+        await expect(backupService.createBackup({ encrypted: false })).rejects.toBe(failure);
+        expect(db.query).toHaveBeenCalledWith('ROLLBACK');
+        expect(mockFs.promises.writeFile).not.toHaveBeenCalled();
+    });
+
+    test('rolls back missing media-server references and leaves reconciliation closed', async () => {
+        const client = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
+        db.pool.connect.mockResolvedValue(client);
+        jest.spyOn(backupService, 'readBackup').mockResolvedValue({
+            version: '2.0',
+            data: { libraries: [{ id: 1, name: 'Movies', media_server_id: 77 }] },
+        });
+        await expect(backupService.restoreBackup('missing-server.json', { mode: 'merge' }))
+            .rejects.toThrow('media server missing from the backup');
+        expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
+        expect(client.query).not.toHaveBeenCalledWith('COMMIT');
+        expect(reconciliationLifecycle.failBackupRestore).toHaveBeenCalled();
+        expect(reconciliationLifecycle.verifyRestoredDatabase).not.toHaveBeenCalled();
+        expect(recordBackupRestoreVerification).not.toHaveBeenCalled();
     });
 
     test('restoreBackup resets held-out lifecycle cursors for a merge restore', async () => {
@@ -145,7 +184,7 @@ describe('BackupService evidence integration', () => {
             version: '2.0',
             data: {
                 confidenceSettings: [],
-                mediaServers: [],
+                mediaServers: [{ id: 1, type: 'plex', name: 'Test', url: 'http://test.invalid', api_key: 'synthetic', is_active: true }],
                 radarrConfigs: [],
                 sonarrConfigs: [],
                 libraries: [{ id: 99, name: 'Movies', type: 'movie', media_type: 'movie', media_server_id: 1 }],
@@ -330,6 +369,7 @@ describe('BackupService evidence integration', () => {
 describe('BackupService classification_evidence export (Phase 6A)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        useSnapshotClient();
     });
 
     test('includes classification_evidence rows in backup when includePatterns is true', async () => {
@@ -344,7 +384,9 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
 
         const result = await backupService.collectBackupData({ includePatterns: true });
 
-        expect(classificationEvidenceRepository.listAll).toHaveBeenCalledWith();
+        expect(classificationEvidenceRepository.listAll).toHaveBeenCalledWith({
+            client: expect.objectContaining({ query: expect.any(Function) }),
+        });
         expect(result.data.classificationEvidence).toEqual(ceRows);
         expect(result.meta.classificationEvidenceCount).toBe(2);
     });
@@ -448,7 +490,7 @@ describe('BackupService classification_evidence restore mapping (Phase 6A)', () 
             version: '2.0',
             data: {
                 confidenceSettings: [],
-                mediaServers: [],
+                mediaServers: [{ id: 1, type: 'plex', name: 'Test', url: 'http://test.invalid', api_key: 'synthetic', is_active: true }],
                 radarrConfigs: [],
                 sonarrConfigs: [],
                 libraries: [{ id: 99, name: 'Movies', type: 'movie', media_type: 'movie', media_server_id: 1 }],

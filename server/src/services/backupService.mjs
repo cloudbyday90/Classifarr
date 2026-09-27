@@ -21,9 +21,7 @@ import { promises as fs } from 'node:fs';
 import { ValidationError } from '../utils/appError.mjs';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
-import { metadataProviderConfigQuery } from './metadataProviderConfigStore.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
-import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
+import { collectBackupSnapshot } from './backupSnapshot.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { deriveKey as _deriveKey, encrypt as _encrypt, decrypt as _decrypt } from './backupEncryption.mjs';
@@ -37,7 +35,6 @@ import {
 
 const logger = createLogger('BackupService');
 
-const BACKUP_VERSION = '2.0';
 const BACKUP_DIR = process.env.BACKUP_DIR || '/app/data/backups';
 
 export const ENCRYPTED_BACKUP_PASSWORD_ERROR = 'Password must be a string with at least 8 characters for encrypted backups';
@@ -81,147 +78,9 @@ export class BackupService {
 
   async collectBackupData(options = {}) {
     const { includePatterns = true } = options;
-
     return withServiceCatch(logger, 'Failed to collect backup data', async () => {
       logger.info('Collecting backup data', { includePatterns });
-
-      const [
-        users,
-        mediaServers,
-        radarrConfigs,
-        sonarrConfigs,
-        libraries,
-        libraryLabels,
-        libraryPolicies,
-        policyIntents,
-        policyIntentRules,
-        policyIntentRoutingTargets,
-        policyIntentTemplateApplications,
-        policyIntentMigrationEvents,
-        policyIntentRollbackSnapshots,
-        policyIntentValidationStatus,
-        policyInitialIntentEstablishments,
-        policyObservedEvidenceProvenanceSnapshots,
-        policyNativeIntentReconciliationRuns,
-        policyNativeIntentReconciliationOutcomes,
-        policyNativeIntentReconciliationStates,
-        policyNativeIntentReconciliationHolds,
-        libraryCustomRules,
-        labelPresets,
-        scheduledTasks,
-        confidenceSettings,
-        autoLearnedPreferences,
-        settings,
-        ollamaConfig,
-        tmdbConfig,
-        omdbConfig,
-        webhookConfig,
-        pathMappings
-      ] = await Promise.all([
-        db.query('SELECT id, username, role, is_active, must_change_password, created_at FROM users ORDER BY id'),
-        db.query('SELECT id, type, name, url, api_key, is_active, created_at FROM media_server ORDER BY id'),
-        db.query('SELECT * FROM radarr_config ORDER BY id'),
-        db.query('SELECT * FROM sonarr_config ORDER BY id'),
-        db.query('SELECT * FROM libraries ORDER BY id'),
-        db.query('SELECT * FROM library_labels ORDER BY id'),
-        db.query('SELECT * FROM library_policies ORDER BY id'),
-        db.query('SELECT * FROM policy_intents ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_rules ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_routing_targets ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_template_applications ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_migration_events ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_rollback_snapshots ORDER BY id'),
-        db.query('SELECT * FROM policy_intent_validation_status ORDER BY id'),
-        db.query('SELECT * FROM policy_initial_intent_establishments ORDER BY id'),
-        db.query('SELECT * FROM policy_observed_evidence_provenance_snapshots ORDER BY id'),
-        db.query('SELECT * FROM policy_native_intent_reconciliation_runs ORDER BY id'),
-        db.query('SELECT * FROM policy_native_intent_reconciliation_outcomes ORDER BY id'),
-        db.query('SELECT * FROM policy_native_intent_reconciliation_states ORDER BY policy_id'),
-        db.query('SELECT * FROM policy_native_intent_reconciliation_holds ORDER BY policy_id'),
-        db.query('SELECT * FROM library_custom_rules ORDER BY id'),
-        db.query('SELECT * FROM label_presets ORDER BY id'),
-        db.query('SELECT * FROM scheduled_tasks ORDER BY id'),
-        db.query('SELECT * FROM confidence_settings ORDER BY setting_key'),
-        db.query('SELECT * FROM auto_learned_preferences WHERE status = $1 ORDER BY id', ['active']),
-        db.query('SELECT * FROM settings ORDER BY id'),
-        db.query('SELECT * FROM ollama_config LIMIT 1'),
-        db.query(metadataProviderConfigQuery('tmdb')),
-        db.query(metadataProviderConfigQuery('omdb')),
-        db.query('SELECT * FROM webhook_config LIMIT 1'),
-        db.query('SELECT * FROM path_mappings ORDER BY id')
-      ]);
-
-      const backup = {
-        version: BACKUP_VERSION,
-        exportedAt: new Date().toISOString(),
-        data: {
-          users: users.rows.map(u => ({ ...u, password_hash: '<excluded>' })),
-          mediaServers: mediaServers.rows,
-          radarrConfigs: radarrConfigs.rows,
-          sonarrConfigs: sonarrConfigs.rows,
-          libraries: libraries.rows,
-          libraryLabels: libraryLabels.rows,
-          libraryPolicies: libraryPolicies.rows,
-          policyIntents: policyIntents.rows,
-          policyIntentRules: policyIntentRules.rows,
-          policyIntentRoutingTargets: policyIntentRoutingTargets.rows,
-          policyIntentTemplateApplications: policyIntentTemplateApplications.rows,
-          policyIntentMigrationEvents: policyIntentMigrationEvents.rows,
-          policyIntentRollbackSnapshots: policyIntentRollbackSnapshots.rows,
-          policyIntentValidationStatus: policyIntentValidationStatus.rows,
-          policyInitialIntentEstablishments: policyInitialIntentEstablishments.rows,
-          policyObservedEvidenceProvenanceSnapshots:
-            policyObservedEvidenceProvenanceSnapshots.rows,
-          policyNativeIntentReconciliationRuns: policyNativeIntentReconciliationRuns.rows,
-          policyNativeIntentReconciliationOutcomes: policyNativeIntentReconciliationOutcomes.rows,
-          policyNativeIntentReconciliationStates: policyNativeIntentReconciliationStates.rows,
-          policyNativeIntentReconciliationHolds: policyNativeIntentReconciliationHolds.rows,
-          libraryCustomRules: libraryCustomRules.rows,
-          labelPresets: labelPresets.rows,
-          scheduledTasks: scheduledTasks.rows,
-          confidenceSettings: confidenceSettings.rows,
-          autoLearnedPreferences: autoLearnedPreferences.rows,
-          settings: settings.rows,
-          ollamaConfig: ollamaConfig.rows[0] || null,
-          tmdbConfig: tmdbConfig.rows[0] || null,
-          omdbConfig: omdbConfig.rows[0] || null,
-          webhookConfig: webhookConfig.rows[0] || null,
-          pathMappings: pathMappings.rows
-        },
-        meta: {
-          usersCount: users.rows.length,
-          mediaServersCount: mediaServers.rows.length,
-          librariesCount: libraries.rows.length,
-          customRulesCount: libraryCustomRules.rows.length,
-          policiesCount: libraryPolicies.rows.length,
-          policyIntentsCount: policyIntents.rows.length,
-          policyIntentRulesCount: policyIntentRules.rows.length,
-          policyIntentRoutingTargetsCount: policyIntentRoutingTargets.rows.length,
-          policyIntentTemplateApplicationsCount: policyIntentTemplateApplications.rows.length,
-          policyIntentMigrationEventsCount: policyIntentMigrationEvents.rows.length,
-          policyIntentRollbackSnapshotsCount: policyIntentRollbackSnapshots.rows.length,
-          policyIntentValidationStatusCount: policyIntentValidationStatus.rows.length,
-          policyInitialIntentEstablishmentsCount: policyInitialIntentEstablishments.rows.length,
-          policyObservedEvidenceProvenanceSnapshotsCount:
-            policyObservedEvidenceProvenanceSnapshots.rows.length,
-          policyNativeIntentReconciliationRunsCount: policyNativeIntentReconciliationRuns.rows.length,
-          policyNativeIntentReconciliationOutcomesCount: policyNativeIntentReconciliationOutcomes.rows.length,
-          policyNativeIntentReconciliationStatesCount: policyNativeIntentReconciliationStates.rows.length,
-          policyNativeIntentReconciliationHoldsCount: policyNativeIntentReconciliationHolds.rows.length,
-          autoLearnedCount: autoLearnedPreferences.rows.length
-        }
-      };
-
-      if (includePatterns) {
-        const learningPatterns = await classificationEvidenceService.listLegacyPatterns();
-        backup.data.learningPatterns = learningPatterns;
-        backup.meta.learningPatternsCount = learningPatterns.length;
-
-        const classificationEvidence = await classificationEvidenceRepository.listAll();
-        backup.data.classificationEvidence = classificationEvidence;
-        backup.meta.classificationEvidenceCount = classificationEvidence.length;
-      }
-
+      const backup = await collectBackupSnapshot({ includePatterns });
       logger.info('Backup data collected', backup.meta);
       return backup;
     });

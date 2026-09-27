@@ -1,6 +1,7 @@
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
@@ -22,15 +23,30 @@ export async function restoreConfidenceSettings(client, settings) {
 }
 
 export async function restoreMediaServers(client, servers) {
-  if (!servers) return;
+  const serverIdMap = new Map();
+  if (!servers) return serverIdMap;
   for (const server of servers) {
-    await client.query(
+    if (server.id != null && serverIdMap.has(server.id)) {
+      throw new ValidationError('Backup contains duplicate media server IDs');
+    }
+    const result = await client.query(
       `INSERT INTO media_server (type, name, url, api_key, is_active)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (type, url) WHERE client_identifier IS NULL DO NOTHING
+       RETURNING id`,
       [server.type, server.name, server.url, server.api_key, server.is_active]
     );
+    // Preserve existing merge semantics: an exact legacy uniqueness-key match
+    // retains destination credentials, but its ID still needs to be mapped.
+    const restored = result.rows[0] || (await client.query(
+      `SELECT id FROM media_server
+       WHERE type = $1 AND url = $2 AND client_identifier IS NULL`,
+      [server.type, server.url],
+    )).rows[0];
+    if (!restored) throw new ValidationError('Backup media server could not be mapped');
+    if (server.id != null) serverIdMap.set(server.id, restored.id);
   }
+  return serverIdMap;
 }
 
 export async function restoreRadarrConfigs(client, configs) {
@@ -69,12 +85,18 @@ export async function restoreSonarrConfigs(client, configs) {
   }
 }
 
-export async function restoreLibraries(client, libraries) {
+export async function restoreLibraries(client, libraries, serverIdMap = new Map()) {
   const libraryIdMap = new Map();
   if (!libraries) return libraryIdMap;
 
   for (const library of libraries) {
     const { id: oldId, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = library;
+    if (data.media_server_id != null) {
+      if (!serverIdMap.has(data.media_server_id)) {
+        throw new ValidationError('Backup library references a media server missing from the backup');
+      }
+      data.media_server_id = serverIdMap.get(data.media_server_id);
+    }
     const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
     const values = keys.map(key => data[key]);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');

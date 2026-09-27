@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Capture configuration backups and optional learned evidence from one bounded,
+  read-only database snapshot. Correct media-server ID mapping during restore,
+  reject missing or ambiguous server references, and add isolated movie/TV
+  recovery tests. Document configuration-backup coverage and recovery limits.
 - Verify the movie/TV recovery-to-learning handoff with isolated integration
   coverage for provider return, interrupted enrichment and profile publication,
   mixed-library identity isolation, repeated syncs, and music exclusion. Preserve

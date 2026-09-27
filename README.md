@@ -87,6 +87,8 @@ Classifarr is a full operations platform for classification, routing, review, an
 
 - Setup wizard and first-run admin account creation.
 - Backup export/import, preview, download, and cleanup flows.
+  Configuration exports use one database snapshot; see
+  [backup coverage and recovery limits](docs/architecture/backup-snapshot-consistency-design.md#coverage-and-recovery-limits).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 
