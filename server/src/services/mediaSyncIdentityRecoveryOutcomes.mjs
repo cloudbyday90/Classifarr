@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { snapshotSourceCapture } from './mediaSourceCaptureContext.mjs';
 
 export const RECOVERY_OUTCOME_REASONS = Object.freeze([
   'insufficient_evidence', 'adapter_unsupported', 'provider_unavailable',
@@ -9,6 +10,7 @@ export const RECOVERY_OUTCOME_REASONS = Object.freeze([
 
 /** Latest server-owned outcome, fenced against stale/replayed worker results. */
 export async function recordSyncIdentityRecoveryOutcome(store, context, item, { reason, attemptId = null }) {
+  context = snapshotSourceCapture(context);
   if (!RECOVERY_OUTCOME_REASONS.includes(reason) ||
       (attemptId !== null && (typeof attemptId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(attemptId)))) {
     throw new TypeError('Invalid source recovery outcome');
@@ -31,6 +33,7 @@ export async function recordSyncIdentityRecoveryOutcome(store, context, item, { 
 
 /** Diagnostics never turn an otherwise safe sync into a failure. */
 export function createSyncIdentityOutcomeRecorder(store, context, logger) {
+  context = snapshotSourceCapture(context);
   return async (item, outcome) => {
     try { return await recordSyncIdentityRecoveryOutcome(store, context, item, outcome); }
     catch {

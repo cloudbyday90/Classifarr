@@ -60,6 +60,9 @@ The implementation adds no provider calls, paid AI usage or new background servi
 
 ## Recommendation and next acceptance target
 
+Follow-up delivered in [owned capture lifecycle](owned-capture-lifecycle-outcome.md).
+The target below records the handoff from this earlier change.
+
 Keep the live library-bound guard: it is a small, dependency-free improvement that
 preserves the current import lifecycle. Its limitation is cooperative in-process
 enforcement, not database fencing; source completeness remains a separate concern.

@@ -24,7 +24,7 @@ export class MediaSyncService {
       getMediaServerService: defaultGetMediaServerService,
     };
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateService;
-    this.sourceObservations = deps.sourceObservations || new MediaSourceObservationStore(db);
+    this.sourceObservations = deps.sourceObservations || new MediaSourceObservationStore();
     this.createIdentityRecovery = deps.createIdentityRecovery || createMediaSyncIdentityRecovery;
     this.persistIdentityRecovery = deps.persistIdentityRecovery || persistRecoveredSyncItem;
     this.skipReporter = deps.skipReporter || createMediaSyncSkipReporter({ query: db.query, logger });

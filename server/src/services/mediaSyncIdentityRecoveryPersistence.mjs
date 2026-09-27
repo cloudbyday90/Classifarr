@@ -2,8 +2,10 @@
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { prepareSyncedMediaItem, persistPreparedSyncItem } from './mediaSyncItemPersistence.mjs';
 import { randomUUID } from 'node:crypto';
+import { snapshotSourceCapture } from './mediaSourceCaptureContext.mjs';
 
 export async function readSyncIdentityRecoveryReceipt(store, context, item) {
+  context = snapshotSourceCapture(context);
   let receipt = null;
   await store.withCurrentCapture(context, async client => {
     const { rows } = await client.query(`SELECT metadata->'source_identity_recovery' AS receipt
@@ -17,6 +19,7 @@ export async function readSyncIdentityRecoveryReceipt(store, context, item) {
 
 /** A planning hint only; the later atomic claim must recheck every boundary. */
 export async function readSyncIdentityRecoveryPriority(store, context, item) {
+  context = snapshotSourceCapture(context);
   let priority = null;
   await store.withCurrentCapture(context, async client => {
     const { rows } = await client.query(`SELECT recovery_attempted_at FROM media_source_observations
@@ -33,6 +36,7 @@ export async function readSyncIdentityRecoveryPriority(store, context, item) {
 
 /** Durable retry budget, reset by changed evidence; no provider IO under locks. */
 export async function claimSyncIdentityRecovery(store, context, item, attemptId = randomUUID()) {
+  context = snapshotSourceCapture(context);
   let claimed = false;
   await store.withCurrentCapture(context, async client => {
     const result = await client.query(`UPDATE media_source_observations
@@ -51,6 +55,7 @@ export async function claimSyncIdentityRecovery(store, context, item, attemptId 
 export async function persistRecoveredSyncItem(store, context, recovery, {
   analyze = (...args) => contentTypeAnalyzer.analyze(...args),
 } = {}) {
+  context = snapshotSourceCapture(context);
   const { libraryId, mediaServerId, generation } = context;
   const prepared = await prepareSyncedMediaItem(mediaServerId, recovery.item, analyze);
   if (!prepared) return false;

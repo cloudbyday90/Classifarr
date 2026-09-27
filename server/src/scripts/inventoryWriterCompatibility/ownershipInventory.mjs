@@ -12,6 +12,8 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/mediaSyncOwnership.mjs',
     'server/src/services/mediaSyncOwnershipRepository.mjs',
     'server/src/services/mediaSyncDatabaseScope.mjs',
+    'server/src/services/mediaSourceCaptureContext.mjs',
+    'server/src/services/mediaSyncIdentityRecoveryOutcomes.mjs',
     'server/src/services/mediaSyncLockKeys.mjs',
     'server/src/services/mediaSyncItemPersistence.mjs',
     'server/src/services/mediaSyncUpsert.mjs',

@@ -2,8 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { jest } from '@jest/globals';
 import { getPool } from './setup.mjs';
-import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
-import { finishTransactionalCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
+import { createTransactionalCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
 import { readSourceObservationSummary } from '../../services/mediaSourceObservationSummary.mjs';
 import { SOURCE_OBSERVATION_LIMITS } from '../../services/mediaSourceObservationContract.mjs';
 import { MediaSyncLibraryStateService } from '../../services/mediaSyncLibraryStateService.mjs';
@@ -16,11 +15,7 @@ const conflict = (external_id = 'fixture', patch = {}) => ({ external_id, title:
   provider_identity_field: 'tmdb_id', ...patch });
 beforeEach(async () => {
   client = await getPool().connect(); await client.query('BEGIN');
-  store = new MediaSourceObservationStore({ withTransaction: async fn => {
-    await client.query('SAVEPOINT capture');
-    try { const result = await fn(client); await client.query('RELEASE SAVEPOINT capture'); return result; }
-    catch (error) { await client.query('ROLLBACK TO SAVEPOINT capture'); throw error; }
-  } });
+  store = createTransactionalCaptureFixture(client);
   serverId = (await client.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('plex',$1,'http://fixture.invalid','fixture') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = await addLibrary();
 });
@@ -30,7 +25,7 @@ async function addLibrary() {
     [randomUUID(), randomUUID(), serverId])).rows[0].id;
 }
 const start = options => store.start(serverId, libraryId, options);
-const finish = (context, options) => finishTransactionalCaptureFixture(client, store, context, options);
+const finish = (context, options) => store.finish(context, options);
 const rows = async () => (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows;
 const summary = async () => (await readSourceObservationSummary(client)).libraries.find(l => l.id === libraryId);
 
@@ -166,4 +161,16 @@ test('bounds retention and previews, records omissions and still refreshes retai
 test('rejects mismatched library ownership and preserves source data on provider failure', async () => {
   await expect(store.start(serverId + 1, libraryId)).rejects.toThrow('Source capture library is unavailable');
   expect(await rows()).toHaveLength(0);
+});
+
+test('failure updating page counts rolls back the preceding observation insert', async () => {
+  const context = await start();
+  // A synthetic integer overflow occurs after the page insert, without a production trigger.
+  await client.query('UPDATE media_source_capture_state SET observed_count=2147483647 WHERE library_id=$1', [libraryId]);
+  await expect(store.capture(context, [conflict('rolled-back')])).rejects.toMatchObject({ code: '22003' });
+  expect(await rows()).toEqual([]);
+  expect((await client.query('SELECT observed_count FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].observed_count).toBe(2147483647);
+  await client.query('UPDATE media_source_capture_state SET observed_count=0 WHERE library_id=$1', [libraryId]);
+  expect(await store.capture(context, [conflict('retry')])).toBe(true);
+  expect((await rows()).map(row => row.external_id)).toEqual(['retry']);
 });

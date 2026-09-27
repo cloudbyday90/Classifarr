@@ -20,7 +20,8 @@ beforeEach(async () => {
   serverId = (await db.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('plex',$1,'http://synthetic.invalid','synthetic') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = (await db.query("INSERT INTO libraries(name,external_id,media_type,media_server_id,is_active) VALUES ($1,$1,'movie',$2,false) RETURNING id", [randomUUID(), serverId])).rows[0].id;
   syncId = (await db.query("INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status,items_processed) VALUES ($1,$2,'full','running',7) RETURNING id", [serverId, libraryId])).rows[0].id;
-  await new MediaSourceObservationStore(db).start(serverId, libraryId, { source: 'local_capture' });
+  await createMediaSyncOwnership(db)(libraryId,
+    () => new MediaSourceObservationStore().start(serverId, libraryId, { source: 'local_capture' }));
   await db.query("INSERT INTO media_server_items(media_server_id,library_id,external_id,title,media_type,tmdb_id) VALUES ($1,$2,'old','Synthetic','movie',77)", [serverId, libraryId]);
 });
 afterEach(async () => {
@@ -72,7 +73,8 @@ test.each(['progress', 'new_marker', 'capture', 'source', 'enabled'])('changed %
   const preview = await read();
   if (change === 'progress') await db.query('UPDATE media_server_sync_status SET items_processed=8 WHERE id=$1', [syncId]);
   if (change === 'new_marker') await db.query("INSERT INTO media_server_sync_status(library_id,sync_type,status) VALUES ($1,'full','pending')", [libraryId]);
-  if (change === 'capture') await new MediaSourceObservationStore(db).start(serverId, libraryId, { source: 'local_capture' });
+  if (change === 'capture') await createMediaSyncOwnership(db)(libraryId,
+    () => new MediaSourceObservationStore().start(serverId, libraryId, { source: 'local_capture' }));
   if (change === 'source') await db.query("UPDATE media_server SET api_key='changed synthetic' WHERE id=$1", [serverId]);
   if (change === 'enabled') await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [libraryId]);
   await expect(confirm(preview)).rejects.toMatchObject({ status: 412 });

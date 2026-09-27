@@ -5,21 +5,12 @@ import { jest } from '@jest/globals';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { getPool } from './setup.mjs';
-import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
-import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
+import { createOwnedCaptureFixture as observationStore } from '../helpers/ownedCaptureFixture.mjs';
 import { createMediaSyncRecoveryWorkflow } from '../../services/mediaSyncRecoveryWorkflow.mjs';
 import { createMediaSyncIdentityRecovery } from '../../services/mediaSyncIdentityRecovery.mjs';
 import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryPriority } from '../../services/mediaSyncIdentityRecoveryPersistence.mjs';
 import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 
-function observationStore(pool) {
-  return new MediaSourceObservationStore({ withTransaction: async fn => {
-    const client = await pool.connect();
-    try { await client.query('BEGIN'); const result = await fn(client); await client.query('COMMIT'); return result; }
-    catch (error) { await client.query('ROLLBACK'); throw error; }
-    finally { client.release(); }
-  } });
-}
 function fixture(index, mediaType = 'movie') {
   const item = { external_id: String(index).padStart(4, '0'), title: 'Fixture', year: 2001, media_type: mediaType,
     provider_identity_invalid: true, provider_identity_issue: 'conflicting_provider_ids' };
@@ -71,7 +62,7 @@ test.each(['movie', 'tv'])('real PostgreSQL claims cover all 100 %s items across
       expect(provider).toHaveBeenCalledTimes(8);
       expect(persistRecovery).not.toHaveBeenCalled();
       requests += provider.mock.calls.length;
-      await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
+      await store.finish(context);
       const attempted = (await pool.query('SELECT count(*)::int n FROM media_source_observations WHERE library_id=$1 AND recovery_attempted_at IS NOT NULL', [libraryId])).rows[0].n;
       expect(attempted).toBe(Math.min(100, (cycle + 1) * 8));
     }
@@ -121,7 +112,7 @@ test.each(['movie', 'tv'])('streamed %s repair commits only fresh proof and reus
       for (const item of items) { await store.capture(context, [item]); completed += await plan.process(item); }
       completed += await plan.flush();
       expect(completed).toBe(2);
-      await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
+      await store.finish(context);
       // The second scan reads a receipt and cooldown; it makes no new TMDb calls.
       expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(2);
       const row = (await pool.query('SELECT external_id,tmdb_id,metadata FROM media_server_items WHERE library_id=$1', [libraryId])).rows;

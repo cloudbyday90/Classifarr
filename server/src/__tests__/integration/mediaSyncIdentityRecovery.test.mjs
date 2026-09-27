@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
+import { createOwnedCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
 import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryReceipt } from '../../services/mediaSyncIdentityRecoveryPersistence.mjs';
 import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 import { createMediaSyncSkipReporter } from '../../services/mediaSyncSkipReporter.mjs';
@@ -14,12 +15,7 @@ let pool, store, serverId, libraryId, item, recovery;
 const analyze = async () => ({ analyzed: false });
 beforeEach(async () => {
   pool = getPool();
-  store = new MediaSourceObservationStore({ withTransaction: async fn => {
-    const client = await pool.connect();
-    try { await client.query('BEGIN'); const result = await fn(client); await client.query('COMMIT'); return result; }
-    catch (error) { await client.query('ROLLBACK'); throw error; }
-    finally { client.release(); }
-  } });
+  store = createOwnedCaptureFixture(pool);
   serverId = (await pool.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('plex',$1,'http://fixture.invalid','fixture') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = (await pool.query("INSERT INTO libraries(name,external_id,media_type,media_server_id,is_active) VALUES ($1,$2,'movie',$3,true) RETURNING id", [randomUUID(), randomUUID(), serverId])).rows[0].id;
   item = { external_id: 'fixture', title: 'Fixture', year: 2001, media_type: 'movie',
@@ -52,7 +48,7 @@ test('commits repaired inventory, server receipt, observation removal and backfi
   const receipt = await readSyncIdentityRecoveryReceipt(store, context, item);
   expect(receipt).toMatchObject(recovery.receipt);
   expect(Number.isFinite(Date.parse(receipt.persisted_at))).toBe(true);
-  await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
+  await store.finish(context);
   expect(await countConflicts()).toBe(0);
 });
 
@@ -91,7 +87,7 @@ test('retry cooldown survives another capture, expires, and resets immediately o
   let context = await capture();
   expect(await claimSyncIdentityRecovery(store, context, item)).toBe(true);
   expect(await claimSyncIdentityRecovery(store, context, item)).toBe(false);
-  await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context)); context = await capture();
+  await store.finish(context); context = await capture();
   expect(await claimSyncIdentityRecovery(store, context, item)).toBe(false);
   await pool.query("UPDATE media_source_observations SET recovery_retry_after=NOW()-INTERVAL '1 second' WHERE library_id=$1", [libraryId]);
   expect(await claimSyncIdentityRecovery(store, context, item)).toBe(true);
@@ -103,7 +99,15 @@ test('retry cooldown survives another capture, expires, and resets immediately o
 
 test('concurrent recovery claims admit one attempt and changed library ownership blocks persistence', async () => {
   const context = await capture();
-  expect((await Promise.all([claimSyncIdentityRecovery(store, context, item), claimSyncIdentityRecovery(store, context, item)])).filter(Boolean)).toHaveLength(1);
+  const own = createMediaSyncOwnership({ pool });
+  const rawStore = new MediaSourceObservationStore();
+  await own(libraryId, async () => {
+    expect(await claimSyncIdentityRecovery(rawStore, context, item)).toBe(true);
+    const otherClaim = jest.fn(() => claimSyncIdentityRecovery(rawStore, context, item));
+    expect(await own(libraryId, otherClaim)).toMatchObject({ deferred: true, reason: 'ingestion_owned' });
+    expect(otherClaim).not.toHaveBeenCalled();
+    expect(await claimSyncIdentityRecovery(rawStore, context, item)).toBe(false);
+  });
   await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
   expect(await persistRecoveredSyncItem(store, context, recovery, { analyze })).toBe(false);
   expect(await countConflicts()).toBe(1);
@@ -117,7 +121,7 @@ test('latest outcome survives restart/recapture, rejects replay, and resets on c
   let row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
   expect(row.recovery_outcome).toBe('provider_unavailable');
   expect(row.recovery_completed_at.getTime()).toBeGreaterThanOrEqual(row.recovery_attempted_at.getTime());
-  await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context)); context = await capture();
+  await store.finish(context); context = await capture();
   row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
   expect(row.recovery_outcome).toBe('provider_unavailable');
   expect(await claimSyncIdentityRecovery(store, context, item)).toBe(false);

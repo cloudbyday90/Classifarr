@@ -35,11 +35,14 @@ afterEach(async () => {
   await db.query('DELETE FROM media_server WHERE id=$1', [serverId]);
 });
 
-test('unowned and wrong-library helpers cannot prune inventory or finalize a capture', async () => {
+test('unowned and wrong-library helpers cannot change the capture lifecycle or prune inventory', async () => {
   await sync(async () => [item(11)]).syncLibrary(libraryId);
   const store = new MediaSourceObservationStore(db);
-  const capture = await store.start(serverId, libraryId);
+  const capture = await createMediaSyncOwnership(db)(libraryId, () => store.start(serverId, libraryId));
+  const callback = jest.fn();
   for (const mutation of [() => pruneMissingMediaItems(libraryId, []),
+    () => store.start(serverId, libraryId, { source: 'local_capture' }),
+    () => store.capture(capture, [item(99)]), () => store.withCurrentCapture(capture, callback),
     () => pruneMissingCollections(libraryId, []), () => store.finish(capture),
     () => store.finish(capture, { failed: true })]) {
     await expect(mutation()).rejects.toThrow('ingestion_ownership_required');
@@ -47,6 +50,7 @@ test('unowned and wrong-library helpers cannot prune inventory or finalize a cap
       await expect(mutation()).rejects.toThrow('ingestion_library_scope_mismatch');
     });
   }
+  expect(callback).not.toHaveBeenCalled();
   expect(await inventory()).toEqual(['11']);
   expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
 });
@@ -61,8 +65,14 @@ test('controlled local capture keeps shared exclusion and can finish without cla
     const competing = jest.fn();
     expect(await own(libraryId, competing)).toMatchObject({ deferred: true, reason: 'ingestion_owned' });
     expect(competing).not.toHaveBeenCalled();
+    expect(await store.capture(older, [item(99)])).toBe(false);
+    const staleCallback = jest.fn();
+    expect(await store.withCurrentCapture(older, staleCallback)).toBe(false);
+    expect(staleCallback).not.toHaveBeenCalled();
+    expect(await store.capture(current, [item(11)])).toBe(true);
     expect(await store.finish(older)).toBe(false);
     expect(await store.finish(current)).toBe(true);
+    expect(await store.capture(current, [item(99)])).toBe(false);
   });
   expect((await db.query('SELECT phase,source FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0])
     .toEqual({ phase: 'complete', source: 'local_capture' });

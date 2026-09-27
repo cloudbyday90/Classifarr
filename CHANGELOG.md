@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend live ingestion ownership to capture creation, page writes and identity
+  recovery callbacks. Keep the complete capture lifecycle on its owning database
+  connection, prevent pending work from being retargeted, and preserve controlled
+  maintenance, rollback, restart recovery and fresh-setup deferral.
 - Require live, library-bound ingestion ownership before pruning inventory or
   completing source captures. Keep destructive helpers on the owning database
   connection, reject unowned and wrong-library calls, and preserve coordinated

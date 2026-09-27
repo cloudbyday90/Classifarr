@@ -3,14 +3,14 @@ import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { sourceObservationPage, SOURCE_OBSERVATION_LIMITS } from './mediaSourceObservationContract.mjs';
 import { START_SOURCE_CAPTURE, CAPTURE_SOURCE_OBSERVATIONS } from './mediaSourceObservationQueries.mjs';
 import { requireOwnedMediaSyncDatabase } from './mediaSyncDatabaseScope.mjs';
+import { snapshotSourceCapture } from './mediaSourceCaptureContext.mjs';
 
 export class MediaSourceObservationStore {
-  constructor(db) { this.db = db; }
-
   async start(mediaServerId, libraryId, { incremental = false, source = 'media_sync' } = {}) {
     if (!positiveDatabaseInteger(mediaServerId) || !positiveDatabaseInteger(libraryId) ||
       !['media_sync', 'local_capture'].includes(source)) throw new Error('Invalid source capture context');
-    return this.db.withTransaction(async client => {
+    const ownedDb = requireOwnedMediaSyncDatabase(libraryId);
+    return ownedDb.withTransaction(async client => {
       // A changed library owner invalidates observations from its previous server.
       await client.query(`DELETE FROM media_source_capture_state WHERE library_id=$1 AND media_server_id<>$2
         AND EXISTS (SELECT 1 FROM libraries WHERE id=$1 AND media_server_id=$2)`, [libraryId, mediaServerId]);
@@ -18,12 +18,14 @@ export class MediaSourceObservationStore {
       if (!result.rows.length) throw new Error('Source capture library is unavailable');
       await client.query(`DELETE FROM media_source_observations WHERE library_id=$1
         AND last_seen_at < clock_timestamp()-$2::integer*INTERVAL '1 day'`, [libraryId, SOURCE_OBSERVATION_LIMITS.retentionDays]);
-      return { libraryId, mediaServerId, generation: result.rows[0].generation };
+      return snapshotSourceCapture({ libraryId, mediaServerId, generation: result.rows[0].generation });
     });
   }
 
   async withCurrentCapture(context, fn) {
-    return this.#withCurrentCapture(this.db, context, fn);
+    const capture = snapshotSourceCapture(context);
+    const ownedDb = requireOwnedMediaSyncDatabase(capture.libraryId);
+    return this.#withCurrentCapture(ownedDb, capture, fn);
   }
 
   async #withCurrentCapture(db, context, fn) {
@@ -39,9 +41,11 @@ export class MediaSourceObservationStore {
   }
 
   async capture(context, items) {
-    const { libraryId, mediaServerId, generation } = context;
+    const capture = snapshotSourceCapture(context);
+    const { libraryId, mediaServerId, generation } = capture;
+    const ownedDb = requireOwnedMediaSyncDatabase(libraryId);
     const page = sourceObservationPage(mediaServerId, libraryId, items);
-    return this.withCurrentCapture(context, async client => {
+    return this.#withCurrentCapture(ownedDb, capture, async client => {
       await client.query(`DELETE FROM media_source_observations
         WHERE library_id=$1 AND media_server_id=$2 AND external_id=ANY($3::text[]) AND generation<>$4`,
       [libraryId, mediaServerId, page.resolved, generation]);
@@ -55,7 +59,7 @@ export class MediaSourceObservationStore {
 
   async finish(context, { failed = false } = {}) {
     // Snapshot keys before any await so a caller cannot retarget a pending completion.
-    const capture = { libraryId: context?.libraryId, mediaServerId: context?.mediaServerId, generation: context?.generation };
+    const capture = snapshotSourceCapture(context);
     const ownedDb = requireOwnedMediaSyncDatabase(capture.libraryId);
     return this.#withCurrentCapture(ownedDb, capture, async (client, state) => {
       if (!failed && state.mode === 'full' && state.uncapturable_count === 0) await client.query(`DELETE FROM media_source_observations

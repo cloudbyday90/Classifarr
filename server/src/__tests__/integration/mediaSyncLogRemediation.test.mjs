@@ -4,8 +4,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { getPool, createIntegrationTestApp } from './setup.mjs';
-import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
-import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
+import { createOwnedCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
 import { createMediaSyncLogRemediation } from '../../services/mediaSyncLogRemediation.mjs';
 import { createPlexLogItemLinks } from '../../services/plexLogItemLinks.mjs';
 import { createLogsRouter } from '../../routes/logsRouteShared.mjs';
@@ -16,12 +15,7 @@ beforeEach(async () => {
   pool = getPool();
   serverId = (await pool.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('plex',$1,'http://fixture.invalid','private-token') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = (await pool.query("INSERT INTO libraries(name,external_id,media_type,media_server_id,is_active) VALUES ('Fixture library',$1,'movie',$2,true) RETURNING id", [randomUUID(), serverId])).rows[0].id;
-  const store = new MediaSourceObservationStore({ withTransaction: async fn => {
-    const client = await pool.connect();
-    try { await client.query('BEGIN'); const result = await fn(client); await client.query('COMMIT'); return result; }
-    catch (error) { await client.query('ROLLBACK'); throw error; }
-    finally { client.release(); }
-  } });
+  const store = createOwnedCaptureFixture(pool);
   const context = await store.start(serverId, libraryId);
   await store.capture(context, [
     { external_id: '123', title: 'Fixture movie', year: 2006, media_type: 'movie', provider_identity_invalid: true,
@@ -29,7 +23,7 @@ beforeEach(async () => {
     { external_id: '456', title: 'Fixture show', year: 2010, media_type: 'tv', provider_identity_invalid: true,
       provider_identity_issue: 'conflicting_provider_ids', provider_identity_field: 'tvdb_id' },
   ]);
-  await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
+  await store.finish(context);
   errorId = (await pool.query(`INSERT INTO error_log(level,module,message,metadata)
     VALUES ('WARN','mediaSync','Library sync skipped source items',$1::jsonb) RETURNING error_id`,
   [JSON.stringify({ libraryId, identityIssueCounts: { conflicting_provider_ids: 2 }, reference: { url: 'old-forum' } })])).rows[0].error_id;
