@@ -87,6 +87,8 @@ class PlexService {
       const response = await httpGet(
         `${url}/library/sections/${libraryKey}/all`,
         buildRequestConfig(apiKey, {
+          signal: options.signal,
+          ...(options.preflight ? { timeout: 5000, maxResponseBytes: 1048576 } : {}),
           headers: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
           params: {
             'X-Plex-Container-Start': offset,
@@ -136,7 +138,7 @@ class PlexService {
         };
       }) };
     } catch (error) {
-      if (error instanceof SourceEnumerationError) throw error;
+      if (options.preflight || error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch Plex library items: ${error.message}`);
     }
   }
@@ -178,6 +180,8 @@ class PlexService {
       const response = await httpGet(
         `${url}/library/sections/${libraryKey}/collections`,
         buildRequestConfig(apiKey, {
+          signal: options.signal,
+          ...(options.preflight ? { timeout: 5000, maxResponseBytes: 1048576 } : {}),
           headers: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
           params: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
         }),
@@ -190,7 +194,7 @@ class PlexService {
         item_count: item.childCount || 0,
       })) };
     } catch (error) {
-      if (error instanceof SourceEnumerationError) throw error;
+      if (options.preflight || error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch Plex collections: ${error.message}`);
     }
   }

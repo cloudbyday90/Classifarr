@@ -7,12 +7,28 @@ import { ingestionPollInterval, libraryIngestionState, librarySyncResultMessage 
 const library = state => ({ ingestion_status: { state, items: 25, total: 100, pages: 2, retryAt: '2026-09-27T18:00:00Z' } })
 describe('Library ingestion status', () => {
   it('never labels a deferred request as completed', () => {
-    for (const reason of ['ingestion_owned', 'ingestion_capacity', 'retry_wait', 'legacy_owner_unknown', 'source_disabled', 'source_unconfigured', 'future']) {
+    for (const reason of ['ingestion_owned', 'ingestion_capacity', 'retry_wait', 'legacy_owner_unknown', 'source_disabled', 'source_unconfigured', 'source_preflight_unavailable', 'future']) {
       expect(librarySyncResultMessage({ deferred: true, reason })).not.toContain('complete')
     }
     expect(librarySyncResultMessage({ success: true })).toBe('Library sync complete')
     expect(librarySyncResultMessage({ success: true, skipped: true })).toContain('not imported')
     expect(librarySyncResultMessage(null)).toContain('unavailable')
+  })
+  it.each(['media', 'collections'])('shows the last %s preflight cause and action, suppressing stale details', async phase => {
+    const value = { ...library('retry_wait'), ingestion_status: { ...library('retry_wait').ingestion_status,
+      preflight: { phase, message: 'The source did not report a total.', nextStep: 'Check server pagination. Automatic retry is scheduled.' } } }
+    const wrapper = mount(LibraryIngestionStatus, { props: { library: value } })
+    expect(wrapper.get('[role="status"]').text()).toContain('import check needs attention')
+    expect(wrapper.get('[role="status"]').text()).toContain('Check server pagination')
+    expect(wrapper.text()).toContain('Check server pagination')
+    expect(wrapper.find('progress').exists()).toBe(false)
+    await wrapper.setProps({ unavailable: true })
+    expect(wrapper.text()).not.toContain('Check server pagination')
+    await wrapper.setProps({ unavailable: false, library: { ingestion_status: { state: 'active', preflight: value.ingestion_status.preflight } } })
+    expect(wrapper.text()).not.toContain('Check server pagination')
+    await wrapper.setProps({ library: { ingestion_status: { state: 'retry_wait', preflight: { phase: 'unknown' } } } })
+    expect(wrapper.text()).toContain('Import retry scheduled')
+    wrapper.unmount()
   })
   it.each([
     ['active', 'Importing library', 2000], ['interrupted', 'Import interrupted', 10000],

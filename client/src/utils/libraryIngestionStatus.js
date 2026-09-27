@@ -20,6 +20,7 @@ export function librarySyncResultMessage(result) {
     legacy_owner_unknown: 'Verify the older or external import owner before retrying.',
     source_disabled: 'Enable the library and media server before importing.',
     source_unconfigured: 'Configure the media server connection before importing.',
+    source_preflight_unavailable: 'Import checks need attention. Open the library for the cause and next step; a retry is scheduled.',
   }
   if (result?.deferred) return deferred[result.reason] ?? 'Import deferred. Check the library status.'
   if (result?.skipped) return 'This content type is not imported.'

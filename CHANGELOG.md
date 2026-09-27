@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Check bounded media and collection pagination samples before starting imports.
+  Preserve inventory on failed checks, retry through existing recovery, and show
+  safe causes and next steps in library status. Reuse validated samples without
+  bypassing full-scan completion checks or starting unnecessary background services.
 - Require validated, complete provider enumeration before pruning media or
   collections and declaring ingestion ready for learning. Preserve records on
   malformed, repeated, truncated or inconsistent pages; follow actual page sizes,

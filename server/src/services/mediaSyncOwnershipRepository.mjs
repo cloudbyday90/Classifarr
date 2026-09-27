@@ -50,9 +50,9 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
         return { replay };
       });
     },
-    async attach(syncId, capture) {
+    async attach(syncId, capture = null) {
       await updateOwned(`UPDATE library_ingestion_state SET sync_status_id=$3,capture_generation=$4,updated_at=clock_timestamp()
-        WHERE library_id=$1 AND run_id=$2`, [syncId, capture.generation]);
+        WHERE library_id=$1 AND run_id=$2`, [syncId, capture?.generation ?? null]);
     },
     async checkpoint(items, total = null) {
       await updateOwned(`UPDATE library_ingestion_state SET pages_processed=pages_processed+1,items_processed=$3,items_total=$4,updated_at=clock_timestamp()

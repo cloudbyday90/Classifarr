@@ -171,6 +171,31 @@ describe('Libraries API Integration Tests', () => {
     // GET /api/libraries/:id
     // ============================================================
     describe('GET /api/libraries/:id', () => {
+        test('sanitizes only the owned failed attempt and hides it after completion', async () => {
+            const attempt = (await db.query(`INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status,error_message)
+                VALUES ($1,$2,'full','failed','Source preflight unavailable (collections:access_denied). secret-token') RETURNING id`,
+            [testMediaServerId, testLibraryId])).rows[0].id;
+            // A newer unrelated failure must neither replace the owner diagnostic nor expose raw data.
+            const other = (await db.query(`INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status,error_message)
+                VALUES ($1,$2,'full','failed','secret-token: unrelated failure') RETURNING id`,
+            [testMediaServerId, testLibraryId])).rows[0].id;
+            await db.query(`INSERT INTO library_ingestion_state(library_id,run_id,phase,sync_status_id)
+                VALUES ($1,'00000000-0000-4000-8000-000000000001','retry_wait',$2)`, [testLibraryId, attempt]);
+            try {
+                const read = () => request(app).get(`/api/libraries/${testLibraryId}`).set('Authorization', `Bearer ${testToken}`).expect(200);
+                const response = await read();
+                expect(response.body.ingestion_status.preflight).toMatchObject({ phase: 'collections', reason: 'access_denied' });
+                expect(response.body).not.toHaveProperty('source_preflight_error');
+                expect(JSON.stringify(response.body)).not.toContain('secret-token');
+                await db.query("UPDATE media_server_sync_status SET error_message='arbitrary secret-token' WHERE id=$1", [attempt]);
+                expect((await read()).body.ingestion_status.preflight).toBeNull();
+                await db.query("UPDATE library_ingestion_state SET phase='complete' WHERE library_id=$1", [testLibraryId]);
+                expect((await read()).body.ingestion_status.preflight).toBeNull();
+            } finally {
+                await db.query('DELETE FROM library_ingestion_state WHERE library_id=$1', [testLibraryId]);
+                await db.query('DELETE FROM media_server_sync_status WHERE id IN ($1,$2)', [attempt, other]);
+            }
+        });
         test('should return library by ID with item count', async () => {
             const response = await request(app)
                 .get(`/api/libraries/${testLibraryId}`)

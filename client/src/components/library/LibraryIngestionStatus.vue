@@ -9,10 +9,10 @@
       <h3 class="font-semibold">
         {{ title }}
       </h3>
+      <p class="text-sm text-gray-300 mt-1">
+        {{ nextStep }}
+      </p>
     </div>
-    <p class="text-sm text-gray-300 mt-1">
-      {{ nextStep }}
-    </p>
     <template v-if="!unavailable && ['active', 'interrupted', 'retry_wait'].includes(state)">
       <p class="mt-3 text-sm">
         {{ count(library.ingestion_status?.items) }} items processed · {{ count(library.ingestion_status?.pages) }} pages
@@ -54,8 +54,16 @@ const copy = {
   disabled: ['Import paused', 'The library or media server is disabled. Enable it when you want imports to resume.'],
   unconfigured: ['Import waiting for setup', 'Configure the media server connection before imports can resume.'],
 }
-const title = computed(() => props.unavailable ? 'Import status unavailable' : (copy[state.value]?.[0] ?? 'Import status unknown'))
-const nextStep = computed(() => props.unavailable ? 'The last status may be out of date. Reconnecting automatically.' : (copy[state.value]?.[1] ?? 'Refresh to check this library.'))
+const preflight = computed(() => {
+  const value = props.library.ingestion_status?.preflight
+  return !props.unavailable && state.value === 'retry_wait' && ['media', 'collections'].includes(value?.phase) &&
+    typeof value?.message === 'string' && typeof value?.nextStep === 'string' ? value : null
+})
+const title = computed(() => props.unavailable ? 'Import status unavailable'
+  : preflight.value ? `${preflight.value.phase === 'media' ? 'Media' : 'Collection'} import check needs attention`
+    : (copy[state.value]?.[0] ?? 'Import status unknown'))
+const nextStep = computed(() => props.unavailable ? 'The last status may be out of date. Reconnecting automatically.'
+  : preflight.value ? `${preflight.value.message} ${preflight.value.nextStep}` : (copy[state.value]?.[1] ?? 'Refresh to check this library.'))
 const count = value => Number.isSafeInteger(value) && value >= 0 ? value : 0
 const percentage = computed(() => {
   if (state.value !== 'active') return null

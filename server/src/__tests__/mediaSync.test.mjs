@@ -309,7 +309,7 @@ describe('MediaSyncService', () => {
             });
             source.getLibraryItems.mockImplementation(async (_url, _key, _id, { offset, limit }) => {
                 expect(provider).not.toHaveBeenCalled();
-                if (failure === 'page' && offset === 3) throw new Error('synthetic scan failure');
+                if (failure === 'page' && offset === 4) throw new Error('synthetic scan failure');
                 return items.slice(offset, offset + limit);
             });
             if (failure === 'collections') source.getCollections.mockRejectedValue(new Error('synthetic scan failure'));
@@ -332,12 +332,15 @@ describe('MediaSyncService', () => {
                 ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1', url: 'http://synthetic.invalid', api_key: 'synthetic' }] }
                 : { rows: [{ id: 100 }], rowCount: 1 });
             if (failure !== 'none') {
-                await expect(instance.syncLibrary(1, { batchSize: 3 })).rejects.toThrow('synthetic scan failure');
+                if (failure === 'collections') {
+                    await expect(instance.syncLibrary(1, { batchSize: 3 })).resolves.toMatchObject({ deferred: true, reason: 'source_preflight_unavailable' });
+                    expect(sourceObservations.start).not.toHaveBeenCalled();
+                } else await expect(instance.syncLibrary(1, { batchSize: 3 })).rejects.toThrow('synthetic scan failure');
                 if (failure !== 'pruning') {
                     expect(provider).not.toHaveBeenCalled();
                     expect(sourceQuery.mock.calls.filter(([sql]) => sql.includes('SET recovery_retry_after'))).toHaveLength(0);
                 }
-                expect(sourceObservations.finish).toHaveBeenCalledWith(context, { failed: true });
+                if (failure !== 'collections') expect(sourceObservations.finish).toHaveBeenCalledWith(context, { failed: true });
                 expect(report).not.toHaveBeenCalled();
             } else {
                 expect(await instance.syncLibrary(1, { batchSize: 3 })).toMatchObject({ success: true, processedItems: 9, totalItems: 9 });
@@ -556,15 +559,17 @@ describe('MediaSyncService', () => {
             mockPlexService.getLibraryItems.mockRejectedValue(new Error('Plex API error'));
 
             const descriptionRevision = getInventoryDescriptionRefreshRevision();
-            await expect(service.syncLibrary(1)).rejects.toThrow('Plex API error');
+            await expect(service.syncLibrary(1)).resolves.toMatchObject({ deferred: true, reason: 'source_preflight_unavailable' });
             expect(getInventoryDescriptionRefreshRevision()).toBe(descriptionRevision);
 
             const failCall = mockDb.query.mock.calls.find(
                 call => call[0].includes("SET status = $1, error_message = $2")
             );
-            expect(failCall[1]).toEqual(['failed', 'Plex API error', 100]);
+            expect(failCall[1]).toEqual(['failed', expect.stringContaining('Source preflight unavailable (media:unavailable)'), 100]);
+            expect(failCall[1][1]).not.toContain('Plex API error');
             expect(service.sourceObservations.capture).not.toHaveBeenCalled();
-            expect(service.sourceObservations.finish).toHaveBeenCalledWith({ generation: 1 }, { failed: true });
+            expect(service.sourceObservations.start).not.toHaveBeenCalled();
+            expect(service.sourceObservations.finish).not.toHaveBeenCalled();
         });
 
         it('should sync with Jellyfin', async () => {

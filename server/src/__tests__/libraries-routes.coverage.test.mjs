@@ -161,6 +161,19 @@ describe('Libraries routes coverage', () => {
   });
 
   describe('GET /api/libraries/:id and PUT /api/libraries/:id', () => {
+    test.each([
+      ['Source preflight unavailable (collections:access_denied). private-token', 'access_denied'],
+      ['private-token: failed request', null],
+      ['Source preflight unavailable (media:unknown). private-token', null],
+    ])('only returns allowlisted preflight diagnostics, never persisted raw errors', async (source_preflight_error, reason) => {
+      db.query.mockResolvedValueOnce({ rows: [{ id: 1, ingestion_status: { state: 'retry_wait' }, source_preflight_error }] });
+      const res = await request(app).get('/api/libraries/1').expect(200);
+      expect(res.body).not.toHaveProperty('source_preflight_error');
+      expect(JSON.stringify(res.body)).not.toContain('private-token');
+      if (reason) expect(res.body.ingestion_status.preflight.reason).toBe(reason);
+      else expect(res.body.ingestion_status.preflight).toBeNull();
+      expect(db.query.mock.calls[0][0]).toContain('ss.id=s.sync_status_id');
+    });
     test('returns 404 for missing library on GET', async () => {
       db.query.mockResolvedValueOnce({ rows: [] });
 

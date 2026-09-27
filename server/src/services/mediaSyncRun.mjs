@@ -8,6 +8,8 @@ import { canonicalMediaType } from './mediaIdentityValues.mjs';
 import { createMediaSyncCompleteness } from './mediaSyncCompleteness.mjs';
 import { SourceEnumerationError } from './sourceEnumerationError.mjs';
 import { sourcePageRequest } from './mediaServers/shared/sourcePage.mjs';
+import { preflightSourceEnumeration } from './sourceEnumerationPreflight.mjs';
+import { SourcePreflightError } from './sourcePreflightDiagnostic.mjs';
 const logger = createLogger('mediaSync');
 
 export async function runOwnedMediaSync(sync, libraryId, options, owner) {
@@ -65,10 +67,16 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
           [media_server_id, libraryId, incremental ? 'incremental' : 'full', 'running'],
         );
         syncStatusId = syncStatusResult.rows[0].id;
+        await owner.attach(syncStatusId);
+      });
+      const service = await sync.getMediaServerService(type);
+      const preflight = await preflightSourceEnumeration({ service, url, apiKey: api_key, libraryKey: external_id,
+        owner: { signal: owner.signal, assertSource: () => owner.assertSource(library) }, batchSize });
+      await db.withTransaction(async () => {
+        await owner.assertSource(library);
         sourceCapture = await sync.sourceObservations.start(media_server_id, libraryId, { incremental });
         await owner.attach(syncStatusId, sourceCapture);
       });
-      const service = await sync.getMediaServerService(type);
       const recoveryWorkflow = createMediaSyncRecoveryWorkflow({
         store: sync.sourceObservations, context: sourceCapture, recovery: identityRecovery,
         source: { service, url, apiKey: api_key, libraryKey: String(external_id) },
@@ -87,9 +95,10 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       while (!mediaEnumeration.complete) {
         enumerationContext = { phase: 'media', offset: mediaEnumeration.offset, reportedTotal: mediaEnumeration.total };
         owner.signal?.throwIfAborted();
-        const page = await service.getLibraryPage(url, api_key, external_id, {
+        const page = preflight.media.shift() ?? await service.getLibraryPage(url, api_key, external_id, {
           offset: mediaEnumeration.offset,
           limit: batchSize,
+          signal: owner.signal,
         });
 
         owner.signal?.throwIfAborted();
@@ -136,8 +145,8 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       while (!collectionEnumeration.complete) {
         enumerationContext = { phase: 'collections', offset: collectionEnumeration.offset, reportedTotal: collectionEnumeration.total };
         owner.signal?.throwIfAborted();
-        const page = await service.getCollectionPage(url, api_key, external_id, {
-          offset: collectionEnumeration.offset, limit: batchSize,
+        const page = preflight.collections.shift() ?? await service.getCollectionPage(url, api_key, external_id, {
+          offset: collectionEnumeration.offset, limit: batchSize, signal: owner.signal,
         });
         owner.signal?.throwIfAborted();
         collectionEnumeration.accept(page);
@@ -214,6 +223,13 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof SourcePreflightError) {
+      logger.warn('Library import preflight deferred; existing records retained',
+        { libraryId, ...error.detail },
+        { dedupeKey: `ingestion-preflight:${libraryId}:${error.detail.phase}:${error.detail.reason}`, dedupeWindowMs: 86400000 });
+      return { success: false, deferred: true, reason: 'source_preflight_unavailable',
+        detail: error.detail.reason, phase: error.detail.phase };
+    }
     if (error instanceof SourceEnumerationError) {
       logger.warn('Library enumeration incomplete; existing records retained',
         { libraryId, reason: error.reason, ...enumerationContext,

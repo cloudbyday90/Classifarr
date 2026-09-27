@@ -95,10 +95,8 @@ protecting destructive reconciliation. Its cost is stricter completion requireme
 and bounded in-memory key tracking. See the separate
 [design and official research](source-enumeration-completeness-design.md).
 
-Next: **read-only provider capability preflight and compatibility canaries**. Before
-enabling learning on a fresh setup, verify actual media and collection pagination
-behavior for the configured provider/version, report missing completeness evidence
-with a concrete next action, and rerun after source/configuration changes. Cover
-Plex, Emby and Jellyfin, including optional-total and empty-library behavior. Do not
-solve incompatibility by fabricating totals, silently disabling safeguards, or
-automatically clearing inventory.
+Follow-up implemented: [owned source preflight and compatibility canaries](source-enumeration-preflight-outcome.md).
+The bounded check now runs before capture creation, reports actionable failures and
+rechecks on eligible attempts. It observes actual behavior rather than certifying a
+provider-version matrix. The original verification above describes this earlier
+change; first-page failures now avoid partial writes through the preflight.

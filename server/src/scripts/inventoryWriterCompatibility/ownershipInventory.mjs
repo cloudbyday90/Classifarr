@@ -11,6 +11,8 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/mediaSyncRun.mjs',
     'server/src/services/mediaSyncCompleteness.mjs',
     'server/src/services/sourceEnumerationError.mjs',
+    'server/src/services/sourceEnumerationPreflight.mjs',
+    'server/src/services/sourcePreflightDiagnostic.mjs',
     'server/src/services/mediaServers/plex.mjs',
     'server/src/services/mediaServers/shared/createEmbyLikeService.mjs',
     'server/src/services/mediaServers/shared/sourcePage.mjs',

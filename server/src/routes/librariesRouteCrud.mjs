@@ -11,6 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { requireRow } from './routeHelpers.mjs';
 import { LIBRARY_INGESTION_STATUS_SQL } from '../services/libraryIngestionStatus.mjs';
+import { readSourcePreflightDiagnostic } from '../services/sourcePreflightDiagnostic.mjs';
 
 export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHandler(async (req, res) => {
         const result = await db.query(`
@@ -72,7 +73,10 @@ export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHan
             ORDER BY created_at DESC, id DESC
             LIMIT 1
           ) as sync_status,
-          ${LIBRARY_INGESTION_STATUS_SQL} AS ingestion_status
+          ${LIBRARY_INGESTION_STATUS_SQL} AS ingestion_status,
+          (SELECT ss.error_message FROM library_ingestion_state s
+            JOIN media_server_sync_status ss ON ss.id=s.sync_status_id AND ss.library_id=l.id
+            WHERE s.library_id=l.id AND s.phase='retry_wait' AND ss.status='failed') AS source_preflight_error
         FROM libraries l 
         WHERE l.id = $1
       `,
@@ -81,7 +85,10 @@ export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHan
 
         requireRow(result, 'Library not found');
 
-        res.json(result.rows[0]);
+        const { source_preflight_error, ...library } = result.rows[0];
+        if (library.ingestion_status) library.ingestion_status = { ...library.ingestion_status,
+            preflight: readSourcePreflightDiagnostic(source_preflight_error) };
+        res.json(library);
     }));
 
     router.put('/:id', asyncHandler(async (req, res) => {

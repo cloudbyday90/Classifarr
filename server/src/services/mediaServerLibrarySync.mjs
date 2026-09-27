@@ -194,8 +194,12 @@ function triggerBackgroundLibrarySync({ libraries, mediaSyncService, logger }) {
     mediaSyncService
       .syncLibrary(library.id, { incremental: false, batchSize: 100 })
       .then((result) => {
+        if (result.deferred || result.skipped || !result.success) {
+          logger.info('Auto-sync did not complete', { libraryId: library.id, reason: result.reason });
+          return;
+        }
         logger.info(
-          `Auto-sync completed for library ${library.name}: ${result.itemsImported || 0} items`,
+          `Auto-sync completed for library ${library.name}: ${result.processedItems || 0} items`,
         );
       })
       .catch((error) => {

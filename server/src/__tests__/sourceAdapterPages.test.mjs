@@ -8,6 +8,19 @@ const { createEmbyLikeService } = await import('../services/mediaServers/shared/
 const services = [plexService, createEmbyLikeService({ displayName: 'Emby' }), createEmbyLikeService({ displayName: 'Jellyfin' })];
 beforeEach(() => httpGet.mockReset());
 
+test.each(services)('preflight transport is bounded and cancellable for media and collections', async service => {
+  const signal = new AbortController().signal;
+  for (const method of ['getLibraryPage', 'getCollectionPage']) {
+    httpGet.mockResolvedValue({ data: service === plexService ? { MediaContainer: { size: 0, totalSize: 0 } } : { TotalRecordCount: 0 } });
+    await expect(service[method]('http://synthetic.invalid', 'private-token', 'library', { preflight: true, signal, limit: 2 }))
+      .resolves.toMatchObject({ items: [], total: 0 });
+    expect(httpGet.mock.lastCall[1]).toMatchObject({ signal, timeout: 5000, maxResponseBytes: 1048576 });
+    const error = Object.assign(new Error('private response'), { response: { status: 403 } });
+    httpGet.mockRejectedValue(error);
+    await expect(service[method]('http://synthetic.invalid', 'private-token', 'library', { preflight: true, signal })).rejects.toBe(error);
+  }
+});
+
 test.each(services)('missing media type cannot impersonate an intentionally ignored audio item', async service => {
   for (const type of [undefined, null, '', ' ', {}, 1]) {
     httpGet.mockResolvedValue({ data: service === plexService

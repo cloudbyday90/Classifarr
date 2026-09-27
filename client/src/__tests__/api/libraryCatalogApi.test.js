@@ -49,7 +49,8 @@ import {
 
 describe('libraryCatalogApi', () => {
   it('preserves the sanitized ingestion status in the unwrapped library response', async () => {
-    const result = { id: 1, ingestion_status: { state: 'retry_wait', pages: 2, items: 25, restarts: 1 } }
+    const result = { id: 1, ingestion_status: { state: 'retry_wait', pages: 2, items: 25, restarts: 1,
+      preflight: { phase: 'media', reason: 'unknown_source_total', message: 'Missing count.', nextStep: 'Check pagination.' } } }
     mockGetDataRequest.mockResolvedValueOnce(result)
     expect(await getLibrary(1)).toEqual(result)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/1')

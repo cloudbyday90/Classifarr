@@ -88,16 +88,16 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
   const media = id => ({ ...item(id), media_type: mediaType });
   const paused = Promise.withResolvers(), resume = Promise.withResolvers();
   const first = sync(async (_url, _key, _id, { offset }) => {
-    if (!offset) return [media(11)];
+    if (offset < 2) return [media(11 + offset)];
     paused.resolve();
     await resume.promise;
     return [media(99)];
-  }, {}, 2);
+  }, {}, 3);
   const old = first.syncLibrary(libraryId, { batchSize: 1 }).catch(error => error);
   await paused.promise;
   try {
-    expect(await inventory()).toEqual(['11']);
-    expect(await status()).toMatchObject({ state: 'active', pages: 1, items: 1 });
+    expect(await inventory()).toEqual(['11', '12']);
+    expect(await status()).toMatchObject({ state: 'active', pages: 2, items: 2 });
     expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
     // A very old checkpoint is not permission to steal a live session.
     await db.query("UPDATE library_ingestion_state SET updated_at=NOW()-interval '1 year' WHERE library_id=$1", [libraryId]);
@@ -110,7 +110,7 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
     // Only a synthetic suite's identified owning backend is terminated.
     await db.query('SELECT pg_terminate_backend($1,5000)', [lock.pid]);
     expect(await replacement.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'retry_wait' });
-    expect(await status()).toMatchObject({ state: 'interrupted', pages: 1 });
+    expect(await status()).toMatchObject({ state: 'interrupted', pages: 2 });
     await due();
     expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
     expect(await replacement.syncLibrary(libraryId, { batchSize: 1, incremental: true })).toMatchObject({ success: true });
@@ -128,22 +128,22 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
 
 test('failure preserves partial items and cooldown; completion prunes only after full replay', async () => {
   const first = sync(async (_u, _k, _l, { offset }) => {
-    if (offset) throw new Error('synthetic offline');
-    return [item(11)];
-  }, {}, 2);
+    if (offset >= 2) throw new Error('synthetic offline');
+    return [item(11 + offset)];
+  }, {}, 3);
   await expect(first.syncLibrary(libraryId, { batchSize: 1 })).rejects.toThrow('synthetic offline');
-  expect(await inventory()).toEqual(['11']);
-  expect(await state()).toMatchObject({ phase: 'retry_wait', pages_processed: 1 });
+  expect(await inventory()).toEqual(['11', '12']);
+  expect(await state()).toMatchObject({ phase: 'retry_wait', pages_processed: 2 });
   expect(await first.syncLibrary(libraryId)).toMatchObject({ reason: 'retry_wait' });
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
   await due();
-  expect(await sync(async () => [item(22)]).syncLibrary(libraryId)).toMatchObject({ success: true, prunedItems: 1 });
+  expect(await sync(async () => [item(22)]).syncLibrary(libraryId)).toMatchObject({ success: true, prunedItems: 2 });
   expect(await inventory()).toEqual(['22']);
 });
 
 test.each([null, {}, 'malformed'])('malformed page %p never acts as an empty library', async page => {
   await sync(async () => [item(11)]).syncLibrary(libraryId);
-  await expect(sync(async () => page).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_page_envelope' });
+  await expect(sync(async () => page).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_response' });
   expect(await inventory()).toEqual(['11']);
   expect((await state()).phase).toBe('retry_wait');
 });
@@ -158,7 +158,7 @@ test('failed finalization rolls back pruning, capture and completion together', 
   expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('failed');
 });
 
-test('owner lost after the last provider page cannot finalize or prune through the pool', async () => {
+test('owner lost during collection preflight cannot create a capture or prune through the pool', async () => {
   await sync(async () => [item(99)]).syncLibrary(libraryId);
   const interrupted = sync(async () => [item(11)], { mediaServerServices: { getMediaServerService: async () => ({
     getLibraryPage: async () => sourcePageFixture([item(11)]),
@@ -173,11 +173,11 @@ test('owner lost after the last provider page cannot finalize or prune through t
     },
   }) } });
   await expect(interrupted.syncLibrary(libraryId)).rejects.toThrow();
-  expect(await inventory()).toEqual(['11', '99']);
+  expect(await inventory()).toEqual(['99']);
   expect((await state()).phase).toBe('running');
-  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('complete');
   await due();
-  await expect(sync(async () => [item(22)]).syncLibrary(libraryId)).resolves.toMatchObject({ success: true, prunedItems: 2 });
+  await expect(sync(async () => [item(22)]).syncLibrary(libraryId)).resolves.toMatchObject({ success: true, prunedItems: 1 });
   expect(await inventory()).toEqual(['22']);
   expect((await state()).phase).toBe('complete');
 });
@@ -210,7 +210,7 @@ test('missing configuration and source keys never authorize acquisition or delet
   expect(pages).not.toHaveBeenCalled();
   await db.query("UPDATE media_server SET api_key='synthetic' WHERE id=$1", [serverId]);
   await sync(async () => [item(11)]).syncLibrary(libraryId);
-  await expect(sync(async () => [{ ...item(22), external_id: null }]).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_source_key' });
+  await expect(sync(async () => [{ ...item(22), external_id: null }]).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_response' });
   expect(await inventory()).toEqual(['11']);
   await db.query("UPDATE media_server SET api_key='' WHERE id=$1", [serverId]);
   expect(await status()).toMatchObject({ state: 'unconfigured' });
@@ -258,11 +258,28 @@ test('fresh setup learning stays dormant until configured, populated and ingesti
   expect(await readInventoryBackgroundReadiness(db)).toBe('waiting_for_libraries');
   await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [libraryId]);
   expect(await readInventoryBackgroundReadiness(db)).toBe('waiting_for_inventory');
-  await expect(sync(async () => { throw new Error('synthetic offline'); }).syncLibrary(libraryId)).rejects.toThrow('synthetic offline');
+  await expect(sync(async () => { throw new Error('synthetic offline'); }).syncLibrary(libraryId)).resolves.toMatchObject({ reason: 'source_preflight_unavailable' });
+  expect((await db.query('SELECT * FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows).toEqual([]);
+  expect(await inventory()).toEqual([]);
+  const attempt = (await db.query('SELECT status,error_message FROM media_server_sync_status WHERE library_id=$1', [libraryId])).rows[0];
+  expect(attempt).toMatchObject({ status: 'failed', error_message: expect.stringContaining('Source preflight unavailable (media:unavailable)') });
+  expect(attempt.error_message).not.toContain('synthetic offline');
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   await due();
   await sync(async () => [item(11)]).syncLibrary(libraryId);
   expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+});
+
+test('passing samples never authorize completion when a later page is truncated', async () => {
+  await sync(async () => [item(99)]).syncLibrary(libraryId);
+  const broken = sync(null, { mediaServerServices: { getMediaServerService: async () => ({
+    getLibraryPage: async (_u, _k, _l, { offset }) => sourcePageFixture(offset < 2 ? [item(11 + offset)] : [], { offset, total: 3 }),
+    getCollectionPage: async () => sourcePageFixture([]),
+  }) } });
+  expect(await broken.syncLibrary(libraryId)).toMatchObject({ reason: 'source_enumeration_incomplete', detail: 'premature_empty_page' });
+  expect(await inventory()).toEqual(['11', '12', '99']);
+  expect(await state()).toMatchObject({ phase: 'retry_wait' });
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('failed');
 });
 
 test.each(['short', 'repeated', 'changed_total', 'missing_total', 'collections', 'malformed'])('incomplete %s response preserves data and learning deferral, then safely replays', async fault => {
@@ -280,11 +297,11 @@ test.each(['short', 'repeated', 'changed_total', 'missing_total', 'collections',
     getLibraryPage: pages,
     getCollectionPage: async () => readPlexSourcePage({ data: {} }),
   }) } });
-  expect(await broken.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'source_enumeration_incomplete' });
+  expect(await broken.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'source_preflight_unavailable' });
   expect(await inventory()).toContain('11');
   expect((await db.query('SELECT external_id FROM media_server_collections WHERE library_id=$1', [libraryId])).rows).toEqual([{ external_id: 'old-set' }]);
   expect(await state()).toMatchObject({ phase: 'retry_wait' });
-  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('failed');
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('complete');
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   expect(await broken.syncLibrary(libraryId)).toMatchObject({ reason: 'retry_wait' });
   if (fault === 'short') expect(pages.mock.calls.map(call => call[3].offset)).toEqual([0, 1]);

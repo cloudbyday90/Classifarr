@@ -72,6 +72,8 @@ class EmbyLikeService {
 
     try {
       const response = await httpGet(`${url}/Items`, {
+        signal: options.signal,
+        ...(options.preflight ? { timeout: 5000, maxResponseBytes: 1048576 } : {}),
         headers: buildHeaders(apiKey),
         params: {
           ParentId: libraryId,
@@ -113,7 +115,7 @@ class EmbyLikeService {
         };
       }) };
     } catch (error) {
-      if (error instanceof SourceEnumerationError) throw error;
+      if (options.preflight || error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch ${this.displayName} library items: ${error.message}`);
     }
   }
@@ -149,6 +151,8 @@ class EmbyLikeService {
     const { offset, limit } = sourcePageRequest(options);
     try {
       const response = await httpGet(`${url}/Items`, {
+        signal: options.signal,
+        ...(options.preflight ? { timeout: 5000, maxResponseBytes: 1048576 } : {}),
         headers: buildHeaders(apiKey),
         params: {
           ParentId: libraryId,
@@ -167,7 +171,7 @@ class EmbyLikeService {
         item_count: item.ChildCount || 0,
       })) };
     } catch (error) {
-      if (error instanceof SourceEnumerationError) throw error;
+      if (options.preflight || error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch ${this.displayName} collections: ${error.message}`);
     }
   }
