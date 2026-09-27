@@ -73,11 +73,11 @@ describe('EmbyService', () => {
     describe('getLibraries', () => {
         it('should return filtered libraries', async () => {
             mockHttpGet.mockResolvedValue({
-                data: [
+                data: { TotalRecordCount: 3, Items: [
                     { ItemId: '1', Name: 'Movies', CollectionType: 'movies' },
                     { ItemId: '2', Name: 'TV Shows', CollectionType: 'tvshows' },
                     { ItemId: '3', Name: 'Music', CollectionType: 'music' }
-                ]
+                ] }
             });
 
             const result = await service.getLibraries('http://emby:8096', 'test-key');

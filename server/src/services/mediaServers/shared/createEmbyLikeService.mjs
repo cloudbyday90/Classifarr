@@ -12,7 +12,7 @@ import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
 import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs';
 import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
 import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
-import { LIBRARY_CATALOG_REQUEST, readEmbyLibraryCatalog } from './libraryCatalog.mjs';
+import { readVirtualFolderCatalog } from './virtualFolderCatalog.mjs';
 import { ServiceUnavailableError } from '../../../utils/appError.mjs';
 
 function buildHeaders(apiKey) {
@@ -22,8 +22,9 @@ function buildHeaders(apiKey) {
 }
 
 class EmbyLikeService {
-  constructor(displayName) {
+  constructor(displayName, readCatalog) {
     this.displayName = displayName;
+    this.readCatalog = readCatalog;
   }
 
   buildPosterUrl(baseUrl, apiKey, itemId) {
@@ -47,18 +48,13 @@ class EmbyLikeService {
     }
   }
 
-  async getLibraries(url, apiKey) {
-    return (await this.getLibraryCatalog(url, apiKey)).filter(library => library.media_type !== null);
+  async getLibraries(url, apiKey, options = {}) {
+    return (await this.getLibraryCatalog(url, apiKey, options)).filter(library => library.media_type !== null);
   }
 
-  async getLibraryCatalog(url, apiKey) {
+  async getLibraryCatalog(url, apiKey, options = {}) {
     try {
-      const response = await httpGet(`${url}/Library/VirtualFolders`, {
-        ...LIBRARY_CATALOG_REQUEST,
-        headers: buildHeaders(apiKey),
-      });
-
-      return readEmbyLibraryCatalog(response.data);
+      return await this.readCatalog(url, apiKey, options);
     } catch (error) {
       if (error?.code === 'library_catalog_invalid') throw error;
       throw new ServiceUnavailableError(`Failed to fetch ${this.displayName} libraries. Check the media server connection and access; existing libraries were preserved.`, { code: 'library_catalog_unavailable' });
@@ -200,6 +196,6 @@ class EmbyLikeService {
   }
 }
 
-export function createEmbyLikeService({ displayName }) {
-  return new EmbyLikeService(displayName);
+export function createEmbyLikeService({ displayName, readCatalog = readVirtualFolderCatalog }) {
+  return new EmbyLikeService(displayName, readCatalog);
 }

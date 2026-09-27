@@ -83,3 +83,6 @@ PR could be selected; no closed/unrelated PR was substituted and no PR was merge
 
 Research, alternatives, source links, limits and concurrency rationale are in
 [the design document](library-catalog-preservation-design.md).
+
+Follow-up implementation: [Emby catalog compatibility outcome](emby-catalog-compatibility-outcome.md)
+records the subsequent provider-contract fixtures and bounded current/legacy reader.

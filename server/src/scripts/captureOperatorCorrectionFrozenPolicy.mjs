@@ -1,10 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
-
-const PROJECT_ROOT = resolve(import.meta.dirname, '../../..');
+import { PRIVATE_STUDY_ROOT as PROJECT_ROOT, createPrivateStudyDirectory, writePrivateStudyJsonFile } from './privateStudyFileBoundary.mjs';
 
 /** Creates one private evidence input; prints no media, labels or profile data. */
 export async function runFrozenPolicyCapture({ argv = process.argv.slice(2), capture } = {}) {
@@ -23,19 +22,16 @@ export async function runFrozenPolicyCapture({ argv = process.argv.slice(2), cap
     .captureOperatorCorrectionFrozenPolicyCohort;
   const input = await run(settings);
   const tmp = join(PROJECT_ROOT, '.tmp');
-  await mkdir(tmp, { recursive: true });
-  if (relative(await realpath(PROJECT_ROOT), await realpath(tmp)) !== '.tmp') {
-    throw new Error('frozen_policy_tmp_boundary_invalid');
-  }
-  const dir = await mkdtemp(join(tmp, 'frozen-policy-'));
+  const dir = await createPrivateStudyDirectory('frozen-policy-');
+  const inputFile = relative(PROJECT_ROOT, join(dir, 'input.json')).split(sep).join('/');
   try {
-    await writeFile(join(dir, 'input.json'), JSON.stringify(input), { flag: 'wx', mode: 0o600 });
+    await writePrivateStudyJsonFile(inputFile, input, { label: 'Frozen-policy capture' });
   } catch (error) {
     const name = relative(tmp, dir);
     if (name.startsWith('frozen-policy-') && !name.includes(sep)) await rm(dir, { recursive: true, force: true });
     throw error;
   }
-  return { inputFile: relative(PROJECT_ROOT, join(dir, 'input.json')).split(sep).join('/'),
+  return { inputFile,
     sampled: input.cases.length, eligibleCorrections: input.eligibleCorrections,
     folds: input.folds.length, sourceFingerprint: input.sourceFingerprint,
     sampleFingerprint: input.sampleFingerprint };

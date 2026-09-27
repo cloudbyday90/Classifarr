@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Unify frozen-policy capture storage with the guarded private-study writer and
+  production data directory; retain exclusive files and cleanup of failed captures.
+- Support Emby's current paginated library catalog with a bounded legacy fallback,
+  keeping Jellyfin's catalog contract separate. Validate every page before discovery
+  writes; preserve existing data on incomplete, inconsistent or failed responses.
 - Preserve local library data when discovery returns a reduced or empty catalog;
   reject malformed catalogs before changes and share the safe merge path across
   manual and scheduled discovery. Add reviewed, reversible library archiving with

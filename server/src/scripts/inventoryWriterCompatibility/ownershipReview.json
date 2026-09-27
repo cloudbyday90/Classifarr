@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "catalog_compatibility",
+      "classification": "separately_coordinated",
+      "reason": "Read-only provider-specific catalog negotiation validates bounded complete pages before exposing a result to the source-fenced, non-deleting reconciler. No identity remapping or data deletion is authorized.",
+      "followUp": "Keep current/legacy HTTP fixtures, later-page failures, cancellation and no-partial-write PostgreSQL tests current. Stable offset totals do not prove an atomic source snapshot."
+    },
+    {
       "id": "catalog_preservation",
       "classification": "separately_coordinated",
       "reason": "Catalog discovery is additive and source-configuration fenced. Archive uses the ingestion owner lock, disabled-state constraint, exact admin review and atomic audit; it never deletes inventory.",
@@ -62,7 +68,12 @@
     }
   ],
   "entries": [
-    {"path":"server/src/services/mediaServers/shared/libraryCatalog.mjs","digest":"95d500935584b2bb6ee30e3d701cb022982d90ad374d1318a0f84bb5547673d4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_preservation"},
+    {"path":"server/src/services/mediaServers/emby.mjs","digest":"b220687986de7f7c79bcfce50c0c22253394c0a4b2e4700ae70ce4ac10bb64c2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_compatibility"},
+    {"path":"server/src/services/mediaServers/jellyfin.mjs","digest":"d1fe3a120e072ab5904a55373482ef873cb39093cb0d75f6a056d42a834b70bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_compatibility"},
+    {"path":"server/src/services/mediaServers/embyLibraryCatalog.mjs","digest":"553ddd9af694b84d86d03750b85311c3ebe402d41f8978592183f338754083ec","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_compatibility"},
+    {"path":"server/src/services/mediaServers/embyLibraryCatalogPage.mjs","digest":"4fed1992bd3dd26808f125c95b85cf1c197529d6f99228ff7e0013d02a58e524","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_compatibility"},
+    {"path":"server/src/services/mediaServers/shared/virtualFolderCatalog.mjs","digest":"b2f0920404a6d0979658659d7c71dfb9fcc7f761677986ec10c261f3ac07b0a0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_compatibility"},
+    {"path":"server/src/services/mediaServers/shared/libraryCatalog.mjs","digest":"278ff4fb46402eb1341c4c4d1aae1b36716d726ded53ef7fe0e6ffcc822d4d73","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_preservation"},
     {"path":"server/src/services/libraryCatalogContext.mjs","digest":"2770442c2434916f920b975f30634c03b6d9a32532d3b376de41feb34d7bbf9e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_preservation"},
     {"path":"server/src/services/libraryArchiveService.mjs","digest":"df4122691e8bb63552b367f8ce7921f514532a6599179a0f7c938ba1c73f837b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_preservation"},
     {"path":"server/src/services/libraryArchiveRepository.mjs","digest":"fd9abec2f89fe43d41c3484dca69ef37b87de49f73c08a639badfd43eb6389a7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"catalog_preservation"},
@@ -492,7 +503,7 @@
     {"path":"server/src/services/mediaSyncQueries.mjs","digest":"d6889c401d4e878409f34bdc107d5558ae91eda9dd99ae37faf1e15d211aa472","analysisDigest":"155c8a53aece0f4ed4b9e5f68bc982f5d482b4ba158aa0a6c4e631683e014a14","review":"shared_writer_debt"},
     {"path":"server/src/services/mediaSyncRun.mjs","digest":"c600384a3613f247a00f510c0fc7560cd8248b6dfbedb7712798d67da2ae069a","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/plex.mjs","digest":"28889dcde5dbed9bdb2c3c7152ac545340b10442a75089c94d0ec86bf114f530","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
-    {"path":"server/src/services/mediaServers/shared/createEmbyLikeService.mjs","digest":"a7771419e9067a34ad75f75c73f049368d87d64db49c049db8accd0f562e77c7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
+    {"path":"server/src/services/mediaServers/shared/createEmbyLikeService.mjs","digest":"1d918b1b2518bcc3695f27d695a63ddd256dd855038b0592707ecad7c9ab4f80","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/shared/sourcePage.mjs","digest":"3fa802e5403b6e18f90e5390a8275972342c314e4c24b38dca0b2ffc16ffaadd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncCompleteness.mjs","digest":"0fe1839a16b918e379e4f28504b49c3dfece6266fa4da33387be054ee18cfafa","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/sourceEnumerationError.mjs","digest":"e8c2c831b67a6e5ab37f2d114b2f78c47757a9c7c987177ad50ba8475aa0af55","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},

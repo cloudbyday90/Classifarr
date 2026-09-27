@@ -4,7 +4,10 @@ import { ServiceUnavailableError } from '../../../utils/appError.mjs';
 export const LIBRARY_CATALOG_LIMIT = 1000;
 export const LIBRARY_CATALOG_REQUEST = Object.freeze({ timeout: 10000, maxResponseBytes: 4 * 1024 * 1024 });
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const reject = () => { throw new ServiceUnavailableError('The media server returned an invalid or incomplete library catalog. Existing libraries were preserved.', { code: 'library_catalog_invalid' }); };
+export function invalidLibraryCatalog() {
+  return new ServiceUnavailableError('The media server returned an invalid or incomplete library catalog. Existing libraries were preserved.', { code: 'library_catalog_invalid' });
+}
+const reject = () => { throw invalidLibraryCatalog(); };
 function text(value, max) {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\u0000-\u001f\u007f]/u.test(value)) reject();
   return value;

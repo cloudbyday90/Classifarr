@@ -81,9 +81,10 @@ These are application safety bounds, not provider limits or proofs of completene
 An unsupported identity still counts as visible, preventing music filtering from
 turning a type change into evidence for removal. No music is imported.
 
-Compatibility: the existing Emby/Jellyfin array endpoint is retained. Current
-Emby QueryResult/pagination migration requires a separately tested provider-specific
-adapter; an unexpected shape now fails closed rather than partially importing it.
+Compatibility follow-up: [Emby catalog compatibility](emby-catalog-compatibility-design.md)
+adds a provider-specific current query reader with bounded legacy fallback. Jellyfin
+retains its array contract. Unexpected/incomplete shapes fail closed rather than
+partially importing them; the preservation and archive invariants below still apply.
 
 An interrupted `running` ingestion checkpoint blocks archive even before it has
 attached a sync/capture marker. An inactive `retry_wait` checkpoint without live

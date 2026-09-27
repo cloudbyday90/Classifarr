@@ -3,17 +3,35 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
-import { dirname, extname, isAbsolute, relative, resolve } from 'node:path';
+import { lstat, mkdir, mkdtemp, open, readFile, realpath } from 'node:fs/promises';
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 
 const MAX_PRIVATE_STUDY_JSON_BYTES = 512 * 1024;
 const SERVER_ROOT = resolve(import.meta.dirname, '../..');
 // A checkout has `server/` below its repository root; the production image
 // copies the application to `/app` and exposes only `/app/data` for writes.
-const PROJECT_ROOT = process.env.NODE_ENV === 'production'
+export const PRIVATE_STUDY_ROOT = process.env.NODE_ENV === 'production'
   ? resolve(SERVER_ROOT, 'data')
   : resolve(SERVER_ROOT, '..');
+const PROJECT_ROOT = PRIVATE_STUDY_ROOT;
 const PROJECT_TEMPORARY_ROOT = resolve(PROJECT_ROOT, '.tmp');
+
+/** Create an owned directory, refusing redirected temporary roots and path prefixes. */
+export async function createPrivateStudyDirectory(prefix) {
+  if (typeof prefix !== 'string' || !/^[a-z][a-z0-9-]{0,63}-$/.test(prefix)) {
+    throw new Error('private_study_directory_prefix_invalid');
+  }
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed, server-owned private root; no caller path.
+  await mkdir(PROJECT_TEMPORARY_ROOT, { recursive: true });
+  const [root, temporaryRoot] = await Promise.all([
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed installation root.
+    realpath(PROJECT_ROOT),
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed temporary root, checked against the installation below.
+    realpath(PROJECT_TEMPORARY_ROOT),
+  ]);
+  if (relative(root, temporaryRoot) !== '.tmp') throw new Error('private_study_tmp_boundary_invalid');
+  return mkdtemp(join(PROJECT_TEMPORARY_ROOT, prefix));
+}
 
 function remainsInsideOrSame(root, target) {
   const relativePath = relative(root, target);
