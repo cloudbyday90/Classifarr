@@ -8,8 +8,8 @@ import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
 import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
 import { createMediaSyncSkipReporter } from './mediaSyncSkipReporter.mjs';
 import { createMediaSyncIdentityRecovery } from './mediaSyncIdentityRecovery.mjs';
-import { createSyncIdentityOutcomeRecorder } from './mediaSyncIdentityRecoveryOutcomes.mjs';
-import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryReceipt } from './mediaSyncIdentityRecoveryPersistence.mjs';
+import { createMediaSyncRecoveryWorkflow } from './mediaSyncRecoveryWorkflow.mjs';
+import { persistRecoveredSyncItem } from './mediaSyncIdentityRecoveryPersistence.mjs';
 import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
@@ -68,8 +68,15 @@ export class MediaSyncService {
 
       try {
         sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
-        const recordOutcome = createSyncIdentityOutcomeRecorder(this.sourceObservations, sourceCapture, logger);
         const service = await this.getMediaServerService(type);
+        const recoveryWorkflow = createMediaSyncRecoveryWorkflow({
+          store: this.sourceObservations, context: sourceCapture, recovery: identityRecovery,
+          source: { service, url, apiKey: api_key, libraryKey: String(external_id) },
+          persistRecovery: (...args) => this.persistIdentityRecovery(...args), logger,
+          upsert: item => this.upsertMediaItem(media_server_id, libraryId, item, {
+            onSkippedItem: skippedItem => skippedItems.record(skippedItem),
+          }),
+        });
         let offset = 0;
         let totalItems = 0;
         let processedItems = 0;
@@ -98,35 +105,13 @@ export class MediaSyncService {
             if (item?.external_id) {
               seenItemExternalIds.add(String(item.external_id));
             }
-            const recovery = await identityRecovery.recover(item, {
-              service, url, apiKey: api_key, libraryKey: String(external_id),
-              claimAttempt: (candidate, attemptId) => claimSyncIdentityRecovery(this.sourceObservations, sourceCapture, candidate, attemptId),
-              readReceipt: candidate => readSyncIdentityRecoveryReceipt(this.sourceObservations, sourceCapture, candidate),
-              recordOutcome,
-            });
-            if (recovery) {
-              try {
-                if (await this.persistIdentityRecovery(this.sourceObservations, sourceCapture, recovery)) {
-                  processedItems += 1;
-                  continue;
-                }
-                await recordOutcome(item, { reason: 'persistence_failed', attemptId: recovery.attemptId ?? null });
-              } catch {
-                await recordOutcome(item, { reason: 'persistence_failed', attemptId: recovery.attemptId ?? null });
-                logger.warn('Source identity recovery deferred; sync will retry', { libraryId },
-                  { dedupeKey: `identity-recovery:${libraryId}`, dedupeWindowMs: 3600000 });
-              }
-            }
-            await this.upsertMediaItem(media_server_id, libraryId, item, {
-              onSkippedItem: skippedItem => skippedItems.record(skippedItem),
-            });
-            processedItems += 1;
+            processedItems += await recoveryWorkflow.process(item);
           }
 
           if (items[0]?.total && items[0].total > 0) {
             totalItems = items[0].total;
-          } else if (totalItems === 0) {
-            totalItems = processedItems;
+          } else {
+            totalItems = Math.max(totalItems, processedItems + recoveryWorkflow.pendingCount);
           }
 
           offset += batchSize;
@@ -159,6 +144,7 @@ export class MediaSyncService {
           prunedCollections = await this.pruneMissingCollections(libraryId, [...seenCollectionExternalIds]);
         }
 
+        processedItems += await recoveryWorkflow.flush();
         await this.reconcileAwaitingDecisions(libraryId);
         await this.sourceObservations.finish(sourceCapture);
 

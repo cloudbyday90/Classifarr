@@ -86,3 +86,6 @@ before enabling it. Do not merely sort each page: that still favors early pages.
 CI recovery took priority in this commit; production retry ordering is unchanged.
 The [design](ci-recovery-boundaries-design.md) records official sources, alternatives,
 and the recommendation stack.
+
+Follow-up: the [recovery fairness outcome](source-recovery-fairness-outcome.md)
+records the subsequent streamed implementation and real PostgreSQL validation.

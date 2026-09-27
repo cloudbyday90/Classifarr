@@ -6,6 +6,7 @@ import { sourceIdentityRecoveryEvidence } from './sourceIdentityRecoveryEvidence
 import { recoveredIdentity, reusableIdentityRecoveryReceipt } from './sourceIdentityRecoveryReceipt.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { randomUUID } from 'node:crypto';
+import { SOURCE_RECOVERY_ATTEMPT_LIMIT } from './mediaSyncRecoveryPlan.mjs';
 
 /** @type {(item: object, attemptId: string) => Promise<boolean>} */
 const allowAttempt = async () => true;
@@ -14,7 +15,7 @@ const noReceipt = async () => null;
 const noOutcome = async (_item, _outcome) => {};
 
 /** One bounded recovery session per library sync; all provider IO precedes writes. */
-export function createMediaSyncIdentityRecovery({ tmdbService = defaultTmdbService, maximumAttempts = 8 } = {}) {
+export function createMediaSyncIdentityRecovery({ tmdbService = defaultTmdbService, maximumAttempts = SOURCE_RECOVERY_ATTEMPT_LIMIT } = {}) {
   if (!Number.isInteger(maximumAttempts) || maximumAttempts < 1 || maximumAttempts > 32) {
     throw new TypeError('Invalid source identity recovery attempt bound');
   }

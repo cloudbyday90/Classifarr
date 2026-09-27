@@ -60,6 +60,8 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogge
 
 const { MediaSyncService, mediaSyncService: service } = await import('../services/mediaSync.mjs');
 const { getInventoryDescriptionRefreshRevision } = await import('../services/inventoryDescriptionRefreshSignal.mjs');
+const { createMediaSyncIdentityRecovery } = await import('../services/mediaSyncIdentityRecovery.mjs');
+const { sourceIdentityRecoveryEvidence } = await import('../services/sourceIdentityRecoveryEvidence.mjs');
 
 describe('MediaSyncService', () => {
     beforeEach(() => {
@@ -278,6 +280,59 @@ describe('MediaSyncService', () => {
     });
 
     describe('syncLibrary', () => {
+        it.each(['page', 'collections', 'pruning', 'none'])('defers fresh attempts until source traversal succeeds: %s failure', async failure => {
+            const context = { libraryId: 1, mediaServerId: 1, generation: 1 };
+            const sourceQuery = jest.fn(async sql => sql.includes('SELECT recovery_attempted_at')
+                ? { rows: [{ recovery_attempted_at: null }], rowCount: 1 } : { rows: [], rowCount: 1 });
+            const sourceObservations = { start: jest.fn().mockResolvedValue(context), capture: jest.fn(), finish: jest.fn(),
+                withCurrentCapture: async (_context, fn) => fn({ query: sourceQuery }) };
+            const provider = jest.fn().mockRejectedValue(new Error('synthetic outage'));
+            const source = { getLibraryItems: jest.fn(), getCollections: jest.fn().mockResolvedValue([]), getLibraryItemIdentityEvidence: jest.fn() };
+            const items = Array.from({ length: 9 }, (_, index) => {
+                const item = { external_id: String(index), title: 'Fixture', year: 2001, media_type: 'movie',
+                    provider_identity_invalid: true, provider_identity_issue: 'conflicting_provider_ids' };
+                item.source_identity_evidence = sourceIdentityRecoveryEvidence(item, 'library-1', { tmdb_id: [11, 22], imdb_id: ['tt123'], tvdb_id: [] });
+                return item;
+            });
+            source.getLibraryItems.mockImplementation(async (_url, _key, _id, { offset, limit }) => {
+                expect(provider).not.toHaveBeenCalled();
+                if (failure === 'page' && offset === 3) throw new Error('synthetic scan failure');
+                return items.slice(offset, offset + limit);
+            });
+            if (failure === 'collections') source.getCollections.mockRejectedValue(new Error('synthetic scan failure'));
+            const report = jest.fn();
+            const instance = new MediaSyncService({ sourceObservations,
+                createIdentityRecovery: () => createMediaSyncIdentityRecovery({ tmdbService: { findIdentityByExternalId: provider } }),
+                skipReporter: { report }, mediaServerServices: { getMediaServerService: () => source } });
+            jest.spyOn(instance, 'upsertMediaItem').mockImplementation(async (_server, _library, _item, options) => {
+                options.onSkippedItem({ reason: 'invalid_source_identity', identityIssue: 'conflicting_provider_ids' });
+            });
+            jest.spyOn(instance, 'pruneMissingMediaItems').mockImplementation(async () => {
+                expect(provider).not.toHaveBeenCalled();
+                if (failure === 'pruning') throw new Error('synthetic scan failure');
+                return 0;
+            });
+            jest.spyOn(instance, 'pruneMissingCollections').mockResolvedValue(0);
+            jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
+            mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
+                : { rows: [{ id: 100 }], rowCount: 1 });
+            if (failure !== 'none') {
+                await expect(instance.syncLibrary(1, { batchSize: 3 })).rejects.toThrow('synthetic scan failure');
+                expect(provider).not.toHaveBeenCalled();
+                expect(sourceQuery.mock.calls.filter(([sql]) => sql.includes('SET recovery_retry_after'))).toHaveLength(0);
+                expect(sourceObservations.finish).toHaveBeenCalledWith(context, { failed: true });
+                expect(report).not.toHaveBeenCalled();
+            } else {
+                expect(await instance.syncLibrary(1, { batchSize: 3 })).toMatchObject({ success: true, processedItems: 9, totalItems: 9 });
+                expect(provider).toHaveBeenCalledTimes(8);
+                expect(instance.upsertMediaItem).toHaveBeenCalledTimes(9);
+                expect(report).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ skippedItemCount: 9 }));
+                expect(sourceObservations.finish).toHaveBeenCalledWith(context);
+                expect(instance.pruneMissingMediaItems).toHaveBeenCalledWith(1, items.map(item => item.external_id));
+            }
+        });
+
         it('ignores a music library before starting capture, recovery, or source requests', async () => {
             mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, media_type: 'music' }] });
             expect(await service.syncLibrary(1)).toEqual({ success: true, skipped: true, reason: 'unsupported_media_type' });

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Give source identity recovery fair access across library pages by retrying
+  never-attempted and oldest-attempted items first. Preserve the eight-attempt
+  limit, daily cooldown, and identity safeguards; incomplete scans do not spend
+  fresh retry budget. Add movie/TV outage, race, and database-restart coverage.
 - Isolate Command Center loading from unrelated routes to retain production
   page-size budgets. Make disposable upgrade rehearsals use stdout logging
   before application imports, avoiding container-only filesystem assumptions

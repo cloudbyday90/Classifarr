@@ -15,6 +15,22 @@ export async function readSyncIdentityRecoveryReceipt(store, context, item) {
   return receipt;
 }
 
+/** A planning hint only; the later atomic claim must recheck every boundary. */
+export async function readSyncIdentityRecoveryPriority(store, context, item) {
+  let priority = null;
+  await store.withCurrentCapture(context, async client => {
+    const { rows } = await client.query(`SELECT recovery_attempted_at FROM media_source_observations
+      WHERE library_id=$1 AND media_server_id=$2 AND external_id=$3 AND generation=$4 AND source_digest=$5
+        AND (recovery_retry_after IS NULL OR recovery_retry_after<=clock_timestamp())
+        AND EXISTS (SELECT 1 FROM libraries WHERE id=$1 AND media_server_id=$2 AND is_active)`,
+    [context.libraryId, context.mediaServerId, item.external_id, context.generation, item.source_identity_evidence.snapshotDigest]);
+    if (!rows.length) return;
+    const attemptedAt = rows[0].recovery_attempted_at === null ? null : new Date(rows[0].recovery_attempted_at).getTime();
+    if (attemptedAt === null || (Number.isFinite(attemptedAt) && attemptedAt >= 0)) priority = { attemptedAt };
+  });
+  return priority;
+}
+
 /** Durable retry budget, reset by changed evidence; no provider IO under locks. */
 export async function claimSyncIdentityRecovery(store, context, item, attemptId = randomUUID()) {
   let claimed = false;
@@ -23,7 +39,8 @@ export async function claimSyncIdentityRecovery(store, context, item, attemptId 
       SET recovery_retry_after=clock_timestamp()+INTERVAL '1 day', recovery_attempt_id=$6,
         recovery_attempted_at=clock_timestamp(), recovery_completed_at=NULL, recovery_outcome=NULL
       WHERE library_id=$1 AND media_server_id=$2 AND external_id=$3 AND generation=$4 AND source_digest=$5
-        AND (recovery_retry_after IS NULL OR recovery_retry_after<=clock_timestamp()) RETURNING external_id`,
+        AND (recovery_retry_after IS NULL OR recovery_retry_after<=clock_timestamp())
+        AND EXISTS (SELECT 1 FROM libraries WHERE id=$1 AND media_server_id=$2 AND is_active) RETURNING external_id`,
     [context.libraryId, context.mediaServerId, item.external_id, context.generation, item.source_identity_evidence.snapshotDigest, attemptId]);
     claimed = result.rowCount === 1;
   });
