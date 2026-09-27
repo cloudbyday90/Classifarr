@@ -41,7 +41,7 @@ describe('configuration backup snapshot', () => {
       "SET LOCAL idle_in_transaction_session_timeout = '10s'",
       "SET LOCAL transaction_timeout = '120s'",
     ]);
-    expect(sql.filter(statement => statement.startsWith('SELECT'))).toHaveLength(31);
+    expect(sql.filter(statement => statement.startsWith('SELECT'))).toHaveLength(32);
     expect(sql.at(-1)).toBe('COMMIT');
     expect(database.query).not.toHaveBeenCalled();
     expect(database.pool.connect).toHaveBeenCalledTimes(1);

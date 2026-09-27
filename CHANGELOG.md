@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve Radarr/Sonarr destinations, policy-linked preferences and library labels
+  across configuration restores with changed database IDs. Include library fallback
+  mappings in backups, reject invalid references before configuration writes, and
+  remove stale restored destinations without discarding completed history. Add
+  isolated recovery and rollback tests; document remaining recovery boundaries.
 - Capture configuration backups and optional learned evidence from one bounded,
   read-only database snapshot. Correct media-server ID mapping during restore,
   reject missing or ambiguous server references, and add isolated movie/TV

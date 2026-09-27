@@ -12,6 +12,7 @@ const sections = [
   ['radarrConfigs', 'SELECT * FROM radarr_config ORDER BY id'],
   ['sonarrConfigs', 'SELECT * FROM sonarr_config ORDER BY id'],
   ['libraries', 'SELECT * FROM libraries ORDER BY id', 'librariesCount'],
+  ['libraryArrMappings', 'SELECT * FROM library_arr_mappings ORDER BY id', 'libraryArrMappingsCount'],
   ['libraryLabels', 'SELECT * FROM library_labels ORDER BY id'],
   ['libraryPolicies', 'SELECT * FROM library_policies ORDER BY id', 'policiesCount'],
   ['policyIntents', 'SELECT * FROM policy_intents ORDER BY id', 'policyIntentsCount'],

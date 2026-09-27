@@ -2,10 +2,11 @@ import { classificationEvidenceService } from './classificationEvidenceService.m
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { restoredReference, restoredArrReference } from './backupRestoreReferences.mjs';
+export { restoreRadarrConfigs, restoreSonarrConfigs, restoreLabelPresets } from './backupRestoreDestinations.mjs';
 
-const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
-const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
-const LIBRARY_ALLOWED_COLUMNS = ['name', 'media_type', 'media_server_id', 'external_id', 'is_active'];
+const LIBRARY_ALLOWED_COLUMNS = ['name', 'media_type', 'media_server_id', 'external_id', 'is_active',
+  'arr_type', 'arr_id', 'root_folder', 'quality_profile_id', 'radarr_settings', 'sonarr_settings'];
 
 export async function restoreConfidenceSettings(client, settings) {
   if (!settings) return;
@@ -49,54 +50,22 @@ export async function restoreMediaServers(client, servers) {
   return serverIdMap;
 }
 
-export async function restoreRadarrConfigs(client, configs) {
-  if (!configs) return;
-  for (const config of configs) {
-    const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
-    const keys = Object.keys(data).filter(key => RADARR_ALLOWED_COLUMNS.includes(key));
-    const values = keys.map(key => data[key]);
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-    if (keys.length > 0) {
-      await client.query(
-        `INSERT INTO radarr_config (${keys.join(', ')}) VALUES (${placeholders})
-         ON CONFLICT DO NOTHING`,
-        values
-      );
-    }
-  }
-}
-
-export async function restoreSonarrConfigs(client, configs) {
-  if (!configs) return;
-  for (const config of configs) {
-    const { id: _id, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = config;
-    const keys = Object.keys(data).filter(key => SONARR_ALLOWED_COLUMNS.includes(key));
-    const values = keys.map(key => data[key]);
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-
-    if (keys.length > 0) {
-      await client.query(
-        `INSERT INTO sonarr_config (${keys.join(', ')}) VALUES (${placeholders})
-         ON CONFLICT DO NOTHING`,
-        values
-      );
-    }
-  }
-}
-
-export async function restoreLibraries(client, libraries, serverIdMap = new Map()) {
+export async function restoreLibraries(client, libraries, serverIdMap = new Map(), arrIdMaps = {}) {
   const libraryIdMap = new Map();
   if (!libraries) return libraryIdMap;
 
   for (const library of libraries) {
     const { id: oldId, created_at: _created_at, updated_at: _updated_at, last_sync: _last_sync, ...data } = library;
     if (data.media_server_id != null) {
-      if (!serverIdMap.has(data.media_server_id)) {
-        throw new ValidationError('Backup library references a media server missing from the backup');
-      }
-      data.media_server_id = serverIdMap.get(data.media_server_id);
+      data.media_server_id = restoredReference(serverIdMap, data.media_server_id, 'libraries.media_server_id');
     }
+    // Missing legacy routing fields must not inherit an unrelated merge destination.
+    data.arr_type ??= null;
+    data.arr_id = restoredArrReference(data, 'arr_id', arrIdMaps, 'libraries');
+    data.root_folder ??= null;
+    data.quality_profile_id ??= null;
+    data.radarr_settings ??= {};
+    data.sonarr_settings ??= {};
     const keys = Object.keys(data).filter(key => LIBRARY_ALLOWED_COLUMNS.includes(key));
     const values = keys.map(key => data[key]);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
@@ -130,8 +99,7 @@ export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
   if (!policies) return policyIdMap;
 
   for (const policy of policies) {
-    const newLibraryId = libraryIdMap.get(policy.library_id);
-    if (!newLibraryId) continue;
+    const newLibraryId = restoredReference(libraryIdMap, policy.library_id, 'libraryPolicies.library_id');
 
     const { id: oldId, library_id: _library_id, created_at: _created_at, updated_at: _updated_at, ...data } = policy;
     const keys = Object.keys(data).filter(key => POLICY_ALLOWED_COLUMNS.includes(key) || POLICY_JSONB_COLUMNS.has(key));
@@ -143,7 +111,7 @@ export async function restoreLibraryPolicies(client, policies, libraryIdMap) {
     const placeholders = keys.map((_, i) => `$${i + 2}`).join(', ');
 
     if (keys.length > 0) {
-      const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ');
+      const updateClauses = keys.filter(k => k !== 'name').map(k => `${k} = EXCLUDED.${k}`).join(', ') || 'name = EXCLUDED.name';
       const result = await client.query(
         `INSERT INTO library_policies (library_id, ${keys.join(', ')}) VALUES ($1, ${placeholders})
          ON CONFLICT (library_id) DO UPDATE SET ${updateClauses}
@@ -281,9 +249,8 @@ async function restorePolicyIntents(client, policyIntents, { policyIdMap, librar
   const pendingReplacements = [];
 
   for (const intent of policyIntents || []) {
-    const newPolicyId = policyIdMap.get(intent.policy_id);
-    const newLibraryId = libraryIdMap.get(intent.library_id);
-    if (!newPolicyId || !newLibraryId) continue;
+    const newPolicyId = restoredReference(policyIdMap, intent.policy_id, 'policyIntents.policy_id');
+    const newLibraryId = restoredReference(libraryIdMap, intent.library_id, 'policyIntents.library_id');
 
     const {
       id: oldIntentId,
@@ -388,13 +355,15 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     jsonbColumns: POLICY_INTENT_RULE_JSONB_COLUMNS,
   });
 
+  if (intentIdMap.size) await client.query(
+    'DELETE FROM policy_intent_routing_targets WHERE intent_id = ANY($1::bigint[])', [[...intentIdMap.values()]],
+  );
   for (const row of nativeStorage.policyIntentRoutingTargets || []) {
-    const newIntentId = intentIdMap.get(row.intent_id);
-    const newLibraryId = libraryIdMap.get(row.library_id);
-    if (!newIntentId || !newLibraryId) continue;
+    const newIntentId = restoredReference(intentIdMap, row.intent_id, 'policyIntentRoutingTargets.intent_id');
+    const newLibraryId = restoredReference(libraryIdMap, row.library_id, 'policyIntentRoutingTargets.library_id');
 
     const { keys, values } = buildAllowedColumnValues(
-      row,
+      { ...row, arr_config_id: restoredArrReference(row, 'arr_config_id', mappings.arrIdMaps, 'policyIntentRoutingTargets') },
       POLICY_INTENT_ROUTING_TARGET_ALLOWED_COLUMNS
     );
     if (keys.length === 0) continue;
@@ -699,19 +668,6 @@ export async function restoreLibraryCustomRules(client, rules, libraryIdMap) {
   }
 }
 
-export async function restoreLabelPresets(client, presets) {
-  if (!presets) return;
-  for (const preset of presets) {
-    const { id: _id, created_at: _created_at, ...data } = preset;
-    await client.query(
-      `INSERT INTO label_presets (category, name, display_name, description, media_type, tmdb_match_field, tmdb_match_values)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT DO NOTHING`,
-      [data.category, data.name, data.display_name, data.description, data.media_type, data.tmdb_match_field, data.tmdb_match_values]
-    );
-  }
-}
-
 export async function restoreScheduledTasks(client, tasks, libraryIdMap) {
   if (!tasks) return;
   for (const task of tasks) {
@@ -725,11 +681,10 @@ export async function restoreScheduledTasks(client, tasks, libraryIdMap) {
   }
 }
 
-export async function restoreAutoLearnedPreferences(client, preferences, libraryIdMap) {
+export async function restoreAutoLearnedPreferences(client, preferences, libraryIdMap, policyIdMap = new Map()) {
   if (!preferences) return;
   for (const pref of preferences) {
-    const newLibraryId = libraryIdMap.get(pref.library_id);
-    if (!newLibraryId) continue;
+    const newLibraryId = restoredReference(libraryIdMap, pref.library_id, 'autoLearnedPreferences.library_id');
 
     await client.query(
       `INSERT INTO auto_learned_preferences
@@ -740,7 +695,7 @@ export async function restoreAutoLearnedPreferences(client, preferences, library
          confidence_count = EXCLUDED.confidence_count,
          source = EXCLUDED.source,
          status = EXCLUDED.status`,
-      [newLibraryId, pref.policy_id, pref.preference_type, pref.preference_value,
+      [newLibraryId, restoredReference(policyIdMap, pref.policy_id, 'autoLearnedPreferences.policy_id', { nullable: true }), pref.preference_type, pref.preference_value,
        pref.confidence_count, pref.source, pref.status]
     );
   }
@@ -861,17 +816,16 @@ export async function restoreSettings(client, settings) {
   }
 }
 
-export async function restoreLibraryLabels(client, labels, libraryIdMap) {
+export async function restoreLibraryLabels(client, labels, libraryIdMap, labelIdMap = new Map()) {
   if (!labels) return;
   for (const label of labels) {
-    const newLibraryId = libraryIdMap.get(label.library_id);
-    if (!newLibraryId) continue;
+    const newLibraryId = restoredReference(libraryIdMap, label.library_id, 'libraryLabels.library_id');
 
     await client.query(
       `INSERT INTO library_labels (library_id, label_preset_id, rule_type)
        VALUES ($1, $2, $3)
        ON CONFLICT DO NOTHING`,
-      [newLibraryId, label.label_preset_id, label.rule_type || 'include']
+      [newLibraryId, restoredReference(labelIdMap, label.label_preset_id, 'libraryLabels.label_preset_id'), label.rule_type || 'include']
     );
   }
 }

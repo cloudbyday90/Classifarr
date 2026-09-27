@@ -18,7 +18,7 @@ describe('backup media-server relationship mapping', () => {
     expect([...serverIdMap]).toEqual([[7, 200]]);
     expect([...libraryIdMap]).toEqual([[8, 300]]);
     expect(client.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO libraries'),
-      ['Movies', 'movie', 200, '1']);
+      ['Movies', 'movie', 200, '1', null, null, null, null, {}, {}]);
     expect(library.media_server_id).toBe(7);
   });
 
@@ -48,7 +48,7 @@ describe('backup media-server relationship mapping', () => {
   it('does not reuse a missing server ID from the destination database', async () => {
     const client = { query: jest.fn() };
     await expect(restoreLibraries(client, [{ id: 8, media_server_id: 7 }], new Map()))
-      .rejects.toThrow('media server missing from the backup');
+      .rejects.toThrow('libraries.media_server_id');
     expect(client.query).not.toHaveBeenCalled();
   });
 
@@ -57,6 +57,6 @@ describe('backup media-server relationship mapping', () => {
     expect(await restoreMediaServers(client, null)).toEqual(new Map());
     expect(await restoreLibraries(client, null)).toEqual(new Map());
     await restoreLibraries(client, [{ id: 8, name: 'Movies', media_type: 'movie', media_server_id: null }]);
-    expect(client.query).toHaveBeenLastCalledWith(expect.any(String), ['Movies', 'movie', null]);
+    expect(client.query).toHaveBeenLastCalledWith(expect.any(String), ['Movies', 'movie', null, null, null, null, null, {}, {}]);
   });
 });

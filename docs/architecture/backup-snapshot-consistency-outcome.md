@@ -92,6 +92,11 @@ rebuild belongs to this change.
 
 ## Recommendation stack and next concrete item
 
+Follow-up: the [reference-remapping outcome](backup-reference-remapping-outcome.md)
+records the subsequent implementation and corrects the assumption below about
+`source_library_ids`: its documented provider-ID contract must not be blindly
+translated as local database IDs.
+
 Adopt **consistent configuration snapshot → explicit restore-ID mapping →
 disposable recovery canary → separately verified full-database recovery**. The
 [design](backup-snapshot-consistency-design.md) records official PostgreSQL/W3C

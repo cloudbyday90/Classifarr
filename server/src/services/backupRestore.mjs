@@ -2,6 +2,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { generateApiKey } from './apiKeyService.mjs';
+import { validateBackupRestoreReferences } from './backupRestoreReferences.mjs';
+import { restoreLibraryArrMappings } from './backupRestoreDestinations.mjs';
 import {
   resetNativeIntentReconciliationSchedulingState,
 } from './nativeIntentReconciliationLifecyclePersistence.mjs';
@@ -116,6 +118,7 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM scheduled_tasks');
   await client.query('DELETE FROM path_mappings');
   await client.query('DELETE FROM label_presets');
+  await client.query('DELETE FROM library_arr_mappings');
   // Completed classification history is not part of a configuration backup.
   // Retain its libraries so the foreign key cannot null a completed record and
   // violate the history integrity constraint during a replace restore.
@@ -129,6 +132,9 @@ export async function clearExistingConfig(client) {
            AND classification_history.status = 'completed'
        )`
   );
+  // History-retained libraries must not reference connections being removed.
+  // Restored libraries receive their new links later in this same transaction.
+  await client.query('UPDATE libraries SET arr_type = NULL, arr_id = NULL WHERE arr_id IS NOT NULL');
   await client.query('DELETE FROM radarr_config');
   await client.query('DELETE FROM sonarr_config');
   // Deleting a media server cascades to its libraries, so apply the same
@@ -148,6 +154,8 @@ export async function clearExistingConfig(client) {
 }
 
 export async function restoreAllTables(client, backupData, mode) {
+  // Validate the portable reference graph before any reset or configuration write.
+  validateBackupRestoreReferences(backupData?.data);
   // The lifecycle audit state is a derived aggregate cursor, rather than
   // portable configuration. Reset it in the same transaction as every restore
   // so the passive re-audit observes the restored durable evidence.
@@ -163,10 +171,13 @@ export async function restoreAllTables(client, backupData, mode) {
 
   await restoreConfidenceSettings(client, backupData.data.confidenceSettings);
   const serverIdMap = await restoreMediaServers(client, backupData.data.mediaServers);
-  await restoreRadarrConfigs(client, backupData.data.radarrConfigs);
-  await restoreSonarrConfigs(client, backupData.data.sonarrConfigs);
+  const arrIdMaps = {
+    radarr: await restoreRadarrConfigs(client, backupData.data.radarrConfigs, serverIdMap),
+    sonarr: await restoreSonarrConfigs(client, backupData.data.sonarrConfigs, serverIdMap),
+  };
 
-  const libraryIdMap = await restoreLibraries(client, backupData.data.libraries, serverIdMap);
+  const libraryIdMap = await restoreLibraries(client, backupData.data.libraries, serverIdMap, arrIdMaps);
+  await restoreLibraryArrMappings(client, backupData.data.libraryArrMappings, libraryIdMap, arrIdMaps);
 
   const policyIdMap = await restoreLibraryPolicies(client, backupData.data.libraryPolicies, libraryIdMap);
   const nativePolicyIntentStats = await restoreNativePolicyIntentStorage(
@@ -192,14 +203,14 @@ export async function restoreAllTables(client, backupData, mode) {
       policyNativeIntentReconciliationHolds:
         backupData.data.policyNativeIntentReconciliationHolds,
     },
-    { policyIdMap, libraryIdMap }
+    { policyIdMap, libraryIdMap, arrIdMaps }
   );
   const reconciliationSchedulingStatesDiscarded =
     await resetNativeIntentReconciliationSchedulingState({ client });
   await restoreLibraryCustomRules(client, backupData.data.libraryCustomRules, libraryIdMap);
-  await restoreLabelPresets(client, backupData.data.labelPresets);
+  const labelIdMap = await restoreLabelPresets(client, backupData.data.labelPresets);
   await restoreScheduledTasks(client, backupData.data.scheduledTasks, libraryIdMap);
-  await restoreAutoLearnedPreferences(client, backupData.data.autoLearnedPreferences, libraryIdMap);
+  await restoreAutoLearnedPreferences(client, backupData.data.autoLearnedPreferences, libraryIdMap, policyIdMap);
   await restoreLearningPatterns(client, backupData.data.learningPatterns, libraryIdMap);
   await restoreClassificationEvidence(client, backupData.data.classificationEvidence, libraryIdMap);
   await restorePathMappings(client, backupData.data.pathMappings);
@@ -208,7 +219,7 @@ export async function restoreAllTables(client, backupData, mode) {
   await restoreOmdbConfig(client, backupData.data.omdbConfig);
   await restoreWebhookConfig(client, backupData.data.webhookConfig);
   await restoreSettings(client, backupData.data.settings);
-  await restoreLibraryLabels(client, backupData.data.libraryLabels, libraryIdMap);
+  await restoreLibraryLabels(client, backupData.data.libraryLabels, libraryIdMap, labelIdMap);
 
   const { key: newApiKey, keyHash: apiKeyHash, prefix: apiKeyPrefix } = generateApiKey();
 

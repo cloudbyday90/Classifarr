@@ -178,7 +178,7 @@ describe('backupRestoreTables native policy intent restore', () => {
           evaluated_at: '2026-07-15T00:00:01.000Z',
         }],
       },
-      { policyIdMap, libraryIdMap }
+      { policyIdMap, libraryIdMap, arrIdMaps: { radarr: new Map([[1, 101]]) } }
     );
 
     expect(result).toEqual({
@@ -237,10 +237,10 @@ describe('backupRestoreTables native policy intent restore', () => {
     );
   });
 
-  test('skips native rows when restored policy or library parents are unavailable', async () => {
+  test('rejects native rows when restored policy or library parents are unavailable', async () => {
     const client = createClient();
 
-    const result = await restoreNativePolicyIntentStorage(
+    await expect(restoreNativePolicyIntentStorage(
       client,
       {
         policyIntents: [{
@@ -268,10 +268,7 @@ describe('backupRestoreTables native policy intent restore', () => {
         policyIdMap: new Map(),
         libraryIdMap: new Map([[20, 220]]),
       }
-    );
-
-    expect(result.intentsRestored).toBe(0);
-    expect(result.intentRulesRestored).toBe(0);
+    )).rejects.toThrow('policyIntents.policy_id');
     expect(client.query).not.toHaveBeenCalled();
   });
 

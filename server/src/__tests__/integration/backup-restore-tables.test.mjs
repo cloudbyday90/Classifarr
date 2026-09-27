@@ -291,10 +291,10 @@ describe('Backup Restore Tables Integration Tests', () => {
             expect(result.rows[0].source_library_ids).toEqual([1, 2, 3]);
         });
 
-        it('skips policies when library not in ID map', async () => {
-            await restoreLibraryPolicies(db, [
+        it('rejects policies when library not in ID map', async () => {
+            await expect(restoreLibraryPolicies(db, [
                 { library_id: 99999, name: 'Orphan' },
-            ], new Map());
+            ], new Map())).rejects.toThrow('libraryPolicies.library_id');
 
             const result = await db.query('SELECT COUNT(*) FROM library_policies');
             expect(Number(result.rows[0].count)).toBe(0);
@@ -476,7 +476,7 @@ describe('Backup Restore Tables Integration Tests', () => {
 
             await restoreLibraryLabels(db, [
                 { library_id: libraryId, label_preset_id: presetId, rule_type: 'include' },
-            ], new Map([[libraryId, libraryId]]));
+            ], new Map([[libraryId, libraryId]]), new Map([[presetId, presetId]]));
 
             const result = await db.query('SELECT * FROM library_labels WHERE library_id = $1', [libraryId]);
             expect(result.rows).toHaveLength(1);
@@ -484,10 +484,10 @@ describe('Backup Restore Tables Integration Tests', () => {
             expect(result.rows[0].rule_type).toBe('include');
         });
 
-        it('skips labels when library not in ID map', async () => {
-            await restoreLibraryLabels(db, [
+        it('rejects labels when library not in ID map', async () => {
+            await expect(restoreLibraryLabels(db, [
                 { library_id: 99999, label_preset_id: 1, rule_type: 'include' },
-            ], new Map());
+            ], new Map())).rejects.toThrow('libraryLabels.library_id');
 
             const result = await db.query('SELECT COUNT(*) FROM library_labels');
             expect(Number(result.rows[0].count)).toBe(0);
@@ -526,7 +526,7 @@ describe('Backup Restore Tables Integration Tests', () => {
 
             await restoreLibraryLabels(db, [
                 { library_id: libraryId, label_preset_id: presetId, rule_type: 'include' },
-            ], idMap);
+            ], idMap, new Map([[presetId, presetId]]));
 
             await restoreLibraryPolicies(db, [
                 { library_id: libraryId, name: 'Remap Policy', enabled: true, priority: 5 },

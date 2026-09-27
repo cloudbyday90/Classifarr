@@ -144,7 +144,7 @@ describe('BackupService evidence integration', () => {
             data: { libraries: [{ id: 1, name: 'Movies', media_server_id: 77 }] },
         });
         await expect(backupService.restoreBackup('missing-server.json', { mode: 'merge' }))
-            .rejects.toThrow('media server missing from the backup');
+            .rejects.toThrow('libraries[0].media_server_id');
         expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
         expect(client.query).not.toHaveBeenCalledWith('COMMIT');
         expect(reconciliationLifecycle.failBackupRestore).toHaveBeenCalled();
