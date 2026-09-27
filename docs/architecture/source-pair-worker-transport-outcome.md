@@ -96,3 +96,16 @@ failure-specific recheck rules. That addresses recurring diagnosis and safe
 backfill without guessing identities or hiding permanent failures. Separately,
 measure end-to-end scoring near the existing corpus budget before considering
 consistent-snapshot partitioning for larger installations.
+
+## Subsequent deployment verification — 2026-09-27
+
+The separately authorized no-cache rollout has now deployed the transport fix.
+The normal scheduled attempt at 11:43 UTC completed 300 samples (150 movies and
+150 TV items), cleared `evidence_budget` and reset the failure count to zero.
+No memory guard or cooldown was bypassed. This supersedes the earlier delivery's
+deployment limitation, not its historical measurements. See the
+[local deployment outcome](provider-recovery-local-deployment-outcome.md) for the
+exact image, validation and remaining limits. Typed recovery cases and bounded
+external-ID diagnosis are now implemented; the next bounded application component
+is the actionable administrator recovery view described in the
+[revalidation outcome](inventory-identity-revalidation-outcome.md).

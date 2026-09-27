@@ -99,3 +99,14 @@ source evidence before proposing any ID change. Pair this with a compact
 administrator recovery view: affected item, cause, next check and one useful
 action. Preserve the lease/source guards and test interruption between verified
 repair and downstream backfill. Do not use title similarity as authority.
+
+## Subsequent delivery — 2026-09-27
+
+The bounded, review-only external-ID diagnosis is now implemented and tested;
+see its separate [design](inventory-identity-revalidation-design.md) and
+[outcome](inventory-identity-revalidation-outcome.md). The authorized no-cache
+[local deployment](provider-recovery-local-deployment-outcome.md) includes both
+the recovery cases and diagnostic, with persistent data retained. This updates
+the earlier delivery's deployment status; no live provider recovery is claimed
+for an item that has not yet reached its scheduled retry. The authenticated,
+actionable recovery view remains the next bounded component.

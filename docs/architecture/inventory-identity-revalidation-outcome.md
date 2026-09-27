@@ -77,8 +77,26 @@ Backend type checking, test/security lint, dependency checks, ESM imports/mock
 shapes, migration/snapshot integrity, copyright and Markdown checks passed.
 Security lint retains one pre-existing non-literal-path warning in
 `captureOperatorCorrectionFrozenPolicy.mjs`; this change introduces no new warning.
-The frontend regression run and exact-revision local deployment are being
-validated separately; their final observations belong in the deployment outcome.
+The full frontend coverage run passed **387 files / 5,426 tests**. The coverage
+ratchet passed: backend 90.30% statements/lines, 84.55% branches and 92.25%
+functions; frontend 85.69% statements, 78.07% branches, 85.16% functions and 87.70%
+lines. The generated frontend LCOV HTML summary was copied unchanged to the
+ratchet's expected `coverage/index.html` location; coverage values were not edited.
+
+Clean revision `67ba437fd38252d6f8008c9ce23742c07ea106bb` was built without cache
+and deployed to the existing local Compose service. The container is healthy,
+reports that exact revision, contains both new diagnostic modules and the earlier
+lossless evaluation transport, and retains all 287 applied migrations. Public
+health returned 200, anonymous inventory access returned 401, and a synthetic
+native bcrypt hash/compare check passed. Routing configuration and mounted data
+were left in place; rollback images and a private checksum-verified PostgreSQL
+backup were retained. The normal scheduled evaluation then completed at the
+11:43 UTC tick: 300 samples (150 movies / 150 TV), failure count reset to zero
+and failure code cleared. No cooldown or memory guard was bypassed. See the
+[local deployment outcome](provider-recovery-local-deployment-outcome.md) for
+image provenance, rollback caveats and the verified runtime result. The reported
+TMDb 404 itself was not forced past its cooldown; a live diagnosis for that item
+is not claimed.
 
 GitHub MCP returned no open repository PRs on two checks on 2026-09-27. No random
 open PR could therefore be selected. No PR was merged and no release created.
