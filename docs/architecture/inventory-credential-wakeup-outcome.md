@@ -67,6 +67,7 @@ version bump, image publication or live-container deployment is included.
 
 Recovery milestone capture and visual progress are now implemented; see the
 [design](inventory-recovery-progress-design.md) and
-[outcome](inventory-recovery-progress-outcome.md). The next bounded component is
-an interrupted-first-import rehearsal and ownership-based reconciliation of stale
-ingestion markers, so learning can resume safely after restart.
+[outcome](inventory-recovery-progress-outcome.md). Database-owned imports and
+[interrupted-first-import recovery](library-ingestion-recovery.md) now follow that
+work. The remaining boundary is explicit reconciliation of legacy/external
+markers with no verifiable owner, not another generic retry loop.

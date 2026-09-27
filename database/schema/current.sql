@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T13:35:48.037Z
--- Latest Migration: 20260927_160000_add_inventory_recovery_progress.sql
+-- Generated: 2026-09-27T14:46:41.055Z
+-- Latest Migration: 20260927_170000_add_library_ingestion_ownership.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4138,6 +4138,39 @@ CREATE SEQUENCE public.library_custom_rules_id_seq
 --
 
 ALTER SEQUENCE public.library_custom_rules_id_seq OWNED BY public.library_custom_rules.id;
+
+
+--
+-- Name: library_ingestion_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_ingestion_state (
+    library_id integer NOT NULL,
+    run_id uuid NOT NULL,
+    phase text NOT NULL,
+    sync_status_id integer,
+    capture_generation bigint,
+    attempt_count integer DEFAULT 1 NOT NULL,
+    restart_count integer DEFAULT 0 NOT NULL,
+    pages_processed integer DEFAULT 0 NOT NULL,
+    items_processed integer DEFAULT 0 NOT NULL,
+    items_total integer,
+    retry_after timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT library_ingestion_state_attempt_count_check CHECK (((attempt_count >= 1) AND (attempt_count <= 1000000))),
+    CONSTRAINT library_ingestion_state_items_processed_check CHECK ((items_processed >= 0)),
+    CONSTRAINT library_ingestion_state_items_total_check CHECK ((items_total >= 0)),
+    CONSTRAINT library_ingestion_state_pages_processed_check CHECK ((pages_processed >= 0)),
+    CONSTRAINT library_ingestion_state_phase_check CHECK ((phase = ANY (ARRAY['running'::text, 'retry_wait'::text, 'complete'::text]))),
+    CONSTRAINT library_ingestion_state_restart_count_check CHECK ((restart_count >= 0))
+);
+
+
+--
+-- Name: TABLE library_ingestion_state; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.library_ingestion_state IS 'Bounded latest ingestion owner/checkpoint. Ownership is a PostgreSQL session lock, not an age-based lease. Pages replay from zero after interruption.';
 
 
 --
@@ -10150,6 +10183,14 @@ ALTER TABLE ONLY public.library_custom_rules
 
 
 --
+-- Name: library_ingestion_state library_ingestion_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_ingestion_state
+    ADD CONSTRAINT library_ingestion_state_pkey PRIMARY KEY (library_id);
+
+
+--
 -- Name: library_labels library_labels_library_id_label_preset_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12258,6 +12299,13 @@ CREATE INDEX idx_library_custom_rules_library_id ON public.library_custom_rules 
 
 
 --
+-- Name: idx_library_ingestion_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_library_ingestion_due ON public.library_ingestion_state USING btree (retry_after, library_id) WHERE (phase = ANY (ARRAY['running'::text, 'retry_wait'::text]));
+
+
+--
 -- Name: idx_library_labels_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12339,6 +12387,13 @@ CREATE INDEX idx_library_rules_v2_conditions ON public.library_rules_v2 USING gi
 --
 
 CREATE INDEX idx_library_rules_v2_library_id ON public.library_rules_v2 USING btree (library_id);
+
+
+--
+-- Name: idx_library_sync_latest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_library_sync_latest ON public.media_server_sync_status USING btree (library_id, created_at DESC, id DESC);
 
 
 --
@@ -14141,6 +14196,14 @@ ALTER TABLE ONLY public.library_custom_rules
 
 ALTER TABLE ONLY public.library_custom_rules
     ADD CONSTRAINT library_custom_rules_migrated_to_policy_id_fkey FOREIGN KEY (migrated_to_policy_id) REFERENCES public.library_policies(id);
+
+
+--
+-- Name: library_ingestion_state library_ingestion_state_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_ingestion_state
+    ADD CONSTRAINT library_ingestion_state_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -17060,6 +17123,7 @@ FROM unnest(ARRAY[
     '20260927_120000_seed_restore_admission_gate.sql',
     '20260927_130000_add_inventory_provider_recovery.sql',
     '20260927_150000_add_inventory_credential_wakeup.sql',
-    '20260927_160000_add_inventory_recovery_progress.sql'
+    '20260927_160000_add_inventory_recovery_progress.sql',
+    '20260927_170000_add_library_ingestion_ownership.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

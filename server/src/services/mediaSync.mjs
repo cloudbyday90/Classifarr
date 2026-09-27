@@ -1,17 +1,16 @@
-import * as db from '../config/database.mjs';
+import { pool } from '../config/database.mjs';
+import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
+import { createMediaSyncOwnership } from './mediaSyncOwnership.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
-import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
+import { runOwnedMediaSync } from './mediaSyncRun.mjs';
 import { createMediaSyncSkipReporter } from './mediaSyncSkipReporter.mjs';
 import { createMediaSyncIdentityRecovery } from './mediaSyncIdentityRecovery.mjs';
-import { createMediaSyncRecoveryWorkflow } from './mediaSyncRecoveryWorkflow.mjs';
 import { persistRecoveredSyncItem } from './mediaSyncIdentityRecoveryPersistence.mjs';
-import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
-import { canonicalMediaType } from './mediaIdentityValues.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
@@ -19,6 +18,7 @@ const logger = createLogger('mediaSync');
 
 export class MediaSyncService {
   constructor(deps = {}) {
+    this.withOwnership = deps.withOwnership || createMediaSyncOwnership({ pool });
     this.errors = deps.errors || errorsModule;
     this.mediaServerServices = deps.mediaServerServices || {
       getMediaServerService: defaultGetMediaServerService,
@@ -31,172 +31,11 @@ export class MediaSyncService {
   }
 
   async syncLibrary(libraryId, options = {}) {
-    const { LibraryNotFoundError, isLibraryNotFoundError } = this.errors;
-    const { incremental = false, batchSize = 100 } = options;
-
-    try {
-      const libraryResult = await db.query(
-        `SELECT l.*, ms.type, ms.url, ms.api_key 
-         FROM libraries l
-         JOIN media_server ms ON l.media_server_id = ms.id
-         WHERE l.id = $1`,
-        [libraryId],
-      );
-
-      if (libraryResult.rows.length === 0) {
-        logger.warn('Library not found during sync', { libraryId });
-        throw new LibraryNotFoundError(libraryId);
-      }
-
-      const library = libraryResult.rows[0];
-      if (!canonicalMediaType(library.media_type)) {
-        return { success: true, skipped: true, reason: 'unsupported_media_type' };
-      }
-      const { type, url, api_key, media_server_id, external_id } = library;
-
-      const syncStatusResult = await db.query(
-        `INSERT INTO media_server_sync_status 
-         (media_server_id, library_id, sync_type, status, started_at)
-         VALUES ($1, $2, $3, $4, NOW())
-         RETURNING id`,
-        [media_server_id, libraryId, incremental ? 'incremental' : 'full', 'running'],
-      );
-      const syncStatusId = syncStatusResult.rows[0].id;
-      let sourceCapture;
-      const skippedItems = createMediaSyncSkipSummary();
-      const identityRecovery = this.createIdentityRecovery();
-
-      try {
-        sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
-        const service = await this.getMediaServerService(type);
-        const recoveryWorkflow = createMediaSyncRecoveryWorkflow({
-          store: this.sourceObservations, context: sourceCapture, recovery: identityRecovery,
-          source: { service, url, apiKey: api_key, libraryKey: String(external_id) },
-          persistRecovery: (...args) => this.persistIdentityRecovery(...args), logger,
-          upsert: item => this.upsertMediaItem(media_server_id, libraryId, item, {
-            onSkippedItem: skippedItem => skippedItems.record(skippedItem),
-          }),
-        });
-        let offset = 0;
-        let totalItems = 0;
-        let processedItems = 0;
-        let ignoredItems = 0;
-        let hasMore = true;
-        const seenItemExternalIds = new Set();
-
-        while (hasMore) {
-          const items = await service.getLibraryItems(url, api_key, external_id, {
-            offset,
-            limit: batchSize,
-          });
-
-          if (!items || items.length === 0) {
-            hasMore = false;
-            break;
-          }
-
-          const supportedItems = items.filter(item => canonicalMediaType(item?.media_type));
-          const ignoredOnPage = items.length - supportedItems.length;
-          ignoredItems += ignoredOnPage;
-          processedItems += ignoredOnPage;
-          if (supportedItems.length > 0) await this.sourceObservations.capture(sourceCapture, supportedItems);
-
-          for (const item of supportedItems) {
-            if (item?.external_id) {
-              seenItemExternalIds.add(String(item.external_id));
-            }
-            processedItems += await recoveryWorkflow.process(item);
-          }
-
-          if (items[0]?.total && items[0].total > 0) {
-            totalItems = items[0].total;
-          } else {
-            totalItems = Math.max(totalItems, processedItems + recoveryWorkflow.pendingCount);
-          }
-
-          offset += batchSize;
-
-          await db.query(
-            `UPDATE media_server_sync_status 
-             SET items_total = $1, items_processed = $2
-             WHERE id = $3`,
-            [totalItems, processedItems, syncStatusId],
-          );
-
-          if (items.length < batchSize) {
-            hasMore = false;
-          }
-        }
-
-        const collections = await service.getCollections(url, api_key, external_id);
-        const seenCollectionExternalIds = new Set();
-        for (const collection of collections) {
-          if (collection?.external_id) {
-            seenCollectionExternalIds.add(String(collection.external_id));
-          }
-          await this.upsertCollection(media_server_id, libraryId, collection);
-        }
-
-        let prunedItems = 0;
-        let prunedCollections = 0;
-        if (!incremental) {
-          prunedItems = await this.pruneMissingMediaItems(libraryId, [...seenItemExternalIds]);
-          prunedCollections = await this.pruneMissingCollections(libraryId, [...seenCollectionExternalIds]);
-        }
-
-        processedItems += await recoveryWorkflow.flush();
-        await this.reconcileAwaitingDecisions(libraryId);
-        await this.sourceObservations.finish(sourceCapture);
-
-        await db.query(
-          `UPDATE media_server_sync_status 
-           SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3
-           WHERE id = $4`,
-          ['completed', totalItems, processedItems, syncStatusId],
-        );
-        await this.skipReporter.report({ libraryId, mediaServerId: media_server_id, syncStatusId,
-          incremental, sourceType: type }, skippedItems.snapshot());
-
-        logger.info('Library sync completed', {
-          libraryId,
-          totalItems,
-          ignoredItems,
-          collectionsCount: collections.length,
-          prunedItems,
-          prunedCollections,
-        });
-        requestInventoryDescriptionRefresh();
-
-        return {
-          success: true,
-          totalItems,
-          processedItems,
-          ignoredItems,
-          collections: collections.length,
-          prunedItems,
-          prunedCollections,
-        };
-      } catch (error) {
-        if (sourceCapture) {
-          try { await this.sourceObservations.finish(sourceCapture, { failed: true }); }
-          catch { logger.warn('Source observation capture finalization unavailable', { libraryId }); }
-        }
-        await db.query(
-          `UPDATE media_server_sync_status 
-           SET status = $1, error_message = $2, completed_at = NOW()
-           WHERE id = $3`,
-          ['failed', error.message, syncStatusId],
-        );
-        throw error;
-      }
-    } catch (error) {
-      if (!isLibraryNotFoundError(error)) {
-        logger.error('Library sync failed', { libraryId, error: error.message });
-      }
-      throw error;
+    if (options.batchSize !== undefined && (!Number.isInteger(options.batchSize) || options.batchSize < 1 || options.batchSize > 1000)) {
+      throw new TypeError('Sync batch size must be an integer from 1 to 1000');
     }
+    return this.withOwnership(libraryId, owner => runOwnedMediaSync(this, libraryId, options, owner));
   }
-
   async findExistingMedia(tmdbId, mediaType) {
     return this.mediaSyncLibraryStateService.findExistingMedia(tmdbId, mediaType);
   }

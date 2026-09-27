@@ -1,4 +1,4 @@
-import * as db from '../config/database.mjs';
+import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';

@@ -66,7 +66,7 @@ const mockSyncStatus = {
 
 const mockLoggerModule = createLoggerModuleMock();
 
-jest.unstable_mockModule('../config/database.mjs', () => ({ ...mockDb, DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
+jest.unstable_mockModule('../config/database.mjs', () => ({ ...createNamedMockModule('pool', mockDb), DB_ADVISORY_LOCKS: { STARTUP_RESET: 9001 } }));
 
 jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdbService));
 

@@ -9,9 +9,16 @@ import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
-    query: jest.fn()
+    query: jest.fn(),
+    withTransaction: async fn => fn(mockDb),
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+const owner = { claim: async () => ({}), attach: async () => {}, checkpoint: async () => {},
+    finish: async () => {}, assertSource: async () => {} };
+jest.unstable_mockModule('../services/mediaSyncOwnership.mjs', () => ({
+    createMediaSyncOwnership: () => (_id, callback) => callback(owner),
+    MEDIA_SYNC_OWNER_LOCK: 0x4d53594e,
+}));
 
 const mockPlexService = {
     getLibraryItems: jest.fn(),
@@ -308,19 +315,22 @@ describe('MediaSyncService', () => {
                 options.onSkippedItem({ reason: 'invalid_source_identity', identityIssue: 'conflicting_provider_ids' });
             });
             jest.spyOn(instance, 'pruneMissingMediaItems').mockImplementation(async () => {
-                expect(provider).not.toHaveBeenCalled();
+                // Recovery network calls finish before the atomic finalization transaction.
+                expect(provider).toHaveBeenCalledTimes(8);
                 if (failure === 'pruning') throw new Error('synthetic scan failure');
                 return 0;
             });
             jest.spyOn(instance, 'pruneMissingCollections').mockResolvedValue(0);
             jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
             mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
-                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1', url: 'http://synthetic.invalid', api_key: 'synthetic' }] }
                 : { rows: [{ id: 100 }], rowCount: 1 });
             if (failure !== 'none') {
                 await expect(instance.syncLibrary(1, { batchSize: 3 })).rejects.toThrow('synthetic scan failure');
-                expect(provider).not.toHaveBeenCalled();
-                expect(sourceQuery.mock.calls.filter(([sql]) => sql.includes('SET recovery_retry_after'))).toHaveLength(0);
+                if (failure !== 'pruning') {
+                    expect(provider).not.toHaveBeenCalled();
+                    expect(sourceQuery.mock.calls.filter(([sql]) => sql.includes('SET recovery_retry_after'))).toHaveLength(0);
+                }
                 expect(sourceObservations.finish).toHaveBeenCalledWith(context, { failed: true });
                 expect(report).not.toHaveBeenCalled();
             } else {
@@ -354,7 +364,7 @@ describe('MediaSyncService', () => {
             jest.spyOn(instance, 'pruneMissingCollections').mockResolvedValue(0);
             jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
             mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
-                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1', url: 'http://synthetic.invalid', api_key: 'synthetic' }] }
                 : { rows: [{ id: 100 }], rowCount: 1 });
             const movie = { external_id: 'film', title: 'Music documentary', media_type: 'movie', total: 3 };
             mockPlexService.getLibraryItems
@@ -396,7 +406,7 @@ describe('MediaSyncService', () => {
             });
             jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
             mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
-                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1', url: 'http://synthetic.invalid', api_key: 'synthetic' }] }
                 : { rows: [{ id: 100 }], rowCount: 1 });
             mockPlexService.getLibraryItems.mockResolvedValue([item]);
             mockPlexService.getCollections.mockResolvedValue([]);

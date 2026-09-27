@@ -52,17 +52,12 @@ The chart is a bounded, retained current-case cohort, not a historical conversio
 funnel or library-wide success rate. It starts collecting prospectively. Readiness
 polls are cheap admission checks, not a promise that the platform is globally idle.
 
-Next: add restart-recovery evidence for ingestion ownership. Reconcile stale
-running/collecting markers against durable job ownership, expose the owning
-blocker and verify recovery with an interrupted-first-import rehearsal. Do not
-clear markers solely because they are old, and do not add another generic retry
-loop. This closes the most important remaining fresh-install liveness question.
+The [ingestion recovery component](library-ingestion-recovery.md) now adds
+database-owned sessions, durable checkpoints, full replay and interrupted-import
+rehearsals. Learning remains gated until actual completion. Checkpoints measure
+progress; mutable source paging restarts at zero instead of trusting old offsets.
 
-Acceptance checks for that next component:
-
-- Interrupt the first paged import, restart, and resume from durable progress
-  without duplicate items or enabling learning before ingestion completes.
-- Distinguish an abandoned owner from a live replica; never steal active work
-  or declare an incomplete capture complete solely to unblock learning.
-- Show the blocking job and its recovery state, then prove automatic learning
-  resumption without manual database edits or routing changes.
+Next: an explicit reconciliation workflow for legacy/external markers without
+verifiable ownership. Preview the blockers, establish that their workers stopped,
+and record the reconciliation rather than clearing markers by age. New-protocol
+imports already recover automatically when their owner is gone and retry is due.

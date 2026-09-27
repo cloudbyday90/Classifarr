@@ -10,6 +10,7 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { requireRow } from './routeHelpers.mjs';
+import { LIBRARY_INGESTION_STATUS_SQL } from '../services/libraryIngestionStatus.mjs';
 
 export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHandler(async (req, res) => {
         const result = await db.query(`
@@ -68,9 +69,10 @@ export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHan
             )
             FROM media_server_sync_status 
             WHERE library_id = l.id 
-            ORDER BY created_at DESC 
+            ORDER BY created_at DESC, id DESC
             LIMIT 1
-          ) as sync_status
+          ) as sync_status,
+          ${LIBRARY_INGESTION_STATUS_SQL} AS ingestion_status
         FROM libraries l 
         WHERE l.id = $1
       `,

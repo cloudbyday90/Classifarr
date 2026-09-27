@@ -10,9 +10,11 @@
   <div class="flex flex-col gap-2">
     <label
       v-if="label"
+      :for="inputId"
       class="text-sm font-medium"
     >{{ label }}</label>
     <input
+      :id="inputId"
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
@@ -29,6 +31,10 @@
 </template>
 
 <script setup>
+import { useId } from 'vue'
+
+const inputId = useId()
+
 defineProps({
   modelValue: {
     type: [String, Number],

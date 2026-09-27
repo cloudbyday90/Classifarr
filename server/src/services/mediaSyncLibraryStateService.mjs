@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import * as db from '../config/database.mjs';
+import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
@@ -98,6 +98,7 @@ export class MediaSyncLibraryStateService {
         libraryId,
         error: error.message,
       });
+      if (this.db.isOwned?.()) throw error;
       return 0;
     }
   }

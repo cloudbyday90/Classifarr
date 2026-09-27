@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover interrupted library imports with database-owned sessions, durable
+  retry checkpoints and replay from page zero. Preserve partial imports, fence
+  disconnected workers, and commit pruning with capture completion atomically.
+  Keep learning deferred through recovery and show concise live/retry/unknown-owner
+  states using non-persistent SWR. Limit concurrent imports and reject malformed
+  pages before they can authorize deletion; leave unverifiable legacy owners intact.
+- Associate shared input labels with their controls for assistive technology,
+  including editable library settings preserved during background status updates.
 - Add visual, durable metadata-recovery progress with measured timings and clear
   next steps. Defer scheduled inventory learning until configuration, inventory
   and foreground-work prerequisites are ready; keep ingestion and recovery active.

@@ -1,4 +1,4 @@
-import * as db from '../config/database.mjs';
+import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { persistSyncedMediaItem } from './mediaSyncItemPersistence.mjs';
@@ -44,6 +44,7 @@ export async function upsertMediaItem(mediaServerId, libraryId, item, options = 
             ...(result === 'invalid_source_identity' ? sourceIdentityDiagnostics(mediaServerId, libraryId, captured) : {}),
         }, onSkippedItem);
     } catch (error) {
+        if (db.isOwned()) throw error;
         if (error.code === '23503') {
             logger.warn(`Skipping media item - library ${libraryId} no longer exists (race condition)`, {
                 item: captured.external_id,
@@ -76,6 +77,7 @@ export async function upsertCollection(mediaServerId, libraryId, collection) {
             [mediaServerId, libraryId, collection.external_id, collection.name, collection.item_count || 0],
         );
     } catch (error) {
+        if (db.isOwned()) throw error;
         if (error.code === '23503') {
             logger.warn(`Skipping collection - library ${libraryId} no longer exists (race condition)`, {
                 collection: collection.name,

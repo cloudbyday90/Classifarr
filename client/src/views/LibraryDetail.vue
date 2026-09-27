@@ -108,29 +108,11 @@
         </Button>
       </div>
 
-      <!-- Active Sync Progress -->
-      <div
-        v-if="isSyncing"
-        class="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4"
-      >
-        <div class="flex justify-between items-center mb-2">
-          <div class="flex items-center gap-3">
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400" />
-            <h3 class="font-medium text-blue-400">
-              Syncing Library...
-            </h3>
-          </div>
-          <span class="text-xs text-blue-300">
-            {{ activeSyncStatus?.items_processed || 0 }} / {{ activeSyncStatus?.items_total || '?' }} items
-          </span>
-        </div>
-        <div class="w-full bg-gray-700 rounded-full h-2">
-          <div 
-            class="bg-blue-500 h-2 rounded-full transition-all duration-500"
-            :style="{ width: `${syncPercentage}%` }"
-          />
-        </div>
-      </div>
+      <LibraryIngestionStatus
+        :library="library"
+        :requesting="syncing"
+        :unavailable="syncReadFailed"
+      />
 
       <!-- Radarr Settings for Movie Libraries -->
       <Card
@@ -487,6 +469,9 @@ import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
+import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
+import { useLibraryIngestionStatus } from '@/composables/useLibraryIngestionStatus'
+import { librarySyncResultMessage } from '@/utils/libraryIngestionStatus'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { consumeRouteFocusHandoff } from '@/utils/routeFocusHandoff'
@@ -716,51 +701,17 @@ const saveArrSettings = async () => {
 }
 
 const syncing = ref(false)
-
-const activeSyncStatus = computed(() => {
-  return library.value?.sync_status
-})
-
-const isSyncing = computed(() => {
-  return syncing.value || activeSyncStatus.value?.status === 'running'
-})
-
-const syncPercentage = computed(() => {
-  if (!activeSyncStatus.value || !activeSyncStatus.value.items_total) return 0
-  return Math.round((activeSyncStatus.value.items_processed / activeSyncStatus.value.items_total) * 100)
-})
-
-const pollSyncStatus = async () => {
-  if (!library.value) return
-  
-  if (isSyncing.value) {
-    try {
-      const updatedLibrary = await api.getLibrary(library.value.id)
-      library.value = updatedLibrary
-      
-      // Continue polling if still running
-      if (updatedLibrary.sync_status?.status === 'running') {
-        setTimeout(pollSyncStatus, 2000)
-      } else {
-        syncing.value = false // Reset manual flag
-        if (updatedLibrary.item_count > 0) {
-           toast.success('Library sync complete')
-        }
-      }
-    } catch (e) {
-      console.error('Polling error', e)
-    }
-  }
-}
+const { isSyncing, unavailable: syncReadFailed, refresh: refreshSyncStatus } = useLibraryIngestionStatus(library, syncing)
 
 const handleSync = async () => {
   syncing.value = true
   try {
-    toast.success('Library synchronization started in background...', 'Sync Started')
-    await api.syncLibrary(library.value.id)
+    const response = await api.syncLibrary(library.value.id)
+    if (response.data?.success && !response.data?.skipped) toast.success(librarySyncResultMessage(response.data))
+    else toast.info(librarySyncResultMessage(response.data))
     
     // Start polling immediately
-    setTimeout(pollSyncStatus, 1000)
+    await refreshSyncStatus()
     
   } catch (error) {
     console.error('Sync failed:', error)
@@ -768,13 +719,6 @@ const handleSync = async () => {
     syncing.value = false
   }
 }
-
-// Watch for initial sync state on load
-onMounted(() => {
-  if (library.value?.sync_status?.status === 'running') {
-    pollSyncStatus()
-  }
-})
 
 </script>
 

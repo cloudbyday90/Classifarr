@@ -59,6 +59,7 @@ export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
 }
 
+/** Includes sanitized ingestion_status; reads never start or resume ingestion. */
 export function getLibrary(id) {
   return getDataRequest(`/libraries/${id}`)
 }

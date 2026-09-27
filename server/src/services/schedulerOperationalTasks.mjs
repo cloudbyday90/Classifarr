@@ -17,6 +17,7 @@ import { queueService } from './queueService.mjs';
 import { automaticClassificationRecoveryService } from './automaticClassificationRecoveryService.mjs';
 import { PROVIDER_AWARE_PENDING_RETRY_CODES } from './automaticClassificationRecoveryPolicy.mjs';
 import { classificationProviderAdmissionService } from './classificationProviderAdmissionService.mjs';
+import { LIBRARY_INGESTION_WATCHDOG_SQL } from './libraryIngestionStatus.mjs';
 
 const logger = createLogger('SchedulerService');
 
@@ -46,8 +47,9 @@ export async function runPeriodicLibrarySync() {
 
         for (const library of libraries.rows) {
             try {
-                await mediaSyncService.syncLibrary(library.id);
-                logger.info(`Periodic sync: Completed ${library.name}`);
+                const result = await mediaSyncService.syncLibrary(library.id);
+                if (result?.deferred || result?.skipped) logger.debug('Periodic sync: library deferred or skipped', { libraryId: library.id, reason: result.reason });
+                else logger.info(`Periodic sync: Completed ${library.name}`);
             } catch (libError) {
                 logger.warn(`Periodic sync: Failed ${library.name}`, { error: libError.message });
             }
@@ -59,22 +61,11 @@ export async function runPeriodicLibrarySync() {
 
 export async function runLibraryWatchdog() {
     try {
-        const result = await db.query(`
-            SELECT l.id, l.name
-            FROM libraries l
-            WHERE l.is_active = true
-              AND NOT EXISTS (
-                  SELECT 1 FROM media_server_items msi WHERE msi.library_id = l.id
-              )
-              AND NOT EXISTS (
-                  SELECT 1 FROM media_server_sync_status ss
-                   WHERE ss.library_id = l.id AND ss.status = 'running'
-              )
-        `);
+        const result = await db.query(LIBRARY_INGESTION_WATCHDOG_SQL);
 
         for (const library of result.rows) {
-            logger.info(`Watchdog: Library ${library.name} (${library.id}) is empty. Triggering auto-sync...`);
-            mediaSyncService.syncLibrary(library.id).catch((err) => {
+            logger.info('Watchdog: checking library ingestion', { libraryId: library.id });
+            await mediaSyncService.syncLibrary(library.id).catch((err) => {
                 logger.error(`Watchdog: Auto-sync failed for ${library.name}`, { error: err.message });
             });
         }

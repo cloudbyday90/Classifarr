@@ -10,6 +10,7 @@ SELECT CASE
     WHEN NOT EXISTS (SELECT 1 FROM ai_provider_config WHERE id=1 AND rag_enabled) THEN 'disabled'
     WHEN NOT EXISTS (SELECT 1 FROM active_libraries) THEN 'waiting_for_libraries'
     WHEN EXISTS (SELECT 1 FROM latest_sync WHERE status IN ('pending','running'))
+      OR EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id WHERE s.phase<>'complete')
       OR EXISTS (SELECT 1 FROM media_source_capture_state c JOIN active_libraries l ON l.id=c.library_id WHERE c.phase='collecting') THEN 'ingesting'
     WHEN NOT EXISTS (SELECT 1 FROM media_server_items i JOIN active_libraries l ON l.id=i.library_id
       WHERE i.media_type IN ('movie','tv')) THEN 'waiting_for_inventory'

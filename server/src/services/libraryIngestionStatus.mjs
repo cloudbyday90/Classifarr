@@ -1,0 +1,40 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { MEDIA_SYNC_OWNER_LOCK } from './mediaSyncLockKeys.mjs';
+
+// `l` is the fixed libraries alias. No caller-supplied SQL identifiers.
+export const INGESTION_OWNER_ACTIVE_SQL = `EXISTS (SELECT 1 FROM pg_locks lock
+  WHERE lock.locktype='advisory' AND lock.classid=${MEDIA_SYNC_OWNER_LOCK}::oid
+    AND lock.objid=l.id::oid AND lock.objsubid=2 AND lock.granted
+    AND lock.database=(SELECT oid FROM pg_database WHERE datname=current_database()))`;
+
+const foreignOwner = `(EXISTS (SELECT 1 FROM media_server_sync_status other
+  WHERE other.library_id=l.id AND other.status IN ('pending','running') AND other.id IS DISTINCT FROM s.sync_status_id)
+  OR EXISTS (SELECT 1 FROM media_source_capture_state c WHERE c.library_id=l.id AND c.phase='collecting'
+    AND (c.generation IS DISTINCT FROM s.capture_generation OR c.source<>'media_sync')))`;
+
+export const LIBRARY_INGESTION_STATUS_SQL = `COALESCE((SELECT jsonb_build_object(
+    'state',CASE WHEN s.phase<>'complete' AND (NOT l.is_active OR NOT EXISTS
+        (SELECT 1 FROM media_server ms WHERE ms.id=l.media_server_id AND ms.is_active)) THEN 'disabled'
+      WHEN s.phase<>'complete' AND NOT EXISTS (SELECT 1 FROM media_server ms WHERE ms.id=l.media_server_id
+        AND length(btrim(ms.url))>0 AND length(btrim(ms.api_key))>0) THEN 'unconfigured'
+      WHEN ${foreignOwner} THEN 'legacy_owner_unknown'
+      WHEN ${INGESTION_OWNER_ACTIVE_SQL} THEN 'active'
+      WHEN s.phase='running' THEN 'interrupted' ELSE s.phase END,
+    'pages',s.pages_processed,'items',s.items_processed,'total',s.items_total,'restarts',s.restart_count,
+    'retryAt',s.retry_after,'updatedAt',s.updated_at)
+  FROM library_ingestion_state s WHERE s.library_id=l.id),
+  CASE WHEN EXISTS (SELECT 1 FROM media_server_sync_status ss WHERE ss.library_id=l.id AND ss.status IN ('pending','running'))
+    OR EXISTS (SELECT 1 FROM media_source_capture_state c WHERE c.library_id=l.id AND c.phase='collecting')
+    THEN jsonb_build_object('state','legacy_owner_unknown') END)`;
+
+export const LIBRARY_INGESTION_WATCHDOG_SQL = `SELECT l.id,l.name FROM libraries l
+  JOIN media_server ms ON ms.id=l.media_server_id AND ms.is_active
+  LEFT JOIN library_ingestion_state s ON s.library_id=l.id
+  WHERE l.is_active AND l.media_type IN ('movie','tv') AND NOT (${INGESTION_OWNER_ACTIVE_SQL})
+    AND length(btrim(ms.url))>0 AND length(btrim(ms.api_key))>0
+    AND NOT ${foreignOwner}
+    AND (s.retry_after IS NULL OR s.retry_after<=clock_timestamp() OR s.phase='complete')
+    AND (s.phase IN ('running','retry_wait')
+      OR (s.library_id IS NULL AND NOT EXISTS (SELECT 1 FROM media_server_items i WHERE i.library_id=l.id)
+        AND NOT EXISTS (SELECT 1 FROM media_server_sync_status ss WHERE ss.library_id=l.id AND ss.status = 'running')))
+  ORDER BY s.retry_after NULLS FIRST,l.id LIMIT 10`;
