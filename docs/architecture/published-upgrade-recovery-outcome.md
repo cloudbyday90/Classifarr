@@ -72,3 +72,25 @@ does not establish arbitrary historical-version compatibility, ARM support,
 PostgreSQL major upgrades, live-provider recovery, AI accuracy or safe automatic
 routing. The local deployment rebuild is a separate operator-requested action;
 the drill never accesses that installation's data.
+
+## Requested local deployment
+
+After committing and pushing implementation `a93a1e34`, rebuilt the existing
+local Compose service with `--no-cache --require-provenance`. Its image revision
+matches that commit. A separate fresh-install container started healthy with
+286 migrations and `ready / startup_ready`; the authoritative schema comparison
+passed and its scratch volume/network/container were removed.
+
+The existing local installation then restarted on image
+`sha256:901765f7594b683f56b3fc06de017cf6fbcb1c746aea7dd5f7e724982f5249d9`.
+Health and readiness both returned HTTP 200. Its migration count moved from
+273 to 286 while preserving `ready / restore_verified`. Both existing bind mounts
+were unchanged; no routing settings were edited and no release was created.
+
+Rollback assets retained locally:
+
+- Previous image: `classifarr-local-rollback:pre-a93a1e34`.
+- PostgreSQL custom archive: `data/backups/pre-a93a1e34-20260927.dump`, created
+  before migration, with mode 0600 and archive table-of-contents validation.
+  This live-data archive is not committed and was not restore-tested; it is not
+  a replacement for a complete persistent-data backup strategy.
