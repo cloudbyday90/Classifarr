@@ -35,6 +35,7 @@ vi.mock('../../api/core', () => ({
 import {
   createBackup,
   listBackups,
+  getBackupRuntime,
   downloadBackup,
   deleteBackup,
   restoreBackup,
@@ -42,6 +43,11 @@ import {
 } from '../../api/backupApi'
 
 describe('backupApi', () => {
+  it('getBackupRuntime returns unwrapped mode data', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ mode: 'restore', restoreAllowed: true })
+    expect(await getBackupRuntime()).toEqual({ mode: 'restore', restoreAllowed: true })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/backup/runtime')
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

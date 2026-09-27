@@ -94,7 +94,7 @@ describe('App.vue', () => {
     expect(wrapper.findComponent({ name: 'Toast' }).exists()).toBe(true);
   });
 
-  it.each(['Login', 'SetupAccount', 'SetupWizard'])('does not poll authenticated health on %s route', async (routeName) => {
+  it.each(['Login', 'SetupAccount', 'SetupWizard', 'RestoreMaintenance'])('does not poll authenticated health on %s route', async (routeName) => {
     mockRoute.name = routeName
 
     mountApp()

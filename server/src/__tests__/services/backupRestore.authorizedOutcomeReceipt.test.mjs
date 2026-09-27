@@ -13,8 +13,8 @@ import { jest } from '@jest/globals';
 const purgeAllLegacyPatterns = jest.fn();
 const purgeAll = jest.fn();
 
-jest.unstable_mockModule('../../services/classificationEvidenceService.mjs', () => ({
-  classificationEvidenceService: { purgeAllLegacyPatterns },
+jest.unstable_mockModule('../../services/learningPatternEvidenceAdapter.mjs', () => ({
+  learningPatternEvidenceAdapter: { purgeAll: purgeAllLegacyPatterns },
 }));
 jest.unstable_mockModule('../../services/classificationEvidenceRepository.mjs', () => ({
   classificationEvidenceRepository: { purgeAll },

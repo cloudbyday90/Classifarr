@@ -156,6 +156,7 @@ const app = createIntegrationTestApp({
         authenticateToken,
         requireAdmin,
         logger,
+        getRuntimeStatus: () => ({ mode: 'restore', restoreAllowed: true, restartRequired: true }),
     }),
 });
 

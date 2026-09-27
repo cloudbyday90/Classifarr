@@ -2,6 +2,10 @@
 
 Date: 2026-09-27. Scope: restore-only ownership and interrupted-attempt recovery.
 
+Follow-on: see [restore-mode outcomes](restore-maintenance-mode-outcome.md) for
+the subsequently implemented restart-based maintenance boundary. This document
+retains the validation results and limitations of the session-ownership change.
+
 ## Delivered behavior
 
 - A competing restore is rejected before any gate or configuration writes.

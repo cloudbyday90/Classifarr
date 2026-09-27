@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require dedicated restore mode for configuration imports. Keep normal workers
+  out of the maintenance runtime, coordinate cooperating instances with database
+  admission locks, and block normal startup after incomplete restore verification.
+  Add an authenticated restore screen, explicit restart guidance, and isolated
+  concurrency/recovery tests. No automatic routing resume or release is introduced.
 - Serialize configuration restores on a dedicated database session and recover
   interrupted session-owned attempts on explicit retry. Reject stale-owner writes,
   preserve original failures, and keep legacy restore gates closed for investigation.

@@ -1,4 +1,4 @@
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
+import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { ValidationError } from '../utils/appError.mjs';
@@ -706,7 +706,7 @@ export async function restoreLearningPatterns(client, patterns, libraryIdMap) {
   for (const pattern of patterns) {
     const newLibraryId = libraryIdMap.get(pattern.library_id);
     if (!newLibraryId) continue;
-    await classificationEvidenceService.restoreLegacyPattern({
+    await learningPatternEvidenceAdapter.restoreLegacyPattern({
       pattern,
       libraryId: newLibraryId,
       client

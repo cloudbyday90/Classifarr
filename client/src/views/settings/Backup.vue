@@ -17,8 +17,32 @@
       </p>
     </div>
 
+    <div
+      id="restore-runtime-status"
+      role="status"
+      aria-atomic="true"
+      class="rounded-lg border border-gray-600 p-4"
+    >
+      <p v-if="runtimeUnavailable">
+        Restore mode could not be checked. Restore stays disabled. Refresh this page to retry.
+      </p>
+      <p v-else-if="!runtime">
+        Checking whether restore is available. Restore stays disabled until this check succeeds.
+      </p>
+      <p v-else-if="runtime.restoreAllowed">
+        {{ restoreResult ? 'Restore verified. Restart with CLASSIFARR_RUNTIME_MODE=normal to resume work.' : 'This instance is in restore mode; its workers are inactive. Stop any other normal instances before restoring.' }}
+      </p>
+      <p v-else>
+        To restore, stop all normal instances and restart with CLASSIFARR_RUNTIME_MODE=restore.
+        Backups and previews remain available here.
+      </p>
+    </div>
+
     <!-- Export Section -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+    <div
+      v-if="runtime?.mode !== 'restore'"
+      class="bg-gray-800 border border-gray-700 rounded-lg p-6"
+    >
       <h3 class="text-lg font-medium mb-4 flex items-center gap-2">
         📤 Create Backup
       </h3>
@@ -131,8 +155,12 @@
       <div class="space-y-4">
         <!-- File Selection -->
         <div>
-          <label class="block text-sm font-medium mb-2">Select Backup</label>
+          <label
+            for="restore-backup-file"
+            class="block text-sm font-medium mb-2"
+          >Select Backup</label>
           <select
+            id="restore-backup-file"
             v-model="selectedBackup"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
             @change="onBackupSelect"
@@ -152,8 +180,12 @@
 
         <!-- Password (for encrypted backups) -->
         <div v-if="selectedBackup?.type === 'encrypted'">
-          <label class="block text-sm font-medium mb-2">Backup Password</label>
+          <label
+            for="restore-backup-password"
+            class="block text-sm font-medium mb-2"
+          >Backup Password</label>
           <input
+            id="restore-backup-password"
             v-model="importPassword"
             type="password"
             placeholder="Enter backup password"
@@ -243,8 +275,12 @@
 
         <!-- Restore Mode -->
         <div v-if="preview">
-          <label class="block text-sm font-medium mb-2">Restore Mode</label>
+          <label
+            for="restore-backup-mode"
+            class="block text-sm font-medium mb-2"
+          >Restore Mode</label>
           <select
+            id="restore-backup-mode"
             v-model="restoreMode"
             class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
@@ -287,7 +323,8 @@
         <!-- Restore Button -->
         <button
           v-if="preview"
-          :disabled="importing"
+          :disabled="importing || !runtime?.restoreAllowed"
+          aria-describedby="restore-runtime-status"
           class="px-4 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium transition-colors disabled:opacity-50"
           @click="performRestore"
         >
@@ -425,6 +462,7 @@
                 <button
                   class="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs transition-colors"
                   title="Download"
+                  :disabled="runtime?.mode === 'restore'"
                   @click="downloadBackup(backup.filename)"
                 >
                   ⬇️
@@ -432,6 +470,7 @@
                 <button
                   class="px-2 py-1 bg-red-600 hover:bg-red-500 rounded text-xs transition-colors"
                   title="Delete"
+                  :disabled="runtime?.mode === 'restore'"
                   @click="confirmDelete(backup.filename)"
                 >
                   🗑️
@@ -483,6 +522,8 @@ import api from '@/api'
 import { useToast } from '@/stores/toast'
 
 const toast = useToast()
+const runtime = ref(null)
+const runtimeUnavailable = ref(false)
 
 // Export state
 const exportType = ref('encrypted')
@@ -580,7 +621,7 @@ const previewBackup = async () => {
 }
 
 const performRestore = async () => {
-  if (!selectedBackup.value || !preview.value) return
+  if (!selectedBackup.value || !preview.value || runtime.value?.restoreAllowed !== true) return
   
   if (!confirm(`Are you sure you want to ${restoreMode.value === 'replace' ? 'REPLACE' : 'MERGE'} your configuration? This action cannot be undone.`)) {
     return
@@ -652,7 +693,13 @@ const formatDate = (date) => {
 }
 
 // Load backups on mount
-onMounted(() => {
+onMounted(async () => {
   loadBackups()
+  try {
+    runtime.value = await api.getBackupRuntime()
+  } catch {
+    runtimeUnavailable.value = true
+    toast.error('Could not check restore mode. Restore remains disabled; refresh to retry.')
+  }
 })
 </script>

@@ -23,7 +23,7 @@ import { useServiceStatusStore } from '@/stores/serviceStatus'
 const serviceStatusStore = useServiceStatusStore()
 const route = useRoute()
 
-const PUBLIC_ROUTE_NAMES = new Set(['Login', 'SetupAccount', 'SetupWizard'])
+const PUBLIC_ROUTE_NAMES = new Set(['Login', 'SetupAccount', 'SetupWizard', 'RestoreMaintenance'])
 
 function syncServiceStatusPolling(routeName) {
   if (!routeName || PUBLIC_ROUTE_NAMES.has(routeName)) {

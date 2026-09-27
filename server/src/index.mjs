@@ -1,102 +1,26 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
-/* eslint-disable no-console */
 import { enableCompileCache } from 'node:module';
+import * as database from './config/database.mjs';
+import { startApplication } from './bootstrap/startApplication.mjs';
+
 enableCompileCache();
 
-import * as db from './config/database.mjs';
-import * as runtimeSettings from './config/runtimeSettings.mjs';
-import { discordBotService as discordBot } from './services/discordBot.mjs';
-import { providerLock } from './services/providerLock.mjs';
-import { queueService } from './services/queueService.mjs';
-import { avxGuard } from './services/avxGuard.mjs';
-import { schedulerService as defaultSchedulerService } from './services/scheduler.mjs';
-import { createApp } from './bootstrap/createApp.mjs';
-import { initializeServices } from './bootstrap/initializeServices.mjs';
-import { registerProcessHandlers, startHttpServer } from './bootstrap/runtimeLifecycle.mjs';
-import { runStartupPreflight } from './bootstrap/startupPreflight.mjs';
-import { createLogger, setLoggerDb } from './utils/logger.mjs';
-
-const logger = createLogger('Server');
-const DEFAULT_PORT = process.env.PORT || 21324;
-
-let server = null;
-
-export async function startServer({
-  database = db,
-  discordBotService = discordBot,
-  queueWorkerService = queueService,
-  providerLockService = providerLock,
-  runtimeSettingsService = runtimeSettings,
-  avxGuardService = avxGuard,
-  port = DEFAULT_PORT,
-} = {}) {
-  const app = await createApp({
-    database,
-    runtimeSettings: runtimeSettingsService,
-    port,
-  });
-
-  await runStartupPreflight({
-    database,
-    setLoggerDb,
-    runtimeSettings: runtimeSettingsService,
-    avxGuard: avxGuardService,
-  });
-
-  await initializeServices({
-    discordBot: discordBotService,
-    queueService: queueWorkerService,
-    providerLock: providerLockService,
-  });
-
-  server = await startHttpServer({ app, port });
-  return server;
-}
-
-export function registerServerProcessHandlers({
-  processRef = process,
-  queueWorkerService = queueService,
-  schedulerService = defaultSchedulerService,
-  loggerService = logger,
-} = {}) {
-  registerProcessHandlers({
-    processRef,
-    queueService: queueWorkerService,
-    schedulerService,
-    getServer: () => server,
-    logger: loggerService,
-  });
-}
-
-export async function main() {
-  registerServerProcessHandlers();
-
+if (import.meta.main) {
   try {
-    await startServer();
+    await startApplication({
+      database,
+      onAdmissionLost: () => {
+        // eslint-disable-next-line no-console -- fail-stop rather than reconnecting without ownership
+        console.error('Runtime database ownership lost; stopping all work.');
+        // eslint-disable-next-line n/no-process-exit -- stop background writers at the entrypoint
+        process.exit(1);
+      },
+    });
   } catch (error) {
-    console.error('Failed to start server:', error);
-    // eslint-disable-next-line n/no-process-exit -- fatal startup failure, correct to exit here
+    // eslint-disable-next-line no-console -- fatal diagnostic before normal runtime exists
+    console.error('Failed to start server:', error.message);
+    // eslint-disable-next-line n/no-process-exit -- do not leave imported workers alive
     process.exit(1);
   }
-}
-
-if (import.meta.main) {
-  await main();
 }

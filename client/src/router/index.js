@@ -45,6 +45,11 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
+      path: '/restore',
+      name: 'RestoreMaintenance',
+      component: () => import('@/views/RestoreMaintenance.vue'),
+    },
+    {
       path: '/login',
       name: 'Login',
       component: Login,
@@ -235,6 +240,10 @@ router.beforeEach(async (to) => {
   try {
     // Check if user account setup is required
     const setupData = await api.getSetupStatus()
+
+    if (setupData.operatingMode === 'restore' && !['Login', 'RestoreMaintenance'].includes(to.name)) {
+      return { name: 'RestoreMaintenance' }
+    }
 
     // If no users exist yet, force the initial admin creation flow.
     // This includes redirecting away from /login, which would otherwise be a dead-end.

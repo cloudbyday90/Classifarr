@@ -17,6 +17,7 @@ services:
       TZ: ${TZ:-America/New_York}
       FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-false}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
+      CLASSIFARR_RUNTIME_MODE: ${CLASSIFARR_RUNTIME_MODE:-normal}
       # Cap Node.js heap to 1536 MB — leaves headroom within the 2 GB container
       # memory limit. Without this Node v18+ auto-sizes to ~4 GB and an OOM
       # kill produces no error log. Tune TASK_QUEUE_RETENTION_DAYS (default 7)

@@ -26,6 +26,10 @@ export function listBackups() {
   return getDataRequest('/backup/list')
 }
 
+export function getBackupRuntime() {
+  return getDataRequest('/backup/runtime')
+}
+
 export function downloadBackup(filename) {
   return apiClient.get(`/backup/download/${filename}`, { responseType: 'blob' })
 }
@@ -45,6 +49,7 @@ export function previewBackupFile(filename, password) {
 const backupApi = {
   createBackup,
   listBackups,
+  getBackupRuntime,
   downloadBackup,
   deleteBackup,
   restoreBackup,

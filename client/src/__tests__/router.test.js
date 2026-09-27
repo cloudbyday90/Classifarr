@@ -30,6 +30,7 @@ vi.mock('@/views/CommandCenter.vue', () => ({ default: { template: '<div />' } }
 vi.mock('@/views/Login.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/SetupAccount.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/SetupWizard.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/RestoreMaintenance.vue', () => ({ default: { template: '<div />' } }))
 
 async function loadRouter() {
   vi.resetModules()
@@ -57,6 +58,25 @@ describe('router auth/setup guard', () => {
 
   afterEach(() => {
     consoleErrorSpy.mockRestore()
+  })
+
+  it('redirects ordinary pages to the isolated maintenance page in restore mode', async () => {
+    const router = await loadRouter()
+    apiMock.getSetupStatus.mockResolvedValue({ setupRequired: false, operatingMode: 'restore' })
+    await router.push('/settings')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('RestoreMaintenance')
+    expect(apiMock.getMe).toHaveBeenCalled()
+    expect(router.currentRoute.value.matched.some(route => route.name === 'MainLayout')).toBe(false)
+  })
+
+  it('requires authentication before opening restore maintenance', async () => {
+    const router = await loadRouter()
+    apiMock.getSetupStatus.mockResolvedValue({ setupRequired: false, operatingMode: 'restore' })
+    apiMock.getMe.mockRejectedValue(new Error('unauthenticated'))
+    await router.push('/restore')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('Login')
   })
 
   it('redirects protected routes to setup-account when setup is required', async () => {

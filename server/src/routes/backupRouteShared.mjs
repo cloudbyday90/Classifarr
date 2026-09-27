@@ -18,7 +18,8 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { AppError, ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { getBackupRuntimeStatus } from '../config/operatingMode.mjs';
 
 export function isInvalidFilename(filename) {
   return !filename || filename.includes('..') || filename.includes('/') || filename.includes('\\');
@@ -31,11 +32,19 @@ export function createBackupRouter({
   authenticateToken,
   requireAdmin,
   logger,
+  getRuntimeStatus = getBackupRuntimeStatus,
 }) {
   const router = express.Router();
+  // Runtime capabilities are selected at construction/startup, never hot-switched.
+  const runtimeStatus = Object.freeze({ ...getRuntimeStatus() });
 
   router.use(authenticateToken);
   router.use(requireAdmin);
+
+  router.get('/runtime', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return sendData(res, runtimeStatus);
+  });
 
   router.post('/export', asyncHandler(async (req, res) => {
     const {
@@ -82,6 +91,10 @@ export function createBackupRouter({
   }));
 
   router.post('/import', asyncHandler(async (req, res) => {
+    if (runtimeStatus.restoreAllowed !== true) {
+      throw new AppError('Restart with CLASSIFARR_RUNTIME_MODE=restore before restoring configuration.',
+        503, { code: 'RESTORE_MODE_REQUIRED', isOperational: true });
+    }
     const {
       filename,
       password,

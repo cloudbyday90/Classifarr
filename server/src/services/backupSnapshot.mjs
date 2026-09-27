@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 import * as db from '../config/database.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
+import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { readBackupConfiguration } from './backupExportCatalog.mjs';
 
@@ -19,7 +19,7 @@ export async function collectBackupSnapshot({ includePatterns = true } = {}) {
 
     const { data, meta } = await readBackupConfiguration(client);
     if (includePatterns) {
-      data.learningPatterns = await classificationEvidenceService.listLegacyPatterns({ client });
+      data.learningPatterns = await learningPatternEvidenceAdapter.listAll({ client });
       meta.learningPatternsCount = data.learningPatterns.length;
       data.classificationEvidence = await classificationEvidenceRepository.listAll({ client });
       meta.classificationEvidenceCount = data.classificationEvidence.length;

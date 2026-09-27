@@ -34,12 +34,12 @@ jest.unstable_mockModule('node:fs', () => createMockModule(mockFs));
 const mockDatabase = createTransactionalDbMock();
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
 
-const mockClassificationEvidenceService = createServiceStubs([
-        'listLegacyPatterns',
-        'purgeAllLegacyPatterns',
+const mockLearningPatternEvidenceAdapter = createServiceStubs([
+        'listAll',
+        'purgeAll',
         'restoreLegacyPattern',
 ]);
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', mockClassificationEvidenceService));
+jest.unstable_mockModule('../services/learningPatternEvidenceAdapter.mjs', () => createNamedMockModule('learningPatternEvidenceAdapter', mockLearningPatternEvidenceAdapter));
 
 const mockClassificationEvidenceRepository = createServiceStubs([
     'listAll',
@@ -49,7 +49,7 @@ const mockClassificationEvidenceRepository = createServiceStubs([
 jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () => createNamedMockModule('classificationEvidenceRepository', mockClassificationEvidenceRepository));
 
 const db = mockDatabase;
-const classificationEvidenceService = mockClassificationEvidenceService;
+const learningPatternEvidenceAdapter = mockLearningPatternEvidenceAdapter;
 const classificationEvidenceRepository = mockClassificationEvidenceRepository;
 const { backupService, BackupService } = await import('../services/backupService.mjs');
 const { withBackupRestoreSession } = await import('../services/backupRestoreSession.mjs');
@@ -75,9 +75,9 @@ describe('BackupService evidence integration', () => {
         db.pool.connect.mockReset();
         useSnapshotClient();
         db.withTransaction.mockClear();
-        classificationEvidenceService.listLegacyPatterns.mockReset();
-        classificationEvidenceService.purgeAllLegacyPatterns.mockReset();
-        classificationEvidenceService.restoreLegacyPattern.mockReset();
+        learningPatternEvidenceAdapter.listAll.mockReset();
+        learningPatternEvidenceAdapter.purgeAll.mockReset();
+        learningPatternEvidenceAdapter.restoreLegacyPattern.mockReset();
         classificationEvidenceRepository.listAll.mockReset();
         classificationEvidenceRepository.purgeAll.mockReset();
         classificationEvidenceRepository.upsertEvidence.mockReset();
@@ -146,12 +146,12 @@ describe('BackupService evidence integration', () => {
 
     test('collectBackupData uses the evidence service for learned pattern export', async () => {
         db.query.mockResolvedValue({ rows: [] });
-        classificationEvidenceService.listLegacyPatterns.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+        learningPatternEvidenceAdapter.listAll.mockResolvedValue([{ id: 1 }, { id: 2 }]);
         classificationEvidenceRepository.listAll.mockResolvedValue([]);
 
         const result = await backupService.collectBackupData({ includePatterns: true });
 
-        expect(classificationEvidenceService.listLegacyPatterns).toHaveBeenCalledWith({
+        expect(learningPatternEvidenceAdapter.listAll).toHaveBeenCalledWith({
             client: expect.objectContaining({ query: expect.any(Function) }),
         });
         expect(result.data.learningPatterns).toEqual([{ id: 1 }, { id: 2 }]);
@@ -242,8 +242,8 @@ describe('BackupService evidence integration', () => {
             }
         });
 
-        classificationEvidenceService.purgeAllLegacyPatterns.mockResolvedValue({ deleted: 4, rows: [] });
-        classificationEvidenceService.restoreLegacyPattern.mockResolvedValue({ id: 77 });
+        learningPatternEvidenceAdapter.purgeAll.mockResolvedValue({ deleted: 4, rows: [] });
+        learningPatternEvidenceAdapter.restoreLegacyPattern.mockResolvedValue({ id: 77 });
 
         await backupService.restoreBackup('phase1.json', { mode: 'replace' });
 
@@ -270,12 +270,10 @@ describe('BackupService evidence integration', () => {
             verifiedAt: '2026-07-25T12:00:00.000Z',
         });
 
-        expect(classificationEvidenceService.purgeAllLegacyPatterns).toHaveBeenCalledWith({
-            client,
-            actor: 'backup_restore',
-            reason: 'replace_mode'
+        expect(learningPatternEvidenceAdapter.purgeAll).toHaveBeenCalledWith({
+            client
         });
-        expect(classificationEvidenceService.restoreLegacyPattern).toHaveBeenCalledWith({
+        expect(learningPatternEvidenceAdapter.restoreLegacyPattern).toHaveBeenCalledWith({
             pattern: expect.objectContaining({
                 tmdb_id: 550,
                 media_type: 'movie',
@@ -417,7 +415,7 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
         ];
 
         db.query.mockResolvedValue({ rows: [] });
-        classificationEvidenceService.listLegacyPatterns.mockResolvedValue([]);
+        learningPatternEvidenceAdapter.listAll.mockResolvedValue([]);
         classificationEvidenceRepository.listAll.mockResolvedValue(ceRows);
 
         const result = await backupService.collectBackupData({ includePatterns: true });
@@ -447,7 +445,7 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
         ];
 
         db.query.mockResolvedValue({ rows: [] });
-        classificationEvidenceService.listLegacyPatterns.mockResolvedValue([]);
+        learningPatternEvidenceAdapter.listAll.mockResolvedValue([]);
         classificationEvidenceRepository.listAll.mockResolvedValue(ceRows);
 
         const result = await backupService.collectBackupData({ includePatterns: true });
@@ -471,7 +469,7 @@ describe('BackupService classification_evidence export (Phase 6A)', () => {
             if (sql.includes('FROM policy_native_intent_reconciliation_states')) return { rows: [{ policy_id: 10, outcome_state: 'system_failure' }] };
             return { rows: [] };
         });
-        classificationEvidenceService.listLegacyPatterns.mockResolvedValue([]);
+        learningPatternEvidenceAdapter.listAll.mockResolvedValue([]);
         classificationEvidenceRepository.listAll.mockResolvedValue([]);
 
         const result = await backupService.collectBackupData({ includePatterns: true });
@@ -508,19 +506,19 @@ describe('BackupService classification_evidence restore mapping (Phase 6A)', () 
     beforeEach(() => {
         jest.clearAllMocks();
         db.pool.connect.mockReset();
-        classificationEvidenceService.purgeAllLegacyPatterns.mockReset();
+        learningPatternEvidenceAdapter.purgeAll.mockReset();
         classificationEvidenceRepository.purgeAll.mockReset();
         classificationEvidenceRepository.upsertEvidence.mockReset();
-        classificationEvidenceService.restoreLegacyPattern.mockReset();
+        learningPatternEvidenceAdapter.restoreLegacyPattern.mockReset();
         client = {
             query: jest.fn().mockResolvedValue({ rows: [{ id: 1 }], rowCount: 1 }),
             release: jest.fn()
         };
         db.pool.connect.mockResolvedValue(client);
-        classificationEvidenceService.purgeAllLegacyPatterns.mockResolvedValue({ deleted: 0, rows: [] });
+        learningPatternEvidenceAdapter.purgeAll.mockResolvedValue({ deleted: 0, rows: [] });
         classificationEvidenceRepository.purgeAll.mockResolvedValue({ deleted: 0 });
         classificationEvidenceRepository.upsertEvidence.mockResolvedValue({ id: 99 });
-        classificationEvidenceService.restoreLegacyPattern.mockResolvedValue({ id: 77 });
+        learningPatternEvidenceAdapter.restoreLegacyPattern.mockResolvedValue({ id: 77 });
     });
 
     function makeBackup(ceRows = [], extra = {}) {

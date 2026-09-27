@@ -7,11 +7,11 @@ import { jest } from '@jest/globals';
 import { createNamedMockModule, createTransactionalDbMock } from './helpers/mockFactory.mjs';
 
 const database = createTransactionalDbMock();
-const patterns = { listLegacyPatterns: jest.fn() };
+const patterns = { listAll: jest.fn() };
 const evidence = { listAll: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', database));
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () =>
-  createNamedMockModule('classificationEvidenceService', patterns));
+jest.unstable_mockModule('../services/learningPatternEvidenceAdapter.mjs', () =>
+  createNamedMockModule('learningPatternEvidenceAdapter', patterns));
 jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () =>
   createNamedMockModule('classificationEvidenceRepository', evidence));
 const { collectBackupSnapshot } = await import('../services/backupSnapshot.mjs');
@@ -22,11 +22,11 @@ describe('configuration backup snapshot', () => {
     database.query.mockReset();
     database.pool.connect.mockReset();
     database.withTransaction.mockClear();
-    patterns.listLegacyPatterns.mockReset();
+    patterns.listAll.mockReset();
     evidence.listAll.mockReset();
     client = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
     database.pool.connect.mockResolvedValue(client);
-    patterns.listLegacyPatterns.mockResolvedValue([{ id: 42 }]);
+    patterns.listAll.mockResolvedValue([{ id: 42 }]);
     evidence.listAll.mockResolvedValue([{ id: 43 }]);
   });
 
@@ -46,7 +46,7 @@ describe('configuration backup snapshot', () => {
     expect(database.query).not.toHaveBeenCalled();
     expect(database.pool.connect).toHaveBeenCalledTimes(1);
     expect(client.release).toHaveBeenCalledTimes(1);
-    expect(patterns.listLegacyPatterns).toHaveBeenCalledWith({ client });
+    expect(patterns.listAll).toHaveBeenCalledWith({ client });
     expect(evidence.listAll).toHaveBeenCalledWith({ client });
     expect(backup.version).toBe('2.0');
     expect(Number.isNaN(Date.parse(backup.exportedAt))).toBe(false);
@@ -68,7 +68,7 @@ describe('configuration backup snapshot', () => {
     expect(backup.meta).toMatchObject({ usersCount: 1, librariesCount: 0, policiesCount: 0 });
     expect(backup.data).not.toHaveProperty('classificationEvidence');
     expect(backup.meta).not.toHaveProperty('learningPatternsCount');
-    expect(patterns.listLegacyPatterns).not.toHaveBeenCalled();
+    expect(patterns.listAll).not.toHaveBeenCalled();
     expect(evidence.listAll).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenCalledWith(
       'SELECT * FROM auto_learned_preferences WHERE status = $1 ORDER BY id', ['active'],
@@ -82,14 +82,14 @@ describe('configuration backup snapshot', () => {
           (stage === 'commit' && sql === 'COMMIT')) throw failure;
       return { rows: [] };
     });
-    if (stage === 'patterns') patterns.listLegacyPatterns.mockRejectedValueOnce(failure);
+    if (stage === 'patterns') patterns.listAll.mockRejectedValueOnce(failure);
     if (stage === 'evidence') evidence.listAll.mockRejectedValueOnce(failure);
     await expect(collectBackupSnapshot()).rejects.toBe(failure);
     expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
     expect(client.release).toHaveBeenCalledTimes(1);
     if (stage === 'configuration') {
       expect(client.query.mock.calls.some(([sql]) => sql.includes('FROM library_policies'))).toBe(false);
-      expect(patterns.listLegacyPatterns).not.toHaveBeenCalled();
+      expect(patterns.listAll).not.toHaveBeenCalled();
     }
   });
 });

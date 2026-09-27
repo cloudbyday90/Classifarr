@@ -1,5 +1,5 @@
 import { createLogger } from '../utils/logger.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
+import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { generateApiKey } from './apiKeyService.mjs';
 import { validateBackupRestoreReferences } from './backupRestoreReferences.mjs';
@@ -113,7 +113,7 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM library_labels');
   await client.query('DELETE FROM library_policies');
   await client.query('DELETE FROM auto_learned_preferences');
-  await classificationEvidenceService.purgeAllLegacyPatterns({ client, actor: 'backup_restore', reason: 'replace_mode' });
+  await learningPatternEvidenceAdapter.purgeAll({ client });
   await classificationEvidenceRepository.purgeAll({ client });
   await client.query('DELETE FROM scheduled_tasks');
   await client.query('DELETE FROM path_mappings');

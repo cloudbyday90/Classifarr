@@ -95,6 +95,10 @@ Classifarr is a full operations platform for classification, routing, review, an
   Restores use an exclusive database session with interrupted-attempt recovery;
   see [ownership and maintenance limits](docs/architecture/backup-restore-session-design.md)
   and [session recovery outcomes](docs/architecture/backup-restore-session-outcome.md).
+  Configuration imports now require `CLASSIFARR_RUNTIME_MODE=restore`; ordinary
+  workers stay inactive until a verified restore and explicit normal restart.
+  See the [restore-mode procedure and design](docs/architecture/restore-maintenance-mode-design.md)
+  and [validation outcome](docs/architecture/restore-maintenance-mode-outcome.md).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 

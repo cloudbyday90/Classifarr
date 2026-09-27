@@ -1,10 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
-import { ValidationError } from '../utils/appError.mjs';
+import { AppError, ValidationError } from '../utils/appError.mjs';
 import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
 import {
   BACKUP_RESTORE_SESSION_LOCK_KEY,
   BACKUP_RESTORE_SESSION_OWNER_REASON,
+  RUNTIME_MAINTENANCE_LOCK_KEY,
 } from '../utils/backupRestoreSessionContract.mjs';
 
 /** Keep restore ownership and every restore query on one disposable PG session. */
@@ -62,6 +63,11 @@ export async function withBackupRestoreSession({ database, logger }, callback) {
   };
 
   try {
+    const admission = await query('SELECT pg_try_advisory_lock($1) AS acquired', [RUNTIME_MAINTENANCE_LOCK_KEY]);
+    if (admission.rows[0]?.acquired !== true) {
+      throw new AppError('Normal workers or another restore are active. Stop every normal instance before retrying.',
+        503, { code: 'RESTORE_RUNTIME_BUSY', isOperational: true });
+    }
     const result = await query('SELECT pg_try_advisory_lock($1) AS acquired',
       [BACKUP_RESTORE_SESSION_LOCK_KEY]);
     if (result.rows[0]?.acquired !== true) {

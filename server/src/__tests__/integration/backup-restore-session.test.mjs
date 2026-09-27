@@ -34,12 +34,12 @@ describe('PostgreSQL restore session ownership', () => {
     const competitor = jest.fn();
     await run(async db => {
       await start(db, token);
-      await expect(run(competitor)).rejects.toThrow('already in progress');
+      await expect(run(competitor)).rejects.toThrow('Stop every normal instance');
       expect(await loadGate()).toMatchObject({ restore_token: token, gate_state: 'restore_in_progress' });
       await db.withTransaction(async tx => {
         await tx.query("INSERT INTO restore_session_probe VALUES ('first owner')");
       });
-      await expect(run(competitor)).rejects.toThrow('already in progress');
+      await expect(run(competitor)).rejects.toThrow('Stop every normal instance');
     });
     expect(competitor).not.toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe('PostgreSQL restore session ownership', () => {
         throw error;
       })).rejects.toBe(error);
       expect((await db.query('SELECT value FROM restore_session_probe')).rows).toEqual([{ value: 'original' }]);
-      await expect(run(jest.fn())).rejects.toThrow('already in progress');
+      await expect(run(jest.fn())).rejects.toThrow('Stop every normal instance');
     });
   });
 

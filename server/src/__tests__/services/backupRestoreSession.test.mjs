@@ -6,6 +6,7 @@ import { withBackupRestoreSession } from '../../services/backupRestoreSession.mj
 import {
   BACKUP_RESTORE_SESSION_LOCK_KEY,
   BACKUP_RESTORE_SESSION_OWNER_REASON,
+  RUNTIME_MAINTENANCE_LOCK_KEY,
 } from '../../utils/backupRestoreSessionContract.mjs';
 import {
   beginNativeIntentReconciliationRestore,
@@ -34,13 +35,16 @@ describe('pinned backup restore ownership', () => {
     })).resolves.toBe('verified');
     expect(database.pool.connect).toHaveBeenCalledTimes(1);
     expect(client.query.mock.calls[0]).toEqual([
-      'SELECT pg_try_advisory_lock($1) AS acquired', [BACKUP_RESTORE_SESSION_LOCK_KEY],
+      'SELECT pg_try_advisory_lock($1) AS acquired', [RUNTIME_MAINTENANCE_LOCK_KEY],
     ]);
     expect(client.query.mock.calls[1]).toEqual([
+      'SELECT pg_try_advisory_lock($1) AS acquired', [BACKUP_RESTORE_SESSION_LOCK_KEY],
+    ]);
+    expect(client.query.mock.calls[2]).toEqual([
       expect.stringContaining("gate_state = 'requires_maintenance'"), [BACKUP_RESTORE_SESSION_OWNER_REASON],
     ]);
-    expect(client.query.mock.calls[1][0]).toContain("gate_state = 'restore_in_progress' AND reason_id = $1");
-    expect(client.query.mock.calls.slice(2).map(([sql]) => sql)).toEqual([
+    expect(client.query.mock.calls[2][0]).toContain("gate_state = 'restore_in_progress' AND reason_id = $1");
+    expect(client.query.mock.calls.slice(3).map(([sql]) => sql)).toEqual([
       'begin gate', 'BEGIN', 'restore configuration', 'COMMIT', 'verify',
       'BEGIN', 'complete and receipt', 'COMMIT',
     ]);
@@ -53,7 +57,7 @@ describe('pinned backup restore ownership', () => {
     const { client, run } = setup();
     client.query.mockResolvedValueOnce({ rows: [{ acquired }] });
     const work = jest.fn();
-    await expect(run(work)).rejects.toThrow('already in progress');
+    await expect(run(work)).rejects.toMatchObject({ statusCode: 503, code: 'RESTORE_RUNTIME_BUSY' });
     expect(work).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenCalledTimes(1);
     expect(client.release).toHaveBeenCalledWith(true);
@@ -69,7 +73,18 @@ describe('pinned backup restore ownership', () => {
     expect(client.release).not.toHaveBeenCalled();
   });
 
-  test.each([1, 2])('SQL failure during acquisition/recovery (%s) destroys the session', async failureCall => {
+  test('retains the existing restore-owner lock after exclusive runtime admission', async () => {
+    const { client, run } = setup();
+    client.query.mockReset().mockResolvedValueOnce({ rows: [{ acquired: true }] })
+      .mockResolvedValueOnce({ rows: [{ acquired: false }] });
+    const work = jest.fn();
+    await expect(run(work)).rejects.toThrow('already in progress');
+    expect(client.query).toHaveBeenCalledTimes(2);
+    expect(work).not.toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledWith(true);
+  });
+
+  test.each([1, 2, 3])('SQL failure during acquisition/recovery (%s) destroys the session', async failureCall => {
     const { client, run } = setup();
     const error = new Error('database failure');
     client.query.mockImplementation(async () => {
@@ -89,7 +104,7 @@ describe('pinned backup restore ownership', () => {
       await expect(db.withTransaction(async tx => { await tx.query('write'); throw error; })).rejects.toBe(error);
       await db.query('record failure');
     });
-    expect(client.query.mock.calls.slice(2).map(([sql]) => sql)).toEqual(['BEGIN', 'write', 'ROLLBACK', 'record failure']);
+    expect(client.query.mock.calls.slice(3).map(([sql]) => sql)).toEqual(['BEGIN', 'write', 'ROLLBACK', 'record failure']);
   });
 
   test.each(['BEGIN', 'COMMIT', 'ROLLBACK'])('does not replay after %s fails', async command => {
@@ -133,7 +148,7 @@ describe('pinned backup restore ownership', () => {
     await run(async db => { escaped = db; });
     await expect(escaped.query('late write')).rejects.toThrow('session_closed');
     await expect(escaped.withTransaction(jest.fn())).rejects.toThrow('session_closed');
-    expect(client.query).toHaveBeenCalledTimes(2);
+    expect(client.query).toHaveBeenCalledTimes(3);
   });
 
   test('destroys an unawaited transaction and prevents its later commit', async () => {

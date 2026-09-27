@@ -2,6 +2,10 @@
 
 Date: 2026-09-27. Status: implementation design; full maintenance barrier remains pending.
 
+Follow-on: [dedicated restore operating mode](restore-maintenance-mode-design.md)
+now provides restart-based isolation and cooperative normal-runtime admission.
+The findings below describe the earlier session-ownership change, not an online drain.
+
 ## Finding and scope
 
 The restore lifecycle records a durable `restore_in_progress` gate before replacing
