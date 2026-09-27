@@ -46,10 +46,48 @@ certificate.
 
 Tests use synthetic provider responses and disposable databases, with no real
 provider calls or paid AI evaluation. This is not a live version-compatibility
-certification. The user subsequently requested a local no-cache Compose rebuild
-after tests. Its backup, migration and runtime results will be recorded separately;
-normal background jobs may resume during that authorized deployment. No release
-or version bump is planned.
+certification. The user subsequently requested the local no-cache Compose rebuild
+recorded below. Normal background jobs resumed during that authorized deployment.
+No release or version bump was created.
+
+## Local rollout — 2026-09-27
+
+Code and documentation were committed and pushed as
+`996c4fe075f6ffb8d15529a085991dcb940092f0`. The repository provenance wrapper built
+that clean checkout with `build --no-cache --require-provenance classifarr`, then
+recreated only Classifarr with `--no-build --no-deps --pull never --wait`.
+The running image revision matches that code commit. This outcome update is a
+subsequent documentation-only commit and does not require another image build.
+
+- The previous actual image remains tagged
+  `classifarr:rollback-preflight-20260927-1602`. No images or volumes were deleted.
+- A full PostgreSQL custom archive is retained privately under the ignored
+  `data/backups/` directory as
+  `pre-source-preflight-2026-09-27T20-03-07-280Z-8705cc05.dump` (79,859,856 bytes).
+  Archive listing succeeded and container/host SHA-256 values matched:
+  `bfd7e409f1ab29aa1d15828bd8f032fd566efae1d4fbacd05e9835c2c9413a10`.
+  This checks archive readability and transfer integrity, not a restore rehearsal
+  or an off-host disaster-recovery backup. Treat the archive as sensitive data.
+- All four previously committed migrations applied, increasing the ledger from
+  287 to 291. They add credential wakeup, recovery progress, ingestion ownership
+  and reconciliation-receipt indexing. This patch adds no migration.
+- Compose reports healthy. `/health` and authenticated readiness return 200;
+  anonymous library access remains 401. The authenticated list and all ten library
+  detail requests return 200 without exposing the internal raw diagnostic field.
+- Counts remained ten libraries, 6,696 inventory items and 6,798 classifications.
+  The selected library routing/policy configuration fingerprint is unchanged.
+  Existing data/media mounts and unrelated containers were retained.
+- Startup log inspection found no error/fatal entries; the persisted error-log
+  query also returned none during the observation window. This is a startup check,
+  not a claim about every future scheduled job or external provider.
+
+Three libraries report `legacy_owner_unknown`; seven have not yet entered the
+new ownership ledger. Older markers were deliberately not cleared or declared
+complete. For those three libraries, follow the existing
+[blocked-import review procedure](legacy-ingestion-reconciliation-outcome.md#operator-procedure):
+verify old writers are stopped, disable the affected library, review and reconcile
+the exact markers, then re-enable for a controlled replay. The smoke check made
+only read requests and did not initiate imports, repair metadata or change settings.
 
 ## PR availability
 
