@@ -31,7 +31,7 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   const run = mockRunner();
   const result = await runWith(run);
   expect(result).toMatchObject({ status: 'passed', cleanup: 'passed', baseline: upgradeBaseline });
-  expect(result.checks).toHaveLength(8);
+  expect(result.checks).toHaveLength(9);
   expect(run.mock.calls[0][0]).toBe('gh');
   expect(run.mock.calls[0][1]).toEqual(['attestation', 'verify', `oci://${upgradeBaseline.image}`, '--repo', 'cloudbyday90/Classifarr',
     '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision, '--deny-self-hosted-runners']);
@@ -39,8 +39,10 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   expect(ops.some(args => args.join(' ') === 'kill --signal SIGKILL app')).toBe(true);
   expect(ops.at(-1)).toEqual(['--profile', 'tools', 'down', '--volumes', '--timeout', '10']);
   const starts = run.mock.calls.filter(([, args]) => args[7] === 'up');
-  expect(starts.map(([, , opts]) => opts.env.CLASSIFARR_UPGRADE_MODE)).toEqual(['normal', 'normal', 'restore', 'normal', 'restore', 'normal']);
-  expect(starts[0][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(upgradeBaseline.image);
+  expect(starts.map(([, , opts]) => opts.env.CLASSIFARR_UPGRADE_MODE)).toEqual(['normal', 'normal', 'normal', 'restore', 'normal', 'restore', 'normal']);
+  expect(starts[0][2].env.CLASSIFARR_UPGRADE_IMAGE).toMatch(/-candidate$/);
+  expect(starts[1][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(upgradeBaseline.image);
+  expect(ops.findIndex(args => args[0] === 'down')).toBeLessThan(ops.findIndex(args => args.includes('--input-type=module')));
   for (const [cmd, args, options] of run.mock.calls) {
     expect(['docker', 'gh']).toContain(cmd);
     expect(options.shell).toBe(false);
@@ -76,6 +78,14 @@ test('cleanup failure takes precedence without losing scenario phase', async () 
 test('does not call arbitrary normal startup failure a recovery success', async () => {
   const run = mockRunner((_cmd, args) => args[7] === 'logs' ? { status: 0, stdout: 'unrelated crash' } : undefined);
   await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:normal_rejection');
+});
+
+test('cannot start the published release with the fresh-install volume left over', async () => {
+  let volumeChecks = 0;
+  const run = mockRunner((_cmd, args) => args[0] === 'volume' && ++volumeChecks === 2
+    ? { status: 0, stdout: 'fresh-volume' } : undefined);
+  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:fresh_install');
+  expect(run.mock.calls.some(([, args]) => args[0] === 'pull')).toBe(false);
 });
 test('requires actual lock-wait marker before killing the container', async () => {
   let time = 0;

@@ -108,6 +108,11 @@ Classifarr is a full operations platform for classification, routing, review, an
   movie/TV recovery-to-learning. It requires Docker and authenticated GitHub CLI
   provenance verification; see the [design](docs/architecture/published-upgrade-recovery-design.md)
   and [outcome](docs/architecture/published-upgrade-recovery-outcome.md).
+  CI now requires both fresh-install and published-upgrade acceptance. Run
+  `npm run test:local:runtime-installation-acceptance` for the same disposable
+  checks and bounded local receipts; dirty-tree runs are diagnostic, not CI
+  acceptance. See the [CI design](docs/architecture/runtime-installation-acceptance-design.md)
+  and [verified scope](docs/architecture/runtime-installation-acceptance-outcome.md).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 

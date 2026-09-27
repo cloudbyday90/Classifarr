@@ -14,7 +14,9 @@ test('registers shared startup/periodic work and replaces stopped workers; defer
   expect(scheduler.scheduleInitial).toHaveBeenCalledWith(AUTOMATIC_SOURCE_PAIR_TASK, 180000, handler);
   expect(await handler()).toMatchObject({ status: 'deferred' });
   worker.run.mockResolvedValue({ status: 'failed', reason: 'PRIVATE' });
-  await expect(handler()).rejects.toThrow('automatic_source_pair_evaluation_unavailable');
+  await expect(handler()).rejects.toThrow('automatic_source_pair_evaluation_unavailable:evaluation_unavailable');
+  worker.run.mockResolvedValue({ status: 'failed', reason: 'evidence_budget' });
+  await expect(handler()).rejects.toThrow('automatic_source_pair_evaluation_unavailable:evidence_budget');
 });
 
 test.each([undefined, { status: 'complete', report: { secret: 'PRIVATE' } }, { status: 'stale', report: null }])(

@@ -82,6 +82,9 @@ jobs:
           cd server
           npm run check:release-installation-evidence
 
+      - name: Check runtime installation acceptance workflow contract
+        run: node server/src/scripts/checkRuntimeInstallationWorkflow.mjs
+
       - name: Validate server dependency tree
         run: |
           cd server
@@ -341,10 +344,43 @@ jobs:
       - name: Rehearse mixed movie and TV profile upgrade canary
         run: npm run test:local:library-profile-upgrade-rehearsal
 
+  runtime-installation-acceptance:
+    name: Fresh Install and Published Upgrade
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'ci'
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Run isolated installation acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFARR_INSTALLATION_SOURCE_REVISION: ${{ github.sha }}
+        run: node scripts/run-runtime-installation-acceptance.mjs --ci
+      - name: Upload bounded installation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runtime-installation-acceptance
+          path: |
+            .tmp/ci/runtime-installation-acceptance.json
+            .tmp/ci/runtime-installation-acceptance.md
+          if-no-files-found: error
+          retention-days: 90
+
   release-acceptance:
     name: Release Acceptance Readout
     runs-on: ubuntu-latest
-    needs: [build-and-test, database-tests]
+    needs: [build-and-test, database-tests, runtime-installation-acceptance]
     if: |
       always() && (
         github.event_name == 'pull_request' ||
@@ -373,7 +409,7 @@ jobs:
             REPOSITORY_VALIDATION="blocked"
           fi
 
-          if [ "${{ needs.database-tests.result }}" = "success" ]; then
+          if [ "${{ needs.database-tests.result }}" = "success" ] && [ "${{ needs.runtime-installation-acceptance.result }}" = "success" ]; then
             ISOLATED_RUNTIME_ACCEPTANCE="passed"
           else
             ISOLATED_RUNTIME_ACCEPTANCE="blocked"

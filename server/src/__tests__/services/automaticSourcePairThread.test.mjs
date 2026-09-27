@@ -6,6 +6,15 @@ import { computeAutomaticSourcePair } from '../../services/automaticSourcePairCo
 import { sourcePairFixture, sourcePairIdentity } from '../fixtures/sourceDescriptionPairFixture.mjs';
 
 const snapshot = () => ({ observedAt: '2026-09-25 01:00:00+00', inputs: { source: sourcePairFixture(), identity: sourcePairIdentity } });
+function acknowledgeTransfer(worker) {
+  let count = 0;
+  worker.emit('message', { kind: 'evaluation_vectors_ready' });
+  while (worker.postMessage.mock.calls.at(-1)[0].kind === 'evaluation_vectors') {
+    const message = worker.postMessage.mock.calls.at(-1)[0];
+    count += message.entries.length;
+    worker.emit('message', { kind: 'evaluation_vectors_ack', sequence: message.sequence, count });
+  }
+}
 test('real fixed ESM worker returns only bounded aggregates and terminates', async () => {
   const result = await runAutomaticSourcePairThread(snapshot(), null);
   expect(result.report).toMatchObject({ status: 'complete', sampled: 48, limits: { providerCalls: 0, routingWrites: 0 } });
@@ -18,6 +27,7 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
     constructor(_url, supplied) {
       super(); instance = this; options = supplied;
       this.stdout = { resume: jest.fn() }; this.stderr = { resume: jest.fn() }; this.terminate = jest.fn(async () => 0);
+      this.postMessage = jest.fn();
     }
   }
   const controller = new AbortController();
@@ -28,7 +38,7 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
   if (mode === 'error') instance.emit('error', new Error('PRIVATE'));
   if (mode === 'exit') instance.emit('exit', 0);
   if (mode === 'invalid') instance.emit('message', { result: { report: { secret: 'PRIVATE' } } });
-  if (mode === 'success') instance.emit('message', { result: computeAutomaticSourcePair(snapshot(), null) });
+  if (mode === 'success') { acknowledgeTransfer(instance); instance.emit('message', { result: computeAutomaticSourcePair(snapshot(), null) }); }
   await assertion;
   expect(instance.terminate).toHaveBeenCalledTimes(1);
   expect(options).toMatchObject({ env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true, resourceLimits: { maxOldGenerationSizeMb: 512 } });
@@ -44,7 +54,7 @@ test('refuses pre-cancelled and over-budget work before creating a worker', asyn
 test.each(['missing', 'invalid', 'unexpected', 'valid'])('private capture admission boundary: %s', async mode => {
   let worker;
   class FakeWorker extends EventEmitter {
-    constructor() { super(); worker = this; this.terminate = jest.fn(async () => 0); }
+    constructor() { super(); worker = this; this.terminate = jest.fn(async () => 0); this.postMessage = jest.fn(); }
   }
   const result = computeAutomaticSourcePair(snapshot(), null);
   if (mode !== 'unexpected') result.plan = [];
@@ -52,6 +62,7 @@ test.each(['missing', 'invalid', 'unexpected', 'valid'])('private capture admiss
   const promise = runAutomaticSourcePairThread(snapshot(), null, undefined, { WorkerClass: FakeWorker, includePlan: mode !== 'unexpected' });
   const assertion = mode === 'valid' ? expect(promise).resolves.toMatchObject({ plan: [], captureAdmission: [] })
     : expect(promise).rejects.toThrow('automatic_source_pair_worker_unavailable');
+  acknowledgeTransfer(worker);
   worker.emit('message', { result });
   await assertion;
   expect(worker.terminate).toHaveBeenCalledTimes(1);

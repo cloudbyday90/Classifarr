@@ -2,9 +2,12 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { executeAutomaticSourcePair } from './automaticSourcePairExecution.mjs';
 import { assertOfflineEvaluationClean } from '../config/offlineEvaluation.mjs';
+import { receiveEvaluationSnapshot } from './evaluationVectorTransport.mjs';
 
 try {
-  const result = await executeAutomaticSourcePair(workerData.snapshot, workerData.state, { includePlan: workerData.includePlan === true });
+  const snapshot = await receiveEvaluationSnapshot(workerData, parentPort);
+  workerData.snapshot = null;
+  const result = await executeAutomaticSourcePair(snapshot, workerData.state, { includePlan: workerData.includePlan === true });
   assertOfflineEvaluationClean();
   parentPort.postMessage({ result });
 } catch {

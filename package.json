@@ -15,6 +15,7 @@
     "test:local:schema-release-replay": "node server/src/scripts/runSchemaReleaseReplay.mjs",
     "test:local:restore-recovery-drill": "node scripts/run-restore-recovery-drill.mjs",
     "test:local:published-upgrade-drill": "node scripts/run-published-upgrade-drill.mjs",
+    "test:local:runtime-installation-acceptance": "node scripts/run-runtime-installation-acceptance.mjs",
     "benchmark:cross-encoder:prepare": "node scripts/prepare-cross-encoder-model.mjs",
     "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
     "docker:smart:up": "node scripts/docker-compose-smart.mjs up -d",

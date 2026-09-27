@@ -76,7 +76,17 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     compose(['build', 'candidate'], 1_200_000);
     const candidateId = docker(['image', 'inspect', '--format', '{{.Id}}', candidateImage]).stdout.trim();
     if (!/^sha256:[a-f0-9]{64}$/.test(candidateId)) throw new Error('invalid_candidate_image_id');
+    stage = 'fresh_install';
+    env.CLASSIFARR_UPGRADE_IMAGE = candidateImage;
+    start('normal');
+    const fresh = probe('fresh');
+    passed('fresh_install_and_operational_seeds');
+    // Remove only the owned fresh volume before booting the published release.
+    // Never seed the upgrade with a candidate-created database.
+    compose(['down', '--volumes', '--timeout', '30']);
+    if (docker(['volume', 'ls', '-q', '--filter', label]).stdout.trim()) throw new Error('fresh_volume_cleanup_failed');
     stage = 'published_start';
+    env.CLASSIFARR_UPGRADE_IMAGE = upgradeBaseline.image;
     docker(['pull', upgradeBaseline.image], 300_000);
     start('normal');
     // Docker cp rejects read-only rootfs even for tmpfs targets. Stream the fixed
@@ -122,7 +132,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     start('normal');
     probe('normal');
     passed('verified_normal_restart_and_profiles');
-    result = { status: 'passed', baseline: upgradeBaseline, candidateImageId: candidateId,
+    result = { status: 'passed', baseline: upgradeBaseline, candidateImageId: candidateId, fresh,
       database: { baseline: baselineDatabase, candidate: upgraded.candidate }, recovery, handoff, checks };
   } catch (error) {
     // All runner errors are fixed classifications; probe bodies and logs stay out of receipts.

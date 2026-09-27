@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Transfer automatic and quality evaluation vectors in acknowledged, lossless
+  bounded chunks so larger movie/TV inventories no longer fail the whole-payload
+  handoff limit. Preserve complete evidence, memory admission, worker deadlines,
+  cancellation and routing isolation; expose safe scheduler failure reasons.
+- Gate release acceptance on isolated fresh-install and published-upgrade checks,
+  including interrupted restore recovery and movie/TV learning. Upload bounded,
+  revision-bound results without production data or publishing credentials.
 - Repair the missing initial restore-admission gate on eligible older snapshot
   installations without reopening interrupted or previously verified restores.
   Include the seed in fresh snapshots and add a digest-verified, isolated

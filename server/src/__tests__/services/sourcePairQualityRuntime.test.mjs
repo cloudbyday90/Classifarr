@@ -8,6 +8,16 @@ import { runSourcePairQualityThread, runSourcePairQualityRuntime } from '../../s
 const priorOptions = process.env.PGOPTIONS;
 afterEach(() => { if (priorOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = priorOptions; });
 
+function acknowledgeTransfer(worker) {
+  let count = 0;
+  worker.emit('message', { kind: 'evaluation_vectors_ready' });
+  while (worker.postMessage.mock.calls.at(-1)[0].kind === 'evaluation_vectors') {
+    const message = worker.postMessage.mock.calls.at(-1)[0];
+    count += message.entries.length;
+    worker.emit('message', { kind: 'evaluation_vectors_ack', sequence: message.sequence, count });
+  }
+}
+
 test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker %s always joins and strips private errors', async mode => {
   let instance, options;
   class FakeWorker extends EventEmitter {
@@ -15,6 +25,7 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
       super(); instance = this; options = supplied;
       expect(url.pathname).toMatch(/sourcePairQualityThread.mjs$/);
       this.stdout = { resume: jest.fn() }; this.stderr = { resume: jest.fn() }; this.terminate = jest.fn(async () => 0);
+      this.postMessage = jest.fn();
     }
   }
   const input = qualitySnapshot(), controller = new AbortController();
@@ -25,7 +36,10 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
   if (mode === 'error') instance.emit('error', new Error('PRIVATE'));
   if (mode === 'exit') instance.emit('exit', 0);
   if (mode === 'invalid') instance.emit('message', { result: { private: 'PRIVATE' } });
-  if (mode === 'success') instance.emit('message', { result: prepareSourcePairQualityProtocol(input).protocol });
+  if (mode === 'success') {
+    acknowledgeTransfer(instance);
+    instance.emit('message', { result: prepareSourcePairQualityProtocol(input).protocol });
+  }
   await assertion;
   expect(instance.terminate).toHaveBeenCalledTimes(1);
   expect(options).toMatchObject({ env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true,

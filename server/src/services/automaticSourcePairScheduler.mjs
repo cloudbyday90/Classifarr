@@ -10,7 +10,10 @@ export function registerAutomaticSourcePairSchedule(scheduler, {
   scheduler.automaticSourcePairWorker = worker;
   const run = async () => {
     const result = await worker.run();
-    if (result.status === 'failed') throw new Error('automatic_source_pair_evaluation_unavailable');
+    if (result.status === 'failed') {
+      const reason = ['evidence_budget', 'deadline'].includes(result.reason) ? result.reason : 'evaluation_unavailable';
+      throw new Error(`automatic_source_pair_evaluation_unavailable:${reason}`);
+    }
     return result;
   };
   scheduler.schedule(AUTOMATIC_SOURCE_PAIR_TASK, '* * * * *', run, null, { noOverlap: true });

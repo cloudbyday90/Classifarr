@@ -8,6 +8,11 @@
     "src/**/*.mjs!",
     "scripts/**/*.mjs"
   ],
+  "ignoreUnresolved": [
+    "^/app/src/config/database\\.mjs$",
+    "^/app/src/services/auth\\.mjs$",
+    "^/app/src/services/backupService\\.mjs$"
+  ],
   "rules": {
     "files": "error",
     "dependencies": "error",
