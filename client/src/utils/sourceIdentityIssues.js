@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { sourceReviewReasons, validRecoveryOutcome } from './sourceRecoveryOutcomes'
 export const recoveryLabels = Object.freeze({
   retry_wait: 'Automatic retry waiting',
   retry_due: 'Automatic retry eligible',
@@ -33,10 +34,10 @@ export function parseSourceIdentityIssues(value, offset) {
         !(item.year === null || (isCount(item.year) && item.year > 0 && item.year <= 9999)) ||
         ![null, 'movie', 'tv'].includes(item.mediaType) || !owns(issueLabels, item.issue) ||
         !owns(recoveryLabels, item.recoveryState) || !isDate(item.lastSeenAt) ||
-        !(item.retryAfter === null || isDate(item.retryAfter)) ||
+        !(item.retryAfter === null || isDate(item.retryAfter)) || !validRecoveryOutcome(item.lastRecovery, value.asOf) ||
         (['retry_wait', 'retry_due'].includes(item.recoveryState) && !isDate(item.retryAfter))) return null
     keys.add(item.key)
-    const expectedState = item.issue !== 'conflicting_provider_ids' ? 'source_review'
+    const expectedState = item.issue !== 'conflicting_provider_ids' || sourceReviewReasons.includes(item.lastRecovery?.reason) ? 'source_review'
       : item.retryAfter === null ? 'not_recorded'
         : Date.parse(item.retryAfter) > Date.parse(value.asOf) ? 'retry_wait' : 'retry_due'
     if (item.recoveryState !== expectedState) return null
@@ -47,6 +48,10 @@ export function parseSourceIdentityIssues(value, offset) {
 }
 
 export function sourceIssueNextStep(item) {
+  const reason = item.lastRecovery?.reason
+  if (sourceReviewReasons.includes(reason)) return 'Check this title’s match, year, and external IDs in your media server, then sync again. No conflicting ID was selected.'
+  if (reason === 'adapter_unsupported') return 'Automatic verification is unavailable for this source. Check the item’s match in your media server.'
+  if (['internal_error', 'persistence_failed'].includes(reason)) return 'Check Classifarr’s service health and logs. A later eligible library sync can retry; the item remains excluded.'
   if (item.recoveryState === 'retry_wait') return 'No action needed yet. A later library sync can retry after the time below.'
   if (item.recoveryState === 'retry_due') return 'The retry delay has elapsed. Recovery can be attempted on a later library sync; it is not confirmed running.'
   if (item.issue === 'invalid_media_type') return 'Check the item’s content type in your media server. Classifarr supports movies and TV, not music.'

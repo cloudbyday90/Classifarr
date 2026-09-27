@@ -43,6 +43,22 @@ test('reports recorded retry boundaries, not running or successful recovery', as
         WHERE library_id=$1 AND external_id='key-003'`, [libraryId]);
     expect((await readSourceIdentityIssues(client)).recovery).toEqual({ retry_wait: 1, retry_due: 1, source_review: 1, not_recorded: 1 });
 });
+test('projects latest recovery evidence without attempt tokens and prioritizes identity disagreements', async () => {
+    await addItems(3);
+    await client.query(`UPDATE media_source_observations SET recovery_attempt_id=$2,
+        recovery_attempted_at=statement_timestamp()-INTERVAL '1 hour',
+        recovery_retry_after=statement_timestamp()+INTERVAL '1 day'
+        WHERE library_id=$1 AND external_id<>'key-003'`, [libraryId, randomUUID()]);
+    await client.query(`UPDATE media_source_observations SET recovery_outcome='external_ids_disagree',
+        recovery_completed_at=statement_timestamp() WHERE library_id=$1 AND external_id='key-001'`, [libraryId]);
+    const report = await readSourceIdentityIssues(client);
+    expect(report.recovery).toEqual({ retry_wait: 1, retry_due: 0, source_review: 1, not_recorded: 1 });
+    expect(report.items[0].lastRecovery).toMatchObject({ reason: 'external_ids_disagree',
+        attemptedAt: expect.any(String), completedAt: expect.any(String) });
+    expect(report.items[1].lastRecovery).toMatchObject({ reason: null, completedAt: null });
+    expect(report.items[2].lastRecovery).toBeNull();
+    expect(JSON.stringify(report)).not.toMatch(/attemptId|recovery_attempt_id|key-001/);
+});
 test.each([
     "UPDATE libraries SET is_active=false WHERE id=$1",
     "UPDATE media_source_capture_state SET phase='collecting' WHERE library_id=$1",

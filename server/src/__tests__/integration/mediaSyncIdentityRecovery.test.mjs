@@ -7,6 +7,7 @@ import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRe
 import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 import { createMediaSyncSkipReporter } from '../../services/mediaSyncSkipReporter.mjs';
 import { readRefillCandidatePage } from '../../services/queueRefillCandidates.mjs';
+import { recordSyncIdentityRecoveryOutcome } from '../../services/mediaSyncIdentityRecoveryOutcomes.mjs';
 
 let pool, store, serverId, libraryId, item, recovery;
 const analyze = async () => ({ analyzed: false });
@@ -47,7 +48,9 @@ test('commits repaired inventory, server receipt, observation removal and backfi
     metadata: { source_identity_recovery: recovery.receipt } });
   expect(row.metadata.source_identity_recovery.forged).toBeUndefined();
   expect((await readRefillCandidatePage(pool, null)).rows.some(candidate => candidate.library_id === libraryId)).toBe(true);
-  expect(await readSyncIdentityRecoveryReceipt(store, context, item)).toEqual(recovery.receipt);
+  const receipt = await readSyncIdentityRecoveryReceipt(store, context, item);
+  expect(receipt).toMatchObject(recovery.receipt);
+  expect(Number.isFinite(Date.parse(receipt.persisted_at))).toBe(true);
   await store.finish(context);
   expect(await countConflicts()).toBe(0);
 });
@@ -103,6 +106,49 @@ test('concurrent recovery claims admit one attempt and changed library ownership
   await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
   expect(await persistRecoveredSyncItem(store, context, recovery, { analyze })).toBe(false);
   expect(await countConflicts()).toBe(1);
+});
+
+test('latest outcome survives restart/recapture, rejects replay, and resets on changed evidence', async () => {
+  let context = await capture(); const token = randomUUID();
+  expect(await claimSyncIdentityRecovery(store, context, item, token)).toBe(true);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'provider_unavailable', attemptId: token })).toBe(true);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'source_changed', attemptId: token })).toBe(false);
+  let row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
+  expect(row.recovery_outcome).toBe('provider_unavailable');
+  expect(row.recovery_completed_at.getTime()).toBeGreaterThanOrEqual(row.recovery_attempted_at.getTime());
+  await store.finish(context); context = await capture();
+  row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
+  expect(row.recovery_outcome).toBe('provider_unavailable');
+  expect(await claimSyncIdentityRecovery(store, context, item)).toBe(false);
+  item.year = 2002;
+  item.source_identity_evidence = sourceIdentityRecoveryEvidence(item, 'library-1', item.source_identity_evidence.providerIds);
+  await store.capture(context, [item]);
+  row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
+  expect(row).toMatchObject({ recovery_outcome: null, recovery_attempt_id: null, recovery_attempted_at: null,
+    recovery_completed_at: null, recovery_retry_after: null });
+});
+
+test('new generation and newer attempt fence old outcomes; preflight cannot replace an attempt', async () => {
+  const oldContext = await capture(); const oldToken = randomUUID();
+  await claimSyncIdentityRecovery(store, oldContext, item, oldToken);
+  const context = await capture();
+  expect(await recordSyncIdentityRecoveryOutcome(store, oldContext, item, { reason: 'provider_unavailable', attemptId: oldToken })).toBe(false);
+  await pool.query("UPDATE media_source_observations SET recovery_retry_after=NOW()-INTERVAL '1 second' WHERE library_id=$1", [libraryId]);
+  const token = randomUUID(); await claimSyncIdentityRecovery(store, context, item, token);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'provider_unavailable', attemptId: oldToken })).toBe(false);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'insufficient_evidence' })).toBe(false);
+  expect(await persistRecoveredSyncItem(store, context, { ...recovery, attemptId: oldToken }, { analyze })).toBe(false);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'source_changed', attemptId: token })).toBe(true);
+});
+
+test('unclaimed diagnostics record no attempt and inactive libraries reject outcomes', async () => {
+  const context = await capture();
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'insufficient_evidence' })).toBe(true);
+  const row = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0];
+  expect(row.recovery_attempted_at).toBeNull(); expect(row.recovery_completed_at).toBeInstanceOf(Date);
+  const token = randomUUID(); await claimSyncIdentityRecovery(store, context, item, token);
+  await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  expect(await recordSyncIdentityRecoveryOutcome(store, context, item, { reason: 'source_changed', attemptId: token })).toBe(false);
 });
 
 test('warning state survives reporter recreation; changed counts and daily reminders still notify', async () => {

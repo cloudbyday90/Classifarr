@@ -41,11 +41,17 @@ test('a movie can recover its IMDb-proven TMDb ID without choosing a disputed TV
   expect(test.tmdbService.findIdentityByExternalId).toHaveBeenCalledWith('tt123', 'imdb_id');
 });
 
+test('retains existing numeric-string normalization for matching provider detail IDs', async () => {
+  const test = setup();
+  test.tmdbService.getIdentityDetails.mockResolvedValue({ id: '22', title: 'Fixture', release_date: '2001-01-01' });
+  expect(await test.run()).toMatchObject({ item: { tmdb_id: 22 } });
+});
+
 test('recent persisted proof avoids repeated catalog work but still verifies the current source', async () => {
   const test = setup(); const first = await test.run();
   test.tmdbService.findIdentityByExternalId.mockClear();
   const readReceipt = jest.fn().mockResolvedValue(first.receipt);
-  expect(await test.run({ readReceipt })).toEqual(first);
+  expect(await test.run({ readReceipt })).toEqual({ item: first.item, receipt: first.receipt });
   expect(test.tmdbService.findIdentityByExternalId).not.toHaveBeenCalled();
   expect(test.service.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
   test.service.getLibraryItemIdentityEvidence.mockResolvedValue(null);
@@ -65,7 +71,7 @@ test.each([
 
 test('cached recoveries do not consume the budget needed to repair additional items', async () => {
   const test = setup(undefined, { maximumAttempts: 1 }); const first = await test.run();
-  expect(await test.run({ readReceipt: async () => first.receipt })).toEqual(first);
+  expect(await test.run({ readReceipt: async () => first.receipt })).toEqual({ item: first.item, receipt: first.receipt });
   expect(test.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(1);
 });
 
@@ -132,4 +138,61 @@ test('digest binds source/library/type/title/year/candidates, is order independe
   expect(sourceIdentityRecoveryEvidence({ ...item, year: null }, 'library-1', ids)).toBeNull();
   expect(sourceIdentityRecoveryEvidence(item, '', ids)).toBeNull();
   expect(sourceIdentityRecoveryEvidence(item, 'library-1', { ...ids, url: 'private' })).toBeNull();
+});
+
+test.each([
+  ['provider_unavailable', test => test.tmdbService.findIdentityByExternalId.mockRejectedValue(new Error('secret URL/token'))],
+  ['provider_response_invalid', test => test.tmdbService.findIdentityByExternalId.mockResolvedValue({})],
+  ['external_evidence_inconclusive', test => test.tmdbService.findIdentityByExternalId.mockResolvedValue({ movie_results: [] })],
+  ['candidate_not_supported', test => test.tmdbService.findIdentityByExternalId.mockResolvedValue({ movie_results: [{ id: 99 }] })],
+  ['provider_unavailable', test => test.tmdbService.getIdentityDetails.mockRejectedValue(new Error('secret'))],
+  ['provider_response_invalid', test => test.tmdbService.getIdentityDetails.mockResolvedValue(null)],
+  ['provider_response_invalid', test => test.tmdbService.getIdentityDetails.mockResolvedValue({ id: 99, title: 'Fixture', release_date: '2001-01-01' })],
+  ['provider_response_invalid', test => test.tmdbService.getIdentityDetails.mockResolvedValue({ id: 99, title: 'Other', release_date: '2001-01-01' })],
+  ['title_year_mismatch', test => test.tmdbService.getIdentityDetails.mockResolvedValue({ id: 22, title: 'Other', release_date: '2001-01-01' })],
+  ['source_unavailable', test => test.service.getLibraryItemIdentityEvidence.mockRejectedValue(new Error('secret'))],
+  ['source_unavailable', test => test.service.getLibraryItemIdentityEvidence.mockResolvedValue(null)],
+  ['source_changed', test => test.service.getLibraryItemIdentityEvidence.mockResolvedValue({ snapshotDigest: 'changed' })],
+])('records bounded %s evidence after a claimed attempt', async (reason, configure) => {
+  const test = setup(); const recordOutcome = jest.fn(); configure(test);
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(recordOutcome).toHaveBeenCalledTimes(1);
+  expect(recordOutcome.mock.calls[0][1]).toEqual({ reason, attemptId: test.claimAttempt.mock.calls[0][1] });
+  expect(recordOutcome.mock.calls[0][1].attemptId).toMatch(/^[a-f0-9-]{36}$/);
+  expect(JSON.stringify(recordOutcome.mock.calls[0][1])).not.toMatch(/secret|URL|token/);
+});
+
+test('records TV identity disagreement without choosing either ID', async () => {
+  const test = setup(fixture({ media_type: 'tv' })); const recordOutcome = jest.fn();
+  test.tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ tv_results: [{ id: 11 }] });
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(recordOutcome.mock.calls[0][1].reason).toBe('external_ids_disagree');
+});
+
+test('preflight outcomes do not claim provider attempts', async () => {
+  const test = setup(fixture({}, { tmdb_id: [11, 22], imdb_id: [], tvdb_id: [] }));
+  const recordOutcome = jest.fn();
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(recordOutcome.mock.calls[0][1]).toEqual({ reason: 'insufficient_evidence', attemptId: null });
+  expect(test.claimAttempt).not.toHaveBeenCalled();
+  await test.run({ recordOutcome, service: {} });
+  expect(recordOutcome.mock.calls[1][1]).toEqual({ reason: 'adapter_unsupported', attemptId: null });
+});
+
+test('cooldown and budget skips preserve earlier outcomes; observers cannot break sync', async () => {
+  const test = setup(undefined, { maximumAttempts: 1 }); const recordOutcome = jest.fn();
+  test.claimAttempt.mockResolvedValueOnce(false);
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(recordOutcome).not.toHaveBeenCalled();
+  test.tmdbService.getIdentityDetails.mockRejectedValue(new Error('private'));
+  recordOutcome.mockRejectedValue(new Error('diagnostic failure'));
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(await test.run({ recordOutcome })).toBeNull();
+  expect(recordOutcome).toHaveBeenCalledTimes(1);
+});
+
+test('local receipt failures are not diagnosed as provider outages', async () => {
+  const test = setup(); const recordOutcome = jest.fn();
+  expect(await test.run({ recordOutcome, readReceipt: async () => { throw new Error('db secret'); } })).toBeNull();
+  expect(recordOutcome.mock.calls[0][1]).toEqual({ reason: 'internal_error', attemptId: null });
 });

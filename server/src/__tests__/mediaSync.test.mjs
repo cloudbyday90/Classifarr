@@ -325,9 +325,11 @@ describe('MediaSyncService', () => {
             const context = { libraryId: 1, mediaServerId: 1, generation: 1 };
             const item = { external_id: 'fixture', provider_identity_invalid: true,
                 provider_identity_issue: 'conflicting_provider_ids', media_type: 'movie', title: 'Fixture' };
-            const proof = { item: { ...item, provider_identity_invalid: false, tmdb_id: 22 } };
+            const proof = { item: { ...item, provider_identity_invalid: false, tmdb_id: 22 },
+                attemptId: '11111111-1111-4111-8111-111111111111' };
+            const outcomeQuery = jest.fn().mockResolvedValue({ rowCount: 1 });
             const sourceObservations = { start: jest.fn().mockResolvedValue(context),
-                capture: jest.fn(), finish: jest.fn() };
+                capture: jest.fn(), finish: jest.fn(), withCurrentCapture: async (_context, fn) => fn({ query: outcomeQuery }) };
             const recover = jest.fn().mockResolvedValue(proof);
             const persistIdentityRecovery = applied === 'failure' ? jest.fn().mockRejectedValue(new Error('fixture'))
                 : jest.fn().mockResolvedValue(applied);
@@ -347,6 +349,8 @@ describe('MediaSyncService', () => {
             expect(persistIdentityRecovery).toHaveBeenCalledWith(sourceObservations, context, proof);
             expect(sourceObservations.capture.mock.invocationCallOrder[0]).toBeLessThan(recover.mock.invocationCallOrder[0]);
             expect(instance.upsertMediaItem).toHaveBeenCalledTimes(applied === true ? 0 : 1);
+            expect(outcomeQuery).toHaveBeenCalledTimes(applied === true ? 0 : 1);
+            if (applied !== true) expect(outcomeQuery.mock.calls[0][1].slice(-2)).toEqual(['persistence_failed', proof.attemptId]);
             expect(report.mock.calls[0][1]).toEqual(applied === true ? null : {
                 skippedItemCount: 1, reasonCounts: { invalid_source_identity: 1 }, identityIssueCounts: { conflicting_provider_ids: 1 } });
         });

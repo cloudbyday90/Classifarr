@@ -8,6 +8,7 @@ import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
 import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
 import { createMediaSyncSkipReporter } from './mediaSyncSkipReporter.mjs';
 import { createMediaSyncIdentityRecovery } from './mediaSyncIdentityRecovery.mjs';
+import { createSyncIdentityOutcomeRecorder } from './mediaSyncIdentityRecoveryOutcomes.mjs';
 import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryReceipt } from './mediaSyncIdentityRecoveryPersistence.mjs';
 import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
@@ -67,6 +68,7 @@ export class MediaSyncService {
 
       try {
         sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
+        const recordOutcome = createSyncIdentityOutcomeRecorder(this.sourceObservations, sourceCapture, logger);
         const service = await this.getMediaServerService(type);
         let offset = 0;
         let totalItems = 0;
@@ -98,8 +100,9 @@ export class MediaSyncService {
             }
             const recovery = await identityRecovery.recover(item, {
               service, url, apiKey: api_key, libraryKey: String(external_id),
-              claimAttempt: candidate => claimSyncIdentityRecovery(this.sourceObservations, sourceCapture, candidate),
+              claimAttempt: (candidate, attemptId) => claimSyncIdentityRecovery(this.sourceObservations, sourceCapture, candidate, attemptId),
               readReceipt: candidate => readSyncIdentityRecoveryReceipt(this.sourceObservations, sourceCapture, candidate),
+              recordOutcome,
             });
             if (recovery) {
               try {
@@ -107,7 +110,9 @@ export class MediaSyncService {
                   processedItems += 1;
                   continue;
                 }
+                await recordOutcome(item, { reason: 'persistence_failed', attemptId: recovery.attemptId ?? null });
               } catch {
+                await recordOutcome(item, { reason: 'persistence_failed', attemptId: recovery.attemptId ?? null });
                 logger.warn('Source identity recovery deferred; sync will retry', { libraryId },
                   { dedupeKey: `identity-recovery:${libraryId}`, dedupeWindowMs: 3600000 });
               }

@@ -91,6 +91,14 @@
             {{ item.libraryName || 'Library' }} · {{ item.mediaType === 'movie' ? 'Movie' : item.mediaType === 'tv' ? 'TV' : 'Unknown type' }}
           </p>
           <p>{{ issueLabels[item.issue] }}</p>
+          <p><strong>{{ recoveryOutcomeLabel(item.lastRecovery) }}</strong></p>
+          <p
+            v-if="item.lastRecovery"
+            class="scope-note"
+          >
+            {{ item.lastRecovery.completedAt ? 'Result recorded: ' + formatDate(item.lastRecovery.completedAt)
+              : 'Attempt recorded: ' + formatDate(item.lastRecovery.attemptedAt) }}
+          </p>
           <p>{{ sourceIssueNextStep(item) }}</p>
           <p
             v-if="item.retryAfter"
@@ -138,6 +146,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { useSourceIdentityIssues } from '@/composables/useSourceIdentityIssues'
 import { issueLabels, recoveryLabels, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
+import { recoveryOutcomeLabel } from '@/utils/sourceRecoveryOutcomes'
 defineProps({ expectedCount: { type: Number, required: true } })
 const { report, offset, error, refresh, isStale } = useSourceIdentityIssues()
 const heading = ref(null)

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Record bounded source-recovery outcomes so metadata issues explain provider
+  failures, insufficient evidence, and identity disagreements with appropriate
+  next steps. Preserve retry safeguards and timestamp successful repair receipts;
+  stale attempts cannot overwrite newer diagnostic evidence.
 - Replace the dense Command Center library summary with a visual freshness ring,
   clear issue/decision counts, and one suggested next step. Metadata drill-downs
   now use the counted source population and show item-level retry evidence and

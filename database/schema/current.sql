@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-26T20:09:45.340Z
--- Latest Migration: 20260926_100000_add_quality_evidence_study.sql
+-- Generated: 2026-09-26T23:40:54.253Z
+-- Latest Migration: 20260926_233000_add_source_recovery_outcomes.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.4 (Debian 18.4-1.pgdg12+1)
+-- Dumped by pg_dump version 18.4 (Debian 18.4-1.pgdg12+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4795,6 +4795,10 @@ CREATE TABLE public.media_source_observations (
     generation bigint NOT NULL,
     source_digest text,
     recovery_retry_after timestamp with time zone,
+    recovery_attempt_id uuid,
+    recovery_attempted_at timestamp with time zone,
+    recovery_completed_at timestamp with time zone,
+    recovery_outcome text,
     CONSTRAINT media_source_observations_external_id_check CHECK (((length(external_id) >= 1) AND (length(external_id) <= 500))),
     CONSTRAINT media_source_observations_generation_check CHECK ((generation > 0)),
     CONSTRAINT media_source_observations_identity_issue_check CHECK ((identity_issue = ANY (ARRAY['invalid_provider_ids'::text, 'conflicting_provider_ids'::text, 'invalid_media_type'::text]))),
@@ -4802,7 +4806,9 @@ CREATE TABLE public.media_source_observations (
     CONSTRAINT media_source_observations_provider_fields_check CHECK ((provider_fields <@ ARRAY['tmdb_id'::text, 'imdb_id'::text, 'tvdb_id'::text])),
     CONSTRAINT media_source_observations_source_digest_check CHECK (((source_digest IS NULL) OR (source_digest ~ '^[a-f0-9]{64}$'::text))),
     CONSTRAINT media_source_observations_title_check CHECK ((length(title) <= 500)),
-    CONSTRAINT media_source_observations_year_check CHECK (((year >= 1) AND (year <= 9999)))
+    CONSTRAINT media_source_observations_year_check CHECK (((year >= 1) AND (year <= 9999))),
+    CONSTRAINT source_recovery_outcome_code CHECK ((recovery_outcome = ANY (ARRAY['insufficient_evidence'::text, 'adapter_unsupported'::text, 'provider_unavailable'::text, 'provider_response_invalid'::text, 'external_evidence_inconclusive'::text, 'external_ids_disagree'::text, 'candidate_not_supported'::text, 'title_year_mismatch'::text, 'source_changed'::text, 'source_unavailable'::text, 'internal_error'::text, 'persistence_failed'::text]))),
+    CONSTRAINT source_recovery_outcome_shape CHECK ((((recovery_attempt_id IS NULL) = (recovery_attempted_at IS NULL)) AND ((recovery_outcome IS NULL) = (recovery_completed_at IS NULL)) AND ((recovery_completed_at IS NULL) OR (recovery_attempted_at IS NULL) OR (recovery_completed_at >= recovery_attempted_at))))
 );
 
 
@@ -16842,6 +16848,7 @@ FROM unnest(ARRAY[
     '20260925_140000_add_evaluation_coverage_gaps.sql',
     '20260925_150000_add_mixed_evaluation_history.sql',
     '20260925_160000_add_source_pair_sweep.sql',
-    '20260926_100000_add_quality_evidence_study.sql'
+    '20260926_100000_add_quality_evidence_study.sql',
+    '20260926_233000_add_source_recovery_outcomes.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

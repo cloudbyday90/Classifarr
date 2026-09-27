@@ -61,3 +61,16 @@ it('withholds malformed snapshots instead of claiming zero issues', async () => 
   expect(wrapper.text()).toContain('Metadata issues are unavailable')
   expect(wrapper.text()).not.toContain('No metadata issues')
 })
+it('shows the recorded cause and source check rather than a generic retry instruction', async () => {
+  const report = sourceIssuePage()
+  Object.assign(report.items[0], { recoveryState: 'source_review', lastRecovery: {
+    reason: 'external_ids_disagree', attemptedAt: '2026-09-26T10:00:00Z', completedAt: '2026-09-26T11:00:00Z',
+  } })
+  report.recovery = { retry_wait: 0, retry_due: 0, source_review: 1, not_recorded: 0 }
+  vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValue(report)
+  render(); await flushPromises()
+  expect(wrapper.text()).toContain('Independent IDs point to different titles')
+  expect(wrapper.text()).toContain('Result recorded:')
+  expect(wrapper.text()).toContain('No conflicting ID was selected')
+  expect(wrapper.text()).not.toContain('No action needed yet')
+})

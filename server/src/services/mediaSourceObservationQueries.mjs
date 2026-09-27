@@ -27,4 +27,12 @@ export const CAPTURE_SOURCE_OBSERVATIONS = `WITH incoming AS MATERIALIZED (
       source_digest=EXCLUDED.source_digest,
       recovery_retry_after=CASE WHEN media_source_observations.source_digest IS DISTINCT FROM EXCLUDED.source_digest
         THEN NULL ELSE media_source_observations.recovery_retry_after END,
+      recovery_attempt_id=CASE WHEN media_source_observations.source_digest IS DISTINCT FROM EXCLUDED.source_digest
+        THEN NULL ELSE media_source_observations.recovery_attempt_id END,
+      recovery_attempted_at=CASE WHEN media_source_observations.source_digest IS DISTINCT FROM EXCLUDED.source_digest
+        THEN NULL ELSE media_source_observations.recovery_attempted_at END,
+      recovery_completed_at=CASE WHEN media_source_observations.source_digest IS DISTINCT FROM EXCLUDED.source_digest
+        THEN NULL ELSE media_source_observations.recovery_completed_at END,
+      recovery_outcome=CASE WHEN media_source_observations.source_digest IS DISTINCT FROM EXCLUDED.source_digest
+        THEN NULL ELSE media_source_observations.recovery_outcome END,
       last_seen_at=clock_timestamp()`;

@@ -47,9 +47,11 @@ test('visual overview has truthful counts, matching recovery items, keyboard acc
       data = sourceIssuePage(Number(url.searchParams.get('offset') || 0), 51)
       data.recovery = { retry_wait: 1, retry_due: 1, source_review: 1, not_recorded: 48 }
       if (!data.offset) {
-        Object.assign(data.items[0], { recoveryState: 'retry_wait', retryAfter: '2026-09-27T12:00:00Z' })
+        Object.assign(data.items[0], { recoveryState: 'retry_wait', retryAfter: '2026-09-27T12:00:00Z',
+          lastRecovery: { reason: 'provider_unavailable', attemptedAt: '2026-09-26T10:00:00Z', completedAt: '2026-09-26T11:00:00Z' } })
         Object.assign(data.items[1], { recoveryState: 'retry_due', retryAfter: '2026-09-25T12:00:00Z' })
-        Object.assign(data.items[2], { recoveryState: 'source_review', issue: 'invalid_provider_ids' })
+        Object.assign(data.items[2], { recoveryState: 'source_review',
+          lastRecovery: { reason: 'external_ids_disagree', attemptedAt: '2026-09-26T10:00:00Z', completedAt: '2026-09-26T11:00:00Z' } })
       }
     }
     if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
@@ -75,6 +77,9 @@ test('visual overview has truthful counts, matching recovery items, keyboard acc
   await expect(issues).toContainText('The overview showed 11')
   await expect(issues).toContainText('Automatic retry waiting')
   await expect(issues).toContainText('Fixture title 1')
+  await expect(issues).toContainText('Metadata provider request failed')
+  await expect(issues).toContainText('Independent IDs point to different titles')
+  await expect(issues).toContainText('No conflicting ID was selected')
   await issues.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(issues).toContainText('51–51 of 51')
   await expect(issues.getByRole('heading', { name: 'Metadata issues' })).toBeFocused()
