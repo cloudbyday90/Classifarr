@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require validated, complete provider enumeration before pruning media or
+  collections and declaring ingestion ready for learning. Preserve records on
+  malformed, repeated, truncated or inconsistent pages; follow actual page sizes,
+  retain safe diagnostics, and retry incomplete scans through durable recovery.
 - Extend live ingestion ownership to capture creation, page writes and identity
   recovery callbacks. Keep the complete capture lifecycle on its owning database
   connection, prevent pending work from being retargeted, and preserve controlled

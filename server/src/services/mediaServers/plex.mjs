@@ -12,6 +12,8 @@ import { createLogger } from '../../utils/logger.mjs';
 import { collectPlexGuidCandidates, parsePlexGuids } from './shared/providerIds.mjs';
 import { sourceIdentityRecoveryEvidence } from '../sourceIdentityRecoveryEvidence.mjs';
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
+import { readPlexSourcePage, sourcePageRequest } from './shared/sourcePage.mjs';
+import { SourceEnumerationError } from '../sourceEnumerationError.mjs';
 
 const logger = createLogger('PlexService');
 
@@ -75,12 +77,17 @@ class PlexService {
   }
 
   async getLibraryItems(url, apiKey, libraryKey, options = {}) {
-    const { offset = 0, limit = 100 } = options;
+    return (await this.getLibraryPage(url, apiKey, libraryKey, options)).items;
+  }
+
+  async getLibraryPage(url, apiKey, libraryKey, options = {}) {
+    const { offset, limit } = sourcePageRequest(options);
 
     try {
       const response = await httpGet(
         `${url}/library/sections/${libraryKey}/all`,
         buildRequestConfig(apiKey, {
+          headers: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
           params: {
             'X-Plex-Container-Start': offset,
             'X-Plex-Container-Size': limit,
@@ -89,13 +96,13 @@ class PlexService {
         }),
       );
 
-      const container = response.data?.MediaContainer || {};
-      const items = container.Metadata || [];
+      const page = readPlexSourcePage(response);
 
-      return items.map((item) => {
+      return { ...page, items: page.items.map((item) => {
+        if (typeof item.type !== 'string' || !item.type.trim()) throw new SourceEnumerationError('missing_media_type');
         const mediaType = item?.type === 'show' ? 'tv' : item?.type === 'movie' ? 'movie' : null;
         // Retain the source page position without exposing unsupported item metadata.
-        if (!mediaType) return { media_type: null, total: container.totalSize };
+        if (!mediaType) return { media_type: null, total: page.total };
         const parsed = this.parseGuids(item);
         return {
           external_id: item.ratingKey,
@@ -125,10 +132,11 @@ class PlexService {
               item.thumb || item.parentThumb || item.grandparentThumb,
             ),
           },
-          total: container.totalSize,
+          total: page.total,
         };
-      });
+      }) };
     } catch (error) {
+      if (error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch Plex library items: ${error.message}`);
     }
   }
@@ -160,21 +168,30 @@ class PlexService {
     }
   }
 
-  async getCollections(url, apiKey, libraryKey) {
+  async getCollections(url, apiKey, libraryKey, options = {}) {
+    return (await this.getCollectionPage(url, apiKey, libraryKey, options)).items;
+  }
+
+  async getCollectionPage(url, apiKey, libraryKey, options = {}) {
+    const { offset, limit } = sourcePageRequest(options);
     try {
       const response = await httpGet(
         `${url}/library/sections/${libraryKey}/collections`,
-        buildRequestConfig(apiKey),
+        buildRequestConfig(apiKey, {
+          headers: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
+          params: { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit },
+        }),
       );
 
-      const items = response.data?.MediaContainer?.Metadata || [];
-      return items.map((item) => ({
+      const page = readPlexSourcePage(response);
+      return { ...page, items: page.items.map((item) => ({
         external_id: item.ratingKey,
         name: item.title,
         item_count: item.childCount || 0,
-      }));
-    } catch (_error) {
-      return [];
+      })) };
+    } catch (error) {
+      if (error instanceof SourceEnumerationError) throw error;
+      throw new Error(`Failed to fetch Plex collections: ${error.message}`);
     }
   }
 

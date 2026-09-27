@@ -81,8 +81,11 @@ export async function runUpgradeHandoff(db) {
     const sync = new MediaSyncService({
       mediaServerServices: { getMediaServerService: async () => ({
         getLibraryItemIdentityEvidence: async () => item.source_identity_evidence,
-        getLibraryItems: async (_url, _key, _library, { offset, limit }) => items.slice(offset, offset + limit),
-        getCollections: async () => [],
+        getLibraryPage: async (_url, _key, _library, { offset, limit }) => {
+          const page = items.slice(offset, offset + limit);
+          return { items: page, keys: page.map(row => row.external_id), offset, total: items.length };
+        },
+        getCollectionPage: async () => ({ items: [], keys: [], offset: 0, total: 0 }),
       }) },
       createIdentityRecovery: () => createMediaSyncIdentityRecovery({ tmdbService: provider }),
       persistIdentityRecovery: (store, context, proof) => persistRecoveredSyncItem(store, context, proof,

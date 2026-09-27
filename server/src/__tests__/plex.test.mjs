@@ -265,12 +265,10 @@ describe('PlexService', () => {
             expect(result[0].item_count).toBe(5);
         });
 
-        it('should return empty array on error', async () => {
+        it('rejects collection failures instead of reporting an empty collection list', async () => {
             mockHttpGet.mockRejectedValue(new Error('Not found'));
 
-            const result = await service.getCollections('http://plex:32400', 'token', '1');
-
-            expect(result).toEqual([]);
+            await expect(service.getCollections('http://plex:32400', 'token', '1')).rejects.toThrow('Not found');
         });
     });
 

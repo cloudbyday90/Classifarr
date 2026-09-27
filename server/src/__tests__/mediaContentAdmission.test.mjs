@@ -13,7 +13,7 @@ const { jellyfinService } = await import('../services/mediaServers/jellyfin.mjs'
 beforeEach(() => httpGet.mockReset());
 
 test('Plex discards audio metadata while preserving source page positions', async () => {
-  const types = ['artist', 'album', 'track', 'clip', 'episode', undefined];
+  const types = ['artist', 'album', 'track', 'clip', 'episode', 'photo'];
   httpGet.mockResolvedValue({ data: { MediaContainer: { totalSize: 8, Metadata: [
     ...types.map(type => ({ type, ratingKey: 'audio', title: 'Private audio title', Guid: [{ id: 'tmdb://7' }] })),
     { type: 'movie', ratingKey: 'film', title: 'Music documentary' },
@@ -30,7 +30,7 @@ test('Plex discards audio metadata while preserving source page positions', asyn
 
 test.each([['Emby', embyService], ['Jellyfin', jellyfinService]])(
   '%s ignores unexpected audio even when the provider disregards IncludeItemTypes', async (_name, service) => {
-    const types = ['Audio', 'MusicAlbum', 'MusicArtist', 'MusicVideo', 'Episode', undefined];
+    const types = ['Audio', 'MusicAlbum', 'MusicArtist', 'MusicVideo', 'Episode', 'Photo'];
     httpGet.mockResolvedValue({ data: { TotalRecordCount: 8, Items: [
       ...types.map(Type => ({ Type, Id: 'audio', Name: 'Private audio title', ProviderIds: { Tmdb: '7' } })),
       { Type: 'Movie', Id: 'film', Name: 'Music documentary' },

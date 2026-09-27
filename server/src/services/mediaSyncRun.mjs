@@ -5,14 +5,19 @@ import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
 import { createMediaSyncRecoveryWorkflow } from './mediaSyncRecoveryWorkflow.mjs';
 import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
+import { createMediaSyncCompleteness } from './mediaSyncCompleteness.mjs';
+import { SourceEnumerationError } from './sourceEnumerationError.mjs';
+import { sourcePageRequest } from './mediaServers/shared/sourcePage.mjs';
 const logger = createLogger('mediaSync');
 
 export async function runOwnedMediaSync(sync, libraryId, options, owner) {
   const { LibraryNotFoundError, isLibraryNotFoundError } = sync.errors;
   let { incremental = false } = options;
   const { batchSize = 100 } = options;
+  let enumerationContext = { phase: 'request' };
 
   try {
+    sourcePageRequest({ limit: batchSize });
     const libraryResult = await db.query(
       `SELECT l.*, ms.type, ms.url, ms.api_key, ms.is_active AS server_active
        FROM libraries l
@@ -72,34 +77,32 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
           onSkippedItem: skippedItem => skippedItems.record(skippedItem),
         }),
       });
-      let offset = 0;
+      const mediaEnumeration = createMediaSyncCompleteness();
       let totalItems = 0;
       let reportedTotal = null;
       let processedItems = 0;
       let ignoredItems = 0;
-      let hasMore = true;
       const seenItemExternalIds = new Set();
 
-      while (hasMore) {
+      while (!mediaEnumeration.complete) {
+        enumerationContext = { phase: 'media', offset: mediaEnumeration.offset, reportedTotal: mediaEnumeration.total };
         owner.signal?.throwIfAborted();
-        const items = await service.getLibraryItems(url, api_key, external_id, {
-          offset,
+        const page = await service.getLibraryPage(url, api_key, external_id, {
+          offset: mediaEnumeration.offset,
           limit: batchSize,
         });
 
         owner.signal?.throwIfAborted();
-        if (!Array.isArray(items)) throw new Error('ingestion_page_invalid');
+        mediaEnumeration.accept(page);
+        const { items } = page;
         await owner.assertSource(library);
-        if (items.length === 0) {
-          hasMore = false;
-          break;
-        }
+        if (items.length === 0) break; // Only an explicit, validated zero-total scan reaches here.
 
         const supportedItems = items.filter(item => canonicalMediaType(item?.media_type));
         if (supportedItems.some(item => !((typeof item.external_id === 'string' && item.external_id.trim()) ||
           (Number.isSafeInteger(item.external_id) && item.external_id > 0)))) {
           // Without a stable source key, this page cannot prove what pruning may delete.
-          throw new Error('ingestion_source_key_invalid');
+          throw new SourceEnumerationError('invalid_source_key');
         }
         const ignoredOnPage = items.length - supportedItems.length;
         ignoredItems += ignoredOnPage;
@@ -116,14 +119,8 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
           processedItems += await recoveryWorkflow.process(item);
         }
 
-        if (items[0]?.total && items[0].total > 0) {
-          totalItems = items[0].total;
-          if (Number.isSafeInteger(totalItems) && totalItems <= 2147483647) reportedTotal = totalItems;
-        } else {
-          totalItems = Math.max(totalItems, processedItems + recoveryWorkflow.pendingCount);
-        }
-
-        offset += batchSize;
+        reportedTotal = mediaEnumeration.total;
+        totalItems = reportedTotal ?? mediaEnumeration.offset;
 
         await db.query(
           `UPDATE media_server_sync_status
@@ -132,22 +129,26 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
           [totalItems, processedItems, syncStatusId],
         );
         await owner.checkpoint(processedItems, reportedTotal);
-
-        if (items.length < batchSize) {
-          hasMore = false;
-        }
       }
 
-      const collections = await service.getCollections(url, api_key, external_id);
-      if (!Array.isArray(collections)) throw new Error('ingestion_collections_invalid');
-      await owner.assertSource(library);
+      const collectionEnumeration = createMediaSyncCompleteness();
       const seenCollectionExternalIds = new Set();
-      for (const collection of collections) {
-        if (collection?.external_id) {
+      while (!collectionEnumeration.complete) {
+        enumerationContext = { phase: 'collections', offset: collectionEnumeration.offset, reportedTotal: collectionEnumeration.total };
+        owner.signal?.throwIfAborted();
+        const page = await service.getCollectionPage(url, api_key, external_id, {
+          offset: collectionEnumeration.offset, limit: batchSize,
+        });
+        owner.signal?.throwIfAborted();
+        collectionEnumeration.accept(page);
+        await owner.assertSource(library);
+        for (const collection of page.items) {
           seenCollectionExternalIds.add(String(collection.external_id));
+          await sync.upsertCollection(media_server_id, libraryId, collection);
         }
-        await sync.upsertCollection(media_server_id, libraryId, collection);
       }
+      // Validate both receipts before any completion signal or destructive reconciliation.
+      const enumeration = { media: mediaEnumeration.receipt(), collections: collectionEnumeration.receipt() };
 
       let prunedItems = 0;
       let prunedCollections = 0;
@@ -179,7 +180,8 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
         libraryId,
         totalItems,
         ignoredItems,
-        collectionsCount: collections.length,
+        collectionsCount: seenCollectionExternalIds.size,
+        enumeration,
         prunedItems,
         prunedCollections,
       });
@@ -190,7 +192,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
         totalItems,
         processedItems,
         ignoredItems,
-        collections: collections.length,
+        collections: seenCollectionExternalIds.size,
         prunedItems,
         prunedCollections,
       };
@@ -212,6 +214,13 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof SourceEnumerationError) {
+      logger.warn('Library enumeration incomplete; existing records retained',
+        { libraryId, reason: error.reason, ...enumerationContext,
+          recovery: 'Scheduled sync will replay from the start after cooldown. If repeated, check the media server pagination response and version; do not clear inventory.' },
+        { dedupeKey: `ingestion-enumeration:${libraryId}:${error.reason}`, dedupeWindowMs: 86400000 });
+      return { success: false, deferred: true, reason: 'source_enumeration_incomplete', detail: error.reason };
+    }
     if (!isLibraryNotFoundError(error)) {
       logger.error('Library sync failed', { libraryId, error: error.message });
     }

@@ -16,7 +16,7 @@
       "id": "ingestion_session",
       "classification": "owned",
       "reason": "Current MediaSyncService entry path uses per-library advisory ownership and the same leased connection for checkpoint and completion writes. This classification is scoped to that entry path, not arbitrary callers.",
-      "followUp": "Keep session-loss, late callback, source-change and atomic-pruning integration evidence current; do not treat cooperative locks as storage enforcement."
+      "followUp": "Keep source-enumeration, session-loss, late callback, source-change and atomic-pruning integration evidence current; do not treat cooperative locks or provider counts as storage enforcement or an atomic upstream snapshot."
     },
     {
       "id": "reconciliation",
@@ -469,7 +469,12 @@
     {"path":"server/src/services/mediaSyncOwnership.mjs","digest":"5b64fe15dc3cca014307338aaae366e54f4ed8716b8dfb11fbbcefedc91c88f0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncOwnershipRepository.mjs","digest":"1514c9ca002d5fc0d05b658f655422a4d071e3e8da3dc38cbc12663362afcbcf","analysisDigest":"5938e110a2103c742a21b2b3d9dd324c8665e11fed170d644605d8de58291f95","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncQueries.mjs","digest":"fabf8137158784b84c718cd5b6c19d764afe92e6cf0e943c528d78d0b81dd7f8","analysisDigest":"155c8a53aece0f4ed4b9e5f68bc982f5d482b4ba158aa0a6c4e631683e014a14","review":"shared_writer_debt"},
-    {"path":"server/src/services/mediaSyncRun.mjs","digest":"80b8f41d5cc23607fe38769b29a8dbb92b3d1811386442407c28d4ee9bf5b605","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_session"},
+    {"path":"server/src/services/mediaSyncRun.mjs","digest":"12f6804a928555cfe9369f2dbea9c5cedd83b94f830584bd2994ac68171fdf9e","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_session"},
+    {"path":"server/src/services/mediaServers/plex.mjs","digest":"ba1f0bd6227f2b9e4a44cec55dfb149e8565ed2a7cdc92293a5922e1c422775f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
+    {"path":"server/src/services/mediaServers/shared/createEmbyLikeService.mjs","digest":"fe890567baf14e055648cf0c2a8ac2ffa13c05e02183f08a768eb6b0300ee2b5","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
+    {"path":"server/src/services/mediaServers/shared/sourcePage.mjs","digest":"3fa802e5403b6e18f90e5390a8275972342c314e4c24b38dca0b2ffc16ffaadd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
+    {"path":"server/src/services/mediaSyncCompleteness.mjs","digest":"0fe1839a16b918e379e4f28504b49c3dfece6266fa4da33387be054ee18cfafa","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
+    {"path":"server/src/services/sourceEnumerationError.mjs","digest":"e8c2c831b67a6e5ab37f2d114b2f78c47757a9c7c987177ad50ba8475aa0af55","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncUpsert.mjs","digest":"0810e60d9483901203d7a2401df6e54097679384d3b4721cca12099280975e86","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"shared_writer_debt"},
     {"path":"server/src/services/metadataProviderConfigStore.mjs","digest":"cde6b3fec914e8f9329826709525db373d2d89f914bb576b2860d1e0ba43f642","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/omdbQuotaStore.mjs","digest":"119cceaceaf8f11ad2406c15f96471d1af6a6bbcbdde9c9bd26d8717420e9a63","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

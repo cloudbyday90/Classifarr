@@ -9,6 +9,11 @@ export const INGESTION_RELATIONS = Object.freeze([
 export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/mediaSync.mjs',
     'server/src/services/mediaSyncRun.mjs',
+    'server/src/services/mediaSyncCompleteness.mjs',
+    'server/src/services/sourceEnumerationError.mjs',
+    'server/src/services/mediaServers/plex.mjs',
+    'server/src/services/mediaServers/shared/createEmbyLikeService.mjs',
+    'server/src/services/mediaServers/shared/sourcePage.mjs',
     'server/src/services/mediaSyncOwnership.mjs',
     'server/src/services/mediaSyncOwnershipRepository.mjs',
     'server/src/services/mediaSyncDatabaseScope.mjs',

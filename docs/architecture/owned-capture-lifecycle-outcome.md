@@ -59,6 +59,10 @@ tag, deployment or dependency upgrade is part of this change.
 
 ## Recommendation and next component
 
+Follow-up status (2026-09-27): the enumeration boundary described below is now
+implemented. See [source enumeration completeness outcome](source-enumeration-completeness-outcome.md)
+for verification, compatibility limits and the next provider-preflight component.
+
 Keep the existing owner + generation checks + transaction rollback + static drift
 gate. This is small and dependency-free, but remains cooperative application
 coordination, not database-enforced authorization.

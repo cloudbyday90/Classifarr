@@ -7,6 +7,7 @@
 
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
+import { withSourcePageFixtures } from './helpers/sourcePageFixture.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -25,20 +26,20 @@ jest.unstable_mockModule('../services/mediaSyncOwnership.mjs', () => ({
     MEDIA_SYNC_OWNER_LOCK: 0x4d53594e,
 }));
 
-const mockPlexService = {
+const mockPlexService = withSourcePageFixtures({
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
-};
+});
 
-const mockEmbyService = {
+const mockEmbyService = withSourcePageFixtures({
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
-};
+});
 
-const mockJellyfinService = {
+const mockJellyfinService = withSourcePageFixtures({
     getLibraryItems: jest.fn(),
     getCollections: jest.fn()
-};
+});
 
 const mockGetMediaServerService = jest.fn((type) => {
     switch (String(type).toLowerCase()) {
@@ -299,7 +300,7 @@ describe('MediaSyncService', () => {
             const sourceObservations = { start: jest.fn().mockResolvedValue(context), capture: jest.fn(), finish: jest.fn(),
                 withCurrentCapture: async (_context, fn) => fn({ query: sourceQuery }) };
             const provider = jest.fn().mockRejectedValue(new Error('synthetic outage'));
-            const source = { getLibraryItems: jest.fn(), getCollections: jest.fn().mockResolvedValue([]), getLibraryItemIdentityEvidence: jest.fn() };
+            const source = withSourcePageFixtures({ getLibraryItems: jest.fn(), getCollections: jest.fn().mockResolvedValue([]), getLibraryItemIdentityEvidence: jest.fn() }, 9);
             const items = Array.from({ length: 9 }, (_, index) => {
                 const item = { external_id: String(index), title: 'Fixture', year: 2001, media_type: 'movie',
                     provider_identity_invalid: true, provider_identity_issue: 'conflicting_provider_ids' };
@@ -373,7 +374,7 @@ describe('MediaSyncService', () => {
                 : { rows: [{ id: 100 }], rowCount: 1 });
             const movie = { external_id: 'film', title: 'Music documentary', media_type: 'movie', total: 3 };
             mockPlexService.getLibraryItems
-                .mockResolvedValueOnce([{ media_type: null, total: 3 }, { media_type: 'music', total: 3 }])
+                .mockResolvedValueOnce([{ external_id: 'audio-1', media_type: null, total: 3 }, { external_id: 'audio-2', media_type: 'music', total: 3 }])
                 .mockResolvedValueOnce([movie]);
             mockPlexService.getCollections.mockResolvedValue([]);
 

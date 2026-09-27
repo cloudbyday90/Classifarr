@@ -2,6 +2,8 @@
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { sourcePageFixture, withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
+import { readPlexSourcePage } from '../../services/mediaServers/shared/sourcePage.mjs';
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { MediaSyncService } = await import('../../services/mediaSync.mjs');
 const { createMediaSyncOwnership } = await import('../../services/mediaSyncOwnership.mjs');
@@ -17,10 +19,10 @@ const item = id => ({ external_id: String(id), tmdb_id: id, title: `Synthetic ${
 const state = async () => (await db.query('SELECT * FROM library_ingestion_state WHERE library_id=$1', [libraryId])).rows[0];
 const inventory = async () => (await db.query('SELECT external_id FROM media_server_items WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows.map(row => row.external_id);
 const due = () => db.query("UPDATE library_ingestion_state SET retry_after=clock_timestamp()-interval '1 second' WHERE library_id=$1", [libraryId]);
-function sync(getLibraryItems, overrides = {}) {
-  return new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => ({
+function sync(getLibraryItems, overrides = {}, total) {
+  return new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems, getCollections: async () => [],
-  }) }, skipReporter: { report: async () => {} }, ...overrides });
+  }, total) }, skipReporter: { report: async () => {} }, ...overrides });
 }
 const status = async () => (await db.query(`SELECT ${LIBRARY_INGESTION_STATUS_SQL} AS status FROM libraries l WHERE id=$1`, [libraryId])).rows[0].status;
 
@@ -90,7 +92,7 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
     paused.resolve();
     await resume.promise;
     return [media(99)];
-  });
+  }, {}, 2);
   const old = first.syncLibrary(libraryId, { batchSize: 1 }).catch(error => error);
   await paused.promise;
   try {
@@ -100,7 +102,7 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
     // A very old checkpoint is not permission to steal a live session.
     await db.query("UPDATE library_ingestion_state SET updated_at=NOW()-interval '1 year' WHERE library_id=$1", [libraryId]);
     const replacementPages = jest.fn(async (_url, _key, _id, { offset, limit }) => [media(22), media(11)].slice(offset, offset + limit));
-    const replacement = sync(replacementPages);
+    const replacement = sync(replacementPages, {}, 2);
     expect(await replacement.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'ingestion_owned' });
     expect(replacementPages).not.toHaveBeenCalled();
     const { rows: [lock] } = await db.query(`SELECT pid FROM pg_locks WHERE locktype='advisory' AND classid=$1::oid AND objid=$2::oid
@@ -112,7 +114,7 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
     await due();
     expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
     expect(await replacement.syncLibrary(libraryId, { batchSize: 1, incremental: true })).toMatchObject({ success: true });
-    expect(replacementPages.mock.calls.map(call => call[3].offset)).toEqual([0, 1, 2]);
+    expect(replacementPages.mock.calls.map(call => call[3].offset)).toEqual([0, 1]);
     expect(await inventory()).toEqual(['11', '22']);
     const completed = await state();
     expect(completed).toMatchObject({ phase: 'complete', restart_count: 1 });
@@ -128,7 +130,7 @@ test('failure preserves partial items and cooldown; completion prunes only after
   const first = sync(async (_u, _k, _l, { offset }) => {
     if (offset) throw new Error('synthetic offline');
     return [item(11)];
-  });
+  }, {}, 2);
   await expect(first.syncLibrary(libraryId, { batchSize: 1 })).rejects.toThrow('synthetic offline');
   expect(await inventory()).toEqual(['11']);
   expect(await state()).toMatchObject({ phase: 'retry_wait', pages_processed: 1 });
@@ -141,7 +143,7 @@ test('failure preserves partial items and cooldown; completion prunes only after
 
 test.each([null, {}, 'malformed'])('malformed page %p never acts as an empty library', async page => {
   await sync(async () => [item(11)]).syncLibrary(libraryId);
-  await expect(sync(async () => page).syncLibrary(libraryId)).rejects.toThrow('ingestion_page_invalid');
+  await expect(sync(async () => page).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_page_envelope' });
   expect(await inventory()).toEqual(['11']);
   expect((await state()).phase).toBe('retry_wait');
 });
@@ -159,15 +161,15 @@ test('failed finalization rolls back pruning, capture and completion together', 
 test('owner lost after the last provider page cannot finalize or prune through the pool', async () => {
   await sync(async () => [item(99)]).syncLibrary(libraryId);
   const interrupted = sync(async () => [item(11)], { mediaServerServices: { getMediaServerService: async () => ({
-    getLibraryItems: async () => [item(11)],
-    getCollections: async () => {
+    getLibraryPage: async () => sourcePageFixture([item(11)]),
+    getCollectionPage: async () => {
       const { rows: [lock] } = await db.query(`SELECT pid FROM pg_locks WHERE locktype='advisory'
         AND classid=$1::oid AND objid=$2::oid AND objsubid=2 AND granted
         AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`, [MEDIA_SYNC_OWNER_LOCK, libraryId]);
       // Terminate only this disposable suite's identified library owner, never a live backend.
       expect(lock?.pid).toBeGreaterThan(0);
       await db.query('SELECT pg_terminate_backend($1,5000)', [lock.pid]);
-      return [];
+      return sourcePageFixture([]);
     },
   }) } });
   await expect(interrupted.syncLibrary(libraryId)).rejects.toThrow();
@@ -208,7 +210,7 @@ test('missing configuration and source keys never authorize acquisition or delet
   expect(pages).not.toHaveBeenCalled();
   await db.query("UPDATE media_server SET api_key='synthetic' WHERE id=$1", [serverId]);
   await sync(async () => [item(11)]).syncLibrary(libraryId);
-  await expect(sync(async () => [{ ...item(22), external_id: null }]).syncLibrary(libraryId)).rejects.toThrow('ingestion_source_key_invalid');
+  await expect(sync(async () => [{ ...item(22), external_id: null }]).syncLibrary(libraryId)).resolves.toMatchObject({ deferred: true, detail: 'invalid_source_key' });
   expect(await inventory()).toEqual(['11']);
   await db.query("UPDATE media_server SET api_key='' WHERE id=$1", [serverId]);
   expect(await status()).toMatchObject({ state: 'unconfigured' });
@@ -261,4 +263,53 @@ test('fresh setup learning stays dormant until configured, populated and ingesti
   await due();
   await sync(async () => [item(11)]).syncLibrary(libraryId);
   expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+});
+
+test.each(['short', 'repeated', 'changed_total', 'missing_total', 'collections', 'malformed'])('incomplete %s response preserves data and learning deferral, then safely replays', async fault => {
+  await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
+  await sync(async () => [item(11)]).syncLibrary(libraryId);
+  await db.query("INSERT INTO media_server_collections(media_server_id,library_id,external_id,name) VALUES ($1,$2,'old-set','Synthetic')", [serverId, libraryId]);
+  const pages = jest.fn(async (_url, _key, _id, { offset }) => {
+    if (fault === 'malformed') return readPlexSourcePage({ data: { MediaContainer: {} } });
+    const total = fault === 'missing_total' ? null : fault === 'collections' ? 1 : 2;
+    if (offset === 0) return sourcePageFixture([item(22)], { total, offset });
+    if (fault === 'short' || fault === 'missing_total') return sourcePageFixture([], { total, offset });
+    return sourcePageFixture([item(fault === 'repeated' ? 22 : 33)], { total: fault === 'changed_total' ? 3 : total, offset });
+  });
+  const broken = sync(null, { mediaServerServices: { getMediaServerService: async () => ({
+    getLibraryPage: pages,
+    getCollectionPage: async () => readPlexSourcePage({ data: {} }),
+  }) } });
+  expect(await broken.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'source_enumeration_incomplete' });
+  expect(await inventory()).toContain('11');
+  expect((await db.query('SELECT external_id FROM media_server_collections WHERE library_id=$1', [libraryId])).rows).toEqual([{ external_id: 'old-set' }]);
+  expect(await state()).toMatchObject({ phase: 'retry_wait' });
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('failed');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
+  expect(await broken.syncLibrary(libraryId)).toMatchObject({ reason: 'retry_wait' });
+  if (fault === 'short') expect(pages.mock.calls.map(call => call[3].offset)).toEqual([0, 1]);
+  await due();
+  expect(await sync(async () => [item(33)]).syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedCollections: 1 });
+  expect(await inventory()).toEqual(['33']);
+  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+});
+
+test('server-sized media and collection pages complete with exact unique counts, including an empty replay', async () => {
+  const offsets = [], collectionOffsets = [];
+  const service = sync(null, { mediaServerServices: { getMediaServerService: async () => ({
+    getLibraryPage: async (_u, _k, _l, { offset }) => {
+      offsets.push(offset);
+      return sourcePageFixture([item(11 + offset)], { offset, total: 3 });
+    },
+    getCollectionPage: async (_u, _k, _l, { offset }) => {
+      collectionOffsets.push(offset);
+      return sourcePageFixture([{ external_id: `set-${offset}`, name: 'Synthetic' }], { offset, total: 2 });
+    },
+  }) } });
+  expect(await service.syncLibrary(libraryId, { batchSize: 100 })).toMatchObject({ success: true, totalItems: 3, collections: 2 });
+  expect(offsets).toEqual([0, 1, 2]);
+  expect(collectionOffsets).toEqual([0, 1]);
+  expect(await state()).toMatchObject({ phase: 'complete', items_total: 3 });
+  expect(await sync(async () => []).syncLibrary(libraryId)).toMatchObject({ success: true, prunedItems: 3, prunedCollections: 2 });
+  expect(await inventory()).toEqual([]);
 });

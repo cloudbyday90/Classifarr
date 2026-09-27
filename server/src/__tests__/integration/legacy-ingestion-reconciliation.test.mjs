@@ -2,6 +2,7 @@
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { createLegacyIngestionService } = await import('../../services/legacyIngestionService.mjs');
@@ -53,7 +54,7 @@ test('preview is read-only; confirmation is audited, idempotent, preserves data 
   await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
-  const sync = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => ({
+  const sync = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: 'movie', title: 'Synthetic' }], getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await sync.syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedItems: 1 });

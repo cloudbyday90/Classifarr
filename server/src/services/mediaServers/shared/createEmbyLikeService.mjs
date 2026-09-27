@@ -10,6 +10,8 @@
 import { httpGet } from '../../../utils/httpClient.mjs';
 import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
 import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs';
+import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
+import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -62,7 +64,11 @@ class EmbyLikeService {
   }
 
   async getLibraryItems(url, apiKey, libraryId, options = {}) {
-    const { offset = 0, limit = 100 } = options;
+    return (await this.getLibraryPage(url, apiKey, libraryId, options)).items;
+  }
+
+  async getLibraryPage(url, apiKey, libraryId, options = {}) {
+    const { offset, limit } = sourcePageRequest(options);
 
     try {
       const response = await httpGet(`${url}/Items`, {
@@ -73,16 +79,18 @@ class EmbyLikeService {
           IncludeItemTypes: 'Movie,Series',
           StartIndex: offset,
           Limit: limit,
+          EnableTotalRecordCount: true,
           Fields: 'ProviderIds,Genres,Tags,Studios,Overview',
         },
       });
 
-      const items = response.data.Items || [];
+      const page = readEmbySourcePage(response);
 
-      return items.map((item) => {
+      return { ...page, items: page.items.map((item) => {
+        if (typeof item.Type !== 'string' || !item.Type.trim()) throw new SourceEnumerationError('missing_media_type');
         const mediaType = item?.Type === 'Series' ? 'tv' : item?.Type === 'Movie' ? 'movie' : null;
         // Provider query filters are advisory; validate the returned type as well.
-        if (!mediaType) return { media_type: null, total: response.data.TotalRecordCount };
+        if (!mediaType) return { media_type: null, total: page.total };
         return {
           external_id: item.Id,
           title: item.Name,
@@ -101,10 +109,11 @@ class EmbyLikeService {
             summary: item.Overview,
             posterPath: this.buildPosterUrl(url, apiKey, item.Id),
           },
-          total: response.data.TotalRecordCount,
+          total: page.total,
         };
-      });
+      }) };
     } catch (error) {
+      if (error instanceof SourceEnumerationError) throw error;
       throw new Error(`Failed to fetch ${this.displayName} library items: ${error.message}`);
     }
   }
@@ -132,7 +141,12 @@ class EmbyLikeService {
     }
   }
 
-  async getCollections(url, apiKey, libraryId) {
+  async getCollections(url, apiKey, libraryId, options = {}) {
+    return (await this.getCollectionPage(url, apiKey, libraryId, options)).items;
+  }
+
+  async getCollectionPage(url, apiKey, libraryId, options = {}) {
+    const { offset, limit } = sourcePageRequest(options);
     try {
       const response = await httpGet(`${url}/Items`, {
         headers: buildHeaders(apiKey),
@@ -140,17 +154,21 @@ class EmbyLikeService {
           ParentId: libraryId,
           IncludeItemTypes: 'BoxSet',
           Recursive: true,
+          StartIndex: offset,
+          Limit: limit,
+          EnableTotalRecordCount: true,
         },
       });
 
-      const items = response.data.Items || [];
-      return items.map((item) => ({
+      const page = readEmbySourcePage(response);
+      return { ...page, items: page.items.map((item) => ({
         external_id: item.Id,
         name: item.Name,
         item_count: item.ChildCount || 0,
-      }));
-    } catch {
-      return [];
+      })) };
+    } catch (error) {
+      if (error instanceof SourceEnumerationError) throw error;
+      throw new Error(`Failed to fetch ${this.displayName} collections: ${error.message}`);
     }
   }
 
