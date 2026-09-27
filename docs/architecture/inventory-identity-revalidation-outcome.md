@@ -103,10 +103,14 @@ open PR could therefore be selected. No PR was merged and no release created.
 
 ## Next bounded component
 
-Unify recovery cases in an authenticated administrator view: affected title,
-original identity, diagnosis, candidate (if any), next retry and one clear action.
-Reuse verified media-server item links where available, with explicit missing-link
-state and later backfill. Keep compact counts and accessible textual statuses;
-do not present candidates as classification accuracy. Any automated replacement
-must first add current-source corroboration and atomic repair-to-backfill tests,
-not merely promote an external-ID lookup to authority.
+The recommended administrator recovery view is now implemented; see its
+[design](inventory-recovery-view-design.md) and
+[validation outcome](inventory-recovery-view-outcome.md). It exposes affected
+titles, diagnoses, candidate hints, retry eligibility and on-demand Plex links
+without changing identity or routing.
+
+The next bounded component is a provider recovery wakeup after a verified
+credential/configuration change. Reuse queue admission and source/lease guards;
+do not reset unrelated 404 cooldowns. Any future automated identity replacement
+still needs current-source corroboration and atomic repair-to-backfill tests,
+not merely an external-ID lookup promoted to authority.

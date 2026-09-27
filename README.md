@@ -909,6 +909,15 @@ review candidates. Candidate IDs are diagnostic evidence, not automatic changes
 to identity or routing. See the [revalidation design](docs/architecture/inventory-identity-revalidation-design.md)
 and [outcome](docs/architecture/inventory-identity-revalidation-outcome.md).
 
+Open **Libraries → Metadata recovery** with an active administrator session to
+see recorded open movie/TV provider cases, the affected title, diagnosis and next
+retry eligibility. Expand an item for source-repair steps and an on-demand Plex
+link. If Plex is offline, check the link again later; the list does not depend on
+Plex availability. The page never changes an ID or starts a retry. Counts exclude
+unchecked items and are not an accuracy or overall-health score. See the
+[view design](docs/architecture/inventory-recovery-view-design.md) and
+[validation outcome](docs/architecture/inventory-recovery-view-outcome.md).
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten

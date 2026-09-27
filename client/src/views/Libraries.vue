@@ -17,6 +17,12 @@
       </h1>
       <div class="relative flex flex-wrap items-center gap-3">
         <RouterLink
+          to="/libraries/recovery"
+          class="rounded border border-gray-500 px-3 py-2 text-sm"
+        >
+          Metadata recovery
+        </RouterLink>
+        <RouterLink
           to="/libraries/identity-review"
           class="rounded border border-gray-500 px-3 py-2 text-sm"
         >

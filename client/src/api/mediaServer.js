@@ -21,6 +21,7 @@ import jellyfinApi from './jellyfinApi'
 import mediaServerSetupApi from './mediaServerSetupApi'
 import plexApi from './plexApi'
 import mediaIdentityReviewApi from './mediaIdentityReviewApi'
+import inventoryRecoveryApi from './inventoryRecoveryApi'
 
 const mediaServerApi = {
   ...mediaServerSetupApi,
@@ -28,6 +29,7 @@ const mediaServerApi = {
   ...jellyfinApi,
   ...embyApi,
   ...mediaIdentityReviewApi,
+  ...inventoryRecoveryApi,
 }
 
 export default mediaServerApi

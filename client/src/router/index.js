@@ -26,6 +26,7 @@ import SetupWizard from '@/views/SetupWizard.vue'
 const CommandCenter = () => import('@/views/CommandCenter.vue')
 const Libraries = () => import('@/views/Libraries.vue')
 const MediaIdentityReview = () => import('@/views/MediaIdentityReview.vue')
+const InventoryRecovery = () => import('@/views/InventoryRecovery.vue')
 const LibraryDetail = () => import('@/views/LibraryDetail.vue')
 const History = () => import('@/views/History.vue')
 const Notifications = () => import('@/views/Notifications.vue')
@@ -98,6 +99,12 @@ const router = createRouter({
           name: 'MediaIdentityReview',
           meta: { routeMode: 'admin-maintenance' },
           component: MediaIdentityReview,
+        },
+        {
+          path: '/libraries/recovery',
+          name: 'InventoryRecovery',
+          meta: { routeMode: 'admin-maintenance' },
+          component: InventoryRecovery,
         },
         {
           path: '/libraries/:id',

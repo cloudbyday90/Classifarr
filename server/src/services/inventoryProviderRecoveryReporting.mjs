@@ -24,6 +24,12 @@ const STEPS = {
     invalid_response: 'The response did not match the requested identity or metadata schema. Existing metadata was preserved; a scheduled recheck will try again.',
 };
 
+export function inventoryProviderRecoveryInstruction(record) {
+    const check = readInventoryIdentityCheck(record?.identity_check, record?.tmdb_id);
+    return (record?.category === 'not_found' && check ? IDENTITY_STEPS[check.outcome] : null) ??
+        STEPS[record?.category] ?? 'Existing metadata was preserved. The queue will retry automatically after the recorded cooldown.';
+}
+
 /** Call only after the guarded metadata/recovery write succeeds. */
 export function reportInventoryProviderRecovery(logger, payload, receipt) {
     const outcome = receipt?.outcome;
@@ -36,6 +42,5 @@ export function reportInventoryProviderRecovery(logger, payload, receipt) {
         ...(check ? { identityCheck: check } : {}) };
     if (outcome.transition === 'resolved') logger.info('Inventory TMDb metadata recovered and backfilled', fields);
     else logger.warn('Inventory TMDb observation needs recovery', { ...fields,
-        recovery: (record.category === 'not_found' && check ? IDENTITY_STEPS[check.outcome] : null) ??
-            STEPS[record.category] ?? 'Existing metadata was preserved. The queue will retry automatically after the recorded cooldown.' });
+        recovery: inventoryProviderRecoveryInstruction(record) });
 }

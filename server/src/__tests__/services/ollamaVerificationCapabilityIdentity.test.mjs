@@ -16,6 +16,7 @@ const baseConfiguration = Object.freeze({
   ollama_model: 'gemma4:e4b',
   configuration_revision: 4,
 });
+const fixtureClock = { now: Date.parse('2026-08-29T12:00:00.000Z') };
 
 function readyConfiguration(overrides = {}) {
   const identity = resolveOllamaVerificationCapabilityIdentity(baseConfiguration);
@@ -31,6 +32,16 @@ function readyConfiguration(overrides = {}) {
 }
 
 describe('ollama verification capability identity', () => {
+  test('keeps the thirty-day boundary and rejects expired or future evidence', () => {
+    const checkedAt = Date.parse('2026-08-28T12:00:00.000Z');
+    const boundary = checkedAt + 30 * 24 * 60 * 60 * 1000;
+    expect(getOllamaVerificationCapabilityState(readyConfiguration(), { now: boundary }).verificationReady).toBe(true);
+    for (const now of [boundary + 1, checkedAt - 1]) {
+      expect(getOllamaVerificationCapabilityState(readyConfiguration(), { now })).toMatchObject({
+        current: false, verificationReady: false, statusId: 'not_checked',
+      });
+    }
+  });
   test('provides authority evidence only for a current bound structured-output result', () => {
     const state = getOllamaVerificationCapabilityState(readyConfiguration(), {
       now: Date.parse('2026-08-29T12:00:00.000Z'),
@@ -54,10 +65,10 @@ describe('ollama verification capability identity', () => {
   test('fails closed when a saved configuration revision or model changes', () => {
     const changedRevision = getOllamaVerificationCapabilityState(readyConfiguration({
       configuration_revision: 5,
-    }));
+    }), fixtureClock);
     const changedModel = getOllamaVerificationCapabilityState(readyConfiguration({
       ollama_model: 'gemma4:latest',
-    }));
+    }), fixtureClock);
 
     expect(changedRevision.statusId).toBe('not_checked');
     expect(changedRevision.verificationReady).toBe(false);
@@ -71,7 +82,7 @@ describe('ollama verification capability identity', () => {
       ollama_verification_capability_model_digest: null,
       ollama_verification_capability_error_code: 'MODEL_DIGEST_MISMATCH',
     });
-    const state = getOllamaVerificationCapabilityState(configuration);
+    const state = getOllamaVerificationCapabilityState(configuration, fixtureClock);
 
     expect(state).toMatchObject({
       statusId: 'model_changed',
@@ -80,7 +91,7 @@ describe('ollama verification capability identity', () => {
       errorCode: 'MODEL_DIGEST_MISMATCH',
       modelDigest: null,
     });
-    expect(buildOllamaVerificationAuthorityEvidence(configuration)).toEqual(expect.objectContaining({
+    expect(buildOllamaVerificationAuthorityEvidence(configuration, fixtureClock)).toEqual(expect.objectContaining({
       verified: false,
       modelDigest: null,
     }));
@@ -96,7 +107,7 @@ describe('ollama verification capability identity', () => {
       ollama_verification_capability_error_code: errorCode,
     });
 
-    const state = getOllamaVerificationCapabilityState(configuration);
+    const state = getOllamaVerificationCapabilityState(configuration, fixtureClock);
 
     expect(state).toMatchObject({
       statusId,
@@ -105,7 +116,7 @@ describe('ollama verification capability identity', () => {
       errorCode,
       modelDigest: null,
     });
-    expect(buildOllamaVerificationAuthorityEvidence(configuration)).toEqual(expect.objectContaining({
+    expect(buildOllamaVerificationAuthorityEvidence(configuration, fixtureClock)).toEqual(expect.objectContaining({
       verified: false,
       modelDigest: null,
     }));

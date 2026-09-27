@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an administrator Metadata recovery view with bounded movie/TV case counts,
+  actionable diagnoses, honest retry timing and on-demand Plex links. Protect
+  reads with current-admin checks, non-persistent SWR and source/configuration
+  fencing; viewing cases never changes identity, routing or retry schedules.
 - Diagnose inventory TMDb 404s using bounded, exact external-ID checks. Retain
   no-match, disagreement, provider-failure and corroborated-candidate evidence in
   source-fenced recovery cases with actionable, deduplicated reports. Preserve
