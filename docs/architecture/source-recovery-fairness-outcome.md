@@ -86,7 +86,8 @@ fairness. Continuous new/changed evidence can delay older work. Races can leave
 unused slots; they never authorize extra attempts or bypass proof checks.
 This is not a provider-wide rate limiter or a guaranteed completion date.
 
-Next: add one **provider-return recovery canary** using the existing services.
+Follow-up implemented in the [recovery handoff outcome](source-recovery-handoff-outcome.md).
+The originally recommended **provider-return recovery canary** uses the existing services.
 In an isolated database, start with mixed movie/TV conflicts during an outage,
 restore synthetic matching provider/source responses, and verify the whole path:
 repair receipt → inventory metadata backfill → refreshed library profile.

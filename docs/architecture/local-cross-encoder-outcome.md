@@ -3,6 +3,11 @@
 Date: 2026-09-20. Decision: implemented as an optional experiment; **do not enable
 this scorer in live routing or run the confirmation cohort yet**. No release.
 
+On September 26, the user authorized removal of only the stopped local scorer
+container. The image, model files, Compose definition and benchmark code remain
+available for recreation. The experiment is not retired; the live Classifarr
+container was not changed. See the [cleanup record](source-recovery-handoff-outcome.md#pr-and-local-container-disposition).
+
 ## What changed
 
 Implemented the [predeclared design](local-cross-encoder-design.md): a small ESM

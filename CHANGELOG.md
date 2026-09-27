@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify the movie/TV recovery-to-learning handoff with isolated integration
+  coverage for provider return, interrupted enrichment and profile publication,
+  mixed-library identity isolation, repeated syncs, and music exclusion. Preserve
+  existing orchestration, retry limits and routing behavior.
 - Give source identity recovery fair access across library pages by retrying
   never-attempted and oldest-attempted items first. Preserve the eight-attempt
   limit, daily cooldown, and identity safeguards; incomplete scans do not spend
