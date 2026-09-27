@@ -51,7 +51,8 @@ jest.unstable_mockModule('../services/classificationEvidenceRepository.mjs', () 
 const db = mockDatabase;
 const classificationEvidenceService = mockClassificationEvidenceService;
 const classificationEvidenceRepository = mockClassificationEvidenceRepository;
-const { backupService } = await import('../services/backupService.mjs');
+const { backupService, BackupService } = await import('../services/backupService.mjs');
+const { withBackupRestoreSession } = await import('../services/backupRestoreSession.mjs');
 const reconciliationLifecycle = {
     beginBackupRestore: jest.fn(),
     verifyRestoredDatabase: jest.fn(),
@@ -87,6 +88,8 @@ describe('BackupService evidence integration', () => {
         recordBackupRestoreVerification.mockReset();
         backupService.reconciliationLifecycle = reconciliationLifecycle;
         backupService.recordBackupRestoreVerification = recordBackupRestoreVerification;
+        // Session ownership is exercised separately with real PostgreSQL and fault tests.
+        backupService.restoreSession = async ({ database }, work) => work(database);
         reconciliationLifecycle.beginBackupRestore.mockResolvedValue({
             started: true,
             restoreToken: 'test-restore-token',
@@ -104,6 +107,41 @@ describe('BackupService evidence integration', () => {
         });
         reconciliationLifecycle.failBackupRestore.mockResolvedValue({ failed: true });
         recordBackupRestoreVerification.mockResolvedValue({ id: 1 });
+    });
+
+    test('production service defaults to the pinned restore session', () => {
+        expect(new BackupService().restoreSession).toBe(withBackupRestoreSession);
+    });
+
+    test('the entire restore uses the session adapter and opts into owned recovery', async () => {
+        mockFs.promises.readFile.mockResolvedValue(JSON.stringify({ version: '1.0', data: {} }));
+        const sessionQuery = jest.fn().mockResolvedValue({ rows: [] });
+        const transactionClient = { query: sessionQuery };
+        const session = {
+            query: sessionQuery,
+            withTransaction: jest.fn(work => work(transactionClient)),
+        };
+        backupService.restoreSession = jest.fn(async (_options, work) => {
+            const result = await work(session);
+            expect(recordBackupRestoreVerification).toHaveBeenCalledWith(expect.objectContaining({ db: transactionClient }));
+            return result;
+        });
+        await backupService.restoreBackup('owned.json', { mode: 'merge' });
+        expect(backupService.restoreSession).toHaveBeenCalledTimes(1);
+        expect(reconciliationLifecycle.beginBackupRestore).toHaveBeenCalledWith({ dbClient: session, sessionOwned: true });
+        expect(reconciliationLifecycle.verifyRestoredDatabase).toHaveBeenCalledWith({ dbClient: session });
+        expect(reconciliationLifecycle.completeBackupRestore).toHaveBeenCalledWith(expect.objectContaining({ dbClient: transactionClient }));
+        expect(session.withTransaction).toHaveBeenCalledTimes(2);
+        expect(db.pool.connect).not.toHaveBeenCalled();
+        expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('preserves the original restore failure when recording failure also fails', async () => {
+        mockFs.promises.readFile.mockResolvedValue(JSON.stringify({ version: '1.0', data: {} }));
+        const original = new Error('original failure');
+        db.query.mockRejectedValue(original);
+        reconciliationLifecycle.failBackupRestore.mockRejectedValue(new Error('lost connection'));
+        await expect(backupService.restoreBackup('failed.json', { mode: 'merge' })).rejects.toBe(original);
     });
 
     test('collectBackupData uses the evidence service for learned pattern export', async () => {

@@ -194,13 +194,14 @@ export class NativeIntentReconciliationLifecycleService {
     };
   }
 
-  async beginBackupRestore({ dbClient = this.db, startedAt = this.now() } = {}) {
+  async beginBackupRestore({ dbClient = this.db, startedAt = this.now(), sessionOwned = false } = {}) {
     const restoreToken = this.createRestoreToken();
     const normalizedStartedAt = normalizeTimestamp(startedAt);
     const gate = await this.beginRestore({
       db: dbClient,
       restoreToken,
       startedAt: normalizedStartedAt,
+      sessionOwned,
     });
     if (!gate) {
       return {

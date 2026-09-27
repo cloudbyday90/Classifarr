@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Serialize configuration restores on a dedicated database session and recover
+  interrupted session-owned attempts on explicit retry. Reject stale-owner writes,
+  preserve original failures, and keep legacy restore gates closed for investigation.
+  Add isolated crash/rollback tests and document the remaining worker-drain boundary.
 - Preserve Radarr/Sonarr destinations, policy-linked preferences and library labels
   across configuration restores with changed database IDs. Include library fallback
   mappings in backups, reject invalid references before configuration writes, and

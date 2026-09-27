@@ -9,6 +9,7 @@
  */
 import './env.mjs';
 import pg from 'pg';
+import { BACKUP_RESTORE_SESSION_LOCK_KEY } from '../utils/backupRestoreSessionContract.mjs';
 import { isOfflineEvaluationWorker, OfflineEvaluationPool } from './offlineEvaluation.mjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createLogger } from '../utils/logger.mjs';
@@ -103,6 +104,7 @@ export const DB_ADVISORY_LOCKS = {
   POST_UPGRADE_TASKS: 2020,
   RECLASSIFICATION_MOVE: 2021,
   RECLASSIFICATION_BATCH: 2022,
+  BACKUP_RESTORE: BACKUP_RESTORE_SESSION_LOCK_KEY,
 };
 
 export function createDatabaseModule({

@@ -51,6 +51,13 @@ function createService(overrides = {}) {
 }
 
 describe('NativeIntentReconciliationLifecycleService', () => {
+  test.each([false, true])('forwards bounded session ownership (%s) to gate persistence', async sessionOwned => {
+    const beginRestore = jest.fn().mockResolvedValue({ gate_state: 'restore_in_progress' });
+    const service = createService({ beginRestore });
+    await expect(service.beginBackupRestore({ sessionOwned })).resolves.toMatchObject({ started: true });
+    expect(beginRestore).toHaveBeenCalledWith(expect.objectContaining({ sessionOwned }));
+  });
+
   test('fails closed when the required singleton restore gate is absent', async () => {
     const service = createService({ loadRestoreGate: jest.fn().mockResolvedValue(null) });
 

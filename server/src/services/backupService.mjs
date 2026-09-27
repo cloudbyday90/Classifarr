@@ -25,7 +25,8 @@ import { collectBackupSnapshot } from './backupSnapshot.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { deriveKey as _deriveKey, encrypt as _encrypt, decrypt as _decrypt } from './backupEncryption.mjs';
-import { restoreAllTables } from './backupRestore.mjs';
+import { executeBackupRestore } from './backupRestoreExecution.mjs';
+import { withBackupRestoreSession } from './backupRestoreSession.mjs';
 import {
   nativeIntentReconciliationLifecycleService,
 } from './nativeIntentReconciliationLifecycleService.mjs';
@@ -47,11 +48,13 @@ export class BackupService {
   constructor({
     reconciliationLifecycle = nativeIntentReconciliationLifecycleService,
     recordBackupRestoreVerification = insertPolicyBackupRestoreVerification,
+    restoreSession = withBackupRestoreSession,
   } = {}) {
     this.isValidEncryptedBackupPassword = isValidEncryptedBackupPassword;
     this.ENCRYPTED_BACKUP_PASSWORD_ERROR = ENCRYPTED_BACKUP_PASSWORD_ERROR;
     this.reconciliationLifecycle = reconciliationLifecycle;
     this.recordBackupRestoreVerification = recordBackupRestoreVerification;
+    this.restoreSession = restoreSession;
   }
 
   async ensureBackupDirectory() {
@@ -201,58 +204,17 @@ export class BackupService {
     logger.info('Starting restore', { filename, mode, version: backupData.version });
 
     return withServiceCatch(logger, 'Restore failed', { filename }, async () => {
-      const lifecycle = await this.reconciliationLifecycle.beginBackupRestore({
-        dbClient: db,
-      });
-      if (!lifecycle.started) {
-        throw new ValidationError('A backup restore is already in progress. Wait for it to finish before retrying.');
-      }
-
-      try {
-        const restoreResult = await db.withTransaction(async (client) => {
-          return restoreAllTables(client, backupData, mode);
-        });
-        const verification = await this.reconciliationLifecycle.verifyRestoredDatabase({
-          dbClient: db,
-        });
-        const completion = await db.withTransaction(async client => {
-          const completedRestore = await this.reconciliationLifecycle.completeBackupRestore({
-            dbClient: client,
-            restoreToken: lifecycle.restoreToken,
-            verification,
-          });
-          if (!completedRestore.completed) return completedRestore;
-
-          await this.recordBackupRestoreVerification({
-            db: client,
-            restoreMode: mode,
-            backupVersion: backupData.version,
-            verification,
-            verifiedAt: completedRestore.verifiedAt,
-          });
-          return completedRestore;
-        });
-        if (!completion.completed) {
-          throw new ValidationError(
-            'Backup restore completed but native policy authority validation did not pass. Maintenance is required before reconciliation can run.',
-          );
-        }
-
-        logger.info('Restore completed successfully', { filename, mode });
-        return {
-          ...restoreResult,
-          reconciliationRestore: {
-            statusId: 'verified',
-            rawPayloadExposed: false,
-          },
-        };
-      } catch (error) {
-        await this.reconciliationLifecycle.failBackupRestore({
-          dbClient: db,
-          restoreToken: lifecycle.restoreToken,
-        });
-        throw error;
-      }
+      const result = await this.restoreSession({ database: db, logger }, database =>
+        executeBackupRestore({
+          database,
+          lifecycle: this.reconciliationLifecycle,
+          recordVerification: this.recordBackupRestoreVerification,
+          backupData,
+          mode,
+          logger,
+        }));
+      logger.info('Restore completed successfully', { filename, mode });
+      return result;
     });
   }
 

@@ -9,6 +9,7 @@
  */
 
 import { POLICY_CONVERSION_ACTOR_SOURCE_IDS } from './policyConversionActorSources.mjs';
+import { BACKUP_RESTORE_SESSION_OWNER_REASON } from '../utils/backupRestoreSessionContract.mjs';
 
 const NATIVE_INTENT_RECONCILIATION_LIFECYCLE_VERSION =
   'native_intent_reconciliation.lifecycle.v1';
@@ -75,12 +76,14 @@ function normalizeRestoreGate(row = {}) {
     };
   }
 
+  const reasonId = normalizeSafeId(
+    row.reasonId ?? row.reason_id,
+    NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.RESTORE_VALIDATION_FAILED,
+  );
   return {
     gateState,
-    reasonId: normalizeSafeId(
-      row.reasonId ?? row.reason_id,
-      NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.RESTORE_VALIDATION_FAILED,
-    ),
+    reasonId: reasonId === BACKUP_RESTORE_SESSION_OWNER_REASON
+      ? NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.RESTORE_IN_PROGRESS : reasonId,
     restoreToken: typeof (row.restoreToken ?? row.restore_token) === 'string'
       ? (row.restoreToken ?? row.restore_token)
       : null,

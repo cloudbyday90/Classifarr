@@ -92,6 +92,9 @@ Classifarr is a full operations platform for classification, routing, review, an
   Destination and label references are validated and remapped during restore;
   see [restore safety and tradeoffs](docs/architecture/backup-reference-remapping-design.md)
   and [verified recovery outcomes](docs/architecture/backup-reference-remapping-outcome.md).
+  Restores use an exclusive database session with interrupted-attempt recovery;
+  see [ownership and maintenance limits](docs/architecture/backup-restore-session-design.md)
+  and [session recovery outcomes](docs/architecture/backup-restore-session-outcome.md).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 

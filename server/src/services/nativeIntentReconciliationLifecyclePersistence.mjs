@@ -11,6 +11,7 @@
 import {
   buildNativeIntentAuthoritySqlPredicate,
 } from './policyNativeIntentAuthorityEligibility.mjs';
+import { BACKUP_RESTORE_SESSION_OWNER_REASON } from '../utils/backupRestoreSessionContract.mjs';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -30,13 +31,13 @@ export async function loadNativeIntentReconciliationRestoreGate({ db }) {
   return firstRow(result);
 }
 
-export async function beginNativeIntentReconciliationRestore({ db, restoreToken, startedAt }) {
+export async function beginNativeIntentReconciliationRestore({ db, restoreToken, startedAt, sessionOwned = false }) {
   const result = await db.query(
     `INSERT INTO policy_native_intent_reconciliation_restore_gates (
        gate_id, gate_state, reason_id, restore_token, restore_started_at,
        restore_finished_at, verified_at, updated_at
      )
-     VALUES (1, 'restore_in_progress', 'restore_in_progress', $1, $2, NULL, NULL, NOW())
+     VALUES (1, 'restore_in_progress', $3, $1, $2, NULL, NULL, NOW())
      ON CONFLICT (gate_id) DO UPDATE
      SET gate_state = EXCLUDED.gate_state,
          reason_id = EXCLUDED.reason_id,
@@ -47,7 +48,7 @@ export async function beginNativeIntentReconciliationRestore({ db, restoreToken,
          updated_at = NOW()
      WHERE policy_native_intent_reconciliation_restore_gates.gate_state <> 'restore_in_progress'
      RETURNING gate_state, reason_id, restore_token, restore_started_at`,
-    [restoreToken, startedAt],
+    [restoreToken, startedAt, sessionOwned === true ? BACKUP_RESTORE_SESSION_OWNER_REASON : 'restore_in_progress'],
   );
   return firstRow(result);
 }
