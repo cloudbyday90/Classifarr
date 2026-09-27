@@ -19,11 +19,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/components/layout/MainLayout.vue'
 import api from '@/api'
-import CommandCenter from '@/views/CommandCenter.vue'
 import Login from '@/views/Login.vue'
 import SetupAccount from '@/views/SetupAccount.vue'
 import SetupWizard from '@/views/SetupWizard.vue'
 
+const CommandCenter = () => import('@/views/CommandCenter.vue')
 const Libraries = () => import('@/views/Libraries.vue')
 const MediaIdentityReview = () => import('@/views/MediaIdentityReview.vue')
 const LibraryDetail = () => import('@/views/LibraryDetail.vue')

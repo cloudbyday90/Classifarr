@@ -109,6 +109,8 @@ for (const scenario of PRODUCTION_POLICY_ROUTE_SCENARIOS) {
     expect(pageErrors).toEqual([])
     expect(capture.failedScriptRequests).toEqual([])
     expect(report.assets.every(asset => asset.status === 200)).toBe(true)
+    expect(report.assets.some(asset => asset.fileName.startsWith('CommandCenter-')),
+      'policy navigation must not eagerly load the Command Center').toBe(false)
     expect(
       loadedPageRouteChunkPrefixes,
       `cold navigation for ${scenario.path} must not load another policy page chunk`,
@@ -116,3 +118,24 @@ for (const scenario of PRODUCTION_POLICY_ROUTE_SCENARIOS) {
     expect(report.scriptBytes).toBeLessThanOrEqual(POLICY_ROUTE_SCRIPT_BUDGET_BYTES)
   })
 }
+
+test('Command Center remains available through lazy navigation and browser history', async ({ page }) => {
+  const nonReadRequests = await blockServiceAccess(page)
+  const capture = captureProductionScriptAssets(page)
+  const pageErrors = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+
+  await page.goto('/policies/native-intent-reconciliation', { waitUntil: 'networkidle' })
+  const commandCenterLink = page.getByRole('link', { name: 'Command Center', exact: true })
+  await commandCenterLink.focus()
+  await commandCenterLink.press('Enter')
+  await expect(page.getByRole('heading', { name: 'COMMAND CENTER', exact: true })).toBeVisible()
+  expect((await capture.report()).assets.some(asset => asset.fileName.startsWith('CommandCenter-'))).toBe(true)
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'Native intent reconciliation', exact: true })).toBeVisible()
+  await page.goForward()
+  await expect(page.getByRole('heading', { name: 'COMMAND CENTER', exact: true })).toBeVisible()
+  expect(pageErrors).toEqual([])
+  expect(capture.failedScriptRequests).toEqual([])
+  expect(nonReadRequests).toEqual([])
+})

@@ -2,9 +2,9 @@
 import fs from 'node:fs';
 import { resolve } from 'node:path';
 import { createMigrationRunner } from '../config/migrations.mjs';
+import { RELEASE_DB, CURRENT_DB } from './schemaReleaseReplayTargets.mjs';
+export { RELEASE_DB, CURRENT_DB } from './schemaReleaseReplayTargets.mjs';
 
-export const RELEASE_DB = 'classifarr_replay_release';
-export const CURRENT_DB = 'classifarr_replay_current';
 const MIGRATIONS_DIR = resolve(import.meta.dirname, '../../../database/migrations');
 
 function normalizeTextLiteralArrays(line) {

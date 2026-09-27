@@ -24,7 +24,7 @@ vi.mock('@/components/layout/MainLayout.vue', () => ({
   default: { template: '<div><router-view /></div>' }
 }))
 
-// Guard tests exercise real navigation; eager page trees have their own tests.
+// Guard tests exercise real navigation; page trees have their own tests.
 // Avoid compiling the dashboard/setup dependency trees inside the first guard's timeout.
 vi.mock('@/views/CommandCenter.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/views/Login.vue', () => ({ default: { template: '<div />' } }))
@@ -88,6 +88,17 @@ describe('router auth/setup guard', () => {
     expect(router.currentRoute.value.name).toBe('SetupWizard')
     expect(apiMock.getSetupStatus).not.toHaveBeenCalled()
     expect(apiMock.getMe).not.toHaveBeenCalled()
+  })
+
+  it('keeps Command Center lazy until authenticated navigation needs it', async () => {
+    const router = await loadRouter()
+    const route = router.getRoutes().find(candidate => candidate.name === 'CommandCenter')
+    expect(typeof route.components.default).toBe('function')
+    await router.push('/')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('CommandCenter')
+    expect(typeof route.components.default).toBe('object')
+    expect(apiMock.getMe).toHaveBeenCalledTimes(1)
   })
 
   it('allows the login route without calling getMe once setup is complete', async () => {

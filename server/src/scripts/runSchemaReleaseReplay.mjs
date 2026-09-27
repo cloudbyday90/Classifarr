@@ -7,9 +7,16 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 // eslint-disable-next-line n/no-unpublished-import -- Isolated verification uses the existing development-only container dependency.
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import { createIsolatedDbClient } from './libraryProfileUpgradeRehearsal.mjs';
 import { readPinnedReleaseSchema } from './pinnedReleaseSchema.mjs';
-import { CURRENT_DB, RELEASE_DB, rehearseReleaseSchema } from './schemaReleaseReplay.mjs';
+import { CURRENT_DB, RELEASE_DB } from './schemaReleaseReplayTargets.mjs';
+
+async function loadRehearsalRuntime() {
+    const [profile, schema] = await Promise.all([
+        import('./libraryProfileUpgradeRehearsal.mjs'),
+        import('./schemaReleaseReplay.mjs'),
+    ]);
+    return { createIsolatedDbClient: profile.createIsolatedDbClient, rehearseReleaseSchema: schema.rehearseReleaseSchema };
+}
 
 export function dumpIsolatedCatalog({ containerId, dbName, user, password, exec = execFileSync }) {
     if (!/^[a-f0-9]{12,64}$/.test(containerId) || ![RELEASE_DB, CURRENT_DB].includes(dbName)) {
@@ -21,7 +28,11 @@ export function dumpIsolatedCatalog({ containerId, dbName, user, password, exec 
 }
 
 /** No live database address, credentials, or dump path can be supplied to this command. */
-export async function main() {
+export async function main({ loadRuntime = loadRehearsalRuntime } = {}) {
+    // Configure before importing modules that snapshot LOG_CONFIG and start a
+    // Pino worker. Rehearsals use stdout, never the application's log directory.
+    process.env.FILE_LOGGING_ENABLED = 'false';
+    const { createIsolatedDbClient, rehearseReleaseSchema } = await loadRuntime();
     const releaseSchema = readPinnedReleaseSchema();
     const snapshotPath = resolve(import.meta.dirname, '../../../database/schema/current.sql');
     const password = randomBytes(32).toString('hex');

@@ -5,14 +5,12 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 // eslint-disable-next-line n/no-unpublished-import -- This offline rehearsal uses the existing development-only Docker test tooling.
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
-import {
-    createIsolatedDbClient,
-    readPinnedReleaseSchema,
-    rehearseLibraryProfileUpgrade,
-} from './libraryProfileUpgradeRehearsal.mjs';
 
 /** This command never accepts a connection URL, a dump path, or live credentials. */
-async function main() {
+export async function main({ loadRuntime = () => import('./libraryProfileUpgradeRehearsal.mjs') } = {}) {
+    // This must precede imports that initialize the application's file logger.
+    process.env.FILE_LOGGING_ENABLED = 'false';
+    const { createIsolatedDbClient, readPinnedReleaseSchema, rehearseLibraryProfileUpgrade } = await loadRuntime();
     const releaseSchema = readPinnedReleaseSchema();
     let container;
     let pool;

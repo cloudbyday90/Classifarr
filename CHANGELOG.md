@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Isolate Command Center loading from unrelated routes to retain production
+  page-size budgets. Make disposable upgrade rehearsals use stdout logging
+  before application imports, avoiding container-only filesystem assumptions
+  on CI runners. Add navigation and startup-order regression checks.
 - Record bounded source-recovery outcomes so metadata issues explain provider
   failures, insufficient evidence, and identity disagreements with appropriate
   next steps. Preserve retry safeguards and timestamp successful repair receipts;
