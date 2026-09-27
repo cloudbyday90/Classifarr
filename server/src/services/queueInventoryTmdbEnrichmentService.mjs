@@ -5,6 +5,7 @@ import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON } from './sourceConflictAuthorityGuard.mjs';
 import { claimInventoryProviderRecovery } from './inventoryProviderRecoveryPersistence.mjs';
 import { nextInventoryProviderRecovery } from './inventoryProviderRecoveryPolicy.mjs';
+import { revalidateInventoryIdentity } from './inventoryIdentityRevalidation.mjs';
 
 export class QueueInventoryTmdbEnrichmentService {
     constructor({ tmdbService, logger, now = Date.now } = {}) {
@@ -46,8 +47,13 @@ export class QueueInventoryTmdbEnrichmentService {
                 ...failure, mediaType, tmdbId,
             });
         }
-        if (claim) context.receipt.outcome = nextInventoryProviderRecovery({ previous: claim.previous,
-            tmdbId, mediaType, failure, now: this.now() });
+        if (claim) {
+            const revalidation = failure?.category === 'not_found'
+                ? await revalidateInventoryIdentity(payload.source_identity_snapshot, tmdbId, this.tmdbService, this.now) : null;
+            context.receipt.outcome = nextInventoryProviderRecovery({ previous: claim.previous,
+                tmdbId, mediaType, failure: revalidation ? { ...failure, retryAfterMs: revalidation.retryAfterMs } : failure,
+                identityCheck: revalidation?.check, now: this.now() });
+        }
         return true;
     }
 }

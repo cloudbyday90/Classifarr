@@ -8,14 +8,14 @@ import { buildTmdbExternalIdRequest } from './tmdbExternalIdMatch.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { reviewInteger } from './mediaIdentityReviewContract.mjs';
 
-/** Fetch only the details needed for an explicit operator identity review. */
+/** Fetch bounded typed details for identity verification and operator review. */
 export async function getTmdbIdentityDetails(id, mediaType, deps) {
   const tmdbId = reviewInteger(id);
   if (!['movie', 'tv'].includes(mediaType)) return null;
   const apiKey = await deps.getApiKey();
   if (!apiKey) throw new ServiceUnavailableError('TMDB API key not configured');
   const response = await deps.executeRateLimited(() => deps.httpGet(`${deps.baseUrl}/${mediaType}/${tmdbId}`, {
-    params: { api_key: apiKey }, timeout: 10000,
+    params: { api_key: apiKey }, timeout: 10000, maxResponseBytes: 1048576,
   }));
   return response.data;
 }
@@ -42,7 +42,7 @@ export async function findTmdbIdentityByExternalId(externalId, source, deps) {
   const apiKey = await deps.getApiKey();
   if (!apiKey) throw new ServiceUnavailableError('TMDB API key not configured');
   const response = await deps.executeRateLimited(() => deps.httpGet(`${deps.baseUrl}/find/${request.externalId}`, {
-    params: { api_key: apiKey, external_source: request.source }, timeout: 10000,
+    params: { api_key: apiKey, external_source: request.source }, timeout: 10000, maxResponseBytes: 1048576,
   }));
   return response.data;
 }

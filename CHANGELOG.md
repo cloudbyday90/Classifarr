@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Diagnose inventory TMDb 404s using bounded, exact external-ID checks. Retain
+  no-match, disagreement, provider-failure and corroborated-candidate evidence in
+  source-fenced recovery cases with actionable, deduplicated reports. Preserve
+  stored identities and routing; candidates remain review-only.
 - Persist typed TMDb observation recovery cases with failure-specific cooldowns,
   restart-safe attempt leases, stale-source protection, and atomic metadata
   backfill. Report new/changed failures and successful recovery without repeating

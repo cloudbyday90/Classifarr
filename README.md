@@ -903,6 +903,12 @@ IDs remain unresolved, not guessed from titles. See the
 [recovery design and tradeoffs](docs/architecture/inventory-provider-recovery-design.md)
 and [validation outcome](docs/architecture/inventory-provider-recovery-outcome.md).
 
+For leased 404 attempts, bounded checks of the current source's known external IDs
+now distinguish absent records, disagreement, provider failures and corroborated
+review candidates. Candidate IDs are diagnostic evidence, not automatic changes
+to identity or routing. See the [revalidation design](docs/architecture/inventory-identity-revalidation-design.md)
+and [outcome](docs/architecture/inventory-identity-revalidation-outcome.md).
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten

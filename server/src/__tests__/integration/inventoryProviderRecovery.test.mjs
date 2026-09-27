@@ -157,3 +157,51 @@ test('library deactivation during I/O prevents observation and recovery persiste
     expect((await save(first)).rowCount).toBe(0);
     expect((await stored()).inventory_tmdb_fetched_at).toBeNull();
 });
+
+test.each(['movie', 'tv'])('a %s external-ID candidate is persisted as evidence, never applied', async type => {
+    await query(`UPDATE media_server_items SET media_type=$2, imdb_id='tt123', tvdb_id=99, year=2001,
+        metadata='{"retained":"fixture"}' WHERE id=$1`, [itemId, type]);
+    provider[type === 'movie' ? 'getMovieDetails' : 'getTVDetails'].mockRejectedValueOnce(missing());
+    provider.findIdentityByExternalId = jest.fn().mockResolvedValue({ [type === 'movie' ? 'movie_results' : 'tv_results']: [{ id: 8 }] });
+    provider.getIdentityDetails = jest.fn().mockResolvedValue({ id: 8,
+        [type === 'movie' ? 'title' : 'name']: 'Synthetic only',
+        [type === 'movie' ? 'release_date' : 'first_air_date']: '2001-01-01' });
+    await save(await attempt(type));
+    expect(await stored()).toMatchObject({ tmdb_id: 7, metadata: { retained: 'fixture' }, inventory_tmdb_fetched_at: null,
+        inventory_tmdb_recovery: { status: 'open', identity_check: { outcome: 'candidate_for_review', candidate_tmdb_id: 8 } } });
+    expect((await stored()).metadata.inventory_tmdb).toBeUndefined();
+    expect((await attempt(type)).attempted).toBe(false);
+    expect(provider.findIdentityByExternalId).toHaveBeenCalledTimes(type === 'movie' ? 1 : 2);
+    await due();
+    await save(await attempt(type));
+    expect(await stored()).toMatchObject({ tmdb_id: 7, inventory_tmdb_recovery: { status: 'resolved',
+        identity_check: { outcome: 'candidate_for_review', candidate_tmdb_id: 8 } },
+    metadata: { retained: 'fixture', inventory_tmdb: { tmdb_id: 7 } } });
+    expect(logger.info).toHaveBeenCalledTimes(1);
+});
+
+test('source changes during external verification discard candidate evidence and prevent a warning', async () => {
+    await query("UPDATE media_server_items SET imdb_id='tt123', year=2001 WHERE id=$1", [itemId]);
+    provider.getMovieDetails.mockRejectedValue(missing());
+    provider.findIdentityByExternalId = jest.fn().mockImplementation(async () => {
+        await query("UPDATE media_server_items SET imdb_id='tt456' WHERE id=$1", [itemId]);
+        return { movie_results: [{ id: 8 }] };
+    });
+    provider.getIdentityDetails = jest.fn().mockResolvedValue({ id: 8, title: 'Synthetic only', release_date: '2001-01-01' });
+    expect((await save(await attempt())).rowCount).toBe(0);
+    expect((await stored()).inventory_tmdb_recovery).toBeNull();
+    expect(logger.warn).not.toHaveBeenCalled();
+});
+
+test('lookup throttling extends the persisted cooldown without pretending the identity is absent', async () => {
+    await query("UPDATE media_server_items SET imdb_id='tt123' WHERE id=$1", [itemId]);
+    provider.getMovieDetails.mockRejectedValue(missing());
+    provider.findIdentityByExternalId = jest.fn().mockRejectedValue({ response: { status: 429, headers: { 'retry-after': '604800' } } });
+    await save(await attempt());
+    const row = await stored();
+    expect(row.inventory_tmdb_recovery).toMatchObject({ status: 'open', category: 'not_found',
+        identity_check: { outcome: 'provider_rate_limited', candidate_tmdb_id: null } });
+    expect(row.inventory_tmdb_retry_after.getTime() - Date.now()).toBeGreaterThan(6.9 * 86400000);
+    expect(provider.findIdentityByExternalId).toHaveBeenCalledTimes(1);
+    expect((await attempt()).attempted).toBe(false);
+});
