@@ -1,0 +1,47 @@
+# Only use through run-published-upgrade-drill.mjs. Never include in a live stack.
+services:
+  candidate:
+    profiles: [tools]
+    image: ${CLASSIFARR_UPGRADE_CANDIDATE:?Use the drill launcher}
+    build:
+      context: .
+      target: production
+  app:
+    image: ${CLASSIFARR_UPGRADE_IMAGE:?Use the drill launcher}
+    user: '1000:1000'
+    environment:
+      CLASSIFARR_UPGRADE_DRILL: isolated-compose-v1
+      CLASSIFARR_RUNTIME_MODE: ${CLASSIFARR_UPGRADE_MODE:-normal}
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: classifarr
+      POSTGRES_USER: classifarr
+      POSTGRES_PASSWORD: ''
+      BACKUP_DIR: /app/data/backups
+      MIGRATIONS_DIR: /app/database/migrations
+      FILE_LOGGING_ENABLED: 'false'
+      LOG_LEVEL: error
+      FORCE_SECURE_COOKIES: 'false'
+      NODE_OPTIONS: --max-old-space-size=1536
+      PGVECTOR_RUNTIME_STAGING: auto
+    volumes:
+      - app-data:/app/data
+    restart: 'no'
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,uid=1000,gid=1000,mode=1777
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=770
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 2g
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:21324/health]
+      interval: 2s
+      timeout: 3s
+      start_period: 120s
+      retries: 30
+networks:
+  default:
+    internal: true
+volumes:
+  app-data:

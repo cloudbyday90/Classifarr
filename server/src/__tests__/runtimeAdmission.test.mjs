@@ -11,7 +11,8 @@ function setup() {
     .mockResolvedValueOnce({ rows: [{ gate_state: 'ready' }] });
   const database = { pool: { connect: jest.fn().mockResolvedValue(client) } };
   const onLost = jest.fn();
-  return { client, database, onLost, acquire: () => acquireNormalRuntimeAdmission({ database, onLost }) };
+  const seedMissingGate = jest.fn().mockResolvedValue(false);
+  return { client, database, onLost, seedMissingGate, acquire: () => acquireNormalRuntimeAdmission({ database, onLost, seedMissingGate }) };
 }
 
 test('holds shared admission until explicit process-exit cleanup', async () => {
@@ -54,6 +55,26 @@ test('allows fresh schema initialization when no restore gate exists', async () 
   const admission = await acquire();
   expect(client.query).toHaveBeenCalledTimes(2);
   admission.release();
+});
+
+test('rechecks gate after a bounded legacy seed repair before admitting normal work', async () => {
+  const { acquire, client, seedMissingGate } = setup();
+  seedMissingGate.mockResolvedValue(true);
+  client.query.mockReset().mockResolvedValueOnce({ rows: [{ acquired: true }] })
+    .mockResolvedValueOnce({ rows: [{ gate_table: 'gate' }] })
+    .mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ gate_state: 'ready' }] });
+  const admission = await acquire();
+  expect(seedMissingGate).toHaveBeenCalledWith(client);
+  admission.release();
+});
+
+test('does not trust seed completion when the gate is still absent', async () => {
+  const { acquire, client, seedMissingGate } = setup();
+  seedMissingGate.mockResolvedValue(true);
+  client.query.mockReset().mockResolvedValueOnce({ rows: [{ acquired: true }] })
+    .mockResolvedValueOnce({ rows: [{ gate_table: 'gate' }] }).mockResolvedValue({ rows: [] });
+  await expect(acquire()).rejects.toThrow('Restore verification is incomplete');
+  expect(client.release).toHaveBeenCalledWith(true);
 });
 
 test.each(['error', 'end'])('loss via %s invokes fail-stop once without reconnecting', async event => {

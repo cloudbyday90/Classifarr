@@ -2,9 +2,10 @@
 
 import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
 import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../utils/backupRestoreSessionContract.mjs';
+import { seedLegacyRestoreAdmission } from './restoreAdmissionSeed.mjs';
 
 /** Hold until the whole normal process exits, not merely until HTTP closes. */
-export async function acquireNormalRuntimeAdmission({ database, onLost }) {
+export async function acquireNormalRuntimeAdmission({ database, onLost, seedMissingGate = seedLegacyRestoreAdmission }) {
   if (database.pool.options?.max < 2) {
     throw new Error('Normal runtime admission requires POSTGRES_POOL_MAX of at least 2.');
   }
@@ -36,7 +37,11 @@ export async function acquireNormalRuntimeAdmission({ database, onLost }) {
     const table = await client.query("SELECT to_regclass('public.policy_native_intent_reconciliation_restore_gates') AS gate_table");
     assertHealthy();
     if (table.rows[0]?.gate_table) {
-      const gate = await client.query('SELECT gate_state FROM policy_native_intent_reconciliation_restore_gates WHERE gate_id = 1');
+      let gate = await client.query('SELECT gate_state FROM policy_native_intent_reconciliation_restore_gates WHERE gate_id = 1');
+      if (gate.rows.length === 0 && await seedMissingGate(client)) {
+        assertHealthy();
+        gate = await client.query('SELECT gate_state FROM policy_native_intent_reconciliation_restore_gates WHERE gate_id = 1');
+      }
       if (gate.rows[0]?.gate_state !== 'ready') {
         throw new Error('Restore verification is incomplete. Restart in restore mode to investigate or retry.');
       }

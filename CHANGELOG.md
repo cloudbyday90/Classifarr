@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Repair the missing initial restore-admission gate on eligible older snapshot
+  installations without reopening interrupted or previously verified restores.
+  Include the seed in fresh snapshots and add a digest-verified, isolated
+  published-release upgrade drill covering container interruption, explicit
+  recovery, and movie/TV recovery-to-learning with music excluded.
 - Add a disposable recovery drill that kills an in-progress configuration restore,
   proves movie/TV configuration rollback and blocked startup, then verifies an
   explicit retry and controlled normal restart. Use isolated containers, synthetic

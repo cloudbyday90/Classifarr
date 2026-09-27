@@ -14,6 +14,7 @@
     "test:local:library-profile-upgrade-rehearsal": "node server/src/scripts/runLibraryProfileUpgradeRehearsal.mjs",
     "test:local:schema-release-replay": "node server/src/scripts/runSchemaReleaseReplay.mjs",
     "test:local:restore-recovery-drill": "node scripts/run-restore-recovery-drill.mjs",
+    "test:local:published-upgrade-drill": "node scripts/run-published-upgrade-drill.mjs",
     "benchmark:cross-encoder:prepare": "node scripts/prepare-cross-encoder-model.mjs",
     "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
     "docker:smart:up": "node scripts/docker-compose-smart.mjs up -d",

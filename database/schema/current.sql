@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-26T23:40:54.253Z
--- Latest Migration: 20260926_233000_add_source_recovery_outcomes.sql
+-- Generated: 2026-09-27T09:16:13.000Z
+-- Latest Migration: 20260927_120000_seed_restore_admission_gate.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -16558,6 +16558,16 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO public.library_observation_sampling_state (singleton) VALUES (true)
 ON CONFLICT (singleton) DO NOTHING;
 
+-- === Seed: 20260927_120000_seed_restore_admission_gate.sql ===
+-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
+-- @seed-reconciliation snapshot-required
+-- Schema-only snapshots omitted the singleton seeded by the original DDL
+-- migration. Never overwrite an existing gate or erase restore evidence.
+INSERT INTO policy_native_intent_reconciliation_restore_gates (gate_id, gate_state, reason_id)
+SELECT 1, 'ready', 'startup_ready'
+WHERE NOT EXISTS (SELECT 1 FROM policy_backup_restore_verifications)
+ON CONFLICT (gate_id) DO NOTHING;
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -16849,6 +16859,7 @@ FROM unnest(ARRAY[
     '20260925_150000_add_mixed_evaluation_history.sql',
     '20260925_160000_add_source_pair_sweep.sql',
     '20260926_100000_add_quality_evidence_study.sql',
-    '20260926_233000_add_source_recovery_outcomes.sql'
+    '20260926_233000_add_source_recovery_outcomes.sql',
+    '20260927_120000_seed_restore_admission_gate.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

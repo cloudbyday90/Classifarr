@@ -88,7 +88,9 @@ Keep this drill as a fast, local recovery gate. Its advantage is repeatable,
 real-process evidence without touching installations; its tradeoff is build cost
 and limited synthetic coverage.
 
-Next: a **digest-pinned published-release upgrade/recovery matrix**. Start the
+Follow-up implemented for one published baseline in the
+[published-image outcome](published-upgrade-recovery-outcome.md).
+The original next item was a **digest-pinned published-release upgrade/recovery matrix**. Start the
 supported release with disposable synthetic data through its real shell
 entrypoint, export configuration, upgrade to the candidate, run interruption and
 retry, then verify one movie and one TV recovery-to-learning outcome. Preserve

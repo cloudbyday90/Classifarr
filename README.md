@@ -103,6 +103,11 @@ Classifarr is a full operations platform for classification, routing, review, an
   interruption, retry and verified restart with disposable containers and synthetic
   data; see the [drill design](docs/architecture/restore-recovery-drill-design.md)
   and [results and limits](docs/architecture/restore-recovery-drill-outcome.md).
+  Use `npm run test:local:published-upgrade-drill` for the digest-pinned published
+  release-to-candidate boundary, including bundled database restart and synthetic
+  movie/TV recovery-to-learning. It requires Docker and authenticated GitHub CLI
+  provenance verification; see the [design](docs/architecture/published-upgrade-recovery-design.md)
+  and [outcome](docs/architecture/published-upgrade-recovery-outcome.md).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 

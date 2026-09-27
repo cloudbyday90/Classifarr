@@ -20,6 +20,11 @@ while another normal instance lives, but cannot restore until that instance stop
 
 Normal startup refuses an existing non-ready restore gate before loading repairs.
 A fresh database with no gate can still use the existing setup/migration path.
+The [published-upgrade rehearsal](published-upgrade-recovery-design.md) subsequently
+found snapshot-created tables missing the initial singleton. A one-time,
+migration-tracked seed handles eligible legacy omissions before normal imports;
+existing non-ready gates, prior restore receipts and deleted modern gates are
+not automatically reopened.
 Maintenance requires an initialized compatible schema and an existing administrator;
 it does not run migrations or create accounts. After verified restoration it remains
 in maintenance until an explicit normal restart. It does not automatically resume
