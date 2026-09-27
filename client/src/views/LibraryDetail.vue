@@ -56,6 +56,13 @@
             ]"
             placeholder="Select ARR type"
           />
+          <label class="flex items-center gap-2">
+            <input
+              v-model="library.is_active"
+              type="checkbox"
+            >
+            <span>Library enabled</span>
+          </label>
           
           <div class="flex items-end">
             <Button
@@ -112,6 +119,11 @@
         :library="library"
         :requesting="syncing"
         :unavailable="syncReadFailed"
+      />
+      <LegacyIngestionReview
+        v-if="showLegacyReview"
+        :library-id="library.id"
+        @reconciled="refreshSyncStatus"
       />
 
       <!-- Radarr Settings for Movie Libraries -->
@@ -460,7 +472,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/stores/toast'
 import api from '@/api'
@@ -470,6 +482,7 @@ import Input from '@/components/common/Input.vue'
 import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
 import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
+import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
 import { useLibraryIngestionStatus } from '@/composables/useLibraryIngestionStatus'
 import { librarySyncResultMessage } from '@/utils/libraryIngestionStatus'
 import Select from '@/components/common/Select.vue'
@@ -676,6 +689,7 @@ const saveLibrary = async () => {
     await api.updateLibrary(library.value.id, {
       priority: library.value.priority,
       arr_type: library.value.arr_type,
+      is_active: library.value.is_active,
     })
     toast.success('Library updated successfully')
   } catch (error) {
@@ -701,6 +715,10 @@ const saveArrSettings = async () => {
 }
 
 const syncing = ref(false)
+const showLegacyReview = ref(false)
+watch(() => library.value?.ingestion_status, status => {
+  if (status?.needsReconciliation || status?.state === 'legacy_owner_unknown') showLegacyReview.value = true
+}, { immediate: true })
 const { isSyncing, unavailable: syncReadFailed, refresh: refreshSyncStatus } = useLibraryIngestionStatus(library, syncing)
 
 const handleSync = async () => {

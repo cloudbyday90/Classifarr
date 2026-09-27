@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an administrator-reviewed recovery path for unverifiable legacy import
+  records. Require a disabled library, stopped-worker confirmation and a fresh
+  preview; preserve imported media and commit an audit receipt atomically.
+  Recover lost confirmation responses through read-only receipt lookup, and
+  leave full replay to normal ingestion after explicit library re-enabling.
 - Recover interrupted library imports with database-owned sessions, durable
   retry checkpoints and replay from page zero. Preserve partial imports, fence
   disconnected workers, and commit pruning with capture completion atomically.

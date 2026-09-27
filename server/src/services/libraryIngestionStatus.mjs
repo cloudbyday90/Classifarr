@@ -20,12 +20,13 @@ export const LIBRARY_INGESTION_STATUS_SQL = `COALESCE((SELECT jsonb_build_object
       WHEN ${foreignOwner} THEN 'legacy_owner_unknown'
       WHEN ${INGESTION_OWNER_ACTIVE_SQL} THEN 'active'
       WHEN s.phase='running' THEN 'interrupted' ELSE s.phase END,
+    'needsReconciliation',${foreignOwner},
     'pages',s.pages_processed,'items',s.items_processed,'total',s.items_total,'restarts',s.restart_count,
     'retryAt',s.retry_after,'updatedAt',s.updated_at)
   FROM library_ingestion_state s WHERE s.library_id=l.id),
   CASE WHEN EXISTS (SELECT 1 FROM media_server_sync_status ss WHERE ss.library_id=l.id AND ss.status IN ('pending','running'))
     OR EXISTS (SELECT 1 FROM media_source_capture_state c WHERE c.library_id=l.id AND c.phase='collecting')
-    THEN jsonb_build_object('state','legacy_owner_unknown') END)`;
+    THEN jsonb_build_object('state','legacy_owner_unknown','needsReconciliation',true) END)`;
 
 export const LIBRARY_INGESTION_WATCHDOG_SQL = `SELECT l.id,l.name FROM libraries l
   JOIN media_server ms ON ms.id=l.media_server_id AND ms.is_active

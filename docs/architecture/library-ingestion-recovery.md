@@ -85,8 +85,11 @@ unchanged; ownership is independent of historical sync-status retention.
 
 Recommended stack: existing PostgreSQL locks/transactions → modular ESM ingestion
 services → durable bounded retries → existing scheduler/readiness → concise,
-accessible library status. Next: an explicit legacy-ingestion reconciliation
-workflow with preview and proof of stopped ownership, plus recovery-age metrics.
+accessible library status. The subsequent
+[legacy-ingestion reconciliation workflow](legacy-ingestion-reconciliation-design.md)
+adds an explicit preview and administrator-attested shutdown. This cannot prove
+that a noncooperating historical writer stopped; it deliberately leaves that
+operational boundary visible rather than treating an absent lock as proof.
 
 ## Official research
 

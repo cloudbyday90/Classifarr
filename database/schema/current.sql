@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T14:46:41.055Z
--- Latest Migration: 20260927_170000_add_library_ingestion_ownership.sql
+-- Generated: 2026-09-27T15:43:05.751Z
+-- Latest Migration: 20260927_180000_index_ingestion_reconciliation_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12138,6 +12138,13 @@ CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.p
 
 
 --
+-- Name: idx_ingestion_reconciliation_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ingestion_reconciliation_request ON public.audit_log USING btree (((metadata ->> 'requestId'::text))) WHERE ((action)::text = 'library_ingestion_reconciled'::text);
+
+
+--
 -- Name: idx_inventory_authentication_recovery; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17124,6 +17131,7 @@ FROM unnest(ARRAY[
     '20260927_130000_add_inventory_provider_recovery.sql',
     '20260927_150000_add_inventory_credential_wakeup.sql',
     '20260927_160000_add_inventory_recovery_progress.sql',
-    '20260927_170000_add_library_ingestion_ownership.sql'
+    '20260927_170000_add_library_ingestion_ownership.sql',
+    '20260927_180000_index_ingestion_reconciliation_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -114,7 +114,7 @@ test('unknown legacy markers are preserved instead of age-based takeover', async
   expect(await sync(pages).syncLibrary(libraryId)).toMatchObject({ reason: 'legacy_owner_unknown' });
   expect(pages).not.toHaveBeenCalled();
   expect(await state()).toBeUndefined();
-  expect(await status()).toEqual({ state: 'legacy_owner_unknown' });
+  expect(await status()).toMatchObject({ state: 'legacy_owner_unknown', needsReconciliation: true });
   expect((await db.query('SELECT status FROM media_server_sync_status WHERE library_id=$1', [libraryId])).rows[0].status).toBe('running');
 });
 

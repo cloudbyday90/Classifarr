@@ -19,11 +19,13 @@
 import libraryCatalogApi from './libraryCatalogApi'
 import libraryMigrationApi from './libraryMigrationApi'
 import libraryRulesApi from './libraryRulesApi'
+import libraryIngestionApi from './libraryIngestionApi'
 
 const librariesApi = {
   ...libraryCatalogApi,
   ...libraryMigrationApi,
   ...libraryRulesApi,
+  ...libraryIngestionApi,
 }
 
 export default librariesApi
