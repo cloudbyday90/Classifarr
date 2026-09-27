@@ -12,7 +12,7 @@ const providers = [
 ];
 
 beforeEach(async () => {
-    await getPool().query('TRUNCATE tmdb_config, omdb_config, tavily_config RESTART IDENTITY');
+    await getPool().query('TRUNCATE inventory_credential_wakeups, tmdb_config, omdb_config, tavily_config RESTART IDENTITY');
 });
 async function transaction(work) {
     const client = await getPool().connect();

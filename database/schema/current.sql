@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T10:55:06.167Z
--- Latest Migration: 20260927_130000_add_inventory_provider_recovery.sql
+-- Generated: 2026-09-27T13:00:03.994Z
+-- Latest Migration: 20260927_150000_add_inventory_credential_wakeup.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -587,6 +587,26 @@ CREATE FUNCTION public.reject_policy_tuning_cohort_update() RETURNS trigger
     AS $$
 BEGIN
     RAISE EXCEPTION 'Suggestion cohorts are immutable' USING ERRCODE = '23514';
+END;
+$$;
+
+
+--
+-- Name: reset_inventory_credential_wakeup(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reset_inventory_credential_wakeup() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    INSERT INTO public.inventory_credential_wakeups(config_id) VALUES (NEW.id)
+    ON CONFLICT (config_id) DO UPDATE SET generation = gen_random_uuid(), verified_at = NULL,
+        probe_after = GREATEST(clock_timestamp(), inventory_credential_wakeups.provider_retry_after),
+        probe_lease_id = NULL, probe_lease_until = NULL,
+        probe_failures = 0, last_failure_category = NULL, batch_after = clock_timestamp(),
+        after_item_id = 0, released_count = 0, last_released_at = NULL;
+    RETURN NEW;
 END;
 $$;
 
@@ -3519,6 +3539,31 @@ CREATE TABLE public.held_out_semantic_study_lifecycle_source_checkpoint (
 
 
 --
+-- Name: inventory_credential_wakeups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_credential_wakeups (
+    config_id integer NOT NULL,
+    generation uuid DEFAULT gen_random_uuid() NOT NULL,
+    verified_at timestamp with time zone,
+    probe_after timestamp with time zone DEFAULT now() NOT NULL,
+    provider_retry_after timestamp with time zone,
+    probe_lease_id uuid,
+    probe_lease_until timestamp with time zone,
+    probe_failures integer DEFAULT 0 NOT NULL,
+    last_failure_category text,
+    batch_after timestamp with time zone DEFAULT now() NOT NULL,
+    after_item_id integer DEFAULT 0 NOT NULL,
+    released_count bigint DEFAULT 0 NOT NULL,
+    last_released_at timestamp with time zone,
+    CONSTRAINT inventory_credential_wakeups_after_item_id_check CHECK ((after_item_id >= 0)),
+    CONSTRAINT inventory_credential_wakeups_check CHECK (((probe_lease_id IS NULL) = (probe_lease_until IS NULL))),
+    CONSTRAINT inventory_credential_wakeups_probe_failures_check CHECK (((probe_failures >= 0) AND (probe_failures <= 1000000))),
+    CONSTRAINT inventory_credential_wakeups_released_count_check CHECK ((released_count >= 0))
+);
+
+
+--
 -- Name: inventory_description_representation_checkpoint; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4664,6 +4709,7 @@ CREATE TABLE public.media_server_items (
     inventory_tmdb_retry_after timestamp with time zone,
     inventory_tmdb_lease_id uuid,
     inventory_tmdb_lease_until timestamp with time zone,
+    inventory_tmdb_wakeup_generation uuid,
     CONSTRAINT inventory_tmdb_lease_shape CHECK (((inventory_tmdb_lease_id IS NULL) = (inventory_tmdb_lease_until IS NULL))),
     CONSTRAINT inventory_tmdb_recovery_shape CHECK (((inventory_tmdb_recovery IS NULL) OR COALESCE(((jsonb_typeof(inventory_tmdb_recovery) = 'object'::text) AND ((inventory_tmdb_recovery ->> 'version'::text) = '1'::text) AND (octet_length((inventory_tmdb_recovery)::text) <= 2048)), false))),
     CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
@@ -9860,6 +9906,14 @@ ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_source_checkpoint
 
 
 --
+-- Name: inventory_credential_wakeups inventory_credential_wakeups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_credential_wakeups
+    ADD CONSTRAINT inventory_credential_wakeups_pkey PRIMARY KEY (config_id);
+
+
+--
 -- Name: inventory_description_representation_checkpoint inventory_description_representation_checkpoint_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11967,6 +12021,13 @@ CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.p
 
 
 --
+-- Name: idx_inventory_authentication_recovery; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_authentication_recovery ON public.media_server_items USING btree (id) WHERE (((inventory_tmdb_recovery ->> 'status'::text) = 'open'::text) AND ((inventory_tmdb_recovery ->> 'category'::text) = 'authentication'::text));
+
+
+--
 -- Name: idx_inventory_description_retry_expiry; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13444,6 +13505,20 @@ CREATE TRIGGER database_health_transition_receipts_append_only BEFORE DELETE OR 
 
 
 --
+-- Name: tmdb_config inventory_credential_wakeup_change; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER inventory_credential_wakeup_change AFTER UPDATE OF api_key, is_active ON public.tmdb_config FOR EACH ROW WHEN ((((old.api_key)::text IS DISTINCT FROM (new.api_key)::text) OR (old.is_active IS DISTINCT FROM new.is_active))) EXECUTE FUNCTION public.reset_inventory_credential_wakeup();
+
+
+--
+-- Name: tmdb_config inventory_credential_wakeup_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER inventory_credential_wakeup_insert AFTER INSERT ON public.tmdb_config FOR EACH ROW EXECUTE FUNCTION public.reset_inventory_credential_wakeup();
+
+
+--
 -- Name: media_server_items library_observation_clock_update; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -13866,6 +13941,14 @@ ALTER TABLE ONLY public.embedding_errors
 
 ALTER TABLE ONLY public.enrichment_retry_queue
     ADD CONSTRAINT enrichment_retry_queue_media_item_id_fkey FOREIGN KEY (media_item_id) REFERENCES public.media_server_items(id) ON DELETE CASCADE;
+
+
+--
+-- Name: inventory_credential_wakeups inventory_credential_wakeups_config_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_credential_wakeups
+    ADD CONSTRAINT inventory_credential_wakeups_config_id_fkey FOREIGN KEY (config_id) REFERENCES public.tmdb_config(id) ON DELETE CASCADE;
 
 
 --
@@ -16871,6 +16954,7 @@ FROM unnest(ARRAY[
     '20260926_100000_add_quality_evidence_study.sql',
     '20260926_233000_add_source_recovery_outcomes.sql',
     '20260927_120000_seed_restore_admission_gate.sql',
-    '20260927_130000_add_inventory_provider_recovery.sql'
+    '20260927_130000_add_inventory_provider_recovery.sql',
+    '20260927_150000_add_inventory_credential_wakeup.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

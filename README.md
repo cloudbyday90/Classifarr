@@ -918,6 +918,13 @@ unchecked items and are not an accuracy or overall-health score. See the
 [view design](docs/architecture/inventory-recovery-view-design.md) and
 [validation outcome](docs/architecture/inventory-recovery-view-outcome.md).
 
+After a saved TMDb key or activation change, gap analysis automatically verifies
+the current credential before releasing older authentication-blocked cases in
+small batches. No manual bulk retry is needed. Provider throttling, source
+conflicts and unrelated 404 cooldowns remain protected; queue admission determines
+when backfill actually runs. See the [credential wakeup design](docs/architecture/inventory-credential-wakeup-design.md)
+and [outcome](docs/architecture/inventory-credential-wakeup-outcome.md).
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten

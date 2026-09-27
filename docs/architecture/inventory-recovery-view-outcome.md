@@ -85,10 +85,9 @@ part of this change. GitHub MCP found no open repository PR to select on
 
 ## Next bounded component
 
-Add provider recovery wakeups for a verified credential/configuration change.
-Authentication failures currently retain conservative per-item cooldowns even
-after credentials are corrected. Design a bounded, deduplicated wakeup through
-the existing queue and source/lease guards, with shared provider admission and
-restart-safe progress. Prove that it does not reset unrelated 404 cooldowns,
-replay routing or exceed provider limits. This improves automatic recovery rather
-than adding another overlapping status screen or guessing replacement identities.
+Verified credential wakeups are now implemented; see the
+[design](inventory-credential-wakeup-design.md) and
+[outcome](inventory-credential-wakeup-outcome.md). The next bounded component is
+end-to-end recovery outcome measurement, distinguishing eligibility, queue
+admission and persisted metadata. Use those results to tune automation instead
+of adding another overlapping status screen or guessing replacement identities.

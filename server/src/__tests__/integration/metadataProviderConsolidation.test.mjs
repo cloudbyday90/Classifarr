@@ -8,7 +8,7 @@ let client;
 beforeEach(async () => {
     client = await getPool().connect();
     await client.query('BEGIN');
-    await client.query('TRUNCATE tmdb_config, omdb_config, tavily_config RESTART IDENTITY');
+    await client.query('TRUNCATE inventory_credential_wakeups, tmdb_config, omdb_config, tavily_config RESTART IDENTITY');
 });
 afterEach(async () => { await client.query('ROLLBACK'); client.release(); });
 

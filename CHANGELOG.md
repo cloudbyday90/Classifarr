@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically verify saved TMDb credential changes and release older
+  authentication-blocked inventory cases in restart-safe, deduplicated batches.
+  Preserve provider throttling, source/lease guards and unrelated 404 cooldowns;
+  actual recovery continues through the existing enrichment queue.
 - Add an administrator Metadata recovery view with bounded movie/TV case counts,
   actionable diagnoses, honest retry timing and on-demand Plex links. Protect
   reads with current-admin checks, non-persistent SWR and source/configuration

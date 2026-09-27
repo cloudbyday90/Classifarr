@@ -52,6 +52,7 @@ import { QueueCarsaService } from './queueCarsaService.mjs';
 import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
+import { createInventoryCredentialWakeupService } from './inventoryCredentialWakeupService.mjs';
 import { queueStartupPerformanceReceiptService } from './queueStartupPerformanceReceiptService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
 import {
@@ -242,7 +243,9 @@ export class QueueService {
       enqueueTask: (...args) => this.enqueue(...args),
       performanceReceiptRecorder: queueStartupPerformanceReceiptService,
       prioritizeCandidates: rows => this.scheduler?.inventoryNeighborhoodRecovery?.prioritizeMetadata(rows) ?? rows,
+      wakeInventoryRecovery: () => this.inventoryCredentialWakeup.run(),
     });
+    this.inventoryCredentialWakeup = createInventoryCredentialWakeupService({ db: this.db, logger: this.logger });
   }
 
   async _withCatch(label, context, fn) {
