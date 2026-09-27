@@ -26,7 +26,7 @@ export function createMediaSyncOwnership({ pool }) {
         const repository = createMediaSyncOwnershipRepository(db, libraryId);
         // The callback validates current source configuration before claiming durable work.
         return callback({ ...repository, signal: lease.signal });
-      });
+      }, libraryId);
     } catch (error) { discard = true; throw error; }
     finally {
       if (!lease.failed) {

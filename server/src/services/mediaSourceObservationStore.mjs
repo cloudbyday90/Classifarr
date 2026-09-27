@@ -2,6 +2,7 @@
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { sourceObservationPage, SOURCE_OBSERVATION_LIMITS } from './mediaSourceObservationContract.mjs';
 import { START_SOURCE_CAPTURE, CAPTURE_SOURCE_OBSERVATIONS } from './mediaSourceObservationQueries.mjs';
+import { requireOwnedMediaSyncDatabase } from './mediaSyncDatabaseScope.mjs';
 
 export class MediaSourceObservationStore {
   constructor(db) { this.db = db; }
@@ -22,7 +23,11 @@ export class MediaSourceObservationStore {
   }
 
   async withCurrentCapture(context, fn) {
-    return this.db.withTransaction(async client => {
+    return this.#withCurrentCapture(this.db, context, fn);
+  }
+
+  async #withCurrentCapture(db, context, fn) {
+    return db.withTransaction(async client => {
       const { libraryId, mediaServerId, generation } = context;
       const { rows } = await client.query(`SELECT mode, uncapturable_count FROM media_source_capture_state
         WHERE library_id=$1 AND media_server_id=$2 AND generation=$3 AND phase='collecting' FOR UPDATE`,
@@ -49,12 +54,15 @@ export class MediaSourceObservationStore {
   }
 
   async finish(context, { failed = false } = {}) {
-    return this.withCurrentCapture(context, async (client, state) => {
+    // Snapshot keys before any await so a caller cannot retarget a pending completion.
+    const capture = { libraryId: context?.libraryId, mediaServerId: context?.mediaServerId, generation: context?.generation };
+    const ownedDb = requireOwnedMediaSyncDatabase(capture.libraryId);
+    return this.#withCurrentCapture(ownedDb, capture, async (client, state) => {
       if (!failed && state.mode === 'full' && state.uncapturable_count === 0) await client.query(`DELETE FROM media_source_observations
         WHERE library_id=$1 AND media_server_id=$2 AND generation<>$3`,
-      [context.libraryId, context.mediaServerId, context.generation]);
+      [capture.libraryId, capture.mediaServerId, capture.generation]);
       await client.query(`UPDATE media_source_capture_state SET phase=$2, completed_at=clock_timestamp() WHERE library_id=$1`,
-        [context.libraryId, failed ? 'failed' : 'complete']);
+        [capture.libraryId, failed ? 'failed' : 'complete']);
     });
   }
 }

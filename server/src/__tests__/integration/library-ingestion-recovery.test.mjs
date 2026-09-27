@@ -5,6 +5,9 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { MediaSyncService } = await import('../../services/mediaSync.mjs');
 const { createMediaSyncOwnership } = await import('../../services/mediaSyncOwnership.mjs');
+const { MediaSourceObservationStore } = await import('../../services/mediaSourceObservationStore.mjs');
+const { mediaSyncDatabase } = await import('../../services/mediaSyncDatabaseScope.mjs');
+const { pruneMissingMediaItems, pruneMissingCollections } = await import('../../services/mediaSyncQueries.mjs');
 const { MEDIA_SYNC_OWNER_LOCK } = await import('../../services/mediaSyncLockKeys.mjs');
 const { LIBRARY_INGESTION_STATUS_SQL, LIBRARY_INGESTION_WATCHDOG_SQL } = await import('../../services/libraryIngestionStatus.mjs');
 const { readInventoryBackgroundReadiness } = await import('../../services/inventoryBackgroundReadiness.mjs');
@@ -30,6 +33,41 @@ afterEach(async () => {
   await db.query('DELETE FROM media_server_sync_status WHERE library_id=$1', [libraryId]);
   await db.query('DELETE FROM libraries WHERE media_server_id=$1', [serverId]);
   await db.query('DELETE FROM media_server WHERE id=$1', [serverId]);
+});
+
+test('unowned and wrong-library helpers cannot prune inventory or finalize a capture', async () => {
+  await sync(async () => [item(11)]).syncLibrary(libraryId);
+  const store = new MediaSourceObservationStore(db);
+  const capture = await store.start(serverId, libraryId);
+  for (const mutation of [() => pruneMissingMediaItems(libraryId, []),
+    () => pruneMissingCollections(libraryId, []), () => store.finish(capture),
+    () => store.finish(capture, { failed: true })]) {
+    await expect(mutation()).rejects.toThrow('ingestion_ownership_required');
+    await createMediaSyncOwnership(db)(libraryId + 1, async () => {
+      await expect(mutation()).rejects.toThrow('ingestion_library_scope_mismatch');
+    });
+  }
+  expect(await inventory()).toEqual(['11']);
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
+});
+
+test('controlled local capture keeps shared exclusion and can finish without claiming an ingestion run', async () => {
+  const own = createMediaSyncOwnership(db);
+  const store = new MediaSourceObservationStore(mediaSyncDatabase);
+  await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  await own(libraryId, async () => {
+    const older = await store.start(serverId, libraryId, { source: 'local_capture' });
+    const current = await store.start(serverId, libraryId, { source: 'local_capture' });
+    const competing = jest.fn();
+    expect(await own(libraryId, competing)).toMatchObject({ deferred: true, reason: 'ingestion_owned' });
+    expect(competing).not.toHaveBeenCalled();
+    expect(await store.finish(older)).toBe(false);
+    expect(await store.finish(current)).toBe(true);
+  });
+  expect((await db.query('SELECT phase,source FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0])
+    .toEqual({ phase: 'complete', source: 'local_capture' });
+  expect(await state()).toBeUndefined();
+  expect((await db.query('SELECT is_active FROM libraries WHERE id=$1', [libraryId])).rows[0].is_active).toBe(false);
 });
 
 test.each(['movie', 'tv'])('%s interrupted import replays from zero; late disconnected owner cannot overwrite it', async mediaType => {

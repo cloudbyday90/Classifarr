@@ -1,22 +1,39 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import * as database from '../config/database.mjs';
+import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 
 const scope = new AsyncLocalStorage();
 export const mediaSyncDatabase = {
-  query: (...args) => (scope.getStore() ?? database).query(...args),
-  withTransaction: fn => (scope.getStore() ?? database).withTransaction(fn),
+  query: (...args) => (scope.getStore()?.db ?? database).query(...args),
+  withTransaction: fn => (scope.getStore()?.db ?? database).withTransaction(fn),
   isOwned: () => scope.getStore() !== undefined,
 };
 
+/** Destructive helpers must never fall back to the pool or another library's owner. */
+export function requireOwnedMediaSyncDatabase(libraryId) {
+  const current = scope.getStore();
+  if (!current) throw new Error('ingestion_ownership_required');
+  current.assertHealthy();
+  if (positiveDatabaseInteger(libraryId) !== current.libraryId) {
+    throw new Error('ingestion_library_scope_mismatch');
+  }
+  return current.db;
+}
+
 /** All ingestion mutations use the connection that owns the session lock. */
-export async function withMediaSyncDatabase(client, lease, callback) {
+export async function withMediaSyncDatabase(client, lease, callback, libraryId) {
+  const ownedLibraryId = positiveDatabaseInteger(libraryId);
+  if (!ownedLibraryId) throw new TypeError('Invalid ingestion library');
   let depth = 0, closed = false;
-  const query = async (...args) => {
+  const assertHealthy = () => {
     if (closed) throw new Error('ingestion_scope_closed');
     lease.assertHealthy();
+  };
+  const query = async (...args) => {
+    assertHealthy();
     const result = await client.query(...args);
-    lease.assertHealthy();
+    assertHealthy();
     return result;
   };
   const owned = { query, async withTransaction(fn) {
@@ -33,6 +50,7 @@ export async function withMediaSyncDatabase(client, lease, callback) {
       throw error;
     } finally { depth--; }
   } };
-  try { return await scope.run(owned, () => callback(owned)); }
+  Object.freeze(owned);
+  try { return await scope.run({ db: owned, libraryId: ownedLibraryId, assertHealthy }, () => callback(owned)); }
   finally { closed = true; }
 }

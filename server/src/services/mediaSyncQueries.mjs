@@ -1,4 +1,4 @@
-import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
+import { mediaSyncDatabase as db, requireOwnedMediaSyncDatabase } from './mediaSyncDatabaseScope.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';
@@ -8,15 +8,16 @@ import { canonicalMediaType } from './mediaIdentityValues.mjs';
 const logger = createLogger('mediaSync');
 
 export async function pruneMissingMediaItems(libraryId, seenExternalIds = []) {
+    const ownedDb = requireOwnedMediaSyncDatabase(libraryId);
     return withServiceCatch(logger, 'Failed to prune missing media items after full sync', { libraryId }, async () => {
         const result = seenExternalIds.length > 0
-            ? await db.query(
+            ? await ownedDb.query(
                 `DELETE FROM media_server_items
                  WHERE library_id = $1
                    AND NOT (external_id = ANY($2::text[]))`,
                 [libraryId, seenExternalIds],
             )
-            : await db.query(
+            : await ownedDb.query(
                 `DELETE FROM media_server_items
                  WHERE library_id = $1`,
                 [libraryId],
@@ -27,15 +28,16 @@ export async function pruneMissingMediaItems(libraryId, seenExternalIds = []) {
 }
 
 export async function pruneMissingCollections(libraryId, seenExternalIds = []) {
+    const ownedDb = requireOwnedMediaSyncDatabase(libraryId);
     return withServiceCatch(logger, 'Failed to prune missing collections after full sync', { libraryId }, async () => {
         const result = seenExternalIds.length > 0
-            ? await db.query(
+            ? await ownedDb.query(
                 `DELETE FROM media_server_collections
                  WHERE library_id = $1
                    AND NOT (external_id = ANY($2::text[]))`,
                 [libraryId, seenExternalIds],
             )
-            : await db.query(
+            : await ownedDb.query(
                 `DELETE FROM media_server_collections
                  WHERE library_id = $1`,
                 [libraryId],

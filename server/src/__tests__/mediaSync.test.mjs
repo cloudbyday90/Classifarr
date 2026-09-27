@@ -13,6 +13,11 @@ const mockDb = {
     withTransaction: async fn => fn(mockDb),
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+const actualScope = await import('../services/mediaSyncDatabaseScope.mjs');
+// This suite isolates orchestration with an injected owner; scope enforcement has its own real-helper suite.
+jest.unstable_mockModule('../services/mediaSyncDatabaseScope.mjs', () => ({
+    ...actualScope, requireOwnedMediaSyncDatabase: () => mockDb,
+}));
 const owner = { claim: async () => ({}), attach: async () => {}, checkpoint: async () => {},
     finish: async () => {}, assertSource: async () => {} };
 jest.unstable_mockModule('../services/mediaSyncOwnership.mjs', () => ({

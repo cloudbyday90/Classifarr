@@ -5,6 +5,7 @@ import { jest } from '@jest/globals';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { getPool } from './setup.mjs';
+import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
 import { createMediaSyncRecoveryWorkflow } from '../../services/mediaSyncRecoveryWorkflow.mjs';
 import { createMediaSyncIdentityRecovery } from '../../services/mediaSyncIdentityRecovery.mjs';
@@ -70,7 +71,7 @@ test.each(['movie', 'tv'])('real PostgreSQL claims cover all 100 %s items across
       expect(provider).toHaveBeenCalledTimes(8);
       expect(persistRecovery).not.toHaveBeenCalled();
       requests += provider.mock.calls.length;
-      await store.finish(context);
+      await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
       const attempted = (await pool.query('SELECT count(*)::int n FROM media_source_observations WHERE library_id=$1 AND recovery_attempted_at IS NOT NULL', [libraryId])).rows[0].n;
       expect(attempted).toBe(Math.min(100, (cycle + 1) * 8));
     }
@@ -120,7 +121,7 @@ test.each(['movie', 'tv'])('streamed %s repair commits only fresh proof and reus
       for (const item of items) { await store.capture(context, [item]); completed += await plan.process(item); }
       completed += await plan.flush();
       expect(completed).toBe(2);
-      await store.finish(context);
+      await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
       // The second scan reads a receipt and cooldown; it makes no new TMDb calls.
       expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(2);
       const row = (await pool.query('SELECT external_id,tmdb_id,metadata FROM media_server_items WHERE library_id=$1', [libraryId])).rows;

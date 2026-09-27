@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { getPool, createIntegrationTestApp } from './setup.mjs';
+import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
 import { createMediaSyncLogRemediation } from '../../services/mediaSyncLogRemediation.mjs';
 import { createPlexLogItemLinks } from '../../services/plexLogItemLinks.mjs';
@@ -28,7 +29,7 @@ beforeEach(async () => {
     { external_id: '456', title: 'Fixture show', year: 2010, media_type: 'tv', provider_identity_invalid: true,
       provider_identity_issue: 'conflicting_provider_ids', provider_identity_field: 'tvdb_id' },
   ]);
-  await store.finish(context);
+  await createMediaSyncOwnership({ pool })(context.libraryId, () => store.finish(context));
   errorId = (await pool.query(`INSERT INTO error_log(level,module,message,metadata)
     VALUES ('WARN','mediaSync','Library sync skipped source items',$1::jsonb) RETURNING error_id`,
   [JSON.stringify({ libraryId, identityIssueCounts: { conflicting_provider_ids: 2 }, reference: { url: 'old-forum' } })])).rows[0].error_id;

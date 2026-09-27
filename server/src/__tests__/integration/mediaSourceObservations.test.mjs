@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { jest } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
+import { finishTransactionalCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
 import { readSourceObservationSummary } from '../../services/mediaSourceObservationSummary.mjs';
 import { SOURCE_OBSERVATION_LIMITS } from '../../services/mediaSourceObservationContract.mjs';
 import { MediaSyncLibraryStateService } from '../../services/mediaSyncLibraryStateService.mjs';
@@ -29,14 +30,15 @@ async function addLibrary() {
     [randomUUID(), randomUUID(), serverId])).rows[0].id;
 }
 const start = options => store.start(serverId, libraryId, options);
+const finish = (context, options) => finishTransactionalCaptureFixture(client, store, context, options);
 const rows = async () => (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows;
 const summary = async () => (await readSourceObservationSummary(client)).libraries.find(l => l.id === libraryId);
 
 test('captures repeated source membership without writing trusted inventory or exposing source keys', async () => {
   const before = (await client.query('SELECT COUNT(*) FROM media_server_items')).rows[0].count;
-  let context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
+  let context = await start(); await store.capture(context, [conflict()]); await finish(context);
   const first = (await rows())[0];
-  context = await start(); await store.capture(context, [conflict('fixture', { title: 'Updated' })]); await store.finish(context);
+  context = await start(); await store.capture(context, [conflict('fixture', { title: 'Updated' })]); await finish(context);
   expect(await rows()).toHaveLength(1);
   expect((await rows())[0]).toMatchObject({ title: 'Updated', first_seen_at: first.first_seen_at });
   expect((await client.query('SELECT COUNT(*) FROM media_server_items')).rows[0].count).toBe(before);
@@ -48,8 +50,8 @@ test('captures repeated source membership without writing trusted inventory or e
 });
 
 test('valid identity removes its unresolved record without transferring data into inventory', async () => {
-  let context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
-  context = await start(); await store.capture(context, [{ external_id: 'fixture', media_type: 'movie', tmdb_id: 42 }]); await store.finish(context);
+  let context = await start(); await store.capture(context, [conflict()]); await finish(context);
+  context = await start(); await store.capture(context, [{ external_id: 'fixture', media_type: 'movie', tmdb_id: 42 }]); await finish(context);
   expect(await rows()).toEqual([]);
 });
 
@@ -63,7 +65,7 @@ test('a fresh conflict blocks automatic authority until a valid source capture c
   } });
   const conflictCapture = await start();
   await store.capture(conflictCapture, [conflict()]);
-  await store.finish(conflictCapture);
+  await finish(conflictCapture);
   await client.query(`INSERT INTO classification_history
     (tmdb_id, media_type, title, library_id, library_name, status)
     VALUES (42, 'movie', 'Fixture title', $1, 'Fixture', 'awaiting_decision')`, [libraryId]);
@@ -81,7 +83,7 @@ test('a fresh conflict blocks automatic authority until a valid source capture c
   await client.query('UPDATE media_server_items SET tmdb_id=42 WHERE id=$1', [itemId]);
   const validCapture = await start();
   await store.capture(validCapture, [{ external_id: 'fixture', media_type: 'movie', tmdb_id: 42 }]);
-  await store.finish(validCapture);
+  await finish(validCapture);
   await expect(authority.findExistingMedia(42, 'movie')).resolves.toMatchObject({ id: itemId });
   await expect(authority.reconcileAwaitingDecisions(libraryId)).resolves.toBe(1);
   await expect(client.query(`SELECT status FROM classification_history
@@ -90,12 +92,12 @@ test('a fresh conflict blocks automatic authority until a valid source capture c
 });
 
 test('failed and incremental scans preserve unseen observations; a full scan removes them', async () => {
-  let context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
-  context = await start(); await store.finish(context, { failed: true });
+  let context = await start(); await store.capture(context, [conflict()]); await finish(context);
+  context = await start(); await finish(context, { failed: true });
   expect((await summary()).status).toBe('failed'); expect(await rows()).toHaveLength(1);
-  context = await start({ incremental: true }); await store.finish(context);
+  context = await start({ incremental: true }); await finish(context);
   expect((await summary()).status).toBe('partial'); expect(await rows()).toHaveLength(1);
-  context = await start(); await store.finish(context); expect(await rows()).toHaveLength(0);
+  context = await start(); await finish(context); expect(await rows()).toHaveLength(0);
 });
 
 test('valid duplicates cannot erase a rejection in the same capture, across or within pages', async () => {
@@ -104,17 +106,17 @@ test('valid duplicates cannot erase a rejection in the same capture, across or w
     const context = await start();
     await store.capture(context, page);
     await store.capture(context, [valid]);
-    await store.finish(context);
+    await finish(context);
     expect(await rows()).toHaveLength(1);
   }
   const later = await start();
-  await store.capture(later, [valid]); await store.finish(later);
+  await store.capture(later, [valid]); await finish(later);
   expect(await rows()).toHaveLength(0);
 });
 
 test('unusable source keys withhold absence cleanup', async () => {
-  let context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
-  context = await start(); await store.capture(context, [conflict('')]); await store.finish(context);
+  let context = await start(); await store.capture(context, [conflict()]); await finish(context);
+  context = await start(); await store.capture(context, [conflict('')]); await finish(context);
   expect(await rows()).toHaveLength(1);
   expect(await summary()).toMatchObject({ status: 'partial', capture: { uncapturableCount: 1 } });
 });
@@ -123,8 +125,8 @@ test('superseded pages and completion cannot overwrite or erase newer evidence',
   const older = await start(), newer = await start();
   await store.capture(newer, [conflict('new')]);
   expect(await store.capture(older, [conflict('old')])).toBe(false);
-  expect(await store.finish(older)).toBe(false);
-  await store.finish(newer);
+  expect(await finish(older)).toBe(false);
+  await finish(newer);
   expect((await rows()).map(r => r.external_id)).toEqual(['new']);
   expect(await store.capture(newer, [conflict('late')])).toBe(false);
 });
@@ -133,8 +135,8 @@ test('tracks multiple library memberships independently and cleans up movement a
   const other = await addLibrary();
   const left = await start(), right = await store.start(serverId, other);
   await store.capture(left, [conflict()]); await store.capture(right, [conflict()]);
-  await store.finish(left); await store.finish(right);
-  const moved = await start(); await store.finish(moved);
+  await finish(left); await finish(right);
+  const moved = await start(); await finish(moved);
   expect(await rows()).toEqual([]);
   expect((await client.query('SELECT COUNT(*)::int AS count FROM media_source_observations WHERE library_id=$1', [other])).rows[0].count).toBe(1);
   await client.query('DELETE FROM libraries WHERE id=$1', [other]);
@@ -143,7 +145,7 @@ test('tracks multiple library memberships independently and cleans up movement a
 
 test('reports unknown before capture and excludes/purges expired observations', async () => {
   expect((await summary()).status).toBe('not_captured');
-  const context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
+  const context = await start(); await store.capture(context, [conflict()]); await finish(context);
   await client.query("UPDATE media_source_observations SET last_seen_at=NOW()-INTERVAL '31 days' WHERE library_id=$1", [libraryId]);
   await client.query("UPDATE media_source_capture_state SET started_at=NOW()-INTERVAL '31 days' WHERE library_id=$1", [libraryId]);
   expect(await summary()).toMatchObject({ status: 'expired', retainedCount: 0, examples: [] });

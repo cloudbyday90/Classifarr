@@ -74,7 +74,12 @@ load. The cost is conservative review friction, especially for indirect SQL and
 migrations; it cannot prove runtime cooperation or defeat a malicious edit to
 the gate itself.
 
-Next, implement an **explicit owned capability for destructive import
+The [owned finalization follow-up](ingestion-finalization-ownership-design.md)
+now implements a library-bound, live owner guard for the destructive helpers.
+Other shared writers remain unresolved; this historical gate outcome is not
+reclassified by that narrower runtime change.
+
+The original follow-up was an **explicit owned capability for destructive import
 finalization and pruning**. Start with `mediaSyncQueries.mjs` and
 `mediaSourceObservationStore.mjs`, trace current and maintenance callers, and
 separate owned-import operations from separately controlled maintenance. Retain

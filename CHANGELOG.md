@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require live, library-bound ingestion ownership before pruning inventory or
+  completing source captures. Keep destructive helpers on the owning database
+  connection, reject unowned and wrong-library calls, and preserve coordinated
+  maintenance, interrupted-import recovery and ordinary read access.
 - Gate CI on reviewed inventory-write changes across imports, capture state,
   sync status and recovery checkpoints. Preserve visible unresolved paths,
   require review of ownership-helper and SQL changes, and reject unreadable or
