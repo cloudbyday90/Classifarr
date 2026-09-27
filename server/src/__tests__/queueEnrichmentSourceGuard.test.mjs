@@ -45,7 +45,8 @@ test('captures metadata and guard values before yielding to persistence', async 
     input.source_identity_snapshot.title = 'Changed'; data.inventory_tmdb.tmdb_id = 99;
     return { rowCount: 1 };
   });
-  await persistEnrichmentMetadata(query, input, 42, data, true);
+  await persistEnrichmentMetadata(query, input, 42, data, true,
+    { token: '00000000-0000-4000-8000-000000000001', outcome: { record: null, retryAfter: null } });
   const values = query.mock.calls[0][1];
   expect(JSON.parse(values[0])).toEqual({ inventory_tmdb: { version: 1, tmdb_id: 42 } });
   expect(JSON.parse(values[7])).toEqual(row());

@@ -62,6 +62,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
                 msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
                 msi.library_id, l.name as library_name, msi.media_type, l.is_active AS source_library_active,
                 msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
+                msi.inventory_tmdb_retry_after, msi.inventory_tmdb_lease_until,
                 NOW() AS inventory_tmdb_checked_at,
                 (${STANDARD_ENRICHMENT_SQL}) AS needs_standard_enrichment
              FROM scan
@@ -87,6 +88,8 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
             inventory_tmdb: item.metadata?.inventory_tmdb,
             inventory_tmdb_attempted_at: item.inventory_tmdb_attempted_at,
             inventory_tmdb_fetched_at: item.inventory_tmdb_fetched_at,
+            inventory_tmdb_retry_after: item.inventory_tmdb_retry_after,
+            inventory_tmdb_lease_until: item.inventory_tmdb_lease_until,
         }, item.tmdb_id, new Date(item.inventory_tmdb_checked_at).getTime(), { requireCompanies: true }))
         .sort((left, right) => left.id - right.id);
 

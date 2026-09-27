@@ -13,7 +13,8 @@ beforeEach(async () => {
         CREATE TEMP TABLE media_server_items (id integer PRIMARY KEY, library_id integer, media_type text,
             tmdb_id integer, title text, year integer, genres jsonb, tags text[], content_rating text, studio text,
             tvdb_id integer, imdb_id text, metadata jsonb, inventory_tmdb_attempted_at timestamptz,
-            inventory_tmdb_fetched_at timestamptz, media_server_id integer, external_id text) ON COMMIT DROP;
+            inventory_tmdb_fetched_at timestamptz, media_server_id integer, external_id text,
+            inventory_tmdb_retry_after timestamptz, inventory_tmdb_lease_until timestamptz) ON COMMIT DROP;
         CREATE TEMP TABLE media_source_observations (library_id integer, media_server_id integer,
             external_id text, last_seen_at timestamptz) ON COMMIT DROP;
         CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;

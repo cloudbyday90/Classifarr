@@ -60,6 +60,14 @@ recovered. After a separately authorized deployment, the existing due retry can
 use the new transport, subject to memory admission and all other evidence checks.
 Verified success clears existing failure state through the existing repository.
 
+The follow-up report `83b4d6e2-e7bc-4fc2-9a25-a806ec9dc320` at 2026-09-27
+10:42:03 UTC was checked read-only. Its persisted evaluation failure was again
+`evidence_budget`, with the next eligible check at 11:42:03 UTC. The running
+container still advertised revision `a93a1e34` and did not contain the chunked
+transport or typed scheduler failure message committed in `91d870d1`. This
+confirms the fix had not been deployed, not a demonstrated regression in the new
+transport. The exact new payload was not recollected and no evaluation was forced.
+
 ## Validation and follow-up
 
 Targeted tests cover numeric precision including signed zero, complete corpus

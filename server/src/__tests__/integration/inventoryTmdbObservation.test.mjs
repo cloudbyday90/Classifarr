@@ -58,7 +58,7 @@ test.each(['movie', 'tv'])('legacy %s observations backfill companies after cool
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb).not.toHaveProperty('production_companies');
     expect(await pending()).toEqual([]);
-    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at=NOW()-interval '7 hours' WHERE id=$1", [item.id]);
+    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at=NOW()-interval '7 hours', inventory_tmdb_retry_after=NOW()-interval '1 second' WHERE id=$1", [item.id]);
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb.production_companies).toHaveLength(1);
     expect(await pending()).toEqual([]);
@@ -133,7 +133,7 @@ test('failed requests cool down without fabricated traits and later recover', as
     expect(deps.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, inventoryObservationStatus: 'unavailable' }));
     expect(await pending()).toEqual([]);
     expect(await revision()).toBe('1');
-    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at = NOW() - INTERVAL '6 hours' WHERE id = $1", [item.id]);
+    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at = NOW() - INTERVAL '6 hours', inventory_tmdb_retry_after=NOW()-interval '1 second' WHERE id = $1", [item.id]);
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb.keywords).toEqual(['space']);
     expect(provider.getMovieDetails).toHaveBeenCalledTimes(2);

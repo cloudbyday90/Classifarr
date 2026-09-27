@@ -27,6 +27,8 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   if (!captured) return null;
   delete captured.source_identity_snapshot;
   delete captured.source_conflict_blocks_authority;
+  delete captured.inventory_tmdb_retry_after;
+  delete captured.inventory_tmdb_lease_until;
   const ids = [captured.tmdbId, captured.tmdb_id].filter((value) => value !== null && value !== undefined);
   if (ids.some((id) => !positiveDatabaseInteger(id)) ||
       new Set(ids.map(positiveDatabaseInteger)).size > 1) return null;
@@ -37,7 +39,8 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   if (!itemId) return null;
   const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata, msi.tags, msi.studio,
     msi.media_server_id, msi.external_id, msi.title, msi.year, msi.imdb_id, msi.tvdb_id,
-    msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
+    msi.inventory_tmdb_attempted_at::text, msi.inventory_tmdb_fetched_at,
+    msi.inventory_tmdb_retry_after, msi.inventory_tmdb_lease_until,
     ${sourceConflictAuthorityPredicateForMediaServerItem('$2')} AS source_conflict_blocks_authority,
     l.name AS library_name FROM media_server_items msi
     LEFT JOIN libraries l ON msi.library_id = l.id WHERE msi.id = $1`, [itemId, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
@@ -62,6 +65,8 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   captured.inventory_tmdb = metadata?.inventory_tmdb;
   captured.inventory_tmdb_attempted_at = row.inventory_tmdb_attempted_at;
   captured.inventory_tmdb_fetched_at = row.inventory_tmdb_fetched_at;
+  captured.inventory_tmdb_retry_after = row.inventory_tmdb_retry_after;
+  captured.inventory_tmdb_lease_until = row.inventory_tmdb_lease_until;
   // Older queued payloads may contain source tags as keywords or a fabricated English default.
   const observation = readInventoryTmdbObservation({ ...row, metadata });
   captured.keywords = observation?.keywords || [];

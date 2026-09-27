@@ -72,6 +72,8 @@ routing or music ingestion.
 
 Recommendation: existing PostgreSQL records/transactions + modular ESM recovery
 policy + existing scheduler/admission controls + source-revision guards + bounded
-repair/backfill receipts. This is proposed follow-up, not implemented in this
-change. Acceptance must cover provider return, absent matches, disagreement,
+repair/backfill receipts. The [first implementation](inventory-provider-recovery-design.md)
+adds durable observation cases, leased attempts and atomic same-identity backfill.
+External-ID replacement discovery remains follow-up, not implemented by that
+increment. Its acceptance must cover provider return, absent matches, disagreement,
 duplicate delivery, interruption after repair, stale evidence, and retry limits.

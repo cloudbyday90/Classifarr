@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { readTmdbRetryAfter } from './tmdbRetryAfter.mjs';
 const TRANSPORT_CODES = new Set(['ETIMEDOUT', 'ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND', 'EAI_AGAIN',
   'CERT_HAS_EXPIRED', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_NOT_YET_VALID',
   'ABORT_ERR', 'ERR_CANCELED', 'HTTP_RESPONSE_TOO_LARGE']);
@@ -13,7 +14,8 @@ export function tmdbObservationFailure(error) {
       code === 'ETIMEDOUT' ? 'timeout' : ['ABORT_ERR', 'ERR_CANCELED'].includes(code) ? 'cancelled' :
         code === 'HTTP_RESPONSE_TOO_LARGE' ? 'response_too_large' : code?.includes('CERT') || code?.includes('SIGNATURE') ? 'tls' :
           code ? 'network' : 'unknown';
-  return { category, httpStatus, transportCode: code };
+  const retryAfterMs = readTmdbRetryAfter(error);
+  return { category, httpStatus, transportCode: code, ...(retryAfterMs === null ? {} : { retryAfterMs }) };
 }
 
 export function wrapTmdbDetailsFailure(error) {
@@ -21,5 +23,6 @@ export function wrapTmdbDetailsFailure(error) {
   return Object.assign(new Error('TMDb details are unavailable'), {
     code: details.transportCode || 'TMDB_DETAILS_UNAVAILABLE',
     ...(details.httpStatus ? { response: { status: details.httpStatus } } : {}),
+    ...(details.retryAfterMs === undefined ? {} : { retryAfterMs: details.retryAfterMs }),
   });
 }

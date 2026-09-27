@@ -56,6 +56,8 @@ export function isCurrentInventoryTmdbTimestamp(value, now) {
 }
 
 export function inventoryTmdbObservationDue(payload, tmdbId, now, { requireCompanies = false } = {}) {
+    if ([payload.inventory_tmdb_retry_after, payload.inventory_tmdb_lease_until]
+        .some(value => value != null && new Date(value).getTime() > now)) return false;
     const fetched = new Date(payload.inventory_tmdb_fetched_at ?? NaN).getTime();
     const attempted = new Date(payload.inventory_tmdb_attempted_at ?? NaN).getTime();
     const observation = readInventoryTmdbObservation({ tmdb_id: tmdbId, media_type: payload.media.media_type,

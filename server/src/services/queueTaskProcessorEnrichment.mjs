@@ -2,6 +2,7 @@ import { parsePayload } from '../utils/queueHelpers.mjs';
 import { prepareQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { persistEnrichmentMetadata } from './queueEnrichmentPersistence.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON } from './sourceConflictAuthorityGuard.mjs';
+import { reportInventoryProviderRecovery } from './inventoryProviderRecoveryReporting.mjs';
 
 export async function resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext, { db, logger }) {
     if (sourceLibraryName || !sourceLibraryId) {
@@ -118,11 +119,14 @@ export async function processMetadataEnrichmentTask(task, {
                 enrichTmdbId
             );
         }
-        const attempted = await queueInventoryTmdbEnrichmentService.enrich(enrichPayload, enrichmentData, enrichTmdbId);
+        const recoveryReceipt = {};
+        const attempted = await queueInventoryTmdbEnrichmentService.enrich(enrichPayload, enrichmentData, enrichTmdbId,
+            { query: queryWithTimeout, receipt: recoveryReceipt });
 
         const updated = await persistEnrichmentMetadata(
-            queryWithTimeout, enrichPayload, enrichTmdbId, enrichmentData, attempted);
+            queryWithTimeout, enrichPayload, enrichTmdbId, enrichmentData, attempted, recoveryReceipt);
         if (updated.rowCount !== 1) return skipChangedSource();
+        reportInventoryProviderRecovery(logger, enrichPayload, recoveryReceipt);
         observationStatus = enrichmentData.inventory_tmdb ? 'captured' : attempted ? 'unavailable' : 'unchanged';
 
         if (!observationOnly) {

@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
+import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { getPool } from './setup.mjs';
 import { persistEnrichmentMetadata } from '../../services/queueEnrichmentPersistence.mjs';
@@ -21,7 +22,9 @@ beforeEach(async () => {
         CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, is_active boolean) ON COMMIT DROP;
         CREATE TEMP TABLE media_server_items (id integer PRIMARY KEY, media_server_id integer, external_id text,
             library_id integer, media_type text, title text, year integer, imdb_id text, tvdb_id integer, tmdb_id integer,
-            metadata jsonb, inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz) ON COMMIT DROP;
+            metadata jsonb, inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz,
+            inventory_tmdb_recovery jsonb, inventory_tmdb_retry_after timestamptz,
+            inventory_tmdb_lease_id uuid, inventory_tmdb_lease_until timestamptz) ON COMMIT DROP;
         CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;
         CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
         INSERT INTO libraries VALUES (1, 'PRIVATE LIBRARY', true);
@@ -29,8 +32,13 @@ beforeEach(async () => {
         INSERT INTO media_server_items VALUES (1,1,'fixture',1,'movie','PRIVATE',2001,NULL,NULL,7,'{}',NULL,NULL);`);
 });
 afterEach(async () => { await db.query('ROLLBACK'); db.release(); });
-const persist = (metadata = {}, attempted = true, input = payload) =>
-    persistEnrichmentMetadata((sql, values) => db.query(sql, values), input, 7, metadata, attempted);
+const persist = async (metadata = {}, attempted = true, input = payload) => {
+    const token = attempted ? randomUUID() : null;
+    if (token) await db.query(`UPDATE media_server_items SET inventory_tmdb_lease_id=$1,
+        inventory_tmdb_lease_until=NOW()+interval '5 minutes' WHERE id=1`, [token]);
+    return persistEnrichmentMetadata((sql, values) => db.query(sql, values), input, 7, metadata, attempted,
+        { token, outcome: token ? { record: null, retryAfter: null } : undefined });
+};
 const history = () => readLibraryObservationHistory(db);
 
 test('captured, unavailable and unchanged outcomes reflect guarded persistence, not task completion', async () => {

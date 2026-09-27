@@ -895,6 +895,14 @@ See the [diagnostics design](docs/architecture/library-scan-diagnostics-design.m
 and [measured outcome](docs/architecture/library-scan-diagnostics-outcome.md).
 Manual identity review handles unresolved exceptions.
 
+TMDb observation failures now retain a bounded recovery case independently of
+log retention. The existing queue uses failure-specific backoff and short leases
+to resume interrupted attempts safely. A valid response backfills metadata and
+resolves the case atomically; source changes invalidate old attempts. Unavailable
+IDs remain unresolved, not guessed from titles. See the
+[recovery design and tradeoffs](docs/architecture/inventory-provider-recovery-design.md)
+and [validation outcome](docs/architecture/inventory-provider-recovery-outcome.md).
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten

@@ -16,12 +16,14 @@ export async function verifyTmdbExternalIdSql(client) {
   await client.query('BEGIN');
   try {
     await client.query(`
-      CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text) ON COMMIT DROP;
+      CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, is_active boolean DEFAULT true) ON COMMIT DROP;
       CREATE TEMP TABLE media_server_items (
         media_server_id integer, external_id text,
         id integer PRIMARY KEY, media_type text, tmdb_id integer, library_id integer,
         title text, year integer, imdb_id text, tvdb_id integer, metadata jsonb DEFAULT '{}', tags text[], studio text,
-        inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
+        inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz,
+        inventory_tmdb_recovery jsonb, inventory_tmdb_retry_after timestamptz,
+        inventory_tmdb_lease_id uuid, inventory_tmdb_lease_until timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (
         tmdb_id integer, media_type text, title text, year integer, library_id integer,

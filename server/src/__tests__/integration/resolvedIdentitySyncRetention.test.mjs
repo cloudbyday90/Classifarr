@@ -85,7 +85,10 @@ test('keeps the typed identity through a library move and dirties both library o
   expect(await stored()).toMatchObject({ library_id: libraryIds[1], tmdb_id: 42 });
   const after = (await query('SELECT library_id, revision::text FROM library_profile_inventory_state WHERE library_id = ANY($1::int[]) ORDER BY library_id', [libraryIds])).rows;
   expect(BigInt(after[0].revision)).toBe(BigInt(before[0].revision) + 1n);
-  expect(after[1].revision).toBe('1');
+  // Source-scoped recovery now invalidates observation clocks on a library move.
+  // The clock trigger creates the target state before the inventory trigger advances it.
+  expect(after[1].revision).toBe('2');
+  expect(await stored()).toMatchObject({ inventory_tmdb_attempted_at: null, inventory_tmdb_fetched_at: null });
 });
 
 test('does not grandfather a legacy ID or trust incoming provenance', async () => {

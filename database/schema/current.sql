@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T09:16:13.000Z
--- Latest Migration: 20260927_120000_seed_restore_admission_gate.sql
+-- Generated: 2026-09-27T10:55:06.167Z
+-- Latest Migration: 20260927_130000_add_inventory_provider_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.4 (Debian 18.4-1.pgdg12+1)
--- Dumped by pg_dump version 18.4 (Debian 18.4-1.pgdg12+1)
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -602,6 +602,10 @@ CREATE FUNCTION public.reset_inventory_tmdb_observation_clocks() RETURNS trigger
 BEGIN
     NEW.inventory_tmdb_attempted_at := NULL;
     NEW.inventory_tmdb_fetched_at := NULL;
+    NEW.inventory_tmdb_recovery := NULL;
+    NEW.inventory_tmdb_retry_after := NULL;
+    NEW.inventory_tmdb_lease_id := NULL;
+    NEW.inventory_tmdb_lease_until := NULL;
     RETURN NEW;
 END;
 $$;
@@ -4656,6 +4660,12 @@ CREATE TABLE public.media_server_items (
     enrichment_deferred_reason text,
     inventory_tmdb_attempted_at timestamp with time zone,
     inventory_tmdb_fetched_at timestamp with time zone,
+    inventory_tmdb_recovery jsonb,
+    inventory_tmdb_retry_after timestamp with time zone,
+    inventory_tmdb_lease_id uuid,
+    inventory_tmdb_lease_until timestamp with time zone,
+    CONSTRAINT inventory_tmdb_lease_shape CHECK (((inventory_tmdb_lease_id IS NULL) = (inventory_tmdb_lease_until IS NULL))),
+    CONSTRAINT inventory_tmdb_recovery_shape CHECK (((inventory_tmdb_recovery IS NULL) OR COALESCE(((jsonb_typeof(inventory_tmdb_recovery) = 'object'::text) AND ((inventory_tmdb_recovery ->> 'version'::text) = '1'::text) AND (octet_length((inventory_tmdb_recovery)::text) <= 2048)), false))),
     CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
@@ -13570,7 +13580,7 @@ CREATE TRIGGER preserve_history_recording_instant AFTER UPDATE ON public.classif
 -- Name: media_server_items reset_inventory_tmdb_observation_clocks; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER reset_inventory_tmdb_observation_clocks BEFORE UPDATE OF tmdb_id, media_type ON public.media_server_items FOR EACH ROW WHEN (((old.tmdb_id IS DISTINCT FROM new.tmdb_id) OR ((old.media_type)::text IS DISTINCT FROM (new.media_type)::text))) EXECUTE FUNCTION public.reset_inventory_tmdb_observation_clocks();
+CREATE TRIGGER reset_inventory_tmdb_observation_clocks BEFORE UPDATE OF tmdb_id, media_type, library_id, media_server_id, external_id, title, year, imdb_id, tvdb_id ON public.media_server_items FOR EACH ROW WHEN (((old.tmdb_id IS DISTINCT FROM new.tmdb_id) OR ((old.media_type)::text IS DISTINCT FROM (new.media_type)::text) OR (old.library_id IS DISTINCT FROM new.library_id) OR (old.media_server_id IS DISTINCT FROM new.media_server_id) OR ((old.external_id)::text IS DISTINCT FROM (new.external_id)::text) OR ((old.title)::text IS DISTINCT FROM (new.title)::text) OR (old.year IS DISTINCT FROM new.year) OR ((old.imdb_id)::text IS DISTINCT FROM (new.imdb_id)::text) OR (old.tvdb_id IS DISTINCT FROM new.tvdb_id))) EXECUTE FUNCTION public.reset_inventory_tmdb_observation_clocks();
 
 
 --
@@ -16860,6 +16870,7 @@ FROM unnest(ARRAY[
     '20260925_160000_add_source_pair_sweep.sql',
     '20260926_100000_add_quality_evidence_study.sql',
     '20260926_233000_add_source_recovery_outcomes.sql',
-    '20260927_120000_seed_restore_admission_gate.sql'
+    '20260927_120000_seed_restore_admission_gate.sql',
+    '20260927_130000_add_inventory_provider_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

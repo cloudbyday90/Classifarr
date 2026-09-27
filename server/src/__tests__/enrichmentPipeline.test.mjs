@@ -39,6 +39,7 @@ const mockTavilyService = {
 };
 
 const mockTmdbService = {
+    getApiKey: jest.fn(),
     findIdentityByExternalId: jest.fn(),
     searchIdentityCandidates: jest.fn(),
     search: jest.fn()
