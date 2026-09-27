@@ -74,6 +74,11 @@ and no PR was merged.
 
 ## Next item and recommendation stack
 
+Follow-on: the [candidate recovery drill](restore-recovery-drill-outcome.md) now
+exercises real Node process death, movie/TV configuration rollback, explicit retry,
+and normal restart in isolated containers. The supported published-image upgrade
+and recovery-to-learning matrix below remains a separate acceptance layer.
+
 Build a disposable container recovery rehearsal from a supported release image:
 backup, stop normal workers, restore in dedicated mode, interrupt an attempt,
 explicitly retry, verify, and restart normally. Assert readiness and movie/TV

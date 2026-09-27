@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a disposable recovery drill that kills an in-progress configuration restore,
+  proves movie/TV configuration rollback and blocked startup, then verifies an
+  explicit retry and controlled normal restart. Use isolated containers, synthetic
+  data and bounded pass/fail evidence; leave live installations unchanged.
 - Require dedicated restore mode for configuration imports. Keep normal workers
   out of the maintenance runtime, coordinate cooperating instances with database
   admission locks, and block normal startup after incomplete restore verification.

@@ -1,0 +1,51 @@
+# Disposable synthetic recovery test. Never include this in the installation stack.
+services:
+  database:
+    image: pgvector/pgvector:0.8.6-pg18
+    environment:
+      POSTGRES_DB: classifarr_restore_drill
+      POSTGRES_USER: rehearsal
+      POSTGRES_PASSWORD: ${CLASSIFARR_DRILL_PASSWORD:?Use the recovery drill launcher}
+    command: [postgres, -c, shared_preload_libraries=pg_stat_statements]
+    volumes:
+      - database-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U rehearsal -d classifarr_restore_drill]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  drill:
+    build:
+      context: .
+      target: production
+    entrypoint: [node, src/scripts/runRestoreRecoveryDrill.mjs]
+    user: '1000:1000'
+    init: true
+    healthcheck:
+      disable: true
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      CLASSIFARR_RESTORE_DRILL: isolated-compose-v1
+      POSTGRES_HOST: database
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: classifarr_restore_drill
+      POSTGRES_USER: rehearsal
+      POSTGRES_PASSWORD: ${CLASSIFARR_DRILL_PASSWORD:?Use the recovery drill launcher}
+      FILE_LOGGING_ENABLED: 'false'
+      LOG_LEVEL: error
+      BACKUP_DIR: /app/data/backups
+      MIGRATIONS_DIR: /app/database/migrations
+    volumes:
+      - app-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 2g
+networks:
+  default:
+    internal: true
+volumes:
+  database-data:
+  app-data:

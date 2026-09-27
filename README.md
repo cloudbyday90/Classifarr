@@ -99,6 +99,10 @@ Classifarr is a full operations platform for classification, routing, review, an
   workers stay inactive until a verified restore and explicit normal restart.
   See the [restore-mode procedure and design](docs/architecture/restore-maintenance-mode-design.md)
   and [validation outcome](docs/architecture/restore-maintenance-mode-outcome.md).
+  Developers can run `npm run test:local:restore-recovery-drill` to exercise
+  interruption, retry and verified restart with disposable containers and synthetic
+  data; see the [drill design](docs/architecture/restore-recovery-drill-design.md)
+  and [results and limits](docs/architecture/restore-recovery-drill-outcome.md).
 - Migration dashboard and migration APIs for legacy rule movement.
 - Scheduler for recurring sync, queue, enrichment, and maintenance tasks.
 
