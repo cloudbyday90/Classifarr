@@ -59,7 +59,7 @@ function repository({ previous, foreign = false, cooling = false, source = true 
 test.each([undefined, { phase: 'complete' }, { phase: 'running', sync_status_id: 2, capture_generation: 3 }])('claims and checkpoints %p with a run token', async previous => {
   const { db, repo } = repository({ previous });
   const replay = Boolean(previous && previous.phase !== 'complete');
-  expect(await repo.claim()).toEqual({ replay });
+  expect(await repo.claim()).toEqual({ replay: !previous || replay });
   const insert = db.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO library_ingestion_state'));
   expect(insert[1]).toEqual([1, expect.stringMatching(/^[a-f0-9-]{36}$/), replay]);
   await repo.attach(4, { generation: 5 });

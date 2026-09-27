@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically adopt populated legacy libraries into controlled full backfill,
+  not only empty libraries. Keep learning waiting through unfinished imports,
+  preserve unknown-owner safeguards, and expose backfill/recovery status with
+  direct library links. Use the same recovery path across supported movie and
+  TV libraries without changing routing or enabling music ingestion.
 - Check bounded media and collection pagination samples before starting imports.
   Preserve inventory on failed checks, retry through existing recovery, and show
   safe causes and next steps in library status. Reuse validated samples without

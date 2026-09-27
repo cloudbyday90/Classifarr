@@ -146,6 +146,7 @@ describe('Libraries API Integration Tests', () => {
             expect(lib.name).toBe('Movies');
             expect(lib.media_type).toBe('movie');
             expect(lib).toHaveProperty('item_count');
+            expect(lib.ingestion_status).toMatchObject({ state: 'awaiting_import', needsReconciliation: false });
         });
 
         test('should return 401 without authentication', async () => {

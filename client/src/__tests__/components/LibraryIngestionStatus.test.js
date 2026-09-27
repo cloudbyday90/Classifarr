@@ -31,6 +31,7 @@ describe('Library ingestion status', () => {
     wrapper.unmount()
   })
   it.each([
+    ['awaiting_import', 'Library backfill scheduled', 10000],
     ['active', 'Importing library', 2000], ['interrupted', 'Import interrupted', 10000],
     ['retry_wait', 'Import retry scheduled', 10000], ['legacy_owner_unknown', 'owner needs verification', 10000],
     ['disabled', 'Import paused', null], ['unconfigured', 'Import waiting for setup', null], ['requested', 'Import requested', 2000],

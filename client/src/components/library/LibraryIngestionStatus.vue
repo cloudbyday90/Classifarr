@@ -42,18 +42,9 @@
 
 <script setup>
 import { computed } from 'vue'
-import { libraryIngestionState } from '@/utils/libraryIngestionStatus'
+import { libraryIngestionState, LIBRARY_INGESTION_COPY as copy } from '@/utils/libraryIngestionStatus'
 const props = defineProps({ library: { type: Object, required: true }, requesting: Boolean, unavailable: Boolean })
 const state = computed(() => libraryIngestionState(props.library, props.requesting))
-const copy = {
-  active: ['Importing library', 'Learning waits until this import finishes. No action needed.'],
-  requested: ['Import requested', 'Checking whether this library can start.'],
-  interrupted: ['Import interrupted', 'Imported items are safe. Classifarr will replay the scan automatically.'],
-  retry_wait: ['Import retry scheduled', 'Imported items are safe. Classifarr will retry automatically; learning is waiting.'],
-  legacy_owner_unknown: ['Import owner needs verification', 'An older or external scan has no verifiable owner. Confirm that worker has stopped before reconciling its status.'],
-  disabled: ['Import paused', 'The library or media server is disabled. Enable it when you want imports to resume.'],
-  unconfigured: ['Import waiting for setup', 'Configure the media server connection before imports can resume.'],
-}
 const preflight = computed(() => {
   const value = props.library.ingestion_status?.preflight
   return !props.unavailable && state.value === 'retry_wait' && ['media', 'collections'].includes(value?.phase) &&

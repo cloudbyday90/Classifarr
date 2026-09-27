@@ -423,7 +423,7 @@ describe('SchedulerService', () => {
     });
 
     describe('runLibraryWatchdog', () => {
-        it('issues a single query and triggers syncLibrary for empty libraries', async () => {
+        it('issues a single bounded query and triggers syncLibrary for new or interrupted libraries', async () => {
             const dbModule = mockDb;
             const mediaSyncModule = mockMediaSync;
 
@@ -437,21 +437,23 @@ describe('SchedulerService', () => {
 
             await scheduler.runLibraryWatchdog();
 
-            // Only ONE query should be executed (the combined NOT EXISTS query)
+            // Inventory size is not evidence that controlled adoption completed.
             expect(dbModule.query).toHaveBeenCalledTimes(1);
             const [sql] = dbModule.query.mock.calls[0];
-            expect(sql).toMatch(/NOT EXISTS/);
-            expect(sql).toMatch(/media_server_items/);
+            expect(sql).not.toMatch(/media_server_items/);
+            expect(sql).toMatch(/s.library_id IS NULL/);
+            expect(sql).toMatch(/pg_locks/);
             expect(sql).toMatch(/media_server_sync_status/);
-            expect(sql).toMatch(/status = 'running'/);
+            expect(sql).toMatch(/status IN \('pending','running'\)/);
+            expect(sql).toMatch(/LIMIT 10/);
 
-            // syncLibrary called once per empty library
+            // syncLibrary called once per eligible library
             expect(mediaSyncModule.syncLibrary).toHaveBeenCalledTimes(2);
             expect(mediaSyncModule.syncLibrary).toHaveBeenCalledWith(1);
             expect(mediaSyncModule.syncLibrary).toHaveBeenCalledWith(2);
         });
 
-        it('does not call syncLibrary when no empty libraries are returned', async () => {
+        it('does not call syncLibrary when no eligible libraries are returned', async () => {
             const dbModule = mockDb;
             const mediaSyncModule = mockMediaSync;
 

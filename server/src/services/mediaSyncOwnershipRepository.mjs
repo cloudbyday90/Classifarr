@@ -47,7 +47,10 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
             retry_after=clock_timestamp()+make_interval(secs=>CASE WHEN $3
               THEN LEAST(3600,30*power(2,LEAST(library_ingestion_state.attempt_count,7))) ELSE 60 END+random()*30)`,
         [libraryId, runId, replay]);
-        return { replay };
+        // Existing items or old completed syncs are not proof of a complete owned
+        // capture. First adoption must backfill the whole library, even when an
+        // incremental caller arrives before the watchdog. It is not a restart.
+        return { replay: !previous || replay };
       });
     },
     async attach(syncId, capture = null) {

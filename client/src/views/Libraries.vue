@@ -121,6 +121,7 @@
               <span>{{ library.priority }}</span>
             </div>
           </div>
+          <LibraryImportLink :library="library" />
         </div>
       </Card>
     </div>
@@ -150,6 +151,7 @@ import LibraryObservationHealth from '@/components/library/LibraryObservationHea
 import LibrarySourceObservations from '@/components/library/LibrarySourceObservations.vue'
 import LibrarySourceRepairWorklist from '@/components/library/LibrarySourceRepairWorklist.vue'
 import LibraryObservationHistory from '@/components/library/LibraryObservationHistory.vue'
+import LibraryImportLink from '@/components/library/LibraryImportLink.vue'
 
 // HTTP status codes
 const HTTP_CONFLICT = 409

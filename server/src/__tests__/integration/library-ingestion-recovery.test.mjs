@@ -37,6 +37,71 @@ afterEach(async () => {
   await db.query('DELETE FROM media_server WHERE id=$1', [serverId]);
 });
 
+test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(mediaType => [provider, mediaType])))
+  ('%s %s legacy inventory is adopted, backfilled and completed once without erasing partial data', async (provider, mediaType) => {
+    await db.query('UPDATE media_server SET type=$2 WHERE id=$1', [serverId, provider]);
+    await db.query('UPDATE libraries SET media_type=$2 WHERE id=$1', [libraryId, mediaType]);
+    await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
+    await db.query(`INSERT INTO media_server_items(media_server_id,library_id,external_id,title,media_type)
+      VALUES ($1,$2,'old','Synthetic legacy',$3)`, [serverId, libraryId, mediaType]);
+    await db.query(`INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status)
+      VALUES ($1,$2,'full','completed')`, [serverId, libraryId]);
+    expect(await state()).toBeUndefined();
+    expect(await status()).toMatchObject({ state: 'awaiting_import', needsReconciliation: false });
+    expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
+    expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
+    // The incremental entry path must not bypass full adoption or acknowledge partial history.
+    const broken = sync(async () => { throw new Error('synthetic source unavailable'); });
+    expect(await broken.syncLibrary(libraryId, { incremental: true })).toMatchObject({ deferred: true });
+    expect(await inventory()).toEqual(['old']);
+    expect(await state()).toMatchObject({ phase: 'retry_wait', attempt_count: 1, restart_count: 0 });
+    expect((await db.query('SELECT sync_type FROM media_server_sync_status WHERE library_id=$1 ORDER BY id DESC LIMIT 1', [libraryId])).rows[0].sync_type).toBe('full');
+    expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
+    await due();
+    expect(await sync(async () => [{ ...item(22), media_type: mediaType }]).syncLibrary(libraryId, { incremental: true }))
+      .toMatchObject({ success: true, prunedItems: 1 });
+    expect(await inventory()).toEqual(['22']);
+    expect(await status()).toMatchObject({ state: 'complete' });
+    expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+    expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
+  });
+
+test('a newer completed import cannot hide an older unfinished marker from learning or recovery', async () => {
+  await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
+  await sync(async () => [item(11)]).syncLibrary(libraryId);
+  await db.query(`INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status,created_at)
+    VALUES ($1,$2,'full','running',clock_timestamp()-interval '1 year')`, [serverId, libraryId]);
+  expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
+  expect(await status()).toMatchObject({ state: 'legacy_owner_unknown', needsReconciliation: true });
+  expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
+  expect(await sync(async () => []).syncLibrary(libraryId)).toMatchObject({ reason: 'legacy_owner_unknown' });
+  expect(await inventory()).toEqual(['11']);
+});
+
+test('adoption waits for enabled configuration and ownership, and ignores music', async () => {
+  const eligible = async () => (await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id);
+  expect(await eligible()).toContain(libraryId);
+  await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  expect(await status()).toMatchObject({ state: 'disabled' });
+  expect(await eligible()).not.toContain(libraryId);
+  await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [libraryId]);
+  await db.query("UPDATE media_server SET api_key='' WHERE id=$1", [serverId]);
+  expect(await status()).toMatchObject({ state: 'unconfigured' });
+  expect(await eligible()).not.toContain(libraryId);
+  await db.query("UPDATE media_server SET api_key='synthetic',is_active=false WHERE id=$1", [serverId]);
+  expect(await status()).toMatchObject({ state: 'disabled' });
+  expect(await eligible()).not.toContain(libraryId);
+  await db.query('UPDATE media_server SET is_active=true WHERE id=$1', [serverId]);
+  await createMediaSyncOwnership(db)(libraryId, async () => {
+    expect(await status()).toMatchObject({ state: 'active' });
+    expect(await eligible()).not.toContain(libraryId);
+  });
+  // Music is also excluded by the persisted library contract; do not weaken it
+  // merely to construct a fixture. Runtime media admission has its own tests.
+  await expect(db.query("UPDATE libraries SET media_type='music' WHERE id=$1", [libraryId]))
+    .rejects.toMatchObject({ code: '23514' });
+});
+
 test('unowned and wrong-library helpers cannot change the capture lifecycle or prune inventory', async () => {
   await sync(async () => [item(11)]).syncLibrary(libraryId);
   const store = new MediaSourceObservationStore(db);

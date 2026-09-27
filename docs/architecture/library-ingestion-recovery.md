@@ -1,5 +1,9 @@
 # Library ingestion ownership and restart recovery
 
+Populated legacy libraries are also covered by the
+[library adoption and recovery policy](library-adoption-recovery-design.md).
+Existing inventory alone no longer excludes a library from first owned backfill.
+
 ## Decision (September 2026)
 
 Use PostgreSQL session ownership plus a durable per-library checkpoint. Preserve

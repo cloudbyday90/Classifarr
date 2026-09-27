@@ -1,19 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { INGESTION_OWNER_ACTIVE_SQL, INGESTION_UNFINISHED_MARKERS_SQL } from './libraryIngestionPredicates.mjs';
+
 export const INVENTORY_BACKGROUND_READINESS_SQL = `WITH active_libraries AS MATERIALIZED (
-    SELECT l.id FROM libraries l LEFT JOIN media_server ms ON ms.id=l.media_server_id
+    SELECT l.id,l.media_server_id FROM libraries l LEFT JOIN media_server ms ON ms.id=l.media_server_id
     WHERE l.is_active AND l.media_type IN ('movie','tv') AND (l.media_server_id IS NULL OR ms.is_active)
-), latest_sync AS (
-    SELECT DISTINCT ON (s.library_id) s.status FROM media_server_sync_status s
-    JOIN active_libraries l ON l.id=s.library_id ORDER BY s.library_id,s.created_at DESC,s.id DESC
 )
 SELECT CASE
     WHEN NOT EXISTS (SELECT 1 FROM ai_provider_config WHERE id=1 AND rag_enabled) THEN 'disabled'
     WHEN NOT EXISTS (SELECT 1 FROM active_libraries) THEN 'waiting_for_libraries'
-    WHEN EXISTS (SELECT 1 FROM latest_sync WHERE status IN ('pending','running'))
+    WHEN EXISTS (SELECT 1 FROM active_libraries l WHERE ${INGESTION_UNFINISHED_MARKERS_SQL} OR ${INGESTION_OWNER_ACTIVE_SQL})
       OR EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id WHERE s.phase<>'complete')
-      OR EXISTS (SELECT 1 FROM media_source_capture_state c JOIN active_libraries l ON l.id=c.library_id WHERE c.phase='collecting') THEN 'ingesting'
+      THEN 'ingesting'
     WHEN NOT EXISTS (SELECT 1 FROM media_server_items i JOIN active_libraries l ON l.id=i.library_id
       WHERE i.media_type IN ('movie','tv')) THEN 'waiting_for_inventory'
+    WHEN EXISTS (SELECT 1 FROM active_libraries l LEFT JOIN library_ingestion_state s ON s.library_id=l.id
+      WHERE l.media_server_id IS NOT NULL AND s.library_id IS NULL) THEN 'ingesting'
     WHEN EXISTS (SELECT 1 FROM task_queue WHERE status='processing'
       OR (status='pending' AND (next_retry_at IS NULL OR next_retry_at<=statement_timestamp()))) THEN 'backfilling'
     ELSE 'ready' END AS readiness`;

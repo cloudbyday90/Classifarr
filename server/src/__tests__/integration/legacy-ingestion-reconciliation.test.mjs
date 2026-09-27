@@ -34,7 +34,10 @@ afterEach(async () => {
   await db.query('DELETE FROM users WHERE id=$1', [actorId]);
 });
 
-test('preview is read-only; confirmation is audited, idempotent, preserves data and leaves replay disabled', async () => {
+test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(mediaType => [provider, mediaType])))
+  ('%s %s legacy review is audited, idempotent, preserves data and resumes through owned replay', async (provider, mediaType) => {
+  await db.query('UPDATE media_server SET type=$2 WHERE id=$1', [serverId, provider]);
+  await db.query('UPDATE libraries SET media_type=$2 WHERE id=$1', [libraryId, mediaType]);
   const preview = await read();
   expect(preview).toMatchObject({ canReconcile: true, capture: { source: 'local_capture' }, syncs: [{ id: syncId, processed: 7 }] });
   expect((await db.query('SELECT count(*)::int AS n FROM library_ingestion_state WHERE library_id=$1', [libraryId])).rows[0].n).toBe(0);
@@ -55,7 +58,7 @@ test('preview is read-only; confirmation is audited, idempotent, preserves data 
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
   const sync = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
-    getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: 'movie', title: 'Synthetic' }], getCollections: async () => [],
+    getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: mediaType, title: 'Synthetic' }], getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await sync.syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedItems: 1 });
   expect(await readInventoryBackgroundReadiness(db)).toBe('ready');

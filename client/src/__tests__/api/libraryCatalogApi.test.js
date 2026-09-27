@@ -48,6 +48,13 @@ import {
 } from '../../api/libraryCatalogApi'
 
 describe('libraryCatalogApi', () => {
+  it('preserves pending adoption status for populated legacy libraries', async () => {
+    const library = { id: 19, item_count: 300, ingestion_status: { state: 'awaiting_import', needsReconciliation: false } }
+    mockGetDataRequest.mockResolvedValueOnce([library])
+    expect(await getLibraries()).toEqual([library])
+    mockGetDataRequest.mockResolvedValueOnce(library)
+    expect(await getLibrary(19)).toEqual(library)
+  })
   it('preserves the sanitized ingestion status in the unwrapped library response', async () => {
     const result = { id: 1, ingestion_status: { state: 'retry_wait', pages: 2, items: 25, restarts: 1,
       preflight: { phase: 'media', reason: 'unknown_source_total', message: 'Missing count.', nextStep: 'Check pagination.' } } }

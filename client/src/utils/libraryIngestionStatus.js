@@ -1,4 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+export const LIBRARY_INGESTION_COPY = Object.freeze({
+  awaiting_import: ['Library backfill scheduled', 'Existing items are kept. Classifarr will check the full library automatically when import capacity is available; learning waits.'],
+  active: ['Importing library', 'Learning waits until this import finishes. No action needed.'],
+  requested: ['Import requested', 'Checking whether this library can start.'],
+  interrupted: ['Import interrupted', 'Imported items are safe. Classifarr will replay the scan automatically.'],
+  retry_wait: ['Import retry scheduled', 'Imported items are safe. Classifarr will retry automatically; learning is waiting.'],
+  legacy_owner_unknown: ['Import owner needs verification', 'An older or external scan has no verifiable owner. Confirm that worker has stopped before reconciling its status.'],
+  disabled: ['Import paused', 'The library or media server is disabled. Enable it when you want imports to resume.'],
+  unconfigured: ['Import waiting for setup', 'Configure the media server connection before imports can resume.'],
+})
+
 export function libraryIngestionState(library, requesting = false) {
   if (requesting) return 'requested'
   if (library?.ingestion_status?.state) return library.ingestion_status.state
@@ -8,7 +19,7 @@ export function libraryIngestionState(library, requesting = false) {
 export function ingestionPollInterval(library, requesting = false) {
   const state = libraryIngestionState(library, requesting)
   if (['active', 'requested'].includes(state)) return 2000
-  if (['interrupted', 'retry_wait', 'legacy_owner_unknown'].includes(state)) return 10000
+  if (['awaiting_import', 'interrupted', 'retry_wait', 'legacy_owner_unknown'].includes(state)) return 10000
   return null
 }
 

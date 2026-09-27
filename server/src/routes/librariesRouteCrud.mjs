@@ -19,6 +19,7 @@ export function registerCrudRoutes(router, { db }) {    router.get('/', asyncHan
           l.*,
           COALESCE(msi.item_count, 0)::int AS item_count,
           l.item_count::int AS stored_item_count,
+          ${LIBRARY_INGESTION_STATUS_SQL} AS ingestion_status,
           ms.name as media_server_name,
           ms.type as media_server_type
         FROM libraries l
