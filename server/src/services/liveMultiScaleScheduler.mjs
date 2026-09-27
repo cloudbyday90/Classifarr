@@ -8,12 +8,13 @@ import { createLiveMultiScaleRefresh } from './liveMultiScaleRefresh.mjs';
 import { installLiveMultiScaleContext } from './liveMultiScaleRuntime.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
+import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 
 export function createLiveMultiScaleRuntime(database = db) {
-  return createLiveMultiScaleRefresh({ repository: createInventoryRepresentativeProfileRepository(database),
+  return withInventoryBackgroundReadiness(createLiveMultiScaleRefresh({ repository: createInventoryRepresentativeProfileRepository(database),
     withAdmission: createInventoryDiscoveryAdmission(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
-    createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision });
+    createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision }), database);
 }
 
 export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveMultiScaleRuntime(),
@@ -24,6 +25,7 @@ export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveM
   let last = null;
   const run = async () => {
     const report = await worker.run();
+    if (report.status === 'deferred' && ['disabled', 'waiting_for_libraries', 'waiting_for_inventory', 'ingesting', 'backfilling'].includes(report.reason)) return report;
     const state = ['unavailable', 'invalidated', 'capacity', 'degraded', 'deferred'].includes(report.status) ? 'retrying'
       : ['ready', 'revalidated'].includes(report.status) ? 'ready' : null;
     if (state && state !== last) {

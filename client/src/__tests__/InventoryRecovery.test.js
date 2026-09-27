@@ -2,13 +2,14 @@
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import InventoryRecovery from '@/views/InventoryRecovery.vue'
-import { getInventoryRecovery, getInventoryRecoveryPlexLink } from '@/api/inventoryRecoveryApi'
-import { inventoryRecoveryFixture, inventoryRecoveryPlexUrl } from './fixtures/inventoryRecovery'
-vi.mock('@/api/inventoryRecoveryApi', () => ({ getInventoryRecovery: vi.fn(), getInventoryRecoveryPlexLink: vi.fn() }))
+import { getInventoryRecovery, getInventoryRecoveryPlexLink, getInventoryRecoveryProgress } from '@/api/inventoryRecoveryApi'
+import { inventoryRecoveryFixture, inventoryRecoveryPlexUrl, inventoryRecoveryProgressFixture } from './fixtures/inventoryRecovery'
+vi.mock('@/api/inventoryRecoveryApi', () => ({ getInventoryRecovery: vi.fn(), getInventoryRecoveryPlexLink: vi.fn(), getInventoryRecoveryProgress: vi.fn() }))
 let wrapper
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getInventoryRecovery).mockResolvedValue(inventoryRecoveryFixture())
+  vi.mocked(getInventoryRecoveryProgress).mockResolvedValue(inventoryRecoveryProgressFixture())
   vi.mocked(getInventoryRecoveryPlexLink).mockResolvedValue({ status: 'unavailable', url: null })
 })
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); vi.useRealTimers() })

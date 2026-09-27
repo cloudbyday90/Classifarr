@@ -17,6 +17,7 @@ export function createInventoryRecoveryRouter({ authenticateToken, requireAdmin,
     }, rateLimit({ ...libraryObservationHealthLimiterConfig, max: 120,
         message: { error: 'Too many recovery reads. Try again later.' } }));
     router.get('/', async (req, res) => res.json(await service.list(req.recoveryActorId, req.query)));
+    router.get('/progress', async (req, res) => res.json(await service.progress(req.recoveryActorId, req.query)));
     router.get('/:itemId/:caseId/plex-link', async (req, res) => res.json(
         await service.plexLink(req.recoveryActorId, req.params.itemId, req.params.caseId, req.query)));
     return router;

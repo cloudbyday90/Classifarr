@@ -23,7 +23,8 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         genres jsonb, tags jsonb, content_rating text, original_rating text, studio text,
         inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz,
         inventory_tmdb_recovery jsonb, inventory_tmdb_retry_after timestamptz,
-        inventory_tmdb_lease_id uuid, inventory_tmdb_lease_until timestamptz
+        inventory_tmdb_lease_id uuid, inventory_tmdb_lease_until timestamptz,
+        inventory_tmdb_recovery_progress jsonb
       ) ON COMMIT DROP;
       CREATE TEMP TABLE media_source_observations (
         library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz

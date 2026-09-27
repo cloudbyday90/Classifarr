@@ -40,6 +40,7 @@
       {{ error ? 'Recovery data is unavailable. An active administrator session is required; refresh to try again.' : !report ? 'Loading recovery cases…' : paused ? 'Display updates paused. Background recovery continues.' : 'Updates every 30 seconds while this tab is visible.' }}
     </p>
     <template v-if="report">
+      <InventoryRecoveryProgress :report="report.progress" />
       <dl
         class="grid grid-cols-3 gap-3"
         aria-label="Recorded open recovery cases"
@@ -117,6 +118,7 @@
 <script setup>
 import { computed } from 'vue'
 import InventoryRecoveryItem from '@/components/library/InventoryRecoveryItem.vue'
+import InventoryRecoveryProgress from '@/components/library/InventoryRecoveryProgress.vue'
 import { useInventoryRecovery } from '@/composables/useInventoryRecovery'
 import { recoveryDate } from '@/utils/inventoryRecovery'
 const { report, previousPages, paused, busy, error, refresh, togglePause, nextPage, previousPage } = useInventoryRecovery()

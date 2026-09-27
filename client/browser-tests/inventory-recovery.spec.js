@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
-import { inventoryRecoveryFixture, inventoryRecoveryPlexUrl } from '../src/__tests__/fixtures/inventoryRecovery.js'
+import { inventoryRecoveryFixture, inventoryRecoveryPlexUrl, inventoryRecoveryProgressFixture } from '../src/__tests__/fixtures/inventoryRecovery.js'
 
 test('read-only recovery is keyboard accessible, recovers missing links and fits a narrow viewport', async ({ page }, testInfo) => {
   let writes = 0, linkReads = 0, reject = false
@@ -19,6 +19,7 @@ test('read-only recovery is keyboard accessible, recovers missing links and fits
     if (path === '/api/notifications/active') data = []
     if (path === '/api/notifications/unread-count') data = { unread: 0 }
     if (path === '/api/inventory-recovery') { data = reject ? { error: 'denied' } : report; status = reject ? 403 : 200 }
+    if (path === '/api/inventory-recovery/progress') data = inventoryRecoveryProgressFixture()
     if (path.endsWith('/plex-link')) {
       linkReads++
       data = linkReads === 1 ? { status: 'unavailable', url: null } : { status: 'available', url: inventoryRecoveryPlexUrl }
@@ -28,6 +29,8 @@ test('read-only recovery is keyboard accessible, recovers missing links and fits
   await page.goto('/libraries/recovery')
   await expect(page.getByRole('heading', { name: 'Metadata recovery', exact: true })).toBeVisible()
   await expect(page.locator('dd')).toHaveText(['3', '2', '1'])
+  await expect(page.getByText('50%', { exact: true })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Recovery stage counts' })).toContainText('Recovered 5')
   expect(linkReads).toBe(0)
   const summary = page.locator('summary').first()
   await summary.focus(); await page.keyboard.press('Enter')

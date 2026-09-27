@@ -11,6 +11,7 @@ import { createInventoryRepresentativeShadow } from './inventoryRepresentativeSh
 import { installRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 import { createRepresentativeValidationDiagnostics } from './representativeValidationDiagnostics.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
+import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
@@ -24,7 +25,7 @@ export function createInventoryRepresentativeProfileRuntime(database = db, { nei
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
     getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics, neighborhoodRecovery,
   });
-  return { ...worker, observer };
+  return withInventoryBackgroundReadiness({ ...worker, observer }, database);
 }
 
 export function registerInventoryRepresentativeProfileSchedule(scheduler, {

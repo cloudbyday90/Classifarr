@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T13:00:03.994Z
--- Latest Migration: 20260927_150000_add_inventory_credential_wakeup.sql
+-- Generated: 2026-09-27T13:35:48.037Z
+-- Latest Migration: 20260927_160000_add_inventory_recovery_progress.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -119,6 +119,80 @@ BEGIN
         ALTER EXTENSION vector UPDATE TO '0.8.6';
     END IF;
 END $$;
+
+
+--
+-- Name: capture_inventory_recovery_progress(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.capture_inventory_recovery_progress() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $_$
+DECLARE at_text TEXT := to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+BEGIN
+    IF NEW.inventory_tmdb_recovery->>'case_id' IS DISTINCT FROM OLD.inventory_tmdb_recovery->>'case_id'
+       OR NEW.inventory_tmdb_recovery IS NULL THEN
+        NEW.inventory_tmdb_recovery_progress := NULL;
+    END IF;
+    IF NEW.inventory_tmdb_wakeup_generation IS NOT NULL
+       AND NEW.inventory_tmdb_wakeup_generation IS DISTINCT FROM OLD.inventory_tmdb_wakeup_generation
+       AND NEW.inventory_tmdb_recovery->>'status'='open'
+       AND NEW.inventory_tmdb_recovery->>'category'='authentication'
+       AND NEW.inventory_tmdb_recovery->>'tmdb_id'=NEW.tmdb_id::text
+       AND NEW.inventory_tmdb_recovery->>'media_type'=NEW.media_type
+       AND NEW.media_type IN ('movie','tv')
+       AND NEW.inventory_tmdb_recovery->>'case_id' ~ '^[a-fA-F0-9]{8}(-[a-fA-F0-9]{4}){3}-[a-fA-F0-9]{12}$'
+       AND NEW.inventory_tmdb_retry_after IS NOT NULL THEN
+        NEW.inventory_tmdb_recovery_progress := jsonb_build_object('version',1,
+            'case_id',NEW.inventory_tmdb_recovery->>'case_id',
+            'generation',NEW.inventory_tmdb_wakeup_generation,'released_at',at_text,
+            'eligible_at',to_char(NEW.inventory_tmdb_retry_after AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));
+    END IF;
+    IF NEW.inventory_tmdb_recovery_progress->>'case_id'=NEW.inventory_tmdb_recovery->>'case_id' THEN
+        IF NEW.inventory_tmdb_lease_id IS NOT NULL AND NEW.inventory_tmdb_lease_id IS DISTINCT FROM OLD.inventory_tmdb_lease_id
+           AND NEW.inventory_tmdb_lease_until>clock_timestamp()
+           AND NOT (NEW.inventory_tmdb_recovery_progress ? 'started_at') THEN
+            NEW.inventory_tmdb_recovery_progress := NEW.inventory_tmdb_recovery_progress || jsonb_build_object('started_at',at_text);
+        END IF;
+        IF NEW.inventory_tmdb_recovery->>'status'='resolved'
+           AND OLD.inventory_tmdb_recovery->>'status'='open'
+           AND NEW.inventory_tmdb_fetched_at IS DISTINCT FROM OLD.inventory_tmdb_fetched_at
+           AND NEW.metadata->'inventory_tmdb'->>'tmdb_id'=NEW.tmdb_id::text
+           AND NEW.metadata->'inventory_tmdb'->>'media_type'=NEW.media_type THEN
+            NEW.inventory_tmdb_recovery_progress := NEW.inventory_tmdb_recovery_progress || jsonb_build_object('persisted_at',at_text);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$_$;
+
+
+--
+-- Name: capture_inventory_recovery_queue_admission(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.capture_inventory_recovery_queue_admission() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $_$
+DECLARE item_text TEXT := NEW.payload->>'itemId';
+BEGIN
+    IF item_text IS NULL OR item_text !~ '^[1-9][0-9]{0,9}$' THEN RETURN NEW; END IF;
+    IF item_text::bigint>2147483647 THEN RETURN NEW; END IF;
+    UPDATE public.media_server_items SET inventory_tmdb_recovery_progress=inventory_tmdb_recovery_progress ||
+        jsonb_build_object('queued_at',to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+    WHERE id=item_text::integer AND inventory_tmdb_recovery_progress IS NOT NULL
+      AND inventory_tmdb_recovery->>'status'='open'
+      AND inventory_tmdb_recovery_progress->>'case_id'=inventory_tmdb_recovery->>'case_id'
+      AND inventory_tmdb_recovery_progress->>'case_id'=NEW.payload->>'inventory_recovery_case_id'
+      AND inventory_tmdb_recovery_progress->>'generation'=NEW.payload->>'inventory_recovery_generation'
+      AND media_type=NEW.payload->'media'->>'media_type' AND tmdb_id::text=NEW.payload->>'tmdb_id'
+      AND library_id::text=NEW.payload->>'source_library_id'
+      AND NOT (inventory_tmdb_recovery_progress ? 'queued_at');
+    RETURN NEW;
+END;
+$_$;
 
 
 --
@@ -4710,6 +4784,8 @@ CREATE TABLE public.media_server_items (
     inventory_tmdb_lease_id uuid,
     inventory_tmdb_lease_until timestamp with time zone,
     inventory_tmdb_wakeup_generation uuid,
+    inventory_tmdb_recovery_progress jsonb,
+    CONSTRAINT inventory_recovery_progress_shape CHECK (((inventory_tmdb_recovery_progress IS NULL) OR COALESCE(((jsonb_typeof(inventory_tmdb_recovery_progress) = 'object'::text) AND ((inventory_tmdb_recovery_progress ->> 'version'::text) = '1'::text) AND (octet_length((inventory_tmdb_recovery_progress)::text) <= 1024)), false))),
     CONSTRAINT inventory_tmdb_lease_shape CHECK (((inventory_tmdb_lease_id IS NULL) = (inventory_tmdb_lease_until IS NULL))),
     CONSTRAINT inventory_tmdb_recovery_shape CHECK (((inventory_tmdb_recovery IS NULL) OR COALESCE(((jsonb_typeof(inventory_tmdb_recovery) = 'object'::text) AND ((inventory_tmdb_recovery ->> 'version'::text) = '1'::text) AND (octet_length((inventory_tmdb_recovery)::text) <= 2048)), false))),
     CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
@@ -12042,6 +12118,20 @@ CREATE INDEX idx_inventory_description_vector_cache_created ON public.inventory_
 
 
 --
+-- Name: idx_inventory_recovery_active_task; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_recovery_active_task ON public.task_queue USING btree (((payload ->> 'itemId'::text))) WHERE (((task_type)::text = 'metadata_enrichment'::text) AND ((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text])));
+
+
+--
+-- Name: idx_inventory_recovery_progress_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_recovery_progress_recent ON public.media_server_items USING btree (((inventory_tmdb_recovery_progress ->> 'released_at'::text)) DESC, id DESC) WHERE (inventory_tmdb_recovery_progress IS NOT NULL);
+
+
+--
 -- Name: idx_learned_corrections_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13519,6 +13609,13 @@ CREATE TRIGGER inventory_credential_wakeup_insert AFTER INSERT ON public.tmdb_co
 
 
 --
+-- Name: task_queue inventory_recovery_queue_admission; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER inventory_recovery_queue_admission AFTER INSERT ON public.task_queue FOR EACH ROW WHEN ((((new.task_type)::text = 'metadata_enrichment'::text) AND ((new.status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text])))) EXECUTE FUNCTION public.capture_inventory_recovery_queue_admission();
+
+
+--
 -- Name: media_server_items library_observation_clock_update; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -13733,6 +13830,13 @@ CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FO
 --
 
 CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
+
+
+--
+-- Name: media_server_items zz_inventory_recovery_progress; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER zz_inventory_recovery_progress BEFORE UPDATE ON public.media_server_items FOR EACH ROW EXECUTE FUNCTION public.capture_inventory_recovery_progress();
 
 
 --
@@ -16955,6 +17059,7 @@ FROM unnest(ARRAY[
     '20260926_233000_add_source_recovery_outcomes.sql',
     '20260927_120000_seed_restore_admission_gate.sql',
     '20260927_130000_add_inventory_provider_recovery.sql',
-    '20260927_150000_add_inventory_credential_wakeup.sql'
+    '20260927_150000_add_inventory_credential_wakeup.sql',
+    '20260927_160000_add_inventory_recovery_progress.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

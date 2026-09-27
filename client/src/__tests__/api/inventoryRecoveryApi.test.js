@@ -2,7 +2,7 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 const get = vi.fn()
 vi.mock('../../api/core', () => ({ getDataRequest: (...args) => get(...args), apiClient: {} }))
-import { getInventoryRecovery, getInventoryRecoveryPlexLink } from '../../api/inventoryRecoveryApi'
+import { getInventoryRecovery, getInventoryRecoveryPlexLink, getInventoryRecoveryProgress } from '../../api/inventoryRecoveryApi'
 import mediaServerApi from '../../api/mediaServer'
 beforeEach(() => vi.clearAllMocks())
 it('unwraps bounded reads, encodes link paths and is available through the domain aggregator', async () => {
@@ -14,4 +14,7 @@ it('unwraps bounded reads, encodes link paths and is available through the domai
   await getInventoryRecoveryPlexLink('1/2', 'case?x')
   expect(get).toHaveBeenLastCalledWith('/inventory-recovery/1%2F2/case%3Fx/plex-link', { skipAutomaticRetry: true })
   expect(mediaServerApi).toMatchObject({ getInventoryRecovery, getInventoryRecoveryPlexLink })
+  await getInventoryRecoveryProgress()
+  expect(get).toHaveBeenLastCalledWith('/inventory-recovery/progress', { skipAutomaticRetry: true })
+  expect(mediaServerApi.getInventoryRecoveryProgress).toBe(getInventoryRecoveryProgress)
 })

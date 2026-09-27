@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, jest } from '@jest/globals';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createAutomaticSourcePairRepository, readAutomaticSourcePairStatus } from '../../services/automaticSourcePairRepository.mjs';
@@ -466,6 +467,15 @@ test('database-wide lock prevents overlapping replicas and owner disconnect allo
     await holder.query('SELECT pg_advisory_lock($1)',[AUTOMATIC_SOURCE_PAIR_LOCK]);
     expect(await worker.run()).toEqual({status:'busy'}); expect((await status()).status).toBe('never_run');
   } finally { holder.release(true); }
+  // Socket destruction is asynchronous at PostgreSQL; observe ownership release
+  // before asserting reacquisition instead of racing the server under test load.
+  const deadline = Date.now() + 5000;
+  let held = true;
+  while (held && Date.now() < deadline) {
+    held = (await getPool().query("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=$1 AND locktype='advisory') AS held", [holder.processID])).rows[0].held;
+    if (held) await delay(10);
+  }
+  expect(held).toBe(false);
   expect((await worker.run()).status).toBe('evaluated');
 });
 

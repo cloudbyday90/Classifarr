@@ -64,6 +64,10 @@ export class QueueRefillService {
             imdb_id: item.imdb_id,
             posterPath: metadata.posterPath || null,
             itemId: item.id,
+            ...(item.inventory_tmdb_recovery_progress ? {
+                inventory_recovery_case_id: item.inventory_tmdb_recovery_progress.case_id,
+                inventory_recovery_generation: item.inventory_tmdb_recovery_progress.generation,
+            } : {}),
             source_library_id: item.library_id,
             source_library_name: item.library_name,
             media: { media_type: mediaType },

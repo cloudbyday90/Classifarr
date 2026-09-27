@@ -9,7 +9,7 @@ export const INVENTORY_DESCRIPTION_REFRESH_STATE_SQL = `
     embedding_ollama_host, embedding_ollama_port, embedding_ollama_model,
     ollama_host, ollama_port,
     (EXISTS (SELECT 1 FROM task_queue
-       WHERE status='processing' OR (status='pending' AND next_retry_at <= now()))
+       WHERE status='processing' OR (status='pending' AND (next_retry_at IS NULL OR next_retry_at <= now())))
      OR EXISTS (
        SELECT 1 FROM (
          SELECT DISTINCT ON (library_id) status FROM media_server_sync_status

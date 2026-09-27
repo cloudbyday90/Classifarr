@@ -7,12 +7,12 @@ import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmis
 
 test('production runtime wires shared admission before provider or vector snapshot work', async () => {
   const { state } = liveFixture();
-  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [state] }) })),
+  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [{ ...state, readiness: 'ready' }] }) })),
     withSessionAdvisoryLock: jest.fn(async () => false) };
   const runtime = createLiveMultiScaleRuntime(database);
   expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'busy' });
   expect(database.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DISCOVERY_LOCK, expect.any(Function));
-  expect(database.withTransaction).toHaveBeenCalledTimes(1); runtime.stop();
+  expect(database.withTransaction).toHaveBeenCalledTimes(2); runtime.stop();
 });
 
 test('scheduler owns installation, periodic recovery, replacement and cleanup', async () => {
@@ -44,8 +44,8 @@ test('stale owners cannot disconnect replacements and errors never escape option
 });
 
 test('runtime construction is inert and disabled configuration performs no model work', async () => {
-  const database = { withTransaction: async callback => callback({ query: async () => ({ rows: [{ rag_enabled: false }] }) }) };
+  const database = { withTransaction: async callback => callback({ query: async () => ({ rows: [{ readiness: 'disabled' }] }) }) };
   const runtime = createLiveMultiScaleRuntime(database);
-  expect(await runtime.run()).toEqual({ status: 'disabled' }); runtime.stop();
-  expect(await runtime.run()).toEqual({ status: 'cancelled' });
+  expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'disabled' }); runtime.stop();
+  expect(await runtime.run()).toEqual({ status: 'stopped' });
 });

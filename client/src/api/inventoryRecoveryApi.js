@@ -5,8 +5,12 @@ export function getInventoryRecovery(afterId = 0) {
   return getDataRequest('/inventory-recovery', { params: afterId ? { afterId } : {}, skipAutomaticRetry: true })
 }
 
+export function getInventoryRecoveryProgress() {
+  return getDataRequest('/inventory-recovery/progress', { skipAutomaticRetry: true })
+}
+
 export function getInventoryRecoveryPlexLink(itemId, caseId) {
   return getDataRequest(`/inventory-recovery/${encodeURIComponent(itemId)}/${encodeURIComponent(caseId)}/plex-link`, { skipAutomaticRetry: true })
 }
 
-export default { getInventoryRecovery, getInventoryRecoveryPlexLink }
+export default { getInventoryRecovery, getInventoryRecoveryProgress, getInventoryRecoveryPlexLink }

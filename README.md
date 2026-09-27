@@ -925,6 +925,13 @@ conflicts and unrelated 404 cooldowns remain protected; queue admission determin
 when backfill actually runs. See the [credential wakeup design](docs/architecture/inventory-credential-wakeup-design.md)
 and [outcome](docs/architecture/inventory-credential-wakeup-outcome.md).
 
+The recovery view also shows measured stage counts, recovery percentage and queue
+timings for recent credential-released cases. Empty or missing measurements are
+not presented as success. Scheduled inventory learning waits while libraries are
+being ingested or due foreground work is being backfilled; recovery itself keeps
+running. See the [progress and startup design](docs/architecture/inventory-recovery-progress-design.md)
+and [validation outcome](docs/architecture/inventory-recovery-progress-outcome.md).
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten

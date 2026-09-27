@@ -6,15 +6,16 @@ import { createInventoryRecoveryRouter } from '../routes/inventoryRecoveryRouter
 const verifyToken = jest.fn();
 jest.unstable_mockModule('../services/auth.mjs', () => ({ verifyToken }));
 const { authenticateToken, requireAdmin } = await import('../middleware/auth.mjs');
-const service = { list: jest.fn(), plexLink: jest.fn() };
+const service = { list: jest.fn(), plexLink: jest.fn(), progress: jest.fn() };
 const app = express();
 app.use('/api/inventory-recovery', createInventoryRecoveryRouter({ authenticateToken, requireAdmin, service }));
 app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: error.message }));
-const paths = ['/api/inventory-recovery', '/api/inventory-recovery/1/56d6ff3b-21ee-457b-bf93-b3d2ef767b4b/plex-link'];
+const paths = ['/api/inventory-recovery', '/api/inventory-recovery/1/56d6ff3b-21ee-457b-bf93-b3d2ef767b4b/plex-link', '/api/inventory-recovery/progress'];
 beforeEach(() => {
     for (const mock of [verifyToken, ...Object.values(service)]) mock.mockReset();
     verifyToken.mockResolvedValue({ id: 7, role: 'admin', type: 'access' });
     service.list.mockResolvedValue({ items: [] }); service.plexLink.mockResolvedValue({ status: 'unavailable', url: null });
+    service.progress.mockResolvedValue({ total: 0 });
 });
 test('anonymous reads are uncached and denied before any service query', async () => {
     for (const path of paths) {
@@ -37,4 +38,6 @@ test('API keys cannot bypass the access session; supported reads bind the actor'
     expect(result.headers['cache-control']).toBe('no-store');
     expect(service.plexLink).toHaveBeenCalledWith(7, '1', '56d6ff3b-21ee-457b-bf93-b3d2ef767b4b', {});
     await request(app).post(paths[0]).set('Authorization', 'Bearer test').expect(404);
+    await request(app).get(paths[2]).set('Authorization', 'Bearer test').expect(200);
+    expect(service.progress).toHaveBeenCalledWith(7, {});
 });

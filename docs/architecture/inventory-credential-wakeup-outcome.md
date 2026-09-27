@@ -65,8 +65,8 @@ version bump, image publication or live-container deployment is included.
 
 ## Next bounded component
 
-Measure recovery outcomes end to end: credential verified → case made eligible →
-queue admitted → observation persisted, including elapsed time and remaining
-blocker. Reuse durable case IDs and sanitized aggregate telemetry. This will
-separate queue latency from provider/source failures before adding more retry
-mechanisms, and provide an evidence-based tuning target without claiming accuracy.
+Recovery milestone capture and visual progress are now implemented; see the
+[design](inventory-recovery-progress-design.md) and
+[outcome](inventory-recovery-progress-outcome.md). The next bounded component is
+an interrupted-first-import rehearsal and ownership-based reconciliation of stale
+ingestion markers, so learning can resume safely after restart.

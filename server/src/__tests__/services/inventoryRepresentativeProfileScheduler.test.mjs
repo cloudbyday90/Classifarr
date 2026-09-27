@@ -8,12 +8,12 @@ import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmis
 
 test('production representative runtime shares discovery admission before provider/vector work', async () => {
   const { state } = representativeProfileFixture();
-  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [state] }) })),
+  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [{ ...state, readiness: 'ready' }] }) })),
     withSessionAdvisoryLock: jest.fn(async () => false) };
   const runtime = createInventoryRepresentativeProfileRuntime(database);
   expect(await runtime.run()).toMatchObject({ status: 'deferred', reason: 'busy' });
   expect(database.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DISCOVERY_LOCK, expect.any(Function));
-  expect(database.withTransaction).toHaveBeenCalledTimes(1); runtime.stop();
+  expect(database.withTransaction).toHaveBeenCalledTimes(2); runtime.stop();
 });
 
 test('startup/cron share a coalesced automatic handler, replacing and stopping the previous owner', async () => {
@@ -39,10 +39,10 @@ test('startup/cron share a coalesced automatic handler, replacing and stopping t
 });
 
 test('runtime uses existing config admission and shutdown without starting provider work', async () => {
-  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [{ rag_enabled: false }] }) })) };
+  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [{ readiness: 'disabled' }] }) })) };
   const worker = createInventoryRepresentativeProfileRuntime(database);
-  expect(await worker.run()).toMatchObject({ status: 'disabled', mode: 'shadow_cache' });
-  worker.stop(); expect(await worker.run()).toMatchObject({ status: 'cancelled' });
+  expect(await worker.run()).toMatchObject({ status: 'deferred', reason: 'disabled' });
+  worker.stop(); expect(await worker.run()).toMatchObject({ status: 'stopped' });
 });
 
 test('metadata healing is logged once on verified change, not on each periodic refresh', async () => {

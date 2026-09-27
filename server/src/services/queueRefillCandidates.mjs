@@ -63,6 +63,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
                 msi.library_id, l.name as library_name, msi.media_type, l.is_active AS source_library_active,
                 msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
                 msi.inventory_tmdb_retry_after, msi.inventory_tmdb_lease_until,
+                msi.inventory_tmdb_recovery_progress,
                 NOW() AS inventory_tmdb_checked_at,
                 (${STANDARD_ENRICHMENT_SQL}) AS needs_standard_enrichment
              FROM scan

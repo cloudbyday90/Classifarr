@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add visual, durable metadata-recovery progress with measured timings and clear
+  next steps. Defer scheduled inventory learning until configuration, inventory
+  and foreground-work prerequisites are ready; keep ingestion and recovery active.
 - Automatically verify saved TMDb credential changes and release older
   authentication-blocked inventory cases in restart-safe, deduplicated batches.
   Preserve provider throttling, source/lease guards and unrelated 404 cooldowns;

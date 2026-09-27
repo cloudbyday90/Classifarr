@@ -6,12 +6,14 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthor
 import { INVENTORY_RECOVERY_PAGE, INVENTORY_RECOVERY_LINK_SOURCE } from './inventoryRecoveryReadQuery.mjs';
 import { projectInventoryRecovery } from './inventoryRecoveryPresentation.mjs';
 import { createPlexLogItemLinks } from './plexLogItemLinks.mjs';
+import { readInventoryRecoveryProgress } from './inventoryRecoveryProgressService.mjs';
 
 const sameSource = (a, b) => b && ['item_revision', 'library_revision', 'server_revision']
     .every(key => a[key] === b[key]);
 
 export function createInventoryRecoveryReadService({ db, resolveLinks = createPlexLogItemLinks() }) {
     return {
+        progress: (actorId, query) => readInventoryRecoveryProgress(db, actorId, query),
         async list(actorId, query = {}) {
             await requireReviewActor(db, actorId);
             if (Object.keys(query).some(key => key !== 'afterId')) throw new ValidationError('Invalid recovery filter');

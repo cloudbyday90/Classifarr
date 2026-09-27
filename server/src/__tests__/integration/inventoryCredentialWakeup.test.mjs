@@ -7,6 +7,7 @@ import { createInventoryCredentialWakeupService } from '../../services/inventory
 import { prepareQueueEnrichmentPayload } from '../../services/queueEnrichmentPayload.mjs';
 import { persistEnrichmentMetadata } from '../../services/queueEnrichmentPersistence.mjs';
 import { QueueInventoryTmdbEnrichmentService } from '../../services/queueInventoryTmdbEnrichmentService.mjs';
+import { QueueRefillService } from '../../services/queueRefillService.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 let config, library, server, repository, itemIds, verify, service;
@@ -53,6 +54,13 @@ test.each(['movie', 'tv'])('verified %s recovery releases once and ordinary work
     expect(released.inventory_tmdb_retry_after.getTime()).toBeGreaterThan(Date.now() - 1000);
     expect(released.inventory_tmdb_recovery).toEqual(before.inventory_tmdb_recovery);
     expect(released.metadata).toEqual(before.metadata);
+    expect(released.inventory_tmdb_recovery_progress).toMatchObject({ version: 1,
+        case_id: before.inventory_tmdb_recovery.case_id, generation: released.inventory_tmdb_wakeup_generation });
+    const queuedPayload = new QueueRefillService().buildMetadataEnrichmentPayload(released);
+    const task = await db.query("INSERT INTO task_queue(task_type,payload) VALUES ('metadata_enrichment',$1) RETURNING id", [queuedPayload]);
+    expect((await item()).inventory_tmdb_recovery_progress.queued_at).toEqual(expect.any(String));
+    // Queue retention cannot erase a captured admission milestone.
+    await db.query('DELETE FROM task_queue WHERE id=$1', [task.rows[0].id]);
     await batchDue();
     expect(await createInventoryCredentialWakeupService({ db, verify }).run()).toEqual({ released: 0 });
     expect(verify).toHaveBeenCalledTimes(1);
@@ -64,6 +72,9 @@ test.each(['movie', 'tv'])('verified %s recovery releases once and ordinary work
     expect(await worker.enrich(payload, metadata, 7, { query: db.query, receipt })).toBe(true);
     expect((await persistEnrichmentMetadata(db.query, payload, 7, metadata, true, receipt)).rowCount).toBe(1);
     expect(await item()).toMatchObject({ tmdb_id: 7, inventory_tmdb_recovery: { status: 'resolved' }, metadata: { preserved: true, inventory_tmdb: { tmdb_id: 7 } } });
+    expect((await item()).inventory_tmdb_recovery_progress).toMatchObject({ queued_at: expect.any(String), started_at: expect.any(String), persisted_at: expect.any(String) });
+    await db.query("UPDATE media_server_items SET title='Changed source' WHERE id=$1", [itemIds[0]]);
+    expect((await item()).inventory_tmdb_recovery_progress).toBeNull();
 });
 test('failed verification persists backoff across restart without touching any item', async () => {
     await seed(); const before = await item();

@@ -1,15 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { computed, ref, watch } from 'vue'
-import { getInventoryRecovery } from '@/api/inventoryRecoveryApi'
+import { getInventoryRecovery, getInventoryRecoveryProgress } from '@/api/inventoryRecoveryApi'
 import { useSWR } from '@/composables/useSWR'
 import { parseInventoryRecovery } from '@/utils/inventoryRecovery'
+import { parseInventoryRecoveryProgress } from '@/utils/inventoryRecoveryProgress'
 
 export function useInventoryRecovery() {
   const afterId = ref(0), previousPages = ref([]), paused = ref(false), frozen = ref(null), busy = ref(false)
   let pauseRevision = 0
   const state = useSWR('inventory-recovery', async () => {
     const requested = afterId.value
-    return parseInventoryRecovery(await getInventoryRecovery(requested), requested)
+    const [cases, progress] = await Promise.all([getInventoryRecovery(requested), getInventoryRecoveryProgress()])
+    return { ...parseInventoryRecovery(cases, requested), progress: parseInventoryRecoveryProgress(progress) }
   }, { persist: false, autoRetry: false, pollInterval: () => paused.value ? null : 30000 })
   const report = computed(() => {
     if (state.error.value || state.isOffline.value) return null

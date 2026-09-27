@@ -6,6 +6,7 @@ import { createAdjudicationBudgetWorker } from './adjudicationBudgetWorker.mjs';
 import { createAdjudicationBudgetRepository } from './adjudicationBudgetRepository.mjs';
 import { createLocalDescriptionBenchmarkClient } from './localDescriptionBenchmarkClient.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from './freshInventoryPolicyRuntime.mjs';
+import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 
 /** One scheduler lifecycle, two separate permissions: replay cannot authorize inference. */
 export function createAutomaticSourcePairWorkers(database) {
@@ -15,8 +16,8 @@ export function createAutomaticSourcePairWorkers(database) {
   const capture = createAdjudicationBudgetWorker({ repository, withAdmission,
     budget: createAdjudicationBudgetRepository(database), createClient: createLocalDescriptionBenchmarkClient,
     readConfig: async () => (await database.query(FRESH_POLICY_CONFIG_SQL)).rows[0] });
-  return {
+  return withInventoryBackgroundReadiness({
     async run() { const result = await evaluator.run(); await capture.run(); return result; },
     stop() { evaluator.stop(); capture.stop(); },
-  };
+  }, database);
 }
