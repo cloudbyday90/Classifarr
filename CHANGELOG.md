@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Gate CI on reviewed inventory-write changes across imports, capture state,
+  sync status and recovery checkpoints. Preserve visible unresolved paths,
+  require review of ownership-helper and SQL changes, and reject unreadable or
+  malformed audit inputs without accessing live data.
 - Add an administrator-reviewed recovery path for unverifiable legacy import
   records. Require a disabled library, stopped-worker confirmation and a fresh
   preview; preserve imported media and commit an audit receipt atomically.

@@ -57,6 +57,9 @@ jobs:
           cd server
           npm ci
 
+      - name: Check ingestion ownership review drift
+        run: npm run inventory:ownership:check
+
       - name: Check release provenance workflow contract
         run: |
           cd server

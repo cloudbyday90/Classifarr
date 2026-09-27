@@ -21,7 +21,7 @@ function action(tokens, event) {
 }
 
 /** Linear token passes over authoritative pg_dump ALTER TABLE and CREATE TRIGGER statements. */
-export function readWriterSchemaEvidence(source) {
+export function readWriterSchemaEvidence(source, protectedRelations = ['media_server_items']) {
     const tokens = sqlTokens(maskSqlComments(source)), statements = [];
     let statement = [];
     for (const token of tokens) {
@@ -39,7 +39,7 @@ export function readWriterSchemaEvidence(source) {
         const triggerStart = keyword(parts[0]) === 'CREATE' ? (keyword(parts[1]) === 'OR' && keyword(parts[2]) === 'REPLACE' ? 3 : 1) : -1;
         if (triggerStart !== -1 && keyword(parts[triggerStart]) === 'TRIGGER') {
             const on = phraseAt(parts, ['ON']), execute = phraseAt(parts, ['EXECUTE', 'FUNCTION']);
-            if (on !== -1 && relation(nameAt(parts, on + 1)) === 'media_server_items') triggers.push({ name: nameAt(parts, triggerStart + 1),
+            if (on !== -1 && protectedRelations.includes(relation(nameAt(parts, on + 1)))) triggers.push({ name: nameAt(parts, triggerStart + 1),
                 line: parts[0].line, function: execute === -1 ? null : nameAt(parts, execute + 2) });
         }
     }

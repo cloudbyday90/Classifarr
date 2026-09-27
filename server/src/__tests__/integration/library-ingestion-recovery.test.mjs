@@ -108,6 +108,30 @@ test('failed finalization rolls back pruning, capture and completion together', 
   expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('failed');
 });
 
+test('owner lost after the last provider page cannot finalize or prune through the pool', async () => {
+  await sync(async () => [item(99)]).syncLibrary(libraryId);
+  const interrupted = sync(async () => [item(11)], { mediaServerServices: { getMediaServerService: async () => ({
+    getLibraryItems: async () => [item(11)],
+    getCollections: async () => {
+      const { rows: [lock] } = await db.query(`SELECT pid FROM pg_locks WHERE locktype='advisory'
+        AND classid=$1::oid AND objid=$2::oid AND objsubid=2 AND granted
+        AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`, [MEDIA_SYNC_OWNER_LOCK, libraryId]);
+      // Terminate only this disposable suite's identified library owner, never a live backend.
+      expect(lock?.pid).toBeGreaterThan(0);
+      await db.query('SELECT pg_terminate_backend($1,5000)', [lock.pid]);
+      return [];
+    },
+  }) } });
+  await expect(interrupted.syncLibrary(libraryId)).rejects.toThrow();
+  expect(await inventory()).toEqual(['11', '99']);
+  expect((await state()).phase).toBe('running');
+  expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
+  await due();
+  await expect(sync(async () => [item(22)]).syncLibrary(libraryId)).resolves.toMatchObject({ success: true, prunedItems: 2 });
+  expect(await inventory()).toEqual(['22']);
+  expect((await state()).phase).toBe('complete');
+});
+
 test('unknown legacy markers are preserved instead of age-based takeover', async () => {
   await db.query("INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status) VALUES ($1,$2,'full','running')", [serverId, libraryId]);
   const pages = jest.fn();

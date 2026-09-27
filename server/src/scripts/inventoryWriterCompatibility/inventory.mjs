@@ -12,19 +12,22 @@ function scope(path) {
     if (path.startsWith('server/src/scripts/') || path.startsWith('scripts/') || path.startsWith('execution/')) return 'maintenance_or_prototype';
     return 'runtime_source';
 }
-function parentRelations(edges, field) {
-    const reached = new Set(['media_server_items']);
+function parentRelations(edges, field, protectedRelations) {
+    const reached = new Set(protectedRelations);
     for (let changed = true; changed;) {
         changed = false;
-        for (const edge of edges) if (edge[field] !== 'NO_ACTION' && reached.has(edge.child) && !reached.has(edge.parent)) { reached.add(edge.parent); changed = true; }
+        for (const edge of edges) if ((field === null || edge[field] !== 'NO_ACTION') && reached.has(edge.child) && !reached.has(edge.parent)) { reached.add(edge.parent); changed = true; }
     }
-    reached.delete('media_server_items'); return reached;
+    for (const target of protectedRelations) reached.delete(target);
+    return reached;
 }
 
-export function evaluateWriterInventory(files, sourceGaps = []) {
+export function evaluateWriterInventory(files, sourceGaps = [], protectedRelations = ['media_server_items']) {
     const schema = files.find(file => file.path === 'database/schema/current.sql');
-    const evidence = readWriterSchemaEvidence(schema?.source ?? ''), edges = evidence.edges;
-    const deleteParents = parentRelations(edges, 'onDelete'), updateParents = parentRelations(edges, 'onUpdate');
+    const evidence = readWriterSchemaEvidence(schema?.source ?? '', protectedRelations), edges = evidence.edges;
+    const deleteParents = parentRelations(edges, 'onDelete', protectedRelations), updateParents = parentRelations(edges, 'onUpdate', protectedRelations);
+    // TRUNCATE CASCADE follows references regardless of their ON DELETE action.
+    const truncateParents = parentRelations(edges, null, protectedRelations);
     const candidates = [], gaps = [...sourceGaps], triggers = evidence.triggers.map(item => ({ path: schema.path, ...item })), fingerprint = createHash('sha256');
     if (!schema) gaps.push({ path: 'database/schema/current.sql', line: 1, reason: 'missing_authoritative_schema' });
     for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path, 'en'))) {
@@ -41,8 +44,9 @@ export function evaluateWriterInventory(files, sourceGaps = []) {
             }
             for (const match of findWriterOperations(sql)) {
                 const target = relation(match.target), operation = match.operation;
-                const direct = target === 'media_server_items';
-                const parent = (operation === 'DELETE' || operation === 'TRUNCATE' || operation === 'MERGE') ? deleteParents.has(target) || updateParents.has(target) : updateParents.has(target);
+                const direct = protectedRelations.includes(target);
+                const parent = operation === 'TRUNCATE' ? truncateParents.has(target) :
+                    (operation === 'DELETE' || operation === 'MERGE') ? deleteParents.has(target) || updateParents.has(target) : updateParents.has(target);
                 if (!direct && !parent && !target.includes('__dynamic__')) continue;
                 const line = fragment.rawSql ? fragment.line + match.line - 1 : fragment.line;
                 const kind = direct ? 'direct' : parent ? 'cascade_parent' : 'dynamic_target';
@@ -55,8 +59,8 @@ export function evaluateWriterInventory(files, sourceGaps = []) {
     const unique = [...new Map(candidates.map(item => [JSON.stringify([item.path, item.line, item.operation, item.target, item.statementDigest, item.sourceOffset]), item])).values()];
     return { contract: 'inventory.writer-compatibility.v1', parser: WRITER_SQL_PARSER, sourceFingerprint: fingerprint.digest('hex'), scannedFiles: files.length,
         productionCompatible: false, completeness: 'static_candidates_only', candidates: unique, triggers,
-        cascadeParents: { delete: [...deleteParents].sort(), update: [...updateParents].sort() },
-        cascadeEdges: edges.filter(edge => edge.child === 'media_server_items' || deleteParents.has(edge.child) || updateParents.has(edge.child)), gaps,
+        cascadeParents: { delete: [...deleteParents].sort(), update: [...updateParents].sort(), truncate: [...truncateParents].sort() },
+        cascadeEdges: edges.filter(edge => protectedRelations.includes(edge.child) || deleteParents.has(edge.child) || updateParents.has(edge.child) || truncateParents.has(edge.child)), gaps,
         limitations: ['No arbitrary SQL data-flow or runtime reachability proof', 'Indirect query arguments require resolution',
             'Schema snapshot does not prove deployed triggers or privileges', 'Non-JavaScript/SQL sources remain explicit gaps'] };
 }
