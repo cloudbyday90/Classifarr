@@ -4,6 +4,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
+import { collectContainerStartupDiagnostic, formatContainerStartupDiagnostic } from './containerStartupDiagnostics.mjs';
 
 export const upgradeBaseline = Object.freeze({
   release: 'v0.48.4-beta',
@@ -35,13 +37,11 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   Object.assign(env, { COMPOSE_DISABLE_ENV_FILE: '1', CLASSIFARR_UPGRADE_IMAGE: upgradeBaseline.image,
     CLASSIFARR_UPGRADE_CANDIDATE: candidateImage, CLASSIFARR_UPGRADE_MODE: 'normal' });
   const base = ['compose', '--project-name', project, '--file', composeFile, '--project-directory', root];
-  let commandDiagnostic = '';
   const invoke = (binary, args, timeout = 120_000, allowFailure = false, input) => {
     try {
       const result = run(binary, args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
         encoding: 'utf8', timeout, maxBuffer: 8 * 1024 * 1024, input });
       if (!result.error && (allowFailure || result.status === 0) && typeof result.stdout === 'string') return result;
-      commandDiagnostic = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.slice(-16_384);
     } catch { /* Never propagate command output or credentials. */ }
     throw new Error(`upgrade_command_failed:${binary}:${args[0]}`);
   };
@@ -138,8 +138,13 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     // All runner errors are fixed classifications; probe bodies and logs stay out of receipts.
     if (/^(upgrade_|missing_or_duplicate_upgrade_receipt)/.test(error.message)) report(error.message);
     try {
-      const logs = compose(['logs', '--no-color', '--tail', '100', 'app'], 30_000, true);
-      saveDiagnostic(project, `${stage}\n${commandDiagnostic}\n${logs.stdout}\n${logs.stderr ?? ''}`.slice(-32_768));
+      const command = (args, options) => runDockerCheckCommand(args, { ...options, run, env });
+      const container = command([...base, 'ps', '--all', '--quiet', 'app']);
+      const id = container.stdout.trim();
+      if (!container.ok || !/^[a-f0-9]{12,64}$/.test(id)) throw new Error('diagnostic_target_unavailable');
+      const diagnostic = formatContainerStartupDiagnostic(collectContainerStartupDiagnostic(id, { command }));
+      saveDiagnostic(project, `${stage}\n${diagnostic}\n`);
+      report(diagnostic);
       report(`UPGRADE_DIAGNOSTIC .tmp/published-upgrade/${project}/failure.log`);
     } catch { report('UPGRADE_DIAGNOSTIC unavailable'); }
     failure = new Error(`published_upgrade_failed:${stage}`);

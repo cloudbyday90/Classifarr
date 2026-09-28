@@ -9,60 +9,23 @@
  * (at your option) any later version.
  */
 
-import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { checkSchemaSnapshot } from './check-schema-snapshot.mjs';
 import { dumpSchema } from './dump-schema.mjs';
+import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
+import { waitForContainerReady } from './lib/containerReadiness.mjs';
+import { collectContainerStartupDiagnostic, formatContainerStartupDiagnostic } from './lib/containerStartupDiagnostics.mjs';
 
 export const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
-const READY_TIMEOUT_MS = 180_000;
-const POLL_INTERVAL_MS = 2_000;
 export const SCHEMA_CHECK_CONTAINER_LABEL = 'io.classifarr.role=schema-snapshot-check';
-
-function sleep(milliseconds) {
-  return new Promise(resolvePromise => setTimeout(resolvePromise, milliseconds));
-}
-
-function runCommand(command, args, { allowFailure = false, encoding = 'utf8' } = {}) {
-  try {
-    const stdout = execFileSync(command, args, {
-      encoding,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    return { ok: true, stdout: String(stdout || '') };
-  } catch (error) {
-    if (!allowFailure) {
-      throw error;
-    }
-    return {
-      ok: false,
-      stdout: String(error?.stdout || ''),
-      stderr: String(error?.stderr || ''),
-      error,
-    };
-  }
-}
-
-function docker(...args) {
-  return runCommand('docker', args);
-}
-
-function dockerAllowFailure(...args) {
-  return runCommand('docker', args, { allowFailure: true });
-}
-
-function parseContainerIds(stdout) {
-  return String(stdout || '')
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(Boolean);
-}
+const TEMP_ROOT = resolve(import.meta.dirname, '../.tmp');
 
 export function createSchemaCheckRunSpec({
   prefix = 'classifarr-schema-check',
-  suffix = `${Date.now()}-${process.pid}`,
-  tempRoot = join(process.cwd(), '.tmp'),
+  suffix = randomUUID(),
+  tempRoot = TEMP_ROOT,
 } = {}) {
   const normalizedSuffix = String(suffix).replace(/[^a-zA-Z0-9_.-]/g, '-');
   return {
@@ -73,10 +36,6 @@ export function createSchemaCheckRunSpec({
 
 export function buildDockerBindMountArg(hostPath, containerPath = '/app/data') {
   return `type=bind,src=${resolve(hostPath)},dst=${containerPath}`;
-}
-
-export function buildSchemaCheckContainerLabelFilter() {
-  return `label=${SCHEMA_CHECK_CONTAINER_LABEL}`;
 }
 
 function getHostUid() {
@@ -98,33 +57,12 @@ export function buildSchemaCheckIdentityEnvArgs({
   return ['-e', `PUID=${uid}`, '-e', `PGID=${gid}`];
 }
 
-function ensureRemovedContainer(containerName) {
-  dockerAllowFailure('rm', '-f', containerName);
-}
-
-function ensureRemovedSchemaCheckContainers() {
-  const containers = parseContainerIds(
-    dockerAllowFailure('ps', '-aq', '--filter', buildSchemaCheckContainerLabelFilter()).stdout
-  );
-
-  if (containers.length > 0) {
-    dockerAllowFailure('rm', '-f', ...containers);
-  }
-}
-
 function ensureRemovedHostData(hostDataPath) {
-  try {
-    fs.rmSync(hostDataPath, { recursive: true, force: true });
-  } catch (error) {
-    if (error?.code !== 'EACCES' && error?.code !== 'EPERM') {
-      throw error;
-    }
-    throw error;
-  }
+  fs.rmSync(hostDataPath, { recursive: true, force: true });
 }
 
-function ensureRemovedHostDataWithContainer(hostDataPath, imageName) {
-  dockerAllowFailure(
+function ensureRemovedHostDataWithContainer(hostDataPath, imageName, command) {
+  const result = command([
     'run',
     '--rm',
     '--entrypoint',
@@ -133,25 +71,24 @@ function ensureRemovedHostDataWithContainer(hostDataPath, imageName) {
     buildDockerBindMountArg(hostDataPath, '/cleanup'),
     imageName,
     '-lc',
-    'rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?* 2>/dev/null || true'
-  );
+    'rm -rf /cleanup/* /cleanup/.[!.]* /cleanup/..?*'
+  ], { timeoutMs: 30_000 });
+  if (!result.ok) throw new Error('schema_check_data_cleanup_failed');
   fs.rmSync(hostDataPath, { recursive: true, force: true });
 }
 
-function ensureRemovedHostDataRobust(hostDataPath, imageName) {
+function ensureRemovedHostDataRobust(hostDataPath, imageName, command) {
   try {
     ensureRemovedHostData(hostDataPath);
   } catch (error) {
     if (error?.code !== 'EACCES' && error?.code !== 'EPERM') {
       throw error;
     }
-    ensureRemovedHostDataWithContainer(hostDataPath, imageName);
+    ensureRemovedHostDataWithContainer(hostDataPath, imageName, command);
   }
 }
 
-function startSchemaCheckContainer({ containerName, hostDataPath, imageName }) {
-  fs.mkdirSync(hostDataPath, { recursive: true });
-  ensureRemovedContainer(containerName);
+function startSchemaCheckContainer({ containerName, hostDataPath, imageName, command }) {
   const hostUid = getHostUid();
   const hostGid = getHostGid();
   const dockerArgs = [
@@ -165,33 +102,10 @@ function startSchemaCheckContainer({ containerName, hostDataPath, imageName }) {
     buildDockerBindMountArg(hostDataPath),
   ];
   dockerArgs.push(...buildSchemaCheckIdentityEnvArgs({ uid: hostUid, gid: hostGid }));
-  docker(...dockerArgs, imageName);
-}
-
-function getContainerLogs(containerName) {
-  return docker('logs', containerName).stdout;
-}
-
-async function waitForContainerReady(containerName, timeoutMs = READY_TIMEOUT_MS) {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    const appReady = dockerAllowFailure(
-      'exec',
-      containerName,
-      'curl',
-      '-fsS',
-      'http://127.0.0.1:21324/health'
-    );
-
-    if (appReady.ok) {
-      return;
-    }
-
-    await sleep(POLL_INTERVAL_MS);
+  if (!command([...dockerArgs, imageName], { timeoutMs: 120_000 }).ok) {
+    throw new Error('Container creation failed.\n' +
+      formatContainerStartupDiagnostic(collectContainerStartupDiagnostic(containerName, { command })));
   }
-
-  const logs = getContainerLogs(containerName);
-  throw new Error(`Container ${containerName} did not become application-ready in time.\n${logs}`);
 }
 
 function registerSignalCleanup(cleanup) {
@@ -217,31 +131,45 @@ function registerSignalCleanup(cleanup) {
   };
 }
 
-async function withSchemaCheckContainer({
+export async function withSchemaCheckContainer({
   imageName = DEFAULT_IMAGE_NAME,
   runSpec = createSchemaCheckRunSpec(),
   action,
+  command = runDockerCheckCommand,
 } = {}) {
   const { containerName, hostDataPath } = runSpec;
+  // Only this repository's disposable directory, never an arbitrary supplied bind mount.
+  if (!/^classifarr-schema-check-[a-zA-Z0-9_.-]+$/.test(containerName) ||
+    dirname(resolve(hostDataPath)) !== TEMP_ROOT ||
+    basename(hostDataPath) !== containerName.replace('classifarr-schema-check-', 'classifarr-schema-check-data-')) {
+    throw new Error('invalid_schema_check_target');
+  }
+  const existing = command(['ps', '-aq', '--filter', `name=^${containerName}$`]);
+  if (!existing.ok || existing.stdout.trim() || fs.existsSync(hostDataPath)) throw new Error('schema_check_target_not_empty');
+  fs.mkdirSync(TEMP_ROOT, { recursive: true });
+  fs.mkdirSync(hostDataPath);
+  let cleaned = false;
   const cleanup = () => {
-    ensureRemovedContainer(containerName);
-    ensureRemovedHostDataRobust(hostDataPath, imageName);
-    ensureRemovedSchemaCheckContainers();
+    if (cleaned) return;
+    const removed = command(['rm', '-f', containerName], { timeoutMs: 30_000 });
+    if (!removed.ok) {
+      const remaining = command(['ps', '-aq', '--filter', `name=^${containerName}$`]);
+      if (!remaining.ok || remaining.stdout.trim()) throw new Error('schema_check_container_cleanup_failed');
+    }
+    ensureRemovedHostDataRobust(hostDataPath, imageName, command);
+    cleaned = true;
   };
   const unregisterSignalCleanup = registerSignalCleanup(cleanup);
-
+  let failure;
   try {
-    ensureRemovedSchemaCheckContainers();
-    ensureRemovedContainer(containerName);
-    ensureRemovedHostDataRobust(hostDataPath, imageName);
-    startSchemaCheckContainer({ containerName, hostDataPath, imageName });
-    await waitForContainerReady(containerName);
+    startSchemaCheckContainer({ containerName, hostDataPath, imageName, command });
+    await waitForContainerReady(containerName, { command });
 
     const previousDumpContainer = process.env.DUMP_CONTAINER;
     process.env.DUMP_CONTAINER = containerName;
 
     try {
-      action();
+      await action();
     } finally {
       if (previousDumpContainer == null) {
         delete process.env.DUMP_CONTAINER;
@@ -249,9 +177,20 @@ async function withSchemaCheckContainer({
         process.env.DUMP_CONTAINER = previousDumpContainer;
       }
     }
+  } catch (error) {
+    failure = error;
+    throw error;
   } finally {
     unregisterSignalCleanup();
-    cleanup();
+    try { cleanup(); }
+    catch (error) {
+      if (failure) {
+        // Preserve the startup diagnosis even if Docker becomes unavailable during cleanup.
+        throw new Error(`${failure.message}\nOwned resource cleanup also failed; inspect the disposable schema-check resources.`,
+          { cause: error });
+      }
+      throw error;
+    }
   }
 }
 

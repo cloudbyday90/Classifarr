@@ -44,7 +44,8 @@ local development check; use the existing isolated-container check for this case
 
 ## Follow-up
 
-Improve the schema-check harness's failure diagnostics: report bounded stderr and
-container exit state promptly while still requiring application readiness. Keep
-the existing fresh-install/published-upgrade acceptance job; do not increase the
-timeout or bypass restore admission to hide this failure.
+Implemented the [bounded startup diagnostic design](container-startup-diagnostics-design.md):
+capture both streams, publish recognized safe signals and container state, and
+stop promptly after exit. Application readiness remains mandatory. See the
+[validation outcome](container-startup-diagnostics-outcome.md) for test results
+and the remaining local provenance-check limitation.

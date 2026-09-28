@@ -75,6 +75,24 @@ test('cleanup failure takes precedence without losing scenario phase', async () 
   const run = mockRunner((_cmd, args) => args[7] === 'build' || args.includes('down') ? { status: 1, stdout: '' } : undefined);
   await expect(runWith(run)).rejects.toThrow(/published_upgrade_cleanup_failed:.*:build/);
 });
+
+test('failure diagnostics include safe stderr evidence before cleanup without retaining raw output', async () => {
+  const run = mockRunner((_cmd, args) => {
+    if (args[7] === 'up') return { status: 1, stdout: 'password=secret' };
+    if (args[0] === 'inspect') return { status: 0, stdout: JSON.stringify({
+      status: 'exited', exitCode: 1, oomKilled: false, errorPresent: false, health: 'unhealthy',
+    }) };
+    if (args[0] === 'logs') return { status: 0, stdout: 'secret',
+      stderr: 'Failed to start server: Restore verification is incomplete.\n::error::secret' };
+  });
+  const saveDiagnostic = jest.fn();
+  const reportDiagnostic = jest.fn();
+  await expect(runWith(run, { saveDiagnostic, report: reportDiagnostic })).rejects.toThrow('published_upgrade_failed:fresh_install');
+  expect(saveDiagnostic.mock.calls[0][1]).toContain('restore_verification_incomplete (stderr)');
+  expect(JSON.stringify(saveDiagnostic.mock.calls) + JSON.stringify(reportDiagnostic.mock.calls)).not.toMatch(/secret|::error::/);
+  expect(run.mock.calls.findIndex(([, args]) => args[0] === 'logs'))
+    .toBeLessThan(run.mock.calls.findIndex(([, args]) => args.includes('down')));
+});
 test('does not call arbitrary normal startup failure a recovery success', async () => {
   const run = mockRunner((_cmd, args) => args[7] === 'logs' ? { status: 0, stdout: 'unrelated crash' } : undefined);
   await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:normal_rejection');

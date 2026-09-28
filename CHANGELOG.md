@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Report safe startup causes, stderr signals and container exit/OOM state in
+  isolated schema and upgrade checks. Bound readiness probes and diagnostic
+  capture, stop promptly after exits, and preserve concurrent verification runs.
+- Apply open PR #548 locally: update Markdown lint tooling to 0.23.3 and refresh
+  its lockfile. No PR merge or release.
 - Coordinate content-import recovery across libraries sharing a Jellyfin, Emby or
   Plex server. Persist outage waits, honor server retry delays, and admit one
   bounded media-and-collection recovery check before resuming imports. Preserve
