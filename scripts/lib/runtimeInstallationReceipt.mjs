@@ -4,6 +4,7 @@ import { upgradeBaseline } from './publishedUpgradeCompose.mjs';
 import { assertScheduledInstallationResult, assertScheduledCrashRecovery } from './scheduledInstallationContract.mjs';
 import { installationBudgetEvidence } from '../../server/src/scripts/installationBudgetContract.mjs';
 import { provenanceFailureDiagnostic } from './publishedUpgradeProvenance.mjs';
+import { formatInstallationBudgetSummary } from './installationBudgetSummary.mjs';
 export { SCHEDULED_INSTALLATION_EXPECTED } from './scheduledInstallationContract.mjs';
 
 export const INSTALLATION_CHECKS = Object.freeze([
@@ -83,6 +84,7 @@ export function formatRuntimeInstallationSummary(receipt) {
     receipt.checks.map(check => `| ${check.id.replaceAll('_', ' ')} | ${check.status === 'passed' ? 'Passed' : 'Not verified'} |`).join('\n') +
     `\n| Owned resource cleanup | ${receipt.cleanup === 'passed' ? 'Passed' : 'Not verified'} |\n` +
     (receipt.resourceBudget ? `| 2 CPU / 128 PID database and restart recovery (fresh + upgrade) | ${receipt.resourceBudget.status === 'passed' ? 'Passed' : 'Not verified'} |\n` : '') + '\n' +
+    formatInstallationBudgetSummary(receipt.resourceBudget) +
     (passed ? 'Scope: one published baseline, fresh install and real-scheduler movie/TV progress; not live-provider quality or published-image provenance.\n'
       : `${diagnostic ? `Provenance: ${diagnostic.reason.replaceAll('_', ' ')} (${diagnostic.credentialSource}).\n\nNext: ${diagnostic.nextStep}`
         : `Next: investigate the ${receipt.failureStage} stage and rerun.`} Publication remains blocked.\n`);

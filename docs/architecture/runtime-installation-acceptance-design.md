@@ -11,6 +11,10 @@ extension adds database admission pressure and normal-runtime crash recovery at
 2 CPUs / 128 PIDs. It preserves the default gate and requires separate fresh and
 published-upgrade proof when requested.
 
+The [manual Linux CI budget profile](installation-budget-ci-design.md) exposes
+that extension as `mode=installation-budget`, without changing default release
+gates. Its summary reports the actual cgroup version and measured recovery.
+
 ## Decision
 
 Run fresh-install and published-upgrade acceptance in a read-only GitHub-hosted

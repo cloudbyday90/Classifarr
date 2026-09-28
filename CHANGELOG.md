@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a manual Linux CI installation-budget profile for isolated fresh/upgrade
+  recovery under CPU, memory and PID limits. Report actual cgroup versions and
+  recovery timings; preserve default release gates and upload only bounded evidence.
 - Explain published-upgrade verification failures with secret-free credential-source
   diagnostics and specific recovery steps, preserving pinned provenance checks and
   existing authentication precedence without automatic credential fallback.

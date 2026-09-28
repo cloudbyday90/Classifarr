@@ -17,6 +17,7 @@ on:
         options:
           - cleanup
           - ci
+          - installation-budget
 
 env:
   REGISTRY: ghcr.io
@@ -350,7 +351,7 @@ jobs:
   runtime-installation-acceptance:
     name: Fresh Install and Published Upgrade
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'ci'
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'ci' || inputs.mode == 'installation-budget'
     timeout-minutes: 40
     permissions:
       contents: read
@@ -365,10 +366,17 @@ jobs:
         with:
           node-version-file: '.nvmrc'
       - name: Run isolated installation acceptance
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'ci'
         env:
           GH_TOKEN: ${{ github.token }}
           CLASSIFARR_INSTALLATION_SOURCE_REVISION: ${{ github.sha }}
         run: node scripts/run-runtime-installation-acceptance.mjs --ci
+      - name: Run budgeted installation acceptance
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'installation-budget'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLASSIFARR_INSTALLATION_SOURCE_REVISION: ${{ github.sha }}
+        run: node scripts/run-runtime-installation-acceptance.mjs --ci --resource-budget
       - name: Upload bounded installation evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -377,6 +385,7 @@ jobs:
           path: |
             .tmp/ci/runtime-installation-acceptance.json
             .tmp/ci/runtime-installation-acceptance.md
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
 
