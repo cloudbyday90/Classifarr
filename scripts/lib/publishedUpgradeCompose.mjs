@@ -8,6 +8,7 @@ import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { collectContainerStartupDiagnostic, formatContainerStartupDiagnostic } from './containerStartupDiagnostics.mjs';
 import { assertScheduledInstallationResult, SCHEDULED_INSTALLATION_EXPECTED } from './scheduledInstallationContract.mjs';
 import { runScheduledCrashRecovery } from './scheduledCrashRecovery.mjs';
+import { runInstallationBudgetRecovery } from './installationBudgetRecovery.mjs';
 
 export const upgradeBaseline = Object.freeze({
   release: 'v0.48.4-beta',
@@ -24,7 +25,7 @@ export function parseUpgradeReceipt(output, prefix) {
 }
 
 /** Fixed disposable target and immutable release; never accepts live configuration. */
-export async function runPublishedUpgradeCompose({ run = spawnSync, random = randomBytes, freshOnly = false,
+export async function runPublishedUpgradeCompose({ run = spawnSync, random = randomBytes, freshOnly = false, resourceBudget = false,
   sleep = delay, now = Date.now, report = message => process.stdout.write(`${message}\n`),
   saveDiagnostic = (project, diagnostic) => {
     const directory = resolve(root, '.tmp/published-upgrade', project);
@@ -32,14 +33,20 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     writeFileSync(resolve(directory, 'failure.log'), diagnostic, { mode: 0o600 });
   } } = {}) {
   if (typeof freshOnly !== 'boolean') throw new TypeError('invalid_installation_scope');
+  if (typeof resourceBudget !== 'boolean') throw new TypeError('invalid_installation_budget');
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_upgrade_identity');
   const project = `classifarr-upgrade-drill-${suffix}`;
   const candidateImage = `${project}-candidate`;
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^COMPOSE_/i.test(key)));
   Object.assign(env, { COMPOSE_DISABLE_ENV_FILE: '1', CLASSIFARR_UPGRADE_IMAGE: upgradeBaseline.image,
-    CLASSIFARR_UPGRADE_CANDIDATE: candidateImage, CLASSIFARR_UPGRADE_MODE: 'normal' });
+    CLASSIFARR_UPGRADE_CANDIDATE: candidateImage, CLASSIFARR_UPGRADE_MODE: 'normal',
+    CLASSIFARR_UPGRADE_BUDGET: resourceBudget ? 'bounded' : 'none' });
   const base = ['compose', '--project-name', project, '--file', composeFile, '--project-directory', root];
+  if (resourceBudget) {
+    base.push('--file', resolve(root, 'docker-compose.resource-study-budget.yml'));
+    Object.assign(env, { CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128' });
+  }
   const invoke = (binary, args, timeout = 120_000, allowFailure = false, input) => {
     try {
       const result = run(binary, args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
@@ -88,13 +95,15 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     const fresh = probe('fresh');
     passed('fresh_install_and_operational_seeds');
     stage = 'fresh_scheduler';
-    const crashRecovery = await runScheduledCrashRecovery({ compose, docker, probe, poll, start,
-      setStage: value => { stage = value; } });
+    const recoveryTools = { compose, docker, probe, poll, start, setStage: value => { stage = value; } };
+    const freshBudget = resourceBudget ? await runInstallationBudgetRecovery(recoveryTools) : null;
+    const crashRecovery = freshBudget?.recovery ?? await runScheduledCrashRecovery(recoveryTools);
     const freshScheduler = SCHEDULED_INSTALLATION_EXPECTED;
     passed('fresh_startup_scheduler_progress');
     passed('fresh_backfill_crash_recovery');
     result = { status: 'passed', scope: 'fresh-only', baseline: null, candidateImageId: candidateId,
-      fresh, scheduler: { fresh: freshScheduler }, crashRecovery, checks };
+      fresh, scheduler: { fresh: freshScheduler }, crashRecovery, checks,
+      ...(resourceBudget ? { resourceBudget: { fresh: freshBudget.evidence } } : {}) };
     if (!freshOnly) {
       // Remove only the owned fresh volume before booting the published release.
       // Never seed the upgrade with a candidate-created database.
@@ -148,11 +157,14 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       probe('normal');
       passed('verified_normal_restart_and_profiles');
       stage = 'upgrade_scheduler';
-      const upgradeScheduler = assertScheduledInstallationResult(probe('scheduled'));
+      const upgradeBudget = resourceBudget ? await runInstallationBudgetRecovery({ ...recoveryTools,
+        setStage: () => { stage = 'upgrade_scheduler'; } }) : null;
+      const upgradeScheduler = upgradeBudget ? SCHEDULED_INSTALLATION_EXPECTED : assertScheduledInstallationResult(probe('scheduled'));
       passed('upgrade_startup_scheduler_progress');
       result = { status: 'passed', scope: 'fresh-and-upgrade', baseline: upgradeBaseline, candidateImageId: candidateId, fresh,
         scheduler: { fresh: freshScheduler, upgrade: upgradeScheduler }, crashRecovery,
-        database: { baseline: baselineDatabase, candidate: upgraded.candidate }, recovery, handoff, checks };
+        database: { baseline: baselineDatabase, candidate: upgraded.candidate }, recovery, handoff, checks,
+        ...(resourceBudget ? { resourceBudget: { fresh: freshBudget.evidence, upgrade: upgradeBudget.evidence } } : {}) };
     }
   } catch (error) {
     // All runner errors are fixed classifications; probe bodies and logs stay out of receipts.

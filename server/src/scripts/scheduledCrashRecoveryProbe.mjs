@@ -6,16 +6,20 @@ import { waitForScheduledProgress, readScheduledTasks, readScheduledInventory,
   waitForScheduledCompletion, assertScheduledInventory, assertScheduledTaskInventory } from './scheduledInstallationEvidence.mjs';
 import { writeScheduledCrashCheckpoint, readScheduledCrashCheckpoint } from './scheduledCrashCheckpoint.mjs';
 import { METADATA_REFILL_OWNER_LOCK } from '../services/queueRefillCoordination.mjs';
+import { exerciseInstallationConnectionPressure, writeInstallationPressureEvidence } from './installationConnectionPressure.mjs';
 
 const readRuns = async (db, ids) => (await db.query(`SELECT library_id,run_id FROM library_ingestion_state
   WHERE library_id=ANY($1::integer[]) AND phase='complete' ORDER BY library_id`, [ids])).rows;
 
-export async function armScheduledCrash(db) {
+export async function armScheduledCrash(db, { resourceBudget = false } = {}) {
   assertUpgradeDrillEnvironment();
   return runScheduledInstallationProbe(db, { beforeBackfill: async ({ ids, owner }) => {
+    const libraries = await readRuns(db, ids), inventory = await readScheduledInventory(db, ids);
+    if (resourceBudget) await writeInstallationPressureEvidence(await exerciseInstallationConnectionPressure(owner));
+    assert.deepEqual(await readRuns(db, ids), libraries);
+    assert.deepEqual(await readScheduledInventory(db, ids), inventory);
     const ownerPid = (await owner.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
-    await writeScheduledCrashCheckpoint({ version: 1, ownerPid, libraries: await readRuns(db, ids),
-      inventory: await readScheduledInventory(db, ids) });
+    await writeScheduledCrashCheckpoint({ version: 1, ownerPid, libraries, inventory });
     // Retain the real refill lock until the whole container is killed, or fail on a bounded deadline.
     await waitForScheduledProgress(() => false, 'crash_pending');
   } });

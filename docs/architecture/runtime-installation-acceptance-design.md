@@ -6,6 +6,11 @@ adds real startup-scheduler progress to both scenarios, and
 restart from committed inventory. Version 3 receipts require all twelve checks;
 earlier nine- and eleven-check outcomes remain historical evidence.
 
+The opt-in [installation budget recovery](installation-budget-recovery-design.md)
+extension adds database admission pressure and normal-runtime crash recovery at
+2 CPUs / 128 PIDs. It preserves the default gate and requires separate fresh and
+published-upgrade proof when requested.
+
 ## Decision
 
 Run fresh-install and published-upgrade acceptance in a read-only GitHub-hosted

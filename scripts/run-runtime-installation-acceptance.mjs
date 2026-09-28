@@ -19,21 +19,21 @@ export function readInstallationSource(run = spawnSync) {
   return { sourceRevision, worktreeClean: git(['status', '--porcelain', '--untracked-files=normal']) === '' };
 }
 
-export async function runRuntimeInstallationAcceptance({ ci = false, expectedRevision = process.env.CLASSIFARR_INSTALLATION_SOURCE_REVISION,
+export async function runRuntimeInstallationAcceptance({ ci = false, resourceBudget = false, expectedRevision = process.env.CLASSIFARR_INSTALLATION_SOURCE_REVISION,
   source = readInstallationSource, drill = runPublishedUpgradeCompose, save = saveReceipt } = {}) {
   let identity = {}, receipt;
   let stage = 'preflight';
   try {
     identity = source();
     if (ci && (!identity.worktreeClean || identity.sourceRevision !== expectedRevision)) throw new Error('ci_source_mismatch');
-    const result = await drill();
+    const result = await drill({ resourceBudget });
     stage = 'evidence';
     const after = source();
     if (after.sourceRevision !== identity.sourceRevision || (ci && !after.worktreeClean)) throw new Error('source_changed');
     identity.worktreeClean = identity.worktreeClean && after.worktreeClean;
-    receipt = createRuntimeInstallationReceipt({ ...identity, result });
+    receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget, result });
   } catch (error) {
-    receipt = createRuntimeInstallationReceipt({ ...identity,
+    receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget,
       failureStage: stage === 'evidence' ? stage : installationFailureStage(error) });
   }
   save(receipt, formatRuntimeInstallationSummary(receipt));
@@ -54,8 +54,8 @@ function saveReceipt(receipt, summary) {
 if (import.meta.main) {
   try {
     const args = process.argv.slice(2);
-    if (args.length && (args.length !== 1 || args[0] !== '--ci')) throw new Error('invalid_arguments');
-    const receipt = await runRuntimeInstallationAcceptance({ ci: args[0] === '--ci' });
+    if (new Set(args).size !== args.length || args.some(arg => !['--ci', '--resource-budget'].includes(arg))) throw new Error('invalid_arguments');
+    const receipt = await runRuntimeInstallationAcceptance({ ci: args.includes('--ci'), resourceBudget: args.includes('--resource-budget') });
     process.stdout.write(`Runtime installation acceptance: ${receipt.status}. Receipt: ${INSTALLATION_RECEIPT_PATH}\n`);
     if (receipt.status !== 'passed') process.exitCode = 1;
   } catch {

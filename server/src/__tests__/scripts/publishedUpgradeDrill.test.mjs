@@ -5,10 +5,12 @@ import { load } from 'js-yaml';
 import { runPublishedUpgradeCompose, parseUpgradeReceipt, upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
 import { assertUpgradeDrillEnvironment } from '../../scripts/publishedUpgradeFixtures.mjs';
 import { SCHEDULED_INSTALLATION_EXPECTED, SCHEDULED_CRASH_BOUNDARY, SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
+import { metrics, pressure } from '../fixtures/installationBudget.mjs';
 
 const random = size => Buffer.alloc(size, 1);
 const report = () => {};
-const operations = run => run.mock.calls.filter(([, args]) => args[0] === 'compose').map(([, args]) => args.slice(7));
+const composeOperation = args => args.slice(args[7] === '--file' ? 9 : 7);
+const operations = run => run.mock.calls.filter(([, args]) => args[0] === 'compose').map(([, args]) => composeOperation(args));
 function mockRunner(override = () => undefined) {
   return jest.fn((command, args, options) => {
     const replacement = override(command, args, options);
@@ -18,7 +20,7 @@ function mockRunner(override = () => undefined) {
     if (args[0] === 'inspect') stdout = args.includes('{{.State.ExitCode}}') ? '1' : 'exited';
     if (args.includes('{{.State.ExitCode}} {{.State.OOMKilled}}')) stdout = '137 false';
     if (args[0] === 'compose') {
-      const op = args.slice(7);
+      const op = composeOperation(args);
       if (op[0] === 'logs') stdout = 'Restore verification is incomplete';
       if (op[0] === 'ps') stdout = 'b'.repeat(64);
       if (op.includes('--input-type=module') && op[0] === 'exec') stdout = 'UPGRADE_SEED {"version":"180000","migrations":20}\n';
@@ -26,11 +28,39 @@ function mockRunner(override = () => undefined) {
       if (op.at(-1) === 'scheduled') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_INSTALLATION_EXPECTED)}\n`;
       if (op.at(-1) === 'scheduled-crash-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_BOUNDARY)}\n`;
       if (op.at(-1) === 'scheduled-crash-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_RECOVERY)}\n`;
+      if (op.at(-1) === 'budget-prepare') stdout = 'UPGRADE_PROBE {"maxConnections":32,"restartRequired":true}\n';
+      if (op.at(-1) === 'budget-pressure') stdout = `UPGRADE_PROBE ${JSON.stringify(pressure())}\n`;
+      if (op.at(-1) === 'budget-snapshot') stdout = `UPGRADE_PROBE ${JSON.stringify(metrics())}\n`;
+    }
+    if (args[0] === 'inspect' && args.some(arg => arg.includes('.HostConfig.NanoCpus'))) {
+      stdout = JSON.stringify({ nanoCpus: 2e9, pids: 128, memoryBytes: 2 * 1024 ** 3, cpuQuota: 0 });
     }
     return { status: 0, stdout };
   });
 }
 const runWith = (run, options = {}) => runPublishedUpgradeCompose({ run, random, report, saveDiagnostic: () => {}, ...options });
+
+test.each([true, false])('opt-in budget reuses fixed limits and crash protocol, freshOnly=%s', async freshOnly => {
+  const run = mockRunner();
+  const result = await runWith(run, { freshOnly, resourceBudget: true });
+  expect(result.cleanup).toBe('passed');
+  expect(Object.keys(result.resourceBudget)).toEqual(freshOnly ? ['fresh'] : ['fresh', 'upgrade']);
+  const ops = operations(run);
+  expect(ops.filter(args => args.at(-1) === 'scheduled-crash-budget-arm')).toHaveLength(freshOnly ? 1 : 2);
+  expect(ops.some(args => args.at(-1) === 'scheduled')).toBe(false);
+  const build = run.mock.calls.find(([, args]) => args.includes('build'));
+  expect(build[1][8]).toMatch(/docker-compose.resource-study-budget.yml$/);
+  expect(build[2].env).toMatchObject({ CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128', CLASSIFARR_UPGRADE_BUDGET: 'bounded' });
+  expect(run.mock.calls.filter(([, args]) => args.includes('build'))).toHaveLength(1);
+  expect(run.mock.calls.some(([cmd]) => cmd === 'gh')).toBe(!freshOnly);
+});
+
+test('missing budget evidence fails before the crash and owned resources are still cleaned', async () => {
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'budget-pressure' ? { status: 0, stdout: 'UPGRADE_PROBE {}\n' } : undefined);
+  await expect(runWith(run, { freshOnly: true, resourceBudget: true })).rejects.toThrow('published_upgrade_failed:fresh_scheduler');
+  expect(operations(run).some(args => args[0] === 'kill')).toBe(false);
+  expect(operations(run).at(-1)).toContain('down');
+});
 
 test('pins provenance, preserves real entrypoints, checks recovery and cleans only owned resources', async () => {
   const run = mockRunner();

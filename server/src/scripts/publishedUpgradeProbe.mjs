@@ -18,10 +18,21 @@ async function login(password) {
 export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
   assert.ok(['fresh', 'scheduled', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume',
+    'scheduled-crash-budget-arm', 'budget-prepare', 'budget-pressure', 'budget-snapshot',
     'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
   const db = await import('../config/database.mjs');
   let blocker;
   try {
+    if (phase.startsWith('budget-')) {
+      const { assertInstallationBudgetEnvironment, prepareInstallationConnectionBudget, readInstallationPressureEvidence }
+        = await import('./installationConnectionPressure.mjs');
+      assertInstallationBudgetEnvironment();
+      if (phase === 'budget-prepare') return await prepareInstallationConnectionBudget(db);
+      if (phase === 'budget-pressure') return await readInstallationPressureEvidence();
+      const { readStudyCgroup } = await import('./resourceStudyMetrics.mjs');
+      const { installationBudgetSnapshot } = await import('./installationBudgetContract.mjs');
+      return installationBudgetSnapshot(await readStudyCgroup());
+    }
     if (phase === 'fresh') {
       const { verifyFreshInstallation } = await import('./freshInstallationProbe.mjs');
       return await verifyFreshInstallation(db);
@@ -33,6 +44,7 @@ export async function runUpgradeProbe(phase) {
     if (phase.startsWith('scheduled-crash-')) {
       const { armScheduledCrash, verifyScheduledCrashBoundary, verifyScheduledCrashRecovery } = await import('./scheduledCrashRecoveryProbe.mjs');
       if (phase === 'scheduled-crash-arm') return await armScheduledCrash(db);
+      if (phase === 'scheduled-crash-budget-arm') return await armScheduledCrash(db, { resourceBudget: true });
       return await (phase === 'scheduled-crash-ready' ? verifyScheduledCrashBoundary(db) : verifyScheduledCrashRecovery(db));
     }
     const fixture = await readUpgradeFixture();

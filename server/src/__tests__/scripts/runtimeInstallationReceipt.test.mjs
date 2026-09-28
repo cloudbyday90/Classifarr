@@ -5,6 +5,7 @@ import { INSTALLATION_CHECKS, SCHEDULED_INSTALLATION_EXPECTED, createRuntimeInst
   installationFailureStage } from '../../../../scripts/lib/runtimeInstallationReceipt.mjs';
 import { readInstallationSource, runRuntimeInstallationAcceptance } from '../../../../scripts/run-runtime-installation-acceptance.mjs';
 import { SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
+import { evidence } from '../fixtures/installationBudget.mjs';
 
 const revision = 'a'.repeat(40);
 const identity = { sourceRevision: revision, worktreeClean: true };
@@ -110,4 +111,28 @@ test('reads only source revision and worktree status with bounded shell-free com
   expect(run.mock.calls.every(([, , options]) => options.shell === false && options.timeout === 10000)).toBe(true);
   expect(() => readInstallationSource(() => ({ status: 1, stdout: 'private' }))).toThrow('source_unavailable');
   expect(() => readInstallationSource(() => ({ status: 0, stdout: 'private' }))).toThrow('source_invalid');
+});
+
+test('budget acceptance requires separate fresh and upgrade proof and carries the requested mode', async () => {
+  const result = { ...success(), resourceBudget: { fresh: evidence(), upgrade: evidence() } };
+  const drill = jest.fn(async () => result);
+  const receipt = await runRuntimeInstallationAcceptance({ resourceBudget: true, source: () => identity, drill, save: () => {} });
+  expect(drill).toHaveBeenCalledWith({ resourceBudget: true });
+  expect(receipt.status).toBe('passed');
+  expect(receipt.resourceBudget.status).toBe('passed');
+  expect(formatRuntimeInstallationSummary(receipt)).toContain('2 CPU / 128 PID');
+  for (const key of ['fresh', 'upgrade']) {
+    const incomplete = { ...result, resourceBudget: { ...result.resourceBudget, [key]: undefined } };
+    expect(() => createRuntimeInstallationReceipt({ ...identity, resourceBudget: true, result: incomplete })).toThrow();
+  }
+  expect(() => createRuntimeInstallationReceipt({ ...identity, result })).toThrow();
+  expect(() => createRuntimeInstallationReceipt({ ...identity, resourceBudget: true, result: success() })).toThrow();
+});
+
+test('failed requested budget mode remains visible and cannot silently pass ordinary evidence', async () => {
+  const receipt = await runRuntimeInstallationAcceptance({ resourceBudget: true, source: () => identity,
+    drill: async () => success(), save: () => {} });
+  expect(receipt.status).toBe('blocked');
+  expect(receipt.failureStage).toBe('evidence');
+  expect(receipt.resourceBudget.status).toBe('not_verified');
 });

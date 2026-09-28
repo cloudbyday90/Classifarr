@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend isolated installation acceptance with opt-in CPU/PID limits, bounded
+  database connection exhaustion and real restart/backfill recovery. Keep fresh
+  and published-upgrade evidence distinct; leave live limits and releases unchanged.
 - Add an isolated CPU/PID-budget comparison with independently verified limits,
   fresh-start checks, process-denial detection and unchanged recovery deadlines.
   Compare matched workloads through an opt-in CI profile without changing live

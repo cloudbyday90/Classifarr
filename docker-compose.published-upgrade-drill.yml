@@ -11,6 +11,7 @@ services:
     user: '1000:1000'
     environment:
       CLASSIFARR_UPGRADE_DRILL: isolated-compose-v1
+      CLASSIFARR_UPGRADE_BUDGET: ${CLASSIFARR_UPGRADE_BUDGET:-none}
       CLASSIFARR_RUNTIME_MODE: ${CLASSIFARR_UPGRADE_MODE:-normal}
       POSTGRES_HOST: localhost
       POSTGRES_PORT: '5432'

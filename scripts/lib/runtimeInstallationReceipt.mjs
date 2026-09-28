@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { upgradeBaseline } from './publishedUpgradeCompose.mjs';
 import { assertScheduledInstallationResult, assertScheduledCrashRecovery } from './scheduledInstallationContract.mjs';
+import { installationBudgetEvidence } from '../../server/src/scripts/installationBudgetContract.mjs';
 export { SCHEDULED_INSTALLATION_EXPECTED } from './scheduledInstallationContract.mjs';
 
 export const INSTALLATION_CHECKS = Object.freeze([
@@ -24,14 +25,16 @@ function database(value) {
 
 /** Reconstruct allowlisted fields: never serialize raw probe/error objects. */
 export function createRuntimeInstallationReceipt({ sourceRevision = null, worktreeClean = false,
-  result = null, failureStage = 'preflight', completedAt = new Date().toISOString() } = {}) {
+  result = null, resourceBudget = false, failureStage = 'preflight', completedAt = new Date().toISOString() } = {}) {
   assert.ok(sourceRevision === null || /^[a-f0-9]{40,64}$/.test(sourceRevision));
   assert.equal(typeof worktreeClean, 'boolean');
+  assert.equal(typeof resourceBudget, 'boolean');
   assert.equal(new Date(completedAt).toISOString(), completedAt);
   const receipt = { schemaVersion: 'classifarr.runtime-installation-acceptance.v3', completedAt,
     sourceRevision, worktreeClean, status: 'blocked', failureStage: STAGES.has(failureStage) ? failureStage : 'evidence',
     baseline: { ...upgradeBaseline }, candidateImageId: null, database: null,
-    checks: INSTALLATION_CHECKS.map(id => ({ id, status: 'not_verified' })), cleanup: 'not_verified' };
+    checks: INSTALLATION_CHECKS.map(id => ({ id, status: 'not_verified' })), cleanup: 'not_verified',
+    ...(resourceBudget ? { resourceBudget: { status: 'not_verified' } } : {}) };
   if (!result) return receipt;
   assert.equal(result.status, 'passed');
   assert.equal(result.scope, 'fresh-and-upgrade');
@@ -50,8 +53,13 @@ export function createRuntimeInstallationReceipt({ sourceRevision = null, worktr
   assert.deepEqual(databases.fresh, databases.candidate);
   assert.ok(databases.candidate.migrations > databases.baseline.migrations);
   assert.ok(sourceRevision);
+  // Requested extra coverage cannot silently fall back to a normal installation receipt.
+  const budget = resourceBudget ? { status: 'passed', fresh: installationBudgetEvidence(result.resourceBudget?.fresh),
+    upgrade: installationBudgetEvidence(result.resourceBudget?.upgrade) } : null;
+  if (!resourceBudget) assert.equal(result.resourceBudget, undefined);
   return { ...receipt, status: 'passed', failureStage: null, candidateImageId: result.candidateImageId,
-    database: databases, checks: INSTALLATION_CHECKS.map(id => ({ id, status: 'passed' })), cleanup: 'passed' };
+    database: databases, checks: INSTALLATION_CHECKS.map(id => ({ id, status: 'passed' })), cleanup: 'passed',
+    ...(resourceBudget ? { resourceBudget: budget } : {}) };
 }
 
 export function installationFailureStage(error) {
@@ -68,7 +76,8 @@ export function formatRuntimeInstallationSummary(receipt) {
     `${passed ? 'Passed' : 'Blocked'}. ${receipt.worktreeClean ? 'Clean checkout.' : 'Local/dirty checkout; not CI acceptance.'}\n\n` +
     '| Check | Result |\n| --- | --- |\n' +
     receipt.checks.map(check => `| ${check.id.replaceAll('_', ' ')} | ${check.status === 'passed' ? 'Passed' : 'Not verified'} |`).join('\n') +
-    `\n| Owned resource cleanup | ${receipt.cleanup === 'passed' ? 'Passed' : 'Not verified'} |\n\n` +
+    `\n| Owned resource cleanup | ${receipt.cleanup === 'passed' ? 'Passed' : 'Not verified'} |\n` +
+    (receipt.resourceBudget ? `| 2 CPU / 128 PID database and restart recovery (fresh + upgrade) | ${receipt.resourceBudget.status === 'passed' ? 'Passed' : 'Not verified'} |\n` : '') + '\n' +
     (passed ? 'Scope: one published baseline, fresh install and real-scheduler movie/TV progress; not live-provider quality or published-image provenance.\n'
       : `Next: investigate the ${receipt.failureStage} stage and rerun. Publication remains blocked.\n`);
 }
