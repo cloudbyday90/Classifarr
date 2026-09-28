@@ -15,6 +15,8 @@ import { createLibraryProfileService } from '../services/libraryProfileService.m
 import { readLibraryProfileRefreshStatus } from '../services/libraryProfileRefreshStatus.mjs';
 import { createResourceStudyFixture, seedResourceStudyLibraries, resourceStudyEvaluationSnapshot, studyPhase } from './resourceStudyFixtures.mjs';
 import { createStudySampler, readStudyCgroup, assertStudyCgroup, summarizeStudySamples, observeStudyAdmission } from './resourceStudyMetrics.mjs';
+import { resourceStudyProfile, assertResourceStudyReceipt } from './resourceStudyProfiles.mjs';
+import { createStudyQueueRecovery } from './resourceStudyQueueRecovery.mjs';
 
 export async function readStudyBacklog(db) {
   return (await db.query(`SELECT count(*) FILTER (WHERE status IN ('pending','processing'))::integer AS pending,
@@ -26,7 +28,8 @@ export async function readStudyBacklog(db) {
 }
 
 /** Runs only inside the separately guarded disposable study process. */
-export async function runResourceStudyWorkload(db, durationMs, progress = () => {}) {
+export async function runResourceStudyWorkload(db, mode, progress = () => {}) {
+  const profile = resourceStudyProfile(mode), { durationMs } = profile;
   const start = performance.now(), fixture = createResourceStudyFixture();
   let phase = 'warmup', stopped = false, serviceErrors = 0;
   const readMemory = () => {
@@ -44,6 +47,9 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
   queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger, tmdbService: fixture.provider,
     queueOmdbEnrichmentService: { enrich: async () => {} }, queueWebSearchEnrichmentService: { enrich: async () => {} },
     completeTask: (...args) => queue.completeTask(...args), failTask: (...args) => queue.failTask(...args) });
+  const recovery = createStudyQueueRecovery({ db, queue, admission });
+  const processTask = queue.processTask.bind(queue);
+  queue.processTask = task => { recovery.onStart(task); return processTask(task); };
   const planner = new LibraryInventoryProfileRefreshPlanner({ dbClient: db });
   const profiles = new PolicyProfileRefreshOutboxWorker({ dbClient: db,
     profileService: createLibraryProfileService({ dbClient: db }), loggerInstance: logger });
@@ -84,7 +90,7 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
     // Bounded, non-overlapping loops; all started promises are joined before exit.
     producer = (async () => {
       for (let wave = 0; wave < 20 && !stopped; wave++) {
-        fixture.grow(durationMs === 120000 ? 5 : 20); counters.growthWaves++; await scan();
+        fixture.grow(profile.growth); counters.growthWaves++; await scan();
         await delay(Math.max(0, start + (wave + 1) * durationMs / 20 - performance.now()));
       }
     })();
@@ -92,14 +98,14 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
       while (!stopped) {
         try {
           await evaluate(async signal => {
-            const result = await runAutomaticSourcePairThread(resourceStudyEvaluationSnapshot(), null, signal);
+            const result = await runAutomaticSourcePairThread(resourceStudyEvaluationSnapshot(profile), null, signal);
             assert.equal(result.report.status, 'complete'); counters.evaluations++;
           }, { signal: AbortSignal.timeout(120000) });
         } catch (error) {
           if (error.message !== 'inventory_discovery_deferred') throw error;
           counters.evaluationDeferrals++;
         }
-        await delay(1000);
+        await delay(profile.evaluationIntervalMs);
       }
     })();
     // Observe loop failures immediately without orphaning the other loop.
@@ -107,8 +113,15 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
     producer.catch(error => { failure = error; }); evaluator.catch(error => { failure = error; });
     while (performance.now() - start < durationMs) {
       if (failure) throw failure;
-      phase = studyPhase(performance.now() - start, durationMs);
+      const nextPhase = studyPhase(performance.now() - start, durationMs);
+      if (nextPhase !== phase) {
+        if (phase === 'telemetry_pressure') { await recovery.checkHeld(); recovery.clear(); }
+        phase = nextPhase;
+        if (phase === 'telemetry_pressure') await recovery.hold();
+      }
       await queue.refillQueue(); await refresh();
+      if (phase === 'telemetry_pressure') await recovery.checkHeld();
+      await recovery.checkRecovery();
       await sampler.sample(phase, await readStudyBacklog(db));
       if (sampler.samples.length % 15 === 1) progress({ phase, elapsedSeconds: Math.round((performance.now() - start) / 1000), ...counters });
       await delay(2000);
@@ -120,6 +133,7 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
     while (performance.now() - drainStart < 120000) {
       if (!finalScanComplete) finalScanComplete = await scan();
       await queue.refillQueue(); await refresh();
+      await recovery.checkRecovery();
       const backlog = await readStudyBacklog(db);
       await sampler.sample(phase, backlog);
       const states = (await readLibraryProfileRefreshStatus(db)).libraries.filter(row => ids.includes(row.libraryId));
@@ -138,12 +152,16 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
     assert.equal(final.memoryLimitHits, sampler.initial.memoryLimitHits);
     assert.ok(counters.evaluations > 0 && counters.providerFailures > 0 && counters.preservedOutages > 0);
     for (const row of Object.values(admission.classes)) assert.ok(row.memory_pressure > 0);
-    return { version: 'resource_study.v1', status: 'passed', durationMs: Math.round(performance.now() - start),
+    const result = { version: 'resource_study.v2', profile: mode, evaluationRows: profile.rows,
+      vectorDimensions: profile.dimensions, queueRecovery: recovery.receipt,
+      status: 'passed', durationMs: Math.round(performance.now() - start),
       requestedDurationMs: durationMs, scope: 'synthetic_services_not_model_accuracy', pressure: 'injected_telemetry_not_physical',
       inventory: fixture.count * 4, backlog, counters, drainMs: Math.round(performance.now() - drainStart),
       admission: admission.classes, initial: sampler.initial, final,
       metrics: summarizeStudySamples(sampler.samples), phases: Object.fromEntries([...new Set(sampler.samples.map(row => row.phase))]
         .map(name => [name, summarizeStudySamples(sampler.samples.filter(row => row.phase === name))])) };
+    assertResourceStudyReceipt(result, mode);
+    return result;
   } finally {
     stopped = true; queue.stopWorker();
     await Promise.allSettled([producer, evaluator, worker]);
@@ -151,6 +169,7 @@ export async function runResourceStudyWorkload(db, durationMs, progress = () => 
     while (queue.processing > 0 && performance.now() < deadline) await delay(50);
     sampler.close();
     assert.equal(queue.processing, 0, 'study_workers_did_not_settle');
+    assert.equal(serviceErrors, 0, 'study_service_errors');
     for (const row of Object.values(admission.classes)) assert.equal(row.active, 0, 'study_permit_leak');
   }
 }

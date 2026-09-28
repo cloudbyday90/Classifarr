@@ -102,3 +102,9 @@ has now passed with 1,600 synthetic movie/TV items, complete recovery and a samp
 unchanged. A capacity-regression gate with representative inventory/vector sizes
 and a queued-work pressure challenge is next; this smaller synthetic study does
 not establish safe CPU/PID ceilings or physical-OOM recovery behavior.
+
+The [capacity regression gate](resource-capacity-regression-validation.md) now
+tests 6,700 evaluation descriptions at 768 dimensions and a nonempty pressure
+cohort. It passed at 643.3 MiB sampled container peak, with complete recovery but
+a 105.8-second final drain. Prioritize bounded queue wakeup efficiency before
+changing memory reservations or production CPU/PID limits.

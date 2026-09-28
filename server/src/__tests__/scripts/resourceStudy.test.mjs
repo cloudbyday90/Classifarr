@@ -8,6 +8,15 @@ import { studyPhase, createResourceStudyFixture, resourceStudyEvaluationSnapshot
 import { runResourceStudy } from '../../scripts/runResourceStudy.mjs';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
 import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCompose.mjs';
+import { resourceStudyProfile } from '../../scripts/resourceStudyProfiles.mjs';
+
+const passedReceipt = mode => {
+  const profile = resourceStudyProfile(mode);
+  return { status: 'passed', version: 'resource_study.v2', profile: mode, requestedDurationMs: profile.durationMs,
+    durationMs: profile.durationMs + 100, evaluationRows: profile.rows, vectorDimensions: profile.dimensions,
+    queueRecovery: { cohortSize: 20, started: 20, completed: 20, startedDuringPressure: 0,
+      holdChecks: 5, heldMs: 10000, firstDispatchMs: 500, completedMs: 2000 } };
+};
 
 test.each([null, undefined, '', '-1', '1.5', 'NaN', 'max', '9007199254740992', '2 extra'])('missing/invalid counter %s is unknown, not zero', value => {
   expect(parseResourceCounter(value)).toBeNull();
@@ -103,17 +112,17 @@ function fakeDocker(override = () => null) {
     if (args[7] === 'ps') stdout = 'b'.repeat(64);
     if (args.includes('src/scripts/publishedUpgradeProbe.mjs')) stdout = 'UPGRADE_PROBE {"status":"passed"}';
     if (args.includes('src/scripts/runResourceStudy.mjs')) {
-      const mode = args.at(-1), ms = mode === 'smoke' ? 120000 : 1800000;
+      const mode = args.at(-1);
       stdout = `RESOURCE_STUDY ${JSON.stringify(mode === 'seed' ? { seeded: true }
-        : { status: 'passed', version: 'resource_study.v1', requestedDurationMs: ms, durationMs: ms + 100 })}`;
+        : passedReceipt(mode))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
 }
 const launch = (run, extra = {}) => runResourceStudyCompose({ run, random: size => Buffer.alloc(size, 1), report: () => {}, save: () => {}, ...extra });
-test.each([false, true])('owned study lifecycle labels smoke=%s and verifies cleanup', async smoke => {
-  const run = fakeDocker(), save = jest.fn(), result = await launch(run, { smoke, save });
-  expect(result).toMatchObject({ mode: smoke ? 'smoke' : 'soak', cleanup: 'passed' });
+test.each(['smoke', 'soak', 'capacity'])('owned study lifecycle labels %s and verifies cleanup', async mode => {
+  const run = fakeDocker(), save = jest.fn(), result = await launch(run, { mode, save });
+  expect(result).toMatchObject({ mode, cleanup: 'passed' });
   expect(save).toHaveBeenCalledTimes(1);
   const starts = run.mock.calls.filter(([, args]) => args[7] === 'up');
   expect(starts.map(([, , options]) => options.env.CLASSIFARR_UPGRADE_MODE)).toEqual(['normal', 'restore']);
@@ -149,11 +158,11 @@ test('cleanup failure prevents saving success and never touches an unrelated ima
 });
 test.each([null, '1800001', 1, 2100001])('receipt rejects invalid elapsed duration %s', async durationMs => {
   const run = fakeDocker(args => args.at(-1) === 'soak' ? { status: 0,
-    stdout: `RESOURCE_STUDY ${JSON.stringify({ status: 'passed', version: 'resource_study.v1', requestedDurationMs: 1800000, durationMs })}` } : null);
+    stdout: `RESOURCE_STUDY ${JSON.stringify({ ...passedReceipt('soak'), durationMs })}` } : null);
   await expect(launch(run)).rejects.toThrow('receipt_invalid');
   expect(run.mock.calls.some(([, args]) => args.includes('down'))).toBe(true);
 });
-test.each([{ smoke: 'yes' }, { random: () => Buffer.from('invalid') }])('invalid launcher input fails before docker', async options => {
+test.each([{ mode: true }, { mode: 'unknown' }, { mode: {} }, { random: () => Buffer.from('invalid') }])('invalid launcher input fails before docker', async options => {
   const run = fakeDocker(); await expect(launch(run, options)).rejects.toThrow(); expect(run).not.toHaveBeenCalled();
 });
 test('reused compose topology has no external network, ports, host volumes or privilege', () => {

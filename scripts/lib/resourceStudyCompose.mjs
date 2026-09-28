@@ -4,17 +4,18 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseUpgradeReceipt } from './publishedUpgradeCompose.mjs';
+import { resourceStudyProfile, assertResourceStudyReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
 /** Reuses the isolated installation topology, never the user's compose project. */
-export async function runResourceStudyCompose({ smoke = false, run = spawnSync, random = randomBytes,
+export async function runResourceStudyCompose({ mode = 'soak', run = spawnSync, random = randomBytes,
   report = message => process.stdout.write(`${message}\n`), save = (project, result) => {
     const directory = resolve(root, '.tmp/resource-study', project);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
     writeFileSync(resolve(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
   } } = {}) {
-  if (typeof smoke !== 'boolean') throw new TypeError('invalid_study_scope');
+  const profile = resourceStudyProfile(mode);
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_study_identity');
   const project = `classifarr-resource-study-${suffix}`, image = `${project}-candidate`;
@@ -46,7 +47,7 @@ export async function runResourceStudyCompose({ smoke = false, run = spawnSync, 
   for (const args of inventory) if (docker(args).stdout.trim()) throw new Error('resource_study_project_not_empty');
   compose(['config', '--quiet']);
   const probe = mode => parseUpgradeReceipt(compose(['exec', '-T', '-e', 'CLASSIFARR_RESOURCE_STUDY=isolated-synthetic-v1',
-    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'soak' ? 2100000 : 360000).stdout, 'RESOURCE_STUDY');
+    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + 180000).stdout, 'RESOURCE_STUDY');
   const start = () => compose(['up', '--no-build', '--detach', '--force-recreate', '--wait', '--wait-timeout', '180', 'app'], 240000);
   let result, failure;
   report(`RESOURCE_STUDY_PROJECT ${project}`);
@@ -59,12 +60,9 @@ export async function runResourceStudyCompose({ smoke = false, run = spawnSync, 
     if (fresh.status !== 'passed' || probe('seed').seeded !== true) throw new Error('resource_study_seed_invalid');
     compose(['stop', '--timeout', '30', 'app']);
     env.CLASSIFARR_UPGRADE_MODE = 'restore'; start();
-    report(`RESOURCE_STUDY_RUNNING ${smoke ? 'smoke-2-minutes' : 'soak-30-minutes'}`);
-    result = { mode: smoke ? 'smoke' : 'soak', imageId, study: probe(smoke ? 'smoke' : 'soak') };
-    if (result.study.status !== 'passed' || result.study.version !== 'resource_study.v1' ||
-      result.study.requestedDurationMs !== (smoke ? 120000 : 1800000) ||
-      !Number.isSafeInteger(result.study.durationMs) || result.study.durationMs > 2100000 ||
-      result.study.durationMs < result.study.requestedDurationMs) throw new Error('resource_study_receipt_invalid');
+    report(`RESOURCE_STUDY_RUNNING ${mode}`);
+    result = { mode, imageId, study: probe(mode) };
+    assertResourceStudyReceipt(result.study, mode);
     const id = compose(['ps', '--quiet', 'app']).stdout.trim();
     if (!/^[a-f0-9]{12,64}$/.test(id) || docker(['inspect', '--format', '{{.State.OOMKilled}} {{.State.Health.Status}}', id]).stdout.trim() !== 'false healthy') {
       throw new Error('resource_study_container_unhealthy');

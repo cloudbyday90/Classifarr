@@ -87,3 +87,8 @@ Follow-up completed: the [mixed-workload study](mixed-workload-resource-study-va
 passed its 30-minute synthetic workload and recovery checks. Limits remain
 unchanged. The next component is a bounded capacity-regression gate with a
 production-scale profile, not speculative resource tuning.
+
+That [capacity-regression follow-up](resource-capacity-regression-validation.md)
+now passes with a larger evaluation corpus and real queued-work preservation.
+The next measured opportunity is bounded completion-driven queue wakeup, while
+keeping concurrency, reservations and production limits unchanged.

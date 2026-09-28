@@ -92,12 +92,20 @@ It disables Compose environment-file loading and uses the fixed isolated
 installation topology. Both modes allow up to two minutes for final draining;
 build/startup time is additional.
 
+The follow-up [capacity regression gate](resource-capacity-regression-gate.md)
+adds `--capacity`: five minutes of work, up to 1,600 inventory items and a
+6,700-row evaluation corpus. Current profiles use 768-dimensional vectors and
+require a nonempty queued-work pressure/recovery cohort. Historical v1 results
+in the validation document retain their original 64-dimensional scope.
+
 Twenty waves grow four libraries equally. The long study attempts a source-pair
 evaluation approximately once a second after the preceding attempt settles;
 each successful evaluation recomputes a 300-case cohort from 400 synthetic
-descriptions and 64-dimensional vectors. Passing no previous evaluation state
+descriptions and 768-dimensional vectors. Passing no previous evaluation state
 deliberately prevents unchanged-input skipping. This is a stress workload, not
 the production scheduler cadence or the largest supported vector corpus.
+The capacity profile waits ten seconds between settled attempts; its corpus
+size is separate from the bounded 300-case evaluation sample.
 
 The phases are warmup (20%), steady (20%), provider outage (10%), injected
 admission pressure (10%) and recovery (40%). Pressure changes only the probe's

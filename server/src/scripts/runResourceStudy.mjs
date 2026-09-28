@@ -7,7 +7,7 @@ import { shouldRunCli } from '../utils/cliRuntime.mjs';
 export async function runResourceStudy(mode) {
   assertUpgradeDrillEnvironment();
   assert.equal(process.env.CLASSIFARR_RESOURCE_STUDY, 'isolated-synthetic-v1');
-  assert.ok(['seed', 'smoke', 'soak'].includes(mode));
+  assert.ok(['seed', 'smoke', 'soak', 'capacity'].includes(mode));
   assert.equal(process.env.CLASSIFARR_RUNTIME_MODE, mode === 'seed' ? 'normal' : 'restore');
   const db = await import('../config/database.mjs');
   try {
@@ -22,7 +22,7 @@ export async function runResourceStudy(mode) {
       return { seeded: true };
     }
     const { runResourceStudyWorkload } = await import('./resourceStudyWorkload.mjs');
-    return await runResourceStudyWorkload(db, mode === 'smoke' ? 120000 : 1800000,
+    return await runResourceStudyWorkload(db, mode,
       value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`));
   } finally { await db.pool.end(); }
 }

@@ -56,18 +56,19 @@ export async function seedResourceStudyLibraries(db) {
 }
 
 /** Synthetic vectors, real evaluation computation. Never represents AI quality. */
-export function resourceStudyEvaluationSnapshot() {
+export function resourceStudyEvaluationSnapshot({ rows: rowCount = 400, dimensions = 768 } = {}) {
+  if (![400, 6700].includes(rowCount) || dimensions !== 768) throw new Error('resource_study_vectors_invalid');
   const libraries = Array.from({ length: 4 }, (_, index) => ({ id: index + 1, name: `Synthetic ${index}`,
     media_type: index < 2 ? 'movie' : 'tv' }));
-  const rows = Array.from({ length: 400 }, (_, index) => ({ library_id: index % 4 + 1,
+  const rows = Array.from({ length: rowCount }, (_, index) => ({ library_id: index % 4 + 1,
     media_type: libraries[index % 4].media_type, tmdb_id: index % 8 < 4 ? index + 1 : null,
     media_server_id: 1, external_id: `synthetic-${index}`, overview: `Synthetic synopsis ${index}`,
     genres: [`Genre ${index % 4}`], studio: 'Synthetic studio', content_rating: 'PG' }));
   const corpus = prepareInventoryDescriptionCorpus(rows, { includeSourceItems: true });
   return { observedAt: new Date().toISOString(), inputs: { identity: {
-    provider: 'ollama', model: 'synthetic:study', digest: 'a'.repeat(64), dimensions: 64 },
+    provider: 'ollama', model: 'synthetic:study', digest: 'a'.repeat(64), dimensions },
   source: { libraries, rows, corpus, candidateMetadata: collectInventoryCandidateMetadata(rows, inventorySourceDescriptionKey),
     vectors: new Map(corpus.documents.map((doc, index) => [doc.hash,
-      Array.from({ length: 64 }, (_, dimension) => dimension === index % 4 ? 1 : (index % 13 + 1) / 100)])),
+      Array.from({ length: dimensions }, (_, dimension) => dimension === index % 4 ? 1 : (index % 13 + 1) / 100)])),
     operatorFeedbackRows: [] } } };
 }
