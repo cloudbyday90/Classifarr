@@ -94,6 +94,10 @@ GitHub MCP searches at the start and before handoff found no open PRs in
 
 ## Recommendation stack and next component
 
+Follow-up: the [opt-in Linux CI profile](installation-budget-ci-design.md) now
+implements the recommendation below; its separate
+[validation outcome](installation-budget-ci-validation.md) records actual execution.
+
 Retain the existing scheduler, PostgreSQL pool, immutable provenance verifier,
 isolated Compose drill and allowlisted receipts. The benefit is proven recovery
 without adding production machinery or weakening trust; the cost is build/test

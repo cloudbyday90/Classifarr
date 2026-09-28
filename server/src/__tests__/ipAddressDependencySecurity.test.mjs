@@ -1,0 +1,59 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+// Exercise the locked transitive dependency used by express-rate-limit, not a mock.
+import { Address6 } from 'ip-address';
+import express from 'express';
+import { rateLimit } from 'express-rate-limit';
+import request from 'supertest';
+
+test.each([
+  '64:ff9b:1::', '64:ff9b:1:ffff:ffff:ffff:ffff:ffff',
+  '0064:ff9b:0001:0000:0000:0000:7f00:0001',
+  '64:ff9b:1:7f00:0:100::', '64:ff9b:1:a9fe:a9:fe00::', '64:ff9b:1::7f00:1',
+])('classifies NAT64 local-use as private: %s', ip => {
+  expect(new Address6(ip).isPrivate()).toBe(true);
+});
+
+test.each([
+  'fe80::', 'fe81::1', 'fe80:0:0:1::1', 'febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+  'FE81:0000:0000:0000:0000:0000:0000:0001', 'fe81::1%eth0',
+])('classifies the full link-local range: %s', ip => {
+  expect(new Address6(ip).isLinkLocal()).toBe(true);
+});
+
+test.each([
+  ['64:ff9b:0:ffff:ffff:ffff:ffff:ffff', 'isPrivate', false],
+  ['64:ff9b:2::', 'isPrivate', false],
+  ['fe7f:ffff:ffff:ffff:ffff:ffff:ffff:ffff', 'isLinkLocal', false],
+  ['fec0::1', 'isLinkLocal', false],
+  ['2606:4700:4700::1111', 'isPrivate', false],
+  ['64:ff9b::808:808', 'isPrivate', false],
+  ['fc00::1', 'isPrivate', true],
+  ['::ffff:169.254.169.254', 'isLinkLocal', true],
+  ['64:ff9b::a9fe:a9fe', 'isLinkLocal', true],
+])('preserves adjacent-range and legitimate control %s', (ip, method, expected) => {
+  expect(new Address6(ip)[method]()).toBe(expected);
+});
+
+test('invalid IPv6 remains rejected by the dependency', () => {
+  expect(() => new Address6('not-an-ip')).toThrow();
+});
+
+test.each([
+  ['mapped IPv4', '203.0.113.7', ['::ffff:203.0.113.7', '::ffff:cb00:7107', '::203.0.113.7'], '203.0.113.8'],
+  ['IPv6 subnet', '2001:db8:1234:ab00::1', ['2001:db8:1234:abff::2', '2001:0db8:1234:ab00:0:0:0:1'], '2001:db8:1234:ac00::1'],
+  ['NAT64 local-use subnet', '64:ff9b:1::7f00:1', ['0064:ff9b:0001:0000:0000:0000:7f00:0001'], '64:ff9b:1:100::1'],
+])('real HTTP limiter preserves %s quota and separate clients', async (_label, first, equivalents, separate) => {
+  const app = express();
+  // Only this test app trusts one local proxy hop so Supertest can supply peer IP fixtures.
+  app.set('trust proxy', 1);
+  const limiter = rateLimit({ windowMs: 60_000, limit: 1, standardHeaders: 'draft-7', legacyHeaders: false });
+  app.use(limiter);
+  app.get('/', (_req, res) => res.json({ ok: true }));
+  await request(app).get('/').set('X-Forwarded-For', first).expect(200);
+  for (const ip of equivalents) {
+    const denied = await request(app).get('/').set('X-Forwarded-For', ip).expect(429);
+    expect(Number(denied.headers['retry-after'])).toBeGreaterThan(0);
+    expect(denied.headers.ratelimit).toContain('remaining=0');
+  }
+  await request(app).get('/').set('X-Forwarded-For', separate).expect(200);
+});
