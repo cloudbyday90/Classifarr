@@ -9,12 +9,9 @@ import { collectContainerStartupDiagnostic, formatContainerStartupDiagnostic } f
 import { assertScheduledInstallationResult, SCHEDULED_INSTALLATION_EXPECTED } from './scheduledInstallationContract.mjs';
 import { runScheduledCrashRecovery } from './scheduledCrashRecovery.mjs';
 import { runInstallationBudgetRecovery } from './installationBudgetRecovery.mjs';
+import { upgradeBaseline, verifyPublishedUpgradeProvenance } from './publishedUpgradeProvenance.mjs';
+export { upgradeBaseline } from './publishedUpgradeProvenance.mjs';
 
-export const upgradeBaseline = Object.freeze({
-  release: 'v0.48.4-beta',
-  image: 'ghcr.io/cloudbyday90/classifarr@sha256:dc95fcdd80123b6bbf5b252fec286d9e81fbbc21a1030087c0a44abacd6a187f',
-  revision: 'a0e417fd714919bb4ca30e20f9cd2380136ca74e',
-});
 const root = resolve(import.meta.dirname, '../..');
 const composeFile = resolve(root, 'docker-compose.published-upgrade-drill.yml');
 
@@ -72,9 +69,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   const passed = name => { checks.push(name); report(`PASS ${name}`); };
   report(`UPGRADE_PROJECT ${project}`);
   if (!freshOnly) {
-    invoke('gh', ['attestation', 'verify', `oci://${upgradeBaseline.image}`, '--repo', 'cloudbyday90/Classifarr',
-      '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision,
-      '--deny-self-hosted-runners']);
+    verifyPublishedUpgradeProvenance({ run, env, cwd: root });
     passed('published_provenance');
   }
   const label = `label=com.docker.compose.project=${project}`;

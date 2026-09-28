@@ -69,7 +69,8 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   expect(result.checks).toHaveLength(12);
   expect(run.mock.calls[0][0]).toBe('gh');
   expect(run.mock.calls[0][1]).toEqual(['attestation', 'verify', `oci://${upgradeBaseline.image}`, '--repo', 'cloudbyday90/Classifarr',
-    '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision, '--deny-self-hosted-runners']);
+    '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision,
+    '--deny-self-hosted-runners', '--hostname', 'github.com']);
   const ops = operations(run);
   expect(ops.some(args => args.join(' ') === 'kill --signal SIGKILL app')).toBe(true);
   expect(ops.at(-1)).toEqual(['--profile', 'tools', 'down', '--volumes', '--timeout', '10']);

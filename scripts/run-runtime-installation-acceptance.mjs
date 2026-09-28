@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runPublishedUpgradeCompose } from './lib/publishedUpgradeCompose.mjs';
+import { readProvenanceFailure } from './lib/publishedUpgradeProvenance.mjs';
 import { createRuntimeInstallationReceipt, formatRuntimeInstallationSummary, installationFailureStage,
   INSTALLATION_RECEIPT_PATH, INSTALLATION_SUMMARY_PATH } from './lib/runtimeInstallationReceipt.mjs';
 
@@ -34,7 +35,8 @@ export async function runRuntimeInstallationAcceptance({ ci = false, resourceBud
     receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget, result });
   } catch (error) {
     receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget,
-      failureStage: stage === 'evidence' ? stage : installationFailureStage(error) });
+      failureStage: stage === 'evidence' ? stage : installationFailureStage(error),
+      provenanceFailure: stage === 'preflight' ? readProvenanceFailure(error) : null });
   }
   save(receipt, formatRuntimeInstallationSummary(receipt));
   return receipt;
@@ -57,6 +59,7 @@ if (import.meta.main) {
     if (new Set(args).size !== args.length || args.some(arg => !['--ci', '--resource-budget'].includes(arg))) throw new Error('invalid_arguments');
     const receipt = await runRuntimeInstallationAcceptance({ ci: args.includes('--ci'), resourceBudget: args.includes('--resource-budget') });
     process.stdout.write(`Runtime installation acceptance: ${receipt.status}. Receipt: ${INSTALLATION_RECEIPT_PATH}\n`);
+    if (receipt.provenanceFailure) process.stdout.write(`Next: ${receipt.provenanceFailure.nextStep}\n`);
     if (receipt.status !== 'passed') process.exitCode = 1;
   } catch {
     process.stderr.write('Runtime installation acceptance could not produce evidence.\n');

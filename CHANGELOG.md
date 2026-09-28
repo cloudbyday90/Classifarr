@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain published-upgrade verification failures with secret-free credential-source
+  diagnostics and specific recovery steps, preserving pinned provenance checks and
+  existing authentication precedence without automatic credential fallback.
 - Extend isolated installation acceptance with opt-in CPU/PID limits, bounded
   database connection exhaustion and real restart/backfill recovery. Keep fresh
   and published-upgrade evidence distinct; leave live limits and releases unchanged.
