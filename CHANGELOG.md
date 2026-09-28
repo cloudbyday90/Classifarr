@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a disposable mixed-workload resource study with bounded movie/TV ingestion,
+  metadata backfill, evaluation, outage recovery and admission-pressure checks.
+  Report scoped CPU/memory, backlog and recovery evidence for cgroup v1/v2 without
+  changing production limits, routing or release version.
 - Share a bounded memory-admission budget across library ingestion, queued
   backfill/classification and inventory evaluation. Defer new work under pressure,
   preserve in-flight ownership, and resume through existing retry mechanisms.

@@ -96,7 +96,9 @@ ledger from 291 entries to 296 during startup.
 The [shared-admission implementation](shared-work-admission.md) now coordinates
 new ingestion, queued work and evaluation using conservative memory reservations.
 See its [validation evidence](shared-work-admission-validation.md) for scope and
-limits. The remaining acceptance target is a warm, sustained mixed-library study:
-measure throughput, wait duration, event-loop lag, RSS and OOM counts, then
-calibrate estimates and assess CPU limits. Deterministic pressure tests and
-restart-induced memory reduction are not substitutes for that benchmark.
+limits. The [30-minute mixed-workload study](mixed-workload-resource-study-validation.md)
+has now passed with 1,600 synthetic movie/TV items, complete recovery and a sampled
+396.6 MiB container-memory peak. Reservations and production limits remain
+unchanged. A capacity-regression gate with representative inventory/vector sizes
+and a queued-work pressure challenge is next; this smaller synthetic study does
+not establish safe CPU/PID ceilings or physical-OOM recovery behavior.

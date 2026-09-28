@@ -82,3 +82,8 @@ queue latency, wait duration and resumption time. Acceptance requires no OOM,
 preserved ownership/inventory, and complete backlog/profile recovery after
 pressure clears. This is the next concrete follow-up, rather than another
 scheduler or more dashboard-only diagnostics.
+
+Follow-up completed: the [mixed-workload study](mixed-workload-resource-study-validation.md)
+passed its 30-minute synthetic workload and recovery checks. Limits remain
+unchanged. The next component is a bounded capacity-regression gate with a
+production-scale profile, not speculative resource tuning.

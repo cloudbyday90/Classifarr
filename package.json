@@ -11,6 +11,7 @@
   "scripts": {
     "docker:smart": "node scripts/docker-compose-smart.mjs",
     "benchmark:inventory:compose": "node scripts/run-inventory-benchmark-compose.mjs",
+    "benchmark:resources:compose": "node scripts/run-resource-study.mjs",
     "test:local:library-profile-upgrade-rehearsal": "node server/src/scripts/runLibraryProfileUpgradeRehearsal.mjs",
     "test:local:schema-release-replay": "node server/src/scripts/runSchemaReleaseReplay.mjs",
     "test:local:restore-recovery-drill": "node scripts/run-restore-recovery-drill.mjs",
