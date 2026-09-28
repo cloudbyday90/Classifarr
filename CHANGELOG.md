@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Wake queue dispatch after durable enqueue and task completion while preserving
+  concurrency, memory admission, provider limits and retry cooldowns. Retain
+  fallback polling and safely serialize worker stop/start without losing
+  in-flight capacity accounting.
 - Gate resource safety in isolated CI with real queued-work preservation and
   bounded recovery under admission pressure. Exercise 768-dimensional vectors
   and an opt-in larger evaluation corpus without changing production limits.

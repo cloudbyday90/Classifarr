@@ -302,6 +302,7 @@ export class QueueService {
         }
       }
 
+      this.queueWorkerLoopService.notifyWorkAvailable();
       return taskId;
     });
   }
@@ -478,10 +479,7 @@ export class QueueService {
   }
 
   stopWorker() {
-    this.running = false;
-    this.processingByType = {
-      metadata_enrichment: 0,
-    };
+    this.queueWorkerLoopService.stopWorker();
     this.logger.info('Queue worker stopping...');
   }
 
@@ -490,9 +488,6 @@ export class QueueService {
   }
 
   async gracefulShutdown() {
-    this.processingByType = {
-      metadata_enrichment: 0,
-    };
     return this.queueWorkerLoopService.gracefulShutdown();
   }
 

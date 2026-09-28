@@ -102,10 +102,10 @@ by those sources.
 1. Enforce queued-work preservation and bounded recovery in every short CI run.
 2. Exercise representative vector dimensions and an opt-in larger corpus.
 3. Keep raw CPU, memory, event-loop and backlog evidence for trend analysis.
-4. Based on the larger run's 106-second final drain, next investigate and implement
-   bounded completion-driven queue wakeups with polling fallback. Keep concurrency,
-   provider controls, retry dates and memory admission unchanged; use this gate to
-   compare drain time and prove no busy loop, missed wakeup or overlapping work.
+4. Based on the larger run's 106-second final drain, evaluate
+   [bounded completion-driven queue wakeups](queue-completion-wakeups-validation.md)
+   with polling fallback. Keep concurrency, provider controls, retry dates and
+   memory admission unchanged; compare drain time and verify wakeup/lifecycle races.
 5. Compare explicit CPU/PID limits only in the isolated topology before proposing
    a production default, including ingestion and database recovery under load.
 

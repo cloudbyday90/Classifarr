@@ -113,7 +113,7 @@ The live container remained healthy on image
 Its 2 GiB memory, 4 GiB memory-plus-swap, unset CPU quota and unset PID cap remain
 unchanged. The new CI check does not change branch-protection requirements.
 
-## Next component: bounded queue wakeups
+## Follow-up: bounded queue wakeups
 
 The capacity test passed but exposed a long tail in ordinary metadata work.
 Code inspection shows `QueueWorkerLoopService.startWorker()` waits for the fixed
@@ -122,10 +122,10 @@ check; task completion releases the permit without waking that wait. The default
 poll interval is one second. This is a concrete optimization hypothesis, not a
 claim that polling alone caused the entire measured drain.
 
-Next implement one coalesced completion/enqueue wakeup with a timed polling
-fallback. Preserve configured concurrency, all admission checks, provider rate
-controls, retry eligibility and ownership. Cancel/join the wait on shutdown and
-test lost-wakeup races, empty queues, persistent pressure and burst completions.
-Compare matched capacity runs and require a shorter drain without increasing
-concurrency, leaking timers/permits or repeatedly querying while blocked. This
-moves backfill forward without another scheduler or a speculative RAM increase.
+The subsequent [wakeup implementation and validation](queue-completion-wakeups-validation.md)
+adds coalesced completion/enqueue hints with timed polling fallback. It preserves
+configured concurrency, admission checks, provider controls and retry eligibility,
+and tests idle behavior, shutdown races and pressure cooldowns. That separate
+outcome contains the new baseline/candidate comparison and the next bounded
+CPU/PID-budget evaluation; do not repeat this completed investigation as a new
+scheduler project or use it to justify a speculative RAM increase.

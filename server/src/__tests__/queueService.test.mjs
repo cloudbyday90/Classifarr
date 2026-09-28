@@ -134,6 +134,26 @@ describe('QueueService', () => {
     });
 
     describe('enqueue', () => {
+        it('notifies only after enqueue and bookkeeping succeed', async () => {
+            const notify = jest.spyOn(queueService.queueWorkerLoopService, 'notifyWorkAvailable');
+            db.query.mockImplementation(async () => {
+                expect(notify).not.toHaveBeenCalled();
+                return { rows: [{ id: 123 }] };
+            });
+            const receipt = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordQueued').mockImplementation(async () => {
+                expect(notify).not.toHaveBeenCalled();
+            });
+            await queueService.enqueue('classification', { title: 'Test' });
+            expect(receipt).toHaveBeenCalledWith(123);
+            expect(notify).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not notify on a rejected insert', async () => {
+            const notify = jest.spyOn(queueService.queueWorkerLoopService, 'notifyWorkAvailable');
+            db.query.mockRejectedValue(new Error('insert_failed'));
+            await expect(queueService.enqueue('classification', {})).rejects.toThrow('insert_failed');
+            expect(notify).not.toHaveBeenCalled();
+        });
         it('should insert task into database', async () => {
             db.query.mockResolvedValue({ rows: [{ id: 123 }] });
 
@@ -875,6 +895,13 @@ describe('QueueService', () => {
     });
 
     describe('startWorker', () => {
+        it('preserves in-flight per-type counts and permits on stop', () => {
+            queueService.processing = 2;
+            queueService.processingByType = { metadata_enrichment: 2 };
+            queueService.stopWorker();
+            expect(queueService.processing).toBe(2);
+            expect(queueService.processingByType.metadata_enrichment).toBe(2);
+        });
         it('should start worker loop', async () => {
             jest.spyOn(queueService.queueWorkerLoopService, 'resetStaleProcessingTasks').mockResolvedValue();
             jest.spyOn(queueService, 'hasClassificationDispatchBlocker').mockResolvedValue({

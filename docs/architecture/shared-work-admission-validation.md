@@ -90,5 +90,7 @@ production-scale profile, not speculative resource tuning.
 
 That [capacity-regression follow-up](resource-capacity-regression-validation.md)
 now passes with a larger evaluation corpus and real queued-work preservation.
-The next measured opportunity is bounded completion-driven queue wakeup, while
-keeping concurrency, reservations and production limits unchanged.
+The subsequent [completion-driven queue wakeup work](queue-completion-wakeups-validation.md)
+measures the drain-time opportunity while keeping concurrency, reservations and
+production limits unchanged. Its outcome identifies the next isolated resource
+budget evaluation.

@@ -6,9 +6,10 @@
  * See LICENSE file for details.
  */
 
-import { setImmediate as yieldForTurn, setTimeout as waitFor } from 'node:timers/promises';
+import { setImmediate as yieldForTurn } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { backgroundResourceAdmission } from './backgroundResourceAdmission.mjs';
+import { createQueueWorkerWakeup } from './queueWorkerWakeup.mjs';
 import {
     QUEUE_TASK_FAILURE_REASON_IDS,
     QUEUE_TASK_RECOVERY_LOG_REASON_IDS,
@@ -58,7 +59,10 @@ export class QueueWorkerLoopService {
         this.visibilityRecoveryIntervalMs = deps.visibilityRecoveryIntervalMs || 60_000;
         this.stallWarnIntervalMs = deps.stallWarnIntervalMs || 30_000;
         this.aiAvailabilityProbeIntervalMs = deps.aiAvailabilityProbeIntervalMs || 30_000;
-        this.wait = deps.wait || ((ms) => waitFor(ms));
+        this.wakeup = createQueueWorkerWakeup({ wait: deps.wait });
+        this.workerPromise = null;
+        this.stopRequested = false;
+        this.stopToken = null;
         this.yieldToEventLoop = deps.yieldToEventLoop || (() => yieldForTurn());
     }
 
@@ -201,13 +205,19 @@ export class QueueWorkerLoopService {
             return false;
         }
 
-        if (task.task_type === 'classification') {
+        if (!this.stopRequested && task.task_type === 'classification') {
             const aiReady = aiReadiness ?? await this.checkAIAvailability();
             if (!aiReady) {
                 await this.requeueTask(task.id);
-                await this.wait(this.pollIntervalMs);
+                if (!this.stopRequested) await this.wakeup.wait(this.pollIntervalMs, { interruptible: false });
                 return true;
             }
+        }
+
+        // Stop may have happened while dequeue or AI readiness was awaiting I/O.
+        if (this.stopRequested) {
+            await this.requeueTask(task.id);
+            return false;
         }
 
         this.incrementProcessing(task.task_type);
@@ -218,7 +228,10 @@ export class QueueWorkerLoopService {
                 reasonCode: 'queue_task_execution_failed',
             });
         }).finally(() => {
-            try { this.decrementProcessing(task.task_type); } finally { release(); }
+            try { this.decrementProcessing(task.task_type); } finally {
+                release();
+                this.notifyWorkAvailable();
+            }
         });
 
         await this.yieldToEventLoop();
@@ -296,7 +309,7 @@ export class QueueWorkerLoopService {
     }
 
     async gracefulShutdown() {
-        this.setRunning(false);
+        this.stopWorker();
         try {
             const result = await this.db.query(
                 `UPDATE task_queue
@@ -319,13 +332,42 @@ export class QueueWorkerLoopService {
         }
     }
 
-    async startWorker() {
-        if (this.getState().running) {
-            this.logger.warn('Worker already running');
-            return;
-        }
+    notifyWorkAvailable() {
+        this.wakeup.notify();
+    }
 
+    stopWorker() {
+        this.stopToken = Symbol('queue_worker_stop');
+        this.stopRequested = true;
+        this.setRunning(false);
+        this.wakeup.cancel();
+    }
+
+    startWorker() {
+        if (this.workerPromise && this.stopRequested) {
+            // An immediate restart must join the old loop, including pending I/O.
+            // A later stop supersedes this queued restart request.
+            const stopToken = this.stopToken;
+            return this.workerPromise.then(() => {
+                if (this.stopToken === stopToken) return this.startWorker();
+            });
+        }
+        if (this.workerPromise || this.getState().running) {
+            this.logger.warn('Worker already running');
+            return Promise.resolve();
+        }
+        this.stopRequested = false;
+        this.workerPromise = this.runWorker().finally(() => {
+            this.setRunning(false);
+            this.wakeup.cancel();
+            this.workerPromise = null;
+        });
+        return this.workerPromise;
+    }
+
+    async runWorker() {
         await this.resetStaleProcessingTasks();
+        if (this.stopRequested) return;
 
         this.backgroundDrainIfBloated().catch(() => {
             this.logger.warn('Background task_queue drain failed', {
@@ -337,22 +379,30 @@ export class QueueWorkerLoopService {
         this.logger.info('Queue worker started');
 
         while (this.getState().running) {
+            // Clear before the asynchronous checks so a concurrent completion is retained.
+            this.wakeup.acknowledge();
             const now = Date.now();
             this.maybeRunVisibilityRecovery(now);
             this.updateConcurrencyStallState(now);
 
+            let dispatchFailed = false;
             try {
                 const dispatched = await this.maybeDispatchTask();
                 if (dispatched) {
                     continue;
                 }
             } catch {
+                dispatchFailed = true;
                 this.logger.error('Worker loop error', {
                     reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.WORKER_LOOP_FAILED,
                 });
             }
 
-            await this.wait(this.pollIntervalMs);
+            if (this.getState().running) {
+                await this.wakeup.wait(this.pollIntervalMs, {
+                    interruptible: !dispatchFailed && (!this.resourceWaitReason || this.resourceWaitReason === 'busy'),
+                });
+            }
         }
 
         this.logger.info('Queue worker stopped');

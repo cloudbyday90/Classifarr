@@ -24,7 +24,10 @@
  */
 
 import { jest } from '@jest/globals';
+import { setTimeout as waitFor } from 'node:timers/promises';
+import { performance } from 'node:perf_hooks';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 
 const logger = {
   info: jest.fn(),
@@ -44,7 +47,7 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const db = await import('../../config/database.mjs');
-const { queueService } = await import('../../services/queueService.mjs');
+const { queueService, QueueService } = await import('../../services/queueService.mjs');
 const { ratingNormalizationQueueService } = await import('../../services/ratingNormalizationQueueService.mjs');
 const { queryWithTimeout } = await import('../../utils/queryWithTimeout.mjs');
 
@@ -58,6 +61,60 @@ describe('Queue Robustness Integration Tests', () => {
     queueService.running = false;
     queueService.aiAvailable = true;
     queueService.lastAiAvailabilityProbeAt = 0;
+  });
+
+  test('completion and enqueue hints preserve durable priority, retry dates and exactly-once claims', async () => {
+    const worker = new QueueService({
+      db, logger, resourceAdmission: resourceAdmissionFixture(),
+      queueMaintenanceService: { backgroundDrainIfBloated: async () => {} },
+    });
+    worker.queueWorkerLoopService.pollIntervalMs = 60_000;
+    worker.queueWorkerLoopService.getConcurrencySettings = async () => ({ generalWorkers: 1, metadataEnrichmentWorkers: 1 });
+    const started = [];
+    const completed = [];
+    let releaseFirst;
+    const first = new Promise(resolve => { releaseFirst = resolve; });
+    worker.processTask = async task => {
+      started.push(task.id);
+      if (started.length === 1) await first;
+      await worker.completeTask(task.id, { enriched: true });
+      completed.push(task.id);
+    };
+    const until = async condition => {
+      const deadline = performance.now() + 10_000;
+      while (!condition() && performance.now() < deadline) await waitFor(10);
+      expect(condition()).toBe(true);
+    };
+    const low = await worker.enqueue('metadata_enrichment', {}, { priority: 1 });
+    const high = await worker.enqueue('metadata_enrichment', {}, { priority: 2 });
+    const future = await worker.enqueue('metadata_enrichment', {}, { priority: 100 });
+    await db.query("UPDATE task_queue SET next_retry_at = NOW() + INTERVAL '1 hour' WHERE id = $1", [future]);
+    const running = worker.startWorker();
+    try {
+      await until(() => started.length === 1);
+      expect(started).toEqual([high]);
+      releaseFirst();
+      await until(() => completed.length === 2);
+      expect(started).toEqual([high, low]);
+      // Let the loop observe the empty eligible queue before durable enqueue wakes it.
+      await until(() => worker.processing === 0);
+      await waitFor(30);
+      const last = await worker.enqueue('metadata_enrichment', {}, { priority: 0 });
+      await until(() => completed.length === 3);
+      expect(started).toEqual([high, low, last]);
+      const { rows } = await db.query('SELECT id, status, attempts FROM task_queue ORDER BY id');
+      expect(rows).toEqual([
+        { id: low, status: 'completed', attempts: 0 },
+        { id: high, status: 'completed', attempts: 0 },
+        { id: future, status: 'pending', attempts: 0 },
+        { id: last, status: 'completed', attempts: 0 },
+      ]);
+    } finally {
+      releaseFirst();
+      worker.stopWorker();
+      await running;
+      await until(() => worker.processing === 0);
+    }
   });
 
   describe('recoverExpiredVisibilityTasks()', () => {

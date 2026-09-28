@@ -185,7 +185,7 @@ describe('QueueWorkerLoopService', () => {
             "UPDATE task_queue SET status = 'pending', started_at = NULL, visible_at = NULL WHERE id = $1",
             [99]
         );
-        expect(deps.wait).toHaveBeenCalledWith(1000);
+        expect(deps.wait).toHaveBeenCalledWith(1000, { signal: expect.any(AbortSignal) });
         expect(deps.processTask).not.toHaveBeenCalled();
     });
 
@@ -227,5 +227,201 @@ describe('QueueWorkerLoopService', () => {
             excludeTaskTypes: ['metadata_enrichment'],
         });
         expect(deps.incrementProcessing).toHaveBeenCalledWith('classification');
+    });
+
+    describe('worker wakeup lifecycle', () => {
+        const turn = () => new Promise(resolve => { setImmediate(resolve); });
+        const deferred = () => {
+            let resolve;
+            const promise = new Promise(done => { resolve = done; });
+            return { promise, resolve };
+        };
+
+        beforeEach(() => {
+            service = new QueueWorkerLoopService({ ...deps, wait: undefined, pollIntervalMs: 60_000 });
+            jest.spyOn(service, 'resetStaleProcessingTasks').mockResolvedValue(0);
+            jest.spyOn(service, 'recoverExpiredVisibilityTasks').mockResolvedValue(0);
+        });
+
+        afterEach(async () => {
+            service.stopWorker();
+            await service.workerPromise;
+        });
+
+        it('wakes on settlement after releasing counters and permit, without waiting for polling', async () => {
+            const first = deferred();
+            deps.getConcurrencySettings.mockResolvedValue({ generalWorkers: 1, metadataEnrichmentWorkers: 1 });
+            const tasks = [1, 2].map(id => ({ id, task_type: 'metadata_enrichment' }));
+            deps.dequeue.mockImplementation(async selection => selection.excludeTaskTypes ? null : tasks.shift());
+            deps.processTask.mockImplementationOnce(() => first.promise);
+            let permits = 0;
+            service.resourceAdmission = { tryAcquire: () => {
+                if (permits) return { allowed: false, reason: 'busy' };
+                permits++;
+                return { allowed: true, release: () => { permits--; } };
+            } };
+            // Normal slot exhaustion must remain interruptible, unlike pressure refusal.
+            state.processing = 1;
+            state.processingByType.classification = 1;
+            const worker = service.startWorker();
+            await turn();
+            expect(deps.processTask).toHaveBeenCalledTimes(1);
+            expect(permits).toBe(1);
+            first.resolve();
+            await turn();
+            expect(deps.processTask).toHaveBeenCalledTimes(2);
+            expect(permits).toBe(0);
+            service.stopWorker();
+            await worker;
+        });
+
+        it('retains notification during an empty asynchronous dequeue', async () => {
+            const lookup = deferred();
+            deps.dequeue.mockImplementationOnce(() => lookup.promise);
+            service.startWorker();
+            await turn();
+            service.notifyWorkAvailable();
+            lookup.resolve(null);
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(2);
+        });
+
+        it('wakes an idle loop for enqueue and otherwise stays asleep', async () => {
+            service.startWorker();
+            await turn();
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(1);
+            for (let i = 0; i < 1000; i++) service.notifyWorkAvailable();
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(2);
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(2);
+        });
+
+        it('rechecks resource capacity on completion hints without bypassing admission', async () => {
+            let busy = true;
+            service.resourceAdmission = { tryAcquire: jest.fn(() => busy
+                ? { allowed: false, reason: 'busy' }
+                : { allowed: true, release: jest.fn() }) };
+            service.startWorker();
+            await turn();
+            expect(deps.dequeue).not.toHaveBeenCalled();
+            busy = false;
+            service.notifyWorkAvailable();
+            await turn();
+            expect(service.resourceAdmission.tryAcquire).toHaveBeenCalledTimes(2);
+            expect(deps.dequeue).toHaveBeenCalledTimes(1);
+        });
+
+        it('holds existing task counts across stop/start until actual settlement', async () => {
+            const task = deferred();
+            deps.getConcurrencySettings.mockResolvedValue({ generalWorkers: 1, metadataEnrichmentWorkers: 1 });
+            deps.dequeue.mockResolvedValueOnce({ id: 42, task_type: 'metadata_enrichment' });
+            deps.processTask.mockImplementationOnce(() => task.promise);
+            const worker = service.startWorker();
+            await turn();
+            service.stopWorker();
+            await worker;
+            expect(state.processingByType.metadata_enrichment).toBe(1);
+            deps.dequeue.mockClear();
+            const restart = service.startWorker();
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledWith(expect.objectContaining({ excludeTaskTypes: ['metadata_enrichment'] }));
+            task.resolve();
+            await turn();
+            expect(state.processingByType.metadata_enrichment).toBe(0);
+            service.stopWorker();
+            await restart;
+        });
+
+        it.each(['memory_pressure', 'memory_unknown', 'dispatch_error'])('does not bypass %s cooldown', async reason => {
+            if (reason === 'dispatch_error') deps.dequeue.mockRejectedValue(new Error('PRIVATE'));
+            else service.resourceAdmission = { tryAcquire: jest.fn(() => ({ allowed: false, reason })) };
+            const attempt = jest.spyOn(service, 'maybeDispatchTask');
+            service.startWorker();
+            await turn();
+            for (let i = 0; i < 1000; i++) service.notifyWorkAvailable();
+            await turn();
+            expect(attempt).toHaveBeenCalledTimes(1);
+            expect(JSON.stringify(deps.logger.error.mock.calls)).not.toContain('PRIVATE');
+        });
+
+        it('polls when no hint arrives, allowing external inserts and due retries to be reconsidered', async () => {
+            const sleep = deferred();
+            service = new QueueWorkerLoopService({ ...deps, wait: jest.fn().mockImplementationOnce(() => sleep.promise) });
+            jest.spyOn(service, 'resetStaleProcessingTasks').mockResolvedValue(0);
+            jest.spyOn(service, 'recoverExpiredVisibilityTasks').mockResolvedValue(0);
+            deps.dequeue.mockImplementationOnce(async () => null).mockImplementationOnce(async () => {
+                service.stopWorker();
+                return null;
+            });
+            const worker = service.startWorker();
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(1);
+            sleep.resolve();
+            await worker;
+            expect(deps.dequeue).toHaveBeenCalledTimes(2);
+        });
+
+        it('serializes duplicate starts during startup and honors stop before startup completes', async () => {
+            const startup = deferred();
+            service.resetStaleProcessingTasks.mockReturnValue(startup.promise);
+            const worker = service.startWorker();
+            await service.startWorker();
+            expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(1);
+            service.stopWorker();
+            startup.resolve();
+            await worker;
+            expect(state.running).toBe(false);
+            expect(deps.dequeue).not.toHaveBeenCalled();
+        });
+
+        it('joins a stopping loop before restart, requeueing a task claimed during stop', async () => {
+            const lookup = deferred();
+            deps.dequeue.mockImplementationOnce(() => lookup.promise);
+            const worker = service.startWorker();
+            await turn();
+            service.stopWorker();
+            const restart = service.startWorker();
+            expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(1);
+            lookup.resolve({ id: 42, task_type: 'metadata_enrichment' });
+            await worker;
+            await turn();
+            expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(2);
+            expect(deps.db.query).toHaveBeenCalledWith(expect.stringContaining("status = 'pending'"), [42]);
+            expect(deps.processTask).not.toHaveBeenCalled();
+            service.stopWorker();
+            await restart;
+        });
+
+        it('stops and releases reservation during AI-unavailable cooldown despite work notifications', async () => {
+            deps.dequeue.mockResolvedValue({ id: 42, task_type: 'classification' });
+            deps.aiRouterService.checkAvailability.mockResolvedValue(false);
+            const release = jest.fn();
+            service.resourceAdmission = { tryAcquire: () => ({ allowed: true, release }) };
+            const worker = service.startWorker();
+            await turn();
+            service.notifyWorkAvailable();
+            await turn();
+            expect(deps.dequeue).toHaveBeenCalledTimes(1);
+            service.stopWorker();
+            await worker;
+            expect(release).toHaveBeenCalledTimes(1);
+            expect(deps.processTask).not.toHaveBeenCalled();
+        });
+
+        it('honors a later stop that supersedes a queued restart', async () => {
+            const lookup = deferred();
+            deps.dequeue.mockImplementationOnce(() => lookup.promise);
+            const worker = service.startWorker();
+            await turn();
+            service.stopWorker();
+            const restart = service.startWorker();
+            service.stopWorker();
+            lookup.resolve(null);
+            await Promise.all([worker, restart]);
+            expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(1);
+            expect(state.running).toBe(false);
+        });
     });
 });
