@@ -15,7 +15,9 @@ export function assertBacklogCheckpoint(value) {
   assert.ok(Number.isFinite(value.databaseEpoch) && value.databaseEpoch > 0);
   assert.equal(value.libraries?.length, 2);
   assert.equal(new Set(value.libraries.map(row => row.library_id)).size, 2);
-  assert.ok(value.libraries.every(row => id(row.library_id) && uuid.test(row.run_id)));
+  assert.ok(value.libraries.every(row => id(row.library_id) && uuid.test(row.run_id) && id(row.sync_status_id) &&
+    typeof row.capture_generation === 'string' && /^[1-9][0-9]*$/.test(row.capture_generation)));
+  assert.equal(new Set(value.libraries.map(row => row.sync_status_id)).size, 2);
   assert.equal(value.inventory?.length, 600);
   assert.equal(value.tasks?.length, 600);
   assert.equal(new Set(value.inventory.map(row => row.id)).size, 600);

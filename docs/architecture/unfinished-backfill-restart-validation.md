@@ -6,7 +6,7 @@ Implements [the restart design](unfinished-backfill-restart-design.md) using the
 existing opt-in installation-budget launcher. No production services, migration,
 dependency, live library, resource limit, routing policy or release version changes.
 
-The observer verifies original ingestion runs, inventory and task identities;
+The observer verifies original committed capture/handoff, inventory and task identities;
 durable claim/completion counts; natural ten-minute visibility expiry; sibling
 TV progress; current profiles; music exclusion; and separate resource snapshots.
 It cannot establish exactly-once remote side effects or stale-worker fencing.
@@ -17,6 +17,14 @@ Focused contract/fixture/runner tests pass. The first disposable run correctly
 rejected duplicate synthetic library names before the new crash boundary. The
 backlog fixture now has distinct names; a regression test covers both fixture
 profiles. The database uniqueness rule was not changed.
+
+The next run recovered all 600 tasks (605 claims, 600 completions) but exposed an
+incorrect test assumption: the normal two-minute startup scan advances the
+latest ingestion attempt even when its source is offline. The observer now
+checks the original completed sync/capture receipts and backfill generation,
+not that mutable attempt pointer. Unit tests reject substituted committed
+generations and receipts. No scheduler, retry deadline or ownership rule was
+changed to accommodate the test.
 
 The clean-source fresh-and-published-upgrade run and full check results will be
 recorded here after completion. No runtime acceptance claim is made by this

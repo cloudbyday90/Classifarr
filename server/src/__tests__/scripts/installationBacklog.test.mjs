@@ -2,7 +2,8 @@
 import { jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { assertBacklogCheckpoint, readBacklogCheckpoint, writeBacklogCheckpoint } from '../../scripts/installationBacklogCheckpoint.mjs';
-import { assertBacklogCompleted, assertBacklogTaskIdentities, sawSiblingProgress, waitForBacklog } from '../../scripts/installationBacklogEvidence.mjs';
+import { assertBacklogCompleted, assertBacklogTaskIdentities, sawSiblingProgress, waitForBacklog,
+  assertBacklogIdentity, readCommittedBacklogRuns } from '../../scripts/installationBacklogEvidence.mjs';
 import { backlogRecoveryEvidence, BACKLOG_BOUNDARY } from '../../scripts/installationBacklogContract.mjs';
 import { armBacklogCrash, verifyBacklogBoundary, verifyBacklogRecovery } from '../../scripts/installationBacklogProbe.mjs';
 import { installBacklogGate } from '../../scripts/installationBacklogFixture.mjs';
@@ -13,7 +14,8 @@ function checkpoint() {
   const inventory = Array.from({ length: 600 }, (_, index) => ({ id: index + 1, library_id: index < 300 ? 1 : 2,
     media_type: index < 300 ? 'movie' : 'tv', external_id: `restart-${index < 300 ? 'movie' : 'tv'}-${index % 300}` }));
   return { version: 1, ownerPid: 20, databaseEpoch: 1000,
-    libraries: [1, 2].map(library_id => ({ library_id, run_id: `00000000-0000-0000-0000-00000000000${library_id}` })), inventory,
+    libraries: [1, 2].map(library_id => ({ library_id, run_id: `00000000-0000-0000-0000-00000000000${library_id}`,
+      sync_status_id: library_id + 100, capture_generation: '1' })), inventory,
     tasks: inventory.map((row, index) => ({ id: index + 10, item_id: String(row.id), library_id: String(row.library_id),
       media_type: row.media_type, task_type: 'metadata_enrichment', status: index < 5 ? 'processing' : 'pending',
       starts: index < 5 ? 1 : 0, completions: 0, attempts: 0, started_ms: index < 5 ? 2000 : null,
@@ -34,6 +36,8 @@ test('checkpoint covers 600 stable identities across two pages per media type', 
 test.each([
   value => { value.version = 2; }, value => { value.ownerPid = 0; }, value => { value.databaseEpoch = null; },
   value => { value.libraries[1].library_id = 1; }, value => { value.libraries[0].run_id = 'bad'; },
+  value => { value.libraries[0].sync_status_id = null; }, value => { value.libraries[0].capture_generation = '0'; },
+  value => { value.libraries[1].sync_status_id = value.libraries[0].sync_status_id; },
   value => { value.inventory.pop(); }, value => { value.inventory[0].external_id = 'real-media'; },
   value => { value.inventory[1].id = value.inventory[0].id; }, value => { value.tasks[0].item_id = '9000'; },
   value => { value.tasks[0].visible_ms--; }, value => { value.tasks[0].starts++; },
@@ -59,6 +63,26 @@ test('late sibling completion cannot be misreported as independent progress', ()
   tasks.forEach(row => { row.completed_ms = 603000; });
   expect(sawSiblingProgress(tasks, value.tasks)).toBe(false);
   expect(() => assertBacklogTaskIdentities(tasks, value.tasks)).not.toThrow();
+});
+
+test.each(['run_id', 'sync_status_id', 'capture_generation'])('committed identity rejects substituted %s', async key => {
+  const value = checkpoint();
+  const rows = structuredClone(value.libraries); rows[0][key] = 'changed';
+  await expect(assertBacklogIdentity({ query: async () => ({ rows }) }, value)).rejects.toThrow();
+});
+
+test('committed receipt lookup is independent of a newer retryable scan head', async () => {
+  const value = checkpoint();
+  const query = jest.fn(async sql => ({ rows: sql.includes('JOIN media_server_sync_status') ? value.libraries :
+    sql.includes('SELECT id,library_id,external_id') ? value.inventory : [{ count: 0 }] }));
+  await expect(assertBacklogIdentity({ query }, value)).resolves.toBeUndefined();
+  await readCommittedBacklogRuns({ query }, value.libraries);
+  const [sql, values] = query.mock.calls[0];
+  expect(sql).toContain('s.backfill_run_id AS run_id');
+  expect(sql).toContain("h.status='completed'");
+  expect(sql).toContain("c.phase='complete'");
+  expect(sql).not.toContain("s.phase='complete'");
+  expect(values).toEqual([[1, 2], [101, 102]]);
 });
 
 test.each([

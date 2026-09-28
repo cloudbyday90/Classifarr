@@ -5,7 +5,7 @@ export const BACKLOG_BOUNDARY = Object.freeze({ boundary: 'durable_pending_and_c
   tasks: 600, gate: 'held', visibilityMs: 600000 });
 
 export function backlogRecoveryEvidence(value) {
-  const fixed = { driver: 'startup_scheduler', checkpoint: 'preserved', ingestionRuns: 'unchanged',
+  const fixed = { driver: 'startup_scheduler', checkpoint: 'preserved', committedIngestion: 'preserved',
     inventory: 'unchanged', taskIds: 'unchanged', profiles: 'current', movieItems: 300, tvItems: 300,
     completedTasks: 600, duplicateCompletions: 0, earlyReclaims: 0, routingTasks: 0, music: 'excluded',
     visibilityMs: 600000, siblingProgress: 'before_original_lease_expiry', databaseRestart: 'verified' };

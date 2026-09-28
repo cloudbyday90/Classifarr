@@ -20,8 +20,9 @@ AI providers remain disabled. No live library or routing setting is changed.
    the production worker, retry policy and ten-minute visibility lease are unchanged.
 3. A transactional fixture ledger records claim and completion transitions. It
    observes task updates; it never repairs or replaces them.
-4. Flush a bounded checkpoint containing the original ingestion runs, inventory
-   identities, task IDs, claims and visibility deadlines. Require both pending
+4. Flush a bounded checkpoint containing the committed backfill generation,
+   completed sync receipt and source-capture generation, inventory identities,
+   task IDs, claims and visibility deadlines. Require both pending
    and processing tasks, complete queue materialization, and a verified blocker.
 5. Kill only the owned app with SIGKILL; require exit 137 without OOM. Restart the
    normal entrypoint on the same volume. The killed database session releases
@@ -29,10 +30,19 @@ AI providers remain disabled. No live library or routing setting is changed.
 6. A read-only observer checks sibling TV progress before the old movie claims
    expire, then waits for normal reclamation and current library profiles. It
    neither reseeds nor invokes workers nor alters statuses or deadlines.
-7. Require unchanged inventory/run/task identities, one necessary reclaim per
+7. Require unchanged committed capture/handoff, inventory and task identities, one necessary reclaim per
    interrupted task, no early reclaim, one durable completion per task, no
    routing tasks and no resource-limit denial. Compare resource observations
    within each process epoch, never subtract counters across restarts.
+
+Normal startup schedules another library scan after two minutes. The synthetic
+HTTP source dies with the crashed container, so later scan attempts can enter
+retry-wait. The mutable `library_ingestion_state.run_id` is not a durable receipt:
+the proof instead checks the original `backfill_run_id`, completed sync row and
+completed source-capture generation. New retry attempts must not replace those
+receipts, inventory or queued work. The observer does not restart the source or
+suppress normal startup scans. This also verifies backfill completion while the
+source is temporarily unavailable, but not source reconnection itself.
 
 The existing small crash proof and default installation receipt remain intact.
 The opt-in budget proof additionally requires this case for both fresh and
@@ -53,7 +63,7 @@ ten minutes per case; a bounded observer fails rather than shortening the lease.
 - PostgreSQL explains recovery of committed changes through
   [write-ahead logging](https://www.postgresql.org/docs/18/wal-intro.html).
   Preserve the volume and verify durable identities after the crash.
-- PostgreSQL's [advisory-lock documentation](https://www.postgresql.org/docs/18/explicit-locking.html?trk=article-ssr-frontend-pulse_little-text-block)
+- PostgreSQL's [advisory-lock documentation](https://www.postgresql.org/docs/18/explicit-locking.html)
   distinguishes session and transaction ownership. Use session death to release
   only the synthetic gate; elapsed age is not evidence about unrelated legacy writers.
 - Docker documents [explicit service SIGKILL](https://docs.docker.com/reference/cli/docker/compose/kill/).

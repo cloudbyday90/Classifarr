@@ -96,7 +96,7 @@ export async function verifyBacklogRecovery(db) {
   await assertBacklogIdentity(db, checkpoint);
   assert.deepEqual(await readBacklogCheckpoint(), checkpoint);
   const interruptedTasks = checkpoint.tasks.filter(row => row.status === 'processing').length;
-  return { ...backlogRecoveryEvidence({ driver: 'startup_scheduler', checkpoint: 'preserved', ingestionRuns: 'unchanged',
+  return { ...backlogRecoveryEvidence({ driver: 'startup_scheduler', checkpoint: 'preserved', committedIngestion: 'preserved',
     inventory: 'unchanged', taskIds: 'unchanged', profiles: 'current', movieItems: 300, tvItems: 300,
     completedTasks: 600, duplicateCompletions: 0, earlyReclaims: 0, routingTasks: 0, music: 'excluded',
     visibilityMs: 600000, siblingProgress: 'before_original_lease_expiry', databaseRestart: 'verified',
