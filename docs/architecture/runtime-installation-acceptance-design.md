@@ -1,8 +1,10 @@
 # Runtime installation acceptance in CI
 
-September 28 follow-up: [scheduled installation acceptance](scheduled-installation-design.md)
-adds real startup-scheduler progress to both scenarios. Version 2 receipts require
-these additional checks; the original nine-check outcome remains historical evidence.
+September 28 follow-ups: [scheduled installation acceptance](scheduled-installation-design.md)
+adds real startup-scheduler progress to both scenarios, and
+[backfill crash acceptance](scheduled-backfill-crash-design.md) verifies autonomous
+restart from committed inventory. Version 3 receipts require all twelve checks;
+earlier nine- and eleven-check outcomes remain historical evidence.
 
 ## Decision
 

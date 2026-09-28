@@ -11,6 +11,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Document local CPU/memory limits, worker concurrency and restart observations,
+  distinguishing early-startup memory use from sustained resource headroom.
 - Verify automatic backfill after a real container crash at the committed
   ingestion boundary, preserving original inventory and run identities. Require
   explicit crash evidence in full installation acceptance receipts.

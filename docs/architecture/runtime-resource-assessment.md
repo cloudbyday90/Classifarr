@@ -11,7 +11,7 @@ container. This is a point-in-time assessment, not a peak-load guarantee.
 | Container memory | About 1.07 GiB of 2 GiB (54%) | Hard 2 GiB shared by Node, PostgreSQL and other processes |
 | Lifetime cgroup memory high-water | About 1.52 GiB | Zero recorded limit failures or OOM kills |
 | Node process RSS | About 940 MiB | Includes more than JavaScript heap |
-| CPU | About 0.38% at the sampled instant | No quota; 16 logical CPUs visible to Docker |
+| CPU | About 0.38% at the sampled instant | No quota; 16 logical CPUs visible to Docker; Docker uses 100% per fully utilized core |
 | Processes / threads | About 29–31 | No PID limit; one Node process and normal PostgreSQL workers |
 | PostgreSQL connections | Six, five idle | No idle-in-transaction or queries active over 60 seconds |
 | Queue | No pending or processing rows | Approximately 37,000 completed enrichment rows are history, not active jobs |
@@ -29,8 +29,7 @@ subtracts cache, so that figure alone cannot predict the admission decision.
 An in-container diagnostic Node process reported 983 MiB available through the
 cgroup-aware API, below that 1,024 MiB new-scan requirement at observation time.
 The probe itself consumes memory; this does not prove a persistent blocked state.
-Queue concurrency
-settings were absent, so the implementation defaults apply: one general worker
+Queue concurrency settings were absent, so the implementation defaults apply: one general worker
 and five metadata workers, with configured maxima of five and twenty respectively.
 
 ## Research and recommendation stack
@@ -56,11 +55,30 @@ Official sources discovered and reviewed on 28 September 2026:
 Final recommendation: retain the current limits for this rebuild; make bounded
 resource admission and a mixed-library load test the next implementation item.
 No unrelated container or host process is stopped by this work.
+Two unrelated local containers also had no container-level memory cap; they were
+left untouched. Host-wide contention therefore remains possible independently of
+Classifarr's own limits.
 
 ## Post-rebuild outcome
 
-Pending rebuild and health/resource verification. The old image will be retained
-for rollback, with persistent data and routing settings preserved.
+The no-cache build and local replacement passed. The container is healthy on code
+revision `539fc0bb0a35deadd0ecb5cd7e29b35242493b55`, with persistent data and routing
+settings preserved. Observed memory was 329–379 MiB (about 16–19%) during the first
+few minutes. CPU ranged from approximately 0.3% to a brief 62% (less than one core),
+with about 27–37 processes/threads. There was one Node process and normal PostgreSQL
+workers, no zombie processes observed, no OOM/limit failures and no restart loop.
+CPU and PID ceilings remain unset; the shared memory limit remains 2 GiB.
+
+Do not interpret the lower post-restart RSS as a fixed memory leak or a demonstrated
+optimization. The old container had run for about 18 hours; the new sample covers
+startup only. A sustained workload and memory trend are needed to distinguish
+expected cache growth, retained data and leaks.
+
+All eight completed ingestion runs acquired durable backfill acknowledgements.
+Observed metadata concurrency was five, with nine pending items initially; it then
+drained. No new classification task or WARN/ERROR record was observed, and no
+idle-in-transaction connection remained. Ten libraries and 6,696 inventory rows
+were preserved; no unrelated container was changed.
 
 Before deployment, a custom-format PostgreSQL backup was created at
 `data/backups/pre-rebuild-20260928-1432.dump` (79,911,355 bytes, mode 0600 inside
@@ -70,5 +88,14 @@ Git and may contain secrets; do not publish it.
 
 The previous image is retained as `classifarr:rollback-20260928-996c4fe0`, revision
 `996c4fe075f6ffb8d15529a085991dcb940092f0`. Image rollback alone does not reverse
-database migrations. The deployment must advance the current 291 migration ledger
-entries to 296 using the existing migration runner.
+database migrations. The existing migration runner successfully advanced the
+ledger from 291 entries to 296 during startup.
+
+## Follow-up acceptance target
+
+Build on the existing discovery memory gate with shared resource-aware admission
+for ingestion, enrichment and evaluation. First reproduce mixed-library pressure
+in a disposable benchmark; then bound concurrent work, reserve memory for the
+database and foreground requests, and resume deferred work automatically as pressure
+falls. Measure throughput, wait duration, event-loop lag, RSS and OOM counts across
+a warm sustained run. Do not use restart-induced memory reduction as success.
