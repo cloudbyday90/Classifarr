@@ -62,6 +62,9 @@ export class QueueReadModel {
             const classificationPausedForAi = runtimeState.workerRunning === true && runtimeState.aiAvailable === false;
             stats.aiAvailable = runtimeState.aiAvailable;
             stats.workerRunning = runtimeState.workerRunning;
+            stats.resourceWaitReason = runtimeState.workerRunning === true
+                && ['busy', 'memory_pressure', 'memory_unknown'].includes(runtimeState.resourceWaitReason)
+                ? runtimeState.resourceWaitReason : null;
             stats.classificationPaused = Boolean(blockers.lookupFailed || classificationPausedForAi);
             stats.classificationPauseReason = blockers.lookupFailed
                 ? 'dispatch_check_failed'

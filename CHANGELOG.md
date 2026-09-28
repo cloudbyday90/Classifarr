@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Share a bounded memory-admission budget across library ingestion, queued
+  backfill/classification and inventory evaluation. Defer new work under pressure,
+  preserve in-flight ownership, and resume through existing retry mechanisms.
+  Show concise memory/capacity waiting status without changing routing or limits.
+- Apply open PR #553 locally: update Vitest and its V8 coverage provider to 5.0.2.
+  No PR merge or release.
 - Document local CPU/memory limits, worker concurrency and restart observations,
   distinguishing early-startup memory use from sustained resource headroom.
 - Verify automatic backfill after a real container crash at the committed

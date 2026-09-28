@@ -41,6 +41,11 @@
       </div>
     </div>
 
+    <ResourceAdmissionStatus
+      :stats="stats"
+      :unavailable="statsUnavailable"
+    />
+
     <!-- Gap Analysis Progress -->
     <div
       v-if="gapStats && gapStats.unprocessedCount > 0"
@@ -438,6 +443,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import ClearResyncDialog from '@/components/ClearResyncDialog.vue'
+import ResourceAdmissionStatus from '@/components/queue/ResourceAdmissionStatus.vue'
+
+const statsUnavailable = ref(false)
 
 const loading = ref(true)
 const saving = ref(false)
@@ -493,9 +501,11 @@ const loadStats = async () => {
       api.getGapAnalysisStats().catch(() => null)
     ])
     stats.value = queueData
+    statsUnavailable.value = false
     gapStats.value = gapData
   } catch (error) {
     console.error('Failed to load queue stats:', error)
+    statsUnavailable.value = true
   }
 }
 

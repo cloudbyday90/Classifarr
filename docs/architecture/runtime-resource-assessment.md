@@ -93,9 +93,10 @@ ledger from 291 entries to 296 during startup.
 
 ## Follow-up acceptance target
 
-Build on the existing discovery memory gate with shared resource-aware admission
-for ingestion, enrichment and evaluation. First reproduce mixed-library pressure
-in a disposable benchmark; then bound concurrent work, reserve memory for the
-database and foreground requests, and resume deferred work automatically as pressure
-falls. Measure throughput, wait duration, event-loop lag, RSS and OOM counts across
-a warm sustained run. Do not use restart-induced memory reduction as success.
+The [shared-admission implementation](shared-work-admission.md) now coordinates
+new ingestion, queued work and evaluation using conservative memory reservations.
+See its [validation evidence](shared-work-admission-validation.md) for scope and
+limits. The remaining acceptance target is a warm, sustained mixed-library study:
+measure throughput, wait duration, event-loop lag, RSS and OOM counts, then
+calibrate estimates and assess CPU limits. Deterministic pressure tests and
+restart-induced memory reduction are not substitutes for that benchmark.

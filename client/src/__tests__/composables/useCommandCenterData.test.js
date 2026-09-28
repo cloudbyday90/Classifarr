@@ -6,7 +6,7 @@ import { useCommandCenterData } from '@/composables/useCommandCenterData'
 const swr = vi.hoisted(() => ({ calls: [] }))
 vi.mock('@/composables/useSWR', () => ({
   useSWR: (key, fetcher, options) => {
-    const state = { data: ref(null), error: ref(null), isStale: ref(false), cacheTimestamp: ref(null), refresh: vi.fn() }
+    const state = { data: ref(null), error: ref(null), isOffline: ref(false), isStale: ref(false), cacheTimestamp: ref(null), refresh: vi.fn() }
     swr.calls.push({ key, fetcher, options, state })
     return state
   },
@@ -24,8 +24,16 @@ describe('Command Center evaluation SWR wiring', () => {
     live.state.data.value = await live.fetcher()
     expect(result.libraryEvaluation.value.status).toBe('available')
     live.state.error.value = { message: 'Offline' }
+    expect(result.resourceStatusUnavailable.value).toBe(true)
     expect(result.libraryEvaluation.value).toBeNull()
     live.state.error.value = null
+    expect(result.resourceStatusUnavailable.value).toBe(false)
+    live.state.isStale.value = true
+    expect(result.resourceStatusUnavailable.value).toBe(false)
+    live.state.isStale.value = false
+    live.state.isOffline.value = true
+    expect(result.resourceStatusUnavailable.value).toBe(true)
+    live.state.isOffline.value = false
     live.state.data.value = { queue: {} }
     expect(result.libraryEvaluation.value).toBeUndefined()
   })

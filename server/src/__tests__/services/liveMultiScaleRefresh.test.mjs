@@ -2,7 +2,7 @@
 import { expect, jest, test } from '@jest/globals';
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
-import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
 
 function setup(extra = {}) {
   const value = liveFixture(); let time = 1_000_000, revision = 0;

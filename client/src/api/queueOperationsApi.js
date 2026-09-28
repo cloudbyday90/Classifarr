@@ -43,6 +43,7 @@ export function clearAndResync() {
 }
 
 export function getLiveStats() {
+  // queue.resourceWaitReason describes new-work admission, not failed items or queue size.
   // Includes administrator-only libraryEvaluation with optional content-free guardReasons and representative counts.
   // The server marks this response no-store; callers must not persist it.
   return getDataRequest('/queue/live-stats')

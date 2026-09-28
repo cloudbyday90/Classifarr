@@ -96,11 +96,15 @@ describe('Queue routes coverage', () => {
   });
 
   test('GET /api/queue/stats returns queue stats', async () => {
+    queueService.getStats.mockResolvedValueOnce({ pending: 2, resourceWaitReason: 'memory_pressure' });
     const res = await request(app)
       .get('/api/queue/stats')
       .expect(200);
 
     expect(res.body.pending).toBe(2);
+    expect(res.body.resourceWaitReason).toBe('memory_pressure');
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.headers.vary).toContain('Authorization');
   });
 
   test('GET /api/queue/stats returns 500 on read failure', async () => {

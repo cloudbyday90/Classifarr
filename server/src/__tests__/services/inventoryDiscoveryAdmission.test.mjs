@@ -1,12 +1,38 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { assessDiscoveryMemory, readDiscoveryMemory } from '../../services/discoveryMemoryBudget.mjs';
-import { createInventoryDiscoveryAdmission, DiscoveryDeferredError, INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { DiscoveryDeferredError, INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 
 const MIB = 1024 * 1024;
 const memory = (available = 1536 * MIB) => ({ available, constrained: 2048 * MIB, total: 16384 * MIB });
 const lease = async (_key, callback) => { await callback({}); return true; };
 afterEach(() => jest.useRealTimers());
+
+test('shares priority and reservations across independent admission wrappers until cancellation settles', async () => {
+  const resourceAdmission = resourceAdmissionFixture(memory);
+  const options = { withSessionAdvisoryLock: lease, readMemory: memory, resourceAdmission };
+  const first = createInventoryDiscoveryAdmission(options), second = createInventoryDiscoveryAdmission(options);
+  for (const kind of ['ingestion', 'queue']) {
+    const permit = resourceAdmission.tryAcquire(kind);
+    const callback = jest.fn();
+    await expect(first(callback)).rejects.toMatchObject({ reason: 'busy' });
+    expect(callback).not.toHaveBeenCalled(); permit.release();
+  }
+  const caller = new AbortController();
+  let finish;
+  const pending = first(() => new Promise(resolve => { finish = resolve; }), { signal: caller.signal });
+  const rejected = expect(pending).rejects.toThrow('cancelled');
+  caller.abort(new Error('cancelled'));
+  await expect(second(jest.fn())).rejects.toMatchObject({ reason: 'busy' });
+  finish(); await rejected;
+  expect(await second(async () => 'recovered')).toBe('recovered');
+  // Pre-callback telemetry failure must also return the reservation.
+  const bad = createInventoryDiscoveryAdmission({ ...options, readMemory: () => null });
+  await expect(bad(jest.fn())).rejects.toMatchObject({ reason: 'memory_unknown' });
+  expect(await second(async () => 'still recovered')).toBe('still recovered');
+});
 
 test('uses shared available memory, bounded reserve, and conservative starting headroom', () => {
   expect(assessDiscoveryMemory(memory(1024 * MIB), true)).toMatchObject({ allowed: true, reserve: 256 * MIB });

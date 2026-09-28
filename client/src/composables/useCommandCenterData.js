@@ -17,7 +17,7 @@ export function useCommandCenterData({ router }) {
     return isOperationallyActive.value ? POLL_INTERVALS.NORMAL : POLL_INTERVALS.SLOW
   }
 
-  const { data: liveStatsData, error: liveStatsError, isStale: liveStatsStale, refresh: refreshLiveStats, cacheTimestamp: liveStatsTimestamp } = useSWR(
+  const { data: liveStatsData, error: liveStatsError, isOffline: liveStatsOffline, isStale: liveStatsStale, refresh: refreshLiveStats, cacheTimestamp: liveStatsTimestamp } = useSWR(
     'command-center:live-stats',
     async () => (await api.getLiveStats()) ?? {},
     { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true, persist: false }
@@ -103,6 +103,8 @@ export function useCommandCenterData({ router }) {
   const liveStats = computed(() => liveStatsData.value || {})
   const libraryEvaluation = computed(() => liveStatsError?.value ? null : liveStats.value.libraryEvaluation)
   const queueStats = computed(() => liveStats.value.queue || {})
+  // Keep the last status during ordinary revalidation; do not announce each poll.
+  const resourceStatusUnavailable = computed(() => Boolean(liveStatsError?.value || liveStatsOffline?.value))
   const gapStats = computed(() => liveStats.value.gapAnalysis || {})
   const librarySyncStats = computed(() => liveStats.value.librarySync || {})
   const enrichmentStats = computed(() => liveStats.value.enrichment || {})
@@ -366,6 +368,7 @@ export function useCommandCenterData({ router }) {
     primaryActiveTask,
     queuePendingCount,
     queueStats,
+    resourceStatusUnavailable,
     recentlyCompletedItems,
     refreshAiUsage,
     refreshArrConfigStatus,

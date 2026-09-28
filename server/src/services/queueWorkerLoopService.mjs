@@ -8,6 +8,7 @@
 
 import { setImmediate as yieldForTurn, setTimeout as waitFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
+import { backgroundResourceAdmission } from './backgroundResourceAdmission.mjs';
 import {
     QUEUE_TASK_FAILURE_REASON_IDS,
     QUEUE_TASK_RECOVERY_LOG_REASON_IDS,
@@ -19,6 +20,8 @@ const DEFAULT_VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_
 
 export class QueueWorkerLoopService {
     constructor(deps = {}) {
+        this.resourceAdmission = deps.resourceAdmission || backgroundResourceAdmission;
+        this.resourceWaitReason = null;
         this.db = deps.db;
         this.logger = deps.logger;
         this.aiRouterService = deps.aiRouterService;
@@ -148,9 +151,26 @@ export class QueueWorkerLoopService {
         const nonMetadataSlotAvailable = nonMetadataProcessing < concurrency.generalWorkers;
 
         if (!metadataSlotAvailable && !nonMetadataSlotAvailable) {
+            this.resourceWaitReason = null;
             return false;
         }
 
+        const permit = this.resourceAdmission.tryAcquire('queue');
+        this.resourceWaitReason = permit.allowed ? null : permit.reason;
+        if (!permit.allowed) return false;
+        let retained = false;
+        try {
+            return await this.dispatchAdmittedTask(state, metadataSlotAvailable, nonMetadataSlotAvailable, () => {
+                retained = true;
+                return permit.release;
+            });
+        } finally {
+            // Empty queues, failed checks and requeues must not consume capacity.
+            if (!retained) permit.release();
+        }
+    }
+
+    async dispatchAdmittedTask(state, metadataSlotAvailable, nonMetadataSlotAvailable, retainPermit) {
         const blockers = await this.hasClassificationDispatchBlocker();
         let excludeClassification = blockers.lookupFailed || blockers.hasProcessingClassification;
         let aiReadiness = null;
@@ -191,8 +211,14 @@ export class QueueWorkerLoopService {
         }
 
         this.incrementProcessing(task.task_type);
-        this.processTask(task).finally(() => {
-            this.decrementProcessing(task.task_type);
+        const release = retainPermit();
+        // Include synchronous throws and asynchronous rejection in the same lifetime.
+        void Promise.resolve().then(() => this.processTask(task)).catch(() => {
+            this.logger.error('Queue task execution failed; visibility recovery remains active', {
+                reasonCode: 'queue_task_execution_failed',
+            });
+        }).finally(() => {
+            try { this.decrementProcessing(task.task_type); } finally { release(); }
         });
 
         await this.yieldToEventLoop();

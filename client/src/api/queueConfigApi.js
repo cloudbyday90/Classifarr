@@ -18,6 +18,7 @@
 
 import { getSettingsRequest, getDataRequest, updateSettingsRequest } from './core'
 
+/** Includes resourceWaitReason (null, busy, memory_pressure or memory_unknown) for new work admission. */
 export function getQueueStats() {
   return getDataRequest('/queue/stats')
 }

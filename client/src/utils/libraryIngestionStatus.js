@@ -32,6 +32,9 @@ export function ingestionPollInterval(library, requesting = false) {
 
 export function librarySyncResultMessage(result) {
   const deferred = {
+    resource_busy: 'Import capacity is in use. Existing items are safe; retry later or wait for the next automatic sync.',
+    resource_memory_pressure: 'Import is waiting for memory. Existing items are safe; retry later or wait for the next automatic sync.',
+    resource_memory_unknown: 'Memory availability could not be checked. Import will wait; existing items are safe. Retry later.',
     ingestion_owned: 'This library is already importing.',
     ingestion_capacity: 'Two imports are active. Retry when one finishes.',
     retry_wait: 'An automatic import retry is already scheduled.',

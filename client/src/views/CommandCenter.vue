@@ -63,6 +63,11 @@
         {{ statusAnnounceText }}
       </p>
 
+      <ResourceAdmissionStatus
+        :stats="queueStats"
+        :unavailable="resourceStatusUnavailable"
+      />
+
       <p
         v-if="actionError"
         role="alert"
@@ -303,6 +308,7 @@ import EvaluationHistorySummary from '@/components/command-center/EvaluationHist
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'
+import ResourceAdmissionStatus from '@/components/queue/ResourceAdmissionStatus.vue'
 import BatchActivityPanel from '@/components/command-center/BatchActivityPanel.vue'
 import NeedsAttentionPanel from '@/components/command-center/NeedsAttentionPanel.vue'
 import PurposeHealthSummary from '@/components/command-center/PurposeHealthSummary.vue'
@@ -395,6 +401,8 @@ const {
   pendingQueueTasks,
   primaryActiveTask,
   queuePendingCount,
+  queueStats,
+  resourceStatusUnavailable,
   refreshOperationalData,
   recentlyCompletedItems,
   showConfigureMediaServerCta,

@@ -1,7 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
-import { createInventoryDiscoveryAdmission, INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
 
 jest.unstable_unmockModule('../../config/database.mjs');
 const { createDatabaseModule } = await import('../../config/database.mjs');

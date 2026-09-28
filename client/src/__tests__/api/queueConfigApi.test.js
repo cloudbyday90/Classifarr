@@ -40,7 +40,7 @@ describe('queueConfigApi', () => {
   })
 
   it('getQueueStats calls getDataRequest with /queue/stats', async () => {
-    const stats = { pending: 5, processing: 1, completed: 100, failed: 2 }
+    const stats = { pending: 5, processing: 1, completed: 100, failed: 2, resourceWaitReason: 'memory_pressure' }
     mockGetDataRequest.mockResolvedValueOnce(stats)
     const result = await getQueueStats()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/stats')

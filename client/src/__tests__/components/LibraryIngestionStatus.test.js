@@ -31,6 +31,10 @@ describe('Library ingestion status', () => {
     wrapper.unmount()
   })
   it('never labels a deferred request as completed', () => {
+    for (const reason of ['resource_memory_pressure', 'resource_memory_unknown']) {
+      expect(librarySyncResultMessage({ deferred: true, reason })).toMatch(/memory|Memory/)
+      expect(librarySyncResultMessage({ deferred: true, reason })).not.toContain('complete')
+    }
     for (const reason of ['ingestion_owned', 'ingestion_capacity', 'retry_wait', 'legacy_owner_unknown', 'source_disabled', 'source_unconfigured', 'source_preflight_unavailable', 'future']) {
       expect(librarySyncResultMessage({ deferred: true, reason })).not.toContain('complete')
     }

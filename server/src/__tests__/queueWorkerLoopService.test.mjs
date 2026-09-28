@@ -9,6 +9,7 @@
 import { jest } from '@jest/globals';
 
 import { QueueWorkerLoopService } from '../services/queueWorkerLoopService.mjs';
+import { resourceAdmissionFixture } from './helpers/resourceAdmissionFixture.mjs';
 
 describe('QueueWorkerLoopService', () => {
     let service;
@@ -27,6 +28,7 @@ describe('QueueWorkerLoopService', () => {
         };
 
         deps = {
+            resourceAdmission: resourceAdmissionFixture(),
             db: { query: jest.fn() },
             logger: {
                 info: jest.fn(),
@@ -85,6 +87,56 @@ describe('QueueWorkerLoopService', () => {
         };
 
         service = new QueueWorkerLoopService(deps);
+    });
+
+    it('waits before dequeue under pressure and automatically resumes after recovery', async () => {
+        let available = 1;
+        deps.resourceAdmission = resourceAdmissionFixture(() => ({ available, constrained: 2e9, total: 16e9 }));
+        service = new QueueWorkerLoopService(deps);
+        expect(await service.maybeDispatchTask()).toBe(false);
+        expect(service.resourceWaitReason).toBe('memory_pressure');
+        expect(deps.dequeue).not.toHaveBeenCalled();
+        expect(deps.hasClassificationDispatchBlocker).not.toHaveBeenCalled();
+        available = 1e9;
+        expect(await service.maybeDispatchTask()).toBe(false);
+        expect(service.resourceWaitReason).toBeNull();
+        expect(deps.dequeue).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['empty', 'dequeue error', 'AI requeue', 'task rejection', 'synchronous throw'])('releases reservations after %s', async mode => {
+        const release = jest.fn();
+        service.resourceAdmission = { tryAcquire: () => ({ allowed: true, release }) };
+        if (mode !== 'empty') deps.dequeue.mockResolvedValue({ id: 42, task_type: 'classification' });
+        if (mode === 'dequeue error') deps.dequeue.mockRejectedValue(new Error('PRIVATE'));
+        if (mode === 'AI requeue') deps.aiRouterService.checkAvailability.mockResolvedValue(false);
+        if (mode === 'task rejection') deps.processTask.mockRejectedValue(new Error('PRIVATE'));
+        if (mode === 'synchronous throw') deps.processTask.mockImplementation(() => { throw new Error('PRIVATE'); });
+        if (mode === 'dequeue error') await expect(service.maybeDispatchTask()).rejects.toThrow('PRIVATE');
+        else await service.maybeDispatchTask();
+        await new Promise(resolve => { setImmediate(resolve); });
+        expect(release).toHaveBeenCalledTimes(1);
+        expect(state.processing).toBe(0);
+        expect(JSON.stringify(deps.logger.error.mock.calls)).not.toContain('PRIVATE');
+    });
+
+    it('holds a task reservation until the actual task settles, without stopping visibility recovery', async () => {
+        let finish;
+        const release = jest.fn();
+        service.resourceAdmission = { tryAcquire: () => ({ allowed: true, release }) };
+        deps.dequeue.mockResolvedValue({ id: 42, task_type: 'metadata_enrichment' });
+        deps.processTask.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+        expect(await service.maybeDispatchTask()).toBe(true);
+        expect(release).not.toHaveBeenCalled();
+        service.resourceAdmission = { tryAcquire: () => ({ allowed: false, reason: 'memory_unknown' }) };
+        expect(await service.maybeDispatchTask()).toBe(false);
+        expect(state.processing).toBe(1);
+        const recovery = jest.spyOn(service, 'recoverExpiredVisibilityTasks').mockResolvedValue(0);
+        service.maybeRunVisibilityRecovery(60_001);
+        expect(recovery).toHaveBeenCalledTimes(1);
+        finish();
+        await new Promise(resolve => { setImmediate(resolve); });
+        expect(release).toHaveBeenCalledTimes(1);
+        expect(state.processing).toBe(0);
     });
 
     it('excludes classification from dequeue while AI is unavailable and the next probe is not due', async () => {

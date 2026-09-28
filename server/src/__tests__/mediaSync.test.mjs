@@ -8,6 +8,7 @@
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 import { withSourcePageFixtures } from './helpers/sourcePageFixture.mjs';
+import { resourceAdmissionFixture } from './helpers/resourceAdmissionFixture.mjs';
 
 const mockDb = {
     query: jest.fn(),
@@ -87,6 +88,7 @@ const { sourceIdentityRecoveryEvidence } = await import('../services/sourceIdent
 
 describe('MediaSyncService', () => {
     beforeEach(() => {
+        service.resourceAdmission = resourceAdmissionFixture();
         jest.clearAllMocks();
         mockDb.query.mockReset();
         mockPlexService.getLibraryItems.mockReset();
@@ -107,6 +109,32 @@ describe('MediaSyncService', () => {
         service.mediaServerServices = {
             getMediaServerService: mockGetMediaServerService
         };
+    });
+
+    it('does not acquire ownership or mutate inventory while waiting for memory, and retries normally', async () => {
+        let available = 0;
+        const withOwnership = jest.fn().mockResolvedValue({ deferred: true, reason: 'ingestion_owned' });
+        const instance = new MediaSyncService({ withOwnership,
+            resourceAdmission: resourceAdmissionFixture(() => ({ available, constrained: 2e9, total: 16e9 })) });
+        expect(await instance.syncLibrary(10)).toEqual({ success: false, deferred: true, reason: 'resource_memory_pressure' });
+        expect(withOwnership).not.toHaveBeenCalled(); expect(mockDb.query).not.toHaveBeenCalled();
+        available = 1e9;
+        for (let i = 0; i < 4; i += 1) expect(await instance.syncLibrary(10)).toMatchObject({ reason: 'ingestion_owned' });
+        expect(withOwnership).toHaveBeenCalledTimes(4);
+    });
+
+    it('retains ingestion capacity until ownership settles, including failures', async () => {
+        let finish;
+        const withOwnership = jest.fn().mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+        const instance = new MediaSyncService({ withOwnership, resourceAdmission: resourceAdmissionFixture() });
+        const pending = instance.syncLibrary(10);
+        const other = instance.resourceAdmission.tryAcquire('ingestion');
+        expect(other.allowed).toBe(true);
+        expect(await instance.syncLibrary(11)).toMatchObject({ deferred: true, reason: 'ingestion_capacity' });
+        expect(withOwnership).toHaveBeenCalledTimes(1);
+        finish({ success: true }); await pending; other.release();
+        withOwnership.mockRejectedValue(new Error('ownership failed'));
+        for (let i = 0; i < 4; i += 1) await expect(instance.syncLibrary(10)).rejects.toThrow('ownership failed');
     });
 
     describe('default media server service wiring', () => {
@@ -323,7 +351,7 @@ describe('MediaSyncService', () => {
             });
             if (failure === 'collections') source.getCollections.mockRejectedValue(new Error('synthetic scan failure'));
             const report = jest.fn();
-            const instance = new MediaSyncService({ sourceObservations,
+            const instance = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), sourceObservations,
                 createIdentityRecovery: () => createMediaSyncIdentityRecovery({ tmdbService: { findIdentityByExternalId: provider } }),
                 skipReporter: { report }, mediaServerServices: { getMediaServerService: () => source } });
             jest.spyOn(instance, 'upsertMediaItem').mockImplementation(async (_server, _library, _item, options) => {
@@ -375,7 +403,7 @@ describe('MediaSyncService', () => {
                 capture: jest.fn(), finish: jest.fn() };
             const recover = jest.fn().mockResolvedValue(null);
             const report = jest.fn();
-            const instance = new MediaSyncService({ sourceObservations, createIdentityRecovery: () => ({ recover }),
+            const instance = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), sourceObservations, createIdentityRecovery: () => ({ recover }),
                 skipReporter: { report }, mediaServerServices: { getMediaServerService: mockGetMediaServerService } });
             const upsert = jest.spyOn(instance, 'upsertMediaItem').mockResolvedValue(undefined);
             const prune = jest.spyOn(instance, 'pruneMissingMediaItems').mockResolvedValue(0);
@@ -417,7 +445,7 @@ describe('MediaSyncService', () => {
             const persistIdentityRecovery = applied === 'failure' ? jest.fn().mockRejectedValue(new Error('fixture'))
                 : jest.fn().mockResolvedValue(applied);
             const report = jest.fn();
-            const instance = new MediaSyncService({ sourceObservations, createIdentityRecovery: () => ({ recover }),
+            const instance = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), sourceObservations, createIdentityRecovery: () => ({ recover }),
                 persistIdentityRecovery, skipReporter: { report }, mediaServerServices: { getMediaServerService: mockGetMediaServerService } });
             jest.spyOn(instance, 'upsertMediaItem').mockImplementation(async (_s, _l, _item, options) => {
                 options.onSkippedItem({ reason: 'invalid_source_identity', identityIssue: 'conflicting_provider_ids' });
@@ -821,7 +849,7 @@ describe('MediaSyncService', () => {
                 if (sql.includes('INSERT INTO libraries(')) return { rows: [{ ...film, id: 2, is_active: true }] };
                 return { rows: [] };
             });
-            const instance = new MediaSyncService({ mediaServerServices: {
+            const instance = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), mediaServerServices: {
                 getMediaServerService: () => ({ getLibraryCatalog }),
             } });
             expect(await instance.syncLibrariesFromMediaServer()).toEqual([{ ...film, id: 2, is_active: true }]);

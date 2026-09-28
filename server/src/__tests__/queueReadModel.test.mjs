@@ -97,6 +97,16 @@ describe('QueueReadModel', () => {
         }));
     });
 
+    it.each(['memory_pressure', 'memory_unknown', 'busy', 'PRIVATE', null])('allowlists resource admission reason %s without changing AI state or counts', async reason => {
+        db.query.mockResolvedValue({ rows: [{}] });
+        getRuntimeState.mockReturnValue({ workerRunning: true, aiAvailable: true, resourceWaitReason: reason });
+        const stats = await readModel.getStats();
+        expect(stats.resourceWaitReason).toBe(['memory_pressure', 'memory_unknown', 'busy'].includes(reason) ? reason : null);
+        expect(stats.classificationPaused).toBe(false);
+        getRuntimeState.mockReturnValue({ workerRunning: false, aiAvailable: true, resourceWaitReason: reason });
+        expect((await readModel.getStats()).resourceWaitReason).toBeNull();
+    });
+
     it('marks classification as paused when the dispatch check fails', async () => {
         getDispatchBlockers.mockResolvedValueOnce({
             hasProcessingClassification: false,

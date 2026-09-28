@@ -8,7 +8,7 @@ import { representativeShadowFixture } from '../helpers/inventoryRepresentativeS
 import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
 import { createRepresentativeValidationDiagnostics } from '../../services/representativeValidationDiagnostics.mjs';
 import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
-import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
 
 function setup(observer = null, diagnostics = undefined, options = {}) {
   const fixture = representativeProfileFixture(options);

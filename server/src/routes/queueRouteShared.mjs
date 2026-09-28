@@ -77,6 +77,9 @@ export function createQueueRouter({
   }));
 
   router.get('/stats', asyncHandler(async (_req, res) => {
+    // Runtime admission state is ephemeral and must not be served from an HTTP cache.
+    res.set('Cache-Control', 'no-store');
+    res.vary('Authorization');
     const stats = await queueService.getStats();
     return sendData(res, stats);
   }));

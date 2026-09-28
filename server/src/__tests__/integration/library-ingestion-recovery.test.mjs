@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { sourcePageFixture, withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
 import { readPlexSourcePage } from '../../services/mediaServers/shared/sourcePage.mjs';
@@ -20,7 +21,7 @@ const state = async () => (await db.query('SELECT * FROM library_ingestion_state
 const inventory = async () => (await db.query('SELECT external_id FROM media_server_items WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows.map(row => row.external_id);
 const due = () => db.query("UPDATE library_ingestion_state SET retry_after=clock_timestamp()-interval '1 second' WHERE library_id=$1", [libraryId]);
 function sync(getLibraryItems, overrides = {}, total) {
-  return new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
+  return new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems, getCollections: async () => [],
   }, total) }, skipReporter: { report: async () => {} }, ...overrides });
 }
@@ -65,6 +66,26 @@ test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(m
     expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
     expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
   });
+
+test.each(['movie', 'tv'])('%s resource deferral preserves inventory, attempts and automatic eligibility', async mediaType => {
+  await db.query('UPDATE libraries SET media_type=$2 WHERE id=$1', [libraryId, mediaType]);
+  await db.query(`INSERT INTO media_server_items(media_server_id,library_id,external_id,title,media_type)
+    VALUES ($1,$2,'old','Synthetic legacy',$3)`, [serverId, libraryId, mediaType]);
+  let available = 0;
+  const getLibraryItems = jest.fn(async () => [{ ...item(22), media_type: mediaType }]);
+  const instance = sync(getLibraryItems, {
+    resourceAdmission: resourceAdmissionFixture(() => ({ available, constrained: 2e9, total: 16e9 })),
+  });
+  expect(await instance.syncLibrary(libraryId)).toMatchObject({ deferred: true, reason: 'resource_memory_pressure' });
+  expect(getLibraryItems).not.toHaveBeenCalled();
+  expect(await inventory()).toEqual(['old']);
+  expect(await state()).toBeUndefined();
+  expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
+  available = 1e9;
+  expect(await instance.syncLibrary(libraryId)).toMatchObject({ success: true });
+  expect(await inventory()).toEqual(['22']);
+  expect(await state()).toMatchObject({ phase: 'complete', attempt_count: 1 });
+});
 
 test('a newer completed import cannot hide an older unfinished marker from learning or recovery', async () => {
   await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');

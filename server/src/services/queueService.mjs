@@ -132,6 +132,7 @@ export class QueueService {
       getRuntimeState: () => ({
         aiAvailable: this.aiAvailable,
         workerRunning: this.running,
+        resourceWaitReason: this.queueWorkerLoopService?.resourceWaitReason ?? null,
         processing: this.processing,
         processingByType: { ...this.processingByType },
         queueConcurrency: this.queueConcurrencySettingsService.cachedConfig || this.queueConcurrencySettingsService.buildDefaultConfig(),
@@ -182,6 +183,7 @@ export class QueueService {
       resetVolatileState: () => this.queueTaskProcessorService.resetOmdbState(),
     });
     this.queueWorkerLoopService = deps.queueWorkerLoopService || new QueueWorkerLoopService({
+      resourceAdmission: deps.resourceAdmission,
       db: this.db,
       logger: this.logger,
       aiRouterService: this.aiRouterService,

@@ -10,7 +10,7 @@ import { createAutomaticSourcePairEvaluation, AUTOMATIC_SOURCE_PAIR_LOCK } from 
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
 import { recordDescriptionRepresentation } from '../../services/inventoryDescriptionRepresentationCheckpoint.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
-import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
 import { sourcePairFixture, sourcePairIdentity as identity } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';

@@ -1,6 +1,7 @@
 import { pool } from '../config/database.mjs';
 import { mediaSyncDatabase as db } from './mediaSyncDatabaseScope.mjs';
 import { createMediaSyncOwnership } from './mediaSyncOwnership.mjs';
+import { backgroundResourceAdmission } from './backgroundResourceAdmission.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import * as errorsModule from '../utils/errors.mjs';
@@ -18,6 +19,7 @@ const logger = createLogger('mediaSync');
 
 export class MediaSyncService {
   constructor(deps = {}) {
+    this.resourceAdmission = deps.resourceAdmission || backgroundResourceAdmission;
     this.withOwnership = deps.withOwnership || createMediaSyncOwnership({ pool });
     this.errors = deps.errors || errorsModule;
     this.mediaServerServices = deps.mediaServerServices || {
@@ -34,7 +36,12 @@ export class MediaSyncService {
     if (options.batchSize !== undefined && (!Number.isInteger(options.batchSize) || options.batchSize < 1 || options.batchSize > 1000)) {
       throw new TypeError('Sync batch size must be an integer from 1 to 1000');
     }
-    return this.withOwnership(libraryId, owner => runOwnedMediaSync(this, libraryId, options, owner));
+    const permit = this.resourceAdmission.tryAcquire('ingestion');
+    if (!permit.allowed) return { success: false, deferred: true,
+      reason: permit.reason === 'busy' ? 'ingestion_capacity' : `resource_${permit.reason}` };
+    try {
+      return await this.withOwnership(libraryId, owner => runOwnedMediaSync(this, libraryId, options, owner));
+    } finally { permit.release(); }
   }
   async findExistingMedia(tmdbId, mediaType) {
     return this.mediaSyncLibraryStateService.findExistingMedia(tmdbId, mediaType);
