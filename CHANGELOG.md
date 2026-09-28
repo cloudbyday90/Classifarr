@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Show actionable library-discovery status for Jellyfin, Emby and Plex, including
+  the last successful scan and a clear recovery step. Preserve inventory on failure,
+  exclude music, and reject stale diagnostic results after connection changes.
+  Keep status refresh read-only and avoid storing provider secrets or raw errors.
+- Correct the production-naming check to distinguish normal workflow states from
+  temporary numbered roadmap names, without renaming runtime fields or loosening
+  the zero-debt threshold.
 - Unify frozen-policy capture storage with the guarded private-study writer and
   production data directory; retain exclusive files and cleanup of failed captures.
 - Support Emby's current paginated library catalog with a bounded legacy fallback,

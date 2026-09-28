@@ -9,12 +9,15 @@ import { embyService } from '../../services/mediaServers/emby.mjs';
 import { jellyfinService } from '../../services/mediaServers/jellyfin.mjs';
 import { reconcileMediaServerLibraries } from '../../services/mediaServerLibrarySync.mjs';
 import { createLibraryArchiveService } from '../../services/libraryArchiveService.mjs';
+import { createLibraryDiscoveryStatusRepository } from '../../services/libraryDiscoveryStatusRepository.mjs';
+import { presentLibraryDiscovery } from '../../services/libraryDiscoveryPresentation.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 let server, baseUrl, respond, sourceId, libraryId;
 let requests = [];
 const resolveService = type => type === 'emby' ? embyService : jellyfinService;
 const reconcile = () => reconcileMediaServerLibraries({ db, getMediaServerServiceByType: resolveService });
+const discovery = async () => presentLibraryDiscovery(await createLibraryDiscoveryStatusRepository(db).read());
 const send = (res, data, status = 200) => {
   res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data));
 };
@@ -59,7 +62,35 @@ test.each(['current Emby', 'legacy Emby', 'Jellyfin'])('%s actual HTTP adapter r
   expect((await db.query('SELECT count(*)::int AS n FROM libraries WHERE media_server_id=$1', [sourceId])).rows[0].n).toBe(3);
   expect(requests).toHaveLength(mode === 'Jellyfin' ? 1 : 2);
   expect(requests.every(req => req.headers['x-emby-token'] === 'synthetic-token' && !JSON.stringify(req.query).includes('synthetic-token'))).toBe(true);
+  expect(await discovery()).toMatchObject({ reason: 'complete', lastSuccessCount: 2,
+    contract: mode === 'Jellyfin' ? 'jellyfin_virtual_folders' : mode === 'legacy Emby' ? 'emby_legacy' : 'emby_query' });
 });
+
+test.each([[401, 'authentication'], [403, 'forbidden'], [404, 'endpoint_unavailable'], [429, 'rate_limited'], [503, 'provider_unavailable'],
+  ['truncated', 'invalid_catalog'], ['object', 'invalid_catalog'], ['oversized', 'response_too_large']])
+  ('Jellyfin %s records an actionable reason, preserves inventory and recovers without Emby fallback', async (failure, reason) => {
+    await db.query("UPDATE media_server SET type='jellyfin' WHERE id=$1", [sourceId]);
+    respond = (_req, res) => send(res, jellyfinCatalog);
+    await reconcile();
+    const lastSuccessAt = (await discovery()).lastSuccessAt;
+    requests = [];
+    respond = (_req, res) => {
+      if (failure === 'truncated') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end('[{'); }
+      if (failure === 'object') return send(res, { Items: jellyfinCatalog });
+      if (failure === 'oversized') return send(res, { payload: 'x'.repeat(4194305) });
+      send(res, { detail: 'synthetic-token' }, failure);
+    };
+    await expect(reconcile()).rejects.toMatchObject({ status: 503 });
+    const result = await discovery();
+    expect(result).toMatchObject({ provider: 'jellyfin', reason, lastSuccessAt, lastSuccessCount: 2, contract: 'jellyfin_virtual_folders' });
+    expect(JSON.stringify(result)).not.toContain('synthetic-token');
+    expect(requests).toHaveLength(1);
+    expect(requests[0].path).toBe('/emby/Library/VirtualFolders');
+    expect((await db.query('SELECT count(*)::int AS n FROM media_server_items WHERE library_id=$1', [libraryId])).rows[0].n).toBe(1);
+    respond = (_req, res) => send(res, jellyfinCatalog);
+    await reconcile();
+    expect(await discovery()).toMatchObject({ reason: 'complete', httpStatus: null, lastSuccessCount: 2 });
+  });
 
 test.each(['changed total', 'repeated identity', 'empty page', 'later missing endpoint', 'truncated JSON', 'oversized response'])('%s prevents all reconciliation writes, including the valid first page', async failure => {
   respond = (_req, res, url) => {
@@ -98,14 +129,14 @@ test('empty current catalog preserves the existing library without trying legacy
   expect(requests).toHaveLength(1);
 });
 
-test('caller cancellation interrupts a waiting actual HTTP request without legacy fallback', async () => {
+test.each([['Emby', embyService], ['Jellyfin', jellyfinService]])('%s caller cancellation interrupts a waiting actual HTTP request without fallback', async (_name, provider) => {
   const entered = Promise.withResolvers();
   respond = () => entered.resolve();
   const controller = new AbortController();
-  const result = embyService.getLibraryCatalog(baseUrl, 'synthetic-token', { signal: controller.signal }).catch(error => error);
+  const result = provider.getLibraryCatalog(baseUrl, 'synthetic-token', { signal: controller.signal }).catch(error => error);
   await entered.promise; controller.abort(new Error('synthetic-token'));
   const error = await result;
-  expect(error).toMatchObject({ code: 'library_catalog_unavailable' });
+  expect(error).toMatchObject({ code: 'library_catalog_unavailable', catalogDiagnostic: { reason: 'cancelled' } });
   expect(JSON.stringify(error)).not.toContain('synthetic-token');
   expect(requests).toHaveLength(1);
   server.closeAllConnections();

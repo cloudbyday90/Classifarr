@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
+import { createLibraryDiscoveryStatusRepository } from '../../services/libraryDiscoveryStatusRepository.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const { createLibraryArchiveService } = await import('../../services/libraryArchiveService.mjs');
@@ -173,6 +174,14 @@ test('fresh snapshot installs the same archive constraints and receipt index as 
     await pool.query("INSERT INTO audit_log(action,metadata) VALUES ('library_archive_changed',jsonb_build_object('requestId',$1::text))", [requestId]);
     await expect(pool.query("INSERT INTO audit_log(action,metadata) VALUES ('library_archive_changed',jsonb_build_object('requestId',$1::text))", [requestId])).rejects.toMatchObject({ code: '23505' });
     expect((await pool.query("SELECT filename FROM schema_migrations WHERE filename='20260928_010000_add_library_archive.sql'")).rows).toHaveLength(1);
+    expect((await pool.query("SELECT filename FROM schema_migrations WHERE filename='20260928_020000_add_library_discovery_status.sql'")).rows).toHaveLength(1);
+    const { rows: [source] } = await pool.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('jellyfin','Synthetic','http://synthetic.invalid','synthetic') RETURNING *");
+    const repository = createLibraryDiscoveryStatusRepository(pool);
+    await repository.finish(await repository.begin(source), { count: 2, contract: 'jellyfin_virtual_folders' });
+    expect(await repository.read()).toMatchObject({ reason: 'complete', last_success_count: 2 });
+    await pool.query("UPDATE media_server SET api_key='rotated' WHERE id=$1", [source.id]);
+    const revision = await repository.read();
+    expect([Number(revision.current_revision), Number(revision.source_revision)]).toEqual([2, 1]);
   } finally {
     try { await pool?.end(); } finally { await container.stop(); }
   }

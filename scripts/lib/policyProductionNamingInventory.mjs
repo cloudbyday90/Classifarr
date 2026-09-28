@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { findDeliveryTermMatches } from './policyDeliveryTermMatcher.mjs';
+
 const POLICY_BUILDER_PRODUCTION_NAME_INVENTORY_VERSION =
   'policy_builder.production_name_inventory.v1';
 
@@ -127,7 +129,8 @@ function findPhaseTokens(line) {
   const candidate = normalizeString(line);
   const tokens = new Set();
 
-  if (candidate.toLowerCase().includes('phase')) {
+  // A workflow phase is a durable domain concept, not a numbered delivery label.
+  if (findDeliveryTermMatches(candidate).some(match => match.matcherId !== 'phase_code')) {
     tokens.add('phase');
   }
 

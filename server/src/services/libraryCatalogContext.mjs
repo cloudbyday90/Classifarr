@@ -2,17 +2,26 @@
 import { ConflictError, NotFoundError } from '../utils/appError.mjs';
 import { validateLibraryCatalog } from './mediaServers/shared/libraryCatalog.mjs';
 
-export async function readLibraryCatalogContext(db, resolveService, sourceId = null) {
+export async function readLibraryCatalogSource(db, sourceId = null) {
   const { rows: [source] } = await db.query(`SELECT * FROM media_server
     WHERE is_active=true AND ($1::integer IS NULL OR id=$1) ORDER BY id LIMIT 1`, [sourceId]);
   if (!source) throw new NotFoundError('No active media server configured');
+  return source;
+}
+
+export async function fetchLibraryCatalog(source, resolveService, options = {}) {
   const service = await resolveService(source.type);
-  const catalog = validateLibraryCatalog(await service.getLibraryCatalog(source.url, source.api_key));
+  return validateLibraryCatalog(await service.getLibraryCatalog(source.url, source.api_key, options));
+}
+
+export async function readLibraryCatalogContext(db, resolveService, sourceId = null) {
+  const source = await readLibraryCatalogSource(db, sourceId);
+  const catalog = await fetchLibraryCatalog(source, resolveService);
   return { source, catalog };
 }
 
 export function catalogSourceVersion(source) {
-  return [source.id, source.type, source.url, source.api_key, source.updated_at];
+  return [source.id, source.type, source.url, source.api_key, source.updated_at, source.catalog_revision];
 }
 
 export async function lockLibraryCatalogSource(db, source) {

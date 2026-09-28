@@ -19,6 +19,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
 import { registerLibraryArchiveRoutes } from './mediaServerRouteArchive.mjs';
+import { registerLibraryDiscoveryRoutes } from './mediaServerRouteDiscovery.mjs';
 
 export function createMediaServerRouter({
   express,
@@ -32,6 +33,7 @@ export function createMediaServerRouter({
 }) {
   const router = express.Router();
   registerLibraryArchiveRoutes(router, { db, getMediaServerServiceByType });
+  registerLibraryDiscoveryRoutes(router, { db });
 
   router.get('/', asyncHandler(async (_req, res) => {
     const mediaServer = await getActiveMediaServerConfig({ db });

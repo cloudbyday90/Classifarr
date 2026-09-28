@@ -27,7 +27,7 @@ const DELIVERY_TERM_MATCHERS = Object.freeze([
   },
   {
     matcherId: 'roadmap_identifier',
-    pattern: /\b[A-Z_$][A-Z0-9_$]*(?:PHASE(?:[0-9]+R?|R[0-9]+))[A-Z0-9_$]*\b/gi,
+    pattern: /\b(?:[A-Z_$][A-Z0-9_$]*)?PHASE(?:[0-9]+R?|R[0-9]+)[A-Z0-9_$]*\b/gi,
   },
 ]);
 

@@ -46,6 +46,32 @@ const PHASE8R_NATIVE_RUNTIME_READ_PATH_VERSION = 'phase8r.native_runtime_read_pa
 }
 
 describe('policyProductionNamingInventory', () => {
+  test('does not classify durable runtime phases as temporary delivery names', () => {
+    const inventory = buildPolicyProductionNamingInventory({ files: [{
+      path: 'server/src/services/workflowPhase.mjs',
+      content: [
+        "const phase = 'running';",
+        "state.phase = 'complete';",
+        "if (recoveryPhase === 'checking') return;",
+        "SELECT phase FROM library_ingestion_state WHERE phase='retry_wait';",
+        '/** Two phases: enumerate, then commit. */',
+      ].join('\n'),
+    }] });
+    expect(inventory.references).toEqual([]);
+    expect(inventory.summary.productionReferenceCount).toBe(0);
+    expect(inventory.summary.renameCandidateCount).toBe(0);
+  });
+
+  test.each(['Phase 6R', 'phase_12', 'pHaSe10Runtime', 'PHASE8R_VERSION', '12R', 'R6'])
+    ('still detects roadmap token %s on the same line as a runtime phase', token => {
+      const inventory = buildPolicyProductionNamingInventory({ files: [{
+        path: 'server/src/services/workflowPhase.mjs',
+        content: `const phase = 'running'; // ${token}`,
+      }] });
+      expect(inventory.summary.productionReferenceCount).toBe(1);
+      expect(inventory.summary.renameCandidateCount).toBe(1);
+    });
+
   test('classifies phase-coded production references before any durable rename work begins', () => {
     const inventory = buildPolicyProductionNamingInventory({
       files: sampleFiles(),

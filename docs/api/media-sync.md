@@ -36,7 +36,9 @@ library returns a successful skipped result with reason `unsupported_media_type`
 
 ### Authentication
 
-All endpoints require authentication via JWT token or API key.
+Media-sync endpoints require authentication via JWT token or API key. The separate
+library-discovery status endpoint below requires an administrator access session;
+API keys, refresh tokens and diagnostic tokens cannot use it.
 
 **Write operations** (POST sync) require `read_write` permission.
 
@@ -54,6 +56,48 @@ All endpoints require authentication via JWT token or API key.
 ---
 
 ## Endpoints
+
+### GET /api/media-server/discovery-status
+
+Read the latest stored library-discovery outcome for the saved active media server.
+This is an administrator-session-only, `Cache-Control: no-store` read, limited to
+30 requests per IP per 15 minutes. It accepts no query parameters. It never contacts
+Plex, Emby or Jellyfin, schedules recovery, or starts ingestion.
+
+```json
+{
+  "provider": "jellyfin",
+  "reason": "forbidden",
+  "title": "Library access was denied",
+  "nextStep": "Check the saved account or API key has library access, then sync again.",
+  "attemptedAt": "2026-09-27T13:00:00.000Z",
+  "finishedAt": "2026-09-27T13:00:01.000Z",
+  "lastSuccessAt": "2026-09-27T12:00:00.000Z",
+  "lastSuccessCount": 2,
+  "contract": "jellyfin_virtual_folders",
+  "httpStatus": 403
+}
+```
+
+`lastSuccessCount` counts supported movie/TV libraries in the validated source
+catalog, not imported items or classification accuracy. `complete` means catalog
+validation and additive local merge committed; content ingestion and backfill have
+separate progress. Music and unsupported libraries are not counted or imported.
+Successful discovery of an empty catalog has count `0` and does not delete local
+libraries.
+
+Before any recorded scan the reason is `not_recorded`; without a saved active
+server it is `not_configured`. A changed connection returns `configuration_changed`
+and hides previous evidence. An unfinished attempt older than two minutes becomes
+`interrupted` (outcome unrecorded), not proof of a dead worker. These states do not
+authorize takeover or cleanup. Failures within the same connection revision retain
+the last successful scan. Timestamps, counts and HTTP status may be `null`; API
+contract can be `unknown`. URLs, credentials and raw provider messages are omitted.
+
+Use the existing explicit Sync Libraries workflow to retry discovery. That action
+also requests enabled-library content sync and queue refill. Refresh status alone
+does neither. See the [design](../architecture/library-discovery-diagnostics-design.md)
+and [outcome](../architecture/library-discovery-diagnostics-outcome.md).
 
 ### POST /api/media-sync/sync/:libraryId
 

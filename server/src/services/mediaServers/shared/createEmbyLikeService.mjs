@@ -13,7 +13,7 @@ import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs
 import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
 import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
 import { readVirtualFolderCatalog } from './virtualFolderCatalog.mjs';
-import { ServiceUnavailableError } from '../../../utils/appError.mjs';
+import { unavailableLibraryCatalog } from '../../libraryDiscoveryFailure.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -57,7 +57,7 @@ class EmbyLikeService {
       return await this.readCatalog(url, apiKey, options);
     } catch (error) {
       if (error?.code === 'library_catalog_invalid') throw error;
-      throw new ServiceUnavailableError(`Failed to fetch ${this.displayName} libraries. Check the media server connection and access; existing libraries were preserved.`, { code: 'library_catalog_unavailable' });
+      throw unavailableLibraryCatalog(error, this.displayName);
     }
   }
 

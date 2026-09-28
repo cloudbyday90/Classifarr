@@ -14,9 +14,10 @@ export const EMBY_CATALOG_DEADLINE_MS = 30000;
  * Read all pages before exposing any catalog to discovery or archive review.
  * @param {string} url
  * @param {string} apiKey
- * @param {{ signal?: AbortSignal | null }} [options]
+ * @param {{ signal?: AbortSignal | null, onContract?: (value: string) => void }} [options]
  */
-export async function readEmbyLibraryCatalog(url, apiKey, { signal } = {}) {
+export async function readEmbyLibraryCatalog(url, apiKey, { signal, onContract } = {}) {
+  onContract?.('emby_query');
   const cancellation = createRequestCancellation(EMBY_CATALOG_DEADLINE_MS, signal);
   const catalog = [], identities = new Set();
   let total;
@@ -33,7 +34,7 @@ export async function readEmbyLibraryCatalog(url, apiKey, { signal } = {}) {
       cancellation.throwIfAborted();
       // Only endpoint negotiation on the first request, never a failed later page.
       if (page !== 0 || ![404, 405].includes(error?.response?.status)) throw error;
-      const legacy = await readVirtualFolderCatalog(url, apiKey, { signal: cancellation.signal });
+      const legacy = await readVirtualFolderCatalog(url, apiKey, { signal: cancellation.signal, onContract, contract: 'emby_legacy' });
       cancellation.throwIfAborted();
       return legacy;
     }

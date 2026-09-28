@@ -48,6 +48,21 @@ test('Jellyfin and Plex retain their independent contracts; only normalized movi
   expect(await embyService.getLibraries(base, secret)).toEqual(expectedCatalog.slice(0, 2));
 });
 
+test.each([['ETIMEDOUT', 'timeout'], ['ECONNREFUSED', 'unreachable'], ['ABORT_ERR', 'cancelled']])
+  ('Jellyfin preserves %s classification and recovers on a later scan without fallback', async (code, reason) => {
+    const onContract = jest.fn();
+    httpGet.mockRejectedValueOnce(Object.assign(new Error(secret), { code }));
+    const error = await jellyfinService.getLibraryCatalog(base, secret, { onContract }).catch(error => error);
+    expect(error).toMatchObject({ catalogDiagnostic: { reason, httpStatus: null } });
+    expect(JSON.stringify(error)).not.toContain(secret);
+    expect(onContract).toHaveBeenCalledWith('jellyfin_virtual_folders');
+    expect(httpGet).toHaveBeenCalledTimes(1);
+    expect(httpGet.mock.calls[0][1]).toMatchObject({ timeout: 10000, maxResponseBytes: 4194304 });
+    httpGet.mockResolvedValueOnce({ data: jellyfinCatalog });
+    expect(await jellyfinService.getLibraryCatalog(base, secret)).toEqual(expectedCatalog);
+    expect(httpGet.mock.calls.map(([url]) => url)).toEqual([`${base}Library/VirtualFolders`, `${base}Library/VirtualFolders`]);
+  });
+
 test('an unsupported-only page advances by received entries before filtering', async () => {
   httpGet.mockResolvedValueOnce({ data: { Items: [legacyEmbyCatalog[2]], TotalRecordCount: 3 } })
     .mockResolvedValueOnce({ data: { Items: legacyEmbyCatalog.slice(0, 2), TotalRecordCount: 3 } });

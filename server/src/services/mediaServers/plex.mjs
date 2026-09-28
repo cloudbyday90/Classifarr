@@ -15,7 +15,7 @@ import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
 import { readPlexSourcePage, sourcePageRequest } from './shared/sourcePage.mjs';
 import { SourceEnumerationError } from '../sourceEnumerationError.mjs';
 import { LIBRARY_CATALOG_REQUEST, readPlexLibraryCatalog } from './shared/libraryCatalog.mjs';
-import { ServiceUnavailableError } from '../../utils/appError.mjs';
+import { unavailableLibraryCatalog } from '../libraryDiscoveryFailure.mjs';
 
 const logger = createLogger('PlexService');
 
@@ -62,8 +62,9 @@ class PlexService {
     return (await this.getLibraryCatalog(url, apiKey)).filter(library => library.media_type !== null);
   }
 
-  async getLibraryCatalog(url, apiKey) {
+  async getLibraryCatalog(url, apiKey, { onContract = undefined } = {}) {
     try {
+      onContract?.('plex_sections');
       const response = await httpGet(
         `${url}/library/sections`,
         buildRequestConfig(apiKey, LIBRARY_CATALOG_REQUEST),
@@ -72,7 +73,7 @@ class PlexService {
       return readPlexLibraryCatalog(response.data);
     } catch (error) {
       if (error?.code === 'library_catalog_invalid') throw error;
-      throw new ServiceUnavailableError('Failed to fetch Plex libraries. Check the media server connection and access; existing libraries were preserved.', { code: 'library_catalog_unavailable' });
+      throw unavailableLibraryCatalog(error, 'Plex');
     }
   }
 

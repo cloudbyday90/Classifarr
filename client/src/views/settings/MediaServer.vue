@@ -18,6 +18,12 @@
       </p>
     </div>
 
+    <LibraryDiscoveryStatus
+      :refresh-key="discoveryRefresh"
+      :syncing="syncing"
+      @sync="syncLibraries"
+    />
+
     <!-- Server Type Selection -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-4">
       <label class="block text-sm font-medium mb-3">Server Type</label>
@@ -841,6 +847,7 @@ import api from '@/api'
 import { useToast } from '@/stores/toast'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import LibraryDiscoveryStatus from '@/components/settings/LibraryDiscoveryStatus.vue'
 
 const toast = useToast()
 
@@ -853,6 +860,7 @@ const config = ref({
 
 const saving = ref(false)
 const syncing = ref(false)
+const discoveryRefresh = ref(0)
 const connectionStatus = ref({
   status: 'idle',
   serviceName: 'Media Server',
@@ -1287,6 +1295,7 @@ const saveSettings = async () => {
     toast.error('Failed to save configuration')
   } finally {
     saving.value = false
+    discoveryRefresh.value++
   }
 }
 
@@ -1571,6 +1580,7 @@ const syncLibraries = async () => {
     toast.error(errorMsg)
   } finally {
     syncing.value = false
+    discoveryRefresh.value++
   }
 }
 

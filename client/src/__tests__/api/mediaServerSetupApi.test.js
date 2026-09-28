@@ -32,6 +32,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   getMediaServerConfig,
+  getLibraryDiscoveryStatus,
   getArrConfigStatus,
   getSetupStatus,
   getSetupWizardStatus,
@@ -48,6 +49,14 @@ import {
 describe('mediaServerSetupApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('reads discovery status without requesting a provider scan', async () => {
+    const status = { provider: 'jellyfin', reason: 'not_recorded' }
+    mockGetDataRequest.mockResolvedValueOnce(status)
+    expect(await getLibraryDiscoveryStatus()).toEqual(status)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/media-server/discovery-status')
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it('getMediaServerConfig calls getDataRequest with /media-server', async () => {

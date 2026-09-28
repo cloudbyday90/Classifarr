@@ -22,6 +22,10 @@ export function getMediaServerConfig() {
   return getDataRequest('/media-server')
 }
 
+export function getLibraryDiscoveryStatus() {
+  return getDataRequest('/media-server/discovery-status')
+}
+
 export function getArrConfigStatus() {
   return getDataRequest('/settings/arr-config-status')
 }
@@ -69,6 +73,7 @@ export async function getMediaServers() {
 
 const mediaServerSetupApi = {
   getMediaServerConfig,
+  getLibraryDiscoveryStatus,
   getArrConfigStatus,
   getSetupStatus,
   getSetupWizardStatus,
