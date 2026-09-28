@@ -135,7 +135,7 @@
     "axios": "^1.20.0"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.23.2",
+    "markdownlint-cli2": "^0.23.3",
     "typescript": "^7.0.2"
   },
   "overrides": {
