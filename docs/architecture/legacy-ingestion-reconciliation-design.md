@@ -44,6 +44,30 @@ That later rejection cannot establish that the original transaction rolled back.
 New-protocol interrupted imports continue to recover automatically and are not
 eligible for this exceptional workflow unless foreign markers also exist.
 
+## Interpreting a recurring unknown-owner warning
+
+A newer completed sync can coexist with older `pending` or `running` records.
+If those older records lack a matching ownership ledger, a completed scan does
+not retroactively prove their writers stopped. The warning can therefore appear
+after a restart even with a populated library and no currently visible owner.
+It does not by itself mean media was lost, the server is offline, or memory is
+exhausted. Inspect the blocked-import preview rather than clearing the log.
+
+To recover after confirming old writers are stopped:
+
+1. Open the affected library using the warning's library link.
+2. Turn off **Library enabled**, save, then choose **Review blocked import** (or
+   **Refresh review** if already open).
+3. Inspect **Records to reconcile** and confirm the stopped-worker checkbox.
+4. Choose **Reconcile reviewed records**. Preserve the returned receipt; this
+   marks interrupted records failed, not successful, and retains imported media.
+5. Re-enable and save. Let the existing scheduler perform a complete backfill;
+   do not expect reconciliation alone to mark ingestion complete.
+
+If another owner is active, the preview changes, or old-writer shutdown is
+uncertain, stop before confirmation. Refresh and investigate; do not bulk-update
+statuses in SQL or use record age as a substitute for ownership evidence.
+
 ## Options and recommendation stack
 
 | Option | Pros | Cons | Decision |
