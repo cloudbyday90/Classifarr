@@ -116,6 +116,12 @@ suites / 45,945 tests. The database-backed API-key route suite passed all 33
 tests, including rate limiting. Server/client lint/typecheck and the ESM,
 mock-shape, copyright, dependency and ownership checks also passed again.
 
+The dependency fix was pushed as `c9e4e3bf`. Its
+[new OSV run](https://github.com/cloudbyday90/Classifarr/actions/runs/36485824253)
+passed without advisory suppressions. The hosted budget measurements above
+remain explicitly tied to the earlier `e9e55540` implementation; they are not
+silently relabeled as a test of the later dependency commit.
+
 Upstream's [link-local advisory](https://github.com/beaugunderson/ip-address/security/advisories/GHSA-rpw4-54j3-4h4q)
 and [NAT64 advisory](https://github.com/beaugunderson/ip-address/security/advisories/GHSA-2vr4-cq9g-pvrc)
 identify `10.5.1` as patched. The former corrects range membership; the latter
