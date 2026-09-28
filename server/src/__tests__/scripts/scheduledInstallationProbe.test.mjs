@@ -1,7 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { readFileSync } from 'node:fs';
-import { waitForScheduledProgress, runScheduledInstallationProbe } from '../../scripts/scheduledInstallationProbe.mjs';
+import { runScheduledInstallationProbe } from '../../scripts/scheduledInstallationProbe.mjs';
+import { waitForScheduledProgress } from '../../scripts/scheduledInstallationEvidence.mjs';
 import { createScheduledInstallationFixture, seedScheduledInstallation } from '../../scripts/scheduledInstallationFixture.mjs';
 
 const guard = { CLASSIFARR_UPGRADE_DRILL: 'isolated-compose-v1', POSTGRES_HOST: 'localhost', POSTGRES_PORT: '5432',

@@ -17,7 +17,8 @@ async function login(password) {
 
 export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
-  assert.ok(['fresh', 'scheduled', 'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
+  assert.ok(['fresh', 'scheduled', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume',
+    'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
   const db = await import('../config/database.mjs');
   let blocker;
   try {
@@ -28,6 +29,11 @@ export async function runUpgradeProbe(phase) {
     if (phase === 'scheduled') {
       const { runScheduledInstallationProbe } = await import('./scheduledInstallationProbe.mjs');
       return await runScheduledInstallationProbe(db);
+    }
+    if (phase.startsWith('scheduled-crash-')) {
+      const { armScheduledCrash, verifyScheduledCrashBoundary, verifyScheduledCrashRecovery } = await import('./scheduledCrashRecoveryProbe.mjs');
+      if (phase === 'scheduled-crash-arm') return await armScheduledCrash(db);
+      return await (phase === 'scheduled-crash-ready' ? verifyScheduledCrashBoundary(db) : verifyScheduledCrashRecovery(db));
     }
     const fixture = await readUpgradeFixture();
     if (phase === 'upgraded') {

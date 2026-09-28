@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { runPublishedUpgradeCompose, parseUpgradeReceipt, upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
 import { assertUpgradeDrillEnvironment } from '../../scripts/publishedUpgradeFixtures.mjs';
-import { SCHEDULED_INSTALLATION_EXPECTED } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
+import { SCHEDULED_INSTALLATION_EXPECTED, SCHEDULED_CRASH_BOUNDARY, SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 
 const random = size => Buffer.alloc(size, 1);
 const report = () => {};
@@ -16,6 +16,7 @@ function mockRunner(override = () => undefined) {
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = `sha256:${'a'.repeat(64)}`;
     if (args[0] === 'inspect') stdout = args.includes('{{.State.ExitCode}}') ? '1' : 'exited';
+    if (args.includes('{{.State.ExitCode}} {{.State.OOMKilled}}')) stdout = '137 false';
     if (args[0] === 'compose') {
       const op = args.slice(7);
       if (op[0] === 'logs') stdout = 'Restore verification is incomplete';
@@ -23,6 +24,8 @@ function mockRunner(override = () => undefined) {
       if (op.includes('--input-type=module') && op[0] === 'exec') stdout = 'UPGRADE_SEED {"version":"180000","migrations":20}\n';
       if (op.includes('src/scripts/publishedUpgradeProbe.mjs')) stdout = 'UPGRADE_PROBE {"candidate":{"version":"180000","migrations":21}}\n';
       if (op.at(-1) === 'scheduled') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_INSTALLATION_EXPECTED)}\n`;
+      if (op.at(-1) === 'scheduled-crash-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_BOUNDARY)}\n`;
+      if (op.at(-1) === 'scheduled-crash-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_RECOVERY)}\n`;
     }
     return { status: 0, stdout };
   });
@@ -33,7 +36,7 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   const run = mockRunner();
   const result = await runWith(run);
   expect(result).toMatchObject({ status: 'passed', cleanup: 'passed', baseline: upgradeBaseline });
-  expect(result.checks).toHaveLength(11);
+  expect(result.checks).toHaveLength(12);
   expect(run.mock.calls[0][0]).toBe('gh');
   expect(run.mock.calls[0][1]).toEqual(['attestation', 'verify', `oci://${upgradeBaseline.image}`, '--repo', 'cloudbyday90/Classifarr',
     '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision, '--deny-self-hosted-runners']);
@@ -41,9 +44,9 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   expect(ops.some(args => args.join(' ') === 'kill --signal SIGKILL app')).toBe(true);
   expect(ops.at(-1)).toEqual(['--profile', 'tools', 'down', '--volumes', '--timeout', '10']);
   const starts = run.mock.calls.filter(([, args]) => args[7] === 'up');
-  expect(starts.map(([, , opts]) => opts.env.CLASSIFARR_UPGRADE_MODE)).toEqual(['normal', 'normal', 'normal', 'restore', 'normal', 'restore', 'normal']);
+  expect(starts.map(([, , opts]) => opts.env.CLASSIFARR_UPGRADE_MODE)).toEqual(['normal', 'normal', 'normal', 'normal', 'restore', 'normal', 'restore', 'normal']);
   expect(starts[0][2].env.CLASSIFARR_UPGRADE_IMAGE).toMatch(/-candidate$/);
-  expect(starts[1][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(upgradeBaseline.image);
+  expect(starts[2][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(upgradeBaseline.image);
   expect(ops.findIndex(args => args[0] === 'down')).toBeLessThan(ops.findIndex(args => args.includes('--input-type=module')));
   for (const [cmd, args, options] of run.mock.calls) {
     expect(['docker', 'gh']).toContain(cmd);
@@ -61,22 +64,22 @@ test('fresh-only scope never claims or accesses a published baseline', async () 
   const run = mockRunner();
   const result = await runWith(run, { freshOnly: true });
   expect(result).toMatchObject({ scope: 'fresh-only', baseline: null, cleanup: 'passed' });
-  expect(result.checks).toEqual(['fresh_install_and_operational_seeds', 'fresh_startup_scheduler_progress']);
+  expect(result.checks).toEqual(['fresh_install_and_operational_seeds', 'fresh_startup_scheduler_progress', 'fresh_backfill_crash_recovery']);
   expect(run.mock.calls.some(([cmd, args]) => cmd === 'gh' || args[0] === 'pull')).toBe(false);
   expect(operations(run).filter(args => args.includes('src/scripts/publishedUpgradeProbe.mjs')).map(args => args.at(-1)))
-    .toEqual(['fresh', 'scheduled']);
+    .toEqual(['fresh', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume']);
 });
 
-test.each(['fresh_scheduler', 'upgrade_scheduler'])('a stalled %s fails closed and still cleans resources', async stage => {
-  let observed = 0;
-  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled' && ++observed === (stage === 'fresh_scheduler' ? 1 : 2)
+test.each([['fresh_scheduler', 'scheduled-crash-ready'], ['fresh_backfill_crash', 'scheduled-crash-resume'],
+  ['upgrade_scheduler', 'scheduled']])('a stalled %s fails closed and still cleans resources', async (stage, phase) => {
+  const run = mockRunner((_cmd, args) => args.at(-1) === phase
     ? { status: 1, stdout: 'private-value' } : undefined);
   await expect(runWith(run)).rejects.toThrow(`published_upgrade_failed:${stage}`);
   expect(operations(run).at(-1)).toContain('down');
 });
 
 test('fresh-only scope still rejects malformed scheduler evidence', async () => {
-  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled' ? { status: 0, stdout: 'UPGRADE_PROBE {}\n' } : undefined);
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled-crash-ready' ? { status: 0, stdout: 'UPGRADE_PROBE {}\n' } : undefined);
   await expect(runWith(run, { freshOnly: true })).rejects.toThrow('published_upgrade_failed:fresh_scheduler');
   expect(operations(run).at(-1)).toContain('down');
 });
@@ -128,18 +131,23 @@ test('cannot start the published release with the fresh-install volume left over
   let volumeChecks = 0;
   const run = mockRunner((_cmd, args) => args[0] === 'volume' && ++volumeChecks === 2
     ? { status: 0, stdout: 'fresh-volume' } : undefined);
-  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:fresh_scheduler');
+  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:fresh_backfill_crash');
   expect(run.mock.calls.some(([, args]) => args[0] === 'pull')).toBe(false);
 });
 test('requires actual lock-wait marker before killing the container', async () => {
   let time = 0;
-  const run = mockRunner((_cmd, args) => args.includes('test') ? { status: 1, stdout: '' } : undefined);
+  const run = mockRunner((_cmd, args) => args.at(-1) === '/app/data/upgrade-drill/ready-to-kill' ? { status: 1, stdout: '' } : undefined);
   await expect(runWith(run, { now: () => time, sleep: async () => { time += 10_000; } })).rejects.toThrow('published_upgrade_failed:restore_interrupt');
-  expect(operations(run).some(args => args[0] === 'kill')).toBe(false);
+  // The earlier, independently verified fresh-install crash already happened.
+  expect(operations(run).filter(args => args[0] === 'kill')).toHaveLength(1);
 });
 test('bounds normal-rejection polling and cleans up on timeout', async () => {
   let time = 0;
-  const run = mockRunner((_cmd, args) => args[0] === 'inspect' ? { status: 0, stdout: 'running' } : undefined);
+  let normalStarted = false;
+  const run = mockRunner((_cmd, args) => {
+    if (args[7] === 'up' && !args.includes('--wait')) normalStarted = true;
+    return normalStarted && args[0] === 'inspect' ? { status: 0, stdout: 'running' } : undefined;
+  });
   await expect(runWith(run, { now: () => time, sleep: async () => { time += 30_000; } })).rejects.toThrow('published_upgrade_failed:normal_rejection');
 });
 test('rejects bad project entropy without running commands', async () => {

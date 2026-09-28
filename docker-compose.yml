@@ -18,10 +18,10 @@ services:
       FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-false}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       CLASSIFARR_RUNTIME_MODE: ${CLASSIFARR_RUNTIME_MODE:-normal}
-      # Cap Node.js heap to 1536 MB — leaves headroom within the 2 GB container
-      # memory limit. Without this Node v18+ auto-sizes to ~4 GB and an OOM
-      # kill produces no error log. Tune TASK_QUEUE_RETENTION_DAYS (default 7)
-      # to control how long completed tasks are retained before auto-cleanup.
+      # Cap V8 old space, not total RSS. The shared 2 GB container limit must
+      # also cover native buffers, other V8 spaces and PostgreSQL; validate peak
+      # headroom before increasing this value. TASK_QUEUE_RETENTION_DAYS
+      # controls completed-task history, not active worker concurrency.
       NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=1536}
       TASK_QUEUE_RETENTION_DAYS: ${TASK_QUEUE_RETENTION_DAYS:-7}
       # Runtime pgvector staging is opportunistic: use AVX/AVX2 when the

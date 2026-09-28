@@ -64,3 +64,7 @@ installation acceptance command to verify the published upgrade. After that evid
 passes, extend this observer with a container kill between ingestion completion and
 enqueue, requiring autonomous restart recovery without reseeding or calling workers.
 That adds a distinct crash boundary instead of another diagnostic-only component.
+
+Follow-up implemented: [scheduled backfill crash acceptance](scheduled-backfill-crash-outcome.md)
+now verifies that boundary and advances the evidence contract to version 3. The
+published-baseline authentication limitation remains separately visible.

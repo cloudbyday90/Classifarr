@@ -9,3 +9,13 @@ export function assertScheduledInstallationResult(value) {
   assert.deepEqual(value, SCHEDULED_INSTALLATION_EXPECTED);
   return value;
 }
+
+export const SCHEDULED_CRASH_BOUNDARY = Object.freeze({ boundary: 'ingestion_committed_before_backfill',
+  queuedTasks: 0, refillLock: 'held' });
+export const SCHEDULED_CRASH_RECOVERY = Object.freeze({ driver: 'startup_scheduler', checkpoint: 'preserved',
+  ingestionRuns: 'unchanged', inventory: 'unchanged', backfill: 'completed', profiles: 'current', completedTasks: 4, routingTasks: 0 });
+
+export function assertScheduledCrashRecovery(value) {
+  assert.deepEqual(value, SCHEDULED_CRASH_RECOVERY);
+  return value;
+}

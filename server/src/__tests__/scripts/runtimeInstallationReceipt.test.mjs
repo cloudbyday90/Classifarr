@@ -4,11 +4,13 @@ import { upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose
 import { INSTALLATION_CHECKS, SCHEDULED_INSTALLATION_EXPECTED, createRuntimeInstallationReceipt, formatRuntimeInstallationSummary,
   installationFailureStage } from '../../../../scripts/lib/runtimeInstallationReceipt.mjs';
 import { readInstallationSource, runRuntimeInstallationAcceptance } from '../../../../scripts/run-runtime-installation-acceptance.mjs';
+import { SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 
 const revision = 'a'.repeat(40);
 const identity = { sourceRevision: revision, worktreeClean: true };
 const db = { version: '180006', migrations: 286 };
 const success = () => ({ status: 'passed', scope: 'fresh-and-upgrade', cleanup: 'passed', baseline: upgradeBaseline,
+  crashRecovery: { ...SCHEDULED_CRASH_RECOVERY },
   scheduler: { fresh: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] },
     upgrade: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] } },
   candidateImageId: `sha256:${'b'.repeat(64)}`, fresh: { status: 'passed', database: db },
@@ -46,6 +48,9 @@ test.each([
   ['missing backfill deferral', r => { r.scheduler.upgrade.deferrals.pop(); }],
   ['unfinished profiles', r => { r.scheduler.fresh.profiles = 'pending'; }],
   ['scheduler routed', r => { r.scheduler.upgrade.routingTasks = 1; }],
+  ['missing crash proof', r => { delete r.crashRecovery; }],
+  ['reseeded recovery', r => { r.crashRecovery.ingestionRuns = 'replaced'; }],
+  ['duplicate recovery tasks', r => { r.crashRecovery.completedTasks = 8; }],
 ])('rejects %s', (_name, mutate) => {
   const result = success();
   mutate(result);

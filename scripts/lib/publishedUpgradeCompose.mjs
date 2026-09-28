@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { collectContainerStartupDiagnostic, formatContainerStartupDiagnostic } from './containerStartupDiagnostics.mjs';
-import { assertScheduledInstallationResult } from './scheduledInstallationContract.mjs';
+import { assertScheduledInstallationResult, SCHEDULED_INSTALLATION_EXPECTED } from './scheduledInstallationContract.mjs';
+import { runScheduledCrashRecovery } from './scheduledCrashRecovery.mjs';
 
 export const upgradeBaseline = Object.freeze({
   release: 'v0.48.4-beta',
@@ -50,7 +51,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   const docker = (args, ...options) => invoke('docker', args, ...options);
   const compose = (args, ...options) => docker([...base, ...args], ...options);
   const probe = phase => parseUpgradeReceipt(compose(['exec', '-T', 'app', 'node', 'src/scripts/publishedUpgradeProbe.mjs', phase],
-    phase === 'scheduled' ? 900_000 : 120_000).stdout, 'UPGRADE_PROBE');
+    ['scheduled', 'scheduled-crash-resume'].includes(phase) ? 900_000 : 120_000).stdout, 'UPGRADE_PROBE');
   const poll = async (check, label, timeout = 60_000) => {
     const deadline = now() + timeout;
     while (now() < deadline) { if (check()) return; await sleep(500); }
@@ -87,10 +88,13 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     const fresh = probe('fresh');
     passed('fresh_install_and_operational_seeds');
     stage = 'fresh_scheduler';
-    const freshScheduler = assertScheduledInstallationResult(probe('scheduled'));
+    const crashRecovery = await runScheduledCrashRecovery({ compose, docker, probe, poll, start,
+      setStage: value => { stage = value; } });
+    const freshScheduler = SCHEDULED_INSTALLATION_EXPECTED;
     passed('fresh_startup_scheduler_progress');
+    passed('fresh_backfill_crash_recovery');
     result = { status: 'passed', scope: 'fresh-only', baseline: null, candidateImageId: candidateId,
-      fresh, scheduler: { fresh: freshScheduler }, checks };
+      fresh, scheduler: { fresh: freshScheduler }, crashRecovery, checks };
     if (!freshOnly) {
       // Remove only the owned fresh volume before booting the published release.
       // Never seed the upgrade with a candidate-created database.
@@ -147,7 +151,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       const upgradeScheduler = assertScheduledInstallationResult(probe('scheduled'));
       passed('upgrade_startup_scheduler_progress');
       result = { status: 'passed', scope: 'fresh-and-upgrade', baseline: upgradeBaseline, candidateImageId: candidateId, fresh,
-        scheduler: { fresh: freshScheduler, upgrade: upgradeScheduler },
+        scheduler: { fresh: freshScheduler, upgrade: upgradeScheduler }, crashRecovery,
         database: { baseline: baselineDatabase, candidate: upgraded.candidate }, recovery, handoff, checks };
     }
   } catch (error) {

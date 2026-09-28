@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify automatic backfill after a real container crash at the committed
+  ingestion boundary, preserving original inventory and run identities. Require
+  explicit crash evidence in full installation acceptance receipts.
+- Apply open PR #549 locally: update Vite to 8.3.1 and eslint-plugin-vue to
+  10.11.1 with local validation. No PR merge or release.
 - Verify fresh-install and upgraded runtime progress using the real startup
   scheduler, including ingestion/backfill deferral, metadata completion, current
   movie/TV profiles and music exclusion. Keep partial local evidence distinct
