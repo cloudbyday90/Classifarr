@@ -7,7 +7,6 @@ import { createMediaSyncIdentityRecovery } from '../../services/mediaSyncIdentit
 import { persistRecoveredSyncItem } from '../../services/mediaSyncIdentityRecoveryPersistence.mjs';
 import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 import { QueueService } from '../../services/queueService.mjs';
-import { QueueRefillService } from '../../services/queueRefillService.mjs';
 import { QueueTaskProcessorService } from '../../services/queueTaskProcessorService.mjs';
 import { createLibraryProfileService } from '../../services/libraryProfileService.mjs';
 import { LibraryInventoryProfileRefreshPlanner } from '../../services/libraryInventoryProfileRefreshPlanner.mjs';
@@ -81,8 +80,6 @@ export async function createHandoffFixture(db, mediaType) {
         queue({ beforeComplete = async () => {} } = {}) {
             const queue = new QueueService({ db, logger: log, tmdbService: provider,
                 classificationService: { classifyQueueTask: classify } });
-            queue.queueRefillService = new QueueRefillService({ db, logger: log,
-                enqueueTask: (...args) => queue.enqueue(...args) });
             queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger: log, tmdbService: provider,
                 classificationService: { classifyQueueTask: classify },
                 // Optional enrichment is deliberately disabled; all persistence remains real.

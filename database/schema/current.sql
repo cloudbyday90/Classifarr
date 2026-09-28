@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-28T11:09:46.143Z
--- Latest Migration: 20260928_040000_add_source_content_circuits.sql
+-- Generated: 2026-09-28T13:04:23.770Z
+-- Latest Migration: 20260928_050000_add_inventory_backfill_handoff.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4175,7 +4175,14 @@ CREATE TABLE public.library_ingestion_state (
     items_total integer,
     retry_after timestamp with time zone,
     updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    backfill_run_id uuid,
+    backfill_after_id integer DEFAULT 0 NOT NULL,
+    backfill_through_id integer,
+    backfill_completed_at timestamp with time zone,
+    backfill_updated_at timestamp with time zone,
     CONSTRAINT library_ingestion_state_attempt_count_check CHECK (((attempt_count >= 1) AND (attempt_count <= 1000000))),
+    CONSTRAINT library_ingestion_state_backfill_after_id_check CHECK ((backfill_after_id >= 0)),
+    CONSTRAINT library_ingestion_state_backfill_through_id_check CHECK ((backfill_through_id >= 0)),
     CONSTRAINT library_ingestion_state_items_processed_check CHECK ((items_processed >= 0)),
     CONSTRAINT library_ingestion_state_items_total_check CHECK ((items_total >= 0)),
     CONSTRAINT library_ingestion_state_pages_processed_check CHECK ((pages_processed >= 0)),
@@ -17255,6 +17262,7 @@ FROM unnest(ARRAY[
     '20260928_010000_add_library_archive.sql',
     '20260928_020000_add_library_discovery_status.sql',
     '20260928_030000_add_library_catalog_recovery.sql',
-    '20260928_040000_add_source_content_circuits.sql'
+    '20260928_040000_add_source_content_circuits.sql',
+    '20260928_050000_add_inventory_backfill_handoff.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

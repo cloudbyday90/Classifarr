@@ -62,7 +62,7 @@ test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(m
       .toMatchObject({ success: true, prunedItems: 1 });
     expect(await inventory()).toEqual(['22']);
     expect(await status()).toMatchObject({ state: 'complete' });
-    expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+    expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
     expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).not.toContain(libraryId);
   });
 
@@ -187,7 +187,7 @@ test.each(['movie', 'tv'])('%s interrupted import replays from zero; late discon
     expect(await old).toBeInstanceOf(Error);
     expect(await inventory()).toEqual(['11', '22']);
     expect(await state()).toEqual(completed);
-    expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+    expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
   } finally { resume.resolve(); await old; }
 });
 
@@ -332,7 +332,7 @@ test('fresh setup learning stays dormant until configured, populated and ingesti
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   await due();
   await sync(async () => [item(11)]).syncLibrary(libraryId);
-  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
 });
 
 test('passing samples never authorize completion when a later page is truncated', async () => {
@@ -373,7 +373,7 @@ test.each(['short', 'repeated', 'changed_total', 'missing_total', 'collections',
   await due();
   expect(await sync(async () => [item(33)]).syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedCollections: 1 });
   expect(await inventory()).toEqual(['33']);
-  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
 });
 
 test('server-sized media and collection pages complete with exact unique counts, including an empty replay', async () => {

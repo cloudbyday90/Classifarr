@@ -133,6 +133,12 @@ test('real Jellyfin ingestion processes recover outage and abrupt media/collecti
     expect((await db.query('SELECT state,attempts FROM media_source_content_circuits WHERE media_server_id=$1', [sourceId])).rows[0])
       .toEqual({ state: 'closed', attempts: 0 });
 
+    // The producer can die after scan commit but before any queue task exists.
+    expect((await db.query('SELECT count(*)::integer AS count FROM task_queue')).rows[0].count).toBe(0);
+    await deferred('backfilling');
+    await worker.kill();
+    worker = await start();
+    await deferred('backfilling');
     await db.query("INSERT INTO tmdb_config(api_key,is_active) VALUES ('synthetic-only',true)");
     const backfill = createInventoryRecoveryBackfill(db);
     expect(await backfill.queue.refillQueue()).toMatchObject({ queued: 8 });

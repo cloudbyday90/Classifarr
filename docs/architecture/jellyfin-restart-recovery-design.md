@@ -60,11 +60,12 @@ durable source circuit and full replay → metadata queue → revisioned profile
 readiness-gated evaluation. Keep expensive evaluation downstream of ingestion;
 do not infer routing quality from profile freshness.
 
-An important limit: the readiness query currently checks queued/running backfill,
+At the original test-only increment, the readiness query checked queued/running backfill,
 not unenqueued enrichment demand. This suite explicitly invokes the real refill
 service after ingestion; it does not prove an atomic scheduler handoff. Follow-up
 design should cover that boundary before claiming fully automatic end-to-end
-readiness. Do not replace this with a blanket wait for every optional provider.
+readiness. The subsequent [durable handoff design](inventory-backfill-handoff-design.md)
+closes that gap. Do not replace this with a blanket wait for every optional provider.
 
 ## Official research and application
 

@@ -6,7 +6,6 @@ import { createMediaSyncIdentityRecovery } from '../services/mediaSyncIdentityRe
 import { persistRecoveredSyncItem } from '../services/mediaSyncIdentityRecoveryPersistence.mjs';
 import { sourceIdentityRecoveryEvidence } from '../services/sourceIdentityRecoveryEvidence.mjs';
 import { QueueService } from '../services/queueService.mjs';
-import { QueueRefillService } from '../services/queueRefillService.mjs';
 import { QueueTaskProcessorService } from '../services/queueTaskProcessorService.mjs';
 import { createLibraryProfileService } from '../services/libraryProfileService.mjs';
 import { LibraryInventoryProfileRefreshPlanner } from '../services/libraryInventoryProfileRefreshPlanner.mjs';
@@ -108,7 +107,6 @@ export async function runUpgradeHandoff(db) {
     await scan();
     const classify = () => { throw new Error('routing_not_allowed'); };
     const queue = new QueueService({ db, logger: log, tmdbService: provider, classificationService: { classifyQueueTask: classify } });
-    queue.queueRefillService = new QueueRefillService({ db, logger: log, enqueueTask: (...args) => queue.enqueue(...args) });
     queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger: log, tmdbService: provider,
       classificationService: { classifyQueueTask: classify }, queueOmdbEnrichmentService: { enrich: async () => {} },
       queueWebSearchEnrichmentService: { enrich: async () => {} }, completeTask: (...args) => queue.completeTask(...args) });

@@ -1,6 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { QueueService } from '../../../services/queueService.mjs';
-import { QueueRefillService } from '../../../services/queueRefillService.mjs';
 import { QueueTaskProcessorService } from '../../../services/queueTaskProcessorService.mjs';
 import { createLibraryProfileService } from '../../../services/libraryProfileService.mjs';
 import { LibraryInventoryProfileRefreshPlanner } from '../../../services/libraryInventoryProfileRefreshPlanner.mjs';
@@ -17,7 +16,6 @@ export function createInventoryRecoveryBackfill(db) {
   const tmdbService = { getApiKey: async () => 'synthetic-only', getMovieDetails: details, getTVDetails: details };
   const classificationService = { classifyQueueTask() { routingCalls++; throw new Error('routing_not_allowed'); } };
   const queue = new QueueService({ db, logger: log, tmdbService, classificationService });
-  queue.queueRefillService = new QueueRefillService({ db, logger: log, enqueueTask: (...args) => queue.enqueue(...args) });
   queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger: log, tmdbService, classificationService,
     queueOmdbEnrichmentService: { enrich: async () => {} }, queueWebSearchEnrichmentService: { enrich: async () => {} },
     completeTask: (...args) => queue.completeTask(...args) });

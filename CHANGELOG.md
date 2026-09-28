@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Make the library scan-to-metadata-backfill handoff durable across restarts.
+  Commit bounded queue pages with generation-fenced progress, resume legacy
+  completed scans, and keep background evaluation waiting for unenqueued work.
+- Apply open PR #550 locally: update dotenv to 18.0.3 and Undici to 8.11.2.
+  No PR merge or release.
 - Verify Jellyfin outage recovery across abruptly terminated ingestion processes,
   including retained partial inventory, durable waits, exclusive ownership,
   complete movie/TV replay, music exclusion and metadata-to-profile handoff.

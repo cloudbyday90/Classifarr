@@ -45,7 +45,7 @@ afterEach(async () => {
   await db.query('DELETE FROM media_server WHERE id=$1', [sourceId]);
 });
 
-test.each(['plex', 'emby', 'jellyfin'])('%s outage recovers through complete discovery and ingestion before learning is ready', async provider => {
+test.each(['plex', 'emby', 'jellyfin'])('%s outage recovers through complete discovery and ingestion before handing off to backfill', async provider => {
   await db.query('UPDATE media_server SET type=$2 WHERE id=$1', [sourceId, provider]);
   await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
   expect(await automatic()).toMatchObject({ deferred: true, reason: 'provider_unavailable' });
@@ -67,7 +67,7 @@ test.each(['plex', 'emby', 'jellyfin'])('%s outage recovers through complete dis
   expect((await ingestion.syncLibrary(result.libraries[0].id)).success).toBe(true);
   expect(await readInventoryBackgroundReadiness(db)).not.toBe('ready');
   expect((await ingestion.syncLibrary(result.libraries[1].id)).success).toBe(true);
-  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
   const before = calls;
   expect((await automatic()).reason).toBe('not_due');
   expect(calls).toBe(before);

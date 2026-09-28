@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "backfill_handoff",
+      "classification": "separately_coordinated",
+      "reason": "The bounded metadata relay locks a completed ingestion generation and commits queue inserts, derived enrichment state and cursor together. Candidate eligibility and the ordinary-pass exclusion prevent that pass from bypassing pending handoff demand. No pruning, provider request or routing is authorized.",
+      "followUp": "Keep rollback, concurrent relay, legacy adoption, generation replacement and process-death-before-enqueue tests current. This context does not certify arbitrary shared enrichment callers, old binaries or external writers."
+    },
+    {
       "id": "source_content_recovery",
       "classification": "owned",
       "reason": "Content-page admission uses the current ingestion owner's checked-out connection. Revision and epoch fencing, a session-scoped recovery probe and durable pre-request charging coordinate source outages without weakening library ownership, pruning or learning gates.",
@@ -86,6 +92,11 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/queueRefillCoordination.mjs","digest":"16316585f12a45aa4845f15d5f8dbf0b998c283cd4aa345a0383d7608bdf2482","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"backfill_handoff"},
+    {"path":"database/migrations/20260928_050000_add_inventory_backfill_handoff.sql","digest":"87fccf4759ed86793f2ae1b34de905d5049a9b5f8356d8c0373deb64f402027c","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
+    {"path":"server/src/services/inventoryBackfillHandoff.mjs","digest":"8a5d8d2f4251cc2b8373b6bc5ff5fe4bd833ddfabd60ba3f138506119d3d10d9","analysisDigest":"e69a2fe1d582f22114c47ebdebf91210b2ad89d5af1157a348bab5b309147bfb","review":"backfill_handoff"},
+    {"path":"server/src/services/queueRefillCandidates.mjs","digest":"523229132d5072677178cfad9005ad30ef560f8cf75ed23756008da1ac5998b3","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"backfill_handoff"},
+    {"path":"server/src/services/queueRefillService.mjs","digest":"efdcf3eb114da5731ebd2ce7a9b3d07d4ce3c6e2b77a5c1dbdd0d06eefcee99d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"backfill_handoff"},
     {"path":"server/src/services/sourceContentStatus.mjs","digest":"ff3cddb674280e696b8039e4a0f5ebae58118dd1381438d7cb1ceacda971e58f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"source_content_recovery"},
     {"path":"server/src/services/sourceContentFailure.mjs","digest":"787f2acbd43aa9e9a422dc19829ef946458a130e9754e7785de2b8b89f06d021","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"source_content_recovery"},
     {"path":"server/src/services/sourceContentCircuitRepository.mjs","digest":"efae50631e569ba153129d622d37f890e748ed8e4b49585b1bab0ab025c66b6b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"source_content_recovery"},
@@ -403,7 +414,7 @@
     {"path":"database/migrations/20260927_160000_add_inventory_recovery_progress.sql","digest":"fa831249eac6a5f3fb335c6942ee8f27c423ad4f15e7d8f8c01862ca5784216d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20260927_170000_add_library_ingestion_ownership.sql","digest":"5a78f25a61a08dc576b77994efe296ab318250db9ca3ef1cc340ce208a7b068f","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260927_180000_index_ingestion_reconciliation_receipts.sql","digest":"a66541722c25c7094e8347f16663443b91121bd66c1ddc6f0f24454623428e37","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"14e8b2f7856cb0b14a5316c14106cae2944eb0e1d88a9fd7681772c3c4dd2b9e","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"452276758babb6fefde28660d7dabd8a654b555ab87ce1cf429b288036161f2d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"scripts/reset_data.mjs","digest":"e66c88105e96781b08b612bfa293ec94d59537eb1b0f29e2f1fb20f3567480ce","analysisDigest":"1b9637b0e9596c5ee46b9013ca1129172197ad43bfe548a6060f164e53c56965","review":"maintenance_debt"},
     {"path":"server/src/config/database.mjs","digest":"1088ab67e46414b2d159b3b09f83d69fbe3fea7016475283c11dc43ac9bbaaca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/config/migrations.mjs","digest":"b815f5ee9eca79fbff3364ada78e21161c969c42b764ece96727dbd71461b510","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -494,7 +505,7 @@
     {"path":"server/src/services/freshInventoryPolicyRuntime.mjs","digest":"7f15653f6f9f991b4f24dc16a5d0ff7aa69c8737b22e020017b89f75941156ca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/healthCheckInfrastructure.mjs","digest":"40e76fe2f00f0978c2266800f387d08484c24fc430651fa306774ec70eaf96d9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/heldOutSemanticStudyRetrievalRepresentationScoringSource.mjs","digest":"c66dcc5d6a5c57adb53995e0ab25ffd0a6a2ce5ba56cf6bd81219f3f39a3c8ac","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/inventoryBackgroundReadiness.mjs","digest":"c5c390484207ef49dee17bf9210e8814199a515350a5a65af85d9c2c87ba7c86","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"ingestion_readiness"},
+    {"path":"server/src/services/inventoryBackgroundReadiness.mjs","digest":"0dea417fa1f202830d92c8e8012281fbd71bdc2c2af0654e7808f5380a57aeea","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"ingestion_readiness"},
     {"path":"server/src/services/libraryIngestionPredicates.mjs","digest":"db68dc82c367700ee14ab7309926b69f1ea93cacc776910c2cbe73ecaeeeb8fe","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_readiness"},
     {"path":"server/src/services/libraryIngestionStatus.mjs","digest":"53fb4cbbccf818467a5f49a88f07a6a358cadfb524cf5af69618ab43ed529fd1","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_readiness"},
     {"path":"server/src/services/inventoryCredentialWakeupQueries.mjs","digest":"650fa3b34a6722144a4630d64e6b2fb6a968d36d97846f0380198546e475294d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},

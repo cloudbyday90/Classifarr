@@ -19,11 +19,11 @@ function boundedPositiveInteger(value) {
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function cursorFromScanProgress(row) {
+function cursorFromScanProgress(row, batchLimit) {
     const scanCount = boundedPositiveInteger(row?.scan_count);
     const afterId = boundedPositiveInteger(row?.scan_after_id);
     const throughId = boundedPositiveInteger(row?.through_id);
-    return scanCount === REFILL_QUEUE_BATCH_LIMIT && afterId && throughId && afterId < throughId
+    return scanCount === batchLimit && afterId && throughId && afterId < throughId
         ? { afterId, throughId }
         : null;
 }
@@ -33,11 +33,17 @@ function isCandidateRow(row) {
 }
 
 /** One bounded page per cycle; a fixed pass ceiling prevents insertions from delaying wraparound. */
-export async function readRefillCandidatePage(db, cursor, performanceReceiptRecorder = null) {
+export async function readRefillCandidatePage(db, cursor, performanceReceiptRecorder = null,
+    { libraryId = null, batchLimit = REFILL_QUEUE_BATCH_LIMIT } = {}) {
+    if ((libraryId !== null && !boundedPositiveInteger(libraryId)) ||
+        !Number.isSafeInteger(batchLimit) || batchLimit < 1 || batchLimit > REFILL_QUEUE_BATCH_LIMIT) {
+        throw new TypeError('Invalid backfill page bounds');
+    }
+    const libraryScope = libraryId === null ? '' : 'AND msi.library_id=$5';
     const startedAt = process.hrtime.bigint();
     const result = await db.query(
         `WITH scan_bounds AS (
-             SELECT COALESCE($3::integer, (SELECT MAX(id) FROM media_server_items)) AS through_id
+             SELECT COALESCE($3::integer, (SELECT MAX(msi.id) FROM media_server_items msi WHERE true ${libraryScope})) AS through_id
          ), scan AS MATERIALIZED (
              SELECT msi.id
              FROM media_server_items msi
@@ -45,8 +51,9 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
              WHERE msi.id > $2
                AND msi.id <= scan_bounds.through_id
                AND msi.media_type IN ('movie', 'tv')
+               ${libraryScope}
              ORDER BY msi.id
-             LIMIT ${REFILL_QUEUE_BATCH_LIMIT}
+             LIMIT ${batchLimit}
          ), scan_progress AS (
              SELECT scan_bounds.through_id,
                     COUNT(scan.id) AS scan_count,
@@ -72,6 +79,8 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
              WHERE ((${STANDARD_ENRICHMENT_SQL}) OR (${INVENTORY_TMDB_REFILL_SQL}))
              AND scan.id <= scan_progress.through_id
              AND msi.media_type IN ('movie', 'tv')
+             ${libraryId === null ? `AND NOT EXISTS (SELECT 1 FROM library_ingestion_state s WHERE s.library_id=msi.library_id
+                AND (s.phase<>'complete' OR s.backfill_run_id IS DISTINCT FROM s.run_id OR s.backfill_completed_at IS NULL))` : ''}
              AND ${sourceConflictAuthorityExclusionForMediaServerItem('$4')}
              AND NOT EXISTS (
                  SELECT 1 FROM task_queue tq
@@ -80,7 +89,8 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
                  AND tq.payload->>'itemId' = msi.id::text
              )
          ) candidate ON true`,
-        [INVENTORY_TMDB_RETRY_HOURS, cursor?.afterId ?? 0, cursor?.throughId ?? null, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
+        [INVENTORY_TMDB_RETRY_HOURS, cursor?.afterId ?? 0, cursor?.throughId ?? null, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS,
+            ...(libraryId === null ? [] : [libraryId])]
     );
     const progress = result.rows.at(0);
     const rows = result.rows.filter(isCandidateRow).filter(item => item.needs_standard_enrichment !== false ||
@@ -102,7 +112,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
     });
 
     return {
-        cursor: cursorFromScanProgress(progress),
+        cursor: cursorFromScanProgress(progress, batchLimit),
         rows,
     };
 }

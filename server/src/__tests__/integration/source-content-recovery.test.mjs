@@ -72,7 +72,7 @@ test.each(['plex', 'emby', 'jellyfin'])('%s recovers movie and TV content withou
   expect(await circuit()).toMatchObject({ state: 'closed', attempts: 0, next_attempt_at: null });
   expect(await readInventoryBackgroundReadiness(db)).not.toBe('ready');
   expect(await sync().syncLibrary(libraries[1])).toMatchObject({ success: true, totalItems: 5 });
-  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
 });
 
 test('100 libraries share one outage request; waiting libraries do not charge ingestion attempts', async () => {

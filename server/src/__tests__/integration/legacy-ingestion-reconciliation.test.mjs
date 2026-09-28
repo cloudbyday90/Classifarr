@@ -61,7 +61,7 @@ test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(m
     getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: mediaType, title: 'Synthetic' }], getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await sync.syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedItems: 1 });
-  expect(await readInventoryBackgroundReadiness(db)).toBe('ready');
+  expect(await readInventoryBackgroundReadiness(db)).toBe('backfilling');
 });
 
 test('active owners are not stolen, even with stopped-worker attestation', async () => {

@@ -22,6 +22,7 @@ export class QueueRefillService {
         this.performanceReceiptRecorder = deps.performanceReceiptRecorder || null;
         this.prioritizeCandidates = deps.prioritizeCandidates || (rows => rows);
         this.wakeInventoryRecovery = deps.wakeInventoryRecovery || (async () => {});
+        this.materializeHandoff = deps.materializeHandoff || (async () => null);
         this.refillCursor = null;
         this.refillInFlight = null;
     }
@@ -80,6 +81,8 @@ export class QueueRefillService {
         const checkpoint = this.refillCursor;
         this.refillInFlight = this._withCatch('Error refilling queue', async () => {
             await this.wakeInventoryRecovery();
+            const handoff = await this.materializeHandoff(item => this.buildMetadataEnrichmentPayload(item));
+            if (handoff !== null) return handoff;
             const candidates = await this.selectRefillCandidates();
 
             if (candidates.length === 0) {

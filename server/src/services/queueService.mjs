@@ -52,6 +52,8 @@ import { QueueCarsaService } from './queueCarsaService.mjs';
 import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
+import { drainInventoryBackfillHandoffs } from './inventoryBackfillHandoff.mjs';
+import { withMetadataRefillOwnership } from './queueRefillCoordination.mjs';
 import { createInventoryCredentialWakeupService } from './inventoryCredentialWakeupService.mjs';
 import { queueStartupPerformanceReceiptService } from './queueStartupPerformanceReceiptService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
@@ -244,6 +246,7 @@ export class QueueService {
       performanceReceiptRecorder: queueStartupPerformanceReceiptService,
       prioritizeCandidates: rows => this.scheduler?.inventoryNeighborhoodRecovery?.prioritizeMetadata(rows) ?? rows,
       wakeInventoryRecovery: () => this.inventoryCredentialWakeup.run(),
+      materializeHandoff: buildPayload => drainInventoryBackfillHandoffs({ db: this.db, buildPayload, logger: this.logger }),
     });
     this.inventoryCredentialWakeup = createInventoryCredentialWakeupService({ db: this.db, logger: this.logger });
   }
@@ -613,7 +616,7 @@ export class QueueService {
   }
 
   async refillQueue() {
-    return this.queueRefillService.refillQueue();
+    return withMetadataRefillOwnership(this.db, () => this.queueRefillService.refillQueue());
   }
 
   setScheduler(schedulerService) {

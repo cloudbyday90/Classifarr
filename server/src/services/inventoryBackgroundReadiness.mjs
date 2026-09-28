@@ -15,6 +15,8 @@ SELECT CASE
       WHERE i.media_type IN ('movie','tv')) THEN 'waiting_for_inventory'
     WHEN EXISTS (SELECT 1 FROM active_libraries l LEFT JOIN library_ingestion_state s ON s.library_id=l.id
       WHERE l.media_server_id IS NOT NULL AND s.library_id IS NULL) THEN 'ingesting'
+    WHEN EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id
+      WHERE s.backfill_run_id IS DISTINCT FROM s.run_id OR s.backfill_completed_at IS NULL) THEN 'backfilling'
     WHEN EXISTS (SELECT 1 FROM task_queue WHERE status='processing'
       OR (status='pending' AND (next_retry_at IS NULL OR next_retry_at<=statement_timestamp()))) THEN 'backfilling'
     ELSE 'ready' END AS readiness`;

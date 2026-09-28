@@ -29,6 +29,7 @@ const mockDb = {
     query: jest.fn(),
     pool: { connect: jest.fn() },
     withTransaction: jest.fn(),
+    withSessionAdvisoryLock: jest.fn(),
     connect: jest.fn(),
     DB_ADVISORY_LOCKS,
 };
@@ -593,6 +594,12 @@ describe('QueueService', () => {
     });
 
     describe('refillQueue', () => {
+        beforeEach(() => {
+            // These cases exercise the ordinary pass; durable handoff has its own
+            // transaction and integration suites, including the production facade.
+            jest.spyOn(queueService.queueRefillService, 'materializeHandoff').mockResolvedValue(null);
+            db.withSessionAdvisoryLock.mockImplementation(async (_key, fn) => { await fn(); return true; });
+        });
         it('should normalize JSON-string metadata fields without manual parsing', async () => {
             db.query.mockResolvedValueOnce({
                 rows: [{
