@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover library discovery through the existing watchdog with durable retry
+  timing, jitter and sparse probes during prolonged outages. Serialize manual and
+  automatic scans, honor server retry delays, and wait for configuration changes
+  on access failures. Show recovery timing without bypassing ingestion or learning
+  safeguards for Jellyfin, Emby or Plex.
 - Show actionable library-discovery status for Jellyfin, Emby and Plex, including
   the last successful scan and a clear recovery step. Preserve inventory on failure,
   exclude music, and reject stale diagnostic results after connection changes.

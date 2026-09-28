@@ -244,7 +244,8 @@ describe('Media Server API', () => {
         beforeEach(() => {
             db.query.mockReset().mockResolvedValue({ rows: [source] });
             mockClient.query.mockReset().mockImplementation(async (sql, params) => {
-                if (sql.includes('FROM media_server WHERE')) return { rows: [source] };
+                if (sql.startsWith('SELECT pg_try_advisory_lock')) return { rows: [{ acquired: true }] };
+                if (sql.startsWith('SELECT * FROM media_server')) return { rows: [source] };
                 if (sql.includes('FROM libraries')) return { rows: [{ id: 99, external_id: 'old-key', name: 'Movies' }] };
                 if (sql.includes('INSERT INTO libraries(')) return { rows: [{ id: 100, external_id: params[1], name: params[2], is_active: true }] };
                 return { rows: [], rowCount: 1 };
@@ -267,9 +268,16 @@ describe('Media Server API', () => {
             expect(mockSyncLibrary).not.toHaveBeenCalled();
         });
         test('no configured source returns 404 without opening a write transaction', async () => {
-            db.query.mockResolvedValue({ rows: [] });
+            mockClient.query.mockImplementation(async sql => ({ rows: sql.startsWith('SELECT pg_try_advisory_lock') ? [{ acquired: true }] : [] }));
             expect((await request(app).post('/api/media-server/sync')).status).toBe(404);
-            expect(mockClient.query).not.toHaveBeenCalled();
+            expect(mockClient.query.mock.calls.some(([sql]) => /^(BEGIN|INSERT|UPDATE|DELETE)/.test(sql))).toBe(false);
+            expect(mockPlexService.getLibraryCatalog).not.toHaveBeenCalled();
+        });
+        test('another catalog owner returns 409 without provider work or status writes', async () => {
+            mockClient.query.mockResolvedValue({ rows: [{ acquired: false }] });
+            expect((await request(app).post('/api/media-server/sync')).status).toBe(409);
+            expect(mockPlexService.getLibraryCatalog).not.toHaveBeenCalled();
+            expect(mockClient.query).toHaveBeenCalledTimes(1);
         });
     });
 

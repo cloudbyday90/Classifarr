@@ -28,6 +28,15 @@ async function render(data = report(), props = {}) {
 const syncButton = () => wrapper.findAll('button')[1]
 
 describe('library discovery status', () => {
+  it.each([
+    ['scheduled', 'eligible after'], ['cooldown', 'one check per six hours'], ['waiting_configuration', 'waiting for updated connection settings'],
+    ['needs_review', 'paused for review'], ['pending', 'next watchdog run'], ['not_configured', 'until a media server is configured'],
+  ])('explains %s recovery in the existing polite status region without starting work', async (state, text) => {
+    await render({ ...report(), recovery: { state, nextAttemptAt: '2026-09-27T18:00:00Z' } })
+    expect(wrapper.get('[role="status"]').text()).toContain(text)
+    expect(getLibraryDiscoveryStatus).toHaveBeenCalledTimes(1)
+    expect(wrapper.emitted('sync')).toBeUndefined()
+  })
   it('shows Jellyfin, last success, a count with clear meaning, and an accessible next step', async () => {
     await render()
     expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite')

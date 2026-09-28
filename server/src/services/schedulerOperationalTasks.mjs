@@ -18,6 +18,8 @@ import { automaticClassificationRecoveryService } from './automaticClassificatio
 import { PROVIDER_AWARE_PENDING_RETRY_CODES } from './automaticClassificationRecoveryPolicy.mjs';
 import { classificationProviderAdmissionService } from './classificationProviderAdmissionService.mjs';
 import { LIBRARY_INGESTION_WATCHDOG_SQL } from './libraryIngestionStatus.mjs';
+import { runLibraryCatalogRecovery } from './libraryCatalogRecovery.mjs';
+import { getMediaServerService } from './mediaServers/index.mjs';
 
 const logger = createLogger('SchedulerService');
 
@@ -61,6 +63,7 @@ export async function runPeriodicLibrarySync() {
 
 export async function runLibraryWatchdog() {
     try {
+        await runLibraryCatalogRecovery({ db, getMediaServerServiceByType: getMediaServerService, logger });
         const result = await db.query(LIBRARY_INGESTION_WATCHDOG_SQL);
 
         for (const library of result.rows) {

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-09-27T22:28:00.000Z
--- Latest Migration: 20260928_020000_add_library_discovery_status.sql
+-- Latest Migration: 20260928_030000_add_library_catalog_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -16870,6 +16870,10 @@ CREATE TABLE public.media_server_catalog_status (
   http_status SMALLINT CHECK (http_status BETWEEN 100 AND 599),
   last_success_at TIMESTAMPTZ,
   last_success_count INTEGER CHECK (last_success_count BETWEEN 0 AND 1000),
+  automatic_attempts SMALLINT NOT NULL DEFAULT 0 CHECK (automatic_attempts BETWEEN 0 AND 5),
+  recovery_state TEXT NOT NULL DEFAULT 'needs_review' CHECK (recovery_state IN ('scheduled','cooldown','waiting_configuration','needs_review')),
+  next_attempt_at TIMESTAMPTZ,
+  CONSTRAINT media_server_catalog_recovery_due CHECK ((recovery_state IN ('scheduled','cooldown')) = (next_attempt_at IS NOT NULL)),
   CHECK ((reason = 'checking') = (finished_at IS NULL)),
   CHECK ((last_success_at IS NULL) = (last_success_count IS NULL))
 );
@@ -17173,6 +17177,7 @@ FROM unnest(ARRAY[
     '20260927_170000_add_library_ingestion_ownership.sql',
     '20260927_180000_index_ingestion_reconciliation_receipts.sql',
     '20260928_010000_add_library_archive.sql',
-    '20260928_020000_add_library_discovery_status.sql'
+    '20260928_020000_add_library_discovery_status.sql',
+    '20260928_030000_add_library_catalog_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

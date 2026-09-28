@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { ServiceUnavailableError } from '../utils/appError.mjs';
+import { catalogRetryAfter } from './libraryCatalogRetryAfter.mjs';
 
 export const CATALOG_CONTRACTS = Object.freeze(['unknown', 'plex_sections', 'emby_query', 'emby_legacy', 'jellyfin_virtual_folders']);
 const REASONS = ['authentication', 'forbidden', 'rate_limited', 'unreachable', 'timeout', 'invalid_catalog',
@@ -29,6 +30,6 @@ export function libraryDiscoveryFailure(error) {
 
 export function unavailableLibraryCatalog(error, provider) {
   return new ServiceUnavailableError(`Failed to fetch ${provider} libraries. Check library discovery status for the next step; existing libraries were preserved.`, {
-    code: 'library_catalog_unavailable', catalogDiagnostic: libraryDiscoveryFailure(error),
+    code: 'library_catalog_unavailable', catalogDiagnostic: libraryDiscoveryFailure(error), catalogRetryAfter: catalogRetryAfter(error),
   });
 }

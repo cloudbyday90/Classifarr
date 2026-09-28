@@ -75,7 +75,13 @@ Plex, Emby or Jellyfin, schedules recovery, or starts ingestion.
   "lastSuccessAt": "2026-09-27T12:00:00.000Z",
   "lastSuccessCount": 2,
   "contract": "jellyfin_virtual_folders",
-  "httpStatus": 403
+  "httpStatus": 403,
+  "recovery": {
+    "state": "waiting_configuration",
+    "attempts": 1,
+    "maxAttempts": 5,
+    "nextAttemptAt": null
+  }
 }
 ```
 
@@ -98,6 +104,28 @@ Use the existing explicit Sync Libraries workflow to retry discovery. That actio
 also requests enabled-library content sync and queue refill. Refresh status alone
 does neither. See the [design](../architecture/library-discovery-diagnostics-design.md)
 and [outcome](../architecture/library-discovery-diagnostics-outcome.md).
+
+Automatic catalog discovery uses the existing five-minute watchdog. Healthy
+catalogs are eligible every six hours. Transient failures receive up to five
+attempts in a jittered retry burst, then one recovery probe per six hours until
+success. `attempts` is the persisted burst count (capped at five), not total
+lifetime requests. Success resets it; restarts do not. Valid Retry-After delays
+take precedence; excessive delays suspend automation instead of being shortened.
+
+Recovery states are `pending` (new/changed connection), `not_configured`,
+`scheduled`, `cooldown`, `waiting_configuration`, and `needs_review`.
+`nextAttemptAt` is an eligibility time, not a guaranteed start time. The shared
+catalog owner must be available. No raw headers or credentials appear in this
+projection. Rejected credentials wait for a saved configuration change or explicit
+manual retry; malformed catalogs require review. A manual retry resets the burst
+and explicitly bypasses the automatic wait. A concurrent manual discovery returns
+409 with code `library_catalog_busy` without starting duplicate provider work.
+
+An interrupted attempt conservatively retains its charged budget and six-hour
+delay. A database-owned session lock, not elapsed time, decides whether another
+scan can begin. Automatic recovery cannot proceed without durable admission.
+Discovery itself never invokes classification or bypasses the separate ingestion
+and learning gates. See [controlled recovery design](../architecture/library-catalog-recovery-design.md).
 
 ### POST /api/media-sync/sync/:libraryId
 

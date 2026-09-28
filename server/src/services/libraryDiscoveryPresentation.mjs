@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { CATALOG_CONTRACTS } from './libraryDiscoveryFailure.mjs';
+import { CATALOG_MAX_ATTEMPTS } from './libraryCatalogRecoveryPolicy.mjs';
 
 const MESSAGES = Object.freeze({
   not_configured: ['Connect a media server', 'Connect and save Plex, Emby or Jellyfin to discover libraries.'],
@@ -30,9 +31,15 @@ export function presentLibraryDiscovery(row) {
     : !current ? 'configuration_changed' : row.outcome_unrecorded ? 'interrupted' : row.reason;
   if (!Object.hasOwn(MESSAGES, reason)) reason = 'unknown';
   const [title, nextStep] = MESSAGES[reason];
+  const attempts = current && Number.isInteger(row.automatic_attempts) ? Math.max(0, Math.min(CATALOG_MAX_ATTEMPTS, row.automatic_attempts)) : 0;
+  const recoveryState = row?.configured === false || !row ? 'not_configured'
+    : !current ? 'pending'
+      : ['scheduled', 'cooldown', 'waiting_configuration', 'needs_review'].includes(row.recovery_state) ? row.recovery_state : 'needs_review';
   return {
     provider: ['plex', 'emby', 'jellyfin'].includes(row?.provider) ? row.provider : null,
     reason, title, nextStep,
+    recovery: { state: recoveryState, attempts, maxAttempts: CATALOG_MAX_ATTEMPTS,
+      nextAttemptAt: ['scheduled', 'cooldown'].includes(recoveryState) ? timestamp(row.next_attempt_at) : null },
     attemptedAt: current ? timestamp(row.started_at) : null,
     finishedAt: current ? timestamp(row.finished_at) : null,
     lastSuccessAt: current ? timestamp(row.last_success_at) : null,

@@ -39,6 +39,9 @@
         <p class="text-sm mt-2">
           {{ data.nextStep }}
         </p>
+        <p class="text-sm mt-2">
+          {{ recoveryMessage }}
+        </p>
         <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-sm">
           <div>
             <dt class="text-gray-400">
@@ -96,4 +99,13 @@ watch(() => props.refreshKey, () => refresh())
 const providerName = computed(() => ({ plex: 'Plex', emby: 'Emby', jellyfin: 'Jellyfin' }[data.value?.provider] ?? 'Not configured'))
 const contractName = computed(() => ({ plex_sections: 'Plex sections', emby_query: 'Emby paginated query', emby_legacy: 'Emby legacy array', jellyfin_virtual_folders: 'Jellyfin virtual folders' }[data.value?.contract] ?? 'Not recorded'))
 const formatDate = value => value && Number.isFinite(new Date(value).getTime()) ? new Date(value).toLocaleString() : 'Not recorded'
+const recoveryMessage = computed(() => {
+  const recovery = data.value?.recovery
+  if (recovery?.state === 'cooldown') return `Repeated failures: automatic discovery has slowed to one check per six hours, eligible after ${formatDate(recovery.nextAttemptAt)}.`
+  if (recovery?.state === 'scheduled') return `Automatic discovery: eligible after ${formatDate(recovery.nextAttemptAt)}; checked about every five minutes.`
+  if (recovery?.state === 'waiting_configuration') return 'Automatic discovery is waiting for updated connection settings. You can also retry explicitly with Sync Libraries.'
+  if (recovery?.state === 'needs_review') return 'Automatic discovery is paused for review. Follow the recovery step above, then use Sync Libraries.'
+  if (recovery?.state === 'pending') return 'Automatic discovery will check the saved connection on the next watchdog run.'
+  return 'Automatic discovery waits until a media server is configured.'
+})
 </script>

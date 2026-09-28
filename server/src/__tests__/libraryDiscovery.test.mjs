@@ -74,7 +74,7 @@ test('records success only after consumption commits and counts supported librar
   });
   expect(await observeLibraryDiscovery(db, () => provider, consume)).toBe('committed');
   expect(consume).toHaveBeenCalledTimes(1);
-  expect(db.query.mock.calls.at(-1)[1].slice(2)).toEqual(['complete', 'jellyfin_virtual_folders', null, 1]);
+  expect(db.query.mock.calls.at(-1)[1].slice(2, 6)).toEqual(['complete', 'jellyfin_virtual_folders', null, 1]);
 });
 test('diagnostic persistence failure never blocks successful discovery', async () => {
   const { db, provider, consume } = observationFixture({ persistenceFails: true });

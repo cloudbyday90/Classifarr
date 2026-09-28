@@ -2,6 +2,7 @@
 import { lockLibraryCatalogSource } from './libraryCatalogContext.mjs';
 import { validateLibraryCatalog } from './mediaServers/shared/libraryCatalog.mjs';
 import { observeLibraryDiscovery } from './libraryDiscoveryObservation.mjs';
+import { withLibraryCatalogSession } from './libraryCatalogSession.mjs';
 
 export function computeLibraryDiff(remoteLibraries, existingRows) {
   const catalog = validateLibraryCatalog(remoteLibraries);
@@ -27,8 +28,8 @@ export function computeLibraryDiff(remoteLibraries, existingRows) {
 }
 
 /** Network outside the transaction; all catalog writes use the rechecked source. */
-export async function reconcileMediaServerLibraries({ db, getMediaServerServiceByType }) {
-  return observeLibraryDiscovery(db, getMediaServerServiceByType, ({ source, catalog }) => db.withTransaction(async client => {
+export async function reconcileMediaServerLibraries({ db, getMediaServerServiceByType, automatic = false }) {
+  return withLibraryCatalogSession(db.pool, (owned, signal) => observeLibraryDiscovery(owned, getMediaServerServiceByType, ({ source, catalog }) => owned.withTransaction(async client => {
     await client.query("SET LOCAL lock_timeout='500ms'");
     await client.query("SET LOCAL statement_timeout='5s'");
     await lockLibraryCatalogSource(client, source);
@@ -49,7 +50,7 @@ export async function reconcileMediaServerLibraries({ db, getMediaServerServiceB
     }
     await client.query('UPDATE media_server SET last_sync=NOW() WHERE id=$1', [source.id]);
     return { libraries: retained, preservedLibraries: unobserved.map(library => ({ id: library.id, name: library.name })) };
-  }));
+  }), { automatic, signal }));
 }
 
 export async function syncMediaServerLibraries({ db, getMediaServerServiceByType, mediaSyncService, logger }) {

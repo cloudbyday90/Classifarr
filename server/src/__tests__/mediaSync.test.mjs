@@ -11,6 +11,10 @@ import { withSourcePageFixtures } from './helpers/sourcePageFixture.mjs';
 
 const mockDb = {
     query: jest.fn(),
+    connect: jest.fn(async () => ({
+        query: (...args) => mockDb.query(...args),
+        release: jest.fn(),
+    })),
     withTransaction: async fn => fn(mockDb),
 };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -806,6 +810,7 @@ describe('MediaSyncService', () => {
             ]);
             const source = { id: 1, type: 'plex', url: 'http://source', api_key: 'token' };
             mockDb.query.mockImplementation(async sql => {
+                if (sql.includes('pg_try_advisory_lock')) return { rows: [{ acquired: true }] };
                 if (sql.includes('FROM media_server')) return { rows: [source] };
                 if (sql.includes('FROM libraries')) return { rows: [] };
                 if (sql.includes('INSERT INTO libraries(')) return { rows: [{ ...film, id: 2, is_active: true }] };

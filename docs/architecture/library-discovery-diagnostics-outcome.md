@@ -2,6 +2,11 @@
 
 Date: 2026-09-27. Status: Unreleased. No release or live deployment created.
 
+Follow-up correction: the six-hour task refreshes known library contents, not the
+catalog. [Controlled catalog recovery](library-catalog-recovery-design.md) now adds
+due-time admission through the existing watchdog; it was not part of this original
+diagnostics change.
+
 ## Delivered behavior
 
 Settings → Media Server now explains the saved connection's discovery outcome:
@@ -27,7 +32,7 @@ exceptions and library names are not retained in the diagnostic record.
 - Authentication/permission failures: update the saved token or account access,
   save the connection, then sync libraries. A network retry cannot repair access.
 - Unreachable/timeout/server error: restore connectivity or server health, then
-  retry. The existing periodic discovery also updates status after recovery.
+  retry. Automatic catalog recovery was added by the follow-up linked above.
 - Invalid/oversized library lists: inspect the server and proxy response; do not
   relax completeness or response-size guards. Existing inventory remains intact.
 - No result recorded: run Sync Libraries after configuration, or allow the next
@@ -91,12 +96,7 @@ and official Jellyfin, HTTP, PostgreSQL, OWASP and W3C references checked on the
 research date. Latest-state persistence is low overhead and survives restarts;
 its limitation is that it cannot reconstruct a full incident history.
 
-Next: add reason-aware catalog recovery admission to the existing library-sync
-scheduler, not a second worker. Today it schedules ordinary discovery every six
-hours and once at startup; this work records outcomes but does not change retry
-timing. Use a bounded, jittered retry budget for transient failures, a saved
-credential/configuration change to wake access failures, and the existing ownership
-and ingestion-readiness guards. Prove outage → recovery → complete import → learning
-readiness for Jellyfin, Emby and Plex without duplicate work or relaxed validation.
-That converts these diagnostics into controlled recovery rather than another
-dashboard-only iteration.
+The recommended follow-up was reason-aware catalog recovery without a second
+worker. It is now covered by the linked recovery design and outcome, including
+bounded jitter, credential/configuration wakeup, session ownership, and
+outage → recovery → complete import → learning-readiness tests for all providers.

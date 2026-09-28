@@ -62,12 +62,13 @@ class PlexService {
     return (await this.getLibraryCatalog(url, apiKey)).filter(library => library.media_type !== null);
   }
 
-  async getLibraryCatalog(url, apiKey, { onContract = undefined } = {}) {
+  /** @param {string} url @param {string} apiKey @param {{ onContract?: Function, signal?: AbortSignal }} [options] */
+  async getLibraryCatalog(url, apiKey, { onContract, signal } = {}) {
     try {
       onContract?.('plex_sections');
       const response = await httpGet(
         `${url}/library/sections`,
-        buildRequestConfig(apiKey, LIBRARY_CATALOG_REQUEST),
+        buildRequestConfig(apiKey, { ...LIBRARY_CATALOG_REQUEST, signal }),
       );
 
       return readPlexLibraryCatalog(response.data);

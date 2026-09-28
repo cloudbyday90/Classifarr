@@ -5,6 +5,7 @@ import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 
 const scope = new AsyncLocalStorage();
 export const mediaSyncDatabase = {
+  pool: database.pool,
   query: (...args) => (scope.getStore()?.db ?? database).query(...args),
   withTransaction: fn => (scope.getStore()?.db ?? database).withTransaction(fn),
   isOwned: () => scope.getStore() !== undefined,

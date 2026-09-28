@@ -113,6 +113,8 @@ const mockLoggerModule = {
 const mockSchedulerExecutionReceiptService = {
     record: jest.fn(),
 };
+const mockCatalogRecovery = jest.fn().mockResolvedValue({ deferred: true });
+jest.unstable_mockModule('../services/libraryCatalogRecovery.mjs', () => ({ runLibraryCatalogRecovery: mockCatalogRecovery }));
 
 const mockEventLoopDelayObservationScheduler = {
     registerEventLoopDelayObservationSchedule: jest.fn(),
@@ -438,6 +440,7 @@ describe('SchedulerService', () => {
             await scheduler.runLibraryWatchdog();
 
             // Inventory size is not evidence that controlled adoption completed.
+            expect(mockCatalogRecovery).toHaveBeenCalledWith(expect.objectContaining({ db: expect.anything(), logger: expect.anything() }));
             expect(dbModule.query).toHaveBeenCalledTimes(1);
             const [sql] = dbModule.query.mock.calls[0];
             expect(sql).not.toMatch(/media_server_items/);

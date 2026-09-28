@@ -179,6 +179,8 @@ test('fresh snapshot installs the same archive constraints and receipt index as 
     const repository = createLibraryDiscoveryStatusRepository(pool);
     await repository.finish(await repository.begin(source), { count: 2, contract: 'jellyfin_virtual_folders' });
     expect(await repository.read()).toMatchObject({ reason: 'complete', last_success_count: 2 });
+    expect(await repository.read()).toMatchObject({ recovery_state: 'scheduled', automatic_attempts: 0, next_attempt_at: expect.any(Date) });
+    expect((await pool.query("SELECT filename FROM schema_migrations WHERE filename='20260928_030000_add_library_catalog_recovery.sql'")).rows).toHaveLength(1);
     await pool.query("UPDATE media_server SET api_key='rotated' WHERE id=$1", [source.id]);
     const revision = await repository.read();
     expect([Number(revision.current_revision), Number(revision.source_revision)]).toEqual([2, 1]);

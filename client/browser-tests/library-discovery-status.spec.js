@@ -21,7 +21,9 @@ test('Jellyfin discovery guidance is keyboard accessible, read-only to refresh, 
       data = { provider: 'jellyfin', reason, title: reason === 'complete' ? 'Library discovery complete' : 'Library access was denied',
         nextStep: reason === 'complete' ? 'Review your libraries; content ingestion and backfill have separate progress.' : 'Check the saved account or API key has library access, then sync again.',
         lastSuccessAt: '2026-09-27T12:00:00.000Z', lastSuccessCount: 2, attemptedAt: '2026-09-27T13:00:00.000Z',
-        contract: 'jellyfin_virtual_folders', httpStatus: reason === 'complete' ? null : 403 }
+        contract: 'jellyfin_virtual_folders', httpStatus: reason === 'complete' ? null : 403,
+        recovery: { state: reason === 'complete' ? 'scheduled' : 'waiting_configuration', attempts: reason === 'complete' ? 0 : 1,
+          maxAttempts: 5, nextAttemptAt: reason === 'complete' ? '2026-09-27T19:00:00Z' : null } }
     }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
@@ -29,6 +31,7 @@ test('Jellyfin discovery guidance is keyboard accessible, read-only to refresh, 
   const section = page.getByRole('region', { name: 'Library discovery status', exact: true })
   await expect(section.getByRole('status')).toContainText('Library access was denied')
   await expect(section).toContainText('Jellyfin')
+  await expect(section.getByRole('status')).toContainText('waiting for updated connection settings')
   await section.getByRole('button', { name: 'Refresh status', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect.poll(() => reads).toBe(2)
@@ -47,6 +50,7 @@ test('Jellyfin discovery guidance is keyboard accessible, read-only to refresh, 
   await section.screenshot({ path: testInfo.outputPath('discovery-mobile.png') })
   await section.getByRole('button', { name: 'Sync Libraries', exact: true }).click()
   await expect(section.getByRole('status')).toContainText('Library discovery complete')
+  await expect(section.getByRole('status')).toContainText('Automatic discovery: eligible after')
   expect(writes).toEqual(['/api/media-server/sync', '/api/media-server/ingest'])
   expect(reads).toBe(3)
   expect(errors).toEqual([])
