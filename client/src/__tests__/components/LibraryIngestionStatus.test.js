@@ -6,6 +6,30 @@ import { ingestionPollInterval, libraryIngestionState, librarySyncResultMessage 
 
 const library = state => ({ ingestion_status: { state, items: 25, total: 100, pages: 2, retryAt: '2026-09-27T18:00:00Z' } })
 describe('Library ingestion status', () => {
+  it.each(['open', 'probing', 'review'])('explains source recovery %s without masking ownership or completion', state => {
+    const value = { ingestion_status: { state: 'awaiting_import', sourceRecovery: { state } } }
+    const wrapper = mount(LibraryIngestionStatus, { props: { library: value } })
+    expect(wrapper.get('[role="status"]').text()).toContain(state === 'review' ? 'recovery needs review' : 'Waiting for media server')
+    expect(wrapper.find('progress').exists()).toBe(false)
+    expect(ingestionPollInterval(value)).toBe(10000)
+    expect(libraryIngestionState(value, true)).toBe('requested')
+    for (const phase of ['active', 'disabled', 'unconfigured', 'legacy_owner_unknown', 'complete']) {
+      expect(libraryIngestionState({ ingestion_status: { ...value.ingestion_status, state: phase } })).toBe(phase)
+    }
+    wrapper.unmount()
+  })
+  it('uses the later source/library eligibility time and retains inconclusive canary guidance', async () => {
+    const value = library('retry_wait')
+    value.ingestion_status.sourceRecovery = { state: 'open', retryAt: '2026-09-28T18:00:00Z', reason: 'probe_inconclusive' }
+    value.ingestion_status.preflight = { phase: 'collections', message: 'Permission denied.', nextStep: 'Check library access.' }
+    const wrapper = mount(LibraryIngestionStatus, { props: { library: value } })
+    expect(wrapper.text()).toContain(new Date(value.ingestion_status.sourceRecovery.retryAt).toLocaleString())
+    expect(wrapper.text()).toContain('Check library access.')
+    await wrapper.setProps({ library: { ingestion_status: { state: 'retry_wait', sourceRecovery: { state: 'open', retryAt: 'invalid' } } } })
+    expect(wrapper.text()).not.toContain('Retry eligible after')
+    expect(wrapper.text()).not.toContain('Check library access.')
+    wrapper.unmount()
+  })
   it('never labels a deferred request as completed', () => {
     for (const reason of ['ingestion_owned', 'ingestion_capacity', 'retry_wait', 'legacy_owner_unknown', 'source_disabled', 'source_unconfigured', 'source_preflight_unavailable', 'future']) {
       expect(librarySyncResultMessage({ deferred: true, reason })).not.toContain('complete')

@@ -2,6 +2,7 @@
 import { createMediaSyncCompleteness } from './mediaSyncCompleteness.mjs';
 import { SourceEnumerationError } from './sourceEnumerationError.mjs';
 import { SourcePreflightError, sourcePreflightFailureReason } from './sourcePreflightDiagnostic.mjs';
+import { SourceContentDeferredError } from './sourceContentFailure.mjs';
 
 /** Bounded canary, NOT a completeness receipt. Buffers are used only by this owning run. */
 export async function preflightSourceEnumeration({ service, url, apiKey, libraryKey, owner, batchSize }) {
@@ -21,6 +22,8 @@ export async function preflightSourceEnumeration({ service, url, apiKey, library
         if (enumeration.total === null) throw new SourceEnumerationError('unknown_source_total');
       } catch (error) {
         owner.signal?.throwIfAborted();
+        await owner.assertSource();
+        if (error instanceof SourceContentDeferredError || error instanceof SourcePreflightError) throw error;
         throw new SourcePreflightError(phase, sourcePreflightFailureReason(error));
       }
       owner.signal?.throwIfAborted();

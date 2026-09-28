@@ -184,6 +184,10 @@ test('fresh snapshot installs the same archive constraints and receipt index as 
     await pool.query("UPDATE media_server SET api_key='rotated' WHERE id=$1", [source.id]);
     const revision = await repository.read();
     expect([Number(revision.current_revision), Number(revision.source_revision)]).toEqual([2, 1]);
+    expect((await pool.query("SELECT filename FROM schema_migrations WHERE filename='20260928_040000_add_source_content_circuits.sql'")).rows).toHaveLength(1);
+    await pool.query('INSERT INTO media_source_content_circuits(media_server_id,source_revision) VALUES ($1,2)', [source.id]);
+    await expect(pool.query("UPDATE media_source_content_circuits SET state='open' WHERE media_server_id=$1", [source.id])).rejects.toMatchObject({ code: '23514' });
+    await expect(pool.query('UPDATE media_source_content_circuits SET attempts=6 WHERE media_server_id=$1', [source.id])).rejects.toMatchObject({ code: '23514' });
   } finally {
     try { await pool?.end(); } finally { await container.stop(); }
   }

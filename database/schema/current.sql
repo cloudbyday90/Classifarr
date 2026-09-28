@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-27T22:28:00.000Z
--- Latest Migration: 20260928_030000_add_library_catalog_recovery.sql
+-- Generated: 2026-09-28T11:09:46.143Z
+-- Latest Migration: 20260928_040000_add_source_content_circuits.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -119,6 +119,22 @@ BEGIN
         ALTER EXTENSION vector UPDATE TO '0.8.6';
     END IF;
 END $$;
+
+
+--
+-- Name: advance_media_server_catalog_revision(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.advance_media_server_catalog_revision() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.catalog_revision := OLD.catalog_revision + CASE WHEN
+    ROW(NEW.type, NEW.url, NEW.api_key, NEW.is_active) IS DISTINCT FROM
+    ROW(OLD.type, OLD.url, OLD.api_key, OLD.is_active) THEN 1 ELSE 0 END;
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -4723,8 +4739,40 @@ CREATE TABLE public.media_server (
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
     client_identifier character varying(255),
-    catalog_revision bigint DEFAULT 1 NOT NULL CHECK (catalog_revision > 0),
+    catalog_revision bigint DEFAULT 1 NOT NULL,
+    CONSTRAINT media_server_catalog_revision_check CHECK ((catalog_revision > 0)),
     CONSTRAINT media_server_type_check CHECK (((type)::text = ANY (ARRAY[('plex'::character varying)::text, ('emby'::character varying)::text, ('jellyfin'::character varying)::text])))
+);
+
+
+--
+-- Name: media_server_catalog_status; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_server_catalog_status (
+    media_server_id integer NOT NULL,
+    source_revision bigint NOT NULL,
+    attempt_id uuid NOT NULL,
+    started_at timestamp with time zone NOT NULL,
+    finished_at timestamp with time zone,
+    reason text NOT NULL,
+    contract text NOT NULL,
+    http_status smallint,
+    last_success_at timestamp with time zone,
+    last_success_count integer,
+    automatic_attempts smallint DEFAULT 0 NOT NULL,
+    recovery_state text DEFAULT 'needs_review'::text NOT NULL,
+    next_attempt_at timestamp with time zone,
+    CONSTRAINT media_server_catalog_recovery_due CHECK (((recovery_state = ANY (ARRAY['scheduled'::text, 'cooldown'::text])) = (next_attempt_at IS NOT NULL))),
+    CONSTRAINT media_server_catalog_status_automatic_attempts_check CHECK (((automatic_attempts >= 0) AND (automatic_attempts <= 5))),
+    CONSTRAINT media_server_catalog_status_check CHECK (((reason = 'checking'::text) = (finished_at IS NULL))),
+    CONSTRAINT media_server_catalog_status_check1 CHECK (((last_success_at IS NULL) = (last_success_count IS NULL))),
+    CONSTRAINT media_server_catalog_status_contract_check CHECK ((contract = ANY (ARRAY['unknown'::text, 'plex_sections'::text, 'emby_query'::text, 'emby_legacy'::text, 'jellyfin_virtual_folders'::text]))),
+    CONSTRAINT media_server_catalog_status_http_status_check CHECK (((http_status >= 100) AND (http_status <= 599))),
+    CONSTRAINT media_server_catalog_status_last_success_count_check CHECK (((last_success_count >= 0) AND (last_success_count <= 1000))),
+    CONSTRAINT media_server_catalog_status_reason_check CHECK ((reason = ANY (ARRAY['checking'::text, 'complete'::text, 'authentication'::text, 'forbidden'::text, 'rate_limited'::text, 'unreachable'::text, 'timeout'::text, 'invalid_catalog'::text, 'endpoint_unavailable'::text, 'cancelled'::text, 'response_too_large'::text, 'provider_unavailable'::text, 'configuration_changed'::text, 'local_update_failed'::text, 'unknown'::text]))),
+    CONSTRAINT media_server_catalog_status_recovery_state_check CHECK ((recovery_state = ANY (ARRAY['scheduled'::text, 'cooldown'::text, 'waiting_configuration'::text, 'needs_review'::text]))),
+    CONSTRAINT media_server_catalog_status_source_revision_check CHECK ((source_revision > 0))
 );
 
 
@@ -4942,6 +4990,28 @@ CREATE TABLE public.media_source_capture_state (
     CONSTRAINT media_source_capture_state_rejected_count_check CHECK ((rejected_count >= 0)),
     CONSTRAINT media_source_capture_state_source_check CHECK ((source = ANY (ARRAY['media_sync'::text, 'local_capture'::text]))),
     CONSTRAINT media_source_capture_state_uncapturable_count_check CHECK ((uncapturable_count >= 0))
+);
+
+
+--
+-- Name: media_source_content_circuits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_source_content_circuits (
+    media_server_id integer NOT NULL,
+    source_revision bigint NOT NULL,
+    epoch bigint DEFAULT 0 NOT NULL,
+    state text DEFAULT 'closed'::text NOT NULL,
+    attempts smallint DEFAULT 0 NOT NULL,
+    reason text,
+    next_attempt_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT media_source_content_circuits_attempts_check CHECK (((attempts >= 0) AND (attempts <= 5))),
+    CONSTRAINT media_source_content_circuits_check CHECK (((state = ANY (ARRAY['open'::text, 'probing'::text])) = (next_attempt_at IS NOT NULL))),
+    CONSTRAINT media_source_content_circuits_epoch_check CHECK ((epoch >= 0)),
+    CONSTRAINT media_source_content_circuits_reason_check CHECK ((reason = ANY (ARRAY['unreachable'::text, 'timeout'::text, 'rate_limited'::text, 'provider_unavailable'::text, 'probe_interrupted'::text, 'probe_inconclusive'::text]))),
+    CONSTRAINT media_source_content_circuits_source_revision_check CHECK ((source_revision > 0)),
+    CONSTRAINT media_source_content_circuits_state_check CHECK ((state = ANY (ARRAY['closed'::text, 'open'::text, 'probing'::text, 'review'::text])))
 );
 
 
@@ -10354,6 +10424,14 @@ ALTER TABLE ONLY public.media_requests
 
 
 --
+-- Name: media_server_catalog_status media_server_catalog_status_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_server_catalog_status
+    ADD CONSTRAINT media_server_catalog_status_pkey PRIMARY KEY (media_server_id);
+
+
+--
 -- Name: media_server_collections media_server_collections_media_server_id_external_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10415,6 +10493,14 @@ ALTER TABLE ONLY public.media_source_capture_state
 
 ALTER TABLE ONLY public.media_source_capture_state
     ADD CONSTRAINT media_source_capture_state_pkey PRIMARY KEY (library_id);
+
+
+--
+-- Name: media_source_content_circuits media_source_content_circuits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_content_circuits
+    ADD CONSTRAINT media_source_content_circuits_pkey PRIMARY KEY (media_server_id);
 
 
 --
@@ -13723,6 +13809,13 @@ CREATE TRIGGER library_profile_inventory_update AFTER UPDATE ON public.media_ser
 
 
 --
+-- Name: media_server media_server_catalog_revision; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER media_server_catalog_revision BEFORE UPDATE ON public.media_server FOR EACH ROW EXECUTE FUNCTION public.advance_media_server_catalog_revision();
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipt_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14336,6 +14429,14 @@ ALTER TABLE ONLY public.media_requests
 
 
 --
+-- Name: media_server_catalog_status media_server_catalog_status_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_server_catalog_status
+    ADD CONSTRAINT media_server_catalog_status_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
 -- Name: media_server_collections media_server_collections_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14397,6 +14498,14 @@ ALTER TABLE ONLY public.media_source_capture_state
 
 ALTER TABLE ONLY public.media_source_capture_state
     ADD CONSTRAINT media_source_capture_state_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_source_content_circuits media_source_content_circuits_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_content_circuits
+    ADD CONSTRAINT media_source_content_circuits_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
 
 
 --
@@ -16845,39 +16954,6 @@ SELECT 1, 'ready', 'startup_ready'
 WHERE NOT EXISTS (SELECT 1 FROM policy_backup_restore_verifications)
 ON CONFLICT (gate_id) DO NOTHING;
 
--- Library discovery diagnostics: bounded, revision-bound status, never raw provider payloads.
-CREATE FUNCTION public.advance_media_server_catalog_revision() RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-  NEW.catalog_revision := OLD.catalog_revision + CASE WHEN
-    ROW(NEW.type, NEW.url, NEW.api_key, NEW.is_active) IS DISTINCT FROM
-    ROW(OLD.type, OLD.url, OLD.api_key, OLD.is_active) THEN 1 ELSE 0 END;
-  RETURN NEW;
-END;
-$$;
-CREATE TRIGGER media_server_catalog_revision BEFORE UPDATE ON public.media_server
-  FOR EACH ROW EXECUTE FUNCTION public.advance_media_server_catalog_revision();
-
-CREATE TABLE public.media_server_catalog_status (
-  media_server_id INTEGER PRIMARY KEY REFERENCES public.media_server(id) ON DELETE CASCADE,
-  source_revision BIGINT NOT NULL CHECK (source_revision > 0),
-  attempt_id UUID NOT NULL,
-  started_at TIMESTAMPTZ NOT NULL,
-  finished_at TIMESTAMPTZ,
-  reason TEXT NOT NULL CHECK (reason IN ('checking','complete','authentication','forbidden','rate_limited',
-    'unreachable','timeout','invalid_catalog','endpoint_unavailable','cancelled','response_too_large',
-    'provider_unavailable','configuration_changed','local_update_failed','unknown')),
-  contract TEXT NOT NULL CHECK (contract IN ('unknown','plex_sections','emby_query','emby_legacy','jellyfin_virtual_folders')),
-  http_status SMALLINT CHECK (http_status BETWEEN 100 AND 599),
-  last_success_at TIMESTAMPTZ,
-  last_success_count INTEGER CHECK (last_success_count BETWEEN 0 AND 1000),
-  automatic_attempts SMALLINT NOT NULL DEFAULT 0 CHECK (automatic_attempts BETWEEN 0 AND 5),
-  recovery_state TEXT NOT NULL DEFAULT 'needs_review' CHECK (recovery_state IN ('scheduled','cooldown','waiting_configuration','needs_review')),
-  next_attempt_at TIMESTAMPTZ,
-  CONSTRAINT media_server_catalog_recovery_due CHECK ((recovery_state IN ('scheduled','cooldown')) = (next_attempt_at IS NOT NULL)),
-  CHECK ((reason = 'checking') = (finished_at IS NULL)),
-  CHECK ((last_success_at IS NULL) = (last_success_count IS NULL))
-);
-
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -17178,6 +17254,7 @@ FROM unnest(ARRAY[
     '20260927_180000_index_ingestion_reconciliation_receipts.sql',
     '20260928_010000_add_library_archive.sql',
     '20260928_020000_add_library_discovery_status.sql',
-    '20260928_030000_add_library_catalog_recovery.sql'
+    '20260928_030000_add_library_catalog_recovery.sql',
+    '20260928_040000_add_source_content_circuits.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

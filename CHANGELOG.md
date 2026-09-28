@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Coordinate content-import recovery across libraries sharing a Jellyfin, Emby or
+  Plex server. Persist outage waits, honor server retry delays, and admit one
+  bounded media-and-collection recovery check before resuming imports. Preserve
+  inventory, library ownership and learning readiness; show clear shared-wait status.
+- Apply open PR #547 locally: update CodeQL scanning and SARIF upload actions to
+  verified v4.38.2 commit pins. No PR merge or release.
+- Regenerate the fresh-install schema snapshot from an isolated current database
+  to keep catalog and recovery definitions consistent with canonical drift checks.
 - Recover library discovery through the existing watchdog with durable retry
   timing, jitter and sparse probes during prolonged outages. Serialize manual and
   automatic scans, honor server retry delays, and wait for configuration changes

@@ -10,6 +10,8 @@ import { SourceEnumerationError } from './sourceEnumerationError.mjs';
 import { sourcePageRequest } from './mediaServers/shared/sourcePage.mjs';
 import { preflightSourceEnumeration } from './sourceEnumerationPreflight.mjs';
 import { SourcePreflightError } from './sourcePreflightDiagnostic.mjs';
+import { createSourceContentAdmission } from './sourceContentAdmission.mjs';
+import { SourceContentDeferredError } from './sourceContentFailure.mjs';
 const logger = createLogger('mediaSync');
 
 export async function runOwnedMediaSync(sync, libraryId, options, owner) {
@@ -21,7 +23,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
   try {
     sourcePageRequest({ limit: batchSize });
     const libraryResult = await db.query(
-      `SELECT l.*, ms.type, ms.url, ms.api_key, ms.is_active AS server_active
+      `SELECT l.*, ms.type, ms.url, ms.api_key, ms.catalog_revision, ms.is_active AS server_active
        FROM libraries l
        JOIN media_server ms ON l.media_server_id = ms.id
        WHERE l.id = $1`,
@@ -43,6 +45,8 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
     if (![library.url, library.api_key].every(value => typeof value === 'string' && value.trim())) {
       return { success: false, deferred: true, reason: 'source_unconfigured' };
     }
+    const contentAdmission = createSourceContentAdmission({ db, source: library, owner });
+    await contentAdmission.check();
     const claim = await owner.claim();
     if (claim.reason) {
       if (claim.reason === 'legacy_owner_unknown') logger.warn('Ingestion ownership is unknown; automatic takeover withheld',
@@ -71,7 +75,11 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
         await owner.attach(syncStatusId);
       });
       const service = await sync.getMediaServerService(type);
-      const preflight = await preflightSourceEnumeration({ service, url, apiKey: api_key, libraryKey: external_id,
+      const pageService = {
+        getLibraryPage: (...args) => contentAdmission.page(service, 'getLibraryPage', ...args),
+        getCollectionPage: (...args) => contentAdmission.page(service, 'getCollectionPage', ...args),
+      };
+      const preflight = await preflightSourceEnumeration({ service: pageService, url, apiKey: api_key, libraryKey: external_id,
         owner: { signal: owner.signal, assertSource: () => owner.assertSource(library) }, batchSize });
       await db.withTransaction(async () => {
         await owner.assertSource(library);
@@ -96,7 +104,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       while (!mediaEnumeration.complete) {
         enumerationContext = { phase: 'media', offset: mediaEnumeration.offset, reportedTotal: mediaEnumeration.total };
         owner.signal?.throwIfAborted();
-        const page = preflight.media.shift() ?? await service.getLibraryPage(url, api_key, external_id, {
+        const page = preflight.media.shift() ?? await pageService.getLibraryPage(url, api_key, external_id, {
           offset: mediaEnumeration.offset,
           limit: batchSize,
           signal: owner.signal,
@@ -146,7 +154,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       while (!collectionEnumeration.complete) {
         enumerationContext = { phase: 'collections', offset: collectionEnumeration.offset, reportedTotal: collectionEnumeration.total };
         owner.signal?.throwIfAborted();
-        const page = preflight.collections.shift() ?? await service.getCollectionPage(url, api_key, external_id, {
+        const page = preflight.collections.shift() ?? await pageService.getCollectionPage(url, api_key, external_id, {
           offset: collectionEnumeration.offset, limit: batchSize, signal: owner.signal,
         });
         owner.signal?.throwIfAborted();
@@ -224,6 +232,10 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       throw error;
     }
   } catch (error) {
+    if (error instanceof SourceContentDeferredError) {
+      logger.debug('Library import waiting for shared source recovery', { libraryId, reason: error.reason });
+      return { success: false, deferred: true, reason: error.reason, retryAt: error.retryAt };
+    }
     if (error instanceof SourcePreflightError) {
       logger.warn('Library import preflight deferred; existing records retained',
         { libraryId, ...error.detail },

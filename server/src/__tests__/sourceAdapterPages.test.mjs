@@ -34,8 +34,11 @@ test.each(services)('preserves typed failures for both endpoints and never turns
   for (const method of ['getLibraryPage', 'getCollectionPage']) {
     httpGet.mockResolvedValue({ data: {} });
     await expect(service[method]('http://synthetic.invalid', 'private-token', 'library')).rejects.toBeInstanceOf(SourceEnumerationError);
-    httpGet.mockRejectedValue(new Error('synthetic outage'));
-    await expect(service[method]('http://synthetic.invalid', 'private-token', 'library')).rejects.toThrow('synthetic outage');
+    httpGet.mockRejectedValue(Object.assign(new Error('synthetic private outage'), { response: { status: 503 } }));
+    await expect(service[method]('http://synthetic.invalid', 'private-token', 'library')).rejects.toMatchObject({
+      sourceContentFailure: { reason: 'provider_unavailable', retryAfter: null },
+    });
+    await expect(service[method]('http://synthetic.invalid', 'private-token', 'library')).rejects.not.toThrow('synthetic private outage');
   }
 });
 test('Plex returns page evidence separately from normalized unsupported metadata', async () => {

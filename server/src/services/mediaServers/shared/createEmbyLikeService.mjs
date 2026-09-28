@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { httpGet } from '../../../utils/httpClient.mjs';
+import { sourceContentPageError } from '../../sourceContentFailure.mjs';
 import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
 import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs';
 import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
@@ -114,7 +115,7 @@ class EmbyLikeService {
       }) };
     } catch (error) {
       if (options.preflight || error instanceof SourceEnumerationError) throw error;
-      throw new Error(`Failed to fetch ${this.displayName} library items: ${error.message}`);
+      throw sourceContentPageError(error, `Failed to fetch ${this.displayName} library items`);
     }
   }
 
@@ -170,7 +171,7 @@ class EmbyLikeService {
       })) };
     } catch (error) {
       if (options.preflight || error instanceof SourceEnumerationError) throw error;
-      throw new Error(`Failed to fetch ${this.displayName} collections: ${error.message}`);
+      throw sourceContentPageError(error, `Failed to fetch ${this.displayName} collections`);
     }
   }
 

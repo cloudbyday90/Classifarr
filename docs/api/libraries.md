@@ -92,6 +92,24 @@ curl -X GET http://localhost:21324/api/libraries \
 
 Get detailed information about a specific library, including item count and sync status.
 
+The existing `ingestion_status` includes optional `sourceRecovery` (`null` when no
+current shared outage exists). It is a stored read: no provider request or recovery
+work is started. `sourceRecovery` contains only `state` (`open`, `probing`, `review`),
+fixed `reason`, `attempts` (0–5), and nullable `retryAt`. This supplements, rather
+than replaces, library ownership and import state. Disabled, unknown-owner and
+completed libraries retain their own status. Neither a successful source probe nor
+a due timestamp proves that a library import is complete.
+
+For waiting imports, show the later of library `retryAt` and source `retryAt` as
+eligibility, not a guaranteed start time. `review` requires checking media-server
+health/proxy behavior and correcting connection settings; it has no scheduled
+retry. Do not fabricate a progress percentage for waiting or unknown totals.
+
+Content sync may defer with `source_content_cooldown`, `source_content_probe_busy`,
+`source_content_review` or `source_content_changed`. Manual sync does not bypass
+the shared content wait. Catalog discovery has separate recovery semantics; a
+catalog success does not establish healthy media or collection pagination.
+
 **Authentication:** Required (API Key or JWT)
 
 **Parameters:**

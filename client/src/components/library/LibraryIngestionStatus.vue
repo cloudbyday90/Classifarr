@@ -13,7 +13,7 @@
         {{ nextStep }}
       </p>
     </div>
-    <template v-if="!unavailable && ['active', 'interrupted', 'retry_wait'].includes(state)">
+    <template v-if="!unavailable && ['active', 'interrupted', 'retry_wait', 'source_wait'].includes(state)">
       <p class="mt-3 text-sm">
         {{ count(library.ingestion_status?.items) }} items processed · {{ count(library.ingestion_status?.pages) }} pages
       </p>
@@ -47,7 +47,8 @@ const props = defineProps({ library: { type: Object, required: true }, requestin
 const state = computed(() => libraryIngestionState(props.library, props.requesting))
 const preflight = computed(() => {
   const value = props.library.ingestion_status?.preflight
-  return !props.unavailable && state.value === 'retry_wait' && ['media', 'collections'].includes(value?.phase) &&
+  return !props.unavailable && (state.value === 'retry_wait' ||
+    (state.value === 'source_wait' && props.library.ingestion_status?.sourceRecovery?.reason === 'probe_inconclusive')) && ['media', 'collections'].includes(value?.phase) &&
     typeof value?.message === 'string' && typeof value?.nextStep === 'string' ? value : null
 })
 const title = computed(() => props.unavailable ? 'Import status unavailable'
@@ -64,9 +65,9 @@ const percentage = computed(() => {
     ? Math.min(100, Math.round(done / total * 100)) : null
 })
 const retryAt = computed(() => {
-  const raw = props.library.ingestion_status?.retryAt
-  if (!raw) return null
-  const date = new Date(raw)
-  return Number.isFinite(date.getTime()) ? date.toLocaleString() : null
+  const status = props.library.ingestion_status
+  const dates = [status?.retryAt, status?.sourceRecovery?.retryAt]
+    .filter(Boolean).map(value => new Date(value).getTime()).filter(Number.isFinite)
+  return dates.length ? new Date(Math.max(...dates)).toLocaleString() : null
 })
 </script>

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { httpGet } from '../../utils/httpClient.mjs';
+import { sourceContentPageError } from '../sourceContentFailure.mjs';
 import { createLogger } from '../../utils/logger.mjs';
 import { collectPlexGuidCandidates, parsePlexGuids } from './shared/providerIds.mjs';
 import { sourceIdentityRecoveryEvidence } from '../sourceIdentityRecoveryEvidence.mjs';
@@ -141,7 +142,7 @@ class PlexService {
       }) };
     } catch (error) {
       if (options.preflight || error instanceof SourceEnumerationError) throw error;
-      throw new Error(`Failed to fetch Plex library items: ${error.message}`);
+      throw sourceContentPageError(error, 'Failed to fetch Plex library items');
     }
   }
 
@@ -197,7 +198,7 @@ class PlexService {
       })) };
     } catch (error) {
       if (options.preflight || error instanceof SourceEnumerationError) throw error;
-      throw new Error(`Failed to fetch Plex collections: ${error.message}`);
+      throw sourceContentPageError(error, 'Failed to fetch Plex collections');
     }
   }
 

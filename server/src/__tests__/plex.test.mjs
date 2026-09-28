@@ -268,7 +268,7 @@ describe('PlexService', () => {
         it('rejects collection failures instead of reporting an empty collection list', async () => {
             mockHttpGet.mockRejectedValue(new Error('Not found'));
 
-            await expect(service.getCollections('http://plex:32400', 'token', '1')).rejects.toThrow('Not found');
+            await expect(service.getCollections('http://plex:32400', 'token', '1')).rejects.toThrow('Failed to fetch Plex collections');
         });
     });
 

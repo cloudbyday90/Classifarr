@@ -206,7 +206,7 @@ describe('EmbyService', () => {
         it('rejects collection failures instead of reporting an empty collection list', async () => {
             mockHttpGet.mockRejectedValue(new Error('Not found'));
 
-            await expect(service.getCollections('http://emby:8096', 'key', '1')).rejects.toThrow('Not found');
+            await expect(service.getCollections('http://emby:8096', 'key', '1')).rejects.toThrow('Failed to fetch Emby collections');
         });
     });
 

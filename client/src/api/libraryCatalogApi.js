@@ -59,7 +59,7 @@ export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
 }
 
-/** Includes ingestion_status.preflight (safe last-attempt cause/next step or null); reads never start ingestion. */
+/** Includes ingestion_status.preflight and sourceRecovery (shared wait or null); reads never start ingestion. */
 export function getLibrary(id) {
   return getDataRequest(`/libraries/${id}`)
 }

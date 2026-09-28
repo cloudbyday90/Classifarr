@@ -183,7 +183,7 @@ describe('JellyfinService', () => {
         it('rejects collection failures instead of reporting an empty collection list', async () => {
             mockHttpGet.mockRejectedValue(new Error('Not found'));
 
-            await expect(service.getCollections('http://jellyfin:8096', 'key', '1')).rejects.toThrow('Not found');
+            await expect(service.getCollections('http://jellyfin:8096', 'key', '1')).rejects.toThrow('Failed to fetch Jellyfin collections');
         });
     });
 

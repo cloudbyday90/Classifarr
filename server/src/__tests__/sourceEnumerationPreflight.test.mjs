@@ -56,6 +56,13 @@ test('collection failures are checked before the caller receives any sample for 
   expect(error.message).not.toContain('private');
   expect(error).not.toHaveProperty('cause');
 });
+
+test('a recovery canary diagnostic retains its original phase and actionable cause', async () => {
+  const { args, getLibraryPage } = fixture();
+  const error = new SourcePreflightError('collections', 'access_denied');
+  getLibraryPage.mockRejectedValue(error);
+  await expect(preflightSourceEnumeration(args)).rejects.toBe(error);
+});
 test('source changes and owner loss propagate without being relabeled as provider faults', async () => {
   const { args, owner, getLibraryPage } = fixture();
   owner.assertSource.mockRejectedValue(new Error('ingestion_source_changed'));

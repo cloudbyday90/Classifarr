@@ -8,10 +8,17 @@ export const LIBRARY_INGESTION_COPY = Object.freeze({
   legacy_owner_unknown: ['Import owner needs verification', 'An older or external scan has no verifiable owner. Confirm that worker has stopped before reconciling its status.'],
   disabled: ['Import paused', 'The library or media server is disabled. Enable it when you want imports to resume.'],
   unconfigured: ['Import waiting for setup', 'Configure the media server connection before imports can resume.'],
+  source_wait: ['Waiting for media server', 'Imports share a recovery check. Existing items are safe; no action is needed unless the server remains offline.'],
+  source_review: ['Media server recovery needs review', 'The server requested an excessive retry delay. Check its health and proxy settings, then correct and save the connection settings.'],
 })
 
 export function libraryIngestionState(library, requesting = false) {
   if (requesting) return 'requested'
+  const status = library?.ingestion_status
+  if (['awaiting_import', 'interrupted', 'retry_wait'].includes(status?.state)) {
+    if (status.sourceRecovery?.state === 'review') return 'source_review'
+    if (['open', 'probing'].includes(status.sourceRecovery?.state)) return 'source_wait'
+  }
   if (library?.ingestion_status?.state) return library.ingestion_status.state
   return ['pending', 'running'].includes(library?.sync_status?.status) ? 'legacy_owner_unknown' : 'complete'
 }
@@ -19,7 +26,7 @@ export function libraryIngestionState(library, requesting = false) {
 export function ingestionPollInterval(library, requesting = false) {
   const state = libraryIngestionState(library, requesting)
   if (['active', 'requested'].includes(state)) return 2000
-  if (['awaiting_import', 'interrupted', 'retry_wait', 'legacy_owner_unknown'].includes(state)) return 10000
+  if (['awaiting_import', 'interrupted', 'retry_wait', 'legacy_owner_unknown', 'source_wait', 'source_review'].includes(state)) return 10000
   return null
 }
 
@@ -32,6 +39,10 @@ export function librarySyncResultMessage(result) {
     source_disabled: 'Enable the library and media server before importing.',
     source_unconfigured: 'Configure the media server connection before importing.',
     source_preflight_unavailable: 'Import checks need attention. Open the library for the cause and next step; a retry is scheduled.',
+    source_content_cooldown: 'Imports are waiting for the shared media server recovery check.',
+    source_content_probe_busy: 'A shared media server recovery check is already running.',
+    source_content_review: 'Review the media server recovery guidance in this library.',
+    source_content_changed: 'The media server connection changed. Refresh the library status.',
   }
   if (result?.deferred) return deferred[result.reason] ?? 'Import deferred. Check the library status.'
   if (result?.skipped) return 'This content type is not imported.'

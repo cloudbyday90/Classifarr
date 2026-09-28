@@ -25,6 +25,11 @@ jest.unstable_mockModule('../services/mediaSyncDatabaseScope.mjs', () => ({
 }));
 const owner = { claim: async () => ({}), attach: async () => {}, checkpoint: async () => {},
     finish: async () => {}, assertSource: async () => {} };
+// This suite isolates ingestion orchestration; source admission has real-database coverage.
+jest.unstable_mockModule('../services/sourceContentAdmission.mjs', () => ({
+    createSourceContentAdmission: () => ({ check: async () => {},
+        page: (service, method, ...args) => service[method](...args) }),
+}));
 jest.unstable_mockModule('../services/mediaSyncOwnership.mjs', () => ({
     createMediaSyncOwnership: () => (_id, callback) => callback(owner),
     MEDIA_SYNC_OWNER_LOCK: 0x4d53594e,
