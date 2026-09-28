@@ -118,8 +118,8 @@ test('profile allowlist is immutable and dimensions cannot silently shrink', () 
   expect(snapshot.inputs.source.vectors.size).toBe(6700);
   expect(snapshot.inputs.source.vectors.values().next().value).toHaveLength(768);
 });
-test.each([{ version: 'resource_study.v1' }, { version: 'resource_study.v2' }, { profile: 'capacity' }, { evaluationRows: 399 }, { vectorDimensions: 64 },
-  { queueRecovery: null }, { durationMs: 300001 }])('old or wrong profile evidence fails: %j', changes => {
+test.each([{ version: 'resource_study.v1' }, { version: 'resource_study.v2' }, { version: 'resource_study.v3' }, { profile: 'capacity' }, { evaluationRows: 399 }, { vectorDimensions: 64 },
+  { queueRecovery: null }, { durationMs: 310001 }])('old or wrong profile evidence fails: %j', changes => {
   expect(() => assertResourceStudyReceipt({ ...receipt(), ...changes }, 'smoke')).toThrow('receipt_invalid');
 });
 test.each([{ completed: 19 }, { started: 19 }, { startedDuringPressure: 1 }, { firstDispatchMs: null },
@@ -132,18 +132,19 @@ test('CI is isolated, bounded, least-privilege, SHA-pinned and never publishes i
   const workflow = load(readFileSync(new URL('../../../../.github/workflows/resource-capacity.yml', import.meta.url), 'utf8'));
   expect(Object.keys(workflow.on).sort()).toEqual(['pull_request', 'push', 'workflow_dispatch']);
   expect(workflow.on.push).toEqual({ branches: ['main'] });
-  expect(workflow.on.workflow_dispatch.inputs.profile.options).toEqual(['smoke', 'capacity', 'budgets']);
+  expect(workflow.on.workflow_dispatch.inputs.profile.options).toEqual(['smoke', 'capacity', 'budgets', 'soak']);
   expect(workflow.permissions).toEqual({ contents: 'read' });
   expect(workflow.concurrency).toEqual({ group: 'resource-capacity-${{ github.ref }}', 'cancel-in-progress': true });
   expect(Object.keys(workflow.jobs)).toEqual(['resource-capacity']);
   const job = workflow.jobs['resource-capacity'];
-  expect(job['runs-on']).toBe('ubuntu-latest'); expect(job['timeout-minutes']).toBe(35);
+  expect(job['runs-on']).toBe('ubuntu-latest'); expect(job['timeout-minutes']).toBe("${{ inputs.profile == 'soak' && 50 || 35 }}");
   expect(job.steps.filter(step => step.uses).every(step => /^actions\/[a-z-]+@[a-f0-9]{40}$/.test(step.uses))).toBe(true);
   expect(job.steps[0].with['persist-credentials']).toBe(false);
   expect(job.steps.filter(step => step.run).map(step => step.run)).toEqual([
     'node scripts/run-resource-study.mjs --smoke', 'node scripts/run-resource-study.mjs --capacity',
-    'node scripts/run-resource-study.mjs --budget-comparison']);
-  expect(job.steps.at(-1).with).toMatchObject({ path: '.tmp/resource-study/classifarr-resource-study-*/result.json\n.tmp/resource-study/comparison-*/result.json\n',
+    'node scripts/run-resource-study.mjs --budget-comparison', 'node scripts/run-resource-study.mjs --soak']);
+  expect(job.steps.find(step => step.name === 'Run opt-in sustained observation').if).toBe("github.event_name == 'workflow_dispatch' && inputs.profile == 'soak'");
+  expect(job.steps.at(-1).with).toMatchObject({ path: '.tmp/resource-study/classifarr-resource-study-*/result.json\n.tmp/resource-study/classifarr-resource-study-*/result.md\n.tmp/resource-study/comparison-*/result.json\n',
     'include-hidden-files': true, 'if-no-files-found': 'error', 'retention-days': 14 });
   expect(JSON.stringify(workflow)).not.toMatch(/secrets\.|pull_request_target|self-hosted|continue-on-error|docker login|docker push/);
 });

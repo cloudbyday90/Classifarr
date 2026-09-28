@@ -59,21 +59,24 @@ choice; no user-provided shell command, path or image.
 The launcher cleans only its verified-owned project and image. Ordinary failures
 must still clean up. Forced runner termination cannot promise in-process cleanup;
 ephemeral hosted-runner disposal provides the outer boundary. Do not run this
-workflow on persistent self-hosted runners. Publish only explicit aggregate JSON
+workflow on persistent self-hosted runners. Publish only explicit aggregate JSON/Markdown
 results, never raw logs, database dumps or the entire hidden `.tmp` directory.
 This workflow is a failing CI check; configuring it as a required branch-protection
 check is a separate repository setting, not changed here.
 
 Run `node scripts/run-resource-study.mjs --smoke` for the default two-minute
 workload, `node scripts/run-resource-study.mjs --capacity` for the five-minute
-larger-corpus workload, or omit the flag for the 30-minute soak. Build/startup,
-settlement and up to two minutes of final drain are additional. Each workload
-command has an outer deadline of its nominal duration plus three minutes.
-Passing v3 receipts are emitted only after worker settlement, container health
+larger-corpus workload, or use `--soak` (also the default) for the 30-minute soak.
+Build/startup, settlement and up to two minutes of final drain are additional.
+The [settled-observation extension](sustained-resource-observation-design.md)
+adds 10/20/120 seconds of idle for smoke/capacity/soak. Each workload command has
+an outer deadline of its nominal workload plus idle duration plus three minutes.
+Passing v4 receipts are emitted only after worker settlement, idle observation, container health
 and owned-project cleanup; failures cannot publish a passing receipt.
 The [CPU/PID budget comparison](resource-budget-comparison.md) adds verified
-startup/effective limits and a manual `budgets` workflow choice. Historical v2
-receipts retain their earlier scope; the default PR workload remains smoke.
+startup/effective limits and a manual `budgets` workflow choice. Historical v2/v3
+receipts retain their earlier scope. Manual `soak` has a 50-minute job timeout;
+default PR/push smoke runs retain the 35-minute timeout.
 
 ## Official sources researched
 

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend isolated resource studies with settled idle observation, scoped memory
+  trends and queue-progress reports. Add an opt-in sustained CI profile while
+  preserving recovery deadlines, production limits and short default gates.
+  Include secret-free effective-limit diagnostics when budget verification fails.
 - Stabilize inventory recovery trigger definitions across upgraded and fresh
   databases, preserving null-safe recovery resets and existing item state.
   Keep strict schema replay checks and add real-database regression coverage.

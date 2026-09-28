@@ -155,6 +155,22 @@ test('cleanup failure prevents saving success and never touches an unrelated ima
   expect(save).not.toHaveBeenCalled();
   expect(run.mock.calls.some(([, args]) => args.includes('classifarr:latest'))).toBe(false);
 });
+
+test('failed probe forwards only sanitized budget evidence and still cleans its project', async () => {
+  const run = fakeDocker(args => args.includes('src/scripts/runResourceStudy.mjs') ? {
+    status: 1, stdout: '', stderr: [
+      'SECRET private payload', 'RESOURCE_STUDY_BUDGET invalid',
+      'RESOURCE_STUDY_BUDGET {"budget":"baseline","pidsLimit":9457,"private":"SECRET"}',
+      'resource_study_failed execution',
+    ].join('\n'),
+  } : null);
+  const report = jest.fn(), save = jest.fn();
+  await expect(launch(run, { report, save })).rejects.toThrow('command_failed');
+  expect(report.mock.calls.some(([line]) => line.includes('"pidsLimit":9457'))).toBe(true);
+  expect(JSON.stringify(report.mock.calls)).not.toMatch(/SECRET|invalid|private/);
+  expect(run.mock.calls.some(([, args]) => args.includes('down'))).toBe(true);
+  expect(save).not.toHaveBeenCalled();
+});
 test.each([null, '1800001', 1, 2100001])('receipt rejects invalid elapsed duration %s', async durationMs => {
   const run = fakeDocker(args => args.at(-1) === 'soak' ? { status: 0,
     stdout: `RESOURCE_STUDY ${JSON.stringify({ ...passedReceipt('soak'), durationMs })}` } : null);

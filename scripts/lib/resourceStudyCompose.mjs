@@ -6,6 +6,8 @@ import { resolve } from 'node:path';
 import { parseUpgradeReceipt } from './publishedUpgradeCompose.mjs';
 import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudyStartupReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
 import { resourceStudyBudget, assertDockerStudyBudget } from '../../server/src/scripts/resourceStudyBudget.mjs';
+import { formatResourceStudySummary } from './resourceStudySummary.mjs';
+import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -15,6 +17,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     const directory = resolve(root, '.tmp/resource-study', project);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
     writeFileSync(resolve(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
+    writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
   const profile = resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
@@ -37,6 +40,9 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     if (!result || result.error || (!allowFailure && result.status !== 0) || typeof result.stdout !== 'string') {
       // The study CLI emits fixed classifications and source locations, not payloads.
       if (args.includes('src/scripts/runResourceStudy.mjs')) {
+        const budgetDiagnostic = String(result?.stderr ?? '').split(/\r?\n/)
+          .map(parseStudyBudgetDiagnostic).find(Boolean);
+        if (budgetDiagnostic) report(budgetDiagnostic);
         const diagnostic = String(result?.stderr ?? '').split(/\r?\n/).filter(line =>
           /^resource_study_failed (assertion|execution)$/.test(line) ||
           /^\s+at [\w. ]*\(?file:\/\/\/app\/src\/[\w/.-]+\.mjs:\d+:\d+\)?$/.test(line)).slice(0, 9);
@@ -53,7 +59,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   compose(['config', '--quiet']);
   const probe = mode => parseUpgradeReceipt(compose(['exec', '-T', '-e', 'CLASSIFARR_RESOURCE_STUDY=isolated-synthetic-v1',
     '-e', `CLASSIFARR_RESOURCE_STUDY_BUDGET=${budget}`,
-    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + 180000).stdout, 'RESOURCE_STUDY');
+    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + profile.idleMs + 180000).stdout, 'RESOURCE_STUDY');
   const containerId = () => {
     const id = compose(['ps', '--quiet', 'app']).stdout.trim();
     if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('resource_study_container_invalid');

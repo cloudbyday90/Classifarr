@@ -2,6 +2,11 @@
 
 ## Scope — 28 September 2026
 
+This is the historical initial-study result. The later
+[v4 sustained observation outcome](sustained-resource-observation-validation.md)
+adds a real held-work cohort, current vector dimensions and settled idle evidence;
+do not treat the historical recommendations below as unimplemented current work.
+
 This validates the [resource-study design](mixed-workload-resource-study.md).
 The workload uses real ingestion, queue, profile and evaluation services with
 synthetic providers/vectors. It is not a model-accuracy result, production

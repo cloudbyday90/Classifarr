@@ -8,6 +8,22 @@ import { resourceStudyReceiptFixture, resourceStudyStartupFixture } from '../hel
 import { assertResourceStudyStartupReceipt, assertResourceStudyReceipt } from '../../scripts/resourceStudyProfiles.mjs';
 import { runResourceBudgetComparison } from '../../../../scripts/lib/resourceBudgetComparison.mjs';
 import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCompose.mjs';
+import { studyBudgetDiagnostic, formatStudyBudgetDiagnostic, parseStudyBudgetDiagnostic } from '../../scripts/resourceStudyBudgetDiagnostic.mjs';
+
+test('budget failures expose only allowlisted numerical diagnostics, never private input', () => {
+  const metrics = { ...resourceStudyReceiptFixture().initial, pidsLimit: 9457, private: 'SECRET' };
+  let caught;
+  try { assertStudyBudget(metrics, 'baseline'); } catch (error) { caught = error; }
+  expect(caught.message).toBe('resource_study_budget_not_enforced');
+  const line = formatStudyBudgetDiagnostic({ ...caught.studyBudget, private: 'SECRET' });
+  expect(line).toContain('"pidsLimit":9457'); expect(line).not.toContain('SECRET');
+  expect(parseStudyBudgetDiagnostic(line)).toBe(line);
+  expect(studyBudgetDiagnostic({ ...metrics, pidsLimit: 'SECRET' }, 'baseline').pidsLimit).toBeNull();
+  expect(parseStudyBudgetDiagnostic('RESOURCE_STUDY_BUDGET {"budget":"SECRET"}')).toBeNull();
+  expect(parseStudyBudgetDiagnostic('RESOURCE_STUDY_BUDGET invalid')).toBeNull();
+  expect(parseStudyBudgetDiagnostic(`RESOURCE_STUDY_BUDGET ${'x'.repeat(1025)}`)).toBeNull();
+  expect(formatStudyBudgetDiagnostic(undefined)).toBeNull();
+});
 
 test.each([undefined, null, 1, {}, '__proto__', 'bounded;echo unsafe'])('rejects non-allowlisted budget %s', value => {
   expect(() => resourceStudyBudget(value)).toThrow('budget_invalid');

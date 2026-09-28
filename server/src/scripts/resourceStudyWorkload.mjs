@@ -18,6 +18,8 @@ import { createStudySampler, readStudyCgroup, assertStudyCgroup, summarizeStudyS
 import { resourceStudyProfile, assertResourceStudyReceipt } from './resourceStudyProfiles.mjs';
 import { createStudyQueueRecovery } from './resourceStudyQueueRecovery.mjs';
 import { assertStudyBudget, summarizeBudgetEnforcement, resourceStudyBudget } from './resourceStudyBudget.mjs';
+import { summarizeStudyTrend } from './resourceStudyTrend.mjs';
+import { observeStudyIdle } from './resourceStudyIdle.mjs';
 
 export async function readStudyBacklog(db) {
   return (await db.query(`SELECT count(*) FILTER (WHERE status IN ('pending','processing'))::integer AS pending,
@@ -146,6 +148,15 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
       await delay(1000);
     }
     assert.equal(complete, true, 'study_drain_incomplete');
+    const drainMs = Math.round(performance.now() - drainStart);
+    queue.stopWorker(); await worker;
+    const settleDeadline = performance.now() + 30000;
+    while (queue.processing > 0 && performance.now() < settleDeadline) await delay(50);
+    assert.equal(queue.processing, 0, 'study_workers_did_not_settle');
+    for (const row of Object.values(admission.classes)) assert.equal(row.active, 0, 'study_permit_leak');
+    progress({ phase: 'idle', durationSeconds: profile.idleMs / 1000 });
+    await observeStudyIdle({ durationMs: profile.idleMs, readBacklog: () => readStudyBacklog(db),
+      sample: (name, backlog) => sampler.sample(name, backlog) });
     const backlog = await readStudyBacklog(db), final = await readStudyCgroup();
     assertStudyCgroup(final);
     assertStudyBudget(final, budget);
@@ -157,11 +168,12 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     assert.equal(final.memoryLimitHits, sampler.initial.memoryLimitHits);
     assert.ok(counters.evaluations > 0 && counters.providerFailures > 0 && counters.preservedOutages > 0);
     for (const row of Object.values(admission.classes)) assert.ok(row.memory_pressure > 0);
-    const result = { version: 'resource_study.v3', profile: mode, budget, evaluationRows: profile.rows,
+    const result = { version: 'resource_study.v4', profile: mode, budget, evaluationRows: profile.rows,
       vectorDimensions: profile.dimensions, queueRecovery: recovery.receipt,
       status: 'passed', durationMs: Math.round(performance.now() - start),
       requestedDurationMs: durationMs, scope: 'synthetic_services_not_model_accuracy', pressure: 'injected_telemetry_not_physical',
-      inventory: fixture.count * 4, backlog, counters, drainMs: Math.round(performance.now() - drainStart),
+      inventory: fixture.count * 4, backlog, counters, drainMs,
+      trend: summarizeStudyTrend(sampler.samples, profile.idleMs),
       admission: admission.classes, initial: sampler.initial, final,
       enforcement: summarizeBudgetEnforcement(sampler.initial, final),
       metrics: summarizeStudySamples(sampler.samples), phases: Object.fromEntries([...new Set(sampler.samples.map(row => row.phase))]

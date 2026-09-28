@@ -97,5 +97,10 @@ provider outage and process restart. Require stable recovery without duplicate
 work or lost ownership before recommending production CPU/PID limits. Short
 startup samples alone do not establish sustained headroom.
 
+The [sustained observation follow-up](sustained-resource-observation-validation.md)
+adds and measures same-process drain/idle evidence. Restart remains a distinct
+installation-drill boundary; its outcome does not imply a restart under this
+sustained workload was exercised.
+
 See the [design and trade-offs](inventory-observation-trigger-replay-design.md)
 for the selected stack and official PostgreSQL/W3C source basis.

@@ -50,14 +50,16 @@ short PR gate unchanged. No fork bomb or deliberate process-exhaustion test.
 Run `node scripts/run-resource-study.mjs --budget-comparison`, or choose `budgets`
 in the manual resource-capacity workflow. The three five-minute workloads run
 sequentially; the initial image build, initialization, settlement and final drain
-are extra. Source changes after that build cannot alter later scenarios; repeat
+and 20 seconds of settled idle per scenario are extra. Source changes after that build cannot alter later scenarios; repeat
 the whole comparison to validate changed code. Differing image IDs still fail it.
 
-The launcher retains individual v3 receipts beneath
+The launcher retains individual v4 receipts and Markdown summaries beneath
 `.tmp/resource-study/classifarr-resource-study-*/result.json` and a completed
-comparison beneath `.tmp/resource-study/comparison-*/result.json`. V3 adds budget
-identity, independently checked cgroup limits and enforcement counters. Historical
-v1/v2 results remain historical evidence and cannot satisfy this protocol.
+comparison beneath `.tmp/resource-study/comparison-*/result.json`. V3 introduced
+budget identity, independently checked cgroup limits and enforcement counters.
+V4 additionally requires [settled idle/trend evidence](sustained-resource-observation-design.md);
+the per-run Markdown is adjacent `result.md`. Historical v1–v3 results retain
+their earlier scope and cannot satisfy the current protocol.
 
 CPU utilization is reported in cores, not host-wide percent. Throttled-period
 percentage is the fraction of observed CFS enforcement periods that throttled,

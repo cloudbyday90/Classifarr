@@ -107,6 +107,7 @@ export async function createStudySampler({ cgroup = readStudyCgroup } = {}) {
       const elapsedUsec = (at - previous.at) * 1000;
       const usage = process.memoryUsage();
       samples.push({ phase, atMs: Math.round(at), rssBytes: usage.rss, heapBytes: usage.heapUsed,
+        externalBytes: usage.external, arrayBufferBytes: usage.arrayBuffers,
         containerBytes: current.memoryBytes, pids: current.pids,
         processCores: elapsedUsec > 0 ? (cpu.user + cpu.system - previous.cpu.user - previous.cpu.system) / elapsedUsec : null,
         containerCores: Number.isFinite(current.cpuUsec) && Number.isFinite(previous.cgroup.cpuUsec) &&

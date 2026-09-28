@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { studyBudgetDiagnostic } from './resourceStudyBudgetDiagnostic.mjs';
 const budgets = Object.freeze({
   baseline: Object.freeze({ cpus: 0, pids: -1 }),
   bounded: Object.freeze({ cpus: 2, pids: 128 }),
@@ -16,7 +17,9 @@ export function assertStudyBudget(metrics, name) {
     !Number.isSafeInteger(metrics.cpuQuotaUsec) ||
     (budget.cpus === 0 ? metrics.cpuQuotaUsec !== -1 : metrics.cpuQuotaUsec / metrics.cpuPeriodUsec !== budget.cpus) ||
     metrics.pidsLimit !== budget.pids || metrics.pidsLimitHits !== 0 || metrics.limitBytes !== 2 * 1024 ** 3) {
-    throw new Error('resource_study_budget_not_enforced');
+    throw Object.assign(new Error('resource_study_budget_not_enforced'), {
+      studyBudget: studyBudgetDiagnostic(metrics, name),
+    });
   }
 }
 

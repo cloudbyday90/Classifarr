@@ -66,7 +66,8 @@ table rather than color-only status or an unlabeled chart.
 
 ## Protocol and acceptance
 
-- Thirty minutes of work, with a bounded final drain. A short smoke mode is
+- Thirty minutes of work, with a bounded final drain and settled idle observation.
+  A short smoke mode is
   separately labeled and cannot count as sustained evidence.
 - Four synthetic movie/TV libraries, growing in bounded increments; unsupported
   music is excluded. Repeated ingestion exercises idempotency and ownership.
@@ -90,7 +91,11 @@ the 30-minute workload with up to 1,600 items. The launcher builds the current
 source image. It accepts no server address, volume, image or credential options.
 It disables Compose environment-file loading and uses the fixed isolated
 installation topology. Both modes allow up to two minutes for final draining;
-build/startup time is additional.
+build/startup time is additional. The
+[sustained-observation extension](sustained-resource-observation-design.md) adds
+10 seconds of settled idle for smoke, 20 for capacity, and 120 for soak. The
+explicit `--soak` argument is equivalent to the default. Idle does not refill
+the queue, evaluate inputs, force GC or restart the probe.
 
 The follow-up [capacity regression gate](resource-capacity-regression-gate.md)
 adds `--capacity`: five minutes of work, up to 1,600 inventory items and a
@@ -118,7 +123,8 @@ memory reader. Service leases, retry dates, ownership checks and profile
 acknowledgements are never forged. The final drain retries refused scans using
 the normal admission/cooldown rules.
 
-Aggregate receipts are written below `.tmp/resource-study/<owned-project>/` only
+Version 4 aggregate JSON receipts and labeled Markdown summaries are written
+below `.tmp/resource-study/<owned-project>/` only
 after the workload and container-health checks pass and cleanup is verified.
 Failures return a nonzero exit status and fixed diagnostics. Only the freshly
 owned project, volume/network and candidate image tag are removed. The previous
@@ -129,6 +135,10 @@ peaks, not guaranteed instantaneous maxima. Event-loop p99 is calculated per
 sampling window, then summarized across windows. Backlog age is the oldest
 currently pending task, not the latency distribution of completed tasks.
 Admission counts include attempts that find an empty queue, not unique jobs.
+Steady/recovery/idle summaries also include scoped external and ArrayBuffer
+memory, early/late window medians and time-based slopes. These are observations,
+not leak diagnoses. The manual CI `soak` option uses the same fixed workload;
+automatic PR/push gates remain short smoke runs.
 
 ## Recommendation stack
 

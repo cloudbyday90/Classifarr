@@ -141,7 +141,9 @@ proposing live CPU/PID limits.
 
 The subsequent [trigger replay correction](inventory-observation-trigger-replay-validation.md)
 reproduces the serialization difference on one server and restores catalog
-agreement with a forward migration. The sustained mixed-load soak is next.
+agreement with a forward migration. The
+[sustained observation outcome](sustained-resource-observation-validation.md)
+records the subsequent mixed-load/idle work separately from these hosted results.
 
 ## PR availability
 

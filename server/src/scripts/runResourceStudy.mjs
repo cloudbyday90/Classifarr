@@ -6,6 +6,7 @@ import { shouldRunCli } from '../utils/cliRuntime.mjs';
 import { resourceStudyBudget } from './resourceStudyBudget.mjs';
 import { readStudyCgroup } from './resourceStudyMetrics.mjs';
 import { assertResourceStudyStartupReceipt } from './resourceStudyProfiles.mjs';
+import { formatStudyBudgetDiagnostic } from './resourceStudyBudgetDiagnostic.mjs';
 
 export async function runResourceStudy(mode) {
   assertUpgradeDrillEnvironment();
@@ -42,6 +43,8 @@ if (shouldRunCli(import.meta)) {
     if (process.argv.length !== 3) throw new Error('invalid_study_arguments');
     process.stdout.write(`RESOURCE_STUDY ${JSON.stringify(await runResourceStudy(process.argv[2]))}\n`);
   } catch (error) {
+    const diagnostic = formatStudyBudgetDiagnostic(error?.studyBudget);
+    if (diagnostic) process.stderr.write(`${diagnostic}\n`);
     // Fixed assertion label and source locations only; never dump database values.
     process.stderr.write(`resource_study_failed ${error?.code === 'ERR_ASSERTION' ? 'assertion' : 'execution'}\n`);
     process.stderr.write(`${String(error.stack).split('\n').filter(line => /^\s+at /.test(line)).slice(0, 8).join('\n')}\n`);
