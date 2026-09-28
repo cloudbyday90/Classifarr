@@ -166,4 +166,5 @@ outside the study's ownership and remain untouched.
 The user-supplied CI links were investigated separately in
 [hosted budget diagnostics](resource-study-hosted-budget-diagnostics.md).
 The earlier schema-replay failure is already fixed and passed on hosted CI;
-the resource startup mismatch requires effective-limit evidence.
+the resource startup mismatch was traced to a finite host-default PID ceiling.
+Its correction and separately scoped hosted result are linked there.

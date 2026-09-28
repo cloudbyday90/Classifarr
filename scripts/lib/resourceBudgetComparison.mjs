@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { runResourceStudyCompose } from './resourceStudyCompose.mjs';
 import { assertResourceStudyReceipt, assertResourceStudyStartupReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
-import { summarizeBudgetEnforcement } from '../../server/src/scripts/resourceStudyBudget.mjs';
+import { summarizeBudgetEnforcement, assertStudyBudgetContinuity } from '../../server/src/scripts/resourceStudyBudget.mjs';
 import { withResourceStudyImage } from './resourceStudyImage.mjs';
 
 /** Sequential, fixed scenarios. No caller-selected limits, image, path or command. */
@@ -29,6 +29,7 @@ export async function runResourceBudgetComparison({ study = runResourceStudyComp
         throw new Error('resource_budget_comparison_mismatch');
       }
       const run = result.study;
+      assertStudyBudgetContinuity(result.startup.fresh.metrics, result.startup.maintenance.metrics, run.initial, run.final);
       if (run.backlog?.pending !== 0 || run.backlog?.failed !== 0 || run.backlog?.routing !== 0 ||
         run.backlog?.completed !== 1620 || !Number.isSafeInteger(run.counters?.evaluations) || run.counters.evaluations < 1 ||
         ![run.drainMs, run.metrics?.containerBytes?.max, run.metrics?.containerCores?.p95,
@@ -37,6 +38,8 @@ export async function runResourceBudgetComparison({ study = runResourceStudyComp
       }
       // Explicit aggregate fields only: never forward arbitrary per-item data into this report.
       scenarios.push({ budget, durationMs: run.durationMs, drainMs: run.drainMs,
+        effectiveLimits: { cgroupVersion: run.initial.version, memoryBytes: run.initial.limitBytes,
+          cpuQuotaUsec: run.initial.cpuQuotaUsec, cpuPeriodUsec: run.initial.cpuPeriodUsec, pids: run.initial.pidsLimit },
         completed: run.backlog?.completed, evaluations: run.counters?.evaluations,
         firstDispatchMs: run.queueRecovery.firstDispatchMs, cohortCompletedMs: run.queueRecovery.completedMs,
         containerMemoryPeakBytes: run.metrics?.containerBytes?.max, containerCpuP95Cores: run.metrics?.containerCores?.p95,

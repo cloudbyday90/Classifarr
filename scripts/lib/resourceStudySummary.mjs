@@ -11,6 +11,7 @@ export function formatResourceStudySummary(result) {
   const mib = value => (value / 1024 ** 2).toFixed(2);
   const lines = ['# Mixed-workload resource observation', '',
     `Profile: **${result.mode}**; budget: **${result.budget}**; cgroup v${study.final.version}; owned cleanup: passed.`, '',
+    `Effective PID limit: **${study.final.pidsLimit === -1 ? 'unlimited' : study.final.pidsLimit}**${result.budget === 'baseline' ? ' (host default; no application-requested PID cap)' : ' (explicit study ceiling)'}.`, '',
     result.mode === 'soak' ? '30-minute bounded workload plus settled idle observation; not a long-term leak certification.'
       : 'Short validation profile; not sustained-soak evidence.', '',
     '## Memory by observation window', '',

@@ -6,7 +6,7 @@ Extend the existing disposable resource study, not production scheduling. The
 queue wakeup improvement reduced final drain but concentrated CPU work. Measure
 explicit CPU/PID ceilings before recommending deployment settings.
 
-Use three fixed, sequential capacity scenarios: baseline (no CPU/PID ceiling),
+Use three fixed, sequential capacity scenarios: baseline (no application-requested CPU/PID ceiling),
 bounded (2 CPUs, 128 PIDs), and stress (1 CPU, 128 PIDs). All retain 2 GiB memory,
 the same synthetic movie/TV inventory, evaluation vectors, concurrency, pressure
 cohort, recovery deadlines and provider behavior. These values are experiments,
@@ -29,6 +29,14 @@ CPU quota/period, enforcement/throttling counters, PID ceiling and PID-denial
 events for cgroup v1 and v2. Missing data fails closed; unlimited is distinct from
 unknown. CPU throttling is expected under quotas, but PID denials, OOM kills,
 memory-limit events, limit drift and counter regression fail the experiment.
+
+Baseline's effective PID ceiling may be a finite host default; it is not assumed
+unlimited. Require it to be at least the explicit comparison ceiling of 128 so
+baseline is not the more restrictive PID scenario. This is a comparison floor,
+not a production sizing recommendation. Keep it identical across fresh startup,
+maintenance restart and workload. Individual reports and comparison aggregates
+record the actual limit. Explicit bounded/stress scenarios must still enforce
+exactly 128. See the [hosted diagnosis](resource-study-hosted-budget-diagnostics.md).
 
 Each scenario must preserve inventory during source outage, defer under memory
 pressure, resume and complete the real queue cohort, backfill all supported

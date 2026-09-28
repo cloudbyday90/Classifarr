@@ -119,6 +119,27 @@ function fakeDocker(override = () => null) {
   });
 }
 const launch = (run, extra = {}) => runResourceStudyCompose({ run, random: size => Buffer.alloc(size, 1), report: () => {}, save: () => {}, ...extra });
+
+test.each([null, 'restart', 'workload', 'finish'])('host-default PID ceiling is recorded and checked across %s', drift => {
+  const run = fakeDocker(args => {
+    if (!args.includes('src/scripts/runResourceStudy.mjs') || args.at(-1) === 'seed') return null;
+    const mode = args.at(-1), receipt = mode.startsWith('budget-') ? resourceStudyStartupFixture() : passedReceipt(mode);
+    for (const metrics of mode.startsWith('budget-') ? [receipt.metrics] : [receipt.initial, receipt.final]) {
+      Object.assign(metrics, { version: 2, oom: 0, pidsLimit: 19151 });
+    }
+    if (drift === 'restart' && mode === 'budget-restore') receipt.metrics.pidsLimit++;
+    if (drift === 'workload' && mode === 'soak') receipt.initial.pidsLimit = receipt.final.pidsLimit = 19152;
+    if (drift === 'finish' && mode === 'soak') receipt.final.pidsLimit++;
+    return { status: 0, stdout: `RESOURCE_STUDY ${JSON.stringify(receipt)}`, stderr: '' };
+  });
+  const save = jest.fn(), result = launch(run, { save });
+  if (!drift) return expect(result).resolves.toMatchObject({ study: { initial: { pidsLimit: 19151 }, final: { pidsLimit: 19151 } } });
+  return expect(result.finally(() => {
+    expect(save).not.toHaveBeenCalled();
+    expect(run.mock.calls.some(([, args]) => args.includes('down'))).toBe(true);
+    if (drift === 'restart') expect(run.mock.calls.some(([, args]) => args.at(-1) === 'soak')).toBe(false);
+  })).rejects.toThrow('budget_drift');
+});
 test.each(['smoke', 'soak', 'capacity'])('owned study lifecycle labels %s and verifies cleanup', async mode => {
   const run = fakeDocker(), save = jest.fn(), result = await launch(run, { mode, save });
   expect(result).toMatchObject({ mode, cleanup: 'passed' });

@@ -15,6 +15,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   trends and queue-progress reports. Add an opt-in sustained CI profile while
   preserving recovery deadlines, production limits and short default gates.
   Include secret-free effective-limit diagnostics when budget verification fails.
+- Correct resource-study validation for host-default PID limits on cgroup v2;
+  record effective ceilings and reject drift across startup, restart and workload.
+  Keep explicit CPU/PID budgets, memory limits and recovery checks enforced.
 - Stabilize inventory recovery trigger definitions across upgraded and fresh
   databases, preserving null-safe recovery resets and existing item state.
   Keep strict schema replay checks and add real-database regression coverage.

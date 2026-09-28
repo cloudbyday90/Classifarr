@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { studyBudgetDiagnostic } from './resourceStudyBudgetDiagnostic.mjs';
 const budgets = Object.freeze({
+  // No application-requested PID ceiling; the host may impose its own default.
   baseline: Object.freeze({ cpus: 0, pids: -1 }),
   bounded: Object.freeze({ cpus: 2, pids: 128 }),
   stress: Object.freeze({ cpus: 1, pids: 128 }),
@@ -16,10 +17,22 @@ export function assertStudyBudget(metrics, name) {
   if (!metrics || !Number.isSafeInteger(metrics.cpuPeriodUsec) || metrics.cpuPeriodUsec <= 0 ||
     !Number.isSafeInteger(metrics.cpuQuotaUsec) ||
     (budget.cpus === 0 ? metrics.cpuQuotaUsec !== -1 : metrics.cpuQuotaUsec / metrics.cpuPeriodUsec !== budget.cpus) ||
-    metrics.pidsLimit !== budget.pids || metrics.pidsLimitHits !== 0 || metrics.limitBytes !== 2 * 1024 ** 3) {
+    (name === 'baseline'
+      ? !Number.isSafeInteger(metrics.pidsLimit) || (metrics.pidsLimit !== -1 && metrics.pidsLimit < budgets.bounded.pids)
+      : metrics.pidsLimit !== budget.pids) ||
+    metrics.pidsLimitHits !== 0 || metrics.limitBytes !== 2 * 1024 ** 3) {
     throw Object.assign(new Error('resource_study_budget_not_enforced'), {
       studyBudget: studyBudgetDiagnostic(metrics, name),
     });
+  }
+}
+
+/** Effective ceilings must remain identical across startup, restart and work. */
+export function assertStudyBudgetContinuity(...metrics) {
+  const keys = ['version', 'limitBytes', 'cpuQuotaUsec', 'cpuPeriodUsec', 'pidsLimit'];
+  if (metrics.length < 2 || !metrics.every(row => keys.every(key =>
+    Number.isSafeInteger(row?.[key]) && row[key] === metrics[0]?.[key]))) {
+    throw new Error('resource_study_budget_drift');
   }
 }
 

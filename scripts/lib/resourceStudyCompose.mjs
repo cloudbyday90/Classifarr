@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseUpgradeReceipt } from './publishedUpgradeCompose.mjs';
 import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudyStartupReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
-import { resourceStudyBudget, assertDockerStudyBudget } from '../../server/src/scripts/resourceStudyBudget.mjs';
+import { resourceStudyBudget, assertDockerStudyBudget, assertStudyBudgetContinuity } from '../../server/src/scripts/resourceStudyBudget.mjs';
 import { formatResourceStudySummary } from './resourceStudySummary.mjs';
 import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
 
@@ -91,9 +91,11 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     if (fresh.status !== 'passed' || probe('seed').seeded !== true) throw new Error('resource_study_seed_invalid');
     compose(['stop', '--timeout', '30', 'app']);
     env.CLASSIFARR_UPGRADE_MODE = 'restore'; const maintenanceStartup = start();
+    assertStudyBudgetContinuity(freshStartup.metrics, maintenanceStartup.metrics);
     report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
     assertResourceStudyReceipt(result.study, mode, budget);
+    assertStudyBudgetContinuity(maintenanceStartup.metrics, result.study.initial, result.study.final);
     const id = containerId();
     if (!/^[a-f0-9]{12,64}$/.test(id) || docker(['inspect', '--format', '{{.State.OOMKilled}} {{.State.Health.Status}}', id]).stdout.trim() !== 'false healthy') {
       throw new Error('resource_study_container_unhealthy');

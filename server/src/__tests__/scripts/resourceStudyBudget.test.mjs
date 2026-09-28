@@ -2,7 +2,7 @@
 import { jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import { resourceStudyBudget, assertStudyBudget, assertDockerStudyBudget, summarizeBudgetEnforcement } from '../../scripts/resourceStudyBudget.mjs';
+import { resourceStudyBudget, assertStudyBudget, assertDockerStudyBudget, summarizeBudgetEnforcement, assertStudyBudgetContinuity } from '../../scripts/resourceStudyBudget.mjs';
 import { parseResourceLimit, readStudyCgroup, assertStudyCgroup } from '../../scripts/resourceStudyMetrics.mjs';
 import { resourceStudyReceiptFixture, resourceStudyStartupFixture } from '../helpers/resourceStudyReceiptFixture.mjs';
 import { assertResourceStudyStartupReceipt, assertResourceStudyReceipt } from '../../scripts/resourceStudyProfiles.mjs';
@@ -11,7 +11,7 @@ import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCo
 import { studyBudgetDiagnostic, formatStudyBudgetDiagnostic, parseStudyBudgetDiagnostic } from '../../scripts/resourceStudyBudgetDiagnostic.mjs';
 
 test('budget failures expose only allowlisted numerical diagnostics, never private input', () => {
-  const metrics = { ...resourceStudyReceiptFixture().initial, pidsLimit: 9457, private: 'SECRET' };
+  const metrics = { ...resourceStudyReceiptFixture().initial, pidsLimit: 9457, cpuQuotaUsec: 200000, private: 'SECRET' };
   let caught;
   try { assertStudyBudget(metrics, 'baseline'); } catch (error) { caught = error; }
   expect(caught.message).toBe('resource_study_budget_not_enforced');
@@ -23,6 +23,29 @@ test('budget failures expose only allowlisted numerical diagnostics, never priva
   expect(parseStudyBudgetDiagnostic('RESOURCE_STUDY_BUDGET invalid')).toBeNull();
   expect(parseStudyBudgetDiagnostic(`RESOURCE_STUDY_BUDGET ${'x'.repeat(1025)}`)).toBeNull();
   expect(formatStudyBudgetDiagnostic(undefined)).toBeNull();
+});
+
+test.each([1, 2].flatMap(version => [-1, 128, 19151].map(pidsLimit => [version, pidsLimit])))('cgroup v%s baseline records a valid host-default PID ceiling %s', (version, pidsLimit) => {
+  const metrics = { ...resourceStudyReceiptFixture().initial, version, oom: version === 1 ? null : 0, underOom: 0, pidsLimit };
+  expect(() => assertStudyCgroup(metrics)).not.toThrow();
+  expect(() => assertStudyBudget(metrics, 'baseline')).not.toThrow();
+});
+
+test.each([null, undefined, 0, -2, 127, 19151.5, '19151', Infinity])('invalid or more restrictive baseline PID limit %s fails', pidsLimit => {
+  expect(() => assertStudyBudget({ ...resourceStudyReceiptFixture().initial, pidsLimit }, 'baseline')).toThrow('not_enforced');
+});
+
+test.each(['version', 'limitBytes', 'cpuQuotaUsec', 'cpuPeriodUsec', 'pidsLimit'])('effective %s drift across startup/restart fails', key => {
+  const metrics = { ...resourceStudyReceiptFixture().initial, pidsLimit: 19151 };
+  expect(() => assertStudyBudgetContinuity(metrics, { ...metrics })).not.toThrow();
+  expect(() => assertStudyBudgetContinuity(metrics, { ...metrics, [key]: metrics[key] + 1 })).toThrow('budget_drift');
+  expect(() => assertStudyBudgetContinuity(metrics, { ...metrics, [key]: null })).toThrow('budget_drift');
+});
+
+test('continuity requires at least two complete snapshots', () => {
+  expect(() => assertStudyBudgetContinuity()).toThrow('budget_drift');
+  expect(() => assertStudyBudgetContinuity({})).toThrow('budget_drift');
+  expect(() => assertStudyBudgetContinuity(undefined, undefined)).toThrow('budget_drift');
 });
 
 test.each([undefined, null, 1, {}, '__proto__', 'bounded;echo unsafe'])('rejects non-allowlisted budget %s', value => {
@@ -57,7 +80,7 @@ test.each([{ 'cpu.max': '200000 100000 extra' }, { 'pids.events': undefined },
   expect(() => assertStudyCgroup(metrics)).toThrow('metrics_unavailable');
 });
 test.each([{ cpuQuotaUsec: -1 }, { cpuPeriodUsec: 0 }, { cpuPeriodUsec: 200000 },
-  { pidsLimit: -1 }, { limitBytes: 1e9 }, { pidsLimitHits: 1 }])('ineffective cgroup limits fail: %j', changes => {
+  { pidsLimit: -1 }, { pidsLimit: 19151 }, { limitBytes: 1e9 }, { pidsLimitHits: 1 }])('ineffective cgroup limits fail: %j', changes => {
   expect(() => assertStudyBudget({ ...resourceStudyReceiptFixture('capacity', 'bounded').initial, ...changes }, 'bounded')).toThrow('not_enforced');
 });
 test.each(['baseline', 'bounded', 'stress'])('Docker config verification for %s is independent of cgroup data', budget => {
@@ -94,7 +117,18 @@ test('comparison is sequential, matched, fixed-order and aggregate-only', async 
   expect(study.mock.calls.map(([args]) => args.budget)).toEqual(['baseline', 'bounded', 'stress']);
   expect(result.scenarios).toHaveLength(3);
   expect(result.status).toBe('passed'); expect(save).toHaveBeenCalledTimes(1);
+  expect(result.scenarios.map(row => row.effectiveLimits.pids)).toEqual([-1, 128, 128]);
   expect(JSON.stringify(result)).not.toContain('SECRET');
+});
+
+test('comparison rejects baseline drift across individually valid startup receipts', async () => {
+  const save = jest.fn();
+  await expect(compare({ save, study: async ({ budget }) => {
+    const result = scenario(budget);
+    result.startup.fresh.metrics.pidsLimit = 19151;
+    return result;
+  } })).rejects.toThrow('budget_drift');
+  expect(save).not.toHaveBeenCalled();
 });
 test.each(['failure', 'image_drift', 'cleanup_failed', 'wrong_budget', 'missing_metrics', 'incomplete_work', 'no_evaluation', 'missing_startup'])('comparison cannot publish success after %s', async failure => {
   const save = jest.fn(), study = jest.fn(async ({ budget }) => {

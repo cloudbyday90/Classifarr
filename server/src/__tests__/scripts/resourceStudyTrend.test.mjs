@@ -99,3 +99,11 @@ test('a long receipt cannot pass with short steady/recovery coverage', () => {
   value.trend.phases.steady.spanMs = 10000;
   expect(() => assertResourceStudyReceipt(value, 'soak')).toThrow('receipt_invalid');
 });
+
+test('summary reports finite host-default limits without calling them unlimited', () => {
+  const study = resourceStudyReceiptFixture();
+  study.initial.pidsLimit = study.final.pidsLimit = 19151;
+  const markdown = formatResourceStudySummary({ mode: study.profile, budget: 'baseline', cleanup: 'passed', study });
+  expect(markdown).toContain('Effective PID limit: **19151** (host default; no application-requested PID cap)');
+  expect(markdown).not.toContain('unlimited');
+});
