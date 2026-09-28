@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { runPublishedUpgradeCompose, parseUpgradeReceipt, upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
 import { assertUpgradeDrillEnvironment } from '../../scripts/publishedUpgradeFixtures.mjs';
+import { SCHEDULED_INSTALLATION_EXPECTED } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 
 const random = size => Buffer.alloc(size, 1);
 const report = () => {};
@@ -21,6 +22,7 @@ function mockRunner(override = () => undefined) {
       if (op[0] === 'ps') stdout = 'b'.repeat(64);
       if (op.includes('--input-type=module') && op[0] === 'exec') stdout = 'UPGRADE_SEED {"version":"180000","migrations":20}\n';
       if (op.includes('src/scripts/publishedUpgradeProbe.mjs')) stdout = 'UPGRADE_PROBE {"candidate":{"version":"180000","migrations":21}}\n';
+      if (op.at(-1) === 'scheduled') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_INSTALLATION_EXPECTED)}\n`;
     }
     return { status: 0, stdout };
   });
@@ -31,7 +33,7 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
   const run = mockRunner();
   const result = await runWith(run);
   expect(result).toMatchObject({ status: 'passed', cleanup: 'passed', baseline: upgradeBaseline });
-  expect(result.checks).toHaveLength(9);
+  expect(result.checks).toHaveLength(11);
   expect(run.mock.calls[0][0]).toBe('gh');
   expect(run.mock.calls[0][1]).toEqual(['attestation', 'verify', `oci://${upgradeBaseline.image}`, '--repo', 'cloudbyday90/Classifarr',
     '--signer-workflow', 'cloudbyday90/Classifarr/.github/workflows/ci.yml', '--source-digest', upgradeBaseline.revision, '--deny-self-hosted-runners']);
@@ -53,6 +55,30 @@ test('pins provenance, preserves real entrypoints, checks recovery and cleans on
     expect(args).not.toContain('prune');
     if (args[0] === 'compose') expect(args[2]).toMatch(/^classifarr-upgrade-drill-[a-f0-9]{32}$/);
   }
+});
+
+test('fresh-only scope never claims or accesses a published baseline', async () => {
+  const run = mockRunner();
+  const result = await runWith(run, { freshOnly: true });
+  expect(result).toMatchObject({ scope: 'fresh-only', baseline: null, cleanup: 'passed' });
+  expect(result.checks).toEqual(['fresh_install_and_operational_seeds', 'fresh_startup_scheduler_progress']);
+  expect(run.mock.calls.some(([cmd, args]) => cmd === 'gh' || args[0] === 'pull')).toBe(false);
+  expect(operations(run).filter(args => args.includes('src/scripts/publishedUpgradeProbe.mjs')).map(args => args.at(-1)))
+    .toEqual(['fresh', 'scheduled']);
+});
+
+test.each(['fresh_scheduler', 'upgrade_scheduler'])('a stalled %s fails closed and still cleans resources', async stage => {
+  let observed = 0;
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled' && ++observed === (stage === 'fresh_scheduler' ? 1 : 2)
+    ? { status: 1, stdout: 'private-value' } : undefined);
+  await expect(runWith(run)).rejects.toThrow(`published_upgrade_failed:${stage}`);
+  expect(operations(run).at(-1)).toContain('down');
+});
+
+test('fresh-only scope still rejects malformed scheduler evidence', async () => {
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled' ? { status: 0, stdout: 'UPGRADE_PROBE {}\n' } : undefined);
+  await expect(runWith(run, { freshOnly: true })).rejects.toThrow('published_upgrade_failed:fresh_scheduler');
+  expect(operations(run).at(-1)).toContain('down');
 });
 
 test.each(['gh', 'inventory', 'config'])('fails closed before ownership for %s failure', async stage => {
@@ -102,7 +128,7 @@ test('cannot start the published release with the fresh-install volume left over
   let volumeChecks = 0;
   const run = mockRunner((_cmd, args) => args[0] === 'volume' && ++volumeChecks === 2
     ? { status: 0, stdout: 'fresh-volume' } : undefined);
-  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:fresh_install');
+  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:fresh_scheduler');
   expect(run.mock.calls.some(([, args]) => args[0] === 'pull')).toBe(false);
 });
 test('requires actual lock-wait marker before killing the container', async () => {

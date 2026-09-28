@@ -17,7 +17,8 @@ afterEach(async () => { await db.query('ROLLBACK'); db.release(); });
 const at = minutesAgo => ({ query: (sql, values) => db.query(sql.replaceAll('statement_timestamp()',
     `(transaction_timestamp() - INTERVAL '${minutesAgo} minutes')`), values) });
 const visit = minutesAgo => captureLibraryObservationSample(at(minutesAgo));
-const history = () => readLibraryObservationHistory(db);
+// Use the same synthetic clock for writes and reads, even across a wall-clock slot boundary.
+const history = () => readLibraryObservationHistory(at(0));
 const state = async () => (await db.query('SELECT * FROM library_observation_sampling_state')).rows[0];
 
 test('visits beyond the first 12 libraries fairly and resumes durable progress', async () => {

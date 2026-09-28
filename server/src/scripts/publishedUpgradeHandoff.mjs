@@ -51,7 +51,7 @@ export async function runUpgradeHandoff(db) {
   assertUpgradeDrillEnvironment();
   const log = { info() {}, debug() {}, warn() {}, error() { throw new Error('handoff_service_error'); } };
   const serverId = (await db.query(`INSERT INTO media_server (type,name,url,api_key,is_active)
-    VALUES ('plex','Synthetic upgrade','http://synthetic.invalid','synthetic-only',false) RETURNING id`)).rows[0].id;
+    VALUES ('plex','Synthetic upgrade','http://synthetic.invalid','synthetic-only',true) RETURNING id`)).rows[0].id;
   await db.query("INSERT INTO tmdb_config (api_key,is_active) VALUES ('synthetic-only',true)");
   const rows = (await libraries(db)).rows;
   assert.equal(rows.length, 2);
@@ -136,5 +136,6 @@ export async function runUpgradeHandoff(db) {
   }
   // Keep synthetic credentials disabled before the real normal runtime resumes.
   await db.query("UPDATE tmdb_config SET is_active=false WHERE api_key='synthetic-only'");
+  await db.query('UPDATE media_server SET is_active=false WHERE id=$1', [serverId]);
   return verifyUpgradeHandoff(db);
 }

@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify fresh-install and upgraded runtime progress using the real startup
+  scheduler, including ingestion/backfill deferral, metadata completion, current
+  movie/TV profiles and music exclusion. Keep partial local evidence distinct
+  from provenance-verified full installation acceptance.
+- Apply open PR #552 locally: update Socket.IO to 4.8.4 and test its timeout
+  acknowledgement cleanup and namespace validation. No PR merge or release.
 - Make the library scan-to-metadata-backfill handoff durable across restarts.
   Commit bounded queue pages with generation-fenced progress, resume legacy
   completed scans, and keep background evaluation waiting for unenqueued work.

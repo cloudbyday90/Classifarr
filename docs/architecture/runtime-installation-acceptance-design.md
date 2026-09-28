@@ -1,5 +1,9 @@
 # Runtime installation acceptance in CI
 
+September 28 follow-up: [scheduled installation acceptance](scheduled-installation-design.md)
+adds real startup-scheduler progress to both scenarios. Version 2 receipts require
+these additional checks; the original nine-check outcome remains historical evidence.
+
 ## Decision
 
 Run fresh-install and published-upgrade acceptance in a read-only GitHub-hosted

@@ -1,14 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
 import { upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
-import { INSTALLATION_CHECKS, createRuntimeInstallationReceipt, formatRuntimeInstallationSummary,
+import { INSTALLATION_CHECKS, SCHEDULED_INSTALLATION_EXPECTED, createRuntimeInstallationReceipt, formatRuntimeInstallationSummary,
   installationFailureStage } from '../../../../scripts/lib/runtimeInstallationReceipt.mjs';
 import { readInstallationSource, runRuntimeInstallationAcceptance } from '../../../../scripts/run-runtime-installation-acceptance.mjs';
 
 const revision = 'a'.repeat(40);
 const identity = { sourceRevision: revision, worktreeClean: true };
 const db = { version: '180006', migrations: 286 };
-const success = () => ({ status: 'passed', cleanup: 'passed', baseline: upgradeBaseline,
+const success = () => ({ status: 'passed', scope: 'fresh-and-upgrade', cleanup: 'passed', baseline: upgradeBaseline,
+  scheduler: { fresh: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] },
+    upgrade: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] } },
   candidateImageId: `sha256:${'b'.repeat(64)}`, fresh: { status: 'passed', database: db },
   database: { candidate: db, baseline: { version: '180006', migrations: 222 } },
   recovery: { rollback: 'passed', explicitRetry: 'passed', maintenance: 'passed' },
@@ -37,6 +39,13 @@ test.each([
   ['invalid version', r => { r.database.baseline.version = 'private'; }],
   ['routing happened', r => { r.handoff.routingTasks = 1; }],
   ['unverified retry', r => { r.recovery.explicitRetry = 'failed'; }],
+  ['fresh only', r => { r.scope = 'fresh-only'; }],
+  ['missing scheduler proof', r => { delete r.scheduler; }],
+  ['missing upgrade scheduler', r => { delete r.scheduler.upgrade; }],
+  ['manual driver', r => { r.scheduler.fresh.driver = 'manual'; }],
+  ['missing backfill deferral', r => { r.scheduler.upgrade.deferrals.pop(); }],
+  ['unfinished profiles', r => { r.scheduler.fresh.profiles = 'pending'; }],
+  ['scheduler routed', r => { r.scheduler.upgrade.routingTasks = 1; }],
 ])('rejects %s', (_name, mutate) => {
   const result = success();
   mutate(result);

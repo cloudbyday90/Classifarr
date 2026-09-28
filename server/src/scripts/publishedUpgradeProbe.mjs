@@ -17,13 +17,17 @@ async function login(password) {
 
 export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
-  assert.ok(['fresh', 'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
+  assert.ok(['fresh', 'scheduled', 'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
   const db = await import('../config/database.mjs');
   let blocker;
   try {
     if (phase === 'fresh') {
       const { verifyFreshInstallation } = await import('./freshInstallationProbe.mjs');
       return await verifyFreshInstallation(db);
+    }
+    if (phase === 'scheduled') {
+      const { runScheduledInstallationProbe } = await import('./scheduledInstallationProbe.mjs');
+      return await runScheduledInstallationProbe(db);
     }
     const fixture = await readUpgradeFixture();
     if (phase === 'upgraded') {
