@@ -75,3 +75,6 @@ restart through shared recovery, backfill completion and learning readiness in
 one isolated scenario. Verify no duplicate import ownership, no music ingestion,
 and no learning before a complete inventory. This advances the automation goal
 beyond further wording changes to startup diagnostics.
+
+Follow-up implementation and its explicit process/scheduler limits are recorded
+in [Jellyfin restart recovery outcome](jellyfin-restart-recovery-outcome.md).

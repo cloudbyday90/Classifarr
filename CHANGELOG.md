@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify Jellyfin outage recovery across abruptly terminated ingestion processes,
+  including retained partial inventory, durable waits, exclusive ownership,
+  complete movie/TV replay, music exclusion and metadata-to-profile handoff.
+- Apply open PR #551 locally: update Knip to 6.38.0 and Supertest to 7.3.0 with
+  unchanged production dependencies. No PR merge or release.
 - Report safe startup causes, stderr signals and container exit/OOM state in
   isolated schema and upgrade checks. Bound readiness probes and diagnostic
   capture, stop promptly after exits, and preserve concurrent verification runs.
