@@ -1,5 +1,8 @@
 # Installation budget and database recovery
 
+Execution follow-up: [published-upgrade recovery validation](published-upgrade-provenance-diagnostics-validation.md)
+records a passing clean-source run of both scenarios and the next CI automation step.
+
 ## Decision
 
 Extend the existing isolated installation/crash drill with an opt-in

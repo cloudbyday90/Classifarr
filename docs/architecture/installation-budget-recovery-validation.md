@@ -1,5 +1,10 @@
 # Installation budget recovery validation
 
+Follow-up: the authentication cause has been identified and the full clean-source
+published-upgrade budget test now passes. See
+[published-upgrade recovery validation](published-upgrade-provenance-diagnostics-validation.md).
+The blocked result below records the earlier run, not the current acceptance status.
+
 ## Scope and outcome — September 28, 2026
 
 Implemented the [opt-in installation budget design](installation-budget-recovery-design.md)

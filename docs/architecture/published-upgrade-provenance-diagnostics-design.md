@@ -77,5 +77,5 @@ No CI or production defaults, image publication, deployment or release changes.
 4. In CI, repair the supplied workflow token/permissions; do not fall back to a
    personal credential. Keep all attestation checks enabled.
 
-Record fresh and published-upgrade execution, tests and remaining limitations in
-the separate validation document.
+See the separate [validation document](published-upgrade-provenance-diagnostics-validation.md)
+for fresh/published-upgrade execution, test results and remaining limitations.
