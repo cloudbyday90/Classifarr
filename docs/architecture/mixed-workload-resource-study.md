@@ -98,6 +98,11 @@ adds `--capacity`: five minutes of work, up to 1,600 inventory items and a
 require a nonempty queued-work pressure/recovery cohort. Historical v1 results
 in the validation document retain their original 64-dimensional scope.
 
+The [CPU/PID budget comparison](resource-budget-comparison.md) adds
+`--budget-comparison`: the same capacity workload runs sequentially with baseline,
+2-CPU/128-PID and 1-CPU/128-PID budgets. This is opt-in evidence, not a change to
+deployment defaults; all three scenarios must meet the same recovery deadlines.
+
 Twenty waves grow four libraries equally. The long study attempts a source-pair
 evaluation approximately once a second after the preceding attempt settles;
 each successful evaluation recomputes a 300-case cohort from 400 synthetic

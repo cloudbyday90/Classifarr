@@ -4,27 +4,32 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseUpgradeReceipt } from './publishedUpgradeCompose.mjs';
-import { resourceStudyProfile, assertResourceStudyReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
+import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudyStartupReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
+import { resourceStudyBudget, assertDockerStudyBudget } from '../../server/src/scripts/resourceStudyBudget.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
 /** Reuses the isolated installation topology, never the user's compose project. */
-export async function runResourceStudyCompose({ mode = 'soak', run = spawnSync, random = randomBytes,
+export async function runResourceStudyCompose({ mode = 'soak', budget = 'baseline', candidateImageId, run = spawnSync, random = randomBytes,
   report = message => process.stdout.write(`${message}\n`), save = (project, result) => {
     const directory = resolve(root, '.tmp/resource-study', project);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
     writeFileSync(resolve(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
   } } = {}) {
   const profile = resourceStudyProfile(mode);
+  const limits = resourceStudyBudget(budget);
+  if (candidateImageId !== undefined && !/^sha256:[a-f0-9]{64}$/.test(candidateImageId)) throw new Error('resource_study_image_invalid');
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_study_identity');
   const project = `classifarr-resource-study-${suffix}`, image = `${project}-candidate`;
   const label = `label=com.docker.compose.project=${project}`;
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^COMPOSE_/i.test(key)));
-  Object.assign(env, { COMPOSE_DISABLE_ENV_FILE: '1', CLASSIFARR_UPGRADE_IMAGE: image,
-    CLASSIFARR_UPGRADE_CANDIDATE: image, CLASSIFARR_UPGRADE_MODE: 'normal' });
+  Object.assign(env, { COMPOSE_DISABLE_ENV_FILE: '1', CLASSIFARR_UPGRADE_IMAGE: candidateImageId ?? image,
+    CLASSIFARR_UPGRADE_CANDIDATE: image, CLASSIFARR_UPGRADE_MODE: 'normal',
+    CLASSIFARR_RESOURCE_STUDY_CPUS: String(limits.cpus), CLASSIFARR_RESOURCE_STUDY_PIDS: String(limits.pids) });
   const base = ['compose', '--project-name', project, '--file', resolve(root, 'docker-compose.published-upgrade-drill.yml'),
     '--project-directory', root];
+  if (budget !== 'baseline') base.push('--file', resolve(root, 'docker-compose.resource-study-budget.yml'));
   const docker = (args, timeout = 120000, allowFailure = false) => {
     let result;
     try { result = run('docker', args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
@@ -47,23 +52,43 @@ export async function runResourceStudyCompose({ mode = 'soak', run = spawnSync, 
   for (const args of inventory) if (docker(args).stdout.trim()) throw new Error('resource_study_project_not_empty');
   compose(['config', '--quiet']);
   const probe = mode => parseUpgradeReceipt(compose(['exec', '-T', '-e', 'CLASSIFARR_RESOURCE_STUDY=isolated-synthetic-v1',
+    '-e', `CLASSIFARR_RESOURCE_STUDY_BUDGET=${budget}`,
     'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + 180000).stdout, 'RESOURCE_STUDY');
-  const start = () => compose(['up', '--no-build', '--detach', '--force-recreate', '--wait', '--wait-timeout', '180', 'app'], 240000);
+  const containerId = () => {
+    const id = compose(['ps', '--quiet', 'app']).stdout.trim();
+    if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('resource_study_container_invalid');
+    return id;
+  };
+  let imageId;
+  const start = () => {
+    compose(['up', '--no-build', '--detach', '--force-recreate', '--wait', '--wait-timeout', '180', 'app'], 240000);
+    const format = '{"nanoCpus":{{json .HostConfig.NanoCpus}},"pids":{{json .HostConfig.PidsLimit}},' +
+      '"memoryBytes":{{json .HostConfig.Memory}},"cpuQuota":{{json .HostConfig.CpuQuota}},"imageId":{{json .Image}}}';
+    let config;
+    try { config = JSON.parse(docker(['inspect', '--format', format, containerId()]).stdout); }
+    catch { throw new Error('resource_study_docker_budget_unavailable'); }
+    assertDockerStudyBudget(config, budget);
+    if (config.imageId !== imageId) throw new Error('resource_study_container_image_mismatch');
+    const receipt = probe(`budget-${env.CLASSIFARR_UPGRADE_MODE}`);
+    assertResourceStudyStartupReceipt(receipt, budget);
+    return receipt;
+  };
   let result, failure;
   report(`RESOURCE_STUDY_PROJECT ${project}`);
   try {
-    compose(['build', 'candidate'], 1200000);
-    const imageId = docker(['image', 'inspect', '--format', '{{.Id}}', image]).stdout.trim();
+    if (!candidateImageId) compose(['build', 'candidate'], 1200000);
+    imageId = docker(['image', 'inspect', '--format', '{{.Id}}', candidateImageId ?? image]).stdout.trim();
     if (!/^sha256:[a-f0-9]{64}$/.test(imageId)) throw new Error('resource_study_image_invalid');
-    start();
+    if (candidateImageId && imageId !== candidateImageId) throw new Error('resource_study_image_mismatch');
+    const freshStartup = start();
     const fresh = parseUpgradeReceipt(compose(['exec', '-T', 'app', 'node', 'src/scripts/publishedUpgradeProbe.mjs', 'fresh']).stdout, 'UPGRADE_PROBE');
     if (fresh.status !== 'passed' || probe('seed').seeded !== true) throw new Error('resource_study_seed_invalid');
     compose(['stop', '--timeout', '30', 'app']);
-    env.CLASSIFARR_UPGRADE_MODE = 'restore'; start();
-    report(`RESOURCE_STUDY_RUNNING ${mode}`);
-    result = { mode, imageId, study: probe(mode) };
-    assertResourceStudyReceipt(result.study, mode);
-    const id = compose(['ps', '--quiet', 'app']).stdout.trim();
+    env.CLASSIFARR_UPGRADE_MODE = 'restore'; const maintenanceStartup = start();
+    report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
+    result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
+    assertResourceStudyReceipt(result.study, mode, budget);
+    const id = containerId();
     if (!/^[a-f0-9]{12,64}$/.test(id) || docker(['inspect', '--format', '{{.State.OOMKilled}} {{.State.Health.Status}}', id]).stdout.trim() !== 'false healthy') {
       throw new Error('resource_study_container_unhealthy');
     }
@@ -71,7 +96,7 @@ export async function runResourceStudyCompose({ mode = 'soak', run = spawnSync, 
   finally {
     // Fixed owned project validated empty before build; no arbitrary paths or prune.
     compose(['--profile', 'tools', 'down', '--volumes', '--timeout', '10']);
-    docker(['image', 'rm', image], 30000, true);
+    if (!candidateImageId) docker(['image', 'rm', image], 30000, true);
     for (const args of inventory) if (docker(args).stdout.trim()) throw new Error('resource_study_cleanup_failed');
   }
   if (failure) throw failure;

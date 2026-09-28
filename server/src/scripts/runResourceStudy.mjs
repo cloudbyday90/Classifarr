@@ -3,12 +3,22 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { assertUpgradeDrillEnvironment } from './publishedUpgradeFixtures.mjs';
 import { shouldRunCli } from '../utils/cliRuntime.mjs';
+import { resourceStudyBudget } from './resourceStudyBudget.mjs';
+import { readStudyCgroup } from './resourceStudyMetrics.mjs';
+import { assertResourceStudyStartupReceipt } from './resourceStudyProfiles.mjs';
 
 export async function runResourceStudy(mode) {
   assertUpgradeDrillEnvironment();
   assert.equal(process.env.CLASSIFARR_RESOURCE_STUDY, 'isolated-synthetic-v1');
-  assert.ok(['seed', 'smoke', 'soak', 'capacity'].includes(mode));
-  assert.equal(process.env.CLASSIFARR_RUNTIME_MODE, mode === 'seed' ? 'normal' : 'restore');
+  assert.ok(['seed', 'smoke', 'soak', 'capacity', 'budget-normal', 'budget-restore'].includes(mode));
+  assert.equal(process.env.CLASSIFARR_RUNTIME_MODE, ['seed', 'budget-normal'].includes(mode) ? 'normal' : 'restore');
+  const budget = process.env.CLASSIFARR_RESOURCE_STUDY_BUDGET || 'baseline';
+  resourceStudyBudget(budget);
+  if (mode.startsWith('budget-')) {
+    const receipt = { budget, metrics: await readStudyCgroup() };
+    assertResourceStudyStartupReceipt(receipt, budget);
+    return receipt;
+  }
   const db = await import('../config/database.mjs');
   try {
     assert.equal((await db.query('SELECT count(*)::integer AS count FROM libraries')).rows[0].count, 0);
@@ -23,7 +33,7 @@ export async function runResourceStudy(mode) {
     }
     const { runResourceStudyWorkload } = await import('./resourceStudyWorkload.mjs');
     return await runResourceStudyWorkload(db, mode,
-      value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`));
+      value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`), budget);
   } finally { await db.pool.end(); }
 }
 

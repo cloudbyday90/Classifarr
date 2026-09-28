@@ -17,6 +17,7 @@ import { createResourceStudyFixture, seedResourceStudyLibraries, resourceStudyEv
 import { createStudySampler, readStudyCgroup, assertStudyCgroup, summarizeStudySamples, observeStudyAdmission } from './resourceStudyMetrics.mjs';
 import { resourceStudyProfile, assertResourceStudyReceipt } from './resourceStudyProfiles.mjs';
 import { createStudyQueueRecovery } from './resourceStudyQueueRecovery.mjs';
+import { assertStudyBudget, summarizeBudgetEnforcement, resourceStudyBudget } from './resourceStudyBudget.mjs';
 
 export async function readStudyBacklog(db) {
   return (await db.query(`SELECT count(*) FILTER (WHERE status IN ('pending','processing'))::integer AS pending,
@@ -28,7 +29,8 @@ export async function readStudyBacklog(db) {
 }
 
 /** Runs only inside the separately guarded disposable study process. */
-export async function runResourceStudyWorkload(db, mode, progress = () => {}) {
+export async function runResourceStudyWorkload(db, mode, progress = () => {}, budget = 'baseline') {
+  resourceStudyBudget(budget);
   const profile = resourceStudyProfile(mode), { durationMs } = profile;
   const start = performance.now(), fixture = createResourceStudyFixture();
   let phase = 'warmup', stopped = false, serviceErrors = 0;
@@ -55,6 +57,8 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}) {
     profileService: createLibraryProfileService({ dbClient: db }), loggerInstance: logger });
   const evaluate = createInventoryDiscoveryAdmission({ withSessionAdvisoryLock: db.withSessionAdvisoryLock,
     readMemory, resourceAdmission: admission });
+  // Verify limits before allocating the sampler's event-loop histogram.
+  assertStudyBudget(await readStudyCgroup(), budget);
   const sampler = await createStudySampler();
   assert.equal(sampler.initial.limitBytes, 2 * 1024 ** 3);
   assertStudyCgroup(sampler.initial);
@@ -144,6 +148,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}) {
     assert.equal(complete, true, 'study_drain_incomplete');
     const backlog = await readStudyBacklog(db), final = await readStudyCgroup();
     assertStudyCgroup(final);
+    assertStudyBudget(final, budget);
     assert.equal(backlog.failed, 0); assert.equal(backlog.routing, 0); assert.equal(serviceErrors, 0);
     assert.equal(await countInventory(), fixture.count * 4);
     assert.equal((await db.query("SELECT count(*)::integer AS count FROM media_server_items WHERE media_type NOT IN ('movie','tv')")).rows[0].count, 0);
@@ -152,15 +157,16 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}) {
     assert.equal(final.memoryLimitHits, sampler.initial.memoryLimitHits);
     assert.ok(counters.evaluations > 0 && counters.providerFailures > 0 && counters.preservedOutages > 0);
     for (const row of Object.values(admission.classes)) assert.ok(row.memory_pressure > 0);
-    const result = { version: 'resource_study.v2', profile: mode, evaluationRows: profile.rows,
+    const result = { version: 'resource_study.v3', profile: mode, budget, evaluationRows: profile.rows,
       vectorDimensions: profile.dimensions, queueRecovery: recovery.receipt,
       status: 'passed', durationMs: Math.round(performance.now() - start),
       requestedDurationMs: durationMs, scope: 'synthetic_services_not_model_accuracy', pressure: 'injected_telemetry_not_physical',
       inventory: fixture.count * 4, backlog, counters, drainMs: Math.round(performance.now() - drainStart),
       admission: admission.classes, initial: sampler.initial, final,
+      enforcement: summarizeBudgetEnforcement(sampler.initial, final),
       metrics: summarizeStudySamples(sampler.samples), phases: Object.fromEntries([...new Set(sampler.samples.map(row => row.phase))]
         .map(name => [name, summarizeStudySamples(sampler.samples.filter(row => row.phase === name))])) };
-    assertResourceStudyReceipt(result, mode);
+    assertResourceStudyReceipt(result, mode, budget);
     return result;
   } finally {
     stopped = true; queue.stopWorker();

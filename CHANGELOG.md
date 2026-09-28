@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an isolated CPU/PID-budget comparison with independently verified limits,
+  fresh-start checks, process-denial detection and unchanged recovery deadlines.
+  Compare matched workloads through an opt-in CI profile without changing live
+  resource limits or creating a release.
 - Wake queue dispatch after durable enqueue and task completion while preserving
   concurrency, memory admission, provider limits and retry cooldowns. Retain
   fallback polling and safely serialize worker stop/start without losing

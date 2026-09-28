@@ -8,15 +8,7 @@ import { studyPhase, createResourceStudyFixture, resourceStudyEvaluationSnapshot
 import { runResourceStudy } from '../../scripts/runResourceStudy.mjs';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
 import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCompose.mjs';
-import { resourceStudyProfile } from '../../scripts/resourceStudyProfiles.mjs';
-
-const passedReceipt = mode => {
-  const profile = resourceStudyProfile(mode);
-  return { status: 'passed', version: 'resource_study.v2', profile: mode, requestedDurationMs: profile.durationMs,
-    durationMs: profile.durationMs + 100, evaluationRows: profile.rows, vectorDimensions: profile.dimensions,
-    queueRecovery: { cohortSize: 20, started: 20, completed: 20, startedDuringPressure: 0,
-      holdChecks: 5, heldMs: 10000, firstDispatchMs: 500, completedMs: 2000 } };
-};
+import { resourceStudyReceiptFixture as passedReceipt, resourceStudyStartupFixture } from '../helpers/resourceStudyReceiptFixture.mjs';
 
 test.each([null, undefined, '', '-1', '1.5', 'NaN', 'max', '9007199254740992', '2 extra'])('missing/invalid counter %s is unknown, not zero', value => {
   expect(parseResourceCounter(value)).toBeNull();
@@ -41,7 +33,9 @@ test('nearest-rank summaries ignore unknown values, with explicit sample counts'
 test('cgroup v1 normalizes nanoseconds and keeps limit hits distinct from OOM kills', async () => {
   const metrics = await readStudyCgroup(async path => ({ 'memory.usage_in_bytes': '1024',
     'memory.limit_in_bytes': '2048', 'memory.oom_control': 'under_oom 0\noom_kill 0',
-    'cpuacct.usage': '50000', 'cpu.stat': 'throttled_time 3000', 'pids.current': '10', 'memory.failcnt': '2' })[path.split('/').at(-1)]);
+    'cpuacct.usage': '50000', 'cpu.stat': 'throttled_time 3000\nnr_periods 2\nnr_throttled 1',
+    'cpu.cfs_quota_us': '-1', 'cpu.cfs_period_us': '100000', 'pids.max': 'max', 'pids.events': 'max 0',
+    'pids.current': '10', 'memory.failcnt': '2' })[path.split('/').at(-1)]);
   expect(metrics).toMatchObject({ version: 1, cpuUsec: 50, throttledUsec: 3, oom: null, oomKill: 0, memoryLimitHits: 2 });
   expect(() => assertStudyCgroup(metrics)).not.toThrow();
   expect(() => assertStudyCgroup({ ...metrics, underOom: 1 })).toThrow('metrics_unavailable');
@@ -50,7 +44,8 @@ test('cgroup v1 normalizes nanoseconds and keeps limit hits distinct from OOM ki
   expect(() => assertStudyCgroup({ ...metrics, version: 2, oom: 0 })).not.toThrow();
 });
 const validMetrics = { version: 2, cpuUsec: 100, memoryBytes: 1000, limitBytes: 2000, memoryLimitHits: 0,
-  oom: 0, oomKill: 0, pids: 10, throttledUsec: 0 };
+  oom: 0, oomKill: 0, pids: 10, throttledUsec: 0, cpuPeriods: 0, cpuThrottledPeriods: 0,
+  cpuQuotaUsec: -1, cpuPeriodUsec: 100000, pidsLimit: -1, pidsLimitHits: 0 };
 test('sampler has explicit lifetime, bounded samples and measured CPU', async () => {
   const sampler = await createStudySampler({ cgroup: async () => validMetrics });
   try {
@@ -61,7 +56,8 @@ test('sampler has explicit lifetime, bounded samples and measured CPU', async ()
     await expect(sampler.sample('steady', {})).rejects.toThrow('sample_budget');
   } finally { sampler.close(); }
 });
-test.each([{ memoryLimitHits: 1 }, { oomKill: 1 }, { limitBytes: 4000 }, { cpuUsec: null }])('sampler rejects telemetry drift %j', async changes => {
+test.each([{ memoryLimitHits: 1 }, { oomKill: 1 }, { limitBytes: 4000 }, { cpuUsec: null }, { cpuUsec: 99 },
+  { pidsLimitHits: 1 }, { pidsLimit: 128 }, { cpuQuotaUsec: 100000 }, { cpuPeriodUsec: 50000 }])('sampler rejects telemetry drift %j', async changes => {
   let metrics = validMetrics;
   const sampler = await createStudySampler({ cgroup: async () => metrics });
   try { metrics = { ...validMetrics, ...changes }; await expect(sampler.sample('steady', {})).rejects.toThrow(/resource_study_/); }
@@ -108,13 +104,16 @@ function fakeDocker(override = () => null) {
     const replacement = override(args, options); if (replacement) return replacement;
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = `sha256:${'a'.repeat(64)}`;
-    if (args[0] === 'inspect') stdout = 'false healthy';
+    if (args[0] === 'inspect') stdout = args[2].includes('HostConfig')
+      ? JSON.stringify({ nanoCpus: Number(options.env.CLASSIFARR_RESOURCE_STUDY_CPUS) * 1e9,
+        pids: Number(options.env.CLASSIFARR_RESOURCE_STUDY_PIDS), memoryBytes: 2 * 1024 ** 3, cpuQuota: 0,
+        imageId: `sha256:${'a'.repeat(64)}` }) : 'false healthy';
     if (args[7] === 'ps') stdout = 'b'.repeat(64);
     if (args.includes('src/scripts/publishedUpgradeProbe.mjs')) stdout = 'UPGRADE_PROBE {"status":"passed"}';
     if (args.includes('src/scripts/runResourceStudy.mjs')) {
       const mode = args.at(-1);
       stdout = `RESOURCE_STUDY ${JSON.stringify(mode === 'seed' ? { seeded: true }
-        : passedReceipt(mode))}`;
+        : mode.startsWith('budget-') ? resourceStudyStartupFixture() : passedReceipt(mode))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
@@ -162,7 +161,9 @@ test.each([null, '1800001', 1, 2100001])('receipt rejects invalid elapsed durati
   await expect(launch(run)).rejects.toThrow('receipt_invalid');
   expect(run.mock.calls.some(([, args]) => args.includes('down'))).toBe(true);
 });
-test.each([{ mode: true }, { mode: 'unknown' }, { mode: {} }, { random: () => Buffer.from('invalid') }])('invalid launcher input fails before docker', async options => {
+test.each([{ mode: true }, { mode: 'unknown' }, { mode: {} }, { budget: '__proto__' }, { budget: 2 },
+  { candidateImageId: 'classifarr:latest' },
+  { random: () => Buffer.from('invalid') }])('invalid launcher input fails before docker', async options => {
   const run = fakeDocker(); await expect(launch(run, options)).rejects.toThrow(); expect(run).not.toHaveBeenCalled();
 });
 test('reused compose topology has no external network, ports, host volumes or privilege', () => {

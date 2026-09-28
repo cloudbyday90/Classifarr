@@ -69,8 +69,11 @@ workload, `node scripts/run-resource-study.mjs --capacity` for the five-minute
 larger-corpus workload, or omit the flag for the 30-minute soak. Build/startup,
 settlement and up to two minutes of final drain are additional. Each workload
 command has an outer deadline of its nominal duration plus three minutes.
-Passing v2 receipts are emitted only after worker settlement, container health
+Passing v3 receipts are emitted only after worker settlement, container health
 and owned-project cleanup; failures cannot publish a passing receipt.
+The [CPU/PID budget comparison](resource-budget-comparison.md) adds verified
+startup/effective limits and a manual `budgets` workflow choice. Historical v2
+receipts retain their earlier scope; the default PR workload remains smoke.
 
 ## Official sources researched
 

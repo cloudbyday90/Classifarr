@@ -142,3 +142,8 @@ production defaults. Run paired baseline/limited profiles and require complete
 ingestion, evaluation, database recovery and queue drain within the existing
 deadlines. Report throttling and peak process counts; do not infer a safe ceiling
 from one observed peak. Keep memory limits and provider controls unchanged.
+
+The follow-up [CPU/PID budget comparison](resource-budget-comparison.md) now
+implements the matched workload experiment. Its
+[separate outcome](resource-budget-comparison-validation.md) distinguishes tested
+source-outage recovery from the remaining database/restart-pressure experiment.

@@ -1,0 +1,5 @@
+# Isolated resource-study override only; never include in a live stack.
+services:
+  app:
+    cpus: ${CLASSIFARR_RESOURCE_STUDY_CPUS:?Use the resource study launcher}
+    pids_limit: ${CLASSIFARR_RESOURCE_STUDY_PIDS:?Use the resource study launcher}
