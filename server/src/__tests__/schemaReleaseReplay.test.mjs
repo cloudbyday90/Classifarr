@@ -37,6 +37,19 @@ describe('released-schema replay gate', () => {
         expect(query).toHaveBeenCalledTimes(1);
     });
 
+    test.each([
+        sql => sql.replace(' OR ', ' AND '),
+        sql => sql.replace(' OR OLD.title IS DISTINCT FROM NEW.title', ''),
+        sql => sql.replace('IS DISTINCT FROM', '<>'),
+        sql => sql.replace('BEFORE UPDATE OF tmdb_id, title', 'AFTER UPDATE OF tmdb_id'),
+        sql => sql.replace('reset_clocks()', 'different_function()'),
+    ])('continues to reject trigger logic and contract drift', mutate => {
+        const trigger = 'CREATE TRIGGER reset_clocks BEFORE UPDATE OF tmdb_id, title ON public.items ' +
+            'FOR EACH ROW WHEN (OLD.tmdb_id IS DISTINCT FROM NEW.tmdb_id OR OLD.title IS DISTINCT FROM NEW.title) ' +
+            'EXECUTE FUNCTION reset_clocks();';
+        expect(() => assertMatchingCatalogs(trigger, mutate(trigger))).toThrow('differs');
+    });
+
     test('dumps only named replay databases in a validated container', () => {
         const exec = jest.fn(() => 'catalog');
         expect(dumpIsolatedCatalog({ containerId: 'a'.repeat(64), dbName: 'classifarr_replay_release',

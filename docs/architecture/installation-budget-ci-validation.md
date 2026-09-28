@@ -139,6 +139,10 @@ silence the gate or broadly strip parentheses. Then add the bounded mixed-load
 soak described in the design to study sustained memory/backlog behavior before
 proposing live CPU/PID limits.
 
+The subsequent [trigger replay correction](inventory-observation-trigger-replay-validation.md)
+reproduces the serialization difference on one server and restores catalog
+agreement with a forward migration. The sustained mixed-load soak is next.
+
 ## PR availability
 
 The GitHub MCP search for open PRs in `cloudbyday90/Classifarr` returned none.

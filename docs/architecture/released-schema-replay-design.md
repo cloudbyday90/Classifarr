@@ -27,6 +27,9 @@ array casts, and inherited names on otherwise identical `NOT NULL` columns.
 Column types, defaults, constraints, indexes, views, triggers, functions,
 extensions, and migration ledger completeness remain in scope. The gate does
 not claim to compare seed rows or validate the correctness of media routing.
+For the later inventory recovery predicate's deparser round-trip mismatch, see
+the [forward trigger correction](inventory-observation-trigger-replay-design.md).
+That correction preserves these normalization rules and the strict gate.
 The existing snapshot-drift check remains separate and still verifies that a
 fresh installation of the current application produces the checked-in file.
 

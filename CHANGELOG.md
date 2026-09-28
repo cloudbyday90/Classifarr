@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Stabilize inventory recovery trigger definitions across upgraded and fresh
+  databases, preserving null-safe recovery resets and existing item state.
+  Keep strict schema replay checks and add real-database regression coverage.
 - Update the server's IP-address dependency to resolve IPv6 link-local and NAT64
   classification advisories, with regression coverage preserving rate-limit quotas.
 - Add a manual Linux CI installation-budget profile for isolated fresh/upgrade
