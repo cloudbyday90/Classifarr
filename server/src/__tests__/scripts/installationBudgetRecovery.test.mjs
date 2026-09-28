@@ -7,7 +7,8 @@ import { exerciseInstallationConnectionPressure, prepareInstallationConnectionBu
 import { runInstallationBudgetRecovery } from '../../../../scripts/lib/installationBudgetRecovery.mjs';
 import { SCHEDULED_CRASH_BOUNDARY, SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 
-import { metrics, pressure, evidence } from '../fixtures/installationBudget.mjs';
+import { metrics, pressure, evidence, backlog } from '../fixtures/installationBudget.mjs';
+import { BACKLOG_BOUNDARY } from '../../scripts/installationBacklogContract.mjs';
 
 test('evidence is allowlisted and cgroup v1/v2 supported without crossing lifetime counters', () => {
   const value = evidence();
@@ -26,6 +27,8 @@ test.each([
   value => { value.restartReadyMs = 240001; }, value => { value.backfillRecoveryMs = 900001; },
   value => { value.backfill = 'reseeded'; }, value => { value.dockerLimits = 'assumed'; },
   value => { value.pressure.recovered.cpuUsec = 0; }, value => { value.pressure.pressured.cpuPeriods = 0; },
+  value => { delete value.unfinishedBackfill; }, value => { value.unfinishedBackfill.earlyReclaims = 1; },
+  value => { value.unfinishedBackfill.afterRecovery.oomKill = 1; },
 ])('fails closed on incomplete or unsafe budget evidence (%#)', mutate => {
   const value = evidence(); mutate(value);
   expect(() => installationBudgetEvidence(value)).toThrow();
@@ -87,13 +90,15 @@ test('all destructive/injected paths reject a normal environment before database
 });
 
 function tools({ dockerCpus = 2e9, badPressure = false } = {}) {
-  const compose = jest.fn(args => ({ status: 0, stdout: args[0] === 'ps' ? 'a'.repeat(64) : '' }));
+  const compose = jest.fn(args => ({ status: args.at(-1)?.endsWith('unfinished-backfill-failed') ? 1 : 0,
+    stdout: args[0] === 'ps' ? 'a'.repeat(64) : '' }));
   const docker = jest.fn(args => ({ stdout: args.includes('{{.State.Status}}') ? 'exited'
     : args.includes('{{.State.ExitCode}} {{.State.OOMKilled}}') ? '137 false'
       : JSON.stringify({ nanoCpus: dockerCpus, pids: 128, memoryBytes: 2 * 1024 ** 3, cpuQuota: 0 }) }));
   const probe = jest.fn(phase => ({ 'budget-prepare': { maxConnections: 32, restartRequired: true },
     'budget-pressure': badPressure ? {} : pressure(), 'budget-snapshot': metrics(),
-    'scheduled-crash-ready': SCHEDULED_CRASH_BOUNDARY, 'scheduled-crash-resume': SCHEDULED_CRASH_RECOVERY })[phase]);
+    'scheduled-crash-ready': SCHEDULED_CRASH_BOUNDARY, 'scheduled-crash-resume': SCHEDULED_CRASH_RECOVERY,
+    'scheduled-backlog-ready': BACKLOG_BOUNDARY, 'scheduled-backlog-resume': backlog() })[phase]);
   return { compose, docker, probe, start: jest.fn(), poll: async check => { expect(await check()).toBe(true); },
     setStage: jest.fn(), now: () => 0 };
 }
@@ -102,9 +107,10 @@ test('budget wrapper reuses crash recovery and verifies Docker before setting PG
   const result = await runInstallationBudgetRecovery(test);
   expect(result.recovery).toEqual(SCHEDULED_CRASH_RECOVERY);
   expect(result.evidence).toMatchObject({ dockerLimits: 'verified', backfill: 'completed_original_inventory' });
-  expect(test.start).toHaveBeenCalledTimes(2);
+  expect(test.start).toHaveBeenCalledTimes(3);
   expect(test.compose.mock.calls.some(([args]) => args.at(-1) === 'scheduled-crash-budget-arm')).toBe(true);
-  expect(test.probe.mock.calls.flat()).toEqual(['budget-prepare', 'scheduled-crash-ready', 'budget-pressure', 'scheduled-crash-resume', 'budget-snapshot']);
+  expect(test.probe.mock.calls.flat()).toEqual(['budget-prepare', 'scheduled-crash-ready', 'budget-pressure',
+    'scheduled-crash-resume', 'budget-snapshot', 'scheduled-backlog-ready', 'scheduled-backlog-resume']);
 });
 test('wrong Docker budget prevents pressure setup', async () => {
   const test = tools({ dockerCpus: 1e9 });

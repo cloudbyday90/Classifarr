@@ -60,3 +60,33 @@ test('observer does not invoke scheduler or writer service entrypoints', () => {
   expect(source).not.toContain('UPDATE library_ingestion_state');
   expect(source).not.toContain('INSERT INTO task_queue');
 });
+
+test('backlog fixture paginates 300 items per type and keeps music separate', async () => {
+  const fixture = await createScheduledInstallationFixture({ profile: 'backlog' });
+  try {
+    fixture.release();
+    for (const type of ['movie', 'tv']) {
+      const first = await (await fetch(`${fixture.origin}/Items?ParentId=restart-${type}&StartIndex=0&Limit=250`)).json();
+      const second = await (await fetch(`${fixture.origin}/Items?ParentId=restart-${type}&StartIndex=250&Limit=250`)).json();
+      expect(first.TotalRecordCount).toBe(301);
+      expect(first.Items).toHaveLength(250);
+      expect(second.Items).toHaveLength(51);
+      expect(second.Items.at(-1).Type).toBe('Audio');
+      expect(new Set([...first.Items, ...second.Items].map(row => row.Id)).size).toBe(301);
+    }
+    expect((await fetch(`${fixture.origin}/Items?ParentId=scheduler-movie`)).status).toBe(400);
+  } finally { await fixture.close(); }
+  await expect(createScheduledInstallationFixture({ profile: 'unbounded' })).rejects.toThrow('invalid_scheduler_fixture_profile');
+});
+
+test('small and backlog seed identities do not collide on library name/type uniqueness', async () => {
+  const calls = [];
+  const client = { query: jest.fn(async (sql, values) => {
+    calls.push({ sql, values });
+    return { rows: [{ id: 1 }] };
+  }) };
+  const db = { withTransaction: callback => callback(client) };
+  for (const profile of ['small', 'backlog']) await seedScheduledInstallation(db, 'http://127.0.0.1:1234', { profile });
+  const inserts = calls.filter(row => row.sql.includes('INSERT INTO libraries'));
+  expect(new Set(inserts.flatMap(row => row.values.slice(1))).size).toBe(8);
+});

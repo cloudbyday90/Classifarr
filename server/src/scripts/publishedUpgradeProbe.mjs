@@ -19,10 +19,16 @@ export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
   assert.ok(['fresh', 'scheduled', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume',
     'scheduled-crash-budget-arm', 'budget-prepare', 'budget-pressure', 'budget-snapshot',
+    'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume',
     'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
   const db = await import('../config/database.mjs');
   let blocker;
   try {
+    if (phase.startsWith('scheduled-backlog-')) {
+      const { armBacklogCrash, verifyBacklogBoundary, verifyBacklogRecovery } = await import('./installationBacklogProbe.mjs');
+      if (phase === 'scheduled-backlog-arm') return await armBacklogCrash(db);
+      return await (phase === 'scheduled-backlog-ready' ? verifyBacklogBoundary(db) : verifyBacklogRecovery(db));
+    }
     if (phase.startsWith('budget-')) {
       const { assertInstallationBudgetEnvironment, prepareInstallationConnectionBudget, readInstallationPressureEvidence }
         = await import('./installationConnectionPressure.mjs');
@@ -123,6 +129,13 @@ if (import.meta.main) {
     assert.equal(process.argv.length, 3);
     process.stdout.write(`UPGRADE_PROBE ${JSON.stringify(await runUpgradeProbe(process.argv[2]))}\n`);
   } catch (error) {
+    if (process.argv[2] === 'scheduled-backlog-arm') {
+      try {
+        const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
+        assertInstallationBudgetEnvironment();
+        await writeFile('/app/data/upgrade-drill/unfinished-backfill-failed', 'failed', { flag: 'wx', mode: 0o600 });
+      } catch { /* Best effort, fixed marker only; never write outside the guarded drill. */ }
+    }
     // Locations help diagnose synthetic assertions without logging values,
     // credentials, backup payloads or provider responses.
     const locations = String(error.stack ?? '').split('\n').filter(line => /^\s+at /.test(line)).slice(0, 5);

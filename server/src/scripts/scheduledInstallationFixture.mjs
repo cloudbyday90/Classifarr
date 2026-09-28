@@ -4,15 +4,21 @@ import { once } from 'node:events';
 import { assertUpgradeDrillEnvironment } from './publishedUpgradeFixtures.mjs';
 
 /** Loopback-only synthetic Jellyfin; production parsing, scheduler and workers stay intact. */
-export async function createScheduledInstallationFixture() {
+function fixtureProfile(profile) {
+  if (!['small', 'backlog'].includes(profile)) throw new TypeError('invalid_scheduler_fixture_profile');
+  return { prefix: profile === 'backlog' ? 'restart' : 'scheduler', count: profile === 'backlog' ? 300 : 2 };
+}
+
+export async function createScheduledInstallationFixture({ profile = 'small' } = {}) {
   assertUpgradeDrillEnvironment();
+  const { prefix, count } = fixtureProfile(profile);
   let held = true, reached = false;
   const pending = new Set();
   const requests = { movie: 0, tv: 0, audio: 0 };
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1');
     const key = url.searchParams.get('ParentId');
-    const type = key === 'scheduler-movie' ? 'movie' : key === 'scheduler-tv' ? 'tv' : null;
+    const type = key === `${prefix}-movie` ? 'movie' : key === `${prefix}-tv` ? 'tv' : null;
     const offset = Number(url.searchParams.get('StartIndex') ?? 0);
     const limit = Number(url.searchParams.get('Limit') ?? 100);
     const send = (body, status = 200) => {
@@ -22,7 +28,7 @@ export async function createScheduledInstallationFixture() {
       !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) { send({}, 400); return; }
     const deliver = () => {
       const collections = url.searchParams.get('IncludeItemTypes') === 'BoxSet';
-      const items = collections ? [] : [0, 1].map(n => ({ Id: `${key}-${n}`, Name: `Synthetic ${type} ${n}`,
+      const items = collections ? [] : Array.from({ length: count }, (_, n) => ({ Id: `${key}-${n}`, Name: `Synthetic ${type} ${n}`,
         Type: type === 'tv' ? 'Series' : 'Movie', ProductionYear: 2001, ProviderIds: { Tmdb: String(100 + n) } }));
       if (!collections) items.push({ Id: `${key}-audio`, Name: 'Ignored audio', Type: 'Audio' });
       const page = items.slice(offset, offset + limit);
@@ -42,15 +48,16 @@ export async function createScheduledInstallationFixture() {
   };
 }
 
-export async function seedScheduledInstallation(db, origin) {
+export async function seedScheduledInstallation(db, origin, { profile = 'small' } = {}) {
   assertUpgradeDrillEnvironment();
+  const { prefix } = fixtureProfile(profile);
   if (!/^http:\/\/127\.0\.0\.1:\d{1,5}$/.test(origin)) throw new Error('scheduler_fixture_origin_invalid');
   return db.withTransaction(async client => {
     const { rows: [source] } = await client.query(`INSERT INTO media_server(type,name,url,api_key,is_active)
       VALUES ('jellyfin','Synthetic scheduler',$1,'synthetic-only',true) RETURNING id`, [origin]);
     const { rows } = await client.query(`INSERT INTO libraries(media_server_id,external_id,name,media_type,is_active)
-      VALUES ($1,'scheduler-movie','Synthetic scheduled movie','movie',true),
-             ($1,'scheduler-tv','Synthetic scheduled TV','tv',true) RETURNING id,media_type`, [source.id]);
+      VALUES ($1,$2,$4,'movie',true), ($1,$3,$5,'tv',true) RETURNING id,media_type`,
+    [source.id, `${prefix}-movie`, `${prefix}-tv`, `Synthetic ${prefix} movie`, `Synthetic ${prefix} TV`]);
     await client.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
     return rows;
   });

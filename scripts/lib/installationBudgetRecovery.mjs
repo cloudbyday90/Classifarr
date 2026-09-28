@@ -31,7 +31,10 @@ export async function runInstallationBudgetRecovery({ compose, docker, probe, st
       verifyDocker();
     } });
   const backfillRecoveryMs = now() - recoveredAt;
+  const postRestart = probe('budget-snapshot');
+  const unfinishedBackfill = await runScheduledCrashRecovery({ compose, docker, probe, poll, setStage,
+    armPhase: 'scheduled-backlog-arm', start: mode => { start(mode); verifyDocker(); } });
   const evidence = installationBudgetEvidence({ budget: 'bounded', dockerLimits: 'verified', pressure,
-    restartReadyMs, backfillRecoveryMs, postRestart: probe('budget-snapshot'), backfill: 'completed_original_inventory' });
+    restartReadyMs, backfillRecoveryMs, postRestart, unfinishedBackfill, backfill: 'completed_original_inventory' });
   return { recovery, evidence };
 }

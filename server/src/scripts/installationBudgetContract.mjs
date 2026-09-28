@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { assertStudyCgroup } from './resourceStudyMetrics.mjs';
 import { assertStudyBudget, summarizeBudgetEnforcement } from './resourceStudyBudget.mjs';
+import { backlogRecoveryEvidence } from './installationBacklogContract.mjs';
 
 const metricKeys = ['version', 'memoryBytes', 'limitBytes', 'oom', 'oomKill', 'underOom', 'memoryLimitHits',
   'cpuUsec', 'throttledUsec', 'pids', 'cpuQuotaUsec', 'cpuPeriodUsec', 'cpuPeriods', 'cpuThrottledPeriods',
@@ -49,5 +50,8 @@ export function installationBudgetEvidence(value) {
   return { budget: 'bounded', dockerLimits: 'verified', pressure: installationPressureEvidence(value.pressure),
     restartReadyMs: duration(value.restartReadyMs, 0, 240000),
     backfillRecoveryMs: duration(value.backfillRecoveryMs, 0, 900000),
-    postRestart: installationBudgetSnapshot(value.postRestart), backfill: 'completed_original_inventory' };
+    postRestart: installationBudgetSnapshot(value.postRestart), backfill: 'completed_original_inventory',
+    unfinishedBackfill: { ...backlogRecoveryEvidence(value.unfinishedBackfill),
+      beforeCrash: installationBudgetSnapshot(value.unfinishedBackfill.beforeCrash),
+      afterRecovery: installationBudgetSnapshot(value.unfinishedBackfill.afterRecovery) } };
 }

@@ -5,7 +5,8 @@ import { load } from 'js-yaml';
 import { runPublishedUpgradeCompose, parseUpgradeReceipt, upgradeBaseline } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
 import { assertUpgradeDrillEnvironment } from '../../scripts/publishedUpgradeFixtures.mjs';
 import { SCHEDULED_INSTALLATION_EXPECTED, SCHEDULED_CRASH_BOUNDARY, SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
-import { metrics, pressure } from '../fixtures/installationBudget.mjs';
+import { metrics, pressure, backlog } from '../fixtures/installationBudget.mjs';
+import { BACKLOG_BOUNDARY } from '../../scripts/installationBacklogContract.mjs';
 
 const random = size => Buffer.alloc(size, 1);
 const report = () => {};
@@ -15,6 +16,7 @@ function mockRunner(override = () => undefined) {
   return jest.fn((command, args, options) => {
     const replacement = override(command, args, options);
     if (replacement) return replacement;
+    if (args.at(-1)?.endsWith('unfinished-backfill-failed')) return { status: 1, stdout: '' };
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = `sha256:${'a'.repeat(64)}`;
     if (args[0] === 'inspect') stdout = args.includes('{{.State.ExitCode}}') ? '1' : 'exited';
@@ -28,6 +30,8 @@ function mockRunner(override = () => undefined) {
       if (op.at(-1) === 'scheduled') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_INSTALLATION_EXPECTED)}\n`;
       if (op.at(-1) === 'scheduled-crash-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_BOUNDARY)}\n`;
       if (op.at(-1) === 'scheduled-crash-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_RECOVERY)}\n`;
+      if (op.at(-1) === 'scheduled-backlog-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(BACKLOG_BOUNDARY)}\n`;
+      if (op.at(-1) === 'scheduled-backlog-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(backlog())}\n`;
       if (op.at(-1) === 'budget-prepare') stdout = 'UPGRADE_PROBE {"maxConnections":32,"restartRequired":true}\n';
       if (op.at(-1) === 'budget-pressure') stdout = `UPGRADE_PROBE ${JSON.stringify(pressure())}\n`;
       if (op.at(-1) === 'budget-snapshot') stdout = `UPGRADE_PROBE ${JSON.stringify(metrics())}\n`;
@@ -47,6 +51,7 @@ test.each([true, false])('opt-in budget reuses fixed limits and crash protocol, 
   expect(Object.keys(result.resourceBudget)).toEqual(freshOnly ? ['fresh'] : ['fresh', 'upgrade']);
   const ops = operations(run);
   expect(ops.filter(args => args.at(-1) === 'scheduled-crash-budget-arm')).toHaveLength(freshOnly ? 1 : 2);
+  expect(ops.filter(args => args.at(-1) === 'scheduled-backlog-arm')).toHaveLength(freshOnly ? 1 : 2);
   expect(ops.some(args => args.at(-1) === 'scheduled')).toBe(false);
   const build = run.mock.calls.find(([, args]) => args.includes('build'));
   expect(build[1][8]).toMatch(/docker-compose.resource-study-budget.yml$/);

@@ -55,7 +55,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   const docker = (args, ...options) => invoke('docker', args, ...options);
   const compose = (args, ...options) => docker([...base, ...args], ...options);
   const probe = phase => parseUpgradeReceipt(compose(['exec', '-T', 'app', 'node', 'src/scripts/publishedUpgradeProbe.mjs', phase],
-    ['scheduled', 'scheduled-crash-resume'].includes(phase) ? 900_000 : 120_000).stdout, 'UPGRADE_PROBE');
+    ['scheduled', 'scheduled-crash-resume', 'scheduled-backlog-resume'].includes(phase) ? 960_000 : 120_000).stdout, 'UPGRADE_PROBE');
   const poll = async (check, label, timeout = 60_000) => {
     const deadline = now() + timeout;
     while (now() < deadline) { if (check()) return; await sleep(500); }

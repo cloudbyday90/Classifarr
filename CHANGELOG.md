@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend opt-in installation-budget checks with a real crash during movie/TV
+  backfill. Verify recovery of original queued and claimed work after the normal
+  visibility lease, sibling-library progress and single durable completions on
+  both fresh and upgraded data, without altering production scheduling.
 - Extend isolated resource studies with settled idle observation, scoped memory
   trends and queue-progress reports. Add an opt-in sustained CI profile while
   preserving recovery deadlines, production limits and short default gates.

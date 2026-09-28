@@ -22,13 +22,21 @@ export function formatInstallationBudgetSummary(budget) {
     ['Backfill completion after readiness', value => seconds(value.backfillRecoveryMs)],
     ['Memory observation during pressure', value => `${(value.pressure.pressured.memoryBytes / 1024 ** 2).toFixed(2)} MiB`],
     ['PID/thread observation during pressure', value => String(value.pressure.pressured.pids)],
+    ['Restart backlog: movie / TV items', value => `${value.unfinishedBackfill.movieItems} / ${value.unfinishedBackfill.tvItems}`],
+    ['Pending / interrupted at crash', value => `${value.unfinishedBackfill.pendingTasks} / ${value.unfinishedBackfill.interruptedTasks}`],
+    ['Original visibility lease', value => seconds(value.unfinishedBackfill.visibilityMs)],
+    ['Reclaimed / completed original tasks', value => `${value.unfinishedBackfill.reclaimedTasks} / ${value.unfinishedBackfill.completedTasks}`],
+    ['Restart backlog observation', value => seconds(value.unfinishedBackfill.observationMs)],
+    ['Backlog memory before crash / after recovery', value => `${(value.unfinishedBackfill.beforeCrash.memoryBytes / 1024 ** 2).toFixed(2)} / ${(value.unfinishedBackfill.afterRecovery.memoryBytes / 1024 ** 2).toFixed(2)} MiB`],
+    ['Early reclaims / duplicate completions', value => `${value.unfinishedBackfill.earlyReclaims} / ${value.unfinishedBackfill.duplicateCompletions}`],
   ];
   return '### Installation resource budget\n\n' +
     'Passed. Limits and recovery verified separately for fresh and upgraded data.\n\n' +
     '| Measurement | Fresh installation | Published-data upgrade |\n| --- | --- | --- |\n' +
     rows.map(([label, read]) => `| ${label} | ${scenarios.map(read).join(' | ')} |`).join('\n') + '\n\n' +
-    'All four snapshots per scenario report zero memory-limit events, OOM kills and PID denials. ' +
-    'Original inventory backfill completed in both scenarios.\n\n' +
+    'All six snapshots per scenario report zero memory-limit events, OOM kills and PID denials. ' +
+    'Original inventory backfill completed in both scenarios. TV work progressed before interrupted movie leases expired. ' +
+    'Each interrupted task was claimed once more after expiry; this is necessary redelivery, not exactly-once execution.\n\n' +
     'Memory and PID values are point observations, not peaks or safe minimums. ' +
     'Counters are not subtracted across container restarts. These results do not authorize live limits.\n\n';
 }
