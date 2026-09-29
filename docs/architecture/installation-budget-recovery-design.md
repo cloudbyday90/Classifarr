@@ -3,6 +3,11 @@
 Execution follow-up: [published-upgrade recovery validation](published-upgrade-provenance-diagnostics-validation.md)
 records a passing clean-source run of both scenarios and the next CI automation step.
 
+September 28 extension: [unfinished-backfill restart acceptance](unfinished-backfill-restart-design.md)
+adds 300 movie and 300 TV tasks, including durable in-flight claims, to both opt-in
+scenarios. Its [separate validation](unfinished-backfill-restart-validation.md)
+records passing fresh/upgrade recovery without shortening the real visibility lease.
+
 ## Decision
 
 Extend the existing isolated installation/crash drill with an opt-in

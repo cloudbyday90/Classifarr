@@ -12,6 +12,13 @@ This follows the successful
 The remaining gap was repeatable hosted-Linux execution and a readable report
 of actual resource enforcement, not another production recovery service.
 
+The September 28 [unfinished-backfill extension](unfinished-backfill-restart-design.md)
+also requires recovery of 600 original tasks in each opt-in scenario. The real
+ten-minute leases add approximately twenty minutes across the pair, plus setup
+and scheduler waits. The existing 40-minute job deadline remains enforced.
+[Local validation](unfinished-backfill-restart-validation.md) passed; this extension
+has not yet been separately exercised by a hosted budget dispatch.
+
 ## Execution and evidence contract
 
 | Invocation | Installation command | Other behavior |

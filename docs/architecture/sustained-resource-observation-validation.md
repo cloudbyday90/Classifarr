@@ -140,16 +140,17 @@ Benefit: repeatable overlap/recovery and retained-memory evidence without new
 production machinery or paid calls. Cost: roughly 32 minutes plus image/startup
 time for this profile; synthetic success does not establish production capacity.
 
-The next distinct component is **restart recovery with a representative unfinished
-backfill backlog**, extending the existing installation-budget drill rather than
-adding another orchestrator. Crash after a deterministic durable checkpoint while
-work remains, then require the real startup scheduler to finish original work
-under the already-defined CPU/PID budget, without reseeding or manual repair.
-Verify stable item/run identities, no duplicate dispatch, sibling-library progress
-and current profiles; keep pre/post-restart memory counters in separate process
-epochs. The existing small installation fixture and this same-process soak do
-not establish that combined boundary. Do not repeat another identical dashboard
-or infer live resource limits from this run alone.
+The recommended **restart recovery with a representative unfinished backfill
+backlog** is now implemented in the existing installation-budget drill. Its
+[separate acceptance result](unfinished-backfill-restart-validation.md) proves
+600-item fresh/upgrade recovery, stable committed receipts and task IDs,
+sibling-library progress and current profiles without manual repair. Necessary
+redelivery is measured separately from duplicate completions.
+
+The next distinct boundary is **late-worker acknowledgement fencing**: test an
+original worker remaining alive beyond lease expiry while another claims its task.
+A dead-container recovery proof cannot establish that overlap. Do not repeat
+another identical dashboard or infer live resource limits from these runs alone.
 
 ## PR availability and operational boundaries
 
