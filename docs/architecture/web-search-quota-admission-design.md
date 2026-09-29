@@ -70,5 +70,6 @@ Test concurrent last-credit contention, two-credit Tavily admission, shared prob
 and search reservations, restart/crash cost retention, UTC day/month boundaries,
 stale/disabled/rejected configuration, database failure, cache hit/miss behavior,
 single-row completion, retention protection and unchanged retry attempts.
-Record final evidence separately in the outcome document. No live provider calls,
-persistent-library changes, release or deployment are part of this round.
+The [outcome document](web-search-quota-admission-outcome.md) records final
+evidence. No live provider calls, persistent-library changes, release or
+deployment are part of this round.
