@@ -18,6 +18,10 @@
 
 import { apiClient, getDataRequest } from './core'
 
+export function getRetryReadiness() {
+  return getDataRequest('/queue/retry-readiness', { skipAutomaticRetry: true })
+}
+
 export function getQueuePending(limit = 20) {
   return getDataRequest('/queue/pending', { params: { limit } })
 }
@@ -43,6 +47,7 @@ export function classifyQueueTask(taskId, data) {
 }
 
 const queueTasksApi = {
+  getRetryReadiness,
   getQueuePending,
   getQueueFailed,
   retryQueueTask,

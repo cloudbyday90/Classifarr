@@ -29,6 +29,7 @@ vi.mock('../../api/core', () => ({
 }))
 
 import {
+  getRetryReadiness,
   getQueuePending,
   getQueueFailed,
   retryQueueTask,
@@ -37,6 +38,11 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('reads retry readiness through the named data helper without parameters', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ version: 1 })
+    expect(await getRetryReadiness()).toEqual({ version: 1 })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/retry-readiness', { skipAutomaticRetry: true })
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

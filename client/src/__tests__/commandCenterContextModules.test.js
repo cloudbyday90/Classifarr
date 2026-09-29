@@ -11,6 +11,7 @@ import { createMemoryRouter, ROUTER_LINK_STUB } from './helpers/vueTestUtils'
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     getLiveStats: vi.fn(),
+    getRetryReadiness: vi.fn(),
     getClassificationProgress: vi.fn(),
     getQueuePending: vi.fn(),
     getQueueFailed: vi.fn(),
@@ -87,6 +88,9 @@ describe('CommandCenter context modules', () => {
     vi.clearAllMocks()
     localStorage.clear()
     apiMock.getLiveStats.mockResolvedValue(createLiveStats())
+    apiMock.getRetryReadiness.mockResolvedValue({ version: 1, scope: 'web_search', limitPerQueue: 50,
+      inspected: 0, hasMore: false, observedAt: new Date().toISOString(), earliestRetryAt: null,
+      counts: { cached_ready: 0, provider_ready: 0, provider_wait: 0, settings_blocked: 0, scheduled: 0, held: 0 } })
     apiMock.getClassificationProgress.mockResolvedValue([])
     apiMock.getQueuePending.mockResolvedValue([])
     apiMock.getQueueFailed.mockResolvedValue([])

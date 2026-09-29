@@ -20,10 +20,11 @@ function quotaWait(candidate, now) {
 }
 
 /** Read-only bounded hints, never authorization. The executor rechecks cache and admission. */
-export async function createWebSearchRetryInspector(router, items) {
+export async function createWebSearchRetryInspector(router, items, { explain = false } = {}) {
   if (!Array.isArray(items) || items.length > 50) throw new TypeError('invalid_retry_page');
   const candidates = (await router.getRouteCandidates({ purpose: 'metadata_enrichment' }))
     .filter(canReadWebSearchCandidateCache);
+  const explainResult = (result, reason) => explain ? { ...result, reason } : result;
   const invalid = new Set();
   const keys = new Map(items.map(item => {
     try {
@@ -39,21 +40,22 @@ export async function createWebSearchRetryInspector(router, items) {
   return async item => {
     // Let the normal per-item validation outcome handle malformed work without
     // preventing every other item in this page from progressing.
-    if (invalid.has(item.queue_id)) return { ready: true, cached: false };
-    if (keys.get(item.queue_id)?.some(key => fresh.has(key))) return { ready: true, cached: true };
+    if (invalid.has(item.queue_id)) return explainResult({ ready: true, cached: false }, 'held');
+    if (keys.get(item.queue_id)?.some(key => fresh.has(key))) return explainResult({ ready: true, cached: true }, 'cached_ready');
     const now = Date.now();
-    if (blockedUntil > now) return { ready: false, delayMs: blockedUntil - now };
+    if (blockedUntil > now) return explainResult({ ready: false, delayMs: blockedUntil - now },
+      candidates.length ? 'provider_wait' : 'settings_blocked');
     let delayMs = Infinity;
     for (const candidate of candidates) {
       const quotaDelay = quotaWait(candidate, now);
       const pacingDelay = await webSearchPacingWait(router.storage.db, candidate.providerKey, candidate.config.credentialContext);
       const delay = Math.max(quotaDelay, pacingDelay * 1000);
-      if (!delay) return { ready: true, cached: false };
+      if (!delay) return explainResult({ ready: true, cached: false }, 'provider_ready');
       delayMs = Math.min(delayMs, delay);
     }
     // Revisit configuration changes even when there is no usable provider.
     delayMs = Number.isFinite(delayMs) ? delayMs : 300_000;
     blockedUntil = now + delayMs;
-    return { ready: false, delayMs };
+    return explainResult({ ready: false, delayMs }, candidates.length ? 'provider_wait' : 'settings_blocked');
   };
 }

@@ -11,6 +11,8 @@ import { WebSearchProviderRouter } from '../../services/webSearchProviderRouter.
 import { buildImdbLookupRequest } from '../../services/webSearchEnrichmentRequests.mjs';
 import { buildWebSearchProviderCacheIdentity } from '../../services/webSearchProviderCachePolicy.mjs';
 import { readEnrichmentRetryPage } from '../../services/enrichmentRetryCandidates.mjs';
+import { createRetryReadinessService } from '../../services/retryReadinessService.mjs';
+import { TAVILY_MONTHLY_DEFERRED_REASON } from '../../utils/enrichmentState.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 const storage = new WebSearchProviderStorage({ db, healthHistory: null });
@@ -22,6 +24,7 @@ const response = { provider: 'brave', providerRequestId: null, query: 'fixture',
     rank: 1, score: null, publishedAt: null, sourceDomain: 'imdb.com', providerMetadata: {} }],
   usage: { costUnits: 1, quotaBucket: null }, warnings: [] };
 const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level => [level, jest.fn()]));
+const readiness = () => createRetryReadinessService({ database: db }).getReport();
 function instance() {
   const result = new EnrichmentRetryService({ db, logger,
     webSearchEnrichmentService: new WebSearchEnrichmentService({ router }) });
@@ -139,4 +142,85 @@ test('usage accepts both preserved UUID history and bounded retry trace identifi
   await storage.recordUsage({ providerKey: 'brave', operation: 'cache_hit', status: 'success', costUnits: 0, correlationId: 'enrichment-retry:123' });
   expect((await db.query('SELECT correlation_id FROM web_search_provider_usage ORDER BY id')).rows)
     .toEqual([{ correlation_id: trace }, { correlation_id: 'enrichment-retry:123' }]);
+});
+
+test('readiness distinguishes cache and pacing without changing queue, cache or usage', async () => {
+  const all = await items(); await cached(all[1]); await block();
+  const before = await rows();
+  const cacheBefore = (await db.query('SELECT * FROM web_search_provider_cache')).rows;
+  const report = await readiness();
+  expect(report).toMatchObject({ inspected: 2, hasMore: false, counts: { cached_ready: 1, provider_wait: 1 } });
+  expect(report.earliestRetryAt).not.toBeNull();
+  expect(await rows()).toEqual(before);
+  expect((await db.query('SELECT * FROM web_search_provider_cache')).rows).toEqual(cacheBefore);
+  expect((await db.query('SELECT * FROM web_search_provider_usage')).rows).toEqual([]);
+  expect(search).not.toHaveBeenCalled();
+});
+
+test('readiness reports empty setup, disabled/rejected providers and repair without probing', async () => {
+  expect((await readiness()).inspected).toBe(0);
+  await items(1); await db.query('DELETE FROM web_search_provider_config');
+  expect((await readiness()).counts.settings_blocked).toBe(1);
+  await storage.upsertProviderConfig({ providerKey: 'brave', apiKey: 'fixture', isEnabled: false });
+  expect((await readiness()).counts.settings_blocked).toBe(1);
+  // Enabling a provider intentionally clears old rejection evidence via its trigger.
+  await db.query('UPDATE web_search_provider_config SET is_enabled=true');
+  await db.query('UPDATE web_search_provider_config SET credential_rejected_at=clock_timestamp()');
+  expect((await readiness()).counts.settings_blocked).toBe(1);
+  await db.query('UPDATE web_search_provider_config SET credential_rejected_at=NULL');
+  expect((await readiness()).counts.provider_ready).toBe(1);
+  expect(search).not.toHaveBeenCalled();
+});
+
+test('readiness preserves item guards, future due times and explicit truncation', async () => {
+  await items(51); const before = await rows();
+  expect(await readiness()).toMatchObject({ inspected: 50, hasMore: true, counts: { provider_ready: 50 } });
+  await db.query("UPDATE enrichment_retry_queue SET next_attempt_at=clock_timestamp()+interval '1 day'");
+  expect((await readiness()).counts.scheduled).toBe(50);
+  await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  expect((await readiness()).counts.held).toBe(50);
+  await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [libraryId]);
+  await db.query("UPDATE media_server_items SET media_type='track' WHERE library_id=$1", [libraryId]);
+  expect((await readiness()).counts.held).toBe(50);
+  expect((await rows()).map(({ attempts }) => attempts)).toEqual(before.map(({ attempts }) => attempts));
+  expect(search).not.toHaveBeenCalled();
+});
+
+test('readiness preserves conflicts, completed metadata and exhausted attempts despite fresh cache', async () => {
+  const all = await items(3);
+  for (const item of all) await cached(item);
+  await db.query(`INSERT INTO media_source_capture_state(library_id,media_server_id,generation,mode,phase,source)
+    VALUES ($1,$2,1,'full','complete','media_sync')`, [libraryId, serverId]);
+  await db.query(`INSERT INTO media_source_observations
+    (library_id,media_server_id,external_id,title,media_type,identity_issue,generation)
+    VALUES ($1,$2,$3,'Fixture','movie','conflicting_provider_ids',1)`, [libraryId, serverId, all[0].external_id]);
+  await db.query(`UPDATE media_server_items SET metadata='{"omdb":{}}'::jsonb WHERE id=$1`, [all[1].id]);
+  await db.query('UPDATE enrichment_retry_queue SET attempts=max_attempts WHERE media_item_id=$1', [all[2].id]);
+  const before = await rows();
+  expect((await readiness()).counts).toMatchObject({ held: 3, cached_ready: 0, provider_ready: 0 });
+  expect(await rows()).toEqual(before);
+  expect(search).not.toHaveBeenCalled();
+});
+
+test('quota exhaustion permits only cache previews without charging or changing usage', async () => {
+  const all = await items(); await cached(all[0]);
+  await db.query('UPDATE web_search_provider_config SET soft_daily_limit=1');
+  await storage.recordUsage({ providerKey: 'brave', operation: 'search', status: 'success', costUnits: 1 });
+  const before = (await db.query('SELECT * FROM web_search_provider_usage')).rows;
+  expect(await readiness()).toMatchObject({ counts: { cached_ready: 1, provider_wait: 1 } });
+  expect((await db.query('SELECT * FROM web_search_provider_usage')).rows).toEqual(before);
+  expect(search).not.toHaveBeenCalled();
+});
+
+test('legacy monthly deferral and dependency cooldown remain scheduling gates', async () => {
+  const [item] = await items(1); await cached(item);
+  await db.query(`UPDATE enrichment_retry_queue SET enrichment_type='tavily',reason=$1,last_attempt_at=clock_timestamp()`,
+    [TAVILY_MONTHLY_DEFERRED_REASON]);
+  expect((await readiness()).counts.scheduled).toBe(1);
+  await db.query("UPDATE enrichment_retry_queue SET last_attempt_at=clock_timestamp()-interval '1 month'");
+  expect((await readiness()).counts.cached_ready).toBe(1);
+  await db.query(`INSERT INTO enrichment_retry_cooldowns(dependency,next_attempt_at,reason)
+    VALUES ('web_search',clock_timestamp()+interval '1 hour','fixture')`);
+  expect((await readiness()).counts.provider_wait).toBe(1);
+  expect(search).not.toHaveBeenCalled();
 });

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a visual, read-only web-search retry summary with ready/waiting/setup counts,
+  bounded coverage, status timing and a relevant next action. Preserve worker
+  safeguards and provider settings; use memory-only, pausable status updates.
 - Apply PR #554 locally: update Markdown tooling to the security-patched 14.3.2
   parser, restore its compatible ESM linkifier dependency, and add bounded CPU-work
   and rendering regressions to CI. No PR merge or release.

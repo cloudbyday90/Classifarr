@@ -9,6 +9,10 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
+import { requireAdmin } from '../middleware/apiKeyAuth.mjs';
+import { registerRetryReadinessRoute } from './queueRouteRetryReadiness.mjs';
+import { createRetryReadinessService } from '../services/retryReadinessService.mjs';
 import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
@@ -28,4 +32,10 @@ export const router = createQueueRouter({
   requireReadWrite,
   decisionWitnessReadService: classificationQueueDecisionWitnessReadService,
   readLibraryEvaluationStatus: () => classificationPolicyPathService.readLibraryEvaluationStatus(),
+});
+
+registerRetryReadinessRoute(router, {
+  requireAdmin,
+  limiter: rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }),
+  service: createRetryReadinessService(),
 });
