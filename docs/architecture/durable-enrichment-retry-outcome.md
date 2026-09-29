@@ -57,10 +57,62 @@ title lookup. Other OMDb callers keep their existing behavior.
 ## Verification
 
 Focused verification passed 55 PostgreSQL tests for scheduling, ownership and
-reviewed legacy recovery, including UTC resets and unrelated TMDb counters. The
-complete suite results and installation receipt will be appended after
-completion. All provider traffic in these tests is mocked; only disposable test
-databases/containers are used. No live deployment or operator attestation occurs.
+reviewed legacy recovery, including UTC resets and unrelated TMDb counters.
+Final full-suite results:
+
+| Gate | Result |
+| --- | --- |
+| Backend | 1,531 suites; 46,322 tests passed |
+| Real PostgreSQL | 196 suites; 2,308 tests passed; one opt-in suite/test skipped |
+| Frontend | 405 files; 5,714 tests passed |
+| Coverage ratchet | Passed, no baseline lowered |
+| Lint, type checks, CI preflight and ownership review | Passed |
+| ESM imports/mock shapes and four policy gates | Passed |
+| Production frontend build | Passed |
+| Migration integrity and isolated authoritative schema comparison | Passed |
+| Markdown | 1,646 documents checked; zero issues |
+
+Total: 54,344 passing tests, excluding the 12 installation checks below. Backend
+coverage: statements/lines 90.24%, branches 84.92%, functions 92.13%. Frontend:
+statements 86.02%, branches 78.55%, functions 85.48%, lines 87.97%. The opt-in
+AI-provider fault Compose test was not enabled; this is not a claim that it ran.
+
+Integration testing caught and corrected an explicit SQL parameter typing issue
+in the new enqueue expression. Final review also added a regression proving that
+web-search cooldowns cannot defer unrelated TMDb counters. The final backend
+coverage run used frozen runtime files; focused PostgreSQL tests were rerun on
+the final implementation. All provider traffic in these tests is mocked; only
+disposable test databases/containers are used. No live deployment or operator
+attestation occurred.
+
+### Installation evidence
+
+The clean-source installation drill passed all 12 checks at
+`2026-09-29T11:02:03.686Z` for code commit
+`b904c20679a96f015073cb6f7e30c98f8047a15f`.
+
+- Published baseline: `v0.48.4-beta`, source
+  `a0e417fd714919bb4ca30e20f9cd2380136ca74e` and verified image
+  `sha256:dc95fcdd80123b6bbf5b252fec286d9e81fbbc21a1030087c0a44abacd6a187f`.
+- Tested candidate image:
+  `sha256:02af70e4d5d996e86c55a46914af24d3da8c067a6c5465ed3cfd536e9160a1ea`.
+- PostgreSQL 18.6: fresh installation and upgraded data both reached 301
+  migrations; the published baseline had 222.
+- Passed provenance, fresh operational seeds, startup scheduling, backfill crash
+  recovery, published startup/export, persisted-volume migrations, interrupted
+  restore, rejection of unverified startup, verified rollback/retry, movie/TV
+  recovery-to-learning, normal restart/profiles and upgraded startup scheduling.
+- Disposable Compose project
+  `classifarr-upgrade-drill-8d19a53be6b55ecdfcad73946d701196`, its volumes/network
+  and candidate image were cleaned up. The local schema-test image is retained.
+- The live `classifarr` container remained on image
+  `sha256:8993f6dfa53f74b4fe05bf8d3e81df568f00612b9b8742f1be40c5cfb170c63d`,
+  started `2026-09-29T01:16:51.534281224Z`, healthy with zero restarts and no OOM.
+
+The ignored local receipt is `.tmp/ci/runtime-installation-acceptance.json`.
+It binds the clean code revision to the checks above; this documentation-only
+follow-up does not change the tested runtime. The drill is not a live deployment,
+release, provider credential test or proof of stopped legacy writers.
 
 ## Recommendation and next component
 
