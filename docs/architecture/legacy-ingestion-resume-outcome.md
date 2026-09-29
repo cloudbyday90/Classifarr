@@ -75,8 +75,24 @@ use the real archived-disabled invariant and explicitly assert music rejection;
 no production constraint was weakened. An optional-request-field regression was
 also caught and corrected: omitted `resume` retains the original two-field body.
 
-The isolated fresh-install/published-upgrade drill is recorded separately after
-testing the committed source. It is not a live-container deployment.
+## Isolated installation acceptance
+
+All 12 fresh-install/published-upgrade checks and owned-resource cleanup passed
+against clean source `afc84d938e7d42574eaa4d4cbd60e029249be136` on September 28,
+2026 (receipt completed at `2026-09-29T01:59:23.245Z`). The verified baseline was
+`v0.48.4-beta`; both fresh and upgraded candidates had 298 migrations on PostgreSQL
+18.6. The tests exercised real scheduler progress, interrupted backfill recovery,
+persisted-volume migrations, interrupted restore, rejected unverified startup,
+rollback, explicit verified retry and movie/TV recovery through profiles.
+
+The local receipt is generated at `.tmp/ci/runtime-installation-acceptance.json`
+and is intentionally ignored by Git. This verifies the isolated synthetic
+installation cohort, not live provider metadata quality or a newly published
+image. No additional CPU/PID-budget profile was requested for this run.
+
+After the drill, the live container still had its original identity
+`95557b17c965` and start time `2026-09-29T01:16:51.534281224Z`, with healthy status,
+zero restarts and no OOM kill. The candidate was not deployed there.
 
 ## PR and operational scope
 
