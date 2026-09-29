@@ -186,6 +186,7 @@ describe('QueueService', () => {
     describe('processTask', () => {
         it('should process classification task success', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 1,
                 task_type: 'classification',
                 payload: JSON.stringify({ title: 'Test Movie', media_type: 'movie' }),
@@ -212,6 +213,7 @@ describe('QueueService', () => {
 
         it('should process metadata_enrichment task (OMDb+Tavily)', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 2,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -244,6 +246,7 @@ describe('QueueService', () => {
 
         it('should preserve source-library identity and metadata_enrichment source in persisted metadata', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 99,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -286,6 +289,7 @@ describe('QueueService', () => {
 
         it('should mark holiday-only web-search enrichment in the completed task result', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 100,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -332,6 +336,7 @@ describe('QueueService', () => {
 
         it('should return the self-healed source library name in the completed task result', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 101,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -381,6 +386,7 @@ describe('QueueService', () => {
 
         it('should recover a missing source library name from the libraries table for completion and persistence', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 102,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -443,6 +449,7 @@ describe('QueueService', () => {
 
         it('should suppress warn spam for OMDb HALF_OPEN throttling and queue for OMDb retry', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 3,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -498,6 +505,7 @@ describe('QueueService', () => {
 
         it('should throttle OMDb SSL warning spam and queue OMDb retry', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 4,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -562,6 +570,7 @@ describe('QueueService', () => {
 
         it('should resume OMDb enrichment when SSL recovery probe reports healthy', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 5,
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
@@ -1073,7 +1082,7 @@ describe('QueueService', () => {
         it('should mark task as completed', async () => {
             db.query.mockResolvedValue({});
 
-            await queueService.completeTask(123, { success: true });
+            await queueService.completeTask(123, { success: true }, '11111111-1111-4111-8111-111111111111');
 
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'completed'/s),
@@ -1085,7 +1094,7 @@ describe('QueueService', () => {
             const recordTerminal = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordTerminal')
                 .mockResolvedValue(true);
             db.query.mockResolvedValue({ rows: [{ task_type: 'classification', attempts: 1 }] });
-            await queueService.completeTask(123, { success: true });
+            await queueService.completeTask(123, { success: true }, '11111111-1111-4111-8111-111111111111');
             expect(recordTerminal).toHaveBeenCalledWith(123, 'completed', 1);
         });
     });
@@ -1094,10 +1103,10 @@ describe('QueueService', () => {
         it('should mark task as failed when max attempts reached', async () => {
             db.query.mockResolvedValue({});
 
-            await queueService.failTask(123, 'provider endpoint=https://private.example/?token=secret', 3, 3);
+            await queueService.failTask(123, 'provider endpoint=https://private.example/?token=secret', 3, 3, '11111111-1111-4111-8111-111111111111');
 
             expect(db.query).toHaveBeenCalledWith(
-                expect.stringMatching(/UPDATE task_queue.*SET status = 'failed'/s),
+                expect.stringContaining("THEN 'failed' ELSE 'pending' END"),
                 expect.arrayContaining([123, 'task_processing_failed']),
             );
         });
@@ -1105,9 +1114,10 @@ describe('QueueService', () => {
         it('records normalized retry and terminal failure codes', async () => {
             const recordTerminal = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordTerminal')
                 .mockResolvedValue(true);
-            db.query.mockResolvedValue({ rows: [{ task_type: 'classification' }] });
-            await queueService.failTask(123, 'private upstream detail', 0, 3);
-            await queueService.failTask(123, 'private upstream detail', 2, 3);
+            db.query.mockResolvedValueOnce({ rows: [{ task_type: 'classification', attempts: 1, status: 'pending' }] })
+                .mockResolvedValueOnce({ rows: [{ task_type: 'classification', attempts: 3, status: 'failed' }] });
+            await queueService.failTask(123, 'private upstream detail', 0, 3, '11111111-1111-4111-8111-111111111111');
+            await queueService.failTask(123, 'private upstream detail', 2, 3, '11111111-1111-4111-8111-111111111111');
             expect(recordTerminal).toHaveBeenNthCalledWith(1, 123, 'retry_scheduled', 1, 'task_processing_failed');
             expect(recordTerminal).toHaveBeenNthCalledWith(2, 123, 'failed', 3, 'task_processing_failed');
         });
@@ -1115,10 +1125,10 @@ describe('QueueService', () => {
         it('should reschedule task for retry when attempts remain', async () => {
             db.query.mockResolvedValue({});
 
-            await queueService.failTask(123, 'Temporary error', 1, 3);
+            await queueService.failTask(123, 'Temporary error', 1, 3, '11111111-1111-4111-8111-111111111111');
 
             expect(db.query).toHaveBeenCalledWith(
-                expect.stringMatching(/UPDATE task_queue.*SET status = 'pending'/s),
+                expect.stringContaining("THEN 'failed' ELSE 'pending' END"),
                 expect.any(Array),
             );
         });
@@ -2149,18 +2159,18 @@ describe('QueueService', () => {
             expect(sql).toMatch(/visible_at\s*=\s*NULL/);
         });
 
-        it('decrements this.processing by the number of recovered rows', async () => {
+        it('does not free active execution slots when recovering durable rows', async () => {
             queueService.processing = 5;
             db.query.mockResolvedValue({ rowCount: 3, rows: [{ id: 1 }, { id: 2 }, { id: 3 }] });
             await queueService.recoverExpiredVisibilityTasks();
-            expect(queueService.processing).toBe(2);
+            expect(queueService.processing).toBe(5);
         });
 
-        it('does not decrement this.processing below zero', async () => {
+        it('does not decrement local counts for another process recovery', async () => {
             queueService.processing = 1;
             db.query.mockResolvedValue({ rowCount: 5, rows: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }] });
             await queueService.recoverExpiredVisibilityTasks();
-            expect(queueService.processing).toBe(0);
+            expect(queueService.processing).toBe(1);
         });
 
         it('returns 0 and logs error when query fails', async () => {
@@ -2276,6 +2286,7 @@ describe('QueueService', () => {
         it('sets error_message to diagnostic note instead of NULL on in-flight tasks', async () => {
             db.query.mockResolvedValue({ rowCount: 2, rows: [{ id: 10 }, { id: 11 }] });
             queueService.running = true;
+            queueService.queueWorkerLoopService.activeClaims.add({ id: 10, claim_token: '11111111-1111-4111-8111-111111111111' });
 
             await queueService.gracefulShutdown();
 
@@ -2283,14 +2294,15 @@ describe('QueueService', () => {
                 ([sql]) => typeof sql === 'string' && sql.includes("SET status = 'pending'"),
             );
             expect(updateCall).toBeDefined();
-            expect(updateCall[0]).toContain('error_message = $1');
-            expect(updateCall[1]).toEqual(['task_graceful_shutdown_recovered']);
+            expect(updateCall[0]).toContain('claim_token = $2::uuid');
+            expect(updateCall[1]).toEqual([10, '11111111-1111-4111-8111-111111111111', 'task_graceful_shutdown_recovered']);
             expect(updateCall[0]).not.toMatch(/error_message\s*=\s*NULL/);
         });
 
         it('does not throw when the DB update fails', async () => {
             db.query.mockRejectedValue(new Error('DB gone'));
             queueService.running = true;
+            queueService.queueWorkerLoopService.activeClaims.add({ id: 10, claim_token: '11111111-1111-4111-8111-111111111111' });
 
             await expect(queueService.gracefulShutdown()).resolves.toBeUndefined();
             expect(queueService.logger.error).toHaveBeenCalledWith(
@@ -2328,6 +2340,7 @@ describe('QueueService', () => {
     describe('rebuild_hnsw_index task', () => {
         it('runs CREATE INDEX CONCURRENTLY for all three image indexes and completes task', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 99,
                 task_type: 'rebuild_hnsw_index',
                 payload: JSON.stringify({ reason: 'image_dimension_mismatch', targetDims: 768 }),
@@ -2357,6 +2370,7 @@ describe('QueueService', () => {
 
         it('propagates error and fails task when CREATE INDEX CONCURRENTLY throws', async () => {
             const task = {
+                claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 100,
                 task_type: 'rebuild_hnsw_index',
                 payload: JSON.stringify({ reason: 'image_dimension_mismatch', targetDims: 512 }),
@@ -2380,7 +2394,7 @@ describe('QueueService', () => {
             expect(JSON.stringify(queueService.logger.error.mock.calls)).not.toContain('index build failed');
 
             const failCall = db.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && /UPDATE task_queue\s+SET status = 'failed'/i.test(sql),
+                ([sql]) => typeof sql === 'string' && sql.includes("THEN 'failed' ELSE 'pending' END"),
             );
             expect(failCall).toBeDefined();
         });

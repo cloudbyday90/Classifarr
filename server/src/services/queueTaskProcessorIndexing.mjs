@@ -23,5 +23,5 @@ export async function rebuildImageIndexes(task, { db, logger, completeTask }) {
             'idx_embeddings_image_present',
             'idx_embeddings_image_hash'
         ]
-    });
+    }, task.claim_token);
 }

@@ -41,7 +41,7 @@ export async function processRatingNormalization(task, { db, logger, completeTas
     }
 
     if (skipped) {
-        await completeTask(task.id, { skipped: true, reason: 'Item not found' });
+        await completeTask(task.id, { skipped: true, reason: 'Item not found' }, task.claim_token);
         return;
     }
 
@@ -56,14 +56,14 @@ export async function processRatingNormalization(task, { db, logger, completeTas
             normalized: true,
             original: originalRating,
             new: normalizedRating
-        });
+        }, task.claim_token);
         return;
     }
 
     logger.debug('Rating already standard', {
         itemId: media_item_id,
         rating: originalRating
-    });
+    }, task.claim_token);
 
     await completeTask(task.id, {
         normalized: false,

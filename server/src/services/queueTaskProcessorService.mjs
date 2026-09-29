@@ -117,11 +117,11 @@ export class QueueTaskProcessorService {
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
         if (!payloadMediaType(payload)) {
+            if (await this.completeTask(task.id, { success: true, skipped: true, reason: 'unsupported_media_type' }, task.claim_token) === false) return;
             if (task.webhook_log_id) await this.db.query(
                 "UPDATE webhook_log SET processing_status = 'skipped' WHERE id = $1",
                 [task.webhook_log_id],
             );
-            await this.completeTask(task.id, { success: true, skipped: true, reason: 'unsupported_media_type' });
             return;
         }
         const result = await this.classificationService.classifyQueueTask(task, {
@@ -140,7 +140,7 @@ export class QueueTaskProcessorService {
                 ...result,
                 requestDestinationAdmission,
             };
-        await this.completeTask(task.id, completedResult);
+        if (await this.completeTask(task.id, completedResult, task.claim_token) === false) return;
 
         if (payload.itemId && result.bestMatch) {
             const newMetadata = {
@@ -223,6 +223,7 @@ export class QueueTaskProcessorService {
                         QUEUE_TASK_FAILURE_REASON_IDS.UNKNOWN_TASK_TYPE,
                         task.attempts,
                         task.max_attempts,
+                        task.claim_token,
                     );
             }
         } catch {
@@ -231,12 +232,14 @@ export class QueueTaskProcessorService {
                 taskType: task.task_type,
                 reasonCode: QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
             });
-            await this.failTask(
+            const acknowledged = await this.failTask(
                 task.id,
                 QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
                 task.attempts,
                 task.max_attempts,
+                task.claim_token,
             );
+            if (acknowledged === false) return;
 
             if (task.task_type === 'metadata_enrichment') {
                 const payload = parsePayload(task.payload);

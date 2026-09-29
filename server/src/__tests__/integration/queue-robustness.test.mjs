@@ -18,7 +18,7 @@
 
 /**
  * Integration tests for queue robustness fixes:
- *  1. recoverExpiredVisibilityTasks() SQL + in-memory counter compensation
+ *  1. recoverExpiredVisibilityTasks() SQL + active-execution counter preservation
  *  2. Rating normalization queue service dedup (prevents double-queueing on restart)
  *  3. _queryWithTimeout() normal-path execution against a real pool client
  */
@@ -77,7 +77,7 @@ describe('Queue Robustness Integration Tests', () => {
     worker.processTask = async task => {
       started.push(task.id);
       if (started.length === 1) await first;
-      await worker.completeTask(task.id, { enriched: true });
+      await worker.completeTask(task.id, { enriched: true }, task.claim_token);
       completed.push(task.id);
     };
     const until = async condition => {
@@ -127,7 +127,7 @@ describe('Queue Robustness Integration Tests', () => {
       const count = await queueService.recoverExpiredVisibilityTasks();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        'Recovered tasks with expired visibility timeout; decremented processing counter',
+        'Recovered tasks with expired visibility timeout; active execution counts unchanged',
         expect.objectContaining({ count: 1 })
       );
       expect(count).toBe(1);
@@ -154,7 +154,7 @@ describe('Queue Robustness Integration Tests', () => {
       expect(row.rows[0].status).toBe('processing');
     });
 
-    test('decrements this.processing by the recovered count against a real DB', async () => {
+    test('preserves active local execution counts when durable leases expire', async () => {
       await db.query(`
         INSERT INTO task_queue (task_type, status, payload, priority, visible_at)
         VALUES
@@ -168,14 +168,14 @@ describe('Queue Robustness Integration Tests', () => {
       const count = await queueService.recoverExpiredVisibilityTasks();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        'Recovered tasks with expired visibility timeout; decremented processing counter',
-        expect.objectContaining({ count: 2, processingAfter: 1 })
+        'Recovered tasks with expired visibility timeout; active execution counts unchanged',
+        expect.objectContaining({ count: 2, processingAfter: 3 })
       );
       expect(count).toBe(2);
-      expect(queueService.processing).toBe(1);
+      expect(queueService.processing).toBe(3);
     });
 
-    test('processing counter never goes below zero', async () => {
+    test('recovering another instance tasks cannot free local slots', async () => {
       await db.query(`
         INSERT INTO task_queue (task_type, status, payload, priority, visible_at)
         VALUES
@@ -188,10 +188,10 @@ describe('Queue Robustness Integration Tests', () => {
       await queueService.recoverExpiredVisibilityTasks();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        'Recovered tasks with expired visibility timeout; decremented processing counter',
-        expect.objectContaining({ count: 2, processingAfter: 0 })
+        'Recovered tasks with expired visibility timeout; active execution counts unchanged',
+        expect.objectContaining({ count: 2, processingAfter: 1 })
       );
-      expect(queueService.processing).toBe(0);
+      expect(queueService.processing).toBe(1);
     });
 
     test('recovery sets error_message to the diagnostic string', async () => {
@@ -203,7 +203,7 @@ describe('Queue Robustness Integration Tests', () => {
       await queueService.recoverExpiredVisibilityTasks();
 
       expect(logger.warn).toHaveBeenCalledWith(
-        'Recovered tasks with expired visibility timeout; decremented processing counter',
+        'Recovered tasks with expired visibility timeout; active execution counts unchanged',
         expect.objectContaining({ count: 1 })
       );
 

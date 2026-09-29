@@ -57,10 +57,8 @@ import { withMetadataRefillOwnership } from './queueRefillCoordination.mjs';
 import { createInventoryCredentialWakeupService } from './inventoryCredentialWakeupService.mjs';
 import { queueStartupPerformanceReceiptService } from './queueStartupPerformanceReceiptService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
-import {
-  normalizeQueueTaskFailureReasonId,
-  QUEUE_TASK_LOG_REASON_IDS,
-} from './queueTaskFailureReason.mjs';
+import { QUEUE_TASK_LOG_REASON_IDS } from './queueTaskFailureReason.mjs';
+import { QueueTaskAcknowledgementService } from './queueTaskAcknowledgementService.mjs';
 import { QueueConcurrencySettingsService } from './queueConcurrencySettingsService.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import {
@@ -74,7 +72,6 @@ import { ClassificationIntakeReceiptService } from './classificationIntakeReceip
 
 const POLL_INTERVAL_MS = 1000;
 const HARD_MAX_CONCURRENT = 25;
-const RETRY_DELAYS = [30, 60, 120, 300, 600];
 const OMDB_CIRCUIT_WARN_THROTTLE_MS = 60000;
 const VISIBILITY_TIMEOUT_MINUTES = parseInt(process.env.TASK_VISIBILITY_TIMEOUT_MINUTES || '10', 10);
 const VISIBILITY_RECOVERY_INTERVAL_MS = 60_000;
@@ -93,6 +90,9 @@ export class QueueService {
     this.logger = deps.logger || createLogger('QueueService');
     this.classificationIntakeReceiptService = deps.classificationIntakeReceiptService
       || new ClassificationIntakeReceiptService({ db: this.db, logger: this.logger });
+    this.queueTaskAcknowledgementService = new QueueTaskAcknowledgementService({
+      db: this.db, logger: this.logger, receiptService: this.classificationIntakeReceiptService,
+    });
     this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
     this.scheduler = deps.scheduler || null;
     this.processingByType = {
@@ -361,7 +361,7 @@ export class QueueService {
     try {
       const result = await this.db.query(
         `UPDATE task_queue
-         SET status = 'processing', started_at = NOW(),
+         SET status = 'processing', started_at = NOW(), claim_token = gen_random_uuid(),
              visible_at = NOW() + INTERVAL '${VISIBILITY_TIMEOUT_MINUTES} minutes'
          WHERE id = (
            SELECT id FROM task_queue
@@ -395,67 +395,12 @@ export class QueueService {
     }
   }
 
-  async completeTask(taskId, result = {}) {
-    try {
-      const update = await this.db.query(
-        `UPDATE task_queue
-         SET status = 'completed', completed_at = NOW(), visible_at = NULL, payload = payload || $2
-         WHERE id = $1 RETURNING task_type, attempts`,
-        [taskId, JSON.stringify({ result })],
-      );
-      if (update?.rows?.[0]?.task_type === 'classification') {
-        await this.classificationIntakeReceiptService.recordTerminal(taskId, 'completed', update.rows[0].attempts);
-      }
-      this.logger.info('Task completed', { taskId });
-    } catch {
-      this.logger.error('Failed to complete task', {
-        taskId,
-        reasonCode: QUEUE_TASK_LOG_REASON_IDS.COMPLETE_FAILED,
-      });
-    }
+  async completeTask(taskId, result = {}, claimToken) {
+    return this.queueTaskAcknowledgementService.complete(taskId, result, claimToken);
   }
 
-  async failTask(taskId, failureReasonId, currentAttempts, maxAttempts) {
-    const nextAttempt = currentAttempts + 1;
-    const boundedFailureReasonId = normalizeQueueTaskFailureReasonId(failureReasonId);
-
-    try {
-      if (nextAttempt >= maxAttempts) {
-        const update = await this.db.query(
-          `UPDATE task_queue
-           SET status = 'failed', error_message = $2, attempts = $3, completed_at = NOW()
-           WHERE id = $1 RETURNING task_type`,
-          [taskId, boundedFailureReasonId, nextAttempt],
-        );
-        if (update?.rows?.[0]?.task_type === 'classification') {
-          await this.classificationIntakeReceiptService.recordTerminal(
-            taskId, 'failed', nextAttempt, boundedFailureReasonId,
-          );
-        }
-        this.logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
-      } else {
-        const delaySeconds = RETRY_DELAYS[Math.min(nextAttempt - 1, RETRY_DELAYS.length - 1)];
-        const update = await this.db.query(
-          `UPDATE task_queue
-           SET status = 'pending', error_message = $2, attempts = $3,
-               next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
-               started_at = NULL, visible_at = NULL
-           WHERE id = $1 RETURNING task_type`,
-          [taskId, boundedFailureReasonId, nextAttempt],
-        );
-        if (update?.rows?.[0]?.task_type === 'classification') {
-          await this.classificationIntakeReceiptService.recordTerminal(
-            taskId, 'retry_scheduled', nextAttempt, boundedFailureReasonId,
-          );
-        }
-        this.logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
-      }
-    } catch {
-      this.logger.error('Failed to update task status', {
-        taskId,
-        reasonCode: QUEUE_TASK_LOG_REASON_IDS.STATUS_UPDATE_FAILED,
-      });
-    }
+  async failTask(taskId, failureReasonId, _currentAttempts, _maxAttempts, claimToken) {
+    return this.queueTaskAcknowledgementService.fail(taskId, failureReasonId, claimToken);
   }
 
   async checkAIAvailability() {

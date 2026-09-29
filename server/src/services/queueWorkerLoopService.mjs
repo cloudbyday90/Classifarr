@@ -10,6 +10,7 @@ import { setImmediate as yieldForTurn } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
 import { backgroundResourceAdmission } from './backgroundResourceAdmission.mjs';
 import { createQueueWorkerWakeup } from './queueWorkerWakeup.mjs';
+import { releaseQueueClaim } from './queueTaskAcknowledgementService.mjs';
 import {
     QUEUE_TASK_FAILURE_REASON_IDS,
     QUEUE_TASK_RECOVERY_LOG_REASON_IDS,
@@ -61,16 +62,14 @@ export class QueueWorkerLoopService {
         this.aiAvailabilityProbeIntervalMs = deps.aiAvailabilityProbeIntervalMs || 30_000;
         this.wakeup = createQueueWorkerWakeup({ wait: deps.wait });
         this.workerPromise = null;
+        this.activeClaims = new Set();
         this.stopRequested = false;
         this.stopToken = null;
         this.yieldToEventLoop = deps.yieldToEventLoop || (() => yieldForTurn());
     }
 
-    async requeueTask(taskId) {
-        await this.db.query(
-            `UPDATE task_queue SET status = 'pending', started_at = NULL, visible_at = NULL WHERE id = $1`,
-            [taskId]
-        );
+    async requeueTask(task) {
+        return releaseQueueClaim(this.db, task);
     }
 
     async checkAIAvailability() {
@@ -208,7 +207,7 @@ export class QueueWorkerLoopService {
         if (!this.stopRequested && task.task_type === 'classification') {
             const aiReady = aiReadiness ?? await this.checkAIAvailability();
             if (!aiReady) {
-                await this.requeueTask(task.id);
+                await this.requeueTask(task);
                 if (!this.stopRequested) await this.wakeup.wait(this.pollIntervalMs, { interruptible: false });
                 return true;
             }
@@ -216,11 +215,12 @@ export class QueueWorkerLoopService {
 
         // Stop may have happened while dequeue or AI readiness was awaiting I/O.
         if (this.stopRequested) {
-            await this.requeueTask(task.id);
+            await this.requeueTask(task);
             return false;
         }
 
         this.incrementProcessing(task.task_type);
+        this.activeClaims.add(task);
         const release = retainPermit();
         // Include synchronous throws and asynchronous rejection in the same lifetime.
         void Promise.resolve().then(() => this.processTask(task)).catch(() => {
@@ -228,6 +228,7 @@ export class QueueWorkerLoopService {
                 reasonCode: 'queue_task_execution_failed',
             });
         }).finally(() => {
+            this.activeClaims.delete(task);
             try { this.decrementProcessing(task.task_type); } finally {
                 release();
                 this.notifyWorkAvailable();
@@ -251,7 +252,7 @@ export class QueueWorkerLoopService {
                 }
                 const result = await client.query(
                     `UPDATE task_queue 
-                     SET status = 'pending', started_at = NULL, visible_at = NULL,
+                     SET status = 'pending', started_at = NULL, visible_at = NULL, claim_token = NULL,
                          error_message = $1
                      WHERE status = 'processing'
                        AND (started_at IS NULL OR started_at < NOW() - ($2::integer * INTERVAL '1 minute'))
@@ -281,7 +282,7 @@ export class QueueWorkerLoopService {
         try {
             const result = await this.db.query(
                 `UPDATE task_queue
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
+                 SET status = 'pending', started_at = NULL, visible_at = NULL, claim_token = NULL,
                      error_message = $1
                  WHERE status = 'processing'
                    AND visible_at IS NOT NULL
@@ -290,10 +291,8 @@ export class QueueWorkerLoopService {
                 [QUEUE_TASK_FAILURE_REASON_IDS.VISIBILITY_TIMEOUT_RECOVERED]
             );
             if (result.rowCount > 0) {
-                for (const row of result.rows) {
-                    this.decrementProcessing(row.task_type);
-                }
-                this.logger.warn('Recovered tasks with expired visibility timeout; decremented processing counter', {
+                // Durable eligibility is not proof that a local execution has stopped.
+                this.logger.warn('Recovered tasks with expired visibility timeout; active execution counts unchanged', {
                     count: result.rowCount,
                     taskIds: result.rows.map(r => r.id),
                     processingAfter: this.getState().processing,
@@ -311,18 +310,14 @@ export class QueueWorkerLoopService {
     async gracefulShutdown() {
         this.stopWorker();
         try {
-            const result = await this.db.query(
-                `UPDATE task_queue
-                 SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = $1
-                 WHERE status = 'processing'
-                 RETURNING id`,
-                [QUEUE_TASK_FAILURE_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERED]
-            );
-            if (result.rowCount > 0) {
+            const released = [];
+            for (const task of [...this.activeClaims]) {
+                if (await releaseQueueClaim(this.db, task, QUEUE_TASK_FAILURE_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERED)) released.push(task.id);
+            }
+            if (released.length > 0) {
                 this.logger.info('Graceful shutdown: reset in-flight tasks to pending', {
-                    count: result.rowCount,
-                    taskIds: result.rows.map(r => r.id),
+                    count: released.length,
+                    taskIds: released,
                 });
             }
         } catch {

@@ -42,7 +42,8 @@ async function add(type = 'movie', id = 7) {
     [randomUUID(), libraryId, type, id])).rows[0];
 }
 async function pending() { return (await refill.selectRefillCandidates()).filter(row => row.library_id === libraryId); }
-async function run(item) { await processMetadataEnrichmentTask({ id: 1, payload: refill.buildMetadataEnrichmentPayload(item) }, deps); }
+const claimToken = 'b618a81b-bf02-4f3c-96db-8cd12a1073d2';
+async function run(item) { await processMetadataEnrichmentTask({ id: 1, claim_token: claimToken, payload: refill.buildMetadataEnrichmentPayload(item) }, deps); }
 async function stored(id) { return (await db.query('SELECT * FROM media_server_items WHERE id = $1', [id])).rows[0]; }
 async function revision() { return (await db.query('SELECT revision::text FROM library_profile_inventory_state WHERE library_id = $1', [libraryId])).rows[0].revision; }
 
@@ -130,7 +131,7 @@ test('failed requests cool down without fabricated traits and later recover', as
     provider.getMovieDetails.mockRejectedValueOnce(new Error('private diagnostic'));
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb).toBeUndefined();
-    expect(deps.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, inventoryObservationStatus: 'unavailable' }));
+    expect(deps.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, inventoryObservationStatus: 'unavailable' }), claimToken);
     expect(await pending()).toEqual([]);
     expect(await revision()).toBe('1');
     await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at = NOW() - INTERVAL '6 hours', inventory_tmdb_retry_after=NOW()-interval '1 second' WHERE id = $1", [item.id]);
@@ -160,7 +161,7 @@ test.each(['tmdb_id', 'media_type', 'library_id'])('source %s drift during provi
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb).toBeUndefined();
     expect((await stored(item.id)).inventory_tmdb_attempted_at).toBeNull();
-    expect(deps.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, reason: 'source_identity_changed' }));
+    expect(deps.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, reason: 'source_identity_changed' }), claimToken);
 });
 test('identity correction hides old traits and bookkeeping alone does not dirty the profile', async () => {
     const item = await add(); await run((await pending())[0]);

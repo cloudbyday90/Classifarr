@@ -29,7 +29,7 @@ describe('QueueWorkerLoopService', () => {
 
         deps = {
             resourceAdmission: resourceAdmissionFixture(),
-            db: { query: jest.fn() },
+            db: { query: jest.fn().mockResolvedValue({ rows: [] }) },
             logger: {
                 info: jest.fn(),
                 warn: jest.fn(),
@@ -174,6 +174,7 @@ describe('QueueWorkerLoopService', () => {
     it('falls back to requeueing if AI goes unavailable after classification is dequeued', async () => {
         deps.dequeue.mockResolvedValueOnce({
             id: 99,
+            claim_token: '11111111-1111-4111-8111-111111111111',
             task_type: 'classification',
         });
         deps.aiRouterService.checkAvailability.mockResolvedValueOnce(false);
@@ -182,8 +183,8 @@ describe('QueueWorkerLoopService', () => {
 
         expect(dispatched).toBe(true);
         expect(deps.db.query).toHaveBeenCalledWith(
-            "UPDATE task_queue SET status = 'pending', started_at = NULL, visible_at = NULL WHERE id = $1",
-            [99]
+            expect.stringContaining('claim_token = $2::uuid'),
+            [99, '11111111-1111-4111-8111-111111111111', null]
         );
         expect(deps.wait).toHaveBeenCalledWith(1000, { signal: expect.any(AbortSignal) });
         expect(deps.processTask).not.toHaveBeenCalled();
@@ -227,6 +228,29 @@ describe('QueueWorkerLoopService', () => {
             excludeTaskTypes: ['metadata_enrichment'],
         });
         expect(deps.incrementProcessing).toHaveBeenCalledWith('classification');
+    });
+
+    it('retains one execution slot and permit until an expired live worker actually settles', async () => {
+        const task = { id: 1, task_type: 'metadata_enrichment', claim_token: '11111111-1111-4111-8111-111111111111' };
+        let finish;
+        const work = new Promise(resolve => { finish = resolve; });
+        const release = jest.fn();
+        service.resourceAdmission = { tryAcquire: () => ({ allowed: true, release }) };
+        deps.dequeue.mockResolvedValueOnce(task);
+        deps.processTask.mockReturnValueOnce(work);
+        await service.maybeDispatchTask();
+        expect(service.activeClaims.has(task)).toBe(true);
+        expect(state.processing).toBe(1);
+        deps.db.query.mockResolvedValue({ rowCount: 1, rows: [{ id: 1, task_type: 'metadata_enrichment' }] });
+        await service.recoverExpiredVisibilityTasks();
+        expect(state.processing).toBe(1);
+        expect(release).not.toHaveBeenCalled();
+        finish();
+        await new Promise(resolve => { setImmediate(resolve); });
+        expect(state.processing).toBe(0);
+        expect(deps.decrementProcessing).toHaveBeenCalledTimes(1);
+        expect(release).toHaveBeenCalledTimes(1);
+        expect(service.activeClaims.size).toBe(0);
     });
 
     describe('worker wakeup lifecycle', () => {
@@ -384,11 +408,11 @@ describe('QueueWorkerLoopService', () => {
             service.stopWorker();
             const restart = service.startWorker();
             expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(1);
-            lookup.resolve({ id: 42, task_type: 'metadata_enrichment' });
+            lookup.resolve({ id: 42, task_type: 'metadata_enrichment', claim_token: '11111111-1111-4111-8111-111111111111' });
             await worker;
             await turn();
             expect(service.resetStaleProcessingTasks).toHaveBeenCalledTimes(2);
-            expect(deps.db.query).toHaveBeenCalledWith(expect.stringContaining("status = 'pending'"), [42]);
+            expect(deps.db.query).toHaveBeenCalledWith(expect.stringContaining('claim_token = $2::uuid'), [42, '11111111-1111-4111-8111-111111111111', null]);
             expect(deps.processTask).not.toHaveBeenCalled();
             service.stopWorker();
             await restart;

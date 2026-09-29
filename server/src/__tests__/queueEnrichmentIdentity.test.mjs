@@ -128,7 +128,7 @@ test.each([undefined, 'movie'])('invalid or stale task skips providers, metadata
   expect(deps.queueTmdbResolutionService.resolveAndBackfill).not.toHaveBeenCalled();
   expect(deps.queryWithTimeout).not.toHaveBeenCalled();
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
-  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'invalid_media_identity' });
+  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'invalid_media_identity' }, undefined);
   expect(deps.logger.warn).toHaveBeenCalledWith('Metadata enrichment skipped', { reason: 'invalid_media_identity' });
 });
 
@@ -143,7 +143,7 @@ test('a current source conflict skips automatic enrichment before provider calls
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
   expect(deps.completeTask).toHaveBeenCalledWith(7, {
     enriched: false, skipped: true, reason: 'current_source_identity_conflict',
-  });
+  }, undefined);
   expect(deps.logger.warn).toHaveBeenCalledWith('Metadata enrichment skipped', {
     reason: 'current_source_identity_conflict',
   });
@@ -157,7 +157,7 @@ test('source drift at metadata update prevents history and a successful enrichme
   expect(JSON.parse(deps.queryWithTimeout.mock.calls[0][1][7])).toMatchObject({ library_id: 2, media_type: 'tv' });
   expect(deps.queryWithTimeout.mock.calls[0][1][8]).toBe(30);
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
-  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' }, undefined);
   expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);
 });
 
@@ -165,6 +165,6 @@ test('source drift at history insertion prevents reporting complete enrichment',
   const deps = flowDeps();
   deps.queueClassificationHistoryService.persist.mockResolvedValue(false);
   await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
-  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' }, undefined);
   expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);
 });

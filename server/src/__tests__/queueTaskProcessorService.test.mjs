@@ -132,6 +132,30 @@ describe('resolveSourceLibraryName', () => {
 });
 
 describe('processClassificationTask', () => {
+  test('carries the original claim token and skips post-ack writes on rejection', async () => {
+    const svc = makeSvc();
+    svc.completeTask.mockResolvedValue(false);
+    svc.classificationService.classifyQueueTask.mockResolvedValue({ bestMatch: { type: 'movie', confidence: 90 } });
+    const task = { id: 1, claim_token: '11111111-1111-4111-8111-111111111111',
+      webhook_log_id: 5, payload: { itemId: 9, media_type: 'movie' } };
+    await svc.processClassificationTask(task);
+    expect(svc.completeTask).toHaveBeenCalledWith(1, expect.any(Object), task.claim_token);
+    expect(svc.queryWithTimeout).not.toHaveBeenCalled();
+    expect(svc.db.query).not.toHaveBeenCalled();
+  });
+
+  test('rejected failure carries the original token and cannot update webhook/item follow-ups', async () => {
+    const svc = makeSvc();
+    svc.failTask.mockResolvedValue(false);
+    jest.spyOn(svc, 'processMetadataEnrichmentTask').mockRejectedValue(new Error('provider failed'));
+    const sync = jest.spyOn(svc.enrichmentItemStateService, 'syncItemState');
+    const task = { id: 1, claim_token: '11111111-1111-4111-8111-111111111111',
+      task_type: 'metadata_enrichment', attempts: 0, max_attempts: 5, webhook_log_id: 4, payload: { itemId: 9 } };
+    await svc.processTask(task);
+    expect(svc.failTask).toHaveBeenCalledWith(1, 'task_processing_failed', 0, 5, task.claim_token);
+    expect(sync).not.toHaveBeenCalled();
+    expect(svc.db.query).not.toHaveBeenCalled();
+  });
   test.each(['music', 'album', 'track', undefined])('completes an already queued %s item as ignored without classification or retry', async mediaType => {
     const admission = { build: jest.fn() };
     const svc = makeSvc({ policyRequestImportDestinationAdmissionService: admission });
@@ -139,7 +163,7 @@ describe('processClassificationTask', () => {
       payload: JSON.stringify({ media: { media_type: mediaType }, title: 'Movie soundtrack' }) });
     expect(svc.completeTask).toHaveBeenCalledWith('audio-task', {
       success: true, skipped: true, reason: 'unsupported_media_type',
-    });
+    }, undefined);
     expect(svc.classificationService.classifyQueueTask).not.toHaveBeenCalled();
     expect(svc.failTask).not.toHaveBeenCalled();
     expect(admission.build).not.toHaveBeenCalled();
@@ -159,7 +183,7 @@ describe('processClassificationTask', () => {
       expect.objectContaining({ id: 'task1' }),
       expect.objectContaining({ taskId: 'task1' }),
     );
-    expect(completeTask).toHaveBeenCalledWith('task1', classifyResult);
+    expect(completeTask).toHaveBeenCalledWith('task1', classifyResult, undefined);
   });
 
   test('updates media_server_items metadata when bestMatch present', async () => {
@@ -248,7 +272,7 @@ describe('processClassificationTask', () => {
     });
     expect(completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({
       requestDestinationAdmission,
-    }));
+    }), undefined);
     expect(svc.db.query).toHaveBeenCalledWith(
       expect.stringContaining('webhook_log'),
       expect.arrayContaining([99, 'Movies'])
@@ -272,7 +296,7 @@ describe('processRatingNormalization', () => {
       id: 'task1',
       payload: { media_item_id: 99 }
     });
-    expect(completeTask).toHaveBeenCalledWith('task1', { skipped: true, reason: 'Item not found' });
+    expect(completeTask).toHaveBeenCalledWith('task1', { skipped: true, reason: 'Item not found' }, undefined);
   });
 
   test('normalizes rating when different from original', async () => {
@@ -289,7 +313,7 @@ describe('processRatingNormalization', () => {
     const svc = makeSvc({ db, completeTask });
 
     await svc.processRatingNormalization({ id: 'task1', payload: { media_item_id: 1 } });
-    expect(completeTask).toHaveBeenCalledWith('task1', { normalized: true, original: 'R', new: 'PG-13' });
+    expect(completeTask).toHaveBeenCalledWith('task1', { normalized: true, original: 'R', new: 'PG-13' }, undefined);
   });
 
   test('rolls back transaction on error', async () => {
@@ -326,7 +350,7 @@ describe('processMetadataEnrichmentTask', () => {
     await svc.processMetadataEnrichmentTask(task);
     expect(svc.queueOmdbEnrichmentService.enrich).toHaveBeenCalled();
     expect(svc.queueWebSearchEnrichmentService.enrich).toHaveBeenCalled();
-    expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ enriched: true }));
+    expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ enriched: true }), undefined);
   });
 
   test('fetches missing tmdbId and libraryId from DB when itemId provided', async () => {
@@ -360,7 +384,7 @@ describe('rebuildImageIndexes', () => {
     const svc = makeSvc();
     await svc.rebuildImageIndexes({ id: 'task1' });
     expect(svc.db.query).toHaveBeenCalledTimes(3);
-    expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ rebuilt: true }));
+    expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ rebuilt: true }), undefined);
   });
 });
 
@@ -396,7 +420,7 @@ describe('processTask', () => {
   test('calls failTask for unknown task type', async () => {
     const svc = makeSvc();
     await svc.processTask({ id: 't1', task_type: 'bogus', attempts: 1, max_attempts: 3 });
-    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_unknown_type', 1, 3);
+    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_unknown_type', 1, 3, undefined);
   });
 
   test('calls failTask on uncaught error', async () => {
@@ -410,7 +434,7 @@ describe('processTask', () => {
       max_attempts: 3,
       webhook_log_id: null
     });
-    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_processing_failed', 1, 3);
+    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_processing_failed', 1, 3, undefined);
     expect(JSON.stringify(svc.logger.error.mock.calls)).not.toContain('crash');
   });
 

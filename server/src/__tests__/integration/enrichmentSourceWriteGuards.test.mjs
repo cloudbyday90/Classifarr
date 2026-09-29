@@ -9,6 +9,7 @@ import { QueueOmdbEnrichmentService } from '../../services/queueOmdbEnrichmentSe
 import { QueueClassificationHistoryService } from '../../services/queueClassificationHistoryService.mjs';
 import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
 
+const claimToken = randomUUID();
 let pool, query, serverId, libraryIds, itemId, logger;
 beforeEach(async () => {
   pool = getPool(); query = (sql, values) => pool.query(sql, values);
@@ -62,7 +63,7 @@ function deps() {
     queueInventoryTmdbEnrichmentService: { enrich: jest.fn().mockResolvedValue(false) },
     queueClassificationHistoryService: history, completeTask: jest.fn() };
 }
-const run = (dependencies, patch = {}) => processMetadataEnrichmentTask({ id: 1,
+const run = (dependencies, patch = {}) => processMetadataEnrichmentTask({ id: 1, claim_token: claimToken,
   payload: { itemId, media_type: 'movie', ...patch } }, dependencies);
 
 test.each(Object.keys(changes))('rejects late OMDb rating after %s changes', async field => {
@@ -82,7 +83,7 @@ test.each(Object.keys(changes))('rejects final unresolved metadata and stops his
   expect((await stored())?.metadata ?? {}).toEqual({});
   expect(await historyCount()).toBe(0);
   expect(dependencies.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
-  expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+  expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' }, claimToken);
   expect(dependencies.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(itemId);
 });
 
@@ -99,7 +100,7 @@ test.each([null, 42])('allows bookkeeping and derives original rating atomically
   await run(dependencies);
   expect(await historyCount()).toBe(1);
   expect((await stored()).metadata.unrelated).toBe(true);
-  expect(dependencies.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: true }));
+  expect(dependencies.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: true }), claimToken);
   const metadata = (await query('SELECT metadata FROM classification_history WHERE library_id = $1', [libraryIds[0]])).rows[0].metadata;
   expect(metadata.source_identity_snapshot).toBeUndefined();
 });
@@ -123,7 +124,7 @@ test.each(['title', 'tmdb_id', 'deleted'])('guards history when %s changes after
   await run(dependencies);
   expect(dependencies.queueClassificationHistoryService.persist).toHaveBeenCalledTimes(1);
   expect(await historyCount()).toBe(0);
-  expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+  expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' }, claimToken);
 });
 
 test('observation-only refresh cannot update clocks or traits after source replacement', async () => {
@@ -137,7 +138,7 @@ test('observation-only refresh cannot update clocks or traits after source repla
   await run(dependencies, { inventory_tmdb_only: true });
   expect(await stored()).toMatchObject({ metadata: {}, inventory_tmdb_attempted_at: null, inventory_tmdb_fetched_at: null });
   expect(await historyCount()).toBe(0);
-  expect(dependencies.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, reason: 'source_identity_changed' }));
+  expect(dependencies.completeTask).toHaveBeenCalledWith(1, expect.objectContaining({ enriched: false, reason: 'source_identity_changed' }), claimToken);
 });
 
 test.each(['rating', 'metadata', 'history'])('%s waits for a concurrent writer and rechecks the source', async kind => {

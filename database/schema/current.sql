@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-28T21:36:00.517Z
--- Latest Migration: 20260928_060000_stabilize_inventory_observation_trigger.sql
+-- Generated: 2026-09-29T00:41:29.138Z
+-- Latest Migration: 20260929_043800_add_task_queue_claim_token.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.4 (Debian 18.4-1.pgdg12+1)
--- Dumped by pg_dump version 18.4 (Debian 18.4-1.pgdg12+1)
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8115,6 +8115,7 @@ CREATE TABLE public.task_queue (
     stage_history jsonb DEFAULT '[]'::jsonb,
     visible_at timestamp with time zone,
     classification_recovery_attempts smallint DEFAULT 0 NOT NULL,
+    claim_token uuid,
     CONSTRAINT task_queue_classification_recovery_attempts_check CHECK (((classification_recovery_attempts >= 0) AND (classification_recovery_attempts <= 1))),
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
@@ -17264,6 +17265,7 @@ FROM unnest(ARRAY[
     '20260928_030000_add_library_catalog_recovery.sql',
     '20260928_040000_add_source_content_circuits.sql',
     '20260928_050000_add_inventory_backfill_handoff.sql',
-    '20260928_060000_stabilize_inventory_observation_trigger.sql'
+    '20260928_060000_stabilize_inventory_observation_trigger.sql',
+    '20260929_043800_add_task_queue_claim_token.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

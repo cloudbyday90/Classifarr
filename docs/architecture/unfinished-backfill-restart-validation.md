@@ -137,3 +137,7 @@ The concrete review target is `server/src/services/queueService.mjs`:
 ownership predicate. That is a reason to test the overlap, not a claim that this
 run reproduced a stale-worker overwrite. Keep this follow-up separate from
 another dashboard or an identical crash benchmark.
+
+This follow-up was subsequently implemented and reproduced against real
+PostgreSQL; see [queue claim fencing validation](queue-claim-fencing-validation.md)
+for the results, deployment record and next component.

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Fence queue completion, retry and requeue by per-claim ownership so stale workers
+  cannot overwrite replacement claims. Scope shutdown recovery to local claims
+  and retain execution capacity until live work actually settles.
 - Extend opt-in installation-budget checks with a real crash during movie/TV
   backfill. Verify recovery of original queued and claimed work after the normal
   visibility lease, sibling-library progress and single durable completions on

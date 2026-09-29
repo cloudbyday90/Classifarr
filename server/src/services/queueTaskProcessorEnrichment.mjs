@@ -47,12 +47,12 @@ export async function processMetadataEnrichmentTask(task, {
         (text, values) => db.query(text, values));
     if (!enrichPayload) {
         logger.warn('Metadata enrichment skipped', { reason: 'invalid_media_identity' });
-        await completeTask(task.id, { enriched: false, skipped: true, reason: 'invalid_media_identity' });
+        await completeTask(task.id, { enriched: false, skipped: true, reason: 'invalid_media_identity' }, task.claim_token);
         return;
     }
     if (enrichPayload.source_conflict_blocks_authority === true) {
         logger.warn('Metadata enrichment skipped', { reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON });
-        await completeTask(task.id, { enriched: false, skipped: true, reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON });
+        await completeTask(task.id, { enriched: false, skipped: true, reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON }, task.claim_token);
         return;
     }
     if (enrichPayload.itemId) {
@@ -60,7 +60,7 @@ export async function processMetadataEnrichmentTask(task, {
     }
     const skipChangedSource = async () => {
         logger.warn('Metadata enrichment skipped', { reason: 'source_identity_changed' });
-        await completeTask(task.id, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+        await completeTask(task.id, { enriched: false, skipped: true, reason: 'source_identity_changed' }, task.claim_token);
         await enrichmentItemStateService.syncItemState(enrichPayload.itemId);
     };
     let enrichTmdbId = enrichPayload.tmdb_id;
@@ -144,14 +144,14 @@ export async function processMetadataEnrichmentTask(task, {
         });
     }
 
-    await completeTask(task.id, {
+    const acknowledged = await completeTask(task.id, {
         enriched: !observationOnly || observationStatus === 'captured',
         ...(observationOnly ? { inventoryObservationStatus: observationStatus } : {}),
         sourceLibrary: enrichSourceLibraryName,
         webSearchEnriched: hasWebSearchEnrichmentMetadata(enrichmentData)
-    });
+    }, task.claim_token);
 
-    if (enrichPayload.itemId) {
+    if (acknowledged !== false && enrichPayload.itemId) {
         await enrichmentItemStateService.syncItemState(enrichPayload.itemId);
     }
 }
