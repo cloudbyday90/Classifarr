@@ -72,3 +72,6 @@ for planning, stable identity after telemetry changes, changed search options,
 timer coalescing/cancellation and no-provider setup. Validate real PostgreSQL,
 fresh/upgrade installation, complete regression and the requested no-cache local
 Compose rebuild. Document exact results separately; create no release.
+
+See the [implementation and deployment outcome](cache-aware-retry-dispatch-outcome.md)
+for verification and remaining live recovery blockers.
