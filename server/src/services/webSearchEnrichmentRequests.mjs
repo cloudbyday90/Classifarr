@@ -11,7 +11,7 @@
 function buildMedia(metadata = {}) {
   return {
     title: metadata.title,
-    year: metadata.year,
+    year: metadata.year ?? undefined,
     mediaType: metadata.media_type || metadata.mediaType || 'unknown',
     tmdbId: metadata.tmdb_id || metadata.tmdbId,
   };

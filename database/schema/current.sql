@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T13:27:58.773Z
--- Latest Migration: 20260929_170000_web_search_pacing.sql
+-- Generated: 2026-09-29T14:02:54.241Z
+-- Latest Migration: 20260929_180000_web_search_usage_trace.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8754,7 +8754,7 @@ CREATE TABLE public.web_search_provider_pacing (
     CONSTRAINT web_search_provider_pacing_check CHECK (((source IS DISTINCT FROM 'legacy_tavily'::text) OR ((provider_key)::text = 'tavily'::text))),
     CONSTRAINT web_search_provider_pacing_check1 CHECK ((((blocked_until IS NULL) AND (source IS NULL) AND (config_id IS NULL) AND (credential_generation IS NULL)) OR ((blocked_until IS NOT NULL) AND (source IS NOT NULL) AND (config_id IS NOT NULL) AND (credential_generation IS NOT NULL)))),
     CONSTRAINT web_search_provider_pacing_config_id_check CHECK ((config_id > 0)),
-    CONSTRAINT web_search_provider_pacing_provider_key_check CHECK (((provider_key)::text = ANY ((ARRAY['tavily'::character varying, 'brave'::character varying, 'serper'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_pacing_provider_key_check CHECK (((provider_key)::text = ANY (ARRAY[('tavily'::character varying)::text, ('brave'::character varying)::text, ('serper'::character varying)::text]))),
     CONSTRAINT web_search_provider_pacing_source_check CHECK ((source = ANY (ARRAY['web_search'::text, 'legacy_tavily'::text])))
 );
 
@@ -8840,7 +8840,7 @@ CREATE TABLE public.web_search_provider_usage (
     result_count integer DEFAULT 0 NOT NULL,
     duration_ms integer,
     searched_at timestamp with time zone DEFAULT now() NOT NULL,
-    correlation_id uuid,
+    correlation_id character varying(120),
     classification_id bigint,
     error_code character varying(80),
     http_status integer,
@@ -17508,6 +17508,7 @@ FROM unnest(ARRAY[
     '20260929_120000_durable_enrichment_retry_schedule.sql',
     '20260929_140000_provider_credential_recovery.sql',
     '20260929_160000_provider_recovery_probes.sql',
-    '20260929_170000_web_search_pacing.sql'
+    '20260929_170000_web_search_pacing.sql',
+    '20260929_180000_web_search_usage_trace.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

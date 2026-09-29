@@ -26,6 +26,8 @@ import {
 import { getStats as _getStats } from './enrichmentRetryStats.mjs';
 import { processRetryQueue as _processRetryQueue } from './enrichmentRetryProcessing.mjs';
 import { dispatchEnrichmentRetries } from './enrichmentRetryDispatch.mjs';
+import { prepareEnrichmentRetryBatch } from './enrichmentRetryBatchPlan.mjs';
+import { scheduleEnrichmentRetryWakeup } from './enrichmentRetryWakeup.mjs';
 
 export class EnrichmentRetryService {
     constructor(deps = {}) {
@@ -38,6 +40,10 @@ export class EnrichmentRetryService {
         this.processingScheduled = false;
         this.processingInProgress = false;
         this.scheduledTimeout = null;
+        this.retryScanState = new Map();
+        this.pendingWakeDelay = null;
+        this.scheduledWakeAt = null;
+        this.retryWakeEpoch = 0;
     }
 
     get db() {
@@ -128,20 +134,14 @@ export class EnrichmentRetryService {
         }
     }
 
-    scheduleProcessing() {
-        if (this.processingScheduled || this.processingInProgress) {
-            return;
-        }
-
-        this.processingScheduled = true;
-        this.scheduledTimeout = setTimeout(() => {
-            this.processingScheduled = false;
-            this.scheduledTimeout = null;
-            this.triggerProcessing();
-        }, 5000);
+    scheduleProcessing(delayMs = 5000) {
+        scheduleEnrichmentRetryWakeup(this, delayMs);
     }
 
     cancelScheduledProcessing() {
+        this.retryWakeEpoch++;
+        this.pendingWakeDelay = null;
+        this.scheduledWakeAt = null;
         if (this.scheduledTimeout) {
             clearTimeout(this.scheduledTimeout);
             this.scheduledTimeout = null;
@@ -151,6 +151,7 @@ export class EnrichmentRetryService {
 
     resetState() {
         this.cancelScheduledProcessing();
+        this.retryScanState.clear();
         this.processingScheduled = false;
         this.processingInProgress = false;
     }
@@ -162,6 +163,7 @@ export class EnrichmentRetryService {
         }
 
         this.processingInProgress = true;
+        const wakeEpoch = this.retryWakeEpoch;
         try {
             await dispatchEnrichmentRetries(this);
         } catch (error) {
@@ -171,6 +173,9 @@ export class EnrichmentRetryService {
             });
         } finally {
             this.processingInProgress = false;
+            const delay = this.pendingWakeDelay;
+            this.pendingWakeDelay = null;
+            if (delay != null && wakeEpoch === this.retryWakeEpoch) this.scheduleProcessing(delay);
         }
     }
 
@@ -216,9 +221,10 @@ export class EnrichmentRetryService {
             enrichWithOmdb: (...args) => this.enrichWithOmdb(...args),
             enrichWithWebSearch: (...args) => this.enrichWithWebSearch(...args),
             hasAvailableWebSearchProvider: () => this.webSearchEnrichmentService.hasAvailableProvider(),
+            prepareRetryBatch: (type, size) => prepareEnrichmentRetryBatch(this, type, size),
             hasRemainingOmdbQuota: () => this.omdbService.hasRemainingQuota(),
             queueForRetry: (...args) => this.queueForRetry(...args),
-            scheduleProcessing: () => this.scheduleProcessing()
+            scheduleProcessing: (delayMs) => this.scheduleProcessing(delayMs)
         }, limit, enrichmentType);
     }
 

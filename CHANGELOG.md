@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Keep cached enrichment moving during provider waits with bounded read-only
+  retry planning and coalesced wake-ups. Preserve cache entries across health
+  updates while retaining credential, quota and source-ownership checks, and
+  preserve retry usage telemetry for text trace identifiers.
 - Pace automatic web searches and recovery probes across workers and restarts.
   Honor validated provider wait windows without spending credits on deferred
   requests, and prevent stale responses from delaying replacement credentials.

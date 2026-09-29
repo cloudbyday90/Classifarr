@@ -71,6 +71,16 @@ export class WebSearchProviderUsageCache {
     return new WebSearchProviderUsageCache({ db });
   }
 
+  async getFreshKeys(keys) {
+    if (!Array.isArray(keys) || keys.length > 150 || keys.some(key => !/^[a-f0-9]{64}$/.test(key))) {
+      throw new TypeError('invalid_cache_key_page');
+    }
+    if (!keys.length) return [];
+    const { rows } = await this.db.query(`SELECT cache_key FROM web_search_provider_cache
+      WHERE cache_key = ANY($1::text[]) AND expires_at > statement_timestamp()`, [keys]);
+    return rows.map(row => row.cache_key);
+  }
+
   async getFreshResponse(cacheKey, { now = new Date() } = {}) {
     const result = await this.db.query(
       `SELECT *

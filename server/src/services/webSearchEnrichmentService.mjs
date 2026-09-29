@@ -9,6 +9,7 @@
  */
 
 import { webSearchProviderRouter as defaultRouter } from './webSearchProviderRouter.mjs';
+import { createWebSearchRetryInspector } from './webSearchRetryReadiness.mjs';
 
 export const WEB_SEARCH_ENRICHMENT_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
@@ -28,6 +29,10 @@ export class WebSearchEnrichmentService {
     } catch {
       return false;
     }
+  }
+
+  async createRetryInspector(items) {
+    return createWebSearchRetryInspector(this.router, items);
   }
 
   async search(request, {

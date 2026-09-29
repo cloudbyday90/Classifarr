@@ -13,7 +13,6 @@ import { webSearchProviderRegistry as defaultRegistry } from './webSearchProvide
 import { webSearchProviderStorage as defaultStorage } from './webSearchProviderStorage.mjs';
 import {
   WEB_SEARCH_PROVIDER_ROUTE_STATUS,
-  WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS,
   evaluateWebSearchProviderRouteCandidate,
   sortWebSearchProviderRouteCandidates,
 } from './webSearchProviderQuotaPolicy.mjs';
@@ -30,6 +29,7 @@ import {
   sortWebSearchProviderCandidatesByQuality,
   webSearchProviderQualityCalibrationService as defaultQualityCalibrationService,
 } from './webSearchProviderQualityCalibration.mjs';
+import { canReadWebSearchCandidateCache } from './webSearchRetryReadiness.mjs';
 
 const FALLBACK_ELIGIBLE_ERROR_CODES = new Set([
   WEB_SEARCH_PROVIDER_ERROR_CODES.ADMISSION_DEFERRED,
@@ -190,10 +190,7 @@ export class WebSearchProviderRouter {
     const candidates = await this.getRouteCandidates({ purpose: request?.purpose || 'classification' });
     const availableCandidates = candidates.filter((candidate) => (
       candidate.status === WEB_SEARCH_PROVIDER_ROUTE_STATUS.AVAILABLE
-      || (!bypassCache && cacheTtlMs !== 0 && [
-        WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS.DAILY_QUOTA_EXHAUSTED,
-        WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS.MONTHLY_QUOTA_EXHAUSTED,
-      ].includes(candidate.skipReason))
+      || (!bypassCache && cacheTtlMs !== 0 && canReadWebSearchCandidateCache(candidate))
     ));
 
     if (availableCandidates.length === 0) {

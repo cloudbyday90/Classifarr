@@ -3,6 +3,7 @@ import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createAutomaticDestinationEvaluation, AUTOMATIC_DESTINATION_EVALUATION_LOCK } from '../../services/automaticDestinationEvaluation.mjs';
@@ -134,11 +135,20 @@ test('readers withhold old, future or malformed reports; missing migration fails
 
 test('other workers skip a held database lock and recover after its session ends', async () => {
   const client = await getPool().connect();
+  const pid = (await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
   try {
     await client.query('SELECT pg_advisory_lock($1)', [AUTOMATIC_DESTINATION_EVALUATION_LOCK]);
     expect(await worker.run()).toEqual({ status: 'busy' });
     expect((await status()).status).toBe('never_run');
   } finally { client.release(true); }
+  // Pool release initiates socket closure; it does not await server-side lock release.
+  // Observe the actual release before asserting recovery, with a bounded deadline.
+  let held = true;
+  for (let attempt = 0; held && attempt < 250; attempt += 1) {
+    held = (await db.query("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND locktype='advisory') AS held", [pid])).rows[0].held;
+    if (held) await delay(20);
+  }
+  expect(held).toBe(false);
   expect(await worker.run()).toEqual({ status: 'evaluated' });
 });
 

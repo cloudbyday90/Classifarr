@@ -19,7 +19,12 @@ import {
 export const DEFAULT_WEB_SEARCH_PROVIDER_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 export const MAX_WEB_SEARCH_PROVIDER_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const CACHE_IDENTITY_VERSION = 1;
+const CACHE_IDENTITY_VERSION = 2;
+// Root-level operational fields cannot affect provider results. Keep nested
+// search options and credential generation in the identity.
+const OPERATIONAL_CONFIG_KEYS = new Set(['displayName', 'priority', 'isEnabled', 'configured',
+  'credentialsRejected', 'softDailyLimit', 'softMonthlyLimit', 'cooldownUntil', 'lastSuccessAt',
+  'lastErrorAt', 'lastErrorCode', 'lastErrorMessage', 'lastErrorHttpStatus', 'createdAt', 'updatedAt']);
 const SECRET_OR_TRANSPORT_KEYS = new Set([
   'apikey',
   'api_key',
@@ -84,7 +89,8 @@ export function normalizeWebSearchProviderCacheConfig(config = {}) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     return {};
   }
-  return stableValue(config);
+  return stableValue(Object.fromEntries(Object.entries(config)
+    .filter(([key]) => !OPERATIONAL_CONFIG_KEYS.has(key))));
 }
 
 export function normalizeWebSearchProviderCacheQuery(query) {
