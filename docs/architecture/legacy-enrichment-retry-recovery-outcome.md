@@ -65,14 +65,45 @@ Focused checks passed before full regression testing:
 
 Full backend validation passed: 1,530 suites / 46,275 tests. Full PostgreSQL
 integration passed: 195 suites / 2,295 tests; one existing opt-in suite/test was
-skipped. The initial full frontend suite passed 405 files / 5,708 tests; after the
-final receipt-validation improvement its full coverage run is being repeated.
+skipped. The final full frontend suite passed 405 files / 5,714 tests after the
+receipt-validation improvement. Total: 54,284 passing tests, plus the separate
+installation checks below. Focused counts above are included in these totals.
 
 Lint, type checks, dependency/copyright/ownership preflight, ESM checks, all four
 policy gates, production frontend build, migration integrity and Markdown checks
-passed. Final frontend coverage and clean-source installation results will be
-recorded before handoff. These checks are not a whole-platform security or
+passed. The coverage ratchet passed without lowering any baseline: backend lines
+90.23%, branches 84.90%, functions 92.13%; frontend statements 86.02%, lines 87.97%,
+branches 78.55%, functions 85.48%. These checks are not a whole-platform security or
 accessibility audit.
+
+## Clean-source installation acceptance
+
+`node scripts/run-runtime-installation-acceptance.mjs --ci` passed all 12 checks
+with a clean source tree at `bcdc4150d82059295ddc1999dd5fd7daca67f108`.
+The receipt completed at `2026-09-29T10:29:23.980Z`; its generated local path is
+`.tmp/ci/runtime-installation-acceptance.json` (ignored, not committed).
+
+- Published baseline: `v0.48.4-beta`, source
+  `a0e417fd714919bb4ca30e20f9cd2380136ca74e`, immutable image digest
+  `sha256:dc95fcdd80123b6bbf5b252fec286d9e81fbbc21a1030087c0a44abacd6a187f`.
+- Tested candidate image:
+  `sha256:fa966a0e7ec7520dc5da914028b99474108c16309f9bb2fd06c3e4182f4b7fe3`.
+- Fresh and upgraded PostgreSQL 18.6 installations reached 300 migrations; the
+  published baseline began at 222 migrations.
+- Passed published provenance, fresh operational seeds, fresh scheduler progress,
+  backfill crash recovery, published startup/export, persisted-volume migration,
+  container death during restore, rejection of unverified normal startup,
+  rollback/verified retry, movie/TV recovery-to-learning, normal restart/profile
+  preservation and upgraded startup scheduler progress.
+- Cleanup passed for this isolated Compose project, including its disposable
+  volumes and candidate image. These synthetic test resources were deleted; no
+  user data was removed. The local schema-test image remains available for reuse.
+- The live Classifarr container's ID, image and startup time remained unchanged;
+  it remained healthy with zero restarts and no recorded OOM kill.
+
+This rehearsal verifies installation and existing recovery paths. The separate
+real-PostgreSQL suite verifies the new reviewed legacy-retry workflow. Neither
+test substitutes for an operator's stopped-writer verification on a real instance.
 
 ## Research, PR selection and recommendation
 
