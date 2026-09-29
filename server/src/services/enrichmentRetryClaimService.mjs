@@ -5,6 +5,7 @@ import { QueueClaimWriteError, claimNotOwned } from './queueClaimWriteGuard.mjs'
 import { ENRICHMENT_SOURCE_SQL, encodeEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 import { TAVILY_MONTHLY_DEFERRED_REASON } from '../utils/enrichmentState.mjs';
+import { RETRY_CREDENTIALS_BLOCKED_SQL } from './enrichmentRetryCredentialGate.mjs';
 
 const configuredLease = Number(process.env.ENRICHMENT_RETRY_STALE_MS);
 export const ENRICHMENT_RETRY_STALE_MS = Number.isSafeInteger(configuredLease) && configuredLease > 0
@@ -18,6 +19,7 @@ export async function claimEnrichmentRetry(db, enrichmentType, visited = []) {
     JOIN media_server_items msi ON msi.id = erq.media_item_id
     WHERE erq.status = 'pending' AND erq.enrichment_type = $1
       AND erq.next_attempt_at <= statement_timestamp()
+      AND NOT ${RETRY_CREDENTIALS_BLOCKED_SQL}
       AND NOT EXISTS (SELECT 1 FROM enrichment_retry_cooldowns cooldown
         WHERE cooldown.dependency = CASE WHEN $1 = 'omdb' THEN 'omdb' ELSE 'web_search' END
           AND cooldown.next_attempt_at > statement_timestamp())

@@ -30,6 +30,14 @@
         v-else
         class="space-y-4"
       >
+        <p
+          v-if="credentialsRejected"
+          role="status"
+          class="text-amber-300 text-sm"
+        >
+          Enrichment paused: OMDb rejected access. Save a corrected key, or disable and re-enable
+          after fixing account access. Pending item retry budgets are preserved.
+        </p>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
           <PasswordInput 
@@ -170,6 +178,7 @@ const loading = ref(true)
 const saving = ref(false)
 const testing = ref(false)
 const testResult = ref(null)
+const credentialsRejected = ref(false)
 
 const config = ref({
   api_key: '',
@@ -192,6 +201,7 @@ onMounted(async () => {
   try {
     const response = await api.getOMDbConfig()
     if (response) {
+      credentialsRejected.value = Boolean(response.credential_rejected_at)
       config.value = {
         api_key: response.api_key || '',
         is_active: response.is_active,
@@ -232,7 +242,8 @@ const testConnection = async () => {
 const saveConfig = async () => {
   saving.value = true
   try {
-    await api.updateOMDbConfig(config.value)
+    const response = await api.updateOMDbConfig(config.value)
+    credentialsRejected.value = Boolean(response.data?.credential_rejected_at)
     toast.success('OMDb settings saved')
   } catch (error) {
     console.error('Failed to save settings:', error)

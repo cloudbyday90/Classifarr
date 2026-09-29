@@ -90,3 +90,15 @@ test.each(lookups.slice(0, 2))('%s queue-owned lookup makes only one transport a
     expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
     expect(deps.calculateRetryBackoff).not.toHaveBeenCalled();
 });
+
+test.each(lookups)('%s persists rejection against the reserved generation and retains safe typed errors', async (_name, run) => {
+    const context = { source: 'omdb', id: 1, generation: '879a6b9f-f343-402d-834b-040739c6411b' };
+    deps.checkAndIncrementUsage.mockResolvedValue({ apiKey: 'reserved-fixture', credentialContext: context });
+    deps.rejectCredential = jest.fn().mockResolvedValue(true);
+    httpGet.mockRejectedValue({ response: { status: 401, data: 'private upstream body' } });
+    await expect(run()).rejects.toMatchObject({ code: 'OMDB_AUTHENTICATION' });
+    expect(deps.rejectCredential).toHaveBeenCalledWith(context);
+    expect(httpGet).toHaveBeenCalledTimes(1);
+    deps.rejectCredential.mockRejectedValue(new Error('private database detail'));
+    await expect(run()).rejects.toMatchObject({ code: 'OMDB_AUTHENTICATION' });
+});

@@ -13,6 +13,7 @@ import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { maskToken } from '../utils/tokenMasking.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
+import { providerCredentialContext, rejectProviderCredential } from './providerCredentialRejection.mjs';
 
 export const WEB_SEARCH_PROVIDER_STORAGE_DEFAULTS = Object.freeze([
   { providerKey: 'tavily', displayName: 'Tavily', priority: 10 },
@@ -58,7 +59,7 @@ function maskApiKey(apiKey, maskSecrets) {
   return apiKey ? maskToken(apiKey) : null;
 }
 
-export function normalizeWebSearchProviderConfigRow(row, { maskSecrets = true } = {}) {
+export function normalizeWebSearchProviderConfigRow(row, { maskSecrets = true, credentialSource = 'web_search' } = {}) {
   if (!row) return null;
   return {
     id: row.id ?? null,
@@ -68,6 +69,8 @@ export function normalizeWebSearchProviderConfigRow(row, { maskSecrets = true } 
     priority: Number.parseInt(row.priority ?? 100, 10),
     apiKey: maskApiKey(row.api_key, maskSecrets),
     configured: Boolean(row.api_key),
+    credentialsRejected: Boolean(row.credential_rejected_at),
+    ...(!maskSecrets ? { credentialContext: providerCredentialContext(credentialSource, row) } : {}),
     config: normalizeConfigValue(row.config),
     softDailyLimit: toNullableInteger(row.soft_daily_limit),
     softMonthlyLimit: toNullableInteger(row.soft_monthly_limit),
@@ -85,13 +88,15 @@ export function normalizeWebSearchProviderConfigRow(row, { maskSecrets = true } 
 
 export function projectLegacyTavilyConfig(row, { maskSecrets = true } = {}) {
   if (!row) return null;
-  return normalizeWebSearchProviderConfigRow({
-    id: null,
+  const projected = normalizeWebSearchProviderConfigRow({
+    id: row.id,
     provider_key: 'tavily',
     display_name: 'Tavily',
     is_enabled: row.is_active,
     priority: 10,
     api_key: row.api_key,
+    credential_generation: row.credential_generation,
+    credential_rejected_at: row.credential_rejected_at,
     config: {
       searchDepth: row.search_depth || 'advanced',
       maxResults: toNullableInteger(row.max_results) || 5,
@@ -109,7 +114,8 @@ export function projectLegacyTavilyConfig(row, { maskSecrets = true } = {}) {
     legacy_source: 'tavily_config',
     created_at: row.created_at || null,
     updated_at: row.updated_at || null,
-  }, { maskSecrets });
+  }, { maskSecrets, credentialSource: 'legacy_tavily' });
+  return { ...projected, id: null };
 }
 
 export function normalizeWebSearchProviderUsageRow(row) {
@@ -160,6 +166,8 @@ export class WebSearchProviderStorage {
       : this.healthHistory;
     return new WebSearchProviderStorage({ db, healthHistory });
   }
+
+  async rejectCredential(context) { return rejectProviderCredential(this.db, context); }
 
   async recordProviderHealthEventSafely(providerKey, usage = {}, config = {}) {
     if (!this.healthHistory?.recordUsageEventSafely) return null;

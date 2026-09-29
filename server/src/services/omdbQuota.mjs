@@ -2,6 +2,7 @@
 import * as db from '../config/database.mjs';
 import { readOmdbQuota, reserveOmdbQuota } from './omdbQuotaStore.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
+import { rejectProviderCredential } from './providerCredentialRejection.mjs';
 
 export class OMDbLimitReachedError extends Error {
     constructor(message) {
@@ -11,6 +12,7 @@ export class OMDbLimitReachedError extends Error {
 }
 
 function unavailableReason(status) {
+    if (status === 'credentials_rejected') return 'OMDb access rejected; correct the saved API key or disable and re-enable after fixing account access';
     return status === 'not_configured' ? 'OMDb API key not configured' : 'OMDb quota configuration is invalid';
 }
 
@@ -42,6 +44,12 @@ export async function checkAndIncrementUsage({ metadataProviderIntegrityService 
         });
         throw new OMDbLimitReachedError(`OMDb daily limit of ${quota.limit} reached`);
     }
-    if (quota.status !== 'reserved') throw new ServiceUnavailableError(unavailableReason(quota.status));
-    return { apiKey: quota.apiKey, configId: quota.configId };
+    if (quota.status !== 'reserved') {
+        const error = new ServiceUnavailableError(unavailableReason(quota.status));
+        if (quota.status === 'credentials_rejected') error.code = 'OMDB_AUTHENTICATION';
+        throw error;
+    }
+    return { apiKey: quota.apiKey, configId: quota.configId, credentialContext: quota.credentialContext };
 }
+
+export async function rejectOmdbCredential(context) { return rejectProviderCredential(db, context); }

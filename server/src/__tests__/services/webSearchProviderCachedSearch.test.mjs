@@ -93,6 +93,23 @@ function createDependencies({ cached = null } = {}) {
 }
 
 describe('webSearchProviderCachedSearch', () => {
+  test.each(['auth_failed', 'forbidden'])('persists %s for the selected generation, not transient or cached results', async code => {
+    const dependencies = createDependencies();
+    dependencies.usageStorage.rejectCredential = jest.fn().mockResolvedValue(true);
+    const executor = new WebSearchProviderCachedSearchExecutor(dependencies);
+    const credentialContext = { source: 'web_search', id: 1, generation: '879a6b9f-f343-402d-834b-040739c6411b' };
+    const error = new WebSearchProviderError({ provider: 'tavily', errorCode: code, safeMessage: 'Access rejected' });
+    const provider = createProvider(jest.fn().mockRejectedValue(error));
+    const options = { provider, request: createRequest(), config: { credentialContext }, bypassCache: true };
+    await expect(executor.search(options)).rejects.toBe(error);
+    expect(dependencies.usageStorage.rejectCredential).toHaveBeenCalledWith(credentialContext);
+    dependencies.usageStorage.rejectCredential.mockRejectedValue(new Error('database unavailable'));
+    await expect(executor.search(options)).rejects.toBe(error);
+    dependencies.usageStorage.rejectCredential.mockClear();
+    provider.search.mockRejectedValue(new WebSearchProviderError({ provider: 'tavily', errorCode: 'timeout' }));
+    await expect(executor.search(options)).rejects.toMatchObject({ code: 'timeout' });
+    expect(dependencies.usageStorage.rejectCredential).not.toHaveBeenCalled();
+  });
   test('returns cached responses without calling the provider', async () => {
     const cachedResponse = createResponse({ providerRequestId: 'cached-req' });
     const dependencies = createDependencies({

@@ -55,6 +55,7 @@ export function maskProviderApiKey(config) {
   }
 
   const masked = { ...config };
+  delete masked.credential_generation;
   if (masked.api_key) {
     masked.api_key = maskToken(masked.api_key);
   }

@@ -1,13 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { metadataProviderDefinition } from './metadataProviderConfigSql.mjs';
+import { providerCredentialContext } from './providerCredentialRejection.mjs';
 
-const snapshotSql = `SELECT id, api_key, daily_limit, requests_today,
+const snapshotSql = `SELECT id, api_key, daily_limit, requests_today, credential_generation, credential_rejected_at,
     to_char(last_reset_date, 'YYYY-MM-DD') AS last_reset_date,
     to_char(statement_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS quota_day
     FROM omdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1`;
 
 function evaluateQuota(config) {
     if (!config?.api_key?.trim()) return { status: 'not_configured', used: 0, limit: 0 };
+    if (config.credential_rejected_at) return { status: 'credentials_rejected', used: 0, limit: 0 };
     const count = config.requests_today ?? 0;
     const limit = config.daily_limit;
     const day = config.quota_day;
@@ -39,6 +41,7 @@ export async function reserveOmdbQuota(db) {
             [quota.used + 1, quota.day, config.id]
         );
         if (result.rows.length !== 1) throw new Error('OMDb quota reservation was not persisted');
-        return { ...quota, status: 'reserved', apiKey: config.api_key, configId: config.id };
+        return { ...quota, status: 'reserved', apiKey: config.api_key, configId: config.id,
+            credentialContext: providerCredentialContext('omdb', config) };
     });
 }

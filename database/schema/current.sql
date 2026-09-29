@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T10:45:56.805Z
--- Latest Migration: 20260929_120000_durable_enrichment_retry_schedule.sql
+-- Generated: 2026-09-29T11:25:57.015Z
+-- Latest Migration: 20260929_140000_provider_credential_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -716,6 +716,25 @@ BEGIN
     NEW.inventory_tmdb_retry_after := NULL;
     NEW.inventory_tmdb_lease_id := NULL;
     NEW.inventory_tmdb_lease_until := NULL;
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: reset_provider_credential_generation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reset_provider_credential_generation() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    IF TG_OP = 'INSERT' OR OLD.api_key IS DISTINCT FROM NEW.api_key
+        OR (to_jsonb(OLD)->TG_ARGV[0]) IS DISTINCT FROM (to_jsonb(NEW)->TG_ARGV[0]) THEN
+        NEW.credential_generation := gen_random_uuid();
+        NEW.credential_rejected_at := NULL;
+    END IF;
     RETURN NEW;
 END;
 $$;
@@ -3429,6 +3448,135 @@ CREATE TABLE public.embedding_provider_availability (
 
 
 --
+-- Name: omdb_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.omdb_config (
+    id integer NOT NULL,
+    api_key character varying(255),
+    is_active boolean DEFAULT true,
+    daily_limit integer DEFAULT 1000,
+    requests_today integer DEFAULT 0,
+    last_reset_date date DEFAULT CURRENT_DATE,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    credential_generation uuid DEFAULT gen_random_uuid() NOT NULL,
+    credential_rejected_at timestamp with time zone
+);
+
+
+--
+-- Name: tavily_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tavily_config (
+    id integer NOT NULL,
+    api_key character varying(255),
+    search_depth character varying(20) DEFAULT 'basic'::character varying,
+    max_results integer DEFAULT 5,
+    include_domains text[] DEFAULT ARRAY['imdb.com'::text, 'rottentomatoes.com'::text, 'myanimelist.net'::text, 'letterboxd.com'::text],
+    exclude_domains text[] DEFAULT ARRAY[]::text[],
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    credential_generation uuid DEFAULT gen_random_uuid() NOT NULL,
+    credential_rejected_at timestamp with time zone
+);
+
+
+--
+-- Name: web_search_provider_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_config (
+    id integer NOT NULL,
+    provider_key character varying(40) NOT NULL,
+    display_name character varying(120) NOT NULL,
+    is_enabled boolean DEFAULT false NOT NULL,
+    priority integer DEFAULT 100 NOT NULL,
+    api_key text,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    soft_daily_limit integer,
+    soft_monthly_limit integer,
+    cooldown_until timestamp with time zone,
+    last_success_at timestamp with time zone,
+    last_error_at timestamp with time zone,
+    last_error_code character varying(80),
+    last_error_message text,
+    last_error_http_status integer,
+    legacy_source character varying(80),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    credential_generation uuid DEFAULT gen_random_uuid() NOT NULL,
+    credential_rejected_at timestamp with time zone,
+    CONSTRAINT web_search_provider_config_last_error_http_status_check CHECK (((last_error_http_status IS NULL) OR ((last_error_http_status >= 100) AND (last_error_http_status <= 599)))),
+    CONSTRAINT web_search_provider_config_priority_check CHECK (((priority >= 0) AND (priority <= 1000))),
+    CONSTRAINT web_search_provider_config_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
+    CONSTRAINT web_search_provider_config_soft_daily_limit_check CHECK (((soft_daily_limit IS NULL) OR (soft_daily_limit >= 0))),
+    CONSTRAINT web_search_provider_config_soft_monthly_limit_check CHECK (((soft_monthly_limit IS NULL) OR (soft_monthly_limit >= 0)))
+);
+
+
+--
+-- Name: TABLE web_search_provider_config; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_config IS 'Provider-neutral web-search configuration for Tavily, Brave, Serper, and future search providers.';
+
+
+--
+-- Name: enrichment_provider_credential_status; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.enrichment_provider_credential_status AS
+ SELECT 'omdb'::text AS dependency,
+    'omdb'::text AS provider_key,
+    (selected.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM ( SELECT omdb_config.id,
+            omdb_config.api_key,
+            omdb_config.is_active,
+            omdb_config.daily_limit,
+            omdb_config.requests_today,
+            omdb_config.last_reset_date,
+            omdb_config.created_at,
+            omdb_config.updated_at,
+            omdb_config.credential_generation,
+            omdb_config.credential_rejected_at
+           FROM public.omdb_config
+          WHERE (omdb_config.is_active = true)
+          ORDER BY omdb_config.id DESC
+         LIMIT 1) selected
+  WHERE (length(btrim((selected.api_key)::text)) > 0)
+UNION ALL
+ SELECT 'web_search'::text AS dependency,
+    web_search_provider_config.provider_key,
+    (web_search_provider_config.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM public.web_search_provider_config
+  WHERE ((web_search_provider_config.is_enabled = true) AND (length(btrim(web_search_provider_config.api_key)) > 0))
+UNION ALL
+ SELECT 'web_search'::text AS dependency,
+    'tavily'::text AS provider_key,
+    (legacy.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM ( SELECT tavily_config.id,
+            tavily_config.api_key,
+            tavily_config.search_depth,
+            tavily_config.max_results,
+            tavily_config.include_domains,
+            tavily_config.exclude_domains,
+            tavily_config.is_active,
+            tavily_config.created_at,
+            tavily_config.updated_at,
+            tavily_config.credential_generation,
+            tavily_config.credential_rejected_at
+           FROM public.tavily_config
+          ORDER BY (tavily_config.is_active IS TRUE) DESC, tavily_config.id DESC
+         LIMIT 1) legacy
+  WHERE ((legacy.is_active = true) AND (length(btrim((legacy.api_key)::text)) > 0) AND (NOT (EXISTS ( SELECT 1
+           FROM public.web_search_provider_config
+          WHERE ((web_search_provider_config.provider_key)::text = 'tavily'::text)))));
+
+
+--
 -- Name: enrichment_retry_cooldowns; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5205,22 +5353,6 @@ CREATE TABLE public.ollama_verification_capability_test_outcomes (
 --
 
 COMMENT ON TABLE public.ollama_verification_capability_test_outcomes IS 'Fixed 30-day daily counts of saved Ollama verification-test outcomes; contains no configuration or test content.';
-
-
---
--- Name: omdb_config; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.omdb_config (
-    id integer NOT NULL,
-    api_key character varying(255),
-    is_active boolean DEFAULT true,
-    daily_limit integer DEFAULT 1000,
-    requests_today integer DEFAULT 0,
-    last_reset_date date DEFAULT CURRENT_DATE,
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
-);
 
 
 --
@@ -8241,23 +8373,6 @@ ALTER SEQUENCE public.task_queue_id_seq OWNED BY public.task_queue.id;
 
 
 --
--- Name: tavily_config; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.tavily_config (
-    id integer NOT NULL,
-    api_key character varying(255),
-    search_depth character varying(20) DEFAULT 'basic'::character varying,
-    max_results integer DEFAULT 5,
-    include_domains text[] DEFAULT ARRAY['imdb.com'::text, 'rottentomatoes.com'::text, 'myanimelist.net'::text, 'letterboxd.com'::text],
-    exclude_domains text[] DEFAULT ARRAY[]::text[],
-    is_active boolean DEFAULT true,
-    created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
-);
-
-
---
 -- Name: tavily_config_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -8467,44 +8582,6 @@ COMMENT ON COLUMN public.web_search_provider_calibration_policies.maximum_priori
 --
 
 COMMENT ON COLUMN public.web_search_provider_calibration_policies.outcome_weight IS 'Maximum score points deducted from downstream outcome feedback.';
-
-
---
--- Name: web_search_provider_config; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.web_search_provider_config (
-    id integer NOT NULL,
-    provider_key character varying(40) NOT NULL,
-    display_name character varying(120) NOT NULL,
-    is_enabled boolean DEFAULT false NOT NULL,
-    priority integer DEFAULT 100 NOT NULL,
-    api_key text,
-    config jsonb DEFAULT '{}'::jsonb NOT NULL,
-    soft_daily_limit integer,
-    soft_monthly_limit integer,
-    cooldown_until timestamp with time zone,
-    last_success_at timestamp with time zone,
-    last_error_at timestamp with time zone,
-    last_error_code character varying(80),
-    last_error_message text,
-    last_error_http_status integer,
-    legacy_source character varying(80),
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT web_search_provider_config_last_error_http_status_check CHECK (((last_error_http_status IS NULL) OR ((last_error_http_status >= 100) AND (last_error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_config_priority_check CHECK (((priority >= 0) AND (priority <= 1000))),
-    CONSTRAINT web_search_provider_config_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
-    CONSTRAINT web_search_provider_config_soft_daily_limit_check CHECK (((soft_daily_limit IS NULL) OR (soft_daily_limit >= 0))),
-    CONSTRAINT web_search_provider_config_soft_monthly_limit_check CHECK (((soft_monthly_limit IS NULL) OR (soft_monthly_limit >= 0)))
-);
-
-
---
--- Name: TABLE web_search_provider_config; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.web_search_provider_config IS 'Provider-neutral web-search configuration for Tavily, Brave, Serper, and future search providers.';
 
 
 --
@@ -13861,6 +13938,13 @@ CREATE TRIGGER media_server_catalog_revision BEFORE UPDATE ON public.media_serve
 
 
 --
+-- Name: omdb_config omdb_credential_generation; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER omdb_credential_generation BEFORE INSERT OR UPDATE ON public.omdb_config FOR EACH ROW EXECUTE FUNCTION public.reset_provider_credential_generation('is_active');
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipt_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -13966,6 +14050,13 @@ CREATE TRIGGER reset_inventory_tmdb_observation_clocks BEFORE UPDATE OF tmdb_id,
 
 
 --
+-- Name: tavily_config tavily_credential_generation; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tavily_credential_generation BEFORE INSERT OR UPDATE ON public.tavily_config FOR EACH ROW EXECUTE FUNCTION public.reset_provider_credential_generation('is_active');
+
+
+--
 -- Name: classification_evidence trg_classification_evidence_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14040,6 +14131,13 @@ CREATE TRIGGER trg_tmdb_config_updated_at BEFORE UPDATE ON public.tmdb_config FO
 --
 
 CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.library_rules_v2 FOR EACH ROW EXECUTE FUNCTION public.update_library_rules_v2_updated_at();
+
+
+--
+-- Name: web_search_provider_config web_search_credential_generation; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER web_search_credential_generation BEFORE INSERT OR UPDATE ON public.web_search_provider_config FOR EACH ROW EXECUTE FUNCTION public.reset_provider_credential_generation('is_enabled');
 
 
 --
@@ -17306,6 +17404,7 @@ FROM unnest(ARRAY[
     '20260929_043800_add_task_queue_claim_token.sql',
     '20260929_100000_enrichment_retry_claims.sql',
     '20260929_110000_index_legacy_retry_receipts.sql',
-    '20260929_120000_durable_enrichment_retry_schedule.sql'
+    '20260929_120000_durable_enrichment_retry_schedule.sql',
+    '20260929_140000_provider_credential_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -14,7 +14,8 @@ import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { isCertificateError } from './omdbHealth.mjs';
 import { formatResponse } from './omdbResponse.mjs';
-import { OMDbLimitReachedError } from './omdbQuota.mjs';
+import { OMDbLimitReachedError, rejectOmdbCredential } from './omdbQuota.mjs';
+import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
 import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
@@ -75,7 +76,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 		const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
 		await enforceRateLimit();
 		// Admission failures never enter provider retry handling. No DB lock spans HTTP.
-		const { apiKey: validApiKey } = await checkAndIncrementUsage();
+		const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
 		try {
 			const params = buildParams(validApiKey);
 
@@ -108,6 +109,10 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 					error.response = { status };
 					error.retryAfterSeconds = retryAfterSeconds;
 				}
+			}
+			if (isProviderCredentialRejection(error) && credentialContext) {
+				try { await (deps.rejectCredential ?? rejectOmdbCredential)(credentialContext); }
+				catch { logger.warn('OMDb credential pause could not be persisted; retry work remains deferred'); }
 			}
 			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError ||
 				error.code === 'HTTP_RESPONSE_TOO_LARGE') {
@@ -233,7 +238,7 @@ export async function getByIMDBId(imdbId, _apiKey, deps) {
 export async function search(query, type, _apiKey, deps) {
 	const { checkAndIncrementUsage, baseUrl } = deps;
 	await enforceRateLimit();
-	const { apiKey: validApiKey } = await checkAndIncrementUsage();
+	const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
 	try {
 		const response = await httpGet(baseUrl, {
 			maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
@@ -259,7 +264,11 @@ export async function search(query, type, _apiKey, deps) {
 		throw createOmdbProviderError(outcome);
 	} catch (error) {
 		if (error.response) {
-			throw createOmdbProviderError(classifyOmdbResponse(error.response.data, error.response.status, 'search'));
+			error = createOmdbProviderError(classifyOmdbResponse(error.response.data, error.response.status, 'search'));
+		}
+		if (isProviderCredentialRejection(error) && credentialContext) {
+			try { await (deps.rejectCredential ?? rejectOmdbCredential)(credentialContext); }
+			catch { logger.warn('OMDb credential pause could not be persisted; retry work remains deferred'); }
 		}
 		throw error;
 	}

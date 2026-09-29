@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Pause enrichment for rejected provider credentials without consuming item retry
+  budgets. Resume after relevant settings changes, fence late failures against
+  key rotation, and show corrective actions in existing provider settings.
 - Persist enrichment retry due times and dependency cooldowns across restarts.
   Bound automatic batches, wait for provider readiness without spending item
   attempts, avoid nested OMDb retries, and correct legacy monthly-quota recovery.

@@ -18,6 +18,7 @@ export const WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS = Object.freeze({
   UNCONFIGURED: 'unconfigured',
   ADAPTER_UNAVAILABLE: 'adapter_unavailable',
   COOLDOWN_ACTIVE: 'cooldown_active',
+  CREDENTIALS_REJECTED: 'credentials_rejected',
   DAILY_QUOTA_EXHAUSTED: 'daily_quota_exhausted',
   MONTHLY_QUOTA_EXHAUSTED: 'monthly_quota_exhausted',
 });
@@ -108,6 +109,11 @@ export function evaluateWebSearchProviderRouteCandidate({
       status: WEB_SEARCH_PROVIDER_ROUTE_STATUS.SKIPPED,
       skipReason: WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS.ADAPTER_UNAVAILABLE,
     });
+  }
+
+  if (config.credentialsRejected) {
+    return Object.freeze({ ...baseCandidate, status: WEB_SEARCH_PROVIDER_ROUTE_STATUS.SKIPPED,
+      skipReason: WEB_SEARCH_PROVIDER_ROUTE_SKIP_REASONS.CREDENTIALS_REJECTED });
   }
 
   if (isWebSearchProviderCooldownActive(config, now)) {

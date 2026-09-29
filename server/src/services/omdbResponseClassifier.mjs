@@ -5,6 +5,7 @@ const MESSAGES = Object.freeze({
     success: 'OMDb API is healthy',
     not_found: 'OMDb not found',
     authentication: 'OMDb authentication failed; check the API key',
+    access_denied: 'OMDb access denied; check the API key and account permissions',
     quota_exhausted: 'OMDb provider request limit reached',
     rate_limited: 'OMDb request rate limited; try again later',
     invalid_request: 'OMDb rejected the lookup request',
@@ -32,6 +33,8 @@ export function classifyOmdbResponse(data, status = 200, mode = 'lookup') {
         kind = 'authentication';
     } else if (status === 429) {
         kind = 'rate_limited';
+    } else if (status === 403) {
+        kind = 'access_denied';
     } else if (!ok) {
         kind = 'provider_error';
     } else if (!record || !['True', 'False'].includes(data.Response)) {

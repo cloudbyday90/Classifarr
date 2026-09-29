@@ -508,4 +508,14 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Penalty: 20 → 0 (-20)')
     expect(toast.success).toHaveBeenCalledWith('Classification preview updated')
   })
+
+  it('explains rejected credentials without exposing internal recovery tokens', async () => {
+    api.getWebSearchProviderRouteDiagnostics.mockResolvedValue({
+      evaluatedAt: '2026-09-29T00:00:00Z', selectedProviderKey: null,
+      candidates: [{ providerKey: 'tavily', displayName: 'Tavily', status: 'skipped', skipReason: 'credentials_rejected', quota: {}, usage: {}, quality: {} }],
+    })
+    const wrapper = mount(WebSearchProviders, { global: { stubs } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Access rejected. Save a corrected key')
+  })
 })

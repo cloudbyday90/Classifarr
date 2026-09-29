@@ -60,6 +60,7 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/enrichmentRetryProcessing.mjs',
     'server/src/services/enrichmentRetrySchedulePolicy.mjs',
     'server/src/services/enrichmentRetryDispatch.mjs',
+    'server/src/services/enrichmentRetryCredentialGate.mjs',
     'server/src/services/enrichmentRetryResultPersistence.mjs',
     'server/src/services/enrichmentRetryMaintenance.mjs',
     'server/src/services/enrichmentRetryOmdb.mjs',

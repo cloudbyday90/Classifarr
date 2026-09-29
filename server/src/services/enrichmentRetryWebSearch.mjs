@@ -70,6 +70,7 @@ export async function enrichWithWebSearch({
     const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
     const code = failure?.errorCode ?? failure?.code;
     return { success: false, error: error.message,
+      credentialsRejected: ['auth_failed', 'forbidden'].includes(code),
       transient: ['rate_limited', 'provider_5xx', 'timeout', 'network_error'].includes(code),
       waitForProvider: code === 'quota_exhausted'
         || (error instanceof WebSearchProviderRoutingError && error.attempts.length === 0),

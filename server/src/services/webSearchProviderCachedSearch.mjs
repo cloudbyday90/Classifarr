@@ -18,6 +18,7 @@ import {
 } from './webSearchProviderCachePolicy.mjs';
 import { webSearchProviderStorage as defaultUsageStorage } from './webSearchProviderStorage.mjs';
 import { webSearchProviderUsageCache as defaultCacheStore } from './webSearchProviderUsageCache.mjs';
+import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
 
 function getTraceValue(request, key) {
   return request?.traceContext?.[key] ?? null;
@@ -126,6 +127,7 @@ export class WebSearchProviderCachedSearchExecutor {
     }
 
     const startedAt = this.nowFn();
+    const credentialContext = config.credentialContext;
     try {
       const response = validateWebSearchResponse(await validatedProvider.search(identity.request, config));
       const stored = ttlMs > 0
@@ -182,6 +184,12 @@ export class WebSearchProviderCachedSearchExecutor {
         },
       };
     } catch (error) {
+      if (isProviderCredentialRejection(error) && credentialContext) {
+        // Preserve the typed rejection even if its durable pause cannot be saved.
+        // The retry queue will still defer without charging item attempts.
+        try { await this.usageStorage.rejectCredential(credentialContext); }
+        catch { /* Retry remains a provider wait; telemetry below records the rejection. */ }
+      }
       await this.recordUsageSafely({
         providerKey: identity.providerKey,
         purpose: identity.purpose,

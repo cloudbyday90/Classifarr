@@ -1,5 +1,6 @@
 import { isOmdbNotFoundMessage } from './omdbResponseClassifier.mjs';
 import { OMDbLimitReachedError } from './omdbQuota.mjs';
+import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
     return isOmdbNotFoundMessage(errorMessage);
@@ -55,6 +56,9 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
 
         return { success: false, error: 'OMDb not found' };
     } catch (error) {
+        if (isProviderCredentialRejection(error)) {
+            return { success: false, credentialsRejected: true, error: 'provider_credentials_rejected' };
+        }
         if (error instanceof OMDbLimitReachedError) {
             return { success: false, deferUntilDailyReset: true, error: 'OMDb daily quota unavailable' };
         }

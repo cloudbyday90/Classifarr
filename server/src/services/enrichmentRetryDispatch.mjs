@@ -1,10 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { RETRY_CREDENTIALS_BLOCKED_SQL } from './enrichmentRetryCredentialGate.mjs';
 /** One bounded dispatch per wake-up, not a drain-until-empty loop. */
 export async function dispatchEnrichmentRetries(service) {
   await service.recoverStaleProcessingRetries();
   for (const type of ['omdb', 'web_search', 'tavily']) {
     const { rows } = await service.db.query(`SELECT id FROM enrichment_retry_queue
       WHERE status = 'pending' AND enrichment_type = $1 AND next_attempt_at <= statement_timestamp()
+        AND NOT ${RETRY_CREDENTIALS_BLOCKED_SQL}
         AND NOT EXISTS (SELECT 1 FROM enrichment_retry_cooldowns
           WHERE dependency = CASE WHEN $1 = 'omdb' THEN 'omdb' ELSE 'web_search' END
             AND next_attempt_at > statement_timestamp()) LIMIT 1`, [type]);
