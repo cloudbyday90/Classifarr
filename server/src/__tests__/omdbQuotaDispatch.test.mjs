@@ -81,3 +81,12 @@ test('pacing completes before quota reservation', async () => {
     expect(sleep).toHaveBeenCalled();
     expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(2);
 });
+
+test.each(lookups.slice(0, 2))('%s queue-owned lookup makes only one transport attempt and retains Retry-After', async (_name, run) => {
+    deps.queueOwned = true;
+    httpGet.mockRejectedValue({ response: { status: 503, headers: { 'retry-after': '120' } } });
+    await expect(run()).rejects.toMatchObject({ retryAfterSeconds: 120 });
+    expect(httpGet).toHaveBeenCalledTimes(1);
+    expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
+    expect(deps.calculateRetryBackoff).not.toHaveBeenCalled();
+});

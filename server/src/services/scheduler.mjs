@@ -161,8 +161,8 @@ class SchedulerService {
             },
         });
 
-        // Process enrichment retry queue every 6 hours as safety net for OMDb and Tavily
-        this.schedule('enrichment-retry-queue', '0 */6 * * *', () => this.processEnrichmentRetryQueue(), DB_ADVISORY_LOCKS.ENRICHMENT_RETRY_QUEUE);
+        // Durable due times/cooldowns govern admission; this wake-up survives lost timers.
+        this.schedule('enrichment-retry-queue', '* * * * *', () => this.processEnrichmentRetryQueue(), DB_ADVISORY_LOCKS.ENRICHMENT_RETRY_QUEUE);
 
         // Daily rating normalization check at 3 AM
         this.schedule('rating-normalization-check', '0 3 * * *', () => this.runRatingNormalizationCheck(), DB_ADVISORY_LOCKS.RATING_NORMALIZATION_CHECK);

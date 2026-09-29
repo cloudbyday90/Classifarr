@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T10:11:48.291Z
--- Latest Migration: 20260929_110000_index_legacy_retry_receipts.sql
+-- Generated: 2026-09-29T10:45:56.805Z
+-- Latest Migration: 20260929_120000_durable_enrichment_retry_schedule.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3429,6 +3429,18 @@ CREATE TABLE public.embedding_provider_availability (
 
 
 --
+-- Name: enrichment_retry_cooldowns; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.enrichment_retry_cooldowns (
+    dependency text NOT NULL,
+    next_attempt_at timestamp with time zone NOT NULL,
+    reason text NOT NULL,
+    CONSTRAINT enrichment_retry_cooldowns_dependency_check CHECK ((dependency = ANY (ARRAY['omdb'::text, 'web_search'::text])))
+);
+
+
+--
 -- Name: enrichment_retry_queue; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3446,7 +3458,8 @@ CREATE TABLE public.enrichment_retry_queue (
     completed_at timestamp with time zone,
     error_message text,
     claim_token uuid,
-    claim_until timestamp with time zone
+    claim_until timestamp with time zone,
+    next_attempt_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 
@@ -10042,6 +10055,14 @@ ALTER TABLE ONLY public.embedding_provider_availability
 
 
 --
+-- Name: enrichment_retry_cooldowns enrichment_retry_cooldowns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enrichment_retry_cooldowns
+    ADD CONSTRAINT enrichment_retry_cooldowns_pkey PRIMARY KEY (dependency);
+
+
+--
 -- Name: enrichment_retry_queue enrichment_retry_queue_media_item_id_enrichment_type_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12129,6 +12150,13 @@ CREATE INDEX idx_embeddings_provider ON public.classification_embeddings USING b
 --
 
 CREATE INDEX idx_embeddings_stale ON public.classification_embeddings USING btree (is_stale) WHERE (is_stale = true);
+
+
+--
+-- Name: idx_enrichment_retry_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_enrichment_retry_due ON public.enrichment_retry_queue USING btree (enrichment_type, next_attempt_at, priority, id) WHERE ((status)::text = 'pending'::text);
 
 
 --
@@ -17277,6 +17305,7 @@ FROM unnest(ARRAY[
     '20260928_060000_stabilize_inventory_observation_trigger.sql',
     '20260929_043800_add_task_queue_claim_token.sql',
     '20260929_100000_enrichment_retry_claims.sql',
-    '20260929_110000_index_legacy_retry_receipts.sql'
+    '20260929_110000_index_legacy_retry_receipts.sql',
+    '20260929_120000_durable_enrichment_retry_schedule.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

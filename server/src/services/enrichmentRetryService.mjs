@@ -25,6 +25,7 @@ import {
 } from './enrichmentRetryMaintenance.mjs';
 import { getStats as _getStats } from './enrichmentRetryStats.mjs';
 import { processRetryQueue as _processRetryQueue } from './enrichmentRetryProcessing.mjs';
+import { dispatchEnrichmentRetries } from './enrichmentRetryDispatch.mjs';
 
 export class EnrichmentRetryService {
     constructor(deps = {}) {
@@ -81,8 +82,10 @@ export class EnrichmentRetryService {
         try {
             await (transaction || this.db).query(`
         INSERT INTO enrichment_retry_queue 
-          (media_item_id, enrichment_type, reason, priority)
-        VALUES ($1, $2, $3, $4)
+          (media_item_id, enrichment_type, reason, priority, next_attempt_at)
+        VALUES ($1, $2::text, $3, $4, CASE WHEN $2::text = 'tavily' AND $3 = $5 THEN
+          (date_trunc('month', clock_timestamp() AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
+          ELSE clock_timestamp() END)
         ON CONFLICT (media_item_id, enrichment_type) DO UPDATE SET
           status = CASE 
             WHEN enrichment_retry_queue.status = 'completed' THEN 'completed'
@@ -160,62 +163,7 @@ export class EnrichmentRetryService {
 
         this.processingInProgress = true;
         try {
-            await this.recoverStaleProcessingRetries();
-
-            const initialStats = await this.getStats();
-            const pendingOmdb = initialStats.omdb?.pending || 0;
-            const pendingWebSearch = (initialStats.web_search?.pending || 0) + (initialStats.tavily?.pending || 0);
-
-            if (pendingOmdb > 0) {
-                const quota = await this.omdbService.hasRemainingQuota();
-
-                if (!quota.available) {
-                    this.logger.info('Enrichment retry queue: OMDb daily limit reached, pausing until next day', {
-                        used: quota.used,
-                        limit: quota.limit,
-                        reason: quota.reason
-                    });
-                } else {
-                    const remainingQuota = quota.limit - quota.used;
-                    const toProcess = Math.min(pendingOmdb, remainingQuota);
-
-                    this.logger.info(`Enrichment retry queue: Processing ${toProcess} OMDb items (${pendingOmdb} pending, ${remainingQuota} quota remaining)`);
-
-                    const omdbResult = await this.processRetryQueue(toProcess, 'omdb');
-                    this.logger.info('Enrichment retry queue: OMDb processed', {
-                        processed: omdbResult.processed,
-                        success: omdbResult.success,
-                        failed: omdbResult.failed
-                    });
-
-                    const updatedStats = await this.getStats();
-                    const remainingOmdb = updatedStats.omdb?.pending || 0;
-                    if (remainingOmdb > 0) {
-                        this.logger.info(`Enrichment retry queue: ${remainingOmdb} OMDb items remaining, will retry in 6 hours or when quota resets`);
-                    }
-                }
-            } else {
-                this.logger.debug('Enrichment retry queue: No pending OMDb items');
-            }
-
-            if (pendingWebSearch > 0) {
-                if (!await this.webSearchEnrichmentService.hasAvailableProvider()) {
-                    this.logger.debug(`Enrichment retry queue: ${pendingWebSearch} web-search items pending but no provider is available, skipping`);
-                } else {
-                    const webSearchBatchLimit = 50;
-                    for (const enrichmentType of ['web_search', 'tavily']) {
-                        const pending = initialStats[enrichmentType]?.pending || 0;
-                        if (pending === 0) continue;
-                        const result = await this.processRetryQueue(webSearchBatchLimit, enrichmentType);
-                        this.logger.info('Enrichment retry queue: Web search processed', {
-                            enrichmentType,
-                            processed: result.processed,
-                            success: result.success,
-                            failed: result.failed
-                        });
-                    }
-                }
-            }
+            await dispatchEnrichmentRetries(this);
         } catch (error) {
             this.logger.error('Error processing enrichment retry queue', {
                 error: error.message,
@@ -268,6 +216,7 @@ export class EnrichmentRetryService {
             enrichWithOmdb: (...args) => this.enrichWithOmdb(...args),
             enrichWithWebSearch: (...args) => this.enrichWithWebSearch(...args),
             hasAvailableWebSearchProvider: () => this.webSearchEnrichmentService.hasAvailableProvider(),
+            hasRemainingOmdbQuota: () => this.omdbService.hasRemainingQuota(),
             queueForRetry: (...args) => this.queueForRetry(...args),
             scheduleProcessing: () => this.scheduleProcessing()
         }, limit, enrichmentType);

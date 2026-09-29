@@ -17,7 +17,7 @@ function isLegacyTavilyMonthlyQuotaError(error, enrichmentType) {
   if (enrichmentType !== 'tavily') return false;
   if (error?.code === 'quota_exhausted' && error?.provider === 'tavily') return true;
   return error instanceof WebSearchProviderRoutingError
-    && error.lastError?.code === 'quota_exhausted'
+    && error.lastError?.errorCode === 'quota_exhausted'
     && error.lastError?.providerKey === 'tavily'
     && error.candidates.every((candidate) => (
       candidate.providerKey === 'tavily' || candidate.status !== 'available'
@@ -67,7 +67,13 @@ export async function enrichWithWebSearch({
       error: error.message,
       item: item.title,
     });
-    return { success: false, error: error.message };
+    const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
+    const code = failure?.errorCode ?? failure?.code;
+    return { success: false, error: error.message,
+      transient: ['rate_limited', 'provider_5xx', 'timeout', 'network_error'].includes(code),
+      waitForProvider: code === 'quota_exhausted'
+        || (error instanceof WebSearchProviderRoutingError && error.attempts.length === 0),
+      retryAfterSeconds: failure?.retryAfterSeconds };
   }
 }
 

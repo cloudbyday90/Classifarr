@@ -124,6 +124,8 @@ export async function normalizeTavilyMonthlyDeferredRows({ db, enrichmentItemSta
           reason = $1,
           attempts = 0,
           completed_at = NULL,
+          next_attempt_at = (date_trunc('month', COALESCE(last_attempt_at, created_at)
+            AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC',
           error_message = $2
       WHERE enrichment_type = 'tavily'
         AND (

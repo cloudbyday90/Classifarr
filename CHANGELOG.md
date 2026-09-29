@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Persist enrichment retry due times and dependency cooldowns across restarts.
+  Bound automatic batches, wait for provider readiness without spending item
+  attempts, avoid nested OMDb retries, and correct legacy monthly-quota recovery.
 - Add administrator-reviewed recovery for legacy movie/TV enrichment retries with
   unknown workers. Requeue exact reviewed batches with atomic audit receipts;
   preserve metadata, attempt limits and quota deferrals, and reject stale reviews.

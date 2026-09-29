@@ -66,8 +66,9 @@ class OMDbService {
 		return checkHealth(this.baseUrl, apiKey);
 	}
 
-	async getByTitle(title, year, type, apiKey) {
+	async getByTitle(title, year, type, apiKey, options = {}) {
 		return getByTitle(title, year, type, apiKey, {
+			queueOwned: options.queueOwned === true,
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
 			shouldLogSslWarning: (err) => this.shouldLogSslWarning(err),
@@ -76,8 +77,9 @@ class OMDbService {
 		});
 	}
 
-	async getByIMDBId(imdbId, apiKey) {
+	async getByIMDBId(imdbId, apiKey, options = {}) {
 		return getByIMDBId(imdbId, apiKey, {
+			queueOwned: options.queueOwned === true,
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
 			shouldLogSslWarning: (err) => this.shouldLogSslWarning(err),

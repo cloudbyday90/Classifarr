@@ -1,14 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE } from '../utils/enrichmentState.mjs';
 import { buildOmdbFallbackReason, isExpectedOmdbMiss } from './enrichmentRetryOmdb.mjs';
+import { persistRetrySchedule, retrySchedule } from './enrichmentRetrySchedulePolicy.mjs';
 
 /** Only called inside the received retry claim's write scope. No provider calls. */
 export async function persistEnrichmentRetryResult(client, claim, sourceCurrent, item, type, result, deps) {
   const id = item.queue_id;
+  const schedule = retrySchedule(result, claim.attempts);
   let outcome;
   if (!sourceCurrent) {
     await client.query(`UPDATE enrichment_retry_queue SET status = 'pending', claim_token = NULL,
-      claim_until = NULL, error_message = 'Source changed; awaiting a fresh retry', completed_at = NULL WHERE id = $1`, [id]);
+      claim_until = NULL, error_message = 'Source changed; awaiting a fresh retry', completed_at = NULL,
+      next_attempt_at = clock_timestamp() + interval '1 minute' WHERE id = $1`, [id]);
     outcome = 'source_changed';
   } else if (result.success) {
     const metadataKey = type === 'omdb' ? 'omdb' : 'web_search_imdb';
@@ -24,6 +27,10 @@ export async function persistEnrichmentRetryResult(client, claim, sourceCurrent,
     await client.query(`UPDATE enrichment_retry_queue SET status = 'pending', reason = $2, attempts = 0,
       completed_at = NULL, error_message = $3, claim_token = NULL, claim_until = NULL WHERE id = $1`,
     [id, TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE]);
+    outcome = 'deferred';
+  } else if (!schedule.chargeAttempt) {
+    await client.query(`UPDATE enrichment_retry_queue SET status = 'pending', completed_at = NULL,
+      error_message = $2, claim_token = NULL, claim_until = NULL WHERE id = $1`, [id, schedule.reason]);
     outcome = 'deferred';
   } else {
     const exhausted = claim.attempts + 1 >= claim.max_attempts;
@@ -46,6 +53,7 @@ export async function persistEnrichmentRetryResult(client, claim, sourceCurrent,
       outcome = exhausted ? 'failed' : 'pending';
     }
   }
+  if (sourceCurrent && !result.success) await persistRetrySchedule(client, id, type, schedule);
   await deps.enrichmentItemStateService.syncItemState(item.media_item_id, client);
   return outcome;
 }

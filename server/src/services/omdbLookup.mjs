@@ -18,6 +18,7 @@ import { OMDbLimitReachedError } from './omdbQuota.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
 import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
+import { parseRetryAfterSeconds } from './webSearchProviderErrorTaxonomy.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -68,7 +69,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 	} = deps;
 
 	const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
-	const maxRetries = omdbRuntime.maxRetries;
+	const maxRetries = deps.queueOwned === true ? 1 : omdbRuntime.maxRetries;
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
@@ -95,6 +96,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 			return null;
 		} catch (error) {
 			const status = error.response?.status;
+			const retryAfterSeconds = parseRetryAfterSeconds(error.response?.headers?.['retry-after']);
 			if (error.response) {
 				const outcome = classifyOmdbResponse(error.response.data, status);
 				if (['authentication', 'quota_exhausted'].includes(outcome.kind) ||
@@ -104,6 +106,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 					// Retry diagnostics need the status, never an upstream body or request credential.
 					error = new Error('OMDb HTTP request failed');
 					error.response = { status };
+					error.retryAfterSeconds = retryAfterSeconds;
 				}
 			}
 			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError ||

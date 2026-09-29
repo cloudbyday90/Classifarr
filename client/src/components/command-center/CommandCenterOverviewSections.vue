@@ -209,7 +209,7 @@
           v-if="enrichmentWebSearchDeferred > 0"
           class="enrichment-note"
         >
-          Some historical Tavily retry items are waiting for a monthly quota reset. New web-search retries use the available provider route.
+          Retries resume automatically when due and a provider is available. Check provider settings if waiting persists.
         </p>
       </div>
     </div>

@@ -69,6 +69,7 @@ function configureRetryDb(db, { pendingRows = [] } = {}) {
       return { rows: [] };
     }
     if (text.includes('SELECT id FROM enrichment_retry_queue')) return { rows: [{ id: 19 }], rowCount: 1 };
+    if (text.includes('Max attempts reached while pending')) return { rows: [], rowCount: 0 };
     return { rows: [], rowCount: 1 };
   });
 }
@@ -194,19 +195,22 @@ describe('EnrichmentRetryService', () => {
 
   test('skips web-search retry work when no provider route is currently available', async () => {
     const db = createDb();
+    configureRetryDb(db, { pendingRows: [{ queue_id: 13, media_item_id: 103 }] });
     const webSearchEnrichmentService = createWebSearchService({
       hasAvailableProvider: jest.fn().mockResolvedValue(false),
     });
     const service = createService({ db, webSearchEnrichmentService });
 
     await expect(service.processRetryQueue(50, 'web_search')).resolves.toEqual({
-      processed: 0,
+      processed: 1,
       success: 0,
       failed: 0,
       autoFailed: 0,
       skipped: true,
-      reason: 'No web search provider is available',
     });
+    expect(webSearchEnrichmentService.search).not.toHaveBeenCalled();
+    expect(db.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO enrichment_retry_cooldowns'),
+      ['web_search', expect.any(Date), 'provider_unavailable']);
   });
 
   test('moves an OMDb miss into the provider-neutral fallback queue', async () => {
@@ -226,6 +230,7 @@ describe('EnrichmentRetryService', () => {
 
   test('automatically processes both new and historical web-search queue entries', async () => {
     const service = createService();
+    service.db.query.mockResolvedValue({ rows: [{ id: 1 }] });
     jest.spyOn(service, 'recoverStaleProcessingRetries').mockResolvedValue(0);
     jest.spyOn(service, 'getStats')
       .mockResolvedValueOnce({

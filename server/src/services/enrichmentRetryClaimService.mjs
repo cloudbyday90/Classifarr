@@ -17,6 +17,10 @@ export async function claimEnrichmentRetry(db, enrichmentType, visited = []) {
     SELECT erq.id FROM enrichment_retry_queue erq
     JOIN media_server_items msi ON msi.id = erq.media_item_id
     WHERE erq.status = 'pending' AND erq.enrichment_type = $1
+      AND erq.next_attempt_at <= statement_timestamp()
+      AND NOT EXISTS (SELECT 1 FROM enrichment_retry_cooldowns cooldown
+        WHERE cooldown.dependency = CASE WHEN $1 = 'omdb' THEN 'omdb' ELSE 'web_search' END
+          AND cooldown.next_attempt_at > statement_timestamp())
       AND erq.attempts < erq.max_attempts AND NOT (erq.id = ANY($2::integer[]))
       AND msi.media_type IN ('movie', 'tv')
       AND EXISTS (SELECT 1 FROM libraries l WHERE l.id = msi.library_id AND l.is_active = true AND l.media_type IN ('movie', 'tv'))
@@ -27,10 +31,13 @@ export async function claimEnrichmentRetry(db, enrichmentType, visited = []) {
         AND msi.metadata->'web_search_imdb' IS NULL AND msi.metadata->'web_search_advisory' IS NULL
         AND msi.metadata->'omdb' IS NULL))
       AND (erq.enrichment_type <> 'tavily' OR erq.reason IS DISTINCT FROM $5
-        OR date_trunc('month', COALESCE(erq.last_attempt_at, erq.created_at)) < date_trunc('month', NOW()))
+        OR date_trunc('month', COALESCE(erq.last_attempt_at, erq.created_at) AT TIME ZONE 'UTC')
+          < date_trunc('month', statement_timestamp() AT TIME ZONE 'UTC'))
     ORDER BY erq.priority, erq.created_at, erq.id LIMIT 1 FOR UPDATE OF erq SKIP LOCKED
   ), claimed AS (
     UPDATE enrichment_retry_queue erq SET status = 'processing', last_attempt_at = clock_timestamp(),
+      reason = CASE WHEN erq.enrichment_type = 'tavily' AND erq.reason = $5
+        THEN 'Monthly quota wait elapsed' ELSE erq.reason END,
       claim_token = $3::uuid, claim_until = clock_timestamp() + ($4 * interval '1 millisecond')
     FROM candidate WHERE erq.id = candidate.id
     RETURNING erq.id AS queue_id, erq.media_item_id, erq.attempts, erq.max_attempts, erq.claim_token

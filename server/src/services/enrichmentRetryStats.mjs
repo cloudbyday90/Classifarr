@@ -18,6 +18,7 @@ export function aggregateStatsRows(rows) {
 
         if (stats[type]) {
             stats[type][status] = count;
+            if (status === 'pending') stats[type].deferred = parseInt(row.deferred_count, 10) || 0;
         }
         stats.total[status] = (stats.total[status] || 0) + count;
     }
@@ -26,13 +27,13 @@ export function aggregateStatsRows(rows) {
 }
 
 export function applyDeferredCounts(stats, tavilyDeferredCount) {
-    stats.tavily.deferred = tavilyDeferredCount;
-    stats.total.deferred = tavilyDeferredCount;
-    stats.tavily.actionablePending = Math.max(0, stats.tavily.pending - tavilyDeferredCount);
-    stats.web_search.actionablePending = stats.web_search.pending;
-    stats.omdb.actionablePending = stats.omdb.pending;
-    stats.tmdb.actionablePending = stats.tmdb.pending;
-    stats.total.actionablePending = Math.max(0, stats.total.pending - tavilyDeferredCount);
+    stats.tavily.deferred = Math.max(stats.tavily.deferred, tavilyDeferredCount);
+    stats.total.deferred = 0;
+    for (const type of ['tavily', 'web_search', 'omdb', 'tmdb']) {
+        stats[type].actionablePending = Math.max(0, stats[type].pending - stats[type].deferred);
+        stats.total.deferred += stats[type].deferred;
+    }
+    stats.total.actionablePending = Math.max(0, stats.total.pending - stats.total.deferred);
     return stats;
 }
 
@@ -45,8 +46,15 @@ export async function getStats({ db, normalizeTavilyMonthlyDeferredRows, resolve
       SELECT 
         enrichment_type,
         status,
-        COUNT(*) as count
-      FROM enrichment_retry_queue
+        COUNT(*) as count,
+        COUNT(*) FILTER (WHERE status = 'pending' AND (
+          erq.next_attempt_at > statement_timestamp() OR cooldown.next_attempt_at > statement_timestamp()
+          OR (enrichment_type = 'tavily' AND erq.reason = 'tavily_monthly_quota_deferred')
+        )) AS deferred_count
+      FROM enrichment_retry_queue erq
+      LEFT JOIN enrichment_retry_cooldowns cooldown ON cooldown.dependency =
+        CASE WHEN enrichment_type = 'omdb' THEN 'omdb' ELSE 'web_search' END
+        AND enrichment_type IN ('omdb', 'web_search', 'tavily')
       GROUP BY enrichment_type, status
       ORDER BY enrichment_type, status
     `);

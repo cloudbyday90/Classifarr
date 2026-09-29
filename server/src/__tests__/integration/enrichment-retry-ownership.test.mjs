@@ -16,7 +16,8 @@ beforeEach(async () => {
   await fixture.scan();
   media = (await fixture.inventory())[0];
   service = new EnrichmentRetryService({ db, logger: fixture.log,
-    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence' }) },
+    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence' }),
+      hasRemainingQuota: async () => ({ available: true }) },
   });
   jest.spyOn(service, 'scheduleProcessing').mockImplementation(() => {});
   await service.queueForRetry(media.id, 'omdb');

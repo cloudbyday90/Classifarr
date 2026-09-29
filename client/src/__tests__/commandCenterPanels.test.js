@@ -244,6 +244,9 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).toContain('Deferred')
     expect(wrapper.text()).toContain('Failed')
     expect(wrapper.text()).toContain('(+4 deferred)')
+    expect(wrapper.text()).toContain('Retries resume automatically when due and a provider is available.')
+    expect(wrapper.text()).toContain('Check provider settings if waiting persists.')
+    expect(wrapper.text()).not.toContain('waiting for a monthly quota reset')
     expect(wrapper.text()).toContain('TV Shows')
     expect(wrapper.text()).toContain('127 classified')
 
@@ -268,7 +271,7 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.emitted('toggle-section')).toEqual([['errors'], ['libraries']])
   })
 
-  it('hides the Tavily deferred note and counter when there are no deferred items', () => {
+  it('hides the deferred note and counter when there are no deferred items', () => {
     const wrapper = mount(CommandCenterOverviewSections, {
       props: {
         ...overviewHelpers,

@@ -1,4 +1,5 @@
 import { isOmdbNotFoundMessage } from './omdbResponseClassifier.mjs';
+import { OMDbLimitReachedError } from './omdbQuota.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
     return isOmdbNotFoundMessage(errorMessage);
@@ -12,16 +13,13 @@ export function isTransientOmdbTransportError(error) {
     const isTransientHttpStatus =
         status === 408 ||
         status === 429 ||
-        status === 502 ||
-        status === 503 ||
-        status === 504 ||
-        (status >= 520 && status <= 527) ||
-        status === 530;
+        (status >= 500 && status <= 599);
 
     return isTransientHttpStatus ||
         code === 'ECONNABORTED' ||
         code === 'ETIMEDOUT' ||
         code === 'ECONNRESET' ||
+        code === 'ECONNREFUSED' ||
         code === 'ENOTFOUND' ||
         code === 'EAI_AGAIN' ||
         normalized.includes('timeout') ||
@@ -45,10 +43,10 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
     try {
         let omdbResult = null;
         if (item.imdb_id) {
-            omdbResult = await omdbService.getByIMDBId(item.imdb_id);
+            omdbResult = await omdbService.getByIMDBId(item.imdb_id, undefined, { queueOwned: true });
         }
         if (!omdbResult && item.title) {
-            omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type);
+            omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type, undefined, { queueOwned: true });
         }
 
         if (omdbResult) {
@@ -57,6 +55,9 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
 
         return { success: false, error: 'OMDb not found' };
     } catch (error) {
+        if (error instanceof OMDbLimitReachedError) {
+            return { success: false, deferUntilDailyReset: true, error: 'OMDb daily quota unavailable' };
+        }
         if (isTransientOmdbTransportError(error)) {
             logger.warn('OMDb enrichment transient error', {
                 item: item.title,
@@ -66,6 +67,7 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
         } else {
             logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
         }
-        return { success: false, error: error.message };
+        return { success: false, error: error.message, transient: isTransientOmdbTransportError(error),
+            retryAfterSeconds: error.retryAfterSeconds };
     }
 }

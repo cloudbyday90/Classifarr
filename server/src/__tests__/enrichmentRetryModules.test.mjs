@@ -63,6 +63,7 @@ function createProcessingDeps(overrides = {}) {
     enrichWithOmdb: jest.fn(),
     enrichWithWebSearch: jest.fn(),
     hasAvailableWebSearchProvider: jest.fn().mockResolvedValue(true),
+    hasRemainingOmdbQuota: jest.fn().mockResolvedValue({ available: true }),
     queueForRetry: jest.fn().mockResolvedValue(),
     scheduleProcessing: jest.fn(),
     ...overrides,
@@ -178,7 +179,7 @@ describe('OMDb fallback bridge', () => {
     expect(isExpectedOmdbMiss(message)).toBe(expected);
   });
 
-  test.each([408, 429, 502, 503, 504, 520, 527])(
+  test.each([408, 429, 500, 501, 502, 503, 504, 520, 527, 599])(
     'recognizes transient OMDb HTTP %i failures',
     (status) => {
       expect(isTransientOmdbTransportError({
@@ -220,7 +221,7 @@ describe('OMDb fallback bridge', () => {
     });
 
     expect(result).toEqual(expect.objectContaining({ success: true }));
-    expect(omdbService.getByIMDBId).toHaveBeenCalledWith('tt0133093');
+    expect(omdbService.getByIMDBId).toHaveBeenCalledWith('tt0133093', undefined, { queueOwned: true });
     expect(omdbService.getByTitle).not.toHaveBeenCalled();
     expect(db.query).not.toHaveBeenCalled();
   });
@@ -288,7 +289,7 @@ describe('provider-neutral retry processing', () => {
     expect(new Set(deps.enrichWithWebSearch.mock.calls.map(([item]) => item.queue_id)).size).toBe(60);
   });
 
-  test('does not query work when no provider route is available', async () => {
+  test('empty queue does not query provider readiness or make network calls', async () => {
     const deps = createProcessingDeps({
       hasAvailableWebSearchProvider: jest.fn().mockResolvedValue(false),
     });
@@ -298,13 +299,10 @@ describe('provider-neutral retry processing', () => {
       success: 0,
       failed: 0,
       autoFailed: 0,
-      skipped: true,
-      reason: 'No web search provider is available',
+      skipped: false,
     });
-    expect(deps.db.query).not.toHaveBeenCalledWith(
-      expect.stringContaining('JOIN media_server_items'),
-      expect.anything()
-    );
+    expect(deps.hasAvailableWebSearchProvider).not.toHaveBeenCalled();
+    expect(deps.enrichWithWebSearch).not.toHaveBeenCalled();
   });
 
   test('marks a successful generic provider retry complete', async () => {

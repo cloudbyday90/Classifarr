@@ -12,9 +12,6 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
   await deps.normalizeTavilyMonthlyDeferredRows();
   await deps.resolveRetriesWithExistingMetadata(enrichmentType);
   summary.autoFailed = await deps.failExhaustedPendingRetries(enrichmentType);
-  if (enrichmentType !== 'omdb' && !await deps.hasAvailableWebSearchProvider()) {
-    return { ...summary, skipped: true, reason: 'No web search provider is available' };
-  }
   const visited = [];
   while (visited.length < limit) {
     const item = await claimEnrichmentRetry(db, enrichmentType, visited);
@@ -24,10 +21,14 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
     const write = createEnrichmentRetryWriteGuard(db, item, enrichmentType);
     let result;
     try {
-      result = enrichmentType === 'omdb' ? await enrichWithOmdb(item)
-        : await enrichWithWebSearch(item, { enrichmentType });
+      const ready = enrichmentType === 'omdb'
+        ? (await deps.hasRemainingOmdbQuota()).available === true
+        : await deps.hasAvailableWebSearchProvider();
+      result = !ready ? { success: false, waitForProvider: true }
+        : enrichmentType === 'omdb' ? await enrichWithOmdb(item)
+          : await enrichWithWebSearch(item, { enrichmentType });
     } catch (_error) {
-      result = { success: false, error: 'retry_provider_unavailable' };
+      result = { success: false, error: 'retry_provider_unavailable', transient: true };
     }
     let outcome;
     try {
@@ -51,6 +52,8 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
     if (outcome === 'failed' || outcome === 'pending') summary.failed++;
     if (outcome === 'fallback') deps.scheduleProcessing();
     logger.info('Enrichment retry result committed', { queueId: item.queue_id, mediaItemId: item.media_item_id, enrichmentType, outcome });
+    if (outcome === 'deferred') summary.skipped = true;
+    if (outcome !== 'source_changed' && (outcome === 'deferred' || result.transient)) break;
   }
   logger.info('Retry queue processing complete', { ...summary, enrichmentType });
   return summary;

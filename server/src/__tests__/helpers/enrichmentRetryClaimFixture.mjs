@@ -16,6 +16,7 @@ export function installRetryClaimFixture(db, query) {
     }
     if (sql.includes('SELECT claim_until::text')) return { rows: [{ deadline: '2099-01-01', attempts: current.attempts, max_attempts: current.max_attempts }], rowCount: 1 };
     if (sql.includes('SELECT clock_timestamp()')) return { rows: [{ live: true }] };
+    if (sql.includes('RETURNING next_attempt_at')) return { rows: [{ next_attempt_at: new Date('2099-01-01') }], rowCount: 1 };
     if (sql.includes('SELECT msi.id FROM media_server_items')) return { rows: [{ id: current.media_item_id }], rowCount: 1 };
     return query(sql, params);
   });
