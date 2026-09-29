@@ -67,4 +67,5 @@ Prove competing callers, restart, probe/search sharing, no-credit waits, cache
 access, expiry, monotonic delays, generation replacement and verified recovery.
 Test malformed/oversized/misaligned headers and non-exhausted monthly windows.
 Run regression, lint, coverage and isolated fresh/upgrade installation checks.
-Record results in a separate outcome document. No release or live deployment.
+See the separate [outcome and verification](web-search-pacing-outcome.md). No
+release or live deployment.
