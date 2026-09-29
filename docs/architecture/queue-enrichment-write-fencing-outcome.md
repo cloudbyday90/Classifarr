@@ -47,10 +47,30 @@ Final validation on the implementation:
 | Coverage ratchet | Passed; no baseline lowered |
 | Policy naming, product language, delivery and maintenance gates | Passed |
 | Markdown, migration naming, schema snapshot integrity and diff checks | Passed |
+| Isolated installation acceptance | All 12 checks passed; cleanup passed |
 
-An isolated clean-commit installation acceptance run remains to be recorded
-before push. These tests use synthetic providers and disposable databases; they
-do not prove the quality of live upstream metadata or all external-writer safety.
+These tests use synthetic providers and disposable databases; they do not prove
+the quality of live upstream metadata or all external-writer safety.
+
+## Clean-source installation acceptance
+
+The isolated drill completed at `2026-09-29T02:52:13.807Z` against clean commit
+`af93cc78ed43c405a3f9491a3935e2e9d0ddd4d4`. It verified published baseline
+`v0.48.4-beta`, fresh installation, actual startup scheduler progress, backfill
+crash recovery, persisted-volume migrations, interruption during restore,
+rejection of unverified startup, rollback/verified retry, movie/TV recovery to
+profiles and normal restart. Fresh and upgraded candidates both had 298
+migrations on PostgreSQL 18.6.
+
+The generated, Git-ignored receipt is
+`.tmp/ci/runtime-installation-acceptance.json`. The candidate image was
+`sha256:503295781d886ea4d69b3760e577034873de7c2bb445e9c6a5f95c37baa4a370`.
+Disposable containers and data were cleaned up. This was not a published-image
+release or the optional CPU/PID-budget profile.
+
+The live Classifarr container remained `95557b17c965`, started at
+`2026-09-29T01:16:51.534281224Z`, healthy with zero restarts and no OOM kill.
+Its image, persistent data and routing configuration were not changed.
 
 ## Research, PR availability and recommendation
 
