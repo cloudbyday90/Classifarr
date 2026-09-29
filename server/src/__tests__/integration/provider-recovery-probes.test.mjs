@@ -24,7 +24,7 @@ async function claimNext(repo = repository()) {
   return candidates[0] ? repo.claim(candidates[0]) : null;
 }
 beforeEach(async () => {
-  await db.query('TRUNCATE provider_credential_probes,omdb_config,tavily_config,web_search_provider_config,web_search_provider_usage,enrichment_retry_cooldowns');
+  await db.query('TRUNCATE web_search_provider_pacing,provider_credential_probes,omdb_config,tavily_config,web_search_provider_config,web_search_provider_usage,enrichment_retry_cooldowns');
   fixture = await createHandoffFixture(db, 'movie'); await fixture.scan(); item = (await fixture.inventory())[0];
   retryService = new EnrichmentRetryService({ db, logger: fixture.log });
   jest.spyOn(retryService, 'scheduleProcessing').mockImplementation(() => {});
@@ -110,9 +110,14 @@ test.each(['tavily','brave','serper'])('%s web probes respect soft quotas and re
   await db.query("UPDATE provider_credential_probes SET next_probe_at=clock_timestamp()-interval '1 second'");
   expect(await claimNext()).toBeNull();
   await db.query('UPDATE web_search_provider_config SET soft_daily_limit=2');
+  await db.query("UPDATE web_search_provider_pacing SET next_admission_at=clock_timestamp()-interval '1 second'");
   await db.query("UPDATE provider_credential_probes SET next_probe_at=clock_timestamp()-interval '1 second'");
   const next = await claimNext(); expect(next).not.toBeNull();
-  expect(await repository().finish(next, { category: 'verified' })).toBe(true);
+  expect(await repository().finish(next, { category: 'verified', retryAfterMs: 60000 })).toBe(true);
+  const { rows: [pacing] } = await db.query('SELECT * FROM web_search_provider_pacing WHERE provider_key=$1', [provider]);
+  const { rows: [recovered] } = await db.query('SELECT credential_generation FROM web_search_provider_config WHERE id=$1', [config.id]);
+  expect(pacing.credential_generation).toBe(recovered.credential_generation);
+  expect(new Date(pacing.blocked_until).getTime()).toBeGreaterThan(Date.now() + 50000);
   expect((await claimEnrichmentRetry(db, 'web_search')).attempts).toBe(0);
 });
 test('legacy Tavily bridge probes once; an explicit disabled row overrides it', async () => {

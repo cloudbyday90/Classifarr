@@ -13,6 +13,7 @@ import { webSearchAdmissionDeferred } from '../../services/webSearchQuotaAdmissi
 const db = createIntegrationDatabaseModuleMock();
 const storage = () => new WebSearchProviderStorage({ db, healthHistory: null });
 const usage = async () => (await db.query('SELECT * FROM web_search_provider_usage ORDER BY id')).rows;
+const expirePacing = () => db.query("UPDATE web_search_provider_pacing SET next_admission_at=clock_timestamp()-interval '1 second'");
 const getConfig = (provider = 'tavily') => storage().getProviderConfig(provider, { maskSecrets: false });
 async function setup(provider = 'tavily', limit = 1, options = {}) {
   return storage().upsertProviderConfig({ providerKey: provider, apiKey: 'fixture-only', isEnabled: true,
@@ -24,13 +25,15 @@ const response = { provider: 'tavily', providerRequestId: null, query: 'fixture'
 const adapter = search => ({ providerKey: 'tavily', displayName: 'Tavily', capabilities: {}, testConnection: jest.fn(), search });
 const cache = cached => ({ getFreshResponse: jest.fn(async () => cached), recordHit: jest.fn(), storeResponse: jest.fn() });
 beforeEach(async () => {
-  await db.query('TRUNCATE web_search_provider_config,tavily_config,web_search_provider_usage,enrichment_retry_cooldowns');
+  await db.query('TRUNCATE web_search_provider_pacing,web_search_provider_config,tavily_config,web_search_provider_usage,enrichment_retry_cooldowns');
 });
 
 test.each(['tavily', 'brave', 'serper'])('%s serializes last-credit contention across independent stores', async provider => {
   const config = await setup(provider, 3);
+  // Spend the first two credits in distinct elapsed pacing windows; race for the last.
+  await reserve(config); await expirePacing(); await reserve(config); await expirePacing();
   const attempts = await Promise.allSettled(Array.from({ length: 12 }, () => reserve(config)));
-  expect(attempts.filter(result => result.status === 'fulfilled')).toHaveLength(3);
+  expect(attempts.filter(result => result.status === 'fulfilled')).toHaveLength(1);
   expect(attempts.filter(result => result.status === 'rejected').every(result => result.reason.code === 'admission_deferred')).toBe(true);
   expect((await usage()).reduce((sum, row) => sum + row.cost_units, 0)).toBe(3);
 });
@@ -39,6 +42,7 @@ test('advanced Tavily reserves two credits; completion is idempotent and does no
   const config = await setup('tavily', 3, { searchDepth: 'advanced' });
   const reservation = await reserve(config);
   expect(reservation.costUnits).toBe(2);
+  await expirePacing();
   await expect(reserve(config)).rejects.toMatchObject({ code: 'admission_deferred' });
   await storage().recordUsage({ providerKey: 'tavily', reservationId: reservation.id, status: 'success', costUnits: 1 });
   expect(await storage().recordUsage({ providerKey: 'tavily', reservationId: reservation.id, status: 'failed' })).toBeNull();
@@ -82,12 +86,14 @@ test('crash reservations survive restart, rotation and zero-day retention withou
 test('UTC day and month budgets expire independently, including after an interrupted request', async () => {
   let config = await setup(); await reserve(config);
   await db.query("UPDATE web_search_provider_usage SET searched_at=date_trunc('day',clock_timestamp() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'-interval '1 second'");
+  await expirePacing();
   // Day reset grants another reservation; monthly usage remains charged.
   await reserve(config);
   await db.query('UPDATE web_search_provider_config SET soft_daily_limit=10,soft_monthly_limit=1');
   config = await getConfig();
   await expect(reserve(config)).rejects.toMatchObject({ code: 'admission_deferred' });
   await db.query("UPDATE web_search_provider_usage SET searched_at=date_trunc('month',clock_timestamp() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'-interval '1 second'");
+  await expirePacing();
   expect((await reserve(config)).allowed).toBe(true);
 });
 
@@ -135,6 +141,7 @@ test('successful and failed executor dispatches complete their reservation witho
   const executor = new WebSearchProviderCachedSearchExecutor({ usageStorage: storage(), cacheStore: cache(null) });
   expect((await executor.search({ provider: adapter(search), config, request: { query: 'fixture' }, cacheTtlMs: 0 })).response.usage.costUnits).toBe(2);
   search.mockRejectedValue(new Error('fixture timeout'));
+  await expirePacing();
   await expect(executor.search({ provider: adapter(search), config, request: { query: 'fixture' }, cacheTtlMs: 0 })).rejects.toThrow('fixture timeout');
   expect(await usage()).toEqual([expect.objectContaining({ cost_units: 2, status: 'success' }),
     expect.objectContaining({ cost_units: 2, status: 'failed' })]);
@@ -154,6 +161,8 @@ test('local admission waits preserve legacy Tavily retry attempts without assumi
     const { rows: [retry] } = await db.query('SELECT * FROM enrichment_retry_queue WHERE media_item_id=$1', [item.id]);
     expect(retry).toMatchObject({ status: 'pending', attempts: 0 });
     expect(new Date(retry.next_attempt_at).getTime()).toBeGreaterThan(Date.now());
+    expect(new Date(retry.next_attempt_at).getTime()).toBeGreaterThan(Date.now() + 110000);
+    expect((await db.query("SELECT * FROM enrichment_retry_cooldowns WHERE dependency='web_search'")).rows).toHaveLength(0);
     expect(retry.reason).not.toBe('tavily_monthly_quota_deferred');
   } finally { service?.cancelScheduledProcessing(); await fixture.cleanup(); }
 });

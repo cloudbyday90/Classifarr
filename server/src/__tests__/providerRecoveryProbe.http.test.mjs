@@ -16,7 +16,8 @@ beforeAll(async () => {
     if (request.url.startsWith('/large')) {
       response.setHeader('Content-Encoding', 'gzip'); response.end(gzipSync(JSON.stringify({ private: 'x'.repeat(70000) }))); return;
     }
-    if (request.url.startsWith('/throttled')) { response.writeHead(429, { 'X-RateLimit-Reset': '1, 200000' }); response.end('{}'); return; }
+    if (request.url.startsWith('/throttled')) { response.writeHead(429, { 'X-RateLimit-Limit': '1, 15000',
+      'X-RateLimit-Remaining': '0, 0', 'X-RateLimit-Reset': '1, 200000' }); response.end('{}'); return; }
     response.end(request.url.startsWith('/valid') ? JSON.stringify({ type:'search',
       query:{ original:'Classifarr provider connectivity test' },web:{ results:[] } }) : '<html>private</html>');
   });

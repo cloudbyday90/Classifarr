@@ -11,12 +11,12 @@ const definitions = new Map([
       FROM omdb_config WHERE id=$1 AND is_active AND id=(SELECT id FROM omdb_config
         WHERE is_active ORDER BY id DESC LIMIT 1) FOR UPDATE SKIP LOCKED`,
     recover: `UPDATE omdb_config SET credential_generation=gen_random_uuid(), credential_rejected_at=NULL
-      WHERE id=$1 AND credential_generation=$2 RETURNING id`,
+      WHERE id=$1 AND credential_generation=$2 RETURNING id,credential_generation`,
   }],
   ['web_search', {
     select: 'SELECT * FROM web_search_provider_config WHERE id=$1 AND is_enabled FOR UPDATE SKIP LOCKED',
     recover: `UPDATE web_search_provider_config SET credential_generation=gen_random_uuid(), credential_rejected_at=NULL
-      WHERE id=$1 AND credential_generation=$2 RETURNING id`,
+      WHERE id=$1 AND credential_generation=$2 RETURNING id,credential_generation`,
   }],
   ['legacy_tavily', {
     lock: 'LOCK TABLE tavily_config IN SHARE ROW EXCLUSIVE MODE',
@@ -25,7 +25,7 @@ const definitions = new Map([
       AND NOT EXISTS (SELECT 1 FROM web_search_provider_config WHERE provider_key='tavily')
       FOR UPDATE SKIP LOCKED`,
     recover: `UPDATE tavily_config SET credential_generation=gen_random_uuid(), credential_rejected_at=NULL
-      WHERE id=$1 AND credential_generation=$2 RETURNING id`,
+      WHERE id=$1 AND credential_generation=$2 RETURNING id,credential_generation`,
   }],
 ]);
 export const probeDefinition = source => definitions.get(source);

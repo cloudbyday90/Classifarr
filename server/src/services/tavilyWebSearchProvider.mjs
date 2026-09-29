@@ -56,6 +56,7 @@ export function createTavilyWebSearchProvider({
       try {
         const rawResponse = await client.search(validatedRequest.query, {
           apiKey: config.apiKey,
+          ...(typeof config.onPacingDelay === 'function' ? { onPacingDelay: config.onPacingDelay } : {}),
           config: getProviderConfig(config),
           searchDepth: getConfigValue(config, 'searchDepth', 'basic'),
           maxResults: options.maxResults || getConfigValue(config, 'maxResults', 5),

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T12:18:43.603Z
--- Latest Migration: 20260929_160000_provider_recovery_probes.sql
+-- Generated: 2026-09-29T13:27:58.773Z
+-- Latest Migration: 20260929_170000_web_search_pacing.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8741,6 +8741,32 @@ ALTER SEQUENCE public.web_search_provider_health_events_id_seq OWNED BY public.w
 
 
 --
+-- Name: web_search_provider_pacing; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.web_search_provider_pacing (
+    provider_key character varying(40) NOT NULL,
+    next_admission_at timestamp with time zone NOT NULL,
+    blocked_until timestamp with time zone,
+    source text,
+    config_id integer,
+    credential_generation uuid,
+    CONSTRAINT web_search_provider_pacing_check CHECK (((source IS DISTINCT FROM 'legacy_tavily'::text) OR ((provider_key)::text = 'tavily'::text))),
+    CONSTRAINT web_search_provider_pacing_check1 CHECK ((((blocked_until IS NULL) AND (source IS NULL) AND (config_id IS NULL) AND (credential_generation IS NULL)) OR ((blocked_until IS NOT NULL) AND (source IS NOT NULL) AND (config_id IS NOT NULL) AND (credential_generation IS NOT NULL)))),
+    CONSTRAINT web_search_provider_pacing_config_id_check CHECK ((config_id > 0)),
+    CONSTRAINT web_search_provider_pacing_provider_key_check CHECK (((provider_key)::text = ANY ((ARRAY['tavily'::character varying, 'brave'::character varying, 'serper'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_pacing_source_check CHECK ((source = ANY (ARRAY['web_search'::text, 'legacy_tavily'::text])))
+);
+
+
+--
+-- Name: TABLE web_search_provider_pacing; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.web_search_provider_pacing IS 'Bounded automatic web-provider timing; generation-scoped delays contain no credentials or raw headers.';
+
+
+--
 -- Name: web_search_provider_route_decisions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11607,6 +11633,14 @@ ALTER TABLE ONLY public.web_search_provider_guardrail_events
 
 ALTER TABLE ONLY public.web_search_provider_health_events
     ADD CONSTRAINT web_search_provider_health_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: web_search_provider_pacing web_search_provider_pacing_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.web_search_provider_pacing
+    ADD CONSTRAINT web_search_provider_pacing_pkey PRIMARY KEY (provider_key);
 
 
 --
@@ -17473,6 +17507,7 @@ FROM unnest(ARRAY[
     '20260929_110000_index_legacy_retry_receipts.sql',
     '20260929_120000_durable_enrichment_retry_schedule.sql',
     '20260929_140000_provider_credential_recovery.sql',
-    '20260929_160000_provider_recovery_probes.sql'
+    '20260929_160000_provider_recovery_probes.sql',
+    '20260929_170000_web_search_pacing.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -31,6 +31,22 @@ test('missing persisted due time fails closed before writing a cooldown', async 
   await expect(persistRetrySchedule(client, 1, 'omdb', retrySchedule({ waitForProvider: true }, 0))).rejects.toThrow('retry_schedule_missing');
   expect(client.query).toHaveBeenCalledTimes(1);
 });
+
+test('admission waits preserve exact bounded due times without blocking the whole dependency', () => {
+  expect(retrySchedule({ providerAdmissionWait: true, retryAfterSeconds: 2 }, 3))
+    .toMatchObject({ chargeAttempt: false, cooldown: false, delayMs: 2000 });
+  expect(retrySchedule({ providerAdmissionWait: true, retryAfterSeconds: 1e30 }, 3).delayMs).toBe(30 * 86400000);
+  expect(retrySchedule({ providerAdmissionWait: true, retryAfterSeconds: NaN }, 3).delayMs).toBe(60000);
+});
+test('the earliest deferred provider wins over a later provider failure', async () => {
+  const error = new WebSearchProviderRoutingError('waiting', [], { attempts: [
+    { providerKey: 'brave', errorCode: 'admission_deferred', retryAfterSeconds: 2 },
+    { providerKey: 'tavily', errorCode: 'admission_deferred', retryAfterSeconds: 120 },
+  ], lastError: { code: 'admission_deferred', retryAfterSeconds: 120 } });
+  const result = await enrichWithWebSearch({ webSearchEnrichmentService: { search: async () => { throw error; } }, logger: {} },
+    { queue_id: 1, title: 'Fixture' });
+  expect(result).toMatchObject({ providerAdmissionWait: true, retryAfterSeconds: 2 });
+});
 test('dispatch is bounded and a fresh empty setup never invokes providers', async () => {
   const service = { db: { query: jest.fn().mockResolvedValue({ rows: [] }) },
     recoverStaleProcessingRetries: jest.fn(), processRetryQueue: jest.fn().mockResolvedValue({ processed: 1 }),

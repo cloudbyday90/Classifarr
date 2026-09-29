@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Pace automatic web searches and recovery probes across workers and restarts.
+  Honor validated provider wait windows without spending credits on deferred
+  requests, and prevent stale responses from delaying replacement credentials.
 - Reserve web-search credits atomically across routed searches, enrichment retries
   and recovery probes. Preserve uncertain costs across crashes, keep cache hits
   free, account for advanced Tavily requests, and clarify automatic budget limits.

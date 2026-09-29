@@ -56,6 +56,7 @@ export function createSerperWebSearchProvider({ serperClient = defaultSerperClie
       try {
         const rawResponse = await serperClient.search(validatedRequest.query, {
           apiKey: config.apiKey,
+          ...(typeof config.onPacingDelay === 'function' ? { onPacingDelay: config.onPacingDelay } : {}),
           config: getProviderConfig(config),
           maxResults: domains.length > 0 ? 20 : maxResults,
           gl: getConfigValue(config, 'gl', null),

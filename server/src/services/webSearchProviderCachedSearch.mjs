@@ -135,7 +135,8 @@ export class WebSearchProviderCachedSearchExecutor {
     const startedAt = this.nowFn();
     const credentialContext = config.credentialContext;
     try {
-      const received = await validatedProvider.search(identity.request, config);
+      const received = await validatedProvider.search(identity.request, { ...config,
+        onPacingDelay: seconds => this.usageStorage.deferPacing?.(identity.providerKey, credentialContext, seconds) });
       const response = validateWebSearchResponse({ ...received,
         usage: { ...received?.usage, costUnits: reservation.costUnits } });
       const stored = ttlMs > 0
@@ -172,6 +173,7 @@ export class WebSearchProviderCachedSearchExecutor {
         }),
       });
       await this.updateProviderSafely(identity.providerKey, {
+        credentialContext,
         status: 'success',
         purpose: identity.purpose,
         operation: 'search',
@@ -215,6 +217,7 @@ export class WebSearchProviderCachedSearchExecutor {
         }),
       });
       await this.updateProviderSafely(identity.providerKey, {
+        credentialContext,
         error,
         purpose: identity.purpose,
         operation: 'search',

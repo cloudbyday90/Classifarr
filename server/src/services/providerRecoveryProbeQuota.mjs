@@ -13,5 +13,6 @@ export async function reserveProviderProbeQuota(client, candidate, config, now) 
   }
   if (config.cooldown_until && new Date(config.cooldown_until).getTime() > now) return false;
   return (await reserveWebSearchQuota(client, { provider: candidate.provider_key, config,
+    context: { source: candidate.source, id: config.id, generation: config.credential_generation },
     costUnits: 1, purpose: 'credential_recovery', operation: 'recovery_probe' })).allowed;
 }

@@ -568,7 +568,7 @@
 
     <Card
       title="Provider Routing"
-      description="Lower priority providers are considered first. Automatic searches and recovery checks reserve credits before sending. Cached results are free; uncertain requests retain their reservation. Connection tests and usage outside Classifarr are not included."
+      description="Lower priority providers are considered first. Automatic searches and recovery checks reserve credits and share a one-per-second pacing limit per provider. Provider-requested waits persist across restarts. Cached results are free; uncertain requests retain their reservation. Connection tests and usage outside Classifarr are not included."
     >
       <div
         v-if="loading"

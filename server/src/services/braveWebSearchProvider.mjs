@@ -56,6 +56,7 @@ export function createBraveWebSearchProvider({ braveClient = defaultBraveClient 
       try {
         const rawResponse = await braveClient.search(validatedRequest.query, {
           apiKey: config.apiKey,
+          ...(typeof config.onPacingDelay === 'function' ? { onPacingDelay: config.onPacingDelay } : {}),
           config: getProviderConfig(config),
           maxResults: domains.length > 0 ? 20 : maxResults,
           safeSearch: options.safeSearch,

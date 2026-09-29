@@ -2,6 +2,7 @@
 import { httpGet, httpPost } from '../utils/httpClient.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { providerProbeRetryHint } from './providerRecoveryProbePolicy.mjs';
+import { webSearchPacingDelay } from './webSearchPacingPolicy.mjs';
 
 const QUERY = 'Classifarr provider connectivity test';
 const options = Object.freeze({ timeout: 5000, maxResponseBytes: 65536, redirect: 'error' });
@@ -49,9 +50,11 @@ export async function verifyProviderRecovery(claim, { get = httpGet, post = http
       q: QUERY, num: 1, autocorrect: false,
     }, { ...options, headers: { 'X-API-KEY': key } });
     else return { category: 'unavailable' };
-    return { category: classify(provider, response), retryAfterMs: providerProbeRetryHint(response) };
+    return { category: classify(provider, response), retryAfterMs: provider === 'omdb'
+      ? providerProbeRetryHint(response) : 1000 * webSearchPacingDelay(provider, response) };
   } catch (error) {
     return { category: error?.response ? classify(provider, error.response) : 'unavailable',
-      retryAfterMs: providerProbeRetryHint(error?.response) };
+      retryAfterMs: provider === 'omdb' ? providerProbeRetryHint(error?.response)
+        : 1000 * webSearchPacingDelay(provider, error?.response) };
   }
 }

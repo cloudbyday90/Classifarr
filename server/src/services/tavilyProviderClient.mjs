@@ -9,6 +9,7 @@
  */
 
 import { httpPost } from '../utils/httpClient.mjs';
+import { observeWebSearchPacing } from './webSearchPacingPolicy.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { clampWebSearchResultCount } from './webSearchResultNormalizer.mjs';
 
@@ -221,8 +222,10 @@ export class TavilyProviderClient {
         }
       );
 
+      await observeWebSearchPacing('tavily', response, options.onPacingDelay);
       return response.data;
     } catch (error) {
+      await observeWebSearchPacing('tavily', error?.response, options.onPacingDelay);
       throw preserveProviderError(error, 'Tavily search failed');
     }
   }

@@ -38,7 +38,7 @@ export async function admitWebSearch(db, { providerKey, config, purpose }) {
       const { rows: [{ ready }] } = await client.query('SELECT $1::timestamptz IS NULL OR $1::timestamptz<=clock_timestamp() AS ready',
         [row.cooldown_until ?? null]);
       if (!ready) return null;
-      return reserveWebSearchQuota(client, { provider: providerKey, config: row,
+      return reserveWebSearchQuota(client, { provider: providerKey, config: row, context,
         costUnits: webSearchRequestCost(providerKey, config), purpose });
     });
     if (!result?.allowed) throw webSearchAdmissionDeferred(providerKey, result?.retryAfterSeconds);

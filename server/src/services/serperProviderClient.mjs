@@ -9,6 +9,7 @@
  */
 
 import { httpPost } from '../utils/httpClient.mjs';
+import { observeWebSearchPacing } from './webSearchPacingPolicy.mjs';
 import { clampWebSearchResultCount } from './webSearchResultNormalizer.mjs';
 import {
   getWebSearchProviderOption,
@@ -94,8 +95,10 @@ export class SerperProviderClient {
           timeout: getWebSearchProviderOption(options, 'timeout', 30_000),
         }
       );
+      await observeWebSearchPacing('serper', response, options.onPacingDelay);
       return response.data;
     } catch (error) {
+      await observeWebSearchPacing('serper', error?.response, options.onPacingDelay);
       throw preserveWebSearchProviderError(error, 'Serper.dev request failed');
     }
   }

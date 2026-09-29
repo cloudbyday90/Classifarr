@@ -373,6 +373,7 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Next eligible provider: Tavily')
     expect(wrapper.text()).toContain('Today: 2 / 100')
     expect(wrapper.text()).toContain('Daily Automatic Credit Budget')
+    expect(wrapper.text()).toContain('one-per-second pacing limit per provider')
     expect(wrapper.text()).toContain('Monthly Automatic Credit Budget')
     expect(wrapper.text()).toContain('Cached results are free; uncertain requests retain their reservation.')
     expect(wrapper.text()).toContain('Connection tests and usage outside Classifarr are not included.')

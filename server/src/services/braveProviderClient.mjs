@@ -9,6 +9,7 @@
  */
 
 import { httpGet } from '../utils/httpClient.mjs';
+import { observeWebSearchPacing } from './webSearchPacingPolicy.mjs';
 import { clampWebSearchResultCount } from './webSearchResultNormalizer.mjs';
 import {
   getWebSearchProviderOption,
@@ -77,8 +78,10 @@ export class BraveProviderClient {
         headers: buildBraveRequestHeaders(getWebSearchProviderOption(options, 'apiKey', null)),
         timeout: getWebSearchProviderOption(options, 'timeout', 30_000),
       });
+      await observeWebSearchPacing('brave', response, options.onPacingDelay);
       return response.data;
     } catch (error) {
+      await observeWebSearchPacing('brave', error?.response, options.onPacingDelay);
       throw preserveWebSearchProviderError(error, 'Brave Search request failed');
     }
   }

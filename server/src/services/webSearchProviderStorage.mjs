@@ -16,6 +16,7 @@ import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSea
 import { providerCredentialContext, rejectProviderCredential } from './providerCredentialRejection.mjs';
 import { admitWebSearch } from './webSearchQuotaAdmission.mjs';
 import { completeWebSearchQuotaReservation } from './webSearchQuotaReservation.mjs';
+import { deferWebSearchPacing, updatePacedProviderHealth } from './webSearchPacingStore.mjs';
 
 export const WEB_SEARCH_PROVIDER_STORAGE_DEFAULTS = Object.freeze([
   { providerKey: 'tavily', displayName: 'Tavily', priority: 10 },
@@ -172,6 +173,7 @@ export class WebSearchProviderStorage {
   async rejectCredential(context) { return rejectProviderCredential(this.db, context); }
 
   async reserveSearch(input) { return admitWebSearch(this.db, input); }
+  async deferPacing(provider, context, seconds) { return deferWebSearchPacing(this.db, provider, context, seconds); }
 
   async recordProviderHealthEventSafely(providerKey, usage = {}, config = {}) {
     if (!this.healthHistory?.recordUsageEventSafely) return null;
@@ -371,6 +373,12 @@ export class WebSearchProviderStorage {
 
   async updateProviderAfterUsage(providerKey, usage = {}) {
     const normalizedProviderKey = assertProviderKey(providerKey);
+    if (usage.credentialContext) {
+      const result = await updatePacedProviderHealth(this.db, normalizedProviderKey, usage);
+      const config = normalizeWebSearchProviderConfigRow(result?.rows?.[0], { maskSecrets: false });
+      if (config) await this.recordProviderHealthEventSafely(normalizedProviderKey, usage, config);
+      return config;
+    }
     const error = usage.error || null;
     if (!error && usage.status === 'success') {
       const result = await this.db.query(

@@ -15,6 +15,11 @@ export function retryDependency(type) { return type === 'omdb' ? 'omdb' : 'web_s
 
 /** Fixed codes only: never persist an upstream payload, URL or credential here. */
 export function retrySchedule(result, attempts) {
+  if (result.providerAdmissionWait) {
+    const seconds = Number.isFinite(result.retryAfterSeconds) && result.retryAfterSeconds > 0
+      ? Math.max(1, Math.min(result.retryAfterSeconds, 30 * 86400)) : 60;
+    return { delayMs: Math.ceil(seconds * 1000), chargeAttempt: false, cooldown: false, reason: 'provider_admission_wait' };
+  }
   if (result.credentialsRejected) return { delayMs: MIN_DELAY_MS, chargeAttempt: false, cooldown: true, reason: 'provider_credentials_rejected' };
   if (result.waitForProvider) return { delayMs: MIN_DELAY_MS, chargeAttempt: false, cooldown: true, reason: 'provider_unavailable' };
   if (result.deferUntilDailyReset) return { reset: 'day', chargeAttempt: false, cooldown: true, reason: 'daily_quota' };

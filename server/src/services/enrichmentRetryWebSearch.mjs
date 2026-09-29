@@ -50,6 +50,12 @@ export async function enrichWithWebSearch({
 
     return { success: true, data: imdbData };
   } catch (error) {
+    const admissionWaits = (error instanceof WebSearchProviderRoutingError ? error.attempts : [error])
+      .filter(attempt => (attempt.errorCode ?? attempt.code) === 'admission_deferred')
+      .map(attempt => attempt.retryAfterSeconds)
+      .filter(seconds => Number.isFinite(seconds) && seconds > 0);
+    if (admissionWaits.length) return { success: false, error: 'Waiting for provider admission',
+      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: Math.min(...admissionWaits) };
     if (isLegacyTavilyMonthlyQuotaError(error, enrichmentType)) {
       logger.info('Legacy Tavily retry exhausted its monthly quota; deferring item', {
         item: item.title,
@@ -65,7 +71,7 @@ export async function enrichWithWebSearch({
     const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
     const code = failure?.errorCode ?? failure?.code;
     if (code === 'admission_deferred') return { success: false, error: 'Waiting for provider admission',
-      waitForProvider: true, retryAfterSeconds: failure?.retryAfterSeconds };
+      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: failure?.retryAfterSeconds };
     logger.warn('Web search enrichment failed', {
       code: error.code || null,
       error: error.message,

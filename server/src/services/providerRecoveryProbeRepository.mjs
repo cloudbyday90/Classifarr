@@ -6,6 +6,7 @@ import { TAVILY_MONTHLY_DEFERRED_REASON } from '../utils/enrichmentState.mjs';
 import { probeDefinition, PROBE_CANDIDATES_SQL, PROBE_DEMAND_SQL } from './providerRecoveryProbeQueries.mjs';
 import { reserveProviderProbeQuota } from './providerRecoveryProbeQuota.mjs';
 import { normalizeProbeOutcome, providerProbeDelay } from './providerRecoveryProbePolicy.mjs';
+import { lockWebSearchProvider, recordWebSearchPacingDelay } from './webSearchPacingStore.mjs';
 
 async function selectConfiguration(client, candidate) {
   const definition = probeDefinition(candidate?.source);
@@ -73,7 +74,16 @@ export function createProviderRecoveryProbeRepository(db, { random = Math.random
           FROM provider_credential_probes WHERE source=$1 AND config_id=$2 FOR UPDATE`, [claim.source, claim.id]);
         if (!state?.live || state.lease_token !== claim.token || state.generation !== claim.generation) return false;
         // Rotate on verification, not just key edits: pre-recovery failures must become stale.
-        if (outcome.verified) await client.query(probeDefinition(claim.source).recover, [claim.id, claim.generation]);
+        let generation = claim.generation;
+        if (outcome.verified) {
+          const recovered = await client.query(probeDefinition(claim.source).recover, [claim.id, claim.generation]);
+          generation = recovered.rows[0].credential_generation;
+        }
+        if (claim.source !== 'omdb' && outcome.retryAfterMs > 0) {
+          await lockWebSearchProvider(client, claim.provider_key);
+          await recordWebSearchPacingDelay(client, claim.provider_key,
+            { source: claim.source, id: claim.id, generation }, Math.ceil(outcome.retryAfterMs / 1000));
+        }
         const finished = await client.query(`UPDATE provider_credential_probes SET lease_token=NULL,lease_until=NULL,
           next_probe_at=GREATEST(next_probe_at,clock_timestamp()+($3::double precision*interval '1 millisecond')),
           last_outcome=$4,last_recovered_at=CASE WHEN $5 THEN clock_timestamp() ELSE last_recovered_at END
