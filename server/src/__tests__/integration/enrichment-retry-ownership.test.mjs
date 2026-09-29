@@ -8,16 +8,17 @@ import { createHandoffFixture } from '../helpers/sourceRecoveryHandoffFixture.mj
 import { EnrichmentRetryService } from '../../services/enrichmentRetryService.mjs';
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from '../../services/enrichmentRetryClaimService.mjs';
 import { persistEnrichmentRetryResult } from '../../services/enrichmentRetryResultPersistence.mjs';
+import { seedOmdbQuotaFixture } from '../helpers/omdbQuotaFixture.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 let fixture, service, media;
 beforeEach(async () => {
+  await seedOmdbQuotaFixture(db);
   fixture = await createHandoffFixture(db, 'movie');
   await fixture.scan();
   media = (await fixture.inventory())[0];
   service = new EnrichmentRetryService({ db, logger: fixture.log,
-    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence' }),
-      hasRemainingQuota: async () => ({ available: true }) },
+    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence' }) },
   });
   jest.spyOn(service, 'scheduleProcessing').mockImplementation(() => {});
   await service.queueForRetry(media.id, 'omdb');

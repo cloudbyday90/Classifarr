@@ -210,6 +210,7 @@ export class EnrichmentRetryService {
     }
 
     async processRetryQueue(limit = 50, enrichmentType = 'web_search') {
+        const wakeEpoch = this.retryWakeEpoch;
         return _processRetryQueue({
             db: this.db,
             logger: this.logger,
@@ -222,7 +223,7 @@ export class EnrichmentRetryService {
             enrichWithWebSearch: (...args) => this.enrichWithWebSearch(...args),
             hasAvailableWebSearchProvider: () => this.webSearchEnrichmentService.hasAvailableProvider(),
             prepareRetryBatch: (type, size) => prepareEnrichmentRetryBatch(this, type, size),
-            hasRemainingOmdbQuota: () => this.omdbService.hasRemainingQuota(),
+            isRetryWakeCurrent: () => wakeEpoch === this.retryWakeEpoch,
             queueForRetry: (...args) => this.queueForRetry(...args),
             scheduleProcessing: (delayMs) => this.scheduleProcessing(delayMs)
         }, limit, enrichmentType);

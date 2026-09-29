@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from './enrichmentRetryClaimService.mjs';
 import { persistEnrichmentRetryResult } from './enrichmentRetryResultPersistence.mjs';
+import { prepareOmdbRetryBatch } from './omdbRetryBatchPlan.mjs';
 
 export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_search') {
   const { db, logger, enrichWithOmdb, enrichWithWebSearch } = deps;
@@ -13,11 +14,16 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
   await deps.resolveRetriesWithExistingMetadata(enrichmentType);
   summary.autoFailed = await deps.failExhaustedPendingRetries(enrichmentType);
   const visited = [];
-  const plan = await deps.prepareRetryBatch?.(enrichmentType, limit);
+  const plan = enrichmentType === 'omdb'
+    ? await prepareOmdbRetryBatch(deps, limit)
+    : await deps.prepareRetryBatch?.(enrichmentType, limit);
   try {
     while (visited.length < limit) {
       const candidateId = plan ? await plan.next() : null;
-      if (plan && candidateId == null) break;
+      if (plan && candidateId == null) {
+        summary.skipped ||= plan.waiting === true;
+        break;
+      }
       const item = await claimEnrichmentRetry(db, enrichmentType, visited, candidateId);
       if (!item) { if (plan) continue; break; }
       visited.push(item.queue_id);
@@ -25,9 +31,7 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
       const write = createEnrichmentRetryWriteGuard(db, item, enrichmentType);
       let result;
       try {
-        const ready = enrichmentType === 'omdb'
-          ? (await deps.hasRemainingOmdbQuota()).available === true
-          : plan ? true : await deps.hasAvailableWebSearchProvider();
+        const ready = plan ? true : await deps.hasAvailableWebSearchProvider();
         result = !ready ? { success: false, waitForProvider: true }
           : enrichmentType === 'omdb' ? await enrichWithOmdb(item)
             : await enrichWithWebSearch(item, { enrichmentType });

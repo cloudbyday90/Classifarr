@@ -11,6 +11,7 @@
 import { jest, afterEach } from '@jest/globals';
 import { EnrichmentRetryService } from '../services/enrichmentRetryService.mjs';
 import { installRetryClaimFixture } from './helpers/enrichmentRetryClaimFixture.mjs';
+import { availableOmdbQuotaFixture } from './helpers/omdbQuotaFixture.mjs';
 import {
   WEB_SEARCH_PROVIDER_ERROR_CODES,
   WebSearchProviderError,
@@ -44,7 +45,6 @@ function createService(deps = {}) {
     omdbService: deps.omdbService || {
       getByIMDBId: jest.fn(),
       getByTitle: jest.fn(),
-      hasRemainingQuota: jest.fn().mockResolvedValue({ available: true, used: 0, limit: 1000 }),
     },
     webSearchEnrichmentService: deps.webSearchEnrichmentService || createWebSearchService(),
     enrichmentItemStateService: deps.enrichmentItemStateService || {
@@ -62,6 +62,7 @@ afterEach(() => { services.splice(0).forEach(service => service.cancelScheduledP
 function configureRetryDb(db, { pendingRows = [] } = {}) {
   installRetryClaimFixture(db, async (sql) => {
     const text = String(sql);
+    if (text.includes('FROM omdb_config')) return { rows: [availableOmdbQuotaFixture()] };
     if (text.includes('FROM enrichment_retry_queue erq') && text.includes('JOIN media_server_items')) {
       return { rows: pendingRows, rowCount: pendingRows.length };
     }

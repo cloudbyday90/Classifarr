@@ -7,6 +7,7 @@ import { EnrichmentRetryService } from '../../services/enrichmentRetryService.mj
 import { EnrichmentItemStateService } from '../../services/enrichmentItemStateService.mjs';
 import { claimEnrichmentRetry } from '../../services/enrichmentRetryClaimService.mjs';
 import { TAVILY_MONTHLY_DEFERRED_REASON } from '../../utils/enrichmentState.mjs';
+import { seedOmdbQuotaFixture } from '../helpers/omdbQuotaFixture.mjs';
 const db = createIntegrationDatabaseModuleMock();
 let libraryId, serverId, actorId, itemId, service, wake;
 const preview = () => service.preview(actorId, libraryId);
@@ -14,6 +15,7 @@ const confirm = (review, requestId = randomUUID()) => service.confirm(actorId, l
 const retries = async () => (await db.query('SELECT * FROM enrichment_retry_queue WHERE media_item_id=$1 ORDER BY id', [itemId])).rows;
 const item = async () => (await db.query('SELECT * FROM media_server_items WHERE id=$1', [itemId])).rows[0];
 beforeEach(async () => {
+  await seedOmdbQuotaFixture(db);
   actorId = (await db.query("INSERT INTO users(username,password_hash,role,is_active) VALUES ($1,'synthetic','admin',true) RETURNING id", [randomUUID()])).rows[0].id;
   serverId = (await db.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('plex',$1,'http://synthetic.invalid','synthetic') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = (await db.query("INSERT INTO libraries(name,external_id,media_type,media_server_id,is_active) VALUES ($1,$1,'movie',$2,true) RETURNING id", [randomUUID(), serverId])).rows[0].id;
@@ -46,8 +48,7 @@ test.each(['plex', 'jellyfin', 'emby'].flatMap(provider => ['movie', 'tv'].map(t
   expect((await item()).metadata).toEqual(metadata);
   expect((await retries())[0]).toMatchObject({ attempts: 1, reason: 'Legacy reason', last_attempt_at: before[0].last_attempt_at, status: 'pending', claim_token: null });
   const retryService = new EnrichmentRetryService({ db, logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-    omdbService: { getByIMDBId: async () => ({ Title: 'Recovered evidence' }),
-      hasRemainingQuota: async () => ({ available: true }) } });
+    omdbService: { getByIMDBId: async () => ({ Title: 'Recovered evidence' }) } });
   expect(await retryService.processRetryQueue(1, 'omdb')).toMatchObject({ success: 1 });
   expect((await retries())[0]).toMatchObject({ status: 'completed', attempts: 1, claim_token: null });
   expect((await item()).metadata).toMatchObject({ sentinel: 'preserved', omdb: { data: { Title: 'Recovered evidence' } } });

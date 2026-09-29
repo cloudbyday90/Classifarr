@@ -28,11 +28,13 @@ import {
 import { processRetryQueue } from '../services/enrichmentRetryProcessing.mjs';
 import { persistEnrichmentRetryResult } from '../services/enrichmentRetryResultPersistence.mjs';
 import { installRetryClaimFixture } from './helpers/enrichmentRetryClaimFixture.mjs';
+import { availableOmdbQuotaFixture } from './helpers/omdbQuotaFixture.mjs';
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from '../services/enrichmentRetryClaimService.mjs';
 import { extractImdbData } from '../services/webSearchEnrichmentEvidence.mjs';
 
 function createDb(handler = () => ({ rows: [], rowCount: 0 })) {
-  return installRetryClaimFixture({ query: jest.fn() }, handler);
+  return installRetryClaimFixture({ query: jest.fn() }, (sql, params) =>
+    String(sql).includes('FROM omdb_config') ? { rows: [availableOmdbQuotaFixture()] } : handler(sql, params));
 }
 
 function createLogger() {
@@ -63,7 +65,6 @@ function createProcessingDeps(overrides = {}) {
     enrichWithOmdb: jest.fn(),
     enrichWithWebSearch: jest.fn(),
     hasAvailableWebSearchProvider: jest.fn().mockResolvedValue(true),
-    hasRemainingOmdbQuota: jest.fn().mockResolvedValue({ available: true }),
     queueForRetry: jest.fn().mockResolvedValue(),
     scheduleProcessing: jest.fn(),
     ...overrides,

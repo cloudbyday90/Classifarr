@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Check OMDb availability before claiming enrichment retries. Keep blocked work
+  untouched, resume through normal scheduling after setup or quota recovery, and
+  preserve atomic request accounting and source/worker ownership safeguards.
 - Extend visual retry readiness to OMDb with local quota, credential and setup
   guidance. Use one pausable provider view, preserve retry safeguards and keep
   observation read-only without spending requests or promising reserved quota.

@@ -6,6 +6,7 @@ import { EnrichmentRetryService } from '../../services/enrichmentRetryService.mj
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from '../../services/enrichmentRetryClaimService.mjs';
 import { persistEnrichmentRetryResult } from '../../services/enrichmentRetryResultPersistence.mjs';
 import { OMDbLimitReachedError } from '../../services/omdbQuota.mjs';
+import { seedOmdbQuotaFixture } from '../helpers/omdbQuotaFixture.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 let fixture, item, service, provider;
@@ -15,10 +16,10 @@ function createService() {
   return instance;
 }
 beforeEach(async () => {
+  await seedOmdbQuotaFixture(db);
   fixture = await createHandoffFixture(db, 'movie'); await fixture.scan();
   item = (await fixture.inventory())[0];
-  provider = { hasRemainingQuota: jest.fn().mockResolvedValue({ available: true }),
-    getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Evidence' }) };
+  provider = { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Evidence' }) };
   service = createService(); await service.queueForRetry(item.id, 'omdb');
   expect(fixture.log.error).not.toHaveBeenCalled();
   await db.query('DELETE FROM enrichment_retry_cooldowns');
@@ -46,12 +47,14 @@ test('transient due time survives reconstructed service and manual processing ca
   expect(await row()).toMatchObject({ status: 'completed', attempts: 1 });
 });
 
-test('provider unavailability defers without consuming attempts and recovers when available', async () => {
-  provider.hasRemainingQuota.mockResolvedValue({ available: false });
-  expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 1, skipped: true, failed: 0 });
+test('provider unavailability leaves pending work untouched and recovers when available', async () => {
+  await db.query('UPDATE omdb_config SET is_active=false');
+  const before = await row();
+  expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 0, skipped: true, failed: 0 });
   expect(provider.getByIMDBId).not.toHaveBeenCalled();
-  expect(await row()).toMatchObject({ status: 'pending', attempts: 0, error_message: 'provider_unavailable' });
-  provider.hasRemainingQuota.mockResolvedValue({ available: true }); await due();
+  expect(await row()).toEqual(before);
+  expect((await db.query('SELECT * FROM enrichment_retry_cooldowns')).rows).toHaveLength(0);
+  await db.query('UPDATE omdb_config SET is_active=true');
   expect(await createService().processRetryQueue(50, 'omdb')).toMatchObject({ success: 1 });
 });
 
@@ -69,11 +72,14 @@ test('readiness is rechecked after each successful item, before another network 
     VALUES ($1, 'second-scheduled-item', $2, 'movie', 'Second', 'tt0000002') RETURNING id`,
   [item.media_server_id, item.library_id])).rows[0];
   await service.queueForRetry(second.id, 'omdb');
-  provider.hasRemainingQuota.mockResolvedValueOnce({ available: true }).mockResolvedValue({ available: false });
-  expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 2, success: 1, skipped: true });
+  const before = (await db.query('SELECT * FROM enrichment_retry_queue WHERE media_item_id=$1', [second.id])).rows[0];
+  provider.getByIMDBId.mockImplementationOnce(async () => {
+    await db.query('UPDATE omdb_config SET requests_today=daily_limit');
+    return { Title: 'Last available request' };
+  });
+  expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 1, success: 1, skipped: true });
   expect(provider.getByIMDBId).toHaveBeenCalledTimes(1);
-  expect((await db.query('SELECT status, attempts FROM enrichment_retry_queue WHERE media_item_id=$1', [second.id])).rows[0])
-    .toMatchObject({ status: 'pending', attempts: 0 });
+  expect((await db.query('SELECT * FROM enrichment_retry_queue WHERE media_item_id=$1', [second.id])).rows[0]).toEqual(before);
 });
 
 test('due monthly legacy work followed by non-quota failure is not deferred another month', async () => {
@@ -114,13 +120,14 @@ test('a web-search cooldown does not defer unrelated TMDb counters', async () =>
   expect((await service.getStats()).tmdb).toMatchObject({ pending: 1, deferred: 0, actionablePending: 1 });
 });
 
-test('music and disabled libraries do not query provider readiness or HTTP', async () => {
+test('music and disabled libraries do not claim work or call HTTP', async () => {
+  const before = await row();
   await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [item.library_id]);
   await service.processRetryQueue(1, 'omdb');
   await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [item.library_id]);
   await db.query("UPDATE media_server_items SET media_type='track' WHERE id=$1", [item.id]);
   await service.processRetryQueue(1, 'omdb');
-  expect(provider.hasRemainingQuota).not.toHaveBeenCalled(); expect(provider.getByIMDBId).not.toHaveBeenCalled();
+  expect(await row()).toEqual(before); expect(provider.getByIMDBId).not.toHaveBeenCalled();
 });
 
 test('unknown legacy ownership remains untouched despite due time', async () => {

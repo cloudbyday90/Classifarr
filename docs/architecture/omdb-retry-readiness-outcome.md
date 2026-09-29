@@ -79,10 +79,9 @@ transient preview rather than a whole-backlog count or an execution guarantee.
 The [design document](omdb-retry-readiness-design.md) records official OMDb, W3C
 and PostgreSQL sources and the alternatives' pros and cons.
 
-Next: **OMDb admission before queue claim**. The current worker claims before
-checking the daily budget, then writes a deferral when it cannot proceed. Add a
-bounded scheduling hint using the quota evaluator before claiming, while keeping
-per-request atomic reservation and ownership checks authoritative. Acceptance
-should cover disabled/exhausted providers, configuration recovery, concurrent
-last-credit contention, the second title lookup, and normal retry/backfill
-progress. The cached dashboard response must never authorize a write.
+Follow-up delivered: [OMDb admission before queue claim](omdb-preclaim-admission-design.md).
+The bounded scheduling hint uses fresh quota observations, while per-request
+atomic reservation and ownership checks remain authoritative. The cached
+dashboard response never authorizes a write. See the
+[implementation outcome](omdb-preclaim-admission-outcome.md) for verification
+and the next component.
