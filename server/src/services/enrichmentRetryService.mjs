@@ -202,14 +202,11 @@ export class EnrichmentRetryService {
     async getStats() {
         return _getStats({
             db: this.db,
-            normalizeTavilyMonthlyDeferredRows: () => this.normalizeTavilyMonthlyDeferredRows(),
-            resolveRetriesWithExistingMetadata: (...args) => this.resolveRetriesWithExistingMetadata(...args),
-            failExhaustedPendingRetries: (...args) => this.failExhaustedPendingRetries(...args),
             countTavilyMonthlyDeferredRows: () => this.countTavilyMonthlyDeferredRows()
         });
     }
 
-    async processRetryQueue(limit = 50, enrichmentType = 'web_search') {
+    async processRetryQueue(limit = 50, enrichmentType = 'web_search', options = {}) {
         const wakeEpoch = this.retryWakeEpoch;
         return _processRetryQueue({
             db: this.db,
@@ -226,7 +223,7 @@ export class EnrichmentRetryService {
             isRetryWakeCurrent: () => wakeEpoch === this.retryWakeEpoch,
             queueForRetry: (...args) => this.queueForRetry(...args),
             scheduleProcessing: (delayMs) => this.scheduleProcessing(delayMs)
-        }, limit, enrichmentType);
+        }, limit, enrichmentType, options);
     }
 
     buildOmdbFallbackReason(resultError) {

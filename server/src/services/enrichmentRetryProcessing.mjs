@@ -2,17 +2,16 @@
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from './enrichmentRetryClaimService.mjs';
 import { persistEnrichmentRetryResult } from './enrichmentRetryResultPersistence.mjs';
 import { prepareOmdbRetryBatch } from './omdbRetryBatchPlan.mjs';
+import { runEnrichmentRetryMaintenance } from './enrichmentRetryMaintenancePass.mjs';
 
-export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_search') {
+export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_search', { maintenance = true } = {}) {
   const { db, logger, enrichWithOmdb, enrichWithWebSearch } = deps;
   if (!['omdb', 'web_search', 'tavily'].includes(enrichmentType)) throw new TypeError('unsupported_retry_type');
   if (!Number.isSafeInteger(limit) || limit < 0) throw new TypeError('invalid_retry_limit');
   const summary = { processed: 0, success: 0, failed: 0, autoFailed: 0, skipped: false };
   if (limit === 0) return summary;
-  await deps.recoverStaleProcessingRetries(enrichmentType);
-  await deps.normalizeTavilyMonthlyDeferredRows();
-  await deps.resolveRetriesWithExistingMetadata(enrichmentType);
-  summary.autoFailed = await deps.failExhaustedPendingRetries(enrichmentType);
+  const upkeep = maintenance ? await runEnrichmentRetryMaintenance(deps, enrichmentType) : null;
+  summary.autoFailed = upkeep?.autoFailed ?? 0;
   const visited = [];
   const plan = enrichmentType === 'omdb'
     ? await prepareOmdbRetryBatch(deps, limit)
@@ -69,7 +68,10 @@ export async function processRetryQueue(deps, limit = 50, enrichmentType = 'web_
         break;
       }
     }
-  } finally { plan?.finish(); }
+  } finally {
+    plan?.finish();
+    if (upkeep?.needsContinuation && (deps.isRetryWakeCurrent?.() ?? true)) deps.scheduleProcessing(5000);
+  }
   logger.info('Retry queue processing complete', { ...summary, enrichmentType });
   return summary;
 }

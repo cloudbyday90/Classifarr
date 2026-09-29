@@ -108,6 +108,9 @@ describe('EnrichmentRetryService', () => {
     expect(stats.web_search).toEqual(expect.objectContaining({ pending: 3, actionablePending: 3 }));
     expect(stats.tavily).toEqual(expect.objectContaining({ pending: 2, deferred: 1, actionablePending: 1 }));
     expect(stats.total).toEqual(expect.objectContaining({ pending: 5, deferred: 1, actionablePending: 4 }));
+    expect(service.normalizeTavilyMonthlyDeferredRows).not.toHaveBeenCalled();
+    expect(service.resolveRetriesWithExistingMetadata).not.toHaveBeenCalled();
+    expect(service.failExhaustedPendingRetries).not.toHaveBeenCalled();
   });
 
   test('processes provider-neutral retry work through the router-backed service', async () => {
@@ -233,6 +236,9 @@ describe('EnrichmentRetryService', () => {
     const service = createService();
     service.db.query.mockResolvedValue({ rows: [{ id: 1 }] });
     jest.spyOn(service, 'recoverStaleProcessingRetries').mockResolvedValue(0);
+    jest.spyOn(service, 'normalizeTavilyMonthlyDeferredRows').mockResolvedValue(0);
+    jest.spyOn(service, 'resolveRetriesWithExistingMetadata').mockResolvedValue(0);
+    jest.spyOn(service, 'failExhaustedPendingRetries').mockResolvedValue(0);
     jest.spyOn(service, 'getStats')
       .mockResolvedValueOnce({
         omdb: { pending: 0 },
@@ -243,7 +249,7 @@ describe('EnrichmentRetryService', () => {
 
     await service.triggerProcessing();
 
-    expect(service.processRetryQueue).toHaveBeenCalledWith(50, 'web_search');
-    expect(service.processRetryQueue).toHaveBeenCalledWith(50, 'tavily');
+    expect(service.processRetryQueue).toHaveBeenCalledWith(50, 'web_search', { maintenance: false });
+    expect(service.processRetryQueue).toHaveBeenCalledWith(50, 'tavily', { maintenance: false });
   });
 });

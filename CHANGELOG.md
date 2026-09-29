@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Bound retry maintenance and commit retry outcomes with item state atomically.
+  Resume legacy cleanup through the scheduler, preserve active/unknown claims,
+  and keep statistics read-only. Prevent later backlog pages from being failed
+  before existing metadata or monthly-quota recovery can be applied.
 - Check OMDb availability before claiming enrichment retries. Keep blocked work
   untouched, resume through normal scheduling after setup or quota recovery, and
   preserve atomic request accounting and source/worker ownership safeguards.

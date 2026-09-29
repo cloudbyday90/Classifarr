@@ -50,12 +50,15 @@ test('the earliest deferred provider wins over a later provider failure', async 
 test('dispatch is bounded and a fresh empty setup never invokes providers', async () => {
   const service = { db: { query: jest.fn().mockResolvedValue({ rows: [] }) },
     recoverStaleProcessingRetries: jest.fn(), processRetryQueue: jest.fn().mockResolvedValue({ processed: 1 }),
+    normalizeTavilyMonthlyDeferredRows: jest.fn().mockResolvedValue(0),
+    resolveRetriesWithExistingMetadata: jest.fn().mockResolvedValue(0),
+    failExhaustedPendingRetries: jest.fn().mockResolvedValue(0),
     logger: { info: jest.fn() } };
   await dispatchEnrichmentRetries(service);
   expect(service.processRetryQueue).not.toHaveBeenCalled();
   service.db.query.mockResolvedValue({ rows: [{ id: 1 }] });
   await dispatchEnrichmentRetries(service);
-  expect(service.processRetryQueue.mock.calls).toEqual([[50, 'omdb'], [50, 'web_search'], [50, 'tavily']]);
+  expect(service.processRetryQueue.mock.calls).toEqual(['omdb', 'web_search', 'tavily'].map(type => [50, type, { maintenance: false }]));
 });
 test('router quota errorCode preserves monthly deferral', async () => {
   const error = new WebSearchProviderRoutingError('quota', [{ providerKey: 'tavily', status: 'available' }],

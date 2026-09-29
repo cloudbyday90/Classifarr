@@ -39,11 +39,7 @@ export function applyDeferredCounts(stats, tavilyDeferredCount) {
     return stats;
 }
 
-export async function getStats({ db, normalizeTavilyMonthlyDeferredRows, resolveRetriesWithExistingMetadata, failExhaustedPendingRetries, countTavilyMonthlyDeferredRows }) {
-    await normalizeTavilyMonthlyDeferredRows();
-    await resolveRetriesWithExistingMetadata();
-    await failExhaustedPendingRetries();
-
+export async function getStats({ db, countTavilyMonthlyDeferredRows }) {
     const result = await db.query(`
       SELECT 
         enrichment_type,

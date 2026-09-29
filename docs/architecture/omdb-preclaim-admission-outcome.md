@@ -96,6 +96,11 @@ rollback, concurrent claims, restart and provider-disabled behavior with real
 PostgreSQL. Measure rows changed, elapsed time and memory before choosing limits.
 This closes an actual resource/recovery gap rather than adding another dashboard.
 
+Follow-up implemented September 29: see the separate
+[retry maintenance design](retry-maintenance-batching-design.md) and
+[verification outcome](retry-maintenance-batching-outcome.md). The paragraph above
+records the original recommendation, not outstanding implementation work.
+
 Later, evaluate shared OMDb request pacing: its lookup timestamp/promise is still
 process-local and recovery probes use a separate transport. Daily credit safety
 already remains atomic; do not confuse it with cross-process request spacing or

@@ -48,7 +48,7 @@ function createLogger() {
 
 function createStateService() {
   return {
-    syncItemState: jest.fn().mockResolvedValue(),
+    syncItemState: jest.fn(async id => ({ id })),
     syncItemStates: jest.fn().mockResolvedValue(),
   };
 }
@@ -109,6 +109,19 @@ describe('enrichment retry statistics', () => {
 });
 
 describe('enrichment retry maintenance', () => {
+  test.each([true, false])('direct processing resumes full maintenance only while its wake is current (%s)', async current => {
+    const finish = jest.fn();
+    const deps = createProcessingDeps({
+      resolveRetriesWithExistingMetadata: jest.fn().mockResolvedValue(50),
+      isRetryWakeCurrent: () => current,
+      prepareRetryBatch: async () => ({ next: async () => null, finish }),
+    });
+    await processRetryQueue(deps, 50, 'web_search');
+    expect(finish).toHaveBeenCalledTimes(1);
+    expect(deps.scheduleProcessing.mock.calls).toEqual(current ? [[5000]] : []);
+    if (current) expect(finish.mock.invocationCallOrder[0]).toBeLessThan(deps.scheduleProcessing.mock.invocationCallOrder[0]);
+  });
+
   test('auto-resolves both historical and current web-search retry rows when evidence exists', async () => {
     const db = createDb(() => ({
       rowCount: 2,
@@ -128,9 +141,11 @@ describe('enrichment retry maintenance', () => {
 
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining("msi.metadata->'web_search_imdb' IS NOT NULL"),
-      []
+      [null, 'tavily_monthly_quota_deferred', expect.any(String)]
     );
-    expect(state.syncItemStates).toHaveBeenCalledWith([20, 21]);
+    expect(state.syncItemState).toHaveBeenCalledWith(20, db);
+    expect(state.syncItemState).toHaveBeenCalledWith(21, db);
+    expect(state.syncItemStates).not.toHaveBeenCalled();
   });
 
   test('filters stale processing recovery by requested enrichment type', async () => {
@@ -164,8 +179,8 @@ describe('enrichment retry maintenance', () => {
     }, 'tavily');
 
     expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining("NOT (enrichment_type = 'tavily' AND reason = $1)"),
-      ['tavily_monthly_quota_deferred', 'tavily']
+      expect.stringContaining("NOT (erq.enrichment_type = 'tavily' AND COALESCE("),
+      ['tavily', 'tavily_monthly_quota_deferred', expect.any(String)]
     );
   });
 });
