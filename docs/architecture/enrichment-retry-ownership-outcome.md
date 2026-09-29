@@ -61,9 +61,32 @@ unit suite has 44 tests; the new PostgreSQL ownership suite has 20 tests.
 
 Lint, type checks, dependency/copyright/ownership preflight, ESM checks, policy
 gates, frontend build, Markdown lint, migration integrity and the disposable
-PostgreSQL schema comparison passed. No coverage threshold was lowered. A final
-coverage rerun and clean-source installation acceptance are recorded separately
-below when complete.
+PostgreSQL schema comparison passed. No coverage threshold was lowered.
+
+The clean final backend coverage rerun passed the same 46,202 tests. The coverage
+ratchet passed with backend lines/statements 90.23%, branches 84.88% and functions
+92.14%; frontend statements 85.96%, branches 78.48%, functions 85.41% and lines
+87.92%. Combined full-suite results total 54,149 passing tests, excluding the
+single opt-in skip and the separate 12 installation checks.
+
+### Clean-source installation acceptance
+
+`node scripts/run-runtime-installation-acceptance.mjs --ci` passed all 12 checks
+and cleanup at `2026-09-29T09:47:22.311Z` against clean source
+`08f9c4180d15a96f3e84b4851ac2ae5cbad0f44f`. The published baseline was
+`v0.48.4-beta`, revision `a0e417fd714919bb4ca30e20f9cd2380136ca74e`, verified at
+image digest `sha256:dc95fcdd80123b6bbf5b252fec286d9e81fbbc21a1030087c0a44abacd6a187f`.
+The tested candidate image was
+`sha256:beecf6d8f59c15b25bdb50a56adf0ad430265f9b6b6ea88f969391d857eed6d4`.
+
+Fresh and upgraded PostgreSQL 18.6 databases both reached 299 migrations; the
+published baseline had 222. Checks covered fresh seeds/startup, backfill crash
+recovery, published startup/export, persisted-volume migrations, process death
+during restore, rejection of unverified normal startup, rollback and verified
+retry, movie/TV recovery to learning, normal restart/profile recovery and upgraded
+scheduler progress. This was the standard installation profile, not a new
+resource-budget benchmark. The ignored receipt is
+`.tmp/ci/runtime-installation-acceptance.json`.
 
 No live data, routing settings or application container have been changed.
 
