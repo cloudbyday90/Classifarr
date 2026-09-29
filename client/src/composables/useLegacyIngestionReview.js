@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useSWR } from './useSWR'
 import { createBrowserRequestId } from '@/utils/browserRequestId'
-import { previewLibraryIngestion, reconcileLibraryIngestion, getLibraryIngestionReceipt } from '@/api/libraryIngestionApi'
+import { previewLibraryIngestion, reconcileLibraryIngestion, resumeLibraryIngestion, getLibraryIngestionReceipt } from '@/api/libraryIngestionApi'
 
 /** Preview never grants authority. Only an explicit confirmation sends a mutation. */
 export function useLegacyIngestionReview(libraryId, onReconciled = () => {}) {
@@ -32,10 +32,11 @@ export function useLegacyIngestionReview(libraryId, onReconciled = () => {}) {
     await onReconciled()
   }
   async function confirm() {
-    if (busy.value || invalidated.value || !acknowledged.value || !preview.value?.canReconcile || resource.error.value || resource.isOffline.value) return
+    if (busy.value || invalidated.value || !acknowledged.value || !(preview.value?.canReconcile || preview.value?.canResume) || resource.error.value || resource.isOffline.value) return
     const id = libraryId.value
     try {
-      pending.value ??= { id, requestId: createBrowserRequestId(), revision: preview.value.revision, uncertain: false }
+      pending.value ??= { id, requestId: createBrowserRequestId(), revision: preview.value.revision,
+        resume: preview.value.canResume === true, uncertain: false }
     } catch {
       message.value = 'Confirmation unavailable: this browser must support secure random values. No request was sent.'
       return
@@ -43,7 +44,8 @@ export function useLegacyIngestionReview(libraryId, onReconciled = () => {}) {
     const request = pending.value
     busy.value = true; message.value = ''
     try {
-      const result = await reconcileLibraryIngestion(id, { requestId: request.requestId, workersStopped: true }, request.revision)
+      const submit = request.resume ? resumeLibraryIngestion : reconcileLibraryIngestion
+      const result = await submit(id, { requestId: request.requestId, workersStopped: true }, request.revision)
       await accept(result.data, id)
     } catch (cause) {
       if (id !== libraryId.value) return

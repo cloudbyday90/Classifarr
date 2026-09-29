@@ -5,10 +5,10 @@
     aria-label="Legacy import review"
   >
     <h3 class="font-semibold">
-      Review older import records
+      Recover an interrupted import
     </h3>
     <p class="text-sm text-gray-300">
-      Administrator maintenance only. Imported media is preserved; this does not finish an import.
+      An older import is still marked unfinished. Recovery keeps existing inventory until a complete scan safely replaces it.
     </p>
     <Button
       :disabled="busy || !!pending"
@@ -39,6 +39,9 @@
         <summary class="cursor-pointer">
           Records to reconcile
         </summary>
+        <p class="mt-2 text-sm">
+          Import ownership means which background job may write results. These older records have no verified current writer; age alone cannot prove it stopped.
+        </p>
         <ul class="list-disc pl-5 mt-2 text-sm">
           <li
             v-for="sync in preview.syncs"
@@ -51,7 +54,7 @@
           </li>
         </ul>
       </details>
-      <template v-if="preview.canReconcile">
+      <template v-if="preview.canReconcile || preview.canResume">
         <p class="text-sm">
           Stop older Classifarr instances and external capture scripts first. An absent lock cannot prove they stopped.
         </p>
@@ -68,7 +71,7 @@
           :disabled="!acknowledged || busy || !!error && !pending"
           @click="confirm"
         >
-          {{ pending ? 'Retry same confirmation' : 'Reconcile reviewed records' }}
+          {{ pending ? 'Retry same confirmation' : preview.canResume ? 'Recover and resume import' : 'Reconcile reviewed records' }}
         </Button>
       </template>
     </template>
@@ -85,7 +88,16 @@
       role="status"
     >
       <p>Reconciliation recorded — receipt #{{ receipt.auditId }}.</p>
-      <p class="text-sm">
+      <p
+        v-if="receipt.replay === 'scheduled'"
+        class="text-sm"
+      >
+        A full import and backfill have been scheduled. Follow import progress above; this receipt does not mean the import has finished.
+      </p>
+      <p
+        v-else
+        class="text-sm"
+      >
         When older workers remain stopped, enable this library and save. The scheduler will replay the import; learning waits for completion.
       </p>
     </div>
@@ -108,5 +120,13 @@ const explanations = {
   unsupported_library: 'Only movie and TV libraries with a media server can be reconciled.',
   confirmation_required: 'Ready for your stopped-worker confirmation. The library will remain disabled.',
 }
-const explanation = computed(() => explanations[preview.value?.reason] ?? 'Review unavailable; no records will be changed.')
+const resumeExplanations = {
+  source_disabled: 'The media server is disabled. Enable it in settings and refresh before resuming.',
+  source_unconfigured: 'Configure the media server connection, then refresh before resuming.',
+  unsupported_source: 'This media server does not support automatic import recovery.',
+  library_archived: 'This library is archived. Review its archive status before resuming.',
+}
+const explanation = computed(() => preview.value?.canResume
+  ? 'After you confirm old workers have stopped, the scheduler will restart a full import and backfill. This library stays enabled; source availability and normal limits still apply.'
+  : resumeExplanations[preview.value?.resumeReason] ?? explanations[preview.value?.reason] ?? 'Review unavailable; no records will be changed.')
 </script>

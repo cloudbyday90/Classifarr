@@ -116,6 +116,10 @@ round. No random open PR could be selected; no closed PR was substituted or merg
 
 ## Recommendation stack and next component
 
+Follow-up: the [reviewed legacy recovery design](legacy-ingestion-resume-design.md)
+implements the selected next component without deploying or attesting for live
+historical writers. Its validation is recorded separately.
+
 Keep PostgreSQL, modular ESM acknowledgement services, atomic conditional writes,
 bounded execution accounting and real-database concurrency tests. The benefit is
 small, verifiable delivery fencing; the cost is a migration and explicit token

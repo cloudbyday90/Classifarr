@@ -38,7 +38,11 @@ export function createLegacyIngestionService(database, own = createMediaSyncOwne
         const snapshot = await readLegacyIngestion(db, request.libraryId, true);
         const preview = projectLegacyIngestion(snapshot, request.actorId);
         if (preview.revision !== request.revision) throw new AppError('Import state changed. Refresh and review again.', 412, { code: 'ingestion_preview_changed' });
-        if (!preview.canReconcile) throw new ConflictError('This import is not eligible for legacy reconciliation', { code: preview.reason });
+        if (request.resume ? !preview.canResume : !preview.canReconcile) {
+          throw new ConflictError('This import is not eligible for the requested recovery', {
+            code: request.resume ? preview.resumeReason : preview.reason,
+          });
+        }
         return { receipt: await reconcileLegacyIngestion(db, snapshot, request), repeated: false };
       }));
       if (result?.deferred) throw new ConflictError('An import currently owns the library or ingestion capacity. Try again later.', { code: result.reason });

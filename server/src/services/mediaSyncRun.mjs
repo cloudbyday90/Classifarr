@@ -51,7 +51,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
     if (claim.reason) {
       if (claim.reason === 'legacy_owner_unknown') logger.warn('Ingestion ownership is unknown; automatic takeover withheld',
         { libraryId, libraryName: library.name, libraryType: library.media_type, libraryPath: `/libraries/${libraryId}`,
-          reason: claim.reason, recovery: 'Open this library and review the blocked import. Verify older instances and external capture scripts are stopped, disable the library, refresh and confirm the reviewed records, then re-enable for automatic full backfill. Existing inventory is preserved until a complete scan; age alone is not proof of stopped ownership.' },
+          reason: claim.reason, recovery: 'Open this library and review the blocked import. After verifying older instances and external capture scripts are stopped, use Recover and resume import for an enabled, configured library. Disabled libraries retain the maintenance-only review, followed by manual enabling. Recovery preserves inventory until a complete scan and schedules full backfill; age alone does not prove a writer stopped.' },
         { dedupeKey: `ingestion-owner:${libraryId}`, dedupeWindowMs: 86400000 });
       return { success: false, deferred: true, reason: claim.reason };
     }

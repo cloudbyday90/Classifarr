@@ -63,8 +63,8 @@
     {
       "id": "reconciliation",
       "classification": "separately_coordinated",
-      "reason": "Administrator reconciliation uses the common owner lock plus disabled-library, current-admin, exact-revision and stopped-worker checks with an atomic audit receipt.",
-      "followUp": "Preserve explicit old-worker shutdown attestation and test revision races, lock contention and audit rollback when changing this path."
+      "reason": "Administrator reconciliation uses the common owner lock, locked rows, current-admin, exact-revision and stopped-worker checks with an atomic audit receipt. Default maintenance requires a disabled library; explicit resume requires an already enabled/configured supported source and library. Neither changes settings nor proves old writers stopped.",
+      "followUp": "Preserve explicit old-worker shutdown attestation; test mode-bound receipts, revision races, lock contention, audit rollback and outage-to-backfill handoff. Cooperative exclusion does not authorize autonomous recovery of unknown historical writers."
     },
     {
       "id": "shared_writer_debt",
@@ -521,9 +521,10 @@
     {"path":"server/src/services/inventoryRepresentativeProfileRepository.mjs","digest":"967d494250cdaa0687a19dfa5591e95df798ef25ca0cfd780c33f7e5dac8a55e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventorySemanticSampler.mjs","digest":"09641a9ad5164c642f11e05298becc06c0a51adb8abc12c9600f46819f6f79f4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryTrainingProvenance.mjs","digest":"94ef1fcd8d299a127d2d0f720837f409d74c277b7e936de6c299493b1872929c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/legacyIngestionContract.mjs","digest":"cfb1fd16c0dd7ae071e64ce4b01f8f79e3315699eeaf332af7bb042c0290f09a","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},
-    {"path":"server/src/services/legacyIngestionRepository.mjs","digest":"fe174fc4c6f1832a17c3107f3ad1714b97c5e508a40f5a1f0cbe041bc182f08d","analysisDigest":"07456166dd22e17d3266da6e8cd0be30ed6f75514d8e7b5ff83504c3d9485d3e","review":"reconciliation"},
-    {"path":"server/src/services/legacyIngestionService.mjs","digest":"5e1a6d25fc0051fb102908f57ee78b9845df61a7a0147c193f86093e47d72e3a","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},
+    {"path":"server/src/services/legacyIngestionContract.mjs","digest":"9cc9c8e1638a2719e11c8f0388bb1b0baac24fb37228225fcb18b5690caaf011","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},
+    {"path":"server/src/services/legacyIngestionRecoveryPolicy.mjs","digest":"7069bc50f1876ccc461917f3f583d1d73a2bb2aa27df7272cd03f76cd4427314","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},
+    {"path":"server/src/services/legacyIngestionRepository.mjs","digest":"f20b70cf936f91acd2d394210079bd1f12a549c01eb2e3cadf28c84758da5c33","analysisDigest":"07456166dd22e17d3266da6e8cd0be30ed6f75514d8e7b5ff83504c3d9485d3e","review":"reconciliation"},
+    {"path":"server/src/services/legacyIngestionService.mjs","digest":"f141837285f7324f326a8e6cabdbddf8eb55e39a03b9000e2f2bc749f81e0bcf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},
     {"path":"server/src/services/libraryEvidenceCoverageRepository.mjs","digest":"f463f327f9621c8ce354e520e4f99a767fbbf29f5228bc89e32cb8b7af439989","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/libraryMappingService.mjs","digest":"bbddc591e91caf0eb26e27b735be8de217df7e92deb025a971b6bd924a99e7a9","analysisDigest":"831b9a541ff8891140b2539ebfcbb9ab645812b364c8a2ddab4323b639ee1ff6","review":"shared_writer_debt"},
     {"path":"server/src/services/libraryUpgradeReadiness.mjs","digest":"4ea7ef74eaa275e582537c0e3e69965f8a6e4435a58aced8a77cf029868e5800","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -546,7 +547,7 @@
     {"path":"server/src/services/mediaSyncOwnership.mjs","digest":"5b64fe15dc3cca014307338aaae366e54f4ed8716b8dfb11fbbcefedc91c88f0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncOwnershipRepository.mjs","digest":"f9b92d4c45478a1913e80497c6c5076d1d09702427ce2fb39d98b6546c5f8a67","analysisDigest":"5938e110a2103c742a21b2b3d9dd324c8665e11fed170d644605d8de58291f95","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncQueries.mjs","digest":"d6889c401d4e878409f34bdc107d5558ae91eda9dd99ae37faf1e15d211aa472","analysisDigest":"155c8a53aece0f4ed4b9e5f68bc982f5d482b4ba158aa0a6c4e631683e014a14","review":"shared_writer_debt"},
-    {"path":"server/src/services/mediaSyncRun.mjs","digest":"87dcef263bced76fbfa610240db96e1db6c109b7d33e50fec546d6eff595fb7b","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_session"},
+    {"path":"server/src/services/mediaSyncRun.mjs","digest":"f853057e8514c1088c59670906a91015f0b9736f4b36510f871a7dc64879ad50","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/plex.mjs","digest":"d2ad5ba888172161bf8970ced42b4fdd8a2b7783634b085b51f643b46c8d91ac","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/shared/createEmbyLikeService.mjs","digest":"c59608bdc7ba31b82238e4bde85f8044d7f1895c385df2bbc72721ec5c6eb3f7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/shared/sourcePage.mjs","digest":"3fa802e5403b6e18f90e5390a8275972342c314e4c24b38dca0b2ffc16ffaadd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},

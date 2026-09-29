@@ -2,17 +2,20 @@
 import { createHash } from 'node:crypto';
 import { AppError, ValidationError } from '../utils/appError.mjs';
 import { reviewBody, reviewInteger, reviewPreviewId } from './mediaIdentityReviewContract.mjs';
+import { legacyIngestionResumeReason } from './legacyIngestionRecoveryPolicy.mjs';
 
 export const LEGACY_MARKER_LIMIT = 100;
 export const LEGACY_RECONCILIATION_ACTION = 'library_ingestion_reconciled';
 
 export function reconciliationRequest(actorId, libraryId, body, ifMatch) {
-  reviewBody(body, ['requestId', 'workersStopped']);
+  const hasResume = Object.hasOwn(body ?? {}, 'resume');
+  reviewBody(body, hasResume ? ['requestId', 'workersStopped', 'resume'] : ['requestId', 'workersStopped']);
   if (body.workersStopped !== true) throw new ValidationError('Confirm that older instances and external capture scripts have stopped');
+  if (hasResume && typeof body.resume !== 'boolean') throw new ValidationError('Resume must be a boolean');
   if (ifMatch === undefined) throw new AppError('Refresh the preview before confirming', 428, { code: 'ingestion_preview_required' });
   if (typeof ifMatch !== 'string' || !/^"[a-f0-9]{64}"$/.test(ifMatch)) throw new ValidationError('An exact ingestion preview revision is required');
   return { actorId: reviewInteger(actorId), libraryId: reviewInteger(libraryId),
-    requestId: reviewPreviewId(body.requestId), revision: ifMatch };
+    requestId: reviewPreviewId(body.requestId), revision: ifMatch, resume: hasResume && body.resume === true };
 }
 
 export function projectLegacyIngestion(snapshot, actorId) {
@@ -25,7 +28,9 @@ export function projectLegacyIngestion(snapshot, actorId) {
         : !foreign ? 'not_needed'
           : library.is_active ? 'disable_library' : 'confirmation_required';
   const revision = `"${createHash('sha256').update(JSON.stringify([1, actorId, snapshot])).digest('hex')}"`;
+  const resumeReason = legacyIngestionResumeReason(snapshot, reason);
   return { version: 1, revision, reason, canReconcile: reason === 'confirmation_required',
+    canResume: resumeReason === 'confirmation_required', resumeReason,
     library: { id: library.id, name: library.name, enabled: library.is_active },
     truncated: syncs.length > LEGACY_MARKER_LIMIT,
     syncs: syncs.slice(0, LEGACY_MARKER_LIMIT).map(row => ({ id: row.id, status: row.status,

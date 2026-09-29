@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add reviewed recovery and automatic full-import/backfill continuation for
+  enabled Plex, Jellyfin and Emby movie/TV libraries with interrupted legacy
+  imports. Preserve inventory, settings, retry limits and stopped-writer
+  confirmation; explain import ownership and retain maintenance-only recovery.
 - Fence queue completion, retry and requeue by per-claim ownership so stale workers
   cannot overwrite replacement claims. Scope shutdown recovery to local claims
   and retain execution capacity until live work actually settles.

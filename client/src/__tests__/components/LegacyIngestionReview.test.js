@@ -2,9 +2,9 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
-const mocks = vi.hoisted(() => ({ preview: vi.fn(), confirm: vi.fn(), receipt: vi.fn() }))
+const mocks = vi.hoisted(() => ({ preview: vi.fn(), confirm: vi.fn(), resume: vi.fn(), receipt: vi.fn() }))
 vi.mock('@/api/libraryIngestionApi', () => ({ previewLibraryIngestion: mocks.preview,
-  reconcileLibraryIngestion: mocks.confirm, getLibraryIngestionReceipt: mocks.receipt }))
+  reconcileLibraryIngestion: mocks.confirm, resumeLibraryIngestion: mocks.resume, getLibraryIngestionReceipt: mocks.receipt }))
 const preview = { revision: '"revision"', canReconcile: true, reason: 'confirmation_required',
   library: { id: 1 }, syncs: [{ id: 3, status: 'running', processed: 7 }], capture: { generation: 2, source: 'local_capture' } }
 const button = (wrapper, text) => wrapper.findAll('button').find(candidate => candidate.text() === text)
@@ -13,6 +13,7 @@ beforeEach(() => {
   vi.resetAllMocks(); localStorage.clear()
   mocks.preview.mockResolvedValue(structuredClone(preview))
   mocks.confirm.mockResolvedValue({ data: { receipt: { auditId: 42 } } })
+  mocks.resume.mockResolvedValue({ data: { receipt: { auditId: 43, replay: 'scheduled' } } })
   mocks.receipt.mockResolvedValue({ status: 'not_observed', receipt: null })
 })
 afterEach(() => vi.unstubAllGlobals())
@@ -116,5 +117,42 @@ it.each(['disable_library', 'active_owner', 'not_needed', 'too_many_markers', 'u
   await open(wrapper)
   expect(wrapper.find('input').exists()).toBe(false)
   expect(mocks.confirm).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('offers explicit recover-and-resume for enabled eligible libraries without a settings mutation', async () => {
+  mocks.preview.mockResolvedValueOnce({ ...preview, canReconcile: false, canResume: true, reason: 'disable_library' })
+  const wrapper = mount(LegacyIngestionReview, { props: { libraryId: 1 } })
+  await open(wrapper)
+  expect(button(wrapper, 'Recover and resume import').attributes('disabled')).toBeDefined()
+  expect(wrapper.text()).toContain('This library stays enabled')
+  await wrapper.get('input').setValue(true)
+  await button(wrapper, 'Recover and resume import').trigger('click'); await flushPromises()
+  expect(mocks.resume).toHaveBeenCalledWith(1, { workersStopped: true, requestId: expect.any(String) }, '"revision"')
+  expect(mocks.confirm).not.toHaveBeenCalled()
+  expect(wrapper.get('[role=status]').text()).toContain('does not mean the import has finished')
+  expect(wrapper.text()).not.toContain('enable this library and save')
+  wrapper.unmount()
+})
+
+it('pins resume intent across an uncertain response and retries the same request', async () => {
+  mocks.preview.mockResolvedValueOnce({ ...preview, canReconcile: false, canResume: true })
+  mocks.resume.mockRejectedValueOnce(new Error('lost'))
+  const wrapper = mount(LegacyIngestionReview, { props: { libraryId: 1 } })
+  await open(wrapper); await wrapper.get('input').setValue(true)
+  await button(wrapper, 'Recover and resume import').trigger('click'); await flushPromises()
+  await button(wrapper, 'Retry same confirmation').trigger('click'); await flushPromises()
+  expect(mocks.resume.mock.calls[1]).toEqual(mocks.resume.mock.calls[0])
+  expect(mocks.confirm).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('have been scheduled')
+  wrapper.unmount()
+})
+
+it.each(['source_disabled', 'source_unconfigured', 'unsupported_source', 'library_archived'])('blocks resume when %s', async resumeReason => {
+  mocks.preview.mockResolvedValueOnce({ ...preview, canReconcile: false, canResume: false, resumeReason })
+  const wrapper = mount(LegacyIngestionReview, { props: { libraryId: 1 } })
+  await open(wrapper)
+  expect(wrapper.find('input').exists()).toBe(false)
+  expect(mocks.resume).not.toHaveBeenCalled()
   wrapper.unmount()
 })

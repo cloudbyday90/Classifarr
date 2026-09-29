@@ -55,6 +55,7 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/mediaSyncUpsert.mjs',
     'server/src/services/legacyIngestionService.mjs',
     'server/src/services/legacyIngestionContract.mjs',
+    'server/src/services/legacyIngestionRecoveryPolicy.mjs',
     'server/src/utils/databaseClientLease.mjs',
 ]);
 const digest = value => createHash('sha256').update(value).digest('hex');

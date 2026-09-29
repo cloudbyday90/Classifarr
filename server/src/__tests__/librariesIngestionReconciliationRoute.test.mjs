@@ -32,6 +32,8 @@ test('requires no-store admin reads, rejects query/API-key controls and forwards
   const body = { requestId: 'synthetic-request', workersStopped: true };
   await request(app).post(url).set('If-Match', '"expected"').send(body).expect(200);
   expect(service.confirm).toHaveBeenCalledWith(1, '4', body, '"expected"');
+  await request(app).post(url).set('If-Match', '"resume-review"').send({ ...body, resume: true }).expect(200);
+  expect(service.confirm).toHaveBeenLastCalledWith(1, '4', { ...body, resume: true }, '"resume-review"');
   await request(app).get(`${url}/receipts/synthetic-request`).expect(200);
   expect(service.receipt).toHaveBeenCalledWith(1, '4', 'synthetic-request');
 });

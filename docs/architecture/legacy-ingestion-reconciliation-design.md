@@ -2,6 +2,11 @@
 
 ## Decision — September 2026
 
+This document describes the retained maintenance-only contract. The additive
+[recover-and-resume design](legacy-ingestion-resume-design.md) provides an
+explicit option for already-enabled libraries without changing settings or
+removing the stopped-writer confirmation.
+
 Provide a per-library, administrator-session-only preview and confirmation flow
 for import markers that predate verifiable ownership. Require the library to be
 disabled and the administrator to confirm that older instances and external
