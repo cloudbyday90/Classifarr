@@ -140,7 +140,8 @@ Immediate operational follow-up: resolve the reviewed legacy-import blockers for
 libraries 4 and 5 through the existing workflow once stopped writers can be
 confirmed. Do not create another recovery mechanism or infer authority from age.
 
-Next code component: **an actionable retry-readiness summary**. Show
+Before the next feature, address the post-push dependency notice below. The next
+application component is **an actionable retry-readiness summary**. Show
 cached-ready, provider-waiting, disabled/rejected and future-due counts separately,
 with the next check time and one relevant settings action. Use bounded aggregate
 reads and existing status/polling infrastructure; do not scan the entire backlog
@@ -150,3 +151,18 @@ The live disabled-provider backlog makes this a concrete operator need.
 
 GitHub MCP searches found no open Classifarr PRs, including the final recheck.
 There was no PR available to randomly select or implement; none was merged.
+
+## Post-push security notice
+
+GitHub reported [Dependabot alert 112](https://github.com/cloudbyday90/Classifarr/security/dependabot/112)
+after push: `GHSA-r3ph-w7gj-g6xm`, moderate severity, concerning CPU limits for
+empty YAML merge sources. The authenticated alert identifies root `package-lock.json`
+and development scope, affected `js-yaml` versions 5.0.0–5.4.0, first patched 5.4.1.
+Local `npm ls` confirms the root Markdown linter resolves the overridden 5.2.2;
+the separate server lock already records 5.4.2.
+
+This dependency issue is **not fixed by this delivery**. Prioritize updating the
+root override/lockfile to a verified patched release, then rerun documentation and
+root-tooling regressions. Do not call the repository vulnerability-free based on
+passing functional tests. This notice does not change the validated runtime
+commit or deployed image.
