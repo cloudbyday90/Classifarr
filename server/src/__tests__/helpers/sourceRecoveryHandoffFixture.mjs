@@ -77,15 +77,23 @@ export async function createHandoffFixture(db, mediaType) {
         async dueRecovery() {
             await db.query("UPDATE media_source_observations SET recovery_retry_after=clock_timestamp()-INTERVAL '1 second' WHERE library_id=$1", [libraryId]);
         },
-        queue({ beforeComplete = async () => {} } = {}) {
+        queue({ afterResultCommit = async () => {} } = {}) {
             const queue = new QueueService({ db, logger: log, tmdbService: provider,
                 classificationService: { classifyQueueTask: classify } });
-            queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger: log, tmdbService: provider,
+            const processorDb = { ...db, withTransaction: async work => {
+                let completed = false;
+                const result = await db.withTransaction(client => work({ query: async (...args) => {
+                    if (/UPDATE task_queue\s+SET status = 'completed'/.test(args[0])) completed = true;
+                    return client.query(...args);
+                } }));
+                if (completed) await afterResultCommit();
+                return result;
+            } };
+            queue.queueTaskProcessorService = new QueueTaskProcessorService({ db: processorDb, logger: log, tmdbService: provider,
                 classificationService: { classifyQueueTask: classify },
                 // Optional enrichment is deliberately disabled; all persistence remains real.
                 queueOmdbEnrichmentService: { enrich: async () => {} },
                 queueWebSearchEnrichmentService: { enrich: async () => {} },
-                completeTask: async (...args) => { await beforeComplete(...args); await queue.completeTask(...args); },
             });
             return queue;
         },

@@ -4,7 +4,8 @@ import { jest, beforeEach, afterEach, expect, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { QueueRefillService } from '../../services/queueRefillService.mjs';
 import { QueueInventoryTmdbEnrichmentService } from '../../services/queueInventoryTmdbEnrichmentService.mjs';
-import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
+import { runClaimedEnrichmentFixture as processMetadataEnrichmentTask,
+    enrichmentFixtureDatabase } from '../helpers/claimedEnrichmentSqlFixture.mjs';
 import { readLibraryProfileObservation } from '../../services/libraryProfileQueries.mjs';
 import { inventoryObservationValidityCases } from '../helpers/inventoryObservationValidityCases.mjs';
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
@@ -27,7 +28,7 @@ beforeEach(async () => {
     refill = new QueueRefillService({ db, logger });
     provider = { getApiKey: jest.fn().mockResolvedValue('fixture'),
         getMovieDetails: jest.fn().mockResolvedValue(response('movie')), getTVDetails: jest.fn().mockResolvedValue(response('tv')) };
-    deps = { db, logger, metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
+    deps = { db: enrichmentFixtureDatabase(db), logger, metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
         enrichmentItemStateService: { markProcessing: jest.fn(), syncItemState: jest.fn() },
         resolveSourceLibraryName: async (_id, name) => name,
         queueOmdbEnrichmentService: { enrich: jest.fn() }, queueWebSearchEnrichmentService: { enrich: jest.fn() },

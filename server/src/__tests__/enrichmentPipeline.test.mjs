@@ -27,6 +27,7 @@
 
 import { jest } from '@jest/globals';
 import { runTaskWithMatchingEnrichmentSource } from './helpers/queueEnrichmentSourceFixture.mjs';
+import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessionFixture.mjs';
 import { createLoggerModuleMock, createNamedMockModule, resetLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
@@ -114,6 +115,10 @@ describe('Enrichment Pipeline Integration', () => {
             omdbService: omdbService,
             logger: createLogger('QueueService-Test')
         });
+        queueService.queueTaskProcessorService.createEnrichmentWriteSession = options => unitEnrichmentWriteSession({
+            queryWithTimeout: (...args) => queueService.queueTaskProcessorService.queryWithTimeout(...args),
+            completeTask: (...args) => queueService.completeTask(...args),
+        }, options);
 
         db.query.mockImplementation(() => Promise.resolve({ rows: [] }));
         omdbService.getByTitle.mockImplementation(() => Promise.resolve(null));

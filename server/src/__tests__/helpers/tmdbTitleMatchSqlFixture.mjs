@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { QueueTmdbResolutionService } from '../../services/queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from '../../services/queueClassificationHistoryService.mjs';
-import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
+import { runClaimedEnrichmentFixture as processMetadataEnrichmentTask,
+  enrichmentFixtureDatabase, createEnrichmentQueueFixture } from './claimedEnrichmentSqlFixture.mjs';
 
 const page = (results) => ({ page: 1, total_pages: results.length ? 1 : 0, total_results: results.length, results });
 const movie = (id, title) => ({ id, title, release_date: '2001-01-01' });
@@ -32,6 +33,7 @@ export async function verifyTmdbTitleMatchSql(client) {
       ) ON COMMIT DROP;
       INSERT INTO libraries VALUES (1, 'Source');
     `);
+    await createEnrichmentQueueFixture(client);
     const cases = [
       { id: 1, title: 'Unique', response: page([movie(41, 'Other'), movie(42, 'Unique')]), expectedId: 42, reason: 'exact_title_year_match' },
       { id: 2, title: 'Weak', response: page([movie(43, 'Unrelated')]), reason: 'no_exact_title_year_match' },
@@ -56,7 +58,7 @@ export async function verifyTmdbTitleMatchSql(client) {
     } });
     const completions = [];
     const deps = {
-      db: { query }, logger, queryWithTimeout: query,
+      db: enrichmentFixtureDatabase(client), logger, queryWithTimeout: query,
       metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
       enrichmentItemStateService: { markProcessing: async () => {}, syncItemState: async () => {} },
       resolveSourceLibraryName: async (_id, name) => name,

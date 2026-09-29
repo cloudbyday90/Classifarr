@@ -7,7 +7,8 @@ import { prepareQueueEnrichmentPayload } from '../../services/queueEnrichmentPay
 import { persistOmdbRating, persistEnrichmentMetadata } from '../../services/queueEnrichmentPersistence.mjs';
 import { QueueOmdbEnrichmentService } from '../../services/queueOmdbEnrichmentService.mjs';
 import { QueueClassificationHistoryService } from '../../services/queueClassificationHistoryService.mjs';
-import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
+import { runClaimedEnrichmentFixture as processMetadataEnrichmentTask } from '../helpers/claimedEnrichmentSqlFixture.mjs';
+import { runDatabaseTransaction } from '../../utils/databaseTransaction.mjs';
 
 const claimToken = randomUUID();
 let pool, query, serverId, libraryIds, itemId, logger;
@@ -51,7 +52,7 @@ async function change(field) {
 function deps() {
   const history = new QueueClassificationHistoryService({ db: { query }, logger });
   jest.spyOn(history, 'persist');
-  return { db: { query }, queryWithTimeout: query, logger,
+  return { db: { query, withTransaction: async work => runDatabaseTransaction(await pool.connect(), work) }, queryWithTimeout: query, logger,
     metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
     enrichmentItemStateService: { markProcessing: jest.fn(), syncItemState: jest.fn() },
     resolveSourceLibraryName: async (_id, name) => name,
@@ -84,7 +85,7 @@ test.each(Object.keys(changes))('rejects final unresolved metadata and stops his
   expect(await historyCount()).toBe(0);
   expect(dependencies.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
   expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' }, claimToken);
-  expect(dependencies.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(itemId);
+  expect(dependencies.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(itemId, expect.objectContaining({ query: expect.any(Function) }));
 });
 
 test.each([null, 42])('allows bookkeeping and derives original rating atomically for TMDb %j', async tmdbId => {
@@ -114,16 +115,19 @@ test('known TMDb identity cannot receive a late rating or metadata after ID remo
   expect(await stored()).toMatchObject({ content_rating: 'G', metadata: {} });
 });
 
-test.each(['title', 'tmdb_id', 'deleted'])('guards history when %s changes after metadata was saved', async field => {
+test.each(['title', 'tmdb_id', 'deleted'])('rolls back the result batch when history rejects %s drift', async field => {
   const dependencies = deps();
-  dependencies.queryWithTimeout = async (sql, values) => {
-    const result = await query(sql, values);
-    await change(field);
-    return result;
-  };
+  const history = QueueClassificationHistoryService.prototype.persist.bind(dependencies.queueClassificationHistoryService);
+  dependencies.queueClassificationHistoryService.persist.mockImplementation(async (...args) => {
+    // An external writer is blocked by the metadata row lock until commit. Inject
+    // drift on this same transaction to exercise the history guard and rollback.
+    await args[5].query(changes[field], [itemId]);
+    return history(...args);
+  });
   await run(dependencies);
   expect(dependencies.queueClassificationHistoryService.persist).toHaveBeenCalledTimes(1);
   expect(await historyCount()).toBe(0);
+  expect((await stored()).metadata).toEqual({});
   expect(dependencies.completeTask).toHaveBeenCalledWith(1, { enriched: false, skipped: true, reason: 'source_identity_changed' }, claimToken);
 });
 

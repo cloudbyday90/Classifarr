@@ -42,6 +42,11 @@ old code does not enforce the predicate. Stop older instances before upgrade.
 
 ## Scope and limitations
 
+Follow-up: [enrichment write fencing](queue-enrichment-write-fencing-design.md)
+adds short claim-locked transactions for metadata-enrichment effects and atomic
+final completion. That path rejects an expired lease even before reclamation;
+the generic acknowledgement behavior above is otherwise unchanged.
+
 This fences queue acknowledgement, not every downstream effect. Provider calls,
 classification/routing, enrichment writes and index work may occur before the
 acknowledgement. A rejected acknowledgement cannot undo those effects. Do not

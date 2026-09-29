@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { QueueTmdbResolutionService } from '../../services/queueTmdbResolutionService.mjs';
 import { QueueClassificationHistoryService } from '../../services/queueClassificationHistoryService.mjs';
-import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
+import { runClaimedEnrichmentFixture as processMetadataEnrichmentTask,
+  enrichmentFixtureDatabase, createEnrichmentQueueFixture } from './claimedEnrichmentSqlFixture.mjs';
 
 const bucket = (...ids) => ({ tv_results: ids.map((id) => ({ id })) });
 const both = { tvdb_id: 123, imdb_id: 'tt456' };
@@ -31,6 +32,7 @@ export async function verifyTmdbExternalIdSql(client) {
         director_name text, primary_studio_name text, genre_names text[], cast_ids integer[], cast_names text[]
       ) ON COMMIT DROP;
     `);
+    await createEnrichmentQueueFixture(client);
     const cases = [
       { ids: { tvdb_id: 123 }, responses: [bucket(42)], expectedId: 42, method: 'tvdb', reason: 'external_id_match' },
       { ids: both, responses: [bucket(42), bucket(42)], expectedId: 42, method: 'external_ids', reason: 'external_ids_agree' },
@@ -70,7 +72,7 @@ export async function verifyTmdbExternalIdSql(client) {
       } });
       const completions = [];
       const deps = {
-        db: { query }, logger, queryWithTimeout: query,
+        db: enrichmentFixtureDatabase(client), logger, queryWithTimeout: query,
         metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
         enrichmentItemStateService: { markProcessing: async () => {}, syncItemState: async () => {} },
         resolveSourceLibraryName: async (_id, name) => name,

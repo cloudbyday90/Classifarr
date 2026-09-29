@@ -13,6 +13,7 @@ import { processRatingNormalization as _processRatingNormalization } from './que
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
+import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 import {
     buildClassificationDestinationSummary,
 } from './classificationResultOutcomeSummary.mjs';
@@ -35,6 +36,7 @@ export class QueueTaskProcessorService {
         this.tmdbService = deps.tmdbService;
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
+        this.createEnrichmentWriteSession = deps.createEnrichmentWriteSession;
         this.policyRequestImportDestinationAdmissionService =
             deps.policyRequestImportDestinationAdmissionService || policyRequestImportDestinationAdmissionService;
         this.ratingNormalizer = deps.ratingNormalizer || ratingNormalizer;
@@ -182,8 +184,7 @@ export class QueueTaskProcessorService {
             queueTmdbResolutionService: this.queueTmdbResolutionService,
             queueInventoryTmdbEnrichmentService: this.queueInventoryTmdbEnrichmentService,
             queueClassificationHistoryService: this.queueClassificationHistoryService,
-            queryWithTimeout: (...args) => this.queryWithTimeout(...args),
-            completeTask: (...args) => this.completeTask(...args)
+            createWriteSession: this.createEnrichmentWriteSession,
         });
     }
 
@@ -226,7 +227,13 @@ export class QueueTaskProcessorService {
                         task.claim_token,
                     );
             }
-        } catch {
+        } catch (error) {
+            if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') {
+                this.logger.debug('Stale enrichment result discarded; queue claim is no longer owned', {
+                    taskId: task.id, reasonCode: error.reason,
+                });
+                return;
+            }
             this.logger.error('Task processing failed', {
                 taskId: task.id,
                 taskType: task.task_type,

@@ -107,6 +107,10 @@ confirmation; the agent has not made that confirmation for the user.
 
 ## Next component
 
+Implemented follow-up: [queue enrichment write fencing](queue-enrichment-write-fencing-outcome.md).
+The acceptance target below is retained as the original handoff; the linked
+outcome records the completed boundary and the next separate worker to cover.
+
 Fence **enrichment persistence**, not just queue acknowledgement. The current
 `queueTaskProcessorEnrichment.mjs` writes enrichment and classification history
 before its claim-fenced completion call. Revalidate the current task claim in the

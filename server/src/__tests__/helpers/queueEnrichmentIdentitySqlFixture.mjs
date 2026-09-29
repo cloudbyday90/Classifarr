@@ -8,7 +8,8 @@ import { QueueRefillService } from '../../services/queueRefillService.mjs';
 import { QueueTmdbResolutionService } from '../../services/queueTmdbResolutionService.mjs';
 import { QueueOmdbEnrichmentService } from '../../services/queueOmdbEnrichmentService.mjs';
 import { QueueClassificationHistoryService } from '../../services/queueClassificationHistoryService.mjs';
-import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
+import { runClaimedEnrichmentFixture as processMetadataEnrichmentTask,
+  enrichmentFixtureDatabase, createEnrichmentQueueFixture } from './claimedEnrichmentSqlFixture.mjs';
 
 /** Runs real queue services and SQL with stubbed providers; only TEMP tables are written. */
 export async function verifyQueueEnrichmentIdentitySql(client) {
@@ -29,7 +30,6 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
       CREATE TEMP TABLE media_source_observations (
         library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz
       ) ON COMMIT DROP;
-      CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;
       CREATE TEMP TABLE omdb_config (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
         is_active boolean, api_key text) ON COMMIT DROP;
       CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
@@ -45,6 +45,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         (3, NULL, 1, 'Unknown type', 2001), (4, 'tv', 1, 'Changing source', 2001);
       UPDATE media_server_items SET studio = 'Source Studio';
     `);
+    await createEnrichmentQueueFixture(client);
     const query = (text, values) => client.query(text, values);
     const logger = { info() {}, warn() {}, debug() {}, error() {} };
     const refill = new QueueRefillService({ db: { query }, logger });
@@ -79,7 +80,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
     } });
     const completions = [];
     const deps = {
-      db: { query }, logger,
+      db: enrichmentFixtureDatabase(client), logger,
       metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
       enrichmentItemStateService: { markProcessing: async () => {}, syncItemState: async () => {} },
       resolveSourceLibraryName: async (_id, name) => name,

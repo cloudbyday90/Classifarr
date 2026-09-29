@@ -62,7 +62,7 @@ export class QueueTmdbResolutionService {
         return null;
     }
 
-    async backfillTmdbId(itemId, tmdbId, mediaType, source = null) {
+    async backfillTmdbId(itemId, tmdbId, mediaType, source = null, query = this.queryWithTimeout) {
         itemId = positiveDatabaseInteger(itemId);
         tmdbId = positiveDatabaseInteger(tmdbId);
         mediaType = canonicalMediaType(mediaType);
@@ -71,8 +71,8 @@ export class QueueTmdbResolutionService {
         }
 
         const updated = source ? await persistResolvedIdentity(
-            this.queryWithTimeout, itemId, tmdbId, mediaType, source
-        ) : await this.queryWithTimeout(
+            query, itemId, tmdbId, mediaType, source
+        ) : await query(
             `UPDATE media_server_items AS msi SET tmdb_id = $1 WHERE msi.id = $2 AND msi.media_type = $3 AND msi.tmdb_id IS NULL
               AND ${sourceConflictAuthorityExclusionForMediaServerItem('$4')}`,
             [tmdbId, itemId, mediaType, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
@@ -84,7 +84,7 @@ export class QueueTmdbResolutionService {
         });
     }
 
-    async resolveAndBackfill(payload, enrichmentData, currentTmdbId = null) {
+    async resolveAndBackfill(payload, enrichmentData, currentTmdbId = null, persistence = {}) {
         payload = captureQueueEnrichmentPayload(payload);
         if (!payload || (currentTmdbId != null && !positiveDatabaseInteger(currentTmdbId))) return null;
         let tmdbId = positiveDatabaseInteger(currentTmdbId);
@@ -105,7 +105,8 @@ export class QueueTmdbResolutionService {
         }
 
         if (tmdbId) {
-            await this.backfillTmdbId(payload.itemId, tmdbId, payload.media.media_type, payload.source_identity_snapshot);
+            await this.backfillTmdbId(payload.itemId, tmdbId, payload.media.media_type,
+                payload.source_identity_snapshot, persistence.query);
         }
 
         return tmdbId;

@@ -21,6 +21,8 @@ import { jest } from '@jest/globals';
 import { QueueTaskProcessorService } from '../services/queueTaskProcessorService.mjs';
 
 import { createMockLogger } from './helpers/mockFactory.mjs';
+import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessionFixture.mjs';
+import { QueueClaimWriteError } from '../services/queueClaimWriteGuard.mjs';
 const ratingNormalizer = { getPriorityRating: jest.fn() };
 const metadataEnrichment = { hasWebSearchEnrichmentMetadata: jest.fn() };
 
@@ -74,7 +76,7 @@ function makeSvc(overrides = {}) {
   const queueWebSearchEnrichmentService = { enrich: jest.fn().mockImplementation((p, d) => Promise.resolve(d)) };
   const queueTmdbResolutionService = { resolveAndBackfill: jest.fn().mockResolvedValue(null) };
   const queueClassificationHistoryService = { persist: jest.fn().mockResolvedValue() };
-  return new QueueTaskProcessorService({
+  const svc = new QueueTaskProcessorService({
     db,
     logger: createMockLogger(),
     classificationService: { classifyQueueTask: jest.fn().mockResolvedValue({ bestMatch: null, library: null }) },
@@ -91,7 +93,18 @@ function makeSvc(overrides = {}) {
     metadataEnrichment,
     ...overrides
   });
+  svc.createEnrichmentWriteSession = options => unitEnrichmentWriteSession(svc, options);
+  return svc;
 }
+
+test('discarding an obsolete enrichment claim never fails or synchronizes its successor', async () => {
+  const svc = makeSvc({ enrichmentItemStateService: { syncItemState: jest.fn() } });
+  jest.spyOn(svc, 'processMetadataEnrichmentTask').mockRejectedValue(new QueueClaimWriteError('queue_claim_not_owned'));
+  await svc.processTask({ id: 1, task_type: 'metadata_enrichment', payload: { itemId: 2 } });
+  expect(svc.failTask).not.toHaveBeenCalled();
+  expect(svc.enrichmentItemStateService.syncItemState).not.toHaveBeenCalled();
+  expect(svc.logger.error).not.toHaveBeenCalled();
+});
 
 beforeEach(() => {
   metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReset();

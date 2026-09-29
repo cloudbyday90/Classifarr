@@ -145,14 +145,14 @@ test('mixed movie/TV recovery keeps equal numeric provider IDs separate across l
     } finally { await television.cleanup(); }
 });
 
-test.each(['movie', 'tv'])('%s committed enrichment resumes after lost acknowledgement without duplicate observations or history', async mediaType => {
+test.each(['movie', 'tv'])('%s committed enrichment retains atomic completion after a lost commit reply', async mediaType => {
     fixture = await createHandoffFixture(db, mediaType);
     await fixture.scan();
-    const interrupted = fixture.queue({ beforeComplete: async () => { throw new Error('synthetic interruption before ack'); } });
+    const interrupted = fixture.queue({ afterResultCommit: async () => { throw new Error('synthetic lost commit reply'); } });
     expect(await interrupted.refillQueue()).toEqual({ queued: 1 });
     const task = await fixture.claim(interrupted);
-    await expect(interrupted.queueTaskProcessorService.processMetadataEnrichmentTask(task)).rejects.toThrow('synthetic interruption before ack');
-    expect((await fixture.tasks())[0].status).toBe('processing');
+    await expect(interrupted.queueTaskProcessorService.processMetadataEnrichmentTask(task)).rejects.toThrow('queue_claim_write_failed');
+    expect((await fixture.tasks())[0].status).toBe('completed');
     const revision = (await fixture.status()).sourceRevision;
     expect(await fixture.history()).toHaveLength(1);
     expect(fixture.observationMethod).toHaveBeenCalledTimes(1);
@@ -160,10 +160,6 @@ test.each(['movie', 'tv'])('%s committed enrichment resumes after lost acknowled
     const resumed = fixture.queue();
     expect(await resumed.refillQueue()).toEqual({ queued: 0 });
     expect(await fixture.claim(resumed)).toBeNull();
-    await db.query("UPDATE task_queue SET visible_at=NOW()-INTERVAL '1 second' WHERE id=$1", [task.id]);
-    const redelivery = await fixture.claim(resumed);
-    expect(redelivery.id).toBe(task.id);
-    await resumed.queueTaskProcessorService.processMetadataEnrichmentTask(redelivery);
     expect((await fixture.tasks())[0].status).toBe('completed');
     expect(fixture.observationMethod).toHaveBeenCalledTimes(1);
     expect(await fixture.history()).toHaveLength(1);

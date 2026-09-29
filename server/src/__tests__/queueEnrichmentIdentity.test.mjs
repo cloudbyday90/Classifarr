@@ -7,6 +7,7 @@ import { jest } from '@jest/globals';
 import { prepareQueueEnrichmentPayload } from '../services/queueEnrichmentPayload.mjs';
 import { QueueRefillService } from '../services/queueRefillService.mjs';
 import { processMetadataEnrichmentTask } from '../services/queueTaskProcessorEnrichment.mjs';
+import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessionFixture.mjs';
 
 const source = { media_type: 'tv', library_id: 2, library_name: 'Source', tmdb_id: 42, metadata: {} };
 const taskPayload = () => ({ title: 'Example', media_type: ' TV ', itemId: 1, source_library_id: 2, tmdb_id: 42 });
@@ -104,7 +105,7 @@ test('refill uses item type and filters unsupported types before its bounded lim
 });
 
 function flowDeps(row = source) {
-  return {
+  const deps = {
     db: { query: jest.fn().mockResolvedValue({ rows: row ? [row] : [] }) },
     logger: { warn: jest.fn(), info: jest.fn() },
     metadataEnrichment: { hasWebSearchEnrichmentMetadata: () => false },
@@ -118,6 +119,8 @@ function flowDeps(row = source) {
     queryWithTimeout: jest.fn().mockResolvedValue({ rowCount: 1 }),
     completeTask: jest.fn(),
   };
+  deps.createWriteSession = options => unitEnrichmentWriteSession(deps, options);
+  return deps;
 }
 
 test.each([undefined, 'movie'])('invalid or stale task skips providers, metadata, and history: %s', async (declared) => {

@@ -21,16 +21,16 @@ export class QueueClassificationHistoryService {
         this.logger = deps.logger;
     }
 
-    async libraryExists(libraryId) {
+    async libraryExists(libraryId, db = this.db) {
         const id = positiveDatabaseInteger(libraryId);
         if (!id) return false;
-        const result = await this.db.query('SELECT 1 FROM libraries WHERE id = $1 LIMIT 1', [id]);
+        const result = await db.query('SELECT 1 FROM libraries WHERE id = $1 LIMIT 1', [id]);
         return result.rows.length > 0;
     }
 
-    async #identityExists(identity) {
+    async #identityExists(identity, db = this.db) {
         const statement = buildQueueClassificationHistoryExistsQuery(identity);
-        const result = await this.db.query(statement.text, statement.values);
+        const result = await db.query(statement.text, statement.values);
         return result.rows.length > 0;
     }
 
@@ -65,17 +65,17 @@ export class QueueClassificationHistoryService {
         if (prepared) await this.db.query(prepared.statement.text, prepared.statement.values);
     }
 
-    async persist(payload, tmdbId, sourceLibraryId, sourceLibraryName, _taskId) {
+    async persist(payload, tmdbId, sourceLibraryId, sourceLibraryName, _taskId, db = this.db) {
         if (sourceLibraryId === null || sourceLibraryId === undefined) return;
         const prepared = this.#prepare(payload, tmdbId, sourceLibraryId, sourceLibraryName);
         if (!prepared) return false;
 
-        if (!await this.libraryExists(prepared.identity.libraryId)) {
+        if (!await this.libraryExists(prepared.identity.libraryId, db)) {
             this.logger?.warn('Source-library history skipped', { reason: 'library_unavailable' });
             return false;
         }
-        if (await this.#identityExists(prepared.identity)) return;
-        const inserted = await this.db.query(prepared.statement.text, prepared.statement.values);
+        if (await this.#identityExists(prepared.identity, db)) return;
+        const inserted = await db.query(prepared.statement.text, prepared.statement.values);
         return inserted.rowCount !== 0;
     }
 }

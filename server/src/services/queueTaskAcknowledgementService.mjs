@@ -5,6 +5,17 @@ const RETRY_DELAYS = [30, 60, 120, 300, 600];
 const CLAIM_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const isQueueClaimToken = value => typeof value === 'string' && CLAIM_TOKEN.test(value);
 
+/** No logging or receipts here: callers may include this write in a transaction. */
+export async function completeQueueClaim(query, taskId, result, claimToken) {
+  if (!isQueueClaimToken(claimToken)) return null;
+  const update = await query(`UPDATE task_queue
+    SET status = 'completed', completed_at = NOW(), visible_at = NULL,
+        claim_token = NULL, payload = payload || $2
+    WHERE id = $1 AND status = 'processing' AND claim_token = $3::uuid
+    RETURNING task_type, attempts`, [taskId, JSON.stringify({ result }), claimToken]);
+  return update.rows?.[0] ?? null;
+}
+
 /** A task ID is not ownership. Never recover a missing token by reading the row. */
 export class QueueTaskAcknowledgementService {
   constructor({ db, logger, receiptService }) {
@@ -23,12 +34,7 @@ export class QueueTaskAcknowledgementService {
   async complete(taskId, result, claimToken) {
     if (!isQueueClaimToken(claimToken)) return this.rejected(taskId);
     try {
-      const update = await this.db.query(`UPDATE task_queue
-        SET status = 'completed', completed_at = NOW(), visible_at = NULL,
-            claim_token = NULL, payload = payload || $2
-        WHERE id = $1 AND status = 'processing' AND claim_token = $3::uuid
-        RETURNING task_type, attempts`, [taskId, JSON.stringify({ result }), claimToken]);
-      const row = update.rows?.[0];
+      const row = await completeQueueClaim((...args) => this.db.query(...args), taskId, result, claimToken);
       if (!row) return this.rejected(taskId);
       if (row.task_type === 'classification') await this.receiptService.recordTerminal(taskId, 'completed', row.attempts);
       this.logger.info('Task completed', { taskId });

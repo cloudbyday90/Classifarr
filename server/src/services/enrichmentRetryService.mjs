@@ -81,9 +81,9 @@ export class EnrichmentRetryService {
         return this._enrichmentItemStateService;
     }
 
-    async queueForRetry(mediaItemId, enrichmentType = 'web_search', reason = 'OMDb not found', priority = 5) {
+    async queueForRetry(mediaItemId, enrichmentType = 'web_search', reason = 'OMDb not found', priority = 5, transaction = null) {
         try {
-            await this.db.query(`
+            await (transaction || this.db).query(`
         INSERT INTO enrichment_retry_queue 
           (media_item_id, enrichment_type, reason, priority)
         VALUES ($1, $2, $3, $4)
@@ -111,11 +111,15 @@ export class EnrichmentRetryService {
           END
       `, [mediaItemId, enrichmentType, reason, priority, TAVILY_MONTHLY_DEFERRED_REASON]);
 
-            this.logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
-            await this.enrichmentItemStateService.syncItemState(mediaItemId);
+            await this.enrichmentItemStateService.syncItemState(mediaItemId, transaction);
 
-            this.scheduleProcessing();
+            // The transaction owner must notify the scheduler only after commit.
+            if (!transaction) {
+                this.logger.debug('Queued item for enrichment retry', { mediaItemId, enrichmentType, reason });
+                this.scheduleProcessing();
+            }
         } catch (error) {
+            if (transaction) throw error;
             if (error.code === '23503') {
                 this.logger.warn('Skipping retry queue for deleted item', { mediaItemId });
                 return;

@@ -13,6 +13,7 @@ import { omdbResultMatchesType } from './queueEnrichmentResults.mjs';
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { persistOmdbRating } from './queueEnrichmentPersistence.mjs';
 import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
+import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 
 export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
@@ -20,6 +21,7 @@ export class QueueOmdbEnrichmentService {
         this.logger = deps.logger;
         this.omdbService = deps.omdbService;
         this.queryWithTimeout = deps.queryWithTimeout || (async () => ({}));
+        this.enqueueRetry = deps.enqueueRetry || ((...args) => enrichmentRetryService.queueForRetry(...args));
         this.isOmdbSslBlocked = deps.isOmdbSslBlocked || (async () => false);
         this.getRuntimeState = deps.getRuntimeState || (() => ({
             omdbLimitHit: false,
@@ -39,8 +41,9 @@ export class QueueOmdbEnrichmentService {
         }
 
         try {
-            await enrichmentRetryService.queueForRetry(itemId, enrichmentType, reason, priority);
+            await this.enqueueRetry(itemId, enrichmentType, reason, priority);
         } catch (retryErr) {
+            if (retryErr instanceof QueueClaimWriteError) throw retryErr;
             this.logger.debug('Failed to queue for retry', { error: retryErr.message });
         }
     }
@@ -79,6 +82,7 @@ export class QueueOmdbEnrichmentService {
                 omdb: rated
             });
         } catch (ratingError) {
+            if (ratingError instanceof QueueClaimWriteError) throw ratingError;
             this.logger.debug('Failed to update rating from OMDb', { error: ratingError.message });
         }
     }
@@ -200,7 +204,11 @@ export class QueueOmdbEnrichmentService {
         await this.handleGenericError(payload, error);
     }
 
-    async enrich(payload, enrichmentData) {
+    async enrich(payload, enrichmentData, persistence = null) {
+        // Task-local collaborators; never swap a singleton's query during concurrent work.
+        if (persistence) return new QueueOmdbEnrichmentService({
+            ...this, queryWithTimeout: persistence.query, enqueueRetry: persistence.queueRetry,
+        }).enrich(payload, enrichmentData);
         payload = captureQueueEnrichmentPayload(payload);
         if (!payload) {
             this.logger.warn('OMDb enrichment skipped', { reason: 'invalid_media_identity' });
@@ -268,6 +276,7 @@ export class QueueOmdbEnrichmentService {
 
             return enrichmentData;
         } catch (error) {
+            if (error instanceof QueueClaimWriteError) throw error;
             await this.handleError(payload, error);
             return enrichmentData;
         }

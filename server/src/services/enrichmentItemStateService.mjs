@@ -85,13 +85,13 @@ export class EnrichmentItemStateService {
         this.logger = deps.logger || createLogger('EnrichmentItemStateService');
     }
 
-    async markProcessing(mediaItemId) {
+    async markProcessing(mediaItemId, transaction = null) {
         if (!mediaItemId) {
             return null;
         }
 
         try {
-            const result = await this.db.query(
+            const result = await (transaction || this.db).query(
                 `UPDATE media_server_items
                  SET enrichment_status = $2,
                      enrichment_deferred_reason = NULL
@@ -102,6 +102,7 @@ export class EnrichmentItemStateService {
 
             return result.rows[0] || null;
         } catch (error) {
+            if (transaction) throw error;
             this.logger.error('Failed to mark enrichment item as processing', {
                 mediaItemId,
                 error: error.message
@@ -110,8 +111,8 @@ export class EnrichmentItemStateService {
         }
     }
 
-    async getSnapshot(mediaItemId) {
-        const result = await this.db.query(
+    async getSnapshot(mediaItemId, transaction = null) {
+        const result = await (transaction || this.db).query(
             `SELECT
                 msi.id,
                 msi.metadata,
@@ -191,13 +192,13 @@ export class EnrichmentItemStateService {
         return result.rows[0] || null;
     }
 
-    async syncItemState(mediaItemId) {
+    async syncItemState(mediaItemId, transaction = null) {
         if (!mediaItemId) {
             return null;
         }
 
         try {
-            const snapshot = await this.getSnapshot(mediaItemId);
+            const snapshot = await this.getSnapshot(mediaItemId, transaction);
             if (!snapshot) {
                 return null;
             }
@@ -215,7 +216,7 @@ export class EnrichmentItemStateService {
                 isOmdbActive: snapshot.is_omdb_active
             });
 
-            const updateResult = await this.db.query(
+            const updateResult = await (transaction || this.db).query(
                 `UPDATE media_server_items
                  SET enrichment_status = $2,
                      enrichment_provider_state = $3,
@@ -232,6 +233,7 @@ export class EnrichmentItemStateService {
 
             return updateResult.rows[0] || null;
         } catch (error) {
+            if (transaction) throw error;
             this.logger.error('Failed to sync enrichment item state', {
                 mediaItemId,
                 error: error.message

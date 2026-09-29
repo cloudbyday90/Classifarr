@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 import { runTaskWithMatchingEnrichmentSource } from './helpers/queueEnrichmentSourceFixture.mjs';
+import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessionFixture.mjs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const DB_ADVISORY_LOCKS = {
@@ -114,6 +115,11 @@ describe('QueueService', () => {
         queueService.queueTaskProcessorService.lastOmdbSslWarnAt = 0;
         queueService.queueTaskProcessorService.omdbSslBlockedUntil = 0;
         queueService.queueTaskProcessorService.lastOmdbSslProbeAt = 0;
+        queueService.queueTaskProcessorService.createEnrichmentWriteSession = options => unitEnrichmentWriteSession({
+            queryWithTimeout: (...args) => queueService.queueTaskProcessorService.queryWithTimeout(...args),
+            completeTask: (...args) => queueService.completeTask(...args),
+            queueRetry: (...args) => mockEnrichmentRetryService.queueForRetry(...args),
+        }, options);
         queueService.lastAiAvailabilityProbeAt = 0;
         queueService._blockerCache = null;
         queueService._blockerCacheExpiresAt = 0;
