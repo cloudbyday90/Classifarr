@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T00:41:29.138Z
--- Latest Migration: 20260929_100000_enrichment_retry_claims.sql
+-- Generated: 2026-09-29T10:11:48.291Z
+-- Latest Migration: 20260929_110000_index_legacy_retry_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12335,6 +12335,13 @@ CREATE INDEX idx_learning_rate_user ON public.learning_rate_limits USING btree (
 
 
 --
+-- Name: idx_legacy_enrichment_retry_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_legacy_enrichment_retry_request ON public.audit_log USING btree (((metadata ->> 'requestId'::text))) WHERE ((action)::text = 'legacy_enrichment_retries_recovered'::text);
+
+
+--
 -- Name: idx_legacy_rules_migrated; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17269,6 +17276,7 @@ FROM unnest(ARRAY[
     '20260928_050000_add_inventory_backfill_handoff.sql',
     '20260928_060000_stabilize_inventory_observation_trigger.sql',
     '20260929_043800_add_task_queue_claim_token.sql',
-    '20260929_100000_enrichment_retry_claims.sql'
+    '20260929_100000_enrichment_retry_claims.sql',
+    '20260929_110000_index_legacy_retry_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -32,6 +32,7 @@ import { registerSourceRepairWorklistRoutes } from './librariesRouteSourceRepair
 import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
 import { registerIngestionReconciliationRoutes } from './librariesRouteIngestionReconciliation.mjs';
+import { registerLegacyRetryRoutes } from './librariesRouteLegacyRetries.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
 function parseProfileLibraryId(value) {
@@ -80,6 +81,7 @@ export function createLibrariesRouter({
   registerSourceObservationRoutes(router, { db });
   registerSourceRepairWorklistRoutes(router, { db });
   registerIngestionReconciliationRoutes(router, { db });
+  registerLegacyRetryRoutes(router, { db });
 
   registerCrudRoutes(router, { db });
 

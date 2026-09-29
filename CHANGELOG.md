@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add administrator-reviewed recovery for legacy movie/TV enrichment retries with
+  unknown workers. Requeue exact reviewed batches with atomic audit receipts;
+  preserve metadata, attempt limits and quota deferrals, and reject stale reviews.
 - Claim independent enrichment retries atomically and reject expired or replaced
   workers' results. Save metadata, fallback handoffs and retry outcomes with item
   state in one transaction; bound crash recovery and preserve active claims.

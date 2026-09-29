@@ -136,6 +136,7 @@
         :library-id="library.id"
         @changed="refreshArchiveState"
       />
+      <LegacyEnrichmentRetryReview :library-id="library.id" />
 
       <!-- Radarr Settings for Movie Libraries -->
       <Card
@@ -494,6 +495,7 @@ import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
 import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
 import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
+import LegacyEnrichmentRetryReview from '@/components/library/LegacyEnrichmentRetryReview.vue'
 import LibraryArchiveReview from '@/components/library/LibraryArchiveReview.vue'
 import { useLibraryIngestionStatus } from '@/composables/useLibraryIngestionStatus'
 import { librarySyncResultMessage } from '@/utils/libraryIngestionStatus'
