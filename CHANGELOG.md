@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Apply PR #554 locally: update Markdown tooling to the security-patched 14.3.2
+  parser, restore its compatible ESM linkifier dependency, and add bounded CPU-work
+  and rendering regressions to CI. No PR merge or release.
 - Update the root Markdown tooling's YAML dependency to fix empty-merge CPU
   budget bypasses. Add bounded security and compatibility regressions to CI;
   leave application dependencies and runtime behavior unchanged.

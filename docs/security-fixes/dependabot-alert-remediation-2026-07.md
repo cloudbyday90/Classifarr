@@ -1,5 +1,18 @@
 # Dependabot Alert Remediation: July 2026
 
+## September 29 correction
+
+This is a historical delivery record, not the current dependency inventory.
+The earlier assertion below that the Markdown parser's entire 5.x linkifier
+range was unpatched was incorrect: the official
+[mailto advisory](https://github.com/markdown-it/linkify-it/security/advisories/GHSA-v245-v573-v5vm)
+lists 5.0.2 as fixed. Forcing 6.1.0 into Markdown 14.x also broke its ESM import
+and linkifier API. The [September Markdown remediation](../architecture/root-markdown-dependency-design.md)
+uses the supported patched pairing and real import/rendering regressions.
+The [YAML remediation](../architecture/root-yaml-dependency-outcome.md) separately
+updates the root YAML dependency. Preserve the July results below as historical
+observations, not present-day security guarantees.
+
 ## Intent
 
 The repository has three independently installed npm workspaces: the root
@@ -84,8 +97,8 @@ Decision: selected.
 1. Regenerate every affected lockfile from reviewed manifest constraints.
 2. Keep `js-yaml` on the compatible 4.x fix in the server and force the root
    Markdown tooling to patched 5.2.2.
-3. Override `linkify-it` to 6.1.0 because the current Markdown parser declares
-   an unpatched 5.x range.
+3. Historical choice, superseded by the correction above: override `linkify-it`
+   to 6.1.0. This was based on an incorrect assessment of the patched 5.x range.
 4. Set `brace-expansion` 5.0.8 in every workspace that resolves it.
 5. Keep Socket.IO 4.8.x and Express 5.2.x while resolving their patched
    Engine.IO 6.6.9 and body-parser 2.3.0 transitive releases.

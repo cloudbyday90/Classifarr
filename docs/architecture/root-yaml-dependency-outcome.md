@@ -72,6 +72,9 @@ root audit must not be described as clean. A separately tested fix was offered
 for approval; do not apply an unreviewed `npm audit fix` or change rendering modes
 to hide the finding.
 
+The separate [Markdown dependency remediation](root-markdown-dependency-outcome.md)
+addresses this follow-up without changing the YAML delivery recorded here.
+
 After root dependency remediation, the next application component remains the
 actionable retry-readiness summary: small visual counts for ready work versus
 provider waits, with the next check time and one relevant settings action.

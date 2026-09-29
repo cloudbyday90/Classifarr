@@ -119,7 +119,7 @@
     "db:check-schema:live": "node scripts/check-schema-snapshot.mjs",
     "docker:smoke:pgss": "node scripts/check-pg-stat-startup-smoke.mjs",
     "lint:docs": "markdownlint-cli2",
-    "test:tooling:dependencies": "node --test scripts/__tests__/yaml-merge-budget.test.mjs",
+    "test:tooling:dependencies": "node --test scripts/__tests__/yaml-merge-budget.test.mjs scripts/__tests__/markdown-linkify-security.test.mjs",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",
     "esm:check-static-imports": "node scripts/report-static-import-candidates.mjs --check",
@@ -147,8 +147,7 @@
     "smol-toml": "1.8.0",
     "string-width": "8.2.0",
     "js-yaml": "5.4.2",
-    "linkify-it": "6.1.0",
-    "markdown-it": "^14.3.0",
+    "markdown-it": "^14.3.2",
     "form-data": "^4.0.6",
     "mime-db": "1.54.0",
     "asynckit": "0.5.0"
