@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T11:25:57.015Z
--- Latest Migration: 20260929_140000_provider_credential_recovery.sql
+-- Generated: 2026-09-29T12:18:43.603Z
+-- Latest Migration: 20260929_160000_provider_recovery_probes.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -267,6 +267,21 @@ BEGIN
     END IF;
     PERFORM public.mark_library_profile_inventory_changed(affected);
     RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: delete_provider_credential_probe(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.delete_provider_credential_probe() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    DELETE FROM public.provider_credential_probes WHERE source = TG_ARGV[0] AND config_id = OLD.id;
+    RETURN OLD;
 END;
 $$;
 
@@ -7567,6 +7582,29 @@ COMMENT ON TABLE public.profile_refresh_worker_progress IS 'Single operational w
 
 
 --
+-- Name: provider_credential_probes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.provider_credential_probes (
+    source text NOT NULL,
+    config_id integer NOT NULL,
+    generation uuid NOT NULL,
+    next_probe_at timestamp with time zone NOT NULL,
+    lease_token uuid,
+    lease_until timestamp with time zone,
+    failures integer DEFAULT 0 NOT NULL,
+    last_outcome text,
+    last_probe_at timestamp with time zone,
+    last_recovered_at timestamp with time zone,
+    CONSTRAINT provider_credential_probes_check CHECK (((lease_token IS NULL) = (lease_until IS NULL))),
+    CONSTRAINT provider_credential_probes_config_id_check CHECK ((config_id > 0)),
+    CONSTRAINT provider_credential_probes_failures_check CHECK (((failures >= 0) AND (failures <= 1000000))),
+    CONSTRAINT provider_credential_probes_last_outcome_check CHECK ((last_outcome = ANY (ARRAY['verified'::text, 'rejected'::text, 'rate_limited'::text, 'quota_exhausted'::text, 'invalid_response'::text, 'unavailable'::text, 'quota_wait'::text]))),
+    CONSTRAINT provider_credential_probes_source_check CHECK ((source = ANY (ARRAY['omdb'::text, 'web_search'::text, 'legacy_tavily'::text])))
+);
+
+
+--
 -- Name: quality_evidence_study; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11292,6 +11330,14 @@ ALTER TABLE ONLY public.profile_refresh_worker_progress
 
 
 --
+-- Name: provider_credential_probes provider_credential_probes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.provider_credential_probes
+    ADD CONSTRAINT provider_credential_probes_pkey PRIMARY KEY (source, config_id);
+
+
+--
 -- Name: quality_evidence_study quality_evidence_study_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13945,6 +13991,13 @@ CREATE TRIGGER omdb_credential_generation BEFORE INSERT OR UPDATE ON public.omdb
 
 
 --
+-- Name: omdb_config omdb_credential_probe_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER omdb_credential_probe_delete AFTER DELETE ON public.omdb_config FOR EACH ROW EXECUTE FUNCTION public.delete_provider_credential_probe('omdb');
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipt_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14057,6 +14110,13 @@ CREATE TRIGGER tavily_credential_generation BEFORE INSERT OR UPDATE ON public.ta
 
 
 --
+-- Name: tavily_config tavily_credential_probe_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tavily_credential_probe_delete AFTER DELETE ON public.tavily_config FOR EACH ROW EXECUTE FUNCTION public.delete_provider_credential_probe('legacy_tavily');
+
+
+--
 -- Name: classification_evidence trg_classification_evidence_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14138,6 +14198,13 @@ CREATE TRIGGER trigger_library_rules_v2_updated_at BEFORE UPDATE ON public.libra
 --
 
 CREATE TRIGGER web_search_credential_generation BEFORE INSERT OR UPDATE ON public.web_search_provider_config FOR EACH ROW EXECUTE FUNCTION public.reset_provider_credential_generation('is_enabled');
+
+
+--
+-- Name: web_search_provider_config web_search_credential_probe_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER web_search_credential_probe_delete AFTER DELETE ON public.web_search_provider_config FOR EACH ROW EXECUTE FUNCTION public.delete_provider_credential_probe('web_search');
 
 
 --
@@ -17405,6 +17472,7 @@ FROM unnest(ARRAY[
     '20260929_100000_enrichment_retry_claims.sql',
     '20260929_110000_index_legacy_retry_receipts.sql',
     '20260929_120000_durable_enrichment_retry_schedule.sql',
-    '20260929_140000_provider_credential_recovery.sql'
+    '20260929_140000_provider_credential_recovery.sql',
+    '20260929_160000_provider_recovery_probes.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

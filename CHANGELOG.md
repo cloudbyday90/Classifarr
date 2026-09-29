@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically verify rejected provider access with demand-driven, quota-accounted
+  recovery probes. Resume eligible enrichment after account repair, preserve item
+  retry budgets, and fence stale checks across restarts and configuration changes.
 - Pause enrichment for rejected provider credentials without consuming item retry
   budgets. Resume after relevant settings changes, fence late failures against
   key rotation, and show corrective actions in existing provider settings.

@@ -516,6 +516,7 @@ describe('WebSearchProviders settings view', () => {
     })
     const wrapper = mount(WebSearchProviders, { global: { stubs } })
     await flushPromises()
-    expect(wrapper.text()).toContain('Access rejected. Save a corrected key')
+    expect(wrapper.text()).toContain('Access rejected. Scheduled checks retry while eligible work waits.')
+    expect(wrapper.text()).toContain('Save a corrected key')
   })
 })

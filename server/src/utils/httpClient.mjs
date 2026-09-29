@@ -66,6 +66,7 @@ import { HttpResponseTooLargeError, parseHttpResponseBody, readBoundedResponseBo
  *   signal?: AbortSignal | null,
  *   rejectUnauthorized?: boolean,
  *   maxResponseBytes?: number,
+ *   redirect?: 'follow' | 'error' | 'manual',
  * }} HttpRequestOptions
  */
 
@@ -143,6 +144,7 @@ async function request(method, url, {
   signal,
   rejectUnauthorized = true,
   maxResponseBytes,
+  redirect = 'follow',
 } = /** @type {HttpRequestOptions} */ ({})) {
   if (maxResponseBytes !== undefined) validateResponseByteLimit(maxResponseBytes);
   const cancellation = createRequestCancellation(timeout, signal);
@@ -150,6 +152,7 @@ async function request(method, url, {
 
   const init = {
     method,
+    redirect,
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...headers,

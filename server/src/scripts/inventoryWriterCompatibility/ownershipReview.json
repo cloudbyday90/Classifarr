@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "provider_recovery_probes",
+      "classification": "separately_coordinated",
+      "reason": "Demand-gated provider checks reserve quota and a generation-scoped lease before bounded HTTP, then conditionally rotate the credential generation on verified success. Eligibility is read-only and no media, retry attempts, source ownership or routing writes are authorized. Fixed endpoint transport bypasses caches and rejects redirects.",
+      "followUp": "Keep real PostgreSQL competing-worker, stale-result, crash/backoff, quota and ingestion-readiness tests current. Web quotas remain soft across unrelated ordinary callers; indirect SQL analysis gaps remain explicitly unresolved in the repository entry."
+    },
+    {
       "id": "legacy_enrichment_retry_review",
       "classification": "separately_coordinated",
       "reason": "Administrator session and current database role are required. A stopped-writer attestation and actor-bound exact snapshot authorize only a bounded batch of processing retries with both claim fields absent. Retry/source locks, source versions, attempt preservation, derived item state and a unique audit receipt share one transaction; provider scheduling is post-commit only.",
@@ -110,6 +116,13 @@
     }
   ],
   "entries": [
+    {"path":"database/migrations/20260929_160000_provider_recovery_probes.sql","digest":"2d7470534599218f2beadc6d8f8e57bad29dae3becf675fa7871c50e727856be","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
+    {"path":"server/src/services/providerRecoveryProbePolicy.mjs","digest":"399d60955f5f876851d904ca445ce091a6d0676a58566098e1331f217586195c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"provider_recovery_probes"},
+    {"path":"server/src/services/providerRecoveryProbeQueries.mjs","digest":"6051670815a13e3de9053e1e1bccd8e988a4044138c99ea36daddc89f66d747f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"provider_recovery_probes"},
+    {"path":"server/src/services/providerRecoveryProbeQuota.mjs","digest":"bcc6a85b932a137cfaebd05d26835b568e8c8da6c175286693842b0251a122e6","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"provider_recovery_probes"},
+    {"path":"server/src/services/providerRecoveryProbeRepository.mjs","digest":"91885d19203c2f250c01c037efce31bc6a5a0e4b7f733b90fcfc6d0f3633d8fc","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"analysis_debt"},
+    {"path":"server/src/services/providerRecoveryProbeService.mjs","digest":"94164ca854bed8ad523e95ac044fb869fc492c952bda38886879abacaaf2336f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"provider_recovery_probes"},
+    {"path":"server/src/services/providerRecoveryProbeTransport.mjs","digest":"ecab31d6a682516149c885a2146fce111836598145b5b7aecb9568c39c260157","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"provider_recovery_probes"},
     {"path":"database/migrations/20260929_043800_add_task_queue_claim_token.sql","digest":"318577f8ac8691b9135c776914fdef3507b4d771d4582f52b06f122a642c5a19","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_100000_enrichment_retry_claims.sql","digest":"6628defc84c0d9ac32408349470b369b159a86bd82727b336f2d3a1e8ba87b02","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260928_060000_stabilize_inventory_observation_trigger.sql","digest":"2b1c1c56b2b7f1774de06dd613c49fef2a2e6cc4730cce069e58558b46def8d0","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -435,7 +448,7 @@
     {"path":"database/migrations/20260927_160000_add_inventory_recovery_progress.sql","digest":"fa831249eac6a5f3fb335c6942ee8f27c423ad4f15e7d8f8c01862ca5784216d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20260927_170000_add_library_ingestion_ownership.sql","digest":"5a78f25a61a08dc576b77994efe296ab318250db9ca3ef1cc340ce208a7b068f","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260927_180000_index_ingestion_reconciliation_receipts.sql","digest":"a66541722c25c7094e8347f16663443b91121bd66c1ddc6f0f24454623428e37","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"bd551251460a86fabf2f6202fc81ffdf7cf7566d46a6e926369e9541b5d7cf32","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"2d1982df05964095d5799c918cc307229c0486771e206fe1c814ea4b8a549fae","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20260929_140000_provider_credential_recovery.sql","digest":"b42e59bb110f3e478f0ee76be36fd2329b0c5c0c539d23a4d9d85d68c1292eb5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_120000_durable_enrichment_retry_schedule.sql","digest":"02cf32b381cab554229d93ba2a986fde9db56349f1e14aa2f1d4a339f40419e1","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_110000_index_legacy_retry_receipts.sql","digest":"0bca6c1743110f921cd6a75d7c820b88ea571bbda9a488ff85b2687a40ca755a","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -591,7 +604,7 @@
     {"path":"server/src/services/sourcePreflightDiagnostic.mjs","digest":"ea706eacd52cc7a4b6d643bcbe13f8232b9fba6bdd55de44e4f77524bfeef426","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncUpsert.mjs","digest":"0810e60d9483901203d7a2401df6e54097679384d3b4721cca12099280975e86","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"shared_writer_debt"},
     {"path":"server/src/services/metadataProviderConfigStore.mjs","digest":"cde6b3fec914e8f9329826709525db373d2d89f914bb576b2860d1e0ba43f642","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/omdbQuotaStore.mjs","digest":"abdc3e318d6e5f44f55882cbee47cac7861f2a2c41d47284dd383fc69acc5d8d","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/omdbQuotaStore.mjs","digest":"256d8ba17aa44096e45e72810bd1165bc3487ef9491cc11c20876aaf45982734","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/providerCredentialRejection.mjs","digest":"afc64c827f9d4c3d1a488b530b67175c4590d67980a6475ef852dd5e145249e6","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/patternMiningService.mjs","digest":"7d3393a5389a78e9e8f4491b8877ef9ab2d5b741aea48db58542cdb76df87288","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/policyAuthoringDraftCommandBoundary.mjs","digest":"113db42c0aef1a7b6c28603040a7c71b91281a86dc7247cb92670c557edd8dea","analysisDigest":"bb6ff8ea3ec3b032eb7e64cbfb161bf19680cecc3c0dbabcbfd02442fa3afb34","review":"analysis_debt"},
@@ -645,7 +658,7 @@
     {"path":"server/src/services/ragRetrieverSearch.mjs","digest":"888fc096523404ee7dec1fb6bff9dacf06309ad240ef2f1c8856732ad5d9e212","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/routeSafetyMaintenanceHandoffRepository.mjs","digest":"715d21cdf51791d1efff148783fb995375c524a765eb3b508234a000989a15a1","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/routeSafetyReadinessRepository.mjs","digest":"4f2e0fcc37d08fdb0c68cb369f561cd71b82a09676410ca11a01d9a0226cf7dc","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/schedulerOperationalTasks.mjs","digest":"cd3626fb6b1e99e57b996fbe693f65616b99e14872da24a25a515a78be4de490","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/schedulerOperationalTasks.mjs","digest":"a25c7fdb2a8a621f10ff51a85e9579d51044c619bd7e156ef3dc27ad8e99f927","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/sourceDescriptionEvaluationRuntime.mjs","digest":"b28489719a5a145d05baba70d5b6f108147c30037d10cd16f73ebaea9f06f9e6","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/sourceIdentityExternalEvidenceReplay.mjs","digest":"ae09dbdf1c9f8a1360404f5feffeefda385376ac6188d388da3ad50972e4376b","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/sourceIdentityIssues.mjs","digest":"0f7319ee91825b29ddafc8bb643cba558363bd3385b2cbe538f9144dbaa35ec0","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

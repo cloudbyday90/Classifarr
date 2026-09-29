@@ -20,8 +20,10 @@ import { classificationProviderAdmissionService } from './classificationProvider
 import { LIBRARY_INGESTION_WATCHDOG_SQL } from './libraryIngestionStatus.mjs';
 import { runLibraryCatalogRecovery } from './libraryCatalogRecovery.mjs';
 import { getMediaServerService } from './mediaServers/index.mjs';
+import { createProviderRecoveryProbeService } from './providerRecoveryProbeService.mjs';
 
 const logger = createLogger('SchedulerService');
+const providerRecoveryProbes = createProviderRecoveryProbeService({ db, logger });
 
 // Human-readable reason stamped on classifications that exhaust their automatic
 // retry budget and are dead-lettered to a terminal `failed` state.
@@ -180,6 +182,7 @@ export async function deadLetterExhaustedRetries() {
 
 export async function processEnrichmentRetryQueue() {
     try {
+        await providerRecoveryProbes.run();
         await enrichmentRetryService.triggerProcessing();
     } catch (error) {
         logger.error('Error in enrichment retry queue processing', {

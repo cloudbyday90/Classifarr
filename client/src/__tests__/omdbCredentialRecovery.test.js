@@ -19,6 +19,7 @@ it('explains the pause and next step with a programmatic status', async () => {
   const wrapper = mount(OMDb, options); await flushPromises()
   expect(wrapper.get('[role="status"]').text()).toContain('Save a corrected key')
   expect(wrapper.text()).toContain('Pending item retry budgets are preserved')
+  expect(wrapper.get('[role="status"]').text()).toContain('Scheduled checks retry while eligible work waits')
 })
 it('uses the saved response, not an optimistic assumption that any save fixes access', async () => {
   api.updateOMDbConfig.mockResolvedValueOnce({ data: { credential_rejected_at: 'still-rejected' } })

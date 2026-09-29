@@ -35,7 +35,8 @@
           role="status"
           class="text-amber-300 text-sm"
         >
-          Enrichment paused: OMDb rejected access. Save a corrected key, or disable and re-enable
+          Enrichment paused: OMDb rejected access. Scheduled checks retry while eligible work waits.
+          Save a corrected key, or disable and re-enable
           after fixing account access. Pending item retry budgets are preserved.
         </p>
         <div>

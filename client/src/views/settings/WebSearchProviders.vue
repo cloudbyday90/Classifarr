@@ -847,7 +847,7 @@ const ROUTE_SKIP_REASON_LABELS = Object.freeze({
   unconfigured: 'API key is not configured',
   adapter_unavailable: 'Provider adapter is not available',
   cooldown_active: 'Provider cooldown is active',
-  credentials_rejected: 'Access rejected. Save a corrected key, or disable and re-enable after fixing account access.',
+  credentials_rejected: 'Access rejected. Scheduled checks retry while eligible work waits. Save a corrected key, or disable and re-enable after fixing account access.',
   daily_quota_exhausted: 'Soft daily limit reached',
   monthly_quota_exhausted: 'Soft monthly limit reached',
 })

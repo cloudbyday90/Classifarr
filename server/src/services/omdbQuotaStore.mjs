@@ -7,7 +7,7 @@ const snapshotSql = `SELECT id, api_key, daily_limit, requests_today, credential
     to_char(statement_timestamp() AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS quota_day
     FROM omdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1`;
 
-function evaluateQuota(config) {
+export function evaluateOmdbQuota(config) {
     if (!config?.api_key?.trim()) return { status: 'not_configured', used: 0, limit: 0 };
     if (config.credential_rejected_at) return { status: 'credentials_rejected', used: 0, limit: 0 };
     const count = config.requests_today ?? 0;
@@ -25,7 +25,7 @@ function evaluateQuota(config) {
 
 export async function readOmdbQuota(db) {
     const { rows } = await db.query(snapshotSql);
-    return evaluateQuota(rows[0]);
+    return evaluateOmdbQuota(rows[0]);
 }
 
 export async function reserveOmdbQuota(db) {
@@ -34,7 +34,7 @@ export async function reserveOmdbQuota(db) {
         await client.query(metadataProviderDefinition('omdb').lock);
         const { rows } = await client.query(snapshotSql);
         const config = rows[0];
-        const quota = evaluateQuota(config);
+        const quota = evaluateOmdbQuota(config);
         if (quota.status !== 'available') return quota;
         const result = await client.query(
             'UPDATE omdb_config SET requests_today = $1, last_reset_date = $2::date WHERE id = $3 RETURNING id',
