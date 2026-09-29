@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Update the root Markdown tooling's YAML dependency to fix empty-merge CPU
+  budget bypasses. Add bounded security and compatibility regressions to CI;
+  leave application dependencies and runtime behavior unchanged.
 - Keep cached enrichment moving during provider waits with bounded read-only
   retry planning and coalesced wake-ups. Preserve cache entries across health
   updates while retaining credential, quota and source-ownership checks, and

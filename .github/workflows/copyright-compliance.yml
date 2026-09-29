@@ -38,5 +38,7 @@ jobs:
         run: npm install --global npm@12.0.2 && npm --version && npx --version
       - name: Install root dependencies
         run: npm ci
+      - name: Check root tooling dependency security and compatibility
+        run: npm run test:tooling:dependencies
       - name: Check copyright headers
         run: npm run check-copyright

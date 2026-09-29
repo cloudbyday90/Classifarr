@@ -166,3 +166,6 @@ root override/lockfile to a verified patched release, then rerun documentation a
 root-tooling regressions. Do not call the repository vulnerability-free based on
 passing functional tests. This notice does not change the validated runtime
 commit or deployed image.
+
+The separate [root YAML remediation](root-yaml-dependency-outcome.md) follows up
+on this notice without changing the runtime delivery described above.
