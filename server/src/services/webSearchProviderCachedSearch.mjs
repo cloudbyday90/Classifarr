@@ -86,6 +86,8 @@ export class WebSearchProviderCachedSearchExecutor {
     bypassCache = false,
     cacheMetadata = {},
   } = {}) {
+    // Saved provider configuration is JSON data; capture it before the first await.
+    config = JSON.parse(JSON.stringify(config));
     const validatedProvider = validateWebSearchProvider(provider);
     const identity = buildWebSearchProviderCacheIdentity({
       providerKey: validatedProvider.providerKey,
@@ -126,10 +128,16 @@ export class WebSearchProviderCachedSearchExecutor {
       }
     }
 
+    // Routing is a preview; only durable admission can authorize a cache miss.
+    const reservation = await this.usageStorage.reserveSearch({
+      providerKey: identity.providerKey, config, purpose: identity.purpose,
+    });
     const startedAt = this.nowFn();
     const credentialContext = config.credentialContext;
     try {
-      const response = validateWebSearchResponse(await validatedProvider.search(identity.request, config));
+      const received = await validatedProvider.search(identity.request, config);
+      const response = validateWebSearchResponse({ ...received,
+        usage: { ...received?.usage, costUnits: reservation.costUnits } });
       const stored = ttlMs > 0
         ? await this.cacheStore.storeResponse({
           cacheKey: identity.cacheKey,
@@ -148,11 +156,12 @@ export class WebSearchProviderCachedSearchExecutor {
         : null;
 
       await this.recordUsageSafely({
+        reservationId: reservation.id,
         providerKey: identity.providerKey,
         purpose: identity.purpose,
         operation: 'search',
         status: 'success',
-        costUnits: response.usage?.costUnits ?? 1,
+        costUnits: reservation.costUnits,
         resultCount: getResultCount(response),
         durationMs: getDurationMs(startedAt, this.nowFn),
         correlationId: trace.correlationId || null,
@@ -191,10 +200,12 @@ export class WebSearchProviderCachedSearchExecutor {
         catch { /* Retry remains a provider wait; telemetry below records the rejection. */ }
       }
       await this.recordUsageSafely({
+        reservationId: reservation.id,
         providerKey: identity.providerKey,
         purpose: identity.purpose,
         operation: 'search',
         durationMs: getDurationMs(startedAt, this.nowFn),
+        costUnits: reservation.costUnits,
         correlationId: trace.correlationId || null,
         classificationId: trace.classificationId ?? null,
         error,

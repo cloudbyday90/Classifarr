@@ -77,6 +77,7 @@ function createRequest() {
 
 function createDependencies({ cached = null } = {}) {
   const usageStorage = {
+    reserveSearch: jest.fn(async () => ({ allowed: true, id: 1, costUnits: 1 })),
     recordUsage: jest.fn(async (input) => ({ ...input, id: 1 })),
     updateProviderAfterUsage: jest.fn(async () => null),
   };
@@ -130,6 +131,7 @@ describe('webSearchProviderCachedSearch', () => {
     expect(result.response.providerRequestId).toBe('cached-req');
     expect(result.cache.hit).toBe(true);
     expect(provider.search).not.toHaveBeenCalled();
+    expect(dependencies.usageStorage.reserveSearch).not.toHaveBeenCalled();
     expect(dependencies.cacheStore.recordHit).toHaveBeenCalledTimes(1);
     expect(dependencies.usageStorage.recordUsage).toHaveBeenCalledWith(expect.objectContaining({
       providerKey: 'tavily',

@@ -9,6 +9,7 @@
  */
 
 export const WEB_SEARCH_PROVIDER_ERROR_CODES = Object.freeze({
+  ADMISSION_DEFERRED: 'admission_deferred',
   AUTH_FAILED: 'auth_failed',
   FORBIDDEN: 'forbidden',
   RATE_LIMITED: 'rate_limited',

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Reserve web-search credits atomically across routed searches, enrichment retries
+  and recovery probes. Preserve uncertain costs across crashes, keep cache hits
+  free, account for advanced Tavily requests, and clarify automatic budget limits.
 - Automatically verify rejected provider access with demand-driven, quota-accounted
   recovery probes. Resume eligible enrichment after account repair, preserve item
   retry budgets, and fence stale checks across restarts and configuration changes.

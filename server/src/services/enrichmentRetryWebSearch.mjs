@@ -62,13 +62,15 @@ export async function enrichWithWebSearch({
       };
     }
 
+    const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
+    const code = failure?.errorCode ?? failure?.code;
+    if (code === 'admission_deferred') return { success: false, error: 'Waiting for provider admission',
+      waitForProvider: true, retryAfterSeconds: failure?.retryAfterSeconds };
     logger.warn('Web search enrichment failed', {
       code: error.code || null,
       error: error.message,
       item: item.title,
     });
-    const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
-    const code = failure?.errorCode ?? failure?.code;
     return { success: false, error: error.message,
       credentialsRejected: ['auth_failed', 'forbidden'].includes(code),
       transient: ['rate_limited', 'provider_5xx', 'timeout', 'network_error'].includes(code),

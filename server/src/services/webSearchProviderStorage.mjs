@@ -14,6 +14,8 @@ import { maskToken } from '../utils/tokenMasking.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
 import { providerCredentialContext, rejectProviderCredential } from './providerCredentialRejection.mjs';
+import { admitWebSearch } from './webSearchQuotaAdmission.mjs';
+import { completeWebSearchQuotaReservation } from './webSearchQuotaReservation.mjs';
 
 export const WEB_SEARCH_PROVIDER_STORAGE_DEFAULTS = Object.freeze([
   { providerKey: 'tavily', displayName: 'Tavily', priority: 10 },
@@ -169,6 +171,8 @@ export class WebSearchProviderStorage {
 
   async rejectCredential(context) { return rejectProviderCredential(this.db, context); }
 
+  async reserveSearch(input) { return admitWebSearch(this.db, input); }
+
   async recordProviderHealthEventSafely(providerKey, usage = {}, config = {}) {
     if (!this.healthHistory?.recordUsageEventSafely) return null;
     try {
@@ -288,7 +292,17 @@ export class WebSearchProviderStorage {
       ? 'rate_limited'
       : (error?.code === 'quota_exhausted' ? 'quota_exhausted' : (error ? FAILED_STATUS : DEFAULT_STATUS)));
 
-    const result = await this.db.query(
+    const values = [
+      providerKey, input.purpose || DEFAULT_PURPOSE, input.operation || DEFAULT_OPERATION, status,
+      toNullableInteger(input.costUnits) ?? 1, toNullableInteger(input.resultCount) ?? 0,
+      toNullableInteger(input.durationMs), input.correlationId || null, input.classificationId ?? null,
+      error?.code || input.errorCode || null, toNullableInteger(error?.httpStatus ?? input.httpStatus),
+      Boolean(error?.retryable ?? input.retryable), Boolean(error?.cooldownEligible ?? input.cooldownEligible),
+      toNullableInteger(error?.retryAfterSeconds ?? input.retryAfterSeconds), JSON.stringify(normalizeConfigValue(input.metadata)),
+    ];
+    const result = input.reservationId != null
+      ? await completeWebSearchQuotaReservation(this.db, input, values)
+      : await this.db.query(
       `INSERT INTO web_search_provider_usage (
           provider_key,
           purpose,
@@ -308,23 +322,7 @@ export class WebSearchProviderStorage {
        )
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb)
        RETURNING *`,
-      [
-        providerKey,
-        input.purpose || DEFAULT_PURPOSE,
-        input.operation || DEFAULT_OPERATION,
-        status,
-        toNullableInteger(input.costUnits) ?? 1,
-        toNullableInteger(input.resultCount) ?? 0,
-        toNullableInteger(input.durationMs),
-        input.correlationId || null,
-        input.classificationId ?? null,
-        error?.code || input.errorCode || null,
-        toNullableInteger(error?.httpStatus ?? input.httpStatus),
-        Boolean(error?.retryable ?? input.retryable),
-        Boolean(error?.cooldownEligible ?? input.cooldownEligible),
-        toNullableInteger(error?.retryAfterSeconds ?? input.retryAfterSeconds),
-        JSON.stringify(normalizeConfigValue(input.metadata)),
-      ]
+      values
     );
 
     return normalizeWebSearchProviderUsageRow(result.rows[0]);
@@ -338,28 +336,28 @@ export class WebSearchProviderStorage {
       `SELECT
           provider_key,
           COALESCE(SUM(cost_units) FILTER (
-            WHERE searched_at >= date_trunc('day', $2::timestamptz)
+            WHERE searched_at >= (date_trunc('day', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS daily_cost_units,
           COALESCE(SUM(cost_units) FILTER (
-            WHERE searched_at >= date_trunc('month', $2::timestamptz)
+            WHERE searched_at >= (date_trunc('month', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS monthly_cost_units,
           COALESCE(COUNT(*) FILTER (
-            WHERE searched_at >= date_trunc('day', $2::timestamptz)
+            WHERE searched_at >= (date_trunc('day', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS daily_request_count,
           COALESCE(COUNT(*) FILTER (
-            WHERE searched_at >= date_trunc('month', $2::timestamptz)
+            WHERE searched_at >= (date_trunc('month', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS monthly_request_count,
           COALESCE(COUNT(*) FILTER (
             WHERE operation = 'cache_hit'
-              AND searched_at >= date_trunc('day', $2::timestamptz)
+              AND searched_at >= (date_trunc('day', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS daily_cache_hits,
           COALESCE(COUNT(*) FILTER (
             WHERE operation = 'cache_hit'
-              AND searched_at >= date_trunc('month', $2::timestamptz)
+              AND searched_at >= (date_trunc('month', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
           ), 0)::integer AS monthly_cache_hits
          FROM web_search_provider_usage
         WHERE provider_key = ANY($1::varchar[])
-          AND searched_at >= date_trunc('month', $2::timestamptz)
+          AND searched_at >= (date_trunc('month', $2::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
         GROUP BY provider_key`,
       [normalizedProviderKeys, now]
     );

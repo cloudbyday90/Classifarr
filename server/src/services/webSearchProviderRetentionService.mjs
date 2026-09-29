@@ -84,7 +84,7 @@ export class WebSearchProviderRetentionService {
             FROM web_search_provider_usage
            WHERE searched_at < LEAST(
              $1::timestamptz - ($2::integer * INTERVAL '1 day'),
-             date_trunc('month', $1::timestamptz)
+             (date_trunc('month', $1::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')
            )
            ORDER BY searched_at ASC, id ASC
            LIMIT $3

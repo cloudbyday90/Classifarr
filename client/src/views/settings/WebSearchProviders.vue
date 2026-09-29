@@ -15,7 +15,7 @@
       </h2>
       <p class="text-gray-400 text-sm">
         Configure web search providers for enrichment and classification evidence. Routing selects the
-        first eligible configured provider by priority, subject to cooldown and soft quota limits.
+        first eligible configured provider by priority, subject to cooldown and automatic request budgets.
       </p>
     </div>
 
@@ -568,7 +568,7 @@
 
     <Card
       title="Provider Routing"
-      description="Lower priority providers are considered first. Soft limits are advisory and prepare the provider for quota-aware routing."
+      description="Lower priority providers are considered first. Automatic searches and recovery checks reserve credits before sending. Cached results are free; uncertain requests retain their reservation. Connection tests and usage outside Classifarr are not included."
     >
       <div
         v-if="loading"
@@ -655,14 +655,14 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               v-model.number="provider.softDailyLimit"
-              label="Soft Daily Limit"
+              label="Daily Automatic Credit Budget"
               type="number"
               min="1"
               placeholder="Optional"
             />
             <Input
               v-model.number="provider.softMonthlyLimit"
-              label="Soft Monthly Limit"
+              label="Monthly Automatic Credit Budget"
               type="number"
               min="1"
               placeholder="Optional"
@@ -848,8 +848,8 @@ const ROUTE_SKIP_REASON_LABELS = Object.freeze({
   adapter_unavailable: 'Provider adapter is not available',
   cooldown_active: 'Provider cooldown is active',
   credentials_rejected: 'Access rejected. Scheduled checks retry while eligible work waits. Save a corrected key, or disable and re-enable after fixing account access.',
-  daily_quota_exhausted: 'Soft daily limit reached',
-  monthly_quota_exhausted: 'Soft monthly limit reached',
+  daily_quota_exhausted: 'Daily automatic budget reached',
+  monthly_quota_exhausted: 'Monthly automatic budget reached',
 })
 
 const ROUTE_OUTCOME_LABELS = Object.freeze({
