@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Claim independent enrichment retries atomically and reject expired or replaced
+  workers' results. Save metadata, fallback handoffs and retry outcomes with item
+  state in one transaction; bound crash recovery and preserve active claims.
 - Fence metadata enrichment writes against expired or replaced queue claims.
   Save final metadata, history, completion and item state atomically; preserve
   source-identity checks and schedule fallback retries only after commit.

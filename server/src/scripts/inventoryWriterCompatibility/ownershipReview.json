@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "enrichment_retry_claim",
+      "classification": "separately_coordinated",
+      "reason": "Independent retries atomically claim a single row with a UUID and deadline. Provider helpers return evidence only. Result transactions lock the received claim, check expiry after lock acquisition and before commit, verify the source and active movie/TV library, and save metadata, fallback or outcome and item state together. Recovery uses bounded locked expired claims; no missing legacy ownership is inferred.",
+      "followUp": "Keep real PostgreSQL competing consumer, late provider, crash recovery, source-change, fallback rollback and lost-commit-reply tests current. This is cooperative retry fencing, not certification of shared caches, other enrichment callers, legacy writers or routing effects."
+    },
+    {
       "id": "queue_enrichment_claim",
       "classification": "separately_coordinated",
       "reason": "Metadata-enrichment tasks lock and recheck their received queue claim and database-clock deadline for database-only writes. Final metadata, source-library history, completion and item state share a checked-out transaction. Source snapshots and provider recovery leases remain additional guards; fallback retries notify the existing scheduler only after commit.",
@@ -99,6 +105,7 @@
   ],
   "entries": [
     {"path":"database/migrations/20260929_043800_add_task_queue_claim_token.sql","digest":"318577f8ac8691b9135c776914fdef3507b4d771d4582f52b06f122a642c5a19","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
+    {"path":"database/migrations/20260929_100000_enrichment_retry_claims.sql","digest":"6628defc84c0d9ac32408349470b369b159a86bd82727b336f2d3a1e8ba87b02","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260928_060000_stabilize_inventory_observation_trigger.sql","digest":"2b1c1c56b2b7f1774de06dd613c49fef2a2e6cc4730cce069e58558b46def8d0","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"server/src/services/queueRefillCoordination.mjs","digest":"16316585f12a45aa4845f15d5f8dbf0b998c283cd4aa345a0383d7608bdf2482","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"backfill_handoff"},
     {"path":"database/migrations/20260928_050000_add_inventory_backfill_handoff.sql","digest":"87fccf4759ed86793f2ae1b34de905d5049a9b5f8356d8c0373deb64f402027c","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -422,7 +429,7 @@
     {"path":"database/migrations/20260927_160000_add_inventory_recovery_progress.sql","digest":"fa831249eac6a5f3fb335c6942ee8f27c423ad4f15e7d8f8c01862ca5784216d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20260927_170000_add_library_ingestion_ownership.sql","digest":"5a78f25a61a08dc576b77994efe296ab318250db9ca3ef1cc340ce208a7b068f","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260927_180000_index_ingestion_reconciliation_receipts.sql","digest":"a66541722c25c7094e8347f16663443b91121bd66c1ddc6f0f24454623428e37","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"c30b2fdb08a4898603004a690afd36125290e4577e8e7e6755bb6051f8e4e58d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"57a339df72a3812a2a65ecc82478e9d24f3729ce701ef9095d17e76a4d482cdc","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"scripts/reset_data.mjs","digest":"e66c88105e96781b08b612bfa293ec94d59537eb1b0f29e2f1fb20f3567480ce","analysisDigest":"1b9637b0e9596c5ee46b9013ca1129172197ad43bfe548a6060f164e53c56965","review":"maintenance_debt"},
     {"path":"server/src/config/database.mjs","digest":"1088ab67e46414b2d159b3b09f83d69fbe3fea7016475283c11dc43ac9bbaaca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/config/migrations.mjs","digest":"b815f5ee9eca79fbff3364ada78e21161c969c42b764ece96727dbd71461b510","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -506,9 +513,13 @@
     {"path":"server/src/services/discordSettingsPersistenceService.mjs","digest":"9c1cf50bf0cd108d6200bc1b68f94bb13d9b9383752c5b93aa8d15551b8d1976","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/embeddingServiceStorage.mjs","digest":"e871c192df08d59345484e8c6ba90168e805a08a189276bf5b72764882688c5a","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/enrichmentItemStateService.mjs","digest":"497e3be971705362fe04335b55f28e5c26deda739d56c137eb4089ce6bf6b3f9","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
-    {"path":"server/src/services/enrichmentRetryService.mjs","digest":"62e38874505e040218473b0d9f41a0c749993b3b3feae75471918f88562f4548","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"shared_writer_debt"},
-    {"path":"server/src/services/enrichmentRetryOmdb.mjs","digest":"5c06c791dca2e5299eea024d3cd43247416217aa29b639c58e3f54567bb3a2d7","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
-    {"path":"server/src/services/enrichmentRetryWebSearch.mjs","digest":"ea45f75bfb75b50974a368db867467e2d0450eba9dce9520a0742dcebced3d5d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
+    {"path":"server/src/services/enrichmentRetryService.mjs","digest":"dbf9c8e88785fbdba2bb7f885406db10e38f3952b65c434bf0da300626e9c5b4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"shared_writer_debt"},
+    {"path":"server/src/services/enrichmentRetryClaimService.mjs","digest":"593b8eb89416a1318b309957a7c2eb822d2e4fb623e7364e04c5acd7f129c55d","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"enrichment_retry_claim"},
+    {"path":"server/src/services/enrichmentRetryMaintenance.mjs","digest":"286a4ce9e9c21e1a0a82614b3ed6f90d977dc74f48ea4e6937ab1897a86d7bca","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"enrichment_retry_claim"},
+    {"path":"server/src/services/enrichmentRetryOmdb.mjs","digest":"ef205fc1edae5e86588257ad7e3dc1b2c7084bf3dede40e5038ed627385ad289","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"enrichment_retry_claim"},
+    {"path":"server/src/services/enrichmentRetryProcessing.mjs","digest":"c448e9ebf3221afdc78dfa392ce3f34a3da239b3e7272650c3dbb99411601b28","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"enrichment_retry_claim"},
+    {"path":"server/src/services/enrichmentRetryResultPersistence.mjs","digest":"a2bd8d5b10bc483be6b440636014b0ca51a55b9849b45ef31d1d6c2447c81d5f","analysisDigest":"3ba800b6feba885a00f2f2fe2571532e73ee464e939738cabd14166f986831dd","review":"enrichment_retry_claim"},
+    {"path":"server/src/services/enrichmentRetryWebSearch.mjs","digest":"96ac4a84153cb9603e756c7f6dbf449bc84f73904997494ae83f273a049960ac","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"enrichment_retry_claim"},
     {"path":"server/src/services/evaluationHistoryRepository.mjs","digest":"83dee72d78fe5b7f42e73efd6c297e63d5ed013171bd03ea9ccab4fb57371b96","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/evidenceCoverageQuery.mjs","digest":"05a065c6c1dd82133b1e7a7757099014978d21abfa94197a0e75a8a57a2ba709","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/freshInventoryPolicyRuntime.mjs","digest":"7f15653f6f9f991b4f24dc16a5d0ff7aa69c8737b22e020017b89f75941156ca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

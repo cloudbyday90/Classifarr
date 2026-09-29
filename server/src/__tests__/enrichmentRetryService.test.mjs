@@ -8,15 +8,16 @@
  * (at your option) any later version.
  */
 
-import { jest } from '@jest/globals';
+import { jest, afterEach } from '@jest/globals';
 import { EnrichmentRetryService } from '../services/enrichmentRetryService.mjs';
+import { installRetryClaimFixture } from './helpers/enrichmentRetryClaimFixture.mjs';
 import {
   WEB_SEARCH_PROVIDER_ERROR_CODES,
   WebSearchProviderError,
 } from '../services/webSearchProviderErrorTaxonomy.mjs';
 
 function createDb() {
-  return { query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }) };
+  return installRetryClaimFixture({ query: jest.fn() }, async () => ({ rows: [], rowCount: 0 }));
 }
 
 function createLogger() {
@@ -37,7 +38,7 @@ function createWebSearchService(overrides = {}) {
 }
 
 function createService(deps = {}) {
-  return new EnrichmentRetryService({
+  const service = new EnrichmentRetryService({
     db: deps.db || createDb(),
     logger: deps.logger || createLogger(),
     omdbService: deps.omdbService || {
@@ -51,10 +52,15 @@ function createService(deps = {}) {
       syncItemStates: jest.fn().mockResolvedValue(),
     },
   });
+  services.push(service);
+  return service;
 }
 
+const services = [];
+afterEach(() => { services.splice(0).forEach(service => service.cancelScheduledProcessing()); });
+
 function configureRetryDb(db, { pendingRows = [] } = {}) {
-  db.query.mockImplementation(async (sql) => {
+  installRetryClaimFixture(db, async (sql) => {
     const text = String(sql);
     if (text.includes('FROM enrichment_retry_queue erq') && text.includes('JOIN media_server_items')) {
       return { rows: pendingRows, rowCount: pendingRows.length };
@@ -62,6 +68,7 @@ function configureRetryDb(db, { pendingRows = [] } = {}) {
     if (text.includes('SELECT') && text.includes('COUNT(*) as count')) {
       return { rows: [] };
     }
+    if (text.includes('SELECT id FROM enrichment_retry_queue')) return { rows: [{ id: 19 }], rowCount: 1 };
     return { rows: [], rowCount: 1 };
   });
 }
@@ -141,10 +148,10 @@ describe('EnrichmentRetryService', () => {
       expect.any(Object)
     );
     expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining("'{web_search_imdb}'"),
-      [101, expect.stringContaining('"source":"brave"')]
+      expect.stringContaining('UPDATE media_server_items SET metadata'),
+      [101, ['web_search_imdb'], expect.stringContaining('"source":"brave"'), 'web_search_imdb']
     );
-    expect(state.syncItemState).toHaveBeenCalledWith(101);
+    expect(state.syncItemState).toHaveBeenCalledWith(101, expect.objectContaining({ query: expect.any(Function) }));
   });
 
   test('routes a historical Tavily retry through the same provider router and retains monthly deferral semantics', async () => {
@@ -206,19 +213,11 @@ describe('EnrichmentRetryService', () => {
     const db = createDb();
     const service = createService({ db });
     jest.spyOn(service, 'queueForRetry').mockResolvedValue();
-    db.query.mockResolvedValueOnce({
-      rows: [{ id: 19, status: 'pending', reason: 'OMDb not found' }],
-      rowCount: 1,
-    }).mockResolvedValue({ rows: [], rowCount: 1 });
+    configureRetryDb(db, { pendingRows: [{ queue_id: 9, media_item_id: 103, title: 'No Match' }] });
+    const moved = await service.processRetryQueue(1, 'omdb');
 
-    const moved = await service.handleOmdbFallback({
-      queue_id: 9,
-      media_item_id: 103,
-      title: 'No Match',
-    }, 'OMDb not found');
-
-    expect(moved).toBe(true);
-    expect(service.queueForRetry).toHaveBeenCalledWith(103, 'web_search', 'OMDb not found', 5);
+    expect(moved).toMatchObject({ processed: 1, failed: 0 });
+    expect(service.queueForRetry).toHaveBeenCalledWith(103, 'web_search', 'OMDb not found', 5, expect.objectContaining({ query: expect.any(Function) }));
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining("enrichment_type = 'web_search'"),
       [103]

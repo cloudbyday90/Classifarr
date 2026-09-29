@@ -1,4 +1,3 @@
-import { OMDB_FALLBACK_REASON } from './enrichmentRetryService.mjs';
 import { isOmdbNotFoundMessage } from './omdbResponseClassifier.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
@@ -42,7 +41,7 @@ export function buildOmdbFallbackReason(resultError) {
     return `OMDb retry exhausted: ${String(resultError).slice(0, 80)}`;
 }
 
-export async function enrichWithOmdb({ db, omdbService, logger }, item) {
+export async function enrichWithOmdb({ omdbService, logger }, item) {
     try {
         let omdbResult = null;
         if (item.imdb_id) {
@@ -53,22 +52,6 @@ export async function enrichWithOmdb({ db, omdbService, logger }, item) {
         }
 
         if (omdbResult) {
-            const omdbData = {
-                data: omdbResult,
-                fetched_at: new Date().toISOString()
-            };
-
-            await db.query(`
-                UPDATE media_server_items 
-                SET metadata = jsonb_set(
-                    COALESCE(metadata, '{}'::jsonb),
-                    '{omdb}',
-                    $2::jsonb
-                )
-                WHERE id = $1
-            `, [item.media_item_id, JSON.stringify(omdbData)]);
-
-            logger.info('OMDb enrichment successful', { title: item.title, mediaItemId: item.media_item_id });
             return { success: true, data: omdbResult };
         }
 
@@ -85,56 +68,4 @@ export async function enrichWithOmdb({ db, omdbService, logger }, item) {
         }
         return { success: false, error: error.message };
     }
-}
-
-export async function handleOmdbFallback({ db, logger, enrichmentItemStateService, queueForRetry }, item, resultError, options = {}) {
-    const { exhausted = false } = options;
-    const fallbackReason = buildOmdbFallbackReason(resultError);
-
-    await queueForRetry(item.media_item_id, 'web_search', fallbackReason, 5);
-
-    const fallbackRowResult = await db.query(
-        `SELECT id, status, reason
-         FROM enrichment_retry_queue
-         WHERE media_item_id = $1
-           AND enrichment_type = 'web_search'
-         LIMIT 1`,
-        [item.media_item_id]
-    );
-
-    if (fallbackRowResult.rows.length === 0) {
-        return false;
-    }
-
-    await db.query(
-        `UPDATE enrichment_retry_queue
-         SET status = 'skipped',
-             attempts = GREATEST(attempts + 1, max_attempts),
-             completed_at = NOW(),
-             error_message = $2,
-             reason = COALESCE(NULLIF(reason, ''), $3)
-         WHERE id = $1`,
-        [item.queue_id, resultError || 'OMDb not found', OMDB_FALLBACK_REASON]
-    );
-    await enrichmentItemStateService.syncItemState(item.media_item_id);
-
-    const fallbackRow = fallbackRowResult.rows[0];
-    const logPayload = {
-        queueId: item.queue_id,
-        mediaItemId: item.media_item_id,
-        omdbError: resultError || 'OMDb not found',
-        webSearchQueueId: fallbackRow.id,
-        webSearchStatus: fallbackRow.status,
-        webSearchReason: fallbackRow.reason || null
-    };
-
-    if (isExpectedOmdbMiss(resultError)) {
-        logger.info(exhausted
-            ? 'OMDb retry exhausted; item moved to web-search fallback'
-            : 'OMDb metadata miss; item moved to web-search fallback', logPayload);
-    } else {
-        logger.warn('OMDb retry exhausted after operational errors; item moved to web-search fallback', logPayload);
-    }
-
-    return true;
 }

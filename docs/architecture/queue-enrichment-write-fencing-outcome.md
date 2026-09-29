@@ -84,9 +84,8 @@ There was no eligible random PR to apply locally; none was substituted or merged
 
 ## Next independently testable component
 
-Fence **independent enrichment retry workers** using their own received claims,
-then couple their metadata/result writes to terminal retry state. Acceptance:
-a paused retry worker must not overwrite a successor; crash/reclaim must recover
-without duplicate history; source drift, disabled providers and existing retry
-budgets must retain their current behavior. This is a separate boundary, not a
-claim that all platform side effects are now exactly-once or safely cancellable.
+Implemented in the [independent retry outcome](enrichment-retry-ownership-outcome.md):
+received claims now guard retry metadata, fallback and terminal state, with
+real-database overlap and crash-recovery tests. The next item is reviewed recovery
+of legacy retry rows without recorded ownership. This is not a claim that all
+platform side effects are exactly-once or safely cancellable.

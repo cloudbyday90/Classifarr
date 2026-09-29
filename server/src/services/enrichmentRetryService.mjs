@@ -7,7 +7,6 @@ import {
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import {
     enrichWithOmdb as _enrichWithOmdb,
-    handleOmdbFallback as _handleOmdbFallback,
     isTransientOmdbTransportError as _isTransientOmdbTransportError,
     isExpectedOmdbMiss as _isExpectedOmdbMiss,
     buildOmdbFallbackReason as _buildOmdbFallbackReason
@@ -26,9 +25,6 @@ import {
 } from './enrichmentRetryMaintenance.mjs';
 import { getStats as _getStats } from './enrichmentRetryStats.mjs';
 import { processRetryQueue as _processRetryQueue } from './enrichmentRetryProcessing.mjs';
-
-export const OMDB_FALLBACK_REASON = 'omdb_exhausted_fallback_to_web_search';
-export const ENRICHMENT_RETRY_STALE_MS = Number.parseInt(process.env.ENRICHMENT_RETRY_STALE_MS || '', 10) || (20 * 60 * 1000);
 
 export class EnrichmentRetryService {
     constructor(deps = {}) {
@@ -109,6 +105,7 @@ export class EnrichmentRetryService {
             WHEN enrichment_retry_queue.status IN ('completed', 'failed', 'skipped') THEN enrichment_retry_queue.completed_at
             ELSE NULL
           END
+        WHERE enrichment_retry_queue.status <> 'processing'
       `, [mediaItemId, enrichmentType, reason, priority, TAVILY_MONTHLY_DEFERRED_REASON]);
 
             await this.enrichmentItemStateService.syncItemState(mediaItemId, transaction);
@@ -271,16 +268,9 @@ export class EnrichmentRetryService {
             enrichWithOmdb: (...args) => this.enrichWithOmdb(...args),
             enrichWithWebSearch: (...args) => this.enrichWithWebSearch(...args),
             hasAvailableWebSearchProvider: () => this.webSearchEnrichmentService.hasAvailableProvider(),
-            handleOmdbFallback: (...args) => this.handleOmdbFallback(...args),
-            isExpectedOmdbMiss: (...args) => this.isExpectedOmdbMiss(...args)
+            queueForRetry: (...args) => this.queueForRetry(...args),
+            scheduleProcessing: () => this.scheduleProcessing()
         }, limit, enrichmentType);
-    }
-
-    async handleOmdbFallback(item, resultError, options = {}) {
-        return _handleOmdbFallback(
-            { db: this.db, logger: this.logger, enrichmentItemStateService: this.enrichmentItemStateService, queueForRetry: (...args) => this.queueForRetry(...args) },
-            item, resultError, options
-        );
     }
 
     buildOmdbFallbackReason(resultError) {
@@ -297,14 +287,13 @@ export class EnrichmentRetryService {
 
     async enrichWithWebSearch(item, options = {}) {
         return _enrichWithWebSearch({
-            db: this.db,
             webSearchEnrichmentService: this.webSearchEnrichmentService,
             logger: this.logger
         }, item, options);
     }
 
     async enrichWithOmdb(item) {
-        return _enrichWithOmdb({ db: this.db, omdbService: this.omdbService, logger: this.logger }, item);
+        return _enrichWithOmdb({ omdbService: this.omdbService, logger: this.logger }, item);
     }
 
     extractImdbData(results, title) {

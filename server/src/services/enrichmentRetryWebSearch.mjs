@@ -25,7 +25,6 @@ function isLegacyTavilyMonthlyQuotaError(error, enrichmentType) {
 }
 
 export async function enrichWithWebSearch({
-  db,
   webSearchEnrichmentService = defaultWebSearchEnrichmentService,
   logger,
 }, item, {
@@ -49,22 +48,6 @@ export async function enrichWithWebSearch({
       return { success: false, error: 'Could not extract IMDb data' };
     }
 
-    await db.query(
-      `UPDATE media_server_items
-       SET metadata = jsonb_set(
-         COALESCE(metadata, '{}'::jsonb),
-         '{web_search_imdb}',
-         $2::jsonb
-       )
-       WHERE id = $1`,
-      [item.media_item_id, JSON.stringify(imdbData)]
-    );
-
-    logger.info('Web search enrichment successful', {
-      title: item.title,
-      mediaItemId: item.media_item_id,
-      provider: imdbData.source,
-    });
     return { success: true, data: imdbData };
   } catch (error) {
     if (isLegacyTavilyMonthlyQuotaError(error, enrichmentType)) {

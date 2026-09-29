@@ -2,31 +2,35 @@ import {
     TAVILY_MONTHLY_DEFERRED_REASON,
     TAVILY_MONTHLY_DEFERRED_MESSAGE
 } from '../utils/enrichmentState.mjs';
-import { ENRICHMENT_RETRY_STALE_MS } from './enrichmentRetryService.mjs';
+import { ENRICHMENT_RETRY_STALE_MS } from './enrichmentRetryClaimService.mjs';
 
 export async function recoverStaleProcessingRetries({ db, enrichmentItemStateService, logger }, enrichmentType = null) {
     const hasTypeFilter = typeof enrichmentType === 'string' && enrichmentType.trim().length > 0;
-    const typeClause = hasTypeFilter ? 'AND enrichment_type = $2' : '';
-    const params = [ENRICHMENT_RETRY_STALE_MS];
-    if (hasTypeFilter) {
-        params.push(enrichmentType);
-    }
-
-    const result = await db.query(`
-      UPDATE enrichment_retry_queue
-      SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
-          attempts = LEAST(attempts + 1, max_attempts),
-          completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
-          error_message = COALESCE(error_message, 'Recovered stale processing retry'),
-          last_attempt_at = NOW()
-      WHERE status = 'processing'
-        AND COALESCE(last_attempt_at, created_at) < NOW() - ($1 * INTERVAL '1 millisecond')
-        ${typeClause}
-      RETURNING id, media_item_id, enrichment_type
-    `, params);
+    const result = await db.withTransaction(async client => {
+        await client.query("SET LOCAL lock_timeout = '2s'");
+        await client.query("SET LOCAL statement_timeout = '10s'");
+        await client.query("SET LOCAL idle_in_transaction_session_timeout = '10s'");
+        await client.query("SET LOCAL transaction_timeout = '15s'");
+        const updated = await client.query(`WITH expired AS (
+          SELECT id FROM enrichment_retry_queue WHERE status = 'processing'
+            AND claim_token IS NOT NULL AND claim_until <= clock_timestamp()
+            AND ($1::text IS NULL OR enrichment_type = $1)
+          ORDER BY claim_until, id LIMIT 50 FOR UPDATE SKIP LOCKED
+        ) UPDATE enrichment_retry_queue erq
+          SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
+            attempts = LEAST(attempts + 1, max_attempts),
+            completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
+            error_message = COALESCE(error_message, 'Recovered expired processing retry'),
+            last_attempt_at = NOW(), claim_token = NULL, claim_until = NULL
+          FROM expired WHERE erq.id = expired.id RETURNING erq.id, media_item_id, enrichment_type`,
+        [hasTypeFilter ? enrichmentType : null]);
+        for (const id of new Set(updated.rows.map(row => row.media_item_id))) {
+            await enrichmentItemStateService.syncItemState(id, client);
+        }
+        return updated;
+    });
 
     if (result.rowCount > 0) {
-        await enrichmentItemStateService.syncItemStates(result.rows.map((row) => row.media_item_id));
         logger.warn('Recovered stale enrichment retry rows', {
             count: result.rowCount,
             enrichmentType: hasTypeFilter ? enrichmentType : 'all',
@@ -81,11 +85,12 @@ export async function resolveRetriesWithExistingMetadata({ db, enrichmentItemSta
     const result = await db.query(`
       UPDATE enrichment_retry_queue erq
       SET status = 'completed',
+          claim_token = NULL, claim_until = NULL,
           completed_at = COALESCE(erq.completed_at, NOW()),
           error_message = COALESCE(erq.error_message, 'Auto-resolved: required enrichment metadata already present')
       FROM media_server_items msi
       WHERE erq.media_item_id = msi.id
-        AND erq.status IN ('pending', 'processing')
+        AND erq.status = 'pending'
         ${typeClause}
         AND (
           (erq.enrichment_type = 'omdb' AND msi.metadata->'omdb' IS NOT NULL)

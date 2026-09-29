@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-09-29T00:41:29.138Z
--- Latest Migration: 20260929_043800_add_task_queue_claim_token.sql
+-- Latest Migration: 20260929_100000_enrichment_retry_claims.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3444,7 +3444,9 @@ CREATE TABLE public.enrichment_retry_queue (
     created_at timestamp with time zone DEFAULT now(),
     last_attempt_at timestamp with time zone,
     completed_at timestamp with time zone,
-    error_message text
+    error_message text,
+    claim_token uuid,
+    claim_until timestamp with time zone
 );
 
 
@@ -17266,6 +17268,7 @@ FROM unnest(ARRAY[
     '20260928_040000_add_source_content_circuits.sql',
     '20260928_050000_add_inventory_backfill_handoff.sql',
     '20260928_060000_stabilize_inventory_observation_trigger.sql',
-    '20260929_043800_add_task_queue_claim_token.sql'
+    '20260929_043800_add_task_queue_claim_token.sql',
+    '20260929_100000_enrichment_retry_claims.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
