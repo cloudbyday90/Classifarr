@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 
 test('retry preview has visual counts, keyboard pause, no writes and no persistent cache', async ({ page }, testInfo) => {
-  let reads = 0, writes = 0, unavailable = false
+  let reads = 0, writes = 0, unavailable = false, omdbReads = 0
   const report = { version: 1, scope: 'web_search', limitPerQueue: 50, inspected: 50, hasMore: true,
     observedAt: new Date().toISOString(), earliestRetryAt: null,
     counts: { cached_ready: 8, provider_ready: 2, provider_wait: 10, settings_blocked: 25, scheduled: 4, held: 1 } }
@@ -24,6 +24,12 @@ test('retry preview has visual counts, keyboard pause, no writes and no persiste
       fullPipelineAccuracy: null, windows: 0, revisions: 0, groups: [] }
     if (path === '/api/queue/retry-readiness') {
       reads++; data = report; status = unavailable ? 503 : 200
+    }
+    if (path === '/api/queue/omdb-retry-readiness') {
+      omdbReads++
+      data = { ...report, scope: 'omdb', inspected: 5, hasMore: false,
+        counts: { cached_ready: 0, provider_ready: 0, provider_wait: 5, settings_blocked: 0, scheduled: 0, held: 0 },
+        quota: { status: 'limit_reached', used: 10, limit: 10, resetAt: new Date(Date.now() + 86_400_000).toISOString() } }
     }
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) })
   })
@@ -54,5 +60,22 @@ test('retry preview has visual counts, keyboard pause, no writes and no persiste
   await expect(panel.locator('dl')).toHaveCount(0)
   await expect(panel.getByRole('link')).toHaveCount(0)
   expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:command-center:retry-readiness'))).toBeNull()
+  expect(omdbReads).toBe(0)
+  await panel.getByRole('button', { name: 'Pause updates' }).click()
+  const selector = page.getByLabel('Retry provider')
+  await selector.selectOption('omdb')
+  const omdb = page.getByRole('region', { name: 'OMDb retries' })
+  await expect(omdb.getByRole('button', { name: 'Resume updates' })).toBeVisible()
+  expect(omdbReads).toBe(0)
+  await omdb.getByRole('button', { name: 'Resume updates' }).click()
+  await expect(omdb).toContainText('Local daily usage: 10 of 10 requests.')
+  await expect(omdb.locator('dl dd')).toHaveCount(5)
+  await expect(omdb.locator('.ready-count strong')).toHaveText('0')
+  await expect(omdb).not.toContainText('Cached results ready')
+  expect(await omdb.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await omdb.screenshot({ path: testInfo.outputPath('omdb-readiness-mobile.png') })
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await omdb.screenshot({ path: testInfo.outputPath('omdb-readiness-desktop.png') })
+  expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:command-center:retry-readiness:omdb'))).toBeNull()
   expect(writes).toBe(0)
 })

@@ -1,26 +1,32 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { useNow } from '@vueuse/core'
 import api from '@/api'
 import { useSWR } from './useSWR'
 import { parseRetryReadiness } from '@/utils/retryReadiness'
 
-export function useRetryReadiness() {
-  const paused = ref(false)
+// Scope is fixed per mounted observer. The selector remounts to isolate late results.
+export function useRetryReadiness(scope = 'web_search', initiallyPaused = false) {
+  if (!['web_search', 'omdb'].includes(scope)) throw new TypeError('Unsupported retry scope')
+  const paused = ref(initiallyPaused)
+  let disposed = false
+  onUnmounted(() => { disposed = true })
   const lastReport = ref(null)
   const denied = ref(false)
   const nextCheckAt = ref(null)
   const now = useNow({ interval: 15_000 })
-  const swr = useSWR('command-center:retry-readiness', async () => {
-    if (denied.value || paused.value || document.visibilityState !== 'visible') return lastReport.value
+  const cacheKey = scope === 'omdb' ? 'command-center:retry-readiness:omdb' : 'command-center:retry-readiness'
+  const swr = useSWR(cacheKey, async () => {
+    if (disposed || denied.value || paused.value || document.visibilityState !== 'visible') return lastReport.value
     nextCheckAt.value = new Date(Date.now() + 60_000).toISOString()
     try {
-      const report = parseRetryReadiness(await api.getRetryReadiness())
+      const response = await (scope === 'omdb' ? api.getOmdbRetryReadiness() : api.getRetryReadiness())
+      const report = parseRetryReadiness(response, scope)
       if (!report) throw new TypeError('Invalid retry readiness response')
-      if (!paused.value) lastReport.value = report
+      if (!disposed && !paused.value) lastReport.value = report
       return lastReport.value
     } catch (error) {
-      if ([401, 403].includes(error?.response?.status)) {
+      if (!disposed && [401, 403].includes(error?.response?.status)) {
         denied.value = true
         lastReport.value = null
       }

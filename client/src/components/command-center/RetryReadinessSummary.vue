@@ -3,12 +3,12 @@
   <section
     v-if="!forbidden"
     class="retry-readiness"
-    aria-labelledby="retry-readiness-heading"
+    :aria-labelledby="headingId"
   >
     <header>
       <div>
-        <h2 id="retry-readiness-heading">
-          Web-search retries
+        <h2 :id="headingId">
+          {{ isOmdb ? 'OMDb retries' : 'Web-search retries' }}
         </h2>
         <p
           class="state"
@@ -45,7 +45,7 @@
             aria-hidden="true"
           >
             <span
-              v-for="segment in segments"
+              v-for="segment in chartSegments"
               :key="segment.id"
               :style="{ width: `${segment.percent}%`, background: segment.color }"
             />
@@ -70,6 +70,13 @@
           </dl>
         </div>
       </div>
+      <p
+        v-if="isOmdb && report.quota.used !== null"
+        class="quota"
+      >
+        Local daily usage: {{ report.quota.used }} of {{ report.quota.limit }} requests.
+        Ready work has no reserved quota.
+      </p>
       <p class="next-step">
         {{ nextStep.text }}
       </p>
@@ -88,7 +95,10 @@
       </p>
       <details v-if="report.inspected">
         <summary>Coverage and timing</summary>
-        <p>Web-search and legacy Tavily only; not OMDb, imports or classification. Counts are retry records, not unique media. Ready is a preview, not completion.</p>
+        <p>{{ isOmdb ? 'OMDb only; no retry-result cache. A retry may need an IMDb lookup and a title lookup.' : 'Web-search and legacy Tavily only; not OMDb, imports or classification.' }} Counts are retry records, not unique media. Ready is a preview, not completion.</p>
+        <p v-if="isOmdb && report.quota.resetAt">
+          Local daily reset estimate: <time :datetime="report.quota.resetAt">{{ formatTime(report.quota.resetAt) }}</time>. This is Classifarr's budget, not the upstream account balance.
+        </p>
         <p v-if="report.earliestRetryAt">
           Earliest retry estimate: <time :datetime="report.earliestRetryAt">{{ formatTime(report.earliestRetryAt) }}</time>. The worker rechecks all safeguards.
         </p>
@@ -103,16 +113,22 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRetryReadiness } from '@/composables/useRetryReadiness'
 import { RETRY_READINESS_SEGMENTS, retryReadinessNextStep } from '@/utils/retryReadiness'
 
-const { report, paused, unavailable, stale, forbidden, nextCheckAt, loading, togglePaused } = useRetryReadiness()
+const props = defineProps({ scope: { type: String, default: 'web_search' }, initialPaused: { type: Boolean, default: false } })
+const emit = defineEmits(['pause-change'])
+const isOmdb = props.scope === 'omdb'
+const headingId = `retry-readiness-heading-${props.scope}`
+const { report, paused, unavailable, stale, forbidden, nextCheckAt, loading, togglePaused } = useRetryReadiness(props.scope, props.initialPaused)
+watch(paused, value => emit('pause-change', value))
 const ready = computed(() => report.value ? report.value.counts.cached_ready + report.value.counts.provider_ready : 0)
-const segments = computed(() => RETRY_READINESS_SEGMENTS.map(segment => ({ ...segment,
+const segments = computed(() => RETRY_READINESS_SEGMENTS.filter(segment => !isOmdb || segment.id !== 'cached_ready').map(segment => ({ ...segment,
   count: report.value.counts[segment.id], percent: report.value.inspected ? report.value.counts[segment.id] * 100 / report.value.inspected : 0,
 })))
 const nextStep = computed(() => report.value ? retryReadinessNextStep(report.value) : {})
+const chartSegments = computed(() => segments.value.filter(segment => segment.count > 0))
 const statusText = computed(() => {
   if (unavailable.value) return 'Status unavailable'
   if (stale.value) return 'Status out of date'
@@ -151,6 +167,7 @@ dd { font-weight: 700; font-variant-numeric: tabular-nums; }
 details { margin-top: .75rem; font-size: .875rem; }
 summary { cursor: pointer; }
 details p { margin-top: .5rem; }
+.quota { font-size: .875rem; color: #cbd5e1; }
 footer { margin-top: 1rem; font-size: .75rem; color: #cbd5e1; }
 @media (max-width: 640px) { .overview { align-items: stretch; flex-direction: column; gap: 1rem; } .legend { grid-template-columns: 1fr; } }
 </style>

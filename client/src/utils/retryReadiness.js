@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { parseOmdbRetryQuota, omdbRetryNextStep } from './omdbRetryQuota'
 export const RETRY_READINESS_SEGMENTS = Object.freeze([
   { id: 'cached_ready', label: 'Cached results ready', color: '#6ee7b7' },
   { id: 'provider_ready', label: 'Provider ready', color: '#93c5fd' },
@@ -8,26 +9,34 @@ export const RETRY_READINESS_SEGMENTS = Object.freeze([
   { id: 'held', label: 'Held by safeguards', color: '#cbd5e1' },
 ])
 
-export function parseRetryReadiness(value) {
-  if (value?.version !== 1 || value.scope !== 'web_search' || value.limitPerQueue !== 50 ||
+export function parseRetryReadiness(value, scope = 'web_search') {
+  if (!['web_search', 'omdb'].includes(scope)) return null
+  const maximum = scope === 'omdb' ? 50 : 100
+  if (value?.version !== 1 || value.scope !== scope || value.limitPerQueue !== 50 ||
       typeof value.hasMore !== 'boolean' || typeof value.observedAt !== 'string' ||
       !Number.isFinite(Date.parse(value.observedAt)) || !Number.isSafeInteger(value.inspected) ||
-      value.inspected < 0 || value.inspected > 100) return null
+      value.inspected < 0 || value.inspected > maximum) return null
   const counts = {}
   for (const { id } of RETRY_READINESS_SEGMENTS) {
     const count = value.counts?.[id]
-    if (!Number.isSafeInteger(count) || count < 0 || count > 100) return null
+    if (!Number.isSafeInteger(count) || count < 0 || count > maximum) return null
     counts[id] = count
   }
   if (Object.values(counts).reduce((sum, count) => sum + count, 0) !== value.inspected) return null
   if (value.earliestRetryAt !== null && (typeof value.earliestRetryAt !== 'string' ||
       !Number.isFinite(Date.parse(value.earliestRetryAt)))) return null
-  return { version: 1, scope: 'web_search', observedAt: value.observedAt, counts,
+  const quota = scope === 'omdb' ? parseOmdbRetryQuota(value.quota) : null
+  if (scope === 'omdb' && (!quota || counts.cached_ready !== 0 || (quota.status !== 'available' && counts.provider_ready))) return null
+  return { version: 1, scope, observedAt: value.observedAt, counts,
     inspected: value.inspected, hasMore: value.hasMore, limitPerQueue: 50,
-    earliestRetryAt: value.earliestRetryAt }
+    earliestRetryAt: value.earliestRetryAt, ...(quota ? { quota } : {}) }
 }
 
 export function retryReadinessNextStep(report) {
+  if (report.scope === 'omdb') {
+    const step = omdbRetryNextStep(report)
+    if (step) return step
+  }
   if (!report.inspected) return { text: 'No pending web-search retries. No action needed.' }
   if (report.counts.settings_blocked) return {
     text: 'Providers are off, unconfigured or unavailable. Keep them off if intentional.',

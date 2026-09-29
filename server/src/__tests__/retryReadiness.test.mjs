@@ -47,7 +47,7 @@ test('page query bounds rows before guards and rejects unsupported scope', async
   expect(await readRetryReadinessPage(db, 'web_search')).toMatchObject({ rows: Array(50).fill(row), hasMore: true });
   expect(db.query.mock.calls[0][0]).toContain('AS MATERIALIZED');
   expect(db.query.mock.calls[0][1].at(-1)).toBe(51);
-  await expect(readRetryReadinessPage(db, 'omdb')).rejects.toThrow('unsupported_readiness_type');
+  await expect(readRetryReadinessPage(db, 'music')).rejects.toThrow('unsupported_readiness_type');
 });
 
 test('read-only transaction, single-flight and short cache preserve original observation time', async () => {

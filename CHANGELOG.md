@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend visual retry readiness to OMDb with local quota, credential and setup
+  guidance. Use one pausable provider view, preserve retry safeguards and keep
+  observation read-only without spending requests or promising reserved quota.
 - Add a visual, read-only web-search retry summary with ready/waiting/setup counts,
   bounded coverage, status timing and a relevant next action. Preserve worker
   safeguards and provider settings; use memory-only, pausable status updates.

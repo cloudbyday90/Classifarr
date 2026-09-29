@@ -38,4 +38,5 @@ registerRetryReadinessRoute(router, {
   requireAdmin,
   limiter: rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }),
   service: createRetryReadinessService(),
+  omdbService: createRetryReadinessService({ scope: 'omdb' }),
 });

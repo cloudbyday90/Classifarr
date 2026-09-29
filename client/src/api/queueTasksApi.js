@@ -22,6 +22,10 @@ export function getRetryReadiness() {
   return getDataRequest('/queue/retry-readiness', { skipAutomaticRetry: true })
 }
 
+export function getOmdbRetryReadiness() {
+  return getDataRequest('/queue/omdb-retry-readiness', { skipAutomaticRetry: true })
+}
+
 export function getQueuePending(limit = 20) {
   return getDataRequest('/queue/pending', { params: { limit } })
 }
@@ -48,6 +52,7 @@ export function classifyQueueTask(taskId, data) {
 
 const queueTasksApi = {
   getRetryReadiness,
+  getOmdbRetryReadiness,
   getQueuePending,
   getQueueFailed,
   retryQueueTask,

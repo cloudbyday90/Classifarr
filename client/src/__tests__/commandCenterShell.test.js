@@ -143,7 +143,7 @@ describe('Command Center shell navigation', () => {
           RouterLink: {
             template: '<a><slot /></a>',
           },
-          RetryReadinessSummary: true,
+          RetryReadinessOverview: true,
         },
       },
     })

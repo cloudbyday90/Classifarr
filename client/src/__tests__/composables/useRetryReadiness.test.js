@@ -5,22 +5,41 @@ import { defineComponent, nextTick } from 'vue'
 import api from '@/api'
 import { useRetryReadiness } from '@/composables/useRetryReadiness'
 
-vi.mock('@/api', () => ({ default: { getRetryReadiness: vi.fn() } }))
+vi.mock('@/api', () => ({ default: { getRetryReadiness: vi.fn(), getOmdbRetryReadiness: vi.fn() } }))
 const report = () => ({ version: 1, scope: 'web_search', limitPerQueue: 50,
   observedAt: new Date().toISOString(), inspected: 1, hasMore: false, earliestRetryAt: null,
   counts: { cached_ready: 1, provider_ready: 0, provider_wait: 0, settings_blocked: 0, scheduled: 0, held: 0 } })
 let wrapper, state
-function start() {
-  wrapper = mount(defineComponent({ setup() { state = useRetryReadiness(); return () => null } }))
+function start(scope, paused) {
+  wrapper = mount(defineComponent({ setup() { state = useRetryReadiness(scope, paused); return () => null } }))
 }
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-29T20:00:00Z'))
   vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   api.getRetryReadiness.mockReset().mockImplementation(async () => report())
+  api.getOmdbRetryReadiness.mockReset().mockImplementation(async () => ({ ...report(), scope: 'omdb',
+    counts: { ...report().counts, cached_ready: 0, provider_ready: 1 },
+    quota: { status: 'available', used: 0, limit: 10, resetAt: null } }))
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('retry readiness memory-only SWR lifecycle', () => {
+  it('mounts OMDb paused without fetching, then uses only its fixed endpoint', async () => {
+    start('omdb', true); await flushPromises()
+    expect(api.getOmdbRetryReadiness).not.toHaveBeenCalled()
+    state.togglePaused(); await flushPromises()
+    expect(state.report.value.scope).toBe('omdb'); expect(api.getRetryReadiness).not.toHaveBeenCalled()
+  })
+  it('discards late results after unmount so they cannot survive a provider switch', async () => {
+    let complete
+    api.getRetryReadiness.mockImplementationOnce(() => new Promise(resolve => { complete = resolve }))
+    start(); await flushPromises(); const old = state
+    wrapper.unmount(); start('omdb'); await flushPromises()
+    complete(report()); await flushPromises()
+    expect(old.report.value).toBeNull(); expect(state.report.value.scope).toBe('omdb')
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(api.getRetryReadiness).toHaveBeenCalledTimes(1); expect(api.getOmdbRetryReadiness).toHaveBeenCalledTimes(2)
+  })
   it('polls once per minute, respects pause, and releases timers on unmount', async () => {
     const stored = vi.spyOn(Storage.prototype, 'setItem')
     start(); await flushPromises()

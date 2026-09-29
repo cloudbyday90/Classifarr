@@ -140,7 +140,7 @@
 
         <BatchActivityPanel />
         <EvaluationHistorySummary />
-        <RetryReadinessSummary />
+        <RetryReadinessOverview />
 
         <details class="advanced-learning-diagnostics">
           <summary>Advanced policy and evaluation diagnostics</summary>
@@ -306,7 +306,7 @@
 
 <script setup>
 import EvaluationHistorySummary from '@/components/command-center/EvaluationHistorySummary.vue'
-import RetryReadinessSummary from '@/components/command-center/RetryReadinessSummary.vue'
+import RetryReadinessOverview from '@/components/command-center/RetryReadinessOverview.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'

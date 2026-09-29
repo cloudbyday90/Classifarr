@@ -8,13 +8,41 @@ const mock = vi.hoisted(() => ({ state: null }))
 vi.mock('@/composables/useRetryReadiness', () => ({ useRetryReadiness: () => mock.state }))
 const makeReport = () => ({ inspected: 6, hasMore: false, observedAt: '2026-09-29T20:00:00Z', earliestRetryAt: '2026-09-29T20:01:00Z',
   counts: { cached_ready: 1, provider_ready: 1, provider_wait: 1, settings_blocked: 1, scheduled: 1, held: 1 } })
-const render = () => mount(RetryReadinessSummary, { global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to.path || to"><slot /></a>' } } } })
+const render = (props = {}) => mount(RetryReadinessSummary, { props, global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to.path || to"><slot /></a>' } } } })
 beforeEach(() => {
   mock.state = Object.fromEntries(Object.entries({ report: makeReport(), paused: false, unavailable: false,
     stale: false, forbidden: false, loading: false, nextCheckAt: '2026-09-29T20:01:00Z' }).map(([key, value]) => [key, ref(value)]))
   mock.state.togglePaused = vi.fn()
 })
 describe('RetryReadinessSummary', () => {
+  it('shows OMDb local usage without cache promises or web-search settings', () => {
+    mock.state.report.value = { ...makeReport(), scope: 'omdb', inspected: 5,
+      counts: { ...makeReport().counts, cached_ready: 0 },
+      quota: { status: 'available', used: 9, limit: 10, resetAt: '2026-09-30T00:00:00Z' } }
+    const wrapper = render({ scope: 'omdb' })
+    expect(wrapper.get('h2').text()).toBe('OMDb retries')
+    expect(wrapper.findAll('dl dd')).toHaveLength(5)
+    expect(wrapper.text()).toContain('Local daily usage: 9 of 10')
+    expect(wrapper.text()).toContain('no reserved quota')
+    expect(wrapper.text()).not.toContain('Cached results ready')
+    expect(wrapper.text()).toContain('Review OMDb settings')
+  })
+  it('keeps zero counts in the legend without drawing false chart segments', () => {
+    mock.state.report.value = { ...makeReport(), scope: 'omdb', inspected: 5,
+      counts: { cached_ready: 0, provider_ready: 0, provider_wait: 5, settings_blocked: 0, scheduled: 0, held: 0 },
+      quota: { status: 'limit_reached', used: 10, limit: 10, resetAt: '2026-09-30T00:00:00Z' } }
+    const wrapper = render({ scope: 'omdb' })
+    expect(wrapper.findAll('.stacked-bar span')).toHaveLength(1)
+    expect(wrapper.findAll('dl dd')).toHaveLength(5)
+  })
+  it('suppresses OMDb usage when stale, and propagates pause changes to the selector', async () => {
+    mock.state.stale.value = true
+    const wrapper = render({ scope: 'omdb' })
+    expect(wrapper.find('.quota').exists()).toBe(false)
+    mock.state.paused.value = true
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('pause-change')).toEqual([[true]])
+  })
   it('pairs every colored segment with text counts and only one fixed settings action', () => {
     const wrapper = render()
     expect(wrapper.findAll('dl dd')).toHaveLength(6)

@@ -84,3 +84,6 @@ Next: map OMDb's separate configuration, credential and daily-limit gates into
 the same bounded explanatory contract. Keep provider-specific admission rules;
 do not infer OMDb readiness from web-search availability. Measure real operator
 use before adding persisted whole-backlog projections or another scheduler.
+
+Follow-up delivered: [OMDb retry readiness](omdb-retry-readiness-outcome.md)
+extends the selected view with its separate quota and credential gates.

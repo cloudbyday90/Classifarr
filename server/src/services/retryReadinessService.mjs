@@ -6,6 +6,7 @@ import { WebSearchProviderRouter } from './webSearchProviderRouter.mjs';
 import { createWebSearchRetryInspector } from './webSearchRetryReadiness.mjs';
 import { readRetryReadinessPage } from './retryReadinessRepository.mjs';
 import { summarizeRetryReadiness } from './retryReadinessSummary.mjs';
+import { summarizeOmdbRetryReadiness } from './omdbRetryReadiness.mjs';
 
 function readOnlyRouter(client) {
   return new WebSearchProviderRouter({
@@ -16,7 +17,8 @@ function readOnlyRouter(client) {
 }
 
 /** Bounded on-demand observation, not a background process or recovery authority. */
-export function createRetryReadinessService({ database = db, createRouter = readOnlyRouter, now = Date.now } = {}) {
+export function createRetryReadinessService({ database = db, createRouter = readOnlyRouter, now = Date.now, scope = 'web_search' } = {}) {
+  if (!['web_search', 'omdb'].includes(scope)) throw new TypeError('unsupported_readiness_scope');
   let inFlight = null, cached = null;
   return {
     getReport() {
@@ -29,6 +31,9 @@ export function createRetryReadinessService({ database = db, createRouter = read
         await client.query("SET LOCAL statement_timeout = '2000ms'");
         await client.query("SET LOCAL lock_timeout = '250ms'");
         await client.query("SET LOCAL idle_in_transaction_session_timeout = '5000ms'");
+        if (scope === 'omdb') {
+          return summarizeOmdbRetryReadiness(client, await readRetryReadinessPage(client, 'omdb'), observedAt);
+        }
         const pages = [];
         for (const type of ['web_search', 'tavily']) pages.push(await readRetryReadinessPage(client, type));
         const router = createRouter(client);

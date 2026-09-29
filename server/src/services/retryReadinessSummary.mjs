@@ -15,7 +15,8 @@ export function classifyRetryReadinessRow(row, now) {
   return null;
 }
 
-export async function summarizeRetryReadiness(pages, inspectPage, now = Date.now()) {
+export async function summarizeRetryReadiness(pages, inspectPage, now = Date.now(), scope = 'web_search') {
+  if (!['web_search', 'omdb'].includes(scope)) throw new TypeError('unsupported_readiness_scope');
   const counts = Object.fromEntries(RETRY_READINESS_CATEGORIES.map(key => [key, 0]));
   let earliestRetry = Infinity;
   for (const page of pages) {
@@ -31,7 +32,7 @@ export async function summarizeRetryReadiness(pages, inspectPage, now = Date.now
     }
   }
   return {
-    version: 1, scope: 'web_search', observedAt: new Date(now).toISOString(),
+    version: 1, scope, observedAt: new Date(now).toISOString(),
     counts, inspected: Object.values(counts).reduce((sum, count) => sum + count, 0),
     hasMore: pages.some(page => page.hasMore), limitPerQueue: 50,
     earliestRetryAt: Number.isFinite(earliestRetry) ? new Date(earliestRetry).toISOString() : null,

@@ -28,6 +28,19 @@ export async function readOmdbQuota(db) {
     return evaluateOmdbQuota(rows[0]);
 }
 
+/** Public local-budget observation only; never reserve, reset or expose credentials. */
+export async function readOmdbQuotaReadiness(db) {
+    const { rows: [config] } = await db.query(snapshotSql);
+    const quota = evaluateOmdbQuota(config);
+    if (!['available', 'limit_reached'].includes(quota.status)) {
+        return { status: quota.status, used: null, limit: null, resetAt: null };
+    }
+    // Undated legacy counts have no automatic reset in the admission policy.
+    const resetAt = config.last_reset_date
+        ? new Date(Date.parse(`${quota.day}T00:00:00Z`) + 86_400_000).toISOString() : null;
+    return { status: quota.status, used: quota.used, limit: quota.limit, resetAt };
+}
+
 export async function reserveOmdbQuota(db) {
     return db.withTransaction(async client => {
         // This lock also coordinates empty-table saves, rotation and backup restore.

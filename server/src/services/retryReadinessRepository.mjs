@@ -6,7 +6,7 @@ export const RETRY_READINESS_PAGE_SIZE = 50;
 
 /** Limit before joins/guards; no whole-backlog count and no mutable queue stats. */
 export async function readRetryReadinessPage(db, type) {
-  if (!['web_search', 'tavily'].includes(type)) throw new TypeError('unsupported_readiness_type');
+  if (!['omdb', 'web_search', 'tavily'].includes(type)) throw new TypeError('unsupported_readiness_type');
   const { rows } = await db.query(`WITH pending AS MATERIALIZED (
       SELECT * FROM enrichment_retry_queue WHERE status = 'pending' AND enrichment_type = $1
       ORDER BY priority,created_at,id LIMIT $5
@@ -21,7 +21,7 @@ export async function readRetryReadinessPage(db, type) {
         THEN (date_trunc('month',statement_timestamp() AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
         ELSE NULL END AS monthly_due_at
     FROM pending erq LEFT JOIN media_server_items msi ON msi.id = erq.media_item_id
-    LEFT JOIN enrichment_retry_cooldowns cooldown ON cooldown.dependency = 'web_search'
+    LEFT JOIN enrichment_retry_cooldowns cooldown ON cooldown.dependency = CASE WHEN $1 = 'omdb' THEN 'omdb' ELSE 'web_search' END
     ORDER BY erq.priority,erq.created_at,erq.id`,
   [...retryCandidateParameters(type), RETRY_READINESS_PAGE_SIZE + 1]);
   return { rows: rows.slice(0, RETRY_READINESS_PAGE_SIZE), hasMore: rows.length > RETRY_READINESS_PAGE_SIZE };

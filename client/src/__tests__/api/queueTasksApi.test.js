@@ -30,6 +30,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   getRetryReadiness,
+  getOmdbRetryReadiness,
   getQueuePending,
   getQueueFailed,
   retryQueueTask,
@@ -38,6 +39,11 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('reads OMDb readiness through a fixed route without rapid transport retries', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ scope: 'omdb' })
+    expect(await getOmdbRetryReadiness()).toEqual({ scope: 'omdb' })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/omdb-retry-readiness', { skipAutomaticRetry: true })
+  })
   it('reads retry readiness through the named data helper without parameters', async () => {
     mockGetDataRequest.mockResolvedValueOnce({ version: 1 })
     expect(await getRetryReadiness()).toEqual({ version: 1 })
