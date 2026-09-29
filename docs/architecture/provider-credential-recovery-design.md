@@ -49,6 +49,7 @@ quota contract; do not use a successful cached result as credential verification
 ## Official research, September 29, 2026
 
 - [HTTP semantics](https://datatracker.ietf.org/doc/rfc9110/): authentication and forbidden responses differ from transient failures; repeating identical rejected credentials is not a recovery strategy.
+- [PostgreSQL 18 UPDATE](https://www.postgresql.org/docs/18/sql-update.html): conditional updates and RETURNING identify whether the received generation was actually changed, without a separate read-then-write race.
 - [AWS circuit breaker guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/circuit-breaker.html): stop calls that are likely to fail, retain observable state and define recovery explicitly. Here recovery is configuration-driven, not an arbitrary timeout.
 - [W3C status messages](https://www.w3.org/WAI/WCAG21/Understanding/status-messages): communicate waiting and corrective actions programmatically without moving focus or repeatedly interrupting users.
 

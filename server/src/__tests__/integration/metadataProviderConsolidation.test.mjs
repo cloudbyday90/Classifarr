@@ -8,6 +8,14 @@ let client;
 beforeEach(async () => {
     client = await getPool().connect();
     await client.query('BEGIN');
+    // Replay the immutable September 7 data repair against its historical row shape.
+    // Later random credential generations deliberately make current rows distinct.
+    // All DDL is local to this disposable database transaction and rolled back below.
+    await client.query('DROP VIEW enrichment_provider_credential_status');
+    await client.query('DROP TRIGGER omdb_credential_generation ON omdb_config');
+    await client.query('DROP TRIGGER tavily_credential_generation ON tavily_config');
+    await client.query('ALTER TABLE omdb_config DROP COLUMN credential_generation, DROP COLUMN credential_rejected_at');
+    await client.query('ALTER TABLE tavily_config DROP COLUMN credential_generation, DROP COLUMN credential_rejected_at');
     await client.query('TRUNCATE inventory_credential_wakeups, tmdb_config, omdb_config, tavily_config RESTART IDENTITY');
 });
 afterEach(async () => { await client.query('ROLLBACK'); client.release(); });
