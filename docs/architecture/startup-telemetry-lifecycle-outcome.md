@@ -77,7 +77,10 @@ unresolved safety condition and is not repaired by this change.
 
 ## Next item
 
-Rehearse embedded OS/HBA/credential isolation and privileged-task handoff,
-including orderly Node/PostgreSQL shutdown and fresh-install/upgrade/restore
-parity. This is the next prerequisite for safe automatic legacy recovery; adding
-more status text or assigning fictional historical owners would not solve it.
+The [embedded isolation rehearsal](embedded-isolation-rehearsal-outcome.md) now
+proves separate OS/SQL identities, fresh startup, database-tool restore/index
+handoff and orderly Node/PostgreSQL shutdown in disposable containers. Published
+upgrades and the complete encrypted application restore workflow remain unproven.
+Next implement the production embedded supervisor/provisioning component behind
+those acceptance gates, then complete writer capabilities before automatic legacy
+recovery. No fictional historical owner assignment is part of that path.

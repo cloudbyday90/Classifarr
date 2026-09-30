@@ -108,14 +108,13 @@ ordered Node/PostgreSQL shutdown in the forthcoming embedded cutover rehearsal.
 Two GitHub MCP searches on September 30 returned no open PRs for this repository.
 No random open PR could be selected; no closed PR was substituted or PR merged.
 
-Immediate, bounded follow-up: fix the optional telemetry timer's inherited closed
-lock context, with explicit lifecycle and negative inventory-write tests. This
-restores reliable measurement for the larger cutover without weakening ownership.
+The optional telemetry follow-up is now implemented and tested; see its
+[outcome](startup-telemetry-lifecycle-outcome.md). It preserves the inventory scope
+guard while isolating delayed receipt lifetime.
 
-The next architectural component remains: isolate embedded database/application OS identities
-and authentication, with a disposable upgrade/restore/indexing acceptance test.
-The pass condition is that normal Node cannot reconnect as bootstrap, access
-maintenance secrets, alter PostgreSQL data or modify executable code, while the
-platform's maintenance features still work. Then migrate all inventory writers
-before permitting confirmation-free legacy recovery. See the design's option
-table and ordered recommendation stack for the advantages and remaining costs.
+The [embedded isolation rehearsal](embedded-isolation-rehearsal-outcome.md) now
+tests separate identities, denied bootstrap reconnect/file access, fresh startup,
+database-tool restore/index handoff and clean shutdown/restart. It does not certify
+published upgrades or the full encrypted application restore workflow. Next build
+the production supervisor/provisioning component and complete those compatibility
+gates, then migrate all inventory writers before confirmation-free legacy recovery.

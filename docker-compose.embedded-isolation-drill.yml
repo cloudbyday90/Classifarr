@@ -1,0 +1,32 @@
+# Disposable only. The launcher owns a random project; never combine with installation files.
+services:
+  drill:
+    build:
+      context: .
+      target: production
+    entrypoint: [/sbin/tini, --, node, src/scripts/runEmbeddedIsolationDrill.mjs]
+    user: '0:0'
+    read_only: true
+    network_mode: none
+    restart: 'no'
+    stop_grace_period: 45s
+    healthcheck:
+      disable: true
+    environment:
+      CLASSIFARR_EMBEDDED_ISOLATION_DRILL: disposable-v1
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /run/postgresql:rw,noexec,nosuid,size=8m
+    volumes:
+      - rehearsal-state:/rehearsal
+      - app-data:/app/data
+volumes:
+  rehearsal-state:
+  app-data:

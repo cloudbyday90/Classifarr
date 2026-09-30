@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "embedded_isolation_rehearsal",
+      "classification": "separately_coordinated",
+      "reason": "Disposable collision-checked Compose project only, no host data mounts or network. Linux/root supervisor requires read-only root, separate scratch mounts and empty state; separate PostgreSQL and runtime OS users use fixed peer mappings with default rejection. Maintenance probe requires the exact isolated environment and restored database identity before DDL. Real schema admission defers while normal Node is alive. Dump/restore and image-index rebuilding occur only after actual Node exit; clean PostgreSQL stop/restart and restricted reconnect/file/DDL denials are asserted. Runtime retains ordinary DML only in the disposable candidate.",
+      "followUp": "Retain collision, environment, timeout, failure-ordering and real Docker tests. Production supervisor, full encrypted restore, custom UID/published upgrades and complete writer capabilities remain prerequisites. No production role/HBA change, fake historical owner, automatic legacy adoption, broad cleanup or live schema mutation is authorized. Passing rehearsal is not a storage-enforced production writer boundary."
+    },
+    {
       "id": "optional_startup_receipt_lifecycle",
       "classification": "separately_coordinated",
       "reason": "Bootstrap-created AsyncResource owns only the fixed anonymous queue receipt writer. Record accepts bounded contract dimensions, not SQL or callbacks; the timer and manual flush use the captured startup context with one in-flight batch. The ordinary database scope guard is unchanged, still rejecting closed or lost ingestion work. Shutdown drops optional pending counts and prevents further batch writes. Failure diagnostics are allowlisted and do not recurse into database logging.",
@@ -212,6 +218,13 @@
     }
   ],
   "entries": [
+    {"path":"scripts/lib/embeddedIsolationCompose.mjs","digest":"b9e29765fa14fbda20b4272b56d98a259079aa35ddd94a5ce454403a44894778","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"scripts/run-embedded-isolation-drill.mjs","digest":"23e0e252176b41ff16613bbee3d4b0a1ebf913789c8d8bea20fbaa61588ffdcf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/contract.mjs","digest":"d53b8286b62b7b364e14812312bb0cf41d0fbf8f79a56d975aeceebb21b8bc53","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs","digest":"169f9158f77bf36959d5aaa095770368245e156f47f7d984c7d6e6669d332220","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/processes.mjs","digest":"f72dab90fb284cb9531fe5e7e8d9a6f1cf140ad0bbded1a840a5ed62baf1b0ca","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/runtimeProbe.mjs","digest":"eb8806736e5f4dcf32d6b82f42e6e7cde797e898a781b83752fecbbbd46f8cae","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"3026f2a8298fa3e87a1f7e1de3fc290dc0a417a26ef43e4c40d743b2b714fb70","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/bootstrap/normalRuntime.mjs","digest":"af749c4523a1b77cee8e713af141eddb431ebe650f7ae7a8cebf08588e0665bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"0196b2a1487bc1bbdc261ffa22744ff7a460080b41c983481213ed915e701a29","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/services/queueStartupPerformanceReceipt.mjs","digest":"e7d6dea5cb6c2200e5ed3ba86c62c62541e284ef85a6925a6fef784c03daf7df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},

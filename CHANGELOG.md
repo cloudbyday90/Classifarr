@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a disposable embedded-database isolation drill covering separate OS/SQL
+  identities, denied privilege escalation, maintenance handoff, restored-schema
+  readiness and ordered application/PostgreSQL shutdown. Keep live credentials,
+  recovery safeguards and deployment defaults unchanged.
 - Isolate delayed queue performance metrics from completed ingestion scopes,
   serialize optional writes and stop collection during shutdown; retain ownership
   safeguards and report sanitized persistence failures without retry storms.
