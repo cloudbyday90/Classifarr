@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Update the test tooling's gRPC dependency to fix certificate-identity and
+  error-disclosure advisories, with security and compatibility regression tests.
+  Production configuration, credentials and deployment templates are unchanged.
 - Supervise embedded application/database shutdown in order, detect database
   process loss, and allow a bounded graceful-stop window in Compose examples.
   Preserve existing credentials, upgrade paths and legacy recovery safeguards.
