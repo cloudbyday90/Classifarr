@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded one-shot configuration restore maintenance with encrypted-backup
+  compatibility, worker exclusion, interruption quarantine and explicit recovery.
+  Avoid unnecessary application-secret initialization and overlapping restore
+  verification queries; preserve existing UI, credentials and deployment defaults.
 - Update the test tooling's gRPC dependency to fix certificate-identity and
   error-disclosure advisories, with security and compatibility regression tests.
   Production configuration, credentials and deployment templates are unchanged.

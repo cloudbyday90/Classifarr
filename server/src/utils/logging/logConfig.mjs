@@ -24,7 +24,7 @@
  * env-driven behavior without reloading the ESM module graph.
  */
 
-export const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
+export const VALID_LOG_LEVELS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']);
 
 function resolveLogLevel(raw) {
   if (!raw) return 'info';
@@ -83,5 +83,4 @@ export const SENSITIVE_FIELD_PATHS = Object.freeze([
   'refresh_token',
   'private_key',
 ]);
-
 

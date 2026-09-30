@@ -4,7 +4,7 @@ import { ValidationError } from '../utils/appError.mjs';
 import { restoreAllTables } from './backupRestore.mjs';
 
 /** Execute only inside the pinned restore-owner session, never the global pool. */
-export async function executeBackupRestore({ database, lifecycle, recordVerification, backupData, mode, logger }) {
+export async function executeBackupRestore({ database, lifecycle, recordVerification, backupData, mode, logger, createSystemApiKey = null }) {
   const attempt = await lifecycle.beginBackupRestore({ dbClient: database, sessionOwned: true });
   if (!attempt.started) {
     throw new ValidationError(
@@ -13,7 +13,7 @@ export async function executeBackupRestore({ database, lifecycle, recordVerifica
   }
 
   try {
-    const restoreResult = await database.withTransaction(client => restoreAllTables(client, backupData, mode));
+    const restoreResult = await database.withTransaction(client => restoreAllTables(client, backupData, mode, { createSystemApiKey }));
     const verification = await lifecycle.verifyRestoredDatabase({ dbClient: database });
     const completion = await database.withTransaction(async client => {
       const completedRestore = await lifecycle.completeBackupRestore({

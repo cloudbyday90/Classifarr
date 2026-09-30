@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "one_shot_restore_maintenance",
+      "classification": "separately_coordinated",
+      "reason": "Explicit stdin-only configuration restore validates/decrypts before connecting, then reuses the exclusive runtime/restore session and durable verification protocol. Bounded SQL/process lifetimes, no automatic replay, no headless API key creation or secret-store initialization. The separate-identity disposable drill covers active-worker exclusion, encrypted input, wrong password, SIGKILL rollback/quarantine, explicit retry and unknown legacy gate refusal. This coordinates participating runtimes only; shared backup table writers remain unresolved debt.",
+      "followUp": "Keep actual encrypted merge/replace and stopped-runtime tests. Production identity provisioning, protected code/HBA, old-writer reconnect rejection, supervisor handoff and all writer capabilities remain required. This adds no live credential change, historical ownership backfill, deployment mutation or permission to clear unknown legacy gates."
+    },
+    {
       "id": "embedded_lifecycle_supervisor",
       "classification": "separately_coordinated",
       "reason": "Post-bootstrap non-root coordinator observes actual application exit before fixed-path PostgreSQL fast shutdown and verifies cluster identity/control state. No SQL, privilege provisioning, caller commands, new runtime authority or automatic legacy adoption. Runtime closes HTTP admission before awaiting queue release and coalesces signals; existing receipt and ingestion guards remain unchanged. Disposable collision-checked Compose checks use fixed synthetic SQL only in their owned volumes; the indirect query argument remains explicit.",
@@ -224,6 +230,11 @@
     }
   ],
   "entries": [
+    {"path":"server/src/scripts/embeddedIsolationDrill/restoreProbe.mjs","digest":"7b67dc681774b8a4d73ea76d5c423b60a4e7c4a01b5e190387c2002105fbe75a","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
+    {"path":"server/src/scripts/runDatabaseRestoreMaintenance.mjs","digest":"2b14e3477821a5f37a0affc0c594c584fc0fb1aa8219b77d9df73d635b47c6db","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
+    {"path":"server/src/services/backupRestoreExecution.mjs","digest":"36eaa3a50034a40677b6c63491218fc67ab172c04155e93d38ac3bbab3bc38cf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
+    {"path":"server/src/services/backupRestoreMaintenance.mjs","digest":"c51d5427417bc76ba657c6cc5e255289ecc61f7a71b91e4e43571dc85f045a65","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
+    {"path":"server/src/services/backupRestoreMaintenanceInput.mjs","digest":"a1214251330e85d61906e4e45283dbd39edaeef6b248aea8e1cc549ab7abd5c9","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"scripts/lib/embeddedIsolationCompose.mjs","digest":"6c3b78541cbe7f178cb63f74b5ddb589ea60d1d2f3007c68c22c44ec94d41433","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
     {"path":"scripts/lib/embeddedSupervisorChecks.mjs","digest":"8826e4798005c6aebb6c3cc000eeeb43dc0bac9252f358b379c15399368d802c","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_lifecycle_supervisor"},
     {"path":"server/src/bootstrap/embeddedChildProcess.mjs","digest":"b21ae7d741afad598e417436ce5c8a1d7ef0bdf399b7f29c9be1df5e3bb02961","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
@@ -235,7 +246,7 @@
     {"path":"server/src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs","digest":"169f9158f77bf36959d5aaa095770368245e156f47f7d984c7d6e6669d332220","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/processes.mjs","digest":"f72dab90fb284cb9531fe5e7e8d9a6f1cf140ad0bbded1a840a5ed62baf1b0ca","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/runtimeProbe.mjs","digest":"eb8806736e5f4dcf32d6b82f42e6e7cde797e898a781b83752fecbbbd46f8cae","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_isolation_rehearsal"},
-    {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"3026f2a8298fa3e87a1f7e1de3fc290dc0a417a26ef43e4c40d743b2b714fb70","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"281472c69b8f335a71370eab3caf4c810b9276255a75e5755fadceaf708a52fd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"server/src/bootstrap/normalRuntime.mjs","digest":"af749c4523a1b77cee8e713af141eddb431ebe650f7ae7a8cebf08588e0665bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"9977e8cc02a5585d24b1b8acb39ae5cc7b47d01edd08c514f277d1ab0d7380c8","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
     {"path":"server/src/services/queueStartupPerformanceReceipt.mjs","digest":"e7d6dea5cb6c2200e5ed3ba86c62c62541e284ef85a6925a6fef784c03daf7df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
@@ -721,7 +732,7 @@
     {"path":"server/src/services/automaticSourcePairRepository.mjs","digest":"44b6f4707039e26b13a926bf6403a09989e5ab06431ec7c6ee745600b30d1025","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/automaticSourcePairWorkers.mjs","digest":"e930109521a390352538edf3f82caa120e2270bdc8c7d70de2d3e692c8bd1b2c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/backupExportCatalog.mjs","digest":"e7c064909f89fcd4398696d0d8f08dbcf91f652393e2ff91fe54a4925500b968","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/backupRestore.mjs","digest":"4601938d6ae37dad9a55ca7e1b67d84c17e397a1cbcf0dfd78787a90f69e97d1","analysisDigest":"ee19da18f5f9861b19746e507b4ea932a78aa76be487bdb2660d28589c8a6e7d","review":"shared_writer_debt"},
+    {"path":"server/src/services/backupRestore.mjs","digest":"b174129cff66823ca8b8dae075f36e0409cc7f73cf732b2a51a5cad134f1d9e2","analysisDigest":"ee19da18f5f9861b19746e507b4ea932a78aa76be487bdb2660d28589c8a6e7d","review":"shared_writer_debt"},
     {"path":"server/src/services/backupRestoreDestinations.mjs","digest":"7792308bebf66a0cc2faee65af220646c4bd21c0fc2b1ac47783cd430d0c5a90","analysisDigest":"eb933cc75f0e6548ac24d2b88a2051417aa3f9b14be1ec8aaec1f139e057959e","review":"shared_writer_debt"},
     {"path":"server/src/services/backupRestoreSession.mjs","digest":"de87d0e9f7f08e64bc2241c68a290fb2f03e8ba52605d2f1d1f820f97a7c1f1b","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/backupRestoreTables.mjs","digest":"1e24b25b0548a675735a3ac29670b0b9b96a4cdde46c74b83a88575d0cecfde8","analysisDigest":"eb933cc75f0e6548ac24d2b88a2051417aa3f9b14be1ec8aaec1f139e057959e","review":"shared_writer_debt"},

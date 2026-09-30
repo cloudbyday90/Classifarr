@@ -220,11 +220,11 @@ export class NativeIntentReconciliationLifecycleService {
   }
 
   async verifyRestoredDatabase({ dbClient = this.db } = {}) {
-    const [schemaRows, authorityIntegrity, policyLibraryMismatchCount] = await Promise.all([
-      this.verifySchema({ db: dbClient, expectedTables: REQUIRED_RESTORE_SCHEMA_TABLES }),
-      this.loadAuthorityIntegrity(dbClient),
-      this.countPolicyLibraryMismatches({ db: dbClient }),
-    ]);
+    // Restore owns a single pinned session. Await each query; pg@9 will reject
+    // overlapping client.query calls, and a failed check must finish before cleanup.
+    const schemaRows = await this.verifySchema({ db: dbClient, expectedTables: REQUIRED_RESTORE_SCHEMA_TABLES });
+    const authorityIntegrity = await this.loadAuthorityIntegrity(dbClient);
+    const policyLibraryMismatchCount = await this.countPolicyLibraryMismatches({ db: dbClient });
     const schemaParity = asArray(schemaRows).every(row => row.present === true);
     const nativeAuthorityIntegrity = authorityIntegrity?.statusId === POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS.CLEAN &&
       policyLibraryMismatchCount === 0;

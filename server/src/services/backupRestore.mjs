@@ -1,7 +1,6 @@
 import { createLogger } from '../utils/logger.mjs';
 import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
-import { generateApiKey } from './apiKeyService.mjs';
 import { validateBackupRestoreReferences } from './backupRestoreReferences.mjs';
 import { restoreLibraryArrMappings } from './backupRestoreDestinations.mjs';
 import {
@@ -153,7 +152,7 @@ export async function clearExistingConfig(client) {
   logger.info('Cleared existing configuration');
 }
 
-export async function restoreAllTables(client, backupData, mode) {
+export async function restoreAllTables(client, backupData, mode, { createSystemApiKey = null } = {}) {
   // Validate the portable reference graph before any reset or configuration write.
   validateBackupRestoreReferences(backupData?.data);
   // The lifecycle audit state is a derived aggregate cursor, rather than
@@ -221,13 +220,17 @@ export async function restoreAllTables(client, backupData, mode) {
   await restoreSettings(client, backupData.data.settings);
   await restoreLibraryLabels(client, backupData.data.libraryLabels, libraryIdMap, labelIdMap);
 
-  const { key: newApiKey, keyHash: apiKeyHash, prefix: apiKeyPrefix } = generateApiKey();
-
-  await client.query(
-    `INSERT INTO api_keys (name, key_hash, key_prefix, permissions, is_active)
-     VALUES ($1, $2, $3, $4, $5)`,
-    ['Restored System API Key', apiKeyHash, apiKeyPrefix, 'admin', true]
-  );
+  let newApiKey = null;
+  if (createSystemApiKey) {
+    // Only the HTTP composition supplies a key factory; headless code has no secret-store dependency.
+    const { key, keyHash: apiKeyHash, prefix: apiKeyPrefix } = createSystemApiKey();
+    newApiKey = key;
+    await client.query(
+      `INSERT INTO api_keys (name, key_hash, key_prefix, permissions, is_active)
+       VALUES ($1, $2, $3, $4, $5)`,
+      ['Restored System API Key', apiKeyHash, apiKeyPrefix, 'admin', true]
+    );
+  }
 
   return {
     newApiKey,

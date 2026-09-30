@@ -88,6 +88,7 @@ export async function runDrill() {
     session = await login(fixture.password);
     const retry = await drillRequest('/api/backup/import', { session, body });
     assert.equal(retry.status, 200);
+    assert.match(retry.body.newApiKey, /^clf_[A-Za-z0-9_-]+$/);
     const recovered = await readRecoveryState(db);
     assert.equal(recovered.probe, 'backup-value');
     assert.equal(recovered.late_probe, 'backup-value');
@@ -106,6 +107,7 @@ export async function runDrill() {
     stage = 'normal_restart';
     const normal = start('normal');
     await waitForDrillHealth(normal, 'normal');
+    assert.equal((await drillRequest('/api/libraries', { session: { 'x-api-key': retry.body.newApiKey } })).status, 200);
     session = await login(fixture.password);
     const denied = await drillRequest('/api/backup/import', { session, body });
     assert.equal(denied.status, 503);

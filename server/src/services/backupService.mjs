@@ -27,6 +27,7 @@ import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { deriveKey as _deriveKey, encrypt as _encrypt, decrypt as _decrypt } from './backupEncryption.mjs';
 import { executeBackupRestore } from './backupRestoreExecution.mjs';
 import { withBackupRestoreSession } from './backupRestoreSession.mjs';
+import { generateApiKey } from './apiKeyService.mjs';
 import {
   nativeIntentReconciliationLifecycleService,
 } from './nativeIntentReconciliationLifecycleService.mjs';
@@ -209,6 +210,7 @@ export class BackupService {
           database,
           lifecycle: this.reconciliationLifecycle,
           recordVerification: this.recordBackupRestoreVerification,
+          createSystemApiKey: generateApiKey,
           backupData,
           mode,
           logger,

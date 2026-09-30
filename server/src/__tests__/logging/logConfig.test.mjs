@@ -33,6 +33,7 @@ describe('LOG_CONFIG', () => {
 
   test('normalises LOG_LEVEL to lowercase', () => {
     expect(resolveLogConfig({ LOG_LEVEL: 'WARN' }).level).toBe('warn');
+    expect(resolveLogConfig({ LOG_LEVEL: 'silent' }).level).toBe('silent');
   });
 
   test('falls back to info for unknown LOG_LEVEL values', () => {

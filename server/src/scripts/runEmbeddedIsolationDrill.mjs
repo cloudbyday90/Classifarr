@@ -71,10 +71,14 @@ export async function runEmbeddedIsolationDrill() {
     await waitForRuntime(runtime);
     assert.equal((await fetch('http://127.0.0.1:21324/api/libraries', { signal: AbortSignal.timeout(2000) })).status, 401);
     await assert.rejects(maintain(), error => error.code === 75);
+    await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--busy']);
     await stopRuntime(runtime);
     runtime = null;
     await assertNoStartupErrors();
     record('real_runtime_health_auth_maintenance_exclusion_and_sigterm');
+
+    await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--apply']);
+    record('encrypted_restore_process_exclusion_quarantine_and_explicit_recovery');
 
     // Privileged commands run only after the actual normal process has exited.
     await pg('pg_dump', ['-h', SOCKET, '-U', ADMIN_ROLE, '-d', DATABASE, '-Fc', '-f', `${STATE}/backup.dump`]);

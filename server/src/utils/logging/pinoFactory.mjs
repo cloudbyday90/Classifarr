@@ -99,6 +99,9 @@ export function buildTransport(config = LOG_CONFIG) {
 export function createRootLogger(config = LOG_CONFIG) {
   const options = buildPinoOptions(config);
 
+  // One-shot maintenance must return only its bounded, sanitized protocol result.
+  if (config.level === 'silent') return pino(options, { write() {} });
+
   if (process.env.NODE_ENV === 'test') {
     // Use a plain object with a synchronous `write` method.
     // pino accepts any { write } object as a destination — no Writable needed.

@@ -94,6 +94,19 @@ describe('real PostgreSQL restore reference recovery', () => {
     client.release();
   });
 
+  it('creates a restore API key only when the HTTP composition supplies its factory', async () => {
+    const before = (await client.query('SELECT COUNT(*)::int AS count FROM api_keys')).rows[0].count;
+    const headless = await restoreAllTables(client, { data: {} }, 'merge');
+    expect(headless.newApiKey).toBeNull();
+    expect((await client.query('SELECT COUNT(*)::int AS count FROM api_keys')).rows[0].count).toBe(before);
+    const createSystemApiKey = jest.fn(() => ({ key: 'synthetic-return-value', keyHash: 'synthetic-storage-value', prefix: 'clf_test' }));
+    const http = await restoreAllTables(client, { data: {} }, 'merge', { createSystemApiKey });
+    expect(http.newApiKey).toBe('synthetic-return-value');
+    expect(createSystemApiKey).toHaveBeenCalledTimes(1);
+    expect((await client.query('SELECT key_hash, permissions FROM api_keys WHERE key_prefix = $1', ['clf_test'])).rows)
+      .toEqual([{ key_hash: 'synthetic-storage-value', permissions: 'admin' }]);
+  });
+
   it.each(['merge', 'replace'])('remaps movie/TV destinations and labels in %s, even with old IDs occupied', async mode => {
     const backup = await seed(client);
     expect(backup.data.libraryArrMappings).toHaveLength(2);

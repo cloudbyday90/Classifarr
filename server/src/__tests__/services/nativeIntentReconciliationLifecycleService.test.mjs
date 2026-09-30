@@ -51,6 +51,28 @@ function createService(overrides = {}) {
 }
 
 describe('NativeIntentReconciliationLifecycleService', () => {
+  test('restore checks never overlap queries on their pinned client', async () => {
+    let finishSchema;
+    const schema = new Promise(resolve => { finishSchema = resolve; });
+    const verifySchema = jest.fn(() => schema);
+    const loadAuthorityIntegrity = jest.fn().mockResolvedValue({ statusId: 'clean' });
+    const countPolicyLibraryMismatches = jest.fn().mockResolvedValue(0);
+    const service = createService({ verifySchema, loadAuthorityIntegrity, countPolicyLibraryMismatches });
+    const pending = service.verifyRestoredDatabase({ dbClient: {} });
+    expect(loadAuthorityIntegrity).not.toHaveBeenCalled();
+    expect(countPolicyLibraryMismatches).not.toHaveBeenCalled();
+    finishSchema([{ present: true }]);
+    await expect(pending).resolves.toMatchObject({ verified: true });
+    expect(loadAuthorityIntegrity.mock.invocationCallOrder[0]).toBeLessThan(countPolicyLibraryMismatches.mock.invocationCallOrder[0]);
+  });
+
+  test('failed first restore check cannot leave later checks running during cleanup', async () => {
+    const service = createService({ verifySchema: jest.fn().mockRejectedValue(new Error('connection_lost')) });
+    await expect(service.verifyRestoredDatabase()).rejects.toThrow('connection_lost');
+    expect(service.loadAuthorityIntegrity).not.toHaveBeenCalled();
+    expect(service.countPolicyLibraryMismatches).not.toHaveBeenCalled();
+  });
+
   test.each([false, true])('forwards bounded session ownership (%s) to gate persistence', async sessionOwned => {
     const beginRestore = jest.fn().mockResolvedValue({ gate_state: 'restore_in_progress' });
     const service = createService({ beginRestore });
