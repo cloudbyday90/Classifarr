@@ -12,6 +12,14 @@ import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessio
 const source = { media_type: 'tv', library_id: 2, library_name: 'Source', tmdb_id: 42, metadata: {} };
 const taskPayload = () => ({ title: 'Example', media_type: ' TV ', itemId: 1, source_library_id: 2, tmdb_id: 42 });
 
+test.each([true, false])('retry ownership comes from current database state (%s), never a queued flag', async owned => {
+  const query = jest.fn().mockResolvedValue({ rows: [{ ...source, metadata_providers_retry_owned: owned }] });
+  const prepared = await prepareQueueEnrichmentPayload({ ...taskPayload(), metadata_providers_retry_owned: !owned }, query);
+  expect(prepared.metadata_providers_retry_owned).toBe(owned);
+  const unbound = await prepareQueueEnrichmentPayload({ media_type: 'tv', metadata_providers_retry_owned: true }, query);
+  expect(unbound).not.toHaveProperty('metadata_providers_retry_owned');
+});
+
 test.each([undefined, 'Stale Studio'])('old queued studio %j self-heals from the verified current source', async studio => {
   const payload = { ...taskPayload(), studio };
   const query = jest.fn().mockResolvedValue({ rows: [{ ...source, studio: 'Current Studio' }] });

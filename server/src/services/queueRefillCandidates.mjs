@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { inventoryTmdbObservationDue, INVENTORY_TMDB_RETRY_HOURS } from './inventoryTmdbObservation.mjs';
 import { INVENTORY_TMDB_REFILL_SQL } from './queueInventoryTmdbRefill.mjs';
+import { STANDARD_METADATA_REFILL_SQL as STANDARD_ENRICHMENT_SQL } from './queueMetadataRefillPolicy.mjs';
 import {
     elapsedMilliseconds,
     QUEUE_STARTUP_PERFORMANCE_OPERATION_IDS,
@@ -9,10 +10,6 @@ import {
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export const REFILL_QUEUE_BATCH_LIMIT = 5000;
-const STANDARD_ENRICHMENT_SQL = `msi.metadata->'content_analysis' IS NULL
-    OR (msi.metadata->'omdb' IS NULL AND (
-        msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
-        OR EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)))`;
 
 function boundedPositiveInteger(value) {
     const parsed = Number(value);

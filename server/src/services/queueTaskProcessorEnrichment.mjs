@@ -93,7 +93,7 @@ export async function processMetadataEnrichmentTask(task, {
         }
     };
 
-    if (!observationOnly) {
+    if (!observationOnly && !enrichPayload.metadata_providers_retry_owned) {
         await queueOmdbEnrichmentService.enrich(enrichPayload, enrichmentData, writes);
         await queueWebSearchEnrichmentService.enrich(enrichPayload, enrichmentData);
     }

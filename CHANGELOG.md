@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Respect existing provider retry decisions during metadata refill and queued-task
+  execution, preventing repeated optional enrichment while preserving local analysis,
+  independent TMDb work, retry recovery and budgets. Isolate AI readiness coordination
+  from the existing refill/restore advisory lock.
 - Backfill never-run Ollama AI readiness checks on older installations once
   ingestion and backfill settle. Preserve existing verdicts, wait for resource
   headroom, and protect concurrent manual tests and configuration changes.

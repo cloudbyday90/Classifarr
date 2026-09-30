@@ -171,7 +171,7 @@ function createIntegrationDatabaseFacade() {
             NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
             RECLASSIFICATION_MOVE: 2021,
             RECLASSIFICATION_BATCH: 2022,
-            OLLAMA_READINESS_BACKFILL: 2023,
+            OLLAMA_READINESS_BACKFILL: 2025,
         },
     };
 }

@@ -6,6 +6,7 @@ import { createOllamaReadinessBackfill } from '../../services/ollamaReadinessBac
 import { readInventoryBackgroundReadiness } from '../../services/inventoryBackgroundReadiness.mjs';
 import { loadOllamaVerificationCapabilityConfiguration, persistOllamaVerificationCapabilityProbe } from '../../services/ollamaVerificationCapabilityRepository.mjs';
 import { resolveOllamaVerificationCapabilityIdentity } from '../../services/ollamaVerificationCapabilityIdentity.mjs';
+import { METADATA_REFILL_OWNER_LOCK } from '../../services/queueRefillCoordination.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 // Match the production helper's boolean acquisition contract, using real PG locks.
@@ -47,6 +48,17 @@ test('legacy missing evidence backfills with RAG disabled; recreated worker does
   expect(stored.ollama_verification_capability_checked_at).toBeInstanceOf(Date);
   expect((await createOllamaReadinessBackfill(f.options).run()).reason).toBe('already_checked');
   expect(f.client.generate).toHaveBeenCalledTimes(1);
+});
+
+test('the AI mutex is distinct from the existing refill/restore mutex in PostgreSQL', async () => {
+  const owner = await getPool().connect();
+  try {
+    await owner.query('SELECT pg_advisory_lock($1)', [METADATA_REFILL_OWNER_LOCK]);
+    expect((await make().worker.run()).status).toBe('completed');
+  } finally {
+    await owner.query('SELECT pg_advisory_unlock($1)', [METADATA_REFILL_OWNER_LOCK]);
+    owner.release();
+  }
 });
 
 test('fresh/no inventory, active ingestion and incomplete handoff wait, then resume organically', async () => {
