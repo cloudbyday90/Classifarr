@@ -50,13 +50,13 @@ export async function reserveOmdbQuota(db, { pacing = false, expectedContext } =
         const { rows } = await client.query(snapshotSql);
         const config = rows[0];
         const quota = evaluateOmdbQuota(config);
-        if (quota.status !== 'available') return quota;
         const credentialContext = providerCredentialContext('omdb', config);
+        if (quota.status !== 'available') return { ...quota, credentialContext };
         if (expectedContext && (credentialContext?.id !== expectedContext.id ||
             credentialContext?.generation !== expectedContext.generation)) return { status: 'lookup_restart' };
         if (pacing) {
             const wait = await omdbPacingWait(client, credentialContext);
-            if (wait > 0) return { ...quota, status: 'paced', retryAfterSeconds: wait };
+            if (wait > 0) return { ...quota, credentialContext, status: 'paced', retryAfterSeconds: wait };
             await advanceOmdbPacing(client);
         }
         const result = await client.query(

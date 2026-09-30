@@ -2,6 +2,7 @@
 import { sourceConflictAuthorityExclusionForMediaServerItem, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { RETRY_CREDENTIALS_BLOCKED_SQL } from './enrichmentRetryCredentialGate.mjs';
 import { TAVILY_MONTHLY_DEFERRED_REASON } from '../utils/enrichmentState.mjs';
+import { RETRY_EFFECTIVE_DUE_SQL } from './enrichmentRetryDuePolicy.mjs';
 
 // Fixed SQL shared by read-only preview/planning and the authoritative claim.
 export const RETRY_ITEM_ELIGIBILITY_SQL = `erq.attempts < erq.max_attempts AND NOT (erq.id = ANY($2::integer[]))
@@ -15,7 +16,7 @@ export const RETRY_ITEM_ELIGIBILITY_SQL = `erq.attempts < erq.max_attempts AND N
     AND msi.metadata->'omdb' IS NULL))`;
 
 export const RETRY_CANDIDATE_SQL = `erq.status = 'pending' AND erq.enrichment_type = $1
-  AND erq.next_attempt_at <= statement_timestamp()
+  AND (${RETRY_EFFECTIVE_DUE_SQL}) <= statement_timestamp()
   AND NOT ${RETRY_CREDENTIALS_BLOCKED_SQL}
   AND NOT EXISTS (SELECT 1 FROM enrichment_retry_cooldowns cooldown
     WHERE cooldown.dependency = CASE WHEN $1 = 'omdb' THEN 'omdb' ELSE 'web_search' END

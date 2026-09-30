@@ -4,6 +4,7 @@ import { readOmdbQuota, reserveOmdbQuota } from './omdbQuotaStore.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { rejectProviderCredential } from './providerCredentialRejection.mjs';
 import { OmdbAdmissionWaitError } from './omdbPacingPolicy.mjs';
+import { rememberProviderRequest } from './providerRequestEvidence.mjs';
 
 export class OMDbLimitReachedError extends Error {
     constructor(message) {
@@ -39,11 +40,12 @@ export async function checkAndIncrementUsage({ metadataProviderIntegrityService,
             code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60,
         });
     }
-    if (quota.status === 'paced') throw new OmdbAdmissionWaitError(quota.retryAfterSeconds);
+    const tracked = error => rememberProviderRequest(error, [{ ...quota.credentialContext, providerKey: 'omdb' }]);
+    if (quota.status === 'paced') throw tracked(new OmdbAdmissionWaitError(quota.retryAfterSeconds));
     if (quota.status === 'lookup_restart') {
         const error = new OmdbAdmissionWaitError(1);
         error.code = 'OMDB_LOOKUP_RESTART';
-        throw error;
+        throw tracked(error);
     }
     if (quota.status === 'limit_reached') {
         metadataProviderIntegrityService.warnProviderRuntimeFailure({
@@ -51,14 +53,14 @@ export async function checkAndIncrementUsage({ metadataProviderIntegrityService,
             metadata: { source: 'omdb_service', limit: quota.limit, used: quota.used },
             dedupeSignature: `${quota.day}:${quota.limit}:${quota.used}`,
         });
-        throw new OMDbLimitReachedError(`OMDb daily limit of ${quota.limit} reached`);
+        throw tracked(new OMDbLimitReachedError(`OMDb daily limit of ${quota.limit} reached`));
     }
     if (quota.status !== 'reserved') {
         const error = new ServiceUnavailableError(unavailableReason(quota.status), {
             code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60,
         });
         if (quota.status === 'credentials_rejected') error.code = 'OMDB_AUTHENTICATION';
-        throw error;
+        throw tracked(error);
     }
     return { apiKey: quota.apiKey, configId: quota.configId, credentialContext: quota.credentialContext };
 }

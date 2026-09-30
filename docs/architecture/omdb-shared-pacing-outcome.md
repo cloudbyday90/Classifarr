@@ -81,6 +81,9 @@ with an already-closed change.
 
 ## Recommendation and next component
 
+Follow-up implemented: [credential-scoped retry wait design](credential-scoped-retry-wait-design.md)
+and [outcome](credential-scoped-retry-wait-outcome.md).
+
 Keep Node ESM services, PostgreSQL admission and the existing scheduler.
 Benefits: bounded durable coordination, restart recovery and no new deployment
 dependency. Costs: a few short queries per request and explicit handling of

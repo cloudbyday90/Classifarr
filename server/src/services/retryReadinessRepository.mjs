@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { RETRY_CANDIDATE_SQL, RETRY_ITEM_ELIGIBILITY_SQL, retryCandidateParameters } from './enrichmentRetryCandidates.mjs';
 import { RETRY_CREDENTIALS_BLOCKED_SQL } from './enrichmentRetryCredentialGate.mjs';
+import { RETRY_EFFECTIVE_DUE_SQL } from './enrichmentRetryDuePolicy.mjs';
 
 export const RETRY_READINESS_PAGE_SIZE = 50;
 
@@ -14,7 +15,7 @@ export async function readRetryReadinessPage(db, type) {
       (${RETRY_ITEM_ELIGIBILITY_SQL}) IS TRUE AS item_eligible,
       (${RETRY_CANDIDATE_SQL}) IS TRUE AS candidate,
       (${RETRY_CREDENTIALS_BLOCKED_SQL}) IS TRUE AS credentials_blocked,
-      erq.next_attempt_at, cooldown.next_attempt_at AS cooldown_until,
+      (${RETRY_EFFECTIVE_DUE_SQL}) AS next_attempt_at, cooldown.next_attempt_at AS cooldown_until,
       CASE WHEN erq.enrichment_type = 'tavily' AND erq.reason = $3
         AND date_trunc('month',COALESCE(erq.last_attempt_at,erq.created_at) AT TIME ZONE 'UTC')
           >= date_trunc('month',statement_timestamp() AT TIME ZONE 'UTC')

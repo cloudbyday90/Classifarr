@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Resume eligible enrichment after credential repair by tying new retry waits to
+  the provider configuration that caused them. Preserve quotas, same-key pacing,
+  unknown legacy waits and worker/source safeguards; keep status views read-only.
+- Update brace-expansion, Engine.IO and ip-address to patched dependencies and
+  add bounded compatibility/security regressions. Restore the OSV dependency
+  gate without suppressing advisories or changing release versions.
 - Share OMDb request pacing and provider wait windows across workers, restarts
   and recovery probes. Defer without spending credits or retry attempts, resume
   title lookups after an IMDb miss, and show waiting work through existing status

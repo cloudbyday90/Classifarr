@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { persistScopedRetryWait } from './enrichmentRetryScopedWait.mjs';
 const MIN_DELAY_MS = 60_000;
 const MAX_DELAY_MS = 60 * 60_000;
 
@@ -31,13 +32,14 @@ export function retrySchedule(result, attempts) {
 }
 
 /** Called only inside the current claim's fenced result transaction. */
-export async function persistRetrySchedule(client, queueId, type, schedule) {
+export async function persistRetrySchedule(client, queueId, type, schedule, result) {
   const { rows: [row] } = await client.query(`UPDATE enrichment_retry_queue SET next_attempt_at =
     CASE WHEN $2::text IS NOT NULL THEN
       (date_trunc($2::text, clock_timestamp() AT TIME ZONE 'UTC') +
         CASE WHEN $2 = 'month' THEN interval '1 month' ELSE interval '1 day' END) AT TIME ZONE 'UTC'
     ELSE clock_timestamp() + ($3 * interval '1 millisecond') END
     WHERE id = $1 RETURNING next_attempt_at`, [queueId, schedule.reset ?? null, schedule.delayMs ?? 0]);
+  if (await persistScopedRetryWait(client, queueId, type, schedule, result)) return;
   if (schedule.cooldown) {
     if (!row?.next_attempt_at) throw new Error('retry_schedule_missing');
     await client.query(`INSERT INTO enrichment_retry_cooldowns (dependency, next_attempt_at, reason)

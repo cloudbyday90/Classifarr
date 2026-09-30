@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { qualitySnapshot } from '../fixtures/sourcePairQualityFixture.mjs';
 import { prepareSourcePairQualityProtocol } from '../../services/sourcePairQualityProtocol.mjs';
 import { runSourcePairQualityThread, runSourcePairQualityRuntime } from '../../services/sourcePairQualityRuntime.mjs';
+import { createBackgroundResourceAdmission } from '../../services/backgroundResourceAdmission.mjs';
 
 const priorOptions = process.env.PGOPTIONS;
 afterEach(() => { if (priorOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = priorOptions; });
@@ -65,10 +66,11 @@ test.each(['logging', 'file', 'postgres'])('refuses unsafe %s before loading a d
   expect(loadDatabase).not.toHaveBeenCalled();
 });
 
-test.each(['busy', 'query'])('runtime closes its pool on %s failure without writing data', async failure => {
+test.each(['busy', 'query', 'pressure'])('runtime closes its pool on %s failure without writing data', async failure => {
   process.env.PGOPTIONS = '-c default_transaction_read_only=on';
   const statements = [], pool = { end: jest.fn() }, runThread = jest.fn();
   const database = { pool, readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }),
+    resourceAdmission: createBackgroundResourceAdmission({ readMemory: () => ({ available: failure === 'pressure' ? 0 : 4e9, constrained: 8e9, total: 8e9 }) }),
     withSessionAdvisoryLock: async (_key, callback) => { if (failure === 'busy') return false; await callback(); return true; },
     withTransaction: async callback => callback({ query: async sql => { statements.push(sql); if (sql.startsWith('SET ')) return {}; throw new Error('unavailable'); } }) };
   await expect(runSourcePairQualityRuntime({}, { logging: { level: 'fatal', fileLoggingEnabled: false }, loadDatabase: async () => database, runThread })).rejects.toThrow();
@@ -76,4 +78,5 @@ test.each(['busy', 'query'])('runtime closes its pool on %s failure without writ
   expect(runThread).not.toHaveBeenCalled();
   expect(statements.join(' ')).not.toMatch(/\b(DELETE|INSERT|UPDATE)\b/);
   if (failure === 'query') expect(statements[0]).toBe('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  else expect(statements).toEqual([]);
 });

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T23:53:15.117Z
--- Latest Migration: 20260929_190000_omdb_shared_pacing.sql
+-- Generated: 2026-09-30T01:05:19.215Z
+-- Latest Migration: 20260929_200000_credential_scoped_retry_wait.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3604,6 +3604,68 @@ CREATE TABLE public.enrichment_retry_cooldowns (
 
 
 --
+-- Name: enrichment_retry_provider_contexts; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.enrichment_retry_provider_contexts AS
+ SELECT 'omdb'::text AS dependency,
+    'omdb'::text AS provider_key,
+    'omdb'::text AS source,
+    c.id AS config_id,
+    c.credential_generation AS generation,
+    (c.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM ( SELECT omdb_config.id,
+            omdb_config.api_key,
+            omdb_config.is_active,
+            omdb_config.daily_limit,
+            omdb_config.requests_today,
+            omdb_config.last_reset_date,
+            omdb_config.created_at,
+            omdb_config.updated_at,
+            omdb_config.credential_generation,
+            omdb_config.credential_rejected_at
+           FROM public.omdb_config
+          WHERE omdb_config.is_active
+          ORDER BY omdb_config.id DESC
+         LIMIT 1) c
+  WHERE (length(btrim((c.api_key)::text)) > 0)
+UNION ALL
+ SELECT 'web_search'::text AS dependency,
+    web_search_provider_config.provider_key,
+    'web_search'::text AS source,
+    web_search_provider_config.id AS config_id,
+    web_search_provider_config.credential_generation AS generation,
+    (web_search_provider_config.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM public.web_search_provider_config
+  WHERE (web_search_provider_config.is_enabled AND (length(btrim(web_search_provider_config.api_key)) > 0) AND ((web_search_provider_config.provider_key)::text = ANY (ARRAY['tavily'::text, 'brave'::text, 'serper'::text])))
+UNION ALL
+ SELECT 'web_search'::text AS dependency,
+    'tavily'::text AS provider_key,
+    'legacy_tavily'::text AS source,
+    c.id AS config_id,
+    c.credential_generation AS generation,
+    (c.credential_rejected_at IS NOT NULL) AS credentials_rejected
+   FROM ( SELECT tavily_config.id,
+            tavily_config.api_key,
+            tavily_config.search_depth,
+            tavily_config.max_results,
+            tavily_config.include_domains,
+            tavily_config.exclude_domains,
+            tavily_config.is_active,
+            tavily_config.created_at,
+            tavily_config.updated_at,
+            tavily_config.credential_generation,
+            tavily_config.credential_rejected_at
+           FROM public.tavily_config
+          WHERE tavily_config.is_active
+          ORDER BY tavily_config.id DESC
+         LIMIT 1) c
+  WHERE ((length(btrim((c.api_key)::text)) > 0) AND (NOT (EXISTS ( SELECT 1
+           FROM public.web_search_provider_config
+          WHERE ((web_search_provider_config.provider_key)::text = 'tavily'::text)))));
+
+
+--
 -- Name: enrichment_retry_queue; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3624,6 +3686,9 @@ CREATE TABLE public.enrichment_retry_queue (
     claim_until timestamp with time zone,
     next_attempt_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     omdb_lookup_checkpoint jsonb,
+    retry_wait_context jsonb,
+    retry_wait_until timestamp with time zone,
+    CONSTRAINT enrichment_retry_wait_context_check CHECK ((((retry_wait_context IS NULL) AND (retry_wait_until IS NULL)) OR ((retry_wait_context IS NOT NULL) AND (retry_wait_until IS NOT NULL) AND (jsonb_typeof(retry_wait_context) = 'array'::text) AND ((jsonb_array_length(retry_wait_context) >= 1) AND (jsonb_array_length(retry_wait_context) <= 4)) AND (octet_length((retry_wait_context)::text) <= 1024)))),
     CONSTRAINT omdb_lookup_checkpoint_size CHECK (((omdb_lookup_checkpoint IS NULL) OR ((jsonb_typeof(omdb_lookup_checkpoint) = 'object'::text) AND (octet_length((omdb_lookup_checkpoint)::text) <= 1024))))
 );
 
@@ -17536,6 +17601,7 @@ FROM unnest(ARRAY[
     '20260929_160000_provider_recovery_probes.sql',
     '20260929_170000_web_search_pacing.sql',
     '20260929_180000_web_search_usage_trace.sql',
-    '20260929_190000_omdb_shared_pacing.sql'
+    '20260929_190000_omdb_shared_pacing.sql',
+    '20260929_200000_credential_scoped_retry_wait.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

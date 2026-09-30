@@ -6,7 +6,7 @@ import { TAVILY_MONTHLY_DEFERRED_REASON } from '../utils/enrichmentState.mjs';
 import { probeDefinition, PROBE_CANDIDATES_SQL, PROBE_DEMAND_SQL } from './providerRecoveryProbeQueries.mjs';
 import { reserveProviderProbeQuota } from './providerRecoveryProbeQuota.mjs';
 import { normalizeProbeOutcome, providerProbeDelay } from './providerRecoveryProbePolicy.mjs';
-import { lockWebSearchProvider, recordWebSearchPacingDelay } from './webSearchPacingStore.mjs';
+import { lockWebSearchProvider, recordWebSearchPacingDelay, transferWebSearchPacingGeneration } from './webSearchPacingStore.mjs';
 import { recordOmdbPacingDelay, transferOmdbPacingGeneration } from './omdbPacingStore.mjs';
 
 async function selectConfiguration(client, candidate) {
@@ -81,6 +81,8 @@ export function createProviderRecoveryProbeRepository(db, { random = Math.random
           const recovered = await client.query(probeDefinition(claim.source).recover, [claim.id, claim.generation]);
           generation = recovered.rows[0].credential_generation;
           if (claim.source === 'omdb') await transferOmdbPacingGeneration(client, claim.id, claim.generation, generation);
+          else await transferWebSearchPacingGeneration(client, claim.provider_key,
+            { source: claim.source, id: claim.id, generation: claim.generation }, generation);
         }
         if (claim.source === 'omdb' && outcome.retryAfterMs > 0) {
           await recordOmdbPacingDelay(client, { id: claim.id, generation }, Math.ceil(outcome.retryAfterMs / 1000));

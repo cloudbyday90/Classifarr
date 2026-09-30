@@ -25,6 +25,14 @@ export async function advanceWebSearchPacing(client, provider) {
     SET next_admission_at=EXCLUDED.next_admission_at`, [provider]);
 }
 
+/** Verified same-key recovery rotates rejection authority, not the provider's valid wait. */
+export async function transferWebSearchPacingGeneration(client, provider, context, generation) {
+  await lockWebSearchProvider(client, provider);
+  await client.query(`UPDATE web_search_provider_pacing SET credential_generation=$5::uuid
+    WHERE provider_key=$1 AND source=$2 AND config_id=$3 AND credential_generation=$4::uuid`,
+  [provider, context.source, context.id, context.generation, generation]);
+}
+
 /** Caller owns current configuration + provider lock; delays can only extend. */
 export async function recordWebSearchPacingDelay(client, provider, context, seconds) {
   if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > WEB_SEARCH_MAX_WAIT_SECONDS) return;

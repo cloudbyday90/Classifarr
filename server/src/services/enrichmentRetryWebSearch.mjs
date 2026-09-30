@@ -12,6 +12,7 @@ import { extractImdbData } from './webSearchEnrichmentEvidence.mjs';
 import { buildImdbLookupRequest } from './webSearchEnrichmentRequests.mjs';
 import { WebSearchProviderRoutingError } from './webSearchProviderRouter.mjs';
 import { webSearchEnrichmentService as defaultWebSearchEnrichmentService } from './webSearchEnrichmentService.mjs';
+import { inheritProviderRequests } from './providerRequestEvidence.mjs';
 
 function isLegacyTavilyMonthlyQuotaError(error, enrichmentType) {
   if (enrichmentType !== 'tavily') return false;
@@ -50,12 +51,13 @@ export async function enrichWithWebSearch({
 
     return { success: true, data: imdbData };
   } catch (error) {
+    const tracked = result => inheritProviderRequests(result, [error]);
     const admissionWaits = (error instanceof WebSearchProviderRoutingError ? error.attempts : [error])
       .filter(attempt => (attempt.errorCode ?? attempt.code) === 'admission_deferred')
       .map(attempt => attempt.retryAfterSeconds)
       .filter(seconds => Number.isFinite(seconds) && seconds > 0);
-    if (admissionWaits.length) return { success: false, error: 'Waiting for provider admission',
-      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: Math.min(...admissionWaits) };
+    if (admissionWaits.length) return tracked({ success: false, error: 'Waiting for provider admission',
+      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: Math.min(...admissionWaits) });
     if (isLegacyTavilyMonthlyQuotaError(error, enrichmentType)) {
       logger.info('Legacy Tavily retry exhausted its monthly quota; deferring item', {
         item: item.title,
@@ -70,19 +72,19 @@ export async function enrichWithWebSearch({
 
     const failure = error instanceof WebSearchProviderRoutingError ? error.lastError : error;
     const code = failure?.errorCode ?? failure?.code;
-    if (code === 'admission_deferred') return { success: false, error: 'Waiting for provider admission',
-      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: failure?.retryAfterSeconds };
+    if (code === 'admission_deferred') return tracked({ success: false, error: 'Waiting for provider admission',
+      waitForProvider: true, providerAdmissionWait: true, retryAfterSeconds: failure?.retryAfterSeconds });
     logger.warn('Web search enrichment failed', {
       code: error.code || null,
       error: error.message,
       item: item.title,
     });
-    return { success: false, error: error.message,
+    return tracked({ success: false, error: error.message,
       credentialsRejected: ['auth_failed', 'forbidden'].includes(code),
       transient: ['rate_limited', 'provider_5xx', 'timeout', 'network_error'].includes(code),
       waitForProvider: code === 'quota_exhausted'
         || (error instanceof WebSearchProviderRoutingError && error.attempts.length === 0),
-      retryAfterSeconds: failure?.retryAfterSeconds };
+      retryAfterSeconds: failure?.retryAfterSeconds });
   }
 }
 

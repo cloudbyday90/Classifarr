@@ -4,6 +4,7 @@ import { providerCredentialContext } from './providerCredentialRejection.mjs';
 import { probeDefinition } from './providerRecoveryProbeQueries.mjs';
 import { reserveWebSearchQuota, webSearchRequestCost } from './webSearchQuotaReservation.mjs';
 import { WebSearchProviderError } from './webSearchProviderErrorTaxonomy.mjs';
+import { rememberProviderRequest } from './providerRequestEvidence.mjs';
 
 export function webSearchAdmissionDeferred(provider, retryAfterSeconds = 60) {
   return new WebSearchProviderError({ provider, operation: 'admission', errorCode: 'admission_deferred',
@@ -41,7 +42,8 @@ export async function admitWebSearch(db, { providerKey, config, purpose }) {
       return reserveWebSearchQuota(client, { provider: providerKey, config: row, context,
         costUnits: webSearchRequestCost(providerKey, config), purpose });
     });
-    if (!result?.allowed) throw webSearchAdmissionDeferred(providerKey, result?.retryAfterSeconds);
+    if (!result?.allowed) throw rememberProviderRequest(webSearchAdmissionDeferred(providerKey, result?.retryAfterSeconds),
+      [{ ...context, providerKey }]);
     return result;
   } catch (error) {
     if (error instanceof WebSearchProviderError) throw error;

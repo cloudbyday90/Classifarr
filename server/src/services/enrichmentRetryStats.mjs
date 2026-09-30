@@ -1,4 +1,5 @@
 import { RETRY_CREDENTIALS_BLOCKED_SQL } from './enrichmentRetryCredentialGate.mjs';
+import { RETRY_EFFECTIVE_DUE_SQL } from './enrichmentRetryDuePolicy.mjs';
 
 export function createEmptyStats() {
     return {
@@ -46,7 +47,7 @@ export async function getStats({ db, countTavilyMonthlyDeferredRows }) {
         status,
         COUNT(*) as count,
         COUNT(*) FILTER (WHERE status = 'pending' AND (
-          erq.next_attempt_at > statement_timestamp() OR cooldown.next_attempt_at > statement_timestamp()
+          (${RETRY_EFFECTIVE_DUE_SQL}) > statement_timestamp() OR cooldown.next_attempt_at > statement_timestamp()
           OR ${RETRY_CREDENTIALS_BLOCKED_SQL}
           OR (enrichment_type = 'tavily' AND erq.reason = 'tavily_monthly_quota_deferred')
         )) AS deferred_count

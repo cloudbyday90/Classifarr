@@ -30,6 +30,7 @@ import {
   webSearchProviderQualityCalibrationService as defaultQualityCalibrationService,
 } from './webSearchProviderQualityCalibration.mjs';
 import { canReadWebSearchCandidateCache } from './webSearchRetryReadiness.mjs';
+import { inheritProviderRequests } from './providerRequestEvidence.mjs';
 
 const FALLBACK_ELIGIBLE_ERROR_CODES = new Set([
   WEB_SEARCH_PROVIDER_ERROR_CODES.ADMISSION_DEFERRED,
@@ -210,6 +211,7 @@ export class WebSearchProviderRouter {
     }
 
     const attempts = [];
+    const failures = [];
     let lastError = null;
 
     for (const candidate of availableCandidates) {
@@ -253,6 +255,7 @@ export class WebSearchProviderRouter {
           },
         };
       } catch (error) {
+        failures.push(error);
         lastError = error;
         attempts.push({
           providerKey: candidate.providerKey,
@@ -291,11 +294,11 @@ export class WebSearchProviderRouter {
       completedAt: this.nowFn(),
     });
 
-    throw new WebSearchProviderRoutingError(
+    throw inheritProviderRequests(new WebSearchProviderRoutingError(
       'All eligible web search providers failed',
       candidates,
       { attempts, lastError }
-    );
+    ), failures);
   }
 }
 

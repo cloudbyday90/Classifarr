@@ -60,7 +60,8 @@ export async function persistEnrichmentRetryResult(client, claim, sourceCurrent,
     await client.query('UPDATE enrichment_retry_queue SET omdb_lookup_checkpoint=$2::jsonb WHERE id=$1',
       [id, checkpoint ? JSON.stringify(checkpoint) : null]);
   }
-  if (sourceCurrent && !result.success) await persistRetrySchedule(client, id, type, schedule);
+  await client.query('UPDATE enrichment_retry_queue SET retry_wait_context=NULL,retry_wait_until=NULL WHERE id=$1', [id]);
+  if (sourceCurrent && !result.success) await persistRetrySchedule(client, id, type, schedule, result);
   await deps.enrichmentItemStateService.syncItemState(item.media_item_id, client);
   return outcome;
 }

@@ -6,6 +6,7 @@ import { emptyQualityEvidence } from '../../services/qualityEvidenceContract.mjs
 import { createQualityEvidenceRepository } from '../../services/qualityEvidenceRepository.mjs';
 import { collectActiveQualityStudy } from '../../services/qualityEvidenceCollector.mjs';
 import { runQualityStudyRuntime } from '../../services/qualityStudyRuntime.mjs';
+import { createBackgroundResourceAdmission } from '../../services/backgroundResourceAdmission.mjs';
 
 function fixture() {
   const snapshot = qualitySnapshot(), protocol = prepareSourcePairQualityProtocol(snapshot).protocol;
@@ -20,6 +21,7 @@ function fixture() {
     return { rows: [], rowCount: 1 };
   });
   const database = { pool: { end: jest.fn() }, withTransaction: fn => fn({ query }),
+    resourceAdmission: createBackgroundResourceAdmission({ readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }) }),
     withSessionAdvisoryLock: async (_key, fn) => { await fn(); return true; },
     readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }) };
   const runThread = jest.fn(async () => emptyQualityEvidence(protocol));
@@ -75,6 +77,18 @@ test('private runtime guard and stored contracts fail closed', async () => {
   await expect(createQualityEvidenceRepository(database).read()).rejects.toThrow('quality_study_invalid');
   expect(() => createQualityEvidenceRepository(database).start({})).toThrow('quality_protocol_invalid');
   expect(() => createQualityEvidenceRepository(database).stop({})).toThrow('quality_protocol_invalid');
+});
+
+test('resource pressure defers the study and closes its pool before data access', async () => {
+  const { dependencies, database, query, runThread } = fixture();
+  database.resourceAdmission = createBackgroundResourceAdmission({
+    readMemory: () => ({ available: 0, constrained: 8e9, total: 8e9 }),
+  });
+  await expect(runQualityStudyRuntime({ operation: 'report' }, dependencies)).rejects.toMatchObject({
+    message: 'inventory_discovery_deferred', reason: 'memory_pressure',
+  });
+  expect(query).not.toHaveBeenCalled(); expect(runThread).not.toHaveBeenCalled();
+  expect(database.pool.end).toHaveBeenCalledTimes(1);
 });
 
 test('audit bypasses busy admission and never reads source snapshots or invokes a worker', async () => {

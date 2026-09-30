@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 // Exercise the locked transitive dependency used by express-rate-limit, not a mock.
-import { Address6 } from 'ip-address';
+import { Address4, Address6 } from 'ip-address';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
@@ -36,6 +36,20 @@ test.each([
 
 test('invalid IPv6 remains rejected by the dependency', () => {
   expect(() => new Address6('not-an-ip')).toThrow();
+});
+
+test('oversized invalid addresses are rejected before building an expanded diagnostic', () => {
+  const input = '!'.repeat(65536);
+  expect(Address6.isValid(input)).toBe(false);
+  try { new Address6(input); throw new Error('unexpected acceptance'); }
+  catch (error) { expect(error.name).toBe('AddressError'); expect(error.parseMessage).toBeUndefined(); }
+});
+
+test.each(['isInSubnet', 'isHostInSubnet'])('cross-family %s comparisons cannot grant containment', method => {
+  expect(new Address6('a00::1')[method](new Address4('10.0.0.0/8'))).toBe(false);
+  expect(new Address4('32.1.13.184')[method](new Address6('2001:db8::/32'))).toBe(false);
+  expect(new Address6('2001:db8::1')[method](new Address6('2001:db8::/32'))).toBe(true);
+  expect(new Address6('::ffff:10.0.0.1').to4()[method](new Address4('10.0.0.0/8'))).toBe(true);
 });
 
 test.each([

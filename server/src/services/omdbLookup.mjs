@@ -20,6 +20,7 @@ import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
 import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
 import { observeOmdbPacing } from './omdbPacingObservation.mjs';
+import { rememberProviderRequest } from './providerRequestEvidence.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -84,6 +85,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 				try { await (deps.rejectCredential ?? rejectOmdbCredential)(credentialContext); }
 				catch { logger.warn('OMDb credential pause could not be persisted; retry work remains deferred'); }
 			}
+			rememberProviderRequest(error, [{ ...credentialContext, providerKey: 'omdb' }]);
 			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError ||
 				error.code === 'HTTP_RESPONSE_TOO_LARGE') {
 				logger.warn(error.message, { source: logLabel, status, code: error.code }, {

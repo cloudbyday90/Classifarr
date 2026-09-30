@@ -19,6 +19,7 @@ import {
 import { webSearchProviderStorage as defaultUsageStorage } from './webSearchProviderStorage.mjs';
 import { webSearchProviderUsageCache as defaultCacheStore } from './webSearchProviderUsageCache.mjs';
 import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
+import { rememberProviderRequest } from './providerRequestEvidence.mjs';
 
 function getTraceValue(request, key) {
   return request?.traceContext?.[key] ?? null;
@@ -195,6 +196,7 @@ export class WebSearchProviderCachedSearchExecutor {
         },
       };
     } catch (error) {
+      rememberProviderRequest(error, [{ ...credentialContext, providerKey: identity.providerKey }]);
       if (isProviderCredentialRejection(error) && credentialContext) {
         // Preserve the typed rejection even if its durable pause cannot be saved.
         // The retry queue will still defer without charging item attempts.
