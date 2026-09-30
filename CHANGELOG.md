@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Separate explicit one-shot schema maintenance from opt-in runtime readiness
+  checks, with exclusive maintenance admission, restricted-role checks and
+  fail-closed schema validation. Preserve embedded startup behavior and legacy
+  recovery safeguards while production credential isolation is completed.
 - Add an isolated database-writer fencing rehearsal with separated roles,
   legacy-session retirement, scoped recovery and stale-write rejection tests;
   preserve current live recovery safeguards pending production credential migration.

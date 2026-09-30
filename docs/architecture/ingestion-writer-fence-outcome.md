@@ -92,3 +92,8 @@ cutover and fresh/restore/restart acceptance tests. Follow that with full writer
 capability migration before automatic legacy adoption. The benefit is an enforced
 storage boundary; the cost is a deliberate compatibility migration rather than
 an unsafe ownership backfill.
+
+The first shared component is now specified and implemented in the
+[schema maintenance/startup boundary](schema-maintenance-boundary-design.md).
+Its [outcome](schema-maintenance-boundary-outcome.md) distinguishes the tested
+one-shot process from the still-required OS/authentication and full writer cutover.

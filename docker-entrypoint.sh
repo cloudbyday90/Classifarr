@@ -1,6 +1,16 @@
 #!/bin/sh
 set -e
 
+# Embedded PostgreSQL still shares its OS identity and trust authentication with
+# Node. Do not advertise restricted runtime isolation until that cutover exists.
+case "${CLASSIFARR_SCHEMA_MAINTENANCE-startup}" in
+    startup) ;;
+    external)
+        echo "External schema maintenance is not supported by this embedded entrypoint. Keep startup mode until OS/authentication isolation is deployed." >&2
+        exit 1 ;;
+    *) echo "CLASSIFARR_SCHEMA_MAINTENANCE must be startup or external." >&2; exit 1 ;;
+esac
+
 # ===========================================
 # Classifarr Docker Entrypoint
 # All-in-One with Embedded PostgreSQL

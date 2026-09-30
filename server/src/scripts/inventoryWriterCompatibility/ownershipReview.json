@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "explicit_schema_maintenance_boundary",
+      "classification": "separately_coordinated",
+      "reason": "Explicit one-shot schema work holds exclusive runtime/restore lock 2024 on the same pinned session as the existing migration runner. Busy admission makes no schema writes, failures discard the session, restore quarantine and unknown ledger filenames fail closed. Opt-in external runtime startup holds shared admission while checking restricted authority and exact packaged ledger before normal service imports, without seeding or migrations. Default embedded startup remains unchanged and its entrypoint rejects external mode. Indirect SQL arguments are a reviewed adapter and a fixed catalog query, not a claim that all migration or application writers are fenced.",
+      "followUp": "Complete embedded OS/HBA/bootstrap isolation and privileged extension/index/restore handoff before deployment. Maintain fresh-install, authenticated role, concurrent owner, rollback, pending/future schema and startup ordering tests. No runtime admin pool, historical ownership assignment or production automatic legacy recovery is authorized. Existing shared-writer and indirect-SQL debt remains unresolved."
+    },
+    {
       "id": "isolated_ingestion_writer_fence",
       "classification": "separately_coordinated",
       "reason": "Disposable integration database only, guarded by test environment and owned suite database naming. Generated authenticated roles rehearse ordinary-superuser retirement, committed NOLOGIN, session drain and transactional grant/ownership cutover. Fixed definer functions pin search_path and require an exclusive library lock plus session/start/run/source binding. Typed bounded writes preserve inventory; adoption and its receipt are atomic. No runtime startup hook, live privileges, source configuration, routing or pruning changes.",
@@ -200,6 +206,12 @@
     }
   ],
   "entries": [
+    {"path":"server/src/bootstrap/startApplication.mjs","digest":"52c18a0643589b7644a7795d53d8874b1eeadc5ee464a84db0a7822fc41feb36","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
+    {"path":"server/src/bootstrap/startupPreflight.mjs","digest":"677b43bde792dd1c83bc96da5ba0e3e5148434331ffe0cce599549a33895795c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
+    {"path":"server/src/config/schemaMaintenanceMode.mjs","digest":"16fa7cefdaf35405963c962dd47ae4430a63ba34079a01babd39541c7b597156","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
+    {"path":"server/src/scripts/runDatabaseSchemaMaintenance.mjs","digest":"fe6b31614b93991e982baddae7017fad4e4afa088799ee36347515a173e29d6c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
+    {"path":"server/src/services/databaseSchemaMaintenance.mjs","digest":"49652ddf0a7428f617c8cce5a6933362648ae5472fbb4be96d178a682673a32e","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"explicit_schema_maintenance_boundary"},
+    {"path":"server/src/services/databaseSchemaReadiness.mjs","digest":"2c528c353d427259b4acf1feaa758a8745e70743f4f1f15996b06a8304e9956f","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"explicit_schema_maintenance_boundary"},
     {"path":"server/src/scripts/ingestionWriterFence/client.mjs","digest":"4c279655e5e6b87ca13541633647ef61d09b8071d1f7d8b73e7a97fec0039993","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_ingestion_writer_fence"},
     {"path":"server/src/scripts/ingestionWriterFence/contract.mjs","digest":"c9a5b60c45335fcd3d88a7755569d3ce9b26d3c8405089174016d49b19cc831d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_ingestion_writer_fence"},
     {"path":"server/src/scripts/ingestionWriterFence/install.mjs","digest":"f93d373b4ae2d4129b67b366cd197ec95c95651dd1e79dce069d542df6f427af","analysisDigest":"e64b3ee2a4fad11df1eebe98f617569b135822d1c3a315101b7dbb96c40e31c2","review":"isolated_ingestion_writer_fence"},

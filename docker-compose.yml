@@ -18,6 +18,8 @@ services:
       FORCE_SECURE_COOKIES: ${FORCE_SECURE_COOKIES:-false}
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       CLASSIFARR_RUNTIME_MODE: ${CLASSIFARR_RUNTIME_MODE:-normal}
+      # Keep startup until the embedded OS/authentication cutover is available.
+      CLASSIFARR_SCHEMA_MAINTENANCE: ${CLASSIFARR_SCHEMA_MAINTENANCE-startup}
       # Cap V8 old space, not total RSS. The shared 2 GB container limit must
       # also cover native buffers, other V8 spaces and PostgreSQL; validate peak
       # headroom before increasing this value. TASK_QUEUE_RETENTION_DAYS

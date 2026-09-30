@@ -85,3 +85,30 @@ test('runtime status and mode are explicit and fail closed', () => {
     else process.env.CLASSIFARR_RUNTIME_MODE = original;
   }
 });
+
+test('external schema readiness runs before normal service imports without seeding the gate', async () => {
+  const s = setup();
+  s.options.environment.CLASSIFARR_SCHEMA_MAINTENANCE = 'external';
+  s.options.verifySchema = jest.fn().mockResolvedValue({ status: 'ready' });
+  await expect(s.start()).resolves.toBe('normal');
+  expect(s.options.verifySchema.mock.invocationCallOrder[0]).toBeLessThan(s.options.loadNormal.mock.invocationCallOrder[0]);
+  expect(await s.options.acquireAdmission.mock.calls[0][0].seedMissingGate()).toBe(false);
+});
+
+test('external readiness failure loads no workers and retains admission until process exit', async () => {
+  const s = setup();
+  s.options.environment.CLASSIFARR_SCHEMA_MAINTENANCE = 'external';
+  s.options.verifySchema = jest.fn().mockRejectedValue(new Error('schema_maintenance_required'));
+  await expect(s.start()).rejects.toThrow('schema_maintenance_required');
+  expect(s.options.loadNormal).not.toHaveBeenCalled();
+  expect(s.admission.release).not.toHaveBeenCalled();
+  s.options.processRef.emit('exit');
+  expect(s.admission.release).toHaveBeenCalledTimes(1);
+});
+
+test('external mode cannot load the privileged restore runtime', async () => {
+  const s = setup('restore');
+  s.options.environment.CLASSIFARR_SCHEMA_MAINTENANCE = 'external';
+  await expect(s.start()).rejects.toThrow('separate maintenance process');
+  expect(s.options.loadRestore).not.toHaveBeenCalled();
+});

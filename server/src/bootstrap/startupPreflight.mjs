@@ -18,6 +18,7 @@ import { policyThresholdIntegrityService } from '../services/policyThresholdInte
 import { routingConfigIntegrityService } from '../services/routingConfigIntegrityService.mjs';
 import { postUpgradeService } from '../services/postUpgradeService.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { readSchemaMaintenanceMode } from '../config/schemaMaintenanceMode.mjs';
 
 const logger = createLogger('Preflight');
 
@@ -154,6 +155,7 @@ async function recordAvxGuard(avxGuard) {
 }
 
 export async function runStartupPreflight({
+  environment = process.env,
   database = db,
   setLoggerDb,
   runtimeSettings,
@@ -167,10 +169,11 @@ export async function runStartupPreflight({
   migrationRunnerService = migrationRunner,
   postUpgradeTaskService = postUpgradeService,
 }) {
+  const externalSchema = readSchemaMaintenanceMode(environment) === 'external';
   await database.query('SELECT 1');
   logger.info('Database connected successfully');
 
-  await runMigrations(migrationRunnerService);
+  if (!externalSchema) await runMigrations(migrationRunnerService);
   setLoggerDb(database);
   await auditClarificationSeedIntegrity(clarificationSeedService);
   await auditAiEmbeddingProviderIntegrity(aiEmbeddingProviderIntegrityAuditService);
@@ -179,7 +182,7 @@ export async function runStartupPreflight({
   await auditPolicyThresholdIntegrity(policyThresholdIntegrityAuditService);
   await auditRoutingConfigIntegrity(routingConfigIntegrityAuditService);
   await prewarmHnswIndexes(database);
-  await ensurePgStatStatements(database);
+  if (!externalSchema) await ensurePgStatStatements(database);
   await checkPgStatStatements(database);
   const postUpgradeResult = await runPostUpgradeTasks(postUpgradeTaskService);
   await loadRuntimeSettings(runtimeSettings);
