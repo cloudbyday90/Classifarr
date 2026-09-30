@@ -58,6 +58,7 @@ describe('runtimeLifecycle', () => {
     const schedulerService = {
       resetState: jest.fn(),
     };
+    const performanceReceiptService = { stop: jest.fn() };
     const server = {
       close: jest.fn((callback) => callback()),
     };
@@ -70,6 +71,7 @@ describe('runtimeLifecycle', () => {
       signal: 'SIGTERM',
       queueService,
       schedulerService,
+      performanceReceiptService,
       server,
       exit,
       setTimeoutFn,
@@ -77,6 +79,8 @@ describe('runtimeLifecycle', () => {
     });
 
     expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), 10_000);
+    expect(performanceReceiptService.stop.mock.invocationCallOrder[0])
+      .toBeLessThan(schedulerService.resetState.mock.invocationCallOrder[0]);
     expect(schedulerService.resetState.mock.invocationCallOrder[0])
       .toBeLessThan(queueService.gracefulShutdown.mock.invocationCallOrder[0]);
     expect(server.close).toHaveBeenCalled();
@@ -150,5 +154,22 @@ describe('runtimeLifecycle', () => {
   it('normalizes string and error rejection payloads', () => {
     expect(normalizeUnhandledReason('broken')).toEqual({ message: 'broken' });
     expect(normalizeUnhandledReason(new Error('kaput'))).toEqual({ name: 'Error', message: 'kaput' });
+  });
+
+  it.each(['SIGTERM', 'SIGINT'])('stops optional receipts through the registered %s handler', async signal => {
+    const handlers = new Map();
+    const performanceReceiptService = { stop: jest.fn() };
+    const exit = jest.fn();
+    registerProcessHandlers({
+      processRef: { on: (event, handler) => handlers.set(event, handler) },
+      performanceReceiptService,
+      queueService: { gracefulShutdown: jest.fn().mockResolvedValue() },
+      getServer: () => null,
+      logger: { error: jest.fn() },
+      exit,
+    });
+    await handlers.get(signal)();
+    expect(performanceReceiptService.stop).toHaveBeenCalledTimes(1);
+    expect(exit).toHaveBeenCalledWith(0);
   });
 });

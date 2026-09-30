@@ -51,15 +51,24 @@ describe('authenticated-role ingestion writer boundary candidate', () => {
     await legacy.end(); clients.delete(legacy);
   }, 30000);
   afterAll(async () => {
-    await Promise.allSettled([...clients].map(client => client.end()));
     try {
       if (identities) {
-        const roles = Object.values(identities).map(value => fenceRole(value.user)).join(',');
+        const roleNames = Object.values(identities).map(value => fenceRole(value.user));
+        // Socket close is not proof that backend temporary-object cleanup has
+        // finished. Wait for these exact fixture backends before REASSIGN OWNED.
+        const { rows } = await admin.query(`SELECT pg_terminate_backend(pid,5000) AS stopped
+          FROM pg_stat_activity WHERE datname=current_database()
+          AND usename=ANY($1::text[]) AND pid<>pg_backend_pid()`, [roleNames]);
+        if (rows.some(row => row.stopped !== true)) throw new Error('fence_fixture_sessions_not_drained');
+        const roles = roleNames.join(',');
         await admin.query(`REASSIGN OWNED BY ${roles} TO CURRENT_USER`);
         await admin.query(`DROP OWNED BY ${roles}`);
         await admin.query(`DROP ROLE ${roles}`);
       }
-    } finally { admin?.release(); }
+    } finally {
+      await Promise.allSettled([...clients].map(client => client.end()));
+      admin?.release();
+    }
   });
 
   test('cutover drains uncommitted legacy writes and permanently removes that login and ownership', async () => {

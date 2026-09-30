@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "optional_startup_receipt_lifecycle",
+      "classification": "separately_coordinated",
+      "reason": "Bootstrap-created AsyncResource owns only the fixed anonymous queue receipt writer. Record accepts bounded contract dimensions, not SQL or callbacks; the timer and manual flush use the captured startup context with one in-flight batch. The ordinary database scope guard is unchanged, still rejecting closed or lost ingestion work. Shutdown drops optional pending counts and prevents further batch writes. Failure diagnostics are allowlisted and do not recurse into database logging.",
+      "followUp": "Keep delayed real-PostgreSQL persistence, late inventory rejection, wrong-construction-context refusal, single-flight, bounded cardinality, logger-fault and shutdown tests. Construct outside ingestion/request scopes and never expose the context runner as a generic capability. These are lossy performance aggregates, not routing authority or ownership proof. Existing database-wrapper and shared-writer debt remains unresolved; this does not authorize automatic legacy adoption."
+    },
+    {
       "id": "explicit_schema_maintenance_boundary",
       "classification": "separately_coordinated",
       "reason": "Explicit one-shot schema work holds exclusive runtime/restore lock 2024 on the same pinned session as the existing migration runner. Busy admission makes no schema writes, failures discard the session, restore quarantine and unknown ledger filenames fail closed. Opt-in external runtime startup holds shared admission while checking restricted authority and exact packaged ledger before normal service imports, without seeding or migrations. Default embedded startup remains unchanged and its entrypoint rejects external mode. Indirect SQL arguments are a reviewed adapter and a fixed catalog query, not a claim that all migration or application writers are fenced.",
@@ -206,6 +212,13 @@
     }
   ],
   "entries": [
+    {"path":"server/src/bootstrap/normalRuntime.mjs","digest":"af749c4523a1b77cee8e713af141eddb431ebe650f7ae7a8cebf08588e0665bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"0196b2a1487bc1bbdc261ffa22744ff7a460080b41c983481213ed915e701a29","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/services/queueStartupPerformanceReceipt.mjs","digest":"e7d6dea5cb6c2200e5ed3ba86c62c62541e284ef85a6925a6fef784c03daf7df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/services/queueStartupPerformanceReceiptDiagnostics.mjs","digest":"081e6cac71437ac31cb98736a84d126ae93cb6bd7c756c62c3dd8037da0e77dc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/services/queueStartupPerformanceReceiptRepository.mjs","digest":"95200f0eb1c92fe71e9153a922a8161350f34c369796cc407a8979276cef7895","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/services/queueStartupPerformanceReceiptService.mjs","digest":"84da8dbd4f7be1950abeec34e8293ccde73d97d60d6fc360c01d3bf78f35ba16","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/utils/databaseLockScope.mjs","digest":"d7976c0eb5e3b4548ac3a1d813c64c69bff29c2fc7e7650bf1fa7e01882453bf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/bootstrap/startApplication.mjs","digest":"52c18a0643589b7644a7795d53d8874b1eeadc5ee464a84db0a7822fc41feb36","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
     {"path":"server/src/bootstrap/startupPreflight.mjs","digest":"677b43bde792dd1c83bc96da5ba0e3e5148434331ffe0cce599549a33895795c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
     {"path":"server/src/config/schemaMaintenanceMode.mjs","digest":"16fa7cefdaf35405963c962dd47ae4430a63ba34079a01babd39541c7b597156","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},

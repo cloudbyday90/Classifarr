@@ -21,6 +21,7 @@ import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { discordBotService as discordBot } from '../services/discordBot.mjs';
 import { providerLock } from '../services/providerLock.mjs';
 import { queueService } from '../services/queueService.mjs';
+import { queueStartupPerformanceReceiptService } from '../services/queueStartupPerformanceReceiptService.mjs';
 import { avxGuard } from '../services/avxGuard.mjs';
 import { schedulerService as defaultSchedulerService } from '../services/scheduler.mjs';
 import { createApp } from './createApp.mjs';
@@ -70,12 +71,14 @@ export function registerServerProcessHandlers({
   processRef = process,
   queueWorkerService = queueService,
   schedulerService = defaultSchedulerService,
+  performanceReceiptService = queueStartupPerformanceReceiptService,
   loggerService = logger,
 } = {}) {
   registerProcessHandlers({
     processRef,
     queueService: queueWorkerService,
     schedulerService,
+    performanceReceiptService,
     getServer: () => server,
     logger: loggerService,
   });

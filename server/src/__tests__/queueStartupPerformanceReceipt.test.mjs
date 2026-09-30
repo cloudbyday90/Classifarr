@@ -99,9 +99,11 @@ describe('queue startup performance receipt persistence', () => {
         await expect(failed.flush()).resolves.toHaveLength(1);
         expect(logger.warn).toHaveBeenCalledWith(
             'Queue startup performance receipt persistence failed',
-            { reasonCode: 'queue_startup_performance_receipt_persistence_failed' },
+            { reasonCode: 'queue_startup_performance_receipt_persistence_failed', errorCategory: 'unknown' },
             { skipDbPersist: true },
         );
+        service.stop();
+        failed.stop();
     });
 });
 

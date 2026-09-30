@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Isolate delayed queue performance metrics from completed ingestion scopes,
+  serialize optional writes and stop collection during shutdown; retain ownership
+  safeguards and report sanitized persistence failures without retry storms.
+- Wait for disposable PostgreSQL fixture backends to exit before role cleanup,
+  preventing intermittent ownership-rehearsal teardown failures.
 - Separate explicit one-shot schema maintenance from opt-in runtime readiness
   checks, with exclusive maintenance admission, restricted-role checks and
   fail-closed schema validation. Preserve embedded startup behavior and legacy

@@ -1,7 +1,10 @@
 # Follow-up: optional startup telemetry and closed ingestion context
 
 Date: 2026-09-30. Evaluated runtime/source: `1e068cfaea8dc7b68f520898c2c085798a1ea9af`.
-Status: reproduced locally; implementation is the next bounded follow-up.
+Status: reproduced locally; subsequently implemented and tested in the separate
+[lifecycle design](startup-telemetry-lifecycle-design.md) and
+[outcome](startup-telemetry-lifecycle-outcome.md). The observed live event below
+remains historical evidence, not a claim about a newer running image.
 
 ## Observed outcome
 
@@ -72,8 +75,8 @@ do not adopt a newer-version API merely because the current docs expose it.
 ## Boundaries and next step
 
 This warning is separate from `legacy_owner_unknown`; fixing telemetry does not
-establish stopped-writer proof or permit automatic adoption. The existing receipt
-and lock-scope modules were not modified during this evaluation. Keep the larger
+establish stopped-writer proof or permit automatic adoption. The receipt service
+was subsequently refactored; the lock-scope guard remains unchanged. Keep the larger
 [credential/OS isolation work](schema-maintenance-boundary-design.md) next in the
 architecture sequence, including clean PostgreSQL shutdown and restore/indexing
 feature parity. No unrelated runtime limits or live ownership records were changed.

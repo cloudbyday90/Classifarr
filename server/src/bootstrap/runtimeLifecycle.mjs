@@ -58,6 +58,7 @@ export async function gracefulShutdown({
   signal,
   queueService,
   schedulerService,
+  performanceReceiptService,
   server,
   exit = defaultExit,
   setTimeoutFn = defaultSetTimeout,
@@ -70,6 +71,9 @@ export async function gracefulShutdown({
     exit(1);
   }, 10_000);
   forceExit.unref?.();
+
+  // Best-effort telemetry must neither start new writes nor delay shutdown.
+  performanceReceiptService?.stop();
 
   try {
     schedulerService?.resetState?.();
@@ -115,6 +119,7 @@ export function registerProcessHandlers({
   processRef = process,
   queueService,
   schedulerService,
+  performanceReceiptService,
   getServer,
   logger,
   exit = defaultExit,
@@ -125,6 +130,7 @@ export function registerProcessHandlers({
     signal: 'SIGTERM',
     queueService,
     schedulerService,
+    performanceReceiptService,
     server: getServer(),
     exit,
     setTimeoutFn,
@@ -135,6 +141,7 @@ export function registerProcessHandlers({
     signal: 'SIGINT',
     queueService,
     schedulerService,
+    performanceReceiptService,
     server: getServer(),
     exit,
     setTimeoutFn,
