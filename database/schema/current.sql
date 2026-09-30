@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-30T01:05:19.215Z
--- Latest Migration: 20260929_200000_credential_scoped_retry_wait.sql
+-- Generated: 2026-09-30T11:38:47.591Z
+-- Latest Migration: 20260930_180000_retry_wait_provenance_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12429,6 +12429,13 @@ CREATE INDEX idx_enrichment_retry_status ON public.enrichment_retry_queue USING 
 
 
 --
+-- Name: idx_enrichment_retry_wait_provenance; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_enrichment_retry_wait_provenance ON public.enrichment_retry_queue USING btree (enrichment_type) WHERE (((status)::text = 'pending'::text) AND (retry_wait_context IS NOT NULL) AND (retry_wait_until = next_attempt_at));
+
+
+--
 -- Name: idx_error_log_classification_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17602,6 +17609,7 @@ FROM unnest(ARRAY[
     '20260929_170000_web_search_pacing.sql',
     '20260929_180000_web_search_usage_trace.sql',
     '20260929_190000_omdb_shared_pacing.sql',
-    '20260929_200000_credential_scoped_retry_wait.sql'
+    '20260929_200000_credential_scoped_retry_wait.sql',
+    '20260930_180000_retry_wait_provenance_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

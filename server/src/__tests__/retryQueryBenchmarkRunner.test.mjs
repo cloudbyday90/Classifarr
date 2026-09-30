@@ -1,14 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, beforeEach, test, expect } from '@jest/globals';
-import { expectedRetryIds, expectedRetryReadinessIds, RETRY_BENCHMARK_SCENARIOS, RETRY_BENCHMARK_TYPES } from '../scripts/retryQueryBenchmark/fixture.mjs';
+import { expectedRetryIds, expectedRetryReadinessIds, retryBenchmarkCursor, RETRY_BENCHMARK_SCENARIOS, RETRY_BENCHMARK_TYPES } from '../scripts/retryQueryBenchmark/fixture.mjs';
 
 let scenario;
+jest.unstable_mockModule('../scripts/retryQueryBenchmark/dispatch.mjs', () => ({
+  measureRetryDispatch: jest.fn().mockResolvedValue([]),
+}));
 const install = jest.fn(), index = jest.fn(), measure = jest.fn(), readIds = jest.fn();
+jest.unstable_mockModule('../scripts/retryQueryBenchmark/writeCost.mjs', () => ({
+  measureRetryIndexWriteCost: jest.fn().mockResolvedValue({indexBytes:8192,measurements:[]}),
+}));
 jest.unstable_mockModule('../scripts/retryQueryBenchmark/schema.mjs', () => ({
   installRetryBenchmarkSchema: install, installRetryBenchmarkCandidateIndex: index, requireRetryBenchmarkSchema: jest.fn(),
 }));
 jest.unstable_mockModule('../scripts/retryQueryBenchmark/fixture.mjs', () => ({
-  expectedRetryIds, expectedRetryReadinessIds, RETRY_BENCHMARK_SCENARIOS, RETRY_BENCHMARK_TYPES,
+  expectedRetryIds, expectedRetryReadinessIds, retryBenchmarkCursor, RETRY_BENCHMARK_SCENARIOS, RETRY_BENCHMARK_TYPES,
   seedRetryBenchmark: async (_db, value, size) => { scenario = value; return value === 'empty' ? 0 : size; },
 }));
 jest.unstable_mockModule('../scripts/retryQueryBenchmark/measurement.mjs', () => ({
@@ -33,12 +39,13 @@ beforeEach(() => {
 test('compares both strategies and all query paths using one rolled-back transaction per scenario', async () => {
   const store = db();
   const report = await runRetryQueryMeasurements(store, { size: 300 });
-  expect(report.measurements).toHaveLength(432);
+  expect(report.measurements).toHaveLength(594);
   expect(report.measurements.every(item => item.repetitions.length === 3 && item.exactIdsVerified)).toBe(true);
-  expect(measure).toHaveBeenCalledTimes(1296);
-  expect(index).toHaveBeenCalledTimes(8);
-  expect(store.query.mock.calls.filter(([sql]) => sql === 'ROLLBACK')).toHaveLength(8);
+  expect(measure).toHaveBeenCalledTimes(1782);
+  expect(index).toHaveBeenCalledTimes(11);
+  expect(store.query.mock.calls.filter(([sql]) => sql === 'ROLLBACK')).toHaveLength(11);
   expect(report).toMatchObject({ rollbackVerified: true, providerRequests: 0, productionChanges: 0 });
+  expect(report.writeCosts.map(cost=>cost.scenario)).toEqual(['all_waiting','credential_rotation','sparse_rotation']);
 });
 
 test.each([0,300001,Infinity,1.5])('rejects invalid size %s before any query', async size => {

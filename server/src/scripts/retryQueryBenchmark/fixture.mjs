@@ -3,6 +3,7 @@ import { requireRetryBenchmarkSchema } from './schema.mjs';
 
 export const RETRY_BENCHMARK_SCENARIOS = Object.freeze([
   'empty', 'all_waiting', 'ready_tail', 'mixed', 'credential_rotation', 'credentials_rejected', 'legacy_cooldown', 'terminal_history',
+  'provenance_waiting', 'sparse_rotation', 'changed_deadlines',
 ]);
 export const RETRY_BENCHMARK_TYPES = Object.freeze(['omdb', 'web_search', 'tavily']);
 const OLD_GENERATION = '00000000-0000-4000-8000-000000000001';
@@ -29,18 +30,22 @@ export async function seedRetryBenchmark(db, scenario, size) {
   await db.query(`INSERT INTO enrichment_retry_queue(id,media_item_id,enrichment_type,status,priority,created_at,
       next_attempt_at,attempts,reason,last_attempt_at,retry_wait_context,retry_wait_until)
     SELECT id,id,(ARRAY['omdb','web_search','tavily'])[1+(id%3)],
-      CASE WHEN $2='terminal_history' AND id<=($1*0.95) THEN 'completed' ELSE 'pending' END,5,
-      '2026-01-01'::timestamptz + id*interval '1 second',
-      CASE WHEN $2 IN ('all_waiting','credential_rotation') OR ($2='ready_tail' AND id<=($1*0.99))
+      CASE WHEN $2='terminal_history' AND id<=($1*0.95) THEN 'completed' ELSE 'pending' END,
+      CASE WHEN $2='sparse_rotation' THEN id%4 ELSE 5 END,
+      '2026-01-01'::timestamptz + (CASE WHEN $2='sparse_rotation' THEN -id ELSE id END)*interval '1 second',
+      CASE WHEN $2 IN ('all_waiting','credential_rotation','provenance_waiting','sparse_rotation','changed_deadlines') OR ($2='ready_tail' AND id<=($1*0.99))
         OR ($2='mixed' AND id%5<>0) THEN statement_timestamp()+interval '1 day'
         ELSE statement_timestamp()-interval '1 day' END,
       CASE WHEN $2='mixed' AND id%23=0 THEN 3 ELSE 0 END,
       CASE WHEN $2='mixed' AND id%29=0 THEN 'tavily_monthly_quota_deferred' ELSE NULL END,
       statement_timestamp(),
-      CASE WHEN $2='credential_rotation' THEN jsonb_build_array(jsonb_build_object(
+      CASE WHEN $2 IN ('credential_rotation','provenance_waiting','changed_deadlines') OR ($2='sparse_rotation' AND id%97=0) THEN jsonb_build_array(jsonb_build_object(
         'providerKey',CASE WHEN id%3=0 THEN 'omdb' ELSE 'tavily' END,
-        'source',CASE WHEN id%3=0 THEN 'omdb' ELSE 'web_search' END,'id',1,'generation','${OLD_GENERATION}')) ELSE NULL END,
-      CASE WHEN $2='credential_rotation' THEN statement_timestamp()+interval '1 day' ELSE NULL END
+        'source',CASE WHEN id%3=0 THEN 'omdb' ELSE 'web_search' END,'id',1,'generation',
+        CASE WHEN $2='provenance_waiting' THEN '${NEW_GENERATION}' ELSE '${OLD_GENERATION}' END)) ELSE NULL END,
+      CASE WHEN $2='changed_deadlines' THEN statement_timestamp()+interval '2 days'
+        WHEN $2 IN ('credential_rotation','provenance_waiting') OR ($2='sparse_rotation' AND id%97=0)
+        THEN statement_timestamp()+interval '1 day' ELSE NULL END
     FROM generate_series(1,$1::integer) id`, [count, scenario]);
   if (scenario === 'mixed') {
     await db.query(`INSERT INTO media_source_observations(library_id,media_server_id,external_id,identity_issue,generation)
@@ -64,14 +69,17 @@ export async function seedRetryBenchmark(db, scenario, size) {
 
 /** Independent fixture oracle: not derived from the production SQL under measurement. */
 export function expectedRetryIds(scenario, size, type, after = 0, limit = 50) {
-  if (['empty', 'all_waiting', 'credentials_rejected', 'legacy_cooldown'].includes(scenario)) return [];
+  if (['empty', 'all_waiting', 'credentials_rejected', 'legacy_cooldown', 'provenance_waiting', 'changed_deadlines'].includes(scenario)) return [];
   const result = [];
-  for (let id = after + 1; id <= size && result.length < limit; id++) {
+  for (const id of orderedFixtureIds(scenario,size)) {
+    if (after && compareFixtureIds(scenario,id,after)<=0) continue;
     if (RETRY_BENCHMARK_TYPES[id%3] !== type || id%12 === 11) continue;
+    if (scenario === 'sparse_rotation' && id%97 !== 0) continue;
     if (scenario === 'ready_tail' && id <= size*0.99) continue;
     if (scenario === 'terminal_history' && id <= size*0.95) continue;
     if (scenario === 'mixed' && (id%5 !== 0 || [13,17,19,23].some(n => id%n === 0) || (type === 'tavily' && id%29 === 0))) continue;
     result.push(id);
+    if (result.length === limit) break;
   }
   return result;
 }
@@ -79,8 +87,28 @@ export function expectedRetryIds(scenario, size, type, after = 0, limit = 50) {
 export function expectedRetryReadinessIds(scenario, size, type) {
   const result = [];
   if (scenario === 'empty') return result;
-  for (let id = 1; id <= size && result.length < 51; id++) {
+  for (const id of orderedFixtureIds(scenario,size)) {
     if (RETRY_BENCHMARK_TYPES[id%3] === type && (scenario !== 'terminal_history' || id > size*0.95)) result.push(id);
+    if (result.length === 51) break;
   }
   return result;
+}
+
+function compareFixtureIds(scenario, a, b) {
+  return scenario === 'sparse_rotation' ? (a%4-b%4 || b-a) : a-b;
+}
+
+function* orderedFixtureIds(scenario,size) {
+  if (scenario === 'sparse_rotation') {
+    for (let priority=0;priority<4;priority++) {
+      for (let id=size;id>0;id--) if (id%4===priority) yield id;
+    }
+  } else {
+    for (let id=1;id<=size;id++) yield id;
+  }
+}
+
+export function retryBenchmarkCursor(scenario, id) {
+  return id ? { priority: scenario === 'sparse_rotation' ? id%4 : 5, queue_id:id,
+    retry_created_at:new Date(Date.UTC(2026,0,1)+(scenario === 'sparse_rotation' ? -id : id)*1000).toISOString() } : null;
 }

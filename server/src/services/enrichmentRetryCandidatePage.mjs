@@ -3,6 +3,7 @@ import { RETRY_ITEM_BASE_ELIGIBILITY_SQL, RETRY_QUEUE_GATES_SQL, retryCandidateP
 import { retryEffectiveDueSql } from './enrichmentRetryDuePolicy.mjs';
 import { retryCredentialsBlockedSql } from './enrichmentRetryCredentialGate.mjs';
 import { sourceConflictPageExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
+import { RETRY_MAY_HAVE_WORK_SQL } from './enrichmentRetryAvailability.mjs';
 
 // NULL sorts after actual infinity. Keep the raw timestamp as text: JS Date loses microseconds.
 const SEEK_SQL = `($5::integer IS NULL OR erq.priority > $5 OR (erq.priority = $5 AND (
@@ -20,7 +21,8 @@ const PAGE_SQL = `WITH retry_contexts AS MATERIALIZED (
   -- OFFSET 0 is a join-order boundary, not page skipping. The primary key bounds
   -- each item lookup to one row, after queue filtering instead of a full media scan.
   JOIN LATERAL (SELECT * FROM media_server_items WHERE id=erq.media_item_id OFFSET 0) msi ON TRUE
-  WHERE ${RETRY_QUEUE_GATES_SQL} AND NOT ${retryCredentialsBlockedSql(true)}
+  WHERE ${RETRY_MAY_HAVE_WORK_SQL}
+    AND ${RETRY_QUEUE_GATES_SQL} AND NOT ${retryCredentialsBlockedSql(true)}
     AND (${retryEffectiveDueSql(true)}) <= statement_timestamp()
     AND ${RETRY_ITEM_BASE_ELIGIBILITY_SQL}
     AND ${sourceConflictPageExclusionForMediaServerItem('$4')}

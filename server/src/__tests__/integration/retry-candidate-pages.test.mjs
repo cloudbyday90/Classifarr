@@ -1,10 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
+import { readFile } from 'node:fs/promises';
 import { getPool } from './setup.mjs';
 import { installRetryBenchmarkSchema } from '../../scripts/retryQueryBenchmark/schema.mjs';
 import { seedRetryBenchmark, expectedRetryIds } from '../../scripts/retryQueryBenchmark/fixture.mjs';
 import { readEnrichmentRetryPage, RETRY_CANDIDATE_SQL, retryCandidateParameters } from '../../services/enrichmentRetryCandidates.mjs';
 import { claimEnrichmentRetry } from '../../services/enrichmentRetryClaimService.mjs';
+import { hasEnrichmentRetryDispatchCandidate } from '../../services/enrichmentRetryDispatchCandidate.mjs';
 
 let db;
 beforeEach(async () => {
@@ -88,4 +90,45 @@ test.each(['omdb','web_search','tavily'])('due and repaired %s work is unique an
   expect(ids.filter(id=>id===first.queue_id)).toHaveLength(1);
   expect(ids).not.toContain(second.queue_id); expect(ids).not.toContain(third.queue_id);
   expect(await claim(type,second.queue_id)).toBeNull(); expect(await claim(type,third.queue_id)).toBeNull();
+});
+
+test.each(['omdb','web_search','tavily'])('negative availability is not cached and provenance never grants %s admission', async type => {
+  await db.query('ROLLBACK'); await db.query('BEGIN'); await installRetryBenchmarkSchema(db);
+  await seedRetryBenchmark(db,'all_waiting',300);
+  expect(await hasEnrichmentRetryDispatchCandidate(db,type)).toBe(false);
+  expect(await readEnrichmentRetryPage(db,type,null,50)).toEqual([]);
+  const id={omdb:3,web_search:1,tavily:2}[type];
+  await db.query(`UPDATE enrichment_retry_queue SET retry_wait_until=next_attempt_at,
+    retry_wait_context=jsonb_build_array(jsonb_build_object('providerKey',$2::text,'source',$3::text,
+      'id',1,'generation','00000000-0000-4000-8000-000000000002')) WHERE id=$1`,
+  [id,type==='omdb'?'omdb':'tavily',type==='omdb'?'omdb':'web_search']);
+  // Same generation is still waiting, although the conservative availability check is true.
+  expect(await readEnrichmentRetryPage(db,type,null,50)).toEqual([]);
+  expect(await hasEnrichmentRetryDispatchCandidate(db,type)).toBe(false);
+  if (type==='omdb') await db.query("UPDATE omdb_config SET credential_generation='00000000-0000-4000-8000-000000000003'");
+  else await db.query("UPDATE web_search_provider_config SET credential_generation='00000000-0000-4000-8000-000000000003'");
+  expect((await readEnrichmentRetryPage(db,type,null,50)).map(row=>row.queue_id)).toEqual([id]);
+  expect(await hasEnrichmentRetryDispatchCandidate(db,type)).toBe(true);
+  await db.query("UPDATE enrichment_retry_queue SET next_attempt_at=next_attempt_at+interval '1 hour' WHERE id=$1",[id]);
+  expect(await readEnrichmentRetryPage(db,type,null,50)).toEqual([]);
+  await db.query("UPDATE enrichment_retry_queue SET next_attempt_at=statement_timestamp()-interval '1 second' WHERE id=$1",[id]);
+  expect((await readEnrichmentRetryPage(db,type,null,50)).map(row=>row.queue_id)).toEqual([id]);
+});
+
+test('additive index migration matches fresh schema and rolls back with the transaction', async () => {
+  const sql=await readFile(new URL('../../../../database/migrations/20260930_180000_retry_wait_provenance_index.sql',import.meta.url),'utf8');
+  const definition=async()=> (await db.query("SELECT indexdef FROM pg_indexes WHERE schemaname='retry_query_benchmark' AND indexname='idx_enrichment_retry_wait_provenance'")).rows[0]?.indexdef;
+  const fresh=await definition();
+  expect(fresh).toContain('retry_wait_until = next_attempt_at');
+  await db.query('DROP INDEX retry_query_benchmark.idx_enrichment_retry_wait_provenance');
+  for (let repeat=0;repeat<2;repeat++) {
+    await db.query('SAVEPOINT retry_migration');
+    await db.query(sql);
+    expect(await definition()).toBe(fresh);
+    expect((await db.query('SHOW lock_timeout')).rows[0].lock_timeout).toBe('5s');
+    expect((await db.query('SHOW statement_timeout')).rows[0].statement_timeout).toBe('1min');
+    await db.query('ROLLBACK TO SAVEPOINT retry_migration');
+    await db.query('RELEASE SAVEPOINT retry_migration');
+    expect(await definition()).toBeUndefined();
+  }
 });

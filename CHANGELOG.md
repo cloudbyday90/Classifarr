@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Avoid full enrichment candidate scans when no due or credential-recoverable
+  work exists, using a narrow pending-wait index and statement-local checks.
+  Preserve recovery, ordering and claim safeguards; extend isolated benchmarks
+  with sparse/skewed waits, deadline changes and index write-cost comparisons.
 - Refactor enrichment retry pages with statement-local provider context and
   exact source-conflict lookups. Preserve claim and provider
   safeguards, fix nullable-timestamp pagination, and compare query costs against

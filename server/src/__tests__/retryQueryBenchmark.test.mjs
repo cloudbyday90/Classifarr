@@ -3,7 +3,7 @@ import { jest, test, expect } from '@jest/globals';
 import { captureRetryBenchmarkQuery } from '../scripts/retryQueryBenchmark/queries.mjs';
 import { summarizeRetryPlan, measureRetryQuery, readRetryQueryIds, retryQueryFingerprint } from '../scripts/retryQueryBenchmark/measurement.mjs';
 import { installRetryBenchmarkSchema, installRetryBenchmarkCandidateIndex, requireRetryBenchmarkSchema } from '../scripts/retryQueryBenchmark/schema.mjs';
-import { seedRetryBenchmark, expectedRetryIds, expectedRetryReadinessIds, RETRY_BENCHMARK_SCENARIOS } from '../scripts/retryQueryBenchmark/fixture.mjs';
+import { seedRetryBenchmark, expectedRetryIds, expectedRetryReadinessIds, retryBenchmarkCursor, RETRY_BENCHMARK_SCENARIOS } from '../scripts/retryQueryBenchmark/fixture.mjs';
 import { runRetryQueryBenchmark } from '../scripts/runRetryQueryBenchmark.mjs';
 
 const scoped = () => ({ query: jest.fn(async sql => ({ rows: sql.startsWith('SELECT current_schema()')
@@ -23,6 +23,18 @@ test.each(['page', 'middle_page', 'deep_page', 'baseline_page', 'baseline_middle
 test('rejects unsupported operations and types', async () => {
   await expect(captureRetryBenchmarkQuery('drop', 'omdb')).rejects.toThrow('operation');
   await expect(captureRetryBenchmarkQuery('page', 'music')).rejects.toThrow('type');
+});
+
+test('baseline predates availability check and skewed cursor oracle retains priority then reversed time', async () => {
+  expect((await captureRetryBenchmarkQuery('baseline_page','omdb')).sql).not.toContain('waiting.retry_wait_context');
+  expect((await captureRetryBenchmarkQuery('page','omdb')).sql).toContain('waiting.retry_wait_context');
+  expect(retryBenchmarkCursor('mixed',0)).toBeNull();
+  expect(retryBenchmarkCursor('sparse_rotation',291)).toMatchObject({priority:3,queue_id:291});
+  expect(expectedRetryIds('sparse_rotation',600,'omdb')).toEqual([582,291]);
+  expect(expectedRetryIds('sparse_rotation',600,'omdb',582)).toEqual([291]);
+  expect(expectedRetryReadinessIds('sparse_rotation',300,'omdb').slice(0,3)).toEqual([300,288,276]);
+  expect(expectedRetryIds('changed_deadlines',300,'omdb')).toEqual([]);
+  expect(expectedRetryIds('provenance_waiting',300,'omdb')).toEqual([]);
 });
 
 test('summarizes loops without double-counting parent buffers or exposing predicates', () => {

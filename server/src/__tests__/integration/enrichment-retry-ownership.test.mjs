@@ -61,6 +61,18 @@ test('candidate planning executes inside a database-enforced read-only transacti
   expect(await rows()).toEqual(before);
 });
 
+test('a concurrent uncommitted deadline change cannot bypass a negative page, and commit is visible on the next read', async () => {
+  await db.query("UPDATE enrichment_retry_queue SET next_attempt_at=statement_timestamp()+interval '1 day' WHERE media_item_id=$1",[media.id]);
+  const writer=await getPool().connect();
+  try {
+    await writer.query('BEGIN');
+    await writer.query("UPDATE enrichment_retry_queue SET next_attempt_at=statement_timestamp()-interval '1 second' WHERE media_item_id=$1",[media.id]);
+    expect(await readEnrichmentRetryPage(db,'omdb',null,50)).toEqual([]);
+    await writer.query('COMMIT');
+    expect((await readEnrichmentRetryPage(db,'omdb',null,50)).map(row=>row.queue_id)).toEqual([(await rows())[0].id]);
+  } finally { await writer.query('ROLLBACK'); writer.release(); }
+});
+
 test.each(['expired', 'replaced', 'cancelled', 'missing'])('%s claim cannot save retry evidence or status', async state => {
   const item = await claim();
   if (state === 'expired') await expire();

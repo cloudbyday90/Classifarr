@@ -124,3 +124,7 @@ Include realistic timestamp/priority skew, write/storage overhead and concurrent
 updates. Ship only if it avoids the recovery-head regression caught this round.
 Unknown legacy deadlines must remain protected, and provider admission stays
 separate from selection. Do not enable automatic takeover or infer ownership.
+
+September 30 follow-through: [selective waiting-backlog discovery](retry-wait-discovery-design.md)
+adds a conservative statement-local check and narrow provenance index for idle
+pages and scheduler probes. See its separate outcome for measurements and limits.

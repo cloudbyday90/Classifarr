@@ -122,3 +122,16 @@ claim/admission guards**. No new production service, dependency or migration.
 
 See the separate [outcome](retry-query-benchmark-outcome.md) for measured results
 and the next acceptance target.
+
+## September 30 selective-wait extension
+
+Report version 3 now compares the availability check with the `132d9188` page
+shape, replacing the earlier `b28e3549` comparison. It adds unchanged dense
+provenance, changed deadlines and sparse rotation with priority/reversed-time
+skew. There are 594 exact page/readiness/claim comparisons and 66 unordered
+dispatch availability comparisons, each with three measured repetitions.
+Bounded synthetic writes compare the new provenance index present/absent; both
+write-cost variants retain the separate offline ordered-index experiment, and
+write measurements run after selection measurements. Savepoints undo logical
+changes, not physical WAL/dead-tuple work or cache warming. These costs are not
+production throughput estimates. See [selective-wait design](retry-wait-discovery-design.md).
