@@ -93,7 +93,9 @@ Focused final unit checks: 147 tests passed. PostgreSQL integration checks:
 with coverage. Final backend: 1,553 suites, 47,129 tests passed; 90.23% statement/
 line coverage, 85.04% branch coverage, 92.06% function coverage. Lint, type checks,
 CI preflight, ESM import/mock-shape checks and product/maintenance policy gates
-passed. No validation issues remain from the focused or full test runs.
+passed. The current frontend/backend coverage reports also passed the coverage
+ratchet without baseline waivers. No validation issues remain from the focused
+or full test runs.
 
 Schema generation applied the additive migration to an isolated application
 container, then a rebuilt fresh-schema container reproduced the snapshot exactly.
@@ -115,9 +117,48 @@ CPU quota or PID limit. Its latest migration was
 `20260929_180000_web_search_usage_trace.sql`; the upgrade therefore also includes
 the already-committed OMDb pacing and credential-scoped wait migrations.
 
-Deployment results will be appended after the validated build is installed.
-Persistent data and routing settings are to remain unchanged; retain the previous
-image for rollback. Normal background jobs may resume after the authorized restart.
+The no-cache build completed successfully, followed by recreation of only the
+`classifarr` service with `--no-build --force-recreate --wait`. Container
+`15ac2c99134d` started at 12:04:09 UTC and became healthy. Its recorded application
+revision is `117086d976af262c4d99cb218bc146152a8c11b5`; the subsequent deployment
+report commit changes documentation only. No release or registry publication
+was performed.
+
+Checks through 12:07 UTC:
+
+- HTTP health reported a connected database. The frontend and all 12 referenced
+  built assets returned HTTP 200; this is a serving smoke check, not authenticated
+  end-to-end UI coverage.
+- All three pending migrations applied; the provenance index is valid and ready.
+  All eight library ingestion records remain complete. Existing pending work is
+  preserved, and normal background jobs resumed.
+- No new warning/error reports appeared after container start; an earlier scan
+  of 368 startup log lines also found no flagged warning/error/fatal severity.
+  This short window does not prove that every scheduled or provider path ran.
+- Synthetic bcrypt hash/compare and pgvector distance smoke checks passed in the
+  rebuilt image. No user credentials or provider requests were used for them.
+- Five post-startup samples over about two minutes measured 0.43–1.51% Docker CPU,
+  380.5–428.3 MiB memory (about 19–21% of the limit), and 27–37 PIDs. An earlier
+  startup sample reached 43.23% CPU. There were no restarts, OOM kills or cgroup
+  memory-limit failures. No runaway process was apparent in this observation.
+- PostgreSQL had four idle sessions plus the active diagnostic query, with no
+  query active for more than 30 seconds at inspection. One Node application
+  process and the expected PostgreSQL process tree were present.
+
+The configuration digest of mounts, environment (excluding the intentional build
+revision change), and port bindings matched before/after. Persistent mounts were
+preserved; no routing-setting edits, volume removal or unrelated-container
+restart was performed. The old image is retained as
+`classifarr:rollback-wait-discovery-20260930-b5707b2d`. Image retention is not a
+database backup or a tested database rollback.
+
+Resource limits remain 2 GiB total memory, no explicit CPU quota and no PID cap.
+The Docker VM exposes 16 CPUs and about 15.6 GiB RAM. PostgreSQL is configured
+for 128 MiB shared buffers, 4 MiB work memory and up to 100 connections; these
+settings are not a guarantee that its peak memory fits beside Node. A short
+idle/startup check cannot establish safety under simultaneous ingestion, retry
+and AI work. Rehearse that workload in isolation before choosing CPU/PID limits
+or adjusting the heap; do not raise the heap to consume the whole container.
 
 [Docker's build specification](https://docs.docker.com/reference/compose-file/build/)
 distinguishes rebuilding layers without cache from pulling base images.
