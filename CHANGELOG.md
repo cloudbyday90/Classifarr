@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Supervise embedded application/database shutdown in order, detect database
+  process loss, and allow a bounded graceful-stop window in Compose examples.
+  Preserve existing credentials, upgrade paths and legacy recovery safeguards.
 - Add a disposable embedded-database isolation drill covering separate OS/SQL
   identities, denied privilege escalation, maintenance handoff, restored-schema
   readiness and ordered application/PostgreSQL shutdown. Keep live credentials,

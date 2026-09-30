@@ -1020,6 +1020,18 @@ Operational notes:
 - New runtime keys are auto-added to `/app/data/config/runtime.json` when missing.
 - You should still update compose over time for security hardening and documentation parity.
 
+The unreleased embedded lifecycle supervisor is packaged in the image: once an
+image containing it is deployed, it needs no new Compose fields, Unraid template
+entries, environment variables or mounts. It drains the application before asking
+PostgreSQL to shut down cleanly. It does not change credentials or adopt unknown
+historical ingestion owners.
+
+Container stop timeouts belong to the host. The Compose examples recommend `60s`
+of headroom, but this is optional and is not silently applied to existing installs.
+Unchanged ten-second settings are tested; busy or unresponsive workloads can still
+be force-killed by the host. See the [design and compatibility limits](docs/architecture/embedded-supervisor-design.md)
+and [validation outcome](docs/architecture/embedded-supervisor-outcome.md).
+
 ## Development
 
 Install dependencies:

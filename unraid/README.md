@@ -89,6 +89,21 @@ id username
 
 ## Updating
 
+### Image-contained lifecycle changes (unreleased)
+
+The embedded lifecycle supervisor ships inside the image. Updating to an image
+that includes it enables ordered application/database shutdown with your existing
+template, paths and PUID/PGID. No new template setting or Docker socket mount is
+required. This change has not created a release.
+
+An image update cannot raise Unraid's container stop timeout. Its documented
+default is ten seconds; unchanged ten-second stops are covered by disposable
+standard/custom-UID tests, not a guarantee for every busy database. If the host
+force-stops containers, Unraid documents optional timeout headroom in Settings →
+Docker (Advanced). See [official shutdown guidance](https://docs.unraid.net/unraid-os/troubleshooting/common-issues/unclean-shutdowns/)
+and our [design and limits](../docs/architecture/embedded-supervisor-design.md).
+We never modify host settings or weaken PostgreSQL durability automatically.
+
 ### Via Community Applications
 
 1. Go to **Apps** tab

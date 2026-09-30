@@ -107,6 +107,30 @@ describe('runtimeLifecycle', () => {
     expect(exit).toHaveBeenCalledWith(0);
   });
 
+  it('closes HTTP admission before queue release completes and coalesces signals', async () => {
+    const handlers = new Map();
+    let finishQueue;
+    let finishHttp;
+    const queueService = { gracefulShutdown: jest.fn(() => new Promise(resolve => { finishQueue = resolve; })) };
+    const server = { close: jest.fn(callback => { finishHttp = callback; }) };
+    const exit = jest.fn();
+    registerProcessHandlers({
+      processRef: { on: (event, handler) => handlers.set(event, handler) },
+      queueService, getServer: () => server, logger: { error: jest.fn() }, exit,
+      setTimeoutFn: () => ({ unref() {} }), clearTimeoutFn: jest.fn(),
+    });
+    const stopping = handlers.get('SIGTERM')();
+    expect(handlers.get('SIGINT')()).toBe(stopping);
+    expect(queueService.gracefulShutdown).toHaveBeenCalledTimes(1);
+    expect(server.close.mock.invocationCallOrder[0]).toBeLessThan(queueService.gracefulShutdown.mock.invocationCallOrder[0]);
+    finishQueue();
+    await Promise.resolve();
+    expect(exit).not.toHaveBeenCalled();
+    finishHttp();
+    await stopping;
+    expect(exit).toHaveBeenCalledTimes(1);
+  });
+
   it('registers process handlers that report unhandled failures through the logger', async () => {
     const handlers = new Map();
     const processRef = {

@@ -34,6 +34,8 @@ services:
       # Required for re-classification moves: replace host path with your media root
       - /path/to/media:/data/media:rw
     restart: unless-stopped
+    # Drain Node before PostgreSQL; leave headroom above the bounded stop budgets.
+    stop_grace_period: 60s
     security_opt:
       - no-new-privileges:true
     read_only: true

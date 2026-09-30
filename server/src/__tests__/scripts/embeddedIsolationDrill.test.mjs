@@ -15,7 +15,9 @@ test('launcher builds and cleans only its isolated project, excluding ambient Co
   process.env.COMPOSE_FILE = 'live.yml';
   try {
     const run = jest.fn(success);
-    expect(runEmbeddedIsolationCompose({ run, random })).toEqual({ status: 'passed', cleanup: 'passed' });
+    const verify = jest.fn();
+    expect(runEmbeddedIsolationCompose({ run, random, verify })).toEqual({ status: 'passed', cleanup: 'passed' });
+    expect(verify).toHaveBeenCalledTimes(1);
     const compose = run.mock.calls.filter(([, args]) => args[0] === 'compose');
     expect(compose.map(([, args]) => args[7])).toEqual(['config', 'build', 'run', 'down']);
     for (const [command, args, options] of run.mock.calls) {
@@ -54,7 +56,7 @@ test.each(['build', 'run'])('%s failure still cleans its own project but never p
 
 test('cleanup failure identifies the exact orphaned project and is fatal', () => {
   const run = jest.fn((_cmd, args) => args[7] === 'down' ? { status: 1 } : success());
-  expect(() => runEmbeddedIsolationCompose({ run, random })).toThrow('drill_cleanup_failed:classifarr-isolation-drill-09090909');
+  expect(() => runEmbeddedIsolationCompose({ run, random, verify: () => {} })).toThrow('drill_cleanup_failed:classifarr-isolation-drill-09090909');
 });
 
 test('invalid identity and config failures never acquire cleanup ownership', () => {

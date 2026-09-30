@@ -2,6 +2,11 @@
 
 Date: 2026-09-30. Implementation base: `035bb06e`.
 
+Follow-up: the [embedded supervisor design](embedded-supervisor-design.md) adds
+production lifecycle coordination without activating this rehearsal's SQL/OS
+privilege split. The launcher now also exercises ordinary packaged startup and
+custom UID/GID with an unchanged ten-second host stop timeout.
+
 ## Decision
 
 Prove the next part of the [schema maintenance boundary](schema-maintenance-boundary-design.md)

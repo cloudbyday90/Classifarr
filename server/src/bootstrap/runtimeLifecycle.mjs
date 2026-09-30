@@ -81,20 +81,22 @@ export async function gracefulShutdown({
     logger.error('Scheduler graceful shutdown error:', { error: error.message });
   }
 
+  // Stop new HTTP admission now, while queue claims are released. Do not spend
+  // the host's stop window accepting more work or serializing independent drains.
+  const httpClosed = server ? new Promise((resolve) => {
+    server.close(() => {
+      logger.info('HTTP server closed');
+      resolve();
+    });
+  }) : Promise.resolve();
+
   try {
     await queueService.gracefulShutdown();
   } catch (error) {
     logger.error('Queue graceful shutdown error:', { error: error.message });
   }
 
-  if (server) {
-    await new Promise((resolve) => {
-      server.close(() => {
-        logger.info('HTTP server closed');
-        resolve();
-      });
-    });
-  }
+  await httpClosed;
 
   clearTimeoutFn(forceExit);
   exit(0);
@@ -126,8 +128,9 @@ export function registerProcessHandlers({
   setTimeoutFn = defaultSetTimeout,
   clearTimeoutFn = clearTimeout,
 }) {
-  processRef.on('SIGTERM', () => gracefulShutdown({
-    signal: 'SIGTERM',
+  let shutdownPromise;
+  const requestShutdown = signal => shutdownPromise ??= gracefulShutdown({
+    signal,
     queueService,
     schedulerService,
     performanceReceiptService,
@@ -135,18 +138,9 @@ export function registerProcessHandlers({
     exit,
     setTimeoutFn,
     clearTimeoutFn,
-  }));
-
-  processRef.on('SIGINT', () => gracefulShutdown({
-    signal: 'SIGINT',
-    queueService,
-    schedulerService,
-    performanceReceiptService,
-    server: getServer(),
-    exit,
-    setTimeoutFn,
-    clearTimeoutFn,
-  }));
+  });
+  processRef.on('SIGTERM', () => requestShutdown('SIGTERM'));
+  processRef.on('SIGINT', () => requestShutdown('SIGINT'));
 
   processRef.on('unhandledRejection', (reason, promise) => {
     const payload = {

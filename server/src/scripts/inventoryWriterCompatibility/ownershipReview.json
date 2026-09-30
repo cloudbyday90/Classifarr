@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "embedded_lifecycle_supervisor",
+      "classification": "separately_coordinated",
+      "reason": "Post-bootstrap non-root coordinator observes actual application exit before fixed-path PostgreSQL fast shutdown and verifies cluster identity/control state. No SQL, privilege provisioning, caller commands, new runtime authority or automatic legacy adoption. Runtime closes HTTP admission before awaiting queue release and coalesces signals; existing receipt and ingestion guards remain unchanged. Disposable collision-checked Compose checks use fixed synthetic SQL only in their owned volumes; the indirect query argument remains explicit.",
+      "followUp": "Retain unchanged ten-second host timeout, custom UID, child/database failure, forced-kill recovery, environment refusal and exact cleanup tests. A successful small fresh-install test is not a loaded shutdown guarantee. Root Tini needs normal signal permission when dropping child UID. Production privilege separation, bootstrap/major-upgrade interruption, encrypted restore parity and complete writer capabilities remain prerequisites; unresolved shared-writer debt is unchanged."
+    },
+    {
       "id": "embedded_isolation_rehearsal",
       "classification": "separately_coordinated",
       "reason": "Disposable collision-checked Compose project only, no host data mounts or network. Linux/root supervisor requires read-only root, separate scratch mounts and empty state; separate PostgreSQL and runtime OS users use fixed peer mappings with default rejection. Maintenance probe requires the exact isolated environment and restored database identity before DDL. Real schema admission defers while normal Node is alive. Dump/restore and image-index rebuilding occur only after actual Node exit; clean PostgreSQL stop/restart and restricted reconnect/file/DDL denials are asserted. Runtime retains ordinary DML only in the disposable candidate.",
@@ -218,7 +224,12 @@
     }
   ],
   "entries": [
-    {"path":"scripts/lib/embeddedIsolationCompose.mjs","digest":"b9e29765fa14fbda20b4272b56d98a259079aa35ddd94a5ce454403a44894778","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
+    {"path":"scripts/lib/embeddedIsolationCompose.mjs","digest":"6c3b78541cbe7f178cb63f74b5ddb589ea60d1d2f3007c68c22c44ec94d41433","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
+    {"path":"scripts/lib/embeddedSupervisorChecks.mjs","digest":"8826e4798005c6aebb6c3cc000eeeb43dc0bac9252f358b379c15399368d802c","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_lifecycle_supervisor"},
+    {"path":"server/src/bootstrap/embeddedChildProcess.mjs","digest":"b21ae7d741afad598e417436ce5c8a1d7ef0bdf399b7f29c9be1df5e3bb02961","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
+    {"path":"server/src/bootstrap/embeddedDatabaseControl.mjs","digest":"8cd8553375ca85c744c49b282959425f3914760501050c7664c29be80f8f4125","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
+    {"path":"server/src/bootstrap/embeddedSupervisor.mjs","digest":"f8bb47bf7c31a0501be6143d920674f6b77582604933334acb1de6e09a8534ad","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
+    {"path":"server/src/scripts/runEmbeddedSupervisor.mjs","digest":"070578bd26cef02075864ebf3a282bc5329fd1e611a584eb85d85c534674728e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
     {"path":"scripts/run-embedded-isolation-drill.mjs","digest":"23e0e252176b41ff16613bbee3d4b0a1ebf913789c8d8bea20fbaa61588ffdcf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/contract.mjs","digest":"d53b8286b62b7b364e14812312bb0cf41d0fbf8f79a56d975aeceebb21b8bc53","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs","digest":"169f9158f77bf36959d5aaa095770368245e156f47f7d984c7d6e6669d332220","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
@@ -226,7 +237,7 @@
     {"path":"server/src/scripts/embeddedIsolationDrill/runtimeProbe.mjs","digest":"eb8806736e5f4dcf32d6b82f42e6e7cde797e898a781b83752fecbbbd46f8cae","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"3026f2a8298fa3e87a1f7e1de3fc290dc0a417a26ef43e4c40d743b2b714fb70","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/bootstrap/normalRuntime.mjs","digest":"af749c4523a1b77cee8e713af141eddb431ebe650f7ae7a8cebf08588e0665bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
-    {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"0196b2a1487bc1bbdc261ffa22744ff7a460080b41c983481213ed915e701a29","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
+    {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"9977e8cc02a5585d24b1b8acb39ae5cc7b47d01edd08c514f277d1ab0d7380c8","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
     {"path":"server/src/services/queueStartupPerformanceReceipt.mjs","digest":"e7d6dea5cb6c2200e5ed3ba86c62c62541e284ef85a6925a6fef784c03daf7df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/services/queueStartupPerformanceReceiptDiagnostics.mjs","digest":"081e6cac71437ac31cb98736a84d126ae93cb6bd7c756c62c3dd8037da0e77dc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/services/queueStartupPerformanceReceiptRepository.mjs","digest":"95200f0eb1c92fe71e9153a922a8161350f34c369796cc407a8979276cef7895","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},

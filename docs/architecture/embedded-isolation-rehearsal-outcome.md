@@ -2,6 +2,11 @@
 
 Date: 2026-09-30. Base revision: `035bb06e`.
 
+This is the historical rehearsal result. The subsequent
+[supervisor outcome](embedded-supervisor-outcome.md) records production-entrypoint
+lifecycle tests; this document's unchanged-defaults statement refers to its own
+base revision, not that later lifecycle change.
+
 ## Delivered and observed
 
 Implemented the [rehearsal design](embedded-isolation-rehearsal-design.md) with

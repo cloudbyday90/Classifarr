@@ -1,5 +1,50 @@
 # Disposable only. The launcher owns a random project; never combine with installation files.
+x-runtime: &runtime
+  build:
+    context: .
+    target: production
+  user: '1000:1000'
+  read_only: true
+  network_mode: none
+  restart: 'no'
+  # Existing Docker/Unraid installs must work without receiving a new template.
+  stop_grace_period: 10s
+  mem_limit: 2g
+  cpus: 2
+  pids_limit: 128
+  environment:
+    NODE_OPTIONS: --max-old-space-size=1024
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+    - /run/postgresql:rw,noexec,nosuid,size=8m,uid=1000,gid=1000
+  healthcheck:
+    test: [CMD, curl, -fsS, 'http://127.0.0.1:21324/health']
+    interval: 2s
+    timeout: 2s
+    retries: 5
+    start_period: 120s
 services:
+  runtime:
+    <<: *runtime
+    volumes:
+      - runtime-data:/app/data
+  custom:
+    <<: *runtime
+    # Writable image layer is needed only for the existing root UID/GID setup.
+    user: '0:0'
+    read_only: false
+    # Root Tini must forward signals after the child drops to UID 2345.
+    # KILL is in Docker's normal root-container defaults, not in Node's effective set.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1024
+      PUID: '2345'
+      PGID: '2345'
+    volumes:
+      - custom-data:/app/data
   drill:
     build:
       context: .
@@ -28,5 +73,7 @@ services:
       - rehearsal-state:/rehearsal
       - app-data:/app/data
 volumes:
+  runtime-data:
+  custom-data:
   rehearsal-state:
   app-data:

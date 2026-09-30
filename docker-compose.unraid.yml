@@ -32,6 +32,7 @@ services:
       # Main application data including embedded PostgreSQL
       - /mnt/user/appdata/classifarr:/app/data
     restart: unless-stopped
+    stop_grace_period: 60s
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

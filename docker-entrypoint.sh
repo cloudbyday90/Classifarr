@@ -700,8 +700,8 @@ echo "Node.js heap options: ${NODE_OPTIONS:-(none set)}"
 
 if [ "$IS_ROOT" = "true" ]; then
     echo "Starting Classifarr server as user classifarr (UID: $PUID, GID: $PGID)..."
-    exec su-exec classifarr node src/index.mjs
+    exec su-exec classifarr node src/scripts/runEmbeddedSupervisor.mjs --run
 else
     echo "Starting Classifarr server as current user (UID: $(id -u), GID: $(id -g))..."
-    exec node src/index.mjs
+    exec node src/scripts/runEmbeddedSupervisor.mjs --run
 fi
