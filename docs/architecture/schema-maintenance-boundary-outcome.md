@@ -45,7 +45,7 @@ after forwarding the schema-mode environment through Compose.
 
 Server/client lint and type checks, development/production dependency checks,
 copyright, Markdown lint, npm flags, ESM static-import/mock-shape checks, the
-ownership gate and whitespace checks passed. Coverage is recorded below; no
+ownership gate, coverage ratchet and whitespace checks passed. Coverage is recorded below; no
 threshold was lowered.
 
 | Workspace | Statements | Branches | Functions | Lines |
@@ -55,7 +55,7 @@ threshold was lowered.
 
 ## Deployment and resource evaluation
 
-The user requested a local no-cache Compose rebuild after tests. The planned
+The user requested a local no-cache Compose rebuild after tests. The completed
 deployment retains the prior image for rollback and persistent mounts, and leaves
 schema mode at the existing `startup` default. No manual library/ownership changes
 or maintenance-credential installation are part of that restart.
@@ -67,14 +67,52 @@ by less than 1%. A later PostgreSQL snapshot showed 15 idle client sessions and 
 active query. These short samples do not establish peak capacity or exclude every
 possible runaway workload. CPU and PID limits remain unchanged.
 
-Post-rebuild observations will be added after deployment.
+Built from clean commit `1e068cfaea8dc7b68f520898c2c085798a1ea9af` with
+`node scripts/docker-compose-smart.mjs build --no-cache --require-provenance classifarr`.
+Recreated only Classifarr using `up -d --no-build --force-recreate --wait` through
+the same helper. Running image:
+`sha256:44bf74930e6a5e09d4b7c86ee4079eca92b473ad15e42dedf1efc8d6f6854682`.
+Rollback image: `classifarr:rollback-schema-boundary-20260930`, retaining
+`sha256:d00ebe1ae5878fbfd69f7c27c18530ce847d68ef8a4da1273bcfb2553656ec82`.
+No Docker volumes or persistent directories were removed; unrelated containers
+were not changed. The final documentation-only commit is not the image revision.
+
+Container `59efef859783` started at 16:30:33 UTC. Over the following five minutes:
+
+- Docker and `/health` reported healthy/database connected; the web page returned
+  200 and unauthenticated `/api/libraries` returned 401.
+- Restarts, reported OOM kills and cgroup memory failures remained zero.
+  Memory samples were 333–392 MiB of 2 GiB; CPU fell from 24.99% during startup to
+  roughly 0.4–0.5%. PID/thread samples were 27–37. The later database snapshot had
+  four idle clients and no active query. No uncontrolled process growth was seen
+  in this short window; CPU/PID quotas remain unset.
+- The restore gate was `ready`; the existing bootstrap role still had superuser,
+  create-role and bypass-RLS attributes. No credential cutover is claimed.
+- **Legacy ownership warnings returned for libraries 4 and 5.** This component
+  does not resolve those records. Existing inventory and the review safeguard
+  were preserved; no historical owner was fabricated.
+- No error-level application events, source-pair-unavailable failures or TMDb
+  identity-not-found events appeared in the inspected window. This is not proof
+  that intermittent/provider errors are permanently eliminated.
+- Three slow-query warnings and one optional startup performance-receipt warning
+  appeared. Pool wait was negligible in the first two slow samples; execution was
+  approximately 0.92 and 1.37 seconds. The receipt warning has a separate
+  [reproduced follow-up](startup-telemetry-lock-scope-follow-up.md).
+
+PostgreSQL performed automatic recovery after reporting an interrupted shutdown,
+then reached ready. This was not evidence of a clean database shutdown. Include
+ordered Node/PostgreSQL shutdown in the forthcoming embedded cutover rehearsal.
 
 ## PR and next work
 
 Two GitHub MCP searches on September 30 returned no open PRs for this repository.
 No random open PR could be selected; no closed PR was substituted or PR merged.
 
-Recommended next component: isolate embedded database/application OS identities
+Immediate, bounded follow-up: fix the optional telemetry timer's inherited closed
+lock context, with explicit lifecycle and negative inventory-write tests. This
+restores reliable measurement for the larger cutover without weakening ownership.
+
+The next architectural component remains: isolate embedded database/application OS identities
 and authentication, with a disposable upgrade/restore/indexing acceptance test.
 The pass condition is that normal Node cannot reconnect as bootstrap, access
 maintenance secrets, alter PostgreSQL data or modify executable code, while the
