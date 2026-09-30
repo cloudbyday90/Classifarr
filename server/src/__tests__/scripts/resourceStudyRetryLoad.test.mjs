@@ -3,9 +3,10 @@ import { jest } from '@jest/globals';
 import { createStudyRetryLoad } from '../../scripts/resourceStudyRetryLoad.mjs';
 import { assertStudyRetryReceipt } from '../../scripts/resourceStudyRetryReceipt.mjs';
 import { seedResourceStudyRetries } from '../../scripts/resourceStudyRetryFixture.mjs';
-import { assertResourceStudyReceipt } from '../../scripts/resourceStudyProfiles.mjs';
-import { resourceStudyReceiptFixture } from '../helpers/resourceStudyReceiptFixture.mjs';
-import { formatResourceStudySummary } from '../../../../scripts/lib/resourceStudySummary.mjs';
+
+const legacyReceipt = () => ({ cohortSize: 60, preserved: true, rotations: 1, pressureDeferrals: 5,
+  types: Object.fromEntries(['omdb', 'web_search', 'tavily'].map(type => [type,
+    { beforePasses: 5, afterPasses: 5, rolledBackClaims: 10, recoveredClaims: 5, maxPassMs: 20 }])) });
 
 function setup() {
   let rotated = false, pressure = false, time = 0;
@@ -86,20 +87,11 @@ test('seed refuses an ordinary environment before opening a transaction', async 
 test.each([{ beforePasses: 4 }, { afterPasses: 0 }, { rolledBackClaims: 9 }, { recoveredClaims: 4 },
   { maxPassMs: NaN }, { maxPassMs: -1 }, { beforePasses: '5' },
   { beforePasses: 500, afterPasses: 500, rolledBackClaims: 1000, recoveredClaims: 500 }])('retry evidence rejects invalid counters: %j', changes => {
-  const receipt = resourceStudyReceiptFixture(); Object.assign(receipt.retryLoad.types.web_search, changes);
-  expect(() => assertResourceStudyReceipt(receipt, 'smoke')).toThrow('retry_receipt_invalid');
+  const receipt = legacyReceipt(); Object.assign(receipt.types.web_search, changes);
+  expect(() => assertStudyRetryReceipt(receipt)).toThrow('retry_receipt_invalid');
 });
 
 test.each([{ preserved: false }, { cohortSize: 59 }, { rotations: 0 }, { pressureDeferrals: 1 }, { types: {} }])('missing coverage fails: %j', changes => {
-  const receipt = resourceStudyReceiptFixture(); Object.assign(receipt.retryLoad, changes);
-  expect(() => assertResourceStudyReceipt(receipt, 'smoke')).toThrow('retry_receipt_invalid');
-});
-
-test('v4 receipts cannot claim retry co-load and Markdown only renders numeric aggregates', () => {
-  const study = resourceStudyReceiptFixture();
-  expect(() => assertResourceStudyReceipt({ ...study, version: 'resource_study.v4' }, 'smoke')).toThrow('receipt_invalid');
-  study.retryLoad.types.omdb.private = 'SECRET';
-  const report = formatResourceStudySummary({ mode: 'smoke', budget: 'baseline', cleanup: 'passed', study });
-  expect(report).toContain('Rolled-back claims'); expect(report).toContain('Longest type pass (ms)');
-  expect(report).not.toContain('SECRET');
+  const receipt = legacyReceipt(); Object.assign(receipt, changes);
+  expect(() => assertStudyRetryReceipt(receipt)).toThrow('retry_receipt_invalid');
 });

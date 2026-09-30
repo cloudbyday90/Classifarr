@@ -192,7 +192,7 @@ test('failed probe forwards only sanitized budget evidence and still cleans its 
   expect(run.mock.calls.some(([, args]) => args.includes('down'))).toBe(true);
   expect(save).not.toHaveBeenCalled();
 });
-test.each([null, '1800001', 1, 2100001])('receipt rejects invalid elapsed duration %s', async durationMs => {
+test.each([null, '1800001', 1, 2220001])('receipt rejects invalid elapsed duration %s', async durationMs => {
   const run = fakeDocker(args => args.at(-1) === 'soak' ? { status: 0,
     stdout: `RESOURCE_STUDY ${JSON.stringify({ ...passedReceipt('soak'), durationMs })}` } : null);
   await expect(launch(run)).rejects.toThrow('receipt_invalid');

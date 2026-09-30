@@ -42,15 +42,15 @@ export async function runResourceBudgetComparison({ study = runResourceStudyComp
           cpuQuotaUsec: run.initial.cpuQuotaUsec, cpuPeriodUsec: run.initial.cpuPeriodUsec, pids: run.initial.pidsLimit },
         completed: run.backlog?.completed, evaluations: run.counters?.evaluations,
         firstDispatchMs: run.queueRecovery.firstDispatchMs, cohortCompletedMs: run.queueRecovery.completedMs,
-        retryRolledBackClaims: Object.values(run.retryLoad.types).reduce((sum, row) => sum + row.rolledBackClaims, 0),
-        retryMaxTypePassMs: Math.max(...Object.values(run.retryLoad.types).map(row => row.maxPassMs)),
+        uniqueCompleted: run.uniqueCompleted, providerHttpAttempts: run.providerRecovery.httpAttempts,
+        providerUniqueCompleted: run.providerRecovery.uniqueCompleted, providerRecoveryMs: run.providerRecovery.recoveryMs,
         containerMemoryPeakBytes: run.metrics?.containerBytes?.max, containerCpuP95Cores: run.metrics?.containerCores?.p95,
         eventLoopP99MaxMs: run.metrics?.eventLoopP99Ms?.max, sampledPidsPeak: run.metrics?.pids?.max,
         enforcement: summarizeBudgetEnforcement(run.initial, run.final) });
     }
     return candidateImageId;
   });
-  const result = { version: 'resource_budget_comparison.v2', status: 'passed', mode: 'capacity', imageId,
+  const result = { version: 'resource_budget_comparison.v3', status: 'passed', mode: 'capacity', imageId,
     imageCleanup: 'passed', scope: 'synthetic_services_not_production_defaults', scenarios };
   save(identity, result);
   report(`RESOURCE_BUDGET_RESULT .tmp/resource-study/${identity}/result.json`);

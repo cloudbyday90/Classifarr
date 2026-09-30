@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "isolated_provider_resource_recovery",
+      "classification": "separately_coordinated",
+      "reason": "Offline v6 resource study only, in the guarded owned fresh Compose database and internal network. A separate eight-item balanced synthetic cohort exercises actual loopback HTTP, quota, credential rejection, pacing and fenced retry persistence. Fixed fixture mutations simulate a completed quota day and repair only the exact synthetic key; retry deadlines and attempts are never accelerated or reset. Bulk metadata uses the real task writer with synthetic success data. All loops and the bounded loopback listener have explicit lifetimes; live providers, settings and source ownership remain untouched.",
+      "followUp": "Keep ordinary-environment refusal, real PostgreSQL/HTTP failure and recovery, pressure/no-spend checks, unique evidence assertions, immutable-image isolation and failure cleanup tests. v5 rollback-only measurements cannot represent v6 throughput. This small OMDb cohort does not certify external quotas, all provider transports, scheduler restart timing, production capacity or unrelated legacy writers; preserve unresolved source-analysis debt."
+    },
+    {
       "id": "optional_provider_outcomes",
       "classification": "separately_coordinated",
       "reason": "Refill observes the deterministically selected active credential without creating disabled-provider demand. OMDb retry results use the same movie/TV type-evidence check as initial enrichment. A mismatch is rejected and handed to the existing web-search retry path atomically with the skipped OMDb outcome inside the current source/task claim scope. Existing quota, credentials, attempts, leases and source guards remain authoritative.",
@@ -192,7 +198,10 @@
     {"path":"server/src/services/queueEnrichmentPayload.mjs","digest":"1ace9089c875c20cff15c3581aaafbf11b818810227f90e45070cf4725d0009e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"metadata_refill_retry_control"},
     {"path":"server/src/scripts/resourceStudyRetryFixture.mjs","digest":"b53d58f5e6555586bbf9323ed7b60ddb68ac134add64cf8f7b2f843bd637a1e7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_retry_resource_coload"},
     {"path":"server/src/scripts/resourceStudyRetryLoad.mjs","digest":"80b483e349c9b49bdc2444ae71e3f3cf3bb73244d24103d927bbfc6d3db51e7e","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"isolated_retry_resource_coload"},
-    {"path":"server/src/scripts/resourceStudyWorkload.mjs","digest":"c5e00d860089e2574d9a4c8ef60db1e9ffb0ef152179a56e5780cea5284092a5","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_retry_resource_coload"},
+    {"path":"server/src/scripts/resourceStudyProviderFixture.mjs","digest":"61620e3245fee943932ee7075c459d9c8038e957470b13a02556d44e5b568d55","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_provider_resource_recovery"},
+    {"path":"server/src/scripts/resourceStudyProviderHttp.mjs","digest":"f30bd83ef5a4c2550770052d80929ae6289a239be934397abc2c03f9672ee1be","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_provider_resource_recovery"},
+    {"path":"server/src/scripts/resourceStudyProviderLoad.mjs","digest":"db27f7708f081ef55d099035b6b8cb23d74f9c40bc0db609cf8d59e4effe637d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_provider_resource_recovery"},
+    {"path":"server/src/scripts/resourceStudyWorkload.mjs","digest":"a71725796f9abb6e550f686f9420122da2d2410138502ecc40f633aecaf4c5f2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_provider_resource_recovery"},
     {"path":"server/src/services/ollamaReadinessBackfill.mjs","digest":"8175ba7c07ecde3121e3e036426a8ba16d4841c2c865828bc1bc60ac6d49e24d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},
     {"path":"server/src/services/ollamaReadinessBackfillScheduler.mjs","digest":"ecc1347473ed5fd795b854cb5c2411766e0da6f09346300d000b473d25066994","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},
     {"path":"server/src/services/ollamaVerificationCapabilityRepository.mjs","digest":"8d5a5506e464db1e0df7a4c63c59878c47f2662a3973d1db735cb9b4d97e0619","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},

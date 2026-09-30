@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Measure successful provider recovery in isolated resource studies with bounded
+  HTTP faults, real retry cooldowns, unique-item completion and explicit waiting
+  work; require natural drain without changing live resource limits or settings.
 - Retain recoverable OMDb outcomes for quota waits and incomplete active settings,
   keep unconfigured providers idle during refill, and reject mismatched media types
   consistently in initial and retry enrichment with durable fallback handling.

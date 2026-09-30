@@ -15,13 +15,13 @@ import { createLibraryProfileService } from '../services/libraryProfileService.m
 import { readLibraryProfileRefreshStatus } from '../services/libraryProfileRefreshStatus.mjs';
 import { createResourceStudyFixture, seedResourceStudyLibraries, resourceStudyEvaluationSnapshot, studyPhase } from './resourceStudyFixtures.mjs';
 import { createStudySampler, readStudyCgroup, assertStudyCgroup, summarizeStudySamples, observeStudyAdmission } from './resourceStudyMetrics.mjs';
-import { resourceStudyProfile, assertResourceStudyReceipt } from './resourceStudyProfiles.mjs';
+import { resourceStudyProfile, assertResourceStudyReceipt, STUDY_DRAIN_BUDGET_MS } from './resourceStudyProfiles.mjs';
 import { createStudyQueueRecovery } from './resourceStudyQueueRecovery.mjs';
 import { assertStudyBudget, summarizeBudgetEnforcement, resourceStudyBudget } from './resourceStudyBudget.mjs';
 import { summarizeStudyTrend } from './resourceStudyTrend.mjs';
 import { observeStudyIdle } from './resourceStudyIdle.mjs';
-import { createStudyRetryLoad } from './resourceStudyRetryLoad.mjs';
-import { quiesceResourceStudyRetryProviders } from './resourceStudyRetryFixture.mjs';
+import { createStudyProviderLoad } from './resourceStudyProviderLoad.mjs';
+import { assertStudyProviderEnvironment } from './resourceStudyProviderFixture.mjs';
 
 export async function readStudyBacklog(db) {
   return (await db.query(`SELECT count(*) FILTER (WHERE status IN ('pending','processing'))::integer AS pending,
@@ -34,6 +34,7 @@ export async function readStudyBacklog(db) {
 
 /** Runs only inside the separately guarded disposable study process. */
 export async function runResourceStudyWorkload(db, mode, progress = () => {}, budget = 'baseline') {
+  assertStudyProviderEnvironment();
   resourceStudyBudget(budget);
   const profile = resourceStudyProfile(mode), { durationMs } = profile;
   const start = performance.now(), fixture = createResourceStudyFixture();
@@ -51,10 +52,11 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     aiRouterService: { checkAvailability: async () => false },
     classificationService: { classifyQueueTask() { throw new Error('resource_study_routing_forbidden'); } } });
   queue.queueTaskProcessorService = new QueueTaskProcessorService({ db, logger, tmdbService: fixture.provider,
-    queueOmdbEnrichmentService: { enrich: async () => {} }, queueWebSearchEnrichmentService: { enrich: async () => {} },
+    // Bulk first-pass data is synthetic, not HTTP throughput. The separate retry cohort uses real HTTP below.
+    omdbService: { getByTitle: async (_title, _year, type) => ({ type: type === 'tv' ? 'series' : 'movie', rated: 'PG' }) },
+    queueWebSearchEnrichmentService: { enrich: async () => {} },
     completeTask: (...args) => queue.completeTask(...args), failTask: (...args) => queue.failTask(...args) });
   const recovery = createStudyQueueRecovery({ db, queue, admission });
-  const retryLoad = createStudyRetryLoad({ db, admission });
   const processTask = queue.processTask.bind(queue);
   queue.processTask = task => { recovery.onStart(task); return processTask(task); };
   const planner = new LibraryInventoryProfileRefreshPlanner({ dbClient: db });
@@ -94,8 +96,9 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     assert.equal(result.failed, 0); assert.equal(result.retried, 0);
   };
   const worker = queue.startWorker();
-  let producer, evaluator, retries;
+  let producer, evaluator, retries, providerLoad;
   try {
+    providerLoad = await createStudyProviderLoad({ db, admission, logger });
     // Bounded, non-overlapping loops; all started promises are joined before exit.
     producer = (async () => {
       for (let wave = 0; wave < 20 && !stopped; wave++) {
@@ -118,7 +121,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
       }
     })();
     retries = (async () => {
-      while (!stopped) { await retryLoad.pass(phase); await delay(2000); }
+      while (!stopped) { await providerLoad.pass(phase); await delay(2000); }
     })();
     // Observe loop failures immediately without orphaning another loop.
     let failure;
@@ -140,23 +143,24 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     }
     stopped = true; await Promise.all([producer, evaluator, retries]);
     if (failure) throw failure;
-    await retryLoad.finish();
-    await quiesceResourceStudyRetryProviders(db);
     phase = 'drain'; fixture.setPhase(phase); let finalScanComplete = await scan();
     const drainStart = performance.now();
     let complete = false;
-    while (performance.now() - drainStart < 120000) {
+    while (performance.now() - drainStart < STUDY_DRAIN_BUDGET_MS) {
       if (!finalScanComplete) finalScanComplete = await scan();
       await queue.refillQueue(); await refresh();
+      await providerLoad.pass('drain');
       await recovery.checkRecovery();
       const backlog = await readStudyBacklog(db);
       await sampler.sample(phase, backlog);
       const states = (await readLibraryProfileRefreshStatus(db)).libraries.filter(row => ids.includes(row.libraryId));
-      if (finalScanComplete && !backlog.pending && states.length === 4 && states.every(row => row.statusId === 'current' &&
+      if (providerLoad.receipt.recoveryMs !== null && finalScanComplete && !backlog.pending && states.length === 4 && states.every(row => row.statusId === 'current' &&
         row.profileRevision === row.sourceRevision && row.acknowledgedRevision === row.sourceRevision)) { complete = true; break; }
       await delay(1000);
     }
     assert.equal(complete, true, 'study_drain_incomplete');
+    const providerRecovery = await providerLoad.finish();
+    await providerLoad.close();
     const drainMs = Math.round(performance.now() - drainStart);
     queue.stopWorker(); await worker;
     const settleDeadline = performance.now() + 30000;
@@ -177,8 +181,11 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     assert.equal(final.memoryLimitHits, sampler.initial.memoryLimitHits);
     assert.ok(counters.evaluations > 0 && counters.providerFailures > 0 && counters.preservedOutages > 0);
     for (const row of Object.values(admission.classes)) assert.ok(row.memory_pressure > 0);
-    const result = { version: 'resource_study.v5', profile: mode, budget, evaluationRows: profile.rows,
-      retryLoad: await retryLoad.finish(),
+    const uniqueCompleted = (await db.query(`SELECT count(*)::integer n FROM media_server_items
+      WHERE metadata->'content_analysis' IS NOT NULL AND metadata->'omdb' IS NOT NULL`)).rows[0].n;
+    assert.equal(uniqueCompleted, fixture.count * 4, 'study_unique_completion_missing');
+    const result = { version: 'resource_study.v6', profile: mode, budget, evaluationRows: profile.rows,
+      providerRecovery, uniqueCompleted,
       vectorDimensions: profile.dimensions, queueRecovery: recovery.receipt,
       status: 'passed', durationMs: Math.round(performance.now() - start),
       requestedDurationMs: durationMs, scope: 'synthetic_services_not_model_accuracy', pressure: 'injected_telemetry_not_physical',
@@ -193,6 +200,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
   } finally {
     stopped = true; queue.stopWorker();
     await Promise.allSettled([producer, evaluator, retries, worker]);
+    await providerLoad?.close();
     const deadline = performance.now() + 30000;
     while (queue.processing > 0 && performance.now() < deadline) await delay(50);
     sampler.close();

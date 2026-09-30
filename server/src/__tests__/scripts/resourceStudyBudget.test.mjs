@@ -131,12 +131,13 @@ test('comparison rejects baseline drift across individually valid startup receip
   expect(save).not.toHaveBeenCalled();
 });
 
-test('v5 comparison labels repeated task completions but still requires the original minimum workload', async () => {
+test('v6 comparison distinguishes unique completed items, HTTP and repeated tasks', async () => {
   const result = await compare({ study: async ({ budget }) => {
     const run = scenario(budget); run.study.backlog.completed = 2500; return run;
   } });
-  expect(result.version).toBe('resource_budget_comparison.v2');
-  expect(result.scenarios.every(row => row.completed === 2500 && row.retryRolledBackClaims > 0)).toBe(true);
+  expect(result.version).toBe('resource_budget_comparison.v3');
+  expect(result.scenarios.every(row => row.completed === 2500 && row.uniqueCompleted === 1600 &&
+    row.providerUniqueCompleted === 8 && row.providerHttpAttempts === 11)).toBe(true);
   await expect(compare({ study: async ({ budget }) => {
     const run = scenario(budget); run.study.backlog.completed = 1619; return run;
   } })).rejects.toThrow('comparison_incomplete');

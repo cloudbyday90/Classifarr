@@ -119,7 +119,7 @@ test('profile allowlist is immutable and dimensions cannot silently shrink', () 
   expect(snapshot.inputs.source.vectors.values().next().value).toHaveLength(768);
 });
 test.each([{ version: 'resource_study.v1' }, { version: 'resource_study.v2' }, { version: 'resource_study.v3' }, { profile: 'capacity' }, { evaluationRows: 399 }, { vectorDimensions: 64 },
-  { queueRecovery: null }, { durationMs: 310001 }])('old or wrong profile evidence fails: %j', changes => {
+  { queueRecovery: null }, { durationMs: 430001 }])('old or wrong profile evidence fails: %j', changes => {
   expect(() => assertResourceStudyReceipt({ ...receipt(), ...changes }, 'smoke')).toThrow('receipt_invalid');
 });
 test.each([{ completed: 19 }, { started: 19 }, { startedDuringPressure: 1 }, { firstDispatchMs: null },

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseUpgradeReceipt } from './publishedUpgradeCompose.mjs';
-import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudyStartupReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
+import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudyStartupReceipt, STUDY_FINISH_BUDGET_MS } from '../../server/src/scripts/resourceStudyProfiles.mjs';
 import { resourceStudyBudget, assertDockerStudyBudget, assertStudyBudgetContinuity } from '../../server/src/scripts/resourceStudyBudget.mjs';
 import { formatResourceStudySummary } from './resourceStudySummary.mjs';
 import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
@@ -59,7 +59,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   compose(['config', '--quiet']);
   const probe = mode => parseUpgradeReceipt(compose(['exec', '-T', '-e', 'CLASSIFARR_RESOURCE_STUDY=isolated-synthetic-v1',
     '-e', `CLASSIFARR_RESOURCE_STUDY_BUDGET=${budget}`,
-    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + profile.idleMs + 180000).stdout, 'RESOURCE_STUDY');
+    'app', 'node', 'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + profile.idleMs + STUDY_FINISH_BUDGET_MS).stdout, 'RESOURCE_STUDY');
   const containerId = () => {
     const id = compose(['ps', '--quiet', 'app']).stdout.trim();
     if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('resource_study_container_invalid');

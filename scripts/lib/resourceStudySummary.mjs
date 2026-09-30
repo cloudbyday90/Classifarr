@@ -28,7 +28,7 @@ export function formatResourceStudySummary(result) {
   }
   lines.push('', 'ArrayBuffers are included in external memory; do not add them together. Container memory also includes PostgreSQL, the maintenance web process and cache.', '',
     '## Queue progress', '',
-    'Task completions include repeated attempts while synthetic OMDb demand is active; they are not unique items or successful provider responses. Exact synthetic providers are disabled before drain/idle. Compare v5 runs only.', '',
+    `Unique items with local analysis and optional-provider evidence: **${study.uniqueCompleted}/${study.inventory}**. Bulk first-pass data is synthetic; only the eight-item retry cohort uses HTTP. Task completions below may include repeats. Providers remain configured through natural drain. Compare v6 runs only.`, '',
     '| Phase | Observed seconds | Samples | Peak pending | Oldest pending seconds | Completions during window | Completions/second |',
     '| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const phase of ['steady', 'recovery', 'idle']) {
@@ -36,15 +36,13 @@ export function formatResourceStudySummary(result) {
     lines.push(`| ${phase} | ${(row.spanMs / 1000).toFixed(1)} | ${row.samples} | ${backlog.peakPending} | ${backlog.oldestPendingSeconds.toFixed(2)} | ${backlog.completedDelta} | ${backlog.completionsPerSecond.toFixed(2)} |`);
   }
   lines.push('', `Held cohort: ${study.queueRecovery.completed}/${study.queueRecovery.cohortSize} completed; first dispatch ${(study.queueRecovery.firstDispatchMs / 1000).toFixed(2)} s after pressure cleared.`, '',
-    '## Concurrent retry database exercises', '',
-    '60 pending records preserved. Claims are rolled back, not provider requests or completed enrichments. Each pass includes dispatch discovery, a candidate page, and one claim/rollback.', '',
-    '| Retry type | Before rotation passes | After rotation passes | Rolled-back claims | Recovered-wait claims | Longest type pass (ms) |',
-    '| --- | ---: | ---: | ---: | ---: | ---: |');
-  for (const type of ['omdb', 'web_search', 'tavily']) {
-    const row = study.retryLoad.types[type];
-    lines.push(`| ${type} | ${row.beforePasses} | ${row.afterPasses} | ${row.rolledBackClaims} | ${row.recoveredClaims} | ${row.maxPassMs.toFixed(2)} |`);
-  }
-  lines.push('', `Retry co-load pressure deferrals: ${study.retryLoad.pressureDeferrals}; credential rotations: ${study.retryLoad.rotations}. No retry work runs during settled idle.`, '',
+    '## Bounded provider recovery', '',
+    'Real loopback HTTP and production retry persistence; no external provider traffic or forced retry deadlines. Quota-day reset and credential repair are explicit synthetic setup actions.', '',
+    '| Unique completed | HTTP attempts | Auth / throttle / unavailable | Charged retries | Peak waiting | Waiting at finish |',
+    '| ---: | ---: | --- | ---: | ---: | ---: |',
+    `| ${study.providerRecovery.uniqueCompleted}/8 | ${study.providerRecovery.httpAttempts} | 1 / 1 / 1 | ${study.providerRecovery.chargedAttempts} | ${study.providerRecovery.peakPending} | ${study.providerRecovery.pending} |`, '',
+    `Recovery after credential repair: ${(study.providerRecovery.recoveryMs / 1000).toFixed(2)} s. Shortest observed transient wait: ${(study.providerRecovery.transientMinWaitMs / 1000).toFixed(2)} s.`, '',
+    `Unchanged waiting checks: ${study.providerRecovery.preservedWaitChecks}; pressure deferrals: ${study.providerRecovery.pressureDeferrals}; HTTP during pressure: ${study.providerRecovery.httpDuringPressure}. No retry work runs during settled idle.`, '',
     '## Next step', '',
     'Compare repeated matched runs. Investigate continued idle growth alongside heap/external memory and backlog before proposing live limits. No forced GC or process restart is used to reduce the measured footprint.', '',
     'Synthetic movie/TV services, not model accuracy or production capacity. Restart/scheduler recovery remains a separate installation drill.', '');
