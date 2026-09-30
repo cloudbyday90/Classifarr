@@ -79,7 +79,8 @@ describe('selectRefillCandidates', () => {
     
     expect(db.query).toHaveBeenCalledTimes(1);
     const sqlQuery = db.query.mock.calls[0][0];
-    expect(sqlQuery).toContain("EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)");
+    expect(sqlQuery).toContain('SELECT api_key FROM omdb_config WHERE is_active = true');
+    expect(sqlQuery).toContain("selected_omdb WHERE NULLIF(BTRIM(api_key), '') IS NOT NULL");
     expect(sqlQuery).toContain("msi.metadata->'omdb' IS NULL");
     expect(sqlQuery).toContain("msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'");
   });

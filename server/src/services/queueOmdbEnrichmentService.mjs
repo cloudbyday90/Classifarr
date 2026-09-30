@@ -9,7 +9,7 @@
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
-import { omdbResultMatchesType } from './queueEnrichmentResults.mjs';
+import { omdbResultMatchesType, OMDB_TYPE_MISMATCH_REASON } from './queueEnrichmentResults.mjs';
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { persistOmdbRating } from './queueEnrichmentPersistence.mjs';
 import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
@@ -90,13 +90,13 @@ export class QueueOmdbEnrichmentService {
     async handleLimitReached(payload, error) {
         const runtimeState = this.getRuntimeState();
         if (!runtimeState.omdbLimitHit) {
-            this.logger.warn('OMDb daily limit reached - skipping OMDb enrichment until API resets', {
+            this.logger.warn('OMDb daily limit reached - retaining work for quota recovery', {
                 error: error.message
             });
             this.setRuntimeState({ omdbLimitHit: true });
         }
 
-        await this.queueRetry(payload.itemId, 'web_search', 'OMDb limit reached', 3);
+        await this.queueRetry(payload.itemId, 'omdb', 'OMDb daily quota unavailable', 6);
     }
 
     async handleSslError(payload, error) {
@@ -219,15 +219,14 @@ export class QueueOmdbEnrichmentService {
             this.logger.warn('OMDb enrichment skipped', { reason: 'invalid_media_identity' });
             return enrichmentData;
         }
-        const runtimeState = this.getRuntimeState();
-        if (runtimeState.omdbLimitHit) {
-            return enrichmentData;
-        }
-
         try {
             const omdbConfig = await readMetadataProviderConfig(this.db, 'omdb', { activeOnly: true });
 
-            if (!omdbConfig?.api_key) {
+            // Disabled/absent providers create no work. Active incomplete settings
+            // get one durable handoff; the retry planner waits before claiming.
+            if (!omdbConfig) return enrichmentData;
+            if (!omdbConfig.api_key?.trim()) {
+                await this.queueRetry(payload.itemId, 'omdb', 'OMDb credentials not configured', 6);
                 return enrichmentData;
             }
 
@@ -242,6 +241,8 @@ export class QueueOmdbEnrichmentService {
                 return enrichmentData;
             }
 
+            // Durable quota admission, not a process-local warning latch, owns
+            // reset/rotation recovery. Every item must retain its own outcome.
             const omdbResult = await this.omdbService.getByTitle(
                 payload.title,
                 payload.year,
@@ -259,6 +260,7 @@ export class QueueOmdbEnrichmentService {
 
             if (!omdbResultMatchesType(omdbResult, mediaType)) {
                 this.logger.warn('OMDb enrichment skipped', { reason: 'provider_type_mismatch' });
+                await this.queueRetry(payload.itemId, 'web_search', OMDB_TYPE_MISMATCH_REASON, 5);
                 return enrichmentData;
             }
             enrichmentData.omdb = {

@@ -3,6 +3,7 @@ import { OMDbLimitReachedError } from './omdbQuota.mjs';
 import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
 import { createOmdbRetryCheckpoint, readOmdbRetryCheckpoint } from './omdbRetryCheckpoint.mjs';
 import { inheritProviderRequests } from './providerRequestEvidence.mjs';
+import { omdbResultMatchesType, OMDB_TYPE_MISMATCH_REASON } from './queueEnrichmentResults.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
     return isOmdbNotFoundMessage(errorMessage);
@@ -59,6 +60,9 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
         }
 
         if (omdbResult) {
+            if (!omdbResultMatchesType(omdbResult, item.media_type)) {
+                return { success: false, providerTypeMismatch: true, error: OMDB_TYPE_MISMATCH_REASON };
+            }
             return { success: true, data: omdbResult };
         }
 

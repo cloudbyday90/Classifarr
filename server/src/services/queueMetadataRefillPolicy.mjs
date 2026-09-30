@@ -11,4 +11,5 @@ export const RETRY_OWNS_METADATA_PROVIDERS_SQL = `EXISTS (
 export const STANDARD_METADATA_REFILL_SQL = `msi.metadata->'content_analysis' IS NULL
     OR (msi.metadata->'omdb' IS NULL AND NOT (${RETRY_OWNS_METADATA_PROVIDERS_SQL}) AND (
         msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
-        OR EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)))`;
+        OR EXISTS (SELECT 1 FROM (SELECT api_key FROM omdb_config WHERE is_active = true
+            ORDER BY id DESC LIMIT 1) selected_omdb WHERE NULLIF(BTRIM(api_key), '') IS NOT NULL)))`;

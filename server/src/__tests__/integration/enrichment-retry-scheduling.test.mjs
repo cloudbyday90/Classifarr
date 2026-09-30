@@ -19,7 +19,7 @@ beforeEach(async () => {
   await seedOmdbQuotaFixture(db);
   fixture = await createHandoffFixture(db, 'movie'); await fixture.scan();
   item = (await fixture.inventory())[0];
-  provider = { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Evidence' }) };
+  provider = { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Evidence', Type: 'movie' }) };
   service = createService(); await service.queueForRetry(item.id, 'omdb');
   expect(fixture.log.error).not.toHaveBeenCalled();
   await db.query('DELETE FROM enrichment_retry_cooldowns');
@@ -42,7 +42,7 @@ test('transient due time survives reconstructed service and manual processing ca
   expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 0 });
   expect(provider.getByIMDBId).toHaveBeenCalledTimes(1);
   expect(await row()).toEqual(before);
-  await due(); provider.getByIMDBId.mockResolvedValue({ Title: 'Recovered' });
+  await due(); provider.getByIMDBId.mockResolvedValue({ Title: 'Recovered', Type: 'movie' });
   await service.triggerProcessing();
   expect(await row()).toMatchObject({ status: 'completed', attempts: 1 });
 });
@@ -75,7 +75,7 @@ test('readiness is rechecked after each successful item, before another network 
   const before = (await db.query('SELECT * FROM enrichment_retry_queue WHERE media_item_id=$1', [second.id])).rows[0];
   provider.getByIMDBId.mockImplementationOnce(async () => {
     await db.query('UPDATE omdb_config SET requests_today=daily_limit');
-    return { Title: 'Last available request' };
+    return { Title: 'Last available request', Type: 'movie' };
   });
   expect(await service.processRetryQueue(50, 'omdb')).toMatchObject({ processed: 1, success: 1, skipped: true });
   expect(provider.getByIMDBId).toHaveBeenCalledTimes(1);

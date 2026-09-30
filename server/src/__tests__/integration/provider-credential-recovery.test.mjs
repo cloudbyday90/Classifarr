@@ -48,7 +48,7 @@ test('rejected credentials preserve every item budget, block manual/automatic cl
   expect((await restarted.getStats()).omdb).toMatchObject({ pending: 1, deferred: 1, actionablePending: 0 });
   expect((await config()).requests_today).toBe(1);
   await db.query("UPDATE omdb_config SET api_key='fixture-key-B'");
-  provider.getByIMDBId.mockResolvedValue({ Title: 'Recovered' });
+  provider.getByIMDBId.mockResolvedValue({ Title: 'Recovered', Type: 'movie' });
   await restarted.triggerProcessing();
   expect(await retry()).toMatchObject({ status: 'completed', attempts: 0 });
   expect((await config()).requests_today).toBe(1);

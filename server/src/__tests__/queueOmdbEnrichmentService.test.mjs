@@ -204,12 +204,15 @@ describe('maybeBackfillRating', () => {
 // ---------------------------------------------------------------------------
 
 describe('enrich — guards', () => {
-  test('returns enrichmentData unchanged when omdbLimitHit=true', async () => {
+  test('the quota warning latch cannot block durable admission after recovery', async () => {
     const svc = makeSvc({
       getRuntimeState: jest.fn().mockReturnValue({ omdbLimitHit: true })
     });
+    svc.db.query.mockResolvedValue({ rows: [{ api_key: 'fixture' }] });
+    svc.omdbService.getByTitle.mockResolvedValue({ type: 'movie', rated: 'PG' });
     const data = { existing: true };
     expect(await svc.enrich({ title: 'X', media_type: 'movie' }, data)).toBe(data);
+    expect(data.omdb).toBeDefined();
   });
 
   test('returns enrichmentData unchanged when no active omdb config', async () => {
@@ -262,7 +265,7 @@ describe('enrich — success', () => {
       const data = {};
       expect(await svc.enrich({ title: 'Example', itemId: 1, media_type: 'tv' }, data)).toEqual({});
       expect(svc.queryWithTimeout).not.toHaveBeenCalled();
-      expect(queueForRetry).not.toHaveBeenCalled();
+      expect(queueForRetry).toHaveBeenCalledWith(1, 'web_search', 'OMDb provider type mismatch', 5);
     });
 
   test('captures top-level TV identity and item ID before provider waits', async () => {
@@ -340,12 +343,12 @@ describe('handleError', () => {
       expect(JSON.stringify(queueForRetry.mock.calls)).not.toContain('private-fixture-key');
     });
 
-  test('explicit provider exhaustion retains quota pause and web-search fallback', async () => {
+  test('explicit provider exhaustion retains OMDb recovery instead of spending on fallback', async () => {
     const svc = makeSvc();
     const error = createOmdbProviderError(classifyOmdbResponse({ Response: 'False', Error: 'Request limit reached!' }));
     await svc.handleError({ itemId: 1 }, error);
     expect(svc.setRuntimeState).toHaveBeenCalledWith({ omdbLimitHit: true });
-    expect(queueForRetry).toHaveBeenCalledWith(1, 'web_search', 'OMDb limit reached', 3);
+    expect(queueForRetry).toHaveBeenCalledWith(1, 'omdb', 'OMDb daily quota unavailable', 6);
   });
 
   test('routes OMDbLimitReachedError to handleLimitReached', async () => {
@@ -416,13 +419,13 @@ describe('handleGenericError', () => {
 // ---------------------------------------------------------------------------
 
 describe('handleLimitReached', () => {
-  test('sets omdbLimitHit=true and queues provider-neutral web-search retry', async () => {
+  test('sets the warning latch and queues OMDb quota recovery', async () => {
     const setRuntimeState = jest.fn();
     const svc = makeSvc({ setRuntimeState });
     jest.spyOn(svc, 'queueRetry').mockResolvedValueOnce();
     await svc.handleLimitReached({ title: 'X', itemId: 3 }, new Error('Limit'));
     expect(setRuntimeState).toHaveBeenCalledWith({ omdbLimitHit: true });
-    expect(svc.queueRetry).toHaveBeenCalledWith(3, 'web_search', expect.any(String), 3);
+    expect(svc.queueRetry).toHaveBeenCalledWith(3, 'omdb', 'OMDb daily quota unavailable', 6);
   });
 });
 

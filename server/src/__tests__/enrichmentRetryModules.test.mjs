@@ -187,6 +187,20 @@ describe('enrichment retry maintenance', () => {
 
 describe('OMDb fallback bridge', () => {
   test.each([
+    ['movie', { type: 'movie' }, true], ['tv', { type: 'series' }, true],
+    ['movie', { Type: 'movie' }, true], ['tv', { Type: 'series' }, true],
+    ['movie', { type: 'series' }, false], ['tv', { type: 'movie' }, false],
+    ['movie', {}, false], ['tv', { type: 'episode' }, false],
+    ['tv', { type: 'series', Type: 'movie' }, false],
+  ])('retry type evidence matches %s / %j: %s', async (media_type, data, accepted) => {
+    const omdbService = { getByTitle: jest.fn().mockResolvedValue(data) };
+    const result = await enrichWithOmdb({ omdbService, logger: createLogger() }, { title: 'Fixture', media_type });
+    expect(result).toEqual(accepted ? { success: true, data } : {
+      success: false, providerTypeMismatch: true, error: 'OMDb provider type mismatch',
+    });
+  });
+
+  test.each([
     ['OMDb not found', true],
     ['Movie not found!', true],
     ['Error getting data from OMDb', false],
@@ -220,7 +234,7 @@ describe('OMDb fallback bridge', () => {
   test('tries IMDb before title and returns evidence without writing metadata', async () => {
     const db = createDb(() => ({ rowCount: 1, rows: [] }));
     const omdbService = {
-      getByIMDBId: jest.fn().mockResolvedValue({ Title: 'The Matrix' }),
+      getByIMDBId: jest.fn().mockResolvedValue({ Title: 'The Matrix', Type: 'movie' }),
       getByTitle: jest.fn(),
     };
 

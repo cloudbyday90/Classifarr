@@ -28,11 +28,11 @@ test('checkpoint is bounded, canonical, source-specific and expires without exte
 test('a paced second lookup resumes from the saved miss without repeating the IMDb request', async () => {
   const logger = { error: jest.fn(), warn: jest.fn() };
   const omdbService = { getByIMDBId: jest.fn(async (_id, _key, options) => { options.onNotFound(context); return null; }),
-    getByTitle: jest.fn().mockRejectedValueOnce(new OmdbAdmissionWaitError(1)).mockResolvedValue({ title: 'Found' }) };
+    getByTitle: jest.fn().mockRejectedValueOnce(new OmdbAdmissionWaitError(1)).mockResolvedValue({ title: 'Found', type: 'movie' }) };
   const first = await enrichWithOmdb({ omdbService, logger }, item);
   expect(first).toMatchObject({ success: false, providerAdmissionWait: true, retryAfterSeconds: 1 });
   const restarted = await enrichWithOmdb({ omdbService, logger }, { ...item, omdb_lookup_checkpoint: first.omdbCheckpoint });
-  expect(restarted).toEqual({ success: true, data: { title: 'Found' } });
+  expect(restarted).toEqual({ success: true, data: { title: 'Found', type: 'movie' } });
   expect(omdbService.getByIMDBId).toHaveBeenCalledTimes(1);
   expect(omdbService.getByTitle.mock.calls[1][4].expectedCredentialContext).toEqual(context);
   expect(logger.warn).not.toHaveBeenCalled(); expect(logger.error).not.toHaveBeenCalled();

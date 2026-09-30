@@ -25,7 +25,7 @@ beforeEach(async () => {
   serverId = (await db.query("INSERT INTO media_server(type,name,url,api_key) VALUES ('jellyfin',$1,'http://fixture.invalid','synthetic') RETURNING id", [randomUUID()])).rows[0].id;
   libraryId = (await db.query("INSERT INTO libraries(name,external_id,media_type,media_server_id,is_active) VALUES ('Fixture','fixture','movie',$1,true) RETURNING id", [serverId])).rows[0].id;
   logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level => [level, jest.fn()]));
-  http = jest.fn(async () => ({ Title: 'Synthetic evidence' }));
+  http = jest.fn(async () => ({ Title: 'Synthetic evidence', Type: 'movie' }));
   const lookup = async (...args) => {
     if ((await reserveOmdbQuota(db)).status !== 'reserved') throw new OMDbLimitReachedError('synthetic quota unavailable');
     return http(...args);

@@ -5,6 +5,8 @@
 
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
 
+export const OMDB_TYPE_MISMATCH_REASON = 'OMDb provider type mismatch';
+
 export function omdbResultMatchesType(result, mediaType) {
   mediaType = canonicalMediaType(mediaType);
   if (!mediaType) return false;

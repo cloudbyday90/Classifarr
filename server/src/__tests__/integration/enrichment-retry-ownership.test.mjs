@@ -19,7 +19,7 @@ beforeEach(async () => {
   await fixture.scan();
   media = (await fixture.inventory())[0];
   service = new EnrichmentRetryService({ db, logger: fixture.log,
-    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence' }) },
+    omdbService: { getByIMDBId: jest.fn().mockResolvedValue({ Title: 'Current evidence', Type: 'movie' }) },
   });
   jest.spyOn(service, 'scheduleProcessing').mockImplementation(() => {});
   await service.queueForRetry(media.id, 'omdb');
@@ -89,7 +89,7 @@ test('slow provider cannot overwrite a successor after expiry and crash recovery
   let release, entered;
   const held = new Promise(resolve => { release = resolve; });
   const started = new Promise(resolve => { entered = resolve; });
-  service.omdbService.getByIMDBId.mockImplementationOnce(async () => { entered(); await held; return { Title: 'Old worker' }; });
+  service.omdbService.getByIMDBId.mockImplementationOnce(async () => { entered(); await held; return { Title: 'Old worker', Type: 'movie' }; });
   const pending = service.processRetryQueue(1, 'omdb');
   try {
     await started;
@@ -207,6 +207,7 @@ test('lease expiry while waiting for the claim lock is rechecked after acquisiti
 });
 
 test('TV evidence commits normally without a library-specific code path', async () => {
+  service.omdbService.getByIMDBId.mockResolvedValue({ Title: 'Current evidence', Type: 'series' });
   await db.query("UPDATE libraries SET media_type='tv' WHERE id=$1", [media.library_id]);
   await db.query("UPDATE media_server_items SET media_type='tv' WHERE id=$1", [media.id]);
   expect(await service.processRetryQueue(1, 'omdb')).toMatchObject({ success: 1 });

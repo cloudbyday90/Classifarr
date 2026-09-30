@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain recoverable OMDb outcomes for quota waits and incomplete active settings,
+  keep unconfigured providers idle during refill, and reject mismatched media types
+  consistently in initial and retry enrichment with durable fallback handling.
 - Respect existing provider retry decisions during metadata refill and queued-task
   execution, preventing repeated optional enrichment while preserving local analysis,
   independent TMDb work, retry recovery and budgets. Isolate AI readiness coordination

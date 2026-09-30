@@ -3,6 +3,7 @@ import { TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE } from 
 import { buildOmdbFallbackReason, isExpectedOmdbMiss } from './enrichmentRetryOmdb.mjs';
 import { persistRetrySchedule, retrySchedule } from './enrichmentRetrySchedulePolicy.mjs';
 import { readOmdbRetryCheckpoint } from './omdbRetryCheckpoint.mjs';
+import { OMDB_TYPE_MISMATCH_REASON } from './queueEnrichmentResults.mjs';
 
 /** Only called inside the received retry claim's write scope. No provider calls. */
 export async function persistEnrichmentRetryResult(client, claim, sourceCurrent, item, type, result, deps) {
@@ -36,8 +37,9 @@ export async function persistEnrichmentRetryResult(client, claim, sourceCurrent,
   } else {
     const exhausted = claim.attempts + 1 >= claim.max_attempts;
     const error = String(result.error || 'Unknown error').slice(0, 500);
-    if (type === 'omdb' && (isExpectedOmdbMiss(error) || exhausted)) {
-      await deps.queueForRetry(item.media_item_id, 'web_search', buildOmdbFallbackReason(error), 5, client);
+    if (type === 'omdb' && (result.providerTypeMismatch === true || isExpectedOmdbMiss(error) || exhausted)) {
+      const reason = result.providerTypeMismatch === true ? OMDB_TYPE_MISMATCH_REASON : buildOmdbFallbackReason(error);
+      await deps.queueForRetry(item.media_item_id, 'web_search', reason, 5, client);
       const fallback = await client.query(`SELECT id FROM enrichment_retry_queue
         WHERE media_item_id = $1 AND enrichment_type = 'web_search'`, [item.media_item_id]);
       if (!fallback.rows.length) throw new Error('retry_fallback_missing');
