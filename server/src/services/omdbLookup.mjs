@@ -19,45 +19,13 @@ import { isProviderCredentialRejection } from './providerCredentialRejection.mjs
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
 import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
-import { parseRetryAfterSeconds } from './webSearchProviderErrorTaxonomy.mjs';
+import { observeOmdbPacing } from './omdbPacingObservation.mjs';
 
 const logger = createLogger('OMDbService');
-
-let lastRequestTime = 0;
-let rateLimitLock = Promise.resolve();
-const MIN_REQUEST_INTERVAL_MS = 1000;
 
 function getAttemptTimeoutMs(attempt, omdbRuntime) {
 	const scaledTimeout = Math.round(omdbRuntime.requestTimeoutMs * Math.pow(omdbRuntime.retryTimeoutMultiplier, attempt));
 	return Math.min(omdbRuntime.maxRequestTimeoutMs, scaledTimeout);
-}
-
-async function enforceRateLimit() {
-	const previousLock = rateLimitLock;
-	let releaseLock;
-	rateLimitLock = new Promise((resolve) => {
-		releaseLock = resolve;
-	});
-
-	await previousLock.catch(() => {}); // swallow-error: racing away a stale lock promise — if the previous request failed that's already been handled
-
-	try {
-		const now = Date.now();
-		const elapsed = now - lastRequestTime;
-		if (elapsed < MIN_REQUEST_INTERVAL_MS) {
-			const waitTime = MIN_REQUEST_INTERVAL_MS - elapsed;
-			logger.debug('OMDb rate limit: waiting before request', { waitMs: waitTime });
-			await sleepFor(waitTime);
-		}
-		lastRequestTime = Date.now();
-	} finally {
-		releaseLock();
-	}
-}
-
-export function resetRateLimiterState() {
-	lastRequestTime = 0;
-	rateLimitLock = Promise.resolve();
 }
 
 async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, lookupValue }, deps) {
@@ -74,7 +42,6 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
-		await enforceRateLimit();
 		// Admission failures never enter provider retry handling. No DB lock spans HTTP.
 		const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
 		try {
@@ -86,7 +53,9 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 				params,
 				timeout: requestTimeoutMs,
 				maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
+				redirect: 'error',
 			});
+			await observeOmdbPacing(response, credentialContext);
 
 			const outcome = classifyOmdbResponse(response.data, response.status);
 			if (outcome.kind === 'success') {
@@ -94,10 +63,11 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 			}
 			if (outcome.kind !== 'not_found') throw createOmdbProviderError(outcome);
 			logger.debug('OMDb not found', { [logLabel]: lookupValue });
+			deps.onNotFound?.(credentialContext);
 			return null;
 		} catch (error) {
 			const status = error.response?.status;
-			const retryAfterSeconds = parseRetryAfterSeconds(error.response?.headers?.['retry-after']);
+			const retryAfterSeconds = await observeOmdbPacing(error.response, credentialContext);
 			if (error.response) {
 				const outcome = classifyOmdbResponse(error.response.data, status);
 				if (['authentication', 'quota_exhausted'].includes(outcome.kind) ||
@@ -237,11 +207,12 @@ export async function getByIMDBId(imdbId, _apiKey, deps) {
 
 export async function search(query, type, _apiKey, deps) {
 	const { checkAndIncrementUsage, baseUrl } = deps;
-	await enforceRateLimit();
 	const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
 	try {
 		const response = await httpGet(baseUrl, {
 			maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
+			redirect: 'error',
+			timeout: runtimeSettings.getOmdbRuntimeConfig().requestTimeoutMs,
 			params: {
 				apikey: validApiKey,
 				s: query,
@@ -249,6 +220,7 @@ export async function search(query, type, _apiKey, deps) {
 			},
 		});
 
+		await observeOmdbPacing(response, credentialContext);
 		const outcome = classifyOmdbResponse(response.data, response.status, 'search');
 		if (outcome.kind === 'success') {
 			return response.data.Search.map(item => ({
@@ -263,8 +235,10 @@ export async function search(query, type, _apiKey, deps) {
 		if (outcome.kind === 'not_found') return [];
 		throw createOmdbProviderError(outcome);
 	} catch (error) {
+		const retryAfterSeconds = await observeOmdbPacing(error.response, credentialContext);
 		if (error.response) {
 			error = createOmdbProviderError(classifyOmdbResponse(error.response.data, error.response.status, 'search'));
+			error.retryAfterSeconds = retryAfterSeconds;
 		}
 		if (isProviderCredentialRejection(error) && credentialContext) {
 			try { await (deps.rejectCredential ?? rejectOmdbCredential)(credentialContext); }

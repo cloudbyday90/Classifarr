@@ -3,6 +3,7 @@ import * as db from '../config/database.mjs';
 import { readOmdbQuota, reserveOmdbQuota } from './omdbQuotaStore.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { rejectProviderCredential } from './providerCredentialRejection.mjs';
+import { OmdbAdmissionWaitError } from './omdbPacingPolicy.mjs';
 
 export class OMDbLimitReachedError extends Error {
     constructor(message) {
@@ -29,12 +30,20 @@ export async function hasRemainingQuota() {
 }
 
 /** Reserves and commits one local attempt before returning a credential to the caller. */
-export async function checkAndIncrementUsage({ metadataProviderIntegrityService }) {
+export async function checkAndIncrementUsage({ metadataProviderIntegrityService, expectedContext }) {
     let quota;
     try {
-        quota = await reserveOmdbQuota(db);
+        quota = await reserveOmdbQuota(db, { pacing: true, expectedContext });
     } catch {
-        throw new ServiceUnavailableError('OMDb quota is unavailable');
+        throw new ServiceUnavailableError('OMDb quota is unavailable', {
+            code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60,
+        });
+    }
+    if (quota.status === 'paced') throw new OmdbAdmissionWaitError(quota.retryAfterSeconds);
+    if (quota.status === 'lookup_restart') {
+        const error = new OmdbAdmissionWaitError(1);
+        error.code = 'OMDB_LOOKUP_RESTART';
+        throw error;
     }
     if (quota.status === 'limit_reached') {
         metadataProviderIntegrityService.warnProviderRuntimeFailure({
@@ -45,7 +54,9 @@ export async function checkAndIncrementUsage({ metadataProviderIntegrityService 
         throw new OMDbLimitReachedError(`OMDb daily limit of ${quota.limit} reached`);
     }
     if (quota.status !== 'reserved') {
-        const error = new ServiceUnavailableError(unavailableReason(quota.status));
+        const error = new ServiceUnavailableError(unavailableReason(quota.status), {
+            code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60,
+        });
         if (quota.status === 'credentials_rejected') error.code = 'OMDB_AUTHENTICATION';
         throw error;
     }

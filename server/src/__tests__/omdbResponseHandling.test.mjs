@@ -6,7 +6,7 @@ const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({ httpGet }));
 jest.unstable_mockModule('node:timers/promises', () => ({ setTimeout: jest.fn() }));
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ createLogger: () => logger }));
-const { getByTitle, getByIMDBId, search, resetRateLimiterState } = await import('../services/omdbLookup.mjs');
+const { getByTitle, getByIMDBId, search } = await import('../services/omdbLookup.mjs');
 const { checkHealth, testConnection } = await import('../services/omdbHealth.mjs');
 const { OMDB_MAX_RESPONSE_BYTES } = await import('../services/omdbRequestPolicy.mjs');
 const valid = { Response: 'True', Title: 'Fixture', imdbID: 'tt0000001', Type: 'movie' };
@@ -14,7 +14,6 @@ let deps;
 beforeEach(() => {
     jest.clearAllMocks();
     httpGet.mockReset();
-    resetRateLimiterState();
     deps = { checkAndIncrementUsage: jest.fn().mockResolvedValue({ apiKey: 'fixture-key' }),
         calculateRetryBackoff: jest.fn(), shouldLogSslWarning: jest.fn(), warnProviderRuntimeFailure: jest.fn(),
         baseUrl: 'https://omdb.invalid' };

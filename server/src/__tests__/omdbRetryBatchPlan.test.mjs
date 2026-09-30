@@ -5,7 +5,8 @@ import { availableOmdbQuotaFixture } from './helpers/omdbQuotaFixture.mjs';
 
 function fixture(count = 2, config = availableOmdbQuotaFixture()) {
   const quota = jest.fn(async () => ({ rows: config ? [config] : [] }));
-  const db = { query: jest.fn(async sql => String(sql).includes('FROM omdb_config')
+  const db = { query: jest.fn(async sql => String(sql).includes('FROM omdb_request_pacing') ? { rows: [] }
+    : String(sql).includes('FROM omdb_config')
     ? quota() : { rows: Array.from({ length: count }, (_, i) => ({ queue_id: i + 1 })) }) };
   const deps = { db, logger: { debug: jest.fn() }, scheduleProcessing: jest.fn(), isRetryWakeCurrent: jest.fn(() => true) };
   return { ...deps, deps, quota };
@@ -22,6 +23,17 @@ test('caps the candidate snapshot at 50, offers each once and coalesces continua
   expect(f.scheduleProcessing).toHaveBeenCalledWith(1000);
   expect(await plan.next()).toBeNull();
   expect(f.db.query.mock.calls.every(([sql]) => sql.startsWith('SELECT'))).toBe(true);
+});
+
+test('a shared pacing wait withholds claims and coalesces one bounded wake', async () => {
+  const f = fixture();
+  const query = f.db.query.getMockImplementation();
+  f.db.query.mockImplementation(sql => sql.includes('FROM omdb_request_pacing')
+    ? Promise.resolve({ rows: [{ wait: 12, retry_at: new Date(Date.now() + 12000) }] }) : query(sql));
+  const plan = await prepareOmdbRetryBatch(f.deps, 50);
+  expect(await plan.next()).toBeNull(); expect(plan.waiting).toBe(true);
+  plan.finish(); plan.finish();
+  expect(f.scheduleProcessing).toHaveBeenCalledTimes(1); expect(f.scheduleProcessing).toHaveBeenCalledWith(12000);
 });
 
 test.each([0, -1, 1.5, NaN, Infinity, '1'])('rejects invalid batch limit %s before reading', async limit => {

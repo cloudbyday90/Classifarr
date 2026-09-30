@@ -98,7 +98,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -132,7 +132,7 @@ describe('OMDbService', () => {
                 
                 db.query.mockResolvedValue({
                     rows: [{
-                        id: 1,
+                        id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                         api_key: 'test-key',
                         quota_day: today,
                         last_reset_date: today,
@@ -162,7 +162,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -191,7 +191,7 @@ describe('OMDbService', () => {
                 jest.clearAllMocks();
                 db.query.mockResolvedValue({
                     rows: [{
-                        id: 1,
+                        id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                         api_key: 'test-key',
                         quota_day: today,
                         last_reset_date: today,
@@ -219,7 +219,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -269,11 +269,11 @@ describe('OMDbService', () => {
             Production: 'N/A'
         };
 
-        it('should enforce minimum delay between requests', async () => {
+        it('checks and advances shared admission before every request', async () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -285,16 +285,10 @@ describe('OMDbService', () => {
             mockHttpGet.mockResolvedValue({ data: mockOmdbResponse });
 
             omdbService._resetRateLimiter();
-            const start1 = Date.now();
             await omdbService.getByTitle('Movie 1', 2020, 'movie');
-            const elapsed1 = Date.now() - start1;
-
-            const start2 = Date.now();
             await omdbService.getByTitle('Movie 2', 2020, 'movie');
-            const elapsed2 = Date.now() - start2;
-
-            expect(elapsed1).toBeLessThan(100);
-            expect(elapsed2).toBeGreaterThanOrEqual(900);
+            expect(db.query.mock.calls.filter(([sql]) => sql.includes('FROM omdb_request_pacing'))).toHaveLength(2);
+            expect(db.query.mock.calls.filter(([sql]) => sql.includes('INSERT INTO omdb_request_pacing'))).toHaveLength(2);
             expect(mockHttpGet).toHaveBeenCalledWith(
                 expect.any(String),
                 expect.objectContaining({ timeout: 15000 })
@@ -305,7 +299,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -333,11 +327,11 @@ describe('OMDbService', () => {
             expect(omdbService._resetRateLimiter).toBeDefined();
         });
 
-        it('should serialize concurrent requests to honor minimum interval', async () => {
+        it('delegates concurrent request admission to shared transactions', async () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -349,14 +343,11 @@ describe('OMDbService', () => {
             mockHttpGet.mockResolvedValue({ data: mockOmdbResponse });
 
             omdbService._resetRateLimiter();
-            const start = Date.now();
             await Promise.all([
                 omdbService.getByTitle('Concurrent Movie 1', 2020, 'movie'),
                 omdbService.getByTitle('Concurrent Movie 2', 2021, 'movie')
             ]);
-            const elapsed = Date.now() - start;
-
-            expect(elapsed).toBeGreaterThanOrEqual(900);
+            expect(db.query.mock.calls.filter(([sql]) => sql.includes('LOCK TABLE omdb_config'))).toHaveLength(2);
             expect(mockHttpGet).toHaveBeenCalledTimes(2);
         });
     });
@@ -366,7 +357,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -392,7 +383,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -421,7 +412,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -448,7 +439,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -490,7 +481,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -519,7 +510,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -546,7 +537,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -566,7 +557,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -586,7 +577,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -605,7 +596,7 @@ describe('OMDbService', () => {
             const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: new Date().toISOString().split('T')[0],
                     last_reset_date: yesterday,
@@ -642,7 +633,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,
@@ -668,7 +659,7 @@ describe('OMDbService', () => {
             const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
-                    id: 1,
+                    id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
                     api_key: 'test-key',
                     quota_day: today,
                     last_reset_date: today,

@@ -60,6 +60,21 @@ function makeSvc(overrides = {}) {
 
 let queueForRetry;
 
+test('shared admission waits enqueue OMDb only, without provider error logging or fallback', async () => {
+  const enqueueRetry = jest.fn(), svc = makeSvc({ enqueueRetry });
+  await svc.handleError({ itemId: 42 }, { code: 'OMDB_ADMISSION_WAIT', retryAfterSeconds: 12 });
+  expect(enqueueRetry).toHaveBeenCalledWith(42, 'omdb', 'OMDb request pacing wait', 6);
+  expect(svc.metadataProviderIntegrityService.warnProviderRuntimeFailure).not.toHaveBeenCalled();
+  expect(svc.setRuntimeState).not.toHaveBeenCalled();
+});
+test('database admission unavailability keeps media work pending on OMDb', async () => {
+  const enqueueRetry = jest.fn(), svc = makeSvc({ enqueueRetry });
+  await svc.handleError({ itemId: 42 }, { code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60 });
+  expect(enqueueRetry).toHaveBeenCalledWith(42, 'omdb', 'OMDb request admission unavailable', 6);
+  expect(svc.metadataProviderIntegrityService.warnProviderRuntimeFailure).not.toHaveBeenCalled();
+  expect(svc.setRuntimeState).not.toHaveBeenCalled();
+});
+
 beforeEach(() => {
   jest.restoreAllMocks();
   mockEnrichmentRetryService.queueForRetry.mockClear();

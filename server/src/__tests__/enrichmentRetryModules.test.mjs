@@ -237,7 +237,7 @@ describe('OMDb fallback bridge', () => {
     });
 
     expect(result).toEqual(expect.objectContaining({ success: true }));
-    expect(omdbService.getByIMDBId).toHaveBeenCalledWith('tt0133093', undefined, { queueOwned: true });
+    expect(omdbService.getByIMDBId).toHaveBeenCalledWith('tt0133093', undefined, { queueOwned: true, onNotFound: expect.any(Function) });
     expect(omdbService.getByTitle).not.toHaveBeenCalled();
     expect(db.query).not.toHaveBeenCalled();
   });

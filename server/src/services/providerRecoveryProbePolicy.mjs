@@ -1,23 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { omdbPacingDelay } from './omdbPacingPolicy.mjs';
 export const PROBE_OUTCOMES = Object.freeze(['verified', 'rejected', 'rate_limited',
   'quota_exhausted', 'invalid_response', 'unavailable']);
-const HTTP_DATE = /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
 
 /** Retain bounded timing only. Unlike the UI parser, preserve waits beyond one day. */
 export function providerProbeRetryHint(response, now = Date.now()) {
-  const headers = response?.headers ?? {};
-  const value = headers['retry-after'];
-  let delay = 0;
-  if (typeof value === 'string' && value.length <= 64) {
-    delay = /^\d{1,10}$/.test(value) ? Number(value) * 1000
-      : HTTP_DATE.test(value) ? Math.max(0, Date.parse(value) - now) : 0;
-  }
-  const reset = headers['x-ratelimit-reset'];
-  const windows = typeof reset === 'string' && reset.length <= 128 ? reset.split(',') : [];
-  for (const part of windows) {
-    if (/^\d{1,10}$/.test(part.trim())) delay = Math.max(delay, Number(part.trim()) * 1000);
-  }
-  return Number.isFinite(delay) ? Math.min(30 * 86400000, delay) : 0;
+  return omdbPacingDelay(response, now) * 1000;
 }
 
 export function providerProbeDelay(failures, retryAfterMs = 0, random = Math.random) {

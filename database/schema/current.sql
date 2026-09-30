@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-29T14:02:54.241Z
--- Latest Migration: 20260929_180000_web_search_usage_trace.sql
+-- Generated: 2026-09-29T23:53:15.117Z
+-- Latest Migration: 20260929_190000_omdb_shared_pacing.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3622,7 +3622,9 @@ CREATE TABLE public.enrichment_retry_queue (
     error_message text,
     claim_token uuid,
     claim_until timestamp with time zone,
-    next_attempt_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+    next_attempt_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    omdb_lookup_checkpoint jsonb,
+    CONSTRAINT omdb_lookup_checkpoint_size CHECK (((omdb_lookup_checkpoint IS NULL) OR ((jsonb_typeof(omdb_lookup_checkpoint) = 'object'::text) AND (octet_length((omdb_lookup_checkpoint)::text) <= 1024))))
 );
 
 
@@ -5388,6 +5390,22 @@ CREATE SEQUENCE public.omdb_config_id_seq
 --
 
 ALTER SEQUENCE public.omdb_config_id_seq OWNED BY public.omdb_config.id;
+
+
+--
+-- Name: omdb_request_pacing; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.omdb_request_pacing (
+    singleton boolean DEFAULT true NOT NULL,
+    next_admission_at timestamp with time zone NOT NULL,
+    blocked_until timestamp with time zone,
+    config_id integer,
+    credential_generation uuid,
+    CONSTRAINT omdb_request_pacing_check CHECK ((((blocked_until IS NULL) AND (config_id IS NULL) AND (credential_generation IS NULL)) OR ((blocked_until IS NOT NULL) AND (config_id IS NOT NULL) AND (credential_generation IS NOT NULL)))),
+    CONSTRAINT omdb_request_pacing_config_id_check CHECK ((config_id > 0)),
+    CONSTRAINT omdb_request_pacing_singleton_check CHECK (singleton)
+);
 
 
 --
@@ -10729,6 +10747,14 @@ ALTER TABLE ONLY public.ollama_verification_capability_test_outcomes
 
 ALTER TABLE ONLY public.omdb_config
     ADD CONSTRAINT omdb_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: omdb_request_pacing omdb_request_pacing_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.omdb_request_pacing
+    ADD CONSTRAINT omdb_request_pacing_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -17509,6 +17535,7 @@ FROM unnest(ARRAY[
     '20260929_140000_provider_credential_recovery.sql',
     '20260929_160000_provider_recovery_probes.sql',
     '20260929_170000_web_search_pacing.sql',
-    '20260929_180000_web_search_usage_trace.sql'
+    '20260929_180000_web_search_usage_trace.sql',
+    '20260929_190000_omdb_shared_pacing.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

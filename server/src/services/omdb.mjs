@@ -15,7 +15,7 @@ import { getCertificateErrorSignature } from './omdbHealth.mjs';
 import { OMDbLimitReachedError, hasRemainingQuota, checkAndIncrementUsage } from './omdbQuota.mjs';
 import { testConnection, checkHealth } from './omdbHealth.mjs';
 import { formatResponse, extractClassificationData } from './omdbResponse.mjs';
-import { getByTitle, getByIMDBId, search, resetRateLimiterState } from './omdbLookup.mjs';
+import { getByTitle, getByIMDBId, search } from './omdbLookup.mjs';
 
 export { OMDbLimitReachedError };
 
@@ -52,9 +52,10 @@ class OMDbService {
 		return hasRemainingQuota();
 	}
 
-	async checkAndIncrementUsage() {
+	async checkAndIncrementUsage(expectedContext) {
 		return checkAndIncrementUsage({
 			metadataProviderIntegrityService: this.metadataProviderIntegrityService,
+			expectedContext,
 		});
 	}
 
@@ -69,7 +70,7 @@ class OMDbService {
 	async getByTitle(title, year, type, apiKey, options = {}) {
 		return getByTitle(title, year, type, apiKey, {
 			queueOwned: options.queueOwned === true,
-			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
+			checkAndIncrementUsage: () => this.checkAndIncrementUsage(options.expectedCredentialContext),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
 			shouldLogSslWarning: (err) => this.shouldLogSslWarning(err),
 			warnProviderRuntimeFailure: (opts) => this.metadataProviderIntegrityService.warnProviderRuntimeFailure(opts),
@@ -79,6 +80,7 @@ class OMDbService {
 
 	async getByIMDBId(imdbId, apiKey, options = {}) {
 		return getByIMDBId(imdbId, apiKey, {
+			onNotFound: options.onNotFound,
 			queueOwned: options.queueOwned === true,
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
@@ -104,7 +106,7 @@ class OMDbService {
 	}
 
 	_resetRateLimiter() {
-		resetRateLimiterState();
+		// Legacy diagnostic helper: shared database pacing cannot be reset by a process.
 		this.lastSslWarnAt = 0;
 		this.lastSslWarnSignature = null;
 	}

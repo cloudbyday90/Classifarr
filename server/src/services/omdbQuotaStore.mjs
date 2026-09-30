@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { metadataProviderDefinition } from './metadataProviderConfigSql.mjs';
 import { providerCredentialContext } from './providerCredentialRejection.mjs';
+import { advanceOmdbPacing, boundOmdbAdmissionTransaction, omdbPacingWait } from './omdbPacingStore.mjs';
 
 const snapshotSql = `SELECT id, api_key, daily_limit, requests_today, credential_generation, credential_rejected_at,
     to_char(last_reset_date, 'YYYY-MM-DD') AS last_reset_date,
@@ -41,20 +42,29 @@ export async function readOmdbQuotaReadiness(db) {
     return { status: quota.status, used: quota.used, limit: quota.limit, resetAt };
 }
 
-export async function reserveOmdbQuota(db) {
+export async function reserveOmdbQuota(db, { pacing = false, expectedContext } = {}) {
     return db.withTransaction(async client => {
+        await boundOmdbAdmissionTransaction(client);
         // This lock also coordinates empty-table saves, rotation and backup restore.
         await client.query(metadataProviderDefinition('omdb').lock);
         const { rows } = await client.query(snapshotSql);
         const config = rows[0];
         const quota = evaluateOmdbQuota(config);
         if (quota.status !== 'available') return quota;
+        const credentialContext = providerCredentialContext('omdb', config);
+        if (expectedContext && (credentialContext?.id !== expectedContext.id ||
+            credentialContext?.generation !== expectedContext.generation)) return { status: 'lookup_restart' };
+        if (pacing) {
+            const wait = await omdbPacingWait(client, credentialContext);
+            if (wait > 0) return { ...quota, status: 'paced', retryAfterSeconds: wait };
+            await advanceOmdbPacing(client);
+        }
         const result = await client.query(
             'UPDATE omdb_config SET requests_today = $1, last_reset_date = $2::date WHERE id = $3 RETURNING id',
             [quota.used + 1, quota.day, config.id]
         );
         if (result.rows.length !== 1) throw new Error('OMDb quota reservation was not persisted');
         return { ...quota, status: 'reserved', apiKey: config.api_key, configId: config.id,
-            credentialContext: providerCredentialContext('omdb', config) };
+            credentialContext };
     });
 }

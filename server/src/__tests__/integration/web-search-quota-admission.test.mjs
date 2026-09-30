@@ -56,7 +56,7 @@ test('a probe and an ordinary search share the same last credit', async () => {
     return reserveProviderProbeQuota(client, { source: 'web_search', provider_key: 'tavily' }, row, Date.now());
   });
   const results = await Promise.allSettled([reserve(config), probe()]);
-  const admitted = results.filter(result => result.status === 'fulfilled' && result.value);
+  const admitted = results.filter(result => result.status === 'fulfilled' && result.value.allowed);
   expect(admitted).toHaveLength(1); expect(await usage()).toHaveLength(1);
 });
 

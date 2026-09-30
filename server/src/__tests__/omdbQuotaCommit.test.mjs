@@ -11,7 +11,7 @@ const { omdbService } = await import('../services/omdb.mjs');
 beforeEach(() => {
     jest.resetAllMocks();
     omdbService._resetRateLimiter();
-    db.query.mockResolvedValue({ rows: [{ id: 1, api_key: 'private-fixture-key', daily_limit: 10,
+    db.query.mockResolvedValue({ rows: [{ id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b', api_key: 'private-fixture-key', daily_limit: 10,
         requests_today: 0, last_reset_date: '2026-09-07', quota_day: '2026-09-07' }] });
     httpGet.mockResolvedValue({ data: { Response: 'False', Error: 'Movie not found!' } });
 });
@@ -42,8 +42,10 @@ test.each(['connection', 'commit'])('%s failure never dispatches and does not ex
         throw new Error('private-fixture-key SQL detail');
     });
     await expect(omdbService.getByIMDBId('tt0000001')).rejects.toThrow('OMDb quota is unavailable');
+    // No provider request happened: downstream retries must not charge an item attempt.
+    await expect(omdbService.checkAndIncrementUsage()).rejects.toMatchObject({ code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60 });
     expect(httpGet).not.toHaveBeenCalled();
-    expect(db.withTransaction).toHaveBeenCalledTimes(1);
+    expect(db.withTransaction).toHaveBeenCalledTimes(2);
 });
 
 test('availability read sanitizes database failures and cannot write or start a transaction', async () => {
@@ -52,4 +54,13 @@ test('availability read sanitizes database failures and cannot write or start a 
     expect(db.withTransaction).not.toHaveBeenCalled();
     expect(db.query).toHaveBeenCalledTimes(1);
     expect(db.query.mock.calls[0][0]).toMatch(/^SELECT /);
+});
+
+test('configuration removed between planning and admission defers without a provider request', async () => {
+    db.query.mockResolvedValue({ rows: [] });
+    db.withTransaction.mockImplementation(work => work(db));
+    await expect(omdbService.getByIMDBId('tt0000001')).rejects.toMatchObject({
+        code: 'OMDB_ADMISSION_UNAVAILABLE', retryAfterSeconds: 60,
+    });
+    expect(httpGet).not.toHaveBeenCalled();
 });

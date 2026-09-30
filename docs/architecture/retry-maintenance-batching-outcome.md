@@ -84,3 +84,5 @@ keep cache hits free, and avoid holding database locks during HTTP. Verify
 concurrent workers, restart, credential changes and the second title/year lookup
 with deterministic clocks and real PostgreSQL. Do not describe local pacing as
 an account-wide guarantee for external clients.
+
+Follow-up implemented: [shared OMDb pacing outcome](omdb-shared-pacing-outcome.md).

@@ -24,7 +24,8 @@ export async function claimEnrichmentRetry(db, enrichmentType, visited = [], can
         THEN 'Monthly quota wait elapsed' ELSE erq.reason END,
       claim_token = $5::uuid, claim_until = clock_timestamp() + ($6 * interval '1 millisecond')
     FROM candidate WHERE erq.id = candidate.id
-    RETURNING erq.id AS queue_id, erq.media_item_id, erq.attempts, erq.max_attempts, erq.claim_token
+    RETURNING erq.id AS queue_id, erq.media_item_id, erq.attempts, erq.max_attempts, erq.claim_token,
+      erq.omdb_lookup_checkpoint
   ) SELECT claimed.*, msi.media_server_id, msi.external_id, msi.library_id, msi.media_type,
       msi.title, msi.year, msi.imdb_id, msi.tvdb_id, msi.tmdb_id
     FROM claimed JOIN media_server_items msi ON msi.id = claimed.media_item_id`,

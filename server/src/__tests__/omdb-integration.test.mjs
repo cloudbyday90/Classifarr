@@ -106,7 +106,7 @@ function setupDbMock() {
     const today = new Date().toISOString().split('T')[0];
     db.query.mockResolvedValue({
         rows: [{
-            id: 1,
+            id: 1, credential_generation: '879a6b9f-f343-402d-834b-040739c6411b',
             api_key: 'test-api-key',
             quota_day: today,
             last_reset_date: today,
@@ -232,30 +232,14 @@ describe('OMDb Integration Tests', () => {
     });
 
     describe('Rate Limiter', () => {
-        it('should enforce minimum delay between sequential requests', async () => {
-            const timestamps = [];
-
-            mockHttpGet.mockImplementation(async () => {
-                timestamps.push(Date.now());
-                return makeOmdbResponse(REAL_EXAMPLES[timestamps.length - 1]);
-            });
-
+        it('requires database pacing admission and cannot reset a shared wait locally', async () => {
+            const original = mockDb.query.getMockImplementation();
+            mockDb.query.mockImplementation((sql, params) => sql.includes('FROM omdb_request_pacing')
+                ? Promise.resolve({ rows: [{ wait: 60 }] }) : original(sql, params));
             omdbService._resetRateLimiter();
-
-            for (let i = 0; i < 3; i++) {
-                await omdbService.getByTitle(
-                    REAL_EXAMPLES[i].title,
-                    REAL_EXAMPLES[i].year,
-                    REAL_EXAMPLES[i].type
-                );
-            }
-
-            expect(timestamps).toHaveLength(3);
-
-            for (let i = 1; i < timestamps.length; i++) {
-                const delay = timestamps[i] - timestamps[i - 1];
-                expect(delay).toBeGreaterThanOrEqual(900);
-            }
+            await expect(omdbService.getByTitle('The Matrix', 1999, 'movie'))
+                .rejects.toMatchObject({ code: 'OMDB_ADMISSION_WAIT', retryAfterSeconds: 60 });
+            expect(mockHttpGet).not.toHaveBeenCalled();
         }, 10000);
 
         it('should allow immediate first request after reset', async () => {

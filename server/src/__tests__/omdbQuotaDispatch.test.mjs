@@ -11,12 +11,11 @@ jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getOmdbRuntim
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ createLogger: () => ({
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(),
 }) }));
-const { getByTitle, getByIMDBId, search, resetRateLimiterState } = await import('../services/omdbLookup.mjs');
+const { getByTitle, getByIMDBId, search } = await import('../services/omdbLookup.mjs');
 const { OMDbLimitReachedError } = await import('../services/omdbQuota.mjs');
 let deps;
 beforeEach(() => {
     jest.resetAllMocks();
-    resetRateLimiterState();
     sleep.mockResolvedValue();
     deps = { checkAndIncrementUsage: jest.fn().mockResolvedValue({ apiKey: 'reserved-fixture', configId: 1 }),
         calculateRetryBackoff: jest.fn().mockResolvedValue(1), shouldLogSslWarning: jest.fn().mockReturnValue(false),
@@ -70,16 +69,13 @@ test.each(lookups.slice(0, 2))('%s stops retries when the next reservation is de
     expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(2);
 });
 
-test('pacing completes before quota reservation', async () => {
-    httpGet.mockResolvedValue({ data: { Response: 'False', Error: 'Movie not found!' } });
-    await getByIMDBId('tt0000001', null, deps);
-    const firstReservations = deps.checkAndIncrementUsage.mock.calls.length;
-    sleep.mockImplementation(async () => {
-        expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(firstReservations);
-    });
-    await getByIMDBId('tt0000002', null, deps);
-    expect(sleep).toHaveBeenCalled();
-    expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(2);
+test.each(lookups)('%s yields shared admission waits without HTTP or a local sleep queue', async (_name, run) => {
+    const wait = Object.assign(new Error('wait'), { code: 'OMDB_ADMISSION_WAIT', retryAfterSeconds: 1 });
+    deps.checkAndIncrementUsage.mockRejectedValue(wait);
+    await expect(run()).rejects.toBe(wait);
+    expect(httpGet).not.toHaveBeenCalled();
+    expect(sleep).not.toHaveBeenCalled();
+    expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
 });
 
 test.each(lookups.slice(0, 2))('%s queue-owned lookup makes only one transport attempt and retains Retry-After', async (_name, run) => {

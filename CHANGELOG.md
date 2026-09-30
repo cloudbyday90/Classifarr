@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Share OMDb request pacing and provider wait windows across workers, restarts
+  and recovery probes. Defer without spending credits or retry attempts, resume
+  title lookups after an IMDb miss, and show waiting work through existing status
+  views while preserving source and credential safeguards.
 - Bound retry maintenance and commit retry outcomes with item state atomically.
   Resume legacy cleanup through the scheduler, preserve active/unknown claims,
   and keep statistics read-only. Prevent later backlog pages from being failed

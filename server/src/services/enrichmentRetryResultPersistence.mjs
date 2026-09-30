@@ -2,6 +2,7 @@
 import { TAVILY_MONTHLY_DEFERRED_REASON, TAVILY_MONTHLY_DEFERRED_MESSAGE } from '../utils/enrichmentState.mjs';
 import { buildOmdbFallbackReason, isExpectedOmdbMiss } from './enrichmentRetryOmdb.mjs';
 import { persistRetrySchedule, retrySchedule } from './enrichmentRetrySchedulePolicy.mjs';
+import { readOmdbRetryCheckpoint } from './omdbRetryCheckpoint.mjs';
 
 /** Only called inside the received retry claim's write scope. No provider calls. */
 export async function persistEnrichmentRetryResult(client, claim, sourceCurrent, item, type, result, deps) {
@@ -52,6 +53,12 @@ export async function persistEnrichmentRetryResult(client, claim, sourceCurrent,
           claim_token = NULL, claim_until = NULL WHERE id = $1`, [id, error]);
       outcome = exhausted ? 'failed' : 'pending';
     }
+  }
+  if (type === 'omdb') {
+    const checkpoint = sourceCurrent && ['pending', 'deferred'].includes(outcome)
+      ? readOmdbRetryCheckpoint(item, result.omdbCheckpoint) : null;
+    await client.query('UPDATE enrichment_retry_queue SET omdb_lookup_checkpoint=$2::jsonb WHERE id=$1',
+      [id, checkpoint ? JSON.stringify(checkpoint) : null]);
   }
   if (sourceCurrent && !result.success) await persistRetrySchedule(client, id, type, schedule);
   await deps.enrichmentItemStateService.syncItemState(item.media_item_id, client);

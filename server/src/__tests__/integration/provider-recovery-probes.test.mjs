@@ -24,7 +24,7 @@ async function claimNext(repo = repository()) {
   return candidates[0] ? repo.claim(candidates[0]) : null;
 }
 beforeEach(async () => {
-  await db.query('TRUNCATE web_search_provider_pacing,provider_credential_probes,omdb_config,tavily_config,web_search_provider_config,web_search_provider_usage,enrichment_retry_cooldowns');
+  await db.query('TRUNCATE omdb_request_pacing,web_search_provider_pacing,provider_credential_probes,omdb_config,tavily_config,web_search_provider_config,web_search_provider_usage,enrichment_retry_cooldowns');
   fixture = await createHandoffFixture(db, 'movie'); await fixture.scan(); item = (await fixture.inventory())[0];
   retryService = new EnrichmentRetryService({ db, logger: fixture.log });
   jest.spyOn(retryService, 'scheduleProcessing').mockImplementation(() => {});
@@ -70,6 +70,7 @@ test('crash recovery honors prior backoff, keeps reserved cost and replaces leas
   await db.query("UPDATE provider_credential_probes SET lease_until=clock_timestamp()-interval '1 second'");
   expect(await claimNext()).toBeNull();
   await db.query("UPDATE provider_credential_probes SET next_probe_at=clock_timestamp()-interval '1 second'");
+  await db.query("UPDATE omdb_request_pacing SET next_admission_at=clock_timestamp()-interval '1 second'");
   const second = await claimNext(); expect(second.token).not.toBe(first.token);
   expect(await repository().finish(first, { category: 'verified' })).toBe(false);
   expect(await repository().finish(second, { category: 'rejected', retryAfterMs: 86400000 })).toBe(true);

@@ -6,8 +6,6 @@ import { persistMetadataProviderConfig } from '../../services/metadataProviderCo
 import { buildOmdbConfigMutationPayload } from '../../routes/helpers/metadataProviderSettingsSupport.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-const { checkAndIncrementUsage } = await import('../../services/omdbQuota.mjs');
-const integrity = { warnProviderRuntimeFailure: jest.fn() };
 const database = createIntegrationDatabaseModuleMock();
 const { restoreOmdbConfig } = await import('../../services/backupRestoreTables.mjs');
 
@@ -30,12 +28,12 @@ beforeEach(async () => {
     await getPool().query('TRUNCATE omdb_config RESTART IDENTITY');
 });
 
-test('admits exactly the remaining quota under simultaneous requests', async () => {
+test('quota accounting admits exactly the remaining credits independently of pacing', async () => {
     await getPool().query(`INSERT INTO omdb_config(api_key, daily_limit, requests_today, last_reset_date)
         VALUES ('quota-fixture', 3, 0, CURRENT_DATE)`);
-    const results = await Promise.allSettled(Array.from({ length: 12 }, () => checkAndIncrementUsage({ metadataProviderIntegrityService: integrity })));
-    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(3);
-    expect(results.filter(result => result.status === 'rejected')).toHaveLength(9);
+    const results = await Promise.all(Array.from({ length: 12 }, () => reserveOmdbQuota(database)));
+    expect(results.filter(result => result.status === 'reserved')).toHaveLength(3);
+    expect(results.filter(result => result.status === 'limit_reached')).toHaveLength(9);
     expect((await getPool().query('SELECT requests_today FROM omdb_config')).rows[0].requests_today).toBe(3);
 });
 

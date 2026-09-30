@@ -52,6 +52,16 @@ test('unconfigured OMDb cannot advertise a queue due time as a recovery estimate
   expect(report.counts.settings_blocked).toBe(1); expect(report.earliestRetryAt).toBeNull();
 });
 
+test('shared pacing holds the earliest estimate even when a different row is due sooner', async () => {
+  const retryAt = new Date(now + 120000).toISOString();
+  const db = { query: jest.fn(async sql => ({ rows: sql.includes('FROM omdb_request_pacing')
+    ? [{ wait: 120, retry_at: retryAt }] : [config] })) };
+  const report = await summarizeOmdbRetryReadiness(db,
+    { rows: [item, { ...item, next_attempt_at: new Date(now + 1000) }] }, now);
+  expect(report.counts).toMatchObject({ provider_wait: 1, scheduled: 1, provider_ready: 0 });
+  expect(report.earliestRetryAt).toBe(retryAt); expect(report.quota.status).toBe('available');
+});
+
 test('OMDb uses its own reader and independent single-flight cache without constructing a web router', async () => {
   const query = jest.fn(async sql => ({ rows: sql.includes('FROM omdb_config') ? [config] : [] }));
   const database = { withTransaction: jest.fn(async fn => fn({ query })) }, createRouter = jest.fn();

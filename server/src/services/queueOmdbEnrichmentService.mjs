@@ -173,6 +173,11 @@ export class QueueOmdbEnrichmentService {
     }
 
     async handleError(payload, error) {
+        if (['OMDB_ADMISSION_WAIT', 'OMDB_ADMISSION_UNAVAILABLE'].includes(error.code)) {
+            const reason = error.code === 'OMDB_ADMISSION_WAIT' ? 'OMDb request pacing wait' : 'OMDb request admission unavailable';
+            await this.queueRetry(payload.itemId, 'omdb', reason, 6);
+            return;
+        }
         const isCircuitBlocked = error.code === 'CIRCUIT_BREAKER_OPEN' ||
             error.code === 'CIRCUIT_BREAKER_HALF_OPEN_THROTTLED' ||
             error.code === 'CIRCUIT_BREAKER_REJECTED';

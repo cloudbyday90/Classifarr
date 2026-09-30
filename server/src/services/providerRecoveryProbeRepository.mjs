@@ -7,6 +7,7 @@ import { probeDefinition, PROBE_CANDIDATES_SQL, PROBE_DEMAND_SQL } from './provi
 import { reserveProviderProbeQuota } from './providerRecoveryProbeQuota.mjs';
 import { normalizeProbeOutcome, providerProbeDelay } from './providerRecoveryProbePolicy.mjs';
 import { lockWebSearchProvider, recordWebSearchPacingDelay } from './webSearchPacingStore.mjs';
+import { recordOmdbPacingDelay, transferOmdbPacingGeneration } from './omdbPacingStore.mjs';
 
 async function selectConfiguration(client, candidate) {
   const definition = probeDefinition(candidate?.source);
@@ -49,10 +50,11 @@ export function createProviderRecoveryProbeRepository(db, { random = Math.random
           WHERE source=$1 AND config_id=$2 FOR UPDATE`, [candidate.source, config.id]);
         if (new Date(state.next_probe_at).getTime() > time ||
           (state.lease_until && new Date(state.lease_until).getTime() > time)) return null;
-        if (!await reserveProviderProbeQuota(client, candidate, config, time)) {
-          await client.query(`UPDATE provider_credential_probes SET next_probe_at=clock_timestamp()+interval '15 minutes',
+        const admission = await reserveProviderProbeQuota(client, candidate, config, time);
+        if (!admission.allowed) {
+          await client.query(`UPDATE provider_credential_probes SET next_probe_at=clock_timestamp()+($3::integer*interval '1 second'),
             last_outcome='quota_wait',lease_token=NULL,lease_until=NULL WHERE source=$1 AND config_id=$2`,
-          [candidate.source, config.id]);
+          [candidate.source, config.id, admission.waitSeconds ?? 900]);
           return null;
         }
         const token = randomUUID(), delay = providerProbeDelay(state.failures, 0, random);
@@ -78,6 +80,10 @@ export function createProviderRecoveryProbeRepository(db, { random = Math.random
         if (outcome.verified) {
           const recovered = await client.query(probeDefinition(claim.source).recover, [claim.id, claim.generation]);
           generation = recovered.rows[0].credential_generation;
+          if (claim.source === 'omdb') await transferOmdbPacingGeneration(client, claim.id, claim.generation, generation);
+        }
+        if (claim.source === 'omdb' && outcome.retryAfterMs > 0) {
+          await recordOmdbPacingDelay(client, { id: claim.id, generation }, Math.ceil(outcome.retryAfterMs / 1000));
         }
         if (claim.source !== 'omdb' && outcome.retryAfterMs > 0) {
           await lockWebSearchProvider(client, claim.provider_key);

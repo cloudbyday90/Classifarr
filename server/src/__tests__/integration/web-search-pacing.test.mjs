@@ -55,7 +55,7 @@ test('probe admission shares ordinary pacing and legacy Tavily stores generation
   expect(await db.withTransaction(async client => {
     const { rows: [row] } = await client.query('SELECT * FROM web_search_provider_config WHERE id=$1 FOR UPDATE', [config.id]);
     return reserveProviderProbeQuota(client, { source: 'web_search', provider_key: 'brave' }, row, Date.now());
-  })).toBe(false);
+  })).toMatchObject({ allowed: false });
   await db.query("INSERT INTO tavily_config(api_key,is_active) VALUES ('fixture',true)");
   const legacy = await storage().getProviderConfig('tavily', { maskSecrets: false });
   await reserve(legacy); await expire(); await storage().deferPacing('tavily', legacy.credentialContext, 120);

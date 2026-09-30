@@ -1,6 +1,7 @@
 import { isOmdbNotFoundMessage } from './omdbResponseClassifier.mjs';
 import { OMDbLimitReachedError } from './omdbQuota.mjs';
 import { isProviderCredentialRejection } from './providerCredentialRejection.mjs';
+import { createOmdbRetryCheckpoint, readOmdbRetryCheckpoint } from './omdbRetryCheckpoint.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
     return isOmdbNotFoundMessage(errorMessage);
@@ -41,13 +42,19 @@ export function buildOmdbFallbackReason(resultError) {
 }
 
 export async function enrichWithOmdb({ omdbService, logger }, item) {
+    let checkpoint = readOmdbRetryCheckpoint(item, item.omdb_lookup_checkpoint);
     try {
         let omdbResult = null;
-        if (item.imdb_id) {
-            omdbResult = await omdbService.getByIMDBId(item.imdb_id, undefined, { queueOwned: true });
+        if (item.imdb_id && !checkpoint) {
+            omdbResult = await omdbService.getByIMDBId(item.imdb_id, undefined, { queueOwned: true,
+                onNotFound: context => { checkpoint = createOmdbRetryCheckpoint(item, context); } });
         }
         if (!omdbResult && item.title) {
-            omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type, undefined, { queueOwned: true });
+            omdbResult = await omdbService.getByTitle(item.title, item.year, item.media_type, undefined, {
+                queueOwned: true, ...(checkpoint ? { expectedCredentialContext: {
+                    source: 'omdb', id: checkpoint.configId, generation: checkpoint.generation,
+                } } : {}),
+            });
         }
 
         if (omdbResult) {
@@ -56,11 +63,15 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
 
         return { success: false, error: 'OMDb not found' };
     } catch (error) {
+        if (['OMDB_ADMISSION_WAIT', 'OMDB_ADMISSION_UNAVAILABLE', 'OMDB_LOOKUP_RESTART'].includes(error.code)) {
+            return { success: false, providerAdmissionWait: true, retryAfterSeconds: error.retryAfterSeconds,
+                omdbCheckpoint: error.code === 'OMDB_LOOKUP_RESTART' ? null : checkpoint };
+        }
         if (isProviderCredentialRejection(error)) {
             return { success: false, credentialsRejected: true, error: 'provider_credentials_rejected' };
         }
         if (error instanceof OMDbLimitReachedError) {
-            return { success: false, deferUntilDailyReset: true, error: 'OMDb daily quota unavailable' };
+            return { success: false, deferUntilDailyReset: true, error: 'OMDb daily quota unavailable', omdbCheckpoint: checkpoint };
         }
         if (isTransientOmdbTransportError(error)) {
             logger.warn('OMDb enrichment transient error', {
@@ -72,6 +83,6 @@ export async function enrichWithOmdb({ omdbService, logger }, item) {
             logger.error('OMDb enrichment failed', { error: error.message, item: item.title });
         }
         return { success: false, error: error.message, transient: isTransientOmdbTransportError(error),
-            retryAfterSeconds: error.retryAfterSeconds };
+            retryAfterSeconds: error.retryAfterSeconds, omdbCheckpoint: checkpoint };
     }
 }
