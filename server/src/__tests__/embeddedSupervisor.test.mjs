@@ -135,6 +135,61 @@ test('database stop failure is never called clean', async () => {
   expect(f.events).not.toContainEqual(['database_stopped', undefined]);
 });
 
+test('maintenance must exit successfully before any application starts', async () => {
+  const f = fixture();
+  const job = deferred();
+  f.options.startMaintenance = jest.fn(() => ({ done: job.promise, signal: jest.fn() }));
+  const run = runEmbeddedSupervisor(f.options);
+  await tick();
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  job.resolve({ code: 0, signal: null });
+  await tick();
+  expect(f.options.startApplication).toHaveBeenCalledTimes(1);
+  f.processRef.emit('SIGTERM');
+  expect(await run).toBe(0);
+  expect(f.events).toContainEqual(['maintenance_completed', undefined]);
+});
+
+test.each([1, 75])('maintenance exit %s forbids runtime launch and stops database', async code => {
+  const f = fixture();
+  f.options.startMaintenance = () => ({ done: Promise.resolve({ code, signal: null }), signal: jest.fn() });
+  expect(await runEmbeddedSupervisor(f.options)).toBe(1);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+});
+
+test('cancellation during maintenance waits for confirmed exit, never resumes runtime', async () => {
+  const f = fixture();
+  const job = deferred();
+  const signal = jest.fn();
+  f.options.startMaintenance = () => ({ done: job.promise, signal });
+  const run = runEmbeddedSupervisor(f.options);
+  await tick();
+  f.processRef.emit('SIGTERM');
+  await tick();
+  expect(signal).toHaveBeenCalledWith('SIGTERM');
+  expect(f.database.stop).not.toHaveBeenCalled();
+  job.resolve({ code: null, signal: 'SIGTERM' });
+  expect(await run).toBe(0);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+});
+
+test.each([true, false])('maintenance timeout forces confirmed cleanup=%s', async joined => {
+  const f = fixture();
+  const signal = jest.fn();
+  f.options.startMaintenance = () => ({ done: new Promise(() => {}), signal });
+  f.options.waitForExit = jest.fn().mockRejectedValueOnce(new Error('deadline'))
+    .mockRejectedValueOnce(new Error('drain'));
+  if (joined) f.options.waitForExit.mockResolvedValueOnce({ code: null, signal: 'SIGKILL' });
+  else f.options.waitForExit.mockRejectedValueOnce(new Error('not_joined'));
+  expect(await runEmbeddedSupervisor(f.options)).toBe(1);
+  expect(f.options.waitForExit.mock.calls.map(call => call[1])).toEqual([200_000, 2000, 2000]);
+  expect(signal.mock.calls).toEqual([['SIGTERM'], ['SIGKILL']]);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.database.stop).toHaveBeenCalledTimes(joined ? 1 : 0);
+});
+
 test('child error after spawn is not proof of exit; output and arguments are fixed', async () => {
   const child = Object.assign(new EventEmitter(), { pid: 55, kill: jest.fn() });
   const spawnFn = jest.fn(() => child);

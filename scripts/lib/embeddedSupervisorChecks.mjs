@@ -3,6 +3,17 @@ import assert from 'node:assert/strict';
 
 // Fixed synthetic SQL/process probes; never connected to an installation project.
 const sentinel = "CREATE TABLE supervisor_sentinel(value text); INSERT INTO supervisor_sentinel VALUES ('preserved');";
+const immutableImageProbe = `import assert from 'node:assert/strict';
+import { open, stat } from 'node:fs/promises';
+for (const path of ['/app', '/app/src', '/app/node_modules', '/app/database', '/app/scripts/lib']) {
+  const info = await stat(path); assert.equal(info.uid, 0); assert.equal(info.mode & 0o022, 0);
+}
+for (const path of ['/app/src/index.mjs', '/app/src/bootstrap/embeddedMaintenanceChild.mjs',
+  '/app/node_modules/pg/package.json', '/app/docker-entrypoint.sh', '/usr/lib/postgresql18/vector.so']) {
+  const info = await stat(path); assert.equal(info.uid, 0); assert.equal(info.mode & 0o022, 0);
+  await assert.rejects(async () => { const file = await open(path, 'r+'); await file.close(); },
+    error => ['EACCES', 'EPERM', 'EROFS'].includes(error.code));
+}`;
 const signalApplication = signal => `import { readdirSync, readFileSync } from 'node:fs';
 const ids = readdirSync('/proc').filter(id => /^[0-9]+$/.test(id)).filter(id => {
   try { return readFileSync('/proc/' + id + '/cmdline', 'utf8').split('\\0')[1] === '/app/src/index.mjs'; }
@@ -33,13 +44,17 @@ export function checkEmbeddedSupervisor(command, report = value => process.stdou
     assert.match(control, /Database cluster state:\s+shut down\s*\n/);
   };
   const up = service => command(['up', '--detach', '--no-build', '--wait', '--wait-timeout', '180', service], 240_000);
-  for (const service of ['runtime', 'custom']) {
+  for (const service of ['runtime', 'custom', 'unraid']) {
     up(service);
-    const expectedUid = service === 'custom' ? '2345' : '1000';
+    const expectedUid = service === 'custom' ? '2345' : service === 'unraid' ? '99' : '1000';
+    const expectedGid = service === 'unraid' ? '100' : expectedUid;
     const processes = capture(['exec', '-T', service, 'ps', '-o', 'user,args']);
     assert.match(processes, /runEmbeddedSupervisor.mjs --run/);
     const identity = capture(['exec', '-T', service, 'stat', '-c', '%u', '/app/data/postgres/postmaster.pid']);
     assert.equal(identity.trim(), expectedUid);
+    command(['exec', '-T', '--user', `${expectedUid}:${expectedGid}`, service,
+      'node', '--input-type=module', '-e', immutableImageProbe]);
+    report(`PASS ${service}: runtime cannot overwrite image code or PostgreSQL extension binaries`);
     query(service, sentinel);
     report(`PASS ${service}: fresh startup; database UID ${expectedUid}`);
     const stopStarted = performance.now();

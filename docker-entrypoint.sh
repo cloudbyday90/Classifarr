@@ -38,67 +38,11 @@ echo "PGID: $PGID"
 echo "UMASK: $UMASK"
 echo "Running as UID: $(id -u) (root: $IS_ROOT)"
 
-# Set umask
+# Validate and read back account setup before any data-directory ownership write.
+# Non-root saved templates keep their actual host-selected identity.
+export PUID PGID UMASK
+node /app/src/scripts/provisionEmbeddedIdentity.mjs --apply
 umask "$UMASK"
-
-# Create or modify the classifarr group/user (root only)
-if [ "$IS_ROOT" = "true" ]; then
-    # Create or modify the classifarr group
-    if ! getent group classifarr >/dev/null; then
-        # Check if a group with target GID already exists
-        EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
-        if [ -n "$EXISTING_GROUP" ]; then
-            echo "GID $PGID already used by group '$EXISTING_GROUP', will use that group"
-            # Create classifarr user that will be added to the existing group later
-        else
-            echo "Creating classifarr group with GID $PGID..."
-            addgroup -g "$PGID" classifarr
-        fi
-    else
-        # Modify existing classifarr group if GID differs
-        CURRENT_GID=$(getent group classifarr | cut -d: -f3)
-        if [ "$CURRENT_GID" != "$PGID" ]; then
-            # Check if target GID is already in use
-            EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
-            if [ -n "$EXISTING_GROUP" ] && [ "$EXISTING_GROUP" != "classifarr" ]; then
-                echo "GID $PGID already used by group '$EXISTING_GROUP', will use that group"
-                # Delete classifarr group since we'll use the existing one
-                delgroup classifarr 2>/dev/null || true
-            else
-                echo "Modifying classifarr group GID from $CURRENT_GID to $PGID..."
-                groupmod -g "$PGID" classifarr 2>/dev/null || echo "Could not modify GID, continuing..."
-            fi
-        fi
-    fi
-
-    # Determine which group to use for classifarr user
-    TARGET_GROUP=$(getent group "$PGID" | cut -d: -f1)
-    if [ -z "$TARGET_GROUP" ]; then
-        TARGET_GROUP="classifarr"
-    fi
-    echo "Using group: $TARGET_GROUP (GID: $PGID)"
-
-    # Create or modify the classifarr user
-    if ! id classifarr >/dev/null 2>&1; then
-        echo "Creating classifarr user with UID $PUID in group $TARGET_GROUP..."
-        adduser -u "$PUID" -G "$TARGET_GROUP" -s /bin/sh -D classifarr
-    else
-        # Modify existing user if UID differs
-        CURRENT_UID=$(id -u classifarr)
-        if [ "$CURRENT_UID" != "$PUID" ]; then
-            echo "Modifying classifarr user UID from $CURRENT_UID to $PUID..."
-            usermod -u "$PUID" classifarr 2>/dev/null || echo "Could not modify UID, continuing..."
-        fi
-        # Ensure user's primary group is correct
-        CURRENT_PRIMARY_GID=$(id -g classifarr)
-        if [ "$CURRENT_PRIMARY_GID" != "$PGID" ]; then
-            echo "Setting $TARGET_GROUP as primary group for classifarr user..."
-            usermod -g "$TARGET_GROUP" classifarr 2>/dev/null || echo "Could not modify group, continuing..."
-        fi
-    fi
-else
-    echo "Running as non-root: skipping user/group updates and ownership fixes."
-fi
 
 # Ensure directories exist
 mkdir -p "$PG_DATA" "$PG_RUN" "$DATA_DIR/logs"
@@ -106,7 +50,7 @@ mkdir -p "$PG_DATA" "$PG_RUN" "$DATA_DIR/logs"
 # Determine app version for upgrade-aware one-time tasks
 APP_VERSION="unknown"
 if command -v node >/dev/null 2>&1; then
-    APP_VERSION=$(node -p "require('/app/package.json').version" 2>/dev/null || echo "unknown")
+    APP_VERSION=$(node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('/app/package.json', 'utf8')).version)" 2>/dev/null || echo "unknown")
 fi
 PREVIOUS_VERSION=""
 if [ -f "$VERSION_FILE" ]; then

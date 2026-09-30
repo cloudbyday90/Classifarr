@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Protect packaged application and database extension code from runtime writes;
+  validate and verify embedded account setup before changing data ownership.
+  Add bounded supervisor maintenance handoff with separate-identity restore tests
+  and Unraid startup coverage, without changing existing deployment credentials.
 - Add bounded one-shot configuration restore maintenance with encrypted-backup
   compatibility, worker exclusion, interruption quarantine and explicit recovery.
   Avoid unnecessary application-secret initialization and overlapping restore

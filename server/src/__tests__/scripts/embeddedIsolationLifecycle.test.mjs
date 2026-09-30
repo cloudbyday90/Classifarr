@@ -46,7 +46,7 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(5);
+  expect(result.checks).toHaveLength(6);
   const stops = events.flatMap((value, index) => value === 'stop_runtime' ? [index] : []);
   const dump = events.findIndex(value => value.startsWith('postgres:pg_dump:'));
   const databaseStops = events.flatMap((value, index) => value.startsWith('postgres:pg_ctl:') && value.endsWith(' stop') ? [index] : []);

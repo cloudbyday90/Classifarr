@@ -6,6 +6,10 @@ export function startEmbeddedApplication({ spawnFn = spawn, environment = proces
   const child = spawnFn(process.execPath, ['/app/src/index.mjs'], {
     cwd: '/app', env: environment, shell: false, stdio: ['ignore', 'inherit', 'inherit'],
   });
+  return observeEmbeddedChild(child);
+}
+
+export function observeEmbeddedChild(child) {
   let exited = false;
   let failed = false;
   const done = new Promise(resolve => {

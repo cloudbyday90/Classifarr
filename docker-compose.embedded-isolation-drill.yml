@@ -45,6 +45,17 @@ services:
       PGID: '2345'
     volumes:
       - custom-data:/app/data
+  unraid:
+    <<: *runtime
+    user: '0:0'
+    read_only: false
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1024
+      PUID: '99'
+      PGID: '100'
+    volumes:
+      - unraid-data:/app/data
   drill:
     build:
       context: .
@@ -75,5 +86,6 @@ services:
 volumes:
   runtime-data:
   custom-data:
+  unraid-data:
   rehearsal-state:
   app-data:

@@ -13,7 +13,7 @@ function fixture() {
     if (action === 'logs') return '{"status":"database_stopped"}';
     if (action === 'run') return 'Database cluster state: shut down\n';
     if (action === 'exec' && args[3] === 'ps') return 'node src/scripts/runEmbeddedSupervisor.mjs --run';
-    if (action === 'exec' && args[3] === 'stat') return args[2] === 'runtime' ? '1000' : '2345';
+    if (action === 'exec' && args[3] === 'stat') return args[2] === 'runtime' ? '1000' : args[2] === 'unraid' ? '99' : '2345';
     if (action === 'exec' && args[3] === 'cat') return forced && args[2] === 'runtime' ? 'automatic recovery in progress' : '';
     if (action === 'exec' && args[3] === 'psql') return 'preserved';
     if (action === 'exec' && args[3] === 'node') {

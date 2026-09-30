@@ -17,7 +17,7 @@ async function watchDatabase(database, signal, requestStop, delay) {
 /** No restart or maintenance loop. Docker owns restart policy; this owns drain order. */
 export async function runEmbeddedSupervisor({
   database, startApplication, processRef = process, report = () => {},
-  delay = sleep, waitForExit = waitForEmbeddedExit,
+  delay = sleep, waitForExit = waitForEmbeddedExit, startMaintenance = null,
 }) {
   const monitor = new AbortController();
   let request;
@@ -29,6 +29,8 @@ export async function runEmbeddedSupervisor({
   processRef.on('SIGTERM', onTerm);
   processRef.on('SIGINT', onInt);
   let application;
+  let maintenance;
+  let maintenanceStopped = true;
   let watching;
   let adopted = false;
   let failed = false;
@@ -36,6 +38,20 @@ export async function runEmbeddedSupervisor({
   try {
     await database.adopt();
     adopted = true;
+    if (!request && startMaintenance) {
+      maintenance = startMaintenance();
+      maintenanceStopped = false;
+      report('maintenance_started');
+      // A host signal cancels the handoff. No normal process exists in this phase.
+      const result = await waitForExit(Promise.race([
+        maintenance.done, stopped.then(() => null),
+      ]), 200_000);
+      if (result) {
+        maintenanceStopped = true;
+        if (result.code !== 0 || result.signal !== null) throw new Error('maintenance_failed');
+        report('maintenance_completed');
+      }
+    }
     if (!request) {
       application = startApplication();
       applicationStopped = false;
@@ -51,6 +67,20 @@ export async function runEmbeddedSupervisor({
     report('startup_failed');
   } finally {
     monitor.abort();
+    if (maintenance && !maintenanceStopped) {
+      try {
+        maintenance.signal('SIGTERM');
+        await waitForExit(maintenance.done, 2000);
+        maintenanceStopped = true;
+      } catch {
+        failed = true;
+        try {
+          maintenance.signal('SIGKILL');
+          await waitForExit(maintenance.done, 2000);
+          maintenanceStopped = true;
+        } catch { report('maintenance_exit_unconfirmed'); }
+      }
+    }
     if (application) {
       try {
         application.signal('SIGTERM');
@@ -71,7 +101,7 @@ export async function runEmbeddedSupervisor({
     // Drain immediately; a pending status probe must not consume the host's
     // shutdown window before SIGTERM reaches Node. Join it before stopping PG.
     await watching;
-    if (adopted && applicationStopped) {
+    if (adopted && applicationStopped && maintenanceStopped) {
       try {
         await database.stop();
         report('database_stopped');

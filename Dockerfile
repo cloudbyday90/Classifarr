@@ -171,28 +171,24 @@ RUN deluser --remove-home node 2>/dev/null || true && \
     addgroup -g 1000 classifarr && \
     adduser -u 1000 -G classifarr -s /bin/sh -D classifarr
 
-# Allow the non-root classifarr user to overwrite vector.so at runtime when
-# the PostgreSQL library path is writable. Some runtimes mount /usr read-only,
-# so the entrypoint also needs to tolerate keeping the preinstalled variant.
-RUN PG18_CONFIG="/usr/libexec/postgresql18/pg_config" && \
-    PKGLIBDIR="$(${PG18_CONFIG} --pkglibdir)" && \
-    chown classifarr:classifarr "${PKGLIBDIR}"/vector*.so
+# Extension binaries remain root-owned. Runtime selection uses the existing
+# staging path or the packaged generic variant, never writable image binaries.
 
 WORKDIR /app
 
 # Copy built artifacts from builder stages
-COPY --from=backend-builder --chown=classifarr:classifarr /build/server/node_modules ./node_modules
-COPY --chown=classifarr:classifarr server/src ./src
-COPY --chown=classifarr:classifarr server/package.json ./
-COPY --from=frontend-builder --chown=classifarr:classifarr /build/client/dist ./public
+COPY --from=backend-builder --chown=root:root /build/server/node_modules ./node_modules
+COPY --chown=root:root server/src ./src
+COPY --chown=root:root server/package.json ./
+COPY --from=frontend-builder --chown=root:root /build/client/dist ./public
 
 # Copy database initialization files
-COPY --chown=classifarr:classifarr database/ ./database/
-COPY --chown=classifarr:classifarr scripts/lib ./scripts/lib
+COPY --chown=root:root database/ ./database/
+COPY --chown=root:root scripts/lib ./scripts/lib
 
 # Copy entrypoint script
-COPY --chown=classifarr:classifarr docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+COPY --chown=root:root docker-entrypoint.sh /app/
+RUN chmod -R go-w /app && chmod +x /app/docker-entrypoint.sh
 
 # Create directories for PostgreSQL data and runtime
 RUN mkdir -p /app/data/postgres /run/postgresql && \

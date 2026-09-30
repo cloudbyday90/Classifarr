@@ -18,7 +18,7 @@ export function runEmbeddedIsolationCompose({ run = spawnSync, random = randomBy
   for (const args of [
     ['ps', '-aq', '--filter', label], ['volume', 'ls', '-q', '--filter', label],
     ['network', 'ls', '-q', '--filter', label],
-    ...['drill', 'runtime', 'custom'].map(service => ['image', 'ls', '-q', `${project}-${service}`]),
+    ...['drill', 'runtime', 'custom', 'unraid'].map(service => ['image', 'ls', '-q', `${project}-${service}`]),
   ]) {
     let inventory;
     try { inventory = run('docker', args, { ...options, encoding: 'utf8' }); }
@@ -38,7 +38,7 @@ export function runEmbeddedIsolationCompose({ run = spawnSync, random = randomBy
   };
   command(['config', '--quiet']);
   try {
-    command(['build', 'drill', 'runtime', 'custom'], 1_200_000);
+    command(['build', 'drill', 'runtime', 'custom', 'unraid'], 1_200_000);
     command(['run', '--rm', '--no-deps', 'drill'], 600_000);
     verify(command);
   } finally {
