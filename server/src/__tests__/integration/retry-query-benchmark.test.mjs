@@ -10,7 +10,7 @@ test('real PostgreSQL compares all distributions, providers, page shapes and cla
   const db = await getPool().connect();
   try {
     const report = await runRetryQueryMeasurements(db, { size: 300 });
-    expect(report.measurements).toHaveLength(240);
+    expect(report.measurements).toHaveLength(432);
     expect(report.measurements.every(result => result.exactIdsVerified && result.repetitions.length === 3)).toBe(true);
     expect(report).toMatchObject({ rollbackVerified: true, providerRequests: 0, productionChanges: 0 });
     expect(JSON.stringify(report)).not.toMatch(/synthetic-only|Synthetic item|claim_token|Filter|Index Cond/);

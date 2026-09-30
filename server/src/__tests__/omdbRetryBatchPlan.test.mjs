@@ -22,7 +22,10 @@ test('caps the candidate snapshot at 50, offers each once and coalesces continua
   expect(f.scheduleProcessing).toHaveBeenCalledTimes(1);
   expect(f.scheduleProcessing).toHaveBeenCalledWith(1000);
   expect(await plan.next()).toBeNull();
-  expect(f.db.query.mock.calls.every(([sql]) => sql.startsWith('SELECT'))).toBe(true);
+  for (const [sql] of f.db.query.mock.calls) {
+    expect(sql).toMatch(/^(SELECT|WITH retry_contexts)/);
+    expect(sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP)\b/i);
+  }
 });
 
 test('a shared pacing wait withholds claims and coalesces one bounded wake', async () => {
@@ -111,6 +114,9 @@ test('completed previous-day usage is only a read-only admission hint', async ()
   const f = fixture(1, { ...availableOmdbQuotaFixture(), requests_today: 1000, last_reset_date: '2026-09-28' });
   const plan = await prepareOmdbRetryBatch(f.deps, 50);
   expect(await plan.next()).toBe(1); plan.finish();
-  expect(f.db.query.mock.calls.every(([sql]) => sql.startsWith('SELECT'))).toBe(true);
+  for (const [sql] of f.db.query.mock.calls) {
+    expect(sql).toMatch(/^(SELECT|WITH retry_contexts)/);
+    expect(sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|TRUNCATE|ALTER|DROP)\b/i);
+  }
   expect(f.scheduleProcessing).not.toHaveBeenCalled();
 });

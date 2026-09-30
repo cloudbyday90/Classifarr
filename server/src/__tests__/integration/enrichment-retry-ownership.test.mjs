@@ -7,6 +7,7 @@ import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createHandoffFixture } from '../helpers/sourceRecoveryHandoffFixture.mjs';
 import { EnrichmentRetryService } from '../../services/enrichmentRetryService.mjs';
 import { claimEnrichmentRetry, createEnrichmentRetryWriteGuard } from '../../services/enrichmentRetryClaimService.mjs';
+import { readEnrichmentRetryPage } from '../../services/enrichmentRetryCandidates.mjs';
 import { persistEnrichmentRetryResult } from '../../services/enrichmentRetryResultPersistence.mjs';
 import { seedOmdbQuotaFixture } from '../helpers/omdbQuotaFixture.mjs';
 
@@ -39,6 +40,25 @@ test('competing consumers receive at most one current claim', async () => {
   const results = await Promise.all([claim(), claim(), claim()]);
   expect(results.filter(Boolean)).toHaveLength(1);
   expect((await rows())[0]).toMatchObject({ status: 'processing', claim_token: results.find(Boolean).claim_token });
+});
+
+test('two workers with the same read-only page hint receive only one ID-targeted claim', async () => {
+  const [[left],[right]] = await Promise.all([readEnrichmentRetryPage(db,'omdb',null,1),readEnrichmentRetryPage(db,'omdb',null,1)]);
+  expect(left.queue_id).toBe(right.queue_id);
+  const results=await Promise.all([left,right].map(item=>claimEnrichmentRetry(db,'omdb',[],item.queue_id)));
+  expect(results.filter(Boolean)).toHaveLength(1);
+  expect((await rows())[0].claim_token).toBe(results.find(Boolean).claim_token);
+});
+
+test('candidate planning executes inside a database-enforced read-only transaction', async () => {
+  const before = await rows();
+  await db.withTransaction(async client => {
+    await client.query('SET TRANSACTION READ ONLY');
+    const page = await readEnrichmentRetryPage(client,'omdb',null,50);
+    expect(page).toHaveLength(1);
+    expect(page[0].queue_id).toBe(before[0].id);
+  });
+  expect(await rows()).toEqual(before);
 });
 
 test.each(['expired', 'replaced', 'cancelled', 'missing'])('%s claim cannot save retry evidence or status', async state => {

@@ -17,25 +17,25 @@ export async function runRetryQueryMeasurements(db, { size = 100000 } = {}) {
       await db.query("SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='2s'; SET LOCAL idle_in_transaction_session_timeout='30s'; SET LOCAL transaction_timeout='4min'");
       schema = await installRetryBenchmarkSchema(db);
       const rowCount = await seedRetryBenchmark(db, scenario, size);
-      const after = Math.floor(size*0.9);
-      const cursor = { priority: 5, queue_id: after,
-        retry_created_at: new Date(Date.UTC(2026,0,1) + after*1000).toISOString() };
       const queries = [];
       for (const type of RETRY_BENCHMARK_TYPES) {
         const candidateId = expectedRetryIds(scenario, size, type, 0, 1)[0] ?? 1;
-        for (const operation of ['page', 'deep_page', 'readiness', 'claim', 'claim_by_id']) {
+        for (const operation of ['page', 'middle_page', 'deep_page', 'baseline_page', 'baseline_middle_page', 'baseline_deep_page', 'readiness', 'claim', 'claim_by_id']) {
+          const after = operation.includes('deep_page') ? Math.floor(size*0.9) : operation.includes('middle_page') ? Math.floor(size*0.5) : 0;
+          const cursor = after ? { priority: 5, queue_id: after,
+            retry_created_at: new Date(Date.UTC(2026,0,1) + after*1000).toISOString() } : null;
           queries.push({ type, operation, query: await captureRetryBenchmarkQuery(operation, type,
-            operation === 'deep_page' ? cursor : null, candidateId) });
+            cursor, candidateId), after });
         }
       }
       let indexBytes = 0;
       for (const strategy of ['current', 'pending_order_index']) {
         if (strategy === 'pending_order_index') indexBytes = await installRetryBenchmarkCandidateIndex(db);
-        for (const { type, operation, query } of queries) {
+        for (const { type, operation, query, after } of queries) {
           const actual = await readRetryQueryIds(db, query);
           const expected = operation === 'readiness'
             ? expectedRetryReadinessIds(scenario, size, type)
-            : expectedRetryIds(scenario, size, type, operation === 'deep_page' ? after : 0, operation.startsWith('claim') ? 1 : 50);
+            : expectedRetryIds(scenario, size, type, after, operation.startsWith('claim') ? 1 : 50);
           if (!isDeepStrictEqual(actual, expected)) throw new Error(`Retry benchmark correctness mismatch: ${scenario}/${type}/${operation}`);
           // Warmed repetitions; do not label these as cold-cache or latency SLO evidence.
           const repetitions = [];
@@ -50,7 +50,7 @@ export async function runRetryQueryMeasurements(db, { size = 100000 } = {}) {
   }
   const { rows: [remaining] } = await db.query("SELECT to_regnamespace('retry_query_benchmark') IS NULL AS clean");
   if (remaining.clean !== true) throw new Error('Retry benchmark schema rollback failed');
-  return { version: 1, kind: 'synthetic_retry_query_comparison', schema, settings, measurements, rollbackVerified: true,
+  return { version: 2, kind: 'synthetic_retry_query_comparison', schema, settings, measurements, rollbackVerified: true,
     providerRequests: 0, productionChanges: 0,
     limitations: ['warm_cache', 'synthetic_distributions', 'no_concurrent_writers', 'foreign_keys_and_triggers_not_installed',
       'not_provider_admission_or_http_latency', 'ordered_index_is_offline_only'] };

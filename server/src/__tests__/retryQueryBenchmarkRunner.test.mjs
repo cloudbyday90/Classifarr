@@ -25,7 +25,7 @@ beforeEach(() => {
   measure.mockResolvedValue({ executionMs: 1 });
   readIds.mockImplementation(async (_db, { sql, params }) => {
     if (sql.startsWith('WITH pending')) return expectedRetryReadinessIds(scenario,300,params[0]);
-    return expectedRetryIds(scenario,300,params[0], sql.startsWith('SELECT') && params[4] !== null ? 270 : 0,
+    return expectedRetryIds(scenario,300,params[0], (sql.startsWith('SELECT') || sql.startsWith('WITH retry_contexts')) ? params[6] ?? 0 : 0,
       sql.startsWith('WITH candidate') ? 1 : 50);
   });
 });
@@ -33,9 +33,9 @@ beforeEach(() => {
 test('compares both strategies and all query paths using one rolled-back transaction per scenario', async () => {
   const store = db();
   const report = await runRetryQueryMeasurements(store, { size: 300 });
-  expect(report.measurements).toHaveLength(240);
+  expect(report.measurements).toHaveLength(432);
   expect(report.measurements.every(item => item.repetitions.length === 3 && item.exactIdsVerified)).toBe(true);
-  expect(measure).toHaveBeenCalledTimes(720);
+  expect(measure).toHaveBeenCalledTimes(1296);
   expect(index).toHaveBeenCalledTimes(8);
   expect(store.query.mock.calls.filter(([sql]) => sql === 'ROLLBACK')).toHaveLength(8);
   expect(report).toMatchObject({ rollbackVerified: true, providerRequests: 0, productionChanges: 0 });

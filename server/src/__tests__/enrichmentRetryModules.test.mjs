@@ -331,7 +331,7 @@ describe('provider-neutral retry processing', () => {
     };
     const deps = createProcessingDeps({
       db: createDb((sql) => (
-        String(sql).includes('JOIN media_server_items')
+        (String(sql).startsWith('WITH retry_contexts') || String(sql).includes('JOIN media_server_items'))
           ? { rows: [item], rowCount: 1 }
           : { rows: [], rowCount: 1 }
       )),
@@ -357,7 +357,7 @@ describe('provider-neutral retry processing', () => {
     };
     const deps = createProcessingDeps({
       db: createDb((sql) => (
-        String(sql).includes('JOIN media_server_items')
+        (String(sql).startsWith('WITH retry_contexts') || String(sql).includes('JOIN media_server_items'))
           ? { rows: [item], rowCount: 1 }
           : { rows: [], rowCount: 1 }
       )),
@@ -388,7 +388,7 @@ describe('provider-neutral retry processing', () => {
     const queueForRetry = jest.fn().mockResolvedValue();
     const deps = createProcessingDeps({
       db: createDb((sql) => (
-        String(sql).includes('JOIN media_server_items')
+        (String(sql).startsWith('WITH retry_contexts') || String(sql).includes('JOIN media_server_items'))
           ? { rows: [item], rowCount: 1 }
           : { rows: [{ id: 10 }], rowCount: 1 }
       )),
@@ -415,7 +415,7 @@ describe('provider-neutral retry processing', () => {
     };
     const deps = createProcessingDeps({
       db: createDb((sql) => (
-        String(sql).includes('JOIN media_server_items')
+        (String(sql).startsWith('WITH retry_contexts') || String(sql).includes('JOIN media_server_items'))
           ? { rows: [item], rowCount: 1 }
           : { rows: [], rowCount: 1 }
       )),

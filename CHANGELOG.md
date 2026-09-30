@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refactor enrichment retry pages with statement-local provider context and
+  exact source-conflict lookups. Preserve claim and provider
+  safeguards, fix nullable-timestamp pagination, and compare query costs against
+  the previous shape in isolated PostgreSQL benchmarks.
 - Add an isolated PostgreSQL retry-query benchmark with representative backlog
   scenarios, correctness checks and rollback-verified claim measurements. Compare
   index costs before changing production; leave scheduling and library data untouched.

@@ -91,6 +91,11 @@ no eligible random PR to implement. No closed PR was substituted or PR merged.
 
 ## Next component
 
+September 30 follow-up: [candidate selection outcome](retry-candidate-selection-outcome.md)
+records the implementation and remaining waiting-backlog work. The original
+acceptance targets below motivated that work; the split-deadline experiment was
+rejected after broader measurements exposed a recovery-head regression.
+
 Refactor **retry candidate selection**, keeping ID-targeted claims authoritative:
 
 1. Make the cursor predicate and ordering index-compatible, including nullable

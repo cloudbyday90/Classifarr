@@ -63,7 +63,7 @@ function configureRetryDb(db, { pendingRows = [] } = {}) {
   installRetryClaimFixture(db, async (sql) => {
     const text = String(sql);
     if (text.includes('FROM omdb_config')) return { rows: [availableOmdbQuotaFixture()] };
-    if (text.includes('FROM enrichment_retry_queue erq') && text.includes('JOIN media_server_items')) {
+    if (text.startsWith('WITH retry_contexts') || (text.includes('FROM enrichment_retry_queue erq') && text.includes('JOIN media_server_items'))) {
       return { rows: pendingRows, rowCount: pendingRows.length };
     }
     if (text.includes('SELECT') && text.includes('COUNT(*) as count')) {

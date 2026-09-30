@@ -4,6 +4,13 @@ Research and implementation: September 29, 2026. Scope: the measurable follow-up
 to [credential-scoped retry waits](credential-scoped-retry-wait-outcome.md).
 This is an offline engineering tool, not another scheduled service.
 
+September 30 extension: report version 2 adds middle-page and pre-refactor page
+shape comparisons, producing 432 combinations / 1,296 EXPLAIN runs. The baseline
+shares current authority predicates; the independent fixture oracle still checks
+every result. See [candidate selection design](retry-candidate-selection-design.md)
+for the production refactor and rejected query experiments. Original September 29
+measurements remain historical evidence, not measurements of the new query.
+
 ## Decision
 
 Measure the actual parameterized production page, readiness and claim queries

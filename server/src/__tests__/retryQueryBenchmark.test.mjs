@@ -9,7 +9,7 @@ import { runRetryQueryBenchmark } from '../scripts/runRetryQueryBenchmark.mjs';
 const scoped = () => ({ query: jest.fn(async sql => ({ rows: sql.startsWith('SELECT current_schema()')
   ? [{ name: 'retry_query_benchmark', installed: true }] : [] })) });
 
-test.each(['page', 'deep_page', 'readiness', 'claim', 'claim_by_id'])('captures the real %s query and parameters without executing it', async operation => {
+test.each(['page', 'middle_page', 'deep_page', 'baseline_page', 'baseline_middle_page', 'baseline_deep_page', 'readiness', 'claim', 'claim_by_id'])('captures the real %s query and parameters without executing it', async operation => {
   const query = await captureRetryBenchmarkQuery(operation, 'omdb', { priority: 5, queue_id: 90, retry_created_at: '2026-01-01' }, 99);
   expect(query.sql).toContain('enrichment_retry_queue');
   expect(query.params[0]).toBe('omdb');
