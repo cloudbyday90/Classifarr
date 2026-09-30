@@ -13,6 +13,18 @@
   ],
   "reviews": [
     {
+      "id": "missing_ai_readiness_backfill",
+      "classification": "separately_coordinated",
+      "reason": "Scheduler-owned missing-result sweep uses read-only ingestion/backfill readiness and local resource admission before a fixed media-free saved-Ollama probe. Session ownership serializes automatic attempts; bounded settings-row persistence rechecks revision/fingerprint and never overwrites an already-recorded manual result. It writes capability evidence and aggregate history, not inventory, source ownership or routing.",
+      "followUp": "Keep real PostgreSQL competition, manual-result/configuration races, restart, fresh setup and incomplete-ingestion tests. Readiness is a point-in-time gate, not a lock on future ingestion or remote model/GPU work. Existing failed/expired evidence requires explicit testing. A crash can repeat the idempotent probe before commit; no exactly-once inference or historical external-writer compatibility is claimed."
+    },
+    {
+      "id": "isolated_retry_resource_coload",
+      "classification": "separately_coordinated",
+      "reason": "Offline mixed-workload study only. The guarded CLI runs in a fresh owned internal-network Compose project; retry seeding independently checks the isolated environment and empty retry table. It reads existing synthetic inventory, inserts bounded retry fixtures and rotates exact synthetic credentials. Production page/claim queries retain authority checks; each claim is rolled back in a bounded savepoint and queue fields are compared with the initial snapshot. No provider HTTP, result persistence, live data import or source-ownership takeover is performed.",
+      "followUp": "Keep environment refusal, actual-schema rollback/credential-trigger tests, admission pressure, joined non-overlapping loops and versioned aggregate receipt coverage. This service-driven 60-row retry exercise is not production scheduler timing, provider quota admission, completed enrichment, large-backlog capacity or permission for external writers. Preserve unresolved classifications elsewhere."
+    },
+    {
       "id": "retry_candidate_page_selection",
       "classification": "separately_coordinated",
       "reason": "Read-only page selection retains the shared exact-deadline credential-recovery expression, materializes only secret-free provider context within one statement, and probes source conflicts by the complete source identity. A queue-led lateral primary-key lookup prevents inventory-first plans. Shared policy preserves attempts, activation, music exclusion, metadata, monthly waits, rejected credentials and dependency cooldowns. Nullable timestamp cursors preserve PostgreSQL order and microseconds. Atomic ID-targeted claims and result source fencing remain authoritative.",
@@ -123,7 +135,7 @@
     {
       "id": "ingestion_readiness",
       "classification": "separately_coordinated",
-      "reason": "Read-only ingestion predicates, status and readiness expose pending legacy adoption and unfinished markers. Watchdog selection never grants ownership; MediaSync revalidates under its session lock.",
+      "reason": "Read-only ingestion predicates, status and readiness expose pending legacy adoption and unfinished markers. Capability backfill may omit only the RAG-enabled requirement; active supported inventory, ingestion ownership, unfinished handoff and queued-work checks remain identical. Watchdog selection never grants ownership; MediaSync revalidates under its session lock.",
       "followUp": "Keep populated legacy adoption, hidden foreign markers, disabled configuration, first full replay and post-completion exclusion covered by real PostgreSQL tests. Read-side eligibility is not proof that historical external writers stopped."
     },
     {
@@ -164,6 +176,12 @@
     }
   ],
   "entries": [
+    {"path":"server/src/scripts/resourceStudyRetryFixture.mjs","digest":"b53d58f5e6555586bbf9323ed7b60ddb68ac134add64cf8f7b2f843bd637a1e7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_retry_resource_coload"},
+    {"path":"server/src/scripts/resourceStudyRetryLoad.mjs","digest":"80b483e349c9b49bdc2444ae71e3f3cf3bb73244d24103d927bbfc6d3db51e7e","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"isolated_retry_resource_coload"},
+    {"path":"server/src/scripts/resourceStudyWorkload.mjs","digest":"c5e00d860089e2574d9a4c8ef60db1e9ffb0ef152179a56e5780cea5284092a5","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_retry_resource_coload"},
+    {"path":"server/src/services/ollamaReadinessBackfill.mjs","digest":"8175ba7c07ecde3121e3e036426a8ba16d4841c2c865828bc1bc60ac6d49e24d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},
+    {"path":"server/src/services/ollamaReadinessBackfillScheduler.mjs","digest":"ecc1347473ed5fd795b854cb5c2411766e0da6f09346300d000b473d25066994","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},
+    {"path":"server/src/services/ollamaVerificationCapabilityRepository.mjs","digest":"8d5a5506e464db1e0df7a4c63c59878c47f2662a3973d1db735cb9b4d97e0619","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"missing_ai_readiness_backfill"},
     {"path":"server/src/scripts/retryQueryBenchmark/dispatch.mjs","digest":"acbe199c1dafc15fda23f0aa51d166f92c049ff4d9b9348357ed092d3db9ca3d","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"offline_retry_query_benchmark"},
     {"path":"server/src/services/enrichmentRetryDispatchCandidate.mjs","digest":"bc40268283015f230fd9838148ff03ecdf0a004579c6cdc332da5e6b464ffb6e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"retry_candidate_page_selection"},
     {"path":"database/migrations/20260930_180000_retry_wait_provenance_index.sql","digest":"20e6b77fc5cef8fd1f2f0cde49c40d1d19711400c6f8e110247dd720a0b63262","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -559,7 +577,7 @@
     {"path":"server/src/services/legacyEnrichmentRetryRepository.mjs","digest":"79b2a66324a398fc6e416efb2b96444695ef362844ea7a3f02edf53a1fb8516c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"legacy_enrichment_retry_review"},
     {"path":"server/src/services/legacyEnrichmentRetryService.mjs","digest":"328c5aabd4f140b7e99d5448adad0081760186cb888faa3167ef160ccdea6ddb","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"legacy_enrichment_retry_review"},
     {"path":"scripts/reset_data.mjs","digest":"e66c88105e96781b08b612bfa293ec94d59537eb1b0f29e2f1fb20f3567480ce","analysisDigest":"1b9637b0e9596c5ee46b9013ca1129172197ad43bfe548a6060f164e53c56965","review":"maintenance_debt"},
-    {"path":"server/src/config/database.mjs","digest":"1088ab67e46414b2d159b3b09f83d69fbe3fea7016475283c11dc43ac9bbaaca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/config/database.mjs","digest":"58c476e0dcb266e203e742941b0e8f0cfe32f4986f716280ab7f40813e3ed86b","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/config/migrations.mjs","digest":"b815f5ee9eca79fbff3364ada78e21161c969c42b764ece96727dbd71461b510","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/classificationRouteHistory.mjs","digest":"d929b1b7083a290d43eda700e1cfb915e9df8e8577414968b3b69508e88ccf08","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/helpers/providerConfigHelpers.mjs","digest":"8af1d36e1697e37cada260da2454539b8eeff36bd1b6398fc29538a3b79dce85","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -659,7 +677,7 @@
     {"path":"server/src/services/freshInventoryPolicyRuntime.mjs","digest":"7f15653f6f9f991b4f24dc16a5d0ff7aa69c8737b22e020017b89f75941156ca","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/healthCheckInfrastructure.mjs","digest":"40e76fe2f00f0978c2266800f387d08484c24fc430651fa306774ec70eaf96d9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/heldOutSemanticStudyRetrievalRepresentationScoringSource.mjs","digest":"c66dcc5d6a5c57adb53995e0ab25ffd0a6a2ce5ba56cf6bd81219f3f39a3c8ac","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/inventoryBackgroundReadiness.mjs","digest":"0dea417fa1f202830d92c8e8012281fbd71bdc2c2af0654e7808f5380a57aeea","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"ingestion_readiness"},
+    {"path":"server/src/services/inventoryBackgroundReadiness.mjs","digest":"3851e01056148c176deb2adca9bf24f3491cee5894fd10ba0b34804d7af066e9","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"ingestion_readiness"},
     {"path":"server/src/services/libraryIngestionPredicates.mjs","digest":"db68dc82c367700ee14ab7309926b69f1ea93cacc776910c2cbe73ecaeeeb8fe","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_readiness"},
     {"path":"server/src/services/libraryIngestionStatus.mjs","digest":"53fb4cbbccf818467a5f49a88f07a6a358cadfb524cf5af69618ab43ed529fd1","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_readiness"},
     {"path":"server/src/services/inventoryCredentialWakeupQueries.mjs","digest":"650fa3b34a6722144a4630d64e6b2fb6a968d36d97846f0380198546e475294d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},

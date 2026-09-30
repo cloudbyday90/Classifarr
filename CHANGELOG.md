@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Backfill never-run Ollama AI readiness checks on older installations once
+  ingestion and backfill settle. Preserve existing verdicts, wait for resource
+  headroom, and protect concurrent manual tests and configuration changes.
+- Extend isolated mixed-workload resource studies with concurrent retry discovery
+  and rollback-verified claim exercises, credential-recovery checks and versioned
+  aggregate reports. Keep live limits, providers, routing and library data unchanged.
 - Avoid full enrichment candidate scans when no due or credential-recoverable
   work exists, using a narrow pending-wait index and statement-local checks.
   Preserve recovery, ordering and claim safeguards; extend isolated benchmarks

@@ -49,7 +49,7 @@ export async function loadOllamaVerificationCapabilityConfiguration(database) {
  * fingerprint. No provider endpoint, model name, prompt, response, or
  * credential is copied into capability state.
  */
-export async function persistOllamaVerificationCapabilityProbe({ client, identity, outcome }) {
+export async function persistOllamaVerificationCapabilityProbe({ client, identity, outcome, onlyIfNeverChecked = false }) {
   const currentResult = await client.query(`
     SELECT ${CAPABILITY_COLUMNS}
     FROM ai_provider_config
@@ -64,6 +64,10 @@ export async function persistOllamaVerificationCapabilityProbe({ client, identit
     || currentIdentity.fingerprint !== identity.fingerprint) {
     throw new OllamaVerificationCapabilityConfigurationChangedError();
   }
+
+  // Automatic legacy backfill must not replace a manual result that arrived
+  // during remote I/O. The row lock makes the missing-result check atomic.
+  if (onlyIfNeverChecked && currentConfiguration.ollama_verification_capability_checked_at != null) return null;
 
   const result = await client.query(`
     UPDATE ai_provider_config

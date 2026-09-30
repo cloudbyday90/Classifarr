@@ -130,6 +130,17 @@ test('comparison rejects baseline drift across individually valid startup receip
   } })).rejects.toThrow('budget_drift');
   expect(save).not.toHaveBeenCalled();
 });
+
+test('v5 comparison labels repeated task completions but still requires the original minimum workload', async () => {
+  const result = await compare({ study: async ({ budget }) => {
+    const run = scenario(budget); run.study.backlog.completed = 2500; return run;
+  } });
+  expect(result.version).toBe('resource_budget_comparison.v2');
+  expect(result.scenarios.every(row => row.completed === 2500 && row.retryRolledBackClaims > 0)).toBe(true);
+  await expect(compare({ study: async ({ budget }) => {
+    const run = scenario(budget); run.study.backlog.completed = 1619; return run;
+  } })).rejects.toThrow('comparison_incomplete');
+});
 test.each(['failure', 'image_drift', 'cleanup_failed', 'wrong_budget', 'missing_metrics', 'incomplete_work', 'no_evaluation', 'missing_startup'])('comparison cannot publish success after %s', async failure => {
   const save = jest.fn(), study = jest.fn(async ({ budget }) => {
     const result = scenario(budget);

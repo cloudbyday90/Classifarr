@@ -2,6 +2,7 @@
 import { assertStudyBudget, summarizeBudgetEnforcement } from './resourceStudyBudget.mjs';
 import { assertStudyCgroup } from './resourceStudyMetrics.mjs';
 import { assertStudyTrend } from './resourceStudyTrend.mjs';
+import { assertStudyRetryReceipt } from './resourceStudyRetryReceipt.mjs';
 const profiles = Object.freeze({
   smoke: Object.freeze({ durationMs: 120000, idleMs: 10000, growth: 5, rows: 400, dimensions: 768, evaluationIntervalMs: 1000 }),
   soak: Object.freeze({ durationMs: 1800000, idleMs: 120000, growth: 20, rows: 400, dimensions: 768, evaluationIntervalMs: 1000 }),
@@ -23,7 +24,7 @@ export function assertResourceStudyStartupReceipt(receipt, budget) {
 
 export function assertResourceStudyReceipt(study, mode, budget = 'baseline') {
   const profile = resourceStudyProfile(mode), recovery = study?.queueRecovery;
-  if (study?.status !== 'passed' || study.version !== 'resource_study.v4' || study.profile !== mode || study.budget !== budget ||
+  if (study?.status !== 'passed' || study.version !== 'resource_study.v5' || study.profile !== mode || study.budget !== budget ||
     study.requestedDurationMs !== profile.durationMs || !Number.isSafeInteger(study.durationMs) ||
     study.durationMs < profile.durationMs + profile.idleMs || study.durationMs > profile.durationMs + profile.idleMs + 180000 ||
     study.evaluationRows !== profile.rows || study.vectorDimensions !== profile.dimensions ||
@@ -34,6 +35,7 @@ export function assertResourceStudyReceipt(study, mode, budget = 'baseline') {
     !Number.isFinite(recovery.completedMs) || recovery.completedMs < recovery.firstDispatchMs || recovery.completedMs > 120000) {
     throw new Error('resource_study_receipt_invalid');
   }
+  assertStudyRetryReceipt(study.retryLoad);
   assertStudyTrend(study.trend, profile.idleMs);
   if (study.trend.phases.steady.spanMs < profile.durationMs * 0.2 - 10000 ||
     study.trend.phases.recovery.spanMs < profile.durationMs * 0.4 - 10000 ||

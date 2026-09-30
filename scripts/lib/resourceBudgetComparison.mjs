@@ -31,7 +31,7 @@ export async function runResourceBudgetComparison({ study = runResourceStudyComp
       const run = result.study;
       assertStudyBudgetContinuity(result.startup.fresh.metrics, result.startup.maintenance.metrics, run.initial, run.final);
       if (run.backlog?.pending !== 0 || run.backlog?.failed !== 0 || run.backlog?.routing !== 0 ||
-        run.backlog?.completed !== 1620 || !Number.isSafeInteger(run.counters?.evaluations) || run.counters.evaluations < 1 ||
+        run.backlog?.completed < 1620 || !Number.isSafeInteger(run.counters?.evaluations) || run.counters.evaluations < 1 ||
         ![run.drainMs, run.metrics?.containerBytes?.max, run.metrics?.containerCores?.p95,
           run.metrics?.eventLoopP99Ms?.max, run.metrics?.pids?.max].every(value => Number.isFinite(value) && value >= 0)) {
         throw new Error('resource_budget_comparison_incomplete');
@@ -42,13 +42,15 @@ export async function runResourceBudgetComparison({ study = runResourceStudyComp
           cpuQuotaUsec: run.initial.cpuQuotaUsec, cpuPeriodUsec: run.initial.cpuPeriodUsec, pids: run.initial.pidsLimit },
         completed: run.backlog?.completed, evaluations: run.counters?.evaluations,
         firstDispatchMs: run.queueRecovery.firstDispatchMs, cohortCompletedMs: run.queueRecovery.completedMs,
+        retryRolledBackClaims: Object.values(run.retryLoad.types).reduce((sum, row) => sum + row.rolledBackClaims, 0),
+        retryMaxTypePassMs: Math.max(...Object.values(run.retryLoad.types).map(row => row.maxPassMs)),
         containerMemoryPeakBytes: run.metrics?.containerBytes?.max, containerCpuP95Cores: run.metrics?.containerCores?.p95,
         eventLoopP99MaxMs: run.metrics?.eventLoopP99Ms?.max, sampledPidsPeak: run.metrics?.pids?.max,
         enforcement: summarizeBudgetEnforcement(run.initial, run.final) });
     }
     return candidateImageId;
   });
-  const result = { version: 'resource_budget_comparison.v1', status: 'passed', mode: 'capacity', imageId,
+  const result = { version: 'resource_budget_comparison.v2', status: 'passed', mode: 'capacity', imageId,
     imageCleanup: 'passed', scope: 'synthetic_services_not_production_defaults', scenarios };
   save(identity, result);
   report(`RESOURCE_BUDGET_RESULT .tmp/resource-study/${identity}/result.json`);

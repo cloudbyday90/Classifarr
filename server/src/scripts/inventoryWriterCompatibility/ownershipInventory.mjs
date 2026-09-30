@@ -7,6 +7,12 @@ export const INGESTION_RELATIONS = Object.freeze([
 ]);
 // Explicit dependency pins complement discovery; they are not a call-graph proof.
 export const INGESTION_GUARDS = Object.freeze([
+    'server/src/services/ollamaReadinessBackfill.mjs',
+    'server/src/services/ollamaReadinessBackfillScheduler.mjs',
+    'server/src/services/ollamaVerificationCapabilityRepository.mjs',
+    'server/src/scripts/resourceStudyRetryFixture.mjs',
+    'server/src/scripts/resourceStudyRetryLoad.mjs',
+    'server/src/scripts/resourceStudyWorkload.mjs',
     'server/src/services/enrichmentRetryDispatchCandidate.mjs',
     'server/src/scripts/retryQueryBenchmark/dispatch.mjs',
     'server/src/services/enrichmentRetryAvailability.mjs',

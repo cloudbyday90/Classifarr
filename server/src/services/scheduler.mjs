@@ -76,6 +76,7 @@ import { registerReclassificationMoveSchedule } from './reclassificationMoveSche
 import { registerReclassificationBatchSchedule } from './reclassificationBatchScheduler.mjs';
 import { registerAutomaticDestinationEvaluationSchedule } from './automaticDestinationEvaluationScheduler.mjs';
 import { registerAutomaticSourcePairSchedule } from './automaticSourcePairScheduler.mjs';
+import { registerOllamaReadinessBackfillSchedule } from './ollamaReadinessBackfillScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -94,6 +95,7 @@ class SchedulerService {
     }
 
     resetState() {
+        this.ollamaReadinessBackfillWorker?.stop();
         this.automaticDestinationEvaluationWorker?.stop();
         this.automaticSourcePairWorker?.stop();
         this.inventoryDescriptionRefreshWorker?.stop();
@@ -130,6 +132,7 @@ class SchedulerService {
         registerReclassificationBatchSchedule(this);
         registerAutomaticDestinationEvaluationSchedule(this);
         registerAutomaticSourcePairSchedule(this);
+        registerOllamaReadinessBackfillSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);

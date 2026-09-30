@@ -20,6 +20,8 @@ import { createStudyQueueRecovery } from './resourceStudyQueueRecovery.mjs';
 import { assertStudyBudget, summarizeBudgetEnforcement, resourceStudyBudget } from './resourceStudyBudget.mjs';
 import { summarizeStudyTrend } from './resourceStudyTrend.mjs';
 import { observeStudyIdle } from './resourceStudyIdle.mjs';
+import { createStudyRetryLoad } from './resourceStudyRetryLoad.mjs';
+import { quiesceResourceStudyRetryProviders } from './resourceStudyRetryFixture.mjs';
 
 export async function readStudyBacklog(db) {
   return (await db.query(`SELECT count(*) FILTER (WHERE status IN ('pending','processing'))::integer AS pending,
@@ -52,6 +54,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     queueOmdbEnrichmentService: { enrich: async () => {} }, queueWebSearchEnrichmentService: { enrich: async () => {} },
     completeTask: (...args) => queue.completeTask(...args), failTask: (...args) => queue.failTask(...args) });
   const recovery = createStudyQueueRecovery({ db, queue, admission });
+  const retryLoad = createStudyRetryLoad({ db, admission });
   const processTask = queue.processTask.bind(queue);
   queue.processTask = task => { recovery.onStart(task); return processTask(task); };
   const planner = new LibraryInventoryProfileRefreshPlanner({ dbClient: db });
@@ -91,7 +94,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     assert.equal(result.failed, 0); assert.equal(result.retried, 0);
   };
   const worker = queue.startWorker();
-  let producer, evaluator;
+  let producer, evaluator, retries;
   try {
     // Bounded, non-overlapping loops; all started promises are joined before exit.
     producer = (async () => {
@@ -114,9 +117,12 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
         await delay(profile.evaluationIntervalMs);
       }
     })();
-    // Observe loop failures immediately without orphaning the other loop.
+    retries = (async () => {
+      while (!stopped) { await retryLoad.pass(phase); await delay(2000); }
+    })();
+    // Observe loop failures immediately without orphaning another loop.
     let failure;
-    producer.catch(error => { failure = error; }); evaluator.catch(error => { failure = error; });
+    for (const loop of [producer, evaluator, retries]) loop.catch(error => { failure = error; });
     while (performance.now() - start < durationMs) {
       if (failure) throw failure;
       const nextPhase = studyPhase(performance.now() - start, durationMs);
@@ -132,7 +138,10 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
       if (sampler.samples.length % 15 === 1) progress({ phase, elapsedSeconds: Math.round((performance.now() - start) / 1000), ...counters });
       await delay(2000);
     }
-    stopped = true; await Promise.all([producer, evaluator]);
+    stopped = true; await Promise.all([producer, evaluator, retries]);
+    if (failure) throw failure;
+    await retryLoad.finish();
+    await quiesceResourceStudyRetryProviders(db);
     phase = 'drain'; fixture.setPhase(phase); let finalScanComplete = await scan();
     const drainStart = performance.now();
     let complete = false;
@@ -168,7 +177,8 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     assert.equal(final.memoryLimitHits, sampler.initial.memoryLimitHits);
     assert.ok(counters.evaluations > 0 && counters.providerFailures > 0 && counters.preservedOutages > 0);
     for (const row of Object.values(admission.classes)) assert.ok(row.memory_pressure > 0);
-    const result = { version: 'resource_study.v4', profile: mode, budget, evaluationRows: profile.rows,
+    const result = { version: 'resource_study.v5', profile: mode, budget, evaluationRows: profile.rows,
+      retryLoad: await retryLoad.finish(),
       vectorDimensions: profile.dimensions, queueRecovery: recovery.receipt,
       status: 'passed', durationMs: Math.round(performance.now() - start),
       requestedDurationMs: durationMs, scope: 'synthetic_services_not_model_accuracy', pressure: 'injected_telemetry_not_physical',
@@ -182,7 +192,7 @@ export async function runResourceStudyWorkload(db, mode, progress = () => {}, bu
     return result;
   } finally {
     stopped = true; queue.stopWorker();
-    await Promise.allSettled([producer, evaluator, worker]);
+    await Promise.allSettled([producer, evaluator, retries, worker]);
     const deadline = performance.now() + 30000;
     while (queue.processing > 0 && performance.now() < deadline) await delay(50);
     sampler.close();

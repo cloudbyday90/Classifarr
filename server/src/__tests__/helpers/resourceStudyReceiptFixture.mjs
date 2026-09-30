@@ -19,7 +19,10 @@ export function resourceStudyReceiptFixture(mode = 'smoke', budget = 'baseline')
     Array.from({ length: 6 }, (_, index) => ({ phase, atMs: timing[phase][0] + index * timing[phase][1] / 5,
       rssBytes: 1000, heapBytes: 500, externalBytes: 100, arrayBufferBytes: 50, containerBytes: 2000,
       pending: 0, failed: 0, routing: 0, completed: 20, oldestPendingSeconds: 0 })));
-  return { status: 'passed', version: 'resource_study.v4', profile: mode, budget,
+  return { status: 'passed', version: 'resource_study.v5', profile: mode, budget,
+    retryLoad: { cohortSize: 60, preserved: true, rotations: 1, pressureDeferrals: 5,
+      types: Object.fromEntries(['omdb', 'web_search', 'tavily'].map(type => [type,
+        { beforePasses: 5, afterPasses: 5, rolledBackClaims: 10, recoveredClaims: 5, maxPassMs: 20 }])) },
     requestedDurationMs: profile.durationMs, durationMs: profile.durationMs + profile.idleMs + 100,
     trend: summarizeStudyTrend(samples, profile.idleMs),
     evaluationRows: profile.rows, vectorDimensions: profile.dimensions, initial, final: { ...initial },
