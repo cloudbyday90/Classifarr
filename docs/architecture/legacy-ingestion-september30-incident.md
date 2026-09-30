@@ -78,3 +78,8 @@ tests. This verifies the reviewed recovery implementation, not recovery of these
 live records. The live warning remains unresolved pending reviewed recovery or
 a separately designed and verified writer-fencing cutover. No live deployment,
 data cleanup or ownership backfill was performed in this investigation.
+
+The next implementation adds an [isolated writer-fence rehearsal](ingestion-writer-fence-design.md).
+Its [outcome](ingestion-writer-fence-outcome.md) records verified late-write and
+crash/replay behavior, plus the production bootstrap-credential prerequisite.
+It does not resolve or suppress this live warning.

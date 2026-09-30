@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an isolated database-writer fencing rehearsal with separated roles,
+  legacy-session retirement, scoped recovery and stale-write rejection tests;
+  preserve current live recovery safeguards pending production credential migration.
 - Measure successful provider recovery in isolated resource studies with bounded
   HTTP faults, real retry cooldowns, unique-item completion and explicit waiting
   work; require natural drain without changing live resource limits or settings.

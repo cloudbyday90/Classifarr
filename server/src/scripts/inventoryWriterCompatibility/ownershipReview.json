@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "isolated_ingestion_writer_fence",
+      "classification": "separately_coordinated",
+      "reason": "Disposable integration database only, guarded by test environment and owned suite database naming. Generated authenticated roles rehearse ordinary-superuser retirement, committed NOLOGIN, session drain and transactional grant/ownership cutover. Fixed definer functions pin search_path and require an exclusive library lock plus session/start/run/source binding. Typed bounded writes preserve inventory; adoption and its receipt are atomic. No runtime startup hook, live privileges, source configuration, routing or pruning changes.",
+      "followUp": "Keep real-role privilege, temporary-shadowing, crash/replay, rollback, source-change, payload and provider/type tests. This is not a historical binary upgrade or bootstrap-superuser cutover: the actual bootstrap role cannot be demoted. Separate runtime/maintenance credentials and HBA/OS access, migrate shared writers and full capture/finalization before production activation. Caller-supplied expected counts are not upstream completeness proof. Keep indirect SQL analysis gaps and unrelated shared-writer debt explicit."
+    },
+    {
       "id": "isolated_provider_resource_recovery",
       "classification": "separately_coordinated",
       "reason": "Offline v6 resource study only, in the guarded owned fresh Compose database and internal network. A separate eight-item balanced synthetic cohort exercises actual loopback HTTP, quota, credential rejection, pacing and fenced retry persistence. Fixed fixture mutations simulate a completed quota day and repair only the exact synthetic key; retry deadlines and attempts are never accelerated or reset. Bulk metadata uses the real task writer with synthetic success data. All loops and the bounded loopback listener have explicit lifetimes; live providers, settings and source ownership remain untouched.",
@@ -194,6 +200,11 @@
     }
   ],
   "entries": [
+    {"path":"server/src/scripts/ingestionWriterFence/client.mjs","digest":"4c279655e5e6b87ca13541633647ef61d09b8071d1f7d8b73e7a97fec0039993","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_ingestion_writer_fence"},
+    {"path":"server/src/scripts/ingestionWriterFence/contract.mjs","digest":"c9a5b60c45335fcd3d88a7755569d3ce9b26d3c8405089174016d49b19cc831d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_ingestion_writer_fence"},
+    {"path":"server/src/scripts/ingestionWriterFence/install.mjs","digest":"f93d373b4ae2d4129b67b366cd197ec95c95651dd1e79dce069d542df6f427af","analysisDigest":"e64b3ee2a4fad11df1eebe98f617569b135822d1c3a315101b7dbb96c40e31c2","review":"isolated_ingestion_writer_fence"},
+    {"path":"server/src/scripts/ingestionWriterFence/lifecycle.sql","digest":"3fb365a887dde74c2b4fbd83a10792797ef4bfecd7df0cb787fb69b019ee46f8","analysisDigest":"48f4686b17c8dcdd420e0d2a0ef92fa2c8c5c898d82a5feaa53cb15de30279c7","review":"isolated_ingestion_writer_fence"},
+    {"path":"server/src/scripts/ingestionWriterFence/write.sql","digest":"ae1474291c95b20cfc819a415385dd2748a7591df71b4e86285224095d263b3f","analysisDigest":"432e4d081365c767a9e19bf8c56e33f7628a36847aef7b177b299a7f260deaa0","review":"isolated_ingestion_writer_fence"},
     {"path":"server/src/services/queueMetadataRefillPolicy.mjs","digest":"bd70a3c550036e05ff657f91614eb0ca8949a1cbd6d47a87c6b39d9d8e27c614","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_provider_outcomes"},
     {"path":"server/src/services/queueEnrichmentPayload.mjs","digest":"1ace9089c875c20cff15c3581aaafbf11b818810227f90e45070cf4725d0009e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"metadata_refill_retry_control"},
     {"path":"server/src/scripts/resourceStudyRetryFixture.mjs","digest":"b53d58f5e6555586bbf9323ed7b60ddb68ac134add64cf8f7b2f843bd637a1e7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_retry_resource_coload"},
