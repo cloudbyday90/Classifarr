@@ -44,6 +44,7 @@
     "test:client": "cd client && npm test",
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
     "benchmark:library-scan-recovery": "node server/src/scripts/runLibraryScanRecoveryBenchmark.mjs",
+    "benchmark:retry-queries": "node server/src/scripts/runRetryQueryBenchmark.mjs",
     "benchmark:library-page-repair": "node server/src/scripts/runLibraryPageRepairPrototype.mjs",
     "benchmark:library-repair-lifecycle": "node server/src/scripts/runLibraryRepairLifecycleAssessment.mjs",
     "benchmark:library-scoped-repair": "node server/src/scripts/runLibraryScopedRepairPrototype.mjs",

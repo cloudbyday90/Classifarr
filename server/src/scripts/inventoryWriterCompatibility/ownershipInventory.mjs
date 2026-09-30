@@ -7,6 +7,12 @@ export const INGESTION_RELATIONS = Object.freeze([
 ]);
 // Explicit dependency pins complement discovery; they are not a call-graph proof.
 export const INGESTION_GUARDS = Object.freeze([
+    'server/src/scripts/runRetryQueryBenchmark.mjs',
+    'server/src/scripts/retryQueryBenchmark/schema.mjs',
+    'server/src/scripts/retryQueryBenchmark/fixture.mjs',
+    'server/src/scripts/retryQueryBenchmark/queries.mjs',
+    'server/src/scripts/retryQueryBenchmark/measurement.mjs',
+    'server/src/scripts/retryQueryBenchmark/runner.mjs',
     'server/src/services/mediaSync.mjs',
     'server/src/services/mediaSyncRun.mjs',
     'server/src/services/mediaSyncCompleteness.mjs',

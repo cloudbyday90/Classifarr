@@ -72,6 +72,10 @@ no PR was merged.
 
 ## Next component
 
+Completed by the [retry-query benchmark](retry-query-benchmark-outcome.md), which
+identifies candidate-page selection as the next performance target. The original
+measurement scope follows for traceability.
+
 Measure **retry admission query cost under a large, mixed backlog**. Claims now
 combine source eligibility, durable cooldowns and credential-context recovery.
 Use disposable PostgreSQL with representative waiting/ready distributions and

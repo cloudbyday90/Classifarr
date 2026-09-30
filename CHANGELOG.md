@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an isolated PostgreSQL retry-query benchmark with representative backlog
+  scenarios, correctness checks and rollback-verified claim measurements. Compare
+  index costs before changing production; leave scheduling and library data untouched.
 - Resume eligible enrichment after credential repair by tying new retry waits to
   the provider configuration that caused them. Preserve quotas, same-key pacing,
   unknown legacy waits and worker/source safeguards; keep status views read-only.

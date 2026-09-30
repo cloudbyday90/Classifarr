@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "offline_retry_query_benchmark",
+      "classification": "separately_coordinated",
+      "reason": "An explicit offline CLI starts its own resource-limited PostgreSQL container using generated credentials, with no source connection arguments or application configuration. Fixed snapshot tables, keys, indexes and credential views are installed into a new private schema only in a disposable database. Synthetic writes and index experiments remain inside rolled-back transactions. Exact production selection/claim SQL is captured without application startup; EXPLAIN ANALYZE and actual claim checks always use rollback savepoints.",
+      "followUp": "Keep source-connection refusal, schema guards, independent result-ID oracle, failure cleanup and real PostgreSQL rollback tests current. Indirect SQL discovery gaps remain explicit; no production ingestion, schema migration, scheduler or routing authority is granted. Measurements exclude foreign keys, triggers, concurrent writers and provider HTTP. All reported diagnostics are allowlisted; raw SQL parameters, credentials and media are not emitted. Changes to the offline boundary require re-review."
+    },
+    {
       "id": "credential_scoped_retry_wait",
       "classification": "separately_coordinated",
       "reason": "Bounded internal provider request evidence links a retry deadline to the exact configuration and credential generation. The existing claim/source-fenced transaction records that context and extends only current provider pacing in stable configuration/provider lock order. Read-only effective-due selection can waive an obsolete item deadline, not quota, provider admission, claim or source guards. Unknown legacy waits remain conservative; verified same-key recovery transfers valid pacing.",
@@ -152,6 +158,12 @@
     }
   ],
   "entries": [
+    {"path":"server/src/scripts/retryQueryBenchmark/fixture.mjs","digest":"0754df8989fa94816fd74024307da2273f517f981bda9776c67b8b580c02faac","analysisDigest":"432e4d081365c767a9e19bf8c56e33f7628a36847aef7b177b299a7f260deaa0","review":"offline_retry_query_benchmark"},
+    {"path":"server/src/scripts/retryQueryBenchmark/measurement.mjs","digest":"2ecf3fdf774b76e0276de1acea6c5c7e16a12c0ce8c2a80d047303d463c51b93","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"offline_retry_query_benchmark"},
+    {"path":"server/src/scripts/retryQueryBenchmark/queries.mjs","digest":"400efa8c0e9133d6c1b9d80cff7beebf6abbe199deb5bf4390e9e746e5edf03b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"offline_retry_query_benchmark"},
+    {"path":"server/src/scripts/retryQueryBenchmark/runner.mjs","digest":"ad6ca7af7bb34afad96190d8f587e819c5a8f3391d9965ab5c0c90d28ced021b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"offline_retry_query_benchmark"},
+    {"path":"server/src/scripts/retryQueryBenchmark/schema.mjs","digest":"b2faf424151701604241f3e02d7c5f6fb50685bb8d1b4043dfd1a550190a8f5e","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"offline_retry_query_benchmark"},
+    {"path":"server/src/scripts/runRetryQueryBenchmark.mjs","digest":"07cf32fc437f5e07ac8b9974dfaad756a6bc28421bdc1b16cb23fadb6f2a019e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"offline_retry_query_benchmark"},
     {"path":"database/migrations/20260929_200000_credential_scoped_retry_wait.sql","digest":"5825a99566752a7ea8ae19188a3978d06063c4ef6b354d082fa4601182889e45","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"server/src/services/enrichmentRetryDuePolicy.mjs","digest":"4d760cb7e9760d2933bd70e669224113c26e91eb9b9b608429ff61798b8e6cda","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"credential_scoped_retry_wait"},
     {"path":"server/src/services/enrichmentRetryScopedWait.mjs","digest":"aa5048be70419eb520a3d14183af59ebc6850eb0d92b1e016ef005a01f1cc62d","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"analysis_debt"},
