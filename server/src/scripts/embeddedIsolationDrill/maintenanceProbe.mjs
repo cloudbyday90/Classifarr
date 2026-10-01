@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import * as db from '../../config/database.mjs';
-import { rebuildImageIndexes } from '../../services/queueTaskProcessorIndexing.mjs';
+import { runImageIndexMaintenance } from '../../services/imageIndexMaintenance.mjs';
 import { runDatabaseSchemaMaintenance } from '../../services/databaseSchemaMaintenance.mjs';
 import { RUNTIME_ROLE, RESTORED_DATABASE, ADMIN_ROLE, assertProbeEnvironment } from './contract.mjs';
 
@@ -15,11 +15,15 @@ export async function probeMaintenance() {
   await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hnsw');
   await db.query('DROP INDEX IF EXISTS idx_embeddings_image_present');
   await db.query('DROP INDEX IF EXISTS idx_embeddings_image_hash');
-  let completed = false;
-  await rebuildImageIndexes({ id: 1, claim_token: 'synthetic' }, {
-    db, logger: { info() {} }, completeTask: async (_id, value) => { completed = value.rebuilt; },
-  });
-  assert.equal(completed, true);
+  const queued = await db.query(`INSERT INTO task_queue (task_type, payload)
+    VALUES ('rebuild_hnsw_index', '{}') RETURNING id`);
+  const maintained = await runImageIndexMaintenance({ database: db });
+  assert.equal(maintained.status, 'complete');
+  assert.equal(maintained.created, 3);
+  const completed = await db.query('SELECT status, payload FROM task_queue WHERE id = $1', [queued.rows[0].id]);
+  assert.equal(completed.rows[0].status, 'completed');
+  assert.equal(completed.rows[0].payload.result.rebuilt, true);
+  assert.deepEqual(await runImageIndexMaintenance({ database: db }), { status: 'no_work' });
   const indexes = await db.query(`SELECT count(*)::int AS count FROM pg_index i
     JOIN pg_class c ON c.oid = i.indexrelid WHERE i.indisvalid
     AND c.relname IN ('idx_embeddings_image_hnsw', 'idx_embeddings_image_present', 'idx_embeddings_image_hash')`);

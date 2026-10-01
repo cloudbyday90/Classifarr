@@ -36,6 +36,7 @@ export class QueueTaskProcessorService {
         this.tmdbService = deps.tmdbService;
         this.completeTask = deps.completeTask || (async () => {});
         this.failTask = deps.failTask || (async () => {});
+        this.indexMaintenance = deps.indexMaintenance;
         this.createEnrichmentWriteSession = deps.createEnrichmentWriteSession;
         this.policyRequestImportDestinationAdmissionService =
             deps.policyRequestImportDestinationAdmissionService || policyRequestImportDestinationAdmissionService;
@@ -192,7 +193,7 @@ export class QueueTaskProcessorService {
         return _rebuildImageIndexes(task, {
             db: this.db,
             logger: this.logger,
-            completeTask: (...args) => this.completeTask(...args)
+            maintenance: this.indexMaintenance,
         });
     }
 

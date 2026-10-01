@@ -6,6 +6,7 @@ import { observeEmbeddedChild } from './embeddedChildProcess.mjs';
 const PROGRAMS = Object.freeze({
   schema: '/app/src/scripts/runDatabaseSchemaMaintenance.mjs',
   restore: '/app/src/scripts/runDatabaseRestoreMaintenance.mjs',
+  indexes: '/app/src/scripts/runImageIndexMaintenance.mjs',
 });
 
 /** Trusted supervisor composition only. No command/path/env passthrough or HTTP caller. */

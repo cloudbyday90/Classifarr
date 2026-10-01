@@ -393,11 +393,15 @@ describe('processMetadataEnrichmentTask', () => {
 });
 
 describe('rebuildImageIndexes', () => {
-  test('runs 3 CREATE INDEX queries and completes', async () => {
-    const svc = makeSvc();
-    await svc.rebuildImageIndexes({ id: 'task1' });
-    expect(svc.db.query).toHaveBeenCalledTimes(3);
-    expect(svc.completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({ rebuilt: true }), undefined);
+  test.each(['complete', 'deferred'])('delegates bounded maintenance and logs %s without a second acknowledgement', async status => {
+    const indexMaintenance = jest.fn().mockResolvedValue({ status });
+    const svc = makeSvc({ indexMaintenance });
+    const task = { id: '1', claim_token: 'captured-token' };
+    await expect(svc.rebuildImageIndexes(task)).resolves.toEqual({ status });
+    expect(indexMaintenance).toHaveBeenCalledWith({ database: svc.db, task });
+    expect(svc.db.query).not.toHaveBeenCalled();
+    expect(svc.completeTask).not.toHaveBeenCalled();
+    expect(svc.logger[status === 'complete' ? 'info' : 'debug']).toHaveBeenCalled();
   });
 });
 

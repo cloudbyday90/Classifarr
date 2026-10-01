@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Bound deferred image-index maintenance with resource limits, queue ownership
+  checks and interrupted-build recovery. Add a fixed one-shot maintenance command
+  and separate-identity validation without changing deployment defaults.
 - Add resumable offline database identity migration components and real legacy
   cold-copy/crash-recovery coverage, preserving original data and rejecting old
   application credentials in the candidate without changing installed databases.

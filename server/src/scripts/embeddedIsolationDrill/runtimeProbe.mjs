@@ -35,6 +35,8 @@ export async function probeRuntimeBoundary({ restored = false } = {}) {
     for (const sql of [
       `SET ROLE ${ADMIN_ROLE}`, 'CREATE ROLE forbidden_role', 'CREATE TABLE public.forbidden_table(id int)',
       'ALTER TABLE public.schema_migrations ADD COLUMN forbidden int',
+      'CREATE INDEX CONCURRENTLY forbidden_image_index ON public.classification_embeddings (image_model)',
+      'DROP INDEX CONCURRENTLY public.idx_embeddings_image_hnsw',
       "SELECT pg_read_file('/rehearsal/postgres/PG_VERSION')",
     ]) await assert.rejects(pool.query(sql), error => error.code === '42501');
   } finally { await pool.end(); }

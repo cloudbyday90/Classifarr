@@ -7,6 +7,12 @@ export const INGESTION_RELATIONS = Object.freeze([
 ]);
 // Explicit dependency pins complement discovery; they are not a call-graph proof.
 export const INGESTION_GUARDS = Object.freeze([
+    'server/src/services/imageIndexMaintenance.mjs',
+    'server/src/services/imageIndexMaintenanceCatalog.mjs',
+    'server/src/services/imageIndexMaintenanceClaims.mjs',
+    'server/src/services/imageIndexMaintenanceContract.mjs',
+    'server/src/services/queueTaskProcessorIndexing.mjs',
+    'server/src/scripts/runImageIndexMaintenance.mjs',
     'server/src/bootstrap/embeddedIdentityPolicy.mjs',
     'server/src/bootstrap/embeddedMigrationPhases.mjs',
     'server/src/bootstrap/embeddedMigrationJournal.mjs',

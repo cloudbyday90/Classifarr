@@ -2344,7 +2344,10 @@ describe('QueueService', () => {
     });
 
     describe('rebuild_hnsw_index task', () => {
-        it('runs CREATE INDEX CONCURRENTLY for all three image indexes and completes task', async () => {
+        let previousMaintenance;
+        beforeEach(() => { previousMaintenance = queueService.queueTaskProcessorService.indexMaintenance; });
+        afterEach(() => { queueService.queueTaskProcessorService.indexMaintenance = previousMaintenance; });
+        it('delegates the captured claim to bounded maintenance without a second completion', async () => {
             const task = {
                 claim_token: '11111111-1111-4111-8111-111111111111',
                 id: 99,
@@ -2355,23 +2358,13 @@ describe('QueueService', () => {
             };
 
             db.query.mockResolvedValue({ rows: [] });
+            const maintenance = jest.fn().mockResolvedValue({ status: 'complete' });
+            queueService.queueTaskProcessorService.indexMaintenance = maintenance;
 
             await queueService.processTask(task);
 
-            const queryCalls = db.query.mock.calls.map(([sql]) => sql);
-
-            const hnsw = queryCalls.find(s => s.includes('idx_embeddings_image_hnsw') && s.includes('CONCURRENTLY'));
-            expect(hnsw).toBeDefined();
-            expect(hnsw).toMatch(/USING hnsw/i);
-
-            const present = queryCalls.find(s => s.includes('idx_embeddings_image_present') && s.includes('CONCURRENTLY'));
-            expect(present).toBeDefined();
-
-            const hash = queryCalls.find(s => s.includes('idx_embeddings_image_hash') && s.includes('CONCURRENTLY'));
-            expect(hash).toBeDefined();
-
-            const completeCall = queryCalls.find(s => /UPDATE task_queue\s+SET status = 'completed'/i.test(s));
-            expect(completeCall).toBeDefined();
+            expect(maintenance).toHaveBeenCalledWith({ database: queueService.db, task });
+            expect(db.query).not.toHaveBeenCalled();
         });
 
         it('propagates error and fails task when CREATE INDEX CONCURRENTLY throws', async () => {
@@ -2384,12 +2377,9 @@ describe('QueueService', () => {
                 max_attempts: 3,
             };
 
-            db.query.mockImplementation((sql) => {
-                if (typeof sql === 'string' && sql.includes('CREATE INDEX CONCURRENTLY')) {
-                    return Promise.reject(new Error('index build failed'));
-                }
-                return Promise.resolve({ rows: [] });
-            });
+            db.query.mockResolvedValue({ rows: [] });
+            queueService.queueTaskProcessorService.indexMaintenance = jest.fn()
+                .mockRejectedValue(new Error('index build failed'));
 
             await queueService.processTask(task);
 

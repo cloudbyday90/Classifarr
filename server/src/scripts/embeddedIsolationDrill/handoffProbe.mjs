@@ -21,7 +21,11 @@ const status = () => pg('pg_ctl', ['-D', PG_DATA, 'status']);
 const database = { adopt: status, check: status,
   stop: () => pg('pg_ctl', ['-D', PG_DATA, '-m', 'fast', '-w', '-t', '20', 'stop']) };
 
-for (const kind of ['schema', 'restore']) {
+for (const kind of ['schema', 'restore', 'indexes']) {
+  if (kind === 'indexes') {
+    await pg('psql', ['-X', '-h', '/run/postgresql', '-U', 'classifarr', '-d', DATABASE,
+      '-v', 'ON_ERROR_STOP=1', '-c', "INSERT INTO task_queue (task_type, payload) VALUES ('rebuild_hnsw_index', '{}')"]);
+  }
   const password = randomBytes(32).toString('hex');
   const request = kind === 'restore' ? Buffer.from(JSON.stringify({ version: 1, mode: 'merge', password,
     backup: { encrypted: true, data: encryptBackupPayload({ version: '2.0', data: {
@@ -50,6 +54,11 @@ for (const kind of ['schema', 'restore']) {
   assert(events.includes('application_stopped') && events.includes('database_stopped'));
   assert.match((await pg('pg_controldata', [PG_DATA])).stdout, /Database cluster state:\s+shut down\s*\n/);
   await pg('pg_ctl', ['-D', PG_DATA, '-l', `${STATE}/postgres.log`, '-w', '-t', '30', 'start']);
+  if (kind === 'indexes') {
+    const completed = await pg('psql', ['-X', '-h', '/run/postgresql', '-U', 'classifarr', '-d', DATABASE, '-At',
+      '-v', 'ON_ERROR_STOP=1', '-c', "SELECT count(*) FROM task_queue WHERE task_type = 'rebuild_hnsw_index' AND status = 'completed'"]);
+    assert.equal(completed.stdout.trim(), '1');
+  }
 }
 const result = await pg('psql', ['-X', '-h', '/run/postgresql', '-U', 'classifarr', '-d', DATABASE, '-At',
   '-v', 'ON_ERROR_STOP=1', '-c', "SELECT value FROM settings WHERE key = 'supervisor_handoff_probe'"]);

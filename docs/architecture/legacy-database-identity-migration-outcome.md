@@ -62,5 +62,8 @@ Production startup, live data, credentials, routing and saved templates remain
 unchanged. This implements and tests the migration component; it does not enable
 automatic upgrades or claim production privilege separation. No release is created.
 
-The next component is the bounded privileged index-rebuild job, preserving queue
-claims and maintenance admission while removing owner-only DDL from normal workers.
+The bounded image-index component is implemented in the
+[index maintenance design](bounded-image-index-maintenance-design.md) and
+[outcome](bounded-image-index-maintenance-outcome.md). It preserves queue claims
+and adds a separate one-shot handoff. Removal of runtime owner authority still
+requires the later production cutover; it is not implied by that component.
