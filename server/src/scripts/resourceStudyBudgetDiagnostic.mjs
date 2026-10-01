@@ -4,7 +4,7 @@ const fields = ['version', 'limitBytes', 'cpuQuotaUsec', 'cpuPeriodUsec', 'pidsL
 
 /** Fixed labels and numeric limits only; never serialize an error or container config. */
 export function studyBudgetDiagnostic(metrics, budget) {
-  if (!['baseline', 'bounded', 'stress'].includes(budget)) return null;
+  if (!['baseline', 'bounded', 'stress', 'image-capacity'].includes(budget)) return null;
   return { budget, ...Object.fromEntries(fields.map(key =>
     [key, Number.isSafeInteger(metrics?.[key]) ? metrics[key] : null])) };
 }

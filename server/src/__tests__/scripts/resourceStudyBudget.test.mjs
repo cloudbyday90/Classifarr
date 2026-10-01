@@ -51,10 +51,11 @@ test('continuity requires at least two complete snapshots', () => {
 test.each([undefined, null, 1, {}, '__proto__', 'bounded;echo unsafe'])('rejects non-allowlisted budget %s', value => {
   expect(() => resourceStudyBudget(value)).toThrow('budget_invalid');
 });
-test('budgets are immutable and never change memory', () => {
+test('existing CPU profiles stay unchanged; separate image capacity profile is fixed', () => {
   expect(Object.isFrozen(resourceStudyBudget('bounded'))).toBe(true);
   expect(resourceStudyBudget('bounded')).toEqual({ cpus: 2, pids: 128 });
   expect(resourceStudyBudget('stress')).toEqual({ cpus: 1, pids: 128 });
+  expect(resourceStudyBudget('image-capacity')).toEqual({ cpus: 2, pids: 128, memoryBytes: 4 * 1024 ** 3 });
 });
 test.each([[null, null], ['max', -1], ['-1\n', -1], ['0', null], ['1.5', null], ['128', 128],
   ['1 extra', null], ['-2', null]])('limit %s distinguishes unknown and unlimited', (value, expected) => {
@@ -83,9 +84,9 @@ test.each([{ cpuQuotaUsec: -1 }, { cpuPeriodUsec: 0 }, { cpuPeriodUsec: 200000 }
   { pidsLimit: -1 }, { pidsLimit: 19151 }, { limitBytes: 1e9 }, { pidsLimitHits: 1 }])('ineffective cgroup limits fail: %j', changes => {
   expect(() => assertStudyBudget({ ...resourceStudyReceiptFixture('capacity', 'bounded').initial, ...changes }, 'bounded')).toThrow('not_enforced');
 });
-test.each(['baseline', 'bounded', 'stress'])('Docker config verification for %s is independent of cgroup data', budget => {
+test.each(['baseline', 'bounded', 'stress', 'image-capacity'])('Docker config verification for %s is independent of cgroup data', budget => {
   const limits = resourceStudyBudget(budget);
-  const config = { nanoCpus: limits.cpus * 1e9, pids: limits.pids, cpuQuota: 0, memoryBytes: 2 * 1024 ** 3 };
+  const config = { nanoCpus: limits.cpus * 1e9, pids: limits.pids, cpuQuota: 0, memoryBytes: limits.memoryBytes ?? 2 * 1024 ** 3 };
   expect(() => assertDockerStudyBudget(config, budget)).not.toThrow();
   expect(() => assertDockerStudyBudget({ ...config, nanoCpus: 3e9 }, budget)).toThrow('mismatch');
   expect(() => assertDockerStudyBudget({ ...config, pids: 12 }, budget)).toThrow('mismatch');
@@ -164,11 +165,11 @@ test('invalid identity fails before study creation', async () => {
   expect(study).not.toHaveBeenCalled();
 });
 
-test('budget override contains only CPU and PID configuration', () => {
+test('budget override contains only CPU, memory and PID configuration', () => {
   const override = load(readFileSync(new URL('../../../../docker-compose.resource-study-budget.yml', import.meta.url), 'utf8'));
   expect(Object.keys(override)).toEqual(['services']);
   expect(Object.keys(override.services)).toEqual(['app']);
-  expect(Object.keys(override.services.app).sort()).toEqual(['cpus', 'pids_limit']);
+  expect(Object.keys(override.services.app).sort()).toEqual(['cpus', 'mem_limit', 'pids_limit']);
 });
 
 function dockerFixture({ mismatch = false, startupDenial = false, imageMismatch = false } = {}) {

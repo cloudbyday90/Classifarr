@@ -14,6 +14,7 @@ import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataE
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
+import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
 import {
     buildClassificationDestinationSummary,
 } from './classificationResultOutcomeSummary.mjs';
@@ -239,6 +240,7 @@ export class QueueTaskProcessorService {
                 taskId: task.id,
                 taskType: task.task_type,
                 reasonCode: QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
+                ...(task.task_type === 'rebuild_hnsw_index' ? imageIndexFailureLogFields(error) : {}),
             });
             const acknowledged = await this.failTask(
                 task.id,

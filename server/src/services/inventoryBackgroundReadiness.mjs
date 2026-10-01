@@ -1,18 +1,18 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { INGESTION_OWNER_ACTIVE_SQL, INGESTION_UNFINISHED_MARKERS_SQL } from './libraryIngestionPredicates.mjs';
 
-const inventoryReadinessSql = (requireRag, excludeTask = false) => `WITH active_libraries AS MATERIALIZED (
+const inventoryReadinessSql = (requireRag, excludeTask = false, requireInventory = true) => `WITH active_libraries AS MATERIALIZED (
     SELECT l.id,l.media_server_id FROM libraries l LEFT JOIN media_server ms ON ms.id=l.media_server_id
     WHERE l.is_active AND l.media_type IN ('movie','tv') AND (l.media_server_id IS NULL OR ms.is_active)
 )
 SELECT CASE
     ${requireRag ? "WHEN NOT EXISTS (SELECT 1 FROM ai_provider_config WHERE id=1 AND rag_enabled) THEN 'disabled'" : ''}
-    WHEN NOT EXISTS (SELECT 1 FROM active_libraries) THEN 'waiting_for_libraries'
+    ${requireInventory ? "WHEN NOT EXISTS (SELECT 1 FROM active_libraries) THEN 'waiting_for_libraries'" : ''}
     WHEN EXISTS (SELECT 1 FROM active_libraries l WHERE ${INGESTION_UNFINISHED_MARKERS_SQL} OR ${INGESTION_OWNER_ACTIVE_SQL})
       OR EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id WHERE s.phase<>'complete')
       THEN 'ingesting'
-    WHEN NOT EXISTS (SELECT 1 FROM media_server_items i JOIN active_libraries l ON l.id=i.library_id
-      WHERE i.media_type IN ('movie','tv')) THEN 'waiting_for_inventory'
+    ${requireInventory ? `WHEN NOT EXISTS (SELECT 1 FROM media_server_items i JOIN active_libraries l ON l.id=i.library_id
+      WHERE i.media_type IN ('movie','tv')) THEN 'waiting_for_inventory'` : ''}
     WHEN EXISTS (SELECT 1 FROM active_libraries l LEFT JOIN library_ingestion_state s ON s.library_id=l.id
       WHERE l.media_server_id IS NOT NULL AND s.library_id IS NULL) THEN 'ingesting'
     WHEN EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id
@@ -24,6 +24,8 @@ SELECT CASE
 export const INVENTORY_BACKGROUND_READINESS_SQL = inventoryReadinessSql(true);
 // Maintenance must exclude only its own already-claimed task, never other active work.
 export const INVENTORY_BACKGROUND_READINESS_EXCLUDING_TASK_SQL = inventoryReadinessSql(true, true);
+// Manual maintenance may have no inventory, but never bypasses ingestion or other due work.
+export const INVENTORY_MAINTENANCE_IDLE_SQL = inventoryReadinessSql(false, true, false);
 const CAPABILITY_BACKGROUND_READINESS_SQL = inventoryReadinessSql(false);
 
 export async function readInventoryBackgroundReadiness(database, { requireRag = true } = {}) {

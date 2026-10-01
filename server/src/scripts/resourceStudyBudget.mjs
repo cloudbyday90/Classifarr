@@ -5,6 +5,7 @@ const budgets = Object.freeze({
   baseline: Object.freeze({ cpus: 0, pids: -1 }),
   bounded: Object.freeze({ cpus: 2, pids: 128 }),
   stress: Object.freeze({ cpus: 1, pids: 128 }),
+  'image-capacity': Object.freeze({ cpus: 2, pids: 128, memoryBytes: 4 * 1024 ** 3 }),
 });
 
 export function resourceStudyBudget(name) {
@@ -20,7 +21,7 @@ export function assertStudyBudget(metrics, name) {
     (name === 'baseline'
       ? !Number.isSafeInteger(metrics.pidsLimit) || (metrics.pidsLimit !== -1 && metrics.pidsLimit < budgets.bounded.pids)
       : metrics.pidsLimit !== budget.pids) ||
-    metrics.pidsLimitHits !== 0 || metrics.limitBytes !== 2 * 1024 ** 3) {
+    metrics.pidsLimitHits !== 0 || metrics.limitBytes !== (budget.memoryBytes ?? 2 * 1024 ** 3)) {
     throw Object.assign(new Error('resource_study_budget_not_enforced'), {
       studyBudget: studyBudgetDiagnostic(metrics, name),
     });
@@ -38,7 +39,7 @@ export function assertStudyBudgetContinuity(...metrics) {
 
 export function assertDockerStudyBudget(config, name) {
   const budget = resourceStudyBudget(name);
-  if (!config || config.nanoCpus !== budget.cpus * 1e9 || config.memoryBytes !== 2 * 1024 ** 3 ||
+  if (!config || config.nanoCpus !== budget.cpus * 1e9 || config.memoryBytes !== (budget.memoryBytes ?? 2 * 1024 ** 3) ||
     ![0, -1].includes(config.cpuQuota) ||
     (budget.pids === -1 ? ![null, 0, -1].includes(config.pids) : config.pids !== budget.pids)) {
     throw new Error('resource_study_docker_budget_mismatch');

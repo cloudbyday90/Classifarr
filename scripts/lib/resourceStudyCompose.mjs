@@ -22,6 +22,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   } } = {}) {
   const profile = mode === 'image-index' ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
+  if (budget === 'image-capacity' && mode !== 'image-index') throw new Error('resource_study_budget_invalid');
   if (candidateImageId !== undefined && !/^sha256:[a-f0-9]{64}$/.test(candidateImageId)) throw new Error('resource_study_image_invalid');
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_study_identity');
@@ -30,7 +31,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^COMPOSE_/i.test(key)));
   Object.assign(env, { COMPOSE_DISABLE_ENV_FILE: '1', CLASSIFARR_UPGRADE_IMAGE: candidateImageId ?? image,
     CLASSIFARR_UPGRADE_CANDIDATE: image, CLASSIFARR_UPGRADE_MODE: 'normal',
-    CLASSIFARR_RESOURCE_STUDY_CPUS: String(limits.cpus), CLASSIFARR_RESOURCE_STUDY_PIDS: String(limits.pids) });
+    CLASSIFARR_RESOURCE_STUDY_CPUS: String(limits.cpus), CLASSIFARR_RESOURCE_STUDY_PIDS: String(limits.pids),
+    CLASSIFARR_RESOURCE_STUDY_MEMORY: String(limits.memoryBytes ?? 2 * 1024 ** 3) });
   const base = ['compose', '--project-name', project, '--file', resolve(root, 'docker-compose.published-upgrade-drill.yml'),
     '--project-directory', root];
   if (budget !== 'baseline') base.push('--file', resolve(root, 'docker-compose.resource-study-budget.yml'));

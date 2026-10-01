@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { assertStudyCgroup } from './resourceStudyMetrics.mjs';
 import { assertStudyBudget, assertStudyBudgetContinuity, summarizeBudgetEnforcement } from './resourceStudyBudget.mjs';
+import { IMAGE_INDEX_RESULTS, imageIndexResultCode } from '../utils/imageIndexResultProtocol.mjs';
 
 export const IMAGE_INDEX_STUDY_PROFILE = Object.freeze({ durationMs: 1_200_000, idleMs: 0 });
 export const IMAGE_INDEX_STUDY_CASES = Object.freeze([
@@ -37,6 +38,9 @@ export function assertImageIndexStudyReceipt(study, budget = 'baseline') {
     assert(Number.isSafeInteger(row.durationMs) && row.durationMs >= 0 && row.durationMs <= 155000);
     assert(Number.isInteger(row.validIndexes) && row.validIndexes >= 0 && row.validIndexes <= 3);
     assert.equal(row.acknowledged, row.outcome === 'complete');
+    // Older v1 receipts did not capture the acknowledged workspace.
+    if (Object.hasOwn(row, 'workMemMiB')) assert(row.outcome === 'complete'
+      ? [64, 512].includes(row.workMemMiB) : row.workMemMiB === null);
     if (row.outcome === 'complete') {
       assert.equal(row.validIndexes, 3); assert.equal(row.exitCode, 0);
       assert.equal(row.signal, null); assert.equal(row.watchdog, false);
@@ -49,7 +53,8 @@ export function assertImageIndexStudyReceipt(study, budget = 'baseline') {
       assert(Object.values(row[key]).every(n => Number.isInteger(n) && n >= 0));
       assert.equal(Object.values(row[key]).reduce((a, b) => a + b, 0), row.samples);
     }
-    assert([0, 1, 2, 75, null].includes(row.exitCode));
+    assert([0, 1, 2, 75, null].includes(row.exitCode)
+      || (Number.isInteger(row.exitCode) && imageIndexResultCode(IMAGE_INDEX_RESULTS[row.exitCode]) === row.exitCode));
     assert([null, 'SIGTERM', 'SIGKILL'].includes(row.signal));
     assert.equal(row.exitCode === null, row.signal !== null);
     assert.equal(typeof row.watchdog, 'boolean');

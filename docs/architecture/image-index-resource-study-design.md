@@ -1,5 +1,12 @@
 # Image-index repair resource study
 
+Follow-up: [capacity-aware admission](image-index-capacity-admission-design.md)
+adds an independently enforced `--image-index-capacity` experiment (4 GiB,
+2 CPUs, 128 PIDs) and captures the acknowledged build workspace. The original
+`--image-index` profile remains 2 GiB. The original design below records the
+baseline studied before the capacity policy; deadlines and retry limits remain
+unchanged in the follow-up.
+
 ## Decision and scope
 
 Measure the existing compatible image-index worker before changing production

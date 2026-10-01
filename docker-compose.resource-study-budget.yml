@@ -3,3 +3,4 @@ services:
   app:
     cpus: ${CLASSIFARR_RESOURCE_STUDY_CPUS:?Use the resource study launcher}
     pids_limit: ${CLASSIFARR_RESOURCE_STUDY_PIDS:?Use the resource study launcher}
+    mem_limit: ${CLASSIFARR_RESOURCE_STUDY_MEMORY:?Use the resource study launcher}

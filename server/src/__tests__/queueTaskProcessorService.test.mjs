@@ -26,6 +26,20 @@ import { QueueClaimWriteError } from '../services/queueClaimWriteGuard.mjs';
 const ratingNormalizer = { getPriorityRating: jest.fn() };
 const metadataEnrichment = { hasWebSearchEnrichmentMetadata: jest.fn() };
 
+test.each([['55P03', 'image_index_lock_contention'], ['57014', 'image_index_query_cancelled'],
+  [null, 'image_index_definition_mismatch'], ['unknown', null]])('image failure %s reaches the error log without raw database text', async (code, reason) => {
+  const error = Object.assign(new Error(code === null ? reason : 'private database exception'), { code });
+  const logger = createMockLogger(), failTask = jest.fn();
+  const task = { id: 7, task_type: 'rebuild_hnsw_index', attempts: 0, max_attempts: 3, claim_token: 'owned' };
+  await QueueTaskProcessorService.prototype.processTask.call({ logger, failTask,
+    rebuildImageIndexes: jest.fn().mockRejectedValue(error) }, task);
+  const details = logger.error.mock.calls[0][1];
+  expect(details).toEqual({ taskId: 7, taskType: 'rebuild_hnsw_index', reasonCode: 'task_processing_failed',
+    ...(reason ? { maintenanceReason: reason } : {}) });
+  expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private');
+  expect(failTask).toHaveBeenCalledWith(7, 'task_processing_failed', 0, 3, 'owned');
+});
+
 const makeClient = () => ({ query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() });
 
 /** Creates a mock db whose withTransaction delegates to pool.connect (matching real behavior). */

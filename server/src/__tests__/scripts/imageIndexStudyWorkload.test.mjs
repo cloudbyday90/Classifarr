@@ -42,7 +42,8 @@ beforeEach(() => {
     if (sql.includes('SET claim_token=gen_random_uuid')) {
       currentTask = { ...currentTask, claim_token: 'after' }; return { rows: [currentTask] };
     }
-    if (sql.includes('SELECT status,claim_token')) return { rows: [{ status: acknowledged ? 'completed' : 'processing', claim_token: acknowledged ? null : currentTask.claim_token }] };
+    if (sql.includes('SELECT status,claim_token')) return { rows: [{ status: acknowledged ? 'completed' : 'processing',
+      claim_token: acknowledged ? null : currentTask.claim_token, work_mem_mib: rows > 10000 ? 512 : 64 }] };
     return { rows: [] };
   });
   release = jest.fn(); db = { pool: { connect: jest.fn(async () => { connectionCount++; return { query, release }; }) } };
@@ -53,6 +54,7 @@ test('all fixed sizes, recovery verification and resource lifetimes compose', as
   const progress = jest.fn(); const receipt = await runImageIndexStudy(db, 'baseline', progress);
   expect(receipt.cases).toHaveLength(4); expect(rows).toBe(50000);
   expect(receipt.cases.every(row => row.outcome === 'complete')).toBe(true);
+  expect(receipt.cases.map(row => row.workMemMiB)).toEqual([64, 64, 64, 512]);
   expect(progress).toHaveBeenCalledTimes(4);
   expect(connectionCount).toBe(2); expect(release).toHaveBeenCalledTimes(2); expect(sample.close).toHaveBeenCalled();
   expect(executeStudyImageWorker).toHaveBeenCalledTimes(6);

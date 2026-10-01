@@ -24,6 +24,20 @@ test('receipt and text distinguish incomplete repairs and unavailable observatio
   expect(() => formatResourceStudySummary({ ...result, cleanup: 'failed' })).toThrow();
 });
 
+test.each([70, 71, 72, 73, 74, 76, 80, 81, 82, 83])('classified exit %s remains incomplete evidence', exitCode => {
+  const study = imageIndexStudyReceiptFixture();
+  Object.assign(study.cases[3], { outcome: 'incomplete', acknowledged: false, validIndexes: 0, exitCode, workMemMiB: null });
+  expect(() => assertImageIndexStudyReceipt(study)).not.toThrow();
+  study.cases[3].workMemMiB = 512;
+  expect(() => assertImageIndexStudyReceipt(study)).toThrow();
+});
+
+test.each([67, 68, 69, 99, '83'])('unrecognized child exit %s cannot be measured', exitCode => {
+  const study = imageIndexStudyReceiptFixture();
+  Object.assign(study.cases[3], { outcome: 'incomplete', acknowledged: false, validIndexes: 0, exitCode });
+  expect(() => assertImageIndexStudyReceipt(study)).toThrow();
+});
+
 test.each([
   s => { s.status = 'passed'; }, s => { s.dimensions = 768; }, s => { s.rowsPreserved = false; },
   s => { s.databaseIdle = false; }, s => { s.workersStopped = false; }, s => { s.interruption.invalidObserved = false; },

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Give larger embedded image-index repairs a fixed, memory-checked workspace
+  only when ingestion and backfill are idle. Preserve execution deadlines and
+  retry budgets, distinguish safe capacity waits from classified failures, and
+  add an isolated larger-memory validation profile without template changes.
 - Add a disposable image-index repair capacity study with realistic vector sizes,
   resource and database-wait measurements, interrupted-build recovery checks and
   explicit incomplete outcomes, without changing production maintenance limits.

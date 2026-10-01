@@ -1,5 +1,10 @@
 # Image-index repair capacity outcome
 
+Follow-up implemented: [capacity-aware repair outcome](image-index-capacity-admission-outcome.md)
+records safe 2 GiB deferral and a complete 50,000-vector build in the isolated
+4 GiB profile. The next evidence gap is mixed-load behavior, not repeating the
+baseline timeout study. Original measurements and rationale follow unchanged.
+
 ## Delivered
 
 `node scripts/run-resource-study.mjs --image-index` now runs the real compatible

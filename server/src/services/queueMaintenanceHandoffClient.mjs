@@ -6,7 +6,7 @@ import { QUEUE_MAINTENANCE_REQUEST, QUEUE_MAINTENANCE_INTERVAL_MS,
 
 export function createQueueMaintenanceHandoffClient({ channel, now = () => performance.now(),
   encodeRequest = () => Buffer.from([QUEUE_MAINTENANCE_REQUEST]),
-  intervalMs = QUEUE_MAINTENANCE_INTERVAL_MS, timeoutMs = 95_000, coalesce = true,
+  intervalMs = QUEUE_MAINTENANCE_INTERVAL_MS, timeoutMs = 95_000, coalesce = true, results = QUEUE_MAINTENANCE_RESULTS,
 }) {
   let closed = false, pending = null, last = -Infinity, settle, timer;
   const finish = status => {
@@ -20,8 +20,8 @@ export function createQueueMaintenanceHandoffClient({ channel, now = () => perfo
   channel.on('end', close);
   channel.on('close', close);
   channel.on('data', chunk => {
-    if (!pending || !Buffer.isBuffer(chunk) || chunk.length !== 1 || !Object.hasOwn(QUEUE_MAINTENANCE_RESULTS, chunk[0])) close();
-    else finish(QUEUE_MAINTENANCE_RESULTS[chunk[0]]);
+    if (!pending || !Buffer.isBuffer(chunk) || chunk.length !== 1 || !Object.hasOwn(results, chunk[0])) close();
+    else finish(results[chunk[0]]);
   });
   channel.unref?.();
   return { close, request(task) {

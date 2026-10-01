@@ -20,7 +20,7 @@ export function createQueueMaintenanceBroker({ channel, start, wait = waitForEmb
   now = () => performance.now(), report = () => {}, onFatal = () => {},
   requestBytes = 1, decodeRequest = frame => {
     if (frame[0] !== QUEUE_MAINTENANCE_REQUEST) throw new Error('maintenance_request_invalid');
-  }, intervalMs = QUEUE_MAINTENANCE_INTERVAL_MS, timeoutMs = 90_000,
+  }, intervalMs = QUEUE_MAINTENANCE_INTERVAL_MS, timeoutMs = 90_000, resultByte = queueMaintenanceResultByte,
 }) {
   if (!channel || typeof start !== 'function') throw new Error('maintenance_broker_invalid');
   let closed = false, active = null, last = -Infinity, cancel;
@@ -35,7 +35,7 @@ export function createQueueMaintenanceBroker({ channel, start, wait = waitForEmb
       child = start(request);
       report('assessment_started');
       const result = await wait(Promise.race([child.done, stopping.then(() => null)]), timeoutMs);
-      if (result) { joined = true; outcome = queueMaintenanceResultByte(result); }
+      if (result) { joined = true; outcome = resultByte(result); }
     } catch { /* Fixed failure only; never forward a child exception or output. */ }
     finally {
       if (child && !joined) {

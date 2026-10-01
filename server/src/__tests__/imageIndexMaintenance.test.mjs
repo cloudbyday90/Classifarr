@@ -142,3 +142,17 @@ test('claim loss while waiting for completion lock rolls back instead of success
   expect(query).toHaveBeenCalledWith('ROLLBACK');
   expect(query.mock.calls.some(([sql]) => sql.startsWith('UPDATE'))).toBe(false);
 });
+
+test('memory deferral precedes automatic budget charging, destructive DDL and workspace increase', async () => {
+  const f = fixture({ rows: [] }), original = f.client.query.getMockImplementation();
+  f.client.query.mockImplementation(async (sql, params) => {
+    if (sql.includes('vector_count')) return { rows: [{ vector_count: 10001 }] };
+    if (sql.startsWith('WITH active_libraries')) return { rows: [{ readiness: 'ready' }] };
+    return original(sql, params);
+  });
+  await expect(f.run({ task, readMemory: () => null })).resolves.toMatchObject({ reason: 'image_index_memory_unknown' });
+  expect(f.client.query.mock.calls.some(([sql]) => /^(CREATE|DROP) INDEX|SELECT source|SET maintenance_work_mem/.test(sql))).toBe(false);
+  const acknowledgement = f.client.query.mock.calls.find(([sql]) => sql.startsWith('UPDATE public.task_queue SET\n'));
+  expect(acknowledgement[1][2]).toBe('deferred');
+  expect(acknowledgement[1][4]).toBe(900);
+});

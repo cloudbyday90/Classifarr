@@ -3,6 +3,8 @@ import { assertCompatibleWorkerEnvironment, assertCompatibleWorkerDatabase } fro
 import { decodeImageIndexClaim, IMAGE_INDEX_REQUEST_BYTES, IMAGE_INDEX_WORKER_TIMEOUT_MS } from '../utils/imageIndexHandoffProtocol.mjs';
 import { runImageIndexMaintenance } from '../services/imageIndexMaintenance.mjs';
 import { QueueClaimWriteError } from '../services/queueClaimWriteGuard.mjs';
+import { readRuntimeMemory } from '../services/runtimeMemoryBudget.mjs';
+import { IMAGE_INDEX_RESULTS, imageIndexResultByte, imageIndexResultCode, imageIndexFailureCode } from '../utils/imageIndexResultProtocol.mjs';
 
 export async function readImageIndexClaim(input) {
   let frame = Buffer.alloc(0);
@@ -29,16 +31,17 @@ export async function runCompatibleImageIndex({ environment = process.env,
   try {
     database = await loadDatabase();
     await assertDatabase(database);
-    const result = await run({ database, task });
-    code = result.status === 'complete' ? 0 : 75;
+    const result = await run({ database, task, readMemory: readRuntimeMemory });
+    code = result.status === 'complete' ? 0 : imageIndexResultCode(result.reason) ?? 75;
   } catch (error) {
     if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') code = 75;
+    else code = imageIndexFailureCode(error);
     // The application retains its existing claim-fenced failure/attempt policy.
   } finally {
     if (database) { try { await database.pool.end(); } catch { code = 1; } }
   }
   output(JSON.stringify({ operation: 'image_indexes', authority: 'shared_identity',
-    status: code === 0 ? 'complete' : code === 75 ? 'deferred' : 'unavailable' }));
+    status: IMAGE_INDEX_RESULTS[imageIndexResultByte({ code, signal: null })] }));
   return code;
 }
 

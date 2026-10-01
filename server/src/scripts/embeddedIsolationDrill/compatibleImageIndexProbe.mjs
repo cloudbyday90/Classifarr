@@ -96,6 +96,14 @@ try {
     VALUES ('rebuild_hnsw_index', '{}', NOW()) RETURNING id::text`)).rows[0];
   await until(async () => (await status(queued)).status === 'completed');
   assert.equal((await status(queued)).attempts, 0);
+  // A real worker failure crosses FD4 as a fixed category, not generic unavailability.
+  await sql(IMAGE_INDEXES[2].drop);
+  await sql('CREATE INDEX idx_embeddings_image_hash ON classification_embeddings (image_model)');
+  const mismatch = await claim();
+  await execute(mismatch, 'image_index_definition_mismatch');
+  assert.equal((await status(mismatch)).claim_token, mismatch.claim_token);
+  assert.match((await sql("SELECT pg_get_indexdef('public.idx_embeddings_image_hash'::regclass) AS definition")).rows[0].definition, /\(image_model\)/);
+  await sql("UPDATE task_queue SET status='failed',claim_token=NULL,visible_at=NULL WHERE id=$1 AND claim_token=$2", [mismatch.id, mismatch.claim_token]);
   assert.deepEqual((await sql('SELECT value FROM supervisor_sentinel')).rows, [{ value: 'preserved' }]);
-  process.stdout.write('PASS image worker: stale claim, restore quarantine, killed build, invalid-index recovery and real queued completion\n');
+  process.stdout.write('PASS image worker: stale claim, restore quarantine, killed build, invalid-index recovery, real queued completion and classified failure\n');
 } finally { await pool.end(); }

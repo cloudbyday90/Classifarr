@@ -9,7 +9,7 @@ export function resourceStudyStartupFixture(budget = 'baseline') {
 
 export function resourceStudyReceiptFixture(mode = 'smoke', budget = 'baseline') {
   const profile = resourceStudyProfile(mode), limits = resourceStudyBudget(budget);
-  const initial = { version: 2, memoryBytes: 1000, limitBytes: 2 * 1024 ** 3, oom: 0, oomKill: 0,
+  const initial = { version: 2, memoryBytes: 1000, limitBytes: limits.memoryBytes ?? 2 * 1024 ** 3, oom: 0, oomKill: 0,
     memoryLimitHits: 0, cpuUsec: 100, cpuQuotaUsec: limits.cpus ? limits.cpus * 100000 : -1,
     cpuPeriodUsec: 100000, cpuPeriods: 0, cpuThrottledPeriods: 0, throttledUsec: 0,
     pids: 10, pidsLimit: limits.pids, pidsLimitHits: 0 };

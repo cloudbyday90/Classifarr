@@ -4,6 +4,7 @@ import { parseEmbeddedId } from './embeddedIdentityPolicy.mjs';
 import { observeEmbeddedMaintenance } from './embeddedMaintenanceOutput.mjs';
 import { createQueueMaintenanceBroker } from './embeddedQueueMaintenanceBroker.mjs';
 import { compatibleMaintenanceEnvironment } from './embeddedCompatibleMaintenanceEnvironment.mjs';
+import { imageIndexResultByte } from '../utils/imageIndexResultProtocol.mjs';
 import { encodeImageIndexClaim, decodeImageIndexClaim, IMAGE_INDEX_REQUEST_BYTES,
   IMAGE_INDEX_REQUEST_INTERVAL_MS, IMAGE_INDEX_WORKER_TIMEOUT_MS } from '../utils/imageIndexHandoffProtocol.mjs';
 
@@ -28,5 +29,5 @@ export function createCompatibleImageIndexBroker({ channel, onFatal, report,
   return createQueueMaintenanceBroker({ channel, onFatal, report,
     start: task => start({ task, uid, gid, platform }), requestBytes: IMAGE_INDEX_REQUEST_BYTES,
     decodeRequest: decodeImageIndexClaim, intervalMs: IMAGE_INDEX_REQUEST_INTERVAL_MS,
-    timeoutMs: IMAGE_INDEX_WORKER_TIMEOUT_MS });
+    timeoutMs: IMAGE_INDEX_WORKER_TIMEOUT_MS, resultByte: imageIndexResultByte });
 }

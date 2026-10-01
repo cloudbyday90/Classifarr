@@ -56,12 +56,13 @@ export async function runImageIndexStudy(db, budget = 'baseline', progress = () 
       const sampleStart = sampler.samples.length;
       const execution = await executeStudyImageWorker({ task, query, sampler, phase: scenario.name });
       const plan = await inspectImageIndexes(query);
-      const acknowledgement = (await query('SELECT status,claim_token FROM task_queue WHERE id=$1', [task.id])).rows[0];
+      const acknowledgement = (await query("SELECT status,claim_token,payload->'result'->'workMemMiB' AS work_mem_mib FROM task_queue WHERE id=$1", [task.id])).rows[0];
       const acknowledged = acknowledgement.status === 'completed' && acknowledgement.claim_token === null;
       assert.equal(acknowledged, execution.exitCode === 0);
       assert.deepEqual(await readStudyImageData(query), before);
       const { interrupted: _interrupted, ...metrics } = execution;
       cases.push({ ...scenario, ...metrics, outcome: acknowledged ? 'complete' : 'incomplete', acknowledged,
+        workMemMiB: acknowledged ? acknowledgement.work_mem_mib : null,
         validIndexes: plan.filter(row => row.action === 'preserve').length,
         ...summarizeImageIndexSamples(sampler.samples.slice(sampleStart)) });
       progress({ scenario: scenario.name, outcome: cases.at(-1).outcome });

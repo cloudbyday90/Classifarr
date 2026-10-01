@@ -154,6 +154,26 @@ test.each(['smoke', 'soak', 'capacity', 'image-index'])('owned study lifecycle l
   }
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
 });
+
+test('image capacity profile verifies 4 GiB across Docker, startup and workload', async () => {
+  const budget = 'image-capacity';
+  const run = fakeDocker((args, options) => {
+    let stdout;
+    if (args[0] === 'compose' && args.includes('ps')) stdout = 'b'.repeat(64);
+    if (args[0] === 'inspect' && args[2].includes('HostConfig')) {
+      expect(options.env.CLASSIFARR_RESOURCE_STUDY_MEMORY).toBe(String(4 * 1024 ** 3));
+      stdout = JSON.stringify({ nanoCpus: 2e9, pids: 128, memoryBytes: 4 * 1024 ** 3, cpuQuota: 0, imageId: `sha256:${'a'.repeat(64)}` });
+    }
+    if (args.includes('src/scripts/runResourceStudy.mjs')) {
+      const mode = args.at(-1);
+      stdout = `RESOURCE_STUDY ${JSON.stringify(mode === 'seed' ? { seeded: true }
+        : mode.startsWith('budget-') ? resourceStudyStartupFixture(budget) : imageIndexStudyReceiptFixture(budget))}`;
+    }
+    return stdout === undefined ? null : { status: 0, stdout, stderr: '' };
+  });
+  await expect(launch(run, { mode: 'image-index', budget })).resolves.toMatchObject({ budget, cleanup: 'passed' });
+  await expect(launch(run, { mode: 'soak', budget })).rejects.toThrow('budget_invalid');
+});
 test.each(['ps', 'volume', 'network', 'image'])('colliding %s is never deleted', operation => {
   const run = fakeDocker(args => args[0] === operation ? { status: 0, stdout: 'existing' } : null);
   return expect(launch(run).finally(() => {

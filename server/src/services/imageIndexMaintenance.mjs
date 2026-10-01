@@ -5,11 +5,12 @@ import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../utils/backupRestoreSessionContr
 import { IMAGE_INDEX_LOCK_KEY, IMAGE_INDEX_BUDGET_MS } from './imageIndexMaintenanceContract.mjs';
 import { inspectImageIndexes } from './imageIndexMaintenanceCatalog.mjs';
 import { admitAutomaticImageIndexAttempt } from './imageIndexAutomaticAdmission.mjs';
+import { admitImageIndexCapacity } from './imageIndexCapacityAdmission.mjs';
 import { captureImageIndexClaim, claimNextImageIndexTask, imageIndexClaimRemaining,
   finishImageIndexClaim } from './imageIndexMaintenanceClaims.mjs';
 
 /** task supplied: legacy online queue path. No task: exclusive one-shot maintenance. */
-export async function runImageIndexMaintenance({ database, task = null }) {
+export async function runImageIndexMaintenance({ database, task = null, readMemory = null }) {
   let claim = task === null ? null : captureImageIndexClaim(task);
   const online = task !== null;
   const client = await database.pool.connect();
@@ -49,9 +50,14 @@ export async function runImageIndexMaintenance({ database, task = null }) {
     if (!online) claim = await claimNextImageIndexTask(query);
     if (!claim) return { status: 'no_work' };
     await imageIndexClaimRemaining(query, claim);
-    await query("SET maintenance_work_mem = '64MB'");
-    await query('SET max_parallel_maintenance_workers = 0');
     const plan = await inspectImageIndexes(query);
+    const capacity = await admitImageIndexCapacity(query, claim, plan, readMemory);
+    if (capacity.status === 'deferred') {
+      await finishImageIndexClaim(query, claim, { status: 'deferred', retrySeconds: 900 });
+      return capacity;
+    }
+    await query(capacity.workMemMiB === 512 ? "SET maintenance_work_mem = '512MB'" : "SET maintenance_work_mem = '64MB'");
+    await query('SET max_parallel_maintenance_workers = 0');
     if (plan.some(value => value.action !== 'preserve')) {
       const admission = await admitAutomaticImageIndexAttempt(query, claim);
       if (admission.status === 'review') {
@@ -79,7 +85,7 @@ export async function runImageIndexMaintenance({ database, task = null }) {
     if ((await inspectImageIndexes(query)).some(value => value.action !== 'preserve')) {
       throw new Error('image_index_verification_failed');
     }
-    const result = { rebuilt: true, indexes: plan.map(value => value.index.name),
+    const result = { rebuilt: true, workMemMiB: capacity.workMemMiB, indexes: plan.map(value => value.index.name),
       created: plan.filter(value => value.action === 'create').length,
       repaired: plan.filter(value => value.action === 'repair').length };
     await finishImageIndexClaim(query, claim, { status: 'complete', result });
@@ -90,6 +96,7 @@ export async function runImageIndexMaintenance({ database, task = null }) {
       try { await finishImageIndexClaim(query, claim, { status: 'failed' }); }
       catch { /* Expired/lost claims remain recoverable by the normal queue lease. */ }
     }
+    if (timedOut) throw new Error('image_index_maintenance_deadline');
     throw error;
   } finally {
     clearTimeout(timer);

@@ -4,8 +4,9 @@ import { runResourceBudgetComparison } from './lib/resourceBudgetComparison.mjs'
 
 try {
   const args = process.argv.slice(2);
-  if (args.length > 1 || (args.length === 1 && !['--smoke', '--soak', '--capacity', '--budget-comparison', '--image-index'].includes(args[0]))) throw new Error('resource_study_arguments_invalid');
+  if (args.length > 1 || (args.length === 1 && !['--smoke', '--soak', '--capacity', '--budget-comparison', '--image-index', '--image-index-capacity'].includes(args[0]))) throw new Error('resource_study_arguments_invalid');
   if (args[0] === '--budget-comparison') await runResourceBudgetComparison();
+  else if (args[0] === '--image-index-capacity') await runResourceStudyCompose({ mode: 'image-index', budget: 'image-capacity' });
   else await runResourceStudyCompose({ mode: args[0]?.slice(2) ?? 'soak' });
 } catch (error) {
   process.stderr.write(`${error.message}\n`);

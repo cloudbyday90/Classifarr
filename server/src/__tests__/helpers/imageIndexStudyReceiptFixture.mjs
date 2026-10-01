@@ -2,9 +2,9 @@
 import { resourceStudyStartupFixture } from './resourceStudyReceiptFixture.mjs';
 import { IMAGE_INDEX_STUDY_CASES, IMAGE_INDEX_STUDY_PHASES, IMAGE_INDEX_STUDY_WAITS } from '../../scripts/imageIndexStudyContract.mjs';
 
-export function imageIndexStudyReceiptFixture() {
-  const metrics = resourceStudyStartupFixture().metrics;
-  return { version: 'image_index_study.v1', status: 'measured', profile: 'image-index', budget: 'baseline',
+export function imageIndexStudyReceiptFixture(budget = 'baseline') {
+  const metrics = resourceStudyStartupFixture(budget).metrics;
+  return { version: 'image_index_study.v1', status: 'measured', profile: 'image-index', budget,
     dimensions: 2000, durationMs: 10000, rowsPreserved: true, workersStopped: true, databaseIdle: true,
     interruption: { invalidObserved: true, claimRotated: true, staleClaimRejected: true },
     initial: { ...metrics }, final: { ...metrics }, cases: IMAGE_INDEX_STUDY_CASES.map(scenario => ({

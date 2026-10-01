@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { Socket } from 'node:net';
 import { createQueueMaintenanceHandoffClient } from './queueMaintenanceHandoffClient.mjs';
+import { IMAGE_INDEX_RESULTS } from '../utils/imageIndexResultProtocol.mjs';
 import { encodeImageIndexClaim, IMAGE_INDEX_REQUEST_INTERVAL_MS,
   IMAGE_INDEX_WORKER_TIMEOUT_MS } from '../utils/imageIndexHandoffProtocol.mjs';
 
@@ -13,7 +14,7 @@ export function openImageIndexHandoff({ environment = process.env, platform = pr
   try {
     return createQueueMaintenanceHandoffClient({ channel: connect(), encodeRequest: encodeImageIndexClaim,
       intervalMs: IMAGE_INDEX_REQUEST_INTERVAL_MS, timeoutMs: IMAGE_INDEX_WORKER_TIMEOUT_MS + 5000,
-      coalesce: false });
+      coalesce: false, results: IMAGE_INDEX_RESULTS });
   } catch { return unavailable; }
 }
 
