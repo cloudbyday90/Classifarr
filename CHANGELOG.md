@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add resumable offline database identity migration components and real legacy
+  cold-copy/crash-recovery coverage, preserving original data and rejecting old
+  application credentials in the candidate without changing installed databases.
 - Protect packaged application and database extension code from runtime writes;
   validate and verify embedded account setup before changing data ownership.
   Add bounded supervisor maintenance handoff with separate-identity restore tests

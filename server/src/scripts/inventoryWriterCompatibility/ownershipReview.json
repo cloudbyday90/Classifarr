@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "embedded_legacy_identity_migration",
+      "classification": "separately_coordinated",
+      "reason": "Offline migration primitives have no runtime hook or database pool. Root-protected journal files bind a bounded phase sequence to a cold source digest and identity plan, with fsync and a kernel-held exclusive lease. The only PostgreSQL adapter is the fixed-path, no-network disposable isolation drill: it preserves source data, copies an unpublished candidate, changes ownership and authentication, clears passwords and grants a restricted runtime role in one transaction. Real process kills verify phase replay, candidate shutdown and old-login rejection. The indirect SQL probe uses a fixed denial-test list, never request text.",
+      "followUp": "Keep malformed journal, filesystem bounds/link rejection, lock contention/death, between-effect receipt replay and real PostgreSQL denial/readiness tests. This does not activate production migration, accept an unproven stopped writer, route privileged queue jobs or provide an ingestion capability fence. Protected persistent layout, administrative index/VACUUM routing and constrained non-root upgrade paths remain required. Existing unresolved writer paths are unchanged."
+    },
+    {
       "id": "embedded_identity_handoff",
       "classification": "separately_coordinated",
       "reason": "Startup account provisioning validates before mutation and verifies the resulting non-root UID/GID before existing data ownership repair. Optional supervisor maintenance runs one fixed schema/restore child with a constructed secret-free environment; no normal application starts until confirmed successful exit, and cancellation/unconfirmed exit prevents handoff. Only the isolated scratch drill activates the separate-identity maintenance composition. Image code ownership is protected separately by packaging. Existing SQL role, HBA, inventory writers and legacy ownership remain unchanged.",
@@ -236,6 +242,14 @@
     }
   ],
   "entries": [
+    {"path":"server/src/bootstrap/embeddedMigrationJournal.mjs","digest":"6ac2c405c9533318bacd7562c7e5e9f81cd39ac4fbfefaf001d89bd5b840e0f8","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/bootstrap/embeddedMigrationPhases.mjs","digest":"cdbcc09ea16e633a8f18e73fe43a48e41badd6fc42057ac500c9f9e7c7dd7989","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/bootstrap/embeddedMigrationTree.mjs","digest":"2dbe8129c4f019368b2281c716295a0443f6d4b5a08bd554a05bc4bc84c2a3df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/identityMigrationDatabase.mjs","digest":"bdf3b06a36e2ab3e2ab76894f49a9fd344a3a6de9c6b6268794939015fbc6eea","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/identityMigrationProbe.mjs","digest":"5d41d730f22a453314b06a246f0926a3ee685a75377b51669bebb72b95b3bfa2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/identityMigrationRuntimeProbe.mjs","digest":"4c1fed74f368aa432dbd4769345b74364f575a9882073b390fd161f42b1f8c1a","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/identityMigrationSteps.mjs","digest":"999fb5755806baee2931cb296966939345e0cd35914c48db0b2955b44896b493","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/identityMigrationWorker.mjs","digest":"de00e948a5ee15f6c9e96fdf31060a2d057e19e7dd2e49a4decd521df9a26d5b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
     {"path":"server/src/scripts/embeddedIsolationDrill/restoreProbe.mjs","digest":"7b67dc681774b8a4d73ea76d5c423b60a4e7c4a01b5e190387c2002105fbe75a","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"server/src/scripts/runDatabaseRestoreMaintenance.mjs","digest":"2b14e3477821a5f37a0affc0c594c584fc0fb1aa8219b77d9df73d635b47c6db","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"server/src/services/backupRestoreExecution.mjs","digest":"36eaa3a50034a40677b6c63491218fc67ab172c04155e93d38ac3bbab3bc38cf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
@@ -257,7 +271,7 @@
     {"path":"server/src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs","digest":"169f9158f77bf36959d5aaa095770368245e156f47f7d984c7d6e6669d332220","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/processes.mjs","digest":"f72dab90fb284cb9531fe5e7e8d9a6f1cf140ad0bbded1a840a5ed62baf1b0ca","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/runtimeProbe.mjs","digest":"eb8806736e5f4dcf32d6b82f42e6e7cde797e898a781b83752fecbbbd46f8cae","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"embedded_isolation_rehearsal"},
-    {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"a86526b2e4d2eb6c16031af3938b730a51794d4e7c642564f107e66c65211b22","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_identity_handoff"},
+    {"path":"server/src/scripts/runEmbeddedIsolationDrill.mjs","digest":"15cc05fcec5c7a18965fcf84e09ed484afb0e1be1b10eac11179ea49d9c81cba","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_legacy_identity_migration"},
     {"path":"server/src/bootstrap/normalRuntime.mjs","digest":"af749c4523a1b77cee8e713af141eddb431ebe650f7ae7a8cebf08588e0665bc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},
     {"path":"server/src/bootstrap/runtimeLifecycle.mjs","digest":"9977e8cc02a5585d24b1b8acb39ae5cc7b47d01edd08c514f277d1ab0d7380c8","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
     {"path":"server/src/services/queueStartupPerformanceReceipt.mjs","digest":"e7d6dea5cb6c2200e5ed3ba86c62c62541e284ef85a6925a6fef784c03daf7df","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"optional_startup_receipt_lifecycle"},

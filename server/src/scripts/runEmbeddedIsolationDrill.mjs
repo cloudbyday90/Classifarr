@@ -107,6 +107,8 @@ export async function runEmbeddedIsolationDrill() {
     runtime = null;
     await assertNoStartupErrors();
     record('clean_postgres_restart_preserved_data_and_runtime_readmission');
+    await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/identityMigrationProbe.mjs'], { timeout: 300_000 });
+    record('legacy_identity_copy_resume_crash_recovery_and_old_credential_denial');
   } finally {
     try { await stopRuntime(runtime); }
     finally {
