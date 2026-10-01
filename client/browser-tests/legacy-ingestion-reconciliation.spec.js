@@ -61,6 +61,8 @@ test('older preview contract retains disable, confirm and audit without automati
 test('enabled recovery uses keyboard confirmation and schedules a handoff without settings writes', async ({ page }, testInfo) => {
   const writes = []
   let reconciled = false
+  let previewReads = 0
+  const refreshStarted = Promise.withResolvers(), refreshAllowed = Promise.withResolvers()
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request(), path = new globalThis.URL(request.url()).pathname
     if (request.method() !== 'GET') writes.push({ path, body: request.postDataJSON(), revision: request.headers()['if-match'] })
@@ -76,8 +78,12 @@ test('enabled recovery uses keyboard confirmation and schedules a handoff withou
       if (request.method() === 'POST') {
         reconciled = true
         data = { receipt: { auditId: 43, replay: 'scheduled' } }
-      } else data = { revision: '"synthetic-enabled-review"', reason: 'disable_library', resumeReason: 'confirmation_required',
-        canReconcile: false, canResume: true, syncs: [{ id: 8, status: 'running', processed: 5 }], capture: null }
+      } else {
+        previewReads++
+        if (previewReads === 2) { refreshStarted.resolve(); await refreshAllowed.promise }
+        data = { revision: `"synthetic-enabled-review-${previewReads}"`, reason: 'disable_library', resumeReason: 'confirmation_required',
+          canReconcile: false, canResume: true, syncs: [{ id: 8, status: 'running', processed: 5 }], capture: null }
+      }
     }
     if (path === '/api/libraries/1/rules') data = []
     if (path === '/api/libraries/1/profile') data = { item_count: 0, rating_distribution: {}, genre_distribution: {}, studio_distribution: {} }
@@ -90,6 +96,16 @@ test('enabled recovery uses keyboard confirmation and schedules a handoff withou
   const submit = review.getByRole('button', { name: 'Recover and resume import' })
   await expect(submit).toBeDisabled()
   expect(writes).toHaveLength(0)
+  await review.getByRole('checkbox').check()
+  await review.getByRole('button', { name: 'Refresh review' }).click()
+  await refreshStarted.promise
+  await expect(review.getByRole('checkbox')).toBeDisabled()
+  await expect(submit).toBeDisabled()
+  await expect(review.getByRole('status').filter({ hasText: 'Loading review' })).toBeVisible()
+  refreshAllowed.resolve()
+  await expect(review.getByRole('checkbox')).toBeEnabled()
+  await expect(review.getByRole('checkbox')).not.toBeChecked()
+  await expect(submit).toBeDisabled()
   await review.getByRole('checkbox', { name: /I verified that older instances/ }).focus()
   await page.keyboard.press('Space')
   await page.keyboard.press('Tab')
@@ -100,6 +116,6 @@ test('enabled recovery uses keyboard confirmation and schedules a handoff withou
   await expect(page.getByLabel('Library enabled', { exact: true })).toBeChecked()
   expect(writes).toHaveLength(1)
   expect(writes[0]).toMatchObject({ path: '/api/libraries/1/ingestion-reconciliation',
-    revision: '"synthetic-enabled-review"', body: { workersStopped: true, resume: true, requestId: expect.any(String) } })
+    revision: '"synthetic-enabled-review-2"', body: { workersStopped: true, resume: true, requestId: expect.any(String) } })
   await captureMobileReview(page, review, testInfo, 'legacy-resume-mobile.png')
 })

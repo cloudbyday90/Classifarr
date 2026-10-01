@@ -11,7 +11,7 @@
       An older import is still marked unfinished. Recovery keeps existing inventory until a complete scan safely replaces it.
     </p>
     <Button
-      :disabled="busy || !!pending"
+      :disabled="busy || loading || !!pending"
       @click="refresh"
     >
       {{ opened ? 'Refresh review' : 'Review blocked import' }}
@@ -63,12 +63,12 @@
             v-model="acknowledged"
             type="checkbox"
             class="mt-1"
-            :disabled="busy || !!pending"
+            :disabled="busy || loading || !!pending"
           >
           <span>I verified that older instances and external capture scripts for this library have stopped and will remain stopped during recovery.</span>
         </label>
         <Button
-          :disabled="!acknowledged || busy || !!error && !pending"
+          :disabled="!canConfirm"
           @click="confirm"
         >
           {{ pending ? 'Retry same confirmation' : preview.canResume ? 'Recover and resume import' : 'Reconcile reviewed records' }}
@@ -110,7 +110,7 @@ import Button from '@/components/common/Button.vue'
 import { useLegacyIngestionReview } from '@/composables/useLegacyIngestionReview'
 const props = defineProps({ libraryId: { type: Number, required: true } })
 const emit = defineEmits(['reconciled'])
-const { opened, preview, acknowledged, receipt, busy, error, pending, loading, refresh, confirm, checkOutcome } =
+const { opened, preview, acknowledged, receipt, busy, error, pending, loading, canConfirm, refresh, confirm, checkOutcome } =
   useLegacyIngestionReview(toRef(props, 'libraryId'), () => emit('reconciled'))
 const explanations = {
   disable_library: 'Turn off “Library enabled” above and save, then refresh this review.',

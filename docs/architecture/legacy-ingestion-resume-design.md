@@ -75,3 +75,7 @@ Sources discovered through online search and read in September 2026:
 
 See the [separate outcome document](legacy-ingestion-resume-outcome.md) for the
 observed failure mode, verified results and next independently testable component.
+
+The subsequent [review lifecycle hardening](legacy-ingestion-review-lifecycle-design.md)
+binds browser responses to the current visit and disables confirmation during
+refresh. It preserves this backend contract and the stopped-writer prerequisite.

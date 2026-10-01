@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Harden interrupted-import recovery reviews against stale previews and late
+  responses after navigation. Lock confirmation during refresh and preserve
+  recorded recovery receipts if updating the progress display fails.
 - Cancel abandoned image-retrieval queue entries, retry waits, poster downloads
   and embedding requests. Preserve successful visual evidence and provider health,
   with safe active-capacity cleanup and reusable cancelled recovery probes.
