@@ -43,6 +43,26 @@ test('unexpected same-name definition is preserved and consumes one bounded fail
     .toContain('(image_model)');
 });
 
+test('local disconnect checking is set on the build session only and never leaks into the pool', async () => {
+  const before = (await query('SHOW client_connection_check_interval')).rows[0];
+  let seen = false;
+  const database = { pool: { connect: async () => {
+    const client = await getPool().connect();
+    return { on: (...args) => client.on(...args), removeListener: (...args) => client.removeListener(...args),
+      release: discard => client.release(discard), query: async (sql, params) => {
+        if (sql === IMAGE_INDEXES[0].create) {
+          expect((await client.query('SHOW client_connection_check_interval')).rows[0].client_connection_check_interval).toBe('1s');
+          seen = true;
+        }
+        return client.query(sql, params);
+      } };
+  } } };
+  await expect(runImageIndexMaintenance({ database, task: await claim(), monitorClientDisconnect: true }))
+    .resolves.toMatchObject({ status: 'complete' });
+  expect(seen).toBe(true);
+  expect((await query('SHOW client_connection_check_interval')).rows[0]).toEqual(before);
+});
+
 test.each(['expired', 'replaced', 'wrong-type'])('%s claim cannot create or acknowledge indexes', async scenario => {
   const task = await claim();
   if (scenario === 'expired') await query("UPDATE task_queue SET visible_at = NOW() - INTERVAL '1 second' WHERE id = $1", [task.id]);

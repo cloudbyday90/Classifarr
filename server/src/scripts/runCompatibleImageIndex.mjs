@@ -31,7 +31,7 @@ export async function runCompatibleImageIndex({ environment = process.env,
   try {
     database = await loadDatabase();
     await assertDatabase(database);
-    const result = await run({ database, task, readMemory: readRuntimeMemory });
+    const result = await run({ database, task, readMemory: readRuntimeMemory, monitorClientDisconnect: true });
     code = result.status === 'complete' ? 0 : imageIndexResultCode(result.reason) ?? 75;
   } catch (error) {
     if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') code = 75;

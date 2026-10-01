@@ -9,6 +9,7 @@ import { resourceStudyBudget, assertDockerStudyBudget, assertStudyBudgetContinui
 import { formatResourceStudySummary } from './resourceStudySummary.mjs';
 import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
 import { IMAGE_INDEX_STUDY_PROFILE, assertImageIndexStudyReceipt } from '../../server/src/scripts/imageIndexStudyContract.mjs';
+import { assertImageIndexMixedReceipt } from '../../server/src/scripts/imageIndexMixedContract.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -20,9 +21,10 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     writeFileSync(resolve(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
     writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
-  const profile = mode === 'image-index' ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
+  const profile = ['image-index', 'image-index-mixed'].includes(mode) ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
-  if (budget === 'image-capacity' && mode !== 'image-index') throw new Error('resource_study_budget_invalid');
+  if ((budget === 'image-capacity' && !['image-index', 'image-index-mixed'].includes(mode))
+    || (mode === 'image-index-mixed' && budget !== 'image-capacity')) throw new Error('resource_study_budget_invalid');
   if (candidateImageId !== undefined && !/^sha256:[a-f0-9]{64}$/.test(candidateImageId)) throw new Error('resource_study_image_invalid');
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_study_identity');
@@ -97,7 +99,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     assertStudyBudgetContinuity(freshStartup.metrics, maintenanceStartup.metrics);
     report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
-    if (mode === 'image-index') assertImageIndexStudyReceipt(result.study, budget);
+    if (mode === 'image-index-mixed') assertImageIndexMixedReceipt(result.study, budget);
+    else if (mode === 'image-index') assertImageIndexStudyReceipt(result.study, budget);
     else assertResourceStudyReceipt(result.study, mode, budget);
     assertStudyBudgetContinuity(maintenanceStartup.metrics, result.study.initial, result.study.final);
     const id = containerId();

@@ -17,7 +17,7 @@ export async function awaitStudyIndexIdle(query) {
 }
 
 export async function executeStudyImageWorker({ task, query, sampler, phase, interrupt = false,
-  start = startCompatibleImageIndex, spawnFn = spawn }) {
+  onActivity = async () => false, start = startCompatibleImageIndex, spawnFn = spawn }) {
   let pid, interrupted = false, watchdog = false;
   const started = performance.now();
   const runtime = start({ task, spawnFn: (...args) => { const child = spawnFn(...args); pid = child.pid; return child; } });
@@ -25,15 +25,17 @@ export async function executeStudyImageWorker({ task, query, sampler, phase, int
   try {
     while (!runtime.hasExited() && !watchdog) {
       const activity = await sampleStudyIndex(query, sampler, phase, pid);
-      if (interrupt && !interrupted && activity?.phase === 'waiting for writers before build') {
+      const requested = await onActivity(activity);
+      if (!interrupted && (requested || (interrupt && activity?.phase === 'waiting for writers before build'))) {
         interrupted = true; runtime.signal('SIGTERM');
       }
       await delay(interrupt ? 100 : 500);
     }
     const exit = await waitForEmbeddedExit(runtime.done, 5000);
+    const stopping = performance.now();
     await awaitStudyIndexIdle(query);
     return { durationMs: Math.round(performance.now() - started), exitCode: exit.code,
-      signal: exit.signal, watchdog, interrupted };
+      signal: exit.signal, watchdog, interrupted, databaseStopMs: Math.round(performance.now() - stopping) };
   } finally {
     clearTimeout(timer);
     if (!runtime.hasExited()) { runtime.signal('SIGKILL'); await waitForEmbeddedExit(runtime.done, 5000); }

@@ -95,7 +95,8 @@ PostgreSQL memory, and lower-memory installations may remain deferred until
 headroom is available. Available-memory admission deliberately does not assume
 that all cached pages are safely reclaimable, so it can be conservative.
 
-Next: a **mixed-load repair acceptance test**. Start a representative large repair,
+Follow-up implemented: the [mixed-load repair study](image-index-mixed-load-design.md)
+tests the previously recommended **mixed-load repair acceptance test**. Start a representative large repair,
 then introduce controlled ingestion/classification load after admission. Measure
 foreground latency, memory pressure and cancellation/cleanup; verify ownership
 and automatic budgets survive interruption. Add a repeated low-headroom scenario

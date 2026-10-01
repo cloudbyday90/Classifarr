@@ -121,7 +121,7 @@ function commandFixture() {
 test.each([['complete', 0], ['deferred', 75]])('command returns %s only after executor and pool cleanup', async (status, code) => {
   const f = commandFixture(); f.run.mockResolvedValue({ status });
   expect(await runCompatibleImageIndex(f)).toBe(code);
-  expect(f.run).toHaveBeenCalledWith({ database: f.database, task, readMemory: expect.any(Function) });
+  expect(f.run).toHaveBeenCalledWith({ database: f.database, task, readMemory: expect.any(Function), monitorClientDisconnect: true });
   expect(f.database.pool.end).toHaveBeenCalledTimes(1);
 });
 test.each(['arguments', 'identity', 'input', 'marker'])('bad %s never opens the database', async scenario => {

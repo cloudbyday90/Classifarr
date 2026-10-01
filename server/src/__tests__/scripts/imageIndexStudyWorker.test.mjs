@@ -29,6 +29,22 @@ test('interruption only happens after an observed writer-wait phase', async () =
     .toMatchObject({ interrupted: true, signal: 'SIGTERM' });
   expect(state.runtime.signal).toHaveBeenCalledTimes(1);
 });
+
+test('mixed controller can request cancellation during actual building', async () => {
+  const state = harness({ phase: 'building index: loading tuples' });
+  const onActivity = jest.fn(async activity => activity?.phase.startsWith('building index'));
+  expect(await executeStudyImageWorker({ ...state, task: {}, phase: 'cancelled_build', onActivity }))
+    .toMatchObject({ interrupted: true, signal: 'SIGTERM' });
+  expect(onActivity).toHaveBeenCalledWith({ phase: 'building index: loading tuples' });
+  expect(state.runtime.signal).toHaveBeenCalledTimes(1);
+});
+
+test('controller failure stops the child and checks independent database cleanup', async () => {
+  const state = harness({ phase: 'building index: loading tuples' });
+  await expect(executeStudyImageWorker({ ...state, task: {}, phase: 'mixed_build',
+    onActivity: async () => { throw new Error('foreground_failed'); } })).rejects.toThrow('foreground_failed');
+  expect(state.runtime.signal).toHaveBeenCalledWith('SIGKILL');
+});
 test('telemetry failure kills and joins the live child before propagating', async () => {
   const state = harness({ sampleFailure: true });
   await expect(executeStudyImageWorker({ ...state, task: {}, phase: 'small_build' })).rejects.toThrow('sample_failed');

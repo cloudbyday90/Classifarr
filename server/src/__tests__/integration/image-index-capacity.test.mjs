@@ -28,8 +28,13 @@ test('real large-cohort admission preserves data, attempt budget and DDL while m
   const { taskId } = await reconcileImageIndexes({ database: database() });
   expect(taskId).toBeDefined();
   const readMemory = () => ({ available: 1024 ** 3 - 1, constrained: 2 * 1024 ** 3, total: 8 * 1024 ** 3 });
-  await expect(runImageIndexMaintenance({ database: database(), task: await claim(taskId), readMemory }))
-    .resolves.toEqual({ status: 'deferred', reason: 'image_index_memory_pressure' });
+  // Repeated low-headroom checks must not silently consume automatic attempts.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await expect(runImageIndexMaintenance({ database: database(), task: await claim(taskId), readMemory }))
+      .resolves.toEqual({ status: 'deferred', reason: 'image_index_memory_pressure' });
+    expect((await query('SELECT attempts FROM image_index_reconciliation_state')).rows[0].attempts).toBe(0);
+    expect((await inspectImageIndexes(query)).every(value => value.action === 'create')).toBe(true);
+  }
   expect((await query('SELECT attempts FROM image_index_reconciliation_state')).rows[0].attempts).toBe(0);
   expect((await query('SELECT status,attempts,claim_token FROM task_queue WHERE id=$1', [taskId])).rows[0])
     .toEqual({ status: 'pending', attempts: 0, claim_token: null });

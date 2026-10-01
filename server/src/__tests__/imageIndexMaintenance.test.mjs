@@ -39,6 +39,25 @@ test('empty setup does not inspect catalogs or execute DDL', async () => {
   await expect(f.run()).resolves.toEqual({ status: 'no_work' });
   expect(f.client.query.mock.calls.some(([sql]) => sql.includes('FROM pg_class c'))).toBe(false);
 });
+
+test.each([false, true])('disconnect polling is explicitly local and session-scoped: %s', async monitorClientDisconnect => {
+  const f = fixture();
+  await f.run({ task, monitorClientDisconnect });
+  expect(f.client.query.mock.calls.some(([sql]) => sql === "SET client_connection_check_interval = '1s'"))
+    .toBe(monitorClientDisconnect);
+  expect(f.client.release).toHaveBeenCalledWith(true);
+});
+
+test('failure to establish disconnect checking cannot start DDL or acknowledge work', async () => {
+  const f = fixture({ rows: [] }), query = f.client.query.getMockImplementation();
+  f.client.query.mockImplementation((sql, params) => {
+    if (sql.includes('client_connection_check_interval')) throw new Error('unsupported_setting');
+    return query(sql, params);
+  });
+  await expect(f.run({ task, monitorClientDisconnect: true })).rejects.toThrow('unsupported_setting');
+  expect(f.client.query.mock.calls.some(([sql]) => /^(CREATE|DROP|UPDATE)/.test(sql))).toBe(false);
+  expect(f.client.release).toHaveBeenCalledWith(true);
+});
 test('missing and invalid indexes execute only fixed DDL then verify and complete', async () => {
   const rows = catalog(); rows[0].valid = false; rows.pop();
   const f = fixture({ rows }), real = f.client.query.getMockImplementation();

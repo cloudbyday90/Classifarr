@@ -10,7 +10,7 @@ import { captureImageIndexClaim, claimNextImageIndexTask, imageIndexClaimRemaini
   finishImageIndexClaim } from './imageIndexMaintenanceClaims.mjs';
 
 /** task supplied: legacy online queue path. No task: exclusive one-shot maintenance. */
-export async function runImageIndexMaintenance({ database, task = null, readMemory = null }) {
+export async function runImageIndexMaintenance({ database, task = null, readMemory = null, monitorClientDisconnect = false }) {
   let claim = task === null ? null : captureImageIndexClaim(task);
   const online = task !== null;
   const client = await database.pool.connect();
@@ -37,6 +37,9 @@ export async function runImageIndexMaintenance({ database, task = null, readMemo
   };
   try {
     await query("SET lock_timeout = '2s'");
+    // Only the validated colocated Linux worker enables socket liveness polling.
+    // Worker exit otherwise need not interrupt a CPU-bound PostgreSQL statement.
+    if (monitorClientDisconnect === true) await query("SET client_connection_check_interval = '1s'");
     await query('SET search_path = pg_catalog, public, pg_temp');
     const admission = await query(online
       ? 'SELECT pg_try_advisory_lock_shared($1) AS acquired'
