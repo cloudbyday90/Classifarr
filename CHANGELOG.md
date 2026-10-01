@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a fixed-capability queue maintenance handoff for restricted runtimes,
+  with independent admission, protected retry budgets and bounded child cleanup.
+  Validate it in the separate-identity rehearsal; production identity remains unchanged.
 - Explain unsuccessful queue recovery with on-demand, bounded database
   diagnostics and a clear next step. Report possible blockers and incomplete
   visibility without exposing query/session details or expanding repair authority.

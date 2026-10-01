@@ -41,3 +41,19 @@ test('diagnoses are logged with one fixed next step, and real failed attempts ar
   await handler();
   expect(log.warn).toHaveBeenCalledTimes(3);
 });
+
+test('restricted scheduler uses read-only assessment and capability, never a direct privileged fallback', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  const log = { info: jest.fn(), warn: jest.fn(), debug: jest.fn() }, run = jest.fn();
+  const handoff = { request: jest.fn(async () => ({ status: 'complete' })) };
+  const assessHandoff = jest.fn(async () => ({ request: false, status: 'idle' }));
+  registerQueueVacuumRecoverySchedule(scheduler, { run, db: {}, log, handoff, assessHandoff });
+  const handler = scheduler.schedule.mock.calls[0][2];
+  await handler(); expect(handoff.request).not.toHaveBeenCalled();
+  assessHandoff.mockResolvedValue({ request: true });
+  await handler(); expect(handoff.request).toHaveBeenCalledTimes(1);
+  handoff.request.mockResolvedValue({ status: 'unavailable' });
+  expect((await handler()).status).toBe('unavailable');
+  await handler(); expect(log.warn).toHaveBeenCalledTimes(1);
+  expect(run).not.toHaveBeenCalled();
+});

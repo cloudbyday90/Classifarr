@@ -18,6 +18,7 @@ async function watchDatabase(database, signal, requestStop, delay) {
 export async function runEmbeddedSupervisor({
   database, startApplication, processRef = process, report = () => {},
   delay = sleep, waitForExit = waitForEmbeddedExit, startMaintenance = null,
+  attachRuntimeMaintenance = null,
 }) {
   const monitor = new AbortController();
   let request;
@@ -35,6 +36,7 @@ export async function runEmbeddedSupervisor({
   let adopted = false;
   let failed = false;
   let applicationStopped = true;
+  let runtimeMaintenance, runtimeMaintenanceStopped = true;
   try {
     await database.adopt();
     adopted = true;
@@ -56,6 +58,10 @@ export async function runEmbeddedSupervisor({
       application = startApplication();
       applicationStopped = false;
       application.done.then(result => requestStop({ reason: 'application_exit', failed: result.code !== 0 || result.signal !== null }));
+      if (attachRuntimeMaintenance) {
+        runtimeMaintenance = attachRuntimeMaintenance(application, () => requestStop({ reason: 'maintenance_exit_unconfirmed', failed: true }));
+        runtimeMaintenanceStopped = false;
+      }
       watching = watchDatabase(database, monitor.signal, requestStop, delay);
       report('supervising');
     }
@@ -67,6 +73,9 @@ export async function runEmbeddedSupervisor({
     report('startup_failed');
   } finally {
     monitor.abort();
+    // Cancel online maintenance concurrently with application drain. Join before stopping PG.
+    const maintenanceDrain = runtimeMaintenance ? Promise.resolve().then(() => runtimeMaintenance.stop())
+      .then(() => { runtimeMaintenanceStopped = true; }, () => { failed = true; report('maintenance_exit_unconfirmed'); }) : null;
     if (maintenance && !maintenanceStopped) {
       try {
         maintenance.signal('SIGTERM');
@@ -101,7 +110,8 @@ export async function runEmbeddedSupervisor({
     // Drain immediately; a pending status probe must not consume the host's
     // shutdown window before SIGTERM reaches Node. Join it before stopping PG.
     await watching;
-    if (adopted && applicationStopped && maintenanceStopped) {
+    await maintenanceDrain;
+    if (adopted && applicationStopped && maintenanceStopped && runtimeMaintenanceStopped) {
       try {
         await database.stop();
         report('database_stopped');

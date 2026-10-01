@@ -8,6 +8,7 @@ const PROGRAMS = Object.freeze({
   restore: '/app/src/scripts/runDatabaseRestoreMaintenance.mjs',
   indexes: '/app/src/scripts/runImageIndexMaintenance.mjs',
   vacuum: '/app/src/scripts/runQueueVacuumMaintenance.mjs',
+  queueRecovery: '/app/src/scripts/runQueueRecoveryHandoff.mjs',
 });
 
 /** Trusted supervisor composition only. No command/path/env passthrough or HTTP caller. */
@@ -19,7 +20,7 @@ export function startEmbeddedMaintenance({ kind, identity, databaseName = 'class
     throw new Error('embedded_maintenance_launch_invalid');
   }
   const uid = parseEmbeddedId(identity.uid), gid = parseEmbeddedId(identity.gid);
-  const child = spawnFn('/sbin/su-exec', [`${uid}:${gid}`, '/usr/local/bin/node', PROGRAMS[kind], '--apply'], {
+  const child = spawnFn('/sbin/su-exec', [`${uid}:${gid}`, '/usr/local/bin/node', PROGRAMS[kind], kind === 'queueRecovery' ? '--assess' : '--apply'], {
     cwd: '/app', shell: false, stdio: ['pipe', 'pipe', 'pipe'],
     // Do not inherit NODE_OPTIONS/preloads, PATH, PGOPTIONS, PGPASSFILE or any secrets.
     env: { PATH: '/usr/local/bin:/usr/bin:/bin', HOME: '/tmp', LANG: 'C.UTF-8', TZ: 'UTC',

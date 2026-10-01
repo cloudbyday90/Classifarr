@@ -10,14 +10,14 @@ function fixture() {
   const options = { kind: 'schema', parentUid: 0, identity: { name: 'postgres', uid: 70, gid: 70 }, spawnFn };
   return { child, options, spawnFn };
 }
-test.each(['schema', 'restore', 'indexes', 'vacuum'])('fixed %s executable has no inherited secrets or preload hooks', async kind => {
+test.each(['schema', 'restore', 'indexes', 'vacuum', 'queueRecovery'])('fixed %s executable has no inherited secrets or preload hooks', async kind => {
   const f = fixture();
   const request = kind === 'restore' ? Buffer.from('{"synthetic":true}') : null;
   const job = startEmbeddedMaintenance({ ...f.options, kind, request });
   const [command, args, options] = f.spawnFn.mock.calls[0];
   expect(command).toBe('/sbin/su-exec');
-  const filename = { schema: 'runDatabaseSchemaMaintenance', restore: 'runDatabaseRestoreMaintenance', indexes: 'runImageIndexMaintenance', vacuum: 'runQueueVacuumMaintenance' }[kind];
-  expect(args).toEqual(['70:70', '/usr/local/bin/node', `/app/src/scripts/${filename}.mjs`, '--apply']);
+  const filename = { schema: 'runDatabaseSchemaMaintenance', restore: 'runDatabaseRestoreMaintenance', indexes: 'runImageIndexMaintenance', vacuum: 'runQueueVacuumMaintenance', queueRecovery: 'runQueueRecoveryHandoff' }[kind];
+  expect(args).toEqual(['70:70', '/usr/local/bin/node', `/app/src/scripts/${filename}.mjs`, kind === 'queueRecovery' ? '--assess' : '--apply']);
   expect(options).toMatchObject({ shell: false, stdio: ['pipe', 'pipe', 'pipe'] });
   expect(options.env.NODE_OPTIONS).toBe('--max-old-space-size=512');
   expect(Object.keys(options.env).some(key => /SECRET|PASSWORD|TOKEN|PGOPTIONS|PGPASSFILE/.test(key))).toBe(false);

@@ -46,11 +46,15 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(7);
+  expect(result.checks).toHaveLength(8);
+  expect(result.checks).toContain('restricted_runtime_queue_handoff_independent_admission_and_budget_denial');
   const stops = events.flatMap((value, index) => value === 'stop_runtime' ? [index] : []);
   const dump = events.findIndex(value => value.startsWith('postgres:pg_dump:'));
   const databaseStops = events.flatMap((value, index) => value.startsWith('postgres:pg_ctl:') && value.endsWith(' stop') ? [index] : []);
   expect(stops[0]).toBeLessThan(dump);
+  const handoff = events.findIndex(value => value.includes('queueHandoffProbe.mjs'));
+  expect(stops[0]).toBeLessThan(handoff);
+  expect(handoff).toBeLessThan(dump);
   expect(events.findIndex(value => value.includes('restoreProbe.mjs --busy'))).toBeLessThan(stops[0]);
   expect(stops[0]).toBeLessThan(events.findIndex(value => value.includes('restoreProbe.mjs --apply')));
   expect(dump).toBeLessThan(databaseStops[0]);
@@ -72,12 +76,13 @@ test.each(['wrong-mode', 'wrong-platform', 'wrong-uid', 'extra-argument', 'occup
   expect(commands.asUser).not.toHaveBeenCalled();
 });
 
-test.each(['probe', 'restore', 'index'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
+test.each(['probe', 'restore', 'index', 'handoff'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
   const original = commands.asUser.getMockImplementation();
   commands.asUser.mockImplementation(async (...args) => {
     if ((scenario === 'probe' && args[2][0]?.endsWith('runtimeProbe.mjs'))
       || (scenario === 'restore' && args[1] === 'pg_restore')
-      || (scenario === 'index' && args[2][0]?.endsWith('maintenanceProbe.mjs'))) throw new Error('scenario_failed');
+      || (scenario === 'index' && args[2][0]?.endsWith('maintenanceProbe.mjs'))
+      || (scenario === 'handoff' && args[2][0]?.endsWith('queueHandoffProbe.mjs'))) throw new Error('scenario_failed');
     return original(...args);
   });
   await expect(runEmbeddedIsolationDrill()).rejects.toThrow('scenario_failed');

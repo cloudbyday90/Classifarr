@@ -83,6 +83,9 @@ export async function runEmbeddedIsolationDrill() {
     await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/handoffProbe.mjs'], { timeout: 300_000 });
     record('supervisor_schema_restore_handoff_before_runtime_and_clean_shutdown');
 
+    await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/queueHandoffProbe.mjs'], { timeout: 300_000 });
+    record('restricted_runtime_queue_handoff_independent_admission_and_budget_denial');
+
     // Privileged commands run only after the actual normal process has exited.
     await pg('pg_dump', ['-h', SOCKET, '-U', ADMIN_ROLE, '-d', DATABASE, '-Fc', '-f', `${STATE}/backup.dump`]);
     await pg('createdb', ['-h', SOCKET, '-U', ADMIN_ROLE, RESTORED_DATABASE]);

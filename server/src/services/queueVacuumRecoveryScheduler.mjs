@@ -3,18 +3,27 @@ import * as database from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { runQueueVacuumMaintenance } from './queueVacuumMaintenance.mjs';
 import { QueueVacuumAttemptError } from './queueVacuumFailure.mjs';
+import { openQueueMaintenanceHandoff } from './queueMaintenanceHandoffClient.mjs';
+import { assessQueueVacuumHandoff } from './queueVacuumHandoffAssessment.mjs';
 
 const logger = createLogger('QueueVacuumRecovery');
 const needsReview = new Set(['attempt_limit', 'maintenance_privilege_required', 'statistics_required', 'autovacuum_disabled']);
 
 export function registerQueueVacuumRecoverySchedule(scheduler, {
   run = runQueueVacuumMaintenance, db = database, log = logger,
+  handoff = openQueueMaintenanceHandoff(), assessHandoff = assessQueueVacuumHandoff,
 } = {}) {
   let lastUnavailable = false;
   const report = result => log.info('Queue maintenance recovery started after sustained pressure', result);
   const handler = async () => {
     try {
-      const result = await run({ database: db, automatic: true, report });
+      let result;
+      if (handoff) {
+        const observation = await assessHandoff({ database: db });
+        result = observation.request ? await handoff.request() : observation;
+        if (result.status === 'unavailable') throw new Error('queue_handoff_unavailable');
+        if (observation.request) log.info('Trusted queue maintenance assessment returned; only complete confirms a repair', result);
+      } else result = await run({ database: db, automatic: true, report });
       lastUnavailable = false;
       if (result.diagnosis) log.warn(result.diagnosis.message, result.diagnosis);
       if (result.status === 'complete') log.info('Queue vacuum and analyze completed; later observations will check pressure', result);

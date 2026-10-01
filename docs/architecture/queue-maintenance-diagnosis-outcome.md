@@ -94,6 +94,11 @@ recovery and denial of arbitrary SQL, while requiring no edits to existing
 Compose or Unraid templates. This is proposed next work, not authority added by
 this change.
 
+Follow-up: the [restricted queue handoff outcome](restricted-queue-maintenance-handoff-outcome.md)
+records the implemented optional channel and real separate-identity validation.
+It does not activate production identity separation; that installation-compatible
+cutover remains separate work.
+
 ## Delivery scope
 
 GitHub MCP and a saved-login GitHub CLI check both returned no open PRs. There

@@ -135,6 +135,32 @@ test('database stop failure is never called clean', async () => {
   expect(f.events).not.toContainEqual(['database_stopped', undefined]);
 });
 
+test('online maintenance and application drain start together; both must join before database stop', async () => {
+  const f = fixture(), drained = deferred();
+  const stop = jest.fn(() => drained.promise);
+  f.options.attachRuntimeMaintenance = jest.fn(() => ({ stop }));
+  const run = runEmbeddedSupervisor(f.options);
+  await tick(); f.processRef.emit('SIGTERM'); await tick();
+  expect(stop).toHaveBeenCalledTimes(1);
+  expect(f.application.signal).toHaveBeenCalledWith('SIGTERM');
+  expect(f.database.stop).not.toHaveBeenCalled();
+  drained.resolve(); expect(await run).toBe(0);
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+});
+
+test('unconfirmed online maintenance exit fails the supervisor and forbids database stop', async () => {
+  const f = fixture(); let fatal;
+  f.options.attachRuntimeMaintenance = (_app, onFatal) => {
+    fatal = onFatal;
+    return { stop: async () => { throw new Error('unconfirmed'); } };
+  };
+  const run = runEmbeddedSupervisor(f.options);
+  await tick(); fatal();
+  expect(await run).toBe(1);
+  expect(f.database.stop).not.toHaveBeenCalled();
+  expect(f.events).toContainEqual(['maintenance_exit_unconfirmed', undefined]);
+});
+
 test('maintenance must exit successfully before any application starts', async () => {
   const f = fixture();
   const job = deferred();

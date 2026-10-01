@@ -7,6 +7,14 @@ export const INGESTION_RELATIONS = Object.freeze([
 ]);
 // Explicit dependency pins complement discovery; they are not a call-graph proof.
 export const INGESTION_GUARDS = Object.freeze([
+    'server/src/bootstrap/embeddedQueueMaintenanceBroker.mjs',
+    'server/src/services/queueMaintenanceHandoffBoundary.mjs',
+    'server/src/services/queueMaintenanceHandoffClient.mjs',
+    'server/src/services/queueVacuumHandoffAssessment.mjs',
+    'server/src/utils/queueMaintenanceHandoffProtocol.mjs',
+    'server/src/scripts/runQueueRecoveryHandoff.mjs',
+    'server/src/scripts/embeddedIsolationDrill/queueHandoffProbe.mjs',
+    'server/src/scripts/embeddedIsolationDrill/queueHandoffRuntimeProbe.mjs',
     'server/src/services/queueVacuumDiagnosis.mjs',
     'server/src/services/queueVacuumDiagnosisQuery.mjs',
     'server/src/services/queueVacuumFailure.mjs',
