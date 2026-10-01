@@ -6,9 +6,19 @@ import { projectLegacyIngestion, reconciliationRequest } from './legacyIngestion
 import { readLegacyIngestion, readReconciliationReceipt, reconcileLegacyIngestion } from './legacyIngestionRepository.mjs';
 import { createMediaSyncOwnership } from './mediaSyncOwnership.mjs';
 import { mediaSyncDatabase } from './mediaSyncDatabaseScope.mjs';
+import { readIngestionRecoveryHistory } from './legacyIngestionHistory.mjs';
 
 export function createLegacyIngestionService(database, own = createMediaSyncOwnership({ pool: database.pool })) {
   return {
+    async history(actorId, libraryId) {
+      const request = { actorId: reviewInteger(actorId), libraryId: reviewInteger(libraryId) };
+      return database.withTransaction(async db => {
+        await db.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+        await db.query("SET LOCAL statement_timeout='3s'");
+        await requireReviewActor(db, request.actorId);
+        return readIngestionRecoveryHistory(db, request);
+      });
+    },
     async preview(actorId, libraryId) {
       actorId = reviewInteger(actorId); libraryId = reviewInteger(libraryId);
       return database.withTransaction(async db => {

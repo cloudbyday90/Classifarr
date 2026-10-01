@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Stop automatic network/authentication retries for explicit import recovery
+  confirmations; retain receipt lookup and operator-controlled same-request retry.
+- Add on-demand, administrator-scoped import recovery history backed by retained
+  server receipts, so recorded requests can be found after navigation or a lost
+  response without restoring approval or automatically retrying recovery.
 - Harden interrupted-import recovery reviews against stale previews and late
   responses after navigation. Lock confirmation during refresh and preserve
   recorded recovery receipts if updating the progress display fails.

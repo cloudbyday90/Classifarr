@@ -7,6 +7,7 @@ import { registerIngestionReconciliationRoutes } from '../routes/librariesRouteI
 
 function fixture(user = { id: 1, role: 'admin', type: 'access' }) {
   const service = { preview: jest.fn().mockResolvedValue({ revision: '"abc"' }), receipt: jest.fn().mockResolvedValue({ status: 'not_observed' }),
+    history: jest.fn().mockResolvedValue({ receipts: [], limit: 20, hasMore: false }),
     confirm: jest.fn().mockResolvedValue({ receipt: { auditId: 7 } }) };
   const app = express(), router = express.Router();
   app.use(express.json(), (req, _res, next) => { req.user = user; next(); });
@@ -22,6 +23,8 @@ test.each([undefined, { role: 'viewer', type: 'access' }, { role: 'admin', type:
     expect(response.headers['cache-control']).toBe('no-store');
   }
   expect(service.preview).not.toHaveBeenCalled(); expect(service.confirm).not.toHaveBeenCalled();
+  await request(app).get(`${url}/history`).expect(403);
+  expect(service.history).not.toHaveBeenCalled();
 });
 test('requires no-store admin reads, rejects query/API-key controls and forwards exact conditional write', async () => {
   const { app, service } = fixture();
@@ -36,4 +39,10 @@ test('requires no-store admin reads, rejects query/API-key controls and forwards
   expect(service.confirm).toHaveBeenLastCalledWith(1, '4', { ...body, resume: true }, '"resume-review"');
   await request(app).get(`${url}/receipts/synthetic-request`).expect(200);
   expect(service.receipt).toHaveBeenCalledWith(1, '4', 'synthetic-request');
+  const history = await request(app).get(`${url}/history`).expect(200);
+  expect(history.headers['cache-control']).toBe('no-store');
+  expect(service.history).toHaveBeenCalledWith(1, '4');
+  await request(app).get(`${url}/history?actorId=2`).expect(400);
+  await request(app).get(`${url}/history`).set('X-API-Key', 'synthetic').expect(403);
+  expect(service.history).toHaveBeenCalledTimes(1);
 });

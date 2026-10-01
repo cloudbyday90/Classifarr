@@ -277,3 +277,61 @@ test('music cannot enter the library schema used by recovery', async () => {
     .rejects.toMatchObject({ code: '23514', constraint: 'libraries_media_type_check' });
   expect(await statuses()).toEqual([{ id: syncId, status: 'running' }]);
 });
+
+test('a committed-but-lost recovery reply is rediscoverable after restart without a request ID or new writes', async () => {
+  await db.query('UPDATE libraries SET is_active=true WHERE id=$1', [libraryId]);
+  const requestId = randomUUID();
+  await resume(await read(), requestId); // Deliberately discard the successful HTTP-equivalent response.
+  const restarted = createLegacyIngestionService(db);
+  const first = await restarted.history(actorId, libraryId);
+  expect(first).toMatchObject({ limit: 20, hasMore: false, receipts: [{ requestId, libraryId, replay: 'scheduled' }] });
+  expect((await read()).reason).toBe('not_needed');
+  await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  expect(await restarted.history(actorId, libraryId)).toEqual(first);
+  expect((await db.query('SELECT count(*)::int AS n FROM audit_log WHERE user_id=$1', [actorId])).rows[0].n).toBe(1);
+  expect((await db.query('SELECT external_id FROM media_server_items WHERE library_id=$1', [libraryId])).rows).toEqual([{ external_id: 'old' }]);
+});
+
+test('history excludes other accounts and libraries and respects current account revocation', async () => {
+  const { receipt } = await confirm(await read());
+  const otherActor = (await db.query("INSERT INTO users(username,password_hash,role,is_active) VALUES ($1,'synthetic','admin',true) RETURNING id", [randomUUID()])).rows[0].id;
+  try {
+    expect((await service.history(otherActor, libraryId)).receipts).toEqual([]);
+    await db.query("UPDATE audit_log SET metadata=jsonb_set(metadata,'{libraryId}',to_jsonb($2::integer)) WHERE id=$1", [receipt.auditId, libraryId + 1]);
+    expect((await service.history(actorId, libraryId)).receipts).toEqual([]);
+    await db.query("UPDATE users SET role='user' WHERE id=$1", [actorId]);
+    await expect(service.history(actorId, libraryId)).rejects.toMatchObject({ status: 403 });
+  } finally { await db.query('DELETE FROM users WHERE id=$1', [otherActor]); }
+});
+
+test('retention removal gives no evidence, while malformed retained evidence refuses success', async () => {
+  await confirm(await read());
+  await db.query("UPDATE audit_log SET metadata=metadata-'verification' WHERE user_id=$1", [actorId]);
+  await expect(service.history(actorId, libraryId)).rejects.toMatchObject({ status: 503 });
+  await db.query('DELETE FROM audit_log WHERE user_id=$1', [actorId]);
+  expect(await service.history(actorId, libraryId)).toEqual({ receipts: [], limit: 20, hasMore: false });
+  expect(await statuses()).toEqual([{ id: syncId, status: 'failed' }]);
+});
+
+test('history returns the newest bounded receipt IDs using its scoped partial index', async () => {
+  const result = await confirm(await read());
+  const { rows: [original] } = await db.query('SELECT metadata FROM audit_log WHERE id=$1', [result.receipt.auditId]);
+  const ids = [result.receipt.auditId];
+  for (let i = 0; i < 21; i++) {
+    const metadata = { ...original.metadata, requestId: randomUUID() };
+    ids.push((await db.query("INSERT INTO audit_log(user_id,action,metadata) VALUES ($1,'library_ingestion_reconciled',$2::jsonb) RETURNING id",
+      [actorId, JSON.stringify(metadata)])).rows[0].id);
+  }
+  const history = await service.history(actorId, libraryId);
+  expect(history.hasMore).toBe(true);
+  expect(history.receipts.map(row => row.auditId)).toEqual(ids.reverse().slice(0, 20));
+  // Force index preference only for an eligibility check on this tiny synthetic fixture.
+  // This is not a production throughput or planner-cost benchmark.
+  await db.withTransaction(async client => {
+    await client.query('SET LOCAL enable_seqscan=off');
+    const plan = await client.query(`EXPLAIN (FORMAT JSON) SELECT id,created_at,user_id,metadata FROM audit_log
+      WHERE action='library_ingestion_reconciled' AND user_id=$1 AND metadata->>'libraryId'=$2
+      ORDER BY id DESC LIMIT 21`, [actorId, String(libraryId)]);
+    expect(JSON.stringify(plan.rows)).toContain('idx_ingestion_reconciliation_history');
+  });
+});

@@ -254,6 +254,8 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/legacyIngestionService.mjs',
     'server/src/services/legacyIngestionContract.mjs',
     'server/src/services/legacyIngestionRecoveryPolicy.mjs',
+    'server/src/services/legacyIngestionReceipt.mjs',
+    'server/src/services/legacyIngestionHistory.mjs',
     'server/src/utils/databaseClientLease.mjs',
     'server/src/utils/databaseAbortableRead.mjs',
     'server/src/utils/databaseReadCancellation.mjs',

@@ -20,6 +20,9 @@ export function registerIngestionReconciliationRoutes(router, { db, service = cr
   router.get(`${base}/receipts/:requestId`, asyncHandler(async (req, res) => {
     res.json(await service.receipt(req.user.id, req.params.id, req.params.requestId));
   }));
+  router.get(`${base}/history`, asyncHandler(async (req, res) => {
+    res.json(await service.history(req.user.id, req.params.id));
+  }));
   router.post(base, rateLimit({ ...libraryObservationHealthLimiterConfig, max: 6 }), asyncHandler(async (req, res) => {
     res.json(await service.confirm(req.user.id, req.params.id, req.body, req.get('If-Match')));
   }));

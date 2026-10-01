@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
-import { ConflictError, NotFoundError, ServiceUnavailableError } from '../utils/appError.mjs';
+import { ConflictError, NotFoundError } from '../utils/appError.mjs';
+import { projectReconciliationReceipt } from './legacyIngestionReceipt.mjs';
 import { MEDIA_SYNC_OWNER_LOCK } from './mediaSyncLockKeys.mjs';
 import { LEGACY_MARKER_LIMIT, LEGACY_RECONCILIATION_ACTION } from './legacyIngestionContract.mjs';
 
@@ -28,23 +29,7 @@ export async function readReconciliationReceipt(db, request) {
   const { rows: [row] } = await db.query(`SELECT id,created_at,user_id,metadata FROM audit_log
     WHERE action='library_ingestion_reconciled' AND metadata->>'requestId'=$1`, [request.requestId]);
   if (!row) return null;
-  const metadata = row.metadata;
-  const resume = metadata?.version === 2 && metadata.resume === true;
-  const replay = resume ? 'scheduled' : 'waiting_for_enable';
-  if (![1, 2].includes(metadata?.version) || metadata.workersStopped !== true ||
-      (metadata.version === 1 && (metadata.resume !== undefined || metadata.replay !== 'waiting_for_enable')) ||
-      (metadata.version === 2 && (typeof metadata.resume !== 'boolean' || metadata.replay !== replay)) ||
-      row.metadata.verification !== 'administrator_attestation' ||
-      !/^"[a-f0-9]{64}"$/.test(row.metadata.revision ?? '') || !Array.isArray(row.metadata.syncIds)) {
-    throw new ServiceUnavailableError('The reconciliation receipt could not be verified');
-  }
-  if (row.user_id !== request.actorId || row.metadata?.libraryId !== request.libraryId ||
-      (request.revision && row.metadata?.revision !== request.revision) ||
-      (request.resume !== undefined && request.resume !== resume)) {
-    throw new ConflictError('This confirmation ID belongs to another review', { code: 'ingestion_request_mismatch' });
-  }
-  return { auditId: row.id, confirmedAt: row.created_at, requestId: request.requestId,
-    libraryId: request.libraryId, status: 'reconciled', replay };
+  return projectReconciliationReceipt(row, request);
 }
 
 export async function reconcileLegacyIngestion(db, snapshot, request) {

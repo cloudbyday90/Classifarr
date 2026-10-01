@@ -81,5 +81,9 @@ an unknown outcome, never permission to invent success or retry with new intent.
 Acceptance should include a committed-but-lost HTTP response, navigation/reload,
 revoked access, expired history and independently verified import progress.
 
+The retained-receipt history component is now implemented in the separate
+[recovery history outcome](ingestion-recovery-history-outcome.md). Correlating
+that handoff with independently verified import/backfill completion remains next.
+
 That improves operator recovery; it does not replace the separate database writer
 boundary needed for confirmation-free adoption of arbitrary legacy writes.
