@@ -63,6 +63,7 @@ import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRul
 import { registerLibraryObservationHistorySchedule } from './libraryObservationHistorySchedule.mjs';
 import { registerDatabaseHealthTransitionObservationSchedule } from './databaseHealthTransitionObservationScheduler.mjs';
 import { registerQueueVacuumRecoverySchedule } from './queueVacuumRecoveryScheduler.mjs';
+import { registerImageIndexReconciliationSchedule } from './imageIndexReconciliationScheduler.mjs';
 import {
     registerEventLoopDelayObservationSchedule,
     stopEventLoopDelayObservationSchedule,
@@ -137,6 +138,7 @@ class SchedulerService {
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerQueueVacuumRecoverySchedule(this);
+        registerImageIndexReconciliationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);
 
         this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis(), DB_ADVISORY_LOCKS.GAP_ANALYSIS);

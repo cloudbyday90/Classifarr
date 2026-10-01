@@ -38,8 +38,12 @@ export async function checkRAG(previous) {
                 SELECT
                     to_regtype('public.vector') IS NOT NULL AS pgvector_available,
                     to_regclass('public.classification_embeddings') IS NOT NULL AS embeddings_table_available,
-                    to_regclass('public.idx_embeddings_hnsw') IS NOT NULL AS text_index_available,
-                    to_regclass('public.idx_embeddings_image_hnsw') IS NOT NULL AS image_index_available,
+                    EXISTS (SELECT 1 FROM pg_index WHERE indexrelid = to_regclass('public.idx_embeddings_hnsw')
+                        AND indrelid = to_regclass('public.classification_embeddings')
+                        AND indisvalid AND indisready AND indislive) AS text_index_available,
+                    EXISTS (SELECT 1 FROM pg_index WHERE indexrelid = to_regclass('public.idx_embeddings_image_hnsw')
+                        AND indrelid = to_regclass('public.classification_embeddings')
+                        AND indisvalid AND indisready AND indislive) AS image_index_available,
                     EXISTS (
                         SELECT 1
                         FROM pg_extension

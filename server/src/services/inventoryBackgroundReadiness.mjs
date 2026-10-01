@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { INGESTION_OWNER_ACTIVE_SQL, INGESTION_UNFINISHED_MARKERS_SQL } from './libraryIngestionPredicates.mjs';
 
-const inventoryReadinessSql = requireRag => `WITH active_libraries AS MATERIALIZED (
+const inventoryReadinessSql = (requireRag, excludeTask = false) => `WITH active_libraries AS MATERIALIZED (
     SELECT l.id,l.media_server_id FROM libraries l LEFT JOIN media_server ms ON ms.id=l.media_server_id
     WHERE l.is_active AND l.media_type IN ('movie','tv') AND (l.media_server_id IS NULL OR ms.is_active)
 )
@@ -17,11 +17,13 @@ SELECT CASE
       WHERE l.media_server_id IS NOT NULL AND s.library_id IS NULL) THEN 'ingesting'
     WHEN EXISTS (SELECT 1 FROM library_ingestion_state s JOIN active_libraries l ON l.id=s.library_id
       WHERE s.backfill_run_id IS DISTINCT FROM s.run_id OR s.backfill_completed_at IS NULL) THEN 'backfilling'
-    WHEN EXISTS (SELECT 1 FROM task_queue WHERE status='processing'
-      OR (status='pending' AND (next_retry_at IS NULL OR next_retry_at<=statement_timestamp()))) THEN 'backfilling'
+    WHEN EXISTS (SELECT 1 FROM task_queue WHERE ${excludeTask ? 'id IS DISTINCT FROM $1::bigint AND ' : ''}(status='processing'
+      OR (status='pending' AND (next_retry_at IS NULL OR next_retry_at<=statement_timestamp())))) THEN 'backfilling'
     ELSE 'ready' END AS readiness`;
 
 export const INVENTORY_BACKGROUND_READINESS_SQL = inventoryReadinessSql(true);
+// Maintenance must exclude only its own already-claimed task, never other active work.
+export const INVENTORY_BACKGROUND_READINESS_EXCLUDING_TASK_SQL = inventoryReadinessSql(true, true);
 const CAPABILITY_BACKGROUND_READINESS_SQL = inventoryReadinessSql(false);
 
 export async function readInventoryBackgroundReadiness(database, { requireRag = true } = {}) {

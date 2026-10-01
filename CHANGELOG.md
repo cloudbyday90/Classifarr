@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically queue bounded image-index repairs only when configured image
+  search needs a missing or invalid index and ingestion/backfill is ready. Keep
+  repair budgets across restarts and queue cleanup, and report invalid indexes
+  as unavailable instead of treating their names as proof of health.
 - Run deferred image-index jobs in bounded on-demand workers on embedded
   deployments, without saved-template changes. Preserve queue ownership, restore
   exclusion and interrupted-build recovery, with fixed inputs and confirmed cleanup.

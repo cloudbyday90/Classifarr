@@ -216,7 +216,7 @@
             <div>Embeddings: {{ service.metadata.embeddingCount || 0 }}</div>
             <div>Stale: {{ service.metadata.staleCount || 0 }}</div>
             <div v-if="service.metadata.indexes?.missing?.length">
-              Missing indexes: {{ service.metadata.indexes.missing.join(', ') }}
+              Unavailable indexes: {{ service.metadata.indexes.missing.join(', ') }}
             </div>
             <div v-if="service.metadata.embeddingsTable === false">
               Embeddings table missing
@@ -651,7 +651,7 @@ const buildRagDescription = (rag) => {
     parts.push(`Model: ${rag.model}`)
   }
   if (Array.isArray(rag.indexes?.missing) && rag.indexes.missing.length > 0) {
-    parts.push(`Missing: ${rag.indexes.missing.join(', ')}`)
+    parts.push(`Unavailable: ${rag.indexes.missing.join(', ')}`)
   } else if (rag.indexes?.text || rag.indexes?.imageRequired === false) {
     parts.push('Indexes ready')
   }
@@ -1035,7 +1035,7 @@ const getServiceTooltip = (service) => {
       tooltip += '\nEmbeddings table missing'
     }
     if (service.metadata.indexes?.missing?.length) {
-      tooltip += `\nMissing indexes: ${service.metadata.indexes.missing.join(', ')}`
+      tooltip += `\nUnavailable indexes: ${service.metadata.indexes.missing.join(', ')}`
     }
     tooltip += `\nEmbeddings: ${service.metadata.embeddingCount || 0}`
     tooltip += `\nStale embeddings: ${service.metadata.staleCount || 0}`

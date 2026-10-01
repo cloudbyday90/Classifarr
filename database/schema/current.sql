@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-01T10:04:53.652Z
--- Latest Migration: 20261001_120000_queue_vacuum_recovery.sql
+-- Generated: 2026-10-01T17:23:45.806Z
+-- Latest Migration: 20261001_160000_image_index_reconciliation.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3870,6 +3870,22 @@ CREATE TABLE public.held_out_semantic_study_lifecycle_source_checkpoint (
     CONSTRAINT held_out_semantic_study_lifecycle_sour_source_fingerprint_check CHECK ((source_fingerprint ~ '^[0-9a-f]{64}$'::text)),
     CONSTRAINT held_out_semantic_study_lifecycle_source_c_source_receipt_check CHECK ((jsonb_typeof(source_receipt) = 'object'::text)),
     CONSTRAINT held_out_semantic_study_lifecycle_source_checkp_state_key_check CHECK ((state_key = 'normal_policy_lifecycle_source'::text))
+);
+
+
+--
+-- Name: image_index_reconciliation_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.image_index_reconciliation_state (
+    singleton boolean DEFAULT true NOT NULL,
+    task_id bigint,
+    attempts smallint DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp with time zone,
+    last_result character varying(64) DEFAULT 'unobserved'::character varying NOT NULL,
+    CONSTRAINT image_index_reconciliation_state_attempts_check CHECK (((attempts >= 0) AND (attempts <= 3))),
+    CONSTRAINT image_index_reconciliation_state_singleton_check CHECK (singleton),
+    CONSTRAINT image_index_reconciliation_state_task_id_check CHECK ((task_id > 0))
 );
 
 
@@ -10358,6 +10374,14 @@ ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_reaudit_state
 
 ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_source_checkpoint
     ADD CONSTRAINT held_out_semantic_study_lifecycle_source_checkpoint_pkey PRIMARY KEY (state_key);
+
+
+--
+-- Name: image_index_reconciliation_state image_index_reconciliation_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.image_index_reconciliation_state
+    ADD CONSTRAINT image_index_reconciliation_state_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -17637,6 +17661,7 @@ FROM unnest(ARRAY[
     '20260929_190000_omdb_shared_pacing.sql',
     '20260929_200000_credential_scoped_retry_wait.sql',
     '20260930_180000_retry_wait_provenance_index.sql',
-    '20261001_120000_queue_vacuum_recovery.sql'
+    '20261001_120000_queue_vacuum_recovery.sql',
+    '20261001_160000_image_index_reconciliation.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

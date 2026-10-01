@@ -29,7 +29,7 @@ export async function imageIndexClaimRemaining(query, task) {
 }
 
 /** Short queue-only transaction; never wrap concurrent DDL in this scope. */
-export async function finishImageIndexClaim(query, task, { status, result = null }) {
+export async function finishImageIndexClaim(query, task, { status, result = null, retrySeconds = 60 }) {
   await query('BEGIN');
   try {
     await query("SET LOCAL transaction_timeout = '5s'");
@@ -39,17 +39,19 @@ export async function finishImageIndexClaim(query, task, { status, result = null
     await imageIndexClaimRemaining(query, task);
     const update = await query(`UPDATE public.task_queue SET
       status = CASE WHEN $3 = 'complete' THEN 'completed'
+        WHEN $3 = 'review' THEN 'failed'
         WHEN $3 = 'failed' AND attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
       attempts = attempts + CASE WHEN $3 = 'failed' THEN 1 ELSE 0 END,
       error_message = CASE WHEN $3 = 'complete' THEN NULL
+        WHEN $3 = 'review' THEN 'image_index_review_required'
         WHEN $3 = 'failed' THEN 'task_processing_failed' ELSE 'image_index_maintenance_busy' END,
-      completed_at = CASE WHEN $3 = 'complete' OR ($3 = 'failed' AND attempts + 1 >= max_attempts) THEN NOW() ELSE NULL END,
+      completed_at = CASE WHEN $3 IN ('complete', 'review') OR ($3 = 'failed' AND attempts + 1 >= max_attempts) THEN NOW() ELSE NULL END,
       started_at = NULL, visible_at = NULL, claim_token = NULL,
-      next_retry_at = CASE WHEN $3 = 'complete' THEN NULL ELSE NOW() + INTERVAL '60 seconds' END,
+      next_retry_at = CASE WHEN $3 IN ('complete', 'review') THEN NULL ELSE NOW() + $5 * INTERVAL '1 second' END,
       payload = CASE WHEN $3 = 'complete' THEN payload || $4::jsonb ELSE payload END
       WHERE id = $1 AND claim_token = $2::uuid AND status = 'processing'
         AND task_type = 'rebuild_hnsw_index' AND visible_at > clock_timestamp() RETURNING id`,
-    [task.id, task.claim_token, status, JSON.stringify({ result })]);
+    [task.id, task.claim_token, status, JSON.stringify({ result }), retrySeconds]);
     if (!update.rows.length) throw claimNotOwned();
     await query('COMMIT');
   } catch (error) {

@@ -126,7 +126,7 @@ describe('System.vue', () => {
     expect(card.text()).toContain('RAG')
     expect(card.text()).toContain('Degraded')
     expect(card.text()).toContain('Embeddings: 42')
-    expect(card.text()).toContain('Missing indexes: image')
+    expect(card.text()).toContain('Unavailable indexes: image')
 
     wrapper.unmount()
   })

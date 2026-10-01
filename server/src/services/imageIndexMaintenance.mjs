@@ -4,6 +4,7 @@ import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
 import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../utils/backupRestoreSessionContract.mjs';
 import { IMAGE_INDEX_LOCK_KEY, IMAGE_INDEX_BUDGET_MS } from './imageIndexMaintenanceContract.mjs';
 import { inspectImageIndexes } from './imageIndexMaintenanceCatalog.mjs';
+import { admitAutomaticImageIndexAttempt } from './imageIndexAutomaticAdmission.mjs';
 import { captureImageIndexClaim, claimNextImageIndexTask, imageIndexClaimRemaining,
   finishImageIndexClaim } from './imageIndexMaintenanceClaims.mjs';
 
@@ -51,6 +52,17 @@ export async function runImageIndexMaintenance({ database, task = null }) {
     await query("SET maintenance_work_mem = '64MB'");
     await query('SET max_parallel_maintenance_workers = 0');
     const plan = await inspectImageIndexes(query);
+    if (plan.some(value => value.action !== 'preserve')) {
+      const admission = await admitAutomaticImageIndexAttempt(query, claim);
+      if (admission.status === 'review') {
+        await finishImageIndexClaim(query, claim, { status: 'review' });
+        return admission;
+      }
+      if (admission.status === 'deferred') {
+        await finishImageIndexClaim(query, claim, { status: 'deferred', retrySeconds: 900 });
+        return admission;
+      }
+    }
     const execute = async sql => {
       const remaining = await imageIndexClaimRemaining(query, claim);
       await query(sql, [], remaining);
