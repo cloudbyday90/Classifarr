@@ -43,6 +43,12 @@ export function createRuntimeInstallationReceipt({ sourceRevision = null, worktr
   if (!result) return receipt;
   assert.equal(result.status, 'passed');
   assert.equal(result.scope, 'fresh-and-upgrade');
+  if (result.deployment) {
+    // The current CI receipt certifies only its original deployment profile.
+    assert.equal(result.deployment.profile, 'standard');
+    assert.equal(result.deployment.unchanged, true);
+    assert.match(result.deployment.configurationDigest, /^[a-f0-9]{64}$/);
+  }
   assertScheduledInstallationResult(result.scheduler?.fresh);
   assertScheduledInstallationResult(result.scheduler?.upgrade);
   assertScheduledCrashRecovery(result.crashRecovery);

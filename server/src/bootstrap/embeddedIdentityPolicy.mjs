@@ -28,6 +28,9 @@ export function planEmbeddedIdentity({ environment, uid, gid, accounts }) {
   if (uid !== 0) {
     parseEmbeddedId(uid);
     parseEmbeddedId(gid);
+    if (!accounts.users.some(user => user.uid === uid && user.name)) {
+      throw new Error('embedded_nonroot_account_unavailable');
+    }
     // Existing explicitly non-root containers cannot change their host-selected identity.
     return { mode: 'existing_nonroot', uid, gid, commands: [] };
   }

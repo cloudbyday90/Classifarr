@@ -4,11 +4,14 @@ import { readProvenanceFailure } from './lib/publishedUpgradeProvenance.mjs';
 
 try {
   const args = process.argv.slice(2);
-  if (new Set(args).size !== args.length || args.some(arg => !['--fresh-only', '--resource-budget'].includes(arg))) {
+  const profiles = args.filter(arg => arg.startsWith('--deployment='));
+  if (new Set(args).size !== args.length || profiles.length > 1
+    || args.some(arg => !['--fresh-only', '--resource-budget', '--deployment=standard', '--deployment=unraid', '--deployment=custom'].includes(arg))) {
     throw new Error('upgrade_drill_arguments_not_allowed');
   }
   const freshOnly = args.includes('--fresh-only'), resourceBudget = args.includes('--resource-budget');
-  process.stdout.write(`${freshOnly ? 'FRESH_INSTALL_RESULT' : 'PUBLISHED_UPGRADE_RESULT'} ${JSON.stringify(await runPublishedUpgradeCompose({ freshOnly, resourceBudget }))}\n`);
+  const deploymentProfile = profiles[0]?.slice('--deployment='.length) ?? 'standard';
+  process.stdout.write(`${freshOnly ? 'FRESH_INSTALL_RESULT' : 'PUBLISHED_UPGRADE_RESULT'} ${JSON.stringify(await runPublishedUpgradeCompose({ freshOnly, resourceBudget, deploymentProfile }))}\n`);
 } catch (error) {
   process.stderr.write(`${error.message}\n`);
   const diagnostic = readProvenanceFailure(error);

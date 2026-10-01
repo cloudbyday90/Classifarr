@@ -10,7 +10,11 @@ import { BACKLOG_BOUNDARY } from '../../scripts/installationBacklogContract.mjs'
 
 const random = size => Buffer.alloc(size, 1);
 const report = () => {};
-const composeOperation = args => args.slice(args[7] === '--file' ? 9 : 7);
+const composeOperation = args => {
+  let index = 7;
+  while (args[index] === '--file') index += 2;
+  return args.slice(index);
+};
 const operations = run => run.mock.calls.filter(([, args]) => args[0] === 'compose').map(([, args]) => composeOperation(args));
 function mockRunner(override = () => undefined) {
   return jest.fn((command, args, options) => {
@@ -23,6 +27,8 @@ function mockRunner(override = () => undefined) {
     if (args.includes('{{.State.ExitCode}} {{.State.OOMKilled}}')) stdout = '137 false';
     if (args[0] === 'compose') {
       const op = composeOperation(args);
+      if (op.join(' ') === 'config --format json') stdout = JSON.stringify({ services: { app: {
+        image: options.env.CLASSIFARR_UPGRADE_IMAGE, environment: { FIXED: '1' }, volumes: ['app-data:/app/data'] } } });
       if (op[0] === 'logs') stdout = 'Restore verification is incomplete';
       if (op[0] === 'ps') stdout = 'b'.repeat(64);
       if (op.includes('--input-type=module') && op[0] === 'exec') stdout = 'UPGRADE_SEED {"version":"180000","migrations":20}\n';
@@ -104,6 +110,36 @@ test('fresh-only scope never claims or accesses a published baseline', async () 
   expect(run.mock.calls.some(([cmd, args]) => cmd === 'gh' || args[0] === 'pull')).toBe(false);
   expect(operations(run).filter(args => args.includes('src/scripts/publishedUpgradeProbe.mjs')).map(args => args.at(-1)))
     .toEqual(['fresh', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume']);
+});
+
+test.each(['unraid', 'custom'])('preserves frozen %s deployment and uses runtime identity for every probe', async profile => {
+  const run = mockRunner();
+  const result = await runWith(run, { deploymentProfile: profile });
+  expect(result.deployment).toEqual({ profile, unchanged: true, configurationDigest: expect.stringMatching(/^[a-f0-9]{64}$/) });
+  const calls = run.mock.calls.filter(([, args]) => args[0] === 'compose');
+  for (const [, args] of calls) expect(args[8]).toMatch(new RegExp(`published-upgrade[\\\\/]${profile}.yml$`));
+  for (const op of operations(run).filter(args => args[0] === 'exec')) {
+    expect(op[op.indexOf('--user') + 1]).toBe(profile === 'unraid' ? '99:100' : '2345:2345');
+  }
+});
+
+test('changed deployment refuses upgrade before candidate can touch the baseline database', async () => {
+  let configs = 0;
+  const run = mockRunner((_cmd, args) => {
+    if (args[0] === 'compose' && composeOperation(args).join(' ') === 'config --format json' && ++configs === 2) {
+      return { status: 0, stdout: JSON.stringify({ services: { app: { image: 'candidate', environment: { FIXED: 'changed' }, volumes: ['app-data:/app/data'] } } }) };
+    }
+    return undefined;
+  });
+  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:candidate_upgrade');
+  expect(operations(run).some(args => args.at(-1) === 'upgraded')).toBe(false);
+  expect(operations(run).at(-1)).toContain('down');
+});
+
+test('invalid deployment refuses all commands', async () => {
+  const run = mockRunner();
+  await expect(runWith(run, { deploymentProfile: 'live' })).rejects.toThrow('invalid_upgrade_deployment');
+  expect(run).not.toHaveBeenCalled();
 });
 
 test.each([['fresh_scheduler', 'scheduled-crash-ready'], ['fresh_backfill_crash', 'scheduled-crash-resume'],

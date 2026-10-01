@@ -1,0 +1,11 @@
+# Frozen Community Apps-style saved settings, not a file for live deployment.
+# Same settings on the published baseline and candidate; no new maintenance knobs.
+services:
+  app:
+    user: '0:0'
+    read_only: false
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    environment:
+      PUID: '99'
+      PGID: '100'
+      UMASK: '022'

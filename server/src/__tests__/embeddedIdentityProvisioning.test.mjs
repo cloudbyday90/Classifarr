@@ -32,6 +32,20 @@ test('rejects database account collisions and missing packaged identities', () =
 test('explicit non-root launch retains actual identity without account mutation', () => {
   expect(plan({ PUID: '99', PGID: '100' }, { uid: 1000, gid: 1000 })).toEqual({ mode: 'existing_nonroot', uid: 1000, gid: 1000, commands: [] });
 });
+
+test.each([99, 2345])('rejects unsupported forced UID %s before mutation', uid => {
+  expect(() => plan({}, { uid, gid: 100 })).toThrow('embedded_nonroot_account_unavailable');
+});
+
+test('a pre-provisioned classifarr account supports a custom forced UID', () => {
+  const custom = readEmbeddedAccounts(passwd.replace('1000:1000', '2345:2345'), group);
+  expect(plan({}, { uid: 2345, gid: 2345, accounts: custom })).toEqual({ mode: 'existing_nonroot', uid: 2345, gid: 2345, commands: [] });
+});
+
+test('existing named OS identities are not rejected solely for a different account name', () => {
+  const custom = readEmbeddedAccounts(`${passwd}custom:x:2345:2345:x:x:x\n`, group);
+  expect(plan({}, { uid: 2345, gid: 2345, accounts: custom })).toEqual({ mode: 'existing_nonroot', uid: 2345, gid: 2345, commands: [] });
+});
 test('missing group is created, never deleting a shared group', () => {
   expect(plan({}, { accounts: { ...accounts, groups: [] } }).commands).toEqual([['addgroup', ['-g', '1000', 'classifarr']]]);
 });

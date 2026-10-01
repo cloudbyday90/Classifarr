@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { planEmbeddedIdentity, readEmbeddedAccounts } from './embeddedIdentityPolicy.mjs';
+import { assertEmbeddedStartupPolicy } from './embeddedStartupPolicy.mjs';
 
 const execute = promisify(execFile);
 const COMMANDS = Object.freeze({ groupmod: '/usr/sbin/groupmod', addgroup: '/usr/sbin/addgroup', usermod: '/usr/sbin/usermod' });
@@ -11,6 +12,7 @@ export async function provisionEmbeddedIdentity({
   environment = process.env, uid = process.getuid?.(), gid = process.getgid?.(),
   read = readFile, run = execute,
 } = {}) {
+  assertEmbeddedStartupPolicy(environment);
   const accounts = async () => readEmbeddedAccounts(await read('/etc/passwd', 'utf8'), await read('/etc/group', 'utf8'));
   const plan = planEmbeddedIdentity({ environment, uid, gid, accounts: await accounts() });
   for (const [command, args] of plan.commands) {

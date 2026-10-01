@@ -1,16 +1,6 @@
 #!/bin/sh
 set -e
 
-# Embedded PostgreSQL still shares its OS identity and trust authentication with
-# Node. Do not advertise restricted runtime isolation until that cutover exists.
-case "${CLASSIFARR_SCHEMA_MAINTENANCE-startup}" in
-    startup) ;;
-    external)
-        echo "External schema maintenance is not supported by this embedded entrypoint. Keep startup mode until OS/authentication isolation is deployed." >&2
-        exit 1 ;;
-    *) echo "CLASSIFARR_SCHEMA_MAINTENANCE must be startup or external." >&2; exit 1 ;;
-esac
-
 # ===========================================
 # Classifarr Docker Entrypoint
 # All-in-One with Embedded PostgreSQL
@@ -38,7 +28,8 @@ echo "PGID: $PGID"
 echo "UMASK: $UMASK"
 echo "Running as UID: $(id -u) (root: $IS_ROOT)"
 
-# Validate and read back account setup before any data-directory ownership write.
+# Validate runtime/schema/capability settings and read back account setup before
+# any data-directory ownership write. Shared identity remains the supported path.
 # Non-root saved templates keep their actual host-selected identity.
 export PUID PGID UMASK
 node /app/src/scripts/provisionEmbeddedIdentity.mjs --apply

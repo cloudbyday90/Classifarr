@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Validate embedded startup settings and forced-user compatibility before account
+  or database changes. Add image-only upgrade coverage for unchanged saved
+  standard, Community Apps-style and custom-user deployments, retaining existing
+  maintenance behavior without activating production identity separation.
 - Add a fixed-capability queue maintenance handoff for restricted runtimes,
   with independent admission, protected retry budgets and bounded child cleanup.
   Validate it in the separate-identity rehearsal; production identity remains unchanged.

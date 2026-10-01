@@ -10,6 +10,7 @@ import { assertScheduledInstallationResult, SCHEDULED_INSTALLATION_EXPECTED } fr
 import { runScheduledCrashRecovery } from './scheduledCrashRecovery.mjs';
 import { runInstallationBudgetRecovery } from './installationBudgetRecovery.mjs';
 import { upgradeBaseline, verifyPublishedUpgradeProvenance } from './publishedUpgradeProvenance.mjs';
+import { publishedUpgradeDeployment, upgradeDeploymentDigest, upgradeProbeArguments } from './publishedUpgradeDeployment.mjs';
 export { upgradeBaseline } from './publishedUpgradeProvenance.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -23,6 +24,7 @@ export function parseUpgradeReceipt(output, prefix) {
 
 /** Fixed disposable target and immutable release; never accepts live configuration. */
 export async function runPublishedUpgradeCompose({ run = spawnSync, random = randomBytes, freshOnly = false, resourceBudget = false,
+  deploymentProfile = 'standard',
   sleep = delay, now = Date.now, report = message => process.stdout.write(`${message}\n`),
   saveDiagnostic = (project, diagnostic) => {
     const directory = resolve(root, '.tmp/published-upgrade', project);
@@ -31,6 +33,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   } } = {}) {
   if (typeof freshOnly !== 'boolean') throw new TypeError('invalid_installation_scope');
   if (typeof resourceBudget !== 'boolean') throw new TypeError('invalid_installation_budget');
+  const deployment = publishedUpgradeDeployment(deploymentProfile);
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_upgrade_identity');
   const project = `classifarr-upgrade-drill-${suffix}`;
@@ -40,6 +43,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     CLASSIFARR_UPGRADE_CANDIDATE: candidateImage, CLASSIFARR_UPGRADE_MODE: 'normal',
     CLASSIFARR_UPGRADE_BUDGET: resourceBudget ? 'bounded' : 'none' });
   const base = ['compose', '--project-name', project, '--file', composeFile, '--project-directory', root];
+  if (deployment.file) base.push('--file', resolve(root, deployment.file));
   if (resourceBudget) {
     base.push('--file', resolve(root, 'docker-compose.resource-study-budget.yml'));
     Object.assign(env, { CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128' });
@@ -53,7 +57,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     throw new Error(`upgrade_command_failed:${binary}:${args[0]}`);
   };
   const docker = (args, ...options) => invoke('docker', args, ...options);
-  const compose = (args, ...options) => docker([...base, ...args], ...options);
+  const compose = (args, ...options) => docker([...base, ...upgradeProbeArguments(args, deployment)], ...options);
   const probe = phase => parseUpgradeReceipt(compose(['exec', '-T', 'app', 'node', 'src/scripts/publishedUpgradeProbe.mjs', phase],
     ['scheduled', 'scheduled-crash-resume', 'scheduled-backlog-resume'].includes(phase) ? 960_000 : 120_000).stdout, 'UPGRADE_PROBE');
   const poll = async (check, label, timeout = 60_000) => {
@@ -106,6 +110,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       if (docker(['volume', 'ls', '-q', '--filter', label]).stdout.trim()) throw new Error('fresh_volume_cleanup_failed');
       stage = 'published_start';
       env.CLASSIFARR_UPGRADE_IMAGE = upgradeBaseline.image;
+      const savedConfiguration = upgradeDeploymentDigest(compose(['config', '--format', 'json']).stdout);
       docker(['pull', upgradeBaseline.image], 300_000);
       start('normal');
       // Docker cp rejects read-only rootfs even for tmpfs targets. Stream the fixed
@@ -117,6 +122,8 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       stage = 'candidate_upgrade';
       compose(['stop', '--timeout', '30', 'app']);
       env.CLASSIFARR_UPGRADE_IMAGE = candidateImage;
+      const upgradedConfiguration = upgradeDeploymentDigest(compose(['config', '--format', 'json']).stdout);
+      if (savedConfiguration !== upgradedConfiguration) throw new Error('upgrade_deployment_changed');
       start('normal');
       const upgraded = probe('upgraded');
       passed('persisted_volume_migrations');
@@ -157,6 +164,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       const upgradeScheduler = upgradeBudget ? SCHEDULED_INSTALLATION_EXPECTED : assertScheduledInstallationResult(probe('scheduled'));
       passed('upgrade_startup_scheduler_progress');
       result = { status: 'passed', scope: 'fresh-and-upgrade', baseline: upgradeBaseline, candidateImageId: candidateId, fresh,
+        deployment: { profile: deploymentProfile, configurationDigest: savedConfiguration, unchanged: true },
         scheduler: { fresh: freshScheduler, upgrade: upgradeScheduler }, crashRecovery,
         database: { baseline: baselineDatabase, candidate: upgraded.candidate }, recovery, handoff, checks,
         ...(resourceBudget ? { resourceBudget: { fresh: freshBudget.evidence, upgrade: upgradeBudget.evidence } } : {}) };

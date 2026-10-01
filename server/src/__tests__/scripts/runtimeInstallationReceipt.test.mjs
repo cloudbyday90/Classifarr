@@ -29,6 +29,14 @@ test('bounded receipt and summary identify both scenarios and no unsafe raw data
   expect(formatRuntimeInstallationSummary(receipt)).toContain('not live-provider quality');
 });
 
+test('default receipt validates deployment evidence without accepting a different profile', () => {
+  const result = { ...success(), deployment: { profile: 'standard', unchanged: true, configurationDigest: 'c'.repeat(64) } };
+  expect(createRuntimeInstallationReceipt({ ...identity, result }).status).toBe('passed');
+  for (const bad of [{ profile: 'unraid' }, { unchanged: false }, { configurationDigest: '' }]) {
+    expect(() => createRuntimeInstallationReceipt({ ...identity, result: { ...result, deployment: { ...result.deployment, ...bad } } })).toThrow();
+  }
+});
+
 test.each([
   ['missing check', r => { r.checks.pop(); }],
   ['duplicate check', r => { r.checks[0] = r.checks[1]; }],

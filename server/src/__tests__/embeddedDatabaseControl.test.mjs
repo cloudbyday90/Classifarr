@@ -81,7 +81,9 @@ test('entrypoint retains privilege drop and embedded guard, with sufficient Comp
   const shell = readFileSync(new URL('../../../docker-entrypoint.sh', import.meta.url), 'utf8');
   expect(shell).toContain('exec su-exec classifarr node src/scripts/runEmbeddedSupervisor.mjs --run');
   expect(shell).toContain('exec node src/scripts/runEmbeddedSupervisor.mjs --run');
-  expect(shell).toContain('External schema maintenance is not supported');
+  expect(shell).toContain('provisionEmbeddedIdentity.mjs --apply');
+  const policy = readFileSync(new URL('../bootstrap/embeddedStartupPolicy.mjs', import.meta.url), 'utf8');
+  expect(policy).toContain('External schema maintenance is not supported');
   for (const name of ['docker-compose.yml', 'docker-compose.unraid.yml', 'docker-compose.synology.yml']) {
     expect(readFileSync(new URL(`../../../${name}`, import.meta.url), 'utf8')).toContain('stop_grace_period: 60s');
   }

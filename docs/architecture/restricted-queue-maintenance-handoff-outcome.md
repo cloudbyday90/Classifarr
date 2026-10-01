@@ -110,6 +110,11 @@ reset the repair budget while supported maintenance still works. Measure total
 container RSS and application query latency on representative small hosts before
 activation. This is a concrete deployment boundary, not another diagnostic layer.
 
+The first implementation stage is the
+[image-only upgrade compatibility contract](image-only-upgrade-compatibility-design.md):
+validate saved settings before writes and prove unchanged deployment profiles.
+Its completion does not by itself activate the production identity boundary.
+
 ## Delivery scope
 
 GitHub MCP and the saved-login GitHub CLI both returned no open PRs for this

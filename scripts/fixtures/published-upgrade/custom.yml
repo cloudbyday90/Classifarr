@@ -1,0 +1,10 @@
+# Frozen root-started custom-ID saved settings, not a live deployment file.
+services:
+  app:
+    user: '0:0'
+    read_only: false
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    environment:
+      PUID: '2345'
+      PGID: '2345'
+      UMASK: '027'
