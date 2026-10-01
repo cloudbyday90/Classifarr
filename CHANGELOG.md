@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Cancel abandoned image-retrieval queue entries, retry waits, poster downloads
+  and embedding requests. Preserve successful visual evidence and provider health,
+  with safe active-capacity cleanup and reusable cancelled recovery probes.
 - Cancel timed-out semantic retrieval in PostgreSQL through bounded read-only
   execution, with server deadlines and safe connection disposal. Preserve ranking
   and image evidence, and prevent late results from being reported as success.

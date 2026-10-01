@@ -32,6 +32,7 @@ class CircuitBreaker {
         this.lastFailureTime = null;
         this.lastStateChange = Date.now();
         this._isTransitioning = false;
+        this._generation = 0;
 
         this.metrics = {
             totalRequests: 0,
@@ -138,6 +139,7 @@ class CircuitBreaker {
     }
 
     reset() {
+        this._generation++;
         this._logger.info('Circuit breaker manually reset', null, { skipDbPersist: true });
         this.failureCount = 0;
         this.successCount = 0;
@@ -150,6 +152,7 @@ class CircuitBreaker {
     }
 
     transitionTo(newState, reason) {
+        this._generation++;
         const oldState = this.state;
         this.state = newState;
         this.lastStateChange = Date.now();
@@ -214,11 +217,14 @@ class CircuitBreaker {
     }
 
     async run(fn) {
+        const attemptsBefore = this.halfOpenAttempts;
         if (!this.isAllowed()) {
             const err = new Error('Circuit breaker is OPEN \u2014 request rejected');
             err.code = 'CIRCUIT_OPEN';
             throw err;
         }
+        const generation = this._generation;
+        const reservedProbe = this.state === STATES.HALF_OPEN && this.halfOpenAttempts > attemptsBefore;
         try {
             const result = await fn();
             this.recordSuccess();
@@ -226,6 +232,9 @@ class CircuitBreaker {
         } catch (err) {
             if (err.name !== 'AbortError') {
                 this.recordFailure(err);
+            } else if (reservedProbe && this.state === STATES.HALF_OPEN && this._generation === generation) {
+                // A cancelled probe supplies no health evidence; make its reservation reusable.
+                this.halfOpenAttempts = Math.max(0, this.halfOpenAttempts - 1);
             }
             throw err;
         }

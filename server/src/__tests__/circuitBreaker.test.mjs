@@ -306,5 +306,34 @@ describe('CircuitBreaker', () => {
 
             expect(circuitBreaker.metrics.failedRequests).toBe(before);
         });
+
+        it('returns cancelled half-open reservations without declaring recovery or recording failure', async () => {
+            circuitBreaker.transitionTo(STATES.HALF_OPEN, 'test recovery');
+            const before = circuitBreaker.getMetrics();
+            for (let i = 0; i < 6; i++) {
+                await expect(circuitBreaker.run(async () => {
+                    throw Object.assign(new Error('Request cancelled'), { name: 'AbortError' });
+                })).rejects.toMatchObject({ name: 'AbortError' });
+            }
+            expect(circuitBreaker.halfOpenAttempts).toBe(0);
+            expect(circuitBreaker.state).toBe(STATES.HALF_OPEN);
+            expect(circuitBreaker.metrics.failedRequests).toBe(before.failedRequests);
+            expect(circuitBreaker.metrics.successfulRequests).toBe(before.successfulRequests);
+            await circuitBreaker.run(async () => 'valid probe');
+            await circuitBreaker.run(async () => 'valid probe');
+            expect(circuitBreaker.state).toBe(STATES.CLOSED);
+        });
+
+        it('late cancellation cannot refund a different recovery generation', async () => {
+            circuitBreaker.transitionTo(STATES.HALF_OPEN, 'first generation');
+            const old = Promise.withResolvers();
+            const cancelled = expect(circuitBreaker.run(() => old.promise)).rejects.toMatchObject({ name: 'AbortError' });
+            circuitBreaker.reset();
+            circuitBreaker.transitionTo(STATES.HALF_OPEN, 'second generation');
+            expect(circuitBreaker.isAllowed()).toBe(true);
+            old.reject(Object.assign(new Error('Request cancelled'), { name: 'AbortError' }));
+            await cancelled;
+            expect(circuitBreaker.halfOpenAttempts).toBe(1);
+        });
     });
 });

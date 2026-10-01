@@ -80,6 +80,82 @@ describe('ImageEmbeddingProvider', () => {
         imageEmbeddingProvider.resetConfig();
     });
 
+    describe('caller cancellation', () => {
+        beforeEach(() => {
+            imageEmbeddingProvider.config = {
+                image_embedding_provider_mode: 'separate_local',
+                image_embedding_local_host: 'localhost',
+                image_embedding_rps: 0,
+                image_embedding_concurrency: 1,
+            };
+        });
+
+        it('rejects before config lookup, limiter or breaker admission', async () => {
+            imageEmbeddingProvider.config = null;
+            await expect(imageEmbeddingProvider.embedImageFromUrl('https://example.com/poster', {}, {
+                signal: AbortSignal.abort('private reason'),
+            })).rejects.toMatchObject({ name: 'AbortError', message: 'Request cancelled' });
+            expect(mockDb.query).not.toHaveBeenCalled();
+            expect(mockCB.run).not.toHaveBeenCalled();
+            expect(mockHttpPost).not.toHaveBeenCalled();
+        });
+
+        it('does not admit a caller cancelled during configuration lookup', async () => {
+            imageEmbeddingProvider.config = null;
+            const caller = new AbortController();
+            mockDb.query.mockImplementationOnce(async () => { caller.abort(); return { rows: [] }; });
+            await expect(imageEmbeddingProvider.embedImageFromUrl('url', {}, { signal: caller.signal }))
+                .rejects.toMatchObject({ name: 'AbortError' });
+            expect(mockCB.run).not.toHaveBeenCalled();
+        });
+
+        it('forwards the signal separately from config overrides and preserves successful evidence', async () => {
+            const caller = new AbortController();
+            mockHttpPost.mockResolvedValue({ data: { embedding: [0.1, 0.2], dims: 2 } });
+            const result = await imageEmbeddingProvider.embedImageFromUrl('url', {
+                image_embedding_local_model: 'custom-model', image_embedding_image_size: 384,
+            }, { signal: caller.signal });
+            expect(mockHttpPost).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+                image_url: 'url', model: 'custom-model', image_size: 384,
+            }), expect.objectContaining({ signal: caller.signal }));
+            expect(result).toMatchObject({ embedding: [0.1, 0.2], dims: 2, model: 'custom-model', size: 384 });
+            expect(imageEmbeddingProvider.config).not.toHaveProperty('signal');
+        });
+
+        it.each(['success', 'failure'])('rejects late %s after abort without retry or failure logging', async outcome => {
+            const caller = new AbortController();
+            mockHttpPost.mockImplementationOnce(async () => {
+                caller.abort('private reason');
+                if (outcome === 'failure') throw Object.assign(new Error('network reset'), { code: 'ECONNRESET' });
+                return { data: { embedding: [0.1], dims: 1 } };
+            });
+            await expect(imageEmbeddingProvider.embedImageFromUrl('url', {}, { signal: caller.signal }))
+                .rejects.toMatchObject({ name: 'AbortError', message: 'Request cancelled' });
+            expect(mockHttpPost).toHaveBeenCalledTimes(1);
+            expect(mockLogger.error).not.toHaveBeenCalled();
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+        });
+
+        it('cancels retry backoff without another HTTP attempt and restores admission', async () => {
+            const caller = new AbortController();
+            mockHttpPost.mockRejectedValueOnce(Object.assign(new Error('busy'), {
+                response: { status: 429, headers: { 'retry-after': '60' } },
+            }));
+            const retryObserved = Promise.withResolvers();
+            mockLogger.warn.mockImplementationOnce(() => retryObserved.resolve());
+            const pending = imageEmbeddingProvider.embedImageFromUrl('url', {}, { signal: caller.signal });
+            const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+            await retryObserved.promise;
+            caller.abort();
+            await rejected;
+            expect(mockHttpPost).toHaveBeenCalledTimes(1);
+            expect(mockLogger.error).not.toHaveBeenCalled();
+            expect(imageEmbeddingProvider.limiter.active).toBe(0);
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.2], dims: 1 } });
+            await expect(imageEmbeddingProvider.embedImageFromUrl('url')).resolves.toMatchObject({ embedding: [0.2] });
+        });
+    });
+
     describe('normalizeMode', () => {
         it('normalizes supported modes', () => {
             expect(imageEmbeddingProvider.normalizeMode('cloud')).toBe('cloud');

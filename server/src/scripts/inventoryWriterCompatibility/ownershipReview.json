@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "image_retrieval_cancellation",
+      "classification": "separately_coordinated",
+      "reason": "Semantic retrieval now forwards the caller signal separately from image configuration overrides and refuses cancelled or late image results before SQL. Optional image transport failure retains existing text-only fallback, but AbortError is not converted into fallback or logged as image/provider failure. The downstream ESM queue removes cancelled waiters, retains active capacity until settlement, and forwards cancellation through existing retry and bounded HTTP helpers. Ranking weights, vectors, read-only SQL cancellation, ingestion ownership and routing authority are unchanged.",
+      "followUp": "Keep queued/pacing/active cancellation, retry interruption, late-result refusal, signal cleanup, same-generation breaker probe release and real loopback disconnect/surviving-request tests. Closing local HTTP is not proof of stopped remote inference; service-side follow-up is tracked in classifarr-image-embedding-service issue 43. No schema, privilege, deployment template or unresolved writer-debt changes."
+    },
+    {
       "id": "bounded_retrieval_cancellation",
       "classification": "separately_coordinated",
       "reason": "Only signalled semantic retrieval opts into an explicit read-only transaction. A guarded query facade refuses work and results after abort, returns late pool grants without SQL, bounds statements and destroys failed or aborted sessions. Cancellation uses at most two on-demand same-role control connections, parameterized target PID plus exact backend start time, and current database/user checks. Targets remain checked out during bounded control work and are never reused after cancellation. SQL, credentials, identities and caller reasons do not enter cancellation logs. Unsigned retrieval, write transactions, intake ownership and ranking are unchanged.",
@@ -323,7 +329,7 @@
     {"path":"server/src/scripts/classificationRetrievalStudy.mjs","digest":"c3ab3c1a07fea97bf3d26df0d66711247166e3570ea5bacfefe7b751223854f3","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
     {"path":"server/src/scripts/classificationRetrievalStudyContract.mjs","digest":"379dd0c98bcbe46b28088d7b9559780cacc416d4c5a2c47b18487173b579c21d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
     {"path":"server/src/services/ragRetrieverQuery.mjs","digest":"295a9f5e0c175c3ce845a5711753bf568671bc1d45baa9a41c4b6452179251c4","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_retrieval_cancellation"},
-    {"path":"server/src/services/ragRetrieverSemanticSearch.mjs","digest":"a6240bf7db9b66e6d23f689750aa346c94a2741b0c785cc590d8c117454adb36","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_retrieval_cancellation"},
+    {"path":"server/src/services/ragRetrieverSemanticSearch.mjs","digest":"df78a9aa0a49e6622f603932b877324f24f8ae0675b23a5606fdd8defe155dae","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"image_retrieval_cancellation"},
     {"path":"server/src/utils/databaseAbortableRead.mjs","digest":"d52093a4e45512261bfd85271d773281e3cacd1ce54405b4a87e94c776a9d387","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_retrieval_cancellation"},
     {"path":"server/src/utils/databaseReadCancellation.mjs","digest":"9cf2840902cf4af2d9fe7f209e77ac5d3cb7d7363348875954f8191dd542eca7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_retrieval_cancellation"},
     {"path":"server/src/scripts/imageIndexMixedForeground.mjs","digest":"059055a492921ad42b18aaad544125cacd0afc039249f2484b76fa502f3d893f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},

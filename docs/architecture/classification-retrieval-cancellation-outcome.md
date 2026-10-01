@@ -64,5 +64,10 @@ Next: cancellable image-provider admission and transport, with tests for an abor
 queued request never starting and an active request releasing capacity. This is a
 specific remaining code boundary, not a proposal to repeat the SQL work.
 
+Follow-up implemented: [image-provider cancellation](image-provider-cancellation-outcome.md)
+now covers that Classifarr-side boundary. Remote inference cancellation remains a
+separate service responsibility, tracked in
+[companion service issue 43](https://github.com/cloudbyday90/classifarr-image-embedding-service/issues/43).
+
 See the [design and researched alternatives](classification-retrieval-cancellation-design.md)
 and the separate [CI recovery outcome](ci-provider-fixture-recovery-outcome.md).

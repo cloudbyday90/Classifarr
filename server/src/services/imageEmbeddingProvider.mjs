@@ -8,6 +8,8 @@ import {
     buildEmbeddingRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
 import { withRetry } from '../utils/retryUtils.mjs';
+import { throwIfCancelled } from '../utils/requestCancellation.mjs';
+import { SimpleRateLimiter } from './imageEmbeddingRequestQueue.mjs';
 import {
     DEFAULTS,
     normalizeMode as _normalizeMode,
@@ -29,55 +31,6 @@ const embedCircuitBreaker = new CircuitBreaker({
     recoveryTimeout: 60000,
     halfOpenMaxAttempts: 2
 });
-
-class SimpleRateLimiter {
-    constructor({ concurrency, rps }) {
-        this.concurrency = Math.max(1, concurrency || 1);
-        this.minIntervalMs = rps ? Math.max(1, Math.floor(1000 / rps)) : 0;
-        this.active = 0;
-        this.queue = [];
-        this.lastStart = 0;
-        this.draining = false;
-    }
-
-    schedule(fn) {
-        return new Promise((resolve, reject) => {
-            this.queue.push({ fn, resolve, reject });
-            this.drain();
-        });
-    }
-
-    drain() {
-        if (this.draining) return;
-        this.draining = true;
-
-        const runNext = () => {
-            while (this.active < this.concurrency && this.queue.length > 0) {
-                const { fn, resolve, reject } = this.queue.shift();
-                const now = Date.now();
-                const waitMs = Math.max(0, this.minIntervalMs - (now - this.lastStart));
-                this.lastStart = now + waitMs;
-                this.active += 1;
-
-                setTimeout(async () => {
-                    try {
-                        const result = await fn();
-                        resolve(result);
-                    } catch (error) {
-                        reject(error);
-                    } finally {
-                        this.active -= 1;
-                        runNext();
-                    }
-                }, waitMs);
-            }
-
-            this.draining = false;
-        };
-
-        runNext();
-    }
-}
 
 class ImageEmbeddingProvider {
     constructor() {
@@ -200,8 +153,10 @@ class ImageEmbeddingProvider {
         return this.limiter;
     }
 
-    async embedImageFromUrl(imageUrl, overrides = {}) {
+    async embedImageFromUrl(imageUrl, overrides = {}, { signal } = {}) {
+        throwIfCancelled(signal);
         const baseConfig = this.config || await this.getConfig();
+        throwIfCancelled(signal);
         if (!baseConfig) {
             throw new NotFoundError('Image embedding configuration not found');
         }
@@ -216,11 +171,12 @@ class ImageEmbeddingProvider {
         const limiter = this.getLimiter(config);
 
         const run = async () => {
-            if (mode === 'cloud') {
-                return await _embedCloud(imageUrl, config, { model, imageSize });
-            }
-
-            return await this.embedLocal(imageUrl, config, { model, imageSize });
+            throwIfCancelled(signal);
+            const result = mode === 'cloud'
+                ? await _embedCloud(imageUrl, config, { model, imageSize, signal })
+                : await this.embedLocal(imageUrl, config, { model, imageSize, signal });
+            throwIfCancelled(signal);
+            return result;
         };
 
         const host = config.image_embedding_local_host;
@@ -231,6 +187,7 @@ class ImageEmbeddingProvider {
                 return limiter.schedule(async () => {
                     const wrapped = await this.createRetriedOperation(run, {
                         maxRetries: 2,
+                        signal,
                         onRetry: (error, attempt) => {
                             logger.warn('[EMBED_RETRY] Retrying image embed request', {
                                 attempt,
@@ -242,9 +199,11 @@ class ImageEmbeddingProvider {
                         }
                     });
                     return await wrapped();
-                });
+                }, { signal });
             });
         } catch (err) {
+            throwIfCancelled(signal);
+            if (err.name === 'AbortError') throw err;
             if (err.code === 'CIRCUIT_OPEN') {
                 logger.warn('[EMBED_CIRCUIT_OPEN] Circuit breaker OPEN \u2014 image embedding calls suspended', {
                     recoveryTimeout: embedCircuitBreaker.recoveryTimeout

@@ -179,6 +179,29 @@ describe('RAGRetriever', () => {
             expect(results[0].imageWeight).toBe(0.4);
         });
 
+        it.each(['late success', 'late failure', 'provider abort'])('preserves image cancellation instead of text-only fallback: %s', async outcome => {
+            const caller = new AbortController();
+            embeddingRouter.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 2 });
+            embeddingRouter.isEnabled.mockResolvedValue(true);
+            embeddingService.hasMinimumEmbeddings.mockResolvedValue(true);
+            embeddingRouter.getConfig.mockResolvedValue({ rag_text_weight: 0.6, rag_image_weight: 0.4 });
+            embeddingService.resolvePosterUrl.mockReturnValue('https://example.com/poster.jpg');
+            imageEmbeddingProvider.getConfig.mockResolvedValue({ image_embedding_provider_mode: 'local' });
+            imageEmbeddingProvider.isConfigured.mockReturnValue(true);
+            imageEmbeddingProvider.embedImageFromUrl.mockImplementationOnce(async () => {
+                if (outcome === 'provider abort') throw Object.assign(new Error('Request cancelled'), { name: 'AbortError' });
+                caller.abort('private reason');
+                if (outcome === 'late failure') throw new Error('late transport failure');
+                return { embedding: [0.2, 0.3], dims: 2 };
+            });
+            await expect(ragRetriever.semanticSearch({ title: 'Query' }, 5, { signal: caller.signal }))
+                .rejects.toMatchObject({ name: 'AbortError' });
+            expect(imageEmbeddingProvider.embedImageFromUrl).toHaveBeenCalledWith(
+                'https://example.com/poster.jpg', {}, { signal: caller.signal });
+            expect(db.pool.connect).not.toHaveBeenCalled();
+            expect(mockLoggerInstance.debug).not.toHaveBeenCalledWith('Image embedding skipped', expect.anything());
+        });
+
         it('should return empty array if no embedding generated', async () => {
             // If embed fails or returns null (unlikely with throw), catch handles it
             embeddingRouter.embed.mockRejectedValue(new Error('Fail'));

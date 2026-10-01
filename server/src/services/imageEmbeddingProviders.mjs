@@ -2,14 +2,18 @@ import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
 import { httpGet, httpGetBinary } from '../utils/httpClient.mjs';
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
+import { throwIfCancelled } from '../utils/requestCancellation.mjs';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
-export async function fetchImageBase64(imageUrl) {
+export async function fetchImageBase64(imageUrl, { signal } = {}) {
+    throwIfCancelled(signal);
     const buffer = await httpGetBinary(imageUrl, {
         timeout: 15000,
         maxBytes: MAX_IMAGE_BYTES,
+        signal,
     });
+    throwIfCancelled(signal);
 
     if (buffer.length > MAX_IMAGE_BYTES) {
         throw new ValidationError('Image payload exceeds maximum size');
@@ -18,7 +22,8 @@ export async function fetchImageBase64(imageUrl) {
     return buffer.toString('base64');
 }
 
-export async function embedLocal(imageUrl, config, { model, imageSize }, localApiKey) {
+export async function embedLocal(imageUrl, config, { model, imageSize, signal }, localApiKey) {
+    throwIfCancelled(signal);
     const host = config.image_embedding_local_host || 'localhost';
     const port = config.image_embedding_local_port || 8000;
     const timeout = config.image_embedding_local_timeout_ms ?? 15000;
@@ -35,8 +40,9 @@ export async function embedLocal(imageUrl, config, { model, imageSize }, localAp
             normalize: true,
             image_size: imageSize,
         },
-        { timeout, headers }
+        { timeout, headers, signal }
     );
+    throwIfCancelled(signal);
 
     const embedding = readEmbeddingResponse(response.data, 'sidecar');
 
@@ -49,12 +55,14 @@ export async function embedLocal(imageUrl, config, { model, imageSize }, localAp
     };
 }
 
-export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize }) {
+export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize, signal }) {
+    throwIfCancelled(signal);
     if (!apiEndpoint) {
         throw new ServiceUnavailableError('Vertex API endpoint is required for image embeddings');
     }
 
-    const imageBase64 = await fetchImageBase64(imageUrl);
+    const imageBase64 = await fetchImageBase64(imageUrl, { signal });
+    throwIfCancelled(signal);
     const modelId = model || 'multimodalembedding@001';
     const endpoint = `${apiEndpoint}/${modelId}:predict`;
 
@@ -65,7 +73,9 @@ export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageS
             Authorization: `Bearer ${apiKey}`,
         },
         timeout: 20000,
+        signal,
     });
+    throwIfCancelled(signal);
 
     const embedding = readEmbeddingResponse(response.data, 'vertex');
 
@@ -78,7 +88,8 @@ export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageS
     };
 }
 
-export async function embedVoyage(imageUrl, { apiKey, model, imageSize }) {
+export async function embedVoyage(imageUrl, { apiKey, model, imageSize, signal }) {
+    throwIfCancelled(signal);
     const modelId = model || 'voyage-multimodal-3.5';
     const response = await postEmbeddingRequest(
         'https://api.voyageai.com/v1/embeddings',
@@ -89,8 +100,10 @@ export async function embedVoyage(imageUrl, { apiKey, model, imageSize }) {
         {
             headers: { Authorization: `Bearer ${apiKey}` },
             timeout: 20000,
+            signal,
         }
     );
+    throwIfCancelled(signal);
 
     const embedding = readEmbeddingResponse(response.data, 'openai');
 
@@ -103,9 +116,11 @@ export async function embedVoyage(imageUrl, { apiKey, model, imageSize }) {
     };
 }
 
-export async function embedCohere(imageUrl, { apiKey, model, imageSize }) {
+export async function embedCohere(imageUrl, { apiKey, model, imageSize, signal }) {
+    throwIfCancelled(signal);
     const modelId = model || 'embed-english-v3.0';
-    const imageBase64 = await fetchImageBase64(imageUrl);
+    const imageBase64 = await fetchImageBase64(imageUrl, { signal });
+    throwIfCancelled(signal);
 
     const response = await postEmbeddingRequest(
         'https://api.cohere.com/v1/embed',
@@ -117,8 +132,10 @@ export async function embedCohere(imageUrl, { apiKey, model, imageSize }) {
         {
             headers: { Authorization: `Bearer ${apiKey}` },
             timeout: 20000,
+            signal,
         }
     );
+    throwIfCancelled(signal);
 
     const embedding = readEmbeddingResponse(response.data, 'cohere');
 
@@ -131,7 +148,8 @@ export async function embedCohere(imageUrl, { apiKey, model, imageSize }) {
     };
 }
 
-export async function embedCloud(imageUrl, config, { model, imageSize }) {
+export async function embedCloud(imageUrl, config, { model, imageSize, signal }) {
+    throwIfCancelled(signal);
     const provider = (config.image_embedding_cloud_provider || '').toLowerCase();
     const apiKey = config.image_embedding_cloud_api_key;
     const apiEndpoint = config.image_embedding_cloud_api_endpoint || config.api_endpoint || '';
@@ -147,11 +165,11 @@ export async function embedCloud(imageUrl, config, { model, imageSize }) {
         case 'vertex':
         case 'google':
         case 'vertex_ai':
-            return await embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize });
+            return await embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageSize, signal });
         case 'voyage':
-            return await embedVoyage(imageUrl, { apiKey, model, imageSize });
+            return await embedVoyage(imageUrl, { apiKey, model, imageSize, signal });
         case 'cohere':
-            return await embedCohere(imageUrl, { apiKey, model, imageSize });
+            return await embedCohere(imageUrl, { apiKey, model, imageSize, signal });
         default:
             throw new ValidationError(`Image embedding provider not supported: ${provider}`);
     }

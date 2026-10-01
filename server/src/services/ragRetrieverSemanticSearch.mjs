@@ -109,11 +109,14 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
     const posterUrl = embeddingService.resolvePosterUrl(metadata);
     if (posterUrl && imageWeight > 0) {
       try {
-        const imageResult = await imageEmbeddingProvider.embedImageFromUrl(posterUrl);
+        const imageResult = await imageEmbeddingProvider.embedImageFromUrl(posterUrl, {}, { signal });
+        checkAbort(signal, 'semantic search');
         if (imageResult?.embedding?.length) {
           imageVectorString = formatVectorString(imageResult.embedding);
         }
       } catch (imageError) {
+        checkAbort(signal, 'semantic search');
+        if (imageError.name === 'AbortError') throw imageError;
         logger.debug('Image embedding skipped', { error: imageError.message });
       }
     }
