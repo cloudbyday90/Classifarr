@@ -14,6 +14,7 @@ import { registerAiProviderCapabilityMetricsFailureBreakdownRoutes } from './sta
 import { registerAiProviderCapabilityMetricsFailureCategoryCoverageRoutes } from './statsRouteAiProviderCapabilityMetricsFailureCategoryCoverage.mjs';
 import { registerAiProviderCapabilityMetricsFailureRecencyRoutes } from './statsRouteAiProviderCapabilityMetricsFailureRecency.mjs';
 import { registerDatabaseHealthSummaryRoutes } from './statsRouteDatabaseHealthSummary.mjs';
+import { registerImageIndexProgressRoutes } from './statsRouteImageIndexProgress.mjs';
 import { registerDatabaseHealthTransitionReceiptRoutes } from './statsRouteDatabaseHealthTransitionReceipt.mjs';
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
@@ -30,6 +31,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requ
   registerPolicyCandidateCorrectionAnalyticsMetricsRoutes(router, { db });
   registerCandidateBoundVerificationRemediationReadinessRoutes(router, { db, requireAdmin });
   registerDatabaseHealthSummaryRoutes(router, { db, requireAdmin, rateLimit });
+  registerImageIndexProgressRoutes(router, { db, requireAdmin, rateLimit });
   registerDatabaseHealthTransitionReceiptRoutes(router, { db, requireAdmin, rateLimit });
   registerOllamaVerificationRuntimeMismatchSummaryRoutes(router, { db, requireAdmin, rateLimit });
   registerOllamaVerificationCapabilityOutcomeHistoryRoutes(router, { db, requireAdmin, rateLimit });

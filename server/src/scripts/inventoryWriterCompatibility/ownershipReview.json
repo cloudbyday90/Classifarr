@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "read_only_image_index_progress",
+      "classification": "separately_coordinated",
+      "reason": "The new service observes fixed catalog definitions, current-database index-build phases, existing automatic repair counters and queue readiness in a bounded read-only transaction. It reuses read-only demand/readiness queries and never invokes producer/admission/executor functions, acquires maintenance advisory locks, changes inventory or resets budgets. The endpoint authorizes administrators before reading, rejects dimensions and returns no query text, claims, payloads or credentials.",
+      "followUp": "Keep real PostgreSQL no-write, invalid-index, interrupted-build, failed/pruned task and budget-preservation tests. This is observation, not writer authorization. All existing unresolved ingestion-writer debt remains unchanged."
+    },
+    {
       "id": "criteria_image_index_reconciliation",
       "classification": "separately_coordinated",
       "reason": "A bounded transaction checks restore admission, configured image-search demand, exact index definitions and inventory readiness before one fixed low-priority enqueue. The existing index lock serializes producers and executor observations. A durable singleton keeps the task reference across queue retention; only verified healthy catalogs with no active job clear an episode. The executor rechecks automatic demand/readiness, excludes only its own queue ID and durably reserves at most three started attempts one hour apart before DDL. Legacy manual jobs retain existing admission. No media write, provider call, arbitrary SQL, new endpoint, deployment setting or privilege escalation is introduced.",
@@ -287,6 +293,7 @@
     {"path":"server/src/bootstrap/embeddedCompatibleImageIndex.mjs","digest":"2413a6cd5593c0933699e25e0c9483188d6776a4e91acc239622ca904d92551e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},
     {"path":"server/src/bootstrap/embeddedCompatibleMaintenanceEnvironment.mjs","digest":"1c11dbbd5887bff3bec437ef5dc0c8124f6880e01943f03cb5823869677cab7c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},
     {"path":"server/src/services/imageIndexAutomaticAdmission.mjs","digest":"a8b8639fd8d5ac0189fac75ed256e3a9af762838f324b6461aafdeac689b78d0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"criteria_image_index_reconciliation"},
+    {"path":"server/src/services/imageIndexProgressService.mjs","digest":"edd293edce546e4f4c1535d874eb8aa3c67ee5e157ad16b50ae9140044b04a10","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_image_index_progress"},
     {"path":"server/src/services/imageIndexReadiness.mjs","digest":"c5b2e294451d365050ed6fb28b36d825aad7147c9cf0afe704ccf6d5b62c8eca","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"criteria_image_index_reconciliation"},
     {"path":"server/src/services/imageIndexReconciliation.mjs","digest":"8a9f12feecb376f9b03d65b6bd1cc398aaff12a85e08df80dee6b83dbb4628f5","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"criteria_image_index_reconciliation"},
     {"path":"server/src/services/imageIndexReconciliationScheduler.mjs","digest":"1bf5c56044886f39ab28d159da03e6468cd1c4e7fc0eff6259220ac1650ebfeb","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"criteria_image_index_reconciliation"},

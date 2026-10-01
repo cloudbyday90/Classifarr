@@ -17,6 +17,8 @@
       </p>
     </div>
 
+    <ImageIndexProgressCard />
+
     <!-- Health Checks -->
     <Card>
       <template #header>
@@ -502,6 +504,7 @@ import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
+import ImageIndexProgressCard from '@/components/system/ImageIndexProgressCard.vue'
 import api from '@/api'
 import { getServiceIcon } from '@/utils/serviceIcons'
 import { getStatusConfig, getLatencyClass, getOverallHealth, calculateTrend, getTrendArrow, getTrendTooltip } from '@/utils/healthStatus'

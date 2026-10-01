@@ -31,6 +31,7 @@ vi.mock('../../api/core', () => ({
 import {
   getSystemHealth,
   getSystemStatus,
+  getImageIndexProgress,
   refreshSystemHealth,
   resetOmdbCircuitBreaker,
   browseFolders,
@@ -39,6 +40,14 @@ import {
 describe('systemHealthApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('reads repair progress without request parameters or mutations', async () => {
+    const report = { status: 'waiting' }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getImageIndexProgress()).toBe(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/image-index-progress')
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it('getSystemHealth calls getDataRequest with /system/health', async () => {

@@ -26,6 +26,10 @@ export function getSystemStatus() {
   return getDataRequest('/system/status')
 }
 
+export function getImageIndexProgress() {
+  return getDataRequest('/stats/image-index-progress')
+}
+
 export function refreshSystemHealth() {
   return apiClient.post('/system/health/refresh')
 }
@@ -41,6 +45,7 @@ export function browseFolders(path) {
 const systemHealthApi = {
   getSystemHealth,
   getSystemStatus,
+  getImageIndexProgress,
   refreshSystemHealth,
   resetOmdbCircuitBreaker,
   browseFolders,

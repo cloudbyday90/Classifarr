@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Show read-only image-search repair status in System, with verified index counts,
+  live build activity, automatic retry budgets and a clear next action. Checking
+  status does not start maintenance or reset recovery limits.
 - Automatically queue bounded image-index repairs only when configured image
   search needs a missing or invalid index and ingestion/backfill is ready. Keep
   repair budgets across restarts and queue cleanup, and report invalid indexes

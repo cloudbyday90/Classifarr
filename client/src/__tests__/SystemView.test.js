@@ -80,6 +80,7 @@ describe('System.vue', () => {
     const wrapper = mount(SystemView, {
       global: {
         stubs: {
+          ImageIndexProgressCard: true,
           Card: { template: '<div><slot name="header" /><slot /></div>' },
           Badge: { template: '<span><slot /></span>' },
           Button: { template: '<button><slot /></button>' },
