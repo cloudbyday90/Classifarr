@@ -34,8 +34,9 @@ test.each([
   expect(() => assertImageIndexMixedReceipt(study)).toThrow();
 });
 
-test.each(['baseline', 'bounded', 'stress'])('mixed profile refuses incompatible budget before Docker: %s', async budget => {
+test.each(['baseline', 'bounded', 'stress'])('mixed profiles refuse incompatible budget before Docker: %s', async budget => {
   const run = jest.fn();
   await expect(runResourceStudyCompose({ mode: 'image-index-mixed', budget, run })).rejects.toThrow('budget_invalid');
+  await expect(runResourceStudyCompose({ mode: 'classification-retrieval', budget, run })).rejects.toThrow('budget_invalid');
   expect(run).not.toHaveBeenCalled();
 });

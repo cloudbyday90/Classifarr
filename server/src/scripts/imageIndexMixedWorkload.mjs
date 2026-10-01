@@ -13,8 +13,9 @@ import { createImageIndexMixedForeground } from './imageIndexMixedForeground.mjs
 import { IMAGE_MIXED_CASES, assertImageIndexMixedReceipt } from './imageIndexMixedContract.mjs';
 
 /** Fresh, isolated installation only. Aggregate evidence, never media or credentials. */
-export async function runImageIndexMixedStudy(db, budget, progress = () => {}) {
+export async function runImageIndexMixedStudy(db, budget, progress = () => {}, profile = 'image-index-mixed') {
   assertStudyProviderEnvironment(); assert.equal(budget, 'image-capacity');
+  assert(['image-index-mixed', 'classification-retrieval'].includes(profile));
   assertStudyBudget(await readStudyCgroup(), budget);
   const started = performance.now(), client = await db.pool.connect(), query = (...args) => client.query(...args);
   let sampler;
@@ -29,7 +30,7 @@ export async function runImageIndexMixedStudy(db, budget, progress = () => {}) {
       await seedImageIndexStudy({ query }, before, after, sampler.sample);
     }
     const original = await readStudyImageData(query);
-    const foreground = await createImageIndexMixedForeground(db), cases = [];
+    const foreground = await createImageIndexMixedForeground(db, profile), cases = [];
     let replacement, invalidObserved = false, staleClaimRejected = false;
     for (const name of IMAGE_MIXED_CASES) {
       await awaitStudyIndexIdle(query);
@@ -89,7 +90,7 @@ export async function runImageIndexMixedStudy(db, budget, progress = () => {}) {
       progress({ scenario: name, exitCode: execution?.exitCode ?? null, overlapRetrievals });
     }
     await awaitStudyIndexIdle(query);
-    const result = { version: 'image_index_mixed.v1', status: 'measured', profile: 'image-index-mixed', budget,
+    const result = { version: 'image_index_mixed.v1', status: 'measured', profile, budget,
       rows: 50000, rowsPreserved: true, workersStopped: true, databaseIdle: true, invalidObserved, staleClaimRejected,
       durationMs: Math.round(performance.now() - started), cases, initial: sampler.initial, final: await readStudyCgroup() };
     assertImageIndexMixedReceipt(result, budget); return result;

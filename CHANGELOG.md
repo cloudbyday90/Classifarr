@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve classification status in semantic retrieval results. Measure the actual
+  text-first, image-reranked query during isolated index repair and recovery,
+  retaining image evidence and existing resource limits without pausing classification.
 - Stop abandoned embedded image-index builds promptly by checking worker
   connections within the maintenance session, without deployment-template changes.
   Add isolated mixed-ingestion/retrieval and mid-build cancellation/recovery checks.

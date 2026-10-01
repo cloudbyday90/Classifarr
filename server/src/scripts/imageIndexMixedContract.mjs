@@ -2,17 +2,19 @@
 import assert from 'node:assert/strict';
 import { assertStudyCgroup } from './resourceStudyMetrics.mjs';
 import { assertStudyBudget, assertStudyBudgetContinuity, summarizeBudgetEnforcement } from './resourceStudyBudget.mjs';
+import { assertClassificationRetrievalEvidence } from './classificationRetrievalStudyContract.mjs';
 
 export const IMAGE_MIXED_CASES = Object.freeze(['baseline', 'mixed_build', 'cancelled_build', 'recovery']);
 export function assertImageIndexMixedReceipt(study, budget = 'image-capacity') {
   assert.equal(budget, 'image-capacity'); assert.equal(study.budget, budget);
-  assert.equal(study.version, 'image_index_mixed.v1'); assert.equal(study.profile, 'image-index-mixed');
+  assert.equal(study.version, 'image_index_mixed.v1'); assert(['image-index-mixed', 'classification-retrieval'].includes(study.profile));
   assert.equal(study.status, 'measured'); assert.equal(study.rows, 50000);
   for (const flag of ['rowsPreserved', 'workersStopped', 'databaseIdle', 'invalidObserved', 'staleClaimRejected']) assert.equal(study[flag], true);
   assert(Number.isSafeInteger(study.durationMs) && study.durationMs > 0 && study.durationMs <= 1200000);
   assert.equal(study.cases.length, IMAGE_MIXED_CASES.length);
   for (const [i, row] of study.cases.entries()) {
     assert.equal(row.name, IMAGE_MIXED_CASES[i]);
+    if (study.profile === 'classification-retrieval') assertClassificationRetrievalEvidence(row.foreground.semantic);
     assert.equal(row.foreground.inventory, (i + 1) * 80);
     assert(Number.isFinite(row.foreground.durationMs) && row.foreground.durationMs > 0 && row.foreground.durationMs < 300000);
     for (const [key, count] of [['scans', 4], ['retrievals', 40]]) {

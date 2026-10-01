@@ -5,7 +5,7 @@ import { formatImageIndexMixedSummary } from './imageIndexMixedSummary.mjs';
 
 /** Only validated aggregates enter Markdown; no payloads or arbitrary text. */
 export function formatResourceStudySummary(result) {
-  if (result?.mode === 'image-index-mixed') return formatImageIndexMixedSummary(result);
+  if (['image-index-mixed', 'classification-retrieval'].includes(result?.mode)) return formatImageIndexMixedSummary(result);
   if (result?.mode === 'image-index') return formatImageIndexStudySummary(result);
   if (result?.cleanup !== 'passed' || result.mode !== result.study?.profile || result.budget !== result.study?.budget) {
     throw new Error('resource_study_summary_invalid');

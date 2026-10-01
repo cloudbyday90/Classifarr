@@ -11,7 +11,7 @@ import { formatStudyBudgetDiagnostic } from './resourceStudyBudgetDiagnostic.mjs
 export async function runResourceStudy(mode) {
   assertUpgradeDrillEnvironment();
   assert.equal(process.env.CLASSIFARR_RESOURCE_STUDY, 'isolated-synthetic-v1');
-  assert.ok(['seed', 'smoke', 'soak', 'capacity', 'image-index', 'image-index-mixed', 'budget-normal', 'budget-restore'].includes(mode));
+  assert.ok(['seed', 'smoke', 'soak', 'capacity', 'image-index', 'image-index-mixed', 'classification-retrieval', 'budget-normal', 'budget-restore'].includes(mode));
   assert.equal(process.env.CLASSIFARR_RUNTIME_MODE, ['seed', 'budget-normal'].includes(mode) ? 'normal' : 'restore');
   const budget = process.env.CLASSIFARR_RESOURCE_STUDY_BUDGET || 'baseline';
   resourceStudyBudget(budget);
@@ -32,10 +32,10 @@ export async function runResourceStudy(mode) {
         [await hashPassword(randomBytes(32).toString('hex'))]);
       return { seeded: true };
     }
-    if (mode === 'image-index-mixed') {
+    if (['image-index-mixed', 'classification-retrieval'].includes(mode)) {
       const { runImageIndexMixedStudy } = await import('./imageIndexMixedWorkload.mjs');
       return await runImageIndexMixedStudy(db, budget,
-        value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`));
+        value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`), mode);
     }
     if (mode === 'image-index') {
       const { runImageIndexStudy } = await import('./imageIndexStudyWorkload.mjs');

@@ -19,12 +19,10 @@
 import { applyPgvectorRecallSettings, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
 import { heldOutSemanticStudyParameters, applyHeldOutSemanticStudyQuerySettings } from './heldOutSemanticStudyScope.mjs';
 
-export async function executeSemanticVectorSearch(db, { vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, recallTuning, heldOutScope }) {
+/** One parameterized SQL definition for production and isolated plan measurements. */
+export function buildSemanticVectorSearchQuery({ vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, heldOutScope }) {
   const exclusions = heldOutScope === undefined ? [] : heldOutSemanticStudyParameters(heldOutScope);
-  return db.withTransaction(async (client) => {
-    if (heldOutScope !== undefined) await applyHeldOutSemanticStudyQuerySettings(client, heldOutScope);
-    await applyPgvectorRecallSettings(client, recallTuning ?? resolvePgvectorRecallTuning());
-    return client.query(`
+  return { text: `
             WITH candidates AS (
                 SELECT
                     ce.id,
@@ -60,6 +58,7 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                 c.media_type,
                 c.library_id,
                 c.library_name,
+                c.status,
                 c.method,
                 c.confidence,
                 c.created_at,
@@ -78,7 +77,15 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
             FROM candidates c
             ORDER BY combined_similarity DESC${heldOutScope === undefined ? '' : ', c.id ASC'}
             LIMIT $6
-        `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, ...exclusions]);
+        `, values: [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, ...exclusions] };
+}
+
+export async function executeSemanticVectorSearch(db, options) {
+  const query = buildSemanticVectorSearchQuery(options);
+  return db.withTransaction(async (client) => {
+    if (options.heldOutScope !== undefined) await applyHeldOutSemanticStudyQuerySettings(client, options.heldOutScope);
+    await applyPgvectorRecallSettings(client, options.recallTuning ?? resolvePgvectorRecallTuning());
+    return client.query(query.text, query.values);
   });
 }
 

@@ -7,6 +7,7 @@ import { QueueService } from '../services/queueService.mjs';
 import { QueueTaskProcessorService } from '../services/queueTaskProcessorService.mjs';
 import { createResourceStudyFixture, seedResourceStudyLibraries } from './resourceStudyFixtures.mjs';
 import { assertStudyProviderEnvironment } from './resourceStudyProviderFixture.mjs';
+import { prepareClassificationRetrievalStudy } from './classificationRetrievalStudy.mjs';
 
 export function summarizeMixedLatency(values) {
   assert(values.length > 0 && values.length <= 400);
@@ -17,9 +18,11 @@ export function summarizeMixedLatency(values) {
 }
 
 /** Real ingestion/enrichment, synthetic providers and retrieval; no AI or routing. */
-export async function createImageIndexMixedForeground(db) {
+export async function createImageIndexMixedForeground(db, profile = 'image-index-mixed') {
   assertStudyProviderEnvironment();
+  assert(['image-index-mixed', 'classification-retrieval'].includes(profile));
   const fixture = createResourceStudyFixture(), libraries = await seedResourceStudyLibraries(db);
+  const semanticSession = profile === 'classification-retrieval' ? await prepareClassificationRetrievalStudy(db, libraries) : null;
   await db.query("INSERT INTO omdb_config(api_key,is_active,daily_limit) VALUES ('synthetic-only',true,10000)");
   let errors = 0;
   const logger = { info() {}, debug() {}, warn() {}, error() { errors++; } };
@@ -36,11 +39,14 @@ export async function createImageIndexMixedForeground(db) {
     assertStudyProviderEnvironment();
     const started = performance.now(), scans = [], retrievals = [];
     const reader = await db.pool.connect();
+    const semantic = semanticSession?.(reader);
     let refill, stopped = false, failure;
     const worker = queue.startWorker();
     worker.catch(error => { failure = error; });
     try {
       await reader.query("SET statement_timeout='5s'; SET lock_timeout='2s'; SET max_parallel_workers_per_gather=0");
+      // Plan profiling is intentionally outside the ordinary retrieval latency sample.
+      if (semantic) await semantic.measurePlan();
       refill = (async () => {
         while (!stopped) { await queue.refillQueue(); await delay(250); }
       })();
@@ -54,7 +60,7 @@ export async function createImageIndexMixedForeground(db) {
       for (let n = 0; n < 40; n++) {
         if (failure) throw failure;
         const time = performance.now();
-        const result = await reader.query(`SELECT id FROM classification_embeddings
+        const result = semantic ? await semantic.retrieve() : await reader.query(`SELECT id FROM classification_embeddings
           WHERE image_embedding IS NOT NULL ORDER BY image_embedding <=> $1::public.vector LIMIT 5`, [vector]);
         assert.equal(result.rows.length, 5); retrievals.push(performance.now() - time);
         onRetrieval(); await delay(250);
@@ -78,7 +84,8 @@ export async function createImageIndexMixedForeground(db) {
       assert.equal(inventory.enriched, inventory.count, 'mixed_study_enrichment_incomplete');
       assert.equal(inventory.unsupported, 0); assert.equal(errors, 0);
       return { durationMs: performance.now() - started, inventory: inventory.count,
-        scans: summarizeMixedLatency(scans), retrievals: summarizeMixedLatency(retrievals) };
+        scans: summarizeMixedLatency(scans), retrievals: summarizeMixedLatency(retrievals),
+        ...(semantic ? { semantic: semantic.receipt() } : {}) };
     } finally {
       stopped = true; queue.stopWorker();
       await Promise.allSettled([refill, worker]);

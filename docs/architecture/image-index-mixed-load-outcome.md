@@ -123,6 +123,8 @@ this does not prevent foreground contention or guarantee remote-network failure
 detection.
 
 Next component: **classification-path workload admission and responsiveness**.
+The retrieval boundary is now exercised by the
+[classification retrieval study](classification-retrieval-maintenance-design.md).
 The unindexed retrieval baseline already has substantial latency, and this study
 does not exercise the AI/routing path. Replay the actual classification retrieval
 queries and queue outcomes during index unavailability/recovery, recording query
