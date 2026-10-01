@@ -37,6 +37,7 @@ import {
 import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 import { pruneClassificationCorrectionOutcomes } from './classificationCorrectionWriter.mjs';
 import { pruneFeedbackOutcomeSnapshots } from './feedbackOutcomeSnapshot.mjs';
+import { inspectQueueVacuum } from './queueVacuumObservation.mjs';
 
 const BLOAT_THRESHOLD = 1000;
 const TERMINAL_QUEUE_STATUSES = Object.freeze(['cancelled', 'completed', 'failed']);
@@ -65,6 +66,24 @@ export class QueueMaintenanceService {
         this.intakeReceiptService = deps.intakeReceiptService ||
             new ClassificationIntakeReceiptService({ db: this.db, logger: this.logger });
         this.activeCleanupRun = null;
+        this.inspectQueueVacuum = deps.inspectQueueVacuum ?? (() => inspectQueueVacuum({ database: this.db }));
+    }
+
+    async observeQueueVacuum(cleanupOrigin) {
+        try {
+            const observation = await this.inspectQueueVacuum();
+            if (observation.status === 'attention') {
+                this.logger.warn('Queue autovacuum needs review; retention cleanup is unchanged', {
+                    cleanupOrigin, reason: observation.reason,
+                });
+            } else {
+                this.logger.debug('Queue physical maintenance is delegated to PostgreSQL autovacuum', {
+                    cleanupOrigin, ...observation,
+                });
+            }
+        } catch {
+            this.logger.warn('Queue autovacuum observation unavailable; retention cleanup is unchanged', { cleanupOrigin });
+        }
     }
 
     async pruneCorrectionOutcomes() {
@@ -170,7 +189,10 @@ export class QueueMaintenanceService {
         const ageBloated = staleCount > BLOAT_THRESHOLD;
         const countBloated = totalCount > MAX_TOTAL_ROWS;
 
-        if (!ageBloated && !countBloated) return;
+        if (!ageBloated && !countBloated) {
+            await this.observeQueueVacuum(cleanupOrigin);
+            return;
+        }
 
         const trigger = getCleanupTrigger(ageBloated, countBloated);
         const logDescriptor = getBackgroundDrainLogDescriptor(trigger);
@@ -269,15 +291,7 @@ export class QueueMaintenanceService {
             });
         }
 
-        try {
-            await this.db.query('VACUUM ANALYZE task_queue');
-            this.logger.info('task_queue VACUUM ANALYZE complete after background drain', { cleanupOrigin });
-        } catch (vacuumErr) {
-            this.logger.warn('task_queue VACUUM ANALYZE failed after background drain (non-fatal)', {
-                cleanupOrigin,
-                error: vacuumErr.message
-            });
-        }
+        await this.observeQueueVacuum(cleanupOrigin);
     }
 
     async runScheduledCleanup(cleanupOrigin) {
@@ -364,15 +378,6 @@ export class QueueMaintenanceService {
                     countCapDeletedByStatus,
                     capExcessBefore: Math.max(remaining - MAX_TOTAL_ROWS, 0),
                 });
-                try {
-                    await this.db.query('VACUUM ANALYZE task_queue');
-                    this.logger.info('task_queue VACUUM ANALYZE complete after scheduled cleanup', { cleanupOrigin });
-                } catch (vacuumErr) {
-                    this.logger.warn('task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)', {
-                        cleanupOrigin,
-                        error: vacuumErr.message
-                    });
-                }
             } else {
                 this.logger.debug('Task queue cleanup: no rows to delete', {
                     cleanupOrigin,
@@ -382,6 +387,7 @@ export class QueueMaintenanceService {
                     oldestRowsByStatus: summarizeOldestByStatus(postAgeCounts.perStatus),
                 });
             }
+            await this.observeQueueVacuum(cleanupOrigin);
         } catch (error) {
             this.logger.error('Task queue cleanup failed', { cleanupOrigin, error: error.message });
         }

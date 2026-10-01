@@ -62,6 +62,7 @@ describe('QueueMaintenanceService', () => {
             withSessionAdvisoryLock,
             taskQueueMaintenanceLockKey: 2012,
             intakeReceiptService: { reconcileAndPrune: jest.fn().mockResolvedValue({ reconciled: 0, linked: 0, pruned: 0 }) },
+            inspectQueueVacuum: jest.fn().mockResolvedValue({ status: 'autovacuum_enabled' }),
         });
         jest.spyOn(service, 'pruneCorrectionOutcomes').mockResolvedValue(undefined);
     });
@@ -141,6 +142,15 @@ describe('QueueMaintenanceService', () => {
         );
     }
 
+    test('disabled autovacuum emits an actionable warning but never grants privileges or vacuums', async () => {
+        service.inspectQueueVacuum.mockResolvedValueOnce({ status: 'attention', reason: 'autovacuum_disabled' });
+        await service.observeQueueVacuum('cron');
+        expect(logger.warn).toHaveBeenCalledWith(
+            'Queue autovacuum needs review; retention cleanup is unchanged',
+            { cleanupOrigin: 'cron', reason: 'autovacuum_disabled' });
+        expect(db.query).not.toHaveBeenCalled();
+    });
+
     describe('backgroundDrainIfBloated', () => {
         test('returns early when neither age nor count threshold is exceeded', async () => {
             mockRetentionSettings({
@@ -160,7 +170,7 @@ describe('QueueMaintenanceService', () => {
             expect(logger.warn).not.toHaveBeenCalled();
         });
 
-        test('deletes stale rows using status-specific retention windows, records history, and runs vacuum', async () => {
+        test('deletes stale rows using status-specific retention windows and delegates physical maintenance to autovacuum', async () => {
             mockRetentionSettings({
                 completed: '7',
                 failed: '30',
@@ -480,7 +490,7 @@ describe('QueueMaintenanceService', () => {
             );
         });
 
-        test('scheduled cleanup trims oldest rows in status priority order, records history, and vacuums once', async () => {
+        test('scheduled cleanup trims oldest rows in status priority order and records history without manual vacuum', async () => {
             mockRetentionSettings({
                 completed: '7',
                 failed: '30',
@@ -544,7 +554,8 @@ describe('QueueMaintenanceService', () => {
             const vacuumCalls = db.query.mock.calls.filter(
                 ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
             );
-            expect(vacuumCalls).toHaveLength(1);
+            expect(vacuumCalls).toHaveLength(0);
+            expect(service.inspectQueueVacuum).toHaveBeenCalledTimes(1);
         });
 
         test('uses database settings before env fallback during scheduled cleanup', async () => {
@@ -586,7 +597,7 @@ describe('QueueMaintenanceService', () => {
             }
         });
 
-        test('logs non-fatal vacuum failures without throwing', async () => {
+        test('logs redacted non-fatal observation failures without throwing', async () => {
             mockRetentionSettings({
                 completed: '7',
                 failed: '30',
@@ -607,14 +618,15 @@ describe('QueueMaintenanceService', () => {
                 cancelled: { stale: 0, total: 0 },
             });
             mockCleanupHistoryInsert();
-            db.query.mockRejectedValueOnce(new Error('vacuum not allowed in transaction'));
+            service.inspectQueueVacuum.mockRejectedValueOnce(new Error('secret PostgreSQL detail'));
 
             await expect(service.runScheduledTaskQueueCleanup()).resolves.toBeUndefined();
 
             expect(logger.warn).toHaveBeenCalledWith(
-                'task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)',
-                expect.objectContaining({ error: 'vacuum not allowed in transaction' })
+                'Queue autovacuum observation unavailable; retention cleanup is unchanged',
+                { cleanupOrigin: 'cron' }
             );
+            expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
         });
     });
 });

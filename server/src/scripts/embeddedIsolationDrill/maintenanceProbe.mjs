@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import * as db from '../../config/database.mjs';
 import { runImageIndexMaintenance } from '../../services/imageIndexMaintenance.mjs';
+import { runQueueVacuumMaintenance } from '../../services/queueVacuumMaintenance.mjs';
 import { runDatabaseSchemaMaintenance } from '../../services/databaseSchemaMaintenance.mjs';
 import { RUNTIME_ROLE, RESTORED_DATABASE, ADMIN_ROLE, assertProbeEnvironment } from './contract.mjs';
 
@@ -24,6 +25,7 @@ export async function probeMaintenance() {
   assert.equal(completed.rows[0].status, 'completed');
   assert.equal(completed.rows[0].payload.result.rebuilt, true);
   assert.deepEqual(await runImageIndexMaintenance({ database: db }), { status: 'no_work' });
+  assert.equal((await runQueueVacuumMaintenance({ database: db })).status, 'complete');
   const indexes = await db.query(`SELECT count(*)::int AS count FROM pg_index i
     JOIN pg_class c ON c.oid = i.indexrelid WHERE i.indisvalid
     AND c.relname IN ('idx_embeddings_image_hnsw', 'idx_embeddings_image_present', 'idx_embeddings_image_hash')`);

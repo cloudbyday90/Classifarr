@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Replace unconditional queue vacuuming with autovacuum-first maintenance and
+  logged, criteria-based recovery. Persist observation, cooldown and attempt
+  limits; wait for ingestion/backfill and verify bounded repairs before reporting
+  completion. Add a fixed maintenance command without deployment-template changes.
 - Bound deferred image-index maintenance with resource limits, queue ownership
   checks and interrupted-build recovery. Add a fixed one-shot maintenance command
   and separate-identity validation without changing deployment defaults.

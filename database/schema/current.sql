@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-30T11:38:47.591Z
--- Latest Migration: 20260930_180000_retry_wait_provenance_index.sql
+-- Generated: 2026-10-01T10:04:53.652Z
+-- Latest Migration: 20261001_120000_queue_vacuum_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7745,6 +7745,24 @@ COMMENT ON TABLE public.queue_startup_performance_receipts IS 'Fixed aggregate q
 
 
 --
+-- Name: queue_vacuum_recovery_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.queue_vacuum_recovery_state (
+    singleton boolean DEFAULT true NOT NULL,
+    statistics_epoch character varying(200),
+    vacuum_progress character varying(100),
+    pressure_since timestamp with time zone,
+    observed_at timestamp with time zone,
+    next_attempt_at timestamp with time zone,
+    attempts smallint DEFAULT 0 NOT NULL,
+    last_result character varying(64) DEFAULT 'unobserved'::character varying NOT NULL,
+    CONSTRAINT queue_vacuum_recovery_state_attempts_check CHECK (((attempts >= 0) AND (attempts <= 3))),
+    CONSTRAINT queue_vacuum_recovery_state_singleton_check CHECK (singleton)
+);
+
+
+--
 -- Name: radarr_config; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11468,6 +11486,14 @@ ALTER TABLE ONLY public.quality_evidence_study
 
 ALTER TABLE ONLY public.queue_startup_performance_receipts
     ADD CONSTRAINT queue_startup_performance_receipts_pkey PRIMARY KEY (operation_id, receipt_version, duration_bucket, scanned_id_bucket, candidate_count_bucket, buffer_bucket);
+
+
+--
+-- Name: queue_vacuum_recovery_state queue_vacuum_recovery_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_vacuum_recovery_state
+    ADD CONSTRAINT queue_vacuum_recovery_state_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -17610,6 +17636,7 @@ FROM unnest(ARRAY[
     '20260929_180000_web_search_usage_trace.sql',
     '20260929_190000_omdb_shared_pacing.sql',
     '20260929_200000_credential_scoped_retry_wait.sql',
-    '20260930_180000_retry_wait_provenance_index.sql'
+    '20260930_180000_retry_wait_provenance_index.sql',
+    '20261001_120000_queue_vacuum_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

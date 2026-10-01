@@ -21,7 +21,7 @@ const status = () => pg('pg_ctl', ['-D', PG_DATA, 'status']);
 const database = { adopt: status, check: status,
   stop: () => pg('pg_ctl', ['-D', PG_DATA, '-m', 'fast', '-w', '-t', '20', 'stop']) };
 
-for (const kind of ['schema', 'restore', 'indexes']) {
+for (const kind of ['schema', 'restore', 'indexes', 'vacuum']) {
   if (kind === 'indexes') {
     await pg('psql', ['-X', '-h', '/run/postgresql', '-U', 'classifarr', '-d', DATABASE,
       '-v', 'ON_ERROR_STOP=1', '-c', "INSERT INTO task_queue (task_type, payload) VALUES ('rebuild_hnsw_index', '{}')"]);

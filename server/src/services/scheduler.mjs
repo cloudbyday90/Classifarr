@@ -62,6 +62,7 @@ import {
 import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRules.mjs';
 import { registerLibraryObservationHistorySchedule } from './libraryObservationHistorySchedule.mjs';
 import { registerDatabaseHealthTransitionObservationSchedule } from './databaseHealthTransitionObservationScheduler.mjs';
+import { registerQueueVacuumRecoverySchedule } from './queueVacuumRecoveryScheduler.mjs';
 import {
     registerEventLoopDelayObservationSchedule,
     stopEventLoopDelayObservationSchedule,
@@ -135,6 +136,7 @@ class SchedulerService {
         registerOllamaReadinessBackfillSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
+        registerQueueVacuumRecoverySchedule(this);
         registerEventLoopDelayObservationSchedule(this);
 
         this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis(), DB_ADVISORY_LOCKS.GAP_ANALYSIS);

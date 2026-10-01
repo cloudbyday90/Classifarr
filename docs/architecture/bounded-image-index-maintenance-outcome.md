@@ -90,9 +90,10 @@ Keep this bounded, allowlisted executor and the staged one-shot identity handoff
 The tradeoff is additional catalog checks and explicit failure for builds exceeding
 the budget, in exchange for avoiding false success and unrestricted background DDL.
 
-Next: evaluate the two `VACUUM ANALYZE task_queue` paths in
-`queueMaintenanceService.mjs`. Measure autovacuum coverage and queue churn, then
-move any necessary supplemental vacuum into a bounded maintenance path with
-verified execution evidence. PostgreSQL can skip unauthorized tables rather than
-throw, so a successful query promise is insufficient. The official research and
-recommendation stack are recorded in the design document.
+Follow-up implemented October 1: see the
+[conditional queue recovery outcome](queue-vacuum-maintenance-outcome.md).
+The original next item was to evaluate the two `VACUUM ANALYZE task_queue` paths in
+`queueMaintenanceService.mjs`: assess autovacuum and queue churn, then move any
+necessary supplemental vacuum into a bounded path with verified execution
+evidence. The linked outcome records the conditional backend implementation,
+its limits and validation; PostgreSQL warning skips are not treated as success.

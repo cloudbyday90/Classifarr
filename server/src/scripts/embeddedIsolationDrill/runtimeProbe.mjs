@@ -4,6 +4,7 @@ import { open, readFile } from 'node:fs/promises';
 import pg from 'pg';
 import { ADMIN_ROLE, PG_DATA, childEnvironment, assertProbeEnvironment } from './contract.mjs';
 import { verifyRuntimeSchemaReadiness } from '../../services/databaseSchemaReadiness.mjs';
+import { runQueueVacuumMaintenance } from '../../services/queueVacuumMaintenance.mjs';
 
 export async function probeRuntimeBoundary({ restored = false } = {}) {
   assertProbeEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform }, { restored });
@@ -32,6 +33,7 @@ export async function probeRuntimeBoundary({ restored = false } = {}) {
   const pool = new pg.Pool(config);
   try {
     assert.equal((await verifyRuntimeSchemaReadiness({ database: { pool }, environment: env })).status, 'ready');
+    assert.equal((await runQueueVacuumMaintenance({ database: { pool } })).reason, 'maintenance_privilege_required');
     for (const sql of [
       `SET ROLE ${ADMIN_ROLE}`, 'CREATE ROLE forbidden_role', 'CREATE TABLE public.forbidden_table(id int)',
       'ALTER TABLE public.schema_migrations ADD COLUMN forbidden int',
