@@ -62,9 +62,34 @@ Saved a local PostgreSQL custom-format snapshot (77,880,380 bytes) at
 `/app/data/backups/pre-image-cancellation-20261001T2245.dump`; `pg_restore --list`
 validated the archive listing, not a full restore rehearsal. The old image is
 retained as `classifarr:rollback-59efef859783-image-cancellation`. Persistent bind
-mounts, routing settings and unrelated containers will be preserved. Rebuild and
-post-start verification are pending in this implementation commit; their outcome
-will be recorded separately after execution.
+mounts, routing settings and unrelated containers were preserved.
+
+Completed `docker compose build --no-cache` with implementation revision
+`51de8a368a98058a2e20574a0fd85577ad36a6ec`, then recreated only Classifarr using the
+built image without pulling. The new container `c9db25893d82` started at 18:50:37
+America/New_York on 1 October 2026. Its image revision and the hashes of the queue
+and provider modules match the tested source. No registry image was published.
+
+Health reported healthy with the database connected; both maintenance-state tables
+are present. Post-start counts match the pre-update counts: 10 libraries, 6,697
+inventory items and 6,803 classifications. These count checks are not a full data
+checksum or restore rehearsal. The existing Compose file also supplies its already
+committed 60-second graceful stop period; no Compose file was edited in this work.
+
+Observation through the delayed startup jobs (about 201 seconds) showed normal
+scheduler completions, three slow-query warnings (about 1.02 seconds, 1.28 seconds
+and 0.50 seconds), and two pre-existing `legacy_owner_unknown` import warnings.
+Rebuilding does not establish ownership for old stored captures. No ownership was
+forged, capture state reset or automatic takeover forced. Those blocked imports
+need the existing reviewed recovery workflow after older/external writers are
+verified stopped; they are not image-provider cancellation failures.
+
+There were no application errors, restarts or OOM kills. CPU settled from a 14.53%
+startup sample to 0.42%; memory was 396.6 MiB of the unchanged 2 GiB limit with 38
+PIDs. CPU and PID hard limits are not configured in this existing deployment.
+These are short observations, not long-running leak, load or remote-inference
+cancellation guarantees. No live AI request was deliberately triggered for this
+check. The rebuild succeeded, but it did not eliminate all pre-existing warnings.
 
 ## Recommendation and next component
 
