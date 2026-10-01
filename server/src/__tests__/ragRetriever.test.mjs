@@ -713,6 +713,21 @@ describe('RAGRetriever', () => {
             ).rejects.toThrow('aborted');
         });
 
+        it.each(['late result', 'late error'])('never presents %s after SQL abort as successful or empty retrieval', async outcome => {
+            const controller = new AbortController();
+            db.withTransaction.mockImplementationOnce(async (work, options) => {
+                expect(options).toEqual({ signal: controller.signal, readOnly: true });
+                controller.abort('private reason');
+                if (outcome === 'late error') throw new Error('transport failed after abort');
+                return { rows: [] };
+            });
+            await expect(ragRetriever.semanticSearch({ title: 'Test' }, 5, { signal: controller.signal }))
+                .rejects.toMatchObject({ name: 'AbortError' });
+            expect(mockLoggerInstance.info).not.toHaveBeenCalledWith('RAG search completed successfully', expect.anything());
+            expect(mockLoggerInstance.info).not.toHaveBeenCalledWith('RAG search returned no results', expect.anything());
+            expect(mockLoggerInstance.error).not.toHaveBeenCalled();
+        });
+
         it('should throw AbortError from hybridSearch when signal aborted', async () => {
             const controller = new AbortController();
             controller.abort();

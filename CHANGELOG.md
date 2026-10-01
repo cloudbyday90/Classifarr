@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Cancel timed-out semantic retrieval in PostgreSQL through bounded read-only
+  execution, with server deadlines and safe connection disposal. Preserve ranking
+  and image evidence, and prevent late results from being reported as success.
+- Repair provider integration fixtures for current configuration columns and
+  historical migration dependencies without weakening CI release checks.
 - Preserve classification status in semantic retrieval results. Measure the actual
   text-first, image-reranked query during isolated index repair and recovery,
   retaining image evidence and existing resource limits without pausing classification.

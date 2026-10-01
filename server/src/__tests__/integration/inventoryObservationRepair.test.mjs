@@ -20,7 +20,7 @@ beforeEach(async () => {
             external_id text, last_seen_at timestamptz) ON COMMIT DROP;
         CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;
         CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
-        CREATE TEMP TABLE omdb_config (is_active boolean) ON COMMIT DROP;
+        CREATE TEMP TABLE omdb_config (id serial PRIMARY KEY, is_active boolean, api_key text) ON COMMIT DROP;
         INSERT INTO libraries VALUES (1, 'Fixture', true);
         INSERT INTO tmdb_config VALUES (true, 'fixture');`);
     refill = new QueueRefillService({ db });
@@ -85,6 +85,15 @@ test('standard enrichment eligibility remains independent of observation gates',
     const items = await refill.selectRefillCandidates();
     expect(items).toHaveLength(1);
     expect(refill.buildMetadataEnrichmentPayload(items[0]).inventory_tmdb_only).toBeUndefined();
+});
+
+test('standard refill uses the newest active OMDb row without falling back to an older key', async () => {
+    await insert(1, inventoryObservationValidityCases[1].record);
+    await db.query("UPDATE media_server_items SET metadata = metadata - 'omdb'");
+    await db.query("INSERT INTO omdb_config (is_active, api_key) VALUES (true, 'older-fixture'), (true, '  ')");
+    expect(await selected()).toEqual([]);
+    await db.query("UPDATE omdb_config SET api_key = 'current-fixture' WHERE id = 2");
+    expect(await selected()).toEqual([1]);
 });
 
 test('future fetch clocks repair; future attempts hold backoff; expired valid captures renew', async () => {

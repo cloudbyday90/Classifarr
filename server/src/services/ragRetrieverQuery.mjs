@@ -86,7 +86,7 @@ export async function executeSemanticVectorSearch(db, options) {
     if (options.heldOutScope !== undefined) await applyHeldOutSemanticStudyQuerySettings(client, options.heldOutScope);
     await applyPgvectorRecallSettings(client, options.recallTuning ?? resolvePgvectorRecallTuning());
     return client.query(query.text, query.values);
-  });
+  }, options.signal ? { signal: options.signal, readOnly: true } : undefined);
 }
 
 export function mapSearchResults(rows, { textWeight, imageWeight, threshold, applyThreshold }) {

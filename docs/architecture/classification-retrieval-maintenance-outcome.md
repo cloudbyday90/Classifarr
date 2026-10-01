@@ -119,3 +119,7 @@ the successful retrieval measurements in this study.
 
 Research, alternatives and the implementation plan are recorded separately in the
 [design document](classification-retrieval-maintenance-design.md).
+
+The SQL cancellation follow-up is now implemented and evaluated in its separate
+[outcome](classification-retrieval-cancellation-outcome.md). The remaining next
+boundary is image-provider admission and transport cancellation, not another SQL study.

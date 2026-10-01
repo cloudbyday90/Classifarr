@@ -28,6 +28,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
     });
 
     const enabled = await embeddingRouter.isEnabled();
+    checkAbort(signal, 'semantic search');
     if (!enabled) {
       logger.info('RAG search skipped - RAG is disabled', { title: metadata.title });
       return [];
@@ -61,6 +62,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
     const minRequired = config?.rag_min_history_count || 50;
 
     const hasMinimum = await hasMinimumCached();
+    checkAbort(signal, 'semantic search');
     if (!hasMinimum) {
       logger.info('RAG search skipped - not enough embeddings', {
         title: metadata.title,
@@ -129,7 +131,10 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       limit,
       recallTuning,
       heldOutScope: options.heldOutScope,
+      signal,
     });
+
+    checkAbort(signal, 'semantic search');
 
     const { matches, allBelowThreshold } = mapSearchResults(result.rows, {
       textWeight,
@@ -173,6 +178,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
 
     return matches;
   } catch (error) {
+    checkAbort(signal, 'semantic search');
     if (error.name === 'AbortError') {
       throw error;
     }

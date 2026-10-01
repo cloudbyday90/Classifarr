@@ -22,7 +22,7 @@ beforeEach(async () => {
     await db.query('BEGIN');
     await db.query(`CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
         INSERT INTO tmdb_config VALUES (true, 'fixture');
-        CREATE TEMP TABLE omdb_config (is_active boolean, api_key text) ON COMMIT DROP;`);
+        CREATE TEMP TABLE omdb_config (id serial PRIMARY KEY, is_active boolean, api_key text) ON COMMIT DROP;`);
     libraryId = (await db.query("INSERT INTO libraries (name, external_id, media_type, is_active) VALUES ($1, $2, 'movie', true) RETURNING id", [randomUUID(), randomUUID()])).rows[0].id;
     const logger = { info: jest.fn(), warn: jest.fn(), debug: jest.fn() };
     refill = new QueueRefillService({ db, logger });

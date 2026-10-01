@@ -16,6 +16,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { createDatabaseClientLease, databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
 import { createDatabaseLockScope } from '../utils/databaseLockScope.mjs';
 import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
+import { runAbortableDatabaseRead } from '../utils/databaseAbortableRead.mjs';
+import { createDatabaseReadCanceller } from '../utils/databaseReadCancellation.mjs';
 
 function createSlowQueryThreshold(environment) {
   const parsedSlowQueryThreshold = environment.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
@@ -130,7 +132,12 @@ export function createDatabaseModule({
     });
   }
 
-  const pool = isOfflineEvaluationWorker ? new OfflineEvaluationPool() : new Pool(createPoolConfig(environment));
+  const poolConfig = createPoolConfig(environment);
+  const pool = isOfflineEvaluationWorker ? new OfflineEvaluationPool() : new Pool(poolConfig);
+  const cancelRead = createDatabaseReadCanceller({ logger, createClient: () => new pgModule.Client({
+    ...poolConfig, pipeline: false,
+    connectionTimeoutMillis: 500, statement_timeout: 500, query_timeout: 750,
+  }) });
 
   if (typeof pool.on === 'function') {
     pool.on('error', (err) => {
@@ -274,8 +281,13 @@ export function createDatabaseModule({
     }
   }
 
-  async function withTransaction(fn) {
+  async function withTransaction(fn, options = {}) {
     lockScope.assertHealthy();
+    if (options.signal) {
+      if (options.readOnly !== true) throw new TypeError('database_read_cancellation_requires_read_only');
+      return runAbortableDatabaseRead({ connect: () => pool.connect(), cancelRead, logger,
+        assertActive: lockScope.assertHealthy }, fn, { signal: options.signal, timeoutMs: options.timeoutMs });
+    }
     const client = await connectWithRetry();
     return runDatabaseTransaction(client, fn, { logger, assertActive: lockScope.assertHealthy });
   }

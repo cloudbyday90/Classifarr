@@ -24,6 +24,14 @@ test('production executor uses the same definition after local recall settings',
   expect(query.mock.calls[0][0]).toContain("set_config('hnsw.ef_search'");
 });
 
+test('signal reaches an explicitly read-only database transaction without changing query parameters', async () => {
+  const signal = new AbortController().signal, query = jest.fn().mockResolvedValue({ rows: [] });
+  const db = { withTransaction: jest.fn(work => work({ query })) };
+  await executeSemanticVectorSearch(db, { ...options, signal });
+  expect(db.withTransaction).toHaveBeenCalledWith(expect.any(Function), { signal, readOnly: true });
+  expect(query).toHaveBeenLastCalledWith(buildSemanticVectorSearchQuery(options).text, buildSemanticVectorSearchQuery(options).values);
+});
+
 test('held-out exclusions stay parameterized and forged scopes are rejected', () => {
   const heldOutScope = createHeldOutSemanticStudyScope(Array.from({ length: 24 }, (_, i) => ({ media_type: 'movie', tmdb_id: i + 1 })));
   const query = buildSemanticVectorSearchQuery({ ...options, heldOutScope });

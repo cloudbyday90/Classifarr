@@ -11,6 +11,7 @@ beforeEach(async () => {
     // Replay the immutable September 7 data repair against its historical row shape.
     // Later random credential generations deliberately make current rows distinct.
     // All DDL is local to this disposable database transaction and rolled back below.
+    await client.query('DROP VIEW enrichment_retry_provider_contexts');
     await client.query('DROP VIEW enrichment_provider_credential_status');
     await client.query('DROP TRIGGER omdb_credential_generation ON omdb_config');
     await client.query('DROP TRIGGER tavily_credential_generation ON tavily_config');
