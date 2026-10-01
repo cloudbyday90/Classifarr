@@ -8,6 +8,7 @@ import { resourceStudyProfile, assertResourceStudyReceipt, assertResourceStudySt
 import { resourceStudyBudget, assertDockerStudyBudget, assertStudyBudgetContinuity } from '../../server/src/scripts/resourceStudyBudget.mjs';
 import { formatResourceStudySummary } from './resourceStudySummary.mjs';
 import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
+import { IMAGE_INDEX_STUDY_PROFILE, assertImageIndexStudyReceipt } from '../../server/src/scripts/imageIndexStudyContract.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -19,7 +20,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     writeFileSync(resolve(directory, 'result.json'), JSON.stringify(result, null, 2), { mode: 0o600 });
     writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
-  const profile = resourceStudyProfile(mode);
+  const profile = mode === 'image-index' ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
   if (candidateImageId !== undefined && !/^sha256:[a-f0-9]{64}$/.test(candidateImageId)) throw new Error('resource_study_image_invalid');
   const suffix = random(16).toString('hex');
@@ -94,7 +95,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     assertStudyBudgetContinuity(freshStartup.metrics, maintenanceStartup.metrics);
     report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
-    assertResourceStudyReceipt(result.study, mode, budget);
+    if (mode === 'image-index') assertImageIndexStudyReceipt(result.study, budget);
+    else assertResourceStudyReceipt(result.study, mode, budget);
     assertStudyBudgetContinuity(maintenanceStartup.metrics, result.study.initial, result.study.final);
     const id = containerId();
     if (!/^[a-f0-9]{12,64}$/.test(id) || docker(['inspect', '--format', '{{.State.OOMKilled}} {{.State.Health.Status}}', id]).stdout.trim() !== 'false healthy') {

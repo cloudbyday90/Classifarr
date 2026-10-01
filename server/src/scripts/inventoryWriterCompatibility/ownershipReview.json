@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "isolated_image_index_capacity",
+      "classification": "separately_coordinated",
+      "reason": "Fixed opt-in image-index study in a collision-checked disposable Compose project, fresh volume and internal network. Environment and empty database checks precede synthetic movie-history/vector seeding. Fixed manual claims invoke the unchanged compatible worker and closed index contract. Deliberate interruption uses only a synthetic writer, waits for PostgreSQL cancellation, rotates the synthetic claim and verifies stale refusal before recovery. Process sampling accepts positive integer PIDs and returns only aggregates; no query text, claims or provider content enter receipts. No production schedule, readiness, budget, ingestion ownership or deployment setting changes.",
+      "followUp": "Keep refusal, bounded fixture, child cleanup, receipt validation and actual container capacity/recovery coverage. A measured incomplete build is not successful repair. Sequential synthetic vectors and sampled raw cgroup usage do not certify recall, exact wait durations, memory leaks, automatic admission or mixed-load capacity. Preserve all unresolved writer debt; use measured capacity limits to design a separately validated size-aware repair policy."
+    },
+    {
       "id": "read_only_image_index_progress",
       "classification": "separately_coordinated",
       "reason": "The new service observes fixed catalog definitions, current-database index-build phases, existing automatic repair counters and queue readiness in a bounded read-only transaction. It reuses read-only demand/readiness queries and never invokes producer/admission/executor functions, acquires maintenance advisory locks, changes inventory or resets budgets. The endpoint authorizes administrators before reading, rejects dimensions and returns no query text, claims, payloads or credentials.",
@@ -290,6 +296,14 @@
     }
   ],
   "entries": [
+    {"path":"scripts/lib/resourceStudyCompose.mjs","digest":"3acef2d9b4a80e8af325a967c8f678f40c4bb3fd57b1b922f86d0aeac9b90b4e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
+    {"path":"scripts/run-resource-study.mjs","digest":"c59ce8397edb6490e5c6047bc8257e7fbec66a94db5c9509fefdc0cacf339521","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/imageIndexStudyContract.mjs","digest":"cef1a9bb70a793b975a0bf53019302de6f50f87f2afc93fcf23eff11b6c3ea2f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/imageIndexStudyFixture.mjs","digest":"d2eb0c9996155de857fd0b5e8edc0e01cbad15f200b51eaeb3d372bffce5891c","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/imageIndexStudyObservation.mjs","digest":"b194f263c79eecf099814c2c1eb374225e2d4ba054c85e24261f9445ed60ca64","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/imageIndexStudyWorker.mjs","digest":"e7ad1d589df2cf53df5aeab3abd35930bca175c81f6d6b5cdfa88fad3e401871","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/imageIndexStudyWorkload.mjs","digest":"be10c4c782e47272c9853cd9aec7bac3314cfdd0c04f9b06898f2abc5d639e39","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"isolated_image_index_capacity"},
+    {"path":"server/src/scripts/runResourceStudy.mjs","digest":"fc5023fc9aa48a823bd7723ee90fde39b58409ec94e141a78fb207edd3a46425","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_image_index_capacity"},
     {"path":"server/src/bootstrap/embeddedCompatibleImageIndex.mjs","digest":"2413a6cd5593c0933699e25e0c9483188d6776a4e91acc239622ca904d92551e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},
     {"path":"server/src/bootstrap/embeddedCompatibleMaintenanceEnvironment.mjs","digest":"1c11dbbd5887bff3bec437ef5dc0c8124f6880e01943f03cb5823869677cab7c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},
     {"path":"server/src/services/imageIndexAutomaticAdmission.mjs","digest":"a8b8639fd8d5ac0189fac75ed256e3a9af762838f324b6461aafdeac689b78d0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"criteria_image_index_reconciliation"},

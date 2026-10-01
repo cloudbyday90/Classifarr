@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a disposable image-index repair capacity study with realistic vector sizes,
+  resource and database-wait measurements, interrupted-build recovery checks and
+  explicit incomplete outcomes, without changing production maintenance limits.
 - Show read-only image-search repair status in System, with verified index counts,
   live build activity, automatic retry budgets and a clear next action. Checking
   status does not start maintenance or reset recovery limits.

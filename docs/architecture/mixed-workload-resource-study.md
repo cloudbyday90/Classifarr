@@ -1,5 +1,16 @@
 # Mixed-workload resource study
 
+## Image-index capacity mode
+
+Run `node scripts/run-resource-study.mjs --image-index` for the separate
+[image-index repair study](image-index-resource-study-design.md). It uses the
+same disposable installation boundary but measures the compatible maintenance
+child over fixed synthetic vectors, including interruption and recovery.
+It does not run the mixed ingestion/provider workload described below. Results
+are saved as JSON and a readable Markdown table under `.tmp/resource-study/`.
+An `incomplete` build is a capacity result, not a passed repair. See the
+[measured outcome](image-index-resource-study-outcome.md).
+
 ## Decision — 28 September 2026
 
 Measure before changing admission estimates or CPU limits. This follows the

@@ -9,6 +9,7 @@ import { runResourceStudy } from '../../scripts/runResourceStudy.mjs';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
 import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCompose.mjs';
 import { resourceStudyReceiptFixture as passedReceipt, resourceStudyStartupFixture } from '../helpers/resourceStudyReceiptFixture.mjs';
+import { imageIndexStudyReceiptFixture } from '../helpers/imageIndexStudyReceiptFixture.mjs';
 
 test.each([null, undefined, '', '-1', '1.5', 'NaN', 'max', '9007199254740992', '2 extra'])('missing/invalid counter %s is unknown, not zero', value => {
   expect(parseResourceCounter(value)).toBeNull();
@@ -113,7 +114,7 @@ function fakeDocker(override = () => null) {
     if (args.includes('src/scripts/runResourceStudy.mjs')) {
       const mode = args.at(-1);
       stdout = `RESOURCE_STUDY ${JSON.stringify(mode === 'seed' ? { seeded: true }
-        : mode.startsWith('budget-') ? resourceStudyStartupFixture() : passedReceipt(mode))}`;
+        : mode.startsWith('budget-') ? resourceStudyStartupFixture() : mode === 'image-index' ? imageIndexStudyReceiptFixture() : passedReceipt(mode))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
@@ -140,7 +141,7 @@ test.each([null, 'restart', 'workload', 'finish'])('host-default PID ceiling is 
     if (drift === 'restart') expect(run.mock.calls.some(([, args]) => args.at(-1) === 'soak')).toBe(false);
   })).rejects.toThrow('budget_drift');
 });
-test.each(['smoke', 'soak', 'capacity'])('owned study lifecycle labels %s and verifies cleanup', async mode => {
+test.each(['smoke', 'soak', 'capacity', 'image-index'])('owned study lifecycle labels %s and verifies cleanup', async mode => {
   const run = fakeDocker(), save = jest.fn(), result = await launch(run, { mode, save });
   expect(result).toMatchObject({ mode, cleanup: 'passed' });
   expect(save).toHaveBeenCalledTimes(1);
