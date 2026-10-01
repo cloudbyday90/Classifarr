@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "queue_vacuum_diagnosis",
+      "classification": "separately_coordinated",
+      "reason": "One immutable catalog-only SELECT returns counts, never SQL text, session identifiers, replication-slot names or application content. It executes only on reserved repair failure, an attempt-limit transition or interrupted-attempt deferral, under the existing maintenance session deadline and advisory locks. Output is rebuilt from fixed categories, validated counters and fixed next-step text. It cannot modify ingestion, kill sessions, drop slots, change grants, reset attempt limits or reconnect after failure.",
+      "followUp": "Preserve actual read-only PostgreSQL, lock, live-horizon and restricted-visibility tests. Evidence is point-in-time possible interference, not a proven root cause. Diagnostic delivery is best effort; transition-before-snapshot crashes can lose a log. Repeated failure categories use existing log retention, not a new history store. Runtime authority and existing unresolved ingestion-writer debt are unchanged."
+    },
+    {
       "id": "bounded_queue_vacuum_recovery",
       "classification": "separately_coordinated",
       "reason": "Fixed task_queue catalog projection and VACUUM only; no caller identifiers, SQL or credentials. Autovacuum remains enabled and retention no longer issues unconditional VACUUM. Automatic recovery uses sustained pressure, shared runtime/restore admission, exclusive vacuum/retention locks, ingestion/backfill readiness, durable pre-work cooldown and a three-attempt budget. A disposable pinned session bounds time/memory/parallelism and rejects permission skips or unverified counters. The fixed CLI/embedded child cannot accept arbitrary operations. Indirect query wrappers carry only code-owned catalog, readiness and singleton-ledger statements; no ingestion mutation is added.",
@@ -254,14 +260,17 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/queueVacuumDiagnosis.mjs","digest":"e20ede32273fcc67ac570f53ac26be245b2ac211d0d16a1cf8a3ed17e7411102","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_vacuum_diagnosis"},
+    {"path":"server/src/services/queueVacuumDiagnosisQuery.mjs","digest":"6956f7627890970bce445e41b805fe5bb65ebe8e99b216650328a2cf3decdb03","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"queue_vacuum_diagnosis"},
+    {"path":"server/src/services/queueVacuumFailure.mjs","digest":"1d9695436c1fda2fcbb19977359ab6189abf790b36887d4cb25038bf72e00ff3","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"queue_vacuum_diagnosis"},
     {"path":"database/migrations/20261001_120000_queue_vacuum_recovery.sql","digest":"b13721e927135c66ce3deeb202b35113b10ed2d9f12ad0b7eb50723efef74208","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"bounded_queue_vacuum_recovery"},
     {"path":"server/src/scripts/runQueueVacuumMaintenance.mjs","digest":"b804f7d6deb34b0f15607d69abc4d8f410b479583bd62cc7f566f7d02158186e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_queue_vacuum_recovery"},
     {"path":"server/src/services/queueMaintenanceService.mjs","digest":"a34eee1b8c6fc449556aa7187e473bd1c224985cecc69ea9aa483a3df1e5b18b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_queue_vacuum_recovery"},
-    {"path":"server/src/services/queueVacuumMaintenance.mjs","digest":"8e19988d4efcd48fdf2e6370872babc02ac9475b1f803460f512566f892b0d30","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_queue_vacuum_recovery"},
+    {"path":"server/src/services/queueVacuumMaintenance.mjs","digest":"64adca34343ce81be8d7ed5839e4e4472f5d67591fd46d2bc5c68481cc08d612","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_queue_vacuum_recovery"},
     {"path":"server/src/services/queueVacuumObservation.mjs","digest":"bc660b56215a86234ee1f2eab30911db126ef99f692596668373841a252908cb","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_queue_vacuum_recovery"},
     {"path":"server/src/services/queueVacuumRecoveryPolicy.mjs","digest":"08ca662247134d1e83003631bc37f49b7660e83a67a611b1b15ddd083ab752fd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_queue_vacuum_recovery"},
-    {"path":"server/src/services/queueVacuumRecoveryRepository.mjs","digest":"c72b533a58b064270a8b13de17cd14c3c7eedd99d29a7b66442ae50240aa5d46","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_queue_vacuum_recovery"},
-    {"path":"server/src/services/queueVacuumRecoveryScheduler.mjs","digest":"af1bd1726982ead78e279d84059b59f50540704ce3d77c94e3ee380da480b828","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_queue_vacuum_recovery"},
+    {"path":"server/src/services/queueVacuumRecoveryRepository.mjs","digest":"dd4d4509e9f03207a94fc19775d21148bc254eb943f88977d8e5b1a69160ad6b","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_queue_vacuum_recovery"},
+    {"path":"server/src/services/queueVacuumRecoveryScheduler.mjs","digest":"ff93defc1269427020c7d72b753bf8b16893ea9179dcc5649f65a7f963f46d5b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_queue_vacuum_recovery"},
     {"path":"server/src/scripts/runImageIndexMaintenance.mjs","digest":"ede9966b3ce059c489a847616a1c3c59f4ac3930d92f2110c3ad8f236194e6b7","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_image_index_maintenance"},
     {"path":"server/src/services/imageIndexMaintenance.mjs","digest":"282d628330eded4547a14550780dc87d677b22142a1835d373a1ead7b026ef2d","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_image_index_maintenance"},
     {"path":"server/src/services/imageIndexMaintenanceCatalog.mjs","digest":"cd0bcab57b19e7b81039d99d02dbc6f229280363326bcdd7a115113ebac8e20b","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_image_index_maintenance"},

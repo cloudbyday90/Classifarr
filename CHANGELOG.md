@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain unsuccessful queue recovery with on-demand, bounded database
+  diagnostics and a clear next step. Report possible blockers and incomplete
+  visibility without exposing query/session details or expanding repair authority.
 - Replace unconditional queue vacuuming with autovacuum-first maintenance and
   logged, criteria-based recovery. Persist observation, cooldown and attempt
   limits; wait for ingestion/backfill and verify bounded repairs before reporting

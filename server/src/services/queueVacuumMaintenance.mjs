@@ -3,6 +3,8 @@ import { performance } from 'node:perf_hooks';
 import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
 import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../utils/backupRestoreSessionContract.mjs';
 import { loadQueueVacuumState } from './queueVacuumObservation.mjs';
+import { buildQueueVacuumDiagnosis, readQueueVacuumDiagnosis } from './queueVacuumDiagnosis.mjs';
+import { classifyQueueVacuumFailure, QueueVacuumAttemptError } from './queueVacuumFailure.mjs';
 import { prepareQueueVacuumRecovery, reserveQueueVacuumAttempt,
   finishQueueVacuumAttempt } from './queueVacuumRecoveryRepository.mjs';
 
@@ -62,7 +64,10 @@ export async function runQueueVacuumMaintenance({ database, automatic = false, r
     if (before?.relation_supported !== true) throw new Error('queue_vacuum_relation_unsupported');
     if (automatic) {
       const decision = await prepareQueueVacuumRecovery(query, before);
-      if (decision.status !== 'admitted') return decision;
+      if (decision.status !== 'admitted') {
+        if (decision.diagnosisTrigger) decision.diagnosis = await readQueueVacuumDiagnosis(query, decision.diagnosisTrigger);
+        return decision;
+      }
     }
     if (before.can_maintain !== true) return { status: 'deferred', reason: 'maintenance_privilege_required' };
     if (before.track_counts !== true || before.statistics_available !== true) {
@@ -90,6 +95,12 @@ export async function runQueueVacuumMaintenance({ database, automatic = false, r
     if (reserved && !timedOut && !lease.failed) {
       try { await finishQueueVacuumAttempt(query, false); }
       catch { /* The durable reservation still prevents immediate retry. */ }
+    }
+    if (reserved) {
+      const category = classifyQueueVacuumFailure(error, { timedOut, connectionLost: lease.failed });
+      const diagnosis = timedOut || lease.failed ? buildQueueVacuumDiagnosis(null, category)
+        : await readQueueVacuumDiagnosis(query, category);
+      throw new QueueVacuumAttemptError(category, diagnosis);
     }
     throw error;
   } finally {

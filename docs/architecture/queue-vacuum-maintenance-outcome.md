@@ -116,10 +116,8 @@ recovery second, targeted diagnosis when safe recovery cannot resolve pressure.
 This adds a small amount of admission state in exchange for automation without
 unlimited retry work or silently broadening database authority.
 
-The next high-value component is **on-demand maintenance blocker diagnosis**,
-triggered by persistent pressure or an unverified intervention. Capture a bounded,
-redacted explanation of old transaction/replication horizons, maintenance progress
-and repeated timeout categories, with one actionable next step. It should not
-collect SQL text, kill transactions or reset retry limits automatically. That
-would explain why recovery cannot help before we consider broader tuning or the
-later restricted-runtime maintenance handoff.
+The proposed **on-demand maintenance blocker diagnosis** is now implemented in
+the [follow-up outcome](queue-maintenance-diagnosis-outcome.md). It captures
+bounded, redacted evidence and one suggested next step without collecting SQL
+text, killing transactions or resetting retry limits. That outcome records the
+next component: the restricted-runtime maintenance handoff.

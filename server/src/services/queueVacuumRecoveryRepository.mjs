@@ -34,7 +34,10 @@ export async function prepareQueueVacuumRecovery(query, row) {
       decision.sampledAt, decision.attempts, decision.reason]);
   }
   return { status: decision.run ? 'admitted' : decision.reason === 'healthy' ? 'idle' : 'deferred',
-    reason: decision.reason, log: changed, estimatedDeadRows: decision.estimatedDeadRows };
+    reason: decision.reason, log: changed, estimatedDeadRows: decision.estimatedDeadRows,
+    diagnosisTrigger: !decision.run && decision.reason !== 'healthy' && state.attempts > 0
+      ? (changed && decision.reason === 'attempt_limit' ? 'attempt_limit'
+        : state.last_result === 'running' ? 'interrupted' : null) : null };
 }
 
 export async function reserveQueueVacuumAttempt(query) {

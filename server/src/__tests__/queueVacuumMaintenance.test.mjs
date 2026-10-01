@@ -80,7 +80,8 @@ test.each(['warning', 'localized-warning', 'wrong-command', 'no-progress', 'chan
     }
     return real(sql, params);
   });
-  await expect(f.run({ automatic: true })).rejects.toThrow('not_confirmed');
+  await expect(f.run({ automatic: true })).rejects.toMatchObject({ category: 'completion_unverified',
+    diagnosis: expect.objectContaining({ failureCategory: 'completion_unverified' }) });
   expect(f.client.query).toHaveBeenCalledWith(expect.stringContaining('SET last_result = $1'), ['unverified']);
   expect(f.client.release.mock.calls).toEqual([[true]]);
 });
@@ -116,9 +117,45 @@ test('disconnect during vacuum does not reconnect or acknowledge', async () => {
     if (sql.startsWith('VACUUM')) f.client.emit('error', new Error('connection_lost'));
     return real(sql, params);
   });
-  await expect(f.run({ automatic: true })).rejects.toThrow('connection_lost');
+  await expect(f.run({ automatic: true })).rejects.toMatchObject({ category: 'connection_lost',
+    diagnosis: expect.objectContaining({ status: 'unavailable' }) });
   expect(f.database.pool.connect).toHaveBeenCalledTimes(1);
   expect(f.sql().some(sql => sql.includes('SET last_result = $1'))).toBe(false);
+  expect(f.sql().some(sql => sql.startsWith('WITH queue_diagnostic_scope'))).toBe(false);
+});
+
+test.each([
+  [{ attempts: 3, last_result: 'cooldown' }, 'attempt_limit', true],
+  [{ attempts: 3, last_result: 'attempt_limit' }, null, false],
+  [{ attempts: 1, last_result: 'running', next_attempt_at: '2026-10-01T13:00:00Z' }, 'interrupted', true],
+  [{ attempts: 1, last_result: 'cooldown', next_attempt_at: '2026-10-01T13:00:00Z' }, null, false],
+])('diagnostic admission %j is bounded by durable transition', async (state, trigger, collect) => {
+  const f = fixture({ state: queueVacuumState(state) });
+  const result = await f.run({ automatic: true });
+  expect(result.diagnosisTrigger).toBe(trigger);
+  expect(f.sql().filter(sql => sql.startsWith('WITH queue_diagnostic_scope'))).toHaveLength(collect ? 1 : 0);
+  expect(f.sql().some(sql => sql.startsWith('VACUUM'))).toBe(false);
+});
+
+test('ordinary success, healthy and busy paths never collect diagnostics', async () => {
+  for (const options of [{}, { row: queueVacuumRow({ n_dead_tup: '0' }) }, { readiness: 'ingesting' }]) {
+    const f = fixture(options);
+    await f.run({ automatic: true });
+    expect(f.sql().some(sql => sql.startsWith('WITH queue_diagnostic_scope'))).toBe(false);
+  }
+});
+
+test('failed reserved attempt uses bounded diagnosis; diagnostic failure does not hide the original category', async () => {
+  const f = fixture(), real = f.client.query.getMockImplementation();
+  f.client.query.mockImplementation((sql, params) => {
+    if (sql.startsWith('VACUUM')) throw Object.assign(new Error('private'), { code: '57014' });
+    if (sql.startsWith('WITH queue_diagnostic_scope')) throw new Error('private diagnosis');
+    return real(sql, params);
+  });
+  await expect(f.run({ automatic: true })).rejects.toMatchObject({ category: 'query_canceled',
+    diagnosis: expect.objectContaining({ status: 'unavailable' }) });
+  expect(f.sql().filter(sql => sql.startsWith('WITH queue_diagnostic_scope'))).toHaveLength(1);
+  expect(f.database.pool.connect).toHaveBeenCalledTimes(1);
 });
 test('watchdog destroys a stalled session and clears all listeners/timers', async () => {
   jest.useFakeTimers();
@@ -129,6 +166,25 @@ test('watchdog destroys a stalled session and clears all listeners/timers', asyn
     await jest.advanceTimersByTimeAsync(60_000);
     expect(f.client.release.mock.calls).toEqual([[true]]);
     unblock({ rows: [] }); await work;
+    expect(jest.getTimerCount()).toBe(0);
+  } finally { jest.useRealTimers(); }
+});
+
+test('reserved attempt exhausting its session budget never opens a diagnostic query or another connection', async () => {
+  jest.useFakeTimers();
+  try {
+    const f = fixture(), real = f.client.query.getMockImplementation(); let unblock;
+    f.client.query.mockImplementation((sql, params) => sql.startsWith('VACUUM')
+      ? new Promise(resolve => { unblock = resolve; }) : real(sql, params));
+    const work = expect(f.run({ automatic: true })).rejects.toMatchObject({ category: 'deadline',
+      diagnosis: expect.objectContaining({ status: 'unavailable', failureCategory: 'deadline' }) });
+    await jest.advanceTimersByTimeAsync(1);
+    await jest.advanceTimersByTimeAsync(60_000);
+    unblock({ command: 'VACUUM', rows: [] });
+    await work;
+    expect(f.sql().some(sql => sql.startsWith('WITH queue_diagnostic_scope'))).toBe(false);
+    expect(f.database.pool.connect).toHaveBeenCalledTimes(1);
+    expect(f.client.release.mock.calls).toEqual([[true]]);
     expect(jest.getTimerCount()).toBe(0);
   } finally { jest.useRealTimers(); }
 });
