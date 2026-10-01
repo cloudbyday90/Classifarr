@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Activate bounded, on-demand queue maintenance through the embedded supervisor
+  without deployment-template changes. Preserve ingestion/backfill waits,
+  autovacuum-first admission and retry limits; explicitly retain current shared
+  permissions while keeping separate-identity safeguards intact.
 - Validate embedded startup settings and forced-user compatibility before account
   or database changes. Add image-only upgrade coverage for unchanged saved
   standard, Community Apps-style and custom-user deployments, retaining existing

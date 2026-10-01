@@ -11,6 +11,15 @@ export function createEmbeddedQueueMaintenanceBroker({ channel, identity, databa
   now = () => performance.now(), report = () => {}, onFatal = () => {},
 }) {
   if (parentUid !== 0 || !channel || identity?.name !== 'postgres') throw new Error('maintenance_broker_invalid');
+  return createQueueMaintenanceBroker({ channel, wait, now, report, onFatal,
+    start: () => start({ kind: 'queueRecovery', identity, databaseName, parentUid }) });
+}
+
+/** Shared lifecycle only. Each composition owns and validates its fixed launcher. */
+export function createQueueMaintenanceBroker({ channel, start, wait = waitForEmbeddedExit,
+  now = () => performance.now(), report = () => {}, onFatal = () => {},
+}) {
+  if (!channel || typeof start !== 'function') throw new Error('maintenance_broker_invalid');
   let closed = false, active = null, last = -Infinity, cancel;
   const stopping = new Promise(resolve => { cancel = resolve; });
   const close = () => { if (!closed) { closed = true; channel.destroy(); cancel(); } };
@@ -19,7 +28,7 @@ export function createEmbeddedQueueMaintenanceBroker({ channel, identity, databa
     if (closed) return;
     let child, joined = false, outcome = 0x45;
     try {
-      child = start({ kind: 'queueRecovery', identity, databaseName, parentUid });
+      child = start();
       report('assessment_started');
       const result = await wait(Promise.race([child.done, stopping.then(() => null)]), 90_000);
       if (result) { joined = true; outcome = queueMaintenanceResultByte(result); }

@@ -10,7 +10,7 @@ function fixture() {
     const [action] = args;
     if (action === 'up') exitCode = 0;
     if (action === 'ps') return JSON.stringify([{ State: 'exited', ExitCode: exitCode }]);
-    if (action === 'logs') return '{"status":"database_stopped"}';
+    if (action === 'logs') return '{"status":"database_stopped"}\n{"component":"EmbeddedQueueMaintenance","status":"available","authority":"shared_identity"}';
     if (action === 'run') return 'Database cluster state: shut down\n';
     if (action === 'exec' && args[3] === 'ps') return 'node src/scripts/runEmbeddedSupervisor.mjs --run';
     if (action === 'exec' && args[3] === 'stat') return args[2] === 'runtime' ? '1000' : args[2] === 'unraid' ? '99' : '2345';

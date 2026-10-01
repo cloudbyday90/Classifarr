@@ -22,7 +22,7 @@ export function registerQueueVacuumRecoverySchedule(scheduler, {
         const observation = await assessHandoff({ database: db });
         result = observation.request ? await handoff.request() : observation;
         if (result.status === 'unavailable') throw new Error('queue_handoff_unavailable');
-        if (observation.request) log.info('Trusted queue maintenance assessment returned; only complete confirms a repair', result);
+        if (observation.request) log.info('Supervised queue maintenance assessment returned; only complete confirms a repair', result);
       } else result = await run({ database: db, automatic: true, report });
       lastUnavailable = false;
       if (result.diagnosis) log.warn(result.diagnosis.message, result.diagnosis);

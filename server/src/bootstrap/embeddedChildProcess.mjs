@@ -2,11 +2,13 @@
 import { spawn } from 'node:child_process';
 
 /** Observe exit immediately. A successful kill() only means a signal was sent. */
-export function startEmbeddedApplication({ spawnFn = spawn, environment = process.env } = {}) {
+export function startEmbeddedApplication({ spawnFn = spawn, environment = process.env, queueMaintenance = false } = {}) {
+  if (typeof queueMaintenance !== 'boolean') throw new Error('embedded_application_launch_invalid');
   const child = spawnFn(process.execPath, ['/app/src/index.mjs'], {
-    cwd: '/app', env: environment, shell: false, stdio: ['ignore', 'inherit', 'inherit'],
+    cwd: '/app', env: queueMaintenance ? { ...environment, CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL: 'stdio-v1' } : environment,
+    shell: false, stdio: ['ignore', 'inherit', 'inherit', ...(queueMaintenance ? ['pipe'] : [])],
   });
-  return observeEmbeddedChild(child);
+  return { ...observeEmbeddedChild(child), ...(queueMaintenance ? { maintenanceChannel: child.stdio[3] } : {}) };
 }
 
 export function observeEmbeddedChild(child) {

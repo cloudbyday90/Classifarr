@@ -7,6 +7,8 @@ import { createLogger, setLoggerDb } from '../utils/logger.mjs';
 export async function runQueueRecoveryHandoff({ args = process.argv.slice(2),
   loadDatabase = () => import('../config/database.mjs'), assertBoundary = assertQueueMaintenanceHandoffBoundary,
   run = runQueueVacuumMaintenance, log = createLogger('QueueVacuumRecovery'), registerDb = setLoggerDb,
+  unavailableMessage = 'Trusted queue maintenance unavailable; review the protected runtime boundary and database health',
+  startedMessage = 'Trusted queue recovery started after independent admission',
 } = {}) {
   if (args.length !== 1 || args[0] !== '--assess') return 2;
   let database, code = 1;
@@ -15,12 +17,12 @@ export async function runQueueRecoveryHandoff({ args = process.argv.slice(2),
     registerDb(database);
     await assertBoundary(database);
     const result = await run({ database, automatic: true,
-      report: value => log.info('Trusted queue recovery started after independent admission', value) });
+      report: value => log.info(startedMessage, value) });
     if (result.diagnosis) await log.warn(result.diagnosis.message, result.diagnosis);
     code = result.status === 'complete' ? 0 : 75;
   } catch (error) {
     if (error instanceof QueueVacuumAttemptError) await log.warn(error.diagnosis.message, error.diagnosis);
-    else await log.warn('Trusted queue maintenance unavailable; review the protected runtime boundary and database health', { reason: 'handoff_unavailable' });
+    else await log.warn(unavailableMessage, { reason: 'handoff_unavailable' });
   } finally {
     if (database) { try { await database.pool.end(); } catch { code = 1; } }
     registerDb(null);

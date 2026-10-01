@@ -56,6 +56,11 @@ export function checkEmbeddedSupervisor(command, report = value => process.stdou
       'node', '--input-type=module', '-e', immutableImageProbe]);
     report(`PASS ${service}: runtime cannot overwrite image code or PostgreSQL extension binaries`);
     query(service, sentinel);
+    assert.match(capture(['logs', '--no-log-prefix', service]), /"component":"EmbeddedQueueMaintenance","status":"available","authority":"shared_identity"/);
+    assert.doesNotMatch(processes, /runCompatibleQueueRecovery.mjs/);
+    command(['exec', '-T', '--user', `${expectedUid}:${expectedGid}`, '--env', 'CLASSIFARR_EMBEDDED_ISOLATION_DRILL=disposable-v1',
+      service, 'node', '/app/src/scripts/embeddedIsolationDrill/compatibleQueueProbe.mjs'], 120_000);
+    report(`PASS ${service}: on-demand compatible queue worker; no saved-template changes`);
     report(`PASS ${service}: fresh startup; database UID ${expectedUid}`);
     const stopStarted = performance.now();
     command(['stop', '--timeout', '10', service], 20_000);

@@ -87,6 +87,10 @@ these upgrade tests.
 
 ## Recommendation stack and next component
 
+Follow-up decision: the user selected [compatible on-demand worker activation](compatible-queue-worker-design.md)
+before full privilege separation. It preserves current deployment permissions;
+the isolation prerequisites below still apply to the later cutover.
+
 Keep image-only compatibility admission and profile tests first; retain current
 autovacuum-first, bounded conditional recovery and on-demand diagnosis. The benefit
 is continuity with unchanged supported deployments and earlier actionable refusal;
