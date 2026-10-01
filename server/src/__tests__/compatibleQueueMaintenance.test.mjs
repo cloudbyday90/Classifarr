@@ -61,13 +61,15 @@ test('compatible broker rejects root before creating a capability', () => {
 test('normal composition attaches the direct child channel and labels shared authority', () => {
   const channel = stream(), start = jest.fn(() => ({ maintenanceChannel: channel }));
   const report = jest.fn(), attach = jest.fn(() => ({ stop: jest.fn() })), onFatal = jest.fn();
-  const composition = embeddedRuntimeComposition({ environment, start, attach, report });
+  const attachIndexes = jest.fn(() => ({ stop: jest.fn() }));
+  const composition = embeddedRuntimeComposition({ environment, start, attach, attachIndexes, report });
   composition.attachRuntimeMaintenance(composition.startApplication(), onFatal);
-  expect(start).toHaveBeenCalledWith({ environment, queueMaintenance: true });
+  expect(start).toHaveBeenCalledWith({ environment, queueMaintenance: true, imageIndexMaintenance: true });
   expect(attach).toHaveBeenCalledWith({ channel, onFatal, report: expect.any(Function) });
-  expect(report).toHaveBeenCalledWith('available', 'shared_identity');
+  expect(report).toHaveBeenCalledWith('available', 'shared_identity', 'queue_recovery');
+  expect(report).toHaveBeenCalledWith('available', 'shared_identity', 'image_indexes');
   attach.mock.calls[0][0].report('deferred');
-  expect(report).toHaveBeenCalledWith('deferred', 'shared_identity');
+  expect(report).toHaveBeenCalledWith('deferred', 'shared_identity', 'queue_recovery');
 });
 test('restore composition never attaches a maintenance channel', () => {
   const start = jest.fn(), attach = jest.fn();

@@ -4,7 +4,10 @@ import { performance } from 'node:perf_hooks';
 import { QUEUE_MAINTENANCE_REQUEST, QUEUE_MAINTENANCE_INTERVAL_MS,
   QUEUE_MAINTENANCE_RESULTS } from '../utils/queueMaintenanceHandoffProtocol.mjs';
 
-export function createQueueMaintenanceHandoffClient({ channel, now = () => performance.now() }) {
+export function createQueueMaintenanceHandoffClient({ channel, now = () => performance.now(),
+  encodeRequest = () => Buffer.from([QUEUE_MAINTENANCE_REQUEST]),
+  intervalMs = QUEUE_MAINTENANCE_INTERVAL_MS, timeoutMs = 95_000, coalesce = true,
+}) {
   let closed = false, pending = null, last = -Infinity, settle, timer;
   const finish = status => {
     clearTimeout(timer);
@@ -21,15 +24,16 @@ export function createQueueMaintenanceHandoffClient({ channel, now = () => perfo
     else finish(QUEUE_MAINTENANCE_RESULTS[chunk[0]]);
   });
   channel.unref?.();
-  return { close, request() {
+  return { close, request(task) {
     if (closed) return Promise.resolve({ status: 'unavailable', via: 'maintenance_handoff' });
-    if (pending) return pending;
-    if (now() - last < QUEUE_MAINTENANCE_INTERVAL_MS) return Promise.resolve({ status: 'deferred', via: 'maintenance_handoff' });
+    if (pending && coalesce) return pending;
+    if (pending || now() - last < intervalMs) return Promise.resolve({ status: 'deferred', via: 'maintenance_handoff' });
+    const frame = encodeRequest(task);
     last = now();
     pending = new Promise(resolve => { settle = resolve; });
     const result = pending;
-    timer = setTimeout(close, 95_000); timer.unref?.();
-    try { if (!channel.write(Buffer.from([QUEUE_MAINTENANCE_REQUEST]), error => { if (error) close(); })) close(); }
+    timer = setTimeout(close, timeoutMs); timer.unref?.();
+    try { if (!channel.write(frame, error => { if (error) close(); })) close(); }
     catch { close(); }
     return result;
   } };

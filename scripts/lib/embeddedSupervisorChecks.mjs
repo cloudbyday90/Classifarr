@@ -58,6 +58,10 @@ export function checkEmbeddedSupervisor(command, report = value => process.stdou
     query(service, sentinel);
     assert.match(capture(['logs', '--no-log-prefix', service]), /"component":"EmbeddedQueueMaintenance","status":"available","authority":"shared_identity"/);
     assert.doesNotMatch(processes, /runCompatibleQueueRecovery.mjs/);
+    assert.doesNotMatch(processes, /runCompatibleImageIndex.mjs/);
+    command(['exec', '-T', '--user', `${expectedUid}:${expectedGid}`, '--env', 'CLASSIFARR_EMBEDDED_ISOLATION_DRILL=disposable-v1',
+      service, 'node', '/app/src/scripts/embeddedIsolationDrill/compatibleImageIndexProbe.mjs'], 180_000);
+    report(`PASS ${service}: compatible image worker, claim fencing and interrupted-build recovery`);
     command(['exec', '-T', '--user', `${expectedUid}:${expectedGid}`, '--env', 'CLASSIFARR_EMBEDDED_ISOLATION_DRILL=disposable-v1',
       service, 'node', '/app/src/scripts/embeddedIsolationDrill/compatibleQueueProbe.mjs'], 120_000);
     report(`PASS ${service}: on-demand compatible queue worker; no saved-template changes`);

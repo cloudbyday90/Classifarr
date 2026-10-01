@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Run deferred image-index jobs in bounded on-demand workers on embedded
+  deployments, without saved-template changes. Preserve queue ownership, restore
+  exclusion and interrupted-build recovery, with fixed inputs and confirmed cleanup.
 - Activate bounded, on-demand queue maintenance through the embedded supervisor
   without deployment-template changes. Preserve ingestion/backfill waits,
   autovacuum-first admission and retry limits; explicitly retain current shared

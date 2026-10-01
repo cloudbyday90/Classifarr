@@ -15,6 +15,7 @@ test.each([
   ['CLASSIFARR_SCHEMA_MAINTENANCE', ''], ['CLASSIFARR_SCHEMA_MAINTENANCE', 'external'],
   ['CLASSIFARR_SCHEMA_MAINTENANCE', 'STARTUP'], ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', 'stdio-v1'],
   ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', ''], ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', 'private-secret'],
+  ['CLASSIFARR_IMAGE_INDEX_CHANNEL', 'stdio-v1'], ['CLASSIFARR_IMAGE_INDEX_CHANNEL', ''],
 ])('rejects %s=%j before even reading accounts', async (key, value) => {
   const read = jest.fn(), run = jest.fn();
   await expect(provisionEmbeddedIdentity({ environment: { [key]: value }, uid: 0, gid: 0, read, run })).rejects.toThrow();
