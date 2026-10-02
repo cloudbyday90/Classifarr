@@ -159,7 +159,7 @@ test('receipts are scoped to actor, library, revision and operation', async () =
 
 test('fresh snapshot installs the same archive constraints and receipt index as upgrades', async () => {
   // Exclusively owned disposable database; never load a snapshot into the application database.
-  const container = await new PostgreSqlContainer('pgvector/pgvector:0.8.6-pg18')
+  const container = await new PostgreSqlContainer('pgvector/pgvector:0.8.7-pg18')
     .withPassword(randomUUID()).withCommand(['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']).start();
   let pool;
   try {

@@ -55,13 +55,13 @@ RUN npm rebuild bcrypt
 FROM node-runtime-base AS production
 
 # pgvector build mode:
-# - multi (default): build generic + AVX + AVX2 variants, select at runtime
+# - multi (default): generic + AVX + AVX2 on x86_64; portable generic elsewhere
 # - generic: build only non-AVX variant (widest CPU compatibility)
 # - avx: build only AVX-optimized variant
 # - avx2: build only AVX2-optimized variant
 ARG PGVECTOR_BUILD=multi
-ARG PGVECTOR_VERSION=0.8.6
-ARG PGVECTOR_SHA256=10bf9938906e5d643bbc4a7eea104b6f57ba4898e5b76b20e60484ea1d5a7f8f
+ARG PGVECTOR_VERSION=0.8.7
+ARG PGVECTOR_SHA256=cac0b10c360f05b2d521200105ba3697e773d4cd3731f5a915a7e37ebe0bea85
 ARG VCS_REF=unknown
 # Best practice for portability: OPTFLAGS="" (pgvector docs recommend this to avoid illegal instruction)
 ARG PGVECTOR_GENERIC_OPTFLAGS=""
@@ -118,6 +118,13 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
     && echo "${PGVECTOR_SHA256}  pgvector.tar.gz" | sha256sum -c - \
     && tar -xzf pgvector.tar.gz \
     && cd pgvector-${PGVECTOR_VERSION} \
+    && case "$PGVECTOR_BUILD" in generic|avx|avx2|multi) ;; *) echo "Invalid PGVECTOR_BUILD" >&2; exit 1 ;; esac \
+    && PGVECTOR_EFFECTIVE_BUILD="$PGVECTOR_BUILD" \
+    && case "$(uname -m):$PGVECTOR_BUILD" in \
+         x86_64:*|*:generic) ;; \
+         *:multi) PGVECTOR_EFFECTIVE_BUILD=generic ;; \
+         *) echo "AVX builds require x86_64" >&2; exit 1 ;; \
+       esac \
     && PG17_CONFIG="/usr/libexec/postgresql17/pg_config" \
     && PG18_CONFIG="/usr/libexec/postgresql18/pg_config" \
     && PKGLIBDIR17="$($PG17_CONFIG --pkglibdir)" \
@@ -127,17 +134,17 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
     && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG \
     && make install PG_CONFIG=$PG17_CONFIG \
     && echo "Building pgvector v${PGVECTOR_VERSION} for PostgreSQL 18..." \
-    && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
+    && if [ "$PGVECTOR_EFFECTIVE_BUILD" = "generic" ]; then \
         (make clean PG_CONFIG=$PG18_CONFIG || true) \
         && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
         && make install PG_CONFIG=$PG18_CONFIG \
         && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
-      elif [ "$PGVECTOR_BUILD" = "avx" ]; then \
+      elif [ "$PGVECTOR_EFFECTIVE_BUILD" = "avx" ]; then \
         (make clean PG_CONFIG=$PG18_CONFIG || true) \
         && make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
         && make install PG_CONFIG=$PG18_CONFIG \
         && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
-      elif [ "$PGVECTOR_BUILD" = "avx2" ]; then \
+      elif [ "$PGVECTOR_EFFECTIVE_BUILD" = "avx2" ]; then \
         (make clean PG_CONFIG=$PG18_CONFIG || true) \
         && make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
         && make install PG_CONFIG=$PG18_CONFIG \

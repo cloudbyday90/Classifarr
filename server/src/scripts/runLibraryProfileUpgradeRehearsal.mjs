@@ -3,8 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-// eslint-disable-next-line n/no-unpublished-import -- This offline rehearsal uses the existing development-only Docker test tooling.
-import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { createPgvectorReplayContainer } from './pgvectorReplayContainer.mjs';
 
 /** This command never accepts a connection URL, a dump path, or live credentials. */
 export async function main({ loadRuntime = () => import('./libraryProfileUpgradeRehearsal.mjs') } = {}) {
@@ -15,7 +14,7 @@ export async function main({ loadRuntime = () => import('./libraryProfileUpgrade
     let container;
     let pool;
     try {
-        container = await new PostgreSqlContainer('pgvector/pgvector:0.8.6-pg18')
+        container = await (await createPgvectorReplayContainer())
             .withDatabase('classifarr_rehearsal')
             .withUsername('rehearsal')
             .withPassword(randomBytes(32).toString('hex'))

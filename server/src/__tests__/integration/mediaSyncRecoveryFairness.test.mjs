@@ -130,7 +130,7 @@ test.each(['movie', 'tv'])('streamed %s repair commits only fresh proof and reus
 
 test('claim-before-provider crash survives an actual isolated PostgreSQL restart and loses priority', async () => {
   // Own this container exclusively; never restart the shared integration server or app container.
-  const container = await new PostgreSqlContainer('pgvector/pgvector:0.8.6-pg18')
+  const container = await new PostgreSqlContainer('pgvector/pgvector:0.8.7-pg18')
     .withPassword(randomUUID()).withCommand(['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']).start();
   const connect = () => new pg.Pool({ host: container.getHost(), port: container.getPort(),
     database: container.getDatabase(), user: container.getUsername(), password: container.getPassword() });

@@ -2,8 +2,14 @@
 import { jest } from '@jest/globals';
 import { assertMatchingCatalogs, normalizeCatalogDump, rehearseReleaseSchema } from '../scripts/schemaReleaseReplay.mjs';
 import { dumpIsolatedCatalog } from '../scripts/runSchemaReleaseReplay.mjs';
+import { preparePinnedReleaseExtensions } from '../scripts/pinnedReleaseSchema.mjs';
 
 describe('released-schema replay gate', () => {
+    test('seeds the pinned release extension instead of choosing the newer image default', async () => {
+        const query = jest.fn().mockResolvedValue({ rows: [] });
+        await preparePinnedReleaseExtensions({ query });
+        expect(query).toHaveBeenCalledWith("CREATE EXTENSION vector WITH SCHEMA public VERSION '0.8.6'");
+    });
     test('normalizes only known PostgreSQL dump presentation differences', () => {
         const legacy = [
             '-- Dumped from database version 18.4',

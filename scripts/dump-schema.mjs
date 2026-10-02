@@ -539,7 +539,7 @@ export function verifySourceDatabaseCurrent({
   });
 }
 
-const PGVECTOR_EXTENSION_VERSION = '0.8.6';
+const PGVECTOR_EXTENSION_VERSION = '0.8.7';
 
 function makePgStatStatementsOptional(schemaSql) {
   const pgStatStatementsBlockPattern = /--\s*\n-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -\n--\s*\n\nCREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;\n\n\n--\s*\n-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -\n--\s*\n\nCOMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';/;

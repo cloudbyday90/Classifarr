@@ -15,7 +15,7 @@ describe('pinned library profile upgrade rehearsal', () => {
             commands.push(args);
             return args[0] === 'rev-parse'
                 ? `${BASELINE_COMMIT}\n`
-                : '-- Latest Migration: 20260829_110000_add_ollama_verification_capability_outcome_history.sql\nCREATE TABLE public.schema_migrations (';
+                : "-- Latest Migration: 20260829_110000_add_ollama_verification_capability_outcome_history.sql\nCREATE TABLE public.schema_migrations (\nALTER EXTENSION vector UPDATE TO '0.8.6'";
         };
         expect(readPinnedReleaseSchema({ git, repoRoot: '/fixture' })).toContain('schema_migrations');
         expect(commands).toEqual([

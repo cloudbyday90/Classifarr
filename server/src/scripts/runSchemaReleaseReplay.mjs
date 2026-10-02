@@ -5,8 +5,7 @@ import fs from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-// eslint-disable-next-line n/no-unpublished-import -- Isolated verification uses the existing development-only container dependency.
-import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { createPgvectorReplayContainer } from './pgvectorReplayContainer.mjs';
 import { readPinnedReleaseSchema } from './pinnedReleaseSchema.mjs';
 import { CURRENT_DB, RELEASE_DB } from './schemaReleaseReplayTargets.mjs';
 
@@ -40,7 +39,7 @@ export async function main({ loadRuntime = loadRehearsalRuntime } = {}) {
     let releasePool;
     let currentPool;
     try {
-        container = await new PostgreSqlContainer('pgvector/pgvector:0.8.6-pg18')
+        container = await (await createPgvectorReplayContainer())
             .withDatabase(RELEASE_DB).withUsername('rehearsal').withPassword(password)
             .withCommand(['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']).start();
         const config = { host: container.getHost(), port: container.getPort(),

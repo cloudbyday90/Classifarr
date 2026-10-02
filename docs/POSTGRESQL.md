@@ -73,7 +73,7 @@ PostgreSQL data directories are **version-specific**. A data directory created w
 ## Current Version
 
 - **Installed PostgreSQL**: 18 (from Alpine `postgresql18` package)
-- **Installed pgvector**: 0.8.6 (source-built for PostgreSQL 17 and 18)
+- **Installed pgvector**: 0.8.7 (source-built for PostgreSQL 17 and 18)
 - **Data Directory**: `/app/data/postgres/`
 - **Version File**: `/app/data/postgres/PG_VERSION`
 
@@ -93,6 +93,16 @@ version without changing optional-extension behavior.
 Before replacing a production image with a newer pgvector version, take a
 regular PostgreSQL backup. The upgrade is forward-only; downgrade requires
 restoring a compatible backup or following a separately tested recovery plan.
+
+The 0.8.7 update fixes CVE-2026-103484. Updating this repository does not patch
+an already-running container: deploy an image containing the fix, then confirm
+`SELECT extversion FROM pg_extension WHERE extname = 'vector';` returns `0.8.7`
+(or a newer supported version). Existing mounts and Compose/Unraid settings do
+not need changes. External PostgreSQL administrators must install the patched
+native extension files before Classifarr applies the database migration.
+
+See the [pgvector security update design](architecture/pgvector-0-8-7-design.md)
+and [validation outcome](architecture/pgvector-0-8-7-outcome.md).
 
 ## Version Mismatch Error
 

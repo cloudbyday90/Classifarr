@@ -14,7 +14,7 @@ import { resolve } from 'node:path';
 
 const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
 const PGVECTOR_PREVIOUS_VERSION = '0.8.2';
-const PGVECTOR_TARGET_VERSION = '0.8.6';
+const PGVECTOR_TARGET_VERSION = '0.8.7';
 const PGVECTOR_PREVIOUS_PG17_IMAGE = `pgvector/pgvector:${PGVECTOR_PREVIOUS_VERSION}-pg17`;
 const READY_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2_000;

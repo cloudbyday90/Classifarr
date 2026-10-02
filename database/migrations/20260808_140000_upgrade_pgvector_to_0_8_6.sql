@@ -15,13 +15,19 @@
 -- pgvector keep their current optional-extension posture.
 
 DO $$
+DECLARE
+  installed_version text;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_extension
-    WHERE extname = 'vector'
-  ) THEN
+  SELECT extversion INTO installed_version FROM pg_extension WHERE extname = 'vector';
+  IF installed_version IS NULL THEN
     RAISE NOTICE 'Skipping pgvector upgrade: vector extension is not installed';
+    RETURN;
+  END IF;
+
+  -- Forward-only replay: newer images create a newer default extension before
+  -- legacy migrations run. Do not attempt a downgrade on those installations.
+  IF installed_version ~ '^[0-9]+[.][0-9]+[.][0-9]+$'
+     AND string_to_array(installed_version, '.')::int[] >= ARRAY[0, 8, 6] THEN
     RETURN;
   END IF;
 

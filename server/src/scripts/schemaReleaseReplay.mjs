@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { resolve } from 'node:path';
 import { createMigrationRunner } from '../config/migrations.mjs';
+import { preparePinnedReleaseExtensions } from './pinnedReleaseSchema.mjs';
 import { RELEASE_DB, CURRENT_DB } from './schemaReleaseReplayTargets.mjs';
 export { RELEASE_DB, CURRENT_DB } from './schemaReleaseReplayTargets.mjs';
 
@@ -78,6 +79,7 @@ export async function rehearseReleaseSchema({ releaseDb, currentDb, releaseSchem
     const migrationFiles = fs.readdirSync(MIGRATIONS_DIR).filter(name => name.endsWith('.sql'));
     if (migrationFiles.length === 0) throw new Error('No current migration files were found');
 
+    await preparePinnedReleaseExtensions(releaseDb);
     await releaseDb.query(releaseSchema);
     const replay = await createMigrationRunner({ dbClient: releaseDb, env: { MIGRATIONS_DIR } }).run();
     if (replay.applied === 0) throw new Error('The release replay applied no post-release migrations');

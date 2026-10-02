@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Upgrade pgvector to 0.8.7 to fix CVE-2026-103484, with forward-only database
+  upgrades, preserved vector indexes, and fresh-install/release replay coverage.
+  Keep portable ARM64 builds free of x86-only AVX flags.
 - Improve Synology setup with explicit appdata mounts, optional read-only media
   access, and permission and upgrade guidance that preserves existing data.
 - Add opt-in media access for Unraid Compose, with explicit existing-folder

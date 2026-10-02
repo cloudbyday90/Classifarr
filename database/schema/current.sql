@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-10-02T00:04:36.228Z
--- Latest Migration: 20261002_000000_ingestion_recovery_progress.sql
+-- Latest Migration: 20261002_120000_upgrade_pgvector_to_0_8_7.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -116,7 +116,7 @@ COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access met
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-        ALTER EXTENSION vector UPDATE TO '0.8.6';
+        ALTER EXTENSION vector UPDATE TO '0.8.7';
     END IF;
 END $$;
 
@@ -17754,6 +17754,7 @@ FROM unnest(ARRAY[
     '20261001_120000_queue_vacuum_recovery.sql',
     '20261001_160000_image_index_reconciliation.sql',
     '20261001_230000_ingestion_recovery_history.sql',
-    '20261002_000000_ingestion_recovery_progress.sql'
+    '20261002_000000_ingestion_recovery_progress.sql',
+    '20261002_120000_upgrade_pgvector_to_0_8_7.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

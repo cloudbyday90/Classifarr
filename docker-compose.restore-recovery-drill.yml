@@ -1,7 +1,7 @@
 # Disposable synthetic recovery test. Never include this in the installation stack.
 services:
   database:
-    image: pgvector/pgvector:0.8.6-pg18
+    image: pgvector/pgvector:0.8.7-pg18
     environment:
       POSTGRES_DB: classifarr_restore_drill
       POSTGRES_USER: rehearsal

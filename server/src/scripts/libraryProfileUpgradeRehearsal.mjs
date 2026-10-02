@@ -10,6 +10,7 @@ import { evaluateUpgradeCanaryProfiles } from './libraryProfileUpgradeCanaryEval
 import { CANARY_ITEMS_PER_LIBRARY, CANARY_LIBRARIES } from './libraryProfileUpgradeCanaryFixtures.mjs';
 import { BASELINE_TAG } from './pinnedReleaseSchema.mjs';
 export { BASELINE_COMMIT, BASELINE_TAG, BASELINE_SCHEMA_PATH, readPinnedReleaseSchema } from './pinnedReleaseSchema.mjs';
+import { preparePinnedReleaseExtensions } from './pinnedReleaseSchema.mjs';
 
 const upgradeTask = Object.freeze({
     id: 'queue_library_profile_revision_verification_v1',
@@ -110,6 +111,7 @@ export async function rehearseLibraryProfileUpgrade({ dbClient, releaseSchema, m
     expect(target?.name === 'classifarr_rehearsal' && target.libraries === null && target.ledger === null,
         'the target must be an empty, named rehearsal database');
 
+    await preparePinnedReleaseExtensions(dbClient);
     await dbClient.query(releaseSchema);
     const libraryIds = await seedBaseline(dbClient);
     const migrationRunner = createMigrationRunner({ dbClient, env: { MIGRATIONS_DIR: migrationsDir } });

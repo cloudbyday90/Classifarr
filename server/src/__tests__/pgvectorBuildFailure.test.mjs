@@ -16,6 +16,7 @@ apk() { return 0; }
 curl() { [ "$FAIL_STAGE" != download ]; }
 sha256sum() { [ "$FAIL_STAGE" != checksum ]; }
 tar() { return 0; }
+uname() { printf '%s' "$BUILD_ARCH"; }
 cd() { return 0; }
 pg_config17() { printf /synthetic/17; }
 pg_config18() { printf /synthetic/18; }
@@ -30,9 +31,9 @@ cp() { printf 'stage:copy\\n'; [ "$FAIL_STAGE" != copy ]; }
 rm() { printf 'stage:cleanup\\n'; return 0; }
 `;
 
-function run(mode, failure) {
+function run(mode, failure, architecture = 'x86_64') {
     const result = spawnSync('sh', ['-c', `${stubs}\n${step}`], { encoding: 'utf8', timeout: 10000,
-        windowsHide: true, shell: false, env: { ...process.env, PGVECTOR_BUILD: mode, FAIL_STAGE: failure,
+        windowsHide: true, shell: false, env: { ...process.env, PGVECTOR_BUILD: mode, FAIL_STAGE: failure, BUILD_ARCH: architecture,
             PGVECTOR_VERSION: 'synthetic', PGVECTOR_SHA256: 'synthetic',
             PGVECTOR_GENERIC_OPTFLAGS: '', PGVECTOR_AVX_OPTFLAGS: '-mavx', PGVECTOR_AVX2_OPTFLAGS: '-mavx2' } });
     if (result.error) throw result.error;
@@ -51,4 +52,16 @@ test.each(['generic', 'avx', 'avx2', 'multi'])('%s build preserves failures and 
     expect(success.status).toBe(0);
     expect(success.stdout).toContain('stage:cleanup');
     expect(success.stdout.match(/stage:compile18/g)).toHaveLength(mode === 'multi' ? 3 : 1);
+});
+
+test.each(['multi', 'generic'])('arm64 %s builds only the portable variant', mode => {
+    const result = run(mode, 'none', 'aarch64');
+    expect(result.status).toBe(0);
+    expect(result.stdout.match(/stage:compile18/g)).toHaveLength(1);
+});
+
+test.each(['avx', 'avx2', 'invalid'])('arm64 rejects unsupported %s build requests', mode => {
+    const result = run(mode, 'none', 'aarch64');
+    expect(result.status).not.toBe(0);
+    expect(result.stdout).not.toContain('stage:compile');
 });

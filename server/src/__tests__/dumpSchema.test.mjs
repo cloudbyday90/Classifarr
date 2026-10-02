@@ -236,7 +236,7 @@ describe('dump-schema tooling', () => {
 
     const normalized = ensurePgvectorExtensionVersion(schemaSql);
 
-    expect(normalized).toContain("ALTER EXTENSION vector UPDATE TO '0.8.6'");
+    expect(normalized).toContain("ALTER EXTENSION vector UPDATE TO '0.8.7'");
     expect(ensurePgvectorExtensionVersion(normalized)).toBe(normalized);
   });
 
