@@ -91,11 +91,20 @@ merging on May 30. The current maintainer has an existing open
 and directs questions there; GitHub Issues are disabled. The submission guide
 records that history and the correct handoff route. No new thread or comment
 was posted during the initial review. After subsequent user authorization,
-the [metadata-only update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
-was posted and read back on 2026-10-02. It includes a concrete diff against
-the maintainer's template, validated against their XSD, with all deployment
-settings preserved. Upstream application and catalog acceptance remain pending;
+the [update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+was posted and read back on 2026-10-02. It was then shortened and expanded at
+the user's request to include three optional media mounts and the host alias.
+The revised diff passes the maintainer's XSD and checks that existing settings
+are preserved. Upstream application and catalog acceptance remain pending;
 see the submission guide for the source revision and remaining steps.
+
+The Unraid Compose media overlay was added without changing the base appdata
+mount. Ten focused XML tests and two Compose contract tests passed. Docker
+Compose validation rejects the overlay without an explicit media path; with
+one selected, the merged configuration adds only the writable media bind mount
+and preserves the other settings. Missing-directory creation is disabled.
+These checks did not start containers or access real media. The earlier
+no-cache image checks below remain tied to their stated source revision.
 
 ## Local Startup Evidence
 

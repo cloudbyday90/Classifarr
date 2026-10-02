@@ -11,6 +11,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add opt-in media access for Unraid Compose, with explicit existing-folder
+  mounts, preserved appdata, and matching unified/movie/TV template guidance.
 - Fix Unraid template startup by placing the host-gateway option before the
   image, with regression coverage for the shipped XML and a saved-template
   correction guide. Add an operator acceptance checklist and backup-preserving

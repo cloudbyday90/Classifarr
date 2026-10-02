@@ -75,6 +75,42 @@ id username
 | Container Path | Host Path | Purpose |
 |---------------|-----------|---------|
 | `/app/data` | `/mnt/user/appdata/classifarr` | All application data including database |
+| `/data/media` | Your media root, for example `/mnt/user/media` | Optional file verification and moves |
+| `/data/movies` | Your movie folder | Alternative to a unified media mount |
+| `/data/tv` | Your TV folder | Alternative to a unified media mount |
+
+Keep your existing appdata path. It is not a media folder. Choose either a
+unified media mount or separate movie/TV mounts; you do not need all three.
+Leave unused paths blank. File moves need read/write access; API-only routing
+does not need a media mount. Match Radarr/Sonarr container paths where possible,
+or configure Classifarr's path mappings for the different paths.
+
+The project XML includes these optional fields. If your saved CA template does
+not show them yet, use **Add another Path, Port, Variable, Label or Device** to
+add a Path with your existing host folder, the matching container path, and
+read/write access. Do not replace the appdata mapping.
+
+#### Docker Compose media access
+
+The regular `docker-compose.yml` already has appdata and a media placeholder.
+For `docker-compose.unraid.yml`, media access is an opt-in overlay. Set the
+existing folder in your Compose `.env` file (adjust this example):
+
+```dotenv
+CLASSIFARR_MEDIA_PATH=/mnt/user/media
+```
+
+Then validate and start with both files:
+
+```bash
+docker compose -f docker-compose.unraid.yml -f docker-compose.unraid.media.yml config --quiet
+docker compose -f docker-compose.unraid.yml -f docker-compose.unraid.media.yml up -d
+```
+
+The overlay keeps `/app/data` and adds `/data/media`. It requires an explicit
+host path and will not create a missing directory. Use the same two files for
+later updates. Existing installs that do not need file access can keep using
+the base file alone. Review paths and back up appdata before applying changes.
 
 **Important**: The data directory contains:
 

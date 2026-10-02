@@ -31,6 +31,8 @@ services:
     volumes:
       # Main application data including embedded PostgreSQL
       - /mnt/user/appdata/classifarr:/app/data
+      # For file verification/moves, add docker-compose.unraid.media.yml.
+      # It mounts your chosen media root at /data/media; see unraid/README.md.
     restart: unless-stopped
     stop_grace_period: 60s
     extra_hosts:

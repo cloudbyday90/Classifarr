@@ -1,0 +1,12 @@
+# Optional media access for docker-compose.unraid.yml.
+# Set CLASSIFARR_MEDIA_PATH to an existing media directory on the Docker host.
+# See unraid/README.md before enabling file verification or moves.
+services:
+  classifarr:
+    volumes:
+      - type: bind
+        source: ${CLASSIFARR_MEDIA_PATH:?Set CLASSIFARR_MEDIA_PATH to your existing media directory}
+        target: /data/media
+        read_only: false
+        bind:
+          create_host_path: false

@@ -55,6 +55,25 @@ local checks cannot stand in for either.
 
 ## Root Cause And Boundary
 
+### Media access follow-up
+
+The initial upstream request was too narrow: the user also wanted the media
+mounts from the earlier proposal. Keep the existing appdata mount and add
+optional `/data/media`, `/data/movies` and `/data/tv` fields with blank host
+paths. File moves need writable mounts; API-only routing does not. Add the
+host-gateway alias only in ExtraParams. Do not force restart or network mode.
+
+The Unraid Compose base remains usable without media access. A separate
+`docker-compose.unraid.media.yml` overlay adds `/data/media` only when selected
+and requires an explicit host folder. `create_host_path: false` prevents a
+misspelled path from silently creating an empty directory. This adds one
+opt-in file, but avoids a new startup requirement for existing deployments.
+The [Docker Compose volume reference](https://docs.docker.com/reference/compose-file/services/#volumes)
+documents the bind-mount option. Saved installations still require an operator
+to select their paths; an image update cannot create these host mounts.
+
+### Startup command
+
 Unraid constructs its Docker command with `ExtraParams` before the image and
 `PostArgs` after it. Docker treats arguments after the image as a replacement
 for `CMD`. Classifarr uses `tini` as `ENTRYPOINT` and its startup script as `CMD`.

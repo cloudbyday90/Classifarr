@@ -78,6 +78,20 @@ describe('shipped Unraid template contract', () => {
     })
   })
 
+  it('offers unified or separate writable media mounts without guessing host paths', () => {
+    const media = [...readTemplate().querySelectorAll('Config[Type="Path"]')]
+      .filter(node => node.getAttribute('Target') !== '/app/data')
+    expect(media.map(node => node.getAttribute('Target')).sort()).toEqual([
+      '/data/media', '/data/movies', '/data/tv',
+    ])
+    for (const node of media) {
+      expect(node.getAttribute('Mode')).toBe('rw')
+      expect(node.getAttribute('Required')).toBe('false')
+      expect(node.getAttribute('Default')).toBe('')
+      expect(node.textContent.trim()).toBe('')
+    }
+  })
+
   it('has one canonical template and complete HTTPS submission metadata', () => {
     const root = readTemplate()
     expect(existsSync(resolve(repositoryRoot, 'templates/classifarr.xml'))).toBe(false)

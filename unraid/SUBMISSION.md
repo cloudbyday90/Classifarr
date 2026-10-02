@@ -18,7 +18,7 @@ The maintainer's GitHub README directs questions to Discussions; GitHub Issues
 are disabled. The existing [Classifarr discussion #372](https://github.com/nwithan8/unraid_templates/discussions/372)
 was open with no comments during the initial review. The authorized
 [update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
-has now been posted there with a metadata-only patch. A saved
+has now been posted there with media mounts, a host alias and metadata fixes. A saved
 GitHub CLI login can access that discussion, but does not establish a Codeberg
 or Unraid login. Do not create a duplicate thread or a PR against the read-only
 mirror while waiting for the maintainer's preferred source contribution route.
@@ -36,8 +36,8 @@ The current project XML has concise Overview/Requires fields, no embedded saved
 Config values, no forced restart policy, and bridge networking in the Network
 field. Its only ExtraParams option is the host-gateway mapping; this has a
 separate regression test proving its position before the image. The current
-catalog template has no host-gateway option, so a metadata-only upstream patch
-need not add one. Discuss any functional additions separately.
+catalog template has no host-gateway option. The revised request adds it in
+ExtraParams, without forcing restart policy or network mode.
 
 The old PR targeted Selfhosters; today's catalog points to nwithan8's source.
 Do not reopen the old PR or submit a duplicate to a different feed without
@@ -115,25 +115,31 @@ not exemptions from current submission checks.
 ## Submitted Handoff And Remaining Acceptance
 
 On 2026-10-02, after user authorization, the saved GitHub CLI account
-`cloudbyday90` posted the [metadata update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
-in the existing Classifarr discussion. Readback verified the account, exact
-message and included diff. This is a maintainer update request, not an accepted
-CA submission or an applied upstream change.
+`cloudbyday90` posted the [template update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+in the existing Classifarr discussion. At the user's request, the same comment
+was shortened and expanded to include the missing media mounts and host alias.
+Readback verified the revised message and diff. The maintainer still needs to
+review and apply it; the live catalog is not yet updated.
 
 The patch is against mirrored revision
 `4e5a0b91b4904e14292fc8e9bef8bef3930835ff`, Classifarr template blob
-`3bb7b53ef27a9e885c95c3e4e17e19b2a7d90e0b`. It changes only TagDescription,
-Overview, Beta, Category, ExtraSearchTerms and Requires. Both the original and
-proposal passed the maintainer's XSD with network resolution disabled. A
-structural comparison confirmed all other elements and attributes were
-unchanged. Keep that repository's element order and `True` beta spelling;
-do not substitute our differently structured project XML wholesale.
+`3bb7b53ef27a9e885c95c3e4e17e19b2a7d90e0b`. It includes:
 
-The request links the earlier PR and source-bound CI results, corrects the
-mandatory-Ollama and stable wording, and asks whether the maintainer prefers
-to apply the included patch or receive a Codeberg PR. Published-release README
-requirements and the current prerelease designation were rechecked. No new
-mount, host-gateway option, restart policy or runtime setting was proposed.
+- Optional writable media, movie and TV path fields, with blank host paths.
+  Users choose a unified root or separate folders and leave unused fields blank.
+- `--add-host=host.docker.internal:host-gateway` in ExtraParams, not PostArgs.
+- Clearer requirements, overview, search/category metadata and beta labeling.
+
+The expanded patch passes the maintainer's XSD and a structural comparison
+that checks every existing Config entry and setting remains unchanged. It keeps
+the maintainer's element order and `True` beta spelling. No forced restart or
+network mode is added. The project also provides an opt-in
+`docker-compose.unraid.media.yml` overlay for the missing Compose media mount;
+see [volume setup](README.md#volume-mappings).
+
+The request links the earlier PR and asks whether the maintainer prefers to
+apply the patch or receive a Codeberg PR. Published-release requirements were
+checked; this request does not introduce a new application release.
 
 Remaining steps:
 
