@@ -11,6 +11,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Improve Synology setup with explicit appdata mounts, optional read-only media
+  access, and permission and upgrade guidance that preserves existing data.
 - Add opt-in media access for Unraid Compose, with explicit existing-folder
   mounts, preserved appdata, and matching unified/movie/TV template guidance.
 - Fix Unraid template startup by placing the host-gateway option before the

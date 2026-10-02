@@ -1,7 +1,5 @@
-version: '3.8'
-
 # Docker Compose for Classifarr on Synology NAS
-# Optimized for Synology's folder structure and DSM conventions
+# Setup, permissions and safe updates: docs/installation/synology.md
 
 services:
   classifarr:
@@ -10,8 +8,8 @@ services:
     ports:
       - "21324:21324"
     environment:
-      # User/Group IDs - Default to common Synology admin user
-      # Check your user ID with: id -u <username>
+      # Compatibility defaults, not a guarantee of your NAS user's identity.
+      # Check both IDs with: id <username>. Preserve IDs on existing installs.
       - PUID=${PUID:-1026}
       - PGID=${PGID:-100}
       - UMASK=${UMASK:-022}
@@ -19,9 +17,15 @@ services:
       - NODE_ENV=production
       - TZ=${TZ:-UTC}
     volumes:
-      # Main application data including embedded PostgreSQL
-      # Adjust /volume1 to your specific volume if different
-      - /volume1/docker/classifarr:/app/data
+      # Dedicated application data, including PostgreSQL. Create this directory
+      # first; never point it at a media share or a parent shared folder.
+      - type: bind
+        source: ${CLASSIFARR_APPDATA_PATH:-/volume1/docker/classifarr}
+        target: /app/data
+        bind:
+          create_host_path: false
+      # Optional media access: docker-compose.synology.media.yml.
+      # API-only routing does not need a filesystem mount.
     restart: unless-stopped
     stop_grace_period: 60s
     extra_hosts:

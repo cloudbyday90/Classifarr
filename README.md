@@ -289,6 +289,10 @@ Direct diagram link: [`docs/assets/issue-262-classification-flow-v042.svg`](docs
 
 ## Quick Start (Docker Compose)
 
+For Synology, use the [Container Manager setup and upgrade guide](docs/installation/synology.md)
+and its dedicated Compose file. It covers existing appdata, NAS permissions and
+optional media access without assuming your NAS user IDs.
+
 Use this baseline compose:
 
 ```yaml

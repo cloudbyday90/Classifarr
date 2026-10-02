@@ -1,0 +1,12 @@
+# Optional media access for docker-compose.synology.yml.
+# Verification is read-only by default. For file moves, explicitly set
+# CLASSIFARR_MEDIA_READ_ONLY=false and grant the configured user write access.
+services:
+  classifarr:
+    volumes:
+      - type: bind
+        source: ${CLASSIFARR_MEDIA_PATH:?Set CLASSIFARR_MEDIA_PATH to your existing media directory}
+        target: /data/media
+        read_only: ${CLASSIFARR_MEDIA_READ_ONLY:-true}
+        bind:
+          create_host_path: false
