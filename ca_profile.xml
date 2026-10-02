@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0-or-later -->
+<CommunityApplications>
+  <Profile>Classifarr provides policy-driven movie and TV classification for Radarr and Sonarr, with optional AI and an embedded PostgreSQL database. This repository maintains the application and its Unraid template. Use the project issue tracker for support.</Profile>
+  <Icon>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/logo/icon.png</Icon>
+  <WebPage>https://github.com/cloudbyday90/Classifarr</WebPage>
+  <Forum>https://github.com/cloudbyday90/Classifarr/issues</Forum>
+</CommunityApplications>

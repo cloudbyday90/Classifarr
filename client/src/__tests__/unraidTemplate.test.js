@@ -1,11 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..')
 const template = readFileSync(resolve(repositoryRoot, 'unraid/classifarr.xml'), 'utf8')
 const dockerfile = readFileSync(resolve(repositoryRoot, 'Dockerfile'), 'utf8')
+const profile = readFileSync(resolve(repositoryRoot, 'ca_profile.xml'), 'utf8')
 
 // This suite intentionally reads the shipped XML, not the Unraid-style Compose
 // fixture. That fixture validates UID/GID compatibility, not command placement.
@@ -45,6 +46,7 @@ describe('shipped Unraid template contract', () => {
     expect(textOf(root, 'Repository')).toBe('ghcr.io/cloudbyday90/classifarr:latest')
     expect(textOf(root, 'WebUI')).toBe('http://[IP]:[PORT:21324]')
     expect(template).not.toContain('docker.sock')
+    expect(textOf(root, 'Shell')).toBe('sh')
   })
 
   it('preserves required appdata and port mappings without requiring media mounts', () => {
@@ -74,5 +76,56 @@ describe('shipped Unraid template contract', () => {
       UMASK: '022',
       NODE_ENV: 'production',
     })
+  })
+
+  it('has one canonical template and complete HTTPS submission metadata', () => {
+    const root = readTemplate()
+    expect(existsSync(resolve(repositoryRoot, 'templates/classifarr.xml'))).toBe(false)
+    expect(textOf(root, 'TemplateURL')).toBe('https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/unraid/classifarr.xml')
+    expect(textOf(root, 'ReadMe')).toBe('https://github.com/cloudbyday90/Classifarr/blob/main/unraid/README.md')
+    for (const field of ['TemplateURL', 'ReadMe', 'Icon', 'Support', 'Project', 'Registry']) {
+      const url = new URL(textOf(root, field))
+      expect(url.protocol).toBe('https:')
+      expect(url.username).toBe('')
+      expect(url.password).toBe('')
+    }
+    expect(textOf(root, 'License')).toBe('GPL-3.0-or-later')
+    expect(textOf(root, 'Category')).toBe('MediaApp:Video Tools:')
+  })
+
+  it('describes the current beta line, movie/TV scope and optional AI concisely', () => {
+    const root = readTemplate()
+    expect(textOf(root, 'Beta')).toBe('true')
+    expect(root.querySelectorAll('Branch')).toHaveLength(0)
+    const overview = textOf(root, 'Overview')
+    expect(overview.split(/\s+/).length).toBeLessThanOrEqual(100)
+    expect(overview).toContain('movie and TV')
+    expect(overview).toContain('Music is not supported')
+    expect(overview).not.toMatch(/<[^>]+>|\[(?:br|b)\]/i)
+    expect(textOf(root, 'Requires')).toContain('AI providers are optional')
+    expect(textOf(root, 'Requires')).not.toMatch(/requires? (?:a )?separate Ollama/i)
+  })
+
+  it('provides a valid root repository profile with real support and icon links', () => {
+    const document = new DOMParser().parseFromString(profile, 'application/xml')
+    expect(document.querySelector('parsererror')).toBeNull()
+    const root = document.documentElement
+    expect(root.tagName).toBe('CommunityApplications')
+    expect(textOf(root, 'Profile').length).toBeGreaterThan(30)
+    expect(textOf(root, 'WebPage')).toBe(textOf(readTemplate(), 'Project'))
+    expect(textOf(root, 'Forum')).toBe(textOf(readTemplate(), 'Support'))
+    expect(textOf(root, 'Icon')).toBe(textOf(readTemplate(), 'Icon'))
+    expect(profile).not.toMatch(/YOUR_GITHUB_USERNAME|YOUR_REPO_NAME|YOUR_SUPPORT_TOPIC/)
+  })
+
+  it('keeps configuration entries unique, described and free of installation values', () => {
+    const entries = [...readTemplate().querySelectorAll('Config')]
+    const identities = entries.map(node => `${node.getAttribute('Type')}:${node.getAttribute('Target')}`)
+    expect(new Set(identities).size).toBe(entries.length)
+    for (const node of entries) {
+      expect(node.getAttribute('Name')?.trim()).toBeTruthy()
+      expect(node.getAttribute('Description')?.trim()).toBeTruthy()
+      expect(node.textContent.trim()).toBe('')
+    }
   })
 })

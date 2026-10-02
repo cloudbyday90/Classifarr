@@ -15,6 +15,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   image, with regression coverage for the shipped XML and a saved-template
   correction guide. Add an operator acceptance checklist and backup-preserving
   recovery guidance without new deployment requirements.
+- Align Unraid metadata with Community Applications guidance: one canonical
+  template, a repository profile, clearer movie/TV and optional-AI requirements,
+  accurate beta labeling, and documented coordination with the existing listing
+  maintainer. Preserve installed paths and user/group settings.
 - Require a same-image sustained resource soak before the frozen installation
   rehearsal can pass, with bounded workload/idle evidence and validated aggregate
   CPU, memory, queue and provider-recovery results.

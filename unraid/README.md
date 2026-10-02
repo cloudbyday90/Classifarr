@@ -1,6 +1,9 @@
 # Classifarr for Unraid
 
-UnRaid Community Applications template for easy installation of Classifarr.
+Unraid installation guidance and the project-maintained Classifarr template.
+The currently listed Community Applications app uses a separately maintained
+template. See [submission and maintenance](SUBMISSION.md) before proposing a
+catalog change; pushing this repository does not update that listing.
 
 ## Features
 
@@ -114,7 +117,9 @@ field. An image update cannot repair this saved host-side setting.
    appdata or reinstall into an empty directory to fix this error.
 
 If the flag is already in Extra Parameters and Post Arguments is empty, no
-correction is needed. The fixed repository XML does not prove your saved
+correction is needed. The separately maintained CA template inspected on
+2026-10-02 does not contain this bad Post Arguments value; do not assume every
+CA installation is affected. The fixed repository XML does not prove your saved
 template has changed. Unraid stores user templates separately and restores
 their saved settings through Previous Apps. See [Community Applications](https://docs.unraid.net/community-applications/)
 and [Docker command semantics](https://docs.docker.com/engine/containers/run/).
@@ -158,6 +163,9 @@ restarting a container does not apply a changed template.
 Record the Unraid/Community Applications versions, old/new image IDs and pass,
 fail or not-applicable for each check. Keep secrets and private paths out of
 shared evidence. A Docker Desktop profile using IDs 99/100 is not this test.
+Preserve the values already saved on your installation, including any appdata
+path ending in `/classifarr/data` and IDs 1000/1000 from the external CA template.
+Do not replace them with this repository's defaults during an update.
 
 | Check | Expected result / next step |
 | --- | --- |
@@ -310,11 +318,19 @@ restore verification passes and normal mode is explicitly restored.
 
 ## UnRaid Specific Notes
 
-- Compatible with UnRaid 6.9+ and 7.0+
+- The current Community Applications plugin declares Unraid 6.12.0 as its
+  minimum. That plugin requirement is not certification of Classifarr on every
+  Unraid version; record the actual tested host version in acceptance evidence.
+  See the [official plugin manifest](https://github.com/unraid/community.applications/blob/master/plugins/community.applications.plg).
 - Uses bridge network by default
 - PostgreSQL runs inside the container (no external database required)
 - All data stored in single appdata directory for easy backup
 - Supports User Scripts plugin for automation
+
+The single project-maintained XML is `unraid/classifarr.xml`. The stale
+`templates/classifarr.xml` duplicate was removed; its embedded TemplateURL
+already pointed to the retained canonical file. Direct-file consumers should
+use the canonical path. The removed copy remains recoverable in Git history.
 
 ## Links
 

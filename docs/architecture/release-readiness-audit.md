@@ -15,6 +15,14 @@ separate [same-image soak design](frozen-resource-soak-design.md) and
 evidence; the earlier failure's exact cause was not retroactively proven by the
 new pass.
 
+The subsequent [Unraid template review](unraid-template-startup-outcome.md)
+found and reproduced a startup-command override in the project XML that the
+UID/GID-only profile did not exercise. The correction passed a separate
+no-cache startup check. The review also analyzed 524 valid templates and found
+that today's catalog entry is supplied by an external maintainer. Canonical
+source cleanup and metadata changes here are not catalog deployment or actual
+saved-Unraid acceptance. Coordinate that listing before submitting a duplicate.
+
 The newest published release, including prereleases, is `v0.48.4-beta`
 (2026-08-29). Root, server and client package manifests remain `0.48.4-beta`.
 GitHub's non-prerelease `releases/latest` endpoint instead returns
@@ -77,6 +85,9 @@ Release blockers and scope decisions, in order:
 1. Accept operator flows on an actual saved Unraid/Community Apps installation,
    including unchanged settings, imports, recovery and clear accessible status.
    A Linux container with Unraid-style IDs is not physical Unraid certification.
+   First verify the live listing's Template link and agree on the source with
+   its existing maintainer. Preserve the installation's appdata and identity
+   settings rather than replacing them with another template's defaults.
 2. Define the supported upgrade floor. The pinned published baseline is
    `v0.48.4-beta`; older versions, including the non-prerelease latest label,
    require separate evidence if included in the release promise.

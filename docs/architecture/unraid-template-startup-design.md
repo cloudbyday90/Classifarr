@@ -10,6 +10,49 @@ user IDs. No new service, dependency, Docker socket access or release is needed.
 This is the next concrete release-readiness fix. It does not certify a real
 Unraid installation or change the supported upgrade floor.
 
+## Expanded Community Applications Review
+
+The user requested a survey of hundreds of CA templates and the submission
+guidelines. The September-pinned survey covers 530 XML files from five public
+maintainer repositories: 524 valid Docker templates, five profiles and one XML
+parse failure. These are template files, not 524 unique apps or a random sample
+of the entire catalog. The outcome records revisions, counts and limitations.
+
+Official submission rules take precedence over popularity. Older repositories
+contain missing metadata, deprecated templates and archived sources; copying
+their omissions would not satisfy the current submission process.
+
+The review found a second stale copy at `templates/classifarr.xml`. Consolidate
+on `unraid/classifarr.xml`, the canonical URL already recorded inside both
+copies. Remove the duplicate source file, not a service or installed user
+template. Git retains its history. Document the path change for direct-file
+consumers; do not silently rewrite existing appdata or identities.
+
+Add the required root `ca_profile.xml`, explicit shell/license metadata, a
+concise movie/TV overview, accurate optional-AI requirements, and a beta marker
+matching the current release line. Remove the redundant latest/stable branch
+description. Retain existing image, mounts, port and user/group defaults.
+Extend the XML tests to cover submission metadata and single-source ownership.
+
+The currently listed CA entry is maintained separately by grtgbln/nwithan8,
+using `nwithan8/unraid_templates`, whose GitHub repository describes itself as
+a read-only Codeberg mirror. Its XML does not contain our bad PostArgs field.
+Therefore this fix is not evidence that the current catalog entry was broken,
+and pushing this repository does not update that listing. Coordinate a change
+with its maintainer, or a reviewed ownership transfer with CA, before submitting
+a duplicate. No submission, external PR or ownership transfer is authorized or
+performed by this local template update.
+
+| Follow-up option | Benefit | Cost or risk | Recommendation |
+| --- | --- | --- | --- |
+| Coordinate changes with the existing listing maintainer | Preserves catalog identity and existing users' settings | Requires external review | First choice |
+| Reviewed transfer to this repository | Keeps app and template maintenance together | Requires CA/maintainer coordination and saved-settings acceptance | Alternative if agreed |
+| Submit a second listing immediately | No handoff work | Duplicate identity, divergent defaults and user confusion | Do not do this |
+
+Keep CI XML checks and isolated Docker startup checks together. Portal Validate
+and Scan and an actual Unraid operator pass remain separate acceptance steps;
+local checks cannot stand in for either.
+
 ## Root Cause And Boundary
 
 Unraid constructs its Docker command with `ExtraParams` before the image and
@@ -76,11 +119,12 @@ results and remaining limits. No live installation is changed by this test.
 
 ## Official Research
 
-Reviewed on 2026-10-02 for the requested September 2026 baseline. These are live
-official documents and pinned upstream implementation evidence, not archived
-September snapshots; no new October-only feature is required by this fix.
+Reviewed on 2026-10-02 for the requested September 2026 baseline. Sampled
+repositories and Unraid command construction are pinned to commits no later
+than September 30. The official portal documents are live pages, not archived
+September snapshots; no new October-only runtime feature is required.
 
-- [Unraid's command construction](https://github.com/unraid/webgui/blob/e331ba36c538a683aa72801d2e1a661c88c98ee3/emhttp/plugins/dynamix.docker.manager/include/Helpers.php)
+- [Unraid's September command construction](https://github.com/unraid/webgui/blob/ebd05afeb31878dca76d22c198b236d27cfec163/emhttp/plugins/dynamix.docker.manager/include/Helpers.php)
   establishes the placement of the two template fields.
 - [Docker container command semantics](https://docs.docker.com/engine/containers/run/)
   explains command replacement and how it interacts with an entrypoint.
@@ -93,3 +137,12 @@ September snapshots; no new October-only feature is required by this fix.
 - [W3C error identification guidance](https://www.w3.org/WAI/WCAG22/Understanding/error-identification)
   informs the explicit symptom, affected field and corrective action in the
   operator guide. This documentation change makes no UI conformance claim.
+- [Official submission flow](https://ca.unraid.net/submit/new),
+  [repository profile requirements](https://ca.unraid.net/submit/help/repository-info-xml)
+  and [XML field reference](https://ca.unraid.net/submit/help/xml-field-reference)
+  define the current metadata contract. See the separate
+  [submission and maintenance guide](../../unraid/SUBMISSION.md).
+- [Official portal announcement](https://unraid.net/blog/new-community-apps)
+  describes pre-submission scanning and duplicate detection.
+- [Current Classifarr listing](https://ca.unraid.net/apps/classifarr-14a9cw815dlis4)
+  identifies the catalog maintainer and links to its independent template.

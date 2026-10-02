@@ -3,11 +3,8 @@
   <Name>Classifarr</Name>
   <Repository>ghcr.io/cloudbyday90/classifarr:latest</Repository>
   <Registry>https://github.com/cloudbyday90/Classifarr/pkgs/container/classifarr</Registry>
-  <Branch>
-    <Tag>latest</Tag>
-    <TagDescription>Latest stable release</TagDescription>
-  </Branch>
   <Network>bridge</Network>
+  <Shell>sh</Shell>
   <Privileged>false</Privileged>
   <WebUI>http://[IP]:[PORT:21324]</WebUI>
   <TemplateURL>https://raw.githubusercontent.com/cloudbyday90/Classifarr/main/unraid/classifarr.xml</TemplateURL>
@@ -17,44 +14,20 @@
   <PostArgs/>
   <DonateText>Support the development of Classifarr</DonateText>
   <DonateLink>https://github.com/sponsors/cloudbyday90</DonateLink>
-  <Requires>Requires TMDB API key (free). Optionally requires Ollama for AI classification.</Requires>
+  <Requires>TMDb API key and configured Radarr/Sonarr library mappings for routing. AI providers are optional. Media path mounts are only needed for file verification and moves. No external PostgreSQL server is required.</Requires>
   <Overview>
-    AI-powered media classification for the *arr ecosystem.[br][br]
-    Automatically routes Overseerr/Jellyseerr requests to the correct Radarr/Sonarr library using AI decision trees and machine learning.[br][br]
-    [b]Key Features:[/b][br]
-    - Single self-contained container with embedded PostgreSQL[br]
-    - Multi-Radarr and Multi-Sonarr support[br]
-    - AI-powered content classification with Ollama[br]
-    - Confidence-based routing with decision trees[br]
-    - Discord notifications with interactive correction buttons[br]
-    - Media server scanning (Plex/Emby/Jellyfin)[br]
-    - Web-based configuration UI[br]
-    - Automatic learning from corrections[br][br]
-    [b]How It Works:[/b][br]
-    1. Overseerr/Jellyseerr sends webhooks to Classifarr[br]
-    2. Classifarr classifies content (anime, kids, 4K, etc.)[br]
-    3. Routes request to the appropriate Radarr/Sonarr library[br]
-    4. Notifies via Discord with correction options[br][br]
-    [b]Requirements:[/b][br]
-    - TMDB API key (free from themoviedb.org)[br]
-    - Ollama instance (optional, for AI classification)[br]
-    - pgvector auto-selects AVX when supported, otherwise uses generic build[br][br]
-    [b]First-Time Setup:[/b][br]
-    1. Install and start the container[br]
-    2. Access WebUI at http://[IP]:21324[br]
-    3. Create admin account in setup wizard[br]
-    4. Configure TMDB, Radarr/Sonarr, and libraries[br]
+    Classify movie and TV requests into the right Radarr or Sonarr library using policy rules and optional AI.
+    Works with Plex, Jellyfin and Emby. Includes PostgreSQL in one container; no external database is required.
+    Music is not supported. Configure connections and API keys in the WebUI after creating an administrator account.
   </Overview>
-  <Description>
-    AI-powered media classification for the *arr ecosystem. Automatically routes Overseerr/Jellyseerr requests to the correct Radarr/Sonarr library using AI and machine learning.
-  </Description>
-  <Category>MediaApp:Other MediaServer:Other Tools:</Category>
+  <Category>MediaApp:Video Tools:</Category>
+  <ExtraSearchTerms>radarr sonarr overseerr jellyseerr plex jellyfin emby movies television classification</ExtraSearchTerms>
   <Support>https://github.com/cloudbyday90/Classifarr/issues</Support>
   <Project>https://github.com/cloudbyday90/Classifarr</Project>
-  <ReadMe>https://github.com/cloudbyday90/Classifarr/blob/main/README.md</ReadMe>
-  <Changes>https://github.com/cloudbyday90/Classifarr/releases</Changes>
-  <Beta>false</Beta>
-  <Date>2026-02-17</Date>
+  <ReadMe>https://github.com/cloudbyday90/Classifarr/blob/main/unraid/README.md</ReadMe>
+  <License>GPL-3.0-or-later</License>
+  <Changes>2026-10-02: Correct Docker option placement, clarify optional services, and consolidate template metadata. Template maintenance only; no application release.</Changes>
+  <Beta>true</Beta>
   
   <!-- User-configurable settings -->
   <Config Name="Web UI Port" Target="21324" Default="21324" Mode="tcp" Description="Web interface and API port. Access the UI at http://[IP]:[PORT]" Type="Port" Display="always" Required="true"/>
