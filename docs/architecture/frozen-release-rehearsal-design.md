@@ -32,7 +32,9 @@ storage. Only the image may change during its published-to-candidate upgrade.
 - Reconstruct receipt fields from validated evidence; do not serialize raw
   commands, credentials, provider payloads, SQL or exception text.
 - Detached crash and backlog probes publish guarded, size-bounded failure
-  markers. Retain only fixed categories, SQLSTATE and internal code locations.
+  markers. Retain only fixed categories, SQLSTATE, internal code locations and
+  bounded expected/observed counts for the named synthetic task-start assertion.
+  Arbitrary assertion values, task identities and payloads are never retained.
   Pressure injection verifies monotonic elapsed time across early timer wakes;
   the existing five-to-fifteen-second hold contract remains unchanged.
   Before capturing unfinished work, require every configured metadata worker to

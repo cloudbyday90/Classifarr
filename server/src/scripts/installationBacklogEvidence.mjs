@@ -68,7 +68,7 @@ export function assertBacklogCompleted(tasks, original) {
     assert.equal(row.enriched, true);
     assert.equal(row.attempts, 0);
     assert.equal(row.completions, 1);
-    assert.equal(row.starts, before.status === 'processing' ? 2 : 1);
+    assert.equal(row.starts, before.status === 'processing' ? 2 : 1, 'installation_backlog_start_count');
     assert.ok(Number.isFinite(row.last_started_ms) && Number.isFinite(row.completed_ms));
     assert.ok(row.completed_ms >= row.last_started_ms);
     if (before.status === 'processing') assert.ok(row.last_started_ms >= before.visible_ms);

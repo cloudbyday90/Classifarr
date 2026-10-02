@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
+import assert from 'node:assert/strict';
 import { installationFailureEvidence, validateInstallationFailure, readInstallationFailure } from '../../scripts/installationFailureEvidence.mjs';
 import { runScheduledCrashRecovery } from '../../../../scripts/lib/scheduledCrashRecovery.mjs';
 import { runUpgradeProbe } from '../../scripts/publishedUpgradeProbe.mjs';
@@ -20,6 +21,31 @@ test('bounds code locations and restricts timeout stages', () => {
     stack: 'at helper (file:///app/src/scripts/probe.mjs:1:2)\n'.repeat(1000) });
   expect(result.locations).toHaveLength(5);
   expect(result.stage).toBeNull();
+});
+
+test('retains only bounded counts for the explicitly named synthetic start-count assertion', () => {
+  let failure;
+  try { assert.equal(1, 2, 'installation_backlog_start_count'); } catch (error) { failure = error; }
+  const evidence = installationFailureEvidence(failure);
+  expect(evidence.taskStarts).toEqual({ expected: 2, observed: 1 });
+  expect(validateInstallationFailure({ ...evidence, taskStarts: { ...evidence.taskStarts, secret: 'private' } }))
+    .toEqual(evidence);
+  expect(readInstallationFailure(`UPGRADE_PROBE_FAILURE ${JSON.stringify(evidence)}`)).toEqual(evidence);
+  expect(installationFailureEvidence({ ...failure, message: 'unrelated' }).taskStarts).toBeUndefined();
+});
+
+test.each([{ expected: 3, observed: 1 }, { expected: 2, observed: 'private' }, { expected: 2, observed: -1 },
+  { expected: 2, observed: 10001 }, { expected: 2, observed: 1.5 }, null])('rejects invalid start-count evidence %#', taskStarts => {
+  const evidence = { category: 'assertion', code: null, stage: null, locations: [], taskStarts };
+  expect(() => validateInstallationFailure(evidence)).toThrow();
+  expect(readInstallationFailure(`UPGRADE_PROBE_FAILURE ${JSON.stringify(evidence)}`)).toBeNull();
+  expect(installationFailureEvidence({ code: 'ERR_ASSERTION', message: 'installation_backlog_start_count',
+    expected: taskStarts?.expected, actual: taskStarts?.observed }).taskStarts).toBeUndefined();
+});
+
+test('start-count evidence is restricted to assertion failures', () => {
+  expect(() => validateInstallationFailure({ category: 'other', code: null, stage: null, locations: [],
+    taskStarts: { expected: 2, observed: 1 } })).toThrow();
 });
 
 test.each([{ category: 'secret' }, { code: 'secret' }, { stage: 'secret' }, { locations: ['https://private.invalid'] },
