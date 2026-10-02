@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
-import { installationFailureEvidence, validateInstallationFailure } from '../../scripts/installationFailureEvidence.mjs';
+import { installationFailureEvidence, validateInstallationFailure, readInstallationFailure } from '../../scripts/installationFailureEvidence.mjs';
 import { runScheduledCrashRecovery } from '../../../../scripts/lib/scheduledCrashRecovery.mjs';
 import { runUpgradeProbe } from '../../scripts/publishedUpgradeProbe.mjs';
 
@@ -30,6 +30,17 @@ test.each([{ category: 'secret' }, { code: 'secret' }, { stage: 'secret' }, { lo
 test('marker reader reconstructs allowlisted fields only', () => {
   expect(validateInstallationFailure({ category: 'other', code: null, stage: null, locations: [], secret: 'private' }))
     .toEqual({ category: 'other', code: null, stage: null, locations: [] });
+});
+
+test('foreground failure reader excludes raw stderr and unrecognized fields', () => {
+  const evidence = { category: 'assertion', code: null, stage: null, locations: ['probe.mjs:1:2'] };
+  expect(readInstallationFailure(`private\nUPGRADE_PROBE_FAILURE ${JSON.stringify({ ...evidence, secret: 'private' })}\n`))
+    .toEqual(evidence);
+});
+
+test.each([null, '', 'UPGRADE_PROBE_FAILURE nope', 'UPGRADE_PROBE_FAILURE {}\nUPGRADE_PROBE_FAILURE {}',
+  `UPGRADE_PROBE_FAILURE ${'a'.repeat(2048)}`])('invalid foreground evidence is ignored: %#', value => {
+  expect(readInstallationFailure(value)).toBeNull();
 });
 
 test.each(['scheduled-crash-failure', 'scheduled-backlog-failure'])('%s refuses normal runtime before reading files', async phase => {

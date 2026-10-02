@@ -48,6 +48,9 @@ test('synthetic gate holds both media types instead of relying on worker orderin
   const source = readFileSync(new URL('../../scripts/installationBacklogFixture.mjs', import.meta.url), 'utf8');
   expect(source).toContain('SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id)');
   expect(source).not.toContain("AND media_type='movie'");
+  expect(source).toContain('pg_try_advisory_xact_lock_shared');
+  expect(source).toContain('PERFORM pg_sleep(8)');
+  expect(source).not.toMatch(/pg_advisory_xact_lock\(|SET LOCAL.*timeout|set_config\('(?:lock|statement|transaction)_timeout/);
 });
 
 test.each([

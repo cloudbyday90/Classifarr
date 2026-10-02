@@ -17,8 +17,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   budgeted upgrade drill's required memory limit explicitly instead of relying
   on ambient configuration.
 - Make interrupted-backfill test checkpoints independent of movie/TV worker
-  ordering, measure pressure-hold time across early timer wakes, and retain
-  sanitized failure details from detached test probes.
+  ordering and partial worker startup without relaxing runtime lock deadlines.
+  Measure pressure-hold time across early timer wakes and retain sanitized
+  failure details from foreground and detached test probes.
 - Track reviewed import recoveries through owned scan retries and verified
   metadata completion. Show concise progress and next steps, preserve unknown
   historical outcomes, and exclude optional AI jobs without new deployment settings.

@@ -35,6 +35,13 @@ storage. Only the image may change during its published-to-candidate upgrade.
   markers. Retain only fixed categories, SQLSTATE and internal code locations.
   Pressure injection verifies monotonic elapsed time across early timer wakes;
   the existing five-to-fifteen-second hold contract remains unchanged.
+  Before capturing unfinished work, require every configured metadata worker to
+  be parked at the fixture gate. Foreground probe failures use the same sanitized
+  evidence contract as detached failures.
+  The fixture uses a bounded SQL sleep selected by a nonblocking shared-lock
+  probe, not an advisory-lock wait that would correctly trip the production
+  two-second lock deadline. All production deadlines remain in force; a missed
+  eight-second fixture window fails acceptance instead of repairing task state.
 - A local image ID is not a published registry manifest digest or attestation.
   This rehearsal cannot authorize publication, certify a real Unraid host,
   establish live-provider accuracy or prove all historical backup formats.
@@ -78,6 +85,11 @@ live documentation pages, not archived September snapshots.
 - [Node timer semantics](https://nodejs.org/download/release/v22.4.1/docs/api/timers.html)
   does not guarantee exact callback timing. Measure the hold with the monotonic
   clock instead of assuming a requested timer delay proves elapsed duration.
+- PostgreSQL documents [lock and statement deadlines](https://www.postgresql.org/docs/18/runtime-config-client.html),
+  [nonblocking shared advisory locks](https://www.postgresql.org/docs/18/functions-admin.html)
+  and [observable wait events](https://www.postgresql.org/docs/18/monitoring-stats.html).
+  Inference: distinguish injected slow processing from a lock-timeout test;
+  observe the transaction-labelled sleep without disabling runtime safeguards.
 
 ## Validation contract
 

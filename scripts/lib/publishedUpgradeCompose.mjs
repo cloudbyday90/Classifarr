@@ -11,6 +11,7 @@ import { runScheduledCrashRecovery } from './scheduledCrashRecovery.mjs';
 import { runInstallationBudgetRecovery } from './installationBudgetRecovery.mjs';
 import { upgradeBaseline, verifyPublishedUpgradeProvenance } from './publishedUpgradeProvenance.mjs';
 import { publishedUpgradeDeployment, upgradeDeploymentDigest, upgradeProbeArguments } from './publishedUpgradeDeployment.mjs';
+import { readInstallationFailure } from '../../server/src/scripts/installationFailureEvidence.mjs';
 export { upgradeBaseline } from './publishedUpgradeProvenance.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -73,6 +74,10 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
         'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume',
         'budget-prepare', 'budget-pressure', 'budget-snapshot'].includes(phase) ? phase : null,
       exitCode: Number.isInteger(result?.status) ? result.status : null, timedOut: result?.error?.code === 'ETIMEDOUT' })}`);
+    if (args.includes('src/scripts/publishedUpgradeProbe.mjs')) {
+      const evidence = readInstallationFailure(result?.stderr);
+      if (evidence) reportDiagnostic(`UPGRADE_PROBE_FAILURE ${JSON.stringify(evidence)}`);
+    }
     throw new Error(`upgrade_command_failed:${binary}:${args[0]}`);
   };
   const docker = (args, ...options) => invoke('docker', args, ...options);

@@ -22,3 +22,12 @@ export function validateInstallationFailure(value) {
   assert.ok(value.locations.every(location => typeof location === 'string' && /^[A-Za-z0-9]+\.mjs:[0-9]{1,6}:[0-9]{1,6}$/.test(location)));
   return { category: value.category, code: value.code, stage: value.stage, locations: [...value.locations] };
 }
+
+export function readInstallationFailure(output) {
+  if (typeof output !== 'string') return null;
+  const prefix = 'UPGRADE_PROBE_FAILURE ';
+  const lines = output.slice(-16384).split(/\r?\n/).filter(line => line.startsWith(prefix));
+  if (lines.length !== 1 || lines[0].length > 2048) return null;
+  try { return validateInstallationFailure(JSON.parse(lines[0].slice(prefix.length))); }
+  catch { return null; }
+}

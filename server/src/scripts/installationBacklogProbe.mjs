@@ -11,12 +11,11 @@ import { readBacklogRuns, readBacklogTasks, readDatabaseEpoch, waitForBacklog, a
   backlogProfilesCurrent, assertBacklogTaskIdentities, assertBacklogCompleted, sawSiblingProgress } from './installationBacklogEvidence.mjs';
 import { readStudyCgroup } from './resourceStudyMetrics.mjs';
 import { installationBudgetSnapshot } from './installationBudgetContract.mjs';
+import { backlogBoundarySettled, readBacklogWorkerLimit, readParkedBacklogWorkers } from './installationBacklogBoundary.mjs';
 
 async function assertGateHeld(db, checkpoint) {
   const interrupted = checkpoint.tasks.filter(row => row.status === 'processing').length;
-  const result = await db.query(`SELECT count(*)::integer AS count FROM pg_stat_activity
-    WHERE datname=current_database() AND $1=ANY(pg_blocking_pids(pid))`, [checkpoint.ownerPid]);
-  assert.equal(result.rows[0].count, interrupted);
+  assert.equal(await readParkedBacklogWorkers(db), interrupted);
   const lock = await db.query(`SELECT count(*)::integer AS count FROM pg_locks WHERE locktype='advisory'
     AND pid=$1 AND classid=0 AND objid=$2 AND objsubid=1 AND granted`, [checkpoint.ownerPid, BACKLOG_GATE_LOCK]);
   assert.equal(lock.rows[0].count, 1);
@@ -42,17 +41,14 @@ export async function armBacklogCrash(db) {
     await waitForScheduledProgress(async () => (await readBacklogRuns(db, ids)).length === 2, 'ingestion_complete');
     assert.equal((await readBacklogTasks(db, ids)).length, 0);
     assert.ok(fixture.requests.movie > 0 && fixture.requests.tv > 0 && fixture.requests.audio > 0);
+    const workerLimit = await readBacklogWorkerLimit(db);
+    const ownerPid = (await owner.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
     await owner.query('SELECT pg_advisory_unlock($1)', [METADATA_REFILL_OWNER_LOCK]);
     // Ordinary scheduler latency is not time spent holding an in-flight worker.
     await waitForBacklog(async () => (await readBacklogTasks(db, ids)).some(row => row.status === 'processing'),
       { timeout: 420000 });
-    await waitForBacklog(async () => {
-      const tasks = await readBacklogTasks(db, ids);
-      const handoffs = (await db.query(`SELECT count(*)::integer AS count FROM library_ingestion_state
-        WHERE library_id=ANY($1::integer[]) AND backfill_completed_at IS NOT NULL AND backfill_run_id=run_id`, [ids])).rows[0].count;
-      return tasks.length === 600 && handoffs === 2 && tasks.some(row => row.status === 'processing');
-    }, { timeout: 20000 });
-    const checkpoint = { version: 1, ownerPid: (await owner.query('SELECT pg_backend_pid() AS pid')).rows[0].pid,
+    await waitForBacklog(() => backlogBoundarySettled(db, ids, workerLimit), { timeout: 20000 });
+    const checkpoint = { version: 1, ownerPid,
       databaseEpoch: await readDatabaseEpoch(db), libraries: await readBacklogRuns(db, ids),
       inventory: await readScheduledInventory(db, ids), tasks: await readBacklogTasks(db, ids),
       beforeCrash: installationBudgetSnapshot(await readStudyCgroup()) };

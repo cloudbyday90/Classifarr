@@ -18,14 +18,22 @@ AI providers remain disabled. No live library or routing setting is changed.
 2. A guarded fixture-only database trigger pauses processing for both target
    libraries after the real queue has committed its claim. This October 1 update
    removes an ordering assumption: TV tasks must not finish before the unfinished
-   checkpoint is captured. A session advisory lock is the gate;
-   the production worker, retry policy and ten-minute visibility lease are unchanged.
+   checkpoint is captured. A session advisory lock enables the fixture gate.
+   Workers use a nonblocking shared-lock probe; while the owner holds its exclusive
+   lock they enter an observable, transaction-labelled eight-second SQL sleep.
+   This replaces a blocking advisory-lock wait that correctly hit the production
+   two-second lock timeout before the host could kill the container. No lock,
+   statement, transaction or ten-minute visibility timeout is changed. After
+   session death, shared probes do not block one another or delay resumed work.
 3. A transactional fixture ledger records claim and completion transitions. It
    observes task updates; it never repairs or replaces them.
 4. Flush a bounded checkpoint containing the committed backfill generation,
    completed sync receipt and source-capture generation, inventory identities,
    task IDs, claims and visibility deadlines. Require both pending
-   and processing tasks, complete queue materialization, and a verified blocker.
+   and processing tasks, complete queue materialization, and verified sleeping workers.
+   Wait for every configured metadata-worker slot to reach that blocker before
+   capturing claims; the first active task is not a stable crash boundary.
+   Read the existing concurrency setting without changing production capacity.
 5. Kill only the owned app with SIGKILL; require exit 137 without OOM. Restart the
    normal entrypoint on the same volume. The killed database session releases
    the gate; the trigger remains present and uncontended.

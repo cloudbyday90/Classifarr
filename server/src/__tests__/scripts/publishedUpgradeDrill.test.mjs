@@ -188,6 +188,16 @@ test('detached probe evidence is retained in the sanitized failure file', async 
   expect(saved).not.toContain('private');
 });
 
+test('foreground boundary failure retains only validated diagnostics', async () => {
+  const evidence = { category: 'assertion', code: null, stage: null, locations: ['installationBacklogProbe.mjs:73:10'] };
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled-backlog-ready' ? { status: 1, stdout: '',
+    stderr: `private\nUPGRADE_PROBE_FAILURE ${JSON.stringify({ ...evidence, secret: 'private' })}\n` } : undefined);
+  const saveDiagnostic = jest.fn();
+  await expect(runWith(run, { resourceBudget: true, saveDiagnostic })).rejects.toThrow('published_upgrade_failed:');
+  expect(saveDiagnostic.mock.calls[0][1]).toContain(`UPGRADE_PROBE_FAILURE ${JSON.stringify(evidence)}`);
+  expect(saveDiagnostic.mock.calls[0][1]).not.toContain('private');
+});
+
 test.each([['fresh_scheduler', 'scheduled-crash-ready'], ['fresh_backfill_crash', 'scheduled-crash-resume'],
   ['upgrade_scheduler', 'scheduled']])('a stalled %s fails closed and still cleans resources', async (stage, phase) => {
   const run = mockRunner((_cmd, args) => args.at(-1) === phase

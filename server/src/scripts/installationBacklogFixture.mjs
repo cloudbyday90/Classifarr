@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { assertInstallationBudgetEnvironment } from './installationConnectionPressure.mjs';
 
 export const BACKLOG_GATE_LOCK = 19760211;
+export const BACKLOG_GATE_APPLICATION = 'classifarr-installation-backlog-gate';
 
 /** Fault injection and audit objects exist only in the disposable fixture database. */
 export async function installBacklogGate(db, libraries) {
@@ -18,7 +19,10 @@ export async function installBacklogGate(db, libraries) {
       BEGIN
         IF NEW.enrichment_status = 'processing' AND EXISTS (
           SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id) THEN
-          PERFORM pg_advisory_xact_lock(${BACKLOG_GATE_LOCK});
+          IF NOT pg_try_advisory_xact_lock_shared(${BACKLOG_GATE_LOCK}) THEN
+            PERFORM set_config('application_name','${BACKLOG_GATE_APPLICATION}',true);
+            PERFORM pg_sleep(8);
+          END IF;
         END IF;
         RETURN NEW;
       END $$;

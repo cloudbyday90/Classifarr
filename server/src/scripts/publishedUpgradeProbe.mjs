@@ -155,10 +155,7 @@ if (import.meta.main) {
         await writeFile(`/app/data/upgrade-drill/${prefix}-backfill-failed`, JSON.stringify(installationFailureEvidence(error)), { flag: 'wx', mode: 0o600 });
       } catch { /* Best effort, fixed marker only; never write outside the guarded drill. */ }
     }
-    // Locations help diagnose synthetic assertions without logging values,
-    // credentials, backup payloads or provider responses.
-    const locations = String(error.stack ?? '').split('\n').filter(line => /^\s+at /.test(line)).slice(0, 5);
-    process.stderr.write(`upgrade_probe_failed:${process.argv[2]}\n${locations.join('\n')}\n`);
+    process.stderr.write(`UPGRADE_PROBE_FAILURE ${JSON.stringify(installationFailureEvidence(error))}\n`);
     process.exitCode = 1;
   }
 }
