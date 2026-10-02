@@ -5,7 +5,7 @@
 
 ARG NODE_VERSION=24.18.1
 ARG ALPINE_VERSION=3.24
-ARG NPM_VERSION=12.0.2
+ARG NPM_VERSION=12.2.0
 # npm defaults to two registry fetch retries. A multi-architecture build has
 # more independent registry reads, so retain `npm ci` integrity while allowing
 # short-lived registry network failures to recover.
@@ -28,7 +28,7 @@ WORKDIR /build/client
 RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
-COPY client/package*.json ./
+COPY client/package*.json client/.npmrc ./
 RUN npm ci --fetch-retries=${NPM_FETCH_RETRIES}
 
 # Copy source and build
@@ -45,10 +45,10 @@ WORKDIR /build/server
 RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
-COPY server/package*.json ./
+COPY server/package*.json server/.npmrc ./
 RUN npm ci --omit=dev --fetch-retries=${NPM_FETCH_RETRIES}
 
-# Rebuild bcrypt for Alpine's musl libc
+# Verify bcrypt's reviewed installer can select/build its Alpine musl binding.
 RUN npm rebuild bcrypt
 
 # Stage 3: Production Runtime

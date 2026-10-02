@@ -13,6 +13,19 @@ import {
 } from '../../../scripts/check-npm-cli-flags.mjs';
 
 describe('check-npm-cli-flags tooling', () => {
+  test.each([
+    'npm rebuild bcrypt --build-from-source',
+    'npm --prefix server rebuild bcrypt --build-from-source=true',
+  ])('rejects unsupported native-build configuration: %s', command => {
+    expect(scanContentForLegacyNpmCliFlags(command, 'docs/install.md')).toEqual([
+      expect.objectContaining({ patternKey: 'npm-build-from-source' }),
+    ]);
+  });
+
+  test('allows reviewed native rebuilds without unsupported npm flags', () => {
+    expect(scanContentForLegacyNpmCliFlags('npm --prefix server rebuild bcrypt', 'docs/install.md')).toEqual([]);
+  });
+
   test('detects npm ci only-production usage', () => {
     const violations = scanContentForLegacyNpmCliFlags(
       'RUN npm ci --only=production',

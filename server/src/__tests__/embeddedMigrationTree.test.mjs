@@ -28,13 +28,17 @@ test('rejects root files and hard-linked files', async () => {
   await link(join(source, 'PG_VERSION'), join(source, 'linked'));
   await expect(inspectMigrationTree(source)).rejects.toThrow('migration_tree_unsupported');
 });
-// Directory fsync is a Linux deployment operation, exercised by the real Docker drill.
-(process.platform === 'linux' ? test : test.skip)('copy is complete, exclusive and leaves source unchanged', async () => {
+// Directory fsync is a Linux deployment operation. Ubuntu CI runs this case;
+// Windows validation must also run it in Linux, not remove the fsync requirement.
+(process.platform === 'linux' ? test : test.skip)('Linux directory fsync: copy is complete, exclusive and leaves source unchanged', async () => {
   const tree = await inspectMigrationTree(source);
   const before = await digestMigrationTree(source, tree);
   const target = join(root, 'candidate');
   await copyMigrationTree(source, target, tree);
   expect(await digestMigrationTree(target, await inspectMigrationTree(target))).toBe(before);
+  expect(await digestMigrationTree(source, await inspectMigrationTree(source))).toBe(before);
   expect(await readFile(join(source, 'PG_VERSION'), 'utf8')).toBe('18\n');
-  await expect(copyMigrationTree(source, target, tree)).rejects.toThrow();
+  await expect(copyMigrationTree(source, target, tree)).rejects.toMatchObject({ code: 'EEXIST' });
+  expect(await digestMigrationTree(target, await inspectMigrationTree(target))).toBe(before);
+  expect(await digestMigrationTree(source, await inspectMigrationTree(source))).toBe(before);
 });

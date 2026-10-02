@@ -34,6 +34,11 @@ export const DEFAULT_IGNORE_PATTERNS = Object.freeze([
 
 export const LEGACY_NPM_FLAG_PATTERNS = Object.freeze([
   {
+    key: 'npm-build-from-source',
+    description: 'npm 12 rejects --build-from-source; use the reviewed installer and configure native build tools directly if needed.',
+    regex: /\bnpm\s+\S+[^\r\n]*\s--build-from-source\b/,
+  },
+  {
     key: 'npm-ci-only-production',
     description: 'Use `npm ci --omit=dev` instead of `npm ci --only=production`.',
     regex: /\bnpm\s+ci\b[^\r\n]*\s--only=production\b/,

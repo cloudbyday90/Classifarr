@@ -154,7 +154,7 @@ function assertWorkflowJob(job) {
 
   assertRequiredRun(
     findStep(steps, 'Set up npm and npx'),
-    ['set -euo pipefail', 'npm install --global npm@12.0.2', 'npm --version', 'npx --version'],
+    ['set -euo pipefail', 'npm install --global npm@12.2.0', 'npm --version', 'npx --version'],
     'Set up npm and npx',
   );
   assertRequiredRun(

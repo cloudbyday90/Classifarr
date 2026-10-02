@@ -3,10 +3,11 @@
   "version": "0.48.4-beta",
   "private": true,
   "type": "module",
+  "packageManager": "npm@12.2.0",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.18.1 <25",
-    "npm": ">=12.0.2 <13"
+    "npm": ">=12.2.0 <13"
   },
   "scripts": {
     "docker:smart": "node scripts/docker-compose-smart.mjs",
@@ -122,7 +123,7 @@
     "db:check-schema:live": "node scripts/check-schema-snapshot.mjs",
     "docker:smoke:pgss": "node scripts/check-pg-stat-startup-smoke.mjs",
     "lint:docs": "markdownlint-cli2",
-    "test:tooling:dependencies": "node --test scripts/__tests__/yaml-merge-budget.test.mjs scripts/__tests__/markdown-linkify-security.test.mjs",
+    "test:tooling:dependencies": "node --test scripts/__tests__/yaml-merge-budget.test.mjs scripts/__tests__/markdown-linkify-security.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",
     "esm:check-static-imports": "node scripts/report-static-import-candidates.mjs --check",

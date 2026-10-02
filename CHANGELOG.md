@@ -11,9 +11,15 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Strengthen Linux database-copy tests to check complete source preservation
+  and refusal to overwrite an existing destination; document platform skips.
+- Align npm and bundled npx on 12.2.0 across Docker, CI and development.
+  Require explicit dependency-installer review, retain locked package versions,
+  and document the upstream Windows ESLint deprecation warning without hiding it.
 - Upgrade pgvector to 0.8.7 to fix CVE-2026-103484, with forward-only database
   upgrades, preserved vector indexes, and fresh-install/release replay coverage.
-  Keep portable ARM64 builds free of x86-only AVX flags.
+  Keep portable ARM64 builds free of x86-only AVX flags and refresh the matching
+  static ownership-review records.
 - Improve Synology setup with explicit appdata mounts, optional read-only media
   access, and permission and upgrade guidance that preserves existing data.
 - Add opt-in media access for Unraid Compose, with explicit existing-folder

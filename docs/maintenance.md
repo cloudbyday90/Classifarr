@@ -59,6 +59,36 @@ Current repo split:
 - `client/`: Vue/Vite frontend dependencies
 - `server/`: Express/backend dependencies
 
+### Dependency Install Scripts
+
+Use npm 12.2.0 with the committed workspace `.npmrc` files. Every workspace
+enforces `strict-allow-scripts=true`; unreviewed dependency installers fail
+installation. Exact identities in `package.json` record the review decision.
+
+When updating a dependency with an installer:
+
+1. Inspect its locked source, lifecycle command, network use and native fallback.
+2. Run `npm --prefix server install-scripts ls --json` (or the affected workspace).
+   This lists **unreviewed** scripts, not all scripts. An empty list does not
+   mean installers are absent or universally allowed.
+3. Record an exact-version `allowScripts` decision in that workspace. Registry
+   packages use `name@version`; local sources use their source identity, not
+   their self-declared name/version. Do not approve all packages or use a wildcard.
+4. Run a clean `npm ci`, affected tests and native binding checks. Verify Linux
+   image builds when production/native dependencies change.
+5. Run `npm run test:tooling:dependencies` from the root with the pinned npm.
+
+Currently only `bcrypt@6.0.0` is allowed. Optional native fallback and telemetry
+installers remain denied; shipped platform bindings still need testing.
+Never set `dangerously-allow-all-scripts` or use `ignore-scripts` to conceal a
+failed review in production/CI. Do not commit credentials in `.npmrc`.
+This policy restricts dependency installation hooks, not runtime execution or
+explicit project scripts; it is not a sandbox.
+
+Keep npm updates separate from application dependency sweeps. Preserve lockfile
+versions/integrities unless that dependency is deliberately under review. See
+the [npm 12.2 design](architecture/npm-12-2-design.md).
+
 ## Verification Expectations
 
 For routine npm maintenance, use the smallest verification surface that matches the change:
@@ -78,6 +108,10 @@ For routine npm maintenance, use the smallest verification surface that matches 
   - `npm --prefix server install`
   - `npm --prefix server run test:unit`
   - `npm --prefix server test` when Docker-backed integration prerequisites are available
+
+Report platform skips separately from passing tests. The Linux-only
+[migration-copy case](testing-linux-filesystem.md) must run on Linux (CI, WSL or
+a disposable container) before claiming coverage for database-copy behavior.
 
 ## CI and Runtime Version Policy
 
