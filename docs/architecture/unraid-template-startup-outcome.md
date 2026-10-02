@@ -90,7 +90,12 @@ merging on May 30. The current maintainer has an existing open
 [Classifarr discussion #372](https://github.com/nwithan8/unraid_templates/discussions/372)
 and directs questions there; GitHub Issues are disabled. The submission guide
 records that history and the correct handoff route. No new thread or comment
-was posted during this review.
+was posted during the initial review. After subsequent user authorization,
+the [metadata-only update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+was posted and read back on 2026-10-02. It includes a concrete diff against
+the maintainer's template, validated against their XSD, with all deployment
+settings preserved. Upstream application and catalog acceptance remain pending;
+see the submission guide for the source revision and remaining steps.
 
 ## Local Startup Evidence
 

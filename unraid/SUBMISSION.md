@@ -16,10 +16,12 @@ Recheck the listing's Template link before acting because ownership can change.
 
 The maintainer's GitHub README directs questions to Discussions; GitHub Issues
 are disabled. The existing [Classifarr discussion #372](https://github.com/nwithan8/unraid_templates/discussions/372)
-was open with no comments when checked. Prefer a focused reply there to agree
-the update route before preparing changes against the Codeberg source. A saved
+was open with no comments during the initial review. The authorized
+[update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+has now been posted there with a metadata-only patch. A saved
 GitHub CLI login can access that discussion, but does not establish a Codeberg
-or Unraid login. No reply has been posted by this work.
+or Unraid login. Do not create a duplicate thread or a PR against the read-only
+mirror while waiting for the maintainer's preferred source contribution route.
 
 ## Previous Submission And Lessons
 
@@ -110,19 +112,43 @@ the validation/review sequence, and the [portal announcement](https://unraid.net
 explains duplicate detection. Existing legacy templates are comparison evidence,
 not exemptions from current submission checks.
 
-## Outstanding Handoff
+## Submitted Handoff And Remaining Acceptance
 
-The local metadata cleanup is ready for review, not a submitted catalog change.
-The external template's mandatory-Ollama wording and stable label should be
-reviewed with its maintainer. Preserve its existing appdata/identity defaults
-when preparing that patch; do not replace the whole file with ours.
+On 2026-10-02, after user authorization, the saved GitHub CLI account
+`cloudbyday90` posted the [metadata update request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+in the existing Classifarr discussion. Readback verified the account, exact
+message and included diff. This is a maintainer update request, not an accepted
+CA submission or an applied upstream change.
 
-The proposed discussion reply should link the old PR and the source-bound test
-outcome, request the preferred Codeberg patch or agreed ownership-transfer path,
-and keep metadata corrections separate from optional media mounts or networking.
-Wait for authorization to post, and record the resulting comment URL here.
+The patch is against mirrored revision
+`4e5a0b91b4904e14292fc8e9bef8bef3930835ff`, Classifarr template blob
+`3bb7b53ef27a9e885c95c3e4e17e19b2a7d90e0b`. It changes only TagDescription,
+Overview, Beta, Category, ExtraSearchTerms and Requires. Both the original and
+proposal passed the maintainer's XSD with network resolution disabled. A
+structural comparison confirmed all other elements and attributes were
+unchanged. Keep that repository's element order and `True` beta spelling;
+do not substitute our differently structured project XML wholesale.
 
-No external submission, maintainer message, PR, ownership transfer or release
-was performed in this work. The counted survey and measured local checks are
+The request links the earlier PR and source-bound CI results, corrects the
+mandatory-Ollama and stable wording, and asks whether the maintainer prefers
+to apply the included patch or receive a Codeberg PR. Published-release README
+requirements and the current prerelease designation were rechecked. No new
+mount, host-gateway option, restart policy or runtime setting was proposed.
+
+Remaining steps:
+
+1. Read the maintainer's response in the same discussion; follow the confirmed
+   contribution route. If Codeberg authentication is needed, obtain access
+   without treating the GitHub login as interchangeable or creating an account.
+2. Rebase any requested patch against the current source and rerun the schema
+   and preserved-settings checks. Keep functional additions separately scoped.
+3. After application, verify the source diff and the live CA metadata before
+   calling the catalog update complete. The template blob was still unchanged
+   immediately after posting the request.
+4. Complete actual Unraid saved-installation acceptance independently; neither
+   XML validation nor Docker Desktop testing proves that host-specific result.
+
+No new CA submission, external PR, ownership transfer, release or live
+deployment was performed. The counted survey and measured local checks are
 recorded in the [design](../docs/architecture/unraid-template-startup-design.md)
 and [outcome](../docs/architecture/unraid-template-startup-outcome.md).
