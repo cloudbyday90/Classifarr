@@ -1,8 +1,8 @@
 # pgvector 0.8.7 validation outcome
 
-Date: 2 October 2026. Scope: repository and disposable local databases/images.
-The running Classifarr container and persistent library data were not updated.
-No release, remote PR merge or routing configuration change was performed.
+Date: 2 October 2026. Scope: repository, disposable validation databases/images,
+and the subsequently requested local Compose deployment. No release, remote PR
+merge or routing configuration change was performed.
 
 ## Completed checks
 
@@ -71,9 +71,63 @@ The final ARM64 validation image is
 Builds reused unrelated cached layers; neither is described as a full no-cache
 rebuild. The changed pgvector compilation layer was executed.
 
-The live container remained healthy with its original container ID and start
-time. A read-only check still reports pgvector **0.8.6** there: deployment is
-still required to protect that running instance.
+The live container remained on 0.8.6 during those isolated tests. The subsequent
+authorized deployment below updated it to 0.8.7.
+
+## Local no-cache deployment
+
+Source revision: `db329d57e1128ac53c9049ade6f9beddc086fda8`.
+
+- Created a custom-format `pg_dump` backup before deployment; `pg_restore --list`
+  successfully read its archive directory. This is an archive-readability check,
+  not a full restore rehearsal of the private live database. The backup remains
+  under the existing persistent `data/backups/` mount, excluded from Git.
+- Retained the previous image as
+  `classifarr:rollback-pre-pgvector-087-20261002`. Image rollback alone is not a
+  database rollback; retain the pre-upgrade backup as well.
+- Ran `docker compose -f docker-compose.yml build --no-cache` with the source
+  revision supplied as `VCS_REF`. Every build step ran; the existing pinned Node
+  base image was reused, not updated to a different Node release.
+- Repeated all four startup/upgrade smoke scenarios and all four amd64 native
+  variant probes against this exact image. A synthetic bcrypt hash/compare probe
+  also passed. These probes used disposable containers, not live tables.
+- Recreated only the local `classifarr` service using `--no-deps --no-build
+  --pull never --force-recreate`. Existing data/media mounts, routing settings,
+  the read-only root filesystem and the 2 GiB memory limit stayed unchanged.
+  Other running applications were left untouched. No image was published.
+
+The deployed image is
+`sha256:09c436ac8508a273c6ad5606b9dcacf76f7fabb7b42243074bf64145fd7d2282`.
+Its revision label matches the source commit. Startup selected the packaged
+AVX2 library; PostgreSQL restarted and reports vector **0.8.7**. A normal vector
+distance query passed. All three pending migrations completed, including two
+previously committed recovery-tracking migrations; the ledger contains 313
+entries. The health endpoint reports a connected database.
+
+Library, classification-history and classification-embedding row counts were
+unchanged immediately after startup. The existing startup retention policy
+removed 2,446 expired **completed queue records**, recorded in the cleanup
+history. These are included in the pre-upgrade backup; this deployment did not
+manually delete library inventory or embeddings.
+
+Short post-startup observations showed roughly 378–414 MiB of Docker-reported
+memory use against the 2 GiB limit. A delayed sync briefly used about 69% of one
+CPU before returning below 1%; no restart, OOM kill, memory-limit failure or
+idle-in-transaction database session was observed. Existing configuration has
+no container CPU quota or PID limit. This is a short startup observation, not a
+peak-load or long-running leak test.
+
+### Remaining operational warnings
+
+The rebuild does **not** clear unrelated ingestion conditions. During delayed
+sync, two libraries still reported `legacy_owner_unknown`; their takeover
+safety checks were preserved. Three other libraries reported ten source items
+with conflicting provider IDs. No new application ERROR records appeared in
+the initial observation window. Two startup queries took approximately 1.2 and
+1.5 seconds and produced slow-query warnings.
+
+Review ownership recovery and source identity conflicts separately. A healthy
+container and patched extension do not mean every library import is complete.
 
 ## PR request
 
@@ -84,9 +138,18 @@ PR was substituted.
 ## Limits and next work
 
 The dependency fix does not prove the whole platform is vulnerability-free.
-No exploit payload was run, and no live installation has been patched by these
-tests. Real NAS hardware remains a separate deployment acceptance check.
+No exploit payload was run. Only the explicitly requested local installation
+was updated; other installations need a patched image rollout. Real NAS
+hardware remains a separate deployment acceptance check.
 
 The next dependency round should update Node/npm/Alpine together, leaving other
-package upgrades separate enough to diagnose regressions. Follow the
-[design and rollout guidance](pgvector-0-8-7-design.md) before deployment.
+package upgrades separate enough to diagnose regressions. On 2 October, the
+deployed versions remain Node 24.18.1, npm/npx 12.0.2 and Alpine 3.24.1. The
+reviewed targets are [Node 24.21.0 LTS](https://nodejs.org/en/blog/release/v24.21.0),
+[npm/npx 12.2.0](https://github.com/npm/cli/blob/latest/CHANGELOG.md) and
+[Alpine 3.24.2](https://alpinelinux.org/posts/Alpine-3.21.8-3.22.6-3.23.6-3.24.2-released.html).
+Keep PostgreSQL 18.6 and the 17.11 bridge: both are current in the
+[official release archive](https://www.postgresql.org/docs/release/).
+Repeat native dependency, database-upgrade, fresh-install and persisted-data
+checks before deploying that runtime update. Follow the
+[design and rollout guidance](pgvector-0-8-7-design.md).
