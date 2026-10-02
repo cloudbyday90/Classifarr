@@ -2,12 +2,19 @@
 
 ## Status
 
-Audit date: 2026-08-09.
+Audit date: 2026-10-01 (local date; some checks completed on October 2 UTC).
 
-Classifarr is not yet ready to cut a new public tag because no target version
-or final source revision has been selected and accepted in CI. The current
-public beta label is `v0.47.5c-beta`; package manifests use
-`0.47.5-c.beta`.
+Do not cut a release yet. The new frozen-image, three-profile rehearsal remains
+blocked at interrupted-backfill evidence. A green ordinary CI run does not
+supersede this stricter acceptance failure. See the separate
+[rehearsal design](frozen-release-rehearsal-design.md) and
+[outcome](frozen-release-rehearsal-outcome.md).
+
+The newest published release, including prereleases, is `v0.48.4-beta`
+(2026-08-29). Root, server and client package manifests remain `0.48.4-beta`.
+GitHub's non-prerelease `releases/latest` endpoint instead returns
+`v0.48.0b-beta` (2026-08-09); do not use that endpoint as evidence of the newest
+beta. This work changes neither versions nor release tags.
 
 This audit separates three decisions that must not be conflated:
 
@@ -15,9 +22,9 @@ This audit separates three decisions that must not be conflated:
 2. accept one deployed installation; and
 3. close the separate compatibility-removal maintenance track.
 
-## Current 8R.36.11 Evidence
+## Historical 8R.36.11 Evidence
 
-The current launcher run produced a fingerprint-valid
+The August audit recorded a launcher run that produced a fingerprint-valid
 `policy.storage_closure_validation_evidence.v3` artifact with all four fixed
 checks passed: focused tests, server lint, scoped Markdown lint, and the full
 server suite. The same run correctly returned blocked after writing explicit
@@ -27,6 +34,47 @@ approved active-installation removal evidence.
 This is not a product runtime failure. Native policy conversion and normal
 automation remain available. It prevents only an unsupported claim that the
 compatibility-retirement work is complete.
+
+That historical artifact was not rerun or renewed by this release rehearsal.
+
+## Current Acceptance And Remaining Work
+
+Source `c1ff42daa2cc5c1921a59076c6451df146bdfe94` passed
+[CI/CD run 36953823331](https://github.com/cloudbyday90/Classifarr/actions/runs/36953823331),
+including ordinary fresh/published-upgrade acceptance, database tests and the
+release readout. CodeQL, Gitleaks, OSV, Trivy, copyright and the resource-capacity
+workflow also passed for that source. Local backend unit validation passed
+1,615 suites and 49,403 tests, with one existing skip.
+
+These are distinct from the heavier local rehearsal. Ordinary CI installation
+acceptance uses the standard, non-budgeted profile. The manually dispatched
+installation-budget mode and automatic capacity smoke are not a long soak or
+proof that all three saved deployment profiles passed one image.
+
+Release blockers and scope decisions, in order:
+
+1. Resolve the interrupted-backfill evidence discrepancy, then pass the entire
+   frozen matrix on a clean source revision. Do not combine successes from
+   different candidate images or count unexecuted profiles as passed.
+2. Run a bounded sustained workload and recovery soak, checking CPU throttling,
+   memory growth, PID/connection limits, queue progress and return to idle.
+   Point-in-time snapshots cannot establish peaks or minimum requirements.
+3. Accept operator flows on an actual saved Unraid/Community Apps installation,
+   including unchanged settings, imports, recovery and clear accessible status.
+   A Linux container with Unraid-style IDs is not physical Unraid certification.
+4. Define the supported upgrade floor. The pinned published baseline is
+   `v0.48.4-beta`; older versions, including the non-prerelease latest label,
+   require separate evidence if included in the release promise.
+5. Select the version and freeze the final source; repeat applicable checks
+   after version/runtime changes. Verify supported architectures and immutable
+   published digests through the protected publication/consumer workflow only
+   after an explicit release decision.
+
+Recovery completion means import plus metadata. Optional AI/embedding jobs must
+not prevent completion, and provider correctness/AI accuracy remain separate
+evaluation work. The compatible maintenance worker uses the current OS/database
+identity; it is not full privilege separation or authorization to take over an
+unknown historical writer.
 
 ## Release Decisions
 
@@ -41,7 +89,7 @@ Required before creating a new `v*` tag:
    `CI/CD Pipeline` run to pass repository validation, isolated database
    acceptance, and the `policy-release-acceptance-readout` artifact.
 3. Confirm the GitHub security workflows and Dependabot alert queue for the
-   release revision. The audit found zero open Dependabot alerts on 2026-08-09;
+   release revision. The audit found zero open Dependabot alerts on 2026-10-01;
    that is a point-in-time result and must be checked again before tagging.
 4. Create the matching `v*` tag only after the accepted commit is known. The
    tag workflow blocks image publication unless the release-acceptance job
@@ -115,6 +163,12 @@ Recording](release-candidate-publication-and-evidence-recording.md).
    digest smoke to pass for every release tag. Retain their 10R.4.3 bounded
    evidence asset in an immutable release record before communicating a selected
    release as available.
+
+Administrative controls were rechecked on 2026-10-01: both
+`release-acceptance` and `release-publication` allow only `v*` tags, disable
+administrator bypass and have no required reviewer. Immutable releases are
+enabled. These controls do not by themselves prove candidate acceptance or an
+independent human approval.
 
 ## Research Basis
 
