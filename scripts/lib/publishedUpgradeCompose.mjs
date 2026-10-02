@@ -52,12 +52,27 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     Object.assign(env, { CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128',
       CLASSIFARR_RESOURCE_STUDY_MEMORY: '2g' });
   }
+  const commandDiagnostics = [];
+  const reportDiagnostic = message => {
+    if (commandDiagnostics.length < 3) commandDiagnostics.push(message);
+    report(message);
+  };
   const invoke = (binary, args, timeout = 120_000, allowFailure = false, input) => {
+    let result;
     try {
-      const result = run(binary, args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
+      result = run(binary, args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
         encoding: 'utf8', timeout, maxBuffer: 8 * 1024 * 1024, input });
       if (!result.error && (allowFailure || result.status === 0) && typeof result.stdout === 'string') return result;
     } catch { /* Never propagate command output or credentials. */ }
+    // Fixed classifications only: never print argument arrays, stdout or stderr.
+    const phase = args.at(-1);
+    reportDiagnostic(`UPGRADE_COMMAND ${JSON.stringify({ binary: binary === 'docker' ? 'docker' : 'other',
+      operation: ['exec', 'up', 'down', 'build', 'pull', 'stop', 'kill', 'inspect', 'config', 'ps'].find(value => args.includes(value)) ?? 'other',
+      probe: ['fresh', 'upgraded', 'interrupt', 'retry', 'handoff', 'normal', 'scheduled',
+        'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume', 'scheduled-crash-budget-arm',
+        'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume',
+        'budget-prepare', 'budget-pressure', 'budget-snapshot'].includes(phase) ? phase : null,
+      exitCode: Number.isInteger(result?.status) ? result.status : null, timedOut: result?.error?.code === 'ETIMEDOUT' })}`);
     throw new Error(`upgrade_command_failed:${binary}:${args[0]}`);
   };
   const docker = (args, ...options) => invoke('docker', args, ...options);
@@ -101,7 +116,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     const fresh = probe('fresh');
     passed('fresh_install_and_operational_seeds');
     stage = 'fresh_scheduler';
-    const recoveryTools = { compose, docker, probe, poll, start, setStage: value => { stage = value; } };
+    const recoveryTools = { compose, docker, probe, poll, start, report: reportDiagnostic, setStage: value => { stage = value; } };
     const freshBudget = resourceBudget ? await runInstallationBudgetRecovery(recoveryTools) : null;
     const crashRecovery = freshBudget?.recovery ?? await runScheduledCrashRecovery(recoveryTools);
     const freshScheduler = SCHEDULED_INSTALLATION_EXPECTED;
@@ -185,7 +200,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       const id = container.stdout.trim();
       if (!container.ok || !/^[a-f0-9]{12,64}$/.test(id)) throw new Error('diagnostic_target_unavailable');
       const diagnostic = formatContainerStartupDiagnostic(collectContainerStartupDiagnostic(id, { command }));
-      saveDiagnostic(project, `${stage}\n${diagnostic}\n`);
+      saveDiagnostic(project, `${stage}\n${commandDiagnostics.join('\n')}\n${diagnostic}\n`);
       report(diagnostic);
       report(`UPGRADE_DIAGNOSTIC .tmp/published-upgrade/${project}/failure.log`);
     } catch { report('UPGRADE_DIAGNOSTIC unavailable'); }

@@ -6,7 +6,7 @@ import { assertDockerStudyBudget } from '../../server/src/scripts/resourceStudyB
 import { installationBudgetEvidence, installationPressureEvidence } from '../../server/src/scripts/installationBudgetContract.mjs';
 
 /** Reuse the normal entrypoint and real scheduler; no second recovery orchestrator. */
-export async function runInstallationBudgetRecovery({ compose, docker, probe, start, poll, setStage,
+export async function runInstallationBudgetRecovery({ compose, docker, probe, start, poll, setStage, report,
   now = () => performance.now() }) {
   const verifyDocker = () => {
     const id = compose(['ps', '--all', '--quiet', 'app']).stdout.trim();
@@ -21,7 +21,7 @@ export async function runInstallationBudgetRecovery({ compose, docker, probe, st
   start('normal');
   verifyDocker();
   let pressure, restartReadyMs, recoveredAt;
-  const recovery = await runScheduledCrashRecovery({ compose, docker, probe, poll, setStage,
+  const recovery = await runScheduledCrashRecovery({ compose, docker, probe, poll, setStage, report,
     armPhase: 'scheduled-crash-budget-arm', beforeKill: () => { pressure = installationPressureEvidence(probe('budget-pressure')); },
     start: mode => {
       const startedAt = now();
@@ -32,7 +32,7 @@ export async function runInstallationBudgetRecovery({ compose, docker, probe, st
     } });
   const backfillRecoveryMs = now() - recoveredAt;
   const postRestart = probe('budget-snapshot');
-  const unfinishedBackfill = await runScheduledCrashRecovery({ compose, docker, probe, poll, setStage,
+  const unfinishedBackfill = await runScheduledCrashRecovery({ compose, docker, probe, poll, setStage, report,
     armPhase: 'scheduled-backlog-arm', start: mode => { start(mode); verifyDocker(); } });
   const evidence = installationBudgetEvidence({ budget: 'bounded', dockerLimits: 'verified', pressure,
     restartReadyMs, backfillRecoveryMs, postRestart, unfinishedBackfill, backfill: 'completed_original_inventory' });

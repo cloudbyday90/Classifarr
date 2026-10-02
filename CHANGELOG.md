@@ -16,6 +16,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   resource checks and fail-closed, source-bound release evidence. Supply the
   budgeted upgrade drill's required memory limit explicitly instead of relying
   on ambient configuration.
+- Make interrupted-backfill test checkpoints independent of movie/TV worker
+  ordering and retain sanitized failure details from detached test probes.
 - Track reviewed import recoveries through owned scan retries and verified
   metadata completion. Show concise progress and next steps, preserve unknown
   historical outcomes, and exclude optional AI jobs without new deployment settings.

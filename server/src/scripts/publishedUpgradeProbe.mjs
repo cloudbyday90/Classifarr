@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { installationFailureEvidence, validateInstallationFailure } from './installationFailureEvidence.mjs';
 import { assertUpgradeDrillEnvironment, readUpgradeFixture, databaseVersion } from './publishedUpgradeFixtures.mjs';
 import { drillRequest, waitFor } from './restoreRecoveryProcess.mjs';
 import { readRecoveryState } from './restoreRecoveryFixtures.mjs';
@@ -19,8 +20,15 @@ export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
   assert.ok(['fresh', 'scheduled', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume',
     'scheduled-crash-budget-arm', 'budget-prepare', 'budget-pressure', 'budget-snapshot',
-    'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume',
+    'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume', 'scheduled-backlog-failure',
     'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
+  if (phase === 'scheduled-backlog-failure') {
+    const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
+    assertInstallationBudgetEnvironment();
+    const text = await readFile('/app/data/upgrade-drill/unfinished-backfill-failed', 'utf8');
+    assert.ok(text.length <= 2048);
+    return validateInstallationFailure(JSON.parse(text));
+  }
   const db = await import('../config/database.mjs');
   let blocker;
   try {
@@ -133,7 +141,7 @@ if (import.meta.main) {
       try {
         const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
         assertInstallationBudgetEnvironment();
-        await writeFile('/app/data/upgrade-drill/unfinished-backfill-failed', 'failed', { flag: 'wx', mode: 0o600 });
+        await writeFile('/app/data/upgrade-drill/unfinished-backfill-failed', JSON.stringify(installationFailureEvidence(error)), { flag: 'wx', mode: 0o600 });
       } catch { /* Best effort, fixed marker only; never write outside the guarded drill. */ }
     }
     // Locations help diagnose synthetic assertions without logging values,

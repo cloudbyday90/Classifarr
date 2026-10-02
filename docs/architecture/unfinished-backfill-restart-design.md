@@ -15,8 +15,10 @@ AI providers remain disabled. No live library or routing setting is changed.
 
 1. Use only the existing collision-checked disposable Compose project, internal
    network and owned named volume, with 2 CPUs, 2 GiB and 128 PIDs.
-2. A guarded fixture-only database trigger pauses movie processing after the
-   real queue has committed its claim. A session advisory lock is the gate;
+2. A guarded fixture-only database trigger pauses processing for both target
+   libraries after the real queue has committed its claim. This October 1 update
+   removes an ordering assumption: TV tasks must not finish before the unfinished
+   checkpoint is captured. A session advisory lock is the gate;
    the production worker, retry policy and ten-minute visibility lease are unchanged.
 3. A transactional fixture ledger records claim and completion transitions. It
    observes task updates; it never repairs or replaces them.
@@ -27,7 +29,7 @@ AI providers remain disabled. No live library or routing setting is changed.
 5. Kill only the owned app with SIGKILL; require exit 137 without OOM. Restart the
    normal entrypoint on the same volume. The killed database session releases
    the gate; the trigger remains present and uncontended.
-6. A read-only observer checks sibling TV progress before the old movie claims
+6. A read-only observer checks pending sibling TV progress before the old claims
    expire, then waits for normal reclamation and current library profiles. It
    neither reseeds nor invokes workers nor alters statuses or deadlines.
 7. Require unchanged committed capture/handoff, inventory and task identities, one necessary reclaim per

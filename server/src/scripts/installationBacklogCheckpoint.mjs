@@ -34,8 +34,9 @@ export function assertBacklogCheckpoint(value) {
   const identity = row => `${row.library_id}:${row.item_id ?? row.id}:${row.media_type}`;
   assert.deepEqual(value.tasks.map(identity).sort(), value.inventory.map(identity).sort());
   const processing = value.tasks.filter(row => row.status === 'processing');
-  assert.ok(processing.length > 0 && processing.length < 600);
-  assert.ok(value.tasks.some(row => row.status === 'pending'));
+  assert.ok(processing.length > 0 && processing.length < 300);
+  assert.ok(processing.some(row => row.media_type === 'movie'));
+  assert.ok(value.tasks.some(row => row.status === 'pending' && row.media_type === 'tv'));
   for (const row of value.tasks) {
     assert.ok(id(row.id));
     assert.equal(row.task_type, 'metadata_enrichment');
@@ -44,7 +45,6 @@ export function assertBacklogCheckpoint(value) {
     assert.ok(['pending', 'processing'].includes(row.status));
     assert.equal(row.starts, row.status === 'processing' ? 1 : 0);
     if (row.status === 'processing') {
-      assert.equal(row.media_type, 'movie');
       assert.ok(Number.isFinite(row.started_ms) && row.started_ms > 0);
       assert.equal(row.visible_ms - row.started_ms, 600000);
     } else {

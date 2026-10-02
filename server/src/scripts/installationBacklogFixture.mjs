@@ -17,7 +17,7 @@ export async function installBacklogGate(db, libraries) {
       CREATE FUNCTION installation_backlog_gate() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
         IF NEW.enrichment_status = 'processing' AND EXISTS (
-          SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id AND media_type='movie') THEN
+          SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id) THEN
           PERFORM pg_advisory_xact_lock(${BACKLOG_GATE_LOCK});
         END IF;
         RETURN NEW;

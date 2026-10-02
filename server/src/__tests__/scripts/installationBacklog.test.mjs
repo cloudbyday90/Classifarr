@@ -33,6 +33,23 @@ test('checkpoint covers 600 stable identities across two pages per media type', 
   expect(sawSiblingProgress(tasks, value.tasks)).toBe(true);
 });
 
+test('mixed claimed work is held before the crash while preserving pending TV sibling work', () => {
+  const value = checkpoint();
+  value.tasks[300] = { ...value.tasks[300], status: 'processing', starts: 1, started_ms: 2000, visible_ms: 602000 };
+  expect(assertBacklogCheckpoint(value)).toBe(value);
+  const tasks = completed(value.tasks);
+  expect(() => assertBacklogCompleted(tasks, value.tasks)).not.toThrow();
+  expect(sawSiblingProgress(tasks, value.tasks)).toBe(true);
+  value.tasks[301].completions = 1;
+  expect(() => assertBacklogCheckpoint(value)).toThrow();
+});
+
+test('synthetic gate holds both media types instead of relying on worker ordering', () => {
+  const source = readFileSync(new URL('../../scripts/installationBacklogFixture.mjs', import.meta.url), 'utf8');
+  expect(source).toContain('SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id)');
+  expect(source).not.toContain("AND media_type='movie'");
+});
+
 test.each([
   value => { value.version = 2; }, value => { value.ownerPid = 0; }, value => { value.databaseEpoch = null; },
   value => { value.libraries[1].library_id = 1; }, value => { value.libraries[0].run_id = 'bad'; },

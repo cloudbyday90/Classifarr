@@ -167,6 +167,27 @@ test('borrowed image mismatch cleans project but never deletes the borrowed imag
   expect(operations(run).at(-1)).toContain('down');
 });
 
+test('command failure identifies bounded phase and timeout without raw output', async () => {
+  const run = mockRunner((_cmd, args) => args.at(-1) === 'scheduled-backlog-resume'
+    ? { status: null, stdout: 'private-value', stderr: 'private-value', error: { code: 'ETIMEDOUT' } } : undefined);
+  const diagnostic = jest.fn();
+  await expect(runWith(run, { resourceBudget: true, report: diagnostic })).rejects.toThrow('published_upgrade_failed:');
+  const output = diagnostic.mock.calls.map(([line]) => line).join('\n');
+  expect(output).toContain('"probe":"scheduled-backlog-resume","exitCode":null,"timedOut":true');
+  expect(output).not.toContain('private-value');
+});
+
+test('detached probe evidence is retained in the sanitized failure file', async () => {
+  const evidence = { category: 'assertion', code: null, stage: null, locations: ['installationBacklogCheckpoint.mjs:42:12'] };
+  const run = mockRunner((_cmd, args) => args.at(-1)?.endsWith('unfinished-backfill-failed') ? { status: 0, stdout: '' }
+    : args.at(-1) === 'scheduled-backlog-failure' ? { status: 0, stdout: `UPGRADE_PROBE ${JSON.stringify({ ...evidence, secret: 'private' })}` } : undefined);
+  const saveDiagnostic = jest.fn();
+  await expect(runWith(run, { resourceBudget: true, saveDiagnostic })).rejects.toThrow('published_upgrade_failed:');
+  const saved = saveDiagnostic.mock.calls[0][1];
+  expect(saved).toContain(`UPGRADE_BACKLOG_FAILURE ${JSON.stringify(evidence)}`);
+  expect(saved).not.toContain('private');
+});
+
 test.each([['fresh_scheduler', 'scheduled-crash-ready'], ['fresh_backfill_crash', 'scheduled-crash-resume'],
   ['upgrade_scheduler', 'scheduled']])('a stalled %s fails closed and still cleans resources', async (stage, phase) => {
   const run = mockRunner((_cmd, args) => args.at(-1) === phase
