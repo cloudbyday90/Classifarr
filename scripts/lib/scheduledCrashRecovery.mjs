@@ -12,13 +12,14 @@ export async function runScheduledCrashRecovery({ compose, docker, probe, poll, 
   const backlog = armPhase === 'scheduled-backlog-arm';
   const prefix = backlog ? 'scheduled-backlog' : 'scheduled-crash';
   const marker = backlog ? 'unfinished-backfill-ready' : 'scheduled-backfill-ready';
+  const failurePrefix = backlog ? 'UPGRADE_BACKLOG_FAILURE' : 'UPGRADE_CRASH_FAILURE';
   compose(['exec', '--detach', 'app', 'node', 'src/scripts/publishedUpgradeProbe.mjs', armPhase]);
   await poll(() => {
-    if (backlog && compose(['exec', '-T', 'app', 'test', '-f', '/app/data/upgrade-drill/unfinished-backfill-failed'],
+    if (compose(['exec', '-T', 'app', 'test', '-f', `/app/data/upgrade-drill/${backlog ? 'unfinished' : 'scheduled'}-backfill-failed`],
       10_000, true).status === 0) {
-      try { report(`UPGRADE_BACKLOG_FAILURE ${JSON.stringify(validateInstallationFailure(probe('scheduled-backlog-failure')))}`); }
-      catch { report('UPGRADE_BACKLOG_FAILURE unavailable'); }
-      throw new Error('upgrade_backlog_arm_failed');
+      try { report(`${failurePrefix} ${JSON.stringify(validateInstallationFailure(probe(`${prefix}-failure`)))}`); }
+      catch { report(`${failurePrefix} unavailable`); }
+      throw new Error(backlog ? 'upgrade_backlog_arm_failed' : 'upgrade_crash_arm_failed');
     }
     return compose(['exec', '-T', 'app', 'test', '-f', `/app/data/upgrade-drill/${marker}`], 10_000, true).status === 0;
   }, 'scheduled_crash_boundary', 420_000);

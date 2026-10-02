@@ -31,6 +31,10 @@ storage. Only the image may change during its published-to-candidate upgrade.
   Cleanup failure blocks acceptance. Never prune shared Docker resources.
 - Reconstruct receipt fields from validated evidence; do not serialize raw
   commands, credentials, provider payloads, SQL or exception text.
+- Detached crash and backlog probes publish guarded, size-bounded failure
+  markers. Retain only fixed categories, SQLSTATE and internal code locations.
+  Pressure injection verifies monotonic elapsed time across early timer wakes;
+  the existing five-to-fifteen-second hold contract remains unchanged.
 - A local image ID is not a published registry manifest digest or attestation.
   This rehearsal cannot authorize publication, certify a real Unraid host,
   establish live-provider accuracy or prove all historical backup formats.
@@ -71,6 +75,9 @@ live documentation pages, not archived September snapshots.
 - [W3C status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
   requires programmatically determinable meaningful updates. No UI changes are
   needed here; keep accessibility acceptance separate from command-line receipts.
+- [Node timer semantics](https://nodejs.org/download/release/v22.4.1/docs/api/timers.html)
+  does not guarantee exact callback timing. Measure the hold with the monotonic
+  clock instead of assuming a requested timer delay proves elapsed duration.
 
 ## Validation contract
 

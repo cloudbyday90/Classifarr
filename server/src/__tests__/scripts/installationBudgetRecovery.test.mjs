@@ -71,6 +71,27 @@ test('holds until denial, releases every client, verifies fresh SQL and bounded 
   expect(test.clients.every(client => client.config.connectionTimeoutMillis === 1000 && client.config.query_timeout === 1000)).toBe(true);
   expect(installationPressureEvidence(result)).toEqual(result);
 });
+
+test('an early timer wake cannot shorten the actual pressure hold', async () => {
+  const test = scenario();
+  const sleep = test.options.sleep;
+  const waits = [];
+  test.options.sleep = async ms => { waits.push(ms); await sleep(waits.length === 1 ? ms - 0.5 : ms); };
+  const result = await exerciseInstallationConnectionPressure(test.owner, test.options);
+  expect(waits).toEqual([5000, 1]);
+  expect(result.heldMs).toBe(5000.5);
+  expect(test.active).toBe(0);
+});
+
+test.each(['stalled', 'late'])('a %s clock fails within bounded wakes and releases pressure', async mode => {
+  const test = scenario();
+  const sleep = test.options.sleep;
+  const waits = jest.fn(async ms => sleep(mode === 'stalled' ? 0 : ms + 15001));
+  test.options.sleep = waits;
+  await expect(exerciseInstallationConnectionPressure(test.owner, test.options)).rejects.toThrow();
+  expect(waits.mock.calls.length).toBeLessThanOrEqual(100);
+  expect(test.active).toBe(0);
+});
 test.each([{ code: 'ECONNREFUSED' }, { neverFull: true }, { badHealth: true }, { leaked: 1 }, { max: '100' }, { idleError: true }])(
   'fault injection fails safely and always releases held connections %j', async options => {
     const test = scenario(options);
@@ -90,7 +111,7 @@ test('all destructive/injected paths reject a normal environment before database
 });
 
 function tools({ dockerCpus = 2e9, badPressure = false } = {}) {
-  const compose = jest.fn(args => ({ status: args.at(-1)?.endsWith('unfinished-backfill-failed') ? 1 : 0,
+  const compose = jest.fn(args => ({ status: args.at(-1)?.endsWith('-backfill-failed') ? 1 : 0,
     stdout: args[0] === 'ps' ? 'a'.repeat(64) : '' }));
   const docker = jest.fn(args => ({ stdout: args.includes('{{.State.Status}}') ? 'exited'
     : args.includes('{{.State.ExitCode}} {{.State.OOMKilled}}') ? '137 false'

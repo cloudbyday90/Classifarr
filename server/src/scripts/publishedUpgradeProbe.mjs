@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { installationFailureEvidence, validateInstallationFailure } from './installationFailureEvidence.mjs';
 import { assertUpgradeDrillEnvironment, readUpgradeFixture, databaseVersion } from './publishedUpgradeFixtures.mjs';
 import { drillRequest, waitFor } from './restoreRecoveryProcess.mjs';
@@ -19,14 +19,19 @@ async function login(password) {
 export async function runUpgradeProbe(phase) {
   assertUpgradeDrillEnvironment();
   assert.ok(['fresh', 'scheduled', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume',
-    'scheduled-crash-budget-arm', 'budget-prepare', 'budget-pressure', 'budget-snapshot',
+    'scheduled-crash-budget-arm', 'scheduled-crash-failure', 'budget-prepare', 'budget-pressure', 'budget-snapshot',
     'scheduled-backlog-arm', 'scheduled-backlog-ready', 'scheduled-backlog-resume', 'scheduled-backlog-failure',
     'upgraded', 'interrupt', 'retry', 'handoff', 'normal'].includes(phase));
-  if (phase === 'scheduled-backlog-failure') {
-    const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
-    assertInstallationBudgetEnvironment();
-    const text = await readFile('/app/data/upgrade-drill/unfinished-backfill-failed', 'utf8');
-    assert.ok(text.length <= 2048);
+  if (['scheduled-backlog-failure', 'scheduled-crash-failure'].includes(phase)) {
+    if (phase === 'scheduled-backlog-failure') {
+      const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
+      assertInstallationBudgetEnvironment();
+    }
+    const path = `/app/data/upgrade-drill/${phase === 'scheduled-backlog-failure' ? 'unfinished' : 'scheduled'}-backfill-failed`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Two fixed paths selected only after the isolated-drill guard.
+    assert.ok((await stat(path)).size <= 2048);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- Same fixed, size-bounded diagnostic path.
+    const text = await readFile(path, 'utf8');
     return validateInstallationFailure(JSON.parse(text));
   }
   const db = await import('../config/database.mjs');
@@ -137,11 +142,17 @@ if (import.meta.main) {
     assert.equal(process.argv.length, 3);
     process.stdout.write(`UPGRADE_PROBE ${JSON.stringify(await runUpgradeProbe(process.argv[2]))}\n`);
   } catch (error) {
-    if (process.argv[2] === 'scheduled-backlog-arm') {
+    if (['scheduled-backlog-arm', 'scheduled-crash-arm', 'scheduled-crash-budget-arm'].includes(process.argv[2])) {
       try {
-        const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
-        assertInstallationBudgetEnvironment();
-        await writeFile('/app/data/upgrade-drill/unfinished-backfill-failed', JSON.stringify(installationFailureEvidence(error)), { flag: 'wx', mode: 0o600 });
+        assertUpgradeDrillEnvironment();
+        if (process.argv[2] !== 'scheduled-crash-arm') {
+          const { assertInstallationBudgetEnvironment } = await import('./installationConnectionPressure.mjs');
+          assertInstallationBudgetEnvironment();
+        }
+        await mkdir('/app/data/upgrade-drill', { recursive: true, mode: 0o700 });
+        const prefix = process.argv[2] === 'scheduled-backlog-arm' ? 'unfinished' : 'scheduled';
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- Two fixed paths, guarded disposable deployment, exclusive creation.
+        await writeFile(`/app/data/upgrade-drill/${prefix}-backfill-failed`, JSON.stringify(installationFailureEvidence(error)), { flag: 'wx', mode: 0o600 });
       } catch { /* Best effort, fixed marker only; never write outside the guarded drill. */ }
     }
     // Locations help diagnose synthetic assertions without logging values,

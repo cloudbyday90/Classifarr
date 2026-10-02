@@ -20,7 +20,7 @@ function mockRunner(override = () => undefined) {
   return jest.fn((command, args, options) => {
     const replacement = override(command, args, options);
     if (replacement) return replacement;
-    if (args.at(-1)?.endsWith('unfinished-backfill-failed')) return { status: 1, stdout: '' };
+    if (args.at(-1)?.endsWith('-backfill-failed')) return { status: 1, stdout: '' };
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = `sha256:${'a'.repeat(64)}`;
     if (args[0] === 'inspect') stdout = args.includes('{{.State.ExitCode}}') ? '1' : 'exited';

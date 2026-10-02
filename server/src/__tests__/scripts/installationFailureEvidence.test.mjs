@@ -2,6 +2,7 @@
 import { jest } from '@jest/globals';
 import { installationFailureEvidence, validateInstallationFailure } from '../../scripts/installationFailureEvidence.mjs';
 import { runScheduledCrashRecovery } from '../../../../scripts/lib/scheduledCrashRecovery.mjs';
+import { runUpgradeProbe } from '../../scripts/publishedUpgradeProbe.mjs';
 
 test.each([['ERR_ASSERTION', 'assertion', null], ['23505', 'database', '23505'], ['P0001', 'database', 'P0001'],
   ['XX000', 'database', 'XX000'], ['EPERM', 'other', null]])('classifies %s without raw values', (code, category, expectedCode) => {
@@ -31,13 +32,26 @@ test('marker reader reconstructs allowlisted fields only', () => {
     .toEqual({ category: 'other', code: null, stage: null, locations: [] });
 });
 
-test.each([true, false])('detached probe failure is visible without leaking raw marker data, valid=%s', async valid => {
+test.each(['scheduled-crash-failure', 'scheduled-backlog-failure'])('%s refuses normal runtime before reading files', async phase => {
+  const previous = process.env.CLASSIFARR_UPGRADE_DRILL;
+  delete process.env.CLASSIFARR_UPGRADE_DRILL;
+  try { await expect(runUpgradeProbe(phase)).rejects.toThrow(); }
+  finally {
+    if (previous === undefined) delete process.env.CLASSIFARR_UPGRADE_DRILL;
+    else process.env.CLASSIFARR_UPGRADE_DRILL = previous;
+  }
+});
+
+test.each(['scheduled-backlog-arm', 'scheduled-crash-arm', 'scheduled-crash-budget-arm']
+  .flatMap(armPhase => [true, false].map(valid => [armPhase, valid])))('detached %s failure is visible without raw data, valid=%s', async (armPhase, valid) => {
   const report = jest.fn();
   const compose = jest.fn(() => ({ status: 0 }));
   const probe = jest.fn(() => ({ category: valid ? 'assertion' : 'secret', code: null, stage: null, locations: [], secret: 'private' }));
-  await expect(runScheduledCrashRecovery({ compose, probe, report, armPhase: 'scheduled-backlog-arm',
-    poll: async check => check() })).rejects.toThrow('upgrade_backlog_arm_failed');
-  expect(probe).toHaveBeenCalledWith('scheduled-backlog-failure');
-  expect(report).toHaveBeenCalledWith(valid ? 'UPGRADE_BACKLOG_FAILURE {"category":"assertion","code":null,"stage":null,"locations":[]}'
-    : 'UPGRADE_BACKLOG_FAILURE unavailable');
+  const backlog = armPhase === 'scheduled-backlog-arm';
+  const prefix = backlog ? 'UPGRADE_BACKLOG_FAILURE' : 'UPGRADE_CRASH_FAILURE';
+  await expect(runScheduledCrashRecovery({ compose, probe, report, armPhase,
+    poll: async check => check() })).rejects.toThrow(backlog ? 'upgrade_backlog_arm_failed' : 'upgrade_crash_arm_failed');
+  expect(probe).toHaveBeenCalledWith(backlog ? 'scheduled-backlog-failure' : 'scheduled-crash-failure');
+  expect(report).toHaveBeenCalledWith(valid ? `${prefix} {"category":"assertion","code":null,"stage":null,"locations":[]}`
+    : `${prefix} unavailable`);
 });

@@ -53,8 +53,13 @@ export async function exerciseInstallationConnectionPressure(owner, { Client = p
     assert.equal(denialCode, '53300');
     assert.ok(clients.length > 0 && clients.length < 32);
     const heldAt = now();
-    await sleep(5000);
-    heldMs = now() - heldAt;
+    // Timers are approximate. Prove the elapsed hold, including an early wake,
+    // without relaxing the existing 5–15 second evidence contract.
+    heldMs = 0;
+    for (let wake = 0; heldMs < 5000 && wake < 100; wake += 1) {
+      await sleep(Math.max(1, Math.ceil(5000 - heldMs)));
+      heldMs = now() - heldAt;
+    }
     assert.equal(clientError, false);
     pressured = installationBudgetSnapshot(await cgroup());
   } finally {

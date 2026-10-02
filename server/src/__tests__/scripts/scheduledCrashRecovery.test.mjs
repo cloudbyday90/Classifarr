@@ -40,7 +40,8 @@ test.each([
 
 function runner({ boundary = SCHEDULED_CRASH_BOUNDARY, exit = '137 false', recovery = SCHEDULED_CRASH_RECOVERY,
   id = 'a'.repeat(64) } = {}) {
-  const compose = jest.fn(args => ({ status: 0, stdout: args[0] === 'ps' ? id : '' }));
+  const compose = jest.fn(args => ({ status: args.at(-1)?.endsWith('-backfill-failed') ? 1 : 0,
+    stdout: args[0] === 'ps' ? id : '' }));
   const docker = jest.fn(args => ({ stdout: args.includes('{{.State.Status}}') ? 'exited' : exit }));
   const probe = jest.fn(phase => phase === 'scheduled-crash-ready' ? boundary : recovery);
   const poll = jest.fn(async check => { expect(await check()).toBe(true); });
@@ -52,7 +53,8 @@ test('checks the held lock before killing and observes normal restart on the sam
   expect(tools.start).toHaveBeenCalledTimes(1);
   expect(tools.start).toHaveBeenCalledWith('normal');
   expect(tools.probe.mock.calls.flat()).toEqual(['scheduled-crash-ready', 'scheduled-crash-resume']);
-  expect(tools.probe.mock.invocationCallOrder[0]).toBeLessThan(tools.compose.mock.invocationCallOrder[3]);
+  const killIndex = tools.compose.mock.calls.findIndex(([args]) => args[0] === 'kill');
+  expect(tools.probe.mock.invocationCallOrder[0]).toBeLessThan(tools.compose.mock.invocationCallOrder[killIndex]);
   expect(tools.compose.mock.calls.map(([args]) => args[0])).not.toContain('down');
   expect(tools.setStage).toHaveBeenCalledWith('fresh_backfill_crash');
 });
