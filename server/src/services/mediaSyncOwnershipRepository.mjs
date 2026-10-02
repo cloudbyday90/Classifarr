@@ -1,10 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
+import { advanceRecoveryAttempt, recordRecoveryImport } from './ingestionRecoveryLifecycle.mjs';
 
 export function createMediaSyncOwnershipRepository(db, libraryId) {
   let runId;
-  const updateOwned = async (sql, values) => {
-    const result = await db.query(sql, [libraryId, runId, ...values]);
+  const updateOwned = async (sql, values, client = db) => {
+    const result = await client.query(sql, [libraryId, runId, ...values]);
     if (result.rowCount !== 1) throw new Error('ingestion_ownership_changed');
   };
   return {
@@ -47,6 +48,7 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
             retry_after=clock_timestamp()+make_interval(secs=>CASE WHEN $3
               THEN LEAST(3600,30*power(2,LEAST(library_ingestion_state.attempt_count,7))) ELSE 60 END+random()*30)`,
         [libraryId, runId, replay]);
+        await advanceRecoveryAttempt(client, libraryId, previous, runId);
         // Existing items or old completed syncs are not proof of a complete owned
         // capture. First adoption must backfill the whole library, even when an
         // incremental caller arrives before the watchdog. It is not a restart.
@@ -62,9 +64,12 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
         WHERE library_id=$1 AND run_id=$2`, [items, total]);
     },
     async finish(success, items = null) {
-      await updateOwned(`UPDATE library_ingestion_state SET phase=$3,items_processed=COALESCE($4::integer,items_processed),updated_at=clock_timestamp(),
-        retry_after=CASE WHEN $3='complete' THEN NULL ELSE GREATEST(retry_after,clock_timestamp()+interval '1 minute') END
-        WHERE library_id=$1 AND run_id=$2`, [success ? 'complete' : 'retry_wait', items]);
+      await db.withTransaction(async client => {
+        await updateOwned(`UPDATE library_ingestion_state SET phase=$3,items_processed=COALESCE($4::integer,items_processed),updated_at=clock_timestamp(),
+          retry_after=CASE WHEN $3='complete' THEN NULL ELSE GREATEST(retry_after,clock_timestamp()+interval '1 minute') END
+          WHERE library_id=$1 AND run_id=$2`, [success ? 'complete' : 'retry_wait', items], client);
+        if (success) await recordRecoveryImport(client, libraryId, runId);
+      });
     },
   };
 }

@@ -10,7 +10,7 @@
     </summary>
     <template v-if="opened">
       <p class="text-sm text-gray-300">
-        Recorded recoveries for your account. Import and backfill progress are shown separately above.
+        Your recovery requests and verified progress. Optional AI work is separate.
       </p>
       <Button
         :disabled="loading"
@@ -33,6 +33,7 @@
       <template v-if="history">
         <p role="status">
           {{ history.receipts.length ? `Recorded recoveries: ${history.receipts.length}.` : 'No retained recovery receipts found.' }}
+          <span v-if="history.receipts.length">Latest: {{ recoveryProgressView(history.receipts[0].progress).label }}.</span>
         </p>
         <p
           v-if="history.hasMore"
@@ -57,6 +58,7 @@
             <p class="break-all">
               Request: <code>{{ receipt.requestId }}</code>
             </p>
+            <IngestionRecoveryProgress :progress="receipt.progress" />
           </li>
         </ul>
         <p class="text-sm text-gray-300">
@@ -70,6 +72,8 @@
 <script setup>
 import { toRef } from 'vue'
 import Button from '@/components/common/Button.vue'
+import IngestionRecoveryProgress from './IngestionRecoveryProgress.vue'
+import { recoveryProgressView } from '@/utils/ingestionRecoveryProgress'
 import { useIngestionRecoveryHistory } from '@/composables/useIngestionRecoveryHistory'
 const props = defineProps({ libraryId: { type: Number, required: true } })
 const { opened, loading, history, error, refresh, setOpened } = useIngestionRecoveryHistory(toRef(props, 'libraryId'))

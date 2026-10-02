@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { NotFoundError } from '../utils/appError.mjs';
 import { projectReconciliationReceipt } from './legacyIngestionReceipt.mjs';
+import { addRecoveryProgress } from './ingestionRecoveryProgress.mjs';
 
 export const INGESTION_HISTORY_LIMIT = 20;
 
@@ -11,6 +12,7 @@ export async function readIngestionRecoveryHistory(db, request) {
   const { rows } = await db.query(`SELECT id,created_at,user_id,metadata FROM audit_log
     WHERE action='library_ingestion_reconciled' AND user_id=$1 AND metadata->>'libraryId'=$2
     ORDER BY id DESC LIMIT $3`, [request.actorId, String(request.libraryId), INGESTION_HISTORY_LIMIT + 1]);
-  return { receipts: rows.slice(0, INGESTION_HISTORY_LIMIT).map(row => projectReconciliationReceipt(row, request)),
+  const receipts = rows.slice(0, INGESTION_HISTORY_LIMIT).map(row => projectReconciliationReceipt(row, request));
+  return { receipts: await addRecoveryProgress(db, request, receipts),
     limit: INGESTION_HISTORY_LIMIT, hasMore: rows.length > INGESTION_HISTORY_LIMIT };
 }

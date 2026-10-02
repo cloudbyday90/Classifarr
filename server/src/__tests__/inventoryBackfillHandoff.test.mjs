@@ -88,14 +88,17 @@ test('refill drains durable demand before the ordinary global pass', async () =>
 
 test('the relay retains a bounded 5000-item scan budget per scheduled invocation', async () => {
   const page = jest.fn(async () => ({ queued: 250 }));
-  expect(await drainInventoryBackfillHandoffs({}, page)).toEqual({ queued: 5000 });
+  const verify = jest.fn(async () => ({ status: 'unavailable' }));
+  expect(await drainInventoryBackfillHandoffs({}, page, verify)).toEqual({ queued: 5000 });
+  expect(verify).toHaveBeenCalledTimes(1);
   expect(page).toHaveBeenCalledTimes(20);
 });
 test('the relay stops promptly when no eligible handoff remains', async () => {
   const page = jest.fn().mockResolvedValueOnce({ queued: 2 }).mockResolvedValueOnce({ queued: 0 }).mockResolvedValue(null);
-  expect(await drainInventoryBackfillHandoffs({}, page)).toEqual({ queued: 2 });
+  const verify = jest.fn(async () => ({ status: 'idle' }));
+  expect(await drainInventoryBackfillHandoffs({}, page, verify)).toEqual({ queued: 2 });
   expect(page).toHaveBeenCalledTimes(3);
-  expect(await drainInventoryBackfillHandoffs({}, page)).toBeNull();
+  expect(await drainInventoryBackfillHandoffs({}, page, verify)).toBeNull();
 });
 
 test('scheduled and manual refills share an inner lock distinct from the scheduler lock', async () => {

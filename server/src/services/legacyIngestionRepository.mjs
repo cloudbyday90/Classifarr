@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError } from '../utils/appError.mjs';
 import { projectReconciliationReceipt } from './legacyIngestionReceipt.mjs';
+import { startRecoveryProgress } from './ingestionRecoveryLifecycle.mjs';
 import { MEDIA_SYNC_OWNER_LOCK } from './mediaSyncLockKeys.mjs';
 import { LEGACY_MARKER_LIMIT, LEGACY_RECONCILIATION_ACTION } from './legacyIngestionContract.mjs';
 
@@ -58,6 +59,7 @@ export async function reconcileLegacyIngestion(db, snapshot, request) {
     syncIds, capture: snapshot.capture ? { generation: snapshot.capture.generation, source: snapshot.capture.source } : null,
     runId, workersStopped: true, verification: 'administrator_attestation', replay, resume: request.resume,
   })]);
+  await startRecoveryProgress(db, { auditId: audit.id, libraryId: request.libraryId, requestId: request.requestId, runId });
   return { auditId: audit.id, confirmedAt: audit.created_at, requestId: request.requestId,
     libraryId: request.libraryId, status: 'reconciled', replay };
 }

@@ -29,9 +29,10 @@ test('history is read-only, actor/library-scoped, bounded, and never claims inge
   expect(result.receipts.map(row => row.auditId)).toEqual(rows.slice(0, 20).map(row => row.id));
   expect(query.mock.calls[0][0]).toBe('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
   expect(query.mock.calls[1][0]).toBe("SET LOCAL statement_timeout='3s'");
-  expect(query).toHaveBeenLastCalledWith(expect.stringContaining('ORDER BY id DESC LIMIT $3'), [7, '4', 21]);
+  expect(query).toHaveBeenCalledWith(expect.stringContaining('ORDER BY id DESC LIMIT $3'), [7, '4', 21]);
   expect(result.receipts[0]).toEqual({ auditId: 30, requestId: rows[0].metadata.requestId, libraryId: 4,
-    confirmedAt: rows[0].created_at, status: 'reconciled', replay: 'scheduled' });
+    confirmedAt: rows[0].created_at, status: 'reconciled', replay: 'scheduled',
+    progress: { stage: 'not_tracked', reason: 'older_receipt' } });
   expect(own).not.toHaveBeenCalled();
   expect(query.mock.calls.some(([sql]) => /INSERT|UPDATE|DELETE/.test(sql))).toBe(false);
 });

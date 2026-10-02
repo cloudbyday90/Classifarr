@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Track reviewed import recoveries through owned scan retries and verified
+  metadata completion. Show concise progress and next steps, preserve unknown
+  historical outcomes, and exclude optional AI jobs without new deployment settings.
 - Stop automatic network/authentication retries for explicit import recovery
   confirmations; retain receipt lookup and operator-controlled same-request retry.
 - Add on-demand, administrator-scoped import recovery history backed by retained

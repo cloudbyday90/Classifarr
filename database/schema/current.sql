@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-01T23:23:19.121Z
--- Latest Migration: 20261001_230000_ingestion_recovery_history.sql
+-- Generated: 2026-10-02T00:04:36.228Z
+-- Latest Migration: 20261002_000000_ingestion_recovery_progress.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3886,6 +3886,42 @@ CREATE TABLE public.image_index_reconciliation_state (
     CONSTRAINT image_index_reconciliation_state_attempts_check CHECK (((attempts >= 0) AND (attempts <= 3))),
     CONSTRAINT image_index_reconciliation_state_singleton_check CHECK (singleton),
     CONSTRAINT image_index_reconciliation_state_task_id_check CHECK ((task_id > 0))
+);
+
+
+--
+-- Name: ingestion_recovery_progress; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ingestion_recovery_progress (
+    audit_id integer NOT NULL,
+    library_id integer NOT NULL,
+    request_id uuid NOT NULL,
+    run_id uuid NOT NULL,
+    stage text NOT NULL,
+    reason text,
+    source_id integer NOT NULL,
+    source_fingerprint text NOT NULL,
+    source_external_id text NOT NULL,
+    source_media_type text NOT NULL,
+    imported_at timestamp with time zone,
+    checked_at timestamp with time zone,
+    verified_at timestamp with time zone,
+    next_check_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    metadata_total integer,
+    metadata_ready integer,
+    metadata_pending integer,
+    metadata_blocked integer,
+    CONSTRAINT ingestion_recovery_progress_check CHECK ((((metadata_total IS NULL) AND (metadata_ready IS NULL) AND (metadata_pending IS NULL) AND (metadata_blocked IS NULL)) OR ((metadata_total IS NOT NULL) AND (metadata_ready IS NOT NULL) AND (metadata_pending IS NOT NULL) AND (metadata_blocked IS NOT NULL) AND ((metadata_total)::bigint = (((metadata_ready)::bigint + (metadata_pending)::bigint) + (metadata_blocked)::bigint))))),
+    CONSTRAINT ingestion_recovery_progress_check1 CHECK (((stage <> 'completed'::text) OR ((imported_at IS NOT NULL) AND (verified_at IS NOT NULL) AND (checked_at IS NOT NULL) AND (metadata_total IS NOT NULL) AND (metadata_ready IS NOT NULL) AND (metadata_pending IS NOT NULL) AND (metadata_blocked IS NOT NULL) AND (metadata_ready = metadata_total) AND (metadata_pending = 0) AND (metadata_blocked = 0)))),
+    CONSTRAINT ingestion_recovery_progress_metadata_blocked_check CHECK ((metadata_blocked >= 0)),
+    CONSTRAINT ingestion_recovery_progress_metadata_pending_check CHECK ((metadata_pending >= 0)),
+    CONSTRAINT ingestion_recovery_progress_metadata_ready_check CHECK ((metadata_ready >= 0)),
+    CONSTRAINT ingestion_recovery_progress_metadata_total_check CHECK ((metadata_total >= 0)),
+    CONSTRAINT ingestion_recovery_progress_reason_check CHECK ((reason = ANY (ARRAY['new_scan'::text, 'new_recovery'::text, 'source_changed'::text]))),
+    CONSTRAINT ingestion_recovery_progress_source_fingerprint_check CHECK ((source_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT ingestion_recovery_progress_source_media_type_check CHECK ((source_media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT ingestion_recovery_progress_stage_check CHECK ((stage = ANY (ARRAY['requested'::text, 'importing'::text, 'backfilling'::text, 'completed'::text, 'superseded'::text])))
 );
 
 
@@ -10385,6 +10421,30 @@ ALTER TABLE ONLY public.image_index_reconciliation_state
 
 
 --
+-- Name: ingestion_recovery_progress ingestion_recovery_progress_library_id_run_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_recovery_progress
+    ADD CONSTRAINT ingestion_recovery_progress_library_id_run_id_key UNIQUE (library_id, run_id);
+
+
+--
+-- Name: ingestion_recovery_progress ingestion_recovery_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_recovery_progress
+    ADD CONSTRAINT ingestion_recovery_progress_pkey PRIMARY KEY (audit_id);
+
+
+--
+-- Name: ingestion_recovery_progress ingestion_recovery_progress_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_recovery_progress
+    ADD CONSTRAINT ingestion_recovery_progress_request_id_key UNIQUE (request_id);
+
+
+--
 -- Name: inventory_credential_wakeups inventory_credential_wakeups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12584,6 +12644,13 @@ CREATE UNIQUE INDEX idx_ingestion_reconciliation_request ON public.audit_log USI
 
 
 --
+-- Name: idx_ingestion_recovery_verification_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ingestion_recovery_verification_due ON public.ingestion_recovery_progress USING btree (next_check_at, audit_id) WHERE (stage = 'backfilling'::text);
+
+
+--
 -- Name: idx_inventory_authentication_recovery; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14609,6 +14676,22 @@ ALTER TABLE ONLY public.embedding_errors
 
 ALTER TABLE ONLY public.enrichment_retry_queue
     ADD CONSTRAINT enrichment_retry_queue_media_item_id_fkey FOREIGN KEY (media_item_id) REFERENCES public.media_server_items(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingestion_recovery_progress ingestion_recovery_progress_audit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_recovery_progress
+    ADD CONSTRAINT ingestion_recovery_progress_audit_id_fkey FOREIGN KEY (audit_id) REFERENCES public.audit_log(id) ON DELETE CASCADE;
+
+
+--
+-- Name: ingestion_recovery_progress ingestion_recovery_progress_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ingestion_recovery_progress
+    ADD CONSTRAINT ingestion_recovery_progress_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -17670,6 +17753,7 @@ FROM unnest(ARRAY[
     '20260930_180000_retry_wait_provenance_index.sql',
     '20261001_120000_queue_vacuum_recovery.sql',
     '20261001_160000_image_index_reconciliation.sql',
-    '20261001_230000_ingestion_recovery_history.sql'
+    '20261001_230000_ingestion_recovery_history.sql',
+    '20261002_000000_ingestion_recovery_progress.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

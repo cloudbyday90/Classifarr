@@ -69,7 +69,7 @@ test.each([undefined, { phase: 'complete' }, { phase: 'running', sync_status_id:
   for (const [, values] of db.query.mock.calls.filter(([sql]) => sql.startsWith('UPDATE library_ingestion_state'))) {
     expect(values.slice(0, 2)).toEqual(insert[1].slice(0, 2));
   }
-  expect(db.query.mock.calls.at(-1)[1][2]).toBe('complete');
+  expect(db.query.mock.calls.filter(([sql]) => sql.startsWith('UPDATE library_ingestion_state')).at(-1)[1][2]).toBe('complete');
 });
 test('foreign work and cooldowns never replace an owner', async () => {
   for (const [options, reason] of [[{ foreign: true }, 'legacy_owner_unknown'], [{ previous: { phase: 'retry_wait' }, cooling: true }, 'retry_wait']]) {

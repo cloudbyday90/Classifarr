@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 
 test('finds a lost recovery response after reload when the warning is gone, without another write', async ({ page }, testInfo) => {
   const writes = []
-  let committed = false, requestId, historyReads = 0
+  let committed = false, requestId, historyReads = 0, completed = false
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request(), path = new globalThis.URL(request.url()).pathname
     if (request.method() !== 'GET') writes.push(path)
@@ -26,7 +26,9 @@ test('finds a lost recovery response after reload when the warning is gone, with
     if (path === '/api/libraries/1/ingestion-reconciliation/history') {
       historyReads++
       data = { limit: 20, hasMore: false, receipts: [{ auditId: 43, requestId, libraryId: 1,
-        confirmedAt: '2026-09-30T12:00:00.000Z', status: 'reconciled', replay: 'scheduled' }] }
+        confirmedAt: '2026-09-30T12:00:00.000Z', status: 'reconciled', replay: 'scheduled',
+        progress: { stage: completed ? 'completed' : 'backfilling', reason: completed ? null : 'metadata_pending',
+          checkedAt: '2026-10-01T12:00:00.000Z', metadata: { total: 7, ready: completed ? 7 : 3, pending: completed ? 0 : 4, blocked: 0 } } }] }
     }
     if (path === '/api/libraries/1/rules') data = []
     if (path === '/api/libraries/1/profile') data = { item_count: 0, rating_distribution: {}, genre_distribution: {}, studio_distribution: {} }
@@ -50,6 +52,14 @@ test('finds a lost recovery response after reload when the warning is gone, with
   await expect(history).toContainText('Full import requested')
   await expect(history).toContainText('not a finished import')
   expect(historyReads).toBe(1)
+  await expect(history.getByRole('progressbar')).toHaveAttribute('value', '3')
+  await expect(history).toContainText('3 / 7 metadata items ready')
+  completed = true
+  await history.getByRole('button', { name: 'Refresh history' }).click()
+  await expect(history.getByRole('status')).toContainText('Latest: Recovery completed')
+  await expect(history.getByRole('progressbar')).toHaveAttribute('value', '7')
+  await expect(history).toContainText('Import and metadata verified')
+  expect(historyReads).toBe(2)
   expect(writes).toHaveLength(1)
   await page.setViewportSize({ width: 390, height: 844 })
   await history.scrollIntoViewIfNeeded()

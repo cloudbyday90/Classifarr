@@ -74,6 +74,9 @@ of rollback. Malformed retained receipts fail closed instead of claiming success
 
 ## Next high-value component
 
+Delivered in [recovery-to-completion tracking](ingestion-recovery-progress-outcome.md).
+The following records the original follow-up recommendation.
+
 Add **recovery-to-completion tracking**, joining the reviewed recovery request
 to its actual owned full scan and downstream backfill. Show a concise progression:
 requested, importing, backfilling, completed, or blocked with one next action.

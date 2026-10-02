@@ -2,11 +2,14 @@
 import { readRefillCandidatePage, REFILL_QUEUE_BATCH_LIMIT } from './queueRefillCandidates.mjs';
 import { INGESTION_OWNER_ACTIVE_SQL, INGESTION_UNFINISHED_MARKERS_SQL } from './libraryIngestionPredicates.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
+import { verifyNextIngestionRecovery } from './ingestionRecoveryVerification.mjs';
 
 const PAGE_LIMIT = 250;
 
 /** Retain the existing scan budget without holding one transaction for the entire pass. */
-export async function drainInventoryBackfillHandoffs(deps, materializePage = materializeInventoryBackfillPage) {
+export async function drainInventoryBackfillHandoffs(deps, materializePage = materializeInventoryBackfillPage,
+  verifyRecovery = verifyNextIngestionRecovery) {
+  await verifyRecovery(deps);
   let result = null;
   for (let page = 0; page < REFILL_QUEUE_BATCH_LIMIT / PAGE_LIMIT; page++) {
     const next = await materializePage(deps);

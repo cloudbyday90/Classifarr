@@ -287,7 +287,9 @@ test('a committed-but-lost recovery reply is rediscoverable after restart withou
   expect(first).toMatchObject({ limit: 20, hasMore: false, receipts: [{ requestId, libraryId, replay: 'scheduled' }] });
   expect((await read()).reason).toBe('not_needed');
   await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
-  expect(await restarted.history(actorId, libraryId)).toEqual(first);
+  const disabled = await restarted.history(actorId, libraryId);
+  expect(disabled.receipts[0]).toMatchObject({ requestId, replay: 'scheduled', progress: { stage: 'blocked', reason: 'disabled' } });
+  expect(disabled.receipts[0].auditId).toBe(first.receipts[0].auditId);
   expect((await db.query('SELECT count(*)::int AS n FROM audit_log WHERE user_id=$1', [actorId])).rows[0].n).toBe(1);
   expect((await db.query('SELECT external_id FROM media_server_items WHERE library_id=$1', [libraryId])).rows).toEqual([{ external_id: 'old' }]);
 });
