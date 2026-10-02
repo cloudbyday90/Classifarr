@@ -2,6 +2,9 @@
 
 Date: 2026-10-02. Scope: disposable installation tests, not production recovery.
 
+See the separate [measured outcome](crash-boundary-window-outcome.md) for the
+delayed-response negative experiment and complete frozen-image matrix.
+
 ## Finding and decision
 
 The unfinished-backfill fixture holds active metadata writes for eight seconds.

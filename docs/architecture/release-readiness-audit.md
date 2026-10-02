@@ -2,13 +2,16 @@
 
 ## Status
 
-Audit date: 2026-10-01 (local date; some checks completed on October 2 UTC).
+Audit date: 2026-10-02.
 
-Do not cut a release yet. The new frozen-image, three-profile rehearsal remains
-blocked at interrupted-backfill evidence. A green ordinary CI run does not
-supersede this stricter acceptance failure. See the separate
-[rehearsal design](frozen-release-rehearsal-design.md) and
-[outcome](frozen-release-rehearsal-outcome.md).
+Do not cut a release yet. The complete no-cache, frozen-image, three-profile
+rehearsal now passes, including all six interrupted-backfill cases. Sustained
+resource evidence, actual saved-template operator acceptance and the supported
+upgrade floor remain release decisions. See the separate
+[crash-window design](crash-boundary-window-design.md) and
+[passing outcome](crash-boundary-window-outcome.md). The
+[earlier failed rehearsal](frozen-release-rehearsal-outcome.md) remains historical
+evidence; its exact cause was not retroactively proven by the new pass.
 
 The newest published release, including prereleases, is `v0.48.4-beta`
 (2026-08-29). Root, server and client package manifests remain `0.48.4-beta`.
@@ -39,12 +42,20 @@ That historical artifact was not rerun or renewed by this release rehearsal.
 
 ## Current Acceptance And Remaining Work
 
-Source `c1ff42daa2cc5c1921a59076c6451df146bdfe94` passed
-[CI/CD run 36953823331](https://github.com/cloudbyday90/Classifarr/actions/runs/36953823331),
+Source `a56e3f0f05b16520356837fb655df6b2f0323e38` passed
+[CI/CD run 36993068277](https://github.com/cloudbyday90/Classifarr/actions/runs/36993068277),
 including ordinary fresh/published-upgrade acceptance, database tests and the
 release readout. CodeQL, Gitleaks, OSV, Trivy, copyright and the resource-capacity
 workflow also passed for that source. Local backend unit validation passed
-1,615 suites and 49,403 tests, with one existing skip.
+1,616 suites and 49,451 tests, with one existing skip.
+
+That same clean source produced one no-cache image,
+`sha256:4871ab61fd473f436e2b03bdc73b30e4a059d0a78f7710e0d70a61b1768567ea`,
+which passed the complete standard, Unraid-style and custom-ID matrix at
+`2026-10-02T11:35:06.615Z`. Every saved configuration remained unchanged.
+Each of six 600-item backlog cases completed exactly once with five expired-claim
+reclaims, 605 starts and no early reclaim. Owned cleanup passed. Later
+documentation-only commits do not replace this image-tested source identity.
 
 These are distinct from the heavier local rehearsal. Ordinary CI installation
 acceptance uses the standard, non-budgeted profile. The manually dispatched
@@ -53,19 +64,18 @@ proof that all three saved deployment profiles passed one image.
 
 Release blockers and scope decisions, in order:
 
-1. Resolve the interrupted-backfill evidence discrepancy, then pass the entire
-   frozen matrix on a clean source revision. Do not combine successes from
-   different candidate images or count unexecuted profiles as passed.
-2. Run a bounded sustained workload and recovery soak, checking CPU throttling,
+1. Run a bounded sustained workload and recovery soak, checking CPU throttling,
    memory growth, PID/connection limits, queue progress and return to idle.
    Point-in-time snapshots cannot establish peaks or minimum requirements.
-3. Accept operator flows on an actual saved Unraid/Community Apps installation,
+   Reuse the existing soak runner's fixed-image input within the frozen-candidate
+   lifecycle; do not combine unrelated image results into one acceptance claim.
+2. Accept operator flows on an actual saved Unraid/Community Apps installation,
    including unchanged settings, imports, recovery and clear accessible status.
    A Linux container with Unraid-style IDs is not physical Unraid certification.
-4. Define the supported upgrade floor. The pinned published baseline is
+3. Define the supported upgrade floor. The pinned published baseline is
    `v0.48.4-beta`; older versions, including the non-prerelease latest label,
    require separate evidence if included in the release promise.
-5. Select the version and freeze the final source; repeat applicable checks
+4. Select the version and freeze the final source; repeat applicable checks
    after version/runtime changes. Verify supported architectures and immutable
    published digests through the protected publication/consumer workflow only
    after an explicit release decision.

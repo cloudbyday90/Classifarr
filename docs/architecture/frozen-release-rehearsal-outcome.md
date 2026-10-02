@@ -2,7 +2,16 @@
 
 Date: 2026-10-01 local; final Docker observations completed on October 2 UTC.
 
-## Decision
+## Subsequent qualification
+
+The October 2 [bounded crash-window outcome](crash-boundary-window-outcome.md)
+records a new, complete passing matrix on clean source `a56e3f0f`. It supersedes
+the current blocker below without rewriting this historical failed experiment.
+The original failure's exact cause remains unproven; the new work reproduced a
+stale-readiness mechanism, rejected it safely and passed all profiles with measured
+crash windows. Overall release approval still requires the remaining audit gates.
+
+## Historical decision
 
 The rehearsal tooling is implemented, but **release acceptance is blocked**.
 Do not publish a release, update live containers, relax claim deadlines or count
@@ -117,7 +126,7 @@ No production behavior, API, schema, dependency, UI or version changes are part
 of this work. All new implementation code is ESM and uses small test-orchestration
 modules. No live library data or unrelated Docker resources were changed.
 
-## Next recommendation
+## Recommendation at the time of this experiment
 
 First resolve the start-count discrepancy with explicit crash-boundary evidence
 and rerun all three profiles on one clean image. Then perform a bounded sustained
