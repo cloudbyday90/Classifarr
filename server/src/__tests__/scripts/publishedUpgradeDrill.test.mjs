@@ -142,6 +142,30 @@ test('invalid deployment refuses all commands', async () => {
   expect(run).not.toHaveBeenCalled();
 });
 
+test('borrowed immutable candidate is inspected and run without rebuilding or deleting it', async () => {
+  const candidateImageId = `sha256:${'a'.repeat(64)}`;
+  const run = mockRunner();
+  expect((await runWith(run, { candidateImageId })).candidateImageId).toBe(candidateImageId);
+  expect(run.mock.calls.some(([, args]) => args.includes('build') || args[1] === 'rm')).toBe(false);
+  const starts = run.mock.calls.filter(([, args]) => args[7] === 'up');
+  expect(starts[0][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(candidateImageId);
+  expect(starts[3][2].env.CLASSIFARR_UPGRADE_IMAGE).toBe(candidateImageId);
+});
+
+test.each(['classifarr:latest', '', {}, `sha256:${'f'.repeat(63)}`])('rejects invalid borrowed image %j before commands', async candidateImageId => {
+  const run = mockRunner();
+  await expect(runWith(run, { candidateImageId })).rejects.toThrow('invalid_upgrade_candidate');
+  expect(run).not.toHaveBeenCalled();
+});
+
+test('borrowed image mismatch cleans project but never deletes the borrowed image', async () => {
+  const run = mockRunner();
+  await expect(runWith(run, { candidateImageId: `sha256:${'b'.repeat(64)}` })).rejects.toThrow('published_upgrade_failed:build');
+  expect(operations(run).some(args => args[0] === 'up')).toBe(false);
+  expect(run.mock.calls.some(([, args]) => args[1] === 'rm')).toBe(false);
+  expect(operations(run).at(-1)).toContain('down');
+});
+
 test.each([['fresh_scheduler', 'scheduled-crash-ready'], ['fresh_backfill_crash', 'scheduled-crash-resume'],
   ['upgrade_scheduler', 'scheduled']])('a stalled %s fails closed and still cleans resources', async (stage, phase) => {
   const run = mockRunner((_cmd, args) => args.at(-1) === phase

@@ -24,7 +24,7 @@ export function parseUpgradeReceipt(output, prefix) {
 
 /** Fixed disposable target and immutable release; never accepts live configuration. */
 export async function runPublishedUpgradeCompose({ run = spawnSync, random = randomBytes, freshOnly = false, resourceBudget = false,
-  deploymentProfile = 'standard',
+  deploymentProfile = 'standard', candidateImageId = null,
   sleep = delay, now = Date.now, report = message => process.stdout.write(`${message}\n`),
   saveDiagnostic = (project, diagnostic) => {
     const directory = resolve(root, '.tmp/published-upgrade', project);
@@ -33,6 +33,9 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   } } = {}) {
   if (typeof freshOnly !== 'boolean') throw new TypeError('invalid_installation_scope');
   if (typeof resourceBudget !== 'boolean') throw new TypeError('invalid_installation_budget');
+  if (candidateImageId !== null && (typeof candidateImageId !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(candidateImageId))) {
+    throw new TypeError('invalid_upgrade_candidate');
+  }
   const deployment = publishedUpgradeDeployment(deploymentProfile);
   const suffix = random(16).toString('hex');
   if (!/^[a-f0-9]{32}$/.test(suffix)) throw new Error('invalid_upgrade_identity');
@@ -84,12 +87,15 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   compose(['config', '--quiet']);
   let failure, result, stage = 'build';
   try {
-    report('BUILD candidate');
-    compose(['build', 'candidate'], 1_200_000);
-    const candidateId = docker(['image', 'inspect', '--format', '{{.Id}}', candidateImage]).stdout.trim();
+    if (candidateImageId === null) {
+      report('BUILD candidate');
+      compose(['build', 'candidate'], 1_200_000);
+    }
+    const candidateId = docker(['image', 'inspect', '--format', '{{.Id}}', candidateImageId ?? candidateImage]).stdout.trim();
     if (!/^sha256:[a-f0-9]{64}$/.test(candidateId)) throw new Error('invalid_candidate_image_id');
+    if (candidateImageId !== null && candidateId !== candidateImageId) throw new Error('upgrade_candidate_mismatch');
     stage = 'fresh_install';
-    env.CLASSIFARR_UPGRADE_IMAGE = candidateImage;
+    env.CLASSIFARR_UPGRADE_IMAGE = candidateImageId ?? candidateImage;
     start('normal');
     const fresh = probe('fresh');
     passed('fresh_install_and_operational_seeds');
@@ -121,7 +127,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       passed('published_startup_and_export');
       stage = 'candidate_upgrade';
       compose(['stop', '--timeout', '30', 'app']);
-      env.CLASSIFARR_UPGRADE_IMAGE = candidateImage;
+      env.CLASSIFARR_UPGRADE_IMAGE = candidateImageId ?? candidateImage;
       const upgradedConfiguration = upgradeDeploymentDigest(compose(['config', '--format', 'json']).stdout);
       if (savedConfiguration !== upgradedConfiguration) throw new Error('upgrade_deployment_changed');
       start('normal');
@@ -188,8 +194,10 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     try {
       compose(['--profile', 'tools', 'down', '--volumes', '--timeout', '10']);
       // Only the freshly owned random image tag, never the published baseline or live tag.
-      docker(['image', 'rm', candidateImage], 30_000, true);
-      if (docker(['image', 'ls', '-q', candidateImage]).stdout.trim()) throw new Error('candidate_cleanup_failed');
+      if (candidateImageId === null) {
+        docker(['image', 'rm', candidateImage], 30_000, true);
+        if (docker(['image', 'ls', '-q', candidateImage]).stdout.trim()) throw new Error('candidate_cleanup_failed');
+      }
       for (const args of [['ps', '-aq', '--filter', label], ['volume', 'ls', '-q', '--filter', label], ['network', 'ls', '-q', '--filter', label]]) {
         if (docker(args).stdout.trim()) throw new Error('resource_cleanup_failed');
       }

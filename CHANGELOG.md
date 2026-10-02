@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Rehearse fresh installs, published upgrades and interrupted recovery across
+  unchanged deployment profiles using one frozen candidate image, with bounded
+  resource checks and fail-closed, source-bound release evidence.
 - Track reviewed import recoveries through owned scan retries and verified
   metadata completion. Show concise progress and next steps, preserve unknown
   historical outcomes, and exclude optional AI jobs without new deployment settings.

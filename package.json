@@ -18,6 +18,7 @@
     "test:local:embedded-isolation-drill": "node scripts/run-embedded-isolation-drill.mjs",
     "test:local:published-upgrade-drill": "node scripts/run-published-upgrade-drill.mjs",
     "test:local:runtime-installation-acceptance": "node scripts/run-runtime-installation-acceptance.mjs",
+    "test:local:frozen-release-rehearsal": "node scripts/run-frozen-release-rehearsal.mjs",
     "test:local:container-startup-diagnostics": "node scripts/verify-container-startup-diagnostics.mjs",
     "benchmark:cross-encoder:prepare": "node scripts/prepare-cross-encoder-model.mjs",
     "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
