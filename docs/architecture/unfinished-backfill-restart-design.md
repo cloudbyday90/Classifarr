@@ -36,7 +36,11 @@ AI providers remain disabled. No live library or routing setting is changed.
    Read the existing concurrency setting without changing production capacity.
 5. Kill only the owned app with SIGKILL; require exit 137 without OOM. Restart the
    normal entrypoint on the same volume. The killed database session releases
-   the gate; the trigger remains present and uncontended.
+   the gate; the trigger remains present and uncontended. The October 2
+   [crash-window protocol](crash-boundary-window-design.md) requires preparation
+   and target resolution before final verification, then a conservative remaining
+   hold window covering the probe round trip through observed exit. Reject stale
+   injection before evaluating recovery; retain the exact completion assertions.
 6. A read-only observer checks pending sibling TV progress before the old claims
    expire, then waits for normal reclamation and current library profiles. It
    neither reseeds nor invokes workers nor alters statuses or deadlines.

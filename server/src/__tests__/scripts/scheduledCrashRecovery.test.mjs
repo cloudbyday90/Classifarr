@@ -45,7 +45,7 @@ function runner({ boundary = SCHEDULED_CRASH_BOUNDARY, exit = '137 false', recov
   const docker = jest.fn(args => ({ stdout: args.includes('{{.State.Status}}') ? 'exited' : exit }));
   const probe = jest.fn(phase => phase === 'scheduled-crash-ready' ? boundary : recovery);
   const poll = jest.fn(async check => { expect(await check()).toBe(true); });
-  return { compose, docker, probe, poll, start: jest.fn(), setStage: jest.fn() };
+  return { compose, docker, probe, poll, start: jest.fn(), setStage: jest.fn(), report: jest.fn() };
 }
 test('checks the held lock before killing and observes normal restart on the same volume', async () => {
   const tools = runner();

@@ -36,7 +36,7 @@ function mockRunner(override = () => undefined) {
       if (op.at(-1) === 'scheduled') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_INSTALLATION_EXPECTED)}\n`;
       if (op.at(-1) === 'scheduled-crash-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_BOUNDARY)}\n`;
       if (op.at(-1) === 'scheduled-crash-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(SCHEDULED_CRASH_RECOVERY)}\n`;
-      if (op.at(-1) === 'scheduled-backlog-ready') stdout = `UPGRADE_PROBE ${JSON.stringify(BACKLOG_BOUNDARY)}\n`;
+      if (op.at(-1) === 'scheduled-backlog-ready') stdout = `UPGRADE_PROBE ${JSON.stringify({ ...BACKLOG_BOUNDARY, remainingWindowMs: 6000 })}\n`;
       if (op.at(-1) === 'scheduled-backlog-resume') stdout = `UPGRADE_PROBE ${JSON.stringify(backlog())}\n`;
       if (op.at(-1) === 'budget-prepare') stdout = 'UPGRADE_PROBE {"maxConnections":32,"restartRequired":true}\n';
       if (op.at(-1) === 'budget-pressure') stdout = `UPGRADE_PROBE ${JSON.stringify(pressure())}\n`;
@@ -195,6 +195,7 @@ test('foreground boundary failure retains only validated diagnostics', async () 
   const saveDiagnostic = jest.fn();
   await expect(runWith(run, { resourceBudget: true, saveDiagnostic })).rejects.toThrow('published_upgrade_failed:');
   expect(saveDiagnostic.mock.calls[0][1]).toContain(`UPGRADE_PROBE_FAILURE ${JSON.stringify(evidence)}`);
+  expect(saveDiagnostic.mock.calls[0][1]).toContain('"scenario":"backlog","windowMs":null,"outcome":"not_verified"');
   expect(saveDiagnostic.mock.calls[0][1]).not.toContain('private');
 });
 

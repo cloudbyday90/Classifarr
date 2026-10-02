@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { assertInstallationBudgetEnvironment } from './installationConnectionPressure.mjs';
+import { BACKLOG_GATE_SLEEP_MS } from './installationBacklogContract.mjs';
 
 export const BACKLOG_GATE_LOCK = 19760211;
 export const BACKLOG_GATE_APPLICATION = 'classifarr-installation-backlog-gate';
@@ -21,7 +22,7 @@ export async function installBacklogGate(db, libraries) {
           SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id) THEN
           IF NOT pg_try_advisory_xact_lock_shared(${BACKLOG_GATE_LOCK}) THEN
             PERFORM set_config('application_name','${BACKLOG_GATE_APPLICATION}',true);
-            PERFORM pg_sleep(8);
+            PERFORM pg_sleep(${BACKLOG_GATE_SLEEP_MS / 1000});
           END IF;
         END IF;
         RETURN NEW;

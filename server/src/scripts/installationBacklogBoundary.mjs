@@ -2,6 +2,21 @@
 import { QueueConcurrencySettingsService } from '../services/queueConcurrencySettingsService.mjs';
 import { readBacklogTasks } from './installationBacklogEvidence.mjs';
 import { BACKLOG_GATE_APPLICATION } from './installationBacklogFixture.mjs';
+import { BACKLOG_GATE_SLEEP_MS } from './installationBacklogContract.mjs';
+
+/** Query age includes pre-sleep work, so this intentionally underestimates the hold left. */
+export async function readBacklogGateWindow(db, expectedWorkers) {
+  if (!Number.isSafeInteger(expectedWorkers) || expectedWorkers <= 0) throw new Error('installation_backlog_window_unavailable');
+  const { rows: [row] } = await db.query(`SELECT count(*)::integer AS count, count(query_start)::integer AS timed_count,
+    floor($2 - max(extract(epoch FROM (clock_timestamp()-query_start))*1000))::integer AS remaining_ms
+    FROM pg_stat_activity WHERE datname=current_database() AND application_name=$1 AND state='active'
+      AND wait_event_type='Timeout' AND wait_event='PgSleep'`, [BACKLOG_GATE_APPLICATION, BACKLOG_GATE_SLEEP_MS]);
+  if (row?.count !== expectedWorkers || row.timed_count !== expectedWorkers ||
+    !Number.isSafeInteger(row?.remaining_ms) || row.remaining_ms <= 0 || row.remaining_ms > BACKLOG_GATE_SLEEP_MS) {
+    throw new Error('installation_backlog_window_unavailable');
+  }
+  return row.remaining_ms;
+}
 
 export async function readParkedBacklogWorkers(db) {
   const result = await db.query(`SELECT count(*)::integer AS count FROM pg_stat_activity

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify interrupted-backfill crash injection against its remaining hold window,
+  remove post-verification setup work, and retain bounded monotonic timing evidence
+  so an expired test checkpoint is not mistaken for a recovery defect.
 - Rehearse fresh installs, published upgrades and interrupted recovery across
   unchanged deployment profiles using one frozen candidate image, with bounded
   resource checks and fail-closed, source-bound release evidence. Supply the

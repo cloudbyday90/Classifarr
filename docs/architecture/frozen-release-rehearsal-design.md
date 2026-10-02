@@ -44,6 +44,9 @@ storage. Only the image may change during its published-to-candidate upgrade.
   probe, not an advisory-lock wait that would correctly trip the production
   two-second lock deadline. All production deadlines remain in force; a missed
   eight-second fixture window fails acceptance instead of repairing task state.
+  The October 2 [measured crash-window protocol](crash-boundary-window-design.md)
+  makes that window explicit and retains the host milestones used to reject an
+  expired injection before treating it as a recovery experiment.
 - A local image ID is not a published registry manifest digest or attestation.
   This rehearsal cannot authorize publication, certify a real Unraid host,
   establish live-provider accuracy or prove all historical backup formats.

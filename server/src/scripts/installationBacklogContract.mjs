@@ -1,8 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 
+export const BACKLOG_GATE_SLEEP_MS = 8000;
+
 export const BACKLOG_BOUNDARY = Object.freeze({ boundary: 'durable_pending_and_claimed_backfill',
   tasks: 600, gate: 'held', visibilityMs: 600000 });
+
+export function assertBacklogBoundary(value) {
+  const { remainingWindowMs, ...boundary } = value ?? {};
+  assert.deepEqual(boundary, BACKLOG_BOUNDARY);
+  assert.ok(Number.isSafeInteger(remainingWindowMs) && remainingWindowMs > 0 && remainingWindowMs <= BACKLOG_GATE_SLEEP_MS);
+  return remainingWindowMs;
+}
 
 export function backlogRecoveryEvidence(value) {
   const fixed = { driver: 'startup_scheduler', checkpoint: 'preserved', committedIngestion: 'preserved',

@@ -11,7 +11,7 @@ import { readBacklogRuns, readBacklogTasks, readDatabaseEpoch, waitForBacklog, a
   backlogProfilesCurrent, assertBacklogTaskIdentities, assertBacklogCompleted, sawSiblingProgress } from './installationBacklogEvidence.mjs';
 import { readStudyCgroup } from './resourceStudyMetrics.mjs';
 import { installationBudgetSnapshot } from './installationBudgetContract.mjs';
-import { backlogBoundarySettled, readBacklogWorkerLimit, readParkedBacklogWorkers } from './installationBacklogBoundary.mjs';
+import { backlogBoundarySettled, readBacklogWorkerLimit, readParkedBacklogWorkers, readBacklogGateWindow } from './installationBacklogBoundary.mjs';
 
 async function assertGateHeld(db, checkpoint) {
   const interrupted = checkpoint.tasks.filter(row => row.status === 'processing').length;
@@ -70,7 +70,8 @@ export async function verifyBacklogBoundary(db) {
   assert.equal(await readDatabaseEpoch(db), checkpoint.databaseEpoch);
   installationBudgetSnapshot(checkpoint.beforeCrash);
   await assertGateHeld(db, checkpoint);
-  return { ...BACKLOG_BOUNDARY };
+  const remainingWindowMs = await readBacklogGateWindow(db, checkpoint.tasks.filter(row => row.status === 'processing').length);
+  return { ...BACKLOG_BOUNDARY, remainingWindowMs };
 }
 
 /** Read-only after restart: no seeding, status repair, worker invocation or timeout override. */

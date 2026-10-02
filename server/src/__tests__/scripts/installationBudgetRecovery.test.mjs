@@ -119,9 +119,9 @@ function tools({ dockerCpus = 2e9, badPressure = false } = {}) {
   const probe = jest.fn(phase => ({ 'budget-prepare': { maxConnections: 32, restartRequired: true },
     'budget-pressure': badPressure ? {} : pressure(), 'budget-snapshot': metrics(),
     'scheduled-crash-ready': SCHEDULED_CRASH_BOUNDARY, 'scheduled-crash-resume': SCHEDULED_CRASH_RECOVERY,
-    'scheduled-backlog-ready': BACKLOG_BOUNDARY, 'scheduled-backlog-resume': backlog() })[phase]);
+    'scheduled-backlog-ready': { ...BACKLOG_BOUNDARY, remainingWindowMs: 6000 }, 'scheduled-backlog-resume': backlog() })[phase]);
   return { compose, docker, probe, start: jest.fn(), poll: async check => { expect(await check()).toBe(true); },
-    setStage: jest.fn(), now: () => 0 };
+    setStage: jest.fn(), report: jest.fn(), now: () => 0 };
 }
 test('budget wrapper reuses crash recovery and verifies Docker before setting PG, after prepare and after crash', async () => {
   const test = tools();
@@ -130,7 +130,7 @@ test('budget wrapper reuses crash recovery and verifies Docker before setting PG
   expect(result.evidence).toMatchObject({ dockerLimits: 'verified', backfill: 'completed_original_inventory' });
   expect(test.start).toHaveBeenCalledTimes(3);
   expect(test.compose.mock.calls.some(([args]) => args.at(-1) === 'scheduled-crash-budget-arm')).toBe(true);
-  expect(test.probe.mock.calls.flat()).toEqual(['budget-prepare', 'scheduled-crash-ready', 'budget-pressure',
+  expect(test.probe.mock.calls.flat()).toEqual(['budget-prepare', 'budget-pressure', 'scheduled-crash-ready',
     'scheduled-crash-resume', 'budget-snapshot', 'scheduled-backlog-ready', 'scheduled-backlog-resume']);
 });
 test('wrong Docker budget prevents pressure setup', async () => {

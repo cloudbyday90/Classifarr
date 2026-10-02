@@ -49,7 +49,7 @@ test('synthetic gate holds both media types instead of relying on worker orderin
   expect(source).toContain('SELECT 1 FROM installation_backlog_targets WHERE library_id=NEW.library_id)');
   expect(source).not.toContain("AND media_type='movie'");
   expect(source).toContain('pg_try_advisory_xact_lock_shared');
-  expect(source).toContain('PERFORM pg_sleep(8)');
+  expect(source).toContain('PERFORM pg_sleep(${BACKLOG_GATE_SLEEP_MS / 1000})');
   expect(source).not.toMatch(/pg_advisory_xact_lock\(|SET LOCAL.*timeout|set_config\('(?:lock|statement|transaction)_timeout/);
 });
 
@@ -154,11 +154,11 @@ test.each([false, true])('host kills only after a valid unfinished boundary: inv
   const compose = jest.fn(args => ({ status: args.at(-1)?.endsWith('unfinished-backfill-failed') ? 1 : 0,
     stdout: args[0] === 'ps' ? 'a'.repeat(64) : '' }));
   const docker = jest.fn(args => ({ stdout: args.includes('{{.State.Status}}') ? 'exited' : '137 false' }));
-  const probe = jest.fn(phase => phase === 'scheduled-backlog-ready' ? (invalid ? {} : BACKLOG_BOUNDARY) : backlog());
+  const probe = jest.fn(phase => phase === 'scheduled-backlog-ready' ? (invalid ? {} : { ...BACKLOG_BOUNDARY, remainingWindowMs: 6000 }) : backlog());
   const start = jest.fn();
-  const result = runScheduledCrashRecovery({ compose, docker, probe, start, setStage: jest.fn(),
+  const result = runScheduledCrashRecovery({ compose, docker, probe, start, setStage: jest.fn(), report: jest.fn(),
     poll: async check => { expect(await check()).toBe(true); }, armPhase: 'scheduled-backlog-arm' });
   if (invalid) await expect(result).rejects.toThrow(); else expect((await result).completedTasks).toBe(600);
-  expect(compose.mock.calls.some(([args]) => args[0] === 'kill')).toBe(!invalid);
+  expect(docker.mock.calls.some(([args]) => args[0] === 'kill')).toBe(!invalid);
   expect(start).toHaveBeenCalledTimes(invalid ? 0 : 1);
 });

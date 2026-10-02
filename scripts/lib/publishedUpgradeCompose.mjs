@@ -55,7 +55,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   }
   const commandDiagnostics = [];
   const reportDiagnostic = message => {
-    if (commandDiagnostics.length < 3) commandDiagnostics.push(message);
+    if (commandDiagnostics.length < 8) commandDiagnostics.push(message);
     report(message);
   };
   const invoke = (binary, args, timeout = 120_000, allowFailure = false, input) => {
@@ -198,7 +198,9 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     }
   } catch (error) {
     // All runner errors are fixed classifications; probe bodies and logs stay out of receipts.
-    if (/^(upgrade_|missing_or_duplicate_upgrade_receipt)/.test(error.message)) report(error.message);
+    if (/^upgrade_crash_(window_expired|window_invalid|clock_invalid|timeline_invalid)$/.test(error.message)) {
+      reportDiagnostic(`UPGRADE_FAILURE_REASON ${error.message}`);
+    } else if (/^(upgrade_|missing_or_duplicate_upgrade_receipt)/.test(error.message)) report(error.message);
     try {
       const command = (args, options) => runDockerCheckCommand(args, { ...options, run, env });
       const container = command([...base, 'ps', '--all', '--quiet', 'app']);
