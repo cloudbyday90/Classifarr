@@ -1,45 +1,46 @@
-# Node.js 24.18.1 And npm 12.2.0 Baseline
+# Node.js 24.21.0 And npm 12.2.0 Baseline
 
-Classifarr supports Node.js `>=24.18.1 <25` and npm `>=12.2.0 <13` in local
+Classifarr supports Node.js `>=24.21.0 <25` and npm `>=12.2.0 <13` in local
 development, CI, and production. The exact Node baseline is stored in
-[`.nvmrc`](../.nvmrc). Docker uses the official `node:24.18.1-alpine3.24`
-image and installs npm 12.2.0; GitHub Actions reads the same Node version file
+[`.nvmrc`](../.nvmrc). Docker pins the official `node:24.21.0-alpine3.24`
+multi-platform image digest (Alpine 3.24.2) and installs npm 12.2.0;
+GitHub Actions reads the same Node version file
 and installs the same npm release. `npx` is installed with npm, so its expected
 version is also 12.2.0.
 
 ## Decision
 
 Node.js recommends production applications use Active or Maintenance LTS
-releases. Node 24.18.1 is the selected LTS baseline. Node 25 is end-of-life,
+releases. Node 24.21.0 is the selected LTS baseline. Node 25 is end-of-life,
 and Node 26 remains a Current release rather than a production runtime
 contract. We can evaluate Node 26 after it reaches LTS in a dedicated upgrade.
 
 npm recommends installing its latest stable release explicitly because its
-release cadence is independent of Node.js. npm 12.2.0 supports Node 24.18.1;
+release cadence is independent of Node.js. npm 12.2.0 supports Node 24.21.0;
 we pin that version instead of using the moving `latest` tag.
 
-This is the repository baseline, not a claim that Node 24.18.1 is the newest
-LTS patch. Node 24.21.0 and Alpine 3.24.2 are the next separate runtime update.
-See the [npm update design](architecture/npm-12-2-design.md) and
-[validation outcome](architecture/npm-12-2-outcome.md).
+Reviewed on October 2, 2026. See the [runtime update design](architecture/node-24-21-runtime-design.md)
+and [validation outcome](architecture/node-24-21-runtime-outcome.md).
+The earlier [npm update](architecture/npm-12-2-outcome.md) remains a separate
+historical record. Updating these files does not replace a running container.
 
 ## Benefits And Tradeoffs
 
 | Option | Benefits | Costs | Decision |
 | --- | --- | --- | --- |
-| Node 24.18.1 LTS | Supported production line; stable ecosystem support; matches the current jsdom 30 declared support range | Requires periodic LTS patch updates | Adopt |
+| Node 24.21.0 LTS | Supported production line; stable ecosystem support; matches the current jsdom 30 declared support range | Requires periodic LTS updates and native-module tests | Adopt |
 | Node 26 Current | Newest runtime features | Not yet LTS; raises upgrade churn and compatibility risk | Defer |
 | Node 25 | None over the supported alternatives | End-of-life and unsupported by current jsdom 30 engines | Do not use |
 
 | Package manager option | Benefits | Costs | Decision |
 | --- | --- | --- | --- |
 | npm 12.2.0 with bundled npx | Current stable npm release; Node 24-compatible; one managed source for npm and npx | Installer policy requires explicit review and clean-install validation | Adopt |
-| Bundled npm 11.16.0 | Already shipped with the Node base image | Not the current stable npm release | Do not use as the baseline |
+| Bundled npm 11.19.0 | Already shipped with the Node base image | Not the reviewed npm baseline | Do not use as the baseline |
 | `npm@latest` | Automatically follows new releases | Non-reproducible builds and unreviewed behavior changes | Do not use |
 
 ## Upgrade Steps
 
-### 1. Install Node.js 24.18.1
+### 1. Install Node.js 24.21.0
 
 **Using nvm (recommended):**
 ```bash
@@ -49,7 +50,7 @@ nvm use
 
 **Using official installer:**
 - Download from [nodejs.org](https://nodejs.org/en/download/)
-- Install Node.js 24.18.1 LTS
+- Install Node.js 24.21.0 LTS
 
 ### 2. Install npm And npx
 
@@ -65,7 +66,7 @@ binary.
 ### 3. Verify Installation
 
 ```bash
-node --version  # Should show v24.18.1
+node --version  # Should show v24.21.0
 npm --version   # Should show 12.2.0
 npx --version   # Should show 12.2.0
 ```
@@ -134,7 +135,7 @@ Changing Classifarr's npm pin does not repair the extension's bundled code.
 ### Test Failures
 
 If tests fail with "unknown option" errors:
-- Ensure you're running Node.js 24.18.1 and npm/npx 12.2.0
+- Ensure you're running Node.js 24.21.0 and npm/npx 12.2.0
 - Run `npm ci` in the affected workspace
 
 ### macOS Issues

@@ -1,10 +1,14 @@
 # ===========================================
 # CLASSIFARR DOCKERFILE
-# Optimized for production with Alpine 3.24 + Node.js 24.18.1 LTS
+# Optimized for production with Alpine 3.24.2 + Node.js 24.21.0 LTS
 # ===========================================
 
-ARG NODE_VERSION=24.18.1
+ARG NODE_VERSION=24.21.0
 ARG ALPINE_VERSION=3.24
+ARG ALPINE_RELEASE=3.24.2
+# Multi-platform index, not an architecture-specific manifest. Update the tag,
+# digest and expected release together after validating both shipped platforms.
+ARG NODE_IMAGE_DIGEST=sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 ARG NPM_VERSION=12.2.0
 # npm defaults to two registry fetch retries. A multi-architecture build has
 # more independent registry reads, so retain `npm ci` integrity while allowing
@@ -12,11 +16,17 @@ ARG NPM_VERSION=12.2.0
 ARG NPM_FETCH_RETRIES=5
 
 # Shared package-manager baseline. npm distributes npx, so both stay aligned.
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node-runtime-base
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION}@${NODE_IMAGE_DIGEST} AS node-runtime-base
+ARG NODE_VERSION
+ARG ALPINE_RELEASE
 ARG NPM_VERSION
-RUN npm install --global npm@${NPM_VERSION} \
-  && npm --version \
-  && npx --version
+RUN node --version && cat /etc/alpine-release \
+  && test "$(node --version)" = "v${NODE_VERSION}" \
+  && test "$(cat /etc/alpine-release)" = "${ALPINE_RELEASE}" \
+  && npm install --global npm@${NPM_VERSION} \
+  && npm --version && npx --version \
+  && test "$(npm --version)" = "${NPM_VERSION}" \
+  && test "$(npx --version)" = "${NPM_VERSION}"
 
 # Stage 1: Frontend Builder
 FROM node-runtime-base AS frontend-builder

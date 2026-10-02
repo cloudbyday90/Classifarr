@@ -113,14 +113,23 @@ Report platform skips separately from passing tests. The Linux-only
 [migration-copy case](testing-linux-filesystem.md) must run on Linux (CI, WSL or
 a disposable container) before claiming coverage for database-copy behavior.
 
+Run full image builds, image unpacking and large test suites on a separate
+validation host where possible. On a workstation that also runs Classifarr,
+run heavy jobs serially and watch the existing container's health and restart
+count. CPU/memory limits do not reserve disk throughput for the live database.
+If it becomes unhealthy, stop only the validation jobs you started, preserve
+the logs, and mark interrupted checks incomplete. Do not change database
+durability settings or relax health checks to finish a build. See the
+[runtime validation incident](architecture/node-24-21-runtime-outcome.md#shared-host-observation).
+
 ## CI and Runtime Version Policy
 
 Current maintenance posture:
 
 - GitHub Actions read the exact Node version from `.nvmrc` and install the
   exact supported npm version.
-- Docker runtime/build stages use concrete Node and npm versions in a shared
-  Alpine base stage.
+- Docker runtime/build stages use concrete Node and npm versions in a shared,
+  digest-pinned Alpine base stage with build-time version checks.
 - CI service containers should prefer explicit image versions over floating tags.
 
 Recommended pattern:
@@ -129,8 +138,10 @@ Recommended pattern:
   Docker build arguments
 - npm and npx: one exact npm version; npx is bundled with npm and must not be
   managed independently
-- Docker images: explicit patch/minor tag, with a digest pin evaluated for
-  production release promotion
+- Docker images: explicit tag plus reviewed multi-platform index digest; update
+  the tag, digest and expected Alpine release together, including the provider
+  fault fixture. Keep `.nvmrc` and workspace/lockfile engines aligned. See the
+  [runtime update design](architecture/node-24-21-runtime-design.md).
 - Service images: explicit version pin instead of `latest`
 
 ## Review Guidance

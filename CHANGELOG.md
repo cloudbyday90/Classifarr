@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Update the Node 24 LTS runtime and development baseline to 24.21.0 on Alpine
+  3.24.2, pin the shared multi-platform base image, and verify toolchain versions
+  during builds without changing deployment settings or application dependencies.
 - Strengthen Linux database-copy tests to check complete source preservation
   and refusal to overwrite an existing destination; document platform skips.
 - Align npm and bundled npx on 12.2.0 across Docker, CI and development.
