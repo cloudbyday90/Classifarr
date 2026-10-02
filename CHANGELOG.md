@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Fix Unraid template startup by placing the host-gateway option before the
+  image, with regression coverage for the shipped XML and a saved-template
+  correction guide. Add an operator acceptance checklist and backup-preserving
+  recovery guidance without new deployment requirements.
 - Require a same-image sustained resource soak before the frozen installation
   rehearsal can pass, with bounded workload/idle evidence and validated aggregate
   CPU, memory, queue and provider-recovery results.

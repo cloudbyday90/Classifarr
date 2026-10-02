@@ -1,4 +1,4 @@
-# Classifarr for UnRaid
+# Classifarr for Unraid
 
 UnRaid Community Applications template for easy installation of Classifarr.
 
@@ -36,6 +36,8 @@ UnRaid Community Applications template for easy installation of Classifarr.
    - **Path**: `/mnt/user/appdata/classifarr` (host) → `/app/data` (container)
      - Keep the `appdata` share on a cache or named pool for Docker workloads when possible
      - Avoid moving live container data between `/mnt/user/...` and `/mnt/disk...` paths while Docker is running
+   - **Extra Parameters** (Advanced View): `--add-host=host.docker.internal:host-gateway`
+   - **Post Arguments**: leave empty so the image's normal startup command runs
 4. Click **Apply**
 
 ## Configuration
@@ -58,6 +60,7 @@ These settings ensure files created by the container have the correct permission
 - **PGID=100**: Uses the `users` group
 
 If you need different permissions, you can find your user/group IDs:
+
 ```bash
 # SSH into UnRaid and run:
 id username
@@ -71,6 +74,7 @@ id username
 | `/app/data` | `/mnt/user/appdata/classifarr` | All application data including database |
 
 **Important**: The data directory contains:
+
 - PostgreSQL database files
 - Configuration settings
 - Classification history
@@ -89,12 +93,39 @@ id username
 
 ## Updating
 
+### Check older saved templates once
+
+**Symptom:** the container exits immediately and its log mentions `tini` failing
+to execute `--add-host=host.docker.internal:host-gateway`.
+
+An older Classifarr template put that Docker option in **Post Arguments**.
+That field replaces the image's startup command; it is not a Docker-options
+field. An image update cannot repair this saved host-side setting.
+
+1. In **Docker → Classifarr → Edit**, enable **Advanced View**. Record your
+   existing settings privately before editing.
+2. If **Post Arguments** contains the exact flag
+   `--add-host=host.docker.internal:host-gateway`, move only that flag to
+   **Extra Parameters**. Do not duplicate it if already present there.
+3. Preserve your repository, appdata/media paths, ports, PUID/PGID and other
+   settings. The stock template has no Post Arguments. If another custom
+   command remains there, review its purpose instead of deleting it blindly.
+4. Apply the edit, then check startup and WebUI availability. Do not delete
+   appdata or reinstall into an empty directory to fix this error.
+
+If the flag is already in Extra Parameters and Post Arguments is empty, no
+correction is needed. The fixed repository XML does not prove your saved
+template has changed. Unraid stores user templates separately and restores
+their saved settings through Previous Apps. See [Community Applications](https://docs.unraid.net/community-applications/)
+and [Docker command semantics](https://docs.docker.com/engine/containers/run/).
+
 ### Image-contained lifecycle changes (unreleased)
 
 The embedded lifecycle supervisor ships inside the image. Updating to an image
 that includes it enables ordered application/database shutdown with your existing
-template, paths and PUID/PGID. No new template setting or Docker socket mount is
-required. This change has not created a release.
+valid template, paths and PUID/PGID. No new template setting or Docker socket
+mount is required. The older Post Arguments error above must be corrected
+before the application can start. This change has not created a release.
 
 An image update cannot raise Unraid's container stop timeout. Its documented
 default is ten seconds; unchanged ten-second stops are covered by disposable
@@ -106,9 +137,10 @@ We never modify host settings or weaken PostgreSQL durability automatically.
 
 ### Via Community Applications
 
-1. Go to **Apps** tab
-2. Click **Check for Updates**
-3. Click **Update** next to Classifarr if available
+1. Record the installed image/version and save a consistent backup (see below).
+2. In **Apps**, check the Action Center for Classifarr updates.
+3. Choose **Actions → Update** when available, preserving the saved settings.
+4. Check the WebUI, logs and the acceptance checklist below.
 
 ### Manual Update
 
@@ -117,20 +149,35 @@ We never modify host settings or weaken PostgreSQL durability automatically.
 3. Click **Force Update**
 4. Wait for the new image to download
 
-### Via Command Line
+Use Unraid's saved-template update flow for routine updates. Do not remove the
+container and reconstruct its command from memory. Merely pulling an image or
+restarting a container does not apply a changed template.
 
-```bash
-docker pull ghcr.io/cloudbyday90/classifarr:latest
-docker stop classifarr
-docker rm classifarr
-# Then recreate using docker-compose or the template
-```
+### Saved-installation acceptance checklist
+
+Record the Unraid/Community Applications versions, old/new image IDs and pass,
+fail or not-applicable for each check. Keep secrets and private paths out of
+shared evidence. A Docker Desktop profile using IDs 99/100 is not this test.
+
+| Check | Expected result / next step |
+| --- | --- |
+| Startup and settings | Container stays healthy; saved connections, paths, libraries and routing settings remain unchanged. A fresh install offers setup. |
+| Ingestion and recovery | Movie/TV import and metadata backfill progress to completion; existing inventory is preserved until a complete scan. Optional AI jobs do not hold recovery open. |
+| Waiting or blocked work | Unconfigured/disabled services stay inactive. Unknown historical writers require review, not automatic takeover. Resolve the stated prerequisite before retrying. |
+| Media scope | Music is ignored, not classified or routed. |
+| Operator controls | Use keyboard navigation to review status and recovery; the reason and next action are readable without relying on color alone. |
+| Stop and restart | Stop through Unraid, restart, and verify health and saved settings; investigate a forced stop or new error rather than declaring success. |
+
+Do not deliberately crash an active library to test recovery. Use an isolated
+copy for failure injection. Check recent logs for new errors; old retained
+reports alone do not prove the updated container is still failing.
 
 ## Troubleshooting
 
 ### Container Won't Start
 
 1. Check logs: Click container icon → **Logs**
+   - If `tini` cannot execute `--add-host=...`, follow **Check older saved templates once** above.
 2. Verify port 21324 is not in use:
    ```bash
    docker ps | grep 21324
@@ -148,7 +195,7 @@ docker rm classifarr
    FATAL: could not access file "pg_stat_statements": No such file or directory
    ```
    Recent images degrade gracefully by disabling query profiling automatically, but older containers may still have a stale preload line in `postgresql.conf`.
-5. Confirm the `appdata` share is still pool-backed for Docker performance:
+6. Confirm the `appdata` share is still pool-backed for Docker performance:
    - Unraid 6.12+: Shares → `appdata` → Primary Storage should point to your cache or named pool
    - If `appdata` has spilled onto the array, stop Docker first and move it back with the Mover or `rsync`
 
@@ -156,11 +203,16 @@ docker rm classifarr
 
 If you see permission errors in logs:
 
-1. Verify PUID/PGID settings match your needs
-2. Fix ownership manually:
-   ```bash
-   chown -R 99:100 /mnt/user/appdata/classifarr
-   ```
+1. Identify the exact failing path and operation in the logs. Confirm the
+   appdata mount, free space, and configured PUID/PGID before changing anything.
+2. Preserve existing data and ownership in a consistent backup. Do not apply
+   recursive `chown` or world-writable permissions to the entire appdata share.
+3. Correct only the verified mount/identity mismatch, with all writers stopped
+   if a data repair is required. Keep PostgreSQL ownership requirements intact;
+   do not assume every historical installation has the same identity layout.
+
+Unraid recommends avoiding unnecessary permission changes on default shares.
+See [official share guidance](https://docs.unraid.net/unraid-os/using-unraid-to/manage-storage/shares/).
 
 ### Cannot Access WebUI
 
@@ -216,23 +268,39 @@ If your *arr containers are on a custom network:
 
 ### Backup
 
-1. Stop the Classifarr container
-2. Copy the appdata directory:
-   ```bash
-   cp -r /mnt/user/appdata/classifarr /mnt/user/backups/classifarr-$(date +%Y%m%d)
-   ```
-3. Restart the container
+1. Record the image ID/version and save the container template privately.
+2. Stop Classifarr cleanly and verify every other writer to its appdata is
+   stopped. A live directory copy is not a consistent database backup.
+3. Use a trusted backup tool to copy the complete, verified host directory
+   mapped to `/app/data` to a new backup destination, preserving ownership and
+   permissions. Keep the source intact and confirm the backup is readable.
+4. Restart Classifarr and verify health. Test restores against an isolated copy,
+   not your only production data directory.
+
+Treat backups as secrets: they contain configuration and database contents.
+The application's JSON configuration export is useful, but is **not** a full
+database/appdata backup.
 
 ### Restore
 
-1. Stop the Classifarr container
-2. Replace the appdata directory with backup:
-   ```bash
-   rm -rf /mnt/user/appdata/classifarr
-   cp -r /mnt/user/backups/classifarr-YYYYMMDD /mnt/user/appdata/classifarr
-   chown -R 99:100 /mnt/user/appdata/classifarr
-   ```
-3. Restart the container
+For a complete appdata restore:
+
+1. Confirm backup completeness and a compatible image/database version. Do not
+   point an older image at a database already upgraded by a newer image.
+2. Stop Classifarr and every other writer. Preserve the current appdata and
+   template separately so the restore can be reversed; do not erase them.
+3. Restore into a separate verified directory, preserving the backup's
+   ownership and permissions. Validate it in isolation before changing the
+   saved appdata mapping. Do not let two containers share writable appdata or
+   let a test copy contact production integrations.
+4. Apply the reviewed mapping and compatible image in Unraid. Check startup,
+   settings, inventory and recovery before retiring the old copy.
+
+For a JSON configuration restore, follow the distinct
+[restore-maintenance procedure](../docs/architecture/restore-maintenance-mode-design.md).
+It requires compatible initialized data and an existing administrator; it is
+not a substitute for full database recovery. Leave normal workers stopped until
+restore verification passes and normal mode is explicitly restored.
 
 ## Support
 
