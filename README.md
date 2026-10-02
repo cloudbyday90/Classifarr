@@ -1066,6 +1066,17 @@ npm --prefix server run dev
 npm --prefix client run dev
 ```
 
+The backend uses Node's native watch mode. Imported modules restart it; changes
+to non-imported files (such as JSON read from disk) require a manual restart.
+Production startup is unchanged.
+
+`npm run lint:docs` uses the standard rules in `.markdownlint.json` and the file
+selection in `.markdownlint-repo.json`. Additional quoted, repository-relative
+patterns are additive. Only literals, `*`, `?` and whole-segment `**` are
+supported; brace expansion and linked files/directories are not followed.
+See the [tooling replacement design](docs/architecture/braces-tooling-replacement-design.md)
+and [validation results](docs/architecture/braces-tooling-replacement-outcome.md).
+
 Build frontend:
 
 ```bash

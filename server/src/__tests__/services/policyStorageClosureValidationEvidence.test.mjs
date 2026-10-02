@@ -74,7 +74,7 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused.command).toContain('policyRollbackSnapshotRetention');
     expect(evidence.focused.command).toContain('backupRestoreTables[.]nativePolicyIntent');
     expect(evidence.lint.command).toBe('npm run lint');
-    expect(evidence.markdown.command).toContain('markdownlint-cli2');
+    expect(evidence.markdown.command).toContain('scripts/run-markdownlint.mjs');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-evidence-run-module-cutover.md');
     expect(evidence.markdown.command)

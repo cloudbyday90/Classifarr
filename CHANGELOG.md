@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Remove the unpatched `braces` dependency by replacing Markdown CLI globbing
+  with a bounded ESM runner and nodemon with Node's native development watcher.
+  Preserve Markdown rules, editor configuration and policy validation; retain
+  security tests for the backend's remaining YAML parser.
 - Update the Node 24 LTS runtime and development baseline to 24.21.0 on Alpine
   3.24.2, pin the shared multi-platform base image, and verify toolchain versions
   during builds without changing deployment settings or application dependencies.

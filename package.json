@@ -122,8 +122,8 @@
     "db:check-schema:container": "node scripts/check-schema-snapshot-container.mjs",
     "db:check-schema:live": "node scripts/check-schema-snapshot.mjs",
     "docker:smoke:pgss": "node scripts/check-pg-stat-startup-smoke.mjs",
-    "lint:docs": "markdownlint-cli2",
-    "test:tooling:dependencies": "node --test scripts/__tests__/yaml-merge-budget.test.mjs scripts/__tests__/markdown-linkify-security.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs scripts/__tests__/container-runtime-baseline.test.mjs",
+    "lint:docs": "node scripts/run-markdownlint.mjs",
+    "test:tooling:dependencies": "node --test scripts/__tests__/markdownlint-runner.test.mjs scripts/__tests__/native-watch.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs scripts/__tests__/container-runtime-baseline.test.mjs",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",
     "esm:check-static-imports": "node scripts/report-static-import-candidates.mjs --check",
@@ -142,16 +142,11 @@
     "axios": "^1.20.0"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.23.3",
+    "markdownlint": "^0.41.1",
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "minimatch": "10.2.5",
-    "brace-expansion": "5.0.12",
-    "smol-toml": "1.8.0",
     "string-width": "8.2.0",
-    "js-yaml": "5.4.2",
-    "markdown-it": "^14.3.2",
     "form-data": "^4.0.6",
     "mime-db": "1.54.0",
     "asynckit": "0.5.0"

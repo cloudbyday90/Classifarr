@@ -22,13 +22,13 @@ describe('policyStorageClosureValidationCommandInvocation', () => {
     const npxCliPath = path.join('C:', 'runtime', 'npm', 'bin', 'npx-cli.js');
 
     expect(buildPolicyStorageClosureValidationCommandInvocation({
-      commandSpec: { command: 'npx', args: ['markdownlint-cli2', 'CHANGELOG.md'] },
+      commandSpec: { command: 'npx', args: ['jest', '--version'] },
       nodeExecPath,
       npmExecPath,
       fileExists: filePath => filePath === npxCliPath,
     })).toEqual({
       command: nodeExecPath,
-      args: [npxCliPath, 'markdownlint-cli2', 'CHANGELOG.md'],
+      args: [npxCliPath, 'jest', '--version'],
     });
   });
 

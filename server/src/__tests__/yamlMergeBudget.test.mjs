@@ -7,20 +7,10 @@
  */
 
 import assert from 'node:assert/strict';
-import { findPackageJSON } from 'node:module';
-import { test } from 'node:test';
+import { test } from '@jest/globals';
 import { CORE_SCHEMA, load, mergeTag, YAML11_SCHEMA } from 'js-yaml';
-import parseLinterYaml from 'markdownlint-cli2/parsers/yaml';
-import { lint } from 'markdownlint-cli2/markdownlint/promise';
 
-// This file lives outside server/ so it exercises the vulnerable root tooling
-// boundary, not the independently installed (already patched) server dependency.
-test('the root regression and Markdown linter resolve the same YAML package', () => {
-  assert.equal(
-    findPackageJSON('js-yaml', import.meta.url),
-    findPackageJSON('js-yaml', import.meta.resolve('markdownlint-cli2/parsers/yaml')),
-  );
-});
+// Keep merge-budget regressions on the surviving application YAML dependency.
 
 const schemas = [
   ['YAML 1.1', YAML11_SCHEMA],
@@ -78,33 +68,3 @@ for (const [schemaName, schema] of schemas) {
     assert.deepEqual(result.target, { enabled: true, limit: 2, label: 'movies' });
   });
 }
-
-const linterConfigYaml = 'default: false\nMD012:\n  maximum: 1\nMD047: true\n';
-
-test('the public linter parser preserves ordinary YAML configuration values', () => {
-  assert.deepEqual(parseLinterYaml(linterConfigYaml), {
-    default: false,
-    MD012: { maximum: 1 },
-    MD047: true,
-  });
-});
-
-for (const prefix of ['', '%YAML 1.1\n---\n']) {
-  test(`the linter keeps default-schema merge keys literal (${prefix ? 'directive' : 'plain'})`, () => {
-    const result = parseLinterYaml(`${prefix}source: &source {}\ntarget: { <<: *source }\n`);
-    assert.deepEqual(result.target, { '<<': {} });
-  });
-}
-
-test('the public linter parser still rejects malformed configuration', () => {
-  assert.throws(() => parseLinterYaml('MD012: [\n'), { name: 'YAMLException' });
-});
-
-test('YAML-derived linter rules still accept valid Markdown and report invalid Markdown', async () => {
-  const result = await lint({
-    config: parseLinterYaml(linterConfigYaml),
-    strings: { valid: '# Title\n\nText.\n', invalid: '# Title\n\n\nText.' },
-  });
-  assert.deepEqual(result.valid, []);
-  assert.deepEqual(result.invalid.map(({ ruleNames }) => ruleNames[0]).sort(), ['MD012', 'MD047']);
-});

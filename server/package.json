@@ -12,7 +12,7 @@
   "main": "src/index.mjs",
   "scripts": {
     "start": "node src/index.mjs",
-    "dev": "nodemon src/index.mjs",
+    "dev": "node --watch --watch-preserve-output src/index.mjs",
     "study:capture:held-out": "node src/scripts/runHeldOutSemanticStudyCapture.mjs",
     "study:capture:held-out-cohort": "node src/scripts/runHeldOutSemanticStudyCohortCapture.mjs",
     "study:capture:reviewer-packet": "node src/scripts/runHeldOutSemanticStudyReviewerPacket.mjs",
@@ -86,7 +86,6 @@
     "globals": "^17.12.0",
     "jest": "^30.5.2",
     "knip": "^6.38.0",
-    "nodemon": "^3.1.14",
     "supertest": "^7.3.0",
     "typescript": "^7.0.2"
   },
@@ -95,7 +94,6 @@
     "@scarf/scarf@1.4.0": false,
     "bcrypt@6.0.0": true,
     "cpu-features@0.0.10": false,
-    "fsevents@2.3.3": false,
     "protobufjs@7.6.5": false,
     "ssh2@1.17.0": false,
     "unrs-resolver@1.12.2": false

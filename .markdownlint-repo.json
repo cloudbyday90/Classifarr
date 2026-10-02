@@ -14,12 +14,5 @@
     ".agent/**",
     "**/*_backup*.md",
     "**/*backup*.md"
-  ],
-  "config": {
-    "default": false,
-    "MD012": {
-      "maximum": 1
-    },
-    "MD047": true
-  }
+  ]
 }

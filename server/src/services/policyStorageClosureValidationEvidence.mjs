@@ -72,9 +72,9 @@ const POLICY_STORAGE_CLOSURE_VALIDATION_COMMANDS = Object.freeze([
   {
     checkId: POLICY_STORAGE_CLOSURE_VALIDATION_CHECK_IDS.MARKDOWN,
     label: 'Policy storage closure markdown validation',
-    command: 'npx',
+    command: 'node',
     args: [
-      'markdownlint-cli2',
+      'scripts/run-markdownlint.mjs',
       'CHANGELOG.md',
       'docs/architecture/policy-builder-intent-model-roadmap.md',
       'docs/architecture/policy-storage-closure-evidence-run.md',
