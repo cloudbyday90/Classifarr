@@ -49,7 +49,8 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
   if (deployment.file) base.push('--file', resolve(root, deployment.file));
   if (resourceBudget) {
     base.push('--file', resolve(root, 'docker-compose.resource-study-budget.yml'));
-    Object.assign(env, { CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128' });
+    Object.assign(env, { CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128',
+      CLASSIFARR_RESOURCE_STUDY_MEMORY: '2g' });
   }
   const invoke = (binary, args, timeout = 120_000, allowFailure = false, input) => {
     try {

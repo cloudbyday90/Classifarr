@@ -61,7 +61,8 @@ test.each([true, false])('opt-in budget reuses fixed limits and crash protocol, 
   expect(ops.some(args => args.at(-1) === 'scheduled')).toBe(false);
   const build = run.mock.calls.find(([, args]) => args.includes('build'));
   expect(build[1][8]).toMatch(/docker-compose.resource-study-budget.yml$/);
-  expect(build[2].env).toMatchObject({ CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128', CLASSIFARR_UPGRADE_BUDGET: 'bounded' });
+  expect(build[2].env).toMatchObject({ CLASSIFARR_RESOURCE_STUDY_CPUS: '2', CLASSIFARR_RESOURCE_STUDY_PIDS: '128',
+    CLASSIFARR_RESOURCE_STUDY_MEMORY: '2g', CLASSIFARR_UPGRADE_BUDGET: 'bounded' });
   expect(run.mock.calls.filter(([, args]) => args.includes('build'))).toHaveLength(1);
   expect(run.mock.calls.some(([cmd]) => cmd === 'gh')).toBe(!freshOnly);
 });
