@@ -4,14 +4,16 @@
 
 Audit date: 2026-10-02.
 
-Do not cut a release yet. The complete no-cache, frozen-image, three-profile
-rehearsal now passes, including all six interrupted-backfill cases. Sustained
-resource evidence, actual saved-template operator acceptance and the supported
-upgrade floor remain release decisions. See the separate
-[crash-window design](crash-boundary-window-design.md) and
-[passing outcome](crash-boundary-window-outcome.md). The
-[earlier failed rehearsal](frozen-release-rehearsal-outcome.md) remains historical
-evidence; its exact cause was not retroactively proven by the new pass.
+Do not cut a release yet. The complete no-cache, frozen-image rehearsal now
+passes the sustained resource soak and all three installation profiles,
+including all six interrupted-backfill cases. Actual saved-template operator
+acceptance and the supported upgrade floor remain release decisions. See the
+separate [same-image soak design](frozen-resource-soak-design.md) and
+[passing outcome](frozen-resource-soak-outcome.md). The previous
+[crash-window outcome](crash-boundary-window-outcome.md) and the
+[earlier failed rehearsal](frozen-release-rehearsal-outcome.md) remain historical
+evidence; the earlier failure's exact cause was not retroactively proven by the
+new pass.
 
 The newest published release, including prereleases, is `v0.48.4-beta`
 (2026-08-29). Root, server and client package manifests remain `0.48.4-beta`.
@@ -42,43 +44,49 @@ That historical artifact was not rerun or renewed by this release rehearsal.
 
 ## Current Acceptance And Remaining Work
 
-Source `a56e3f0f05b16520356837fb655df6b2f0323e38` passed
-[CI/CD run 36993068277](https://github.com/cloudbyday90/Classifarr/actions/runs/36993068277),
+Source `03af7b5cd34c2ff309700fd7e450608907cb8454` passed
+[CI/CD run 37037105191](https://github.com/cloudbyday90/Classifarr/actions/runs/37037105191),
 including ordinary fresh/published-upgrade acceptance, database tests and the
 release readout. CodeQL, Gitleaks, OSV, Trivy, copyright and the resource-capacity
 workflow also passed for that source. Local backend unit validation passed
-1,616 suites and 49,451 tests, with one existing skip.
+1,617 suites and 49,507 tests, with one existing skip.
 
 That same clean source produced one no-cache image,
-`sha256:4871ab61fd473f436e2b03bdc73b30e4a059d0a78f7710e0d70a61b1768567ea`,
-which passed the complete standard, Unraid-style and custom-ID matrix at
-`2026-10-02T11:35:06.615Z`. Every saved configuration remained unchanged.
+`sha256:143709da63b8db7659ca997a5f06856d492d996fdfcbe529d3f7441f0c162644`,
+which passed the sustained bounded soak and complete standard, Unraid-style and
+custom-ID matrix at `2026-10-02T19:00:06.827Z`. Every saved configuration remained
+unchanged.
 Each of six 600-item backlog cases completed exactly once with five expired-claim
 reclaims, 605 starts and no early reclaim. Owned cleanup passed. Later
 documentation-only commits do not replace this image-tested source identity.
 
-These are distinct from the heavier local rehearsal. Ordinary CI installation
-acceptance uses the standard, non-budgeted profile. The manually dispatched
+The soak completed 1,600 unique items, both pressure/provider recovery cohorts
+and 120.3 seconds of settled idle. Sampled raw container memory peaked at
+436.25 MiB and PIDs at 61, under the enforced 2-CPU / 2-GiB / 128-PID profile.
+Measured OOM kills and memory/PID-limit hits were zero. CPU throttling affected
+4.62% of accounting periods; it is an observation, not a wall-time percentage.
+These results do not establish production capacity or a long-term leak verdict.
+
+Ordinary CI validation is distinct from this heavier local rehearsal. Its
+installation acceptance uses the standard, non-budgeted profile. The manually dispatched
 installation-budget mode and automatic capacity smoke are not a long soak or
 proof that all three saved deployment profiles passed one image.
 
 Release blockers and scope decisions, in order:
 
-1. Run a bounded sustained workload and recovery soak, checking CPU throttling,
-   memory growth, PID/connection limits, queue progress and return to idle.
-   Point-in-time snapshots cannot establish peaks or minimum requirements.
-   Reuse the existing soak runner's fixed-image input within the frozen-candidate
-   lifecycle; do not combine unrelated image results into one acceptance claim.
-2. Accept operator flows on an actual saved Unraid/Community Apps installation,
+1. Accept operator flows on an actual saved Unraid/Community Apps installation,
    including unchanged settings, imports, recovery and clear accessible status.
    A Linux container with Unraid-style IDs is not physical Unraid certification.
-3. Define the supported upgrade floor. The pinned published baseline is
+2. Define the supported upgrade floor. The pinned published baseline is
    `v0.48.4-beta`; older versions, including the non-prerelease latest label,
    require separate evidence if included in the release promise.
-4. Select the version and freeze the final source; repeat applicable checks
+3. Select the version and freeze the final source; repeat applicable checks
    after version/runtime changes. Verify supported architectures and immutable
    published digests through the protected publication/consumer workflow only
    after an explicit release decision.
+
+The same-image sustained soak is now a mandatory part of that frozen-source
+rehearsal, not a separate historical receipt that can be reused after changes.
 
 Recovery completion means import plus metadata. Optional AI/embedding jobs must
 not prevent completion, and provider correctness/AI accuracy remain separate

@@ -87,3 +87,6 @@ source. Record measured results separately; partial success cannot pass v2.
 After sustained evidence is accepted, perform real saved Unraid/Community Apps
 operator acceptance and define the supported upgrade floor. An explicit later
 release decision is still required; this commit creates no release.
+
+The completed same-image run is recorded separately in the
+[qualification outcome](frozen-resource-soak-outcome.md).
