@@ -6,11 +6,15 @@ import { upgradeBaseline, PublishedUpgradeProvenanceError } from '../../../../sc
 import { INSTALLATION_CHECKS } from '../../../../scripts/lib/runtimeInstallationEvidence.mjs';
 import { SCHEDULED_INSTALLATION_EXPECTED, SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 import { evidence } from '../fixtures/installationBudget.mjs';
+import { resourceStudyReceiptFixture, resourceStudyStartupFixture } from '../helpers/resourceStudyReceiptFixture.mjs';
 
 const revision = 'a'.repeat(40);
 const imageId = `sha256:${'b'.repeat(64)}`;
 const identity = { sourceRevision: revision, worktreeClean: true };
 const database = { version: '180006', migrations: 312 };
+const soakSuccess = () => ({ imageId, mode: 'soak', budget: 'bounded', cleanup: 'passed',
+  startup: { fresh: resourceStudyStartupFixture('bounded'), maintenance: resourceStudyStartupFixture('bounded') },
+  study: resourceStudyReceiptFixture('soak', 'bounded') });
 const success = profile => ({ status: 'passed', scope: 'fresh-and-upgrade', cleanup: 'passed', baseline: upgradeBaseline,
   candidateImageId: imageId, fresh: { status: 'passed', database },
   deployment: { profile, unchanged: true, configurationDigest: 'c'.repeat(64) },
@@ -25,7 +29,8 @@ function harness(options = {}) {
   const drill = jest.fn(async ({ deploymentProfile }) => success(deploymentProfile));
   const source = jest.fn(() => identity);
   const verify = jest.fn();
-  return { candidate, drill, source, verify, report: jest.fn(), ...options };
+  const soak = jest.fn(async () => soakSuccess());
+  return { candidate, drill, soak, source, verify, report: jest.fn(), ...options };
 }
 
 test('builds once, tests all fixed profiles with one image and mandatory limits, and sanitizes evidence', async () => {
@@ -36,10 +41,15 @@ test('builds once, tests all fixed profiles with one image and mandatory limits,
   expect(input.verify).toHaveBeenCalledTimes(1);
   expect(input.candidate).toHaveBeenCalledTimes(1);
   expect(input.candidate.mock.calls[0][1]).toEqual({ noCache: true, sourceRevision: revision });
+  expect(input.soak).toHaveBeenCalledTimes(1);
+  expect(input.soak).toHaveBeenCalledWith({ mode: 'soak', budget: 'bounded', candidateImageId: imageId });
+  expect(input.soak.mock.invocationCallOrder[0]).toBeLessThan(input.drill.mock.invocationCallOrder[0]);
+  expect(result).toMatchObject({ schemaVersion: 'classifarr.frozen-release-rehearsal.v2',
+    soak: { status: 'passed', imageId, requestedDurationMs: 1800000 } });
   expect(input.drill.mock.calls.map(([args]) => args)).toEqual(['standard', 'unraid', 'custom'].map(deploymentProfile => ({
     deploymentProfile, candidateImageId: imageId, resourceBudget: true,
   })));
-  expect(input.source).toHaveBeenCalledTimes(8);
+  expect(input.source).toHaveBeenCalledTimes(10);
   expect(result.profiles.every(row => row.checks.length === 12 && row.status === 'passed')).toBe(true);
   expect(formatFrozenRehearsalSummary(result)).toContain('not a real Unraid host');
 });
@@ -61,11 +71,36 @@ test('malformed source, invalid cache input and provenance failure do not build'
   }
 });
 
-test.each([2, 3, 4, 5, 6, 7, 8])('source change at boundary %i blocks entire acceptance', async boundary => {
+test.each([2, 3, 4, 5, 6, 7, 8, 9, 10])('source change at boundary %i blocks entire acceptance', async boundary => {
   let calls = 0;
   const input = harness({ source: () => ++calls === boundary ? { ...identity, sourceRevision: 'd'.repeat(40) } : identity });
   const receipt = await runFrozenReleaseRehearsal(input);
   expect(receipt).toMatchObject({ status: 'blocked', failureStage: 'source', worktreeClean: false });
+});
+
+test.each(['execution', 'image', 'short', 'cleanup', 'idle', 'budget', 'provider', 'source'])('soak %s failure blocks every installation profile and releases the candidate', async failure => {
+  let released = false, reads = 0;
+  const input = harness({ candidate: async operation => {
+    try { return await operation(imageId); } finally { released = true; }
+  }, source: () => ++reads === 3 && failure === 'source' ? { ...identity, worktreeClean: false } : identity,
+  soak: async () => {
+    if (failure === 'execution') throw new Error('private-value');
+    const value = soakSuccess();
+    if (failure === 'image') value.imageId = `sha256:${'e'.repeat(64)}`;
+    if (failure === 'short') value.study = resourceStudyReceiptFixture('smoke', 'bounded');
+    if (failure === 'cleanup') value.cleanup = 'failed';
+    if (failure === 'idle') value.study.trend.phases.idle.spanMs = 10000;
+    if (failure === 'budget') value.startup.maintenance.metrics.cpuQuotaUsec = 100000;
+    if (failure === 'provider') value.study.providerRecovery.pending = 1;
+    return value;
+  } });
+  const receipt = await runFrozenReleaseRehearsal(input);
+  expect(receipt.status).toBe('blocked');
+  expect(receipt.soak.status).toBe('not_verified');
+  expect(input.drill).not.toHaveBeenCalled();
+  expect(released).toBe(true);
+  expect(JSON.stringify(receipt)).not.toContain('private-value');
+  expect(formatFrozenRehearsalSummary(receipt)).toContain('Sustained resource soak: not verified');
 });
 
 test.each([

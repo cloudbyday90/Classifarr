@@ -28,7 +28,8 @@ export function resourceStudyReceiptFixture(mode = 'smoke', budget = 'baseline')
     requestedDurationMs: profile.durationMs, durationMs: profile.durationMs + profile.idleMs + 100,
     trend: summarizeStudyTrend(samples, profile.idleMs),
     evaluationRows: profile.rows, vectorDimensions: profile.dimensions, initial, final: { ...initial },
-    backlog: { completed: 1620, pending: 0, failed: 0, routing: 0 }, counters: { evaluations: 1 }, drainMs: 100,
+    backlog: { completed: 1620, pending: 0, failed: 0, routing: 0 },
+    counters: { evaluations: 1, providerFailures: 1, preservedOutages: 1 }, drainMs: 100,
     metrics: { containerBytes: { max: 1024 }, containerCores: { p95: 1 }, eventLoopP99Ms: { max: 20 }, pids: { max: 10 } },
     queueRecovery: { cohortSize: 20, started: 20, completed: 20, startedDuringPressure: 0,
       holdChecks: 5, heldMs: 10000, firstDispatchMs: 500, completedMs: 2000 } };

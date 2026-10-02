@@ -21,6 +21,11 @@ The bounded resource profile is mandatory for this rehearsal: 2 CPU, 2 GiB,
 Each profile starts with isolated fresh storage, then separate baseline-created
 storage. Only the image may change during its published-to-candidate upgrade.
 
+The October 2 [same-image sustained qualification](frozen-resource-soak-design.md)
+adds the existing 30-minute resource soak before the installation matrix. Receipt
+v2 requires its matched-image workload, recovery and settled-idle evidence; a
+historical v1 matrix pass cannot satisfy this added gate.
+
 ## Safety and evidence
 
 - No arbitrary image, Compose file, project, volume or live endpoint inputs.
@@ -61,8 +66,8 @@ storage. Only the image may change during its published-to-candidate upgrade.
 | One frozen image, three profiles | Comparable evidence; one build; reused probes | Longer serial test; local platform only |
 | New runtime recovery orchestrator | Could add capabilities | Unneeded scope and release regression risk |
 
-Recommend the frozen-image rehearsal first, exact-commit CI/security acceptance
-second, then an actual saved-template installation acceptance and a bounded soak.
+Recommend the frozen-image soak and installation rehearsal first, exact-commit
+CI/security acceptance second, then actual saved-template installation acceptance.
 Version selection, multiarchitecture digest smoke and publication remain a later,
 explicit release decision. Do not add unrelated features to this candidate.
 

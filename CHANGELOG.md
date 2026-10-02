@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require a same-image sustained resource soak before the frozen installation
+  rehearsal can pass, with bounded workload/idle evidence and validated aggregate
+  CPU, memory, queue and provider-recovery results.
 - Verify interrupted-backfill crash injection against its remaining hold window,
   remove post-verification setup work, and retain bounded monotonic timing evidence
   so an expired test checkpoint is not mistaken for a recovery defect.

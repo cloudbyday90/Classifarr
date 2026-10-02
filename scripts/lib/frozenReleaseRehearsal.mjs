@@ -6,16 +6,19 @@ import { upgradeBaseline, readProvenanceFailure, verifyPublishedUpgradeProvenanc
 import { installationResultEvidence, INSTALLATION_CHECKS } from './runtimeInstallationEvidence.mjs';
 import { installationFailureStage } from './runtimeInstallationReceipt.mjs';
 import { withFrozenUpgradeCandidate } from './frozenUpgradeCandidate.mjs';
+import { runResourceStudyCompose } from './resourceStudyCompose.mjs';
+import { frozenResourceSoakEvidence, formatFrozenSoakSummary } from './frozenResourceSoakEvidence.mjs';
 
 export const REHEARSAL_PROFILES = Object.freeze(['standard', 'unraid', 'custom']);
 
 /** This is test orchestration, not a production worker or publication approval. */
 export async function runFrozenReleaseRehearsal({ source = readInstallationSource, candidate = withFrozenUpgradeCandidate,
-  drill = runPublishedUpgradeCompose, verify = verifyPublishedUpgradeProvenance, noCache = false,
+  drill = runPublishedUpgradeCompose, soak = runResourceStudyCompose, verify = verifyPublishedUpgradeProvenance, noCache = false,
   report = message => process.stdout.write(`${message}\n`), now = () => new Date().toISOString() } = {}) {
-  const receipt = { schemaVersion: 'classifarr.frozen-release-rehearsal.v1', status: 'blocked', completedAt: null,
+  const receipt = { schemaVersion: 'classifarr.frozen-release-rehearsal.v2', status: 'blocked', completedAt: null,
     sourceRevision: null, worktreeClean: false, candidateImageId: null, baseline: { ...upgradeBaseline },
     resourceBudget: 'bounded', buildCache: noCache ? 'disabled' : 'enabled', failureStage: 'preflight',
+    soak: { status: 'not_verified' },
     profiles: REHEARSAL_PROFILES.map(profile => ({ profile, status: 'not_verified' })), candidateCleanup: 'not_verified' };
   const assertSource = () => {
     const identity = source();
@@ -35,6 +38,17 @@ export async function runFrozenReleaseRehearsal({ source = readInstallationSourc
     await candidate(async imageId => {
       assert.match(imageId, /^sha256:[a-f0-9]{64}$/);
       receipt.candidateImageId = imageId;
+      stage = 'source';
+      assertSource();
+      stage = 'soak';
+      report('SOAK frozen candidate (30-minute workload plus settled idle)');
+      const study = await soak({ mode: 'soak', budget: 'bounded', candidateImageId: imageId });
+      stage = 'soak_evidence';
+      const soakEvidence = frozenResourceSoakEvidence(study, imageId);
+      stage = 'source';
+      assertSource();
+      receipt.soak = soakEvidence;
+      report('PASS same_image_resource_soak');
       for (const [index, profile] of REHEARSAL_PROFILES.entries()) {
         stage = 'source';
         assertSource();
@@ -72,9 +86,10 @@ export function formatFrozenRehearsalSummary(receipt) {
   return '# Frozen release rehearsal\n\n' +
     `${receipt.status === 'passed' ? 'Passed' : 'Blocked'}; no release or deployment authorized.\n\n` +
     `Source: ${receipt.sourceRevision ?? 'not verified'}.\n\nImage ID: ${receipt.candidateImageId ?? 'not verified'}.\n\n` +
+    formatFrozenSoakSummary(receipt.soak) +
     '| Saved deployment | Fresh + upgrade + recovery | Resource budget |\n| --- | --- | --- |\n' +
     receipt.profiles.map(row => `| ${row.profile} | ${row.status} | ${row.resourceBudget?.status ?? 'not_verified'} |`).join('\n') +
     `\n\nCandidate tag cleanup: ${receipt.candidateCleanup}.\n\n` +
     (receipt.failureStage ? `Next: investigate ${receipt.failureStage} and rerun the entire matrix.\n\n` : '') +
-    'Scope: synthetic providers and saved templates on one local platform; not a real Unraid host, long soak, published manifest digest or AI accuracy evaluation.\n';
+    'Scope: synthetic service soak and saved templates on one local platform; not a real Unraid host, long-term leak certification, published manifest digest or AI accuracy evaluation.\n';
 }
