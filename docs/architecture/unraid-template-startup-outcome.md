@@ -84,12 +84,26 @@ checked here is the `v0.48.4-beta` prerelease from August 29. Coordinate those
 metadata corrections with the maintainer, preserving that template's existing
 paths and identities; do not silently swap defaults or submit a duplicate.
 
+The user's earlier [Selfhosters PR #618](https://github.com/selfhosters/unRAID-CA-templates/pull/618)
+received XML/field cleanup requests and later approval, then was closed without
+merging on May 30. The current maintainer has an existing open
+[Classifarr discussion #372](https://github.com/nwithan8/unraid_templates/discussions/372)
+and directs questions there; GitHub Issues are disabled. The submission guide
+records that history and the correct handoff route. No new thread or comment
+was posted during this review.
+
 ## Local Startup Evidence
 
-Clean tested source: `cd5b0dbe2059013d590f0eaf490707cab2aaf807`.
-One no-cache image:
+Final clean tested source: `173d577294b333c761f64b55e0dbf45a39773cb1`.
+No-cache image:
+`sha256:341d7c034b310e28a48df35facbf94e4dfdf7ff8f0856b3c120ac069b9c30e50`.
+Completed at `2026-10-02T19:50:19.832Z`.
+
+The initial startup-only source `cd5b0dbe2059013d590f0eaf490707cab2aaf807`
+also passed a separate no-cache run at `2026-10-02T19:31:13.382Z`, using image
 `sha256:555fb421c65b939a5b60ee1ebe366ad03bdd65c28c9fc86d2b08d441eb8647d6`.
-Completed at `2026-10-02T19:31:13.382Z`.
+The final run rebuilt and repeated both cases after the expanded metadata
+changes; the earlier receipt was not relabeled as evidence for a later source.
 
 The actual old and corrected XML fields determined the tested argument order.
 Both disposable containers used the same image with empty anonymous appdata,
@@ -125,8 +139,15 @@ Trivy, copyright and resource-capacity workflows also passed.
 
 Expanded metadata validation passed nine XML contract checks and the full
 416-suite / 5,909-test client suite. Client lint/type checks, Markdown lint and
-`git diff --check` passed. The earlier image evidence is tied to the source
-above, not silently relabeled as the later metadata revision.
+`git diff --check` passed. The final-source no-cache run independently confirmed
+the actual XML startup contract after all template changes.
+
+For final template source `173d577294b333c761f64b55e0dbf45a39773cb1`,
+[CI/CD run 37056358617](https://github.com/cloudbyday90/Classifarr/actions/runs/37056358617)
+passed its Build and Test, Tests with Database, and Fresh Install and Published
+Upgrade jobs. CodeQL, Gitleaks, OSV, Trivy, copyright and resource-capacity
+workflows also passed for that source. These checks are not CA moderator
+approval or actual Unraid host acceptance.
 
 GitHub MCP search and the saved GitHub CLI login returned no open Classifarr
 PRs. No random PR could be selected, and no closed or unrelated PR was

@@ -14,6 +14,36 @@ second Classifarr listing to bypass the maintainer. Prefer a coordinated patch
 to the actual source; consider a CA-reviewed ownership transfer only if agreed.
 Recheck the listing's Template link before acting because ownership can change.
 
+The maintainer's GitHub README directs questions to Discussions; GitHub Issues
+are disabled. The existing [Classifarr discussion #372](https://github.com/nwithan8/unraid_templates/discussions/372)
+was open with no comments when checked. Prefer a focused reply there to agree
+the update route before preparing changes against the Codeberg source. A saved
+GitHub CLI login can access that discussion, but does not establish a Codeberg
+or Unraid login. No reply has been posted by this work.
+
+## Previous Submission And Lessons
+
+The user's [Selfhosters PR #618](https://github.com/selfhosters/unRAID-CA-templates/pull/618)
+was closed without merging on 2026-05-30. Earlier reviews requested cleaned XML,
+no hardcoded restart/network arguments, and requirements in the appropriate
+field rather than a repeated Overview section. A later review approved the
+updated proposal, but approval did not result in a merge or catalog update.
+Do not describe the whole history as a rejected or failed validation.
+
+The current project XML has concise Overview/Requires fields, no embedded saved
+Config values, no forced restart policy, and bridge networking in the Network
+field. Its only ExtraParams option is the host-gateway mapping; this has a
+separate regression test proving its position before the image. The current
+catalog template has no host-gateway option, so a metadata-only upstream patch
+need not add one. Discuss any functional additions separately.
+
+The old PR targeted Selfhosters; today's catalog points to nwithan8's source.
+Do not reopen the old PR or submit a duplicate to a different feed without
+agreeing ownership. Carry forward its review lessons and the new test evidence,
+not the old proposal wholesale.
+
+## Preserve Installed Defaults
+
 The external template currently differs from this repository:
 
 | Setting | Listed external template | Project template default |
@@ -86,6 +116,11 @@ The local metadata cleanup is ready for review, not a submitted catalog change.
 The external template's mandatory-Ollama wording and stable label should be
 reviewed with its maintainer. Preserve its existing appdata/identity defaults
 when preparing that patch; do not replace the whole file with ours.
+
+The proposed discussion reply should link the old PR and the source-bound test
+outcome, request the preferred Codeberg patch or agreed ownership-transfer path,
+and keep metadata corrections separate from optional media mounts or networking.
+Wait for authorization to post, and record the resulting comment URL here.
 
 No external submission, maintainer message, PR, ownership transfer or release
 was performed in this work. The counted survey and measured local checks are
