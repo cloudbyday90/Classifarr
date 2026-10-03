@@ -361,6 +361,12 @@
               <span class="text-gray-400">Routing:</span>
               <span class="text-gray-300 font-medium">{{ routingLabel }}</span>
             </div>
+            <ManualRoutingCheck
+              v-if="selectedItem.method === 'manual_classification' && selectedItem.status === 'completed'"
+              :key="selectedItem.id"
+              :classification-id="selectedItem.id"
+              :details="parsedMetadata?.classification_details || {}"
+            />
             <div class="flex items-center justify-between">
               <span class="text-gray-400">Date:</span>
               <span class="text-gray-300">
@@ -1094,6 +1100,7 @@ import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
 import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
 import ExhaustedRetryRecovery from '@/components/history/ExhaustedRetryRecovery.vue'
 import MoveRecoveryStatus from '@/components/history/MoveRecoveryStatus.vue'
+import ManualRoutingCheck from '@/components/history/ManualRoutingCheck.vue'
 import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()

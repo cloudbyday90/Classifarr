@@ -12,6 +12,7 @@ const { apiMock, librariesStoreMock, showLockdownNotificationMock } = vi.hoisted
   apiMock: {
     getHistory: vi.fn(),
     submitCorrection: vi.fn(),
+    checkManualRouting: vi.fn(),
   },
   librariesStoreMock: {
     libraries: [
@@ -331,6 +332,24 @@ describe('History enhancements behavior', () => {
     await wrapper.find('tbody tr td:nth-child(2)').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Routing unconfirmed — check Radarr/Sonarr')
+    wrapper.unmount()
+  })
+
+  it('offers the explicit check for an unconfirmed manual record without checking on open', async () => {
+    apiMock.getHistory.mockResolvedValueOnce({ data: [{ ...baseHistoryRows[1], method: 'manual_classification', status: 'completed',
+      metadata: { classification_details: { routing: 'manual_routing_pending', manual_routing_intent: { version: 1 } } },
+    }], pagination: { page: 1, limit: 50, total: 1, totalPages: 1 } })
+    apiMock.checkManualRouting.mockResolvedValueOnce({ data: { reason: 'verified_present', recorded: true,
+      message: 'Found in the saved destination. This does not prove which request added it.' } })
+    const wrapper = await mountHistory()
+    await wrapper.find('tbody tr td:nth-child(2)').trigger('click'); await flushPromises()
+    expect(apiMock.checkManualRouting).not.toHaveBeenCalled()
+    const button = wrapper.findAll('button').find(item => item.text() === 'Check routing')
+    expect(button).toBeDefined()
+    await button.trigger('click'); await flushPromises()
+    expect(apiMock.checkManualRouting).toHaveBeenCalledWith(baseHistoryRows[1].id)
+    expect(wrapper.text()).toContain('does not prove which request added it')
+    expect(wrapper.text()).toContain('Routing unconfirmed')
     wrapper.unmount()
   })
 

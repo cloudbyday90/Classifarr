@@ -1221,6 +1221,10 @@ Unconfirmed Radarr/Sonarr routing:
   `success` means selection saved; check `routing.routed` and `routing.recorded`
   for confirmation. Interrupted work stays unconfirmed in History. See the
   [manual routing contract](docs/architecture/manual-queue-routing-design.md).
+- For an unconfirmed manual selection, open its History details and choose
+  **Check routing** (administrator). It checks the saved provider/destination
+  without adding or moving media. Older records without saved intent require
+  review in Radarr/Sonarr. See [routing checks](docs/architecture/manual-routing-check-design.md).
 
 OMDb timeout warnings:
 

@@ -12,6 +12,7 @@ import { classificationService as defaultClassificationService } from './classif
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
 import { saveManualClassification } from './queueManualClassificationRecord.mjs';
+import { captureManualRoutingIntent } from './manualRoutingIntentPersistence.mjs';
 import { normalizeManualRoutingOutcome, recordManualRoutingOutcome, MANUAL_ROUTING_MESSAGE } from './queueManualRoutingOutcome.mjs';
 
 export class QueueAdminService {
@@ -31,7 +32,9 @@ export class QueueAdminService {
 
         let observed;
         try {
-            observed = await this.classificationService.routeToArr(selection.metadata, selection.library);
+            observed = await this.classificationService.routeToArr(selection.metadata, selection.library, {
+                beforeReconcile: input => captureManualRoutingIntent(this.db, selection, input),
+            });
         } catch {
             observed = { attempted: true };
         }

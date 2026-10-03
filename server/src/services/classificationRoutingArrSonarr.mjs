@@ -21,6 +21,7 @@ import {
 import { resolveDefaultQualityProfile, resolveDefaultRootFolder } from './classificationRoutingService.mjs';
 import { reconcileArrAdd } from './arrAddReconciliation.mjs';
 import { normalizeArrId } from './arrResourceVerification.mjs';
+import { manualRoutingLibraryFingerprint } from './manualRoutingIntent.mjs';
 
 const logger = createLogger('classificationRoutingSonarr');
 
@@ -47,7 +48,8 @@ const normalizeMonitor = (value) => {
   return map[key] || key;
 };
 
-export async function routeToSonarr(metadata, resolvedLibrary, routingResult) {
+export async function routeToSonarr(metadata, resolvedLibrary, routingResult, { beforeReconcile } = {}) {
+  const libraryFingerprint = manualRoutingLibraryFingerprint(resolvedLibrary);
   const sonarrConfig = await db.query(
     'SELECT * FROM sonarr_config WHERE id = $1 AND is_active = true',
     [resolvedLibrary.arr_id],
@@ -193,8 +195,10 @@ export async function routeToSonarr(metadata, resolvedLibrary, routingResult) {
 
   delete seriesData.id;
 
+  const expected = { identityKey: 'tvdbId', identity: normalizedTvdbId, rootFolderPath: settings.root_folder_path };
+  await beforeReconcile?.({ arrType: 'sonarr', configId: resolvedLibrary.arr_id, baseUrl, expected, libraryFingerprint });
   Object.assign(routingResult, await reconcileArrAdd({
-    expected: { identityKey: 'tvdbId', identity: normalizedTvdbId, rootFolderPath: settings.root_folder_path },
+    expected,
     read: () => sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, normalizedTvdbId),
     add: () => sonarrService.addSeries(baseUrl, config.api_key, seriesData),
   }));

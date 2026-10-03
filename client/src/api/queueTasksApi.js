@@ -51,6 +51,10 @@ export function classifyQueueTask(taskId, data) {
   return apiClient.post(`/queue/tasks/${taskId}/classify`, data, { skipAutomaticRetry: true })
 }
 
+export function checkManualRouting(classificationId) {
+  return apiClient.post(`/queue/manual-routing/${classificationId}/check`, {}, { skipAutomaticRetry: true })
+}
+
 const queueTasksApi = {
   getRetryReadiness,
   getOmdbRetryReadiness,
@@ -60,6 +64,7 @@ const queueTasksApi = {
   dismissQueueTask,
   cancelQueueTask,
   classifyQueueTask,
+  checkManualRouting,
 }
 
 export default queueTasksApi

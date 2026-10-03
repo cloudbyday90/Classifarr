@@ -109,7 +109,8 @@ describe('QueueAdminService', () => {
         });
         expect(classificationService.routeToArr).toHaveBeenCalledWith(
             expect.objectContaining({ title: 'Hoppers', tmdb_id: 1327819 }),
-            expect.objectContaining({ id: 7, name: 'Family' })
+            expect.objectContaining({ id: 7, name: 'Family' }),
+            { beforeReconcile: expect.any(Function) }
         );
         expect(evidenceService.rememberExactMatch).not.toHaveBeenCalled();
     });

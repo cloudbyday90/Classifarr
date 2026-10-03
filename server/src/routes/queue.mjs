@@ -11,6 +11,8 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { requireAdmin } from '../middleware/apiKeyAuth.mjs';
+import { registerManualRoutingCheckRoute } from './queueRouteManualRoutingCheck.mjs';
+import { createManualRoutingCheckService } from '../services/manualRoutingCheckService.mjs';
 import { registerRetryReadinessRoute } from './queueRouteRetryReadiness.mjs';
 import { createRetryReadinessService } from '../services/retryReadinessService.mjs';
 import { queueService } from '../services/queueService.mjs';
@@ -39,4 +41,10 @@ registerRetryReadinessRoute(router, {
   limiter: rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }),
   service: createRetryReadinessService(),
   omdbService: createRetryReadinessService({ scope: 'omdb' }),
+});
+
+registerManualRoutingCheckRoute(router, {
+  requireAdmin,
+  limiter: rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: true, legacyHeaders: false }),
+  service: createManualRoutingCheckService(),
 });

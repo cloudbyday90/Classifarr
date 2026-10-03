@@ -730,7 +730,8 @@ export class ClassificationService {
     return this.classificationPersistenceService.deriveClassificationPersistenceState(result);
   }
 
-  async routeToArr(metadata, library) {
+  async routeToArr(metadata, library, options) {
+    if (options) return this.classificationRoutingService.routeToArr(metadata, library, options);
     return this.classificationRoutingService.routeToArr(metadata, library);
   }
 

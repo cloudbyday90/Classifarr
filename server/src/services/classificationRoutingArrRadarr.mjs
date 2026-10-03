@@ -20,10 +20,12 @@ import {
 import { resolveDefaultQualityProfile, resolveDefaultRootFolder } from './classificationRoutingService.mjs';
 import { reconcileArrAdd } from './arrAddReconciliation.mjs';
 import { normalizeArrId } from './arrResourceVerification.mjs';
+import { manualRoutingLibraryFingerprint } from './manualRoutingIntent.mjs';
 
 const logger = createLogger('classificationRoutingRadarr');
 
-export async function routeToRadarr(metadata, resolvedLibrary, routingResult) {
+export async function routeToRadarr(metadata, resolvedLibrary, routingResult, { beforeReconcile } = {}) {
+  const libraryFingerprint = manualRoutingLibraryFingerprint(resolvedLibrary);
   const radarrConfig = await db.query(
     'SELECT * FROM radarr_config WHERE id = $1 AND is_active = true',
     [resolvedLibrary.arr_id],
@@ -99,8 +101,10 @@ export async function routeToRadarr(metadata, resolvedLibrary, routingResult) {
     },
   };
 
+  const expected = { identityKey: 'tmdbId', identity: metadata.tmdb_id, rootFolderPath: settings.root_folder_path };
+  await beforeReconcile?.({ arrType: 'radarr', configId: resolvedLibrary.arr_id, baseUrl, expected, libraryFingerprint });
   Object.assign(routingResult, await reconcileArrAdd({
-    expected: { identityKey: 'tmdbId', identity: metadata.tmdb_id, rootFolderPath: settings.root_folder_path },
+    expected,
     read: () => radarrService.getMovieByTmdbId(baseUrl, config.api_key, metadata.tmdb_id),
     add: () => radarrService.addMovie(baseUrl, config.api_key, movieData),
   }));

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Save manual routing verification intent and add an on-demand History check.
+  Verify existing provider items without adding or moving media, preserve the
+  original routing outcome, and refuse checks against changed destinations.
 - Save manual queue selections before provider I/O, record routing outcomes
   separately, and prevent late results from overwriting a changed decision.
   Keep interrupted routing visibly unconfirmed without automatically replaying it.

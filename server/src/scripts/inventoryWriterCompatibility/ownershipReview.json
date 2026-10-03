@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "manual_routing_observation",
+      "classification": "unresolved",
+      "reason": "The indirect query facade receives fixed local SELECT statements and a fixed FOR SHARE suffix, including the existing library mapping resolver. It reads one manual classification, active library/mapping and active Radarr/Sonarr configuration. The only mutation writes a separate routing observation in classification_history after bounded local locking and revalidation; no ingestion relation is written. Provider work occurs outside database transactions and only uses bounded existing-item GET methods. This review documents the indirect-analysis gap; it grants no ingestion writer authority.",
+      "followUp": "Retain real PostgreSQL restart, mapping/configuration drift, late decision/token/observation, credential rotation, lock-budget and no-lock-during-provider checks. Preserve unresolved shared-writer debt. Scheduled work or provider add replay requires a separate authorization and lifecycle design."
+    },
+    {
       "id": "bounded_database_lifecycle",
       "classification": "separately_coordinated",
       "reason": "The embedded controller retains fixed cluster identity and fast-stop authority, with whole-operation adoption/shutdown deadlines, bounded identity reads, actual helper exit/stream closure and single-use lifecycle state. Cancellation cannot grant adoption or issue late commands; unjoined work and failed lifecycle operations cannot be retried by this controller. Clean shutdown requires clean control data and an absent PID file. Runtime probe grace, application/maintenance drain order and unjoined-probe refusal remain intact. Diagnostic sink errors cannot interrupt cleanup. No SQL, new writer capability, permission, automatic legacy ingestion adoption or restart loop is added.",
@@ -338,6 +344,7 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/manualRoutingCheckRepository.mjs","digest":"8f563f7bb6b14eedc5679b8cdf4a09c86a3a036526ca9eb509fbab0d244418c7","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"manual_routing_observation"},
     {"path":"server/src/scripts/classificationRetrievalStudy.mjs","digest":"c3ab3c1a07fea97bf3d26df0d66711247166e3570ea5bacfefe7b751223854f3","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
     {"path":"server/src/scripts/classificationRetrievalStudyContract.mjs","digest":"379dd0c98bcbe46b28088d7b9559780cacc416d4c5a2c47b18487173b579c21d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
     {"path":"server/src/services/ragRetrieverQuery.mjs","digest":"295a9f5e0c175c3ce845a5711753bf568671bc1d45baa9a41c4b6452179251c4","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_retrieval_cancellation"},

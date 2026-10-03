@@ -88,3 +88,7 @@ provider/configuration revision; the new marker alone must not authorize replay.
 The separately reported legacy ingestion warning is evaluated in the
 [ownership diagnosis](legacy-ingestion-ownership-2026-10-03.md); this routing
 change does not clear or adopt old ingestion records.
+
+Follow-up implemented on 2026-10-03: [saved verification intent and on-demand
+read-only provider checks](manual-routing-check-outcome.md). Observations do not
+replace the original write outcome or authorize replay.

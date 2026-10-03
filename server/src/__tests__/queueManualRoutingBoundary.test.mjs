@@ -8,6 +8,7 @@ function fixture({ task = {}, library = {}, outcome = verified } = {}) {
   const query = jest.fn().mockResolvedValueOnce({ rows: [{ id: 12, task_type: 'classification', status: 'pending',
     payload: { media: { title: 'Fixture', tmdb_id: 42, media_type: 'movie', classification_details: {
       routing: 'routed', routing_error: 'private', manual_routing_attempt_id: 'forged',
+      manual_routing_intent: { version: 1 }, manual_routing_observation: { reason: 'verified_present' },
       outcome_link: { routing: { routed: true } }, outcome_path: { latest_type: 'verified' } } } }, ...task }] })
     .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Movies', media_type: 'movie', ...library }] })
     .mockResolvedValueOnce({ rows: [{ id: 10 }] }).mockResolvedValueOnce({ rowCount: 1 });
@@ -43,6 +44,7 @@ test('unconfirmed marker and attempt token replace caller-provided routing claim
     candidate_capture: { status: 'not_applicable' } });
   expect(details.manual_routing_attempt_id).toMatch(/^[a-f\d-]{36}$/);
   expect(details.outcome_link).toBeUndefined(); expect(details.outcome_path).toBeUndefined();
+  expect(details.manual_routing_intent).toBeUndefined(); expect(details.manual_routing_observation).toBeUndefined();
   expect(f.db.query.mock.calls[0][1]).toEqual(['arr_add_failed', MANUAL_ROUTING_MESSAGE, null, 10, 7,
     'manual_routing_pending', details.manual_routing_attempt_id]);
   expect(result.routing).toMatchObject({ routed: false, recorded: true, reason: 'arr_add_failed' });
@@ -100,4 +102,19 @@ test('manual provider I/O runs only after selection commit and transaction relea
   const result = await service.manualClassifyTask(12, 7);
   expect(routeToArr).toHaveBeenCalledTimes(1);
   expect(result.routing).toMatchObject({ routed: true, recorded: true });
+});
+
+test.each([true, false])('manual capture hook gates provider reconciliation, capture succeeds=%s', async saved => {
+  const f = fixture();
+  const providerReconciliation = jest.fn().mockResolvedValue(verified);
+  f.db.query.mockResolvedValueOnce({ rowCount: saved ? 1 : 0 });
+  f.routeToArr.mockImplementation(async (_metadata, _library, options) => {
+    await options.beforeReconcile({ arrType: 'radarr', configId: 2, baseUrl: 'http://fixture',
+      expected: { identityKey: 'tmdbId', identity: 42, rootFolderPath: '/movies' }, libraryFingerprint: 'a'.repeat(64) });
+    return providerReconciliation();
+  });
+  const result = await f.service.manualClassifyTask(12, 7);
+  expect(providerReconciliation).toHaveBeenCalledTimes(saved ? 1 : 0);
+  expect(result.routing.routed).toBe(saved);
+  expect(f.db.query.mock.calls[0][0]).toContain('manual_routing_intent');
 });

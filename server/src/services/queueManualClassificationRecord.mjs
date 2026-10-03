@@ -25,6 +25,8 @@ export async function saveManualClassification(client, { taskId, libraryId, reso
   // A new manual observation must not inherit a previous operation's success.
   delete history.classification_details.outcome_link;
   delete history.classification_details.outcome_path;
+  delete history.classification_details.manual_routing_intent;
+  delete history.classification_details.manual_routing_observation;
   const { rows: [inserted] } = await client.query(`INSERT INTO classification_history
     (tmdb_id,media_type,title,year,library_id,library_name,confidence,method,reason,metadata,status,
      director_name,primary_studio_name,genre_names,cast_ids,cast_names)

@@ -130,6 +130,28 @@ function lookupSeries(overrides = {}) {
 const baseMetadata = { title: 'Test Movie', tmdb_id: 11111, year: 2024 };
 const baseTvMetadata = { title: 'Test Series', tmdb_id: 22222, tvdb_id: 12345 };
 
+describe('manual verification intent capture boundary', () => {
+  beforeEach(() => { jest.clearAllMocks(); db.query.mockReset(); });
+  test.each(['radarr', 'sonarr'])('%s must persist intent before existing-item reads or additions', async type => {
+    const provider = type === 'radarr' ? radarrService : sonarrService;
+    const read = type === 'radarr' ? provider.getMovieByTmdbId : provider.getSeriesByTvdbId;
+    const add = type === 'radarr' ? provider.addMovie : provider.addSeries;
+    db.query.mockResolvedValue({ rows: [type === 'radarr' ? radarrConfigRow() : sonarrConfigRow()] });
+    sonarrService.searchSeries.mockResolvedValue([lookupSeries()]);
+    const beforeReconcile = jest.fn(async input => {
+      expect(input).toMatchObject({ arrType: type, libraryFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expected: { identityKey: type === 'radarr' ? 'tmdbId' : 'tvdbId', rootFolderPath: type === 'radarr' ? '/movies' : '/tv' } });
+      expect(input).not.toHaveProperty('api_key');
+      throw new Error('Intent write failed');
+    });
+    const result = await routeToArr(type === 'radarr' ? baseMetadata : baseTvMetadata,
+      type === 'radarr' ? radarrLibrary() : sonarrLibrary(), { beforeReconcile });
+    expect(beforeReconcile).toHaveBeenCalledTimes(1);
+    expect(result.routed).toBe(false);
+    expect(read).not.toHaveBeenCalled(); expect(add).not.toHaveBeenCalled();
+  });
+});
+
 describe('normalizeSettings', () => {
   test('returns {} for null', () => {
     expect(classificationRoutingService.normalizeSettings(null)).toEqual({});

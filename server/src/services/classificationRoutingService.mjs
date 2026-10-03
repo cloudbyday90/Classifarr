@@ -75,7 +75,7 @@ export async function resolveDefaultRootFolder(arrType, baseUrl, apiKey) {
   }
 }
 
-export async function resolveRoutingConfig(library) {
+export async function resolveRoutingConfig(library, query = db.query) {
   if (!library) {
     return null;
   }
@@ -92,7 +92,7 @@ export async function resolveRoutingConfig(library) {
     return resolved;
   }
 
-  const mappingResult = await db.query(
+  const mappingResult = await query(
     'SELECT * FROM library_arr_mappings WHERE library_id = $1',
     [libraryId],
   );
@@ -131,7 +131,7 @@ export async function resolveRoutingConfig(library) {
   return resolved;
 }
 
-export async function routeToArr(metadata, library) {
+export async function routeToArr(metadata, library, options) {
   const routingResult = {
     attempted: false,
     routed: false,
@@ -171,11 +171,11 @@ export async function routeToArr(metadata, library) {
     routingResult.attempted = true;
 
     if (resolvedLibrary.arr_type === 'radarr') {
-      return await routeToRadarr(metadata, resolvedLibrary, routingResult);
+      return await routeToRadarr(metadata, resolvedLibrary, routingResult, options);
     }
 
     if (resolvedLibrary.arr_type === 'sonarr') {
-      return await routeToSonarr(metadata, resolvedLibrary, routingResult);
+      return await routeToSonarr(metadata, resolvedLibrary, routingResult, options);
     }
 
     routingResult.reason = 'unsupported_arr_type';

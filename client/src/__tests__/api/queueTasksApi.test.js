@@ -29,6 +29,7 @@ vi.mock('../../api/core', () => ({
 }))
 
 import {
+  checkManualRouting,
   getRetryReadiness,
   getOmdbRetryReadiness,
   getQueuePending,
@@ -40,6 +41,12 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('checks one saved routing intent without automatic transport retry', async () => {
+    const response = { data: { reason: 'verified_present', recorded: true } }
+    mockPost.mockResolvedValueOnce(response)
+    expect(await checkManualRouting(8)).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/queue/manual-routing/8/check', {}, { skipAutomaticRetry: true })
+  })
   it('preserves the separate selection/routing result and never automatically retries the write', async () => {
     const response = { data: { success: true, classificationId: 6, routing: { routed: false, recorded: true } } }
     mockPost.mockResolvedValueOnce(response)
