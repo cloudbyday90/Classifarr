@@ -91,3 +91,7 @@ already-existing. Verify identity and destination after ambiguous responses
 before treating them as successful recovery. Prefer existing durable receipts
 and provider checks before adding a new outbox or schema. Native ARM64 and
 same-image release-load acceptance remain separate release gates.
+
+Follow-up: [bounded Radarr/Sonarr add reconciliation](arr-add-reconciliation-outcome.md)
+implements the provider identity/destination checks and interrupted-response tests
+described above, without adding a new outbox or broadening queue retry authority.

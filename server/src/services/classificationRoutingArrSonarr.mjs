@@ -17,9 +17,10 @@ import {
   normalizeQualityProfileId,
   normalizeSettings,
   parseNonNegativeInteger,
-  parsePositiveInteger,
 } from './classificationRoutingServiceShared.mjs';
 import { resolveDefaultQualityProfile, resolveDefaultRootFolder } from './classificationRoutingService.mjs';
+import { reconcileArrAdd } from './arrAddReconciliation.mjs';
+import { normalizeArrId } from './arrResourceVerification.mjs';
 
 const logger = createLogger('classificationRoutingSonarr');
 
@@ -116,7 +117,7 @@ export async function routeToSonarr(metadata, resolvedLibrary, routingResult) {
     tvdbId = externalIds?.tvdb_id || externalIds?.tvdbId || null;
   }
 
-  const normalizedTvdbId = parsePositiveInteger(tvdbId);
+  const normalizedTvdbId = normalizeArrId(tvdbId);
   if (!normalizedTvdbId) {
     logger.warn('Missing TVDB ID; skipping Sonarr routing', {
       title: metadata.title,
@@ -127,7 +128,8 @@ export async function routeToSonarr(metadata, resolvedLibrary, routingResult) {
   }
 
   const lookupResults = await sonarrService.searchSeries(baseUrl, config.api_key, normalizedTvdbId);
-  const lookupSeries = lookupResults.find((series) => parsePositiveInteger(series?.tvdbId) === normalizedTvdbId) || lookupResults[0];
+  const lookupSeries = Array.isArray(lookupResults)
+    ? lookupResults.find((series) => normalizeArrId(series?.tvdbId) === normalizedTvdbId) : null;
   if (!lookupSeries) {
     logger.warn('Sonarr lookup returned no series', {
       title: metadata.title,
@@ -191,52 +193,13 @@ export async function routeToSonarr(metadata, resolvedLibrary, routingResult) {
 
   delete seriesData.id;
 
-  let existingSeries = null;
-  try {
-    existingSeries = await sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, normalizedTvdbId);
-  } catch (_error) {
-    existingSeries = null;
-  }
-
-  if (existingSeries) {
-    logger.info(`Series already in Sonarr library (pre-check): ${metadata.title}`, {
-      sonarrId: existingSeries.id,
-      tvdbId: normalizedTvdbId,
-      monitored: existingSeries.monitored,
-    });
-    routingResult.routed = true;
-    routingResult.reason = 'already_in_arr';
-    return routingResult;
-  }
-
-  try {
-    const addResult = await sonarrService.addSeries(baseUrl, config.api_key, seriesData);
-    if (addResult?.alreadyExists) {
-      logger.info(`Series already in Sonarr library (post-add 400/409): ${metadata.title}`);
-      routingResult.routed = true;
-      routingResult.reason = 'already_in_arr';
-    } else {
-      logger.info(`Added series to Sonarr: ${metadata.title}`);
-      routingResult.routed = true;
-      routingResult.reason = 'routed';
-    }
-    return routingResult;
-  } catch (sonarrError) {
-    logger.error('Failed to add series to Sonarr', {
-      title: metadata.title,
-      tvdbId: normalizedTvdbId,
-      error: sonarrError.message,
-      payload: {
-        qualityProfileId: seriesData.qualityProfileId,
-        rootFolderPath: seriesData.rootFolderPath,
-        monitored: seriesData.monitored,
-        seriesType: seriesData.seriesType,
-        seasonFolder: seriesData.seasonFolder,
-        addOptions: seriesData.addOptions,
-      },
-    });
-    routingResult.reason = 'arr_add_failed';
-    routingResult.error = sonarrError.message;
-    return routingResult;
-  }
+  Object.assign(routingResult, await reconcileArrAdd({
+    expected: { identityKey: 'tvdbId', identity: normalizedTvdbId, rootFolderPath: settings.root_folder_path },
+    read: () => sonarrService.getSeriesByTvdbId(baseUrl, config.api_key, normalizedTvdbId),
+    add: () => sonarrService.addSeries(baseUrl, config.api_key, seriesData),
+  }));
+  logger[routingResult.routed ? 'info' : 'warn']('Sonarr routing verification finished', {
+    libraryId: resolvedLibrary.id, reason: routingResult.reason, routed: routingResult.routed,
+  });
+  return routingResult;
 }

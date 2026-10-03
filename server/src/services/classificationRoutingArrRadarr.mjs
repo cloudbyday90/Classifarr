@@ -18,6 +18,8 @@ import {
   parsePositiveInteger,
 } from './classificationRoutingServiceShared.mjs';
 import { resolveDefaultQualityProfile, resolveDefaultRootFolder } from './classificationRoutingService.mjs';
+import { reconcileArrAdd } from './arrAddReconciliation.mjs';
+import { normalizeArrId } from './arrResourceVerification.mjs';
 
 const logger = createLogger('classificationRoutingRadarr');
 
@@ -85,7 +87,7 @@ export async function routeToRadarr(metadata, resolvedLibrary, routingResult) {
   const normalizedYear = parsePositiveInteger(metadata.year);
   const movieData = {
     title: metadata.title,
-    tmdbId: metadata.tmdb_id,
+    tmdbId: normalizeArrId(metadata.tmdb_id),
     ...(normalizedYear !== null ? { year: normalizedYear } : {}),
     qualityProfileId: settings.quality_profile_id,
     rootFolderPath: settings.root_folder_path,
@@ -97,35 +99,13 @@ export async function routeToRadarr(metadata, resolvedLibrary, routingResult) {
     },
   };
 
-  let existingMovie = null;
-  if (metadata.tmdb_id) {
-    try {
-      existingMovie = await radarrService.getMovieByTmdbId(baseUrl, config.api_key, metadata.tmdb_id);
-    } catch (_error) {
-      existingMovie = null;
-    }
-  }
-
-  if (existingMovie) {
-    logger.info(`Movie already in Radarr library (pre-check): ${metadata.title}`, {
-      radarrId: existingMovie.id,
-      tmdbId: metadata.tmdb_id,
-      monitored: existingMovie.monitored,
-    });
-    routingResult.routed = true;
-    routingResult.reason = 'already_in_arr';
-    return routingResult;
-  }
-
-  const addResult = await radarrService.addMovie(baseUrl, config.api_key, movieData);
-  if (addResult?.alreadyExists) {
-    logger.info(`Movie already in Radarr library (post-add 400/409): ${metadata.title}`);
-    routingResult.routed = true;
-    routingResult.reason = 'already_in_arr';
-  } else {
-    logger.info(`Added movie to Radarr: ${metadata.title}`);
-    routingResult.routed = true;
-    routingResult.reason = 'routed';
-  }
+  Object.assign(routingResult, await reconcileArrAdd({
+    expected: { identityKey: 'tmdbId', identity: metadata.tmdb_id, rootFolderPath: settings.root_folder_path },
+    read: () => radarrService.getMovieByTmdbId(baseUrl, config.api_key, metadata.tmdb_id),
+    add: () => radarrService.addMovie(baseUrl, config.api_key, movieData),
+  }));
+  logger[routingResult.routed ? 'info' : 'warn']('Radarr routing verification finished', {
+    libraryId: resolvedLibrary.id, reason: routingResult.reason, routed: routingResult.routed,
+  });
   return routingResult;
 }

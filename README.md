@@ -1210,6 +1210,14 @@ npm run test:ci
 
 ## Troubleshooting
 
+Unconfirmed Radarr/Sonarr routing:
+
+- Check the item by TMDb/TVDB ID and its path in the mapped provider before retrying.
+- A timeout or conflict alone is not success; Classifarr verifies the saved identity
+  and destination without automatically repeating an add or moving existing files.
+- Use a direct API URL, not a redirect. See the
+  [reconciliation guide and results](docs/architecture/arr-add-reconciliation-outcome.md).
+
 OMDb timeout warnings:
 
 - External OMDb latency can cause intermittent timeout warnings.

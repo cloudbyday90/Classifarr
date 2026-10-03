@@ -31,6 +31,34 @@ describe('SonarrService', () => {
         mockHttpPut.mockReset();
     });
 
+    describe('bounded routing requests', () => {
+        it('filters by strict numeric identity and bounds the read', async () => {
+            const series = { id: 1, tvdbId: 42, path: '/tv/Title' };
+            mockHttpGet.mockResolvedValue({ data: [series] });
+            await expect(service.getSeriesByTvdbId('http://arr.invalid', 'fixture', '42')).resolves.toEqual(series);
+            expect(mockHttpGet).toHaveBeenCalledWith('http://arr.invalid/api/v3/series', {
+                headers: { 'X-Api-Key': 'fixture' }, params: { tvdbId: 42 },
+                timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
+            });
+        });
+
+        it('rejects an invalid identity without HTTP work', async () => {
+            await expect(service.getSeriesByTvdbId('http://arr.invalid', 'fixture', '42junk')).rejects.toThrow('Failed to find');
+            expect(mockHttpGet).not.toHaveBeenCalled();
+        });
+
+        it('bounds an add and preserves only a safe timeout classification', async () => {
+            mockHttpPost.mockRejectedValue({ code: 'ETIMEDOUT', message: 'private-key', response: undefined });
+            await expect(service.addSeries('http://arr.invalid', 'fixture', { tvdbId: 42 })).rejects.toMatchObject({
+                code: 'ARR_ADD_UNCERTAIN', message: 'Failed to add series to Sonarr',
+            });
+            expect(mockHttpPost).toHaveBeenCalledWith('http://arr.invalid/api/v3/series', { tvdbId: 42 }, {
+                headers: { 'X-Api-Key': 'fixture' }, timeout: 30_000,
+                maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
+            });
+        });
+    });
+
     describe('buildUrl', () => {
         it('refuses a stale path or TVDB identity at the final pre-update GET', async () => {
             mockHttpGet.mockResolvedValue({ data: { id: 1, tvdbId: 10, path: '/changed/item' } });

@@ -553,12 +553,18 @@ describe('routeToArr', () => {
   beforeEach(() => {
     db.query.mockReset();
     radarrService.buildUrl.mockReset().mockReturnValue('http://radarr:7878');
-    radarrService.getMovieByTmdbId.mockReset();
+    radarrService.getMovieByTmdbId.mockReset().mockImplementation(async (_url, _key, identity) => {
+      const payload = radarrService.addMovie.mock.calls.at(-1)?.[2];
+      return payload ? { id: 1, tmdbId: identity, path: `${payload.rootFolderPath}/Movie` } : null;
+    });
     radarrService.addMovie.mockReset();
     radarrService.getQualityProfiles.mockReset();
     radarrService.getRootFolders.mockReset();
     sonarrService.buildUrl.mockReset().mockReturnValue('http://sonarr:8989');
-    sonarrService.getSeriesByTvdbId.mockReset();
+    sonarrService.getSeriesByTvdbId.mockReset().mockImplementation(async (_url, _key, identity) => {
+      const payload = sonarrService.addSeries.mock.calls.at(-1)?.[2];
+      return payload ? { id: 1, tvdbId: identity, path: `${payload.rootFolderPath}/Series` } : null;
+    });
     sonarrService.addSeries.mockReset();
     sonarrService.searchSeries.mockReset();
     sonarrService.getQualityProfiles.mockReset();
@@ -625,28 +631,46 @@ describe('routeToArr', () => {
 
   test('radarr: pre-check finds existing movie → already_in_arr', async () => {
     db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
-    radarrService.getMovieByTmdbId.mockResolvedValueOnce({ id: 99, monitored: true });
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce({ id: 99, monitored: true, tmdbId: 11111, path: '/movies/Test' });
     const result = await classificationRoutingService.routeToArr(baseMetadata, radarrLibrary());
     expect(result).toMatchObject({ routed: true, reason: 'already_in_arr', arrType: 'radarr' });
     expect(radarrService.addMovie).not.toHaveBeenCalled();
   });
 
-  test('radarr: pre-check throws → falls through to add', async () => {
+  test('radarr: conflicting add without a confirmed item is not routing success', async () => {
+    db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
+    radarrService.getMovieByTmdbId.mockResolvedValue(null);
+    radarrService.addMovie.mockResolvedValueOnce({ alreadyExists: true });
+    const result = await classificationRoutingService.routeToArr(baseMetadata, radarrLibrary());
+    expect(result.routed).toBe(false);
+    expect(radarrService.getMovieByTmdbId).toHaveBeenCalledTimes(2);
+  });
+
+  test('radarr: item in another destination is not routing success', async () => {
+    db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
+    radarrService.getMovieByTmdbId.mockResolvedValueOnce({ id: 99, tmdbId: 11111, path: '/other/Test' });
+    const result = await classificationRoutingService.routeToArr(baseMetadata, radarrLibrary());
+    expect(result.routed).toBe(false);
+    expect(radarrService.addMovie).not.toHaveBeenCalled();
+  });
+
+  test('radarr: pre-check throws → no add and no false success', async () => {
     db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
     radarrService.getMovieByTmdbId.mockRejectedValueOnce(new Error('network error'));
     radarrService.addMovie.mockResolvedValueOnce({ id: 200 });
     const result = await classificationRoutingService.routeToArr(baseMetadata, radarrLibrary());
-    expect(result).toMatchObject({ routed: true, reason: 'routed' });
-    expect(radarrService.addMovie).toHaveBeenCalled();
+    expect(result).toMatchObject({ routed: false, reason: 'arr_add_failed' });
+    expect(radarrService.addMovie).not.toHaveBeenCalled();
   });
 
-  test('radarr: skips pre-check when tmdb_id missing', async () => {
+  test('radarr: missing tmdb_id prevents reading or adding', async () => {
     db.query.mockResolvedValueOnce({ rows: [radarrConfigRow()] });
     radarrService.addMovie.mockResolvedValueOnce({ id: 201 });
     const meta = { ...baseMetadata, tmdb_id: null };
     const result = await classificationRoutingService.routeToArr(meta, radarrLibrary());
-    expect(result).toMatchObject({ routed: true, reason: 'routed' });
+    expect(result).toMatchObject({ routed: false, reason: 'arr_add_failed' });
     expect(radarrService.getMovieByTmdbId).not.toHaveBeenCalled();
+    expect(radarrService.addMovie).not.toHaveBeenCalled();
   });
 
   test('radarr: add succeeds → routed', async () => {
@@ -790,19 +814,20 @@ describe('routeToArr', () => {
   test('sonarr: pre-check finds existing series → already_in_arr', async () => {
     db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
     sonarrService.searchSeries.mockResolvedValueOnce([lookupSeries()]);
-    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce({ id: 88, monitored: true });
+    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce({ id: 88, monitored: true, tvdbId: 12345, path: '/tv/Test' });
     const result = await classificationRoutingService.routeToArr(baseTvMetadata, sonarrLibrary());
     expect(result).toMatchObject({ routed: true, reason: 'already_in_arr' });
     expect(sonarrService.addSeries).not.toHaveBeenCalled();
   });
 
-  test('sonarr: pre-check throws → falls through to add', async () => {
+  test('sonarr: pre-check throws → no add and no false success', async () => {
     db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
     sonarrService.searchSeries.mockResolvedValueOnce([lookupSeries()]);
     sonarrService.getSeriesByTvdbId.mockRejectedValueOnce(new Error('timeout'));
     sonarrService.addSeries.mockResolvedValueOnce({ id: 1 });
     const result = await classificationRoutingService.routeToArr(baseTvMetadata, sonarrLibrary());
-    expect(result).toMatchObject({ routed: true, reason: 'routed' });
+    expect(result).toMatchObject({ routed: false, reason: 'arr_add_failed' });
+    expect(sonarrService.addSeries).not.toHaveBeenCalled();
   });
 
   test('sonarr: add succeeds → routed', async () => {
@@ -823,23 +848,26 @@ describe('routeToArr', () => {
     expect(result).toMatchObject({ routed: true, reason: 'already_in_arr' });
   });
 
-  test('sonarr: add throws → arr_add_failed with error message', async () => {
+  test('sonarr: add throws without confirmed state → safe error', async () => {
     db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
     sonarrService.searchSeries.mockResolvedValueOnce([lookupSeries()]);
-    sonarrService.getSeriesByTvdbId.mockResolvedValueOnce(null);
+    sonarrService.getSeriesByTvdbId.mockResolvedValue(null);
     sonarrService.addSeries.mockRejectedValueOnce(new Error('Sonarr rejected'));
     const result = await classificationRoutingService.routeToArr(baseTvMetadata, sonarrLibrary());
-    expect(result).toMatchObject({ routed: false, reason: 'arr_add_failed', error: 'Sonarr rejected' });
+    expect(result).toMatchObject({ routed: false, reason: 'arr_add_failed' });
+    expect(result.error).not.toContain('Sonarr rejected');
+    expect(sonarrService.getSeriesByTvdbId).toHaveBeenCalledTimes(2);
   });
 
-  test('sonarr: uses first lookup result when tvdbId does not match exactly', async () => {
+  test('sonarr: rejects an unrelated first lookup result', async () => {
     db.query.mockResolvedValueOnce({ rows: [sonarrConfigRow()] });
-    // lookupSeries has tvdbId=99999 but metadata.tvdb_id=12345 — first result used
+    // lookupSeries has tvdbId=99999 but metadata.tvdb_id=12345.
     sonarrService.searchSeries.mockResolvedValueOnce([lookupSeries({ tvdbId: 99999 })]);
     sonarrService.getSeriesByTvdbId.mockResolvedValueOnce(null);
     sonarrService.addSeries.mockResolvedValueOnce({ id: 1 });
     const result = await classificationRoutingService.routeToArr(baseTvMetadata, sonarrLibrary());
-    expect(result.routed).toBe(true);
+    expect(result).toMatchObject({ routed: false, reason: 'lookup_no_series' });
+    expect(sonarrService.addSeries).not.toHaveBeenCalled();
   });
 
   test('sonarr: invalid tvdb_id fails cleanly instead of truncating', async () => {

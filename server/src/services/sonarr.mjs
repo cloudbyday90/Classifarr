@@ -10,6 +10,8 @@
 import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { arrAddFailure } from './arrAddFailure.mjs';
+import { normalizeArrId, selectArrResource } from './arrResourceVerification.mjs';
 
 class SonarrService {
   constructor() {
@@ -103,10 +105,12 @@ class SonarrService {
     try {
       const response = await httpPost(`${url}/api/v3/series`, seriesData, {
         headers: { 'X-Api-Key': apiKey },
+        timeout: 30_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
       });
       return response.data;
     } catch (error) {
       if (error.response?.status === 409) {
+        // A conflict is only a hint; the routing adapter must read and verify it.
         return { alreadyExists: true };
       }
       if (error.response?.status === 400) {
@@ -118,7 +122,7 @@ class SonarrService {
           return { alreadyExists: true };
         }
       }
-      throw new Error(`Failed to add series to Sonarr: ${error.message}`);
+      throw arrAddFailure('sonarr', error);
     }
   }
 
@@ -136,14 +140,16 @@ class SonarrService {
 
   async getSeriesByTvdbId(url, apiKey, tvdbId) {
     try {
+      const identity = normalizeArrId(tvdbId);
+      if (!identity) throw new Error('Invalid media ID');
       const response = await httpGet(`${url}/api/v3/series`, {
         headers: { 'X-Api-Key': apiKey },
+        params: { tvdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
       });
 
-      const series = response.data.find(s => s.tvdbId === parseInt(tvdbId));
-      return series || null;
-    } catch (error) {
-      throw new Error(`Failed to find series by TVDB ID: ${error.message}`);
+      return selectArrResource(response.data, 'tvdbId', identity);
+    } catch {
+      throw new Error('Failed to find series by TVDB ID');
     }
   }
 

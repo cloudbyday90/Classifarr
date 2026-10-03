@@ -57,6 +57,14 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    radarrService.getMovieByTmdbId.mockReset().mockImplementation(async (_url, _key, identity) => {
+      const payload = radarrService.addMovie.mock.calls.at(-1)?.[2];
+      return payload ? { id: 1, tmdbId: identity, path: `${payload.rootFolderPath}/Movie` } : null;
+    });
+    sonarrService.getSeriesByTvdbId.mockReset().mockImplementation(async (_url, _key, identity) => {
+      const payload = sonarrService.addSeries.mock.calls.at(-1)?.[2];
+      return payload ? { id: 1, tvdbId: identity, path: `${payload.rootFolderPath}/Series` } : null;
+    });
   });
 
   test('routes using library_arr_mappings when arr_id is missing', async () => {
@@ -430,6 +438,7 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
     radarrService.getMovieByTmdbId.mockResolvedValueOnce({
       id: 999,
       tmdbId: 777,
+      path: '/movies/Already Here',
       title: 'Already Here',
       monitored: true
     });
@@ -505,6 +514,7 @@ describe('ClassificationService - routeToArr mapping fallback', () => {
       id: 42,
       tvdbId: 81189,
       title: 'Breaking Bad',
+      path: '/tv/Breaking Bad',
       monitored: true
     });
 

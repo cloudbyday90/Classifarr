@@ -10,6 +10,8 @@
 import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { arrAddFailure } from './arrAddFailure.mjs';
+import { normalizeArrId, selectArrResource } from './arrResourceVerification.mjs';
 
 class RadarrService {
   constructor() {
@@ -100,10 +102,12 @@ class RadarrService {
     try {
       const response = await httpPost(`${url}/api/v3/movie`, movieData, {
         headers: { 'X-Api-Key': apiKey },
+        timeout: 30_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
       });
       return response.data;
     } catch (error) {
       if (error.response?.status === 409) {
+        // A conflict is only a hint; the routing adapter must read and verify it.
         return { alreadyExists: true };
       }
       if (error.response?.status === 400) {
@@ -115,7 +119,7 @@ class RadarrService {
           return { alreadyExists: true };
         }
       }
-      throw new Error(`Failed to add movie to Radarr: ${error.message}`);
+      throw arrAddFailure('radarr', error);
     }
   }
 
@@ -133,14 +137,16 @@ class RadarrService {
 
   async getMovieByTmdbId(url, apiKey, tmdbId) {
     try {
+      const identity = normalizeArrId(tmdbId);
+      if (!identity) throw new Error('Invalid media ID');
       const response = await httpGet(`${url}/api/v3/movie`, {
         headers: { 'X-Api-Key': apiKey },
+        params: { tmdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
       });
 
-      const movie = response.data.find(m => m.tmdbId === parseInt(tmdbId));
-      return movie || null;
-    } catch (error) {
-      throw new Error(`Failed to find movie by TMDB ID: ${error.message}`);
+      return selectArrResource(response.data, 'tmdbId', identity);
+    } catch {
+      throw new Error('Failed to find movie by TMDB ID');
     }
   }
 

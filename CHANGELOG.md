@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify Radarr/Sonarr media identity and destination before reporting routing
+  success. Reconcile ambiguous add responses with bounded reads, refuse adds
+  after failed lookups, and stop accepting unrelated Sonarr search results.
 - Continue releasing other tracked queue claims when one shutdown write fails.
   Add isolated real-image tests for graceful and forced-kill recovery, fresh
   replay tokens and rejection of stale acknowledgements and metadata writes.
