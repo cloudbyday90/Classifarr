@@ -21,6 +21,7 @@ import { resolve } from 'node:path';
 
 import { load } from 'js-yaml';
 import { AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME } from './checkAiProviderFaultReceiptWorkflow.mjs';
+import { validateReleaseImagePromotionWorkflow } from './checkReleaseImagePromotionWorkflow.mjs';
 import { validatePublishedRoutingWorkflow } from './checkPublishedRoutingWorkflow.mjs';
 
 function githubExpression(expression) {
@@ -39,9 +40,7 @@ const GITHUB_REF_NAME_EXPRESSION = githubExpression('github.ref_name');
 const GITHUB_REPOSITORY_EXPRESSION = githubExpression('github.repository');
 const GITHUB_SHA_EXPRESSION = githubExpression('github.sha');
 const GITHUB_TOKEN_EXPRESSION = githubExpression('github.token');
-const IMAGE_VARIABLE = '$' + '{IMAGE}';
 const IMAGE_DIGEST_VARIABLE = '$' + '{IMAGE_DIGEST}';
-const MANIFEST_DIGEST_VARIABLE = '$' + '{MANIFEST_DIGEST}';
 const SOURCE_REVISION_VARIABLE = '$' + '{SOURCE_REVISION}';
 
 export const DEFAULT_WORKFLOW_PATH = resolve(
@@ -167,26 +166,6 @@ function assertSafeContainerRetentionJob(job, name) {
   }
 }
 
-function assertLatestAliasStep(step) {
-  assertExactObject(step.env, {
-    IMAGE_DIGEST: DOCKER_RELEASE_DIGEST_EXPRESSION,
-  }, 'Verify published latest image alias.env');
-
-  const requiredFragments = [
-    'set -euo pipefail',
-    'IMAGE="ghcr.io/cloudbyday90/classifarr"',
-    'RELEASE_REFERENCE="' + IMAGE_VARIABLE + '@' + IMAGE_DIGEST_VARIABLE + '"',
-    'test "$RELEASE_DIGEST" = "$IMAGE_DIGEST"',
-    'test "$LATEST_DIGEST" = "$IMAGE_DIGEST"',
-    'docker buildx imagetools inspect --raw "$RELEASE_REFERENCE"',
-    'docker buildx imagetools inspect "' + IMAGE_VARIABLE + '@' + MANIFEST_DIGEST_VARIABLE + '" >/dev/null',
-    'docker pull "' + IMAGE_VARIABLE + ':latest"',
-  ];
-  if (typeof step.run !== 'string' || requiredFragments.some(fragment => !step.run.includes(fragment))) {
-    throw new Error('Verify published latest image alias must validate the index, child manifests, and a clean pull.');
-  }
-}
-
 function assertConsumerSmokeJob(job) {
   assertTagOnlyJob(job, 'published-digest-consumer-smoke');
   assertJobNeeds(job, ['docker-release'], 'published-digest-consumer-smoke');
@@ -230,12 +209,6 @@ function assertConsumerSmokeJob(job) {
     requiredFragments.some(fragment => !smokeStep.run.includes(fragment))) {
     throw new Error('Run published digest consumer smoke must use the published GHCR digest and source revision.');
   }
-
-  assertLatestAliasStep(findStep(
-    job.steps,
-    'Verify published latest image alias',
-    'published-digest-consumer-smoke'
-  ));
 
   assertArtifactStep({
     artifactName: PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME,
@@ -473,7 +446,7 @@ export function loadWorkflow(workflowPath = DEFAULT_WORKFLOW_PATH) {
   return load(fs.readFileSync(workflowPath, 'utf8'));
 }
 
-export function validateReleaseCandidatePublicationWorkflow(workflow) {
+export function validateReleaseCandidatePublicationWorkflow(workflow, promotionWorkflow = loadWorkflow(resolve(import.meta.dirname, '../../../.github/workflows/promote-published-release-image.yml'))) {
   const jobs = asRecord(asRecord(workflow, 'workflow').jobs, 'workflow.jobs');
   assertDockerReleaseOutput(asRecord(jobs['docker-release'], 'workflow.jobs.docker-release'));
   assertSafeContainerRetentionJob(
@@ -491,6 +464,7 @@ export function validateReleaseCandidatePublicationWorkflow(workflow) {
     asRecord(jobs['release-candidate-publication'], 'workflow.jobs.release-candidate-publication')
   );
   validatePublishedRoutingWorkflow(workflow);
+  validateReleaseImagePromotionWorkflow(workflow, promotionWorkflow);
 
   return {
     environment: RELEASE_PUBLICATION_ENVIRONMENT,

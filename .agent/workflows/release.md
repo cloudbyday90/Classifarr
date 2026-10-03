@@ -166,16 +166,21 @@ assembly. An approval delay that ages evidence out requires fresh tests, not
 editing timestamps. Historical v1/v2 assets remain readable but cannot replace
 new v3 evidence. See [published routing design](../../docs/architecture/published-routing-acceptance-design.md).
 
-**Current limitation:** `docker-release` still writes `latest` alongside the
-version tag before published-consumer checks. This gate blocks GitHub release
-publication, not early pulls of `latest`. Moving alias promotion after both
-consumer gates is the next release-pipeline change; do not describe that as
-already implemented.
+`docker-release` publishes the version tag only (`latest=false` explicitly).
+After both published-consumer gates and verified immutable GitHub publication,
+`promote-published-latest` advances the original digest in GHCR and Docker Hub.
+Both registry graphs and current-alias provenance must pass before any write.
+
+**Current limitation:** the registries cannot update atomically. A partial
+failure blocks success and retains per-registry progress; it does not undo a
+successful write. Version tags remain pullable before the consumer checks.
+See [promotion design](../../docs/architecture/release-image-promotion-design.md).
 
 ## 5. Verify or stop
 
 Watch the exact tag run. Require the attached evidence JSON, its provenance,
-and the immutable GitHub release verification to pass before announcing it:
+the immutable GitHub release verification, and both `latest` aliases to pass
+before announcing it:
 
 ```bash
 gh run watch <tag-run-id> --exit-status
@@ -199,10 +204,16 @@ Rerun the full tag workflow when receipts must be refreshed; retrying only the
 publication job retains earlier-attempt artifacts and must fail validation.
 Never modify an immutable published release or reuse its tag.
 
-For a healthy published image with a missing alias, use the existing **Promote
-Published Release Image Alias** workflow only with explicit promotion approval.
-It must preserve the exact index and all children; never rebuild the release to
-repair an alias. For incomplete image graphs follow the
+For a failed or partial promotion of a verified v3-evidence release, use
+**Promote Published Release Image Alias** only with explicit promotion approval.
+Dispatch from that release tag (`--ref vX.Y.Z-beta`) with matching
+`source_tag=vX.Y.Z-beta`, not from `main`: the protected environment admits tags.
+The retry verifies immutable release/asset provenance and the full v3 record,
+preserves the exact indexes, and checks both registries. It skips already-correct
+writes. A newer current source, missing alias, broken graph, unknown provenance,
+or historical v1/v2-only evidence is a hard stop. Do not force or rebuild an
+image to bypass it; missing-alias bootstrap needs a separately reviewed repair.
+For incomplete image graphs follow the
 [retirement assessment](../../docs/architecture/published-image-release-retirement.md).
 GHCR retention is read-only inventory plus review, not generic package-version
 deletion: [manifest retention](../../docs/architecture/ghcr-manifest-retention-inventory.md).

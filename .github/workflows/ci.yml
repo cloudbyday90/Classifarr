@@ -591,9 +591,9 @@ jobs:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             cloudbyday90/classifarr
+          flavor: latest=false
           tags: |
             type=ref,event=tag
-            type=raw,value=latest
 
       - name: Build and push Docker image
         id: build-and-push-image
@@ -695,28 +695,6 @@ jobs:
           npm run release:smoke:published-digest -- \
             --image "ghcr.io/cloudbyday90/classifarr@${IMAGE_DIGEST}" \
             --source-revision "$SOURCE_REVISION"
-
-      - name: Verify published latest image alias
-        env:
-          IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
-        run: |
-          set -euo pipefail
-
-          IMAGE="ghcr.io/cloudbyday90/classifarr"
-          RELEASE_REFERENCE="${IMAGE}@${IMAGE_DIGEST}"
-          RELEASE_DIGEST="$(docker buildx imagetools inspect "$RELEASE_REFERENCE" | sed -n 's/^Digest:[[:space:]]*//p')"
-          LATEST_DIGEST="$(docker buildx imagetools inspect "${IMAGE}:latest" | sed -n 's/^Digest:[[:space:]]*//p')"
-
-          test "$RELEASE_DIGEST" = "$IMAGE_DIGEST"
-          test "$LATEST_DIGEST" = "$IMAGE_DIGEST"
-
-          MANIFEST_DIGESTS="$(docker buildx imagetools inspect --raw "$RELEASE_REFERENCE" | jq -er '[.manifests[]?.digest | select(type == "string")] | unique[]')"
-          test -n "$MANIFEST_DIGESTS"
-          while IFS= read -r MANIFEST_DIGEST; do
-            docker buildx imagetools inspect "${IMAGE}@${MANIFEST_DIGEST}" >/dev/null
-          done <<< "$MANIFEST_DIGESTS"
-
-          docker pull "${IMAGE}:latest"
 
       - name: Upload published digest consumer smoke evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -932,11 +910,28 @@ jobs:
             sleep 5
           done
 
+  promote-published-latest:
+    name: Promote accepted images to latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [docker-release, release-candidate-publication, published-digest-consumer-smoke, published-routing-acceptance]
+    permissions:
+      attestations: read
+      contents: read
+      packages: write
+    uses: ./.github/workflows/promote-published-release-image.yml
+    with:
+      source_tag: ${{ github.ref_name }}
+      source_revision: ${{ github.sha }}
+      image_digest: ${{ needs.docker-release.outputs.image_digest }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
   cleanup-old-releases:
     name: Cleanup Old Docker Hub Tags
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [docker-release, release-candidate-publication]
+    needs: [docker-release, release-candidate-publication, promote-published-latest]
     permissions: {}
 
     steps:

@@ -37,8 +37,8 @@ Keep fixtures disposable and synthetic; never point a rehearsal at live appdata.
 
 For registry images, native architecture matrices or alias-promotion claims,
 read [published-digest guidance](references/published-digest.md). It covers
-index/child/config identity and distinguishes GitHub publication from early
-registry availability. Use `.agent/workflows/release.md` for approved release
+index/child/config identity, shared alias-promotion gates and partial-registry
+failure handling. Use `.agent/workflows/release.md` for approved release
 operations; the skill itself never grants that approval.
 
 ## Challenge the claim

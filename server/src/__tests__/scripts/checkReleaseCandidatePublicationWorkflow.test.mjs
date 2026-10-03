@@ -152,15 +152,12 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
       .toThrow('Verify release candidate evidence attestation must constrain the exact workflow, tag source, revision, predicate, and runner type.');
   });
 
-  test('rejects an alias check that omits the clean-pull verification', () => {
+  test('rejects an early alias check before promotion', () => {
     const workflow = structuredClone(loadWorkflow());
-    const step = workflow.jobs['published-digest-consumer-smoke'].steps.find(
-      candidate => candidate.name === 'Verify published latest image alias'
-    );
-    step.run = step.run.replace('docker pull "${IMAGE}:latest"', '');
+    workflow.jobs['published-digest-consumer-smoke'].steps.push({ name: 'Early alias check', run: 'docker pull image:latest' });
 
     expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
-      .toThrow('Verify published latest image alias must validate');
+      .toThrow();
   });
 
   test('rejects generic package-version deletion for the multi-platform image', () => {

@@ -147,7 +147,7 @@ function isIsoTimestamp(value) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
 }
 
-function assertReleaseTag(tag) {
+export function assertReleaseTag(tag) {
   if (typeof tag !== 'string' || !RELEASE_TAG_PATTERN.test(tag)) {
     throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.INVALID_INPUT);
   }

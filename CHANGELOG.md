@@ -9,6 +9,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ## [Unreleased]
 
+### Release safety
+
+- Promote `latest` in GHCR and Docker Hub only after published-image checks and
+  verified release publication. Automatic promotion and manual retries share
+  provenance checks, stale-source protection, and partial-failure receipts.
+- Update release instructions and the release-evidence AI skill for protected
+  tag retries and exact-digest promotion. No release is created by this change.
+
 ### Changed
 
 - Require native AMD64/ARM64 routing checks against the signed published image

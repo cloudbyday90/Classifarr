@@ -3,6 +3,10 @@
 Status: implemented release-publication automation. A specific execution is
 pending an intentionally selected release tag and source revision.
 
+The post-publication alias boundary is now implemented separately:
+[verified release image promotion](release-image-promotion-design.md). Version tags
+remain available before checks; `latest` advances only after accepted publication.
+
 ## Objective
 
 10R.4.3 makes the repository's tag workflow retain a public, bounded release
