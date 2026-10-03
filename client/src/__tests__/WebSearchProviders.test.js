@@ -13,6 +13,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 
 import WebSearchProviders from '../views/settings/WebSearchProviders.vue'
 import PasswordInput from '../components/common/PasswordInput.vue'
+import TagInput from '../components/common/TagInput.vue'
 import api from '../api'
 
 const toast = {
@@ -117,6 +118,27 @@ const providerRows = [
 ]
 
 describe('WebSearchProviders settings view', () => {
+  it('connects real domain editors and keeps their model updates separate', async () => {
+    const wrapper = mount(WebSearchProviders, { global: { stubs: { ...stubs, TagInput: false } } })
+    try {
+      await flushPromises()
+      const controls = wrapper.findAllComponents(TagInput)
+      expect(controls).toHaveLength(2)
+      expect(controls.map(control => control.props('label'))).toEqual(['Include Domains', 'Exclude Domains'])
+      for (const [index, control] of controls.entries()) {
+        const input = control.get('input')
+        expect(control.get('label').attributes('for')).toBe(input.attributes('id'))
+        await input.setValue(`example${index}.test`)
+        await input.trigger('keydown', { key: 'Enter' })
+      }
+      expect(controls[0].props('modelValue')).toEqual(['imdb.com', 'example0.test'])
+      expect(controls[1].props('modelValue')).toEqual(['example1.test'])
+      expect(api.updateWebSearchProviderConfig).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('connects real credential labels and help with distinct provider commands', async () => {
     const wrapper = mount(WebSearchProviders, { global: { stubs: { ...stubs, PasswordInput: false } } })
     try {

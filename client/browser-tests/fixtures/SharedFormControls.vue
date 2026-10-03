@@ -7,6 +7,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
 import Button from '@/components/common/Button.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import TagInput from '@/components/common/TagInput.vue'
 
 const priority = ref(2)
 const route = ref(1)
@@ -22,6 +23,10 @@ const credentialError = ref('Check the sample key')
 const credentialDeliveries = ref(0)
 const credentialSubmissions = ref(0)
 const submittedInputType = ref('')
+const tags = ref(['first', 'last'])
+const tagsDisabled = ref(false)
+const tagDeliveries = ref(0)
+const tagSubmissions = ref(0)
 
 /** @param {SubmitEvent} event */
 function submitCredential(event) {
@@ -148,6 +153,38 @@ function submitCredential(event) {
       <output aria-label="Credential deliveries">{{ credentialDeliveries }}</output>
       <output aria-label="Credential submissions">{{ credentialSubmissions }}</output>
       <output aria-label="Submitted input type">{{ submittedInputType }}</output>
+    </section>
+    <section class="space-y-4">
+      <h2>Sample tags</h2>
+      <form @submit.prevent="tagSubmissions++">
+        <fieldset :disabled="tagsDisabled">
+          <TagInput
+            v-model="tags"
+            label="Keywords"
+            :on-update:model-value.camel="() => tagDeliveries++"
+          />
+        </fieldset>
+        <button type="submit">
+          Save sample tags
+        </button>
+      </form>
+      <TagInput
+        label="Read-only tags"
+        :model-value="['protected']"
+        readonly
+      />
+      <label>
+        <input
+          v-model="tagsDisabled"
+          type="checkbox"
+        > Disable tags
+      </label>
+      <output
+        class="block wrap-anywhere"
+        aria-label="Tag values"
+      >{{ JSON.stringify(tags) }}</output>
+      <output aria-label="Tag deliveries">{{ tagDeliveries }}</output>
+      <output aria-label="Tag submissions">{{ tagSubmissions }}</output>
     </section>
   </main>
 </template>

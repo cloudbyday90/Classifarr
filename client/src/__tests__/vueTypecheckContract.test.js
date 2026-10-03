@@ -12,6 +12,7 @@ import Card from '@/components/common/Card.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import Input from '@/components/common/Input.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import TagInput from '@/components/common/TagInput.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
@@ -28,6 +29,7 @@ function acceptNumber(value) { return value.toFixed(0) }
   <Spinner size="sm" text="Loading" />
   <Input label="Name" :on-update:model-value.camel="acceptText" />
   <PasswordInput label="API key" hint="Provider credential" :on-update:model-value.camel="acceptText" />
+  <TagInput label="Keywords" :model-value="['example']" :readonly="false" />
   <Select :options="[{ value: 1, label: 'One' }]" :on-update:model-value.camel="acceptText" />
   <Toggle :model-value="true" :on-update:model-value.camel="acceptBoolean" />
   <Slider :model-value="50" :on-update:model-value.camel="acceptNumber" />
@@ -50,6 +52,14 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'tag string-array model', code: '2322',
+      source: `<script setup>
+import TagInput from '@/components/common/TagInput.vue'
+</script>
+<template><TagInput :model-value="[42]" /></template>
+`,
+    },
     {
       name: 'password-manager hint expression', code: '2339',
       source: `<script setup>

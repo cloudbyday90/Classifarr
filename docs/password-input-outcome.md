@@ -88,10 +88,9 @@ warning remains visible. Local tests do not establish remote CI completion.
 1. Keep the native control, shared attribute helper and bounded visibility
    composable. Benefit: consistent behavior without a new dependency. Cost:
    maintaining a small, explicitly tested form lifecycle helper.
-2. Next modernize **TagInput**. Its current label is unassociated, removal
-   buttons lack names and `type="button"`, and its array model/events are not
-   strictly checked. Add keyboard, focus and no-accidental-submit regressions
-   before expanding the strict component scope again.
+2. Modernize **TagInput** next. This follow-up is now implemented in
+   [TagInput outcome](tag-input-outcome.md), including connected labels, named
+   non-submitting commands, strict array events and keyboard/focus regressions.
 3. Separately review login versus remote-provider credential autofill policies.
    Correct password-manager support can help users, but API keys and remote
    server passwords must not inherit an unreviewed site-login policy.

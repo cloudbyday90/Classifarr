@@ -691,17 +691,17 @@
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Include Domains</label>
               <TagInput
                 v-model="provider.config.includeDomains"
+                label="Include Domains"
                 placeholder="example.com"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-2">Exclude Domains</label>
               <TagInput
                 v-model="provider.config.excludeDomains"
+                label="Exclude Domains"
                 placeholder="example.com"
               />
             </div>

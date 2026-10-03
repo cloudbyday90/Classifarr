@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import CustomPresetForm from '@/components/presets/CustomPresetForm.vue'
+import TagInput from '@/components/common/TagInput.vue'
 
 vi.mock('@/constants/emojis', () => ({
   EMOJI_OPTIONS: [
@@ -48,6 +49,38 @@ function mountForm(props = {}) {
 }
 
 describe('CustomPresetForm.vue', () => {
+  it('connects real keyword editors and respects the read-only fieldset', async () => {
+    const wrapper = mount(CustomPresetForm, {
+      props: { modelValue: true },
+      global: { stubs: { Modal: ModalStub, Button: ButtonStub } },
+    })
+    try {
+      const controls = wrapper.findAllComponents(TagInput)
+      expect(controls).toHaveLength(2)
+      expect(controls.map(control => control.props('label'))).toEqual([
+        'Preferred Keywords (boost if found in plot)', 'Excluded Keywords (penalize if found)',
+      ])
+      for (const control of controls) {
+        const input = control.get('input')
+        expect(control.get('label').attributes('for')).toBe(input.attributes('id'))
+        await input.setValue('magic')
+        await input.trigger('keydown', { key: 'Enter' })
+        expect(control.props('modelValue')).toEqual(['magic'])
+      }
+      await wrapper.setProps({ readonly: true })
+      for (const control of controls) {
+        const input = control.get('input')
+        expect(input.element.matches(':disabled')).toBe(true)
+        input.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }))
+        control.get('button').element.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        expect(control.emitted('update:modelValue')).toHaveLength(1)
+      }
+      expect(wrapper.emitted('save')).toBeUndefined()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })

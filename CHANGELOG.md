@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Modernize tag editors with connected labels/help, named non-submitting Add/Remove
+  controls and strict string-array checks. Preserve drafts during removal, restore
+  keyboard focus, and guard composition input, held keys and read-only fields.
 - Modernize credential inputs with connected labels/help/errors, named Show/Hide
   controls, visible keyboard focus and strict Vue checks. Preserve secret values,
   disable spelling/correction, and conceal revealed fields on form submission

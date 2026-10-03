@@ -6,18 +6,19 @@
  * See LICENSE file for details.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import TagInput from '@/components/common/TagInput.vue'
 
 function mountInput(props = {}) {
-  return mount(TagInput, {
+  const control = mount(TagInput, {
     props: {
       modelValue: [],
-      'onUpdate:modelValue': (e) => wrapper?.setProps({ modelValue: e }),
+      'onUpdate:modelValue': (e) => control.setProps({ modelValue: e }),
       ...props
     }
   })
+  return control
 }
 
 let wrapper
@@ -26,6 +27,7 @@ describe('TagInput.vue', () => {
   beforeEach(() => {
     wrapper = null
   })
+  afterEach(() => wrapper?.unmount())
 
   describe('rendering', () => {
     it('shows placeholder when no tags', () => {
@@ -67,18 +69,18 @@ describe('TagInput.vue', () => {
       wrapper = mountInput()
       const input = wrapper.find('input')
       await input.setValue('test')
-      await input.trigger('keydown.enter')
+      await input.trigger('keydown', { key: 'Enter' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
       expect(wrapper.emitted('update:modelValue')[0][0]).toEqual(['test'])
     })
 
-    it('adds tag on blur', async () => {
+    it('adds tag when focus leaves the editor', async () => {
       wrapper = mountInput()
       const input = wrapper.find('input')
       await input.setValue('blur-tag')
-      await input.trigger('blur')
+      await input.trigger('focusout')
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')).toBeTruthy()
@@ -89,7 +91,7 @@ describe('TagInput.vue', () => {
       wrapper = mountInput()
       const input = wrapper.find('input')
       await input.setValue('  spaced  ')
-      await input.trigger('keydown.enter')
+      await input.trigger('keydown', { key: 'Enter' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')[0][0]).toEqual(['spaced'])
@@ -99,20 +101,20 @@ describe('TagInput.vue', () => {
       wrapper = mountInput()
       const input = wrapper.find('input')
       await input.setValue('tag')
-      await input.trigger('keydown.enter')
+      await input.trigger('keydown', { key: 'Enter' })
       expect(input.element.value).toBe('')
     })
 
     it('does not add empty tag', async () => {
       wrapper = mountInput()
-      await wrapper.find('input').trigger('keydown.enter')
+      await wrapper.find('input').trigger('keydown', { key: 'Enter' })
       expect(wrapper.emitted('update:modelValue')).toBeFalsy()
     })
 
     it('does not add whitespace-only tag', async () => {
       wrapper = mountInput()
       await wrapper.find('input').setValue('   ')
-      await wrapper.find('input').trigger('keydown.enter')
+      await wrapper.find('input').trigger('keydown', { key: 'Enter' })
       expect(wrapper.emitted('update:modelValue')).toBeFalsy()
     })
 
@@ -120,7 +122,7 @@ describe('TagInput.vue', () => {
       wrapper = mountInput({ modelValue: ['vue'] })
       const input = wrapper.find('input')
       await input.setValue('vue')
-      await input.trigger('keydown.enter')
+      await input.trigger('keydown', { key: 'Enter' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')).toBeFalsy()
@@ -130,7 +132,7 @@ describe('TagInput.vue', () => {
       wrapper = mountInput({ modelValue: ['first'] })
       const input = wrapper.find('input')
       await input.setValue('second')
-      await input.trigger('keydown.enter')
+      await input.trigger('keydown', { key: 'Enter' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')[0][0]).toEqual(['first', 'second'])
@@ -151,7 +153,7 @@ describe('TagInput.vue', () => {
     it('removes last tag on Backspace when input is empty', async () => {
       wrapper = mountInput({ modelValue: ['a', 'b'] })
       const input = wrapper.find('input')
-      await input.trigger('keydown.backspace')
+      await input.trigger('keydown', { key: 'Backspace' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')[0][0]).toEqual(['a'])
@@ -161,7 +163,7 @@ describe('TagInput.vue', () => {
       wrapper = mountInput({ modelValue: ['tag'] })
       const input = wrapper.find('input')
       await input.setValue('typing')
-      await input.trigger('keydown.backspace')
+      await input.trigger('keydown', { key: 'Backspace' })
       await flushPromises()
 
       expect(wrapper.emitted('update:modelValue')).toBeFalsy()
@@ -169,7 +171,7 @@ describe('TagInput.vue', () => {
 
     it('does not remove tag on Backspace when no tags exist', async () => {
       wrapper = mountInput()
-      await wrapper.find('input').trigger('keydown.backspace')
+      await wrapper.find('input').trigger('keydown', { key: 'Backspace' })
       expect(wrapper.emitted('update:modelValue')).toBeFalsy()
     })
   })

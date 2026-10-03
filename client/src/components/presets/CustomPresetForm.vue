@@ -233,17 +233,17 @@
             </h4>
           
             <div>
-              <label class="block text-sm text-gray-400 mb-2">Preferred Keywords (boost if found in plot)</label>
               <TagInput
                 v-model="form.signals.keywords.prefer"
+                label="Preferred Keywords (boost if found in plot)"
                 placeholder="Add keyword..."
               />
             </div>
 
             <div>
-              <label class="block text-sm text-gray-400 mb-2">Excluded Keywords (penalize if found)</label>
               <TagInput
                 v-model="form.signals.keywords.exclude"
+                label="Excluded Keywords (penalize if found)"
                 placeholder="Add keyword..."
               />
             </div>
