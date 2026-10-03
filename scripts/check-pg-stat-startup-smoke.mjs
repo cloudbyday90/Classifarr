@@ -11,6 +11,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 
 const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
 const PGVECTOR_PREVIOUS_VERSION = '0.8.2';
@@ -532,12 +534,40 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
   }
 }
 
+export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, execute = execFileSync } = {}) {
+  const fixture = fileURLToPath(new URL('./fixtures/embedded-database-startup-probe.mjs', import.meta.url));
+  const containerName = `classifarr-startup-drill-${randomUUID()}`;
+  // No host database mount, no networking, no host-wide I/O stress. Simulate a
+  // startup pause, then exercise real PostgreSQL readiness and WAL recovery.
+  try {
+    execute('docker', ['run', '--rm', '--name', containerName, '--network', 'none', '--cpus', '1', '--memory', '512m', '--pids-limit', '128',
+      '--user', '1000:1000', '--read-only', '--tmpfs', '/app/data:uid=1000,gid=1000',
+      '--tmpfs', '/run/postgresql:uid=1000,gid=1000', '--tmpfs', '/tmp',
+      '--mount', `type=bind,source=${fixture},target=/app/startup-probe.mjs,readonly`,
+      '--env', 'CLASSIFARR_STARTUP_DRILL=disposable-v1', '--entrypoint', 'node', imageName, '/app/startup-probe.mjs'],
+    { stdio: 'inherit', timeout: 180_000, killSignal: 'SIGKILL', shell: false });
+  } finally {
+    // A timed-out Docker client does not necessarily stop its container.
+    // This exact, randomly named container has only disposable tmpfs data.
+    try {
+      execute('docker', ['rm', '-f', containerName],
+        { stdio: ['ignore', 'pipe', 'pipe'], timeout: 10_000, killSignal: 'SIGKILL', shell: false });
+    } catch (error) {
+      // --rm normally removed it already; other cleanup failures stay visible.
+      if (!String(error.stderr).includes('No such container')) {
+        throw new Error(`Disposable startup container cleanup failed: ${containerName}`, { cause: error });
+      }
+    }
+  }
+}
+
 async function main() {
   try {
-    await runPgStatStartupSmoke();
-    console.log('pg_stat_statements startup smoke passed.');
+    if (process.argv.includes('--owned-startup')) runOwnedDatabaseStartupSmoke();
+    else await runPgStatStartupSmoke();
+    console.log('PostgreSQL startup smoke passed.');
   } catch (error) {
-    console.error('pg_stat_statements startup smoke failed:', error.message);
+    console.error('PostgreSQL startup smoke failed:', error.message);
     process.exit(1);
   }
 }

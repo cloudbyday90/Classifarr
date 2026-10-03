@@ -32,6 +32,7 @@ echo "Running as UID: $(id -u) (root: $IS_ROOT)"
 # any data-directory ownership write. Shared identity remains the supported path.
 # Non-root saved templates keep their actual host-selected identity.
 export PUID PGID UMASK
+node /app/src/scripts/runEmbeddedDatabaseStartup.mjs --check
 node /app/src/scripts/provisionEmbeddedIdentity.mjs --apply
 umask "$UMASK"
 
@@ -236,25 +237,24 @@ reconcile_managed_postgres_config_files() {
 }
 
 start_postgres_or_exit() {
-    if ! run_as_classifarr pg_ctl -D "$PG_DATA" -l "$DATA_DIR/postgres.log" start; then
+    # The helper owns exactly the postgres child it launches. Forward host
+    # cancellation while the shell waits, including unchanged saved templates.
+    if [ "$IS_ROOT" = "true" ]; then
+        su-exec classifarr node /app/src/scripts/runEmbeddedDatabaseStartup.mjs --run &
+    else
+        node /app/src/scripts/runEmbeddedDatabaseStartup.mjs --run &
+    fi
+    POSTGRES_STARTUP_PID=$!
+    trap 'kill -TERM "$POSTGRES_STARTUP_PID" 2>/dev/null || true; wait "$POSTGRES_STARTUP_PID" 2>/dev/null || true; exit 143' TERM
+    trap 'kill -INT "$POSTGRES_STARTUP_PID" 2>/dev/null || true; wait "$POSTGRES_STARTUP_PID" 2>/dev/null || true; exit 130' INT
+    STARTUP_STATUS=0
+    wait "$POSTGRES_STARTUP_PID" || STARTUP_STATUS=$?
+    trap - TERM INT
+    if [ "$STARTUP_STATUS" -ne 0 ]; then
         echo "ERROR: PostgreSQL failed to start."
         print_postgres_start_diagnostics
         exit 1
     fi
-}
-
-wait_for_postgres_or_exit() {
-    echo "Waiting for PostgreSQL to start..."
-    ATTEMPTS=0
-    until run_as_classifarr pg_isready -q; do
-        ATTEMPTS=$((ATTEMPTS + 1))
-        if [ "$ATTEMPTS" -ge 60 ]; then
-            echo "ERROR: PostgreSQL did not become ready within 60 seconds."
-            print_postgres_start_diagnostics
-            exit 1
-        fi
-        sleep 1
-    done
 }
 
 # Detect AVX support (used to avoid pgvector crashes on older CPUs)
@@ -370,7 +370,6 @@ fi
 
     # Start PostgreSQL temporarily to create database
     start_postgres_or_exit
-    wait_for_postgres_or_exit
     
     # Create database
     echo "Creating classifarr database..."
@@ -573,10 +572,8 @@ else
 
     # Start existing PostgreSQL
     echo "Starting existing PostgreSQL database (version $DATA_PG_VERSION)..."
-    # Remove stale PID file that may have been left behind by an unclean container stop
-    rm -f "$PG_DATA/postmaster.pid"
+    # PostgreSQL itself validates stale/live lock files. Never unlink its lock.
     start_postgres_or_exit
-    wait_for_postgres_or_exit
 fi
 
 # Set environment for local PostgreSQL connection
@@ -593,8 +590,6 @@ if [ "$UPGRADE_FROM_0405" = "true" ]; then
     echo "Running one-time PostgreSQL restart for pgvector compatibility..."
     run_as_classifarr pg_ctl -D "$PG_DATA" -m fast stop
     start_postgres_or_exit
-    echo "Waiting for PostgreSQL to restart..."
-    wait_for_postgres_or_exit
 fi
 
 echo "$APP_VERSION" > "$VERSION_FILE" 2>/dev/null || true

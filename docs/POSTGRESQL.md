@@ -307,12 +307,39 @@ If you run Classifarr on Unraid:
 - Stop Docker before moving `/mnt/user/appdata/classifarr` between pools, disks, or share layouts.
 - After any move, confirm the files are still owned by the container UID/GID you run with, typically `99:100`.
 
-### Manual PostgreSQL Start (Debug)
+### Slow Startup or Recovery
 
-```bash
-docker exec -it classifarr sh
-su-exec classifarr pg_ctl -D /app/data/postgres start
-```
+The embedded database gets one startup attempt with a default **300-second**
+readiness window. The application, scheduler and backfills do not start before
+PostgreSQL is ready. Existing Compose and Unraid templates need no new setting.
+
+`EmbeddedDatabaseStartup` messages show the current wait phase, elapsed seconds
+and remaining budget. These are not a recovery percentage or proof that disk
+I/O is progressing. PostgreSQL's detailed recovery messages remain in
+`/app/data/postgres.log`.
+
+If startup fails:
+
+1. Read the startup error and PostgreSQL log; check free space and storage health.
+2. Stop competing instances sharing the same database directory. Do not remove
+   `postmaster.pid`, reset WAL, or disable `fsync` to force startup.
+3. If PostgreSQL is making genuine recovery progress but needs more time, set
+   `CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS` to a whole number from 1 to 1800
+   and recreate the container through your normal deployment tool. An existing
+   `PGCTLTIMEOUT` setting is used when the Classifarr-specific setting is absent.
+   Pass the override into the container's environment; editing a Compose `.env`
+   file alone does not inject a variable absent from its `environment` mapping.
+
+The deadline does not restart when progress is logged. On timeout or cancellation,
+the helper requests fast shutdown of only its own launched database process and
+waits up to 20 seconds. An unconfirmed stop remains a failure, never readiness.
+The host can still force-stop the container earlier than this; saved health,
+auto-healer and shutdown settings are not changed by an image update.
+
+This window covers PostgreSQL startup, not `initdb`, major-version upgrades,
+checksum conversion or schema migration. See the
+[startup design and tradeoffs](architecture/embedded-database-startup-design.md)
+and [validation outcome](architecture/embedded-database-startup-outcome.md).
 
 ## Support
 

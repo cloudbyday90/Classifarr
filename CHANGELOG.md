@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Give embedded PostgreSQL startup a bounded five-minute recovery window,
+  observable wait states and cancellation-aware shutdown. Preserve native
+  database lock files, require confirmed readiness before application startup,
+  and add disposable delayed-start/crash-recovery checks to CI.
 - Remove the unpatched `braces` dependency by replacing Markdown CLI globbing
   with a bounded ESM runner and nodemon with Node's native development watcher.
   Preserve Markdown rules, editor configuration and policy validation; retain

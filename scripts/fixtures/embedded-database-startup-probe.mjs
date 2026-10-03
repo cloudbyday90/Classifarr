@@ -1,0 +1,104 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+// Only run by the disposable startup smoke harness; never on an installation.
+import assert from 'node:assert/strict';
+import { execFileSync, spawn } from 'node:child_process';
+import { existsSync, appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { once } from 'node:events';
+import { createEmbeddedDatabaseStartupProcess } from '/app/src/bootstrap/embeddedDatabaseStartupProcess.mjs';
+import { runEmbeddedDatabaseStartup } from '/app/src/bootstrap/embeddedDatabaseStartup.mjs';
+
+assert.equal(process.env.CLASSIFARR_STARTUP_DRILL, 'disposable-v1');
+assert.equal(process.getuid(), 1000);
+assert.equal(existsSync('/app/data/postgres/PG_VERSION'), false, 'Refuse a pre-existing database');
+const bin = '/usr/libexec/postgresql18/';
+const data = '/app/data/postgres';
+const run = (name, args) => execFileSync(bin + name, args,
+  { encoding: 'utf8', timeout: 30_000, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, LC_ALL: 'C' } });
+run('initdb', ['-D', data, '--auth=trust', '--encoding=UTF8']);
+appendFileSync(`${data}/postgresql.conf`, "\nlisten_addresses = 'localhost'\nunix_socket_directories = '/run/postgresql'\n");
+const query = sql => run('psql', ['-h', '/run/postgresql', '-U', 'classifarr', '-d', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', '-c', sql]).trim();
+const stop = mode => run('pg_ctl', ['-D', data, '-m', mode, '-w', '-t', '20', 'stop']);
+let owned;
+async function start({ stallMs = 0, timeoutMs = 300_000, signal } = {}) {
+  const adapter = createEmbeddedDatabaseStartupProcess();
+  let resume;
+  try {
+    await runEmbeddedDatabaseStartup({ ...adapter, timeoutMs, signal,
+      launch: () => {
+        owned = adapter.launch();
+        if (stallMs) {
+          process.kill(owned.pid, 'SIGSTOP');
+          resume = setTimeout(() => { if (!owned.hasExited()) process.kill(owned.pid, 'SIGCONT'); }, stallMs);
+        }
+        return owned;
+      }, report: event => process.stdout.write(`${JSON.stringify(event)}\n`),
+    });
+  } finally { clearTimeout(resume); }
+}
+
+const started = performance.now();
+await start({ stallMs: 65_000 });
+assert.ok(performance.now() - started >= 65_000);
+query("CREATE TABLE startup_sentinel(value text); INSERT INTO startup_sentinel VALUES ('preserved')");
+process.stdout.write('PASS: startup beyond sixty seconds becomes ready without relaunch\n');
+
+const existingIdentity = readFileSync(`${data}/postmaster.pid`, 'utf8');
+await assert.rejects(start(), /database_startup_.*exited/);
+assert.equal(readFileSync(`${data}/postmaster.pid`, 'utf8'), existingIdentity);
+assert.equal(query('SELECT value FROM startup_sentinel'), 'preserved');
+process.stdout.write('PASS: another live postmaster is neither adopted nor signalled; native lock preserved\n');
+
+stop('immediate'); // Disposable crash-recovery rehearsal; not normal shutdown policy.
+await start();
+assert.equal(query('SELECT value FROM startup_sentinel'), 'preserved');
+assert.match(readFileSync('/app/data/postgres.log', 'utf8'), /automatic recovery in progress|database system was interrupted/);
+assert.equal(query('SHOW fsync'), 'on');
+stop('fast');
+process.stdout.write('PASS: crash recovery preserves committed data and durability\n');
+
+await assert.rejects(start({ stallMs: 4000, timeoutMs: 1000 }), /timeout/);
+assert.equal(owned.hasExited(), true);
+await start();
+assert.equal(query('SELECT value FROM startup_sentinel'), 'preserved');
+stop('fast');
+process.stdout.write('PASS: deadline failure stops its own postmaster and the next start preserves data\n');
+
+const cancellation = new AbortController();
+const cancel = setTimeout(() => cancellation.abort(), 1000);
+try { await assert.rejects(start({ stallMs: 4000, signal: cancellation.signal }), /cancelled/); }
+finally { clearTimeout(cancel); }
+assert.equal(owned.hasExited(), true);
+process.stdout.write('PASS: cancellation joins the launched postmaster\n');
+
+appendFileSync(`${data}/postgresql.conf`, "\nport = 'invalid'\n");
+await assert.rejects(start(), /database_startup_.*exited/);
+assert.equal(owned.hasExited(), true);
+process.stdout.write('PASS: invalid configuration fails before application handoff\n');
+
+// Exercise the actual entrypoint function under Alpine sh. A tiny test helper
+// isolates forwarding from PostgreSQL timing; the real child stop was tested above.
+const startFunction = readFileSync('/app/docker-entrypoint.sh', 'utf8')
+  .match(/^start_postgres_or_exit\(\) \{[\s\S]*?^\}/m)?.[0];
+assert.ok(startFunction);
+writeFileSync('/tmp/startup-signal-helper.mjs', `
+process.on('SIGTERM', () => { process.stdout.write('helper-stopped\\n'); process.exit(143); });
+process.on('SIGINT', () => { process.stdout.write('helper-stopped\\n'); process.exit(130); });
+setInterval(() => {}, 1000);
+process.stdout.write('helper-ready\\n');
+`);
+for (const [signal, expected] of [['SIGTERM', 143], ['SIGINT', 130]]) {
+  const shell = spawn('/bin/sh', ['-c', `set -eu\nIS_ROOT=false\nnode() { exec ${process.execPath} /tmp/startup-signal-helper.mjs; }\n${startFunction}\nstart_postgres_or_exit\nexit 99`],
+    { env: process.env, stdio: ['ignore', 'pipe', 'inherit'] });
+  const exit = once(shell, 'exit', { signal: AbortSignal.timeout(5000) });
+  let output = '';
+  let sent = false;
+  shell.stdout.on('data', chunk => {
+    output += chunk;
+    if (!sent && output.includes('helper-ready')) { sent = true; shell.kill(signal); }
+  });
+  try {
+    assert.equal((await exit)[0], expected);
+    assert.match(output, /helper-stopped/);
+  } finally { if (shell.exitCode === null) shell.kill('SIGKILL'); }
+}
+process.stdout.write('PASS: entrypoint forwards TERM and INT and waits for helper shutdown\n');
