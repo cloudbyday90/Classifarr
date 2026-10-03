@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented July 2026.
+Implemented July 2026; tooling reviewed October 2026.
 
 ## Decision
 
@@ -42,6 +42,21 @@ npm run lint:knip:production
 ```
 
 The CI workflow runs both checks before server tests.
+
+For a Knip upgrade, also run both modes without `--cache` using the installed
+CLI (`node node_modules/knip/bin/knip.js` from `server/`). This distinguishes
+current analysis from cached results without deleting shared caches.
+
+`src/__tests__/knipContract.test.mjs` invokes that CLI against disposable ESM
+fixtures. It checks tagged/renamed re-exports alongside genuine unused exports,
+missing imports, normal/production dependency scope, cold/warm cache consistency
+and invalid configuration. It runs with the normal backend unit suite; fixtures
+do not install packages or use application credentials. It does not replace
+either full-repository Knip command.
+
+The [6.39.0 design](../knip-refresh-design.md) and
+[validation outcome](../knip-refresh-outcome.md) record the upgrade separately
+from this ongoing gate policy.
 
 ## Sources
 

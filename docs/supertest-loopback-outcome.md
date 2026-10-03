@@ -82,3 +82,6 @@ Evaluate subsequent CI against its own commit and image evidence.
 The dependency-update skill kept the change limited to one package and required
 the before/after contract test, lock review and development-dependency scans.
 No version bump, tag, release or new branch is part of this change.
+
+Follow-up: the Knip update has its own [design](knip-refresh-design.md) and
+[outcome](knip-refresh-outcome.md). Results above remain specific to Supertest.
