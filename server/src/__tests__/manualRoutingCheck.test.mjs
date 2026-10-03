@@ -8,6 +8,8 @@ import { eligibleManualRoutingCheck } from '../services/manualRoutingCheckReposi
 import { createManualRoutingCheckService } from '../services/manualRoutingCheckService.mjs';
 import { registerManualRoutingCheckRoute } from '../routes/queueRouteManualRoutingCheck.mjs';
 import { requireAdmin } from '../middleware/apiKeyAuth.mjs';
+import { routingProviderRevision } from '../services/manualRoutingProviderGuard.mjs';
+import { ArrLookupFailure } from '../services/arrLookupFailure.mjs';
 
 const library = { id: 7, media_type: 'movie', arr_type: 'radarr', arr_id: 2, root_folder: '/movies' };
 const input = { arrType: 'radarr', configId: 2, baseUrl: 'http://private-provider',
@@ -72,6 +74,23 @@ test('failed reads, save conflicts and failures never return verified success or
   expect(await f.service.check(1)).toMatchObject({ reason: 'unavailable', recorded: false });
   expect((await f.service.check(1)).reason).toBe('verified_present');
 });
+
+test('credential drift between admission and the read refuses the request', async () => {
+  const f = fixture();
+  const revision = routingProviderRevision({ intent, baseUrl: 'private', apiKey: 'old-key' });
+  expect((await f.service.check(1, { expectedProviderRevision: revision })).reason).toBe('changed');
+  expect(f.read).not.toHaveBeenCalled(); expect(f.repository.save).not.toHaveBeenCalled();
+});
+
+test.each([[401, 'provider_auth_required'], [404, 'provider_configuration_required'], [503, 'unavailable']])(
+  'safe HTTP %s outcome reaches provider completion even when item observation conflicts', async (status, reason) => {
+    const f = fixture(), completed = jest.fn();
+    f.read.mockRejectedValue(new ArrLookupFailure('safe', { response: { status } }));
+    f.repository.save.mockResolvedValue(false);
+    expect((await f.service.check(1, { onProviderResult: completed })).reason).toBe('changed');
+    expect(completed).toHaveBeenCalledTimes(1);
+    expect(f.repository.save.mock.calls[0][1].reason).toBe(reason);
+  });
 
 test('two concurrent checks, duplicate suppression and finally cleanup bound work', async () => {
   const f = fixture(); let release;

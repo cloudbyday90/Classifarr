@@ -1,0 +1,4 @@
+interface:
+  display_name: "Classifarr Recovery Changes"
+  short_description: "Design and verify bounded, restart-safe recovery"
+  default_prompt: "Use $classifarr-recovery-change to trace this failure, design bounded recovery, and verify the requested changes."

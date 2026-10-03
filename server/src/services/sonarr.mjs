@@ -11,6 +11,7 @@ import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { arrAddFailure } from './arrAddFailure.mjs';
+import { ArrLookupFailure } from './arrLookupFailure.mjs';
 import { normalizeArrId, selectArrResource } from './arrResourceVerification.mjs';
 
 class SonarrService {
@@ -148,8 +149,8 @@ class SonarrService {
       });
 
       return selectArrResource(response.data, 'tvdbId', identity);
-    } catch {
-      throw new Error('Failed to find series by TVDB ID');
+    } catch (error) {
+      throw new ArrLookupFailure('Failed to find series by TVDB ID', error);
     }
   }
 

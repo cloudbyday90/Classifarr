@@ -56,6 +56,7 @@ export function checkManualRouting(classificationId) {
 }
 
 export function getManualRoutingBackground(classificationId) {
+  // Local status only; optional provider { reason, nextCheckAt } contains no endpoint or credentials.
   return getDataRequest(`/queue/manual-routing/${classificationId}/background`, { skipAutomaticRetry: true })
 }
 

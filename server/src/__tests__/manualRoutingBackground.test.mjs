@@ -12,13 +12,15 @@ import { createSchedulerTaskExecutionRunner } from '../services/schedulerTaskExe
 function fixture() {
   const controller = new AbortController();
   const db = { withSessionAdvisoryLock: jest.fn(async (_key, fn) => { await fn({ signal: controller.signal }); return true; }) };
-  const records = { load: jest.fn(async () => ({ row: { metadata: { classification_details: { manual_routing_attempt_id: 'attempt' } } } })) };
+  const records = { load: jest.fn(async () => ({ intent: { arrType: 'radarr', configId: 1 }, baseUrl: 'fixture', apiKey: 'synthetic',
+    row: { metadata: { classification_details: { manual_routing_attempt_id: 'attempt' } } } })) };
   const state = { claim: jest.fn(async () => ({ admitted: true })), finish: jest.fn(), read: jest.fn(), next: jest.fn(),
     setEnabled: jest.fn(async () => ({ enabled: true })) };
   const checker = { check: jest.fn(async () => ({ reason: 'verified_present', recorded: true })) };
   const logger = { info: jest.fn(), warn: jest.fn() };
-  const service = createManualRoutingCheckCoordinator({ db, records, state, checker, logger });
-  return { controller, db, records, state, checker, logger, service };
+  const guard = { prepare: jest.fn(async () => null), reserve: jest.fn(), finish: jest.fn(), read: jest.fn() };
+  const service = createManualRoutingCheckCoordinator({ db, records, state, checker, logger, guard });
+  return { controller, db, records, state, checker, logger, guard, service };
 }
 
 test('admission is committed before provider work; both paths use the same lock', async () => {
@@ -46,6 +48,29 @@ test('busy, cooldown, stopped and admission failure never reach the checker', as
   f.controller.abort();
   expect((await f.service.check(1)).reason).toBe('stopped');
   expect(f.checker.check).not.toHaveBeenCalled();
+});
+
+test('provider pause precedes item admission and defers only automatic work', async () => {
+  const f = fixture(); f.state.defer = jest.fn();
+  f.guard.prepare.mockResolvedValue({ reason: 'provider_paused', nextCheckAt: 'later' });
+  expect((await f.service.check(12, { automatic: true })).reason).toBe('provider_paused');
+  expect(f.state.defer).toHaveBeenCalledWith(12, 'provider_paused', 'later');
+  await f.service.check(12);
+  expect(f.state.defer).toHaveBeenCalledTimes(1);
+  expect(f.state.claim).not.toHaveBeenCalled(); expect(f.checker.check).not.toHaveBeenCalled();
+});
+
+test('provider failure is persisted before refunding the automatic item allowance', async () => {
+  const f = fixture();
+  f.checker.check.mockImplementation(async (_id, options) => {
+    expect(f.guard.reserve).toHaveBeenCalledTimes(1);
+    await options.onProviderResult({ kind: 'authentication', retryAfterSeconds: null });
+    expect(f.state.finish).not.toHaveBeenCalled();
+    return { reason: 'provider_auth_required' };
+  });
+  await f.service.check(12, { automatic: true });
+  expect(f.guard.finish).toHaveBeenCalledTimes(1);
+  expect(f.state.finish).toHaveBeenCalledWith(12, 'provider_auth_required', { providerFailure: true, automatic: true });
 });
 
 test('legacy/configuration changes stop automatic work; disabling never requires eligibility', async () => {

@@ -8,7 +8,11 @@ const { captureManualRoutingIntent } = await import('../../services/manualRoutin
 const { manualRoutingLibraryFingerprint } = await import('../../services/manualRoutingIntent.mjs');
 const { createManualRoutingCheckCoordinator } = await import('../../services/manualRoutingCheckCoordinator.mjs');
 const { createManualRoutingCheckState } = await import('../../services/manualRoutingCheckState.mjs');
+const { createManualRoutingProviderGuard } = await import('../../services/manualRoutingProviderGuard.mjs');
+const { createManualRoutingCheckRepository } = await import('../../services/manualRoutingCheckRepository.mjs');
+const { ArrLookupFailure } = await import('../../services/arrLookupFailure.mjs');
 let library, providerId, id;
+let extraIds = [];
 const attemptId = 'c98f1028-cbfc-49c6-9e1b-a137c060dd07';
 const read = jest.fn();
 const providers = { radarr: { getMovieByTmdbId: read, buildUrl: () => 'http://fixture' } };
@@ -17,6 +21,7 @@ const service = () => createManualRoutingCheckCoordinator({ db, providers, state
 const due = () => db.query("UPDATE manual_routing_check_state SET next_check_at=NOW()-INTERVAL '1 second' WHERE classification_id=$1", [id]);
 
 beforeEach(async () => {
+  extraIds = [];
   read.mockReset().mockResolvedValue(null);
   providerId = (await db.query(`INSERT INTO radarr_config(name,url,api_key,is_active)
     VALUES('Background fixture','http://fixture','synthetic-key',true) RETURNING id`)).rows[0].id;
@@ -31,6 +36,7 @@ beforeEach(async () => {
   });
 });
 afterEach(async () => {
+  for (const extraId of extraIds) await db.query('DELETE FROM classification_history WHERE id=$1', [extraId]);
   await db.query('DELETE FROM classification_history WHERE id=$1', [id]);
   await db.query('DELETE FROM libraries WHERE id=$1', [library.id]);
   await db.query('DELETE FROM radarr_config WHERE id=$1', [providerId]);
@@ -92,6 +98,11 @@ test('admission without a completed read still spends the durable budget', async
   expect((await service().check(id, { automatic: true })).reason).toBe('cooldown');
   expect(await service().read(id)).toMatchObject({ attempts: 1, lastResult: 'checking' });
   expect(read).not.toHaveBeenCalled();
+  await db.query('UPDATE manual_routing_check_state SET automatic_attempts=2 WHERE classification_id=$1', [id]);
+  await due();
+  await state().claim(id, attemptId, true); // Crash during the third admission must display exhausted, not active.
+  expect(await service().read(id)).toMatchObject({ enabled: false, attempts: 3, lastResult: 'checking' });
+  expect(await service().next()).toBeNull();
 });
 
 test.each(['endpoint', 'legacy', 'attempt'])('changed %s stops automatic work without provider I/O', async change => {
@@ -121,8 +132,92 @@ test.each([
 test('provider failures retain a bounded retry; history pruning removes only associated state', async () => {
   await service().setEnabled(id, true); read.mockRejectedValue(new Error('synthetic-private-url'));
   expect((await service().check(id, { automatic: true })).reason).toBe('unavailable');
-  expect((await service().read(id)).enabled).toBe(true);
+  expect(await service().read(id)).toMatchObject({ enabled: true, attempts: 0, provider: { reason: 'provider_paused' } });
   await db.query('DELETE FROM classification_history WHERE id=$1', [id]);
   expect((await state().read(id)).attempts).toBe(0);
   expect((await db.query('SELECT id FROM libraries WHERE id=$1', [library.id])).rowCount).toBe(1);
+});
+
+async function cloneItem() {
+  const result = await db.query(`INSERT INTO classification_history(tmdb_id,media_type,title,library_id,method,status,metadata)
+    SELECT tmdb_id,media_type,title,library_id,method,status,metadata FROM classification_history WHERE id=$1 RETURNING id`, [id]);
+  const clone = result.rows[0].id; extraIds.push(clone); return clone;
+}
+const providerDue = () => db.query("UPDATE manual_routing_provider_state SET next_check_at=NOW()-INTERVAL '1 second' WHERE radarr_id=$1", [providerId]);
+
+test('one authentication failure pauses other items across instances without spending either allowance', async () => {
+  const clone = await cloneItem();
+  await service().setEnabled(id, true); await service().setEnabled(clone, true);
+  read.mockRejectedValue(new ArrLookupFailure('safe', { response: { status: 401 } }));
+  expect((await service().check(id, { automatic: true })).reason).toBe('provider_auth_required');
+  expect((await service().check(clone, { automatic: true })).reason).toBe('provider_auth_required');
+  expect((await service().read(clone)).attempts).toBe(0);
+  expect((await service().read(id)).attempts).toBe(0);
+  await providerDue(); await due();
+  expect((await service().check(id, { automatic: true })).reason).toBe('provider_auth_required');
+  expect(read).toHaveBeenCalledTimes(1);
+  expect(await service().next()).toBeNull(); // Blocked rows were deferred, not left at the head forever.
+  read.mockResolvedValue(null); await due();
+  expect((await service().check(id)).reason).toBe('not_present'); // Explicit repair check can close the guard.
+  expect((await service().read(clone)).provider).toBeNull();
+});
+
+test('credential rotation releases the old guard without weakening the frozen destination', async () => {
+  await service().setEnabled(id, true);
+  read.mockRejectedValueOnce(new ArrLookupFailure('safe', { response: { status: 403 } }));
+  await service().check(id, { automatic: true });
+  await db.query("UPDATE radarr_config SET api_key='rotated-synthetic' WHERE id=$1", [providerId]);
+  await due();
+  expect((await service().check(id, { automatic: true })).reason).toBe('not_present');
+  expect(read.mock.calls[1][1]).toBe('rotated-synthetic');
+  expect(await service().read(id)).toMatchObject({ attempts: 1, provider: null });
+});
+
+test('transient half-open checks honor Retry-After, survive restart, and preserve third allowance and opt-out', async () => {
+  await service().setEnabled(id, true);
+  await db.query('UPDATE manual_routing_check_state SET automatic_attempts=2 WHERE classification_id=$1', [id]);
+  read.mockRejectedValueOnce(new ArrLookupFailure('safe', { response: { status: 503, headers: { 'retry-after': '7200' } } }));
+  await service().check(id, { automatic: true });
+  expect(await service().read(id)).toMatchObject({ enabled: true, attempts: 2 });
+  const { rows: [pause] } = await db.query('SELECT EXTRACT(EPOCH FROM(next_check_at-NOW())) AS seconds FROM manual_routing_provider_state WHERE radarr_id=$1', [providerId]);
+  expect(Number(pause.seconds)).toBeGreaterThan(7190);
+  await due(); expect((await service().check(id)).reason).toBe('provider_paused');
+  expect(read).toHaveBeenCalledTimes(1);
+  await providerDue(); await due();
+  read.mockImplementationOnce(async () => {
+    await service().setEnabled(id, false);
+    throw new ArrLookupFailure('safe', { response: { status: 429 } });
+  });
+  await service().check(id, { automatic: true });
+  expect(await service().read(id)).toMatchObject({ enabled: false, attempts: 2 });
+  await service().setEnabled(id, true); await providerDue(); await due();
+  expect((await service().check(id, { automatic: true })).reason).toBe('not_present');
+  expect(await service().read(id)).toMatchObject({ enabled: false, attempts: 3 });
+});
+
+test('provider state is bounded by configuration lifetime, isolated by type, and logs only transitions', async () => {
+  const migration = readFileSync(new URL('../../../../database/migrations/20261003_140000_manual_routing_provider_guard.sql', import.meta.url), 'utf8');
+  await db.query(migration); await db.query(migration);
+  const context = await createManualRoutingCheckRepository({ db, providers }).load(id);
+  const logger = { info: jest.fn() }, guard = createManualRoutingProviderGuard({ db, random: () => 0, logger });
+  const sonarrId = (await db.query("INSERT INTO sonarr_config(name,url,api_key) VALUES('guard fixture','http://fixture','synthetic') RETURNING id")).rows[0].id;
+  const sonarr = { ...context, intent: { ...context.intent, arrType: 'sonarr', configId: sonarrId } };
+  try {
+    expect(await guard.prepare(context, true)).toBeNull();
+    const first = await guard.reserve(context);
+    expect((await guard.prepare(context, true)).reason).toBe('provider_paused'); // Crashed read reservation.
+    const second = await guard.reserve(context);
+    await expect(guard.finish(context, null, first)).rejects.toThrow('changed');
+    await guard.finish(context, { kind: 'transient', retryAfterSeconds: null }, second);
+    await guard.finish(context, { kind: 'transient', retryAfterSeconds: null }, await guard.reserve(context));
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(await guard.prepare(sonarr, true)).toBeNull();
+    await guard.finish(sonarr, { kind: 'configuration', retryAfterSeconds: null }, await guard.reserve(sonarr));
+    expect((await guard.read(sonarr)).reason).toBe('provider_configuration_required');
+    expect((await guard.read(context)).reason).toBe('provider_paused');
+    await guard.finish(context, null, await guard.reserve(context));
+    expect(await guard.read(context)).toBeNull();
+    expect(JSON.stringify(logger.info.mock.calls)).not.toMatch(/synthetic|http:|revision|reservation/);
+  } finally { await db.query('DELETE FROM sonarr_config WHERE id=$1', [sonarrId]); }
+  expect((await db.query('SELECT * FROM manual_routing_provider_state WHERE sonarr_id=$1', [sonarrId])).rowCount).toBe(0);
 });

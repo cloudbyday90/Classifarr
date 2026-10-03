@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "manual_routing_provider_guard",
+      "classification": "unresolved",
+      "reason": "The indirect SQL facade only reads and writes manual_routing_provider_state, using allowlisted radarr_id/sonarr_id identifiers and parameterized configuration IDs, internal revisions and safe outcomes. Short local transactions do not span HTTP. The caller holds the routing-check session lock; single-use reservations reject superseded completions. No ingestion or media inventory relation is mutated. This records an indirect-analysis gap, not ingestion ownership authority.",
+      "followUp": "Retain real PostgreSQL provider isolation, cooldown persistence, guarded credential revision changes, reservation crash safety and configuration cascade tests. No unresolved ingestion writer debt is retired."
+    },
+    {
       "id": "manual_routing_observation",
       "classification": "unresolved",
       "reason": "The indirect query facade receives fixed local SELECT statements and a fixed FOR SHARE suffix, including the existing library mapping resolver. It reads one manual classification, active library/mapping and active Radarr/Sonarr configuration. The only mutation writes a separate routing observation in classification_history after bounded local locking and revalidation; no ingestion relation is written. Provider work occurs outside database transactions and only uses bounded existing-item GET methods. This review documents the indirect-analysis gap; it grants no ingestion writer authority.",
@@ -344,6 +350,7 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/manualRoutingProviderGuard.mjs","digest":"712e71de7f33c94ec487faf5cca34626205876fab4b347c81c3256ad60378781","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"manual_routing_provider_guard"},
     {"path":"server/src/services/manualRoutingCheckRepository.mjs","digest":"8f563f7bb6b14eedc5679b8cdf4a09c86a3a036526ca9eb509fbab0d244418c7","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"manual_routing_observation"},
     {"path":"server/src/scripts/classificationRetrievalStudy.mjs","digest":"c3ab3c1a07fea97bf3d26df0d66711247166e3570ea5bacfefe7b751223854f3","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
     {"path":"server/src/scripts/classificationRetrievalStudyContract.mjs","digest":"379dd0c98bcbe46b28088d7b9559780cacc416d4c5a2c47b18487173b579c21d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"classification_retrieval_measurement"},
@@ -857,7 +864,8 @@
     {"path":"database/migrations/20260927_180000_index_ingestion_reconciliation_receipts.sql","digest":"a66541722c25c7094e8347f16663443b91121bd66c1ddc6f0f24454623428e37","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261002_120000_upgrade_pgvector_to_0_8_7.sql","digest":"03994f5ec4a9de3a0c77d3297ffeb7c6e829ad1569e9943cc65312111f9abd9c","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261003_120000_manual_routing_checks.sql","digest":"8fe47622caca70d8b30f18309b4f400479e2e95b43f20c643982c911ace001b1","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"a455560b1741800cc201fa1fbdeb90023641020b942f1b2c6bf2b89ef0ba5632","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/migrations/20261003_140000_manual_routing_provider_guard.sql","digest":"b28de4ee032dd06f276bc0d50f64b54ec6b7e71f51d2aa3c92c0cf5c1a049b4b","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"654f6dd6a1e3b4119f1b5554f81aa5a22496dfbdb07ce0a1c0e539d03954a670","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20260929_140000_provider_credential_recovery.sql","digest":"b42e59bb110f3e478f0ee76be36fd2329b0c5c0c539d23a4d9d85d68c1292eb5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_120000_durable_enrichment_retry_schedule.sql","digest":"02cf32b381cab554229d93ba2a986fde9db56349f1e14aa2f1d4a339f40419e1","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_110000_index_legacy_retry_receipts.sql","digest":"0bca6c1743110f921cd6a75d7c820b88ea571bbda9a488ff85b2687a40ca755a","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},

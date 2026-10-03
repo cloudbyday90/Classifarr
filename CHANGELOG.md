@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Pause routing checks per provider during outages, distinguish rejected access
+  from temporary failures, and preserve item allowances when provider checks fail.
+- Add a repository AI skill for evidence-led, bounded recovery changes and
+  explicit verification of restart, cancellation and configuration-change safety.
 - Add admin-enabled background routing checks for individual History items,
   with restart-safe cooldowns, a three-check budget and shared manual/background
   concurrency. Keep all provider checks read-only and leave old records off.

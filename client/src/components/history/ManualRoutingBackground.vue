@@ -13,11 +13,11 @@
     >
       <p>Admin-only. Up to 3 checks for this item; no automatic adds. Off by default.</p>
       <p v-if="state">
-        {{ state.enabled ? 'On' : 'Off' }} · {{ state.attempts }} of 3 checks used.
+        {{ state.enabled ? (state.provider ? 'Paused' : 'On') : 'Off' }} · {{ state.attempts }} of 3 checks used.
         {{ outcome }}
       </p>
       <p v-if="nextCheck">
-        Next eligible check: {{ nextCheck }}
+        {{ state.provider && state.provider.reason !== 'provider_paused' ? 'Manual recheck after:' : 'Next eligible check:' }} {{ nextCheck }}
       </p>
       <button
         v-if="state"
@@ -64,11 +64,22 @@ const outcomes = {
   configuration_changed: 'Settings changed. Review the original destination.',
   not_eligible: 'The saved intent is no longer eligible. Review this item.',
   changed: 'The record changed during a check. Refresh History.',
+  provider_paused: 'The provider was paused. No item allowance was used.',
+  provider_auth_required: 'The last check rejected provider access. Review its API key and permissions.',
+  provider_configuration_required: 'The last check found a provider settings problem. Review its endpoint and settings.',
 }
-const outcome = computed(() => outcomes[state.value?.lastResult] || '')
+const providerMessages = {
+  provider_paused: 'Provider unavailable or rate-limited. Checks resume after its cooldown; item allowance is preserved.',
+  provider_auth_required: 'Automatic checks paused. Fix provider access, then use Check routing after the cooldown.',
+  provider_configuration_required: 'Automatic checks paused. Review provider settings, then use Check routing after the cooldown.',
+}
+const outcome = computed(() => providerMessages[state.value?.provider?.reason] || outcomes[state.value?.lastResult] || '')
 const nextCheck = computed(() => {
   if (!state.value?.enabled || !state.value.nextCheckAt) return ''
-  const date = new Date(state.value.nextCheckAt)
+  const provider = state.value.provider
+  const providerTime = new Date(provider?.nextCheckAt).getTime()
+  const itemTime = new Date(state.value.nextCheckAt).getTime()
+  const date = new Date(Number.isFinite(providerTime) ? Math.max(itemTime, providerTime) : itemTime)
   return Number.isFinite(date.getTime()) ? date.toLocaleString() : ''
 })
 function reportError(error) {
@@ -96,7 +107,7 @@ async function toggleEnabled() {
   try {
     const response = await api.setManualRoutingBackground(props.classificationId, !state.value.enabled)
     state.value = response.data
-    message.value = state.value.enabled ? 'Background checks enabled for this item.'
+    message.value = state.value.enabled ? `Background checks enabled for this item. ${outcome.value}`
       : 'Background checks are off. An already started check may finish.'
   } catch (error) { state.value = null; reportError(error) }
   finally { busy.value = false }

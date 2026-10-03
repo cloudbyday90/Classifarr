@@ -56,6 +56,8 @@ const savedMessages = {
   not_present: 'Not found in the provider. Review before retrying.',
   mismatch: 'The provider item did not match the saved destination.',
   unavailable: 'The previous check could not verify routing.',
+  provider_auth_required: 'Provider access was rejected. Review its API key and permissions.',
+  provider_configuration_required: 'Provider checks need review. Check its endpoint and settings.',
 }
 const message = computed(() => result.value?.message || savedMessages[props.details.manual_routing_observation?.reason] || '')
 const checkedAt = computed(() => {

@@ -1038,6 +1038,10 @@ and [validation outcome](docs/architecture/embedded-supervisor-outcome.md).
 
 ## Development
 
+For recovery, retry and backfill work, use the repository skill
+[$classifarr-recovery-change](.agents/skills/classifarr-recovery-change/SKILL.md).
+It guides design and verification; it does not run live repairs or authorize deployment.
+
 Install dependencies:
 
 ```bash
@@ -1228,11 +1232,16 @@ Unconfirmed Radarr/Sonarr routing:
 - To check again unattended, expand **Background routing checks** for that item
   and enable it as an administrator. It makes up to three read-only checks,
   stopping on a verified item, mismatch, or changed configuration. Missing items
-  and temporary failures wait 5 then 15 minutes (plus a little jitter).
+  wait 5 then 15 minutes (plus a little jitter). Provider failures preserve the
+  item allowance and pause checks across that provider configuration: temporary
+  failures back off, while rejected access or invalid configuration require review.
+  Correct credentials or use **Check routing** after fixing access and waiting
+  for the provider cooldown. No failed add is automatically replayed.
   Restarting or toggling does not reset the limit. Manual checks share the same
   provider slot and cooldown; disabling stops future checks, not an in-flight read.
   No old records are automatically enrolled, and no Compose changes are needed.
-  See the [background-check design](docs/architecture/manual-routing-background-design.md).
+  See the [background-check design](docs/architecture/manual-routing-background-design.md)
+  and [provider guard](docs/architecture/manual-routing-provider-guard-design.md).
 
 OMDb timeout warnings:
 

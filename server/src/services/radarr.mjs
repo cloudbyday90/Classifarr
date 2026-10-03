@@ -11,6 +11,7 @@ import { httpGet, httpPost, httpPut } from '../utils/httpClient.mjs';
 import { createArrBaseMethods } from './arrServiceBase.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { arrAddFailure } from './arrAddFailure.mjs';
+import { ArrLookupFailure } from './arrLookupFailure.mjs';
 import { normalizeArrId, selectArrResource } from './arrResourceVerification.mjs';
 
 class RadarrService {
@@ -145,8 +146,8 @@ class RadarrService {
       });
 
       return selectArrResource(response.data, 'tmdbId', identity);
-    } catch {
-      throw new Error('Failed to find movie by TMDB ID');
+    } catch (error) {
+      throw new ArrLookupFailure('Failed to find movie by TMDB ID', error);
     }
   }
 

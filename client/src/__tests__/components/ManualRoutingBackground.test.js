@@ -75,3 +75,18 @@ it('refresh explains the saved outcome and only shows a valid due time while ena
   expect(setManualRoutingBackground).not.toHaveBeenCalled()
   wrapper.unmount()
 })
+
+it.each(['provider_auth_required', 'provider_configuration_required', 'provider_paused'])(
+  '%s clearly distinguishes a provider pause from item exhaustion', async reason => {
+    getManualRoutingBackground.mockResolvedValue({ enabled: true, attempts: 0, lastResult: 'unavailable',
+      nextCheckAt: '2026-10-03T12:00:00Z', provider: { reason, nextCheckAt: '2026-10-03T13:00:00Z' } })
+    const wrapper = mount(ManualRoutingBackground, { props: { classificationId: 12 } })
+    await open(wrapper)
+    expect(wrapper.text()).toContain('Paused · 0 of 3')
+    expect(wrapper.text()).not.toContain('Automatic limit reached')
+    expect(wrapper.find('[role="status"]').text()).toContain(reason === 'provider_paused' ? 'allowance is preserved' : 'use Check routing')
+    expect(wrapper.text().includes('Next eligible check:')).toBe(reason === 'provider_paused')
+    expect(wrapper.text().includes('Manual recheck after:')).toBe(reason !== 'provider_paused')
+    expect(setManualRoutingBackground).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })

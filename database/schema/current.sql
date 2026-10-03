@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-03T10:37:55.350Z
--- Latest Migration: 20261003_120000_manual_routing_checks.sql
+-- Generated: 2026-10-03T11:28:29.261Z
+-- Latest Migration: 20261003_140000_manual_routing_provider_guard.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4972,6 +4972,26 @@ CREATE TABLE public.manual_routing_check_state (
     last_result character varying(64) DEFAULT 'waiting'::character varying NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT manual_routing_check_state_automatic_attempts_check CHECK (((automatic_attempts >= 0) AND (automatic_attempts <= 3)))
+);
+
+
+--
+-- Name: manual_routing_provider_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.manual_routing_provider_state (
+    radarr_id integer,
+    sonarr_id integer,
+    revision character varying(64) NOT NULL,
+    reservation_id uuid,
+    failures integer DEFAULT 0 NOT NULL,
+    reason text,
+    next_check_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT manual_routing_provider_state_check CHECK ((num_nonnulls(radarr_id, sonarr_id) = 1)),
+    CONSTRAINT manual_routing_provider_state_failures_check CHECK (((failures >= 0) AND (failures <= 16))),
+    CONSTRAINT manual_routing_provider_state_reason_check CHECK ((reason = ANY (ARRAY['provider_paused'::text, 'provider_auth_required'::text, 'provider_configuration_required'::text]))),
+    CONSTRAINT manual_routing_provider_state_revision_check CHECK (((revision)::text ~ '^[a-f0-9]{64}$'::text))
 );
 
 
@@ -10773,6 +10793,22 @@ ALTER TABLE ONLY public.manual_routing_check_state
 
 
 --
+-- Name: manual_routing_provider_state manual_routing_provider_state_radarr_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_provider_state
+    ADD CONSTRAINT manual_routing_provider_state_radarr_id_key UNIQUE (radarr_id);
+
+
+--
+-- Name: manual_routing_provider_state manual_routing_provider_state_sonarr_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_provider_state
+    ADD CONSTRAINT manual_routing_provider_state_sonarr_id_key UNIQUE (sonarr_id);
+
+
+--
 -- Name: media_identity_review_previews media_identity_review_previews_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14918,6 +14954,22 @@ ALTER TABLE ONLY public.manual_routing_check_state
 
 
 --
+-- Name: manual_routing_provider_state manual_routing_provider_state_radarr_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_provider_state
+    ADD CONSTRAINT manual_routing_provider_state_radarr_id_fkey FOREIGN KEY (radarr_id) REFERENCES public.radarr_config(id) ON DELETE CASCADE;
+
+
+--
+-- Name: manual_routing_provider_state manual_routing_provider_state_sonarr_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_provider_state
+    ADD CONSTRAINT manual_routing_provider_state_sonarr_id_fkey FOREIGN KEY (sonarr_id) REFERENCES public.sonarr_config(id) ON DELETE CASCADE;
+
+
+--
 -- Name: media_identity_review_previews media_identity_review_previews_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17795,6 +17847,7 @@ FROM unnest(ARRAY[
     '20261001_230000_ingestion_recovery_history.sql',
     '20261002_000000_ingestion_recovery_progress.sql',
     '20261002_120000_upgrade_pgvector_to_0_8_7.sql',
-    '20261003_120000_manual_routing_checks.sql'
+    '20261003_120000_manual_routing_checks.sql',
+    '20261003_140000_manual_routing_provider_guard.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

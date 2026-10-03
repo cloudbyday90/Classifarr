@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const retryable = new Set(['not_present', 'unavailable']);
-const projection = row => ({ enabled: row?.enabled === true, attempts: row?.automatic_attempts ?? 0,
+const projection = row => ({ enabled: row?.enabled === true && row.automatic_attempts < 3, attempts: row?.automatic_attempts ?? 0,
   nextCheckAt: row?.next_check_at ?? null, lastResult: row?.last_result ?? 'off', limit: 3 });
 
 export function createManualRoutingCheckState({ db, random = Math.random }) {
@@ -42,15 +42,22 @@ export function createManualRoutingCheckState({ db, random = Math.random }) {
         const attempts = row.automatic_attempts + (automatic ? 1 : 0);
         const delay = automatic ? (attempts === 1 ? 300 : 900) + Math.floor(random() * 31) : 60;
         await client.query(`UPDATE manual_routing_check_state SET automatic_attempts=$2::smallint,
-          enabled=enabled AND $2::smallint<3, next_check_at=NOW()+$3::double precision*INTERVAL '1 second',
+          next_check_at=NOW()+$3::double precision*INTERVAL '1 second',
           last_result='checking', updated_at=NOW() WHERE classification_id=$1`, [id, attempts, delay]);
         return { admitted: true };
       });
     },
-    async finish(id, reason) {
+    async defer(id, reason, nextCheckAt) {
       await db.query(`UPDATE manual_routing_check_state SET last_result=$2,
-        enabled=enabled AND $3 AND automatic_attempts<3, updated_at=NOW() WHERE classification_id=$1`,
-      [id, reason, retryable.has(reason)]);
+        next_check_at=CASE WHEN $3::timestamptz<=NOW() THEN NOW()+INTERVAL '5 minutes'
+          ELSE GREATEST(NOW()+INTERVAL '60 seconds', LEAST($3::timestamptz, NOW()+INTERVAL '5 minutes')) END,
+        updated_at=NOW() WHERE classification_id=$1 AND enabled IS TRUE`, [id, reason, nextCheckAt]);
+    },
+    async finish(id, reason, { providerFailure = false, automatic = false } = {}) {
+      await db.query(`UPDATE manual_routing_check_state SET last_result=$2,
+        automatic_attempts=GREATEST(0,automatic_attempts-$4::integer),
+        enabled=enabled AND $3 AND (automatic_attempts-$4::integer)<3, updated_at=NOW() WHERE classification_id=$1`,
+      [id, reason, providerFailure || retryable.has(reason), providerFailure && automatic ? 1 : 0]);
     },
   };
 }
