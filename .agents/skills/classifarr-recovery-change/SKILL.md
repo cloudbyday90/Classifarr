@@ -63,6 +63,11 @@ regression tests before claiming a bug fixed. Run focused checks first, then the
 affected quality gates from package.json and CI. Report exact results and skips.
 Never silently refresh security/ownership baselines; review each changed entry.
 
+For release evidence that depends on container replacement or interrupted work,
+read [image rehearsal guidance](references/image-rehearsal.md). It distinguishes
+real image upgrades from process restarts and fixture clock changes from elapsed
+cooldowns, and identifies the existing isolated runners.
+
 ## Handoff
 
 Keep design and outcome documents separate. Record verification, limitations,

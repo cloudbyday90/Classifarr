@@ -168,8 +168,11 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       const id = compose(['ps', '--all', '--quiet', 'app']).stdout.trim();
       if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('invalid_drill_container');
       await poll(() => docker(['inspect', '--format', '{{.State.Status}}', id]).stdout.trim() === 'exited', 'normal_exit');
+      const rejectionLogs = compose(['logs', '--no-color', '--tail', '200', 'app']);
+      // Startup errors use stderr; Compose may preserve that stream separately.
+      // Never accept an unrelated exit or emit the captured log contents.
       if (docker(['inspect', '--format', '{{.State.ExitCode}}', id]).stdout.trim() !== '1' ||
-        !compose(['logs', '--no-color', 'app']).stdout.includes('Restore verification is incomplete')) {
+        ![rejectionLogs.stdout, rejectionLogs.stderr].some(text => text?.includes('Restore verification is incomplete'))) {
         throw new Error('unexpected_normal_rejection');
       }
       passed('unverified_normal_startup_rejected');

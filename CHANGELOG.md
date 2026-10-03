@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an isolated image-upgrade and restart rehearsal for routing checks, covering
+  authenticated controls, preserved retry budgets, provider repair and no replayed
+  adds. Extend the recovery AI skill with image-level verification guidance.
+- Fix upgrade-test evidence capture when an expected startup rejection is written
+  to stderr; keep unrelated startup failures blocking acceptance.
 - Pause routing checks per provider during outages, distinguish rejected access
   from temporary failures, and preserve item allowances when provider checks fail.
 - Add a repository AI skill for evidence-led, bounded recovery changes and

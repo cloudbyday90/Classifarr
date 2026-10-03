@@ -37,3 +37,15 @@ make a specific correction. Do not expand it into a general autonomous repair
 agent or claim measured reliability from metadata validation alone.
 
 See the [design and official sources](recovery-change-skill-design.md).
+
+## Image rehearsal extension — 3 October 2026
+
+The next recovery task added a conditional
+[image rehearsal reference](../../.agents/skills/classifarr-recovery-change/references/image-rehearsal.md).
+It distinguishes container replacement from restart, fixture deadlines from
+elapsed cooldowns, and attempted writes from duplicate stored rows. It directs
+agents to existing isolated runners without granting deployment permission.
+Metadata and Markdown validation passed; the linked routing runner passed a
+real-image upgrade and crash/restart exercise. See its
+[outcome and limitations](manual-routing-rehearsal-outcome.md). No independent
+agent evaluation or autonomous recovery guarantee is claimed.

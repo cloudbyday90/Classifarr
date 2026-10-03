@@ -113,6 +113,23 @@ test('fresh-only scope never claims or accesses a published baseline', async () 
     .toEqual(['fresh', 'scheduled-crash-arm', 'scheduled-crash-ready', 'scheduled-crash-resume']);
 });
 
+test('accepts expected restore rejection written only to stderr', async () => {
+  const run = mockRunner((_cmd, args) => args[0] === 'compose' && composeOperation(args)[0] === 'logs'
+    ? { status: 0, stdout: '', stderr: 'Failed to start server: Restore verification is incomplete.' } : undefined);
+  expect((await runWith(run)).checks).toContain('unverified_normal_startup_rejected');
+});
+
+test.each(['missing_marker', 'wrong_exit'])('rejects %s instead of accepting any crashed container', async mode => {
+  const run = mockRunner((_cmd, args) => {
+    if (mode === 'missing_marker' && args[0] === 'compose' && composeOperation(args)[0] === 'logs') {
+      return { status: 0, stdout: '', stderr: 'unrelated startup failure' };
+    }
+    if (mode === 'wrong_exit' && args[0] === 'inspect' && args.includes('{{.State.ExitCode}}')) return { status: 0, stdout: '137' };
+    return undefined;
+  });
+  await expect(runWith(run)).rejects.toThrow('published_upgrade_failed:normal_rejection');
+});
+
 test.each(['unraid', 'custom'])('preserves frozen %s deployment and uses runtime identity for every probe', async profile => {
   const run = mockRunner();
   const result = await runWith(run, { deploymentProfile: profile });
