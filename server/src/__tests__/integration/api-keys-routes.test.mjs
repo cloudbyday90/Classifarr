@@ -23,6 +23,7 @@ import consoleHelpers from '../setup/consoleHelpers.mjs';
 import { createLibrariesRouteTestDeps } from '../setup/createLibrariesRouteTestDeps.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 
 const { withConsoleSpy } = consoleHelpers;
 
@@ -36,7 +37,8 @@ const { sonarrService } = await import('../../services/sonarr.mjs');
 const { ollamaService } = await import('../../services/ollama.mjs');
 const { mediaPatternAnalyzer } = await import('../../services/mediaPatternAnalyzer.mjs');
 const { libraryProfileService } = await import('../../services/libraryProfileService.mjs');
-const { mediaSyncService } = await import('../../services/mediaSync.mjs');
+const { MediaSyncService } = await import('../../services/mediaSync.mjs');
+const mediaSyncService = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture() });
 const loggerModule = await import('../../utils/logger.mjs');
 const metadataNormalization = await import('../../utils/metadataNormalization.mjs');
 const authService = await import('../../services/auth.mjs');

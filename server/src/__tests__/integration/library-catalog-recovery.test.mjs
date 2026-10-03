@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 import { reconcileMediaServerLibraries } from '../../services/mediaServerLibrarySync.mjs';
 import { runLibraryCatalogRecovery } from '../../services/libraryCatalogRecovery.mjs';
 import { createLibraryDiscoveryStatusRepository } from '../../services/libraryDiscoveryStatusRepository.mjs';
@@ -57,7 +58,7 @@ test.each(['plex', 'emby', 'jellyfin'])('%s outage recovers through complete dis
   expect(result.libraries.map(row => row.media_type).sort()).toEqual(['movie', 'tv']);
   expect(await status()).toMatchObject({ automatic_attempts: 0, recovery_state: 'scheduled', reason: 'complete', last_success_count: 2 });
   expect(await readInventoryBackgroundReadiness(db)).not.toBe('ready');
-  const ingestion = new MediaSyncService({ skipReporter: { report: async () => {} }, mediaServerServices: {
+  const ingestion = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), skipReporter: { report: async () => {} }, mediaServerServices: {
     getMediaServerService: async () => withSourcePageFixtures({
       getLibraryItems: async (_url, _key, id) => [{ external_id: 'item', tmdb_id: id === 'film' ? 1 : 2,
         title: 'Synthetic', media_type: id === 'film' ? 'movie' : 'tv', year: 2001 }],

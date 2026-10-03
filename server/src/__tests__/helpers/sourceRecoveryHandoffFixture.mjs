@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { jest } from '@jest/globals';
 import { withSourcePageFixtures } from './sourcePageFixture.mjs';
+import { resourceAdmissionFixture } from './resourceAdmissionFixture.mjs';
 import { MediaSyncService } from '../../services/mediaSync.mjs';
 import { createMediaSyncIdentityRecovery } from '../../services/mediaSyncIdentityRecovery.mjs';
 import { persistRecoveredSyncItem } from '../../services/mediaSyncIdentityRecoveryPersistence.mjs';
@@ -63,6 +64,7 @@ export async function createHandoffFixture(db, mediaType) {
         async scan(items = [changed, repaired, music]) {
             // Real sync entry point includes paging, the music filter, pruning and recovery.
             const sync = new MediaSyncService({
+                resourceAdmission: resourceAdmissionFixture(),
                 mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({ ...source,
                     getLibraryItems: async (_url, _key, _library, { offset, limit }) => items.slice(offset, offset + limit),
                     getCollections: async () => [],

@@ -49,7 +49,13 @@ test.each(['plex', 'jellyfin', 'emby'].flatMap(provider => ['movie', 'tv'].map(t
   expect((await retries())[0]).toMatchObject({ attempts: 1, reason: 'Legacy reason', last_attempt_at: before[0].last_attempt_at, status: 'pending', claim_token: null });
   const retryService = new EnrichmentRetryService({ db, logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
     omdbService: { getByIMDBId: async () => ({ Title: 'Recovered evidence', Type: type === 'tv' ? 'series' : 'movie' }) } });
-  expect(await retryService.processRetryQueue(1, 'omdb')).toMatchObject({ success: 1 });
+  try {
+    expect(await retryService.processRetryQueue(1, 'omdb')).toMatchObject({ success: 1 });
+    expect(retryService.processingScheduled).toBe(true);
+  } finally {
+    // A full one-item batch requests another wake; it must not enter the next case.
+    retryService.cancelScheduledProcessing();
+  }
   expect((await retries())[0]).toMatchObject({ status: 'completed', attempts: 1, claim_token: null });
   expect((await item()).metadata).toMatchObject({ sentinel: 'preserved', omdb: { data: { Title: 'Recovered evidence' } } });
 });

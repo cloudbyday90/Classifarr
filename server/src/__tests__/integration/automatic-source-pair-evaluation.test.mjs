@@ -11,6 +11,7 @@ import { createInventoryDescriptionVectorCache } from '../../services/inventoryD
 import { recordDescriptionRepresentation } from '../../services/inventoryDescriptionRepresentationCheckpoint.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 import { sourcePairFixture, sourcePairIdentity as identity } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';
@@ -99,7 +100,9 @@ test('private quality experiment reads a coherent snapshot without changing eval
     'cache',(SELECT jsonb_agg(t) FROM cached_adjudication_batch t)) AS state`;
   const before = (await client.query(sql)).rows[0].state, statements = [];
   const originalOptions = process.env.PGOPTIONS, end = jest.fn();
-  const local = { ...database, pool: { end }, readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }),
+  const readMemory = () => ({ available: 4e9, constrained: 8e9, total: 8e9 });
+  // Both admission layers use real policy with the same deterministic telemetry.
+  const local = { ...database, pool: { end }, readMemory, resourceAdmission: resourceAdmissionFixture(readMemory),
     withTransaction: callback => database.withTransaction(transaction => callback({ query: (...args) => {
       statements.push(args[0]); return transaction.query(...args);
     } })) };

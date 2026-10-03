@@ -26,6 +26,7 @@
 
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 
 const NONEXISTENT_LIBRARY_ID = 999999999;
 
@@ -47,7 +48,8 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { mediaSyncService } = await import('../../services/mediaSync.mjs');
+const { MediaSyncService } = await import('../../services/mediaSync.mjs');
+const mediaSyncService = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture() });
 const { LibraryNotFoundError } = await import('../../utils/errors.mjs');
 
 describe('MediaSyncService: library-not-found handling', () => {

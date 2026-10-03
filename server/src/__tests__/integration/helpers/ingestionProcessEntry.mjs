@@ -2,9 +2,10 @@
 import './ingestionProcessIsolation.mjs';
 import * as db from '../../../config/database.mjs';
 import { MediaSyncService } from '../../../services/mediaSync.mjs';
+import { resourceAdmissionFixture } from '../../helpers/resourceAdmissionFixture.mjs';
 
 try {
-  const sync = new MediaSyncService();
+  const sync = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture() });
   if ((await db.query('SELECT current_database() AS name')).rows[0].name !== process.env.POSTGRES_DB) {
     throw new Error('unexpected_fixture_database');
   }

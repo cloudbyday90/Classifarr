@@ -3,6 +3,7 @@ import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { createLegacyIngestionService } = await import('../../services/legacyIngestionService.mjs');
@@ -61,7 +62,7 @@ test.each(['plex', 'emby', 'jellyfin'].flatMap(provider => ['movie', 'tv'].map(m
   await db.query('UPDATE ai_provider_config SET rag_enabled=true WHERE id=1');
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
-  const sync = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
+  const sync = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: mediaType, title: 'Synthetic' }], getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await sync.syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedItems: 1 });
@@ -198,7 +199,7 @@ test.each(['plex', 'jellyfin', 'emby'].flatMap(provider => ['movie', 'tv'].map(t
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
   // Recovery records intent, not source health. An outage must preserve inventory,
   // hold downstream work, and retain a durable cooldown before retrying.
-  const unavailable = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
+  const unavailable = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems: async () => { throw new Error('synthetic source offline'); }, getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await unavailable.syncLibrary(libraryId, { incremental: true })).toMatchObject({ deferred: true });
@@ -209,7 +210,7 @@ test.each(['plex', 'jellyfin', 'emby'].flatMap(provider => ['movie', 'tv'].map(t
   expect(await readInventoryBackgroundReadiness(db)).toBe('ingesting');
   await db.query("UPDATE library_ingestion_state SET retry_after=clock_timestamp()-interval '1 second' WHERE library_id=$1", [libraryId]);
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(row => row.id)).toContain(libraryId);
-  const sync = new MediaSyncService({ mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
+  const sync = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems: async () => [{ external_id: 'new', tmdb_id: 88, media_type: mediaType, title: 'Synthetic resume' }], getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} } });
   expect(await sync.syncLibrary(libraryId, { incremental: true })).toMatchObject({ success: true, prunedItems: 1 });

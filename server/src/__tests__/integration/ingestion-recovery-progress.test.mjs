@@ -3,6 +3,7 @@ import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { createLegacyIngestionService } = await import('../../services/legacyIngestionService.mjs');
@@ -26,6 +27,7 @@ const recover = async () => {
   return service.confirm(actorId, libraryId, { requestId: randomUUID(), workersStopped: true, resume: true }, preview.revision);
 };
 const importer = (items = [{ external_id: 'new', tmdb_id: 88, media_type: 'movie', title: 'Synthetic' }]) => new MediaSyncService({
+  resourceAdmission: resourceAdmissionFixture(),
   mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({
     getLibraryItems: async () => { if (items instanceof Error) throw items; return items; }, getCollections: async () => [],
   }) }, skipReporter: { report: async () => {} },

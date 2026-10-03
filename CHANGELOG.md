@@ -19,6 +19,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh the PostgreSQL driver, environment loader and structured logger to
+  pick up connection-error, quiet-import and logging fixes. Add real database
+  and logging-worker regression tests without changing deployment settings.
+- Stabilize import/recovery integration fixtures with consistent memory telemetry
+  and retry-timer cleanup; keep production resource limits intact.
 - Refresh frontend build, test and Vue typechecking tools with reviewed lockfile
   updates; add a focused AI skill for safe dependency updates and verification.
 - Include sanitized phase and source-location diagnostics when a routing rehearsal

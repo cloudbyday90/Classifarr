@@ -1,6 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { test, expect } from '@jest/globals';
+import { jest, test, expect } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createBackgroundResourceAdmission } from '../../services/backgroundResourceAdmission.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
+
+// Only this host-run integration fixture controls memory telemetry. The unchanged
+// standalone image probe still observes its real container resource limits.
+jest.unstable_mockModule('../../services/backgroundResourceAdmission.mjs', () => ({
+  createBackgroundResourceAdmission,
+  backgroundResourceAdmission: resourceAdmissionFixture(),
+}));
 
 const { runUpgradeHandoff } = await import('../../scripts/publishedUpgradeHandoff.mjs');
 const db = createIntegrationDatabaseModuleMock();

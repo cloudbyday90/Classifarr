@@ -14,6 +14,7 @@ import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createLibrariesRouter } from '../../routes/librariesRouteShared.mjs';
 import { createMediaSyncRouter } from '../../routes/mediaSyncRouteShared.mjs';
 import { errorHandler } from '../../middleware/errorHandler.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 
 const logger = {
     info: jest.fn(),
@@ -37,7 +38,8 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { default: db } = await import('../../config/database.mjs');
-const { mediaSyncService } = await import('../../services/mediaSync.mjs');
+const { MediaSyncService } = await import('../../services/mediaSync.mjs');
+const mediaSyncService = new MediaSyncService({ resourceAdmission: resourceAdmissionFixture() });
 const app = express();
 app.use(express.json());
 app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({

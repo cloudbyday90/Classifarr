@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
 import { getMediaServerService } from '../../services/mediaServers/index.mjs';
 import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
 import { mediaSyncDatabase } from '../../services/mediaSyncDatabaseScope.mjs';
@@ -34,7 +35,7 @@ const due = async () => {
   await db.query("UPDATE media_source_content_circuits SET next_attempt_at=clock_timestamp()-INTERVAL '1 second' WHERE media_server_id=$1 AND next_attempt_at IS NOT NULL", [sourceId]);
   await db.query("UPDATE library_ingestion_state SET retry_after=clock_timestamp()-INTERVAL '1 second' WHERE library_id=ANY($1)", [libraries]);
 };
-const sync = () => new MediaSyncService({ skipReporter: { report: async () => {} } });
+const sync = () => new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(), skipReporter: { report: async () => {} } });
 const source = async (id = libraries[0]) => (await db.query(`SELECT l.*,ms.type,ms.url,ms.api_key,ms.catalog_revision
   FROM libraries l JOIN media_server ms ON ms.id=l.media_server_id WHERE l.id=$1`, [id])).rows[0];
 beforeAll(async () => {

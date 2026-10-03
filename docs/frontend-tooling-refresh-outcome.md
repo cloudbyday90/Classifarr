@@ -97,6 +97,9 @@ lint tooling and review Node typing/runtime alignment. Keep the client TypeScrip
 7 migration separate. Investigate any recurring routing failure using its new
 phase/location diagnostic before changing timing behavior.
 
+The subsequent backend batch and its validation are recorded in
+[the backend runtime outcome](backend-runtime-refresh-outcome.md).
+
 GitHub MCP and the saved CLI login both found **zero open Classifarr PRs**. There
 was no PR to select randomly; none was merged or substituted. Work remains on
 `main`. No version bump, release, live deployment or user-data change was made.
