@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { backgroundResourceAdmission } from './backgroundResourceAdmission.mjs';
 import { createQueueWorkerWakeup } from './queueWorkerWakeup.mjs';
 import { releaseQueueClaim } from './queueTaskAcknowledgementService.mjs';
+import { releaseShutdownClaims } from './queueShutdownClaimRelease.mjs';
 import {
     QUEUE_TASK_FAILURE_REASON_IDS,
     QUEUE_TASK_RECOVERY_LOG_REASON_IDS,
@@ -310,14 +311,16 @@ export class QueueWorkerLoopService {
     async gracefulShutdown() {
         this.stopWorker();
         try {
-            const released = [];
-            for (const task of [...this.activeClaims]) {
-                if (await releaseQueueClaim(this.db, task, QUEUE_TASK_FAILURE_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERED)) released.push(task.id);
-            }
+            const { released, failed } = await releaseShutdownClaims(this.db, this.activeClaims);
             if (released.length > 0) {
                 this.logger.info('Graceful shutdown: reset in-flight tasks to pending', {
                     count: released.length,
                     taskIds: released,
+                });
+            }
+            if (failed > 0) {
+                this.logger.error('Graceful shutdown: failed to reset in-flight tasks', {
+                    reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERY_FAILED,
                 });
             }
         } catch {

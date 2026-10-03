@@ -295,6 +295,11 @@ jobs:
         run: |
           IMAGE_NAME=classifarr:test npm run test:local:embedded-shutdown-drill
 
+      - name: Queue claim recovery across graceful stop and forced host kill
+        timeout-minutes: 10
+        run: |
+          IMAGE_NAME=classifarr:test npm run test:local:queue-recovery-drill
+
   policy-candidate-synthetic-replay:
     name: Policy Candidate Synthetic Replay
     runs-on: ubuntu-latest

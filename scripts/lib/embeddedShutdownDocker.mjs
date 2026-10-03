@@ -9,7 +9,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const fixture = resolve(import.meta.dirname, '../fixtures/embeddedShutdown');
 
 export async function withShutdownContainer(check, { imageName = process.env.IMAGE_NAME || 'classifarr:test',
-  execute = promisify(execFile), random = randomBytes } = {}) {
+  execute = promisify(execFile), random = randomBytes, fixtureMode = 'http' } = {}) {
+  assert(['http', 'queue'].includes(fixtureMode), 'unsupported_shutdown_fixture');
   assert.match(imageName, /^[a-zA-Z0-9][a-zA-Z0-9_./:@-]{0,254}$/);
   const suffix = random(16).toString('hex');
   assert.match(suffix, /^[a-f0-9]{32}$/);
@@ -63,7 +64,7 @@ catch (error) { if (error.code !== 'ENOENT') throw error;
       '--mount', `type=volume,source=${volume},target=/app/data`,
       '--mount', `type=bind,source=${fixture},target=/app/shutdown-fixture,readonly`,
       '--env', 'CLASSIFARR_SHUTDOWN_DRILL=disposable-v1',
-      '--env', 'NODE_OPTIONS=--max-old-space-size=1024 --import=/app/shutdown-fixture/preload.mjs',
+      '--env', `NODE_OPTIONS=--max-old-space-size=1024 --import=/app/shutdown-fixture/${fixtureMode === 'queue' ? 'queue-preload' : 'preload'}.mjs`,
       '--health-cmd', 'curl --fail --max-time 2 --silent http://127.0.0.1:21324/health',
       '--health-interval', '1s', '--health-timeout', '3s', '--health-start-period', '120s', image]);
     await docker(['start', name]);

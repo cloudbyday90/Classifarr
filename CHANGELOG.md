@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Continue releasing other tracked queue claims when one shutdown write fails.
+  Add isolated real-image tests for graceful and forced-kill recovery, fresh
+  replay tokens and rejection of stale acknowledgements and metadata writes.
 - Add an isolated, real-image shutdown rehearsal with HTTP and maintenance work
   in flight. Test 10- and 60-second Docker stop deadlines, clean-stop ordering,
   forced-kill recovery and data preservation without changing saved deployments.

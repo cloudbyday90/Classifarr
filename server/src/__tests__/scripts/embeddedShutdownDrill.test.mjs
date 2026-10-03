@@ -118,6 +118,19 @@ test('pins the image, isolates resources, preserves entrypoint and bounds every 
   expect(calls.at(-1)[1]).toEqual(['volume', 'rm', `${f.name}-data`]);
 });
 
+test.each(['http', 'queue'])('selects only the fixed %s fixture preload', async fixtureMode => {
+  const f = dockerFixture();
+  await withShutdownContainer(async () => 'passed', { ...f, fixtureMode });
+  const create = f.execute.mock.calls.find(([, args]) => args[0] === 'create')[1];
+  expect(create).toContain(`NODE_OPTIONS=--max-old-space-size=1024 --import=/app/shutdown-fixture/${fixtureMode === 'queue' ? 'queue-preload' : 'preload'}.mjs`);
+});
+
+test('rejects unsupported fixture input before Docker', async () => {
+  const f = dockerFixture();
+  await expect(withShutdownContainer(jest.fn(), { ...f, fixtureMode: '../custom' })).rejects.toThrow('unsupported_shutdown_fixture');
+  expect(f.execute).not.toHaveBeenCalled();
+});
+
 test('cleans after verification failure but never touches a name collision', async () => {
   const f = dockerFixture();
   await expect(withShutdownContainer(() => { throw new Error('verification'); }, f)).rejects.toThrow('verification');

@@ -127,6 +127,12 @@
       "followUp": "Retain unchanged ten-second host timeout, custom UID, child/database failure, forced-kill recovery, environment refusal and exact cleanup tests. A successful small fresh-install test is not a loaded shutdown guarantee. Root Tini needs normal signal permission when dropping child UID. Production privilege separation, bootstrap/major-upgrade interruption, encrypted restore parity and complete writer capabilities remain prerequisites; unresolved shared-writer debt is unchanged."
     },
     {
+      "id": "queue_shutdown_rehearsal",
+      "classification": "separately_coordinated",
+      "reason": "Host-side real-image queue rehearsal uses only fixed synthetic SQL through the collision-checked, labeled, isolated shutdown container. It creates fixture tables and queue rows in a disposable volume, verifies real token release/reclaim and stale-write rejection, and expires only those fixture rows. Indirect query arguments are explicit test plumbing, not production inventory mutation or a new database capability.",
+      "followUp": "Retain no-network/no-host-data isolation, exact-name plus label cleanup, same-image evidence and positive/negative claim tests. Classification external-effect idempotency remains unproven. This does not backfill historical owners, change production ownership/privileges or resolve existing shared-writer debt."
+    },
+    {
       "id": "embedded_isolation_rehearsal",
       "classification": "separately_coordinated",
       "reason": "Disposable collision-checked Compose project only, no host data mounts or network. Linux/root supervisor requires read-only root, separate scratch mounts and empty state; separate PostgreSQL and runtime OS users use fixed peer mappings with default rejection. Maintenance probe requires the exact isolated environment and restored database identity before DDL. Real schema admission defers while normal Node is alive. Dump/restore and image-index rebuilding occur only after actual Node exit; clean PostgreSQL stop/restart and restricted reconnect/file/DDL denials are asserted. Runtime retains ordinary DML only in the disposable candidate.",
@@ -409,6 +415,7 @@
     {"path":"server/src/services/backupRestoreExecution.mjs","digest":"36eaa3a50034a40677b6c63491218fc67ab172c04155e93d38ac3bbab3bc38cf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"server/src/services/backupRestoreMaintenance.mjs","digest":"c51d5427417bc76ba657c6cc5e255289ecc61f7a71b91e4e43571dc85f045a65","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
     {"path":"server/src/services/backupRestoreMaintenanceInput.mjs","digest":"a1214251330e85d61906e4e45283dbd39edaeef6b248aea8e1cc549ab7abd5c9","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"one_shot_restore_maintenance"},
+    {"path":"scripts/lib/embeddedQueueRecoveryChecks.mjs","digest":"1a7756cf61b19ace32c70bd1a97ca1ccf15a856194095c735156bddbb720284e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"queue_shutdown_rehearsal"},
     {"path":"scripts/lib/embeddedIsolationCompose.mjs","digest":"42e9f82ea539d24b3a7094a2e04e9905af5374869cd69af4739d17ed5362b97f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_identity_handoff"},
     {"path":"scripts/lib/embeddedSupervisorChecks.mjs","digest":"4b358ebff0785f0ee7eb1162f801ef45a24bcf5a7e38cede7d071f72204410e9","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"compatible_image_index_worker"},
     {"path":"server/src/bootstrap/embeddedChildProcess.mjs","digest":"33ea02edabe8d3b4e0ff8cc57dd27ec020cdd43b016fea0b49bd9c375571751c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},

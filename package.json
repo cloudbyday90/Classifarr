@@ -18,6 +18,7 @@
     "test:local:restore-recovery-drill": "node scripts/run-restore-recovery-drill.mjs",
     "test:local:embedded-isolation-drill": "node scripts/run-embedded-isolation-drill.mjs",
     "test:local:embedded-shutdown-drill": "node scripts/run-embedded-shutdown-drill.mjs",
+    "test:local:queue-recovery-drill": "node scripts/run-embedded-shutdown-drill.mjs --queue-claims",
     "test:local:published-upgrade-drill": "node scripts/run-published-upgrade-drill.mjs",
     "test:local:runtime-installation-acceptance": "node scripts/run-runtime-installation-acceptance.mjs",
     "test:local:frozen-release-rehearsal": "node scripts/run-frozen-release-rehearsal.mjs",

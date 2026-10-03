@@ -89,6 +89,21 @@ describe('QueueWorkerLoopService', () => {
         service = new QueueWorkerLoopService(deps);
     });
 
+    it('continues releasing tracked claims when one shutdown write fails', async () => {
+        const first = { id: 1, claim_token: '11111111-1111-4111-8111-111111111111' };
+        const second = { id: 2, claim_token: '22222222-2222-4222-8222-222222222222' };
+        service.activeClaims.add(first);
+        service.activeClaims.add(second);
+        deps.db.query.mockRejectedValueOnce(new Error('connection interrupted'))
+            .mockResolvedValueOnce({ rows: [{ id: 2 }] });
+        await service.gracefulShutdown();
+        expect(deps.db.query).toHaveBeenCalledTimes(2);
+        expect(deps.logger.info).toHaveBeenCalledWith('Graceful shutdown: reset in-flight tasks to pending',
+            { count: 1, taskIds: [2] });
+        expect(deps.logger.error).toHaveBeenCalledTimes(1);
+        expect(service.stopRequested).toBe(true);
+    });
+
     it('waits before dequeue under pressure and automatically resumes after recovery', async () => {
         let available = 1;
         deps.resourceAdmission = resourceAdmissionFixture(() => ({ available, constrained: 2e9, total: 16e9 }));

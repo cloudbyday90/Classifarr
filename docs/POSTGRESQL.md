@@ -421,6 +421,22 @@ PostgreSQL cleanly, but still exits 1 because the app had to be killed. See the
 [design](architecture/embedded-loaded-shutdown-design.md) and
 [results](architecture/embedded-loaded-shutdown-outcome.md).
 
+## Queue recovery check
+
+For interrupted queue work, run the separate claim-recovery rehearsal:
+
+```sh
+IMAGE_NAME=classifarr:test npm run test:local:queue-recovery-drill
+```
+
+It uses the same isolation and cleanup safeguards, with synthetic metadata and
+classification tasks. It checks graceful release, forced-kill expiry recovery,
+new claim tokens and stale-write rejection. Classification may wait for the
+normal 60-second recovery sweep. No AI provider or media server is contacted.
+This does not prove exactly-once external actions. See the
+[queue recovery design](architecture/queue-shutdown-recovery-design.md) and
+[results](architecture/queue-shutdown-recovery-outcome.md).
+
 ## Additional Resources
 
 - [PostgreSQL Upgrade Documentation](https://www.postgresql.org/docs/current/upgrading.html)

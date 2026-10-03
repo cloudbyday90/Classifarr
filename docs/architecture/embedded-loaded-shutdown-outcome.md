@@ -72,7 +72,8 @@ Docker/CI runtime and Linux-only execution. Keep 60 seconds as the recommended
 host stop window while retaining explicit recovery checks for unchanged legacy
 templates. The research and alternatives are recorded separately in the design.
 
-Next: **in-flight queue claim recovery across shutdown and restart**. Exercise
+Follow-up completed: [queue claim recovery across shutdown and restart](queue-shutdown-recovery-outcome.md).
+The original next step was to exercise
 the real queue worker and claim tokens with interrupted metadata/classification
 tasks, checking claim release or expiry, safe replay and rejection of stale
 acknowledgements. The current HTTP/assessment rehearsal does not prove that
