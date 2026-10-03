@@ -26,6 +26,7 @@ const props = defineProps({
 })
 
 const badgeClasses = computed(() => {
+  /** @type {Readonly<Record<string, string | undefined>>} */
   const variants = {
     default: 'bg-gray-700/50 text-gray-300 border border-gray-600',
     success: 'bg-green-500/20 text-success',

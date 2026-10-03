@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Split frontend typechecking into shared settings, the existing API checks and
+  strict checks for core display components. Keep Vue on its supported compiler,
+  remove stale deprecation suppression and test real Vue diagnostic behavior.
 - Refresh dependency-analysis tooling and add executable checks for re-export
   exclusions, missing imports and normal/production dependency reporting.
 - Update HTTP test tooling to bind generated servers to localhost, with regression

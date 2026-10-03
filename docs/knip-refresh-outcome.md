@@ -85,3 +85,6 @@ not a guarantee of security.
 The dependency-update skill kept the package change isolated and required
 before/after detection tests, lockfile review and development-dependency scans.
 No version bump, tag, release, new branch or deployment is part of this change.
+
+The subsequent Vue compiler compatibility review and scoped frontend refactor are
+recorded in [the Vue TypeScript outcome](vue-typescript-compatibility-outcome.md).

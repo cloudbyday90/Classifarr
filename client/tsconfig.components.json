@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "vueCompilerOptions": {
+    "strictTemplates": true
+  },
+  "include": [
+    "src/components/common/Badge.vue",
+    "src/components/common/Button.vue",
+    "src/components/common/Card.vue",
+    "src/components/common/Spinner.vue"
+  ]
+}
