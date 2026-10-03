@@ -345,7 +345,10 @@
         <div class="flex items-start justify-between">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-1">
-              <h3 class="font-medium text-gray-200">
+              <h3
+                id="pattern-mining-label"
+                class="font-medium text-gray-200"
+              >
                 Enable Pattern Mining
               </h3>
               <span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-sm">Standard</span>
@@ -354,7 +357,10 @@
               Automatically discover patterns from classification history (studios, genres, franchises) to predict library routing. Now enabled by default as part of the v0.37.0 formula engine.
             </div>
           </div>
-          <Toggle v-model="patternConfig.pattern_mining_enabled" />
+          <Toggle
+            v-model="patternConfig.pattern_mining_enabled"
+            aria-labelledby="pattern-mining-label"
+          />
         </div>
 
         <!-- Pattern Settings (when enabled) -->

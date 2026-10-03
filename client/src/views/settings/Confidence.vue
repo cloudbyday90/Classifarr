@@ -39,13 +39,17 @@
           <!-- Auto-Classify Threshold -->
           <div class="space-y-2">
             <div class="flex justify-between items-center">
-              <label class="font-medium">Auto-Classify Threshold</label>
+              <label
+                for="auto-classify-threshold"
+                class="font-medium"
+              >Auto-Classify Threshold</label>
               <span class="text-2xl font-bold text-green-400">{{ policySettings.autoClassifyThreshold }}%</span>
             </div>
             <p class="text-sm text-gray-400">
               High-confidence items at or above this threshold are automatically classified, saving you time on obvious matches.
             </p>
             <Slider
+              id="auto-classify-threshold"
               v-model="policySettings.autoClassifyThreshold"
               :min="70"
               :max="95"
@@ -57,13 +61,17 @@
           <!-- Prompt Threshold -->
           <div class="space-y-2">
             <div class="flex justify-between items-center">
-              <label class="font-medium">Policy Builder Threshold</label>
+              <label
+                for="policy-builder-threshold"
+                class="font-medium"
+              >Policy Builder Threshold</label>
               <span class="text-2xl font-bold text-yellow-400">{{ policySettings.promptThreshold }}%</span>
             </div>
             <p class="text-sm text-gray-400">
               Low-confidence items (below this threshold) guide you through creating classification rules, so the system learns and improves over time.
             </p>
             <Slider
+              id="policy-builder-threshold"
               v-model="policySettings.promptThreshold"
               :min="40"
               :max="Math.max(40, policySettings.autoClassifyThreshold - 5)"
@@ -325,13 +333,17 @@
             <!-- Min Confidence Rate -->
             <div class="space-y-2">
               <div class="flex justify-between items-center">
-                <label class="font-medium">Minimum Confidence Rate</label>
+                <label
+                  for="minimum-confidence-rate"
+                  class="font-medium"
+                >Minimum Confidence Rate</label>
                 <span class="text-xl font-bold text-blue-400">{{ learningSettings.minConfidenceRate }}%</span>
               </div>
               <p class="text-sm text-gray-400">
                 Ratio of confirmations to rejections (e.g., 75% = max 1 reject per 3 confirms)
               </p>
               <Slider
+                id="minimum-confidence-rate"
                 v-model="learningSettings.minConfidenceRate"
                 :min="50"
                 :max="100"

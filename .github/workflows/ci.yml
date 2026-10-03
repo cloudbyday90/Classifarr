@@ -251,7 +251,12 @@ jobs:
           cd client
           npm run test:browser:production-policy
 
-      - name: Upload production policy-route asset smoke report
+      - name: Check shared form controls in Chromium
+        run: |
+          cd client
+          node scripts/run-playwright.mjs test browser-tests/shared-form-controls.spec.js --project chromium --workers 1 --retries 0
+
+      - name: Upload client browser test reports
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

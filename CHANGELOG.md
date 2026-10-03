@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend strict frontend checks to shared form controls, preserve typed model
+  events and route native attributes to the controls. Associate labels and input
+  errors correctly, with unit and Chromium keyboard/validation regression tests.
 - Split frontend typechecking into shared settings, the existing API checks and
   strict checks for core display components. Keep Vue on its supported compiler,
   remove stale deprecation suppression and test real Vue diagnostic behavior.

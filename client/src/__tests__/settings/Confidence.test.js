@@ -81,6 +81,17 @@ describe('Confidence Settings', () => {
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
   })
 
+  it('associates visible threshold labels with the native sliders', async () => {
+    mockGetRoutes()
+    const wrapper = mount(Confidence)
+    await flushPromises()
+    for (const id of ['auto-classify-threshold', 'policy-builder-threshold', 'minimum-confidence-rate']) {
+      expect(wrapper.get(`label[for="${id}"]`).text()).toBeTruthy()
+      expect(wrapper.get(`input#${id}`).attributes('type')).toBe('range')
+    }
+    wrapper.unmount()
+  })
+
   it('loads discord and rag-loop safety settings from APIs', async () => {
     mockGetRoutes({
       ai: {

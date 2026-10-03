@@ -205,6 +205,18 @@ describe('AI Settings', () => {
     api.updatePatternConfig.mockResolvedValue({ data: { success: true } })
   })
 
+  it('names the pattern-mining toggle from its visible heading', async () => {
+    const wrapper = mountView()
+    try {
+      await flushPromises()
+      const toggle = wrapper.get('[aria-labelledby="pattern-mining-label"]')
+      const label = wrapper.get(`#${toggle.attributes('aria-labelledby')}`)
+      expect(label.text()).toBe('Enable Pattern Mining')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('renders only the bounded Ollama runtime mismatch summary', async () => {
     api.getOllamaVerificationRuntimeMismatchSummary.mockResolvedValue({
       modelDigestMismatchCount: '4',

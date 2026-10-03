@@ -7,35 +7,40 @@
 -->
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div
+    v-bind="layoutAttrs()"
+    class="flex flex-col gap-2"
+  >
     <label
       v-if="label"
-      :for="inputId"
+      :for="controlId()"
       class="text-sm font-medium"
     >{{ label }}</label>
     <input
-      :id="inputId"
+      v-bind="controlAttrs(error)"
       :type="type"
       :value="modelValue"
       :placeholder="placeholder"
       :maxlength="maxLength || undefined"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
-      @input="$emit('update:modelValue', $event.target.value)"
+      @input="handleInput"
     >
     <span
       v-if="error"
+      :id="errorId"
       class="text-sm text-error"
     >{{ error }}</span>
   </div>
 </template>
 
 <script setup>
-import { useId } from 'vue'
+import { useFormControlAttrs } from '@/composables/useFormControlAttrs.js'
 
-const inputId = useId()
+defineOptions({ inheritAttrs: false })
+const { controlId, controlAttrs, layoutAttrs, errorId } = useFormControlAttrs()
 
-defineProps({
+const props = defineProps({
   modelValue: {
     type: [String, Number],
     default: '',
@@ -66,5 +71,15 @@ defineProps({
   },
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {string} value */ (value) => typeof value === 'string',
+})
+
+/** @param {Event} event */
+function handleInput(event) {
+  const target = event.currentTarget
+  if (!props.disabled && target instanceof HTMLInputElement) {
+    emit('update:modelValue', target.value)
+  }
+}
 </script>

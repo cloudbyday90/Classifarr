@@ -7,16 +7,21 @@
 -->
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div
+    v-bind="layoutAttrs()"
+    class="flex flex-col gap-2"
+  >
     <label
       v-if="label"
+      :for="controlId()"
       class="text-sm font-medium"
     >{{ label }}</label>
     <select
+      v-bind="controlAttrs()"
       :value="modelValue"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
-      @change="$emit('update:modelValue', $event.target.value)"
+      @change="handleChange"
     >
       <option
         v-if="placeholder"
@@ -37,7 +42,13 @@
 </template>
 
 <script setup>
-defineProps({
+import { useFormControlAttrs } from '@/composables/useFormControlAttrs.js'
+
+defineOptions({ inheritAttrs: false })
+const { controlId, controlAttrs, layoutAttrs } = useFormControlAttrs()
+
+/** @typedef {{ value: string | number, label: string }} SelectOption */
+const props = defineProps({
   modelValue: {
     type: [String, Number],
     default: '',
@@ -51,7 +62,7 @@ defineProps({
     default: '',
   },
   options: {
-    type: Array,
+    type: /** @type {import('vue').PropType<ReadonlyArray<SelectOption>>} */ (Array),
     required: true,
   },
   disabled: {
@@ -60,5 +71,15 @@ defineProps({
   },
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {string} value */ (value) => typeof value === 'string',
+})
+
+/** @param {Event} event */
+function handleChange(event) {
+  const target = event.currentTarget
+  if (!props.disabled && target instanceof HTMLSelectElement) {
+    emit('update:modelValue', target.value)
+  }
+}
 </script>

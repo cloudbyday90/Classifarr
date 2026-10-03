@@ -7,15 +7,20 @@
 -->
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div
+    v-bind="layoutAttrs()"
+    class="flex flex-col gap-2"
+  >
     <div class="flex justify-between items-center">
       <label
         v-if="label"
+        :for="controlId()"
         class="text-sm font-medium"
       >{{ label }}</label>
       <span class="text-sm text-primary font-medium">{{ displayValue }}</span>
     </div>
     <input
+      v-bind="controlAttrs()"
       type="range"
       :min="min"
       :max="max"
@@ -23,7 +28,7 @@
       :value="modelValue"
       :disabled="disabled"
       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider disabled:opacity-50 disabled:cursor-not-allowed"
-      @input="$emit('update:modelValue', parseFloat($event.target.value))"
+      @input="handleInput"
     >
     <div class="flex justify-between text-xs text-gray-500">
       <span>{{ min }}{{ unit }}</span>
@@ -34,6 +39,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useFormControlAttrs } from '@/composables/useFormControlAttrs.js'
+
+defineOptions({ inheritAttrs: false })
+const { controlId, controlAttrs, layoutAttrs } = useFormControlAttrs()
 
 const props = defineProps({
   modelValue: { type: Number, default: 0 },
@@ -45,7 +54,17 @@ const props = defineProps({
   disabled: { type: Boolean, default: false }
 })
 
-defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {number} value */ (value) => Number.isFinite(value),
+})
+
+/** @param {Event} event */
+function handleInput(event) {
+  const target = event.currentTarget
+  if (!props.disabled && target instanceof HTMLInputElement && Number.isFinite(target.valueAsNumber)) {
+    emit('update:modelValue', target.valueAsNumber)
+  }
+}
 
 const displayValue = computed(() => `${props.modelValue}${props.unit}`)
 </script>

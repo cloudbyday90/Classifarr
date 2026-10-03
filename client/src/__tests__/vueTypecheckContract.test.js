@@ -55,11 +55,25 @@ import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import Card from '@/components/common/Card.vue'
 import Spinner from '@/components/common/Spinner.vue'
+import Input from '@/components/common/Input.vue'
+import Select from '@/components/common/Select.vue'
+import Toggle from '@/components/common/Toggle.vue'
+import Slider from '@/components/common/Slider.vue'
+/** @param {string} value */
+function acceptText(value) { return value.toUpperCase() }
+/** @param {boolean} value */
+function acceptBoolean(value) { return value.valueOf() }
+/** @param {number} value */
+function acceptNumber(value) { return value.toFixed(0) }
 </script>
 <template>
   <Card title="Status"><Badge variant="success">Ready</Badge></Card>
   <Button type="button" :loading="false">Refresh</Button>
   <Spinner size="sm" text="Loading" />
+  <Input label="Name" @update:model-value="acceptText" />
+  <Select :options="[{ value: 1, label: 'One' }]" @update:model-value="acceptText" />
+  <Toggle :model-value="true" @update:model-value="acceptBoolean" />
+  <Slider :model-value="50" @update:model-value="acceptNumber" />
 </template>
 `)
     expect(result.output).toBe('')
@@ -79,6 +93,39 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'input public emit payload in a typed consumer', code: '2345',
+      source: `<script setup lang="ts">
+import Input from '@/components/common/Input.vue'
+function emitWrongType(control: InstanceType<typeof Input>) { control.$emit('update:modelValue', 42) }
+</script>
+<template><Input /></template>
+`,
+    },
+    {
+      name: 'select option shape', code: '2322',
+      source: `<script setup>
+import Select from '@/components/common/Select.vue'
+</script>
+<template><Select :options="[{ value: 1, label: 2 }]" /></template>
+`,
+    },
+    {
+      name: 'toggle boolean model', code: '2322',
+      source: `<script setup>
+import Toggle from '@/components/common/Toggle.vue'
+</script>
+<template><Toggle model-value="true" /></template>
+`,
+    },
+    {
+      name: 'slider numeric model', code: '2322',
+      source: `<script setup>
+import Slider from '@/components/common/Slider.vue'
+</script>
+<template><Slider model-value="50" /></template>
+`,
+    },
     {
       name: 'real shared component prop', code: '2322',
       source: `<script setup>
@@ -125,7 +172,7 @@ import CounterValue from './CounterValue.vue'
     const result = typecheck(source)
     expect(result.status).toBe(2)
     expect(result.output).toMatch(new RegExp(`ContractFixture\\.vue\\(\\d+,\\d+\\): error TS${code}:`))
-    const diagnostics = result.output.trim().split(/\r?\n/)
+    const diagnostics = result.output.match(/: error TS\d+:/g)
     expect(diagnostics).toHaveLength(1)
   }, 35_000)
 })

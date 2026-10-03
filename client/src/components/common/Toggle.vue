@@ -7,15 +7,19 @@
 -->
 
 <template>
-  <div class="flex items-center gap-3">
+  <div
+    v-bind="layoutAttrs()"
+    class="flex items-center gap-3"
+  >
     <button
+      v-bind="controlAttrs()"
       type="button"
       role="switch"
       :aria-checked="modelValue"
       :disabled="disabled"
       class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed"
       :class="modelValue ? 'bg-primary' : 'bg-gray-600'"
-      @click="$emit('update:modelValue', !modelValue)"
+      @click="handleClick"
     >
       <span
         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
@@ -24,6 +28,7 @@
     </button>
     <label
       v-if="label"
+      :for="controlId()"
       class="text-sm font-medium"
       :class="disabled ? 'text-gray-500' : 'text-gray-200'"
     >
@@ -33,10 +38,21 @@
 </template>
 
 <script setup>
-defineProps({
+import { useFormControlAttrs } from '@/composables/useFormControlAttrs.js'
+
+defineOptions({ inheritAttrs: false })
+const { controlId, controlAttrs, layoutAttrs } = useFormControlAttrs()
+
+const props = defineProps({
   modelValue: { type: Boolean, default: false },
   label: { type: String, default: '' },
   disabled: { type: Boolean, default: false }
 })
-defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {boolean} value */ (value) => typeof value === 'boolean',
+})
+
+function handleClick() {
+  if (!props.disabled) emit('update:modelValue', !props.modelValue)
+}
 </script>

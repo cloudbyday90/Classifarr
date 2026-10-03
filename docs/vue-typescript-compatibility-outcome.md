@@ -81,3 +81,6 @@ Recommendation stack:
 The dependency-update skill kept the compiler decision tied to upstream support,
 required lockfile/install review and retained negative diagnostic checks rather
 than forcing an incompatible version upgrade.
+
+Follow-up: [shared form-control checking and native semantics](shared-form-controls-outcome.md)
+implements the next four controls and records the remaining event-checking boundary.
