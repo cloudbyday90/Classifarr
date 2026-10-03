@@ -290,6 +290,11 @@ jobs:
         run: |
           IMAGE_NAME=classifarr:test npm run docker:smoke:postgres-lifecycle
 
+      - name: Loaded container shutdown and recovery (10s and 60s host deadlines)
+        timeout-minutes: 15
+        run: |
+          IMAGE_NAME=classifarr:test npm run test:local:embedded-shutdown-drill
+
   policy-candidate-synthetic-replay:
     name: Policy Candidate Synthetic Replay
     runs-on: ubuntu-latest

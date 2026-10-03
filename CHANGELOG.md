@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an isolated, real-image shutdown rehearsal with HTTP and maintenance work
+  in flight. Test 10- and 60-second Docker stop deadlines, clean-stop ordering,
+  forced-kill recovery and data preservation without changing saved deployments.
 - Bound embedded PostgreSQL adoption and shutdown, including identity-file I/O.
   Prevent cancelled or late work from granting ownership or issuing another
   command, require positive clean-shutdown confirmation, and add isolated

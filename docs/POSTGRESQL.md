@@ -402,6 +402,25 @@ If you encounter issues during migration:
    - Error messages
    - Steps you've tried
 
+## Loaded container shutdown check
+
+Run the focused rehearsal against a locally built candidate image:
+
+```sh
+IMAGE_NAME=classifarr:test npm run test:local:embedded-shutdown-drill
+```
+
+It creates isolated synthetic containers and volumes, tests real HTTP and
+scheduled maintenance work at 10- and 60-second host stop deadlines, checks
+database state offline, and restarts to verify data recovery. It removes only
+its generated resources. It does not rebuild or restart your installation.
+
+Exit 137 in the frozen-app/10-second scenario is the expected host kill, not a
+clean shutdown. The same fault with 60 seconds allows the supervisor to stop
+PostgreSQL cleanly, but still exits 1 because the app had to be killed. See the
+[design](architecture/embedded-loaded-shutdown-design.md) and
+[results](architecture/embedded-loaded-shutdown-outcome.md).
+
 ## Additional Resources
 
 - [PostgreSQL Upgrade Documentation](https://www.postgresql.org/docs/current/upgrading.html)
