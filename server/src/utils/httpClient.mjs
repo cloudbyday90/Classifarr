@@ -107,12 +107,18 @@ function normalizeNetworkError(cause) {
   return err;
 }
 
-/** Serialize query-string params the same way axios does (skip nulls). */
+/**
+ * Serialize query-string params, skipping nullish values.
+ * @param {Record<string, unknown> | undefined} params
+ * @returns {string}
+ */
 function buildSearchParams(params) {
   if (!params) return '';
   const entries = Object.entries(params).filter(([, v]) => v != null);
   if (!entries.length) return '';
-  return `?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()}`;
+  /** @type {[string, string][]} */
+  const pairs = entries.map(([k, v]) => [k, String(v)]);
+  return `?${new URLSearchParams(pairs).toString()}`;
 }
 
 /**

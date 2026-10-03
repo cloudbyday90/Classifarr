@@ -138,6 +138,7 @@ post-push CI results must be evaluated for the new commit before release use.
 
 Update shared ESLint/plugin tooling and review Node typings against the actual
 Node 24 runtime. This keeps tooling failures separate from database/logging
-runtime changes. Review Testcontainers/Supertest updates and the Vue client's
+runtime changes. That work is recorded separately in the
+[lint tooling outcome](lint-tooling-refresh-outcome.md). Review Testcontainers/Supertest updates and the Vue client's
 TypeScript 7 migration as subsequent bounded batches. Keep release publication
 blocked on the existing exact-image gates; these local checks do not replace them.

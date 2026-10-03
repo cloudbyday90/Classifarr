@@ -67,6 +67,7 @@ export default [
       'security/detect-buffer-noassert': 'error',
       'security/detect-child-process': 'warn',
       'security/detect-bidi-characters': 'error',
+      'security/detect-invisible-characters': 'error',
       'security/detect-object-injection': 'off',
       'security/detect-non-literal-regexp': 'warn',
       'security/detect-non-literal-fs-filename': 'warn',

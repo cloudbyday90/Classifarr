@@ -38,6 +38,22 @@ test('disposes the custom Agent when reading the response fails', async () => {
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
+test.each([
+  [undefined, ''],
+  [{}, ''],
+  [{ missing: null, absent: undefined }, ''],
+  [{ zero: 0, disabled: false, empty: '' }, '?zero=0&disabled=false&empty='],
+  [{ 'media name': '日本語 & =', missing: null }, '?media+name=%E6%97%A5%E6%9C%AC%E8%AA%9E+%26+%3D'],
+  [{ ids: [1, 2], number: 42 }, '?ids=1%2C2&number=42'],
+])('preserves query serialization and encoding: %j', async (params, query) => {
+  undiciFetch.mockResolvedValue(new Response('{}', { headers: { 'Content-Type': 'application/json' } }));
+  await expect(httpGet('https://fixture.invalid/items', { params, rejectUnauthorized: false }))
+    .resolves.toMatchObject({ status: 200, data: {} });
+  expect(undiciFetch).toHaveBeenCalledTimes(1);
+  expect(undiciFetch.mock.calls[0][0]).toBe(`https://fixture.invalid/items${query}`);
+  expect(destroy).toHaveBeenCalledTimes(1);
+});
+
 test('does not allocate an Agent or dispatch an already cancelled request', async () => {
   await expect(httpGet('https://fixture.invalid', {
     rejectUnauthorized: false, signal: AbortSignal.abort('private reason'),

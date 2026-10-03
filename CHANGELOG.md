@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh shared lint tooling and align Node typings with the deployed Node 24
+  runtime. Add hidden-character checks and regression coverage for lint rules,
+  runtime/type alignment and unchanged HTTP query encoding.
 - Refresh the PostgreSQL driver, environment loader and structured logger to
   pick up connection-error, quiet-import and logging fixes. Add real database
   and logging-worker regression tests without changing deployment settings.

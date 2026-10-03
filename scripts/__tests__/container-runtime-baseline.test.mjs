@@ -21,6 +21,17 @@ for (const workspace of ['', 'client/', 'server/']) {
     assert.equal(manifest.engines.node, `>=${nodeVersion} <25`);
     assert.deepEqual(lock.packages[''].engines, manifest.engines);
   });
+  if (workspace) {
+    test(`${workspace} Node declarations stay on the deployed runtime major`, () => {
+      const major = nodeVersion.split('.')[0];
+      const manifest = JSON.parse(read(`${workspace}package.json`));
+      const lock = JSON.parse(read(`${workspace}package-lock.json`));
+      const declared = manifest.devDependencies['@types/node'];
+      assert.match(declared, new RegExp(`^\\^${major}\\.\\d+\\.\\d+$`));
+      assert.equal(lock.packages[''].devDependencies['@types/node'], declared);
+      assert.equal(lock.packages['node_modules/@types/node'].version.split('.')[0], major);
+    });
+  }
 }
 
 test('all application stages and the provider fixture share a digest-pinned base', () => {

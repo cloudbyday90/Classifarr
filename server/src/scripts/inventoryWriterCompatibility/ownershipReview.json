@@ -3,7 +3,7 @@
   "baselineRevision": "882cfa1ab4a8ca735039bc4123aaef221019710d",
   "parser": {
     "name": "eslint",
-    "version": "10.11.0"
+    "version": "10.12.0"
   },
   "protectedRelations": [
     "media_server_items",
