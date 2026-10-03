@@ -30,6 +30,8 @@ vi.mock('../../api/core', () => ({
 
 import {
   checkManualRouting,
+  getManualRoutingBackground,
+  setManualRoutingBackground,
   getRetryReadiness,
   getOmdbRetryReadiness,
   getQueuePending,
@@ -41,6 +43,15 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('reads background settings locally and writes only explicit enablement without retry', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ enabled: false })
+    expect(await getManualRoutingBackground(12)).toEqual({ enabled: false })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/manual-routing/12/background', { skipAutomaticRetry: true })
+    const response = { data: { enabled: true } }
+    mockPost.mockResolvedValueOnce(response)
+    expect(await setManualRoutingBackground(12, true)).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/queue/manual-routing/12/background', { enabled: true }, { skipAutomaticRetry: true })
+  })
   it('checks one saved routing intent without automatic transport retry', async () => {
     const response = { data: { reason: 'verified_present', recorded: true } }
     mockPost.mockResolvedValueOnce(response)

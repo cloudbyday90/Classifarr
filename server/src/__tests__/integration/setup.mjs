@@ -172,6 +172,7 @@ function createIntegrationDatabaseFacade() {
             RECLASSIFICATION_MOVE: 2021,
             RECLASSIFICATION_BATCH: 2022,
             OLLAMA_READINESS_BACKFILL: 2025,
+            MANUAL_ROUTING_CHECK: 2028,
         },
     };
 }

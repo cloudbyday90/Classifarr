@@ -1225,6 +1225,14 @@ Unconfirmed Radarr/Sonarr routing:
   **Check routing** (administrator). It checks the saved provider/destination
   without adding or moving media. Older records without saved intent require
   review in Radarr/Sonarr. See [routing checks](docs/architecture/manual-routing-check-design.md).
+- To check again unattended, expand **Background routing checks** for that item
+  and enable it as an administrator. It makes up to three read-only checks,
+  stopping on a verified item, mismatch, or changed configuration. Missing items
+  and temporary failures wait 5 then 15 minutes (plus a little jitter).
+  Restarting or toggling does not reset the limit. Manual checks share the same
+  provider slot and cooldown; disabling stops future checks, not an in-flight read.
+  No old records are automatically enrolled, and no Compose changes are needed.
+  See the [background-check design](docs/architecture/manual-routing-background-design.md).
 
 OMDb timeout warnings:
 

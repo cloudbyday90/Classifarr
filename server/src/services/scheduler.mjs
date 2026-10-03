@@ -79,6 +79,7 @@ import { registerReclassificationBatchSchedule } from './reclassificationBatchSc
 import { registerAutomaticDestinationEvaluationSchedule } from './automaticDestinationEvaluationScheduler.mjs';
 import { registerAutomaticSourcePairSchedule } from './automaticSourcePairScheduler.mjs';
 import { registerOllamaReadinessBackfillSchedule } from './ollamaReadinessBackfillScheduler.mjs';
+import { registerManualRoutingCheckSchedule } from './manualRoutingCheckScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -97,6 +98,7 @@ class SchedulerService {
     }
 
     resetState() {
+        this.manualRoutingCheckWorker?.stop();
         this.ollamaReadinessBackfillWorker?.stop();
         this.automaticDestinationEvaluationWorker?.stop();
         this.automaticSourcePairWorker?.stop();
@@ -135,6 +137,7 @@ class SchedulerService {
         registerAutomaticDestinationEvaluationSchedule(this);
         registerAutomaticSourcePairSchedule(this);
         registerOllamaReadinessBackfillSchedule(this);
+        registerManualRoutingCheckSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerQueueVacuumRecoverySchedule(this);
@@ -349,13 +352,14 @@ class SchedulerService {
             this.tasks.get(name).stop();
         }
 
+        const { quiet = false, ...cronOptions } = scheduleOptions;
         const scheduledHandler = async () => {
-            await this.runScheduledTask(name, handler, lockKey);
+            await this.runScheduledTask(name, handler, lockKey, quiet);
         };
         const task = cron.schedule(
             cronExpression,
             scheduledHandler,
-            createSchedulerCronOptions(scheduleOptions),
+            createSchedulerCronOptions(cronOptions),
         );
 
         this.tasks.set(name, task);
@@ -363,8 +367,8 @@ class SchedulerService {
         logger.info(`Scheduled task registered: ${name} (${cronExpression})`);
     }
 
-    async runScheduledTask(name, handler, lockKey = null) {
-        return this.taskExecutionRunner.run({ name, handler, lockKey });
+    async runScheduledTask(name, handler, lockKey = null, quiet = false) {
+        return this.taskExecutionRunner.run({ name, handler, lockKey, quiet });
     }
 
     scheduleInitial(name, delayMs, handler, lockKey = null) {

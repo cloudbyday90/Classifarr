@@ -34,7 +34,7 @@ export function createSchedulerTaskExecutionRunner({
         });
     }
 
-    async function run({ name, handler, lockKey = null } = {}) {
+    async function run({ name, handler, lockKey = null, quiet = false } = {}) {
         if (typeof name !== 'string' || name.length === 0 || typeof handler !== 'function') {
             throw new TypeError('A scheduler task name and handler are required.');
         }
@@ -47,7 +47,7 @@ export function createSchedulerTaskExecutionRunner({
 
         const startedAt = process.hrtime.bigint();
         runningTaskNames.add(name);
-        logger.info(`Starting scheduled task: ${name}`);
+        if (!quiet) logger.info(`Starting scheduled task: ${name}`);
 
         try {
             if (lockKey !== null) {
@@ -60,7 +60,7 @@ export function createSchedulerTaskExecutionRunner({
             } else {
                 await handler();
             }
-            logger.info(`Completed scheduled task: ${name}`);
+            if (!quiet) logger.info(`Completed scheduled task: ${name}`);
             record(name, SCHEDULER_EXECUTION_OUTCOME_IDS.COMPLETED,
                 elapsedSchedulerMilliseconds(startedAt));
             return true;

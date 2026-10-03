@@ -596,6 +596,19 @@ describe('SchedulerService', () => {
     });
 
     describe('schedule() advisory lock integration', () => {
+        it('keeps quiet polling out of cron options without hiding failures', async () => {
+            const handler = jest.fn().mockResolvedValue();
+            scheduler.schedule('quiet-poll', '* * * * *', handler, null, { quiet: true, maxRandomDelay: 5000 });
+            const [, run, options] = mockNodeCron.schedule.mock.calls.at(-1);
+            expect(options).toEqual({ noOverlap: true, maxRandomDelay: 5000 });
+            logger.info.mockClear();
+            await run();
+            expect(handler).toHaveBeenCalledTimes(1);
+            expect(logger.info).not.toHaveBeenCalled();
+            handler.mockRejectedValueOnce(new Error('synthetic failure'));
+            await run();
+            expect(logger.error).toHaveBeenCalledWith('Failed scheduled task: quiet-poll', { error: 'synthetic failure' });
+        });
         it('skips handler and logs debug when advisory lock is held by another process', async () => {
             const dbModule = mockDb;
             const cron = mockNodeCron;

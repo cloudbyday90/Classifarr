@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-02T00:04:36.228Z
--- Latest Migration: 20261002_120000_upgrade_pgvector_to_0_8_7.sql
+-- Generated: 2026-10-03T10:37:55.350Z
+-- Latest Migration: 20261003_120000_manual_routing_checks.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.6 (Debian 18.6-1.pgdg12+2)
+-- Dumped by pg_dump version 18.6 (Debian 18.6-1.pgdg12+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4957,6 +4957,22 @@ CREATE SEQUENCE public.library_rules_v2_id_seq
 --
 
 ALTER SEQUENCE public.library_rules_v2_id_seq OWNED BY public.library_rules_v2.id;
+
+
+--
+-- Name: manual_routing_check_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.manual_routing_check_state (
+    classification_id integer NOT NULL,
+    attempt_id text NOT NULL,
+    enabled boolean DEFAULT false NOT NULL,
+    automatic_attempts smallint DEFAULT 0 NOT NULL,
+    next_check_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_result character varying(64) DEFAULT 'waiting'::character varying NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT manual_routing_check_state_automatic_attempts_check CHECK (((automatic_attempts >= 0) AND (automatic_attempts <= 3)))
+);
 
 
 --
@@ -10749,6 +10765,14 @@ ALTER TABLE ONLY public.library_rules_v2
 
 
 --
+-- Name: manual_routing_check_state manual_routing_check_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_check_state
+    ADD CONSTRAINT manual_routing_check_state_pkey PRIMARY KEY (classification_id);
+
+
+--
 -- Name: media_identity_review_previews media_identity_review_previews_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14149,6 +14173,13 @@ CREATE UNIQUE INDEX library_archive_request_receipt ON public.audit_log USING bt
 
 
 --
+-- Name: manual_routing_check_due_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX manual_routing_check_due_idx ON public.manual_routing_check_state USING btree (next_check_at, classification_id) WHERE ((enabled IS TRUE) AND (automatic_attempts < 3));
+
+
+--
 -- Name: candidate_bound_verification_capability_receipts cbv_capability_receipts_append_only; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14876,6 +14907,14 @@ ALTER TABLE ONLY public.library_rules
 
 ALTER TABLE ONLY public.library_rules_v2
     ADD CONSTRAINT library_rules_v2_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: manual_routing_check_state manual_routing_check_state_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.manual_routing_check_state
+    ADD CONSTRAINT manual_routing_check_state_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
 
 
 --
@@ -17755,6 +17794,7 @@ FROM unnest(ARRAY[
     '20261001_160000_image_index_reconciliation.sql',
     '20261001_230000_ingestion_recovery_history.sql',
     '20261002_000000_ingestion_recovery_progress.sql',
-    '20261002_120000_upgrade_pgvector_to_0_8_7.sql'
+    '20261002_120000_upgrade_pgvector_to_0_8_7.sql',
+    '20261003_120000_manual_routing_checks.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

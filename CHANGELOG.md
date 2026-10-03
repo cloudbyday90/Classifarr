@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add admin-enabled background routing checks for individual History items,
+  with restart-safe cooldowns, a three-check budget and shared manual/background
+  concurrency. Keep all provider checks read-only and leave old records off.
 - Save manual routing verification intent and add an on-demand History check.
   Verify existing provider items without adding or moving media, preserve the
   original routing outcome, and refuse checks against changed destinations.

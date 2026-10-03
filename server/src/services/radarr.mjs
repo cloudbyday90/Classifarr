@@ -135,13 +135,13 @@ class RadarrService {
     }
   }
 
-  async getMovieByTmdbId(url, apiKey, tmdbId) {
+  async getMovieByTmdbId(url, apiKey, tmdbId, { signal } = {}) {
     try {
       const identity = normalizeArrId(tmdbId);
       if (!identity) throw new Error('Invalid media ID');
       const response = await httpGet(`${url}/api/v3/movie`, {
         headers: { 'X-Api-Key': apiKey },
-        params: { tmdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
+        params: { tmdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error', signal,
       });
 
       return selectArrResource(response.data, 'tmdbId', identity);

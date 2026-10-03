@@ -35,12 +35,17 @@
     >
       Last checked: {{ checkedAt }}
     </p>
+    <ManualRoutingBackground
+      v-if="hasIntent"
+      :classification-id="classificationId"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
 import api from '@/api'
+import ManualRoutingBackground from './ManualRoutingBackground.vue'
 
 const props = defineProps({ classificationId: { type: Number, required: true }, details: { type: Object, required: true } })
 const busy = ref(false)

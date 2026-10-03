@@ -138,13 +138,13 @@ class SonarrService {
     }
   }
 
-  async getSeriesByTvdbId(url, apiKey, tvdbId) {
+  async getSeriesByTvdbId(url, apiKey, tvdbId, { signal } = {}) {
     try {
       const identity = normalizeArrId(tvdbId);
       if (!identity) throw new Error('Invalid media ID');
       const response = await httpGet(`${url}/api/v3/series`, {
         headers: { 'X-Api-Key': apiKey },
-        params: { tvdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error',
+        params: { tvdbId: identity }, timeout: 10_000, maxResponseBytes: 2 * 1024 * 1024, redirect: 'error', signal,
       });
 
       return selectArrResource(response.data, 'tvdbId', identity);

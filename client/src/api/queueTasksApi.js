@@ -55,6 +55,14 @@ export function checkManualRouting(classificationId) {
   return apiClient.post(`/queue/manual-routing/${classificationId}/check`, {}, { skipAutomaticRetry: true })
 }
 
+export function getManualRoutingBackground(classificationId) {
+  return getDataRequest(`/queue/manual-routing/${classificationId}/background`, { skipAutomaticRetry: true })
+}
+
+export function setManualRoutingBackground(classificationId, enabled) {
+  return apiClient.post(`/queue/manual-routing/${classificationId}/background`, { enabled }, { skipAutomaticRetry: true })
+}
+
 const queueTasksApi = {
   getRetryReadiness,
   getOmdbRetryReadiness,
@@ -65,6 +73,8 @@ const queueTasksApi = {
   cancelQueueTask,
   classifyQueueTask,
   checkManualRouting,
+  getManualRoutingBackground,
+  setManualRoutingBackground,
 }
 
 export default queueTasksApi

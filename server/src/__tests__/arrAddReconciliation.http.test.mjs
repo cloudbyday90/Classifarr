@@ -21,6 +21,22 @@ const scenarios = [
 ];
 
 describe.each(providers)('%s reconciliation over real HTTP', (_provider, service, key, endpoint, lookup, add) => {
+  test('a cancelled existing-item read aborts real HTTP without a follow-up or add', async () => {
+    const controller = new AbortController();
+    const methods = [];
+    const server = createServer(request => {
+      methods.push(request.method);
+      controller.abort(); // Keep the response open: cancellation must stop the client.
+    });
+    try {
+      server.listen(0, '127.0.0.1'); await once(server, 'listening');
+      await expect(service[lookup](`http://127.0.0.1:${server.address().port}`, 'fixture', 42,
+        { signal: controller.signal })).rejects.toThrow('Failed to find');
+      expect(methods).toEqual(['GET']);
+    } finally {
+      controller.abort(); server.closeAllConnections(); await new Promise(resolve => { server.close(resolve); });
+    }
+  }, 5000);
   test.each(scenarios)('%s: verifies state with bounded reads and one add at most', async (scenario, routed, reads, writes) => {
     let getCount = 0, postCount = 0, redirected = 0;
     const requests = [], identity = 42, root = '/media';
