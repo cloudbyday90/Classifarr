@@ -114,6 +114,9 @@ no closed or unrelated upstream PR was substituted and nothing was merged.
 
 ## Recommendation stack
 
+The subsequent Testcontainers review and current-CI comparison are recorded in
+the [dependency-update outcome](../testcontainers-refresh-outcome.md).
+
 1. Keep strict restore admission and evaluate the new commit's CI. If the
    failure recurs, use its same-run diagnostic artifact to reproduce the cause;
    do not retry away the error or accept an arbitrary exit-1 container.

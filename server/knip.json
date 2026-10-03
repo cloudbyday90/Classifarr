@@ -36,6 +36,7 @@
   "ignoreDependencies": [
     "@eslint/js",
     "@testcontainers/postgresql",
+    "testcontainers",
     "jest",
     "pino-roll",
     "socket.io"

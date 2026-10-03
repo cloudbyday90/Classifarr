@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh disposable PostgreSQL test tooling with upstream Docker log-stream
+  cleanup and image-reference fixes. Add regression checks for reader cancellation
+  and digest-pinned references without changing production deployment settings.
 - Preserve sanitized installation-failure diagnostics in CI, including startup
   stages and tested image identity. Keep failed-run identity and retain evidence
   when a test container is unavailable, without relaxing restore safety checks.
