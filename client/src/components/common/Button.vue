@@ -12,7 +12,7 @@
     :disabled="disabled || loading"
     class="inline-flex items-center justify-center font-medium transition-all rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
     :class="[buttonClasses, sizeClasses]"
-    @click="$emit('click', $event)"
+    :onClick="handleClick"
   >
     <Spinner
       v-if="loading"
@@ -41,7 +41,14 @@ const props = defineProps({
   icon: { type: String, default: '' }
 })
 
-defineEmits(['click'])
+const emit = defineEmits({
+  click: /** @param {MouseEvent} event */ (event) => event instanceof MouseEvent
+})
+
+/** @param {MouseEvent} event */
+function handleClick(event) {
+  if (!props.disabled && !props.loading) emit('click', event)
+}
 
 const buttonClasses = computed(() => ({
   'primary': 'bg-primary hover:bg-primary-dark text-white',

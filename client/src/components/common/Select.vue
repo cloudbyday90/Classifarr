@@ -21,7 +21,7 @@
       :value="modelValue"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
-      @change="handleChange"
+      :onChange="handleChange"
     >
       <option
         v-if="placeholder"

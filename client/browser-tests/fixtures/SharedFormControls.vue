@@ -5,6 +5,7 @@ import Input from '@/components/common/Input.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
+import Button from '@/components/common/Button.vue'
 
 const priority = ref(2)
 const route = ref(1)
@@ -13,6 +14,7 @@ const threshold = ref(50)
 const disabled = ref(false)
 const submissions = ref(0)
 const error = ref('Review this priority')
+const deliveries = ref({ input: 0, select: 0, toggle: 0, slider: 0, button: 0 })
 </script>
 
 <template>
@@ -37,24 +39,34 @@ const error = ref('Review this priority')
         aria-describedby="priority-help"
         :error="error"
         :disabled="disabled"
+        :on-update:model-value.camel="() => deliveries.input++"
       />
       <Select
         v-model="route"
         label="Route"
         :options="[{ value: 1, label: 'One' }, { value: 2, label: 'Two' }]"
         :disabled="disabled"
+        :on-update:model-value.camel="() => deliveries.select++"
       />
       <Toggle
         v-model="enabled"
         label="Enabled"
         :disabled="disabled"
+        :on-update:model-value.camel="() => deliveries.toggle++"
       />
       <Slider
         v-model="threshold"
         label="Threshold"
         :step="5"
         :disabled="disabled"
+        :on-update:model-value.camel="() => deliveries.slider++"
       />
+      <Button
+        :disabled="disabled"
+        :on-click.camel="() => deliveries.button++"
+      >
+        Confirm choice
+      </Button>
     </form>
     <label>
       <input
@@ -70,5 +82,6 @@ const error = ref('Review this priority')
     </button>
     <output aria-label="Model values">{{ JSON.stringify({ priority, route, enabled, threshold }) }}</output>
     <output aria-label="Submissions">{{ submissions }}</output>
+    <output aria-label="Listener deliveries">{{ JSON.stringify(deliveries) }}</output>
   </main>
 </template>

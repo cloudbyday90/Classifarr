@@ -1,52 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 // @vitest-environment node
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
-
-const clientRoot = fileURLToPath(new URL('../../', import.meta.url))
-const scratchRoot = resolve(clientRoot, '.tmp')
-const compilerPath = resolve(clientRoot, 'node_modules/vue-tsc/bin/vue-tsc.js')
-const childComponent = `<script setup>
-defineProps({ count: { type: Number, required: true } })
-</script>
-<template><span>{{ count.toFixed(0) }}</span></template>
-`
-
-// Use the real workspace options and dependency resolution. A startup failure or
-// silently disabled checking must not satisfy a negative diagnostic assertion.
-function typecheck(source) {
-  mkdirSync(scratchRoot, { recursive: true })
-  const directory = mkdtempSync(resolve(scratchRoot, 'vue-typecheck-'))
-  try {
-    writeFileSync(resolve(directory, 'tsconfig.json'), JSON.stringify({
-      extends: resolve(clientRoot, 'tsconfig.components.json'),
-      include: ['./*.vue'],
-      exclude: [],
-    }))
-    writeFileSync(resolve(directory, 'CounterValue.vue'), childComponent)
-    writeFileSync(resolve(directory, 'ContractFixture.vue'), source)
-    const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
-      /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|HOME|USERPROFILE)$/i.test(key)))
-    const result = spawnSync(process.execPath, [
-      '--max-old-space-size=384', compilerPath, '--project', resolve(directory, 'tsconfig.json'),
-      '--noEmit', '--pretty', 'false',
-    ], {
-      cwd: clientRoot, env, shell: false, windowsHide: true, encoding: 'utf8',
-      timeout: 30_000, maxBuffer: 1024 * 1024,
-    })
-    expect(result.error).toBeUndefined()
-    expect(result.signal).toBeNull()
-    expect(result.stderr).toBe('')
-    return { status: result.status, output: result.stdout }
-  } finally {
-    // directory is created by mkdtemp inside the fixed scratchRoot, never supplied
-    // by configuration, fixture source or a compiler response.
-    rmSync(directory, { recursive: true, force: true })
-  }
-}
+import { expectVueDiagnostic, typecheck } from './helpers/vueTypecheck.js'
 
 describe('installed Vue typechecker contract', () => {
   test('checks real shared components and workspace aliases', () => {
@@ -70,10 +25,10 @@ function acceptNumber(value) { return value.toFixed(0) }
   <Card title="Status"><Badge variant="success">Ready</Badge></Card>
   <Button type="button" :loading="false">Refresh</Button>
   <Spinner size="sm" text="Loading" />
-  <Input label="Name" @update:model-value="acceptText" />
-  <Select :options="[{ value: 1, label: 'One' }]" @update:model-value="acceptText" />
-  <Toggle :model-value="true" @update:model-value="acceptBoolean" />
-  <Slider :model-value="50" @update:model-value="acceptNumber" />
+  <Input label="Name" :on-update:model-value.camel="acceptText" />
+  <Select :options="[{ value: 1, label: 'One' }]" :on-update:model-value.camel="acceptText" />
+  <Toggle :model-value="true" :on-update:model-value.camel="acceptBoolean" />
+  <Slider :model-value="50" :on-update:model-value.camel="acceptNumber" />
 </template>
 `)
     expect(result.output).toBe('')
@@ -169,10 +124,6 @@ import CounterValue from './CounterValue.vue'
 `,
     },
   ])('rejects an invalid $name with a source-mapped diagnostic', ({ source, code }) => {
-    const result = typecheck(source)
-    expect(result.status).toBe(2)
-    expect(result.output).toMatch(new RegExp(`ContractFixture\\.vue\\(\\d+,\\d+\\): error TS${code}:`))
-    const diagnostics = result.output.match(/: error TS\d+:/g)
-    expect(diagnostics).toHaveLength(1)
+    expectVueDiagnostic(typecheck(source), code)
   }, 35_000)
 })

@@ -84,3 +84,7 @@ No version bump, release, tag, new branch or live-data change is included.
 
 The plainspoken skill kept progress and the handoff concise; the design and test
 details remain in these separate documents.
+
+Follow-up: [JavaScript Vue event checking](vue-event-checking-outcome.md) adds
+checked listener-prop bindings and scoped lint enforcement. It mitigates the gap
+in enrolled components; it does not fix upstream v-on checking for other screens.

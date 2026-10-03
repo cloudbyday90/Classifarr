@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import vue from 'eslint-plugin-vue';
+import checkedComponents from './tsconfig.components.json' with { type: 'json' };
 
 const unusedVarsRule = ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }];
 const vueUnusedVarsRule = ['error', { ignorePattern: '^_' }];
@@ -17,6 +18,19 @@ export default [
   },
   js.configs.recommended,
   ...vue.configs['flat/recommended'],
+  {
+    name: 'client/checked-component-events',
+    files: checkedComponents.include,
+    rules: {
+      'vue/no-restricted-syntax': ['error', {
+        selector: "VAttribute[directive=true][key.name.name='on']",
+        message: 'Use a listener prop (for example :onClick="handleClick") in checked JavaScript components; vue-tsc misses v-on payload errors. See docs/vue-event-checking-design.md.'
+      }, {
+        selector: "VAttribute[directive=true][key.name.name='bind'][key.argument.name=/^on-/]:not(:has(VIdentifier[name='camel']))",
+        message: 'Hyphenated listener props require .camel for runtime delivery (for example :on-update:model-value.camel="handleValue").'
+      }]
+    }
+  },
   {
     name: 'client/app',
     files: ['src/**/*.{js,vue}'],

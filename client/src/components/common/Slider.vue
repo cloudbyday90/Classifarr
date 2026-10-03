@@ -28,7 +28,7 @@
       :value="modelValue"
       :disabled="disabled"
       class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider disabled:opacity-50 disabled:cursor-not-allowed"
-      @input="handleInput"
+      :onInput="handleInput"
     >
     <div class="flex justify-between text-xs text-gray-500">
       <span>{{ min }}{{ unit }}</span>

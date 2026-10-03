@@ -24,7 +24,7 @@
       :maxlength="maxLength || undefined"
       :disabled="disabled"
       class="px-4 py-2 bg-background border border-gray-700 rounded-lg focus:outline-hidden focus:border-primary transition-colors disabled:opacity-50"
-      @input="handleInput"
+      :onInput="handleInput"
     >
     <span
       v-if="error"

@@ -129,3 +129,19 @@ test('Slider emits finite fractional numbers, not strings', async () => {
   expect(wrapper.text()).toContain('1.25%')
   wrapper.unmount()
 })
+
+test('Input merges the caller native listener with its model handler without duplication', async () => {
+  const onInput = vi.fn()
+  const onUpdate = vi.fn()
+  const wrapper = mount(Input, { attrs: { onInput, 'onUpdate:modelValue': onUpdate } })
+  try {
+    expect(onInput).not.toHaveBeenCalled()
+    expect(onUpdate).not.toHaveBeenCalled()
+    await wrapper.get('input').setValue('text')
+    expect(onInput).toHaveBeenCalledTimes(1)
+    expect(onInput.mock.calls[0][0]).toBeInstanceOf(Event)
+    expect(onUpdate).toHaveBeenCalledExactlyOnceWith('text')
+  } finally {
+    wrapper.unmount()
+  }
+})

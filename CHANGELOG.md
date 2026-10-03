@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Harden JavaScript Vue event checking in the strictly checked shared controls:
+  use checked listener bindings, enforce their scoped lint rule, and cover model
+  payloads, native event types and single-delivery keyboard behavior in tests.
 - Extend strict frontend checks to shared form controls, preserve typed model
   events and route native attributes to the controls. Associate labels and input
   errors correctly, with unit and Chromium keyboard/validation regression tests.
