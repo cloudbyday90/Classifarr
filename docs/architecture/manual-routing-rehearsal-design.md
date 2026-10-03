@@ -60,6 +60,21 @@ several real minute-scheduler ticks. Successful output ends with one
 Failure is nonzero with a fixed classification; it is not a passing receipt.
 The root npm alias is `test:local:manual-routing-rehearsal` (pass the same flags).
 
+### Failure diagnostics
+
+The installation wrapper reduces failures to `routing_rehearsal`, so a failed
+assertion can lose the location needed to reproduce it. Emit one bounded
+`ROUTING_FAILURE` JSON line after the container owner has attempted cleanup.
+Include only a known scenario phase, a fixed failure category and, for fixture
+probes, the source filename and line number. Never forward assertion values,
+subprocess output, credentials or arbitrary exception text.
+
+This is observability, not a retry or a passing receipt. Retain the original
+failure, all existing timeouts, request counts, crash-window checks and release
+gates. A later passing run does not establish the cause of an earlier failure.
+Prefer this limited diagnostic over speculative timing changes until the failing
+boundary is observed. The next recurrence can then be investigated directly.
+
 The fixture signs in again after each restart because nonpersistent sessions are
 deliberately invalidated. A 429 may be plain text; status verification must not
 assume all rejected requests return JSON. No token, password or raw provider

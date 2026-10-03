@@ -144,3 +144,23 @@ test.each(['missing', 'writes', 'ready', 'oom', 'exit'])('rejects contradictory 
   if (failure === 'exit') ctx.inspect.mockResolvedValue({ OOMKilled: false, ExitCode: 0 });
   await expect(runManualRoutingRehearsal({}, { container: (_, check) => check(ctx), report: jest.fn() })).rejects.toThrow();
 });
+
+test('reports the failing phase after cleanup and preserves the rejection', async () => {
+  const ctx = scenario(), report = jest.fn(), failure = new Error('routing_probe_failed:secret_probe_53');
+  const original = ctx.probe.getMockImplementation();
+  ctx.probe.mockImplementation(phase => {
+    if (phase === 'crash-ready') throw failure;
+    return original(phase);
+  });
+  let cleaned = false;
+  await expect(runManualRoutingRehearsal({}, {
+    container: async (_, check) => { try { return await check(ctx); } finally { cleaned = true; } },
+    report: message => {
+      if (message.startsWith('ROUTING_FAILURE')) expect(cleaned).toBe(true);
+      report(message);
+    },
+  })).rejects.toBe(failure);
+  expect(report).toHaveBeenLastCalledWith('ROUTING_FAILURE {"phase":"crash-ready","reason":"probe_failed","location":{"file":"probe.mjs","line":53}}');
+  expect(report.mock.calls.flat().join(' ')).not.toContain('secret');
+  expect(ctx.docker.mock.calls.some(([args]) => args[0] === 'kill')).toBe(false);
+});

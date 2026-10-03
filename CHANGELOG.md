@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh frontend build, test and Vue typechecking tools with reviewed lockfile
+  updates; add a focused AI skill for safe dependency updates and verification.
+- Include sanitized phase and source-location diagnostics when a routing rehearsal
+  fails, while keeping interruption checks, retry limits and release gates intact.
 - Require native AMD64/ARM64 routing checks against the signed published image
   before GitHub release publication; bind both receipts into release evidence.
 - Modernize the release runbook and AI evidence skill with exact-image checks,
