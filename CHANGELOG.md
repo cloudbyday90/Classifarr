@@ -19,6 +19,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Update HTTP test tooling to bind generated servers to localhost, with regression
+  coverage for asynchronous startup, request handling and listener cleanup.
 - Refresh disposable PostgreSQL test tooling with upstream Docker log-stream
   cleanup and image-reference fixes. Add regression checks for reader cancellation
   and digest-pinned references without changing production deployment settings.

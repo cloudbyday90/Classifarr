@@ -86,7 +86,7 @@
     "globals": "^17.13.0",
     "jest": "^30.5.2",
     "knip": "^6.38.0",
-    "supertest": "^7.3.0",
+    "supertest": "^7.3.1",
     "testcontainers": "^12.2.0",
     "typescript": "^7.0.2"
   },

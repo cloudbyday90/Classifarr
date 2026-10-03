@@ -98,3 +98,7 @@ The release-evidence skill kept CI claims tied to their actual source revision.
 Benefit: upstream cleanup fixes with reproducible regression evidence. Cost:
 maintaining a small public-API contract suite and Docker-backed validation.
 No version bump, tag, release, branch, PR merge or deployment was created.
+
+Follow-up: the Supertest batch has its own [design](supertest-loopback-design.md)
+and [validation outcome](supertest-loopback-outcome.md); this document's test
+results remain specific to the Testcontainers batch above.
