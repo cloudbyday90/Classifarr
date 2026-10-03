@@ -69,7 +69,7 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   assert.equal(compact(jobs['database-tests'].if), normalCi);
   assert.equal(compact(acceptance.if), `always() && ( ${normalCi} )`);
   // The opt-in drill is not a release, publication or retention-cleanup mode.
-  for (const id of ['docker-release', 'published-digest-consumer-smoke', 'release-candidate-publication', 'release-candidate-provider-fault-receipt']) {
+  for (const id of ['docker-release', 'published-digest-consumer-smoke', 'published-routing-acceptance', 'release-candidate-publication', 'release-candidate-provider-fault-receipt']) {
     assert.equal(jobs[id].if, "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')");
   }
   assert.equal(jobs['cleanup-old-releases-manual'].if, "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup'");

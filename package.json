@@ -34,6 +34,7 @@
     "ghcr:retention:inventory": "node scripts/generate-ghcr-manifest-retention-inventory.mjs",
     "release:assess-image-retirement": "node scripts/generate-published-image-release-retirement-plan.mjs",
     "release:smoke:published-digest": "node scripts/run-published-digest-consumer-smoke.mjs",
+    "release:test:published-routing": "node scripts/run-published-routing-acceptance.mjs",
     "release:assemble-candidate-evidence": "node scripts/assemble-release-candidate-evidence.mjs",
     "release:check-candidate-version": "node scripts/check-release-candidate-version.mjs",
     "lint": "npm run lint:npm-cli-flags && npm run lint:server && npm run lint:client",

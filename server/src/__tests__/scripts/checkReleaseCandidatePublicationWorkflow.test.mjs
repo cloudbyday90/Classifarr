@@ -27,6 +27,32 @@ import {
 import { AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME } from '../../scripts/checkAiProviderFaultReceiptWorkflow.mjs';
 
 describe('checkReleaseCandidatePublicationWorkflow', () => {
+  test.each([
+    job => { job.strategy.matrix.include.pop(); },
+    job => { job.strategy.matrix.include[1].runner = 'ubuntu-24.04'; },
+    job => { job['continue-on-error'] = true; },
+    job => { job.permissions.contents = 'write'; },
+    job => { job.steps[0].with['persist-credentials'] = true; },
+    job => { job.steps[3].run += '\ntrue'; },
+    job => { job.steps[3].if = 'false'; },
+    job => { job.steps[4].with.path = '.tmp/'; },
+  ])('rejects weakened native published routing boundary', mutate => {
+    const workflow = structuredClone(loadWorkflow());
+    mutate(workflow.jobs['published-routing-acceptance']);
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow)).toThrow();
+  });
+
+  test.each([
+    job => { job.needs = job.needs.filter(id => id !== 'published-routing-acceptance'); },
+    job => { job.steps.find(step => step.name === 'Download ARM64 published routing receipt').with['run-id'] = 'old'; },
+    job => { job.steps.find(step => step.name === 'Download AMD64 published routing receipt')['continue-on-error'] = true; },
+    job => { job.steps.find(step => step.name === 'Assemble release candidate evidence').run = job.steps.find(step => step.name === 'Assemble release candidate evidence').run.replace('--routing-arm64', '--ignored'); },
+  ])('rejects publication bypass or cross-run routing artifacts', mutate => {
+    const workflow = structuredClone(loadWorkflow());
+    mutate(workflow.jobs['release-candidate-publication']);
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow)).toThrow();
+  });
+
   test('accepts the checked-in digest-only release publication boundary', () => {
     expect(validateReleaseCandidatePublicationWorkflow(loadWorkflow())).toEqual({
       environment: RELEASE_PUBLICATION_ENVIRONMENT,

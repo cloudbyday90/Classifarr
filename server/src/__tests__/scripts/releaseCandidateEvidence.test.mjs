@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
+import { receipt, ENV, WORKFLOW } from '../helpers/publishedRoutingFixture.mjs';
 
 import {
   POLICY_RELEASE_ACCEPTANCE_STATUS_IDS,
@@ -91,6 +92,8 @@ function buildEvidence(overrides = {}) {
     digest: DIGEST,
     generatedAt: GENERATED_AT,
     providerFaultReceipt: createProviderFaultReceipt(),
+    publishedRoutingReceipts: [receipt(), receipt('linux/arm64')],
+    workflow: WORKFLOW,
     sourceRevision: SOURCE_REVISION,
     tag: TAG,
     ...overrides,
@@ -115,7 +118,7 @@ describe('releaseCandidateEvidence', () => {
         sourceRevision: SOURCE_REVISION,
         statusId: 'passed',
       }),
-      schema_version: 'classifarr.release.candidate-evidence.v2',
+      schema_version: 'classifarr.release.candidate-evidence.v3',
       source_repository: 'cloudbyday90/Classifarr',
       source_revision: SOURCE_REVISION,
       tag: TAG,
@@ -186,10 +189,11 @@ describe('releaseCandidateEvidence', () => {
     })).toThrow(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID);
   });
 
-  test('accepts an immutable legacy v1 record but rejects extra public receipt data in v2', () => {
+  test('accepts an immutable legacy v1 record but rejects extra public receipt data in v3', () => {
     const v2Evidence = buildEvidence();
     const legacyPayload = { ...v2Evidence };
     delete legacyPayload.provider_fault_receipt;
+    delete legacyPayload.published_routing;
     delete legacyPayload.evidence_fingerprint;
     legacyPayload.schema_version = LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
     const legacyEvidence = {
@@ -219,6 +223,8 @@ describe('releaseCandidateEvidence', () => {
     fs.writeFileSync(ciPath, JSON.stringify(createCiReadout()));
     fs.writeFileSync(smokePath, JSON.stringify(createConsumerSmokeEvidence()));
     fs.writeFileSync(providerFaultReceiptPath, JSON.stringify(createProviderFaultReceipt()));
+    fs.writeFileSync(join(cwd, 'amd64.json'), JSON.stringify(receipt()));
+    fs.writeFileSync(join(cwd, 'arm64.json'), JSON.stringify(receipt('linux/arm64')));
 
     try {
       const result = assembleReleaseCandidateEvidence([
@@ -228,8 +234,11 @@ describe('releaseCandidateEvidence', () => {
         '--ci-readout', 'ci-readout.json',
         '--consumer-smoke', 'consumer-smoke.json',
         '--provider-fault-receipt', 'provider-fault-receipt.json',
+        '--routing-amd64', 'amd64.json',
+        '--routing-arm64', 'arm64.json',
       ], {
         cwd,
+        env: ENV,
         now: () => new Date(GENERATED_AT),
       });
 
@@ -251,5 +260,26 @@ describe('releaseCandidateEvidence', () => {
       '--ci-readout', 'ci-readout.json',
       '--consumer-smoke', 'consumer-smoke.json',
     ])).toThrow(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.INVALID_INPUT);
+  });
+
+  test('keeps immutable v2 fingerprints verifiable without authorizing new v2 creation', () => {
+    const value = buildEvidence();
+    delete value.published_routing;
+    delete value.evidence_fingerprint;
+    value.schema_version = 'classifarr.release.candidate-evidence.v2';
+    const legacy = { ...value, evidence_fingerprint: { algorithm: 'sha256', value: `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}` } };
+    expect(validateReleaseCandidateEvidence(legacy).ok).toBe(true);
+    expect(buildReleaseCandidateNotes(legacy)).toContain('Provider-fault receipt:');
+    expect(() => buildEvidence({ publishedRoutingReceipts: undefined })).toThrow('published_routing_invalid');
+    expect(() => buildEvidence({ workflow: { ...WORKFLOW, runAttempt: '3' } })).toThrow('published_routing_invalid');
+  });
+
+  test('routing is required even if an attacker recomputes the public fingerprint', () => {
+    const value = buildEvidence();
+    delete value.evidence_fingerprint;
+    value.published_routing[0].routing.providerWrites = 1;
+    value.evidence_fingerprint = { algorithm: 'sha256', value: `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}` };
+    expect(validateReleaseCandidateEvidence(value).issues).toContain('invalid_published_routing');
+    expect(() => buildReleaseCandidateNotes(value)).toThrow();
   });
 });

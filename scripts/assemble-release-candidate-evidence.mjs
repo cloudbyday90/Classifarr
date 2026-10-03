@@ -19,6 +19,7 @@
 import fs from 'node:fs';
 import process from 'node:process';
 import { resolve } from 'node:path';
+import { routingWorkflowIdentity } from './lib/publishedRoutingReceipt.mjs';
 
 import {
   RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS,
@@ -31,6 +32,8 @@ const REQUIRED_OPTION_NAMES = Object.freeze([
   '--consumer-smoke',
   '--digest',
   '--provider-fault-receipt',
+  '--routing-amd64',
+  '--routing-arm64',
   '--source-revision',
   '--tag',
 ]);
@@ -40,7 +43,7 @@ function usage() {
     'Usage:',
     '  npm run release:assemble-candidate-evidence -- --tag <vX.Y.Z> --source-revision <git-sha> \\',
     '    --digest <sha256:...> --ci-readout <readout.json> --consumer-smoke <smoke.json> \\',
-    '    --provider-fault-receipt <receipt.json>',
+    '    --provider-fault-receipt <receipt.json> --routing-amd64 <receipt.json> --routing-arm64 <receipt.json>',
     '',
     'Writes bounded JSON evidence and deterministic release notes under .tmp/release-candidate.',
   ].join('\n');
@@ -73,8 +76,13 @@ function parseArgumentPairs(args) {
 
 function readJson(pathname, cwd) {
   // Artifact paths are supplied by the controlled workflow and parsed before use.
-  // eslint-disable-next-line security/detect-non-literal-fs-filename
-  return JSON.parse(fs.readFileSync(resolve(cwd, pathname), 'utf8'));
+  const path = resolve(cwd, pathname);
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    if (fs.statSync(path).size > 128 * 1024) throw new Error('artifact_too_large');
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    return JSON.parse(fs.readFileSync(path, 'utf8'));
+  } catch { throw new Error('release_artifact_unreadable'); }
 }
 
 export function createReleaseCandidateOutputPaths({ cwd = process.cwd(), tag }) {
@@ -85,7 +93,7 @@ export function createReleaseCandidateOutputPaths({ cwd = process.cwd(), tag }) 
   };
 }
 
-export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), now = () => new Date() } = {}) {
+export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), now = () => new Date(), env = process.env } = {}) {
   const options = parseArgumentPairs(args);
   if (options.help) {
     return { help: true };
@@ -98,6 +106,8 @@ export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), no
     digest: options['--digest'],
     generatedAt: generatedAt instanceof Date ? generatedAt.toISOString() : null,
     providerFaultReceipt: readJson(options['--provider-fault-receipt'], cwd),
+    publishedRoutingReceipts: [readJson(options['--routing-amd64'], cwd), readJson(options['--routing-arm64'], cwd)],
+    workflow: routingWorkflowIdentity(env),
     sourceRevision: options['--source-revision'],
     tag: options['--tag'],
   });

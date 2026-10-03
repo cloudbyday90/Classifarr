@@ -35,6 +35,12 @@ scenarios, also read the recovery skill's
 [image rehearsal guidance](../classifarr-recovery-change/references/image-rehearsal.md).
 Keep fixtures disposable and synthetic; never point a rehearsal at live appdata.
 
+For registry images, native architecture matrices or alias-promotion claims,
+read [published-digest guidance](references/published-digest.md). It covers
+index/child/config identity and distinguishes GitHub publication from early
+registry availability. Use `.agent/workflows/release.md` for approved release
+operations; the skill itself never grants that approval.
+
 ## Challenge the claim
 
 For gate changes, test the real rejection path for missing evidence, old schemas,

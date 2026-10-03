@@ -726,11 +726,64 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  published-routing-acceptance:
+    name: Published Routing (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [docker-release]
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      attestations: read
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout routing fixture and historical baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Verify and rehearse published routing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
+          SOURCE_REVISION: ${{ github.sha }}
+          ROUTING_PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          npm run release:test:published-routing -- \
+            --image "ghcr.io/cloudbyday90/classifarr@${IMAGE_DIGEST}" \
+            --source-revision "$SOURCE_REVISION" --platform "$ROUTING_PLATFORM"
+      - name: Upload published routing receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-routing-${{ matrix.arch }}
+          path: .tmp/published-routing/${{ matrix.arch }}.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
+
   release-candidate-publication:
     name: Release Candidate Publication
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [release-acceptance, release-candidate-provider-fault-receipt, docker-release, published-digest-consumer-smoke]
+    needs: [release-acceptance, release-candidate-provider-fault-receipt, docker-release, published-digest-consumer-smoke, published-routing-acceptance]
     environment: release-publication
 
     permissions:
@@ -772,6 +825,18 @@ jobs:
           name: ai-provider-fault-compose-receipt
           path: .tmp/release-candidate/provider-fault-receipt
 
+      - name: Download AMD64 published routing receipt
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: published-routing-amd64
+          path: .tmp/release-candidate/routing-amd64
+
+      - name: Download ARM64 published routing receipt
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: published-routing-arm64
+          path: .tmp/release-candidate/routing-arm64
+
       - name: Assemble release candidate evidence
         env:
           IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
@@ -785,7 +850,9 @@ jobs:
             --digest "$IMAGE_DIGEST" \
             --ci-readout .tmp/release-candidate/ci-readout/policy-release-acceptance-readout.json \
             --consumer-smoke .tmp/release-candidate/consumer-smoke/${SOURCE_REVISION}-published-digest-consumer-smoke.json \
-            --provider-fault-receipt .tmp/release-candidate/provider-fault-receipt/ai-provider-fault-compose-receipt.json
+            --provider-fault-receipt .tmp/release-candidate/provider-fault-receipt/ai-provider-fault-compose-receipt.json \
+            --routing-amd64 .tmp/release-candidate/routing-amd64/amd64.json \
+            --routing-arm64 .tmp/release-candidate/routing-arm64/arm64.json
 
       - name: Attest release candidate evidence
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2

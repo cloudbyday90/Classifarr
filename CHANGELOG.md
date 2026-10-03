@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require native AMD64/ARM64 routing checks against the signed published image
+  before GitHub release publication; bind both receipts into release evidence.
+- Modernize the release runbook and AI evidence skill with exact-image checks,
+  explicit publication boundaries and safer failed-release guidance.
 - Require same-image routing upgrade and crash-recovery evidence in CI installation
   acceptance, and verify same-run receipts before release acceptance can pass.
   Add a focused AI skill for checking release evidence and its limits.

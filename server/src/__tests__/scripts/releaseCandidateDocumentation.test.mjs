@@ -21,6 +21,8 @@ import {
   buildReleaseCandidateBadgeFragment,
   validateReleaseCandidateDocumentation,
 } from '../../../../scripts/lib/releaseCandidateDocumentation.mjs';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const TAG = 'v0.48.2-beta';
 const README = [
@@ -39,6 +41,21 @@ function validate(overrides = {}) {
 }
 
 describe('releaseCandidateDocumentation', () => {
+  test('release runbook uses current safety and evidence contracts', () => {
+    const runbookPath = resolve(import.meta.dirname, '../../../../.agent/workflows/release.md');
+    const text = readFileSync(runbookPath, 'utf8');
+    for (const stale of ['// turbo', 'git push origin main --tags', 'git tag -d', 'git push origin :refs/tags/',
+      'docker compose down;', 'Impact Snapshot', 'Planned Next Tag', 'server/src/routes/api.js']) {
+      expect(text).not.toContain(stale);
+    }
+    for (const required of ['Unreleased', 'explicit approval', 'native AMD64/ARM64', 'same-run/attempt',
+      'v3', 'Current limitation', 'latest', '--no-cache --require-provenance', 'rerun', 'cleanup']) {
+      expect(text.toLowerCase()).toContain(required.toLowerCase());
+    }
+    for (const match of text.matchAll(/\]\((\.\.\/[^)]+)\)/g)) {
+      expect(existsSync(resolve(runbookPath, '..', match[1]))).toBe(true);
+    }
+  });
   test('derives the shields.io-safe tag fragment', () => {
     expect(buildReleaseCandidateBadgeFragment(TAG)).toBe('version-v0.48.2--beta-blue.svg');
   });

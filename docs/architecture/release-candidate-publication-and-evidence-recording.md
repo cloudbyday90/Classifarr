@@ -110,11 +110,14 @@ The `CI/CD Pipeline` tag path now has six ordered boundaries:
 4. `release-candidate-publication` downloads the CI readout, smoke artifact,
    and provider-fault receipt. It validates the receipt's fixed schema, passed
    outcome, and source revision, then binds its canonical SHA-256 fingerprint
-   and fixed pass metadata into `classifarr.release.candidate-evidence.v2`.
+   and fixed pass metadata into `classifarr.release.candidate-evidence.v3`.
+   It also requires both native published-routing receipts, tied to the exact
+   signed index, source and current workflow run/attempt. See
+   [published routing acceptance](published-routing-acceptance-design.md).
    It first validates the public tag against every package and lockfile version
    and the in-app display label, including the intentional semver-safe mapping
    from `v0.47.5c-beta` to `0.47.5-c.beta`. `releaseCandidateEvidence.mjs`
-   then independently validates all three artifacts and their common source
+   then independently validates all artifacts and their common source
    revision and digest. It writes a public-safe JSON asset, deterministic
    release notes, and an evidence SHA-256 fingerprint.
 5. The publication job creates a signed SLSA provenance attestation for that

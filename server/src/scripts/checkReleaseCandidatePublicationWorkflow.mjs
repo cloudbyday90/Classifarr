@@ -21,6 +21,7 @@ import { resolve } from 'node:path';
 
 import { load } from 'js-yaml';
 import { AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME } from './checkAiProviderFaultReceiptWorkflow.mjs';
+import { validatePublishedRoutingWorkflow } from './checkPublishedRoutingWorkflow.mjs';
 
 function githubExpression(expression) {
   return '$' + `{{ ${expression} }}`;
@@ -255,6 +256,7 @@ function assertPublicationJob(job) {
     [
       'docker-release',
       'published-digest-consumer-smoke',
+      'published-routing-acceptance',
       'release-acceptance',
       'release-candidate-provider-fault-receipt',
     ],
@@ -488,6 +490,7 @@ export function validateReleaseCandidatePublicationWorkflow(workflow) {
   assertPublicationJob(
     asRecord(jobs['release-candidate-publication'], 'workflow.jobs.release-candidate-publication')
   );
+  validatePublishedRoutingWorkflow(workflow);
 
   return {
     environment: RELEASE_PUBLICATION_ENVIRONMENT,

@@ -2,7 +2,9 @@
 
 ## Outcome
 
-New release candidates emit `classifarr.release.candidate-evidence.v2`. Before
+This change introduced `classifarr.release.candidate-evidence.v2`; current
+candidates use v3 with [published routing evidence](published-routing-acceptance-design.md),
+while immutable v1/v2 records remain readable. Before
 the immutable GitHub release is created, the publication job downloads the
 already validated `ai-provider-fault-compose-receipt`, validates it again, and
 binds its canonical SHA-256 fingerprint into the public release-evidence asset.
