@@ -2,6 +2,7 @@
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import { runEmbeddedDatabaseStatusProbe } from './embeddedDatabaseStatusProbe.mjs';
 
 const execute = promisify(execFile);
 const PG_DATA = '/app/data/postgres';
@@ -17,13 +18,18 @@ export function parseEmbeddedDatabaseIdentity(text) {
 }
 
 /** Fixed local cluster only; no SQL, passwords, caller-supplied commands or paths. */
-export function createEmbeddedDatabaseControl({ run = execute, read = readFile } = {}) {
+export function createEmbeddedDatabaseControl({ run = execute, read = readFile, status = runEmbeddedDatabaseStatusProbe } = {}) {
   let identity;
   const options = { cwd: '/app', env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' },
     shell: false, timeout: 2000, killSignal: 'SIGKILL', maxBuffer: 64 * 1024 };
-  const readIdentity = async () => parseEmbeddedDatabaseIdentity(await read('/app/data/postgres/postmaster.pid', 'utf8'));
-  const verifyIdentity = async () => {
-    const current = await readIdentity();
+  const readIdentity = async signal => {
+    signal?.throwIfAborted();
+    const text = await read('/app/data/postgres/postmaster.pid', signal ? { encoding: 'utf8', signal } : 'utf8');
+    signal?.throwIfAborted();
+    return parseEmbeddedDatabaseIdentity(text);
+  };
+  const verifyIdentity = async signal => {
+    const current = await readIdentity(signal);
     if (!identity || current !== identity) throw new Error('database_identity_changed');
   };
   return {
@@ -32,9 +38,18 @@ export function createEmbeddedDatabaseControl({ run = execute, read = readFile }
       await run(PG_CTL, ['-D', PG_DATA, 'status'], options);
       await verifyIdentity();
     },
-    async check() {
-      await verifyIdentity();
-      await run(PG_CTL, ['-D', PG_DATA, 'status'], options);
+    async check({ signal } = {}) {
+      await verifyIdentity(signal);
+      let failure;
+      try { await status({ signal }); }
+      catch (error) {
+        if (!['database_probe_timeout', 'database_probe_resource_pressure'].includes(error.code)) throw error;
+        failure = error;
+      }
+      // A successful status command or a retryable timeout is not enough:
+      // the same adopted identity must still own the cluster on readback.
+      await verifyIdentity(signal);
+      if (failure) throw failure;
     },
     async stop() {
       if (!identity) throw new Error('database_not_adopted');

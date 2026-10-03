@@ -110,6 +110,46 @@ test('slow status check cannot overlap and is joined before shutdown', async () 
   expect(f.database.check).toHaveBeenCalledTimes(1);
 });
 
+test('recovered transient probe does not restart or drain the application', async () => {
+  const f = fixture();
+  f.options.delay = jest.fn(async () => {});
+  f.database.check.mockRejectedValueOnce(Object.assign(new Error('busy'), { code: 'database_probe_timeout' }));
+  f.options.report = (status, reason) => {
+    f.events.push([status, reason]);
+    if (status === 'database_probe_recovered') {
+      expect(f.application.signal).not.toHaveBeenCalled();
+      f.processRef.emit('SIGTERM');
+    }
+  };
+  expect(await runEmbeddedSupervisor(f.options)).toBe(0);
+  expect(f.options.startApplication).toHaveBeenCalledTimes(1);
+  expect(f.database.check).toHaveBeenCalledTimes(2);
+  expect(f.events).toContainEqual(['database_probe_waiting', 'database_probe_timeout']);
+  expect(f.events).toContainEqual(['database_probe_recovered', undefined]);
+});
+
+test('unjoinable probe does not hold app drain or permit another database command', async () => {
+  jest.useFakeTimers({ doNotFake: ['setImmediate'] });
+  try {
+    const f = fixture();
+    f.options.delay = jest.fn(async () => {});
+    f.database.check.mockReturnValue(new Promise(() => {}));
+    const run = runEmbeddedSupervisor(f.options);
+    await tick();
+    f.processRef.emit('SIGTERM');
+    await tick();
+    expect(f.application.signal).toHaveBeenCalledWith('SIGTERM');
+    expect(f.database.stop).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(await run).toBe(1);
+    expect(f.database.check).toHaveBeenCalledTimes(1);
+    expect(f.database.stop).not.toHaveBeenCalled();
+    expect(f.events).toContainEqual(['database_probe_exit_unconfirmed', undefined]);
+    expect(jest.getTimerCount()).toBe(0);
+    expect(f.processRef.eventNames()).toEqual([]);
+  } finally { jest.useRealTimers(); }
+});
+
 test.each([true, false])('forced exit joined=%s is failure, never graceful success', async joined => {
   const f = fixture();
   f.application.signal.mockImplementation(() => {});

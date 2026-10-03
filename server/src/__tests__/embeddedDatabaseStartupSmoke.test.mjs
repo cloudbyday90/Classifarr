@@ -2,15 +2,17 @@
 import { jest } from '@jest/globals';
 import { runOwnedDatabaseStartupSmoke } from '../../../scripts/check-pg-stat-startup-smoke.mjs';
 
-test('disposable startup smoke is bounded and removes only its unique container', () => {
+test.each([false, true])('disposable database smoke runtimeMonitor=%s is bounded and uniquely scoped', runtimeMonitor => {
   const execute = jest.fn();
-  runOwnedDatabaseStartupSmoke({ imageName: 'candidate:test', execute });
+  runOwnedDatabaseStartupSmoke({ imageName: 'candidate:test', execute, runtimeMonitor });
   const [command, args, options] = execute.mock.calls[0];
   const name = args[args.indexOf('--name') + 1];
   expect(command).toBe('docker');
   expect(name).toMatch(/^classifarr-startup-drill-[a-f0-9-]+$/);
   expect(args).toEqual(expect.arrayContaining(['--network', 'none', '--cpus', '1', '--memory', '512m', '--pids-limit', '128', '--read-only']));
   expect(args.at(-2)).toBe('candidate:test');
+  expect(args[args.indexOf('--mount') + 1]).toContain(runtimeMonitor
+    ? 'embedded-database-monitor-probe.mjs' : 'embedded-database-startup-probe.mjs');
   expect(options).toMatchObject({ timeout: 180_000, killSignal: 'SIGKILL', shell: false });
   expect(execute.mock.calls[1]).toEqual(['docker', ['rm', '-f', name],
     expect.objectContaining({ timeout: 10_000, killSignal: 'SIGKILL', shell: false })]);

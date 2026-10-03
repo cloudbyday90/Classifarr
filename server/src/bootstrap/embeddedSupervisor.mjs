@@ -1,18 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { setTimeout as sleep } from 'node:timers/promises';
 import { waitForEmbeddedExit } from './embeddedChildProcess.mjs';
-
-async function watchDatabase(database, signal, requestStop, delay) {
-  try {
-    while (!signal.aborted) {
-      await delay(5000, undefined, { signal });
-      if (signal.aborted) return;
-      await database.check();
-    }
-  } catch {
-    if (!signal.aborted) requestStop({ reason: 'database_unavailable', failed: true });
-  }
-}
+import { watchEmbeddedDatabase } from './embeddedDatabaseMonitor.mjs';
 
 /** No restart or maintenance loop. Docker owns restart policy; this owns drain order. */
 export async function runEmbeddedSupervisor({
@@ -62,7 +51,7 @@ export async function runEmbeddedSupervisor({
         runtimeMaintenance = attachRuntimeMaintenance(application, () => requestStop({ reason: 'maintenance_exit_unconfirmed', failed: true }));
         runtimeMaintenanceStopped = false;
       }
-      watching = watchDatabase(database, monitor.signal, requestStop, delay);
+      watching = watchEmbeddedDatabase({ database, signal: monitor.signal, requestStop, delay, report });
       report('supervising');
     }
     await stopped;
@@ -109,9 +98,10 @@ export async function runEmbeddedSupervisor({
     }
     // Drain immediately; a pending status probe must not consume the host's
     // shutdown window before SIGTERM reaches Node. Join it before stopping PG.
-    await watching;
+    const databaseProbeJoined = (await watching)?.joined !== false;
+    if (!databaseProbeJoined) failed = true;
     await maintenanceDrain;
-    if (adopted && applicationStopped && maintenanceStopped && runtimeMaintenanceStopped) {
+    if (adopted && applicationStopped && maintenanceStopped && runtimeMaintenanceStopped && databaseProbeJoined) {
       try {
         await database.stop();
         report('database_stopped');

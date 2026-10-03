@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "bounded_database_probe",
+      "classification": "separately_coordinated",
+      "reason": "The embedded controller retains its fixed cluster identity and fast-stop authority. Runtime monitoring uses a serial read-only status helper, bounded cancellation and actual exit observation; only explicit timeout or transient process-resource results receive one non-renewing grace window. Identity changes, missing ownership evidence and concrete process failure remain terminal. Application and online maintenance drains start before probe joining, and an unjoined probe forbids database stop. No SQL, new writer capability, permission, automatic legacy adoption or restart loop is added.",
+      "followUp": "Keep real PostgreSQL timeout recovery, fixed deadline, cancellation, sentinel preservation and changed-identity refusal tests. The tmpfs rehearsal is not proof of sustained slow-storage behavior. Bound adoption and shutdown identity I/O separately; existing shared writer, restricted queue handoff and production privilege-separation limitations remain unchanged. Static review grants no production ownership authority."
+    },
+    {
       "id": "image_retrieval_cancellation",
       "classification": "separately_coordinated",
       "reason": "Semantic retrieval now forwards the caller signal separately from image configuration overrides and refuses cancelled or late image results before SQL. Optional image transport failure retains existing text-only fallback, but AbortError is not converted into fallback or logged as image/provider failure. The downstream ESM queue removes cancelled waiters, retains active capacity until settlement, and forwards cancellation through existing retry and bounded HTTP helpers. Ranking weights, vectors, read-only SQL cancellation, ingestion ownership and routing authority are unchanged.",
@@ -411,8 +417,8 @@
     {"path":"server/src/bootstrap/embeddedMaintenanceChild.mjs","digest":"c69d1f4c8329cd260acce7da8b8dc5964836253f7f4b69f655a9da4291586703","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"restricted_queue_handoff"},
     {"path":"server/src/scripts/provisionEmbeddedIdentity.mjs","digest":"8a994273e70a6481bfc8da5d328eda0e2769a3034c2429765fc7bfc49bff9a82","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_identity_handoff"},
     {"path":"server/src/scripts/embeddedIsolationDrill/handoffProbe.mjs","digest":"663228e7e61f9d264f542fb136b59c349703446b376b65dfd885721186f55372","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_identity_handoff"},
-    {"path":"server/src/bootstrap/embeddedDatabaseControl.mjs","digest":"8cd8553375ca85c744c49b282959425f3914760501050c7664c29be80f8f4125","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_lifecycle_supervisor"},
-    {"path":"server/src/bootstrap/embeddedSupervisor.mjs","digest":"edb6e25558c916d3ec7392ec289287c196dfd4b22e09b78063e8ddb505aa58a4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"restricted_queue_handoff"},
+    {"path":"server/src/bootstrap/embeddedDatabaseControl.mjs","digest":"62869d93a82031376ce41e9520ba3476f5572ca59b8bde878f01ca540295d891","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_database_probe"},
+    {"path":"server/src/bootstrap/embeddedSupervisor.mjs","digest":"b3f64341aa820e74ba3d9697a3ed8a2b01650c94aa498463746927883bed572d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_database_probe"},
     {"path":"server/src/scripts/runEmbeddedSupervisor.mjs","digest":"344cd2ded4bc7dd1704aa7f9f219f955b50d6909fb647ff9e76af41e771ada12","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"compatible_image_index_worker"},
     {"path":"scripts/run-embedded-isolation-drill.mjs","digest":"23e0e252176b41ff16613bbee3d4b0a1ebf913789c8d8bea20fbaa61588ffdcf","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},
     {"path":"server/src/scripts/embeddedIsolationDrill/contract.mjs","digest":"d53b8286b62b7b364e14812312bb0cf41d0fbf8f79a56d975aeceebb21b8bc53","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"embedded_isolation_rehearsal"},

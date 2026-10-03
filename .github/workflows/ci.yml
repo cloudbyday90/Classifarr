@@ -282,6 +282,10 @@ jobs:
         run: |
           IMAGE_NAME=classifarr:test npm run docker:smoke:postgres-startup
 
+      - name: Smoke test bounded PostgreSQL runtime monitoring
+        run: |
+          IMAGE_NAME=classifarr:test npm run docker:smoke:postgres-monitor
+
   policy-candidate-synthetic-replay:
     name: Policy Candidate Synthetic Replay
     runs-on: ubuntu-latest

@@ -341,6 +341,30 @@ checksum conversion or schema migration. See the
 [startup design and tradeoffs](architecture/embedded-database-startup-design.md)
 and [validation outcome](architecture/embedded-database-startup-outcome.md).
 
+### Runtime Database Monitoring
+
+After startup, a single monitor waits five seconds between checks of the embedded
+database process. A recognized probe timeout or temporary process-resource shortage gets
+one fifteen-second recovery window. Missing/changed database identity, concrete
+process death and permission failures still stop application work promptly.
+Process liveness is not SQL readiness; the existing health endpoint is unchanged.
+
+For probe recovery, `EmbeddedSupervisor` logs transitions rather than every retry:
+
+| Status / stop reason | Meaning | Next step |
+| --- | --- | --- |
+| `database_probe_waiting` | A bounded probe failed temporarily | Wait for recovery; investigate repeated occurrences |
+| `database_probe_recovered` | A fresh check confirmed the same database process | No action for an isolated occurrence |
+| `database_probe_grace_expired` | The fixed window expired | Check storage latency, CPU/memory and container logs |
+| `database_unavailable` | A concrete or unrecognized failure stopped monitoring | Inspect PostgreSQL logs and identity/permissions; do not remove lock files |
+| `database_probe_exit_unconfirmed` | Cancellation could not confirm probe completion | Inspect host/kernel I/O and container shutdown; no further database command is issued |
+
+No new mounts, environment variables or template changes are required. The
+updated image supplies this behavior; it does not internally restart PostgreSQL
+or change the host's restart/stop policy. See the
+[monitor design](architecture/embedded-database-monitor-design.md) and
+[validation outcome](architecture/embedded-database-monitor-outcome.md).
+
 ## Support
 
 If you encounter issues during migration:

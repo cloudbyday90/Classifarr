@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Tolerate brief embedded PostgreSQL status-probe timeouts with a fixed recovery
+  window. Keep identity and process failures fail-fast, join cancelled probes
+  before database shutdown, and test recovery and shutdown with real PostgreSQL
+  in an isolated CI container without requiring deployment changes.
 - Give embedded PostgreSQL startup a bounded five-minute recovery window,
   observable wait states and cancellation-aware shutdown. Preserve native
   database lock files, require confirmed readiness before application startup,

@@ -8,7 +8,8 @@ const clean = { stdout: 'Database cluster state:               shut down\n' };
 function fixture() {
   const run = jest.fn(async () => clean);
   const read = jest.fn(async () => identity);
-  return { run, read, db: createEmbeddedDatabaseControl({ run, read }) };
+  const status = jest.fn(async () => run('/usr/libexec/postgresql18/pg_ctl', ['-D', '/app/data/postgres', 'status'], {}));
+  return { run, read, status, db: createEmbeddedDatabaseControl({ run, read, status }) };
 }
 
 test('adopts, checks and stops only fixed cluster with bounded commands', async () => {
@@ -47,6 +48,43 @@ test('unadopted controller cannot stop a database', async () => {
   const f = fixture();
   await expect(f.db.stop()).rejects.toThrow('not_adopted');
   expect(f.run).not.toHaveBeenCalled();
+});
+
+test.each([false, true])('identity change after status overrides transient failure=%s', async transient => {
+  const f = fixture();
+  await f.db.adopt();
+  f.read.mockResolvedValueOnce(identity).mockResolvedValue(identity.replace('123', '124'));
+  if (transient) f.status.mockRejectedValue(Object.assign(new Error('busy'), { code: 'database_probe_timeout' }));
+  await expect(f.db.check()).rejects.toThrow('identity_changed');
+});
+
+test.each(['ENOENT', 'EACCES'])('missing or unreadable identity %s is terminal before status', async code => {
+  const f = fixture();
+  await f.db.adopt();
+  f.read.mockRejectedValue(Object.assign(new Error('identity unavailable'), { code }));
+  await expect(f.db.check()).rejects.toMatchObject({ code });
+  expect(f.status).not.toHaveBeenCalled();
+});
+
+test('confirmed status failure is not delayed by another identity read', async () => {
+  const f = fixture();
+  await f.db.adopt();
+  f.read.mockClear();
+  f.status.mockRejectedValue(new Error('database_not_running'));
+  await expect(f.db.check()).rejects.toThrow('database_not_running');
+  expect(f.read).toHaveBeenCalledTimes(1);
+});
+
+test('abort during identity I/O prevents a late status command', async () => {
+  const f = fixture(), controller = new AbortController();
+  await f.db.adopt();
+  f.read.mockImplementation(async (_path, options) => {
+    expect(options.signal).toBe(controller.signal);
+    controller.abort();
+    return identity;
+  });
+  await expect(f.db.check({ signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  expect(f.status).not.toHaveBeenCalled();
 });
 
 test('missing PID requires clean control data, never sends a stop', async () => {

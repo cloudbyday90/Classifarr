@@ -123,6 +123,7 @@
     "db:check-schema:live": "node scripts/check-schema-snapshot.mjs",
     "docker:smoke:pgss": "node scripts/check-pg-stat-startup-smoke.mjs",
     "docker:smoke:postgres-startup": "node scripts/check-pg-stat-startup-smoke.mjs --owned-startup",
+    "docker:smoke:postgres-monitor": "node scripts/check-pg-stat-startup-smoke.mjs --runtime-monitor",
     "lint:docs": "node scripts/run-markdownlint.mjs",
     "test:tooling:dependencies": "node --test scripts/__tests__/markdownlint-runner.test.mjs scripts/__tests__/native-watch.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs scripts/__tests__/container-runtime-baseline.test.mjs",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",

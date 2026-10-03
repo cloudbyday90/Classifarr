@@ -534,8 +534,9 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
   }
 }
 
-export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, execute = execFileSync } = {}) {
-  const fixture = fileURLToPath(new URL('./fixtures/embedded-database-startup-probe.mjs', import.meta.url));
+export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, execute = execFileSync, runtimeMonitor = false } = {}) {
+  const fixture = fileURLToPath(new URL(runtimeMonitor
+    ? './fixtures/embedded-database-monitor-probe.mjs' : './fixtures/embedded-database-startup-probe.mjs', import.meta.url));
   const containerName = `classifarr-startup-drill-${randomUUID()}`;
   // No host database mount, no networking, no host-wide I/O stress. Simulate a
   // startup pause, then exercise real PostgreSQL readiness and WAL recovery.
@@ -563,7 +564,8 @@ export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, e
 
 async function main() {
   try {
-    if (process.argv.includes('--owned-startup')) runOwnedDatabaseStartupSmoke();
+    if (process.argv.includes('--runtime-monitor')) runOwnedDatabaseStartupSmoke({ runtimeMonitor: true });
+    else if (process.argv.includes('--owned-startup')) runOwnedDatabaseStartupSmoke();
     else await runPgStatStartupSmoke();
     console.log('PostgreSQL startup smoke passed.');
   } catch (error) {
