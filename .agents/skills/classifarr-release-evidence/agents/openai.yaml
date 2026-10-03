@@ -1,0 +1,4 @@
+interface:
+  display_name: "Classifarr Release Evidence"
+  short_description: "Verify source-bound CI and image evidence"
+  default_prompt: "Use $classifarr-release-evidence to check candidate release evidence and identify the next missing proof."

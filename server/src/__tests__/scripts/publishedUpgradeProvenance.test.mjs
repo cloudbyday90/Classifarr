@@ -2,8 +2,8 @@
 import { jest } from '@jest/globals';
 import { verifyPublishedUpgradeProvenance, upgradeBaseline, PublishedUpgradeProvenanceError,
   provenanceFailureDiagnostic, readProvenanceFailure } from '../../../../scripts/lib/publishedUpgradeProvenance.mjs';
-import { runPublishedUpgradeCompose } from '../../../../scripts/lib/publishedUpgradeCompose.mjs';
 import { runRuntimeInstallationAcceptance } from '../../../../scripts/run-runtime-installation-acceptance.mjs';
+import { runInstallationWithRouting } from '../../../../scripts/lib/installationRoutingAcceptance.mjs';
 import { createRuntimeInstallationReceipt, formatRuntimeInstallationSummary } from '../../../../scripts/lib/runtimeInstallationReceipt.mjs';
 
 function failure(result, env = {}) {
@@ -86,7 +86,7 @@ test('real runner failure stops before any Docker command and becomes actionable
   const run = jest.fn(() => ({ status: 1, stdout: '', stderr: 'HTTP 401: private' }));
   const receipt = await runRuntimeInstallationAcceptance({ resourceBudget: true,
     source: () => ({ sourceRevision: 'a'.repeat(40), worktreeClean: true }),
-    drill: options => runPublishedUpgradeCompose({ ...options, run, random: size => Buffer.alloc(size, 1), report: () => {} }),
+    drill: options => runInstallationWithRouting(options, { verify: () => verifyPublishedUpgradeProvenance({ run }) }),
     save: () => {} });
   expect(run.mock.calls.map(([command]) => command)).toEqual(['gh']);
   expect(receipt.status).toBe('blocked');

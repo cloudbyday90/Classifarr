@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Require same-image routing upgrade and crash-recovery evidence in CI installation
+  acceptance, and verify same-run receipts before release acceptance can pass.
+  Add a focused AI skill for checking release evidence and its limits.
 - Add an isolated image-upgrade and restart rehearsal for routing checks, covering
   authenticated controls, preserved retry budgets, provider repair and no replayed
   adds. Extend the recovery AI skill with image-level verification guidance.

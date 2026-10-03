@@ -1,5 +1,9 @@
 # Runtime installation acceptance in CI
 
+October 3 follow-up: [routing CI acceptance](routing-ci-acceptance-design.md) adds
+required same-image routing proof, version 4 receipts, and same-run artifact
+validation. The job deadline is now 60 minutes for the additional baseline build.
+
 September 28 follow-ups: [scheduled installation acceptance](scheduled-installation-design.md)
 adds real startup-scheduler progress to both scenarios, and
 [backfill crash acceptance](scheduled-backfill-crash-design.md) verifies autonomous

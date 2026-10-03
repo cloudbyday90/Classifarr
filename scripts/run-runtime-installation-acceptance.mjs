@@ -2,7 +2,7 @@
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { runPublishedUpgradeCompose } from './lib/publishedUpgradeCompose.mjs';
+import { runInstallationWithRouting } from './lib/installationRoutingAcceptance.mjs';
 import { readProvenanceFailure } from './lib/publishedUpgradeProvenance.mjs';
 import { createRuntimeInstallationReceipt, formatRuntimeInstallationSummary, installationFailureStage,
   INSTALLATION_RECEIPT_PATH, INSTALLATION_SUMMARY_PATH } from './lib/runtimeInstallationReceipt.mjs';
@@ -21,18 +21,21 @@ export function readInstallationSource(run = spawnSync) {
 }
 
 export async function runRuntimeInstallationAcceptance({ ci = false, resourceBudget = false, expectedRevision = process.env.CLASSIFARR_INSTALLATION_SOURCE_REVISION,
-  source = readInstallationSource, drill = runPublishedUpgradeCompose, save = saveReceipt } = {}) {
+  workflow = ci ? { runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT } : null,
+  source = readInstallationSource, drill = runInstallationWithRouting, save = saveReceipt } = {}) {
   let identity = {}, receipt;
   let stage = 'preflight';
   try {
     identity = source();
     if (ci && (!identity.worktreeClean || identity.sourceRevision !== expectedRevision)) throw new Error('ci_source_mismatch');
-    const result = await drill({ resourceBudget });
+    if (ci && (typeof workflow?.runId !== 'string' || typeof workflow?.runAttempt !== 'string' ||
+      !/^[1-9][0-9]{0,19}$/.test(workflow.runId) || !/^[1-9][0-9]{0,9}$/.test(workflow.runAttempt))) throw new Error('ci_run_invalid');
+    const result = await drill({ resourceBudget, sourceRevision: identity.sourceRevision });
     stage = 'evidence';
     const after = source();
     if (after.sourceRevision !== identity.sourceRevision || (ci && !after.worktreeClean)) throw new Error('source_changed');
     identity.worktreeClean = identity.worktreeClean && after.worktreeClean;
-    receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget, result });
+    receipt = createRuntimeInstallationReceipt({ ...identity, workflow, resourceBudget, result });
   } catch (error) {
     receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget,
       failureStage: stage === 'evidence' ? stage : installationFailureStage(error),
@@ -46,6 +49,11 @@ function saveReceipt(receipt, summary) {
   mkdirSync(resolve(root, '.tmp/ci'), { recursive: true, mode: 0o700 });
   writeFileSync(resolve(root, INSTALLATION_RECEIPT_PATH), `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 });
   writeFileSync(resolve(root, INSTALLATION_SUMMARY_PATH), summary, { mode: 0o600 });
+  if (receipt.status === 'passed' && process.env.GITHUB_OUTPUT) {
+    // Validated sha256 only; no command output or user-supplied multiline values.
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    appendFileSync(process.env.GITHUB_OUTPUT, `candidate-image-id=${receipt.candidateImageId}\n`);
+  }
   if (process.env.GITHUB_STEP_SUMMARY) {
     // GitHub-provided runner file, not application or PR input.
     // eslint-disable-next-line security/detect-non-literal-fs-filename

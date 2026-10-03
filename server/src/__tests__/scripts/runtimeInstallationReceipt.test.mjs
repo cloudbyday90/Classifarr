@@ -6,11 +6,18 @@ import { INSTALLATION_CHECKS, SCHEDULED_INSTALLATION_EXPECTED, createRuntimeInst
 import { readInstallationSource, runRuntimeInstallationAcceptance } from '../../../../scripts/run-runtime-installation-acceptance.mjs';
 import { SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 import { evidence } from '../fixtures/installationBudget.mjs';
+import { routingRehearsalEvidence } from '../../../../scripts/lib/routingRehearsalEvidence.mjs';
+import { ROUTING_EXPECTED } from '../../../../scripts/lib/manualRoutingRehearsal.mjs';
 
 const revision = 'a'.repeat(40);
 const identity = { sourceRevision: revision, worktreeClean: true };
+const workflow = { runId: '12345', runAttempt: '1' };
+const routing = () => routingRehearsalEvidence({ status: 'passed', cleanup: 'passed',
+  baseline: `sha256:${'c'.repeat(64)}`, candidate: `sha256:${'b'.repeat(64)}`,
+  checks: Object.keys(ROUTING_EXPECTED), ...ROUTING_EXPECTED.complete }, { sourceRevision: revision, candidateImageId: `sha256:${'b'.repeat(64)}` });
 const db = { version: '180006', migrations: 286 };
 const success = () => ({ status: 'passed', scope: 'fresh-and-upgrade', cleanup: 'passed', baseline: upgradeBaseline,
+  routing: routing(),
   crashRecovery: { ...SCHEDULED_CRASH_RECOVERY },
   scheduler: { fresh: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] },
     upgrade: { ...SCHEDULED_INSTALLATION_EXPECTED, deferrals: [...SCHEDULED_INSTALLATION_EXPECTED.deferrals] } },
@@ -86,7 +93,7 @@ test('CI requires a matching clean checkout before touching Docker', async () =>
   for (const current of [{ ...identity, worktreeClean: false }, { ...identity, sourceRevision: 'c'.repeat(40) }]) {
     const drill = jest.fn();
     const save = jest.fn();
-    const receipt = await runRuntimeInstallationAcceptance({ ci: true, expectedRevision: revision, source: () => current, drill, save });
+    const receipt = await runRuntimeInstallationAcceptance({ ci: true, workflow, expectedRevision: revision, source: () => current, drill, save });
     expect(receipt.status).toBe('blocked');
     expect(drill).not.toHaveBeenCalled();
     expect(save).toHaveBeenCalledTimes(1);
@@ -94,7 +101,7 @@ test('CI requires a matching clean checkout before touching Docker', async () =>
 });
 test('local dirty evidence remains labelled while CI clean evidence passes', async () => {
   for (const ci of [false, true]) {
-    const receipt = await runRuntimeInstallationAcceptance({ ci, expectedRevision: revision,
+    const receipt = await runRuntimeInstallationAcceptance({ ci, workflow, expectedRevision: revision,
       source: () => ({ ...identity, worktreeClean: ci }), drill: async () => success(), save: () => {} });
     expect(receipt.status).toBe('passed');
     expect(receipt.worktreeClean).toBe(ci);
@@ -102,7 +109,7 @@ test('local dirty evidence remains labelled while CI clean evidence passes', asy
 });
 test('source change during the drill or malformed results blocks evidence', async () => {
   const source = jest.fn().mockReturnValueOnce(identity).mockReturnValue({ ...identity, worktreeClean: false });
-  const receipt = await runRuntimeInstallationAcceptance({ ci: true, expectedRevision: revision, source,
+  const receipt = await runRuntimeInstallationAcceptance({ ci: true, workflow, expectedRevision: revision, source,
     drill: async () => success(), save: () => {} });
   expect(receipt.status).toBe('blocked');
   expect(receipt.failureStage).toBe('evidence');
@@ -125,7 +132,7 @@ test('budget acceptance requires separate fresh and upgrade proof and carries th
   const result = { ...success(), resourceBudget: { fresh: evidence(), upgrade: evidence() } };
   const drill = jest.fn(async () => result);
   const receipt = await runRuntimeInstallationAcceptance({ resourceBudget: true, source: () => identity, drill, save: () => {} });
-  expect(drill).toHaveBeenCalledWith({ resourceBudget: true });
+  expect(drill).toHaveBeenCalledWith({ resourceBudget: true, sourceRevision: revision });
   expect(receipt.status).toBe('passed');
   expect(receipt.resourceBudget.status).toBe('passed');
   expect(formatRuntimeInstallationSummary(receipt)).toContain('2 CPU / 128 PID');

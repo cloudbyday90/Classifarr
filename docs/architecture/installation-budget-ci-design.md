@@ -15,7 +15,8 @@ of actual resource enforcement, not another production recovery service.
 The September 28 [unfinished-backfill extension](unfinished-backfill-restart-design.md)
 also requires recovery of 600 original tasks in each opt-in scenario. The real
 ten-minute leases add approximately twenty minutes across the pair, plus setup
-and scheduler waits. The existing 40-minute job deadline remains enforced.
+and scheduler waits. The job deadline is 60 minutes after the
+[routing acceptance extension](routing-ci-acceptance-design.md).
 [Local validation](unfinished-backfill-restart-validation.md) passed; this extension
 has not yet been separately exercised by a hosted budget dispatch.
 
@@ -29,7 +30,7 @@ has not yet been separately exercised by a hosted budget dispatch.
 | Manual `mode=cleanup` | None | Existing explicitly selected tag cleanup remains |
 
 The two installation steps have mutually exclusive fixed conditions. Dispatch
-values never become shell code. A 40-minute job deadline bounds the run; no
+values never become shell code. A 60-minute job deadline bounds the run; no
 failure is converted to success. Manual budget evidence does not substitute
 for the ordinary same-run release-acceptance dependencies.
 
