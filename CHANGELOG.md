@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Bound embedded PostgreSQL adoption and shutdown, including identity-file I/O.
+  Prevent cancelled or late work from granting ownership or issuing another
+  command, require positive clean-shutdown confirmation, and add isolated
+  PostgreSQL cancellation and slow-I/O rehearsals to CI.
+- Make queue-dispatch unit tests independent of host memory pressure and prevent
+  upgrade smoke tests from accepting PostgreSQL's temporary initialization server.
 - Tolerate brief embedded PostgreSQL status-probe timeouts with a fixed recovery
   window. Keep identity and process failures fail-fast, join cancelled probes
   before database shutdown, and test recovery and shutdown with real PostgreSQL

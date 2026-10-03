@@ -35,7 +35,11 @@ const stalledProbe = signal => runEmbeddedDatabaseStatusProbe({ signal, spawnFn:
 async function supervise({ status, onReport, delay } = {}) {
   const processRef = new EventEmitter();
   const events = [];
-  const database = createEmbeddedDatabaseControl({ status });
+  let started = 0;
+  // Adoption now uses the same bounded read-only helper. Inject faults only
+  // after adoption so these cases continue to exercise runtime monitoring.
+  const database = createEmbeddedDatabaseControl({ status: options =>
+    started && status ? status(options) : runEmbeddedDatabaseStatusProbe(options) });
   // A real small application child exercises drain ordering without the full
   // product's migrations, providers or background work in this lifecycle test.
   const child = spawn(process.execPath, ['--input-type=module', '-e',
@@ -43,7 +47,6 @@ async function supervise({ status, onReport, delay } = {}) {
   { shell: false, stdio: ['ignore', 'pipe', 'inherit'] });
   const application = observeEmbeddedChild(child);
   await once(child.stdout, 'data', { signal: AbortSignal.timeout(5000) });
-  let started = 0;
   const result = await runEmbeddedSupervisor({ database, processRef, delay,
     startApplication: () => { started++; return application; },
     report: (state, reason) => {

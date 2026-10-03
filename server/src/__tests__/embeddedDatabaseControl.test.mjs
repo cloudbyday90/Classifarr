@@ -6,10 +6,13 @@ import { readFileSync } from 'node:fs';
 const identity = '123\n/app/data/postgres\n1790000000\n5432\n';
 const clean = { stdout: 'Database cluster state:               shut down\n' };
 function fixture() {
-  const run = jest.fn(async () => clean);
   const read = jest.fn(async () => identity);
-  const status = jest.fn(async () => run('/usr/libexec/postgresql18/pg_ctl', ['-D', '/app/data/postgres', 'status'], {}));
-  return { run, read, status, db: createEmbeddedDatabaseControl({ run, read, status }) };
+  const command = jest.fn(async kind => {
+    if (kind === 'stop') read.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
+    return clean;
+  });
+  const status = jest.fn(async () => {});
+  return { command, read, status, db: createEmbeddedDatabaseControl({ command, read, status }) };
 }
 
 test('adopts, checks and stops only fixed cluster with bounded commands', async () => {
@@ -17,11 +20,11 @@ test('adopts, checks and stops only fixed cluster with bounded commands', async 
   await f.db.adopt();
   await f.db.check();
   await f.db.stop();
-  expect(f.run.mock.calls.map(call => call[1])).toEqual([
-    ['-D', '/app/data/postgres', 'status'], ['-D', '/app/data/postgres', 'status'],
-    ['-D', '/app/data/postgres', '-m', 'fast', '-w', '-t', '20', 'stop'], ['/app/data/postgres'],
-  ]);
-  expect(f.run.mock.calls[2][2]).toMatchObject({ timeout: 22_000, shell: false, maxBuffer: 65536, env: { PATH: '/usr/bin:/bin', LC_ALL: 'C' } });
+  expect(f.status).toHaveBeenCalledTimes(2);
+  expect(f.command.mock.calls.map(call => call[0])).toEqual(['stop', 'control']);
+  expect(f.command.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+  await expect(f.db.stop()).rejects.toThrow('not_adopted');
+  await expect(f.db.check()).rejects.toThrow('not_adopted');
 });
 
 test.each(['', '-1\n/app/data/postgres\n123', '1\n/elsewhere\n123', '1\n/app/data/postgres\nno'])('rejects malformed identity %j', text => {
@@ -37,17 +40,17 @@ test('does not adopt changed PID identity during initial status check', async ()
 test.each(['123', '1790000000'])('replacement %s blocks check and stop before any command', async part => {
   const f = fixture();
   await f.db.adopt();
-  f.run.mockClear();
+  f.command.mockClear();
   f.read.mockResolvedValue(identity.replace(part, `${part}1`));
   await expect(f.db.check()).rejects.toThrow('identity_changed');
   await expect(f.db.stop()).rejects.toThrow('identity_changed');
-  expect(f.run).not.toHaveBeenCalled();
+  expect(f.command).not.toHaveBeenCalled();
 });
 
 test('unadopted controller cannot stop a database', async () => {
   const f = fixture();
   await expect(f.db.stop()).rejects.toThrow('not_adopted');
-  expect(f.run).not.toHaveBeenCalled();
+  expect(f.command).not.toHaveBeenCalled();
 });
 
 test.each([false, true])('identity change after status overrides transient failure=%s', async transient => {
@@ -61,6 +64,7 @@ test.each([false, true])('identity change after status overrides transient failu
 test.each(['ENOENT', 'EACCES'])('missing or unreadable identity %s is terminal before status', async code => {
   const f = fixture();
   await f.db.adopt();
+  f.status.mockClear();
   f.read.mockRejectedValue(Object.assign(new Error('identity unavailable'), { code }));
   await expect(f.db.check()).rejects.toMatchObject({ code });
   expect(f.status).not.toHaveBeenCalled();
@@ -78,7 +82,8 @@ test('confirmed status failure is not delayed by another identity read', async (
 test('abort during identity I/O prevents a late status command', async () => {
   const f = fixture(), controller = new AbortController();
   await f.db.adopt();
-  f.read.mockImplementation(async (_path, options) => {
+  f.status.mockClear();
+  f.read.mockImplementation(async options => {
     expect(options.signal).toBe(controller.signal);
     controller.abort();
     return identity;
@@ -87,32 +92,103 @@ test('abort during identity I/O prevents a late status command', async () => {
   expect(f.status).not.toHaveBeenCalled();
 });
 
-test('missing PID requires clean control data, never sends a stop', async () => {
+test.each([true, false])('missing PID requires clean control data=%s, never sends a stop', async isClean => {
   const f = fixture();
   await f.db.adopt();
-  f.run.mockClear();
+  f.command.mockClear();
   f.read.mockRejectedValue(Object.assign(new Error('missing'), { code: 'ENOENT' }));
-  await f.db.stop();
-  expect(f.run).toHaveBeenCalledTimes(1);
-  expect(f.run.mock.calls[0][0]).toContain('pg_controldata');
-  f.run.mockResolvedValue({ stdout: 'Database cluster state: in production\n' });
-  await expect(f.db.stop()).rejects.toThrow('shutdown_unconfirmed');
+  if (!isClean) f.command.mockResolvedValue({ stdout: 'Database cluster state: in production\n' });
+  if (isClean) await f.db.stop();
+  else await expect(f.db.stop()).rejects.toThrow('shutdown_unconfirmed');
+  expect(f.command.mock.calls.map(call => call[0])).toEqual(['control']);
 });
 
 test('permission error never causes blind stop', async () => {
   const f = fixture();
   await f.db.adopt();
-  f.run.mockClear();
+  f.command.mockClear();
   f.read.mockRejectedValue(Object.assign(new Error('denied'), { code: 'EACCES' }));
   await expect(f.db.stop()).rejects.toThrow('denied');
-  expect(f.run).not.toHaveBeenCalled();
+  expect(f.command).not.toHaveBeenCalled();
 });
 
 test.each(['adopt', 'check', 'stop'])('propagates %s command failure', async method => {
   const f = fixture();
   if (method !== 'adopt') await f.db.adopt();
-  f.run.mockRejectedValue(new Error('command failed'));
+  (method === 'stop' ? f.command : f.status).mockRejectedValue(new Error('command failed'));
   await expect(f.db[method]()).rejects.toThrow('command failed');
+});
+
+test('a PID that reappears after stop/control confirmation is not clean shutdown', async () => {
+  const f = fixture();
+  await f.db.adopt();
+  f.command.mockResolvedValue(clean);
+  await expect(f.db.stop()).rejects.toThrow('shutdown_unconfirmed');
+  await expect(f.db.stop()).rejects.toThrow('not_adopted');
+  expect(f.command).toHaveBeenCalledTimes(2);
+});
+
+test('pending check prevents a concurrent stop command', async () => {
+  const f = fixture();
+  await f.db.adopt();
+  let finish;
+  f.status.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const check = f.db.check();
+  await new Promise(resolve => { setImmediate(resolve); });
+  await expect(f.db.stop()).rejects.toThrow('operation_busy');
+  expect(f.command).not.toHaveBeenCalled();
+  finish(); await check;
+});
+
+test.each(['adopt', 'stop'])('stalled %s identity read has a deadline and cannot issue late commands', async method => {
+  jest.useFakeTimers();
+  try {
+    const f = fixture();
+    if (method === 'stop') await f.db.adopt();
+    f.status.mockClear();
+    let finish;
+    f.read.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const assertion = expect(f.db[method]()).rejects.toMatchObject({ code: 'database_operation_unjoined' });
+    await jest.advanceTimersByTimeAsync(method === 'stop' ? 26_000 : 6000);
+    await assertion;
+    finish(identity);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(f.status).not.toHaveBeenCalled();
+    expect(f.command).not.toHaveBeenCalled();
+    await expect(f.db.stop()).rejects.toThrow('not_adopted');
+    await expect(f.db.adopt()).rejects.toThrow('adoption_unavailable');
+    expect(jest.getTimerCount()).toBe(0);
+  } finally { jest.useRealTimers(); }
+});
+
+test('host cancellation during adoption joins the read without granting ownership', async () => {
+  const f = fixture(), controller = new AbortController();
+  f.read.mockImplementation(async ({ signal }) => {
+    controller.abort();
+    await Promise.resolve();
+    signal.throwIfAborted();
+    return identity;
+  });
+  await expect(f.db.adopt({ signal: controller.signal })).rejects.toMatchObject({ code: 'database_operation_cancelled' });
+  await expect(f.db.stop()).rejects.toThrow('not_adopted');
+  expect(f.status).not.toHaveBeenCalled();
+  expect(f.command).not.toHaveBeenCalled();
+});
+
+test('late stop helper completion cannot run control-data confirmation or retry', async () => {
+  jest.useFakeTimers();
+  try {
+    const f = fixture();
+    await f.db.adopt();
+    let finish;
+    f.command.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const assertion = expect(f.db.stop()).rejects.toMatchObject({ code: 'database_operation_unjoined' });
+    await jest.advanceTimersByTimeAsync(26_000); await assertion;
+    finish(clean); await jest.advanceTimersByTimeAsync(0);
+    expect(f.command.mock.calls.map(call => call[0])).toEqual(['stop']);
+    await expect(f.db.stop()).rejects.toThrow('not_adopted');
+    expect(jest.getTimerCount()).toBe(0);
+  } finally { jest.useRealTimers(); }
 });
 
 test('entrypoint retains privilege drop and embedded guard, with sufficient Compose grace', () => {

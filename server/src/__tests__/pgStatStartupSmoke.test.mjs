@@ -5,6 +5,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { jest } from '@jest/globals';
 
 import {
   buildIncludedConfigFailurePreparationCommand,
@@ -15,9 +16,16 @@ import {
   hasPostgres17To18UpgradeLog,
   hasPgStatStatementsFatalStartup,
   hasPgStatStatementsMissingRuntimeWarning,
+  probePreviousPostgresReady,
 } from '../../../scripts/check-pg-stat-startup-smoke.mjs';
 
 describe('pg_stat startup smoke helpers', () => {
+  test.each([false, true])('previous-image readiness uses final-server TCP, accepts readiness=%s', ok => {
+    const probe = jest.fn(() => ({ ok }));
+    expect(probePreviousPostgresReady('owned-seed-container', probe)).toBe(ok);
+    expect(probe).toHaveBeenCalledWith('exec', 'owned-seed-container', 'pg_isready',
+      '-h', '127.0.0.1', '-p', '5432', '-U', 'classifarr', '-d', 'classifarr', '-q');
+  });
   test('entrypoint falls back when staged pgvector is not loadable', () => {
     const entrypoint = readFileSync(new URL('../../../docker-entrypoint.sh', import.meta.url), 'utf8');
 

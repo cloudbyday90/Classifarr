@@ -5,15 +5,19 @@ import { watchEmbeddedDatabase } from './embeddedDatabaseMonitor.mjs';
 
 /** No restart or maintenance loop. Docker owns restart policy; this owns drain order. */
 export async function runEmbeddedSupervisor({
-  database, startApplication, processRef = process, report = () => {},
+  database, startApplication, processRef = process, report: diagnostic = () => {},
   delay = sleep, waitForExit = waitForEmbeddedExit, startMaintenance = null,
   attachRuntimeMaintenance = null,
 }) {
   const monitor = new AbortController();
+  const adoption = new AbortController();
+  const report = (...args) => { try { diagnostic(...args); } catch { /* diagnostics cannot interrupt cleanup */ } };
+  const operationReason = error => ['database_operation_timeout', 'database_operation_cancelled', 'database_operation_unjoined']
+    .includes(error?.code) ? error.code : undefined;
   let request;
   let wake;
   const stopped = new Promise(resolve => { wake = resolve; });
-  const requestStop = event => { if (!request) { request = event; wake(); } };
+  const requestStop = event => { if (!request) { request = event; adoption.abort(); wake(); } };
   const onTerm = () => requestStop({ reason: 'SIGTERM', failed: false });
   const onInt = () => requestStop({ reason: 'SIGINT', failed: false });
   processRef.on('SIGTERM', onTerm);
@@ -27,7 +31,7 @@ export async function runEmbeddedSupervisor({
   let applicationStopped = true;
   let runtimeMaintenance, runtimeMaintenanceStopped = true;
   try {
-    await database.adopt();
+    await database.adopt({ signal: adoption.signal });
     adopted = true;
     if (!request && startMaintenance) {
       maintenance = startMaintenance();
@@ -57,9 +61,9 @@ export async function runEmbeddedSupervisor({
     await stopped;
     failed = request.failed;
     report('stopping', request.reason);
-  } catch {
+  } catch (error) {
     failed = true;
-    report('startup_failed');
+    report('startup_failed', operationReason(error));
   } finally {
     monitor.abort();
     // Cancel online maintenance concurrently with application drain. Join before stopping PG.
@@ -105,9 +109,9 @@ export async function runEmbeddedSupervisor({
       try {
         await database.stop();
         report('database_stopped');
-      } catch {
+      } catch (error) {
         failed = true;
-        report('database_shutdown_unconfirmed');
+        report('database_shutdown_unconfirmed', operationReason(error));
       }
     }
     processRef.removeListener('SIGTERM', onTerm);

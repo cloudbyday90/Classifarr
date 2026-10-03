@@ -286,6 +286,10 @@ jobs:
         run: |
           IMAGE_NAME=classifarr:test npm run docker:smoke:postgres-monitor
 
+      - name: PostgreSQL bounded adoption and shutdown I/O
+        run: |
+          IMAGE_NAME=classifarr:test npm run docker:smoke:postgres-lifecycle
+
   policy-candidate-synthetic-replay:
     name: Policy Candidate Synthetic Replay
     runs-on: ubuntu-latest

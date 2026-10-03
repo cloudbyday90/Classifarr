@@ -25,6 +25,16 @@ test('timed-out Docker client still triggers cleanup and retains its failure', (
   expect(execute.mock.calls[1][1].slice(0, 2)).toEqual(['rm', '-f']);
 });
 
+test('lifecycle I/O drill uses the same isolated harness and rejects conflicting selection', () => {
+  const execute = jest.fn();
+  runOwnedDatabaseStartupSmoke({ execute, lifecycleIo: true });
+  const args = execute.mock.calls[0][1];
+  expect(args[args.indexOf('--mount') + 1]).toContain('embedded-database-lifecycle-io-probe.mjs');
+  execute.mockClear();
+  expect(() => runOwnedDatabaseStartupSmoke({ execute, lifecycleIo: true, runtimeMonitor: true })).toThrow('Choose one');
+  expect(execute).not.toHaveBeenCalled();
+});
+
 test('automatic Docker removal is tolerated without hiding daemon cleanup errors', () => {
   const execute = jest.fn().mockReturnValueOnce('').mockImplementationOnce(() => {
     throw Object.assign(new Error('removed'), { stderr: 'Error response from daemon: No such container: disposable' });

@@ -910,6 +910,12 @@ describe('QueueService', () => {
     });
 
     describe('startWorker', () => {
+        beforeEach(() => {
+            // Dispatch behavior must not depend on the test host's free memory.
+            // Resource rejection is covered by the admission/worker-loop suites.
+            jest.spyOn(queueService.queueWorkerLoopService.resourceAdmission, 'tryAcquire')
+                .mockImplementation(() => ({ allowed: true, release: jest.fn() }));
+        });
         it('preserves in-flight per-type counts and permits on stop', () => {
             queueService.processing = 2;
             queueService.processingByType = { metadata_enrichment: 2 };
@@ -952,16 +958,16 @@ describe('QueueService', () => {
                 hasProcessingClassification: true,
                 lookupFailed: false,
             });
-            const dequeueSpy = jest.spyOn(queueService, 'dequeue').mockResolvedValue(null);
+            const dequeueSpy = jest.spyOn(queueService, 'dequeue').mockImplementation(async () => {
+                queueService.stopWorker();
+                return null;
+            });
 
             const workerPromise = queueService.startWorker();
-
-            await new Promise((resolve) => { setImmediate(resolve); });
-
-            queueService.stopWorker();
             await workerPromise;
 
             expect(dequeueSpy).toHaveBeenCalledWith({ excludeClassification: true });
+            expect(queueService.queueWorkerLoopService.resourceAdmission.tryAcquire).toHaveBeenCalledWith('queue');
         });
     });
 

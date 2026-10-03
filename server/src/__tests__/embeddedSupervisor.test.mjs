@@ -78,6 +78,43 @@ test('failed adoption never signals an unverified database', async () => {
   expect(f.processRef.eventNames()).toEqual([]);
 });
 
+test('host cancellation reaches adoption and starts no application or maintenance', async () => {
+  const f = fixture();
+  f.options.startMaintenance = jest.fn();
+  f.database.adopt.mockImplementation(({ signal }) => new Promise((_, reject) => {
+    signal.addEventListener('abort', () => reject(Object.assign(new Error('cancelled'), { code: 'database_operation_cancelled' })), { once: true });
+  }));
+  const result = runEmbeddedSupervisor(f.options);
+  f.processRef.emit('SIGTERM');
+  expect(await result).toBe(1);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.options.startMaintenance).not.toHaveBeenCalled();
+  expect(f.database.stop).not.toHaveBeenCalled();
+  expect(f.events).toContainEqual(['startup_failed', 'database_operation_cancelled']);
+  expect(f.processRef.eventNames()).toEqual([]);
+});
+
+test('failed diagnostic sink cannot interrupt application or database cleanup', async () => {
+  const f = fixture();
+  f.options.report = () => { throw new Error('closed log stream'); };
+  const result = runEmbeddedSupervisor(f.options);
+  await tick(); f.processRef.emit('SIGTERM');
+  expect(await result).toBe(0);
+  expect(f.application.signal).toHaveBeenCalledWith('SIGTERM');
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+  expect(f.processRef.eventNames()).toEqual([]);
+});
+
+test.each(['database_operation_timeout', 'database_operation_unjoined', 'private details'])('shutdown diagnostics allowlist reason %s', async code => {
+  const f = fixture();
+  f.database.stop.mockRejectedValue(Object.assign(new Error('private details'), { code }));
+  const result = runEmbeddedSupervisor(f.options);
+  await tick(); f.processRef.emit('SIGTERM');
+  expect(await result).toBe(1);
+  expect(f.events).toContainEqual(['database_shutdown_unconfirmed', code.startsWith('database_operation_') ? code : undefined]);
+  expect(f.events).not.toContainEqual(['database_stopped', undefined]);
+});
+
 test('synchronous spawn failure still cleans adopted database', async () => {
   const f = fixture();
   f.options.startApplication.mockImplementation(() => { throw new Error('spawn'); });

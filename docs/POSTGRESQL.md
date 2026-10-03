@@ -365,6 +365,34 @@ or change the host's restart/stop policy. See the
 [monitor design](architecture/embedded-database-monitor-design.md) and
 [validation outcome](architecture/embedded-database-monitor-outcome.md).
 
+### Bounded adoption and shutdown
+
+The image now bounds the whole database adoption operation to five seconds and
+shutdown to twenty-five seconds, including identity-file reads. Cancellation may
+use one additional second to join pending work. These are internal budgets, not
+new Compose, Unraid or Synology settings. Your host's stop timeout still wins.
+
+Adoption here means verifying the embedded PostgreSQL process. It does **not**
+adopt an unknown library-ingestion writer or recover a legacy import.
+
+| Log status or reason | Meaning | Next step |
+| --- | --- | --- |
+| `database_operation_timeout` | The operation exceeded its fixed budget; cancellation joined | Check storage latency and PostgreSQL logs before restarting |
+| `database_operation_cancelled` | Host shutdown cancelled pending adoption, or a caller cancelled an operation | Do not assume the database was adopted or stopped |
+| `database_operation_unjoined` | Cancellation could not confirm completion within one second | Inspect host/kernel I/O; no further database command is issued |
+| `database_shutdown_unconfirmed` | Clean stop could not be verified | Check PostgreSQL logs and container status; do not delete `postmaster.pid` or reset WAL |
+
+The supervisor drains application and maintenance work before an identity-checked
+fast stop. It reports `database_stopped` only after clean control-data confirmation
+and an absent PID file. Cancelling `pg_ctl` does not cancel a shutdown request
+already sent to PostgreSQL; the controller never retries it after failure.
+
+Run `npm run docker:smoke:postgres-lifecycle` with `IMAGE_NAME` set to the candidate
+image for the isolated Linux rehearsal. It uses temporary data and simulated
+slow reads, not host appdata or a physical-storage benchmark. See the
+[design and tradeoffs](architecture/embedded-database-lifecycle-io-design.md) and
+[validation outcome](architecture/embedded-database-lifecycle-io-outcome.md).
+
 ## Support
 
 If you encounter issues during migration:

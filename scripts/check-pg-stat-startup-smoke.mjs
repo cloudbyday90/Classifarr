@@ -253,20 +253,17 @@ async function waitForContainerReady(containerName, timeoutMs = READY_TIMEOUT_MS
   throw new Error(`Container ${containerName} did not become ready in time.\n${logs}`);
 }
 
+export function probePreviousPostgresReady(containerName, probe = dockerAllowFailure) {
+  // The official image's temporary initialization server is socket-only.
+  // Loopback TCP distinguishes the final server without publishing a host port.
+  return probe('exec', containerName, 'pg_isready', '-h', '127.0.0.1', '-p', '5432',
+    '-U', 'classifarr', '-d', 'classifarr', '-q').ok;
+}
+
 async function waitForPostgresReady(containerName, timeoutMs = READY_TIMEOUT_MS) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
-    const pgReady = dockerAllowFailure(
-      'exec',
-      containerName,
-      'pg_isready',
-      '-U',
-      'classifarr',
-      '-d',
-      'classifarr',
-      '-q',
-    );
-    if (pgReady.ok) {
+    if (probePreviousPostgresReady(containerName)) {
       return;
     }
     await sleep(POLL_INTERVAL_MS);
@@ -534,8 +531,9 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
   }
 }
 
-export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, execute = execFileSync, runtimeMonitor = false } = {}) {
-  const fixture = fileURLToPath(new URL(runtimeMonitor
+export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, execute = execFileSync, runtimeMonitor = false, lifecycleIo = false } = {}) {
+  if (runtimeMonitor && lifecycleIo) throw new Error('Choose one database drill');
+  const fixture = fileURLToPath(new URL(lifecycleIo ? './fixtures/embedded-database-lifecycle-io-probe.mjs' : runtimeMonitor
     ? './fixtures/embedded-database-monitor-probe.mjs' : './fixtures/embedded-database-startup-probe.mjs', import.meta.url));
   const containerName = `classifarr-startup-drill-${randomUUID()}`;
   // No host database mount, no networking, no host-wide I/O stress. Simulate a
@@ -564,7 +562,8 @@ export function runOwnedDatabaseStartupSmoke({ imageName = DEFAULT_IMAGE_NAME, e
 
 async function main() {
   try {
-    if (process.argv.includes('--runtime-monitor')) runOwnedDatabaseStartupSmoke({ runtimeMonitor: true });
+    if (process.argv.includes('--lifecycle-io')) runOwnedDatabaseStartupSmoke({ lifecycleIo: true });
+    else if (process.argv.includes('--runtime-monitor')) runOwnedDatabaseStartupSmoke({ runtimeMonitor: true });
     else if (process.argv.includes('--owned-startup')) runOwnedDatabaseStartupSmoke();
     else await runPgStatStartupSmoke();
     console.log('PostgreSQL startup smoke passed.');
