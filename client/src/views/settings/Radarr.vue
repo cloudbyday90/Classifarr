@@ -214,9 +214,9 @@
             >
           </div>
           <div>
-            <label class="block text-sm font-medium mb-2">API Key</label>
             <PasswordInput
               v-model="editForm.api_key"
+              label="API Key"
               placeholder="Your Radarr API key"
             />
           </div>
@@ -431,9 +431,9 @@
           >
         </div>
         <div>
-          <label class="block text-sm font-medium mb-2">API Key</label>
           <PasswordInput
             v-model="editForm.api_key"
+            label="API Key"
             placeholder="Your Radarr API key"
           />
         </div>
@@ -583,4 +583,3 @@ onMounted(async () => {
   await loadConfigs()
 })
 </script>
-

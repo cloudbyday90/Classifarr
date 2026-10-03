@@ -1,13 +1,15 @@
 {
   "extends": "./tsconfig.base.json",
   "vueCompilerOptions": {
-    "strictTemplates": true
+    "strictTemplates": true,
+    "dataAttributes": ["data-lpignore", "data-1pass-no-save"]
   },
   "include": [
     "src/components/common/Badge.vue",
     "src/components/common/Button.vue",
     "src/components/common/Card.vue",
     "src/components/common/Input.vue",
+    "src/components/common/PasswordInput.vue",
     "src/components/common/Select.vue",
     "src/components/common/Toggle.vue",
     "src/components/common/Slider.vue",

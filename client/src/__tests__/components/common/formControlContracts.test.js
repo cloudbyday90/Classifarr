@@ -2,12 +2,14 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, test, vi } from 'vitest'
 import Input from '@/components/common/Input.vue'
+import PasswordInput from '@/components/common/PasswordInput.vue'
 import Select from '@/components/common/Select.vue'
 import Slider from '@/components/common/Slider.vue'
 import Toggle from '@/components/common/Toggle.vue'
 
 const controls = [
   { name: 'Input', component: Input, selector: 'input', event: 'input', props: {} },
+  { name: 'PasswordInput', component: PasswordInput, selector: 'input', event: 'input', props: {} },
   { name: 'Select', component: Select, selector: 'select', event: 'change', props: { options: [{ label: 'One', value: 1 }] } },
   { name: 'Slider', component: Slider, selector: 'input', event: 'input', props: {} },
   { name: 'Toggle', component: Toggle, selector: 'button', event: 'click', props: {} },

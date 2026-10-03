@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Modernize credential inputs with connected labels/help/errors, named Show/Hide
+  controls, visible keyboard focus and strict Vue checks. Preserve secret values,
+  disable spelling/correction, and conceal revealed fields on form submission
+  or disabling. Update existing settings callers and add browser regressions.
 - Harden JavaScript Vue event checking in the strictly checked shared controls:
   use checked listener bindings, enforce their scoped lint rule, and cover model
   payloads, native event types and single-delivery keyboard behavior in tests.

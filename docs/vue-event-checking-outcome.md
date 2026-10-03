@@ -85,6 +85,8 @@ No upstream issue or PR was opened as part of this work.
    and an explicit casing rule.
 2. Next modernize PasswordInput: accessible visibility-button name, linked
    label/hint/error, native attribute routing and strict checks.
+   Follow-up: [PasswordInput design](password-input-design.md) and
+   [outcome](password-input-outcome.md) implement this next step.
 3. Enroll further components and screens in reviewed batches. Consider a separate
    TypeScript migration only when its broader tooling/source cost is justified.
 4. Retest ordinary v-on when upstream publishes a compatible fix, then remove

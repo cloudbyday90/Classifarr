@@ -6,6 +6,7 @@ import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
 import Button from '@/components/common/Button.vue'
+import PasswordInput from '@/components/common/PasswordInput.vue'
 
 const priority = ref(2)
 const route = ref(1)
@@ -15,6 +16,20 @@ const disabled = ref(false)
 const submissions = ref(0)
 const error = ref('Review this priority')
 const deliveries = ref({ input: 0, select: 0, toggle: 0, slider: 0, button: 0 })
+const credential = ref('')
+const credentialDisabled = ref(false)
+const credentialError = ref('Check the sample key')
+const credentialDeliveries = ref(0)
+const credentialSubmissions = ref(0)
+const submittedInputType = ref('')
+
+/** @param {SubmitEvent} event */
+function submitCredential(event) {
+  event.preventDefault()
+  const input = event.currentTarget instanceof globalThis.HTMLFormElement ? event.currentTarget.querySelector('input') : null
+  submittedInputType.value = input?.type ?? ''
+  credentialSubmissions.value++
+}
 </script>
 
 <template>
@@ -80,8 +95,59 @@ const deliveries = ref({ input: 0, select: 0, toggle: 0, slider: 0, button: 0 })
     >
       Clear error
     </button>
-    <output aria-label="Model values">{{ JSON.stringify({ priority, route, enabled, threshold }) }}</output>
+    <output
+      class="block wrap-anywhere"
+      aria-label="Model values"
+    >{{ JSON.stringify({ priority, route, enabled, threshold }) }}</output>
     <output aria-label="Submissions">{{ submissions }}</output>
-    <output aria-label="Listener deliveries">{{ JSON.stringify(deliveries) }}</output>
+    <output
+      class="block wrap-anywhere"
+      aria-label="Listener deliveries"
+    >{{ JSON.stringify(deliveries) }}</output>
+    <section class="space-y-4">
+      <h2>Sample credential</h2>
+      <p id="credential-help">
+        Use a dummy value only.
+      </p>
+      <form
+        class="space-y-4"
+        @submit="submitCredential"
+      >
+        <PasswordInput
+          v-model="credential"
+          label="Provider key"
+          name="credential"
+          hint="Paste the complete key."
+          aria-describedby="credential-help"
+          required
+          :error="credentialError"
+          :disabled="credentialDisabled"
+          :on-update:model-value.camel="() => credentialDeliveries++"
+        />
+        <button type="submit">
+          Save sample credential
+        </button>
+      </form>
+      <PasswordInput
+        label="Read-only token"
+        model-value="dummy-readonly"
+        readonly
+      />
+      <label>
+        <input
+          v-model="credentialDisabled"
+          type="checkbox"
+        > Disable credential
+      </label>
+      <button
+        type="button"
+        @click="credentialError = ''"
+      >
+        Clear credential error
+      </button>
+      <output aria-label="Credential deliveries">{{ credentialDeliveries }}</output>
+      <output aria-label="Credential submissions">{{ credentialSubmissions }}</output>
+      <output aria-label="Submitted input type">{{ submittedInputType }}</output>
+    </section>
   </main>
 </template>

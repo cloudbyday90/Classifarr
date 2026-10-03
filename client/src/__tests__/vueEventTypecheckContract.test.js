@@ -5,6 +5,7 @@ import { expectVueDiagnostic, typecheck } from './helpers/vueTypecheck.js'
 
 const controls = [
   { name: 'Input', props: '', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
+  { name: 'PasswordInput', props: '', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
   { name: 'Select', props: ':options="[]"', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
   { name: 'Toggle', props: '', valid: 'valueOf()', invalid: 'toUpperCase()', code: '2339', wrongType: 'string' },
   { name: 'Slider', props: '', valid: 'toFixed(0)', invalid: 'toUpperCase()', code: '2339', wrongType: 'string' },

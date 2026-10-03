@@ -633,14 +633,12 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
               <PasswordInput
                 v-model="provider.apiKey"
+                :label="`${provider.displayName} API key`"
+                hint="Leave blank to keep the existing stored key."
                 :placeholder="provider.configured ? 'Stored key configured' : keyPlaceholder(provider.providerKey)"
               />
-              <p class="text-xs text-gray-500 mt-1">
-                Leave blank to keep the existing stored key.
-              </p>
             </div>
 
             <Input

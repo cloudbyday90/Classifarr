@@ -6,21 +6,31 @@ export function useFormControlAttrs() {
   const attrs = useAttrs()
   const generatedId = useId()
   const errorId = `${generatedId}-error`
+  const hintId = `${generatedId}-hint`
   const controlId = () => typeof attrs.id === 'string' && attrs.id ? attrs.id : generatedId
   const layoutAttrs = () => ({ class: attrs.class, style: attrs.style })
 
-  /** @param {string} [error] */
-  function controlAttrs(error = '') {
+  /**
+   * @param {string} [error]
+   * @param {string} [hint]
+   */
+  function controlAttrs(error = '', hint = '') {
     const forwarded = Object.fromEntries(Object.entries(attrs).filter(([key]) =>
       !['class', 'style', 'modelModifiers'].includes(key)))
     forwarded.id = controlId()
     if (error) {
       forwarded['aria-invalid'] = true
+    }
+    if (error || hint) {
       const existing = typeof attrs['aria-describedby'] === 'string' ? attrs['aria-describedby'].trim() : ''
-      forwarded['aria-describedby'] = [...new Set([...existing.split(/\s+/).filter(Boolean), errorId])].join(' ')
+      forwarded['aria-describedby'] = [...new Set([
+        ...existing.split(/\s+/).filter(Boolean),
+        ...(hint ? [hintId] : []),
+        ...(error ? [errorId] : []),
+      ])].join(' ')
     }
     return forwarded
   }
 
-  return { controlId, controlAttrs, layoutAttrs, errorId }
+  return { controlId, controlAttrs, layoutAttrs, errorId, hintId }
 }

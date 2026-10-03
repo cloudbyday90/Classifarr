@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 import WebSearchProviders from '../views/settings/WebSearchProviders.vue'
+import PasswordInput from '../components/common/PasswordInput.vue'
 import api from '../api'
 
 const toast = {
@@ -116,6 +117,27 @@ const providerRows = [
 ]
 
 describe('WebSearchProviders settings view', () => {
+  it('connects real credential labels and help with distinct provider commands', async () => {
+    const wrapper = mount(WebSearchProviders, { global: { stubs: { ...stubs, PasswordInput: false } } })
+    try {
+      await flushPromises()
+      const controls = wrapper.findAllComponents(PasswordInput)
+      expect(controls).toHaveLength(providerRows.length)
+      const ids = controls.map(control => control.get('input').attributes('id'))
+      expect(new Set(ids).size).toBe(ids.length)
+      for (const [index, control] of controls.entries()) {
+        const name = `${providerRows[index].displayName} API key`
+        expect(control.get('label').text()).toBe(name)
+        expect(control.get('label').attributes('for')).toBe(ids[index])
+        expect(control.get('button').attributes('aria-label')).toBe(`Show ${name}`)
+        expect(control.get('input').attributes('aria-describedby')).toBe(control.get('.text-xs').attributes('id'))
+        expect(control.get('.text-xs').text()).toBe('Leave blank to keep the existing stored key.')
+      }
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     toast.success.mockReset()

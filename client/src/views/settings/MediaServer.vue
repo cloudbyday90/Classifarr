@@ -462,9 +462,9 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">X-Plex-Token</label>
             <PasswordInput
               v-model="config.api_key"
+              label="X-Plex-Token"
               placeholder="Your Plex token"
             />
             <p class="text-xs text-gray-500 mt-1">
@@ -628,9 +628,9 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">Password</label>
             <PasswordInput
               v-model="jellyfinPassword"
+              label="Jellyfin password"
               placeholder="Password (leave empty if none)"
             />
           </div>
@@ -759,9 +759,9 @@
           </div>
           
           <div>
-            <label class="block text-sm font-medium mb-2">Password</label>
             <PasswordInput
               v-model="embyPassword"
+              label="Emby password"
               placeholder="Password (leave empty if none)"
             />
           </div>

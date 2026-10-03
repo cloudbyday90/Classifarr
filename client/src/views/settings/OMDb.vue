@@ -40,9 +40,9 @@
           after fixing account access. Pending item retry budgets are preserved.
         </p>
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">API Key</label>
           <PasswordInput 
             v-model="config.api_key" 
+            label="API Key"
             placeholder="Enter your OMDb API key" 
           />
           <p class="text-xs text-gray-500 mt-1">
