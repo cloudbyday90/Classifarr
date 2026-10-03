@@ -22,6 +22,7 @@ describe('QueueAdminService', () => {
     beforeEach(() => {
         client = { query: jest.fn() };
         db = {
+            query: jest.fn().mockResolvedValue({ rowCount: 1 }),
             withTransaction: jest.fn(async (fn) => fn(client)),
         };
         logger = {
@@ -31,7 +32,7 @@ describe('QueueAdminService', () => {
             debug: jest.fn(),
         };
         classificationService = {
-            routeToArr: jest.fn().mockResolvedValue({ attempted: true, routed: true }),
+            routeToArr: jest.fn().mockResolvedValue({ attempted: true, routed: true, arrType: 'radarr', reason: 'routed', error: null }),
         };
         ragGraphExtractor = {
             extract: jest.fn().mockReturnValue({
@@ -75,7 +76,7 @@ describe('QueueAdminService', () => {
         });
     });
 
-    it('routes first, then writes history and completes the task without learning directly', async () => {
+    it('saves the selection, then records verified routing without learning directly', async () => {
         client.query
             .mockResolvedValueOnce({
                 rows: [{
@@ -103,7 +104,8 @@ describe('QueueAdminService', () => {
             classificationId: 6606,
             libraryId: 7,
             libraryName: 'Family',
-            message: 'Classified "Hoppers" to Family',
+            message: 'Selection saved and routing confirmed.',
+            routing: { attempted: true, routed: true, arrType: 'radarr', reason: 'routed', error: null, recorded: true },
         });
         expect(classificationService.routeToArr).toHaveBeenCalledWith(
             expect.objectContaining({ title: 'Hoppers', tmdb_id: 1327819 }),
@@ -112,7 +114,7 @@ describe('QueueAdminService', () => {
         expect(evidenceService.rememberExactMatch).not.toHaveBeenCalled();
     });
 
-    it('does not write history or task state when routing fails', async () => {
+    it('preserves the saved selection and records an unconfirmed provider failure', async () => {
         classificationService.routeToArr.mockRejectedValueOnce(new Error('routing failed'));
         client.query
             .mockResolvedValueOnce({
@@ -125,12 +127,17 @@ describe('QueueAdminService', () => {
             })
             .mockResolvedValueOnce({
                 rows: [{ id: 7, name: 'Family', media_type: 'movie' }],
-            });
+            })
+            .mockResolvedValueOnce({ rows: [{ id: 6606 }] })
+            .mockResolvedValueOnce({ rowCount: 1 });
 
-        await expect(adminService.manualClassifyTask(12, 7, 'admin')).rejects.toThrow('routing failed');
-        expect(client.query).not.toHaveBeenCalledWith(
+        const result = await adminService.manualClassifyTask(12, 7, 'admin');
+        expect(result).toMatchObject({ success: true, routing: { routed: false, recorded: true, reason: 'unexpected_error' } });
+        expect(JSON.stringify(result)).not.toContain('routing failed');
+        expect(client.query).toHaveBeenCalledWith(
             expect.stringContaining('INSERT INTO classification_history'),
             expect.anything()
         );
+        expect(db.query).toHaveBeenCalledTimes(1);
     });
 });

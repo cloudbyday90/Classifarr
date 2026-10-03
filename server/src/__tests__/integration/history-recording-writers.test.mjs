@@ -29,6 +29,7 @@ afterEach(async () => {
     await getPool().query("DELETE FROM classification_history WHERE title='PRIVATE recording writer'");
     await getPool().query("DELETE FROM task_queue WHERE payload->>'recording_writer_fixture'='true'");
     await getPool().query('DELETE FROM libraries WHERE id=$1', [libraryId]);
+    await getPool().query("DELETE FROM libraries WHERE external_id='recording-writer-replacement'");
 });
 
 async function expectRecorded(id, earliest) {
@@ -68,17 +69,96 @@ test('source-library history SQL receives the same default and ignores metadata 
     await expectOriginalType('imported_membership_events');
 });
 
-test('manual queue history is stamped after routing finishes inside the transaction', async () => {
+test('manual queue selection is committed and unlocked before provider I/O', async () => {
     const taskId = (await getPool().query(`INSERT INTO task_queue(task_type,status,payload)
         VALUES('classification','pending',$1) RETURNING id`, [JSON.stringify({ media: metadata(), recording_writer_fixture: true })])).rows[0].id;
-    let routeFinished;
-    const routeToArr = jest.fn(async () => { routeFinished = await start(); });
+    const earliest = await start();
+    const routeToArr = jest.fn(async () => {
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            const task = await client.query('SELECT status FROM task_queue WHERE id=$1 FOR UPDATE NOWAIT', [taskId]);
+            expect(task.rows[0].status).toBe('completed');
+            const history = await client.query("SELECT metadata FROM classification_history WHERE title='PRIVATE recording writer'");
+            expect(history.rows[0].metadata.classification_details.routing).toBe('manual_routing_pending');
+        } finally { await client.query('ROLLBACK'); client.release(); }
+        return { attempted: true, routed: true, arrType: 'radarr', reason: 'routed', error: null };
+    });
     const service = new QueueAdminService({ db, logger: { info: jest.fn() },
         classificationService: { routeToArr }, ragGraphExtractor: { extract: () => graph } });
     const result = await service.manualClassifyTask(taskId, libraryId);
     expect(result.success).toBe(true);
     expect(routeToArr).toHaveBeenCalledTimes(1);
-    await expectRecorded(result.classificationId, routeFinished);
+    await expectRecorded(result.classificationId, earliest);
+    expect(result.routing).toMatchObject({ routed: true, recorded: true });
     await expectOriginalType('manual_action_events');
     expect((await getPool().query('SELECT status FROM task_queue WHERE id=$1', [taskId])).rows[0].status).toBe('completed');
+});
+
+async function manualFixture(routeToArr, database = db) {
+    const taskId = (await getPool().query(`INSERT INTO task_queue(task_type,status,payload)
+        VALUES('classification','pending',$1) RETURNING id`, [JSON.stringify({ media: metadata(), recording_writer_fixture: true })])).rows[0].id;
+    const service = new QueueAdminService({ db: database, classificationService: { routeToArr }, ragGraphExtractor: { extract: () => graph } });
+    return { taskId, service };
+}
+
+test('concurrent duplicate sees committed completion and cannot send another provider call', async () => {
+    let release, entered;
+    const holding = new Promise(resolve => { release = resolve; });
+    const started = new Promise(resolve => { entered = resolve; });
+    const route = jest.fn(async () => { entered(); await holding; return { attempted: true, routed: false, reason: 'arr_add_failed' }; });
+    const { service, taskId } = await manualFixture(route);
+    const first = service.manualClassifyTask(taskId, libraryId);
+    try {
+        await started;
+        const other = await service.manualClassifyTask(taskId, libraryId);
+        expect(other).toMatchObject({ success: false, code: 'invalid_state', currentStatus: 'completed' });
+        expect(route).toHaveBeenCalledTimes(1);
+    } finally { release(); await first; }
+    expect((await getPool().query("SELECT count(*)::integer AS count FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0].count).toBe(1);
+});
+
+test('selection transaction rollback prevents external effects', async () => {
+    const route = jest.fn();
+    const database = { ...db, withTransaction: fn => db.withTransaction(async client => { await fn(client); throw new Error('rollback fixture'); }) };
+    const { service, taskId } = await manualFixture(route, database);
+    await expect(service.manualClassifyTask(taskId, libraryId)).rejects.toThrow('rollback fixture');
+    expect(route).not.toHaveBeenCalled();
+    expect((await getPool().query('SELECT status FROM task_queue WHERE id=$1', [taskId])).rows[0].status).toBe('pending');
+    expect((await getPool().query("SELECT count(*)::integer AS count FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0].count).toBe(0);
+});
+
+test.each(['status', 'token', 'library'])('late outcome cannot overwrite changed %s', async change => {
+    const route = jest.fn(async () => {
+        if (change === 'library') {
+            const replacement = (await getPool().query(`INSERT INTO libraries(name,external_id,media_type)
+                VALUES('Replacement','recording-writer-replacement','movie') RETURNING id`)).rows[0].id;
+            await getPool().query("UPDATE classification_history SET library_id=$1 WHERE title='PRIVATE recording writer'", [replacement]);
+        } else {
+            const updates = {
+                status: "status='failed'",
+                token: "metadata=jsonb_set(metadata,'{classification_details,manual_routing_attempt_id}','\"replacement\"')",
+            };
+            await getPool().query(`UPDATE classification_history SET ${updates[change]} WHERE title='PRIVATE recording writer'`);
+        }
+        return { attempted: true, routed: true, arrType: 'radarr', reason: 'routed' };
+    });
+    const { service, taskId } = await manualFixture(route);
+    expect((await service.manualClassifyTask(taskId, libraryId)).routing).toMatchObject({ routed: false, recorded: false });
+    const row = (await getPool().query("SELECT status,metadata FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0];
+    expect(row.status).not.toBe('routed');
+    expect(row.metadata.classification_details.routing).toBe('manual_routing_pending');
+});
+
+test('failed final persistence retains committed unconfirmed history and never requeues', async () => {
+    const route = jest.fn().mockResolvedValue({ attempted: true, routed: true, arrType: 'radarr', reason: 'routed' });
+    const database = { ...db, query: async () => { throw new Error('private persistence error'); } };
+    const { service, taskId } = await manualFixture(route, database);
+    const result = await service.manualClassifyTask(taskId, libraryId);
+    expect(result.routing).toMatchObject({ routed: false, recorded: false });
+    expect(JSON.stringify(result)).not.toContain('private');
+    expect((await getPool().query('SELECT metadata FROM classification_history WHERE id=$1', [result.classificationId])).rows[0]
+        .metadata.classification_details.routing).toBe('manual_routing_pending');
+    expect((await getPool().query('SELECT status FROM task_queue WHERE id=$1', [taskId])).rows[0].status).toBe('completed');
+    expect(route).toHaveBeenCalledTimes(1);
 });

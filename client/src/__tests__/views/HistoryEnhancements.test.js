@@ -323,6 +323,17 @@ describe('History enhancements behavior', () => {
     })
   })
 
+  it('labels a saved manual selection as routing unconfirmed', async () => {
+    apiMock.getHistory.mockResolvedValueOnce({ data: [{ ...baseHistoryRows[1], metadata: {
+      classification_details: { routing: 'manual_routing_pending' },
+    } }], pagination: { page: 1, limit: 50, total: 1, totalPages: 1 } })
+    const wrapper = await mountHistory()
+    await wrapper.find('tbody tr td:nth-child(2)').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Routing unconfirmed — check Radarr/Sonarr')
+    wrapper.unmount()
+  })
+
   it('applies stacked filters in history request params', async () => {
     const wrapper = await mountHistory()
 

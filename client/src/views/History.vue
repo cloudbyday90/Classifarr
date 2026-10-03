@@ -1482,6 +1482,7 @@ const outcomeRoutingLabel = computed(() => {
 })
 
 const routingDisplayNames = {
+  'manual_routing_pending': 'Routing unconfirmed — check Radarr/Sonarr',
   'routed': 'Completed',
   'no_library': 'No Library Configured',
   'not_final': 'Awaiting Decision',

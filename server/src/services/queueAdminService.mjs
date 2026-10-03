@@ -7,12 +7,12 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-
 import * as defaultDb from '../config/database.mjs';
 import { classificationService as defaultClassificationService } from './classification.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
-import { buildNonClassifierHistoryMetadata } from './nonClassifierHistoryMetadata.mjs';
+import { saveManualClassification } from './queueManualClassificationRecord.mjs';
+import { normalizeManualRoutingOutcome, recordManualRoutingOutcome, MANUAL_ROUTING_MESSAGE } from './queueManualRoutingOutcome.mjs';
 
 export class QueueAdminService {
     constructor(deps = {}) {
@@ -23,104 +23,39 @@ export class QueueAdminService {
     }
 
     async manualClassifyTask(taskId, libraryId, resolvedBy = 'admin') {
-        return this.db.withTransaction(async (client) => {
-            const taskResult = await client.query(
-                'SELECT * FROM task_queue WHERE id = $1 FOR UPDATE',
-                [taskId]
-            );
+        const selection = await this.db.withTransaction(client => saveManualClassification(client, {
+            taskId, libraryId, resolvedBy, parsePayload: value => this.parsePayload(value),
+            extract: value => this.ragGraphExtractor.extract(value),
+        }));
+        if (!selection.success) return selection;
 
-            if (taskResult.rows.length === 0) {
-                return { success: false, code: 'task_not_found' };
-            }
+        let observed;
+        try {
+            observed = await this.classificationService.routeToArr(selection.metadata, selection.library);
+        } catch {
+            observed = { attempted: true };
+        }
+        let routing = normalizeManualRoutingOutcome(observed);
+        let recorded = false;
+        try {
+            recorded = await recordManualRoutingOutcome(this.db, selection, routing);
+        } catch {
+            // The committed unconfirmed marker survives. Never replay the provider write.
+        }
+        if (!recorded) {
+            routing = normalizeManualRoutingOutcome({ attempted: routing.attempted, arrType: routing.arrType });
+        }
 
-            const task = taskResult.rows[0];
-            if (task.task_type !== 'classification') {
-                return {
-                    success: false,
-                    code: 'invalid_task_type',
-                    taskType: task.task_type,
-                };
-            }
-
-            if (task.status !== 'pending') {
-                return {
-                    success: false,
-                    code: 'invalid_state',
-                    currentStatus: task.status,
-                };
-            }
-
-            const libraryResult = await client.query(
-                'SELECT * FROM libraries WHERE id = $1',
-                [libraryId]
-            );
-
-            if (libraryResult.rows.length === 0) {
-                return { success: false, code: 'library_not_found' };
-            }
-
-            const library = libraryResult.rows[0];
-            const payload = this.parsePayload(task.payload);
-            const metadata = payload.media || payload.metadata || payload;
-            const title = metadata.title || payload.title || 'Unknown';
-            const year = metadata.year || payload.year || null;
-            const tmdbId = metadata.tmdb_id || payload.tmdb_id || null;
-            const mediaType = metadata.media_type || library.media_type || 'movie';
-            const graphRel = this.ragGraphExtractor.extract(metadata);
-
-            await this.classificationService.routeToArr(metadata, library);
-
-            const insertResult = await client.query(
-                `INSERT INTO classification_history
-                 (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, director_name, primary_studio_name, genre_names, cast_ids, cast_names)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-                 RETURNING id`,
-                [
-                    tmdbId,
-                    mediaType,
-                    title,
-                    year,
-                    libraryId,
-                    library.name,
-                    100,
-                    'manual_classification',
-                    `Manually classified by ${resolvedBy}`,
-                    JSON.stringify(buildNonClassifierHistoryMetadata(metadata, 'manual_classification')),
-                    'completed',
-                    graphRel.director_name,
-                    graphRel.primary_studio_name,
-                    graphRel.genre_names,
-                    graphRel.cast_ids,
-                    graphRel.cast_names,
-                ]
-            );
-
-            await client.query(
-                `UPDATE task_queue
-                 SET status = 'completed', completed_at = NOW()
-                 WHERE id = $1`,
-                [taskId]
-            );
-
-            const classificationId = insertResult.rows[0].id;
-            this.logger.info('Manually classified task', {
-                taskId,
-                classificationId,
-                libraryId,
-                title,
-            });
-
-            return {
-                success: true,
-                classificationId,
-                libraryId,
-                libraryName: library.name,
-                message: `Classified "${title}" to ${library.name}`,
-            };
+        this.logger?.[routing.routed ? 'info' : 'warn']?.('Manual classification routing outcome', {
+            taskId, classificationId: selection.classificationId, libraryId,
+            routed: routing.routed, reason: routing.reason, recorded,
         });
+        return {
+            success: true, classificationId: selection.classificationId, libraryId, libraryName: selection.library.name,
+            routing: { ...routing, recorded },
+            message: routing.routed ? 'Selection saved and routing confirmed.' : MANUAL_ROUTING_MESSAGE,
+        };
     }
 
-    parsePayload(payload) {
-        return sharedParsePayload(payload);
-    }
+    parsePayload(payload) { return sharedParsePayload(payload); }
 }

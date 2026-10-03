@@ -36,9 +36,16 @@ import {
   retryQueueTask,
   dismissQueueTask,
   cancelQueueTask,
+  classifyQueueTask,
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('preserves the separate selection/routing result and never automatically retries the write', async () => {
+    const response = { data: { success: true, classificationId: 6, routing: { routed: false, recorded: true } } }
+    mockPost.mockResolvedValueOnce(response)
+    expect(await classifyQueueTask(3, { library_id: 4 })).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/queue/tasks/3/classify', { library_id: 4 }, { skipAutomaticRetry: true })
+  })
   it('reads OMDb readiness through a fixed route without rapid transport retries', async () => {
     mockGetDataRequest.mockResolvedValueOnce({ scope: 'omdb' })
     expect(await getOmdbRetryReadiness()).toEqual({ scope: 'omdb' })

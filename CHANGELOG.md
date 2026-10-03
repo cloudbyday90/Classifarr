@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Save manual queue selections before provider I/O, record routing outcomes
+  separately, and prevent late results from overwriting a changed decision.
+  Keep interrupted routing visibly unconfirmed without automatically replaying it.
 - Verify Radarr/Sonarr media identity and destination before reporting routing
   success. Reconcile ambiguous add responses with bounded reads, refuse adds
   after failed lookups, and stop accepting unrelated Sonarr search results.

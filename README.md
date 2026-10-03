@@ -1217,6 +1217,10 @@ Unconfirmed Radarr/Sonarr routing:
   and destination without automatically repeating an add or moving existing files.
 - Use a direct API URL, not a redirect. See the
   [reconciliation guide and results](docs/architecture/arr-add-reconciliation-outcome.md).
+- Manual queue classification saves the selection before contacting the provider.
+  `success` means selection saved; check `routing.routed` and `routing.recorded`
+  for confirmation. Interrupted work stays unconfirmed in History. See the
+  [manual routing contract](docs/architecture/manual-queue-routing-design.md).
 
 OMDb timeout warnings:
 

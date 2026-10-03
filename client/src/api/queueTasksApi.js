@@ -47,7 +47,8 @@ export function cancelQueueTask(taskId) {
 }
 
 export function classifyQueueTask(taskId, data) {
-  return apiClient.post(`/queue/tasks/${taskId}/classify`, data)
+  // success means selection saved; inspect data.routing.routed and .recorded.
+  return apiClient.post(`/queue/tasks/${taskId}/classify`, data, { skipAutomaticRetry: true })
 }
 
 const queueTasksApi = {

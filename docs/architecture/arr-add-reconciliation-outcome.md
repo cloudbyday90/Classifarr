@@ -96,3 +96,7 @@ Preserve the original provider, identity and destination intent, recheck current
 authorization/configuration, and reconcile with bounded reads before considering
 another write. Prefer existing records over a new outbox unless they cannot
 represent this lifecycle. Do not expand classification retries blindly.
+
+Follow-up implemented: [manual queue routing outcomes](manual-queue-routing-outcome.md)
+preserve selection/routing separately and remove provider calls from the manual
+classification transaction. Restart recovery remains separate work.

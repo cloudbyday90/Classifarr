@@ -47,6 +47,10 @@ function sendMutationResult(res, result, successStatus = 200) {
     throw new ConflictError('Task type does not support manual classification', { code: result.code, taskType: result.taskType || null });
   }
 
+  if (result?.code === 'invalid_media_type') {
+    throw new ValidationError('Choose an active library with the matching movie or TV type', { code: result.code });
+  }
+
   return sendError(res, 'Queue action failed', 500, { code: result?.code || 'queue_action_failed' });
 }
 

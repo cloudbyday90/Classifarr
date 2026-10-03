@@ -458,6 +458,20 @@ describe('Queue routes coverage', () => {
       expect(res.body.taskType).toBe('metadata_enrichment');
     });
 
+    test('rejects a library/media type mismatch', async () => {
+      queueService.manualClassifyTask.mockResolvedValueOnce({ success: false, code: 'invalid_media_type' });
+      const response = await request(app).post('/api/queue/tasks/3/classify').send({ library_id: 4 }).expect(400);
+      expect(response.body.code).toBe('invalid_media_type');
+    });
+
+    test('reports saved selection separately from unconfirmed routing', async () => {
+      const result = { success: true, classificationId: 6606,
+        routing: { attempted: true, routed: false, recorded: false, reason: 'unexpected_error' } };
+      queueService.manualClassifyTask.mockResolvedValueOnce(result);
+      const response = await request(app).post('/api/queue/tasks/3/classify').send({ library_id: 4 }).expect(200);
+      expect(response.body).toMatchObject(result);
+    });
+
     test('manually classifies task through queue service', async () => {
       queueService.manualClassifyTask.mockResolvedValueOnce({
         success: true,
