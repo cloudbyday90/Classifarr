@@ -89,8 +89,13 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     while (now() < deadline) { if (check()) return; await sleep(500); }
     throw new Error(`upgrade_timeout:${label}`);
   };
+  let requestedRuntime = { requestedImage: null, mode: null };
+  const recordStart = mode => {
+    requestedRuntime = { requestedImage: env.CLASSIFARR_UPGRADE_IMAGE === upgradeBaseline.image ? 'published_baseline' : 'candidate', mode };
+  };
   const start = mode => {
     env.CLASSIFARR_UPGRADE_MODE = mode;
+    recordStart(mode);
     compose(['up', '--no-build', '--detach', '--force-recreate', '--wait', '--wait-timeout', '180', 'app'], 240_000);
   };
   const checks = [];
@@ -106,7 +111,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     if (docker(args).stdout.trim()) throw new Error('upgrade_project_not_empty');
   }
   compose(['config', '--quiet']);
-  let failure, result, stage = 'build';
+  let failure, result, stage = 'build', verifiedCandidateId = null;
   try {
     if (candidateImageId === null) {
       report('BUILD candidate');
@@ -115,6 +120,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     const candidateId = docker(['image', 'inspect', '--format', '{{.Id}}', candidateImageId ?? candidateImage]).stdout.trim();
     if (!/^sha256:[a-f0-9]{64}$/.test(candidateId)) throw new Error('invalid_candidate_image_id');
     if (candidateImageId !== null && candidateId !== candidateImageId) throw new Error('upgrade_candidate_mismatch');
+    verifiedCandidateId = candidateId;
     stage = 'fresh_install';
     env.CLASSIFARR_UPGRADE_IMAGE = candidateImageId ?? candidateImage;
     start('normal');
@@ -164,6 +170,7 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
       passed('container_killed_during_restore');
       stage = 'normal_rejection';
       env.CLASSIFARR_UPGRADE_MODE = 'normal';
+      recordStart('normal');
       compose(['up', '--no-build', '--detach', '--force-recreate', 'app']);
       const id = compose(['ps', '--all', '--quiet', 'app']).stdout.trim();
       if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('invalid_drill_container');
@@ -204,13 +211,17 @@ export async function runPublishedUpgradeCompose({ run = spawnSync, random = ran
     if (/^upgrade_crash_(window_expired|window_invalid|clock_invalid|timeline_invalid)$/.test(error.message)) {
       reportDiagnostic(`UPGRADE_FAILURE_REASON ${error.message}`);
     } else if (/^(upgrade_|missing_or_duplicate_upgrade_receipt)/.test(error.message)) report(error.message);
+    let diagnostic = 'Container startup diagnostic unavailable. Inspect the owned disposable runner; raw output omitted.';
     try {
       const command = (args, options) => runDockerCheckCommand(args, { ...options, run, env });
       const container = command([...base, 'ps', '--all', '--quiet', 'app']);
       const id = container.stdout.trim();
       if (!container.ok || !/^[a-f0-9]{12,64}$/.test(id)) throw new Error('diagnostic_target_unavailable');
-      const diagnostic = formatContainerStartupDiagnostic(collectContainerStartupDiagnostic(id, { command }));
-      saveDiagnostic(project, `${stage}\n${commandDiagnostics.join('\n')}\n${diagnostic}\n`);
+      diagnostic = formatContainerStartupDiagnostic(collectContainerStartupDiagnostic(id, { command }));
+    } catch { /* Keep phase, image and command evidence even if the container no longer exists. */ }
+    try {
+      const context = { candidateImageId: verifiedCandidateId, ...requestedRuntime, deploymentProfile, resourceBudget };
+      saveDiagnostic(project, `${stage}\nUPGRADE_CONTEXT ${JSON.stringify(context)}\n${commandDiagnostics.join('\n')}\n${diagnostic}\n`);
       report(diagnostic);
       report(`UPGRADE_DIAGNOSTIC .tmp/published-upgrade/${project}/failure.log`);
     } catch { report('UPGRADE_DIAGNOSTIC unavailable'); }

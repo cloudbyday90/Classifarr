@@ -119,8 +119,11 @@ test('accepts expected restore rejection written only to stderr', async () => {
   expect((await runWith(run)).checks).toContain('unverified_normal_startup_rejected');
 });
 
-test.each(['missing_marker', 'wrong_exit'])('rejects %s instead of accepting any crashed container', async mode => {
+test.each(['missing_marker', 'wrong_exit', 'lifecycle_only'])('rejects %s instead of accepting any crashed container', async mode => {
   const run = mockRunner((_cmd, args) => {
+    if (mode === 'lifecycle_only' && args[0] === 'compose' && composeOperation(args)[0] === 'logs') {
+      return { status: 0, stdout: JSON.stringify({ component: 'EmbeddedSupervisor', status: 'stopping', reason: 'application_exit' }) };
+    }
     if (mode === 'missing_marker' && args[0] === 'compose' && composeOperation(args)[0] === 'logs') {
       return { status: 0, stdout: '', stderr: 'unrelated startup failure' };
     }
@@ -264,9 +267,36 @@ test('failure diagnostics include safe stderr evidence before cleanup without re
   const reportDiagnostic = jest.fn();
   await expect(runWith(run, { saveDiagnostic, report: reportDiagnostic })).rejects.toThrow('published_upgrade_failed:fresh_install');
   expect(saveDiagnostic.mock.calls[0][1]).toContain('restore_verification_incomplete (stderr)');
+  expect(saveDiagnostic.mock.calls[0][1]).toContain(`"candidateImageId":"sha256:${'a'.repeat(64)}"`);
+  expect(saveDiagnostic.mock.calls[0][1]).toContain('"requestedImage":"candidate","mode":"normal"');
   expect(JSON.stringify(saveDiagnostic.mock.calls) + JSON.stringify(reportDiagnostic.mock.calls)).not.toMatch(/secret|::error::/);
   expect(run.mock.calls.findIndex(([, args]) => args[0] === 'logs'))
     .toBeLessThan(run.mock.calls.findIndex(([, args]) => args.includes('down')));
+});
+
+test('container lookup failure still saves bounded image and command evidence before cleanup', async () => {
+  const saveDiagnostic = jest.fn();
+  const run = mockRunner((_cmd, args) => {
+    if (args[7] === 'up') return { status: 1, stdout: 'private' };
+    if (args[7] === 'ps') return { status: 1, stdout: 'private-container' };
+  });
+  await expect(runWith(run, { saveDiagnostic })).rejects.toThrow('published_upgrade_failed:fresh_install');
+  expect(saveDiagnostic).toHaveBeenCalledTimes(1);
+  expect(saveDiagnostic.mock.calls[0][1]).toContain(`"candidateImageId":"sha256:${'a'.repeat(64)}"`);
+  expect(saveDiagnostic.mock.calls[0][1]).toContain('Container startup diagnostic unavailable');
+  expect(saveDiagnostic.mock.calls[0][1]).not.toContain('private');
+  expect(operations(run).at(-1)).toContain('down');
+});
+
+test('unvalidated image IDs stay unknown and a diagnostic write failure cannot prevent cleanup', async () => {
+  const saveDiagnostic = jest.fn(() => { throw new Error('private-path'); });
+  const run = mockRunner((_cmd, args) => args[0] === 'image' && args[1] === 'inspect'
+    ? { status: 0, stdout: 'private-invalid-image' } : undefined);
+  const messages = jest.fn();
+  await expect(runWith(run, { saveDiagnostic, report: messages })).rejects.toThrow('published_upgrade_failed:build');
+  expect(saveDiagnostic.mock.calls[0][1]).toContain('"candidateImageId":null');
+  expect(JSON.stringify(messages.mock.calls)).not.toContain('private');
+  expect(operations(run).at(-1)).toContain('down');
 });
 test('does not call arbitrary normal startup failure a recovery success', async () => {
   const run = mockRunner((_cmd, args) => args[7] === 'logs' ? { status: 0, stdout: 'unrelated crash' } : undefined);

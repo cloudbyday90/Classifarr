@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve sanitized installation-failure diagnostics in CI, including startup
+  stages and tested image identity. Keep failed-run identity and retain evidence
+  when a test container is unavailable, without relaxing restore safety checks.
 - Refresh shared lint tooling and align Node typings with the deployed Node 24
   runtime. Add hidden-character checks and regression coverage for lint rules,
   runtime/type alignment and unchanged HTTP query encoding.

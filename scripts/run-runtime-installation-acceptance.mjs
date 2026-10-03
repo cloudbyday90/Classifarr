@@ -24,12 +24,14 @@ export async function runRuntimeInstallationAcceptance({ ci = false, resourceBud
   workflow = ci ? { runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT } : null,
   source = readInstallationSource, drill = runInstallationWithRouting, save = saveReceipt } = {}) {
   let identity = {}, receipt;
+  let verifiedWorkflow = null;
   let stage = 'preflight';
   try {
     identity = source();
     if (ci && (!identity.worktreeClean || identity.sourceRevision !== expectedRevision)) throw new Error('ci_source_mismatch');
     if (ci && (typeof workflow?.runId !== 'string' || typeof workflow?.runAttempt !== 'string' ||
       !/^[1-9][0-9]{0,19}$/.test(workflow.runId) || !/^[1-9][0-9]{0,9}$/.test(workflow.runAttempt))) throw new Error('ci_run_invalid');
+    if (ci) verifiedWorkflow = { runId: workflow.runId, runAttempt: workflow.runAttempt };
     const result = await drill({ resourceBudget, sourceRevision: identity.sourceRevision });
     stage = 'evidence';
     const after = source();
@@ -37,7 +39,7 @@ export async function runRuntimeInstallationAcceptance({ ci = false, resourceBud
     identity.worktreeClean = identity.worktreeClean && after.worktreeClean;
     receipt = createRuntimeInstallationReceipt({ ...identity, workflow, resourceBudget, result });
   } catch (error) {
-    receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget,
+    receipt = createRuntimeInstallationReceipt({ ...identity, resourceBudget, workflow: verifiedWorkflow,
       failureStage: stage === 'evidence' ? stage : installationFailureStage(error),
       provenanceFailure: stage === 'preflight' ? readProvenanceFailure(error) : null });
   }

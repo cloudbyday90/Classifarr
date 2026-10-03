@@ -120,6 +120,17 @@ test('provider and command errors are not copied into receipts', async () => {
     drill: async () => { throw new Error('url?api_key=secret'); }, save: () => {} });
   expect(JSON.stringify(receipt)).not.toContain('secret');
 });
+
+test('blocked CI receipt retains verified run identity but never arbitrary workflow input', async () => {
+  for (const supplied of [workflow, { runId: 'private-secret', runAttempt: '1' }]) {
+    const receipt = await runRuntimeInstallationAcceptance({ ci: true, workflow: supplied,
+      expectedRevision: revision, source: () => identity,
+      drill: async () => { throw new Error('published_upgrade_failed:normal_rejection'); }, save: () => {} });
+    expect(receipt.status).toBe('blocked');
+    expect(receipt.workflow).toEqual(supplied === workflow ? workflow : null);
+    expect(JSON.stringify(receipt)).not.toContain('private-secret');
+  }
+});
 test('reads only source revision and worktree status with bounded shell-free commands', () => {
   const run = jest.fn((_binary, args) => ({ status: 0, stdout: args[0] === 'rev-parse' ? revision : '' }));
   expect(readInstallationSource(run)).toEqual(identity);

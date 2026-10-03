@@ -88,11 +88,28 @@ test('unknown or missing logs cannot manufacture a cause', () => {
   expect(text).not.toContain('secret');
 });
 
+test('shows fixed database and supervisor phases from both streams, even with partial logs', () => {
+  const diagnostic = collectContainerStartupDiagnostic('fixture', { command: fixture({ logs: {
+    ok: false, timedOut: true,
+    stdout: JSON.stringify({ component: 'EmbeddedDatabaseStartup', status: 'failed',
+      reason: 'database_startup_process_exited', detail: 'private-cause' }),
+    stderr: JSON.stringify({ component: 'EmbeddedSupervisor', status: 'startup_failed', reason: 'database_operation_timeout' }),
+  } }) });
+  const text = formatContainerStartupDiagnostic(diagnostic);
+  expect(text).toContain('EmbeddedDatabaseStartup:failed/database_startup_process_exited (stdout)');
+  expect(text).toContain('EmbeddedSupervisor:startup_failed/database_operation_timeout (stderr)');
+  expect(text).toContain('per stream only');
+  expect(text).toContain('unavailable or partial');
+  expect(text).not.toContain('private-cause');
+});
+
 test.each([
   ['Normal runtime admission requires POSTGRES_POOL_MAX of at least 2.', 'database_pool_too_small'],
   ['Runtime database ownership lost; stopping all work.', 'runtime_ownership_lost'],
   ['ERR_MODULE_NOT_FOUND private-path', 'module_not_found'],
   ['Failed to start server: private-cause', 'application_start_failed'],
+  ['PostgreSQL startup did not complete. private-cause', 'database_startup_failed'],
+  ['Embedded supervisor refused startup; private-cause', 'supervisor_startup_refused'],
 ])('projects the startup marker %s without arbitrary error detail', (stderr, code) => {
   const text = formatContainerStartupDiagnostic(collectContainerStartupDiagnostic('fixture', {
     command: fixture({ logs: { stderr } }),

@@ -93,6 +93,9 @@ its cause. The database job passed. None of those results validates this new pat
 
 ## Recommendation stack
 
+The interrupted-restore follow-up is recorded in the
+[diagnostics investigation](architecture/restore-ci-diagnostics-outcome.md).
+
 1. Inspect the new commit's CI and reproduce the interrupted-restore startup
    failure with the exact image in a disposable environment. Diagnose before
    changing health deadlines or recovery assertions; keep release gates blocking.

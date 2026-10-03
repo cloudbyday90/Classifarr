@@ -18,8 +18,8 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   assert.deepEqual(job.outputs, { 'candidate-image-id': expression('steps.acceptance.outputs.candidate-image-id || steps.budget.outputs.candidate-image-id') });
   assert.deepEqual(job.permissions, { contents: 'read', attestations: 'read' });
   for (const key of ['continue-on-error', 'environment', 'secrets', 'container', 'services', 'env', 'needs']) assert.equal(job[key], undefined);
-  assert.equal(job.steps.length, 5);
-  const [checkout, node, run, budget, upload] = job.steps;
+  assert.equal(job.steps.length, 6);
+  const [checkout, node, run, budget, upload, diagnostic] = job.steps;
   assert.equal(checkout.uses, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1');
   assert.deepEqual(checkout.with, { 'persist-credentials': false, 'fetch-depth': 0 });
   assert.equal(node.uses, 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020');
@@ -40,6 +40,13 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   assert.deepEqual(upload.with, { name: 'runtime-installation-acceptance',
     path: '.tmp/ci/runtime-installation-acceptance.json\n.tmp/ci/runtime-installation-acceptance.md\n',
     'include-hidden-files': true, 'if-no-files-found': 'error', 'retention-days': 90 });
+  // A separate artifact preserves the receipt download layout and never feeds the gate.
+  assert.equal(diagnostic.if, 'failure()');
+  assert.equal(diagnostic.run, undefined);
+  assert.equal(diagnostic.uses, 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
+  assert.deepEqual(diagnostic.with, { name: 'runtime-installation-failure-diagnostics',
+    path: '.tmp/published-upgrade/classifarr-upgrade-drill-*/failure.log',
+    'include-hidden-files': true, 'if-no-files-found': 'ignore', 'retention-days': 14 });
   assert.ok(!workflow.on.pull_request_target && !workflow.on.workflow_run);
   const acceptance = jobs['release-acceptance'];
   assert.equal(acceptance.steps.length, 5);
