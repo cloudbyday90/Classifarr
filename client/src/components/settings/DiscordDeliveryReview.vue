@@ -13,7 +13,7 @@
           Discord deliveries
         </h3>
         <p class="text-sm text-gray-300">
-          Check saved delivery results. Nothing is resent.
+          Check saved delivery results. Viewing records never sends a message.
         </p>
       </div>
       <Button
@@ -81,7 +81,7 @@
               >{{ presentation(item.state).label }}</span>
             </div>
             <p class="text-sm text-gray-300 mt-1">
-              {{ presentation(item.state).next }}
+              {{ nextStep(item) }}
             </p>
             <details class="mt-2 text-sm text-gray-300">
               <summary class="cursor-pointer w-fit">
@@ -185,6 +185,12 @@ const statuses = [
 ]
 function presentation(state) {
   return state === 'delivered' ? statuses[0] : state === 'rejected' ? statuses[2] : state === 'deferred' ? statuses[3] : statuses[1]
+}
+function nextStep(item) {
+  if (item.state === 'deferred' && item.retryQueued === true) {
+    return 'Retry queued after cooldown. Current settings will be checked before sending.'
+  }
+  return presentation(item.state).next
 }
 function confirmRecord(item, messageId) {
   item.state = 'delivered'

@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retry new Discord notifications after confirmed throttling using a bounded,
+  short-lived durable buffer. Respect saved intent, cooldowns and attempt limits;
+  never replay uncertain or legacy receipts. No deployment-template changes.
 - Share Discord cooldown admission across bot lookups, edits, alerts and receipt
   verification. Honor exhausted limits on successful responses, preserve delivery
   proof if saving a cooldown fails, and bound SDK queue waits and cancellation.

@@ -57,7 +57,7 @@ describe('settingsNotificationsApi', () => {
   })
 
   it('loads delivery records once, with bounded time and optional pagination/cancellation', async () => {
-    const result = { items: [], nextBefore: null }
+    const result = { items: [{ classificationId: '91', state: 'deferred', retryQueued: true }], nextBefore: null }
     mockGetDataRequest.mockResolvedValue(result)
     expect(await getDiscordDeliveries()).toBe(result)
     expect(mockGetDataRequest).toHaveBeenLastCalledWith('/settings/discord/deliveries', {

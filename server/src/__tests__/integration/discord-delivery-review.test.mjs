@@ -37,7 +37,7 @@ test('pages all states without duplicates, truncates titles and never mutates re
   expect(new Set(items.map(item => item.state)).size).toBe(4);
   expect(items.every(item => item.title.length === 240)).toBe(true);
   expect(items.map(item => Number(item.classificationId))).toEqual(history.rows.map(row => Number(row.id)).reverse());
-  expect(Object.keys(items[0]).sort()).toEqual(['canVerify', 'channelId', 'classificationId', 'createdAt', 'kind', 'messageId', 'state', 'title', 'updatedAt']);
+  expect(Object.keys(items[0]).sort()).toEqual(['canVerify', 'channelId', 'classificationId', 'createdAt', 'kind', 'messageId', 'retryQueued', 'state', 'title', 'updatedAt']);
   expect((await getPool().query('SELECT * FROM discord_notification_deliveries ORDER BY classification_id')).rows).toEqual(original.rows);
   expect((await getPool().query('SELECT * FROM classification_history ORDER BY id')).rows).toEqual(history.rows);
 });

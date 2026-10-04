@@ -79,6 +79,7 @@ import { registerReclassificationBatchSchedule } from './reclassificationBatchSc
 import { registerAutomaticDestinationEvaluationSchedule } from './automaticDestinationEvaluationScheduler.mjs';
 import { registerAutomaticSourcePairSchedule } from './automaticSourcePairScheduler.mjs';
 import { registerOllamaReadinessBackfillSchedule } from './ollamaReadinessBackfillScheduler.mjs';
+import { registerDiscordDeliveryDispatchSchedule } from './discordDeliveryDispatchScheduler.mjs';
 import { registerManualRoutingCheckSchedule } from './manualRoutingCheckScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
@@ -100,6 +101,7 @@ class SchedulerService {
     resetState() {
         this.manualRoutingCheckWorker?.stop();
         this.ollamaReadinessBackfillWorker?.stop();
+        this.discordDeliveryDispatchWorker?.stop();
         this.automaticDestinationEvaluationWorker?.stop();
         this.automaticSourcePairWorker?.stop();
         this.inventoryDescriptionRefreshWorker?.stop();
@@ -137,6 +139,7 @@ class SchedulerService {
         registerAutomaticDestinationEvaluationSchedule(this);
         registerAutomaticSourcePairSchedule(this);
         registerOllamaReadinessBackfillSchedule(this);
+        registerDiscordDeliveryDispatchSchedule(this);
         registerManualRoutingCheckSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);

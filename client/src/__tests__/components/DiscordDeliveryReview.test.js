@@ -19,6 +19,15 @@ beforeEach(() => {
 afterEach(() => wrapper.unmount())
 
 describe('Discord delivery review', () => {
+  it('shows a saved retry without making provider requests or promising delivery', async () => {
+    getDiscordDeliveries.mockResolvedValue({ items: [{ ...item(10, 'deferred'), retryQueued: true }], nextBefore: null })
+    await click('Load delivery records')
+    expect(wrapper.text()).toContain('Retry queued after cooldown. Current settings will be checked before sending.')
+    expect(wrapper.text()).not.toContain('Not sent; no retry is scheduled.')
+    expect(wrapper.get('[role="status"]').text()).toBe('1 delivery records loaded.')
+    expect(getDiscordDeliveries).toHaveBeenCalledTimes(1)
+    expect(verifyDiscordDelivery).not.toHaveBeenCalled()
+  })
   it('distinguishes deferred from uncertain and does not offer verification or pretend a replay is scheduled', async () => {
     getDiscordDeliveries.mockResolvedValue({ items: [item(9, 'deferred')], nextBefore: null })
     await click('Load delivery records')

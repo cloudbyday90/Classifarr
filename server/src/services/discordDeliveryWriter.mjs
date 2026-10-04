@@ -1,18 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { DefaultRestOptions, DefaultUserAgent, MessagePayload } from 'discord.js';
+import { DefaultRestOptions, DefaultUserAgent } from 'discord.js';
+import { serializeDiscordDeliveryBody, validRetainedDiscordBody } from './discordDeliveryBody.mjs';
 import { createDiscordRestTransport } from './discordRestTransport.mjs';
 import { createDiscordProviderGate } from './discordProviderGate.mjs';
 import { discordClientSignal } from './discordClientFactory.mjs';
 
 /** Single POST; no SDK queue, automatic retries, attachment fetches or redirects. */
 export function createDiscordDeliveryWriter({ cooldown = null, gate = createDiscordProviderGate({ cooldown }), request = fetch, timeoutMs = 15000 }) {
-  return async (input, payload) => {
+  return async (input, payload, retainedBody) => {
     const signals = [input.signal, discordClientSignal(input.client)].filter(Boolean);
     const signal = signals.length ? AbortSignal.any(signals) : undefined;
     // These notifications use remote embed images, never uploaded attachments.
-    if (payload.files?.length || payload.attachments?.length) throw new Error('unsupported_delivery_files');
-    const body = JSON.stringify(MessagePayload.create(input.channel, payload).resolveBody().body);
-    if (Buffer.byteLength(body) > 256 * 1024) throw new Error('delivery_payload_too_large');
+    if (input.dispatchNonce && !validRetainedDiscordBody(retainedBody, input.classificationId, input.dispatchNonce)) {
+      throw new Error('invalid_retained_delivery');
+    }
+    const body = retainedBody ?? serializeDiscordDeliveryBody(input, payload);
     signal?.throwIfAborted();
     const transport = createDiscordRestTransport({
       request: (url, init) => request(url, { method: init.method, body: init.body,

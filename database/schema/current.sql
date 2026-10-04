@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T14:35:03.413Z
--- Latest Migration: 20261004_200000_discord_delivery_deferral.sql
+-- Generated: 2026-10-04T16:10:14.589Z
+-- Latest Migration: 20261004_210000_discord_delivery_outbox.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3297,6 +3297,19 @@ CREATE TABLE public.database_health_transition_state (
 --
 
 COMMENT ON TABLE public.database_health_transition_state IS 'Singleton confirmation state for coarse PostgreSQL health buckets; no raw operational statistics or application dimensions.';
+
+
+--
+-- Name: discord_delivery_outbox; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.discord_delivery_outbox (
+    nonce text NOT NULL,
+    config_id integer NOT NULL,
+    body text NOT NULL,
+    expires_at timestamp with time zone DEFAULT (clock_timestamp() + '24:00:00'::interval) NOT NULL,
+    CONSTRAINT discord_delivery_outbox_body_check CHECK ((octet_length(body) <= 65536))
+);
 
 
 --
@@ -10428,6 +10441,14 @@ ALTER TABLE ONLY public.database_health_transition_state
 
 
 --
+-- Name: discord_delivery_outbox discord_delivery_outbox_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_delivery_outbox
+    ADD CONSTRAINT discord_delivery_outbox_pkey PRIMARY KEY (nonce);
+
+
+--
 -- Name: discord_delivery_verification_guard discord_delivery_verification_guard_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12086,6 +12107,13 @@ CREATE INDEX custom_preset_save_requests_retention ON public.custom_preset_save_
 --
 
 CREATE UNIQUE INDEX custom_preset_save_requests_unresolved_user ON public.custom_preset_save_requests USING btree (user_id) WHERE (resolved_at IS NULL);
+
+
+--
+-- Name: discord_delivery_outbox_expiry_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX discord_delivery_outbox_expiry_idx ON public.discord_delivery_outbox USING btree (expires_at);
 
 
 --
@@ -14864,6 +14892,22 @@ ALTER TABLE ONLY public.custom_preset_save_requests
 
 ALTER TABLE ONLY public.custom_presets
     ADD CONSTRAINT custom_presets_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: discord_delivery_outbox discord_delivery_outbox_config_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_delivery_outbox
+    ADD CONSTRAINT discord_delivery_outbox_config_id_fkey FOREIGN KEY (config_id) REFERENCES public.notification_config(id) ON DELETE CASCADE;
+
+
+--
+-- Name: discord_delivery_outbox discord_delivery_outbox_nonce_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_delivery_outbox
+    ADD CONSTRAINT discord_delivery_outbox_nonce_fkey FOREIGN KEY (nonce) REFERENCES public.discord_notification_deliveries(nonce) ON DELETE CASCADE;
 
 
 --
@@ -18014,6 +18058,7 @@ FROM unnest(ARRAY[
     '20261004_140000_discord_notification_deliveries.sql',
     '20261004_160000_discord_delivery_correlation.sql',
     '20261004_180000_discord_delivery_verification.sql',
-    '20261004_200000_discord_delivery_deferral.sql'
+    '20261004_200000_discord_delivery_deferral.sql',
+    '20261004_210000_discord_delivery_outbox.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

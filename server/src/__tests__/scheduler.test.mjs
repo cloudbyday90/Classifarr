@@ -227,6 +227,9 @@ describe('SchedulerService', () => {
             const stopAutomaticEvaluation = jest.spyOn(scheduler.automaticDestinationEvaluationWorker, 'stop');
             const stopSourcePairEvaluation = jest.spyOn(scheduler.automaticSourcePairWorker, 'stop');
             const stopReadinessBackfill = jest.spyOn(scheduler.ollamaReadinessBackfillWorker, 'stop');
+            const stopDiscordDispatch = jest.spyOn(scheduler.discordDeliveryDispatchWorker, 'stop');
+            expect(scheduler.tasks.has('discord-deferred-delivery')).toBe(true);
+            expect(scheduler.initialTaskTimers.has('discord-deferred-delivery')).toBe(false);
             expect(scheduler.tasks.has('ollama-readiness-backfill')).toBe(true);
             expect(scheduler.initialTaskTimers.has('ollama-readiness-backfill')).toBe(true);
             expect(scheduler.tasks.has('automatic-source-pair-evaluation')).toBe(true);
@@ -250,6 +253,7 @@ describe('SchedulerService', () => {
             expect(stopAutomaticEvaluation).toHaveBeenCalledTimes(1);
             expect(stopSourcePairEvaluation).toHaveBeenCalledTimes(1);
             expect(stopReadinessBackfill).toHaveBeenCalledTimes(1);
+            expect(stopDiscordDispatch).toHaveBeenCalledTimes(1);
             expect(scheduler.initialTaskTimers.size).toBe(0);
             expect(mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule)
                 .toHaveBeenCalledTimes(1);

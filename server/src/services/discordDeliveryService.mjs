@@ -4,13 +4,15 @@ import { getDeliveryProof } from './discordDeliveryMarker.mjs';
 import { prepareDeliveryPayload } from './discordDeliveryPayload.mjs';
 import { DiscordDeliveryDeferredError } from './discordProviderCooldown.mjs';
 
-export function createDiscordDeliveryService(repository, sendMessage) {
+export function createDiscordDeliveryService(repository, sendMessage, { serialize = undefined } = {}) {
   let sending = 0;
   let confirming = 0;
   const warn = (warnFn, reason, classificationId) => {
     try {
       warnFn?.({
-        category: reason, message: reason === 'delivery_deferred'
+        category: reason, message: reason === 'delivery_retry_not_buffered'
+          ? 'Discord notification was deferred without an automatic retry buffer; review is required'
+          : reason === 'delivery_deferred'
           ? 'Discord notification deferred by provider cooldown; no immediate retry'
           : reason.endsWith('_busy')
           ? 'Discord notification work skipped because local capacity is full'
@@ -41,25 +43,27 @@ export function createDiscordDeliveryService(repository, sendMessage) {
         return { sent: false, reason: 'delivery_busy' };
       }
       let payload;
-      try { payload = prepareDeliveryPayload(input.payload, input.classificationId); } catch {
+      try { if (!input.dispatchNonce) payload = prepareDeliveryPayload(input.payload, input.classificationId); } catch {
         warn(input.warnFn, 'delivery_payload_invalid', input.classificationId);
         return { sent: false, reason: 'delivery_payload_invalid' };
       }
       sending += 1;
       let claim;
       try {
-        claim = await repository.claim(input);
+        claim = await repository.claim(serialize && !input.dispatchNonce
+          ? { ...input, prepareBody: nonce => serialize(input, payload(nonce)) } : input);
         if (!claim.admitted) {
           if (['delivery_unconfirmed', 'delivery_rejected', 'delivery_deferred', 'delivery_attempts_exhausted'].includes(claim.reason)) warn(input.warnFn, claim.reason, input.classificationId);
           return claim;
         }
         let message;
         try {
-          message = await sendMessage(input, payload(claim.nonce));
+          message = await sendMessage(input, payload?.(claim.nonce), claim.body);
         } catch (error) {
           if (error instanceof DiscordDeliveryDeferredError) {
             const result = await repository.defer(claim.nonce, claim.attempt);
-            if (!result.messageId) warn(input.warnFn, result.reason, input.classificationId);
+            if (!result.messageId) warn(input.warnFn,
+              claim.retryBuffered === false ? 'delivery_retry_not_buffered' : result.reason, input.classificationId);
             return result;
           }
           const code = [400, 401, 403, 404].includes(error?.status) ? 'provider_rejected' : 'send_unconfirmed';

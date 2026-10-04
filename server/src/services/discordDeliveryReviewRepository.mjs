@@ -13,10 +13,13 @@ export function createDiscordDeliveryReviewRepository(db) {
             left(h.title, 240) AS title, d.state, d.channel_id AS "channelId",
             d.message_id AS "messageId", d.notification_kind AS kind,
             d.created_at AS "createdAt", d.updated_at AS "updatedAt",
-            (d.correlation_version = 1 AND d.state IN ('sending', 'uncertain')) AS "canVerify"
+            (d.correlation_version = 1 AND d.state IN ('sending', 'uncertain')) AS "canVerify",
+            (d.state = 'deferred' AND d.attempt_count < 3 AND EXISTS (
+              SELECT 1 FROM discord_delivery_outbox o WHERE o.nonce = d.nonce
+                AND o.expires_at > clock_timestamp())) AS "retryQueued"
           FROM (
             SELECT classification_id, state, channel_id, message_id,
-              notification_kind, created_at, updated_at, correlation_version
+              notification_kind, created_at, updated_at, correlation_version, nonce, attempt_count
             FROM discord_notification_deliveries
             WHERE classification_id < $1::bigint
             ORDER BY classification_id DESC LIMIT 26
@@ -28,6 +31,7 @@ export function createDiscordDeliveryReviewRepository(db) {
           state: row.state, channelId: row.channelId, messageId: row.messageId,
           kind: row.kind, createdAt: row.createdAt, updatedAt: row.updatedAt,
           canVerify: row.canVerify === true,
+          retryQueued: row.retryQueued === true,
         }));
         return { items, nextBefore: rows.length > 25 ? items[24].classificationId : null };
       });

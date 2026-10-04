@@ -23,6 +23,7 @@ export function getNotificationsConfig() {
 }
 
 /**
+ * Returns saved receipt status, including retryQueued (not a promise of delivery).
  * @param {string | null} [before]
  * @param {AbortSignal} [signal]
  */

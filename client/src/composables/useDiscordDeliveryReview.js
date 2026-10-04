@@ -13,6 +13,7 @@ import { getDiscordDeliveries } from '../api/settingsNotificationsApi'
  * @property {string} createdAt
  * @property {string} updatedAt
  * @property {boolean} [canVerify]
+ * @property {boolean} [retryQueued]
  */
 
 export function useDiscordDeliveryReview() {

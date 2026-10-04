@@ -4,6 +4,8 @@ import { configAllowsDelivery, deliveryConfigFingerprint, deliveryResult } from 
 import { readDiscordProviderCooldown } from './discordProviderCooldown.mjs';
 import { DELIVERY_CORRELATION_VERSION } from './discordDeliveryMarker.mjs';
 import { verificationConfigMatches } from './discordDeliveryVerificationContract.mjs';
+import { retainDiscordDelivery } from './discordDeliveryOutbox.mjs';
+import { validRetainedDiscordBody } from './discordDeliveryBody.mjs';
 
 export function createDiscordDeliveryRepository(db) {
   const transaction = fn => db.withTransaction(async client => {
@@ -21,6 +23,7 @@ export function createDiscordDeliveryRepository(db) {
         const { rows: [existing] } = await client.query(
           'SELECT * FROM discord_notification_deliveries WHERE classification_id = $1', [input.classificationId]);
         if (existing && existing.state !== 'deferred') return deliveryResult(existing);
+        if (input.dispatchNonce && existing?.nonce !== input.dispatchNonce) return { sent: false, reason: 'delivery_not_retained' };
         if (history.discord_message_id || history.metadata?.discord_message_id) {
           return { sent: false, reason: 'already_notified' };
         }
@@ -40,12 +43,22 @@ export function createDiscordDeliveryRepository(db) {
           return { sent: false, reason: 'configuration_changed' };
         }
         if (existing?.attempt_count >= 3) return { sent: false, reason: 'delivery_attempts_exhausted' };
+        let body;
+        if (existing) {
+          const { rows: [retained] } = await client.query(`SELECT body FROM discord_delivery_outbox
+            WHERE nonce = $1 AND config_id = $2 AND expires_at > clock_timestamp()`, [existing.nonce, saved.id]);
+          body = retained?.body;
+          if (body && !validRetainedDiscordBody(body, input.classificationId, existing.nonce)) {
+            return { sent: false, reason: 'delivery_not_retained' };
+          }
+          if (input.dispatchNonce && !body) return { sent: false, reason: 'delivery_not_retained' };
+        }
         const waiting = await readDiscordProviderCooldown(client);
         if (waiting) return { sent: false, reason: 'delivery_deferred', retryAfterSeconds: waiting.retryAfterSeconds };
         if (existing) {
           await client.query(`UPDATE discord_notification_deliveries SET state = 'sending', failure_code = NULL,
             attempt_count = attempt_count + 1, updated_at = clock_timestamp() WHERE nonce = $1`, [existing.nonce]);
-          return { admitted: true, nonce: existing.nonce, attempt: existing.attempt_count + 1 };
+          return { admitted: true, nonce: existing.nonce, attempt: existing.attempt_count + 1, ...(body ? { body, retryBuffered: true } : {}) };
         }
         const nonce = `cf_${randomBytes(16).toString('base64url')}`;
         await client.query(`INSERT INTO discord_notification_deliveries
@@ -54,7 +67,10 @@ export function createDiscordDeliveryRepository(db) {
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [input.classificationId, nonce, input.client.user.id, input.channelId, input.kind,
           history.status, history.clarification_status, input.clarificationStatus ?? null, DELIVERY_CORRELATION_VERSION, fingerprint]);
-        return { admitted: true, nonce, attempt: 1 };
+        body = input.prepareBody?.(nonce);
+        const retryBuffered = body ? await retainDiscordDelivery(client,
+          { nonce, classificationId: input.classificationId, configId: saved.id, body }) : false;
+        return { admitted: true, nonce, attempt: 1, ...(body ? { body, retryBuffered } : {}) };
       });
     },
     defer(nonce, attempt) {
@@ -90,6 +106,7 @@ export function createDiscordDeliveryRepository(db) {
           SET state = 'delivered', message_id = $2, failure_code = NULL, updated_at = now()
           WHERE nonce = $1 AND (message_id IS NULL OR message_id = $2) RETURNING classification_id`, [nonce, messageId]);
         if (!completed.rowCount) return false;
+        await client.query('DELETE FROM discord_delivery_outbox WHERE nonce = $1', [nonce]);
         // Preserve any newer decision or conflicting legacy projection. The receipt
         // still records positive delivery evidence; it does not authorize a resend.
         await client.query(`UPDATE classification_history SET discord_message_id = $2,
@@ -111,6 +128,7 @@ export function createDiscordDeliveryRepository(db) {
               failure_code = CASE WHEN state = 'delivered' THEN NULL ELSE $3 END, updated_at = now()
           WHERE nonce = $1 RETURNING state, message_id`,
         [nonce, code === 'provider_rejected' ? 'rejected' : 'uncertain', code]);
+        await client.query('DELETE FROM discord_delivery_outbox WHERE nonce = $1', [nonce]);
         return deliveryResult(row);
       });
     },

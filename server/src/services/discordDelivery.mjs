@@ -4,6 +4,7 @@ import { createDiscordDeliveryRepository } from './discordDeliveryRepository.mjs
 import { createDiscordDeliveryService } from './discordDeliveryService.mjs';
 import { createDiscordDeliveryWriter } from './discordDeliveryWriter.mjs';
 import { discordProviderGate } from './discordProviderRuntime.mjs';
+import { serializeDiscordDeliveryBody } from './discordDeliveryBody.mjs';
 
 export const discordDelivery = createDiscordDeliveryService(createDiscordDeliveryRepository(db),
-  createDiscordDeliveryWriter({ gate: discordProviderGate }));
+  createDiscordDeliveryWriter({ gate: discordProviderGate }), { serialize: serializeDiscordDeliveryBody });
