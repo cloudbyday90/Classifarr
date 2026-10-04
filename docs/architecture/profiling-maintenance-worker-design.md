@@ -19,6 +19,8 @@ that with typed, fail-closed catalog observations and a fixed operation.
 - One short assessment per normal embedded startup; no resident worker, polling,
   network/provider calls, new setting, Compose mount or Unraid template change.
   Restore-only startup never invokes it. An already active extension needs no DDL.
+  Fresh installs normally get the extension from the existing schema snapshot
+  before the supervisor starts; the worker then only confirms that state.
 - Only install the shipped, fixed extension into `public`, after known available
   files, exact preload membership, missing extension, unchanged authenticated
   administrator identity and exclusive runtime/restore admission (lock 2024).
