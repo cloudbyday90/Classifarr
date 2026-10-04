@@ -31,6 +31,7 @@ vi.mock('../../api/core', () => ({
 }))
 
 import {
+  getDiscordDeliveries,
   getNotificationsConfig,
   updateNotificationsConfig,
   getDiscordChannelDetails,
@@ -43,6 +44,20 @@ import {
 describe('settingsNotificationsApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('loads delivery records once, with bounded time and optional pagination/cancellation', async () => {
+    const result = { items: [], nextBefore: null }
+    mockGetDataRequest.mockResolvedValue(result)
+    expect(await getDiscordDeliveries()).toBe(result)
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/settings/discord/deliveries', {
+      params: {}, signal: undefined, timeout: 10_000, skipAutomaticRetry: true,
+    })
+    const signal = new AbortController().signal
+    await getDiscordDeliveries('9007199254740993', signal)
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/settings/discord/deliveries', {
+      params: { before: '9007199254740993' }, signal, timeout: 10_000, skipAutomaticRetry: true,
+    })
   })
 
   it('getNotificationsConfig calls getDataRequest with correct URL', async () => {

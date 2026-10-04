@@ -10,6 +10,7 @@ import { createDiscordSettingsActionService } from '../../services/discordSettin
 import { persistDiscordConfig } from '../../services/discordSettingsPersistenceService.mjs';
 import { createDiscordSettingsReadService } from '../../services/discordSettingsReadService.mjs';
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
+import { createDiscordDeliveryReviewHandler } from './discordDeliveryReviewHandler.mjs';
 import { sendData } from '../../utils/responseHelpers.mjs';
 import {
   buildDiscordConfigUpdateResponse,
@@ -26,6 +27,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
   });
 
   return {
+    getDeliveries: createDiscordDeliveryReviewHandler(db),
     getConfig: asyncHandler(async (_req, res) => {
       const config = await readService.getConfig({ dbOrClient: db });
       return sendData(res, config);

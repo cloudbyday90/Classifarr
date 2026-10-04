@@ -63,7 +63,7 @@ registerProviderRoutes(router, {
   ollamaVerificationCompatibilityMatrixLimiter,
   webSearchProviderHandlers,
 });
-registerNotificationRoutes(router, { discordHandlers });
+registerNotificationRoutes(router, { discordHandlers, requireAdmin });
 registerWebhookRoutes(router, { webhookHandlers });
 registerInfrastructureRoutes(router, { sslHandlers, sslTestLimiter, pathTestingHandlers, providerLockHandlers });
 registerConfidenceRoutes(router, { authenticateToken, requireAdmin, confidenceSettingsHandlers });

@@ -22,6 +22,17 @@ export function getNotificationsConfig() {
   return getDataRequest('/settings/notifications')
 }
 
+/**
+ * @param {string | null} [before]
+ * @param {AbortSignal} [signal]
+ */
+export function getDiscordDeliveries(before = null, signal = undefined) {
+  return getDataRequest('/settings/discord/deliveries', {
+    params: before ? { before } : {}, signal,
+    timeout: 10_000, skipAutomaticRetry: true,
+  })
+}
+
 export function updateNotificationsConfig(data) {
   return apiClient.put('/settings/notifications', data)
 }
@@ -47,6 +58,7 @@ export function testDiscord(data) {
 }
 
 const settingsNotificationsApi = {
+  getDiscordDeliveries,
   getNotificationsConfig,
   updateNotificationsConfig,
   getDiscordChannelDetails,

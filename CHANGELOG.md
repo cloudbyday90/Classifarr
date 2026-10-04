@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an admin Discord delivery-review panel with page-scoped status counts,
+  clear next steps and bounded, on-demand reads. Preserve uncertain receipts;
+  viewing or refreshing results never sends a notification or marks it delivered.
 - Save durable Discord delivery receipts before sending initial classification
   alerts. Prevent duplicate sends across callers and restarts, confirm lost
   replies from matching bot events, and hold uncertain deliveries for review.

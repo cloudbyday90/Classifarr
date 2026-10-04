@@ -492,6 +492,8 @@
       </div>
     </div>
     
+    <DiscordDeliveryReview />
+
     <!-- Save Button for Notification Settings -->
     <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
       <button
@@ -516,6 +518,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/api'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+import DiscordDeliveryReview from '@/components/settings/DiscordDeliveryReview.vue'
 
 const config = ref({
   bot_token: '',

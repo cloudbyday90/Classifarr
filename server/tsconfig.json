@@ -17,6 +17,8 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/services/discordDeliveryReviewRepository.mjs",
+    "src/routes/helpers/discordDeliveryReviewHandler.mjs",
     "src/services/discordClientFactory.mjs",
     "src/services/discordRestTransport.mjs",
     "src/services/discordDeliveryContract.mjs",

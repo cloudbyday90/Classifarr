@@ -9,7 +9,7 @@ const vueUnusedVarsRule = ['error', { ignorePattern: '^_' }];
 export default [
   {
     name: 'client/ignores',
-    ignores: ['coverage/**', 'dist/**', 'node_modules/**']
+    ignores: ['.tmp/**', 'coverage/**', 'dist/**', 'node_modules/**']
   },
   {
     linterOptions: {
