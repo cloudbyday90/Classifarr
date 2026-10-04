@@ -18,6 +18,7 @@ import * as systemAlertService from './systemAlertService.mjs';
 import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
 import { createDiscordClient } from './discordClientFactory.mjs';
+import { discordDelivery } from './discordDelivery.mjs';
 import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
 import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';
 import { sendPendingDecisionNotification as sendPendingDecisionNotificationFn } from './discordPendingNotification.mjs';
@@ -111,6 +112,11 @@ class DiscordBotService {
 
     this.client.on("interactionCreate", async (interaction) => {
       await interactionHandler.handleInteraction(interaction);
+    });
+    // Capture this client, not a replacement installed by reinitialize().
+    const deliveryClient = this.client;
+    deliveryClient.on('messageCreate', message => {
+      void discordDelivery.observe(message, deliveryClient, warnDiscordRuntimeFailure);
     });
 
     await this.client.login(token);

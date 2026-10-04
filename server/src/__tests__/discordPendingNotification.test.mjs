@@ -25,6 +25,11 @@ const mockDb = {
 };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+const deliver = jest.fn(async ({ channel, payload }) => {
+  const message = await channel.send(payload);
+  return { sent: true, messageId: message.id };
+});
+jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDelivery: { send: deliver } }));
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
 
@@ -48,9 +53,10 @@ describe('discordPendingNotification', () => {
   beforeEach(() => {
     mockDb.query.mockReset();
     mockDb.query.mockResolvedValue({ rows: [] });
+    deliver.mockClear();
   });
 
-  test('sends a pending item embed and stores the Discord message id', async () => {
+  test('delegates a pending item embed to durable delivery', async () => {
     const send = jest.fn().mockResolvedValue({ id: 'discord-message-1' });
     const client = {
       channels: {
@@ -85,10 +91,9 @@ describe('discordPendingNotification', () => {
       embeds: expect.arrayContaining([expect.any(Object)]),
       components: expect.arrayContaining([expect.any(Object)]),
     }));
-    expect(mockDb.query).toHaveBeenLastCalledWith(
-      'UPDATE classification_history SET discord_message_id = $1 WHERE id = $2',
-      ['discord-message-1', 77],
-    );
+    expect(deliver).toHaveBeenCalledWith(expect.objectContaining({
+      classificationId: 77, kind: 'pending', client, channelId: 'channel-1',
+    }));
     expect(warnFn).not.toHaveBeenCalled();
   });
 

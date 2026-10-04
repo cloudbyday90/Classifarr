@@ -24,6 +24,8 @@ export function createDiscordRestTransport({
     // Leave a small SDK backstop; this adapter owns the body-inclusive deadline.
     timeout: timeoutMs + 1000,
     async makeRequest(url, init) {
+      const createsMessage = init.method?.toUpperCase() === 'POST'
+        && /\/channels\/[0-9]+\/messages$/.test(new URL(url).pathname);
       if (closed) throw new DiscordRestError('DISCORD_TRANSPORT_CLOSED', 'Discord client is closed');
       if (init.signal?.aborted) {
         throw new DiscordRestError('DISCORD_REQUEST_CANCELLED', 'Discord request cancelled');
@@ -45,12 +47,16 @@ export function createDiscordRestTransport({
         receivedHeaders = true;
         const buffered = await bufferDiscordResponse(response, maxBytes);
         if (controller.signal.aborted) throw controller.signal.reason;
+        if (createsMessage && buffered.status >= 500) {
+          throw new DiscordRestError('DISCORD_WRITE_UNCONFIRMED', 'Discord message delivery is unconfirmed');
+        }
         return buffered;
       } catch (error) {
         const failure = controller.signal.aborted ? controller.signal.reason
           : error instanceof HttpResponseTooLargeError
             ? new DiscordRestError('DISCORD_RESPONSE_TOO_LARGE', 'Discord response exceeds the byte limit')
-            : new DiscordRestError(!receivedHeaders && error?.code === 'ECONNRESET' ? 'ECONNRESET' : 'DISCORD_TRANSPORT_FAILED',
+            : new DiscordRestError(createsMessage ? 'DISCORD_WRITE_UNCONFIRMED'
+              : !receivedHeaders && error?.code === 'ECONNRESET' ? 'ECONNRESET' : 'DISCORD_TRANSPORT_FAILED',
               'Discord transport request failed');
         // Abort the actual transport, not just a Promise.race that leaves I/O alive.
         controller.abort(failure);

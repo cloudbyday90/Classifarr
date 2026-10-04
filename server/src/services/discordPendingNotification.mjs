@@ -14,6 +14,7 @@ import {
   EmbedBuilder,
 } from 'discord.js';
 import * as db from '../config/database.mjs';
+import { discordDelivery } from './discordDelivery.mjs';
 import {
   formatDisplayPercent,
   getColorForConfidence,
@@ -270,29 +271,21 @@ export async function sendPendingDecisionNotification(
     const components = buildPendingDecisionComponents(metadata, result);
 
     const mentionPayload = buildPendingMentionPayload(config);
-    const message = await channel.send({
-      ...mentionPayload,
-      embeds: [embed],
-      components,
+    return await discordDelivery.send({
+      classificationId: result.classification_id, kind: 'pending',
+      client, channelId, config, channel, warnFn,
+      payload: { ...mentionPayload, embeds: [embed], components },
     });
-
-    await db.query(
-      'UPDATE classification_history SET discord_message_id = $1 WHERE id = $2',
-      [message.id, result.classification_id],
-    );
-
-    return { sent: true, messageId: message.id };
-  } catch (error) {
+  } catch {
     warnFn({
       category: 'pending_notification_send_failed',
       message: 'Discord pending-item notification failed to send',
       metadata: {
-        error: error.message,
-        title: metadata?.title || null,
+        error: 'notification_preparation_failed',
         classificationId: result?.classification_id || null,
       },
-      dedupeSignature: `${error.code || error.name || error.message}:pending`,
+      dedupeSignature: 'notification_preparation_failed:pending',
     });
-    return { sent: false, reason: 'send_failed', error: error.message };
+    return { sent: false, reason: 'send_failed', error: 'notification_preparation_failed' };
   }
 }

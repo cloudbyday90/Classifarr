@@ -7,7 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import * as db from '../config/database.mjs';
+import { discordDelivery } from './discordDelivery.mjs';
 import { buildSimpleNotificationEmbed } from './discordNotificationBuilder.mjs';
 import { createCorrectionComponents } from './discordNotificationComponents.mjs';
 
@@ -51,28 +51,20 @@ export async function sendClassificationNotification(
       );
     }
 
-    const message = await channel.send({
-      embeds: [embed],
-      components: components,
+    return await discordDelivery.send({
+      classificationId: result.classification_id, kind: 'classification',
+      client, channelId, config, channel, warnFn,
+      payload: { embeds: [embed], components },
     });
-
-    await db.query(
-      'UPDATE classification_history SET metadata = metadata || $1 WHERE id = $2',
-      [
-        JSON.stringify({ discord_message_id: message.id }),
-        result.classification_id,
-      ],
-    );
-  } catch (error) {
+  } catch {
     warnFn({
       category: 'notification_send_failed',
       message: 'Discord classification notification failed to send',
       metadata: {
-        error: error.message,
-        title: metadata?.title || null,
+        error: 'notification_preparation_failed',
         classificationId: result?.classification_id || null,
       },
-      dedupeSignature: `${error.code || error.name || error.message}:classification`,
+      dedupeSignature: 'notification_preparation_failed:classification',
     });
   }
 }

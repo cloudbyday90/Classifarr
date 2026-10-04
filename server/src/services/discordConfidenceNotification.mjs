@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
+import { discordDelivery } from './discordDelivery.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { createTieredComponents } from './discordNotificationComponents.mjs';
@@ -157,33 +158,22 @@ export async function sendConfidenceBasedNotification(
       hasClarification ? result.clarification : null,
     );
 
-    const message = await channel.send({
-      embeds: [embed],
-      components: components,
-    });
-
-    logger.info('[Discord] Notification sent successfully', {
-      messageId: message.id,
-      tier: tier.tier,
-      confidence: result.confidence,
-    });
-
     const status = hasClarification ? 'awaiting_clarification' : tier.action;
-    await db.query(
-      'UPDATE classification_history SET discord_message_id = $1, clarification_status = $2 WHERE id = $3',
-      [message.id, status, result.classification_id],
-    );
-  } catch (error) {
+    return await discordDelivery.send({
+      classificationId: result.classification_id, kind: 'confidence', clarificationStatus: status,
+      client, channelId, config, channel, warnFn,
+      payload: { embeds: [embed], components },
+    });
+  } catch {
     warnFn({
       category: 'notification_send_failed',
       message: 'Discord confidence-based notification failed to send',
       metadata: {
-        error: error.message,
-        title: metadata.title,
+        error: 'notification_preparation_failed',
         confidence: result.confidence,
         classificationId: result?.classification_id || null,
       },
-      dedupeSignature: `${error.code || error.name || error.message}:confidence`,
+      dedupeSignature: 'notification_preparation_failed:confidence',
     });
   }
 }

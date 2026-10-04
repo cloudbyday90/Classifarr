@@ -18,6 +18,8 @@ const mockDb = createMockDb();
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockClients = [];
+const observe = jest.fn().mockResolvedValue(false);
+jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDelivery: { observe } }));
 let mockNextClientSetup = null;
 
 function createDiscordJsModule() {
@@ -143,7 +145,11 @@ describe('discordBot temporary client cleanup', () => {
     await discordBot.initialize();
     expect(discordBot.isInitialized).toBe(true);
     expect(mockClients[0].options.rest.timeout).toBe(16000);
+    const originalClient = mockClients[0];
     await discordBot.reinitialize();
+    const message = { nonce: 'fixture' };
+    originalClient.handlers.messageCreate(message);
+    expect(observe).toHaveBeenCalledWith(message, originalClient, expect.any(Function));
     expect(mockClients).toHaveLength(2);
     expect(mockClients[0].sdkDestroy).toHaveBeenCalledTimes(1);
     await expect(mockClients[0].options.rest.makeRequest('unused', {})).rejects.toMatchObject({ code: 'DISCORD_TRANSPORT_CLOSED' });

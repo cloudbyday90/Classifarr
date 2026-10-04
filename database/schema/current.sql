@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T09:18:41.470Z
--- Latest Migration: 20261004_120000_custom_preset_save_requests.sql
+-- Generated: 2026-10-04T12:02:41.996Z
+-- Latest Migration: 20261004_140000_discord_notification_deliveries.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3297,6 +3297,35 @@ CREATE TABLE public.database_health_transition_state (
 --
 
 COMMENT ON TABLE public.database_health_transition_state IS 'Singleton confirmation state for coarse PostgreSQL health buckets; no raw operational statistics or application dimensions.';
+
+
+--
+-- Name: discord_notification_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.discord_notification_deliveries (
+    classification_id bigint NOT NULL,
+    nonce character varying(25) NOT NULL,
+    bot_user_id character varying(20) NOT NULL,
+    channel_id character varying(20) NOT NULL,
+    notification_kind text NOT NULL,
+    state text DEFAULT 'sending'::text NOT NULL,
+    message_id character varying(20),
+    previous_status character varying(20),
+    previous_clarification_status character varying(32),
+    desired_clarification_status character varying(32),
+    failure_code text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT discord_notification_deliveries_bot_user_id_check CHECK (((bot_user_id)::text ~ '^[0-9]{17,20}$'::text)),
+    CONSTRAINT discord_notification_deliveries_channel_id_check CHECK (((channel_id)::text ~ '^[0-9]{17,20}$'::text)),
+    CONSTRAINT discord_notification_deliveries_check CHECK (((state = 'delivered'::text) = (message_id IS NOT NULL))),
+    CONSTRAINT discord_notification_deliveries_failure_code_check CHECK ((failure_code = ANY (ARRAY['send_unconfirmed'::text, 'provider_rejected'::text, 'completion_unconfirmed'::text]))),
+    CONSTRAINT discord_notification_deliveries_message_id_check CHECK (((message_id)::text ~ '^[0-9]{17,20}$'::text)),
+    CONSTRAINT discord_notification_deliveries_nonce_check CHECK (((nonce)::text ~ '^cf_[A-Za-z0-9_-]{22}$'::text)),
+    CONSTRAINT discord_notification_deliveries_notification_kind_check CHECK ((notification_kind = ANY (ARRAY['classification'::text, 'confidence'::text, 'pending'::text]))),
+    CONSTRAINT discord_notification_deliveries_state_check CHECK ((state = ANY (ARRAY['sending'::text, 'uncertain'::text, 'rejected'::text, 'delivered'::text])))
+);
 
 
 --
@@ -10365,6 +10394,22 @@ ALTER TABLE ONLY public.database_health_transition_state
 
 
 --
+-- Name: discord_notification_deliveries discord_notification_deliveries_nonce_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_notification_deliveries
+    ADD CONSTRAINT discord_notification_deliveries_nonce_key UNIQUE (nonce);
+
+
+--
+-- Name: discord_notification_deliveries discord_notification_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_notification_deliveries
+    ADD CONSTRAINT discord_notification_deliveries_pkey PRIMARY KEY (classification_id);
+
+
+--
 -- Name: discovered_patterns discovered_patterns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14772,6 +14817,14 @@ ALTER TABLE ONLY public.custom_presets
 
 
 --
+-- Name: discord_notification_deliveries discord_notification_deliveries_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_notification_deliveries
+    ADD CONSTRAINT discord_notification_deliveries_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
+
+
+--
 -- Name: discovered_patterns discovered_patterns_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17907,6 +17960,7 @@ FROM unnest(ARRAY[
     '20261002_120000_upgrade_pgvector_to_0_8_7.sql',
     '20261003_120000_manual_routing_checks.sql',
     '20261003_140000_manual_routing_provider_guard.sql',
-    '20261004_120000_custom_preset_save_requests.sql'
+    '20261004_120000_custom_preset_save_requests.sql',
+    '20261004_140000_discord_notification_deliveries.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

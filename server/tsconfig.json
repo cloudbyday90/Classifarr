@@ -19,6 +19,10 @@
   "include": [
     "src/services/discordClientFactory.mjs",
     "src/services/discordRestTransport.mjs",
+    "src/services/discordDeliveryContract.mjs",
+    "src/services/discordDeliveryRepository.mjs",
+    "src/services/discordDeliveryService.mjs",
+    "src/services/discordDelivery.mjs",
     "src/services/discordRestResponse.mjs",
     "src/routes/customPresetSaveRoutes.mjs",
     "src/services/customPresetSaveService.mjs",

@@ -7,6 +7,24 @@ import { createLoopbackServer, loadDiscordTransport } from './discordTransportSu
 const { undici } = await loadDiscordTransport('@discordjs/rest');
 const canary = 'private-provider-content-do-not-log';
 
+for (const mode of ['reset', 'server-error']) {
+  test(`message creation is not replayed after ${mode}`, async t => {
+    const { client, requests } = await fixture(t, (req, res) => {
+      req.resume();
+      req.once('end', () => {
+        if (mode === 'reset') { req.socket.destroy(); return; }
+        res.writeHead(503, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ message: canary }));
+      });
+    });
+    await assert.rejects(client.rest.post('/channels/123/messages', {
+      body: { content: 'fixture', nonce: 'cf_abcdefghijklmnopqrstuv', enforce_nonce: true },
+    }), { code: 'DISCORD_WRITE_UNCONFIRMED' });
+    assert.equal(requests.length, 1);
+    assert.deepEqual(await client.rest.get('/healthy'), { ok: true });
+  });
+}
+
 async function fixture(t, handler, limits = {}) {
   const requests = [];
   const local = await createLoopbackServer((req, res) => {
@@ -65,7 +83,9 @@ test('SDK still handles rate-limit headers and retry_after', async t => {
     });
     res.end(JSON.stringify(attempts === 1 ? { message: 'rate limited', retry_after: 0.02, global: false } : { ok: true }));
   });
-  assert.deepEqual(await client.rest.get('/rate-limit'), { ok: true });
+  assert.deepEqual(await client.rest.post('/channels/123/messages', {
+    body: { nonce: 'cf_abcdefghijklmnopqrstuv', enforce_nonce: true },
+  }), { ok: true });
   assert.equal(attempts, 2);
 });
 

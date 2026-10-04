@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Save durable Discord delivery receipts before sending initial classification
+  alerts. Prevent duplicate sends across callers and restarts, confirm lost
+  replies from matching bot events, and hold uncertain deliveries for review.
+  Preserve legacy message IDs and stop SDK replay of ambiguous message writes.
 - Bound Discord REST responses by total time, size and per-client concurrency.
   Share cleanup across bot and settings clients, settle error bodies before SDK
   retries, and avoid replaying notifications after uncertain response failures.
