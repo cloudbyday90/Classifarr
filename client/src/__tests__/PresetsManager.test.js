@@ -109,7 +109,7 @@ const customPresets = [
   { id: 10, name: 'Action Remix', category: 'genre', signals: {} }
 ]
 
-function mountView(realTabs = false) {
+function mountView(realTabs = false, realModal = false) {
   return mount(PresetsManager, {
     attachTo: document.body,
     global: {
@@ -117,7 +117,7 @@ function mountView(realTabs = false) {
         Tabs: realTabs ? false : TabsStub,
         Button: ButtonStub,
         PresetCard: PresetCardStub,
-        Modal: ModalStub,
+        Modal: realModal ? false : ModalStub,
         Spinner: SpinnerStub,
         CustomPresetForm: CustomPresetFormStub,
         PresetSummaryModal: PresetSummaryModalStub
@@ -127,6 +127,30 @@ function mountView(realTabs = false) {
 }
 
 describe('PresetsManager.vue', () => {
+  it('returns to preset search after deletion removes the invoking card', async () => {
+    const wrapper = mountView(false, true)
+    try {
+      await flushPromises()
+      await switchToCustomTab(wrapper)
+      const opener = wrapper.get('[data-preset-id="9"] [data-test="delete-btn"]')
+      opener.element.focus()
+      await opener.trigger('click')
+      await flushPromises()
+      const dialog = document.querySelector('[role="dialog"]')
+      expect(document.activeElement).toBe(dialog.querySelector('h3'))
+      presetsApi.getCustomPresets.mockResolvedValue([customPresets[1]])
+      const confirm = dialog.querySelector('[data-variant="error"]')
+      confirm.focus()
+      confirm.click()
+      await flushPromises()
+      expect(presetsApi.deleteCustomPreset).toHaveBeenCalledWith(9)
+      expect(opener.element.isConnected).toBe(false)
+      expect(document.activeElement).toBe(wrapper.get('#preset-search').element)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('uses real named tabs without refetching or opening the inactive panel on arrow navigation', async () => {
     const wrapper = mountView(true)
     try {

@@ -6,117 +6,110 @@
  * See LICENSE file for details.
  */
 
-import { nextTick, ref, watch } from 'vue'
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'area[href]',
-  'button:not([disabled])',
-  'input:not([disabled]):not([type="hidden"])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  'iframe',
-  'object',
-  'embed',
-  '[contenteditable="true"]',
-  '[tabindex]:not([tabindex="-1"])',
-].join(', ')
-
-const isFocusable = element => (
-  element instanceof HTMLElement &&
-  !element.hidden &&
-  element.getAttribute('aria-hidden') !== 'true' &&
-  !element.hasAttribute('disabled')
-)
-
-const getFocusableElements = container => {
-  if (!(container instanceof HTMLElement)) return []
-
-  return Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
-    .filter(isFocusable)
-}
-
-const focusElement = element => {
-  element?.focus?.({ preventScroll: true })
-}
+import { nextTick, onBeforeUnmount, watch } from 'vue'
+import { focusAvailableTarget, getModalTabStops } from '@/utils/modalFocusTargets.js'
 
 /**
- * Keeps the shared modal reachable and predictable for keyboard users.
- * The caller owns visual state while this composable owns DOM focus only.
+ * @param {{
+ *   isOpen: import('vue').ComputedRef<boolean>,
+ *   dialogRef: Readonly<import('vue').Ref<HTMLElement | null>>,
+ *   titleRef: Readonly<import('vue').Ref<HTMLElement | null>>,
+ *   restoreFocus: import('vue').ComputedRef<boolean>,
+ *   fallbackFocusTarget: () => HTMLElement | null,
+ * }} options
  */
 export function useModalFocusManagement({
   isOpen,
   dialogRef,
   titleRef,
   restoreFocus,
+  fallbackFocusTarget,
 }) {
-  const returnFocusTarget = ref(null)
+  /** @type {HTMLElement | null} */
+  let returnTarget = null
+  /** @type {HTMLElement | null} */
+  let openedDialog = null
+  /** @type {HTMLElement | null} */
+  let inertOnLeave = null
+  let generation = 0
+  let disposed = false
 
-  const captureReturnFocusTarget = () => {
-    if (typeof document === 'undefined') return
-
-    const activeElement = document.activeElement
-    returnFocusTarget.value = activeElement instanceof HTMLElement && activeElement !== document.body
-      ? activeElement
-      : null
+  const makeLeavingInert = () => {
+    if (openedDialog && !openedDialog.hasAttribute('inert')) {
+      inertOnLeave = openedDialog
+      openedDialog.setAttribute('inert', '')
+    }
   }
 
-  const focusInitialTarget = async () => {
-    await nextTick()
-    if (!isOpen.value) return
-
-    focusElement(titleRef.value || getFocusableElements(dialogRef.value)[0] || dialogRef.value)
-  }
-
-  const restorePreviousFocus = async () => {
-    const target = returnFocusTarget.value
-    returnFocusTarget.value = null
-
-    await nextTick()
-    if (!restoreFocus.value || !target?.isConnected) return
-
-    focusElement(target)
-  }
-
-  const handleKeydown = event => {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      return false
-    }
-
-    if (event.key !== 'Tab') return true
-
-    const focusableElements = getFocusableElements(dialogRef.value)
-    if (focusableElements.length === 0) {
-      event.preventDefault()
-      focusElement(dialogRef.value)
-      return true
-    }
-
-    const firstElement = focusableElements[0]
-    const lastElement = focusableElements.at(-1)
-    const activeElement = document.activeElement
-
-    if (event.shiftKey && (activeElement === firstElement || !focusableElements.includes(activeElement))) {
-      event.preventDefault()
-      focusElement(lastElement)
-    } else if (!event.shiftKey && activeElement === lastElement) {
-      event.preventDefault()
-      focusElement(firstElement)
-    }
-
-    return true
+  const restorePreviousFocus = () => {
+    const target = returnTarget
+    const previousDialog = openedDialog
+    returnTarget = null
+    openedDialog = null
+    inertOnLeave = null
+    if (!restoreFocus.value || !previousDialog) return
+    const active = previousDialog.ownerDocument.activeElement
+    // A route handoff or another dialog already owns focus: do not steal it.
+    if (active !== previousDialog.ownerDocument.body && !previousDialog.contains(active)) return
+    if (!focusAvailableTarget(target)) focusAvailableTarget(fallbackFocusTarget())
   }
 
   watch(isOpen, async open => {
-    if (open) {
-      captureReturnFocusTarget()
-      await focusInitialTarget()
+    const revision = ++generation
+    if (open && typeof document !== 'undefined') {
+      const active = document.activeElement
+      if (active instanceof HTMLElement && active !== document.body && !openedDialog?.contains(active)) {
+        returnTarget = active
+      }
+    } else {
+      // Vue's leave transition must not leave interactive controls behind.
+      makeLeavingInert()
+    }
+    await nextTick()
+    if (disposed || revision !== generation) return
+    if (!open) {
+      restorePreviousFocus()
       return
     }
+    openedDialog = dialogRef.value
+    if (openedDialog === inertOnLeave) openedDialog?.removeAttribute('inert')
+    inertOnLeave = null
+    if (focusAvailableTarget(titleRef.value)) return
+    for (const target of getModalTabStops(openedDialog)) {
+      if (focusAvailableTarget(target)) return
+    }
+    focusAvailableTarget(openedDialog)
+  }, { flush: 'sync', immediate: true })
 
-    await restorePreviousFocus()
-  }, { flush: 'post', immediate: true })
+  onBeforeUnmount(() => {
+    disposed = true
+    generation++
+    makeLeavingInert()
+    // Allow the parent's next view to establish focus before considering return.
+    void nextTick().then(restorePreviousFocus)
+  })
+
+  /** @param {KeyboardEvent} event */
+  const handleKeydown = event => {
+    if (!isOpen.value || event.defaultPrevented || event.isComposing) return true
+    const dialog = dialogRef.value
+    if (!dialog || !(event.target instanceof Element) || event.target.closest('[role="dialog"]') !== dialog) return true
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      return false
+    }
+    if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) return true
+    const stops = getModalTabStops(dialog)
+    const active = dialog.ownerDocument.activeElement
+    const boundary = event.shiftKey ? stops[0] : stops.at(-1)
+    if (active === boundary || !stops.some(stop => stop === active)) {
+      event.preventDefault()
+      const ordered = event.shiftKey ? [...stops].reverse() : stops
+      if (!ordered.some(focusAvailableTarget)) focusAvailableTarget(dialog)
+    }
+    return true
+  }
 
   return {
     handleKeydown,

@@ -15,17 +15,17 @@
       >
         <div
           class="absolute inset-0 bg-black/75"
-          @click="close"
+          :onClick="close"
         />
         <div
           ref="dialogRef"
           class="relative bg-background-light rounded-lg border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           role="dialog"
           aria-modal="true"
-          :aria-labelledby="title ? titleId : null"
+          :aria-labelledby="title ? titleId : undefined"
           tabindex="-1"
           v-bind="$attrs"
-          @keydown="onKeydown"
+          :onKeydown="onKeydown"
         >
           <div class="flex items-center justify-between p-6 border-b border-gray-800">
             <h3
@@ -41,7 +41,7 @@
               type="button"
               class="text-primary hover:text-primary-light text-2xl leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background-light"
               :aria-label="closeLabel"
-              @click="close"
+              :onClick="close"
             >
               &times;
             </button>
@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed, ref, useId } from 'vue'
+import { computed, useId, useTemplateRef } from 'vue'
 import { useModalFocusManagement } from '@/composables/useModalFocusManagement'
 
 defineOptions({ inheritAttrs: false })
@@ -80,12 +80,18 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  fallbackFocusTarget: {
+    type: /** @type {import('vue').PropType<() => HTMLElement | null>} */ (Function),
+    default: () => null,
+  },
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {boolean} value */ value => typeof value === 'boolean',
+})
 
-const dialogRef = ref(null)
-const titleRef = ref(null)
+const dialogRef = useTemplateRef('dialogRef')
+const titleRef = useTemplateRef('titleRef')
 const titleId = `modal-title-${useId()}`
 const closeLabel = computed(() => (
   props.title ? `Close ${props.title}` : 'Close dialog'
@@ -96,8 +102,10 @@ const { handleKeydown } = useModalFocusManagement({
   dialogRef,
   titleRef,
   restoreFocus: computed(() => props.restoreFocus),
+  fallbackFocusTarget: () => props.fallbackFocusTarget(),
 })
 
+/** @param {KeyboardEvent} event */
 const onKeydown = event => {
   if (handleKeydown(event) === false) close()
 }
@@ -116,5 +124,12 @@ const close = () => {
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-enter-active,
+  .modal-leave-active {
+    transition: none;
+  }
 }
 </style>

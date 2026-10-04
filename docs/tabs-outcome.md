@@ -90,11 +90,11 @@ The existing `NO_COLOR`/`FORCE_COLOR` runner warning remains visible.
    activation keystroke after focus moves, plus explicit focus tests to maintain.
 2. Keep typed model/objects, scoped event linting, runtime tests and browser
    regressions together. Compilation alone does not prove navigation behavior.
-3. Next review **Modal's focus lifecycle and typed contracts**. Its existing
-   helper already traps/restores focus, but candidate filtering checks only the
-   element's own hidden/disabled attributes. Add cases for hidden ancestors,
-   inert content, disabled fieldsets and disconnected focus-return targets before
-   changing the shared behavior.
+3. The recommended **Modal focus lifecycle and typed-contract review** is now
+   tracked in [Modal focus design](modal-focus-design.md) and its separate
+   [implementation outcome](modal-focus-outcome.md). That scoped repair covers
+   hidden ancestors, inert content, disabled fieldsets and focus-return targets;
+   broader native-dialog isolation remains a separate follow-up.
 4. Keep dependency updates and any wider language migration separate. Preserve
    the supported Vue toolchain and the checked-listener convention for now.
 

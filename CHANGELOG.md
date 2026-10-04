@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Harden shared modal focus handling for hidden/inert content, disabled fieldsets,
+  keyboard boundaries and close/unmount transitions. Add safe caller-owned focus
+  return after preset deletion, reduced-motion support and strict Vue contracts.
 - Modernize preset tabs with named panels, keyboard navigation, visible focus
   and strict Vue contracts. Preserve active-only content mounting and keep
   focused tabs visible on narrow screens without changing selection on focus.

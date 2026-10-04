@@ -6,10 +6,12 @@
  * See LICENSE file for details.
  */
 
-import { afterEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import Modal from '@/components/common/Modal.vue'
+
+enableAutoUnmount(afterEach)
 
 const buildModal = props => mount(Modal, {
   attachTo: document.body,
@@ -40,6 +42,116 @@ afterEach(() => {
 })
 
 describe('Modal.vue', () => {
+  it('keeps its parent authoritative and forwards dialog attributes without submitting', async () => {
+    const wrapper = buildModal({ title: '', 'aria-label': 'Recovery options', 'aria-describedby': 'help' })
+    await nextTick()
+    const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog.getAttribute('aria-label')).toBe('Recovery options')
+    expect(dialog.getAttribute('aria-describedby')).toBe('help')
+    expect(dialog.hasAttribute('aria-labelledby')).toBe(false)
+    const close = dialog.querySelector('button')
+    expect(close.type).toBe('button')
+    expect(document.activeElement).toBe(close)
+    close.click()
+    await nextTick()
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    expect(document.querySelector('[role="dialog"]')).toBe(dialog)
+  })
+
+  it('allows a child to handle Escape and ignores composition or modified Tab', async () => {
+    const wrapper = buildModal()
+    await nextTick()
+    const dialog = document.querySelector('[role="dialog"]')
+    const button = dialog.querySelector('button')
+    const handled = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    handled.preventDefault()
+    button.dispatchEvent(handled)
+    dispatchKeydown(button, 'Escape', { isComposing: true })
+    dispatchKeydown(button, 'Enter')
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true, bubbles: true, cancelable: true })
+    button.dispatchEvent(tab)
+    expect(tab.defaultPrevented).toBe(false)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+  })
+
+  it('enters from the title and traps only usable controls, recomputing each time', async () => {
+    buildModal()
+    await nextTick()
+    const dialog = document.querySelector('[role="dialog"]')
+    const [close, retry, last] = dialog.querySelectorAll('button')
+    last.parentElement.insertAdjacentHTML('beforeend', '<div hidden><button>Hidden last</button></div>')
+    dispatchKeydown(document.activeElement, 'Tab')
+    expect(document.activeElement).toBe(close)
+    last.disabled = true
+    close.focus()
+    dispatchKeydown(close, 'Tab', { shiftKey: true })
+    expect(document.activeElement).toBe(retry)
+    close.disabled = true
+    retry.disabled = true
+    dispatchKeydown(dialog, 'Tab')
+    expect(document.activeElement).toBe(dialog)
+  })
+
+  it.each(['removed', 'hidden', 'disabled', 'inert'])('uses a caller-owned fallback when the opener is %s', async state => {
+    const opener = document.createElement('button')
+    const fallback = document.createElement('button')
+    document.body.append(opener, fallback)
+    opener.focus()
+    const resolve = vi.fn(() => fallback)
+    const wrapper = buildModal({ fallbackFocusTarget: resolve })
+    await nextTick()
+    if (state === 'removed') opener.remove()
+    else opener.setAttribute(state, '')
+    await wrapper.setProps({ modelValue: false })
+    await nextTick()
+    expect(document.activeElement).toBe(fallback)
+    expect(resolve).toHaveBeenCalledTimes(1)
+  })
+
+  it('never steals focus from a newly focused route or sibling dialog', async () => {
+    const opener = document.createElement('button')
+    const destination = document.createElement('button')
+    document.body.append(opener, destination)
+    opener.focus()
+    const wrapper = buildModal()
+    await nextTick()
+    const closing = wrapper.setProps({ modelValue: false })
+    destination.focus()
+    await closing
+    await nextTick()
+    expect(document.activeElement).toBe(destination)
+  })
+
+  it('invalidates initial focus when unmounted before the next tick', async () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const wrapper = buildModal()
+    wrapper.unmount()
+    await nextTick()
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('restores focus when the open component is unmounted', async () => {
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const wrapper = buildModal()
+    await nextTick()
+    wrapper.unmount()
+    await nextTick()
+    expect(document.activeElement).toBe(opener)
+  })
+
+  it('does not return focus from a closing dialog into a newly opened one', async () => {
+    const first = buildModal()
+    const second = buildModal({ modelValue: false, title: 'Second dialog' })
+    await nextTick()
+    await Promise.all([first.setProps({ modelValue: false }), second.setProps({ modelValue: true })])
+    await nextTick()
+    expect(document.activeElement.textContent).toBe('Second dialog')
+  })
+
   it('exposes modal semantics and gives large dialog content an orienting focus target', async () => {
     const opener = document.createElement('button')
     opener.textContent = 'Open recovery workflow'

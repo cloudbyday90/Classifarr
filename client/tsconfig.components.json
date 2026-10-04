@@ -9,6 +9,7 @@
     "src/components/common/Button.vue",
     "src/components/common/Card.vue",
     "src/components/common/Input.vue",
+    "src/components/common/Modal.vue",
     "src/components/common/PasswordInput.vue",
     "src/components/common/TagInput.vue",
     "src/components/common/Tabs.vue",

@@ -123,6 +123,22 @@ import Toggle from '@/components/common/Toggle.vue'
 `,
     },
     {
+      name: 'modal boolean model', code: '2322',
+      source: `<script setup>
+import Modal from '@/components/common/Modal.vue'
+</script>
+<template><Modal model-value="true" /></template>
+`,
+    },
+    {
+      name: 'modal fallback element resolver', code: '2322',
+      source: `<script setup>
+import Modal from '@/components/common/Modal.vue'
+</script>
+<template><Modal :model-value="false" :fallback-focus-target="() => '#search'" /></template>
+`,
+    },
+    {
       name: 'slider numeric model', code: '2322',
       source: `<script setup>
 import Slider from '@/components/common/Slider.vue'

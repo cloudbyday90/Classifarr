@@ -27,6 +27,7 @@
         >Search presets</label>
         <input
           id="preset-search"
+          ref="presetSearchRef"
           v-model="searchQuery"
           type="text"
           placeholder="Search presets..."
@@ -171,6 +172,7 @@
     <Modal
       v-model="showDeleteConfirm"
       title="Delete Custom Preset"
+      :fallback-focus-target="() => presetSearchRef"
     >
       <p class="text-gray-300">
         Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>?
@@ -211,6 +213,7 @@ import presetsApi from '@/api/presets'
 import { useToast } from '@/stores/toast'
 
 const toast = useToast()
+const presetSearchRef = ref(null)
 
 const activeTab = ref('system')
 const searchQuery = ref('')
