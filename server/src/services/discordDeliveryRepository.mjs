@@ -2,6 +2,7 @@
 import { randomBytes } from 'node:crypto';
 import { configAllowsDelivery, deliveryResult } from './discordDeliveryContract.mjs';
 import { DELIVERY_CORRELATION_VERSION } from './discordDeliveryMarker.mjs';
+import { verificationConfigMatches } from './discordDeliveryVerificationContract.mjs';
 
 export function createDiscordDeliveryRepository(db) {
   const transaction = fn => db.withTransaction(async client => {
@@ -39,7 +40,7 @@ export function createDiscordDeliveryRepository(db) {
         return { admitted: true, nonce };
       });
     },
-    complete({ nonce, botUserId, channelId, messageId, correlationVersion, classificationId }) {
+    complete({ nonce, botUserId, channelId, messageId, correlationVersion, classificationId, verificationConfig = undefined }) {
       return transaction(async client => {
         const { rows: [receipt] } = await client.query(
           'SELECT * FROM discord_notification_deliveries WHERE nonce = $1 AND bot_user_id = $2 AND channel_id = $3',
@@ -52,6 +53,11 @@ export function createDiscordDeliveryRepository(db) {
         const { rows: [history] } = await client.query(
           'SELECT id FROM classification_history WHERE id = $1 FOR UPDATE', [receipt.classification_id]);
         if (!history) return false;
+        if (verificationConfig) {
+          const { rows: [saved] } = await client.query(`SELECT *, updated_at::text AS verification_revision
+            FROM notification_config WHERE id = $1 AND type = 'discord' FOR SHARE`, [verificationConfig.id]);
+          if (!verificationConfigMatches(saved, verificationConfig)) return false;
+        }
         const completed = await client.query(`UPDATE discord_notification_deliveries
           SET state = 'delivered', message_id = $2, failure_code = NULL, updated_at = now()
           WHERE nonce = $1 AND (message_id IS NULL OR message_id = $2) RETURNING classification_id`, [nonce, messageId]);

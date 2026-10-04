@@ -32,6 +32,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   getDiscordDeliveries,
+  verifyDiscordDelivery,
   getNotificationsConfig,
   updateNotificationsConfig,
   getDiscordChannelDetails,
@@ -44,6 +45,15 @@ import {
 describe('settingsNotificationsApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('verifies one message without automatic retries and returns the raw response', async () => {
+    const result = { data: { code: 'confirmed' } }
+    mockPost.mockResolvedValue(result)
+    const signal = new AbortController().signal
+    expect(await verifyDiscordDelivery('91', '333333333333333333', signal)).toBe(result)
+    expect(mockPost).toHaveBeenCalledWith('/settings/discord/deliveries/91/verify',
+      { messageId: '333333333333333333' }, { signal, timeout: 30_000, skipAutomaticRetry: true })
   })
 
   it('loads delivery records once, with bounded time and optional pagination/cancellation', async () => {

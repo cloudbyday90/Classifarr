@@ -24,7 +24,7 @@ export function readDeliveryMarker(text) {
   return { classificationId: match[1], nonce: match[2], correlationVersion: DELIVERY_CORRELATION_VERSION };
 }
 
-/** Only call with a provider-origin SDK message, never a client-submitted body. */
+/** Only call with a normalized provider response, never a client-submitted body. */
 export function getDeliveryProof(message, botUserId) {
   if (!isDiscordId(botUserId) || !isDiscordId(message?.id) || !isDiscordId(message?.channelId)
     || message?.author?.id !== botUserId || message.partial || message.webhookId

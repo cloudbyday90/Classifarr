@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify unconfirmed Discord deliveries by message ID from the administrator
+  review panel. Require matching bot, channel and receipt evidence, preserve
+  uncertain results, and bound reads with persisted cooldowns and cancellation.
+  Never resend a notification or fabricate proof for older unmarked alerts.
 - Add persistent receipt references to future Discord classification alerts and
   preserve them through acknowledgement and correction edits. Confirm matching
   bot events without resending; never invent delivery proof for older alerts.

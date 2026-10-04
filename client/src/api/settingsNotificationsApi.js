@@ -37,6 +37,13 @@ export function updateNotificationsConfig(data) {
   return apiClient.put('/settings/notifications', data)
 }
 
+/** @param {string} classificationId @param {string} messageId @param {AbortSignal} [signal] */
+export function verifyDiscordDelivery(classificationId, messageId, signal = undefined) {
+  return apiClient.post(`/settings/discord/deliveries/${classificationId}/verify`, { messageId }, {
+    signal, timeout: 30_000, skipAutomaticRetry: true,
+  })
+}
+
 export function getDiscordChannelDetails(channelId) {
   return getDataRequest(`/settings/discord/channel/${channelId}`)
 }
@@ -59,6 +66,7 @@ export function testDiscord(data) {
 
 const settingsNotificationsApi = {
   getDiscordDeliveries,
+  verifyDiscordDelivery,
   getNotificationsConfig,
   updateNotificationsConfig,
   getDiscordChannelDetails,

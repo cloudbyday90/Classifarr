@@ -2,9 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import DiscordDeliveryReview from '../../components/settings/DiscordDeliveryReview.vue'
-import { getDiscordDeliveries } from '../../api/settingsNotificationsApi'
+import { getDiscordDeliveries, verifyDiscordDelivery } from '../../api/settingsNotificationsApi'
 
-vi.mock('../../api/settingsNotificationsApi', () => ({ getDiscordDeliveries: vi.fn() }))
+vi.mock('../../api/settingsNotificationsApi', () => ({ getDiscordDeliveries: vi.fn(), verifyDiscordDelivery: vi.fn() }))
 let wrapper
 const item = (id, state) => ({ classificationId: String(id), title: `Film ${id}`, state,
   channelId: '222222222222222222', kind: 'pending', createdAt: '2026-10-04T10:00:00Z', updatedAt: '2026-10-04T10:00:00Z' })
@@ -19,6 +19,22 @@ beforeEach(() => {
 afterEach(() => wrapper.unmount())
 
 describe('Discord delivery review', () => {
+  it('shows verification only for explicitly eligible receipts', async () => {
+    getDiscordDeliveries.mockResolvedValue({ items: [
+      { ...item(4, 'uncertain'), canVerify: true }, item(3, 'uncertain'),
+      { ...item(2, 'rejected'), canVerify: false }, item(1, 'delivered'),
+    ], nextBefore: null })
+    await click('Load delivery records')
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    verifyDiscordDelivery.mockResolvedValue({ data: { code: 'confirmed', messageId: '333333333333333333' } })
+    await wrapper.get('input').setValue('333333333333333333')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.findAll('dl')[0].text()).toContain('Delivered2')
+    expect(wrapper.findAll('dl')[0].text()).toContain('Unconfirmed1')
+    expect(wrapper.findAll('form')).toHaveLength(1)
+    expect(getDiscordDeliveries).toHaveBeenCalledTimes(1)
+  })
   it('does no work until requested and explains limited receipt coverage', async () => {
     expect(getDiscordDeliveries).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Older messages without receipts')

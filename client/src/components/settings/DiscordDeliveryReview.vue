@@ -124,6 +124,11 @@
                   </dd>
                 </div>
               </dl>
+              <DiscordDeliveryVerification
+                v-if="item.canVerify === true"
+                :classification-id="item.classificationId"
+                @confirmed="messageId => confirmRecord(item, messageId)"
+              />
             </details>
           </li>
         </ul>
@@ -167,6 +172,7 @@
 <script setup>
 import { computed, useId } from 'vue'
 import Button from '../common/Button.vue'
+import DiscordDeliveryVerification from './DiscordDeliveryVerification.vue'
 import { useDiscordDeliveryReview } from '../../composables/useDiscordDeliveryReview'
 
 const headingId = useId()
@@ -178,6 +184,11 @@ const statuses = [
 ]
 function presentation(state) {
   return state === 'delivered' ? statuses[0] : state === 'rejected' ? statuses[2] : statuses[1]
+}
+function confirmRecord(item, messageId) {
+  item.state = 'delivered'
+  item.messageId = messageId
+  // Keep this form mounted so the focused action and its status stay available.
 }
 const counts = computed(() => {
   const result = { Delivered: 0, Unconfirmed: 0, Rejected: 0 }

@@ -10,6 +10,7 @@
 
 export function registerNotificationRoutes(router, { discordHandlers, requireAdmin }) {
   router.get('/discord/deliveries', requireAdmin, discordHandlers.getDeliveries);
+  router.post('/discord/deliveries/:classificationId/verify', requireAdmin, discordHandlers.verifyDelivery);
   router.get('/notifications', discordHandlers.getConfig);
   router.put('/notifications', discordHandlers.updateConfig);
   router.post('/discord/test', discordHandlers.testConnection);

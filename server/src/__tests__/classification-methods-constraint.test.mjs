@@ -50,6 +50,8 @@ const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
   'mediaIdentityReviewRepository.mjs',
   // Sync repair receipts describe identity evidence, never a classification method.
   'sourceIdentityRecoveryReceipt.mjs',
+  // This provider reader's method is an HTTP verb; it has no persistence writes.
+  'discordDeliveryVerificationReader.mjs',
 ]);
 
 function getAllJavaScriptFiles(dir) {
@@ -71,7 +73,7 @@ function getAllJavaScriptFiles(dir) {
 }
 
 describe('Classification Methods Constraint', () => {
-  test('all method values in service code are in VALID_METHODS list', () => {
+  test('classification method literals in scoped services are in VALID_METHODS list', () => {
     const servicesDir = path.join(import.meta.dirname, '..', 'services');
     const files = getAllJavaScriptFiles(servicesDir);
     

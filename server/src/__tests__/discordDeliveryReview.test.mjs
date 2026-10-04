@@ -21,7 +21,7 @@ beforeEach(() => {
   const router = express.Router();
   registerNotificationRoutes(router, { requireAdmin, discordHandlers: {
     getDeliveries: createDiscordDeliveryReviewHandler(db),
-    getConfig: noop, updateConfig: noop, testConnection: noop,
+    getConfig: noop, updateConfig: noop, testConnection: noop, verifyDelivery: noop,
     getServers: noop, getChannels: noop, getMentionTargets: noop, getChannelDetails: noop,
   } });
   app = express().use('/api/settings', authenticateToken, requireAdmin, router);

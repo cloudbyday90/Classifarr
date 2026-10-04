@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T13:12:19.907Z
--- Latest Migration: 20261004_160000_discord_delivery_correlation.sql
+-- Generated: 2026-10-04T13:47:43.489Z
+-- Latest Migration: 20261004_180000_discord_delivery_verification.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3297,6 +3297,22 @@ CREATE TABLE public.database_health_transition_state (
 --
 
 COMMENT ON TABLE public.database_health_transition_state IS 'Singleton confirmation state for coarse PostgreSQL health buckets; no raw operational statistics or application dimensions.';
+
+
+--
+-- Name: discord_delivery_verification_guard; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.discord_delivery_verification_guard (
+    singleton boolean DEFAULT true NOT NULL,
+    operation_id uuid NOT NULL,
+    classification_id bigint NOT NULL,
+    next_allowed_at timestamp with time zone NOT NULL,
+    outcome text NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT discord_delivery_verification_guard_outcome_check CHECK ((outcome = ANY (ARRAY['started'::text, 'confirmed'::text, 'configuration_changed'::text, 'cancelled'::text, 'rate_limited'::text, 'access_denied'::text, 'message_unavailable'::text, 'provider_unavailable'::text, 'bot_changed'::text, 'proof_mismatch'::text, 'timed_out'::text, 'verification_unavailable'::text]))),
+    CONSTRAINT discord_delivery_verification_guard_singleton_check CHECK (singleton)
+);
 
 
 --
@@ -10393,6 +10409,14 @@ ALTER TABLE ONLY public.database_health_transition_receipts
 
 ALTER TABLE ONLY public.database_health_transition_state
     ADD CONSTRAINT database_health_transition_state_pkey PRIMARY KEY (singleton);
+
+
+--
+-- Name: discord_delivery_verification_guard discord_delivery_verification_guard_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_delivery_verification_guard
+    ADD CONSTRAINT discord_delivery_verification_guard_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -17964,6 +17988,7 @@ FROM unnest(ARRAY[
     '20261003_140000_manual_routing_provider_guard.sql',
     '20261004_120000_custom_preset_save_requests.sql',
     '20261004_140000_discord_notification_deliveries.sql',
-    '20261004_160000_discord_delivery_correlation.sql'
+    '20261004_160000_discord_delivery_correlation.sql',
+    '20261004_180000_discord_delivery_verification.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

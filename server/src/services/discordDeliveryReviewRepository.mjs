@@ -12,10 +12,11 @@ export function createDiscordDeliveryReviewRepository(db) {
           SELECT d.classification_id::text AS "classificationId",
             left(h.title, 240) AS title, d.state, d.channel_id AS "channelId",
             d.message_id AS "messageId", d.notification_kind AS kind,
-            d.created_at AS "createdAt", d.updated_at AS "updatedAt"
+            d.created_at AS "createdAt", d.updated_at AS "updatedAt",
+            (d.correlation_version = 1 AND d.state IN ('sending', 'uncertain')) AS "canVerify"
           FROM (
             SELECT classification_id, state, channel_id, message_id,
-              notification_kind, created_at, updated_at
+              notification_kind, created_at, updated_at, correlation_version
             FROM discord_notification_deliveries
             WHERE classification_id < $1::bigint
             ORDER BY classification_id DESC LIMIT 26
@@ -26,6 +27,7 @@ export function createDiscordDeliveryReviewRepository(db) {
           classificationId: row.classificationId, title: row.title,
           state: row.state, channelId: row.channelId, messageId: row.messageId,
           kind: row.kind, createdAt: row.createdAt, updatedAt: row.updatedAt,
+          canVerify: row.canVerify === true,
         }));
         return { items, nextBefore: rows.length > 25 ? items[24].classificationId : null };
       });
