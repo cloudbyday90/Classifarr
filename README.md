@@ -342,6 +342,11 @@ services:
       - "host.docker.internal:host-gateway"
 ```
 
+For a new installation, create `./data` as the host user with UID/GID
+`1000:1000` before starting (for example, `mkdir -p ./data`). The forced non-root
+container cannot repair a root-owned bind directory created by Docker. Do not
+reset ownership recursively on an existing database; retain its working setup.
+
 Start:
 
 ```bash
