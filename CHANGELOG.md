@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Harden the isolated ingestion-recovery gateway against restored unsafe
+  privileges and cached legacy-session evidence. Recheck before admission,
+  writes and completion; production automatic legacy recovery remains disabled.
 - Recover embedded PostgreSQL startup when an old database PID is reused by
   the startup helper's verified I/O worker. Preserve native database locks and
   refuse unknown owners; retain native exit codes and signals for diagnosis.

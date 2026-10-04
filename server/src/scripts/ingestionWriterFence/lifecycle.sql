@@ -45,6 +45,7 @@ END $$;
 CREATE FUNCTION ingestion_fence_rehearsal.assert_run(lib integer, token uuid) RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 BEGIN
+  PERFORM ingestion_fence_rehearsal.assert_authority();
   PERFORM ingestion_fence_rehearsal.assert_lock(lib);
   IF NOT EXISTS (
     SELECT 1 FROM ingestion_fence_rehearsal.bindings b
@@ -64,10 +65,8 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,pg_temp AS $$
 DECLARE token uuid := gen_random_uuid(); source_rev text; library_rev text;
   retired_syncs integer; retired_captures integer;
 BEGIN
+  PERFORM ingestion_fence_rehearsal.assert_authority();
   PERFORM ingestion_fence_rehearsal.assert_lock(lib);
-  IF NOT EXISTS (SELECT 1 FROM ingestion_fence_rehearsal.cutover WHERE enabled) THEN
-    RAISE EXCEPTION 'ingestion_fence_cutover_required' USING ERRCODE='55000';
-  END IF;
   SELECT l.xmin::text,m.xmin::text INTO library_rev,source_rev
     FROM public.libraries l JOIN public.media_server m ON m.id=l.media_server_id
     WHERE l.id=lib AND l.is_active AND l.archived_at IS NULL AND m.is_active

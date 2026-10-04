@@ -33,8 +33,8 @@ export async function prepareFenceRehearsal(db) {
     await db.query(`GRANT SELECT,UPDATE ON public.media_server_sync_status,public.media_source_capture_state TO ${owner}`); // sql-interpolation: validated generated role
     await db.query(`GRANT USAGE ON SEQUENCE public.media_server_items_id_seq TO ${owner}`); // sql-interpolation: validated generated role
     await db.query(`SET LOCAL ROLE ${owner}`); // sql-interpolation: trusted non-login function owner
-    for (const file of ['lifecycle.sql', 'write.sql']) {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Two fixed adjacent SQL files; no caller-supplied path.
+    for (const file of ['lifecycle.sql', 'write.sql', 'authority.sql']) {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- Fixed adjacent SQL files; no caller-supplied path.
       await db.query(await readFile(new URL(file, import.meta.url), 'utf8'));
     }
     // COMMIT in a top-level procedure prevents accidentally wrapping retirement in an outer
