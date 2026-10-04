@@ -105,3 +105,7 @@ was no PR to select randomly; none was merged or substituted. Work remains on
 `main`. No version bump, release, live deployment or user-data change was made.
 
 See [design, tradeoffs and official sources](frontend-tooling-refresh-design.md).
+
+The subsequent October 4 DOM environment refresh is recorded separately in
+[the jsdom design](architecture/jsdom-30-1-2-design.md) and
+[its measured outcome](architecture/jsdom-30-1-2-outcome.md).

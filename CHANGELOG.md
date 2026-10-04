@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh the frontend DOM test environment and retire its obsolete transport
+  override. Add regression checks for hidden focus targets, form resets, live
+  styles and real HTTP loading without changing application runtime behavior.
 - Make preset creation recoverable after a lost response or page reload, using
   authenticated save receipts and atomic database writes. Checking save status
   confirms success or closes the old attempt before allowing another save;
