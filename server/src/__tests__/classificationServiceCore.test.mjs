@@ -107,6 +107,7 @@ function createService({ handoff, admission } = {}) {
     warn: jest.fn(),
   };
   const service = createClassificationService({
+    queuedRoutingReplayGuard: { read: jest.fn().mockResolvedValue(null), admit: jest.fn().mockResolvedValue() },
     db: { query: jest.fn().mockResolvedValue({ rows: [] }) },
     tmdbService: {},
     discordBot: { isInitialized: false },
@@ -176,6 +177,34 @@ function createService({ handoff, admission } = {}) {
 }
 
 describe('supported classification content', () => {
+  test('queue replay returns saved uncertainty without classification, routing or notification', async () => {
+    const service = createService();
+    const saved = { classification_id: 94, routingOutcome: { routeResult: { routed: false } } };
+    service.queuedRoutingReplayGuard.read.mockResolvedValue(saved);
+    expect(await service.classifyQueueTask({ id: 42, claim_token: 'claim' })).toBe(saved);
+    expect(service.runDecisionTree).not.toHaveBeenCalled();
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+    expect(service.queuedRoutingReplayGuard.admit).not.toHaveBeenCalled();
+  });
+
+  test('queue routing requires committed admission and captures the received claim', async () => {
+    const service = createService();
+    const task = { id: 42, claim_token: 'original', task_type: 'classification' };
+    service.queuedRoutingReplayGuard.read.mockImplementation(async () => { task.claim_token = 'replaced'; return null; });
+    service.queuedRoutingReplayGuard.admit.mockRejectedValue(new Error('lost_claim'));
+    await expect(service.classifyQueueTask(task)).rejects.toThrow('lost_claim');
+    expect(service.queuedRoutingReplayGuard.admit).toHaveBeenCalledWith({ id: 42, claim_token: 'original' }, 94);
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+  });
+
+  test('a non-routing queue decision does not consume routing admission', async () => {
+    const service = createService();
+    service.clarificationService.isRequireAllConfirmationsEnabled.mockResolvedValue(true);
+    await service.classifyQueueTask({ id: 42, claim_token: 'claim' });
+    expect(service.queuedRoutingReplayGuard.admit).not.toHaveBeenCalled();
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+  });
+
   test.each(['music', 'artist', 'album', 'track', undefined])(
     'rejects %s before enrichment, policy evaluation, persistence, or routing', async mediaType => {
       const service = createService();

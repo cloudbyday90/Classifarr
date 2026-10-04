@@ -34,7 +34,7 @@ export function fixtureSession(response) {
   return { cookie: cookies.join('; '), 'x-csrf-token': csrf };
 }
 
-export async function startRoutingProvider({ holdAfterAdd, healthChecks = false } = {}) {
+export async function startRoutingProvider({ holdAfterAdd, healthChecks = false, hideAccepted = false } = {}) {
   const counts = { tmdb: 0, movieReads: 0, tvReads: 0, movieAdds: 0, tvAdds: 0, unexpected: 0 };
   if (healthChecks) counts.healthReads = 0;
   const stored = new Map();
@@ -73,7 +73,7 @@ export async function startRoutingProvider({ holdAfterAdd, healthChecks = false 
       if (req.method === 'GET') {
         assert.equal(url.searchParams.get(key), String(id));
         counts[`${kind}Reads`]++;
-        return respond(200, stored.has(kind) ? [stored.get(kind)] : []);
+        return respond(200, !hideAccepted && stored.has(kind) ? [stored.get(kind)] : []);
       }
       // Count every attempted add, including invalid or duplicate requests.
       if (req.method === 'POST') counts[`${kind}Adds`]++;

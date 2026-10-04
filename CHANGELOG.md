@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Fence queued automatic routing before provider work so crash recovery reuses
+  the saved decision without repeating an uncertain add. Unconfirmed outcomes
+  remain explicit; isolated movie/TV rehearsals count attempted writes.
 - Verify interrupted manual routing under the restricted runtime identity:
   accepted provider adds survive application crashes without duplicate writes,
   while read-only verification preserves the original decision and cooldown.

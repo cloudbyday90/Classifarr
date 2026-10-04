@@ -16,7 +16,14 @@ const classificationReceipt = async (restored = false) => (await asUser('classif
   { restored, timeout: 40_000 })).stdout.trim();
 const stopDatabase = () => pg('pg_ctl', ['-D', PG_DATA, '-m', 'fast', '-w', '-t', '20', 'stop']);
 const startDatabase = () => pg('pg_ctl', ['-D', PG_DATA, '-l', `${STATE}/postgres.log`, '-w', '-t', '30', 'start']);
-const assertNoStartupErrors = () => sql("DO $$ BEGIN IF EXISTS (SELECT 1 FROM error_log WHERE level = 'ERROR') THEN RAISE EXCEPTION 'runtime_startup_errors_recorded'; END IF; END $$;");
+const assertNoStartupErrors = async () => {
+  const { stdout } = await pg('psql', ['-X', '-At', '-v', 'ON_ERROR_STOP=1', '-h', SOCKET, '-U', ADMIN_ROLE, '-d', DATABASE, '-c',
+    `SELECT COALESCE(json_agg(errors),'[]'::json) FROM (
+      SELECT CASE WHEN module ~ '^[A-Za-z0-9._-]{1,80}$' THEN module ELSE 'other' END AS module,
+        count(*)::int AS count FROM error_log WHERE level='ERROR' GROUP BY module ORDER BY module LIMIT 10
+    ) errors`]);
+  assert.equal(stdout.trim(), '[]', `runtime_startup_errors_recorded:${stdout.trim().slice(0, 1200)}`);
+};
 
 async function prepare() {
   assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
@@ -86,6 +93,10 @@ export async function runEmbeddedIsolationDrill() {
     await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/interruptedRoutingProbe.mjs'], { timeout: 240_000 });
     await assertNoStartupErrors();
     record('restricted_interrupted_manual_routing_without_write_replay');
+
+    await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/queuedRoutingProbe.mjs'], { timeout: 180_000 });
+    await assertNoStartupErrors();
+    record('restricted_interrupted_queued_routing_without_write_replay');
 
     await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--apply']);
     record('encrypted_restore_process_exclusion_quarantine_and_explicit_recovery');

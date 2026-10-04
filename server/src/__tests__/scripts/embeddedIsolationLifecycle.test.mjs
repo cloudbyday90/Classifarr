@@ -28,6 +28,7 @@ beforeEach(() => {
   let maintenanceCount = 0;
   commands.asUser.mockImplementation(async (user, command, args) => {
     events.push(`${user}:${command}:${args.join(' ')}`);
+    if (command === 'psql' && args.some(arg => arg.includes('json_agg(errors)'))) return { stdout: '[]\n' };
     if (args[0] === 'src/scripts/runDatabaseSchemaMaintenance.mjs' && ++maintenanceCount === 3) {
       throw Object.assign(new Error('busy'), { code: 75 });
     }
@@ -46,7 +47,8 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(11);
+  expect(result.checks).toHaveLength(12);
+  expect(result.checks).toContain('restricted_interrupted_queued_routing_without_write_replay');
   expect(result.checks).toContain('restricted_interrupted_manual_routing_without_write_replay');
   expect(result.checks).toContain('restricted_authenticated_http_policy_routing_and_auth_denials');
   expect(commands.startRuntime).toHaveBeenNthCalledWith(1, { classification: true });
@@ -80,7 +82,7 @@ test.each(['wrong-mode', 'wrong-platform', 'wrong-uid', 'extra-argument', 'occup
   expect(commands.asUser).not.toHaveBeenCalled();
 });
 
-test.each(['probe', 'classification', 'restore', 'index', 'handoff', 'interrupted-routing'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
+test.each(['probe', 'classification', 'restore', 'index', 'handoff', 'interrupted-routing', 'queued-routing'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
   const original = commands.asUser.getMockImplementation();
   commands.asUser.mockImplementation(async (...args) => {
     if ((scenario === 'probe' && args[2][0]?.endsWith('runtimeProbe.mjs'))
@@ -88,6 +90,7 @@ test.each(['probe', 'classification', 'restore', 'index', 'handoff', 'interrupte
       || (scenario === 'restore' && args[1] === 'pg_restore')
       || (scenario === 'index' && args[2][0]?.endsWith('maintenanceProbe.mjs'))
       || (scenario === 'interrupted-routing' && args[2][0]?.endsWith('interruptedRoutingProbe.mjs'))
+      || (scenario === 'queued-routing' && args[2][0]?.endsWith('queuedRoutingProbe.mjs'))
       || (scenario === 'handoff' && args[2][0]?.endsWith('queueHandoffProbe.mjs'))) throw new Error('scenario_failed');
     return original(...args);
   });
@@ -112,6 +115,16 @@ test('startup failure still joins Node before stopping PostgreSQL', async () => 
   commands.waitForRuntime.mockRejectedValue(new Error('not_ready'));
   await expect(runEmbeddedIsolationDrill()).rejects.toThrow('not_ready');
   expect(events.indexOf('stop_runtime')).toBeLessThan(events.findIndex(value => value.endsWith(' stop')));
+});
+
+test('persisted runtime errors fail with bounded module counts, not private error records', async () => {
+  const original = commands.asUser.getMockImplementation();
+  commands.asUser.mockImplementation(async (...args) => {
+    if (args[2].some(arg => arg.includes('json_agg(errors)'))) return { stdout: '[{"module":"QueueService","count":1}]\n' };
+    return original(...args);
+  });
+  await expect(runEmbeddedIsolationDrill()).rejects.toThrow('runtime_startup_errors_recorded:[{"module":"QueueService","count":1}]');
+  expect(events.some(value => value.endsWith(' stop'))).toBe(true);
 });
 
 test.each(['unexpected-maintenance-success', 'unexpected-maintenance-error', 'unclean-control', 'crash-recovery', 'auth-bypass'])('%s is evidence failure, never a passing drill', async scenario => {

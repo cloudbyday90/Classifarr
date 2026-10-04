@@ -23,6 +23,7 @@ import {
 import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
 import { CONSENSUS_ROUTE_METHOD, hasCandidateConsensusReceipt } from './policyCandidateConsensusReceipt.mjs';
 import { restoreConsensusReview } from './classificationConsensusReviewRecovery.mjs';
+import { QueuedRoutingReplayGuard } from './queuedRoutingReplayGuard.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -91,8 +92,10 @@ export class ClassificationService {
     policyNativeClassificationQuestionHandoffService,
     policyRuntimeQuestionPersistenceAdmissionService,
     classificationRoutingMetadataPersistenceService,
+    queuedRoutingReplayGuard,
   }) {
     this.db = db;
+    this.queuedRoutingReplayGuard = queuedRoutingReplayGuard || new QueuedRoutingReplayGuard({ db });
     this.tmdbService = tmdbService;
     this.discordBot = discordBot;
     this.contentTypeAnalyzer = contentTypeAnalyzer;
@@ -188,7 +191,7 @@ export class ClassificationService {
     return { shouldRoute: false, reason: 'threshold_not_met' };
   }
 
-  async routeClassificationResult(classificationId, metadata, result, requireAllConfirmations) {
+  async routeClassificationResult(classificationId, metadata, result, requireAllConfirmations, beforeRoute) {
     const policyAutoThreshold = this.resolvePolicyAutoThreshold(result);
     const decision = this.buildAutoRouteDecision({
       result,
@@ -219,6 +222,8 @@ export class ClassificationService {
       return { ...decision, policyAutoThreshold };
     }
 
+    // Commit the queue's write barrier before provider work. Never expire it with a claim.
+    await beforeRoute?.(classificationId);
     const routeResult = await this.routeToArr(metadata, result.library);
     this.logger.debug('Auto-route evaluated for classification result', {
       title: metadata?.title || null,
@@ -332,8 +337,17 @@ export class ClassificationService {
   }
 
   async classifyQueueTask(task, payload = {}) {
+    const claim = Object.freeze({ id: task?.id, claim_token: task?.claim_token });
+    const replay = await this.queuedRoutingReplayGuard.read(claim);
+    if (replay) {
+      if (!replay.routingOutcome.routeResult.routed) this.logger.warn('Queued routing outcome is unconfirmed; write replay withheld', {
+        taskId: task.id, classificationId: replay.classification_id, reasonCode: 'automatic_routing_unconfirmed',
+      });
+      return replay;
+    }
     return this.classify(payload, {
       queueTask: buildQueueTaskContext(task),
+      beforeAutomaticRoute: classificationId => this.queuedRoutingReplayGuard.admit(claim, classificationId),
     });
   }
 
@@ -459,7 +473,8 @@ export class ClassificationService {
         classificationId,
         metadata,
         result,
-        requireAllConfirmations
+        requireAllConfirmations,
+        runtimeContext.beforeAutomaticRoute
       );
 
       if (this.discordBot.isInitialized) {

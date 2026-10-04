@@ -75,10 +75,10 @@ test('real loopback fixture counts attempted duplicate adds and rejects unexpect
 });
 
 // Keep fixed-port HTTP cases in this suite so Jest workers cannot bind it concurrently.
-test('held HTTP add stores provider effect but never acknowledges it', async () => {
+test.each([false, true])('held HTTP add retains/counts its effect even when reads hide it (%s)', async hideAccepted => {
   let accepted;
   const arrived = new Promise(resolve => { accepted = resolve; });
-  const provider = await startRoutingProvider({ holdAfterAdd: accepted });
+  const provider = await startRoutingProvider({ holdAfterAdd: accepted, hideAccepted });
   const controller = new AbortController();
   const pending = fetch('http://127.0.0.1:21401/radarr/api/v3/movie', {
     method: 'POST', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(2000)]),
@@ -90,7 +90,7 @@ test('held HTTP add stores provider effect but never acknowledges it', async () 
     const response = await fetch('http://127.0.0.1:21401/radarr/api/v3/movie?tmdbId=910001', {
       headers: { 'x-api-key': 'synthetic-routing', connection: 'close' }, signal: AbortSignal.timeout(2000),
     });
-    expect(await response.json()).toEqual([{ id: 7, tmdbId: 910001, path: '/movies/Synthetic' }]);
+    expect(await response.json()).toEqual(hideAccepted ? [] : [{ id: 7, tmdbId: 910001, path: '/movies/Synthetic' }]);
     expect(provider.counts.movieAdds).toBe(1);
   } finally { controller.abort(); await provider.close(); }
   expect(await pending).toBe('interrupted');

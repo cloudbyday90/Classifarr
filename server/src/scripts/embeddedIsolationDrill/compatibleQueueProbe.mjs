@@ -23,6 +23,13 @@ async function sql(text) {
 }
 assert.deepEqual(await sql('SELECT value FROM supervisor_sentinel'), [{ value: 'preserved' }]);
 assert.equal((await sql('SELECT count(*)::int AS count FROM libraries'))[0].count, 0);
+const [{ reloptions }] = await sql("SELECT reloptions FROM pg_class WHERE oid='task_queue'::regclass");
+assert(reloptions.includes('autovacuum_vacuum_threshold=50'));
+assert(reloptions.includes('autovacuum_vacuum_insert_threshold=500'));
+// Keep autovacuum enabled for real policy admission, but prevent its worker from
+// consuming synthetic pressure between assertions. Only this disposable table.
+await sql(`ALTER TABLE task_queue SET (autovacuum_vacuum_threshold=1000000000,
+  autovacuum_vacuum_insert_threshold=1000000000)`);
 const pool = new pg.Pool({ ...connection, max: 1 });
 try {
   assert.equal((await assessQueueVacuumHandoff({ database: { pool } })).request, false);
@@ -83,4 +90,5 @@ await pressure();
 await assess('deferred');
 assert.deepEqual(await sql('SELECT attempts, last_result FROM queue_vacuum_recovery_state'), [{ attempts: 1, last_result: 'cooldown' }]);
 assert.deepEqual(await sql('SELECT value FROM supervisor_sentinel'), [{ value: 'preserved' }]);
+await sql('ALTER TABLE task_queue SET (autovacuum_vacuum_threshold=50,autovacuum_vacuum_insert_threshold=500)');
 process.stdout.write('PASS compatible worker: healthy, fresh setup, backfill, repair and durable cooldown; shared identity unchanged\n');

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T16:10:14.589Z
--- Latest Migration: 20261004_210000_discord_delivery_outbox.sql
+-- Generated: 2026-10-04T22:07:45.952Z
+-- Latest Migration: 20261004_230000_queue_routing_replay_guard.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.6 (Debian 18.6-1.pgdg12+2)
--- Dumped by pg_dump version 18.6 (Debian 18.6-1.pgdg12+2)
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8586,7 +8586,9 @@ CREATE TABLE public.task_queue (
     visible_at timestamp with time zone,
     classification_recovery_attempts smallint DEFAULT 0 NOT NULL,
     claim_token uuid,
+    routing_classification_id bigint,
     CONSTRAINT task_queue_classification_recovery_attempts_check CHECK (((classification_recovery_attempts >= 0) AND (classification_recovery_attempts <= 1))),
+    CONSTRAINT task_queue_routing_classification_id_check CHECK ((routing_classification_id > 0)),
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
 WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2', autovacuum_vacuum_insert_scale_factor='0.02', autovacuum_vacuum_insert_threshold='500');
@@ -8618,6 +8620,13 @@ COMMENT ON COLUMN public.task_queue.stage_started_at IS 'When the current classi
 --
 
 COMMENT ON COLUMN public.task_queue.stage_history IS 'JSON array of completed classification stages with timestamps and durations';
+
+
+--
+-- Name: COLUMN task_queue.routing_classification_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.task_queue.routing_classification_id IS 'Durable automatic-routing write barrier for this command. Never reset on retry. No history FK: history retention must not remove replay protection.';
 
 
 --
@@ -18059,6 +18068,7 @@ FROM unnest(ARRAY[
     '20261004_160000_discord_delivery_correlation.sql',
     '20261004_180000_discord_delivery_verification.sql',
     '20261004_200000_discord_delivery_deferral.sql',
-    '20261004_210000_discord_delivery_outbox.sql'
+    '20261004_210000_discord_delivery_outbox.sql',
+    '20261004_230000_queue_routing_replay_guard.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
