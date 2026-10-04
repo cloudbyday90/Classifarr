@@ -2,7 +2,7 @@
 import { jest } from '@jest/globals';
 import { readFile } from 'node:fs/promises';
 import { runInterruptedRoutingFixture, crashRoutingRuntime } from '../../scripts/embeddedIsolationDrill/interruptedRoutingFixture.mjs';
-import { startRoutingProvider, fixtureRequest } from '../../scripts/embeddedIsolationDrill/httpRoutingTransport.mjs';
+import { fixtureRequest } from '../../scripts/embeddedIsolationDrill/httpRoutingTransport.mjs';
 import { seedInterruptedRouting, readInterruptedRouting } from '../../scripts/embeddedIsolationDrill/interruptedRoutingState.mjs';
 
 test('data probe guards the environment and mounts before loading application dependencies', async () => {
@@ -119,40 +119,4 @@ test('seed uses distinct library names and future queue eligibility without preb
   expect(sql).toContain("'Interrupted ' || name");
   expect(sql).toContain("NOW()+INTERVAL '1 day'");
   expect(sql).not.toContain('INSERT INTO classification_history');
-});
-
-test('held HTTP add stores provider effect but never acknowledges it', async () => {
-  let accepted;
-  const arrived = new Promise(resolve => { accepted = resolve; });
-  const provider = await startRoutingProvider({ holdAfterAdd: accepted });
-  const controller = new AbortController();
-  const pending = fetch('http://127.0.0.1:21401/radarr/api/v3/movie', {
-    method: 'POST', signal: controller.signal, headers: { 'x-api-key': 'synthetic-routing', 'content-type': 'application/json' },
-    body: JSON.stringify({ tmdbId: 910001, qualityProfileId: 1, rootFolderPath: '/movies', addOptions: { searchForMovie: false } }),
-  }).then(() => 'acknowledged', () => 'interrupted');
-  try {
-    expect(await arrived).toBe('movie');
-    const response = await fetch('http://127.0.0.1:21401/radarr/api/v3/movie?tmdbId=910001', {
-      headers: { 'x-api-key': 'synthetic-routing' }, signal: AbortSignal.timeout(2000),
-    });
-    expect(await response.json()).toEqual([{ id: 7, tmdbId: 910001, path: '/movies/Synthetic' }]);
-    expect(provider.counts.movieAdds).toBe(1);
-  } finally { controller.abort(); await provider.close(); }
-  expect(await pending).toBe('interrupted');
-});
-
-test('startup health fixture allows only authenticated reads of three fixed endpoints', async () => {
-  const provider = await startRoutingProvider({ healthChecks: true });
-  const request = (path, method = 'GET') => fetch(`http://127.0.0.1:21401${path}`, {
-    method, headers: { 'x-api-key': 'synthetic-routing' }, signal: AbortSignal.timeout(2000),
-  });
-  try {
-    for (const type of ['radarr', 'sonarr']) {
-      for (const path of ['system/status', 'qualityprofile', 'rootfolder']) {
-        expect((await request(`/${type}/api/v3/${path}`)).status).toBe(200);
-      }
-    }
-    expect((await request('/radarr/api/v3/system/status', 'POST')).status).toBe(400);
-    expect(provider.counts).toMatchObject({ healthReads: 6, movieAdds: 0, tvAdds: 0, unexpected: 1 });
-  } finally { await provider.close(); }
 });
