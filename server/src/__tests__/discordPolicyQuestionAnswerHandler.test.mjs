@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
+import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
 
 import {
   createLoggerModuleMock,
@@ -33,7 +34,7 @@ function interaction(overrides = {}) {
     reply: jest.fn().mockResolvedValue(undefined),
     message: {
       id: 'discord-message-1',
-      embeds: [new EmbedBuilder().setTitle('Pending classification')],
+      embeds: [new EmbedBuilder().setTitle('Pending classification').setFooter({ text: formatDeliveryMarker('91', 'cf_abcdefghijklmnopqrstuv') })],
     },
     user: { id: 'discord-user-1', username: 'operator' },
     ...overrides,
@@ -104,6 +105,8 @@ describe('discordPolicyQuestionAnswerHandler', () => {
     expect(currentInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({
       components: [],
     }));
+    expect(currentInteraction.editReply.mock.calls[0][0].embeds[0].data.footer.text)
+      .toContain(`\n${formatDeliveryMarker('91', 'cf_abcdefghijklmnopqrstuv')}`);
   });
 
   test('does not repeat routing for an idempotent answer replay', async () => {

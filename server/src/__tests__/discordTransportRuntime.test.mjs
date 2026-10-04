@@ -10,6 +10,7 @@ const cases = [
   ['@discordjs/rest', 'discordUndiciFixture.mjs', 6],
   ['Discord REST', 'discordRestFixture.mjs', 1],
   ['Bounded Discord REST', 'discordBoundedRestFixture.mjs', 13],
+  ['Discord delivery correlation', 'discordDeliveryMarkerFixture.mjs', 1],
 ];
 
 test.each(cases)('%s uses the actual transport with bounded loopback I/O', async (consumer, filename, count) => {

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { EmbedBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
@@ -96,11 +97,8 @@ export async function processVerification(classificationId, isCorrect, interacti
     await interaction.editReply({
       components: [],
       embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
-          .setColor(0x22c55e)
-          .setFooter({
-            text: `\u2705 Verified by ${interaction.user.username} \u2022 Outcome recorded`,
-          }),
+        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
+          .setColor(0x22c55e), `\u2705 Verified by ${interaction.user.username} \u2022 Outcome recorded`),
       ],
     });
 

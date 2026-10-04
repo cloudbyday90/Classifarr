@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T12:02:41.996Z
--- Latest Migration: 20261004_140000_discord_notification_deliveries.sql
+-- Generated: 2026-10-04T13:12:19.907Z
+-- Latest Migration: 20261004_160000_discord_delivery_correlation.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3317,9 +3317,11 @@ CREATE TABLE public.discord_notification_deliveries (
     failure_code text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    correlation_version smallint,
     CONSTRAINT discord_notification_deliveries_bot_user_id_check CHECK (((bot_user_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_channel_id_check CHECK (((channel_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_check CHECK (((state = 'delivered'::text) = (message_id IS NOT NULL))),
+    CONSTRAINT discord_notification_deliveries_correlation_version_check CHECK ((correlation_version = 1)),
     CONSTRAINT discord_notification_deliveries_failure_code_check CHECK ((failure_code = ANY (ARRAY['send_unconfirmed'::text, 'provider_rejected'::text, 'completion_unconfirmed'::text]))),
     CONSTRAINT discord_notification_deliveries_message_id_check CHECK (((message_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_nonce_check CHECK (((nonce)::text ~ '^cf_[A-Za-z0-9_-]{22}$'::text)),
@@ -17961,6 +17963,7 @@ FROM unnest(ARRAY[
     '20261003_120000_manual_routing_checks.sql',
     '20261003_140000_manual_routing_provider_guard.sql',
     '20261004_120000_custom_preset_save_requests.sql',
-    '20261004_140000_discord_notification_deliveries.sql'
+    '20261004_140000_discord_notification_deliveries.sql',
+    '20261004_160000_discord_delivery_correlation.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

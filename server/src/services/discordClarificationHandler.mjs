@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { EmbedBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
@@ -175,16 +176,13 @@ export async function processClarificationResponse(
     await interaction.editReply({
       components: [],
       embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
+        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
           .setColor(0x22c55e)
           .addFields(
             { name: 'Your Answer', value: selectedLabel, inline: true },
             { name: 'Selected Library', value: libraryName, inline: true },
             { name: 'Routing', value: routingStatusText, inline: false },
-          )
-          .setFooter({
-            text: `\u2705 Resolved by ${interaction.user.username} \u2022 Resolution recorded`,
-          }),
+          ), `\u2705 Resolved by ${interaction.user.username} \u2022 Resolution recorded`),
       ],
     });
 

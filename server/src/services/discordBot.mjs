@@ -118,6 +118,10 @@ class DiscordBotService {
     deliveryClient.on('messageCreate', message => {
       void discordDelivery.observe(message, deliveryClient, warnDiscordRuntimeFailure);
     });
+    deliveryClient.on('messageUpdate', (_previous, message) => {
+      // Missing/partial evidence stays unconfirmed; never fetch or resend here.
+      void discordDelivery.observe(message, deliveryClient, warnDiscordRuntimeFailure);
+    });
 
     await this.client.login(token);
     this.isInitialized = true;

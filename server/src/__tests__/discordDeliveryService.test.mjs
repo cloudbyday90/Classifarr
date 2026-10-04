@@ -32,6 +32,23 @@ test('validates scope without querying or sending', async () => {
   expect(isDeliveryNonce('untrusted')).toBe(false);
 });
 
+test('payload failure is sanitized and happens before durable admission or provider I/O', async () => {
+  input.payload = { embeds: [{ toJSON() { throw new Error('private-payload'); } }] };
+  expect(await service.send(input)).toEqual({ sent: false, reason: 'delivery_payload_invalid' });
+  expect(repository.claim).not.toHaveBeenCalled();
+  expect(input.channel.send).not.toHaveBeenCalled();
+  expect(JSON.stringify(input.warnFn.mock.calls)).not.toContain('private-payload');
+});
+
+test('marker confirmations use the same bounded completion path without sending', async () => {
+  const event = { id: messageId, channelId, type: 0, author: { id: botId, bot: true },
+    embeds: [{ footer: { text: `Classifarr receipt v1:1:${nonce}` } }] };
+  expect(await service.observe(event, input.client)).toBe(true);
+  expect(repository.complete).toHaveBeenCalledWith({ nonce, classificationId: '1', correlationVersion: 1,
+    botUserId: botId, channelId, messageId });
+  expect(input.channel.send).not.toHaveBeenCalled();
+});
+
 test('delivery cap has no queue and frees capacity after failure', async () => {
   const held = Promise.withResolvers();
   repository.claim.mockImplementation(() => held.promise);
@@ -42,7 +59,8 @@ test('delivery cap has no queue and frees capacity after failure', async () => {
   await Promise.all(pending);
   repository.claim.mockResolvedValue({ admitted: true, nonce });
   expect(await service.send(input)).toEqual({ sent: true, messageId });
-  expect(input.channel.send).toHaveBeenCalledWith({ content: 'fixture', nonce, enforceNonce: true });
+  expect(input.channel.send).toHaveBeenCalledWith({ content: 'fixture', nonce, enforceNonce: true,
+    embeds: [{ footer: { text: `Classifarr receipt v1:1:${nonce}` } }] });
 });
 
 test('Gateway cap is separate, rejects unrelated events, and frees slots', async () => {

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { EmbedBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
@@ -75,7 +76,7 @@ export async function processCorrection(classificationId, newLibraryId, interact
     await interaction.editReply({
       components: [],
       embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
+        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
           .addFields(
             {
               name: 'Corrected To',
@@ -87,10 +88,7 @@ export async function processCorrection(classificationId, newLibraryId, interact
               value: routingStatusText,
               inline: false,
             },
-          )
-          .setFooter({
-            text: `\u2705 Corrected by ${interaction.user.username}`,
-          }),
+          ), `\u2705 Corrected by ${interaction.user.username}`),
       ],
     });
 

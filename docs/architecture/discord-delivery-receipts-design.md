@@ -2,6 +2,10 @@
 
 Design date: 2026-10-04. Scope: initial classification notifications only.
 
+Follow-on: [durable correlation](discord-delivery-correlation-design.md) adds
+versioned footer proof for future messages while retaining this admission and
+no-uncertain-replay contract.
+
 ## Evidence and decision
 
 Pending, confidence-based and standard notifications currently send before saving

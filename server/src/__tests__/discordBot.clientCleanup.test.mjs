@@ -150,6 +150,9 @@ describe('discordBot temporary client cleanup', () => {
     const message = { nonce: 'fixture' };
     originalClient.handlers.messageCreate(message);
     expect(observe).toHaveBeenCalledWith(message, originalClient, expect.any(Function));
+    originalClient.handlers.messageUpdate({ partial: true }, message);
+    expect(observe).toHaveBeenLastCalledWith(message, originalClient, expect.any(Function));
+    expect(originalClient.channels.fetch).not.toHaveBeenCalled();
     expect(mockClients).toHaveLength(2);
     expect(mockClients[0].sdkDestroy).toHaveBeenCalledTimes(1);
     await expect(mockClients[0].options.rest.makeRequest('unused', {})).rejects.toMatchObject({ code: 'DISCORD_TRANSPORT_CLOSED' });

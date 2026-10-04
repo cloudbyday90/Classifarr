@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { isDeliveryNonce, isDiscordId } from './discordDeliveryContract.mjs';
+import { isDiscordId } from './discordDeliveryContract.mjs';
+import { getDeliveryProof } from './discordDeliveryMarker.mjs';
+import { prepareDeliveryPayload } from './discordDeliveryPayload.mjs';
 
 export function createDiscordDeliveryService(repository) {
   let sending = 0;
@@ -34,6 +36,11 @@ export function createDiscordDeliveryService(repository) {
         warn(input.warnFn, 'delivery_busy', input.classificationId);
         return { sent: false, reason: 'delivery_busy' };
       }
+      let payload;
+      try { payload = prepareDeliveryPayload(input.payload, input.classificationId); } catch {
+        warn(input.warnFn, 'delivery_payload_invalid', input.classificationId);
+        return { sent: false, reason: 'delivery_payload_invalid' };
+      }
       sending += 1;
       let claim;
       try {
@@ -44,7 +51,7 @@ export function createDiscordDeliveryService(repository) {
         }
         let message;
         try {
-          message = await input.channel.send({ ...input.payload, nonce: claim.nonce, enforceNonce: true });
+          message = await input.channel.send(payload(claim.nonce));
         } catch (error) {
           const code = [400, 401, 403, 404].includes(error?.status) ? 'provider_rejected' : 'send_unconfirmed';
           const result = await repository.fail(claim.nonce, code);
@@ -65,17 +72,15 @@ export function createDiscordDeliveryService(repository) {
       } finally { sending -= 1; }
     },
     async observe(message, client, warnFn) {
-      if (!isDeliveryNonce(message?.nonce) || !isDiscordId(message?.id)
-        || !isDiscordId(message?.channelId) || !isDiscordId(client?.user?.id)
-        || message?.author?.id !== client.user.id) return false;
+      const proof = getDeliveryProof(message, client?.user?.id);
+      if (!proof) return false;
       if (confirming >= 8) {
         warn(warnFn, 'delivery_confirmation_busy', null);
         return false;
       }
       confirming += 1;
       try {
-        return await complete({ nonce: message.nonce, botUserId: client.user.id,
-          channelId: message.channelId, messageId: message.id },
+        return await complete(proof,
         () => warn(warnFn, 'delivery_confirmation_unavailable', null));
       } finally { confirming -= 1; }
     },

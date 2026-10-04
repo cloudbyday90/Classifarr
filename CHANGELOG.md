@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add persistent receipt references to future Discord classification alerts and
+  preserve them through acknowledgement and correction edits. Confirm matching
+  bot events without resending; never invent delivery proof for older alerts.
 - Add an admin Discord delivery-review panel with page-scoped status counts,
   clear next steps and bounded, on-demand reads. Preserve uncertain receipts;
   viewing or refreshing results never sends a notification or marks it delivered.

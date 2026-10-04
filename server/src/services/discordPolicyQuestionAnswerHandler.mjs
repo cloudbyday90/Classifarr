@@ -9,6 +9,7 @@
  */
 
 import { EmbedBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -145,15 +146,12 @@ export async function processPolicyQuestionAnswer({
     await interaction.editReply({
       components: [],
       embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
+        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
           .setColor(0x22c55e)
           .addFields(
             { name: 'Selected Library', value: libraryName, inline: true },
             { name: 'Routing', value: routingStatus, inline: false },
-          )
-          .setFooter({
-            text: `Resolved by ${interaction.user?.username || 'Discord operator'} - resolution recorded`,
-          }),
+          ), `Resolved by ${interaction.user?.username || 'Discord operator'} - resolution recorded`),
       ],
     });
 

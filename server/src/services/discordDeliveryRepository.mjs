@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomBytes } from 'node:crypto';
 import { configAllowsDelivery, deliveryResult } from './discordDeliveryContract.mjs';
+import { DELIVERY_CORRELATION_VERSION } from './discordDeliveryMarker.mjs';
 
 export function createDiscordDeliveryRepository(db) {
   const transaction = fn => db.withTransaction(async client => {
@@ -31,19 +32,22 @@ export function createDiscordDeliveryRepository(db) {
         const nonce = `cf_${randomBytes(16).toString('base64url')}`;
         await client.query(`INSERT INTO discord_notification_deliveries
           (classification_id, nonce, bot_user_id, channel_id, notification_kind,
-           previous_status, previous_clarification_status, desired_clarification_status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+           previous_status, previous_clarification_status, desired_clarification_status, correlation_version)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
         [input.classificationId, nonce, input.client.user.id, input.channelId, input.kind,
-          history.status, history.clarification_status, input.clarificationStatus ?? null]);
+          history.status, history.clarification_status, input.clarificationStatus ?? null, DELIVERY_CORRELATION_VERSION]);
         return { admitted: true, nonce };
       });
     },
-    complete({ nonce, botUserId, channelId, messageId }) {
+    complete({ nonce, botUserId, channelId, messageId, correlationVersion, classificationId }) {
       return transaction(async client => {
         const { rows: [receipt] } = await client.query(
           'SELECT * FROM discord_notification_deliveries WHERE nonce = $1 AND bot_user_id = $2 AND channel_id = $3',
           [nonce, botUserId, channelId]);
         if (!receipt) return false;
+        if (correlationVersion !== undefined && (correlationVersion !== DELIVERY_CORRELATION_VERSION
+          || receipt.correlation_version !== correlationVersion
+          || String(receipt.classification_id) !== classificationId)) return false;
         // All mutators lock the parent first; never invert claim's lock order.
         const { rows: [history] } = await client.query(
           'SELECT id FROM classification_history WHERE id = $1 FOR UPDATE', [receipt.classification_id]);

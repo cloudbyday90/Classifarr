@@ -65,6 +65,11 @@ outcome separately; retain the receipt protocol's existing regression coverage.
 
 ## Recommendations and tradeoffs
 
+The first follow-on is now described in the
+[correlation design](discord-delivery-correlation-design.md). It establishes
+provider-authenticated, receipt-bound proof; the administrator lookup action
+remains a separate step. This panel continues to perform database-only reads.
+
 1. **Ship read-only review now.** Low overhead, useful visibility, no duplicate
    notification risk. It cannot resolve an ambiguous historical send by itself.
 2. **Next: durable message correlation and scoped verification.** Design a

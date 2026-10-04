@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
@@ -110,9 +111,8 @@ export async function processQuestionResponse(
     await interaction.editReply({
       components: [],
       embeds: [
-        EmbedBuilder.from(interaction.message.embeds[0])
-          .addFields({ name: 'Response', value: responseKey, inline: true })
-          .setFooter({ text: `\u2705 Answered by ${interaction.user.username}` }),
+        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
+          .addFields({ name: 'Response', value: responseKey, inline: true }), `\u2705 Answered by ${interaction.user.username}`),
       ],
     });
   } catch (error) {

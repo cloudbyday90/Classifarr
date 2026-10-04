@@ -31,6 +31,7 @@
 
 import { jest } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
+import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
@@ -94,8 +95,10 @@ const MOCK_CLASSIFICATION = {
     policy_question: null,
 };
 
+const deliveryMarker = formatDeliveryMarker('100', 'cf_abcdefghijklmnopqrstuv');
+let interactions = [];
 function makeInteraction(overrides = {}) {
-    return {
+    const interaction = {
         deferUpdate: jest.fn().mockResolvedValue(undefined),
         editReply: jest.fn().mockResolvedValue(undefined),
         followUp: jest.fn().mockResolvedValue(undefined),
@@ -103,16 +106,28 @@ function makeInteraction(overrides = {}) {
         update: jest.fn().mockResolvedValue(undefined),
         user: { username: 'testUser', id: 'user-001' },
         message: {
-            embeds: [new EmbedBuilder()],
+            embeds: [new EmbedBuilder().setFooter({ text: deliveryMarker })],
             components: [{ components: [{ label: 'Option A' }, { label: 'Option B' }] }],
         },
         replied: false,
         deferred: false,
         ...overrides,
     };
+    interactions.push(interaction);
+    return interaction;
 }
 
+afterEach(() => {
+    for (const interaction of interactions) {
+        if (interaction.message?.embeds?.[0]?.data?.footer?.text !== deliveryMarker) continue;
+        for (const [payload] of [...interaction.editReply.mock.calls, ...interaction.update.mock.calls]) {
+            if (payload.embeds) expect(payload.embeds[0].data.footer.text).toContain(`\n${deliveryMarker}`);
+        }
+    }
+});
+
 beforeEach(() => {
+    interactions = [];
     jest.clearAllMocks();
     db.query.mockReset();
     clarificationService.resolvePolicyQuestion.mockReset();
@@ -140,6 +155,12 @@ beforeEach(() => {
 });
 
 describe('handleInteraction', () => {
+    test('acknowledgement preserves the existing receipt footer', async () => {
+        const interaction = makeInteraction({ customId: 'acknowledge_100', isButton: () => true });
+        await handleInteraction(interaction);
+        expect(interaction.update).toHaveBeenCalledTimes(1);
+        expect(interaction.update.mock.calls[0][0].embeds[0].data.footer.text).toContain(deliveryMarker);
+    });
     test('routes the "correct" button through processVerification — DB is queried for classification', async () => {
         db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'pending' }] })
             .mockResolvedValue({ rows: [], rowCount: 1 });

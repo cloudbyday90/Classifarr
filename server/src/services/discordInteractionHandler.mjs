@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { EmbedBuilder } from 'discord.js';
+import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { processCorrection as correctionHandlerProcessCorrection } from './discordCorrectionHandler.mjs';
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
@@ -71,9 +72,7 @@ export async function handleInteraction(interaction) {
         await interaction.update({
           components: [],
           embeds: [
-            EmbedBuilder.from(interaction.message.embeds[0]).setFooter({
-              text: '\u2705 Acknowledged',
-            }),
+            setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0]), '\u2705 Acknowledged'),
           ],
         });
       } else if (action === 'clarify') {
