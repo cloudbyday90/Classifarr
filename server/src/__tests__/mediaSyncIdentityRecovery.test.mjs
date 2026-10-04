@@ -196,3 +196,48 @@ test('local receipt failures are not diagnosed as provider outages', async () =>
   expect(await test.run({ recordOutcome, readReceipt: async () => { throw new Error('db secret'); } })).toBeNull();
   expect(recordOutcome.mock.calls[0][1]).toEqual({ reason: 'internal_error', attemptId: null });
 });
+
+test.each(['before', 'receipt', 'claim', 'find', 'details', 'source'])
+('owner cancellation at %s propagates without recording a provider failure', async stage => {
+  const t = setup(); const controller = new AbortController();
+  const failure = new Error('synthetic owner lost'); const recordOutcome = jest.fn();
+  const cancel = () => controller.abort(failure);
+  const readReceipt = jest.fn(async () => { if (stage === 'receipt') cancel(); return null; });
+  if (stage === 'before') cancel();
+  if (stage === 'claim') t.claimAttempt.mockImplementation(async () => { cancel(); return true; });
+  if (stage === 'find') t.tmdbService.findIdentityByExternalId.mockImplementation(async () => {
+    cancel(); return { movie_results: [{ id: 22 }] };
+  });
+  if (stage === 'details') t.tmdbService.getIdentityDetails.mockImplementation(async () => {
+    cancel(); return { id: 22, title: 'Fixture', release_date: '2001-01-01' };
+  });
+  if (stage === 'source') t.service.getLibraryItemIdentityEvidence.mockImplementation(async () => {
+    cancel(); return fixture().source_identity_evidence;
+  });
+  await expect(t.run({ signal: controller.signal, readReceipt, recordOutcome })).rejects.toBe(failure);
+  expect(recordOutcome).not.toHaveBeenCalled();
+  if (stage === 'before') expect(readReceipt).not.toHaveBeenCalled();
+  if (['before', 'receipt'].includes(stage)) expect(t.claimAttempt).not.toHaveBeenCalled();
+  if (['before', 'receipt', 'claim'].includes(stage)) expect(t.tmdbService.findIdentityByExternalId).not.toHaveBeenCalled();
+  if (stage !== 'source') expect(t.service.getLibraryItemIdentityEvidence).not.toHaveBeenCalled();
+});
+
+test('cached source verification cancellation is not converted to a recovery outcome', async () => {
+  const t = setup(); const first = await t.run(); const recordOutcome = jest.fn();
+  const controller = new AbortController(); const failure = new Error('owner lost');
+  t.service.getLibraryItemIdentityEvidence.mockImplementation(async (_u, _k, _l, _i, { signal }) => {
+    expect(signal).toBe(controller.signal); controller.abort(failure); throw new Error('transport cancelled');
+  });
+  await expect(t.run({ signal: controller.signal, readReceipt: async () => first.receipt, recordOutcome })).rejects.toBe(failure);
+  expect(recordOutcome).not.toHaveBeenCalled();
+});
+
+test('TV cancellation between external-ID reads prevents the second provider request', async () => {
+  const t = setup(fixture({ media_type: 'tv' })); const controller = new AbortController();
+  t.tmdbService.findIdentityByExternalId.mockImplementation(async (_id, _type, { signal }) => {
+    expect(signal).toBe(controller.signal); controller.abort(); return { tv_results: [{ id: 22 }] };
+  });
+  await expect(t.run({ signal: controller.signal })).rejects.toThrow();
+  expect(t.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(1);
+  expect(t.tmdbService.getIdentityDetails).not.toHaveBeenCalled();
+});

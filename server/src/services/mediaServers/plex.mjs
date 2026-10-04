@@ -151,15 +151,17 @@ class PlexService {
    * read-only identity-evidence comparison. A caller never receives title,
    * summary, artwork, or any persisted item fields.
    */
-  async getLibraryItemIdentityEvidence(url, apiKey, libraryKey, externalId) {
+  async getLibraryItemIdentityEvidence(url, apiKey, libraryKey, externalId, { signal = null } = {}) {
+    signal?.throwIfAborted();
     const sourceId = typeof externalId === 'string' ? externalId.trim() : '';
     const sourceLibrary = String(libraryKey ?? '');
     if (!sourceId || !sourceLibrary) return null;
     try {
       const response = await httpGet(
         `${url}/library/metadata/${encodeURIComponent(sourceId)}`,
-        buildRequestConfig(apiKey, { params: { includeGuids: 1 }, timeout: 10000 }),
+        buildRequestConfig(apiKey, { params: { includeGuids: 1 }, timeout: 10000, maxResponseBytes: 1048576, signal }),
       );
+      signal?.throwIfAborted();
       const item = response.data?.MediaContainer?.Metadata?.[0];
       if (!item || String(item.ratingKey) !== sourceId || String(item.librarySectionID) !== sourceLibrary) return null;
       const mediaType = item.type === 'show' ? 'tv' : item.type === 'movie' ? 'movie' : null;
@@ -169,6 +171,7 @@ class PlexService {
       return mediaType && providerIds ? Object.freeze({ mediaType, providerIds,
         ...(recovery ? { snapshotDigest: recovery.snapshotDigest } : {}) }) : null;
     } catch (error) {
+      signal?.throwIfAborted();
       throw new Error(`Failed to fetch Plex library item identity evidence: ${error.message}`);
     }
   }

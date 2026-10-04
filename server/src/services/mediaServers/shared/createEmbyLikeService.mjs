@@ -120,7 +120,8 @@ class EmbyLikeService {
   }
 
   /** Reads the minimum current source evidence for a single retained item. */
-  async getLibraryItemIdentityEvidence(url, apiKey, libraryId, externalId) {
+  async getLibraryItemIdentityEvidence(url, apiKey, libraryId, externalId, { signal = null } = {}) {
+    signal?.throwIfAborted();
     const sourceId = typeof externalId === 'string' ? externalId.trim() : '';
     const sourceLibrary = String(libraryId ?? '');
     if (!sourceId || !sourceLibrary) return null;
@@ -128,8 +129,11 @@ class EmbyLikeService {
       const response = await httpGet(`${url}/Items/${encodeURIComponent(sourceId)}`, {
         headers: buildHeaders(apiKey),
         timeout: 10000,
+        maxResponseBytes: 1048576,
+        signal,
         params: { Fields: 'ProviderIds,ParentId,AncestorIds' },
       });
+      signal?.throwIfAborted();
       const item = response.data;
       const belongsToLibrary = String(item?.ParentId) === sourceLibrary ||
         (Array.isArray(item?.AncestorIds) && item.AncestorIds.some((id) => String(id) === sourceLibrary));
@@ -138,6 +142,7 @@ class EmbyLikeService {
       const providerIds = collectProviderIdCandidates(item.ProviderIds || {});
       return mediaType && providerIds ? Object.freeze({ mediaType, providerIds }) : null;
     } catch (error) {
+      signal?.throwIfAborted();
       throw new Error(`Failed to fetch ${this.displayName} library item identity evidence: ${error.message}`);
     }
   }

@@ -34,8 +34,8 @@ class TMDBService {
     this.rateLimiters = deps.rateLimiters || rateLimiters;
   }
 
-  async executeRateLimited(fn) {
-    return this.rateLimiters.tmdb.execute(fn);
+  async executeRateLimited(fn, options = {}) {
+    return this.rateLimiters.tmdb.execute(fn, options);
   }
 
   async getApiKey() {
@@ -134,12 +134,12 @@ class TMDBService {
     }
   }
 
-  async findIdentityByExternalId(externalId, source) {
+  async findIdentityByExternalId(externalId, source, options = {}) {
     return findTmdbIdentityByExternalId(externalId, source, {
       baseUrl: this.baseUrl, httpGet,
       getApiKey: () => this.getApiKey(),
-      executeRateLimited: (fn) => this.executeRateLimited(fn),
-    });
+      executeRateLimited: (fn, requestOptions) => this.executeRateLimited(fn, requestOptions),
+    }, options);
   }
 
   async getMovieDetails(tmdbId) {
@@ -258,12 +258,12 @@ class TMDBService {
     });
   }
 
-  async getIdentityDetails(id, mediaType) {
+  async getIdentityDetails(id, mediaType, options = {}) {
     return getTmdbIdentityDetails(id, mediaType, {
       baseUrl: this.baseUrl, httpGet,
       getApiKey: () => this.getApiKey(),
-      executeRateLimited: (fn) => this.executeRateLimited(fn),
-    });
+      executeRateLimited: (fn, requestOptions) => this.executeRateLimited(fn, requestOptions),
+    }, options);
   }
 
   async search(query, mediaType = 'multi') {

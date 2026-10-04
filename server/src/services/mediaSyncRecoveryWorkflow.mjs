@@ -15,23 +15,30 @@ export function createMediaSyncRecoveryWorkflow({ store, context, recovery, sour
   let closed = false;
 
   async function complete(item, proof = null) {
+    source.signal?.throwIfAborted();
     if (proof) {
       try {
-        if (await persistRecovery(store, context, proof)) return 1;
+        const persisted = await persistRecovery(store, context, proof);
+        source.signal?.throwIfAborted();
+        if (persisted) return 1;
         await recordOutcome(item, { reason: 'persistence_failed', attemptId: proof.attemptId ?? null });
       } catch {
+        source.signal?.throwIfAborted();
         await recordOutcome(item, { reason: 'persistence_failed', attemptId: proof.attemptId ?? null });
         logger.warn('Source identity recovery deferred; sync will retry', { libraryId: context.libraryId },
           { dedupeKey: `identity-recovery:${context.libraryId}`, dedupeWindowMs: 3600000 });
       }
     }
+    source.signal?.throwIfAborted();
     await upsert(item);
+    source.signal?.throwIfAborted();
     return 1;
   }
 
   return Object.freeze({
     get pendingCount() { return plan.size; },
     async process(item) {
+      source.signal?.throwIfAborted();
       if (closed) throw new Error('Recovery scan is already closed');
       // A later appearance owns the buffered snapshot, including a now-valid item.
       const previous = plan.withdraw(item?.external_id);
@@ -40,6 +47,7 @@ export function createMediaSyncRecoveryWorkflow({ store, context, recovery, sour
       let evicted = null;
       const proof = await recovery.recover(item, { ...options, claimAttempt: async candidate => {
         const priority = await readPriority(candidate);
+        source.signal?.throwIfAborted();
         if (priority) ({ admitted, evicted } = plan.offer(candidate, priority.attemptedAt));
         // Planning is deliberately not an attempt or a durable reservation.
         return false;
@@ -48,6 +56,7 @@ export function createMediaSyncRecoveryWorkflow({ store, context, recovery, sour
       return completed + (admitted ? 0 : await complete(item, proof));
     },
     async flush() {
+      source.signal?.throwIfAborted();
       if (closed) return 0;
       closed = true;
       let completed = 0;

@@ -32,26 +32,37 @@ export class RateLimiter {
     }
 
     /** @returns {Promise<void>} */
-    async acquire() {
-        return new Promise((resolve) => {
+    async acquire({ signal = null } = {}) {
+        signal?.throwIfAborted();
+        return new Promise((resolve, reject) => {
+            let timer;
+            const cleanup = () => {
+                clearTimeout(timer);
+                signal?.removeEventListener('abort', cancel);
+            };
+            const cancel = () => { cleanup(); reject(signal.reason); };
             const tryAcquire = () => {
+                if (signal?.aborted) { cancel(); return; }
                 this.refillTokens();
 
                 if (this.tokens > 0) {
                     this.tokens -= 1;
+                    cleanup();
                     resolve();
                 } else {
                     const waitTime = Math.ceil(this.intervalMs / this.maxRequests);
-                    setTimeout(tryAcquire, waitTime);
+                    timer = setTimeout(tryAcquire, waitTime);
                 }
             };
 
+            signal?.addEventListener('abort', cancel, { once: true });
             tryAcquire();
         });
     }
 
-    async execute(fn) {
-        await this.acquire();
+    async execute(fn, { signal = null } = {}) {
+        await this.acquire({ signal });
+        signal?.throwIfAborted();
         return fn();
     }
 

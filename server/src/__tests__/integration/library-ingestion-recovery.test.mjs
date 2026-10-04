@@ -5,6 +5,8 @@ import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mj
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { sourcePageFixture, withSourcePageFixtures } from '../helpers/sourcePageFixture.mjs';
 import { readPlexSourcePage } from '../../services/mediaServers/shared/sourcePage.mjs';
+import { createIdentityHttpFixture, withinIdentityTestDeadline as within } from '../helpers/identityHttpFixture.mjs';
+import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { MediaSyncService } = await import('../../services/mediaSync.mjs');
 const { createMediaSyncOwnership } = await import('../../services/mediaSyncOwnership.mjs');
@@ -14,6 +16,9 @@ const { pruneMissingMediaItems, pruneMissingCollections } = await import('../../
 const { MEDIA_SYNC_OWNER_LOCK } = await import('../../services/mediaSyncLockKeys.mjs');
 const { LIBRARY_INGESTION_STATUS_SQL, LIBRARY_INGESTION_WATCHDOG_SQL } = await import('../../services/libraryIngestionStatus.mjs');
 const { readInventoryBackgroundReadiness } = await import('../../services/inventoryBackgroundReadiness.mjs');
+const { createMediaSyncIdentityRecovery } = await import('../../services/mediaSyncIdentityRecovery.mjs');
+const { tmdbService } = await import('../../services/tmdb.mjs');
+const { RateLimiter } = await import('../../utils/rateLimiter.mjs');
 const db = createIntegrationDatabaseModuleMock();
 let serverId, libraryId;
 const item = id => ({ external_id: String(id), tmdb_id: id, title: `Synthetic ${id}`, media_type: 'movie', year: 2001 });
@@ -276,6 +281,57 @@ test('unknown legacy markers are preserved instead of age-based takeover', async
   expect(await state()).toBeUndefined();
   expect(await status()).toMatchObject({ state: 'legacy_owner_unknown', needsReconciliation: true });
   expect((await db.query('SELECT status FROM media_server_sync_status WHERE library_id=$1', [libraryId])).rows[0].status).toBe('running');
+});
+
+test('owner connection loss cancels real identity HTTP and preserves inventory and claimed cooldown on replay', async () => {
+  await sync(async () => [item(99)]).syncLibrary(libraryId);
+  const conflict = { ...item(22), provider_identity_invalid: true, provider_identity_issue: 'conflicting_provider_ids',
+    provider_identity_field: 'tmdb_id' };
+  conflict.source_identity_evidence = sourceIdentityRecoveryEvidence(conflict, 'synthetic',
+    { tmdb_id: [11, 22], imdb_id: ['tt123'], tvdb_id: [] });
+  const fixture = await createIdentityHttpFixture();
+  const tmdb = Object.create(tmdbService);
+  tmdb.baseUrl = fixture.url; tmdb.getApiKey = async () => 'synthetic-only';
+  tmdb.rateLimiters = { tmdb: new RateLimiter() };
+  const sourceCheck = jest.fn();
+  const service = withSourcePageFixtures({ getLibraryItems: async () => [item(99), conflict],
+    getCollections: async () => [], getLibraryItemIdentityEvidence: sourceCheck });
+  const instance = sync(null, { mediaServerServices: { getMediaServerService: async () => service },
+    createIdentityRecovery: () => createMediaSyncIdentityRecovery({ tmdbService: tmdb }) });
+  let pending;
+  const observation = async () => (await db.query(`SELECT recovery_attempt_id,recovery_attempted_at,
+    recovery_retry_after,recovery_outcome,recovery_completed_at FROM media_source_observations WHERE library_id=$1`, [libraryId])).rows[0];
+  try {
+    pending = instance.syncLibrary(libraryId).then(value => ({ value }), error => ({ error }));
+    await within(fixture.received);
+    const before = await observation();
+    expect(before.recovery_attempt_id).toMatch(/^[a-f0-9-]{36}$/);
+    expect(before.recovery_retry_after.getTime()).toBeGreaterThan(Date.now());
+    const { rows: [lock] } = await db.query(`SELECT pid FROM pg_locks WHERE locktype='advisory'
+      AND classid=$1::oid AND objid=$2::oid AND objsubid=2 AND granted
+      AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`, [MEDIA_SYNC_OWNER_LOCK, libraryId]);
+    expect(lock?.pid).toBeGreaterThan(0);
+    // Only the synthetic suite's identified owner is terminated.
+    await db.query('SELECT pg_terminate_backend($1,5000)', [lock.pid]);
+    expect((await within(pending)).error).toBeInstanceOf(Error);
+    await within(fixture.disconnected);
+    expect(sourceCheck).not.toHaveBeenCalled();
+    expect(fixture.requests).toBe(1);
+    expect(await inventory()).toEqual(['99']);
+    expect(await observation()).toEqual(before);
+    expect((await state()).phase).toBe('running');
+    expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
+    // Advance only the import replay deadline, not the claimed identity budget.
+    await due();
+    expect(await instance.syncLibrary(libraryId)).toMatchObject({ success: true });
+    expect((await state()).phase).toBe('complete');
+    expect(await observation()).toEqual(before);
+    expect(await inventory()).toEqual(['99']);
+    expect(fixture.requests).toBe(1);
+  } finally {
+    await fixture.close();
+    if (pending) await pending;
+  }
 });
 
 test('foreign work remains visible after a completed owned import and cannot starve the watchdog', async () => {

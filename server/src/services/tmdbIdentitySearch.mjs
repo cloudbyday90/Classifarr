@@ -9,14 +9,20 @@ import { ServiceUnavailableError } from '../utils/appError.mjs';
 import { reviewInteger } from './mediaIdentityReviewContract.mjs';
 
 /** Fetch bounded typed details for identity verification and operator review. */
-export async function getTmdbIdentityDetails(id, mediaType, deps) {
+export async function getTmdbIdentityDetails(id, mediaType, deps, { signal = null } = {}) {
+  signal?.throwIfAborted();
   const tmdbId = reviewInteger(id);
   if (!['movie', 'tv'].includes(mediaType)) return null;
   const apiKey = await deps.getApiKey();
+  signal?.throwIfAborted();
   if (!apiKey) throw new ServiceUnavailableError('TMDB API key not configured');
-  const response = await deps.executeRateLimited(() => deps.httpGet(`${deps.baseUrl}/${mediaType}/${tmdbId}`, {
-    params: { api_key: apiKey }, timeout: 10000, maxResponseBytes: 1048576,
-  }));
+  const response = await deps.executeRateLimited(() => {
+    signal?.throwIfAborted();
+    return deps.httpGet(`${deps.baseUrl}/${mediaType}/${tmdbId}`, {
+      params: { api_key: apiKey }, timeout: 10000, maxResponseBytes: 1048576, signal,
+    });
+  }, { signal });
+  signal?.throwIfAborted();
   return response.data;
 }
 
@@ -36,13 +42,19 @@ export async function searchTmdbIdentityCandidates(title, mediaType, year, deps)
 }
 
 /** Unlike the general find helper, preserve failures so identity resolution cannot hide them. */
-export async function findTmdbIdentityByExternalId(externalId, source, deps) {
+export async function findTmdbIdentityByExternalId(externalId, source, deps, { signal = null } = {}) {
+  signal?.throwIfAborted();
   const request = buildTmdbExternalIdRequest(externalId, source);
   if (!request) return null;
   const apiKey = await deps.getApiKey();
+  signal?.throwIfAborted();
   if (!apiKey) throw new ServiceUnavailableError('TMDB API key not configured');
-  const response = await deps.executeRateLimited(() => deps.httpGet(`${deps.baseUrl}/find/${request.externalId}`, {
-    params: { api_key: apiKey, external_source: request.source }, timeout: 10000, maxResponseBytes: 1048576,
-  }));
+  const response = await deps.executeRateLimited(() => {
+    signal?.throwIfAborted();
+    return deps.httpGet(`${deps.baseUrl}/find/${request.externalId}`, {
+      params: { api_key: apiKey, external_source: request.source }, timeout: 10000, maxResponseBytes: 1048576, signal,
+    });
+  }, { signal });
+  signal?.throwIfAborted();
   return response.data;
 }

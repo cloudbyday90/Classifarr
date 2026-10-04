@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Cancel identity-verification reads and rate-limit waits when an import loses
+  its owner connection. Bound source evidence responses, preserve retry state
+  and inventory, and keep cancellation distinct from provider failures.
 - Retry new Discord notifications after confirmed throttling using a bounded,
   short-lived durable buffer. Respect saved intent, cooldowns and attempt limits;
   never replay uncertain or legacy receipts. No deployment-template changes.

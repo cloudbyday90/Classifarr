@@ -88,7 +88,7 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       });
       const recoveryWorkflow = createMediaSyncRecoveryWorkflow({
         store: sync.sourceObservations, context: sourceCapture, recovery: identityRecovery,
-        source: { service, url, apiKey: api_key, libraryKey: String(external_id) },
+        source: { service, url, apiKey: api_key, libraryKey: String(external_id), signal: owner.signal },
         persistRecovery: (...args) => sync.persistIdentityRecovery(...args), logger,
         upsert: item => sync.upsertMediaItem(media_server_id, libraryId, item, {
           onSkippedItem: skippedItem => skippedItems.record(skippedItem),

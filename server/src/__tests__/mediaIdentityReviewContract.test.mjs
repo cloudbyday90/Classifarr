@@ -26,7 +26,7 @@ describe('operator identity input and provider boundaries', () => {
       executeRateLimited: jest.fn(fn => fn()), httpGet: jest.fn().mockResolvedValue({ data: { id: 12, name: 'TV' } }) };
     await expect(getTmdbIdentityDetails('12', 'tv', deps)).resolves.toEqual({ id: 12, name: 'TV' });
     expect(deps.httpGet).toHaveBeenCalledWith('https://api.themoviedb.org/3/tv/12', {
-      params: { api_key: 'test-key' }, timeout: 10000, maxResponseBytes: 1048576,
+      params: { api_key: 'test-key' }, timeout: 10000, maxResponseBytes: 1048576, signal: null,
     });
     expect(deps.executeRateLimited).toHaveBeenCalledTimes(1);
     await expect(getTmdbIdentityDetails('../12', 'movie', deps)).rejects.toThrow();

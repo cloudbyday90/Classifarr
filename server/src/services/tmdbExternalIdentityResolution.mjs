@@ -12,7 +12,8 @@ import { buildTmdbExternalIdPlan, decideTmdbExternalIdMatch } from './tmdbExtern
  * queue-specific: callers receive only an accepted ID or a terminal, review-only
  * outcome and retain control over their own persistence transaction.
  */
-export async function resolveTmdbExternalIdentity(payload, enrichmentData, tmdbService) {
+export async function resolveTmdbExternalIdentity(payload, enrichmentData, tmdbService, { signal = null } = {}) {
+  signal?.throwIfAborted();
   const plan = buildTmdbExternalIdPlan(payload, enrichmentData);
   const review = (reason, method = 'external_ids') => Object.freeze({
     status: 'review_required', tmdbId: null, method, reason,
@@ -23,9 +24,14 @@ export async function resolveTmdbExternalIdentity(payload, enrichmentData, tmdbS
     const method = request.source === 'tvdb_id' ? 'tvdb' : 'imdb';
     let decision;
     try {
-      const response = await tmdbService.findIdentityByExternalId(request.externalId, request.source);
+      signal?.throwIfAborted();
+      const response = signal
+        ? await tmdbService.findIdentityByExternalId(request.externalId, request.source, { signal })
+        : await tmdbService.findIdentityByExternalId(request.externalId, request.source);
+      signal?.throwIfAborted();
       decision = decideTmdbExternalIdMatch(plan.mediaType, response);
     } catch {
+      signal?.throwIfAborted();
       return review('provider_unavailable', method);
     }
     if (decision.status === 'review_required') return review(decision.reason, method);

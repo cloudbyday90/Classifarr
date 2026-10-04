@@ -231,7 +231,7 @@ describe('TMDBService', () => {
             mockHttpGet.mockResolvedValueOnce({ data });
             expect(await tmdbService.findIdentityByExternalId(id, source)).toBe(data);
             expect(mockHttpGet).toHaveBeenCalledWith(`https://api.themoviedb.org/3/find/${id}`, {
-                params: { api_key: 'fixture-only', external_source: source }, timeout: 10000, maxResponseBytes: 1048576,
+                params: { api_key: 'fixture-only', external_source: source }, timeout: 10000, maxResponseBytes: 1048576, signal: null,
             });
             expect(rateLimiters.tmdb.execute).toHaveBeenCalledTimes(1);
         });

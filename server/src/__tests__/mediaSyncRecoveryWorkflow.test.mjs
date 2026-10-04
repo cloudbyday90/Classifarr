@@ -118,3 +118,23 @@ test('recent persisted receipts still recover during the scan without taking a s
   expect(t.readPriority).not.toHaveBeenCalled();
   expect(t.tmdbService.findIdentityByExternalId).not.toHaveBeenCalled();
 });
+
+test.each(['priority', 'proof', 'persist'])('cancellation during %s stops callbacks without fallback upsert', async stage => {
+  const controller = new AbortController(); const failure = new Error('owner lost');
+  const t = setup({ source: { libraryKey: 'library-1', signal: controller.signal },
+    recovery: { recover: jest.fn(async (item, options) => {
+      expect(options.signal).toBe(controller.signal);
+      if (stage === 'priority') await options.claimAttempt(item);
+      if (stage === 'proof') controller.abort(failure);
+      return { item, receipt: {} };
+    }) },
+    readPriority: async () => { controller.abort(failure); return { attemptedAt: null }; },
+    persistRecovery: jest.fn(async () => { controller.abort(failure); throw new Error('persistence unavailable'); }),
+  });
+  await expect(t.workflow.process(fixture(0))).rejects.toBe(failure);
+  expect(t.upsert).not.toHaveBeenCalled();
+  expect(t.logger.warn).not.toHaveBeenCalled();
+  if (stage !== 'persist') expect(t.persistRecovery).not.toHaveBeenCalled();
+  await expect(t.workflow.flush()).rejects.toBe(failure);
+  expect(t.workflow.pendingCount).toBe(0);
+});
