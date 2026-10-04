@@ -19,6 +19,12 @@ export async function runEmbeddedMigrationPhases({ journal, binding, steps, chec
   if (!MIGRATION_PHASES.every(phase => typeof steps[phase] === 'function') || typeof steps.prepare !== 'function') {
     throw new Error('migration_steps_invalid');
   }
+  // A candidate may have accepted writes after selection. Even a lost/reset
+  // conversion receipt must never let the copy phase overwrite that candidate.
+  if (typeof journal.selection?.read !== 'function') throw new Error('migration_selection_store_required');
+  if (await journal.selection.read() !== null) {
+    throw new Error('migration_selection_requires_resume');
+  }
   let receipt = validateMigrationReceipt(await journal.read(), binding);
   await steps.prepare(receipt);
   for (let index = receipt.completed; index < MIGRATION_PHASES.length; index += 1) {

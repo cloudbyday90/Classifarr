@@ -84,3 +84,33 @@ test('failed fsync leaves previous receipt unchanged and releases lock', async (
   expect(fs.rename).not.toHaveBeenCalled();
   expect(files.every(file => file.close.mock.calls.length === 1)).toBe(true);
 });
+
+test('selection uses the same held lock and separate fixed durable receipt names', async () => {
+  await withEmbeddedMigrationJournal(root, async journal => {
+    await journal.selection.read();
+    await journal.selection.write({ version: 1, phase: 'selected' });
+    expect(files[0].close).not.toHaveBeenCalled();
+  });
+  expect(spawnSync).toHaveBeenCalledTimes(1);
+  expect(fs.open.mock.calls.map(call => call[0])).toEqual([
+    '/identity-migration/migration.lock', '/identity-migration/selection.json',
+    '/identity-migration/selection.next', '/identity-migration',
+  ]);
+  expect(fs.rename).toHaveBeenCalledWith('/identity-migration/selection.next', '/identity-migration/selection.json');
+  expect(files[2].sync.mock.invocationCallOrder[0]).toBeLessThan(fs.rename.mock.invocationCallOrder[0]);
+  expect(fs.rename.mock.invocationCallOrder[0]).toBeLessThan(files[3].sync.mock.invocationCallOrder[0]);
+  expect(files.every(file => file.close.mock.calls.length === 1)).toBe(true);
+});
+
+test('selection read rejects unsafe metadata without treating it as absence', async () => {
+  await withEmbeddedMigrationJournal(root, async journal => {
+    const original = fs.open.getMockImplementation();
+    fs.open.mockImplementationOnce(async (...args) => {
+      const file = await original(...args);
+      file.stat.mockResolvedValue({ uid: 1000, mode: 0o600, nlink: 1, size: 2, isFile: () => true });
+      return file;
+    });
+    await expect(journal.selection.read()).rejects.toThrow('journal_file_invalid');
+  });
+  expect(files.every(file => file.close.mock.calls.length === 1)).toBe(true);
+});

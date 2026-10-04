@@ -121,6 +121,13 @@ was shortened and expanded to include the missing media mounts and host alias.
 Readback verified the revised message and diff. The maintainer still needs to
 review and apply it; the live catalog is not yet updated.
 
+Rechecked on 2026-10-04: the source blob below is unchanged and no maintainer
+reply is present. The same request now explicitly preserves the legacy appdata
+path, IDs and normal image startup, and adds that reminder to Requires. The
+revised XML again passes the maintainer's XSD and preserves every existing Config
+entry exactly. The README Compose example was corrected separately; its forced
+`user` setting is not part of the CA patch. Publication remains pending.
+
 The patch is against mirrored revision
 `4e5a0b91b4904e14292fc8e9bef8bef3930835ff`, Classifarr template blob
 `3bb7b53ef27a9e885c95c3e4e17e19b2a7d90e0b`. It includes:

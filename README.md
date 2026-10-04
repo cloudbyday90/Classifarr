@@ -293,7 +293,11 @@ For Synology, use the [Container Manager setup and upgrade guide](docs/installat
 and its dedicated Compose file. It covers existing appdata, NAS permissions and
 optional media access without assuming your NAS user IDs.
 
-Use this baseline compose:
+For a new installation with host UID/GID `1000:1000`, use this baseline Compose
+file. **For an existing installation, update the image using your saved setup.**
+Do not replace its appdata path, user IDs, media mappings or startup options with
+these example values. The [Unraid guide](unraid/README.md#legacy-installations)
+explains the different Community Applications and Compose defaults.
 
 ```yaml
 services:
@@ -311,9 +315,17 @@ services:
       CORS_ORIGIN: ""
       PGVECTOR_RUNTIME_STAGING: "auto"
     volumes:
+      # Existing installations: retain the exact host directory already in use.
       - ./data:/app/data
-      - /path/to/media:/data/media:rw
+      # Optional: uncomment for file verification/moves, using an existing folder.
+      # - type: bind
+      #   source: /your/existing/media
+      #   target: /data/media
+      #   read_only: false
+      #   bind:
+      #     create_host_path: false
     restart: unless-stopped
+    stop_grace_period: 60s
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -356,9 +368,9 @@ Open:
 
 ## Compose Notes (Important)
 
-- `./data:/app/data` is required for database persistence and generated runtime settings.
-- `/path/to/media:/data/media:rw` is required for re-classification move operations.
-- `PUID` and `PGID` are used by the container entrypoint to align ownership with NAS and host permissions.
+- A writable `/app/data` mount is required for persistence. `./data` is a new-install example, not a replacement for your existing host directory. Back up existing appdata consistently before upgrading.
+- Media access is optional for API-only routing. Uncomment the media bind for file verification/moves, select the existing folder and match Radarr/Sonarr paths or configure path mappings. It will not create a misspelled host directory.
+- This example forces UID/GID `1000:1000`; its appdata and socket permissions must match. Changing only `PUID`/`PGID` cannot change Docker's forced `user`. Keep working legacy identities intact; use the platform-specific guide for custom IDs. The CA XML starts the normal image entrypoint for identity provisioning and is not equivalent to this forced-non-root example.
 - `read_only: true` makes the container root filesystem immutable; writable paths are provided via volumes and `tmpfs`.
 - `PGVECTOR_RUNTIME_STAGING=auto` lets Classifarr stage a `vector.so` symlink to the immutable image-layer AVX/AVX2 pgvector binary when supported. The PostgreSQL runtime tmpfs stays `noexec`, so startup avoids the earlier copy-and-execute failure mode on Unraid and other hardened Docker hosts.
 - Set `PGVECTOR_RUNTIME_STAGING=disabled` only if you want to force the image-layer generic pgvector binary.

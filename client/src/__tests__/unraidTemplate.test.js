@@ -118,6 +118,7 @@ describe('shipped Unraid template contract', () => {
     expect(overview).not.toMatch(/<[^>]+>|\[(?:br|b)\]/i)
     expect(textOf(root, 'Requires')).toContain('AI providers are optional')
     expect(textOf(root, 'Requires')).not.toMatch(/requires? (?:a )?separate Ollama/i)
+    expect(textOf(root, 'Requires')).toContain('keep your saved appdata path, PUID/PGID and media mappings')
   })
 
   it('provides a valid root repository profile with real support and icon links', () => {

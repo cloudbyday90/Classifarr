@@ -145,6 +145,29 @@ acceptance or a replacement for the frozen release soak.
 
 ## Validation And Remaining Work
 
+### October 4 legacy-setup clarification
+
+Updated the README Compose example to make media access optional and add the
+60-second stop grace period. It explains that forced `user: 1000:1000` cannot
+be changed just by setting environment IDs. Existing installations must keep
+their saved appdata, IDs and mappings; the CA XML's normal image startup is not
+the same as a forced-non-root Compose profile. No existing Compose defaults or
+host configuration were changed by this documentation correction.
+
+The project XML now includes the same legacy-settings reminder. The existing
+[maintainer request](https://github.com/nwithan8/unraid_templates/discussions/372#discussioncomment-18721433)
+was updated and read back on 2026-10-04, preserving every existing Config entry,
+the normal startup command, and the optional media fields. The current upstream
+template still had blob `3bb7b53ef27a9e885c95c3e4e17e19b2a7d90e0b` before the update;
+the revised proposal passed its XSD and a structural preserved-settings check.
+There were no maintainer replies. Acceptance and publication remain pending.
+
+All ten project XML tests and three Compose-example/overlay tests passed.
+This is not a physical Unraid acceptance result or activation of unattended
+ownership recovery. See the [selection outcome](legacy-database-selection-outcome.md).
+
+### Earlier validation
+
 The initial startup commit passed 416 client suites / 5,905 tests, client
 lint/type checks and Markdown lint. Its exact-source
 [CI/CD run 37053967570](https://github.com/cloudbyday90/Classifarr/actions/runs/37053967570)

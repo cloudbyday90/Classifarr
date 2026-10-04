@@ -39,8 +39,9 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async () => {
   await assert.rejects(withEmbeddedMigrationJournal(MIGRATION_ROOT, async () => {}), /migration_lock_unavailable/);
 });
 
-async function worker(fault) {
-  const child = spawn(process.execPath, ['src/scripts/embeddedIsolationDrill/identityMigrationWorker.mjs', ...(fault ? [fault] : [])], {
+async function worker(fault, selection = false) {
+  const script = selection ? 'identitySelectionWorker.mjs' : 'identityMigrationWorker.mjs';
+  const child = spawn(process.execPath, [`src/scripts/embeddedIsolationDrill/${script}`, ...(fault ? [fault] : [])], {
     cwd: '/app', env: migrationEnvironment(), stdio: ['ignore', 'pipe', 'pipe'],
   });
   let killed = false, output = '';
@@ -58,7 +59,7 @@ async function worker(fault) {
       child.once('close', (code, signal) => resolve({ code, signal }));
     });
     if (fault) { assert(killed, errorText); assert.equal(result.signal, 'SIGKILL'); }
-    else { assert.equal(result.code, 0, errorText); assert.match(output, /"status":"verified"/); }
+    else { assert.equal(result.code, 0, errorText); assert(output.includes(`"status":"${selection ? 'selected' : 'verified'}"`)); }
   } finally { clearTimeout(timer); }
 }
 
@@ -75,4 +76,13 @@ assert.equal((await lstat('/identity-migration/pg_hba.conf')).uid, 0);
 const receipt = JSON.parse(await readFile('/identity-migration/migration.json', 'utf8'));
 assert.equal(receipt.completed, 5);
 assert.equal(receipt.pending, null);
+for (const point of ['before:verify', 'verified', 'selected', 'runtime-write', 'restart-read']) {
+  await worker(point, true);
+}
+await worker(undefined, true);
+await worker(undefined, true);
+assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), originalDigest);
+const selection = JSON.parse(await readFile('/identity-migration/selection.json', 'utf8'));
+assert.deepEqual(selection, { version: 1, binding: receipt.binding, phase: 'selected' });
+process.stdout.write('PASS durable_candidate_selection_retains_committed_writes_after_process_death\n');
 process.stdout.write('PASS resumable_legacy_identity_copy_and_real_process_crash_recovery\n');

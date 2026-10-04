@@ -67,3 +67,9 @@ The bounded image-index component is implemented in the
 [outcome](bounded-image-index-maintenance-outcome.md). It preserves queue claims
 and adds a separate one-shot handoff. Removal of runtime owner authority still
 requires the later production cutover; it is not implied by that component.
+
+The October 4 [selection component](legacy-database-selection-design.md) now
+adds a durable decision after verified conversion and a guard against recopying
+a selected database. Its [outcome](legacy-database-selection-outcome.md) records
+actual process-death tests with committed post-selection writes. Production
+startup integration and unattended ingestion recovery are still separate work.

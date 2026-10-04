@@ -132,6 +132,31 @@ the base file alone. Review paths and back up appdata before applying changes.
 
 ## Updating
 
+### Legacy installations
+
+Update the image through your existing saved template or Compose project. Keep
+the exact `/app/data` host mapping, PUID/PGID, port and media mappings. Do not
+reinstall or copy a new-install example over a working setup to enable recovery.
+
+The currently listed CA template defaults to
+`/mnt/user/appdata/classifarr/data` and IDs `1000:1000`; our project XML defaults
+to `/mnt/user/appdata/classifarr` and `99:100`. Both are valid layouts. Substituting
+one directory for the other can make the application appear empty. The correct
+path is the one your saved installation already uses, not either default.
+
+Both XML templates start the normal image entrypoint, which provisions the
+configured identity before dropping privileges. Our Unraid Compose file instead
+forces a non-root `user`. Do not add that forced user, a replacement command, new
+privileges or a Docker socket mount to a working CA template as an upgrade step.
+With forced-non-root Compose, environment IDs alone cannot change the process
+identity or repair arbitrary host permissions.
+
+The legacy database-selection work is still an isolated upgrade rehearsal. It
+does not yet enable unattended takeover of unknown ingestion owners. Existing
+startup remains compatible; no new template field enables that unfinished
+boundary. Import and metadata backfill remain the recovery completion target,
+not optional AI work. See the [design](../docs/architecture/legacy-database-selection-design.md).
+
 ### Check older saved templates once
 
 **Symptom:** the container exits immediately and its log mentions `tini` failing

@@ -19,6 +19,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Clarify legacy Compose/Unraid upgrade settings, keep the README media mount
+  optional, and align its shutdown grace period with the maintained Compose file.
+- Add restart-safe database selection to the isolated legacy-upgrade rehearsal.
+  Preserve the original database and committed writes in the converted copy;
+  reject incomplete selection and unsafe recopy. Existing deployments and their
+  permissions remain unchanged; automatic ownership recovery is not enabled yet.
 - Fence queued automatic routing before provider work so crash recovery reuses
   the saved decision without repeating an uncertain add. Unconfirmed outcomes
   remain explicit; isolated movie/TV rehearsals count attempted writes.

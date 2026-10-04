@@ -6,7 +6,8 @@ const binding = 'a'.repeat(64);
 const valid = () => ({ version: 1, binding, completed: 0, pending: null });
 const fixture = () => {
   let state = null;
-  const journal = { read: jest.fn(async () => state), write: jest.fn(async value => { state = structuredClone(value); }) };
+  const journal = { read: jest.fn(async () => state), write: jest.fn(async value => { state = structuredClone(value); }),
+    selection: { read: jest.fn(async () => null) } };
   const steps = Object.fromEntries(['prepare', ...MIGRATION_PHASES].map(phase => [phase, jest.fn(async () => {})]));
   return { journal, steps, binding };
 };

@@ -92,6 +92,24 @@ or enabling privileged mode.
 
 ## Implementation And Saved Installations
 
+### October 4 compatibility clarification
+
+Keep the README Compose example explicitly scoped to a new `1000:1000`
+installation. Remove its active placeholder media mount and show an optional
+long-syntax bind with `create_host_path: false`; add the maintained 60-second
+shutdown grace period. Test both the base and uncommented example. These are
+documentation defaults, not automatic modifications to saved deployments.
+
+The project XML and proposed upstream XML should explicitly tell legacy users
+to retain their saved appdata path, PUID/PGID and media mappings. The upstream
+patch keeps every original Config entry intact, including its distinct appdata
+default and IDs. Neither XML forces `--user`; do not copy the forced-non-root
+Compose setting into CA. Revalidate the current upstream source, schema and
+preserved fields before updating the existing request, without a duplicate
+submission. Docker's [Compose service reference](https://docs.docker.com/reference/compose-file/services/)
+documents `user`, bind creation and `stop_grace_period`; reviewed again on
+2026-10-04. Unattended ownership recovery is not activated by a template field.
+
 - Put `--add-host=host.docker.internal:host-gateway` in `ExtraParams` only.
 - Preserve the repository, port, appdata mapping, PUID/PGID and optional paths.
 - Add ESM regression tests using the client's existing XML DOM test environment.
