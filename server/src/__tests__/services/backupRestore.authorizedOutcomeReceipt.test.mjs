@@ -121,7 +121,7 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
          SELECT 1
          FROM classification_history
          WHERE classification_history.library_id = libraries.id
-           AND classification_history.status = 'completed'
+           AND classification_history.status IN ('completed', 'routed')
        )`
     );
     expect(client.query).toHaveBeenCalledWith(
@@ -132,7 +132,7 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
        JOIN classification_history
          ON classification_history.library_id = libraries.id
        WHERE libraries.media_server_id = media_server.id
-         AND classification_history.status = 'completed'
+         AND classification_history.status IN ('completed', 'routed')
      )`
     );
   });

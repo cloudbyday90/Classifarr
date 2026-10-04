@@ -164,16 +164,20 @@ describe('real PostgreSQL restore reference recovery', () => {
     expect(after.data.libraryArrMappings).toEqual(backup.data.libraryArrMappings);
   });
 
-  it('keeps completed history but removes destinations of retained libraries absent from a replace backup', async () => {
+  it.each(['completed', 'routed'])('keeps %s history but removes destinations of retained libraries absent from a replace backup', async status => {
     const backup = await seed(client);
     const library = backup.data.libraries.find(row => row.name === 'Reference movie');
     await client.query(`INSERT INTO classification_history (title, media_type, library_id, status)
-      VALUES ('Historical movie', 'movie', $1, 'completed')`, [library.id]);
+      VALUES ('Historical movie', 'movie', $1, $2)`, [library.id, status]);
     await restoreAllTables(client, { data: {} }, 'replace');
     expect((await client.query('SELECT arr_id, arr_type FROM libraries WHERE id = $1', [library.id])).rows)
       .toEqual([{ arr_id: null, arr_type: null }]);
     expect((await client.query('SELECT library_id FROM classification_history WHERE library_id = $1', [library.id])).rows)
       .toEqual([{ library_id: library.id }]);
     expect((await client.query('SELECT COUNT(*)::int AS count FROM library_arr_mappings')).rows[0].count).toBe(0);
+    expect((await client.query('SELECT status FROM classification_history WHERE library_id=$1', [library.id])).rows)
+      .toEqual([{ status }]);
+    expect((await client.query('SELECT id FROM media_server WHERE id=$1', [library.media_server_id])).rows)
+      .toEqual([{ id: library.media_server_id }]);
   });
 });

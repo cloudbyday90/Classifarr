@@ -19,6 +19,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve routed classification history's library and media-server references
+  during configuration replacement, while clearing obsolete routing connections.
+- Exercise authenticated movie/TV policy routing and authorization denials in the
+  restricted-runtime rehearsal, using isolated synthetic providers and durable
+  restart/restore checks. Production permissions remain unchanged.
 - Extend the restricted-runtime drill with real movie/TV classification,
   persistence and restart/restore checks. Allow testing an exact local image
   without rebuilding it; production permissions and saved templates are unchanged.

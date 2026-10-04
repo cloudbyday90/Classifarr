@@ -46,7 +46,8 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(9);
+  expect(result.checks).toHaveLength(10);
+  expect(result.checks).toContain('restricted_authenticated_http_policy_routing_and_auth_denials');
   expect(commands.startRuntime).toHaveBeenNthCalledWith(1, { classification: true });
   expect(result.checks).toContain('restricted_application_movie_tv_classification_and_persistence');
   expect(result.checks).toContain('restricted_runtime_queue_handoff_independent_admission_and_budget_denial');

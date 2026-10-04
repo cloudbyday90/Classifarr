@@ -118,9 +118,9 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM path_mappings');
   await client.query('DELETE FROM label_presets');
   await client.query('DELETE FROM library_arr_mappings');
-  // Completed classification history is not part of a configuration backup.
-  // Retain its libraries so the foreign key cannot null a completed record and
-  // violate the history integrity constraint during a replace restore.
+  // Successful classification history is not part of a configuration backup.
+  // Retain completed AND routed destinations: deleting a routed library otherwise
+  // silently nulls its historical identity through the foreign key.
   await client.query(
     `DELETE FROM libraries
      WHERE id > 0
@@ -128,7 +128,7 @@ export async function clearExistingConfig(client) {
          SELECT 1
          FROM classification_history
          WHERE classification_history.library_id = libraries.id
-           AND classification_history.status = 'completed'
+           AND classification_history.status IN ('completed', 'routed')
        )`
   );
   // History-retained libraries must not reference connections being removed.
@@ -146,7 +146,7 @@ export async function clearExistingConfig(client) {
        JOIN classification_history
          ON classification_history.library_id = libraries.id
        WHERE libraries.media_server_id = media_server.id
-         AND classification_history.status = 'completed'
+         AND classification_history.status IN ('completed', 'routed')
      )`
   );
   logger.info('Cleared existing configuration');

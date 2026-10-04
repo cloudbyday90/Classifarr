@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { assertProbeEnvironment, assertContainerLayout } from './contract.mjs';
 import { classifyFixture, waitForClassificationFixture } from './classificationFixture.mjs';
+import { runHttpRoutingFixture } from './httpRoutingFixture.mjs';
+import { waitForHttpRouting } from './httpRoutingState.mjs';
 
 // No application modules (or their constructors) load until the disposable guard passes.
 try {
@@ -20,6 +22,9 @@ try {
     const { classificationService } = await import('../../services/classification.mjs');
     await classifyFixture(database, classificationService);
     await waitForClassificationFixture(database);
+    const { tmdbService } = await import('../../services/tmdb.mjs');
+    const { hashPassword } = await import('../../services/auth.mjs');
+    await runHttpRoutingFixture(database, { tmdbService, hashPassword });
     process.stdout.write('PASS restricted application classified and persisted movie and TV fixtures\n');
     // Real HTTP server and shutdown handlers remain active until the parent sends SIGTERM.
   } else {
@@ -27,7 +32,8 @@ try {
     const pool = new pg.Pool({ host: process.env.POSTGRES_HOST, port: 5432,
       database: process.env.POSTGRES_DB, user: process.env.POSTGRES_USER,
       max: 1, connectionTimeoutMillis: 2000, statement_timeout: 2000 });
-    try { process.stdout.write(`${JSON.stringify(await waitForClassificationFixture(pool))}\n`); }
+    try { process.stdout.write(`${JSON.stringify({ source: await waitForClassificationFixture(pool),
+      http: await waitForHttpRouting(pool) })}\n`); }
     finally { await pool.end(); }
   }
 } catch {

@@ -81,6 +81,7 @@ export async function runEmbeddedIsolationDrill() {
     await assertNoStartupErrors();
     record('real_runtime_health_auth_maintenance_exclusion_and_sigterm');
     record('restricted_application_movie_tv_classification_and_persistence');
+    record('restricted_authenticated_http_policy_routing_and_auth_denials');
 
     await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--apply']);
     record('encrypted_restore_process_exclusion_quarantine_and_explicit_recovery');
