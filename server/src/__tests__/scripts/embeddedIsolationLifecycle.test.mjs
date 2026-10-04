@@ -46,7 +46,8 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(10);
+  expect(result.checks).toHaveLength(11);
+  expect(result.checks).toContain('restricted_interrupted_manual_routing_without_write_replay');
   expect(result.checks).toContain('restricted_authenticated_http_policy_routing_and_auth_denials');
   expect(commands.startRuntime).toHaveBeenNthCalledWith(1, { classification: true });
   expect(result.checks).toContain('restricted_application_movie_tv_classification_and_persistence');
@@ -79,13 +80,14 @@ test.each(['wrong-mode', 'wrong-platform', 'wrong-uid', 'extra-argument', 'occup
   expect(commands.asUser).not.toHaveBeenCalled();
 });
 
-test.each(['probe', 'classification', 'restore', 'index', 'handoff'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
+test.each(['probe', 'classification', 'restore', 'index', 'handoff', 'interrupted-routing'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
   const original = commands.asUser.getMockImplementation();
   commands.asUser.mockImplementation(async (...args) => {
     if ((scenario === 'probe' && args[2][0]?.endsWith('runtimeProbe.mjs'))
       || (scenario === 'classification' && args[2][0]?.endsWith('classificationProbe.mjs'))
       || (scenario === 'restore' && args[1] === 'pg_restore')
       || (scenario === 'index' && args[2][0]?.endsWith('maintenanceProbe.mjs'))
+      || (scenario === 'interrupted-routing' && args[2][0]?.endsWith('interruptedRoutingProbe.mjs'))
       || (scenario === 'handoff' && args[2][0]?.endsWith('queueHandoffProbe.mjs'))) throw new Error('scenario_failed');
     return original(...args);
   });

@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify interrupted manual routing under the restricted runtime identity:
+  accepted provider adds survive application crashes without duplicate writes,
+  while read-only verification preserves the original decision and cooldown.
 - Preserve routed classification history's library and media-server references
   during configuration replacement, while clearing obsolete routing connections.
 - Exercise authenticated movie/TV policy routing and authorization denials in the

@@ -83,6 +83,10 @@ export async function runEmbeddedIsolationDrill() {
     record('restricted_application_movie_tv_classification_and_persistence');
     record('restricted_authenticated_http_policy_routing_and_auth_denials');
 
+    await asUser('root', 'node', ['src/scripts/embeddedIsolationDrill/interruptedRoutingProbe.mjs'], { timeout: 240_000 });
+    await assertNoStartupErrors();
+    record('restricted_interrupted_manual_routing_without_write_replay');
+
     await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--apply']);
     record('encrypted_restore_process_exclusion_quarantine_and_explicit_recovery');
 

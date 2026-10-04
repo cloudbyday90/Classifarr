@@ -15,7 +15,8 @@ export async function boundedJson(stream, limit = 64 * 1024) {
 }
 
 export async function fixtureRequest(path, { session, body } = {}) {
-  assert(/^\/api\/[a-z/-]+$/.test(path), 'fixture_http_path');
+  assert(/^\/api\/[a-z/-]+$/.test(path)
+    || /^\/api\/queue\/(tasks\/[1-9]\d*\/classify|manual-routing\/[1-9]\d*\/(check|background))$/.test(path), 'fixture_http_path');
   const response = await fetch(`http://127.0.0.1:21324${path}`, {
     method: body === undefined ? 'GET' : 'POST', redirect: 'error',
     signal: AbortSignal.timeout(15_000),
@@ -33,8 +34,9 @@ export function fixtureSession(response) {
   return { cookie: cookies.join('; '), 'x-csrf-token': csrf };
 }
 
-export async function startRoutingProvider() {
+export async function startRoutingProvider({ holdAfterAdd, healthChecks = false } = {}) {
   const counts = { tmdb: 0, movieReads: 0, tvReads: 0, movieAdds: 0, tvAdds: 0, unexpected: 0 };
+  if (healthChecks) counts.healthReads = 0;
   const stored = new Map();
   const server = createServer({ requestTimeout: 5000, headersTimeout: 5000 }, (req, res) => {
     const respond = (status, data) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
@@ -53,6 +55,14 @@ export async function startRoutingProvider() {
           keywords: { keywords: [{ name: 'chase' }], results: [{ name: 'chase' }] } });
       }
       assert.equal(req.headers['x-api-key'], 'synthetic-routing');
+      if (healthChecks && req.method === 'GET'
+        && /^\/(radarr|sonarr)\/api\/v3\/(system\/status|qualityprofile|rootfolder)$/.test(url.pathname)) {
+        assert.equal(url.search, '');
+        counts.healthReads++;
+        if (url.pathname.endsWith('/system/status')) return respond(200, { version: 'fixture' });
+        if (url.pathname.endsWith('/qualityprofile')) return respond(200, [{ id: 1, name: 'Fixture' }]);
+        return respond(200, [{ id: 1, path: url.pathname.startsWith('/radarr/') ? '/movies' : '/tv' }]);
+      }
       if (req.method === 'GET' && url.pathname === '/sonarr/api/v3/series/lookup') {
         assert.equal(url.searchParams.get('term'), 'tvdb:920002');
         return respond(200, [{ title: 'Isolated HTTP series', tvdbId: 920002, seasons: [] }]);
@@ -76,6 +86,9 @@ export async function startRoutingProvider() {
       assert.equal(body.addOptions[movie ? 'searchForMovie' : 'searchForMissingEpisodes'], false);
       const item = { id: movie ? 7 : 8, [key]: id, path: `${body.rootFolderPath}/Synthetic` };
       stored.set(kind, item);
+      // The supervising fixture survives the application crash. Never acknowledge
+      // this add when testing the remote-success/local-unknown boundary.
+      if (holdAfterAdd) { holdAfterAdd(kind); return; }
       respond(201, item);
     })().catch(() => { counts.unexpected++; if (!res.headersSent) respond(400, {}); else res.destroy(); });
   });
