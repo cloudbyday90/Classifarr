@@ -45,8 +45,10 @@ Prerequisites and bounds:
 
 Recommended stack: direct-child ownership → native PostgreSQL lock → unchanged
 bounded readiness → exact exit evidence on failure → sanitized receipt → verified
-fixture cleanup. Next, reproduce the underlying native refusal and test a targeted
-repair. Do not conflate this with legacy media-import ownership in the application
+fixture cleanup. The subsequent local reproduction and targeted repair are
+recorded in the [PID-reuse outcome](postgres-startup-pid-reuse-outcome.md);
+attribution to the historical CI failure remains unproven.
+Do not conflate this with legacy media-import ownership in the application
 database, or with another installation using the same Plex server.
 
 ## Official research
