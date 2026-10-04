@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { ClientUser, EmbedBuilder } from 'discord.js';
 import { createDiscordClient } from '../../services/discordClientFactory.mjs';
 import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
+import { createDiscordDeliveryWriter } from '../../services/discordDeliveryWriter.mjs';
 import { getDeliveryProof } from '../../services/discordDeliveryMarker.mjs';
 import { setDeliveryFooter } from '../../services/discordDeliveryPayload.mjs';
 import { createLoopbackServer, loadDiscordTransport } from './discordTransportSupport.mjs';
@@ -43,6 +44,7 @@ test('SDK send, uncached read without nonce and footer edit preserve exact recei
   const client = () => {
     const instance = createDiscordClient({ intents: [], rest: { api: local.origin, agent, retries: 0 } }, { timeoutMs: 2000 });
     instance.rest.setToken('synthetic-discord-fixture');
+    instance.token = 'synthetic-discord-fixture';
     instance.user = new ClientUser(instance, author);
     clients.push(instance);
     return instance;
@@ -57,7 +59,8 @@ test('SDK send, uncached read without nonce and footer edit preserve exact recei
   const failedCompletion = createDiscordDeliveryService({
     claim: async () => ({ admitted: true, nonce }), complete: async () => { throw new Error('database unavailable'); },
     fail: async () => ({ sent: false, reason: 'delivery_unconfirmed' }),
-  });
+  }, createDiscordDeliveryWriter({ cooldown: { read: async () => null }, timeoutMs: 2000,
+    request: (url, init) => fetch(new URL(new URL(url).pathname, local.origin), init) }));
   assert.equal((await failedCompletion.send({ classificationId: '91', kind: 'pending', client: original,
     channel, channelId, payload: { embeds: [new EmbedBuilder().setTitle('Fixture')], allowedMentions: { parse: [] } },
   })).reason, 'delivery_unconfirmed');

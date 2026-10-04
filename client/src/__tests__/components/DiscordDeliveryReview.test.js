@@ -19,6 +19,14 @@ beforeEach(() => {
 afterEach(() => wrapper.unmount())
 
 describe('Discord delivery review', () => {
+  it('distinguishes deferred from uncertain and does not offer verification or pretend a replay is scheduled', async () => {
+    getDiscordDeliveries.mockResolvedValue({ items: [item(9, 'deferred')], nextBefore: null })
+    await click('Load delivery records')
+    expect(wrapper.findAll('dl')[0].text()).toContain('Deferred1')
+    expect(wrapper.findAll('dl')[0].text()).toContain('Unconfirmed0')
+    expect(wrapper.text()).toContain('Not sent; no retry is scheduled.')
+    expect(wrapper.findAll('form')).toHaveLength(0)
+  })
   it('shows verification only for explicitly eligible receipts', async () => {
     getDiscordDeliveries.mockResolvedValue({ items: [
       { ...item(4, 'uncertain'), canVerify: true }, item(3, 'uncertain'),

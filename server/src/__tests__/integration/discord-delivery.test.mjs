@@ -3,7 +3,8 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { readFile } from 'node:fs/promises';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createDiscordDeliveryRepository } from '../../services/discordDeliveryRepository.mjs';
-import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
+import { createDiscordDeliveryService as createService } from '../../services/discordDeliveryService.mjs';
+const createDiscordDeliveryService = repository => createService(repository, (input, payload) => input.channel.send(payload));
 import { formatDeliveryMarker } from '../../services/discordDeliveryMarker.mjs';
 
 const botId = '111111111111111111';
@@ -15,6 +16,7 @@ let input;
 let service;
 
 beforeEach(async () => {
+  await getPool().query('DELETE FROM discord_provider_cooldown');
   await getPool().query('DELETE FROM notification_config');
   await getPool().query('DELETE FROM classification_history');
   const { rows: [config] } = await getPool().query(`INSERT INTO notification_config

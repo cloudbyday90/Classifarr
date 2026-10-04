@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 
-const items = ['uncertain', 'delivered', 'rejected'].map((state, i) => ({
-  classificationId: String(103 - i), title: ['The Martian', 'Arrival', 'Dune'][i], state,
+const items = ['uncertain', 'delivered', 'rejected', 'deferred'].map((state, i) => ({
+  classificationId: String(103 - i), title: ['The Martian', 'Arrival', 'Dune', 'Moon'][i], state,
   channelId: '222222222222222222', messageId: state === 'delivered' ? '333333333333333333' : null,
   kind: 'classification', createdAt: '2026-10-04T10:00:00Z', updatedAt: '2026-10-04T10:01:00Z',
   canVerify: state === 'uncertain',
@@ -22,7 +22,9 @@ for (const width of [320, 1280]) {
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'Load delivery records' })).toBeFocused()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('status').first()).toHaveText('3 delivery records loaded.')
+    await expect(page.getByRole('status').first()).toHaveText('4 delivery records loaded.')
+    await expect(page.locator('dl').first()).toContainText('Deferred1')
+    await expect(page.getByText('Discord asked us to wait. Not sent; no retry is scheduled.')).toBeVisible()
     await page.keyboard.press('Tab')
     const summary = page.locator('summary').first()
     await expect(summary).toBeFocused()
@@ -67,7 +69,7 @@ test('inline verification is explicit, keyboard usable and does not resend or re
   })
   await page.goto('/browser-tests/fixtures/discord-delivery-review.html')
   await page.getByRole('button', { name: 'Load delivery records' }).click()
-  await expect(page.getByRole('status').first()).toHaveText('3 delivery records loaded.')
+  await expect(page.getByRole('status').first()).toHaveText('4 delivery records loaded.')
   await page.getByText('Details for classification #103', { exact: true }).click()
   await page.getByLabel('Discord message ID', { exact: true }).fill('bad')
   await page.keyboard.press('Enter')

@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Persist Discord provider cooldowns across restarts and distinguish safely
+  deferred alerts from uncertain deliveries. Bound initial message POSTs without
+  hidden SDK retries, cancel them on shutdown, and fence later attempts by saved
+  intent and retry budget. Show deferred status without implying a scheduled resend.
 - Verify unconfirmed Discord deliveries by message ID from the administrator
   review panel. Require matching bot, channel and receipt evidence, preserve
   uncertain results, and bound reads with persisted cooldowns and cancellation.

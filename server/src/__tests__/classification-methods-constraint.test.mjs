@@ -52,6 +52,7 @@ const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
   'sourceIdentityRecoveryReceipt.mjs',
   // This provider reader's method is an HTTP verb; it has no persistence writes.
   'discordDeliveryVerificationReader.mjs',
+  'discordDeliveryWriter.mjs', // HTTP verb only; no classification database writes.
 ]);
 
 function getAllJavaScriptFiles(dir) {

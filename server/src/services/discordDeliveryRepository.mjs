@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomBytes } from 'node:crypto';
-import { configAllowsDelivery, deliveryResult } from './discordDeliveryContract.mjs';
+import { configAllowsDelivery, deliveryConfigFingerprint, deliveryResult } from './discordDeliveryContract.mjs';
+import { readDiscordProviderCooldown } from './discordProviderCooldown.mjs';
 import { DELIVERY_CORRELATION_VERSION } from './discordDeliveryMarker.mjs';
 import { verificationConfigMatches } from './discordDeliveryVerificationContract.mjs';
 
@@ -18,8 +19,8 @@ export function createDiscordDeliveryRepository(db) {
           [input.classificationId]);
         if (!history) return { sent: false, reason: 'classification_missing' };
         const { rows: [existing] } = await client.query(
-          'SELECT state, message_id FROM discord_notification_deliveries WHERE classification_id = $1', [input.classificationId]);
-        if (existing) return deliveryResult(existing);
+          'SELECT * FROM discord_notification_deliveries WHERE classification_id = $1', [input.classificationId]);
+        if (existing && existing.state !== 'deferred') return deliveryResult(existing);
         if (history.discord_message_id || history.metadata?.discord_message_id) {
           return { sent: false, reason: 'already_notified' };
         }
@@ -30,14 +31,41 @@ export function createDiscordDeliveryRepository(db) {
         const { rows: [saved] } = await client.query(
           'SELECT * FROM notification_config WHERE id = $1 AND type = $2 FOR SHARE', [input.config.id, 'discord']);
         if (!configAllowsDelivery(saved, input)) return { sent: false, reason: 'configuration_changed' };
+        const fingerprint = deliveryConfigFingerprint(saved);
+        if (existing && (existing.config_fingerprint !== fingerprint || existing.bot_user_id !== input.client.user.id
+          || existing.channel_id !== input.channelId || existing.notification_kind !== input.kind
+          || existing.previous_status !== history.status
+          || existing.previous_clarification_status !== history.clarification_status
+          || existing.desired_clarification_status !== (input.clarificationStatus ?? null))) {
+          return { sent: false, reason: 'configuration_changed' };
+        }
+        if (existing?.attempt_count >= 3) return { sent: false, reason: 'delivery_attempts_exhausted' };
+        const waiting = await readDiscordProviderCooldown(client);
+        if (waiting) return { sent: false, reason: 'delivery_deferred', retryAfterSeconds: waiting.retryAfterSeconds };
+        if (existing) {
+          await client.query(`UPDATE discord_notification_deliveries SET state = 'sending', failure_code = NULL,
+            attempt_count = attempt_count + 1, updated_at = clock_timestamp() WHERE nonce = $1`, [existing.nonce]);
+          return { admitted: true, nonce: existing.nonce, attempt: existing.attempt_count + 1 };
+        }
         const nonce = `cf_${randomBytes(16).toString('base64url')}`;
         await client.query(`INSERT INTO discord_notification_deliveries
           (classification_id, nonce, bot_user_id, channel_id, notification_kind,
-           previous_status, previous_clarification_status, desired_clarification_status, correlation_version)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+           previous_status, previous_clarification_status, desired_clarification_status, correlation_version, config_fingerprint)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [input.classificationId, nonce, input.client.user.id, input.channelId, input.kind,
-          history.status, history.clarification_status, input.clarificationStatus ?? null, DELIVERY_CORRELATION_VERSION]);
-        return { admitted: true, nonce };
+          history.status, history.clarification_status, input.clarificationStatus ?? null, DELIVERY_CORRELATION_VERSION, fingerprint]);
+        return { admitted: true, nonce, attempt: 1 };
+      });
+    },
+    defer(nonce, attempt) {
+      return transaction(async client => {
+        const { rows: [row] } = await client.query(`UPDATE discord_notification_deliveries
+          SET state = CASE WHEN state = 'delivered' THEN state ELSE 'deferred' END,
+              failure_code = CASE WHEN state = 'delivered' THEN NULL ELSE 'provider_rate_limited' END,
+              updated_at = clock_timestamp()
+          WHERE nonce = $1 AND attempt_count = $2 AND state IN ('sending', 'delivered')
+          RETURNING state, message_id`, [nonce, attempt]);
+        return deliveryResult(row);
       });
     },
     complete({ nonce, botUserId, channelId, messageId, correlationVersion, classificationId, verificationConfig = undefined }) {

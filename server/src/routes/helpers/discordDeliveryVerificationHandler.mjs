@@ -4,11 +4,13 @@ import { createDiscordDeliveryRepository } from '../../services/discordDeliveryR
 import { createDiscordDeliveryVerificationRepository } from '../../services/discordDeliveryVerificationRepository.mjs';
 import { createDiscordDeliveryVerificationReader } from '../../services/discordDeliveryVerificationReader.mjs';
 import { createDiscordDeliveryVerificationService } from '../../services/discordDeliveryVerificationService.mjs';
+import { createDiscordProviderCooldown } from '../../services/discordProviderCooldown.mjs';
 
 export function createDiscordDeliveryVerificationHandler(db, logger) {
   const verify = createDiscordDeliveryVerificationService({
     repository: createDiscordDeliveryVerificationRepository(db),
-    deliveries: createDiscordDeliveryRepository(db), read: createDiscordDeliveryVerificationReader(), logger,
+    deliveries: createDiscordDeliveryRepository(db),
+    read: createDiscordDeliveryVerificationReader({ cooldown: createDiscordProviderCooldown(db) }), logger,
   });
   return async (req, res) => {
     res.set('Cache-Control', 'no-store');

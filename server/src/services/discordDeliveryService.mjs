@@ -2,14 +2,17 @@
 import { isDiscordId } from './discordDeliveryContract.mjs';
 import { getDeliveryProof } from './discordDeliveryMarker.mjs';
 import { prepareDeliveryPayload } from './discordDeliveryPayload.mjs';
+import { DiscordDeliveryDeferredError } from './discordProviderCooldown.mjs';
 
-export function createDiscordDeliveryService(repository) {
+export function createDiscordDeliveryService(repository, sendMessage) {
   let sending = 0;
   let confirming = 0;
   const warn = (warnFn, reason, classificationId) => {
     try {
       warnFn?.({
-        category: reason, message: reason.endsWith('_busy')
+        category: reason, message: reason === 'delivery_deferred'
+          ? 'Discord notification deferred by provider cooldown; no immediate retry'
+          : reason.endsWith('_busy')
           ? 'Discord notification work skipped because local capacity is full'
           : 'Discord delivery requires review; no automatic resend was attempted',
         // Bound dedupe cardinality by fixed reason, not the number of media items.
@@ -27,6 +30,7 @@ export function createDiscordDeliveryService(repository) {
   };
   return {
     async send(input) {
+      if (input.signal?.aborted) return { sent: false, reason: 'delivery_cancelled' };
       if (!isDiscordId(input.client?.user?.id) || !isDiscordId(input.channelId)
         || !['classification', 'confidence', 'pending'].includes(input.kind)
         || !/^[1-9][0-9]{0,18}$/.test(String(input.classificationId ?? ''))) {
@@ -46,13 +50,18 @@ export function createDiscordDeliveryService(repository) {
       try {
         claim = await repository.claim(input);
         if (!claim.admitted) {
-          if (['delivery_unconfirmed', 'delivery_rejected'].includes(claim.reason)) warn(input.warnFn, claim.reason, input.classificationId);
+          if (['delivery_unconfirmed', 'delivery_rejected', 'delivery_deferred', 'delivery_attempts_exhausted'].includes(claim.reason)) warn(input.warnFn, claim.reason, input.classificationId);
           return claim;
         }
         let message;
         try {
-          message = await input.channel.send(payload(claim.nonce));
+          message = await sendMessage(input, payload(claim.nonce));
         } catch (error) {
+          if (error instanceof DiscordDeliveryDeferredError) {
+            const result = await repository.defer(claim.nonce, claim.attempt);
+            if (!result.messageId) warn(input.warnFn, result.reason, input.classificationId);
+            return result;
+          }
           const code = [400, 401, 403, 404].includes(error?.status) ? 'provider_rejected' : 'send_unconfirmed';
           const result = await repository.fail(claim.nonce, code);
           if (!result.messageId) warn(input.warnFn, result.reason, input.classificationId);

@@ -45,7 +45,7 @@
         <p class="text-xs text-gray-300 mb-2">
           On this page · {{ page.items.length }} records
         </p>
-        <dl class="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 mb-5">
+        <dl class="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2 mb-5">
           <div
             v-for="status in statuses"
             :key="status.label"
@@ -181,9 +181,10 @@ const statuses = [
   { label: 'Delivered', color: 'text-green-300', next: 'Delivery was confirmed. No action needed.' },
   { label: 'Unconfirmed', color: 'text-amber-200', next: 'Check the recorded channel. Delivery is not yet confirmed; do not resend.' },
   { label: 'Rejected', color: 'text-red-300', next: 'Check bot access and channel permissions. This alert will not resend automatically.' },
+  { label: 'Deferred', color: 'text-blue-200', next: 'Discord asked us to wait. Not sent; no retry is scheduled.' },
 ]
 function presentation(state) {
-  return state === 'delivered' ? statuses[0] : state === 'rejected' ? statuses[2] : statuses[1]
+  return state === 'delivered' ? statuses[0] : state === 'rejected' ? statuses[2] : state === 'deferred' ? statuses[3] : statuses[1]
 }
 function confirmRecord(item, messageId) {
   item.state = 'delivered'
@@ -191,7 +192,7 @@ function confirmRecord(item, messageId) {
   // Keep this form mounted so the focused action and its status stay available.
 }
 const counts = computed(() => {
-  const result = { Delivered: 0, Unconfirmed: 0, Rejected: 0 }
+  const result = { Delivered: 0, Unconfirmed: 0, Rejected: 0, Deferred: 0 }
   for (const item of page.value?.items || []) result[presentation(item.state).label]++
   return result
 })

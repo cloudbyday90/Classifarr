@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T13:47:43.489Z
--- Latest Migration: 20261004_180000_discord_delivery_verification.sql
+-- Generated: 2026-10-04T14:35:03.413Z
+-- Latest Migration: 20261004_200000_discord_delivery_deferral.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3334,15 +3334,31 @@ CREATE TABLE public.discord_notification_deliveries (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     correlation_version smallint,
+    attempt_count smallint DEFAULT 1 NOT NULL,
+    config_fingerprint text,
+    CONSTRAINT discord_notification_deliveries_attempt_count_check CHECK (((attempt_count >= 1) AND (attempt_count <= 3))),
     CONSTRAINT discord_notification_deliveries_bot_user_id_check CHECK (((bot_user_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_channel_id_check CHECK (((channel_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_check CHECK (((state = 'delivered'::text) = (message_id IS NOT NULL))),
+    CONSTRAINT discord_notification_deliveries_config_fingerprint_check CHECK ((config_fingerprint ~ '^[0-9a-f]{64}$'::text)),
     CONSTRAINT discord_notification_deliveries_correlation_version_check CHECK ((correlation_version = 1)),
-    CONSTRAINT discord_notification_deliveries_failure_code_check CHECK ((failure_code = ANY (ARRAY['send_unconfirmed'::text, 'provider_rejected'::text, 'completion_unconfirmed'::text]))),
+    CONSTRAINT discord_notification_deliveries_failure_code_check CHECK ((failure_code = ANY (ARRAY['send_unconfirmed'::text, 'provider_rejected'::text, 'completion_unconfirmed'::text, 'provider_rate_limited'::text]))),
     CONSTRAINT discord_notification_deliveries_message_id_check CHECK (((message_id)::text ~ '^[0-9]{17,20}$'::text)),
     CONSTRAINT discord_notification_deliveries_nonce_check CHECK (((nonce)::text ~ '^cf_[A-Za-z0-9_-]{22}$'::text)),
     CONSTRAINT discord_notification_deliveries_notification_kind_check CHECK ((notification_kind = ANY (ARRAY['classification'::text, 'confidence'::text, 'pending'::text]))),
-    CONSTRAINT discord_notification_deliveries_state_check CHECK ((state = ANY (ARRAY['sending'::text, 'uncertain'::text, 'rejected'::text, 'delivered'::text])))
+    CONSTRAINT discord_notification_deliveries_state_check CHECK ((state = ANY (ARRAY['sending'::text, 'uncertain'::text, 'rejected'::text, 'delivered'::text, 'deferred'::text])))
+);
+
+
+--
+-- Name: discord_provider_cooldown; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.discord_provider_cooldown (
+    singleton boolean DEFAULT true NOT NULL,
+    next_allowed_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT discord_provider_cooldown_singleton_check CHECK (singleton)
 );
 
 
@@ -10433,6 +10449,14 @@ ALTER TABLE ONLY public.discord_notification_deliveries
 
 ALTER TABLE ONLY public.discord_notification_deliveries
     ADD CONSTRAINT discord_notification_deliveries_pkey PRIMARY KEY (classification_id);
+
+
+--
+-- Name: discord_provider_cooldown discord_provider_cooldown_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_provider_cooldown
+    ADD CONSTRAINT discord_provider_cooldown_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -17989,6 +18013,7 @@ FROM unnest(ARRAY[
     '20261004_120000_custom_preset_save_requests.sql',
     '20261004_140000_discord_notification_deliveries.sql',
     '20261004_160000_discord_delivery_correlation.sql',
-    '20261004_180000_discord_delivery_verification.sql'
+    '20261004_180000_discord_delivery_verification.sql',
+    '20261004_200000_discord_delivery_deferral.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

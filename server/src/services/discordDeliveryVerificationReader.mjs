@@ -5,7 +5,7 @@ import { getDeliveryProof } from './discordDeliveryMarker.mjs';
 import { verificationRetrySeconds } from './discordDeliveryVerificationContract.mjs';
 
 /** No SDK request queue, Gateway connection, retries, redirects or provider writes. */
-export function createDiscordDeliveryVerificationReader({ request = fetch, timeoutMs = 10000 } = {}) {
+export function createDiscordDeliveryVerificationReader({ request = fetch, timeoutMs = 10000, cooldown = null } = {}) {
   return async ({ receipt, config, messageId, signal }) => {
     const transport = createDiscordRestTransport({
       request: (url, init) => request(url, { method: init.method, signal: init.signal, redirect: 'error',
@@ -22,6 +22,9 @@ export function createDiscordDeliveryVerificationReader({ request = fetch, timeo
     };
     const get = async path => {
       combined.throwIfAborted();
+      const waiting = await cooldown?.read();
+      if (waiting) return waiting;
+      combined.throwIfAborted();
       const response = await transport.makeRequest(`${DefaultRestOptions.api}/v${DefaultRestOptions.version}${path}`, {
         method: 'GET', redirect: 'error', signal: combined,
         headers: { Authorization: `Bot ${config.bot_token.replace(/^Bot\s+/i, '')}`, Accept: 'application/json',
@@ -29,7 +32,8 @@ export function createDiscordDeliveryVerificationReader({ request = fetch, timeo
       });
       if (response.status === 429) {
         const delay = response.headers.get('retry-after') ?? (await objectBody(response).catch(() => ({})))?.retry_after;
-        return { code: 'rate_limited', retryAfterSeconds: verificationRetrySeconds(delay) };
+        return cooldown ? await cooldown.defer(delay)
+          : { code: 'rate_limited', retryAfterSeconds: verificationRetrySeconds(delay) };
       }
       if (response.status === 401 || response.status === 403) return { code: 'access_denied' };
       if (response.status === 404) return { code: 'message_unavailable' };

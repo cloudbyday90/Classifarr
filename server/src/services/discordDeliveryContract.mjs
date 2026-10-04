@@ -1,9 +1,19 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { createHash } from 'node:crypto';
+
+const configKeys = ['id', 'updated_at', 'bot_token', 'channel_id', 'pending_mention_here', 'pending_mention_type',
+  'pending_mention_target_id', 'show_poster', 'show_confidence', 'show_method', 'show_reason',
+  'show_metadata', 'enable_corrections', 'correction_buttons_count', 'include_library_dropdown'];
+const revisionValue = value => value instanceof Date ? value.getTime() : value ?? '';
+export const deliveryConfigFingerprint = config => createHash('sha256')
+  .update(JSON.stringify(configKeys.map(key => revisionValue(config[key])))).digest('hex');
+
 export const isDiscordId = value => typeof value === 'string' && /^[0-9]{17,20}$/.test(value);
 export const isDeliveryNonce = value => typeof value === 'string' && /^cf_[A-Za-z0-9_-]{22}$/.test(value);
 
 export function deliveryResult(row) {
   if (row?.state === 'delivered') return { sent: false, reason: 'already_notified', messageId: row.message_id };
+  if (row?.state === 'deferred') return { sent: false, reason: 'delivery_deferred' };
   return { sent: false, reason: row?.state === 'rejected' ? 'delivery_rejected' : 'delivery_unconfirmed' };
 }
 
@@ -15,9 +25,5 @@ export function configAllowsDelivery(saved, input) {
   const flag = kind === 'pending' ? 'notify_on_pending_items' : 'notify_on_classification';
   if (!saved[flag] || !config[flag]) return false;
   // Do not send an old mention or display policy after configuration changed.
-  const revisionValue = value => value instanceof Date ? value.getTime() : value ?? '';
-  return ['updated_at', 'bot_token', 'channel_id', 'pending_mention_here', 'pending_mention_type',
-    'pending_mention_target_id', 'show_poster', 'show_confidence', 'show_method', 'show_reason',
-    'show_metadata', 'enable_corrections', 'correction_buttons_count', 'include_library_dropdown']
-    .every(key => revisionValue(saved[key]) === revisionValue(config[key]));
+  return configKeys.every(key => revisionValue(saved[key]) === revisionValue(config[key]));
 }

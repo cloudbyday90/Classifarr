@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, expect, jest, test } from '@jest/globals';
-import { createDiscordDeliveryService } from '../services/discordDeliveryService.mjs';
+import { createDiscordDeliveryService as createService } from '../services/discordDeliveryService.mjs';
+import { DiscordDeliveryDeferredError } from '../services/discordProviderCooldown.mjs';
+const createDiscordDeliveryService = repository => createService(repository, (input, payload) => input.channel.send(payload));
 import { configAllowsDelivery, isDeliveryNonce, isDiscordId } from '../services/discordDeliveryContract.mjs';
 
 let repository;
@@ -11,7 +13,8 @@ const botId = '111111111111111111';
 const channelId = '222222222222222222';
 const messageId = '333333333333333333';
 beforeEach(() => {
-  repository = { claim: jest.fn().mockResolvedValue({ admitted: true, nonce }),
+  repository = { claim: jest.fn().mockResolvedValue({ admitted: true, nonce, attempt: 1 }),
+    defer: jest.fn().mockResolvedValue({ sent: false, reason: 'delivery_deferred' }),
     complete: jest.fn().mockResolvedValue(true),
     fail: jest.fn().mockResolvedValue({ sent: false, reason: 'delivery_unconfirmed' }) };
   service = createDiscordDeliveryService(repository);
@@ -113,6 +116,19 @@ test('saved admission requires current enabled credentials and revision', () => 
   expect(configAllowsDelivery({ ...config, updated_at: new Date('2026-10-04T00:00:00.001Z') }, input)).toBe(false);
   expect(configAllowsDelivery({ ...config, enable_corrections: true }, input)).toBe(false);
   expect(configAllowsDelivery(config, { ...input, kind: 'confidence' })).toBe(false);
+});
+
+test('only a trusted deferral outcome authorizes a deferred receipt; cancellation before admission does no work', async () => {
+  expect(await service.send({ ...input, signal: AbortSignal.abort() })).toMatchObject({ reason: 'delivery_cancelled' });
+  expect(repository.claim).not.toHaveBeenCalled();
+  input.channel.send.mockRejectedValue(new DiscordDeliveryDeferredError(90));
+  expect(await service.send(input)).toMatchObject({ reason: 'delivery_deferred' });
+  expect(repository.defer).toHaveBeenCalledWith(nonce, 1);
+  expect(repository.fail).not.toHaveBeenCalled();
+  input.channel.send.mockRejectedValue({ status: 429, retryAfterSeconds: 90 });
+  await service.send(input);
+  expect(repository.fail).toHaveBeenCalledWith(nonce, 'send_unconfirmed');
+  expect(repository.defer).toHaveBeenCalledTimes(1);
 });
 
 test('passive confirmation bounds retries and tolerates a failed diagnostic sink', async () => {
