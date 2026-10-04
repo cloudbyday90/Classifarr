@@ -46,6 +46,14 @@ The development image preceded the documentation and review-manifest updates.
 Final clean-source no-cache rebuild and evaluation will be recorded below after
 they run; the earlier result is not relabeled as exact final-image evidence.
 
+The broader backend run exposed a pre-existing code-health failure in queued
+routing: the fixed SQL builder was interpolated without the required review
+annotation. Review confirmed that all inputs remain bound parameters. Added the
+narrow annotation and a regression test proving identical SQL across different
+classification IDs and rejection of invalid IDs before database access; no guard
+was disabled and no routing behavior changed. Rebuild again after this correction
+so final-image evidence includes it.
+
 ## Template compatibility
 
 The README example now clearly targets a new `1000:1000` installation, leaves

@@ -19,6 +19,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Document and test the queued-routing query's fixed SQL construction and bound
+  values, resolving its pre-existing code-health validation failure.
 - Clarify legacy Compose/Unraid upgrade settings, keep the README media mount
   optional, and align its shutdown grace period with the maintained Compose file.
 - Add restart-safe database selection to the isolated legacy-upgrade rehearsal.

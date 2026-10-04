@@ -70,7 +70,7 @@ export class QueuedRoutingReplayGuard {
     await this.withClaim(task, async (client, claim, id) => {
       if (claim.routing_classification_id !== null) throw new Error('queued_routing_already_admitted');
       const statement = buildClassificationRoutingMetadataUpdate({ classificationId: historyId, routing: 'automatic_routing_pending' });
-      const saved = await client.query(`${statement.text} AND status='completed' AND library_id IS NOT NULL RETURNING id`, statement.values);
+      const saved = await client.query(`${statement.text} AND status='completed' AND library_id IS NOT NULL RETURNING id`, statement.values); // sql-interpolation: builder returns fixed SQL plus a fixed admission clause; all values remain bound
       if (saved.rowCount !== 1) throw new Error('queued_routing_classification_unavailable');
       await client.query('UPDATE task_queue SET routing_classification_id=$2 WHERE id=$1', [id, historyId]);
     });
