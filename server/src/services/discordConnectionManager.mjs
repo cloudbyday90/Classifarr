@@ -12,7 +12,7 @@ import {
   EmbedBuilder,
 } from 'discord.js';
 import { createLogger } from '../utils/logger.mjs';
-import { createDiscordClient } from './discordClientFactory.mjs';
+import { createRuntimeDiscordClient as createDiscordClient } from './discordProviderRuntime.mjs';
 import {
   checkChannelPermissions,
   findMissingCriticalPermissions,

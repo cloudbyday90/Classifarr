@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Share Discord cooldown admission across bot lookups, edits, alerts and receipt
+  verification. Honor exhausted limits on successful responses, preserve delivery
+  proof if saving a cooldown fails, and bound SDK queue waits and cancellation.
+  Keep interaction replies independent of bot cooldowns; no automatic resend.
 - Persist Discord provider cooldowns across restarts and distinguish safely
   deferred alerts from uncertain deliveries. Bound initial message POSTs without
   hidden SDK retries, cancel them on shutdown, and fence later attempts by saved

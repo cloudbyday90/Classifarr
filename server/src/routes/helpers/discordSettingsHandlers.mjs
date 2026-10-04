@@ -12,13 +12,14 @@ import { createDiscordSettingsReadService } from '../../services/discordSettings
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { createDiscordDeliveryReviewHandler } from './discordDeliveryReviewHandler.mjs';
 import { createDiscordDeliveryVerificationHandler } from './discordDeliveryVerificationHandler.mjs';
+import { discordProviderGate } from '../../services/discordProviderRuntime.mjs';
 import { sendData } from '../../utils/responseHelpers.mjs';
 import {
   buildDiscordConfigUpdateResponse,
   reinitializeDiscordBotIfNeeded,
 } from './discordSettingsResponseSupport.mjs';
 
-export function createDiscordSettingsHandlers({ db, discordBotService, logger }) {
+export function createDiscordSettingsHandlers({ db, discordBotService, logger, discordGate = discordProviderGate }) {
   const actionService = createDiscordSettingsActionService({
     discordBotService,
   });
@@ -29,7 +30,7 @@ export function createDiscordSettingsHandlers({ db, discordBotService, logger })
 
   return {
     getDeliveries: createDiscordDeliveryReviewHandler(db),
-    verifyDelivery: createDiscordDeliveryVerificationHandler(db, logger),
+    verifyDelivery: createDiscordDeliveryVerificationHandler(db, logger, discordGate),
     getConfig: asyncHandler(async (_req, res) => {
       const config = await readService.getConfig({ dbOrClient: db });
       return sendData(res, config);

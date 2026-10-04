@@ -3,9 +3,12 @@ import { DefaultRestOptions, DefaultUserAgent } from 'discord.js';
 import { createDiscordRestTransport } from './discordRestTransport.mjs';
 import { getDeliveryProof } from './discordDeliveryMarker.mjs';
 import { verificationRetrySeconds } from './discordDeliveryVerificationContract.mjs';
+import { createDiscordProviderGate } from './discordProviderGate.mjs';
+import { DiscordDeliveryDeferredError } from './discordProviderCooldown.mjs';
 
 /** No SDK request queue, Gateway connection, retries, redirects or provider writes. */
-export function createDiscordDeliveryVerificationReader({ request = fetch, timeoutMs = 10000, cooldown = null } = {}) {
+export function createDiscordDeliveryVerificationReader({ request = fetch, timeoutMs = 10000, cooldown = null,
+  gate = cooldown ? createDiscordProviderGate({ cooldown }) : null } = {}) {
   return async ({ receipt, config, messageId, signal }) => {
     const transport = createDiscordRestTransport({
       request: (url, init) => request(url, { method: init.method, signal: init.signal, redirect: 'error',
@@ -22,18 +25,15 @@ export function createDiscordDeliveryVerificationReader({ request = fetch, timeo
     };
     const get = async path => {
       combined.throwIfAborted();
-      const waiting = await cooldown?.read();
-      if (waiting) return waiting;
-      combined.throwIfAborted();
-      const response = await transport.makeRequest(`${DefaultRestOptions.api}/v${DefaultRestOptions.version}${path}`, {
+      const makeRequest = gate ? (url, init) => gate.run(transport.makeRequest, url, init) : transport.makeRequest;
+      const response = await makeRequest(`${DefaultRestOptions.api}/v${DefaultRestOptions.version}${path}`, {
         method: 'GET', redirect: 'error', signal: combined,
         headers: { Authorization: `Bot ${config.bot_token.replace(/^Bot\s+/i, '')}`, Accept: 'application/json',
           'User-Agent': DefaultUserAgent },
       });
       if (response.status === 429) {
         const delay = response.headers.get('retry-after') ?? (await objectBody(response).catch(() => ({})))?.retry_after;
-        return cooldown ? await cooldown.defer(delay)
-          : { code: 'rate_limited', retryAfterSeconds: verificationRetrySeconds(delay) };
+        return { code: 'rate_limited', retryAfterSeconds: verificationRetrySeconds(delay) };
       }
       if (response.status === 401 || response.status === 403) return { code: 'access_denied' };
       if (response.status === 404) return { code: 'message_unavailable' };
@@ -57,7 +57,8 @@ export function createDiscordDeliveryVerificationReader({ request = fetch, timeo
         || proof.classificationId !== String(receipt.classification_id) || proof.nonce !== receipt.nonce
         || proof.correlationVersion !== 1) return { code: 'proof_mismatch' };
       return { code: 'verified', proof };
-    } catch {
+    } catch (error) {
+      if (error instanceof DiscordDeliveryDeferredError) return { code: 'rate_limited', retryAfterSeconds: error.retryAfterSeconds };
       return { code: signal?.aborted ? 'cancelled' : controller.signal.aborted ? 'timed_out' : 'provider_unavailable' };
     } finally {
       clearTimeout(timer);

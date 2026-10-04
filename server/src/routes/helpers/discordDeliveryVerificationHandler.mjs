@@ -5,12 +5,14 @@ import { createDiscordDeliveryVerificationRepository } from '../../services/disc
 import { createDiscordDeliveryVerificationReader } from '../../services/discordDeliveryVerificationReader.mjs';
 import { createDiscordDeliveryVerificationService } from '../../services/discordDeliveryVerificationService.mjs';
 import { createDiscordProviderCooldown } from '../../services/discordProviderCooldown.mjs';
+import { createDiscordProviderGate } from '../../services/discordProviderGate.mjs';
 
-export function createDiscordDeliveryVerificationHandler(db, logger) {
+export function createDiscordDeliveryVerificationHandler(db, logger,
+  gate = createDiscordProviderGate({ cooldown: createDiscordProviderCooldown(db) })) {
   const verify = createDiscordDeliveryVerificationService({
     repository: createDiscordDeliveryVerificationRepository(db),
     deliveries: createDiscordDeliveryRepository(db),
-    read: createDiscordDeliveryVerificationReader({ cooldown: createDiscordProviderCooldown(db) }), logger,
+    read: createDiscordDeliveryVerificationReader({ gate }), logger,
   });
   return async (req, res) => {
     res.set('Cache-Control', 'no-store');

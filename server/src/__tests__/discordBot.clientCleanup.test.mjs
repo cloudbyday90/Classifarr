@@ -26,6 +26,7 @@ function createDiscordJsModule() {
   class MockClient {
     constructor(options) {
       this.options = options;
+      this.rest = { request: jest.fn() };
       this.handlers = {};
       this._guilds = [];
       this.guilds = {
@@ -113,6 +114,8 @@ describe('discordBot temporary client cleanup', () => {
     ]);
     expect(mockClients[0].sdkDestroy).toHaveBeenCalledTimes(1);
     expect(mockClients[0].options.rest.makeRequest).toEqual(expect.any(Function));
+    expect(mockClients[0].options.rest.rejectOnRateLimit).toEqual(expect.any(Function));
+    await expect(mockClients[0].rest.request({})).rejects.toMatchObject({ code: 'DISCORD_REST_CANCELLED' });
   });
 
   test('getServers destroys the temporary client when login fails', async () => {
@@ -145,6 +148,7 @@ describe('discordBot temporary client cleanup', () => {
     await discordBot.initialize();
     expect(discordBot.isInitialized).toBe(true);
     expect(mockClients[0].options.rest.timeout).toBe(16000);
+    expect(mockClients[0].options.rest.rejectOnRateLimit).toEqual(expect.any(Function));
     const originalClient = mockClients[0];
     await discordBot.reinitialize();
     const message = { nonce: 'fixture' };

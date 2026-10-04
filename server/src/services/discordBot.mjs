@@ -17,7 +17,7 @@ import { discordConfigIntegrityService } from './discordConfigIntegrityService.m
 import * as systemAlertService from './systemAlertService.mjs';
 import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
-import { createDiscordClient } from './discordClientFactory.mjs';
+import { createRuntimeDiscordClient as createDiscordClient } from './discordProviderRuntime.mjs';
 import { discordDelivery } from './discordDelivery.mjs';
 import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
 import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';

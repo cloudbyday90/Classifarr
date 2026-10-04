@@ -6,6 +6,8 @@ import { createDiscordDeliveryService } from '../../services/discordDeliveryServ
 import { createDiscordProviderCooldown, DiscordDeliveryDeferredError } from '../../services/discordProviderCooldown.mjs';
 import { createDiscordDeliveryVerificationReader } from '../../services/discordDeliveryVerificationReader.mjs';
 import { createDiscordDeliveryReviewRepository } from '../../services/discordDeliveryReviewRepository.mjs';
+import { createDiscordProviderGate } from '../../services/discordProviderGate.mjs';
+import { createDiscordDeliveryWriter } from '../../services/discordDeliveryWriter.mjs';
 
 const database = createIntegrationDatabaseModuleMock();
 const repository = createDiscordDeliveryRepository(database);
@@ -30,6 +32,52 @@ beforeEach(async () => {
     const waiting = await cooldown.defer(90);
     throw new DiscordDeliveryDeferredError(waiting.retryAfterSeconds);
   });
+});
+
+test('exhausted success persists across independent gates and restart without losing its body', async () => {
+  const first = createDiscordProviderGate({ cooldown });
+  const response = await first.run(async () => new Response('proof', { headers: {
+    'x-ratelimit-remaining': '0', 'x-ratelimit-reset-after': '180.1',
+  } }), 'unused', {});
+  expect(await response.text()).toBe('proof');
+  const restarted = createDiscordProviderGate({ cooldown: createDiscordProviderCooldown(database) });
+  const request = jest.fn();
+  await expect(restarted.run(request, 'unused', {})).rejects.toMatchObject({ retryAfterSeconds: 181 });
+  expect(request).not.toHaveBeenCalled();
+  await expire(); request.mockResolvedValue(new Response('next'));
+  expect(await (await restarted.run(request, 'unused', {})).text()).toBe('next');
+});
+
+test('concurrent successful observations cannot shorten persisted deadlines', async () => {
+  const run = seconds => createDiscordProviderGate({ cooldown }).run(async () => new Response('ok', {
+    headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset-after': String(seconds) },
+  }), 'unused', {});
+  // Gate admission is not a quota reservation: explicitly let both HTTP responses overlap.
+  const barrier = Promise.withResolvers(); let arrived = 0;
+  const simultaneous = createDiscordProviderGate({ cooldown: { defer: cooldown.defer, read: async () => {
+    if (++arrived === 2) barrier.resolve(); await barrier.promise; return null;
+  } } });
+  await Promise.all([90, 240].map(seconds => simultaneous.run(async () => new Response('ok', {
+    headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset-after': String(seconds) },
+  }), 'unused', {})));
+  expect((await cooldown.read()).retryAfterSeconds).toBe(240);
+  await expect(run(60)).rejects.toBeInstanceOf(DiscordDeliveryDeferredError);
+});
+
+test('cooldown SQL failure after provider success does not discard the durable delivery proof', async () => {
+  const warn = jest.fn();
+  input.client.options = { allowedMentions: { parse: [] }, jsonTransformer: value => value };
+  const gate = createDiscordProviderGate({ warn, cooldown: { read: cooldown.read,
+    defer: () => database.withTransaction(client => client.query('SELECT 1 / 0')),
+  } });
+  const request = jest.fn(async () => new Response(JSON.stringify({
+    id: messageId, channel_id: channelId, author: { id: bot, bot: true },
+  }), { headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset-after': '60' } }));
+  const delivery = createDiscordDeliveryService(repository, createDiscordDeliveryWriter({ gate, request }));
+  expect(await delivery.send({ ...input, channel: { client: input.client } })).toMatchObject({ sent: true });
+  expect(await receipt()).toMatchObject({ state: 'delivered', message_id: messageId });
+  await expect(gate.run(request, 'unused', {})).rejects.toMatchObject({ code: 'DISCORD_COOLDOWN_UNAVAILABLE' });
+  expect(request).toHaveBeenCalledTimes(1); expect(warn).toHaveBeenCalledTimes(1);
 });
 
 test('fresh reads do not create cooldown state; known delay blocks a new receipt before POST', async () => {

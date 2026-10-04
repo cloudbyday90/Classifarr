@@ -3,7 +3,7 @@ import * as db from '../config/database.mjs';
 import { createDiscordDeliveryRepository } from './discordDeliveryRepository.mjs';
 import { createDiscordDeliveryService } from './discordDeliveryService.mjs';
 import { createDiscordDeliveryWriter } from './discordDeliveryWriter.mjs';
-import { createDiscordProviderCooldown } from './discordProviderCooldown.mjs';
+import { discordProviderGate } from './discordProviderRuntime.mjs';
 
 export const discordDelivery = createDiscordDeliveryService(createDiscordDeliveryRepository(db),
-  createDiscordDeliveryWriter({ cooldown: createDiscordProviderCooldown(db) }));
+  createDiscordDeliveryWriter({ gate: discordProviderGate }));
