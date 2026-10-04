@@ -114,9 +114,12 @@ describe('runStartupPreflight', () => {
     }
   });
 
-  it('external schema startup skips migrations and extension installation but retains integrity and post-upgrade work', async () => {
+  it.each([
+    { CLASSIFARR_SCHEMA_MAINTENANCE: 'external' },
+    { CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF: 'supervised-v1' },
+  ])('managed schema startup %j skips migrations and extension installation but retains integrity and post-upgrade work', async environment => {
     await runStartupPreflight({
-      environment: { CLASSIFARR_SCHEMA_MAINTENANCE: 'external' },
+      environment,
       database, setLoggerDb, runtimeSettings, avxGuard, clarificationService,
       aiEmbeddingProviderIntegrityService, discordConfigIntegrityService,
       metadataProviderIntegrityService, policyThresholdIntegrityService,

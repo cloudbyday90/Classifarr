@@ -8,7 +8,7 @@ import { getPool } from './setup.mjs';
 import { readRuntime } from './runtime.mjs';
 import { createMigrationRunner } from '../../config/migrations.mjs';
 import { runDatabaseSchemaMaintenance } from '../../services/databaseSchemaMaintenance.mjs';
-import { verifyRuntimeSchemaReadiness } from '../../services/databaseSchemaReadiness.mjs';
+import { verifyRuntimeSchemaReadiness, verifySupervisedSchemaReadiness } from '../../services/databaseSchemaReadiness.mjs';
 import { acquireNormalRuntimeAdmission } from '../../bootstrap/runtimeAdmission.mjs';
 import { withBackupRestoreSession } from '../../services/backupRestoreSession.mjs';
 
@@ -56,6 +56,13 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
   });
   test('bootstrap/admin credential is refused for external runtime startup', async () => {
     await expect(verifyRuntimeSchemaReadiness({ database: admin() })).rejects.toThrow('authority_not_restricted');
+  });
+  test('compatible handoff verifies current schema with existing credentials under runtime admission', async () => {
+    const admission = await acquireNormalRuntimeAdmission({ database: admin(), onLost: jest.fn(), seedMissingGate: async () => false });
+    try {
+      await expect(verifySupervisedSchemaReadiness({ database: admin() })).resolves.toMatchObject({ status: 'ready' });
+      await expect(maintain()).resolves.toMatchObject({ status: 'deferred' });
+    } finally { admission.release(); }
   });
   test('shared runtime admission prevents schema execution until the last owner exits', async () => {
     const first = await acquireNormalRuntimeAdmission({ database: { pool: runtimePool }, onLost: jest.fn() });
@@ -109,7 +116,10 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
   });
   test('missing ledger fails read-only and maintenance does not accept a future ledger', async () => {
     await getPool().query('ALTER TABLE public.schema_migrations RENAME TO schema_boundary_saved_ledger');
-    try { await expect(verify()).rejects.toThrow('schema_maintenance_required'); }
+    try {
+      await expect(verify()).rejects.toThrow('schema_maintenance_required');
+      await expect(verifySupervisedSchemaReadiness({ database: admin() })).rejects.toThrow('schema_maintenance_required');
+    }
     finally { await getPool().query('ALTER TABLE public.schema_boundary_saved_ledger RENAME TO schema_migrations'); }
     const filename = '20990930_000000_schema_boundary_future.sql';
     await getPool().query('INSERT INTO schema_migrations(filename) VALUES ($1)', [filename]);
@@ -156,7 +166,10 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
   });
   test('quarantined restore is preserved and refuses maintenance', async () => {
     await getPool().query("UPDATE policy_native_intent_reconciliation_restore_gates SET gate_state='requires_maintenance' WHERE gate_id=1");
-    try { await expect(maintain()).rejects.toThrow('restore_verification_required'); }
+    try {
+      await expect(maintain()).rejects.toThrow('restore_verification_required');
+      await expect(verifySupervisedSchemaReadiness({ database: admin() })).rejects.toThrow('restore_verification_required');
+    }
     finally { await getPool().query("UPDATE policy_native_intent_reconciliation_restore_gates SET gate_state='ready' WHERE gate_id=1"); }
   });
   test('fresh private database is initialized before any runtime exists', async () => {

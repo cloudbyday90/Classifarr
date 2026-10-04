@@ -64,7 +64,7 @@ test('normal composition attaches the direct child channel and labels shared aut
   const attachIndexes = jest.fn(() => ({ stop: jest.fn() }));
   const composition = embeddedRuntimeComposition({ environment, start, attach, attachIndexes, report });
   composition.attachRuntimeMaintenance(composition.startApplication(), onFatal);
-  expect(start).toHaveBeenCalledWith({ environment, queueMaintenance: true, imageIndexMaintenance: true });
+  expect(start).toHaveBeenCalledWith({ environment, queueMaintenance: true, imageIndexMaintenance: true, schemaMaintenance: true });
   expect(attach).toHaveBeenCalledWith({ channel, onFatal, report: expect.any(Function) });
   expect(report).toHaveBeenCalledWith('available', 'shared_identity', 'queue_recovery');
   expect(report).toHaveBeenCalledWith('available', 'shared_identity', 'image_indexes');

@@ -8,6 +8,7 @@ export async function runEmbeddedSupervisor({
   database, startApplication, processRef = process, report: diagnostic = () => {},
   delay = sleep, waitForExit = waitForEmbeddedExit, startMaintenance = null,
   attachRuntimeMaintenance = null,
+  maintenanceTimeoutMs = 200_000,
 }) {
   const monitor = new AbortController();
   const adoption = new AbortController();
@@ -40,7 +41,7 @@ export async function runEmbeddedSupervisor({
       // A host signal cancels the handoff. No normal process exists in this phase.
       const result = await waitForExit(Promise.race([
         maintenance.done, stopped.then(() => null),
-      ]), 200_000);
+      ]), maintenanceTimeoutMs);
       if (result) {
         maintenanceStopped = true;
         if (result.code !== 0 || result.signal !== null) throw new Error('maintenance_failed');

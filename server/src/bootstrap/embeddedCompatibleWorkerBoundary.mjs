@@ -6,7 +6,8 @@ export function assertCompatibleWorkerEnvironment(environment, { uid, gid, platf
     || environment.POSTGRES_HOST !== 'localhost' || environment.POSTGRES_PORT !== '5432'
     || environment.POSTGRES_DB !== 'classifarr' || environment.POSTGRES_USER !== 'classifarr'
     || environment.CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL !== undefined
-    || environment.CLASSIFARR_IMAGE_INDEX_CHANNEL !== undefined) {
+    || environment.CLASSIFARR_IMAGE_INDEX_CHANNEL !== undefined
+    || environment.CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF !== undefined) {
     throw new Error('compatible_queue_worker_environment_invalid');
   }
 }

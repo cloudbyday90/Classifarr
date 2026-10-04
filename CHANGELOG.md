@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Run embedded schema migrations in supervised startup maintenance before web
+  services load. Independently verify the schema in read-only mode, refuse
+  incomplete handoffs, and preserve existing templates and restore safeguards.
 - Move optional query-profiling installation into a bounded embedded startup
   maintenance worker. Keep web-process checks read-only, defer unknown state,
   and preserve restore/runtime exclusion without changing saved templates.

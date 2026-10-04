@@ -2,16 +2,19 @@
 import { spawn } from 'node:child_process';
 
 /** Observe exit immediately. A successful kill() only means a signal was sent. */
-export function startEmbeddedApplication({ spawnFn = spawn, environment = process.env, queueMaintenance = false, imageIndexMaintenance = false } = {}) {
+export function startEmbeddedApplication({ spawnFn = spawn, environment = process.env, queueMaintenance = false, imageIndexMaintenance = false, schemaMaintenance = false } = {}) {
   if (typeof queueMaintenance !== 'boolean' || typeof imageIndexMaintenance !== 'boolean'
+    || typeof schemaMaintenance !== 'boolean' || environment.CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF !== undefined
     || (imageIndexMaintenance && !queueMaintenance)) throw new Error('embedded_application_launch_invalid');
   /** @type {import('node:child_process').StdioOptions} */
   const stdio = ['ignore', 'inherit', 'inherit'];
   if (queueMaintenance) stdio.push('pipe');
   if (imageIndexMaintenance) stdio.push('pipe');
   const child = spawnFn(process.execPath, ['/app/src/index.mjs'], {
-    cwd: '/app', env: queueMaintenance ? { ...environment, CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL: 'stdio-v1',
-      ...(imageIndexMaintenance ? { CLASSIFARR_IMAGE_INDEX_CHANNEL: 'stdio-v1' } : {}) } : environment,
+    cwd: '/app', env: { ...environment,
+      ...(queueMaintenance ? { CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL: 'stdio-v1' } : {}),
+      ...(imageIndexMaintenance ? { CLASSIFARR_IMAGE_INDEX_CHANNEL: 'stdio-v1' } : {}),
+      ...(schemaMaintenance ? { CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF: 'supervised-v1' } : {}) },
     shell: false, stdio,
   });
   return { ...observeEmbeddedChild(child), ...(queueMaintenance ? { maintenanceChannel: child.stdio[3] } : {}),

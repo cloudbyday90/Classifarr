@@ -40,6 +40,16 @@ export function assertKnownMigrations(applied, files) {
 
 /** Caller holds normal runtime admission while this short, read-only check runs. */
 export async function verifyRuntimeSchemaReadiness({ database, environment = process.env }) {
+  return verifySchemaReadiness({ database, environment, restrictedAuthority: true });
+}
+
+/** Compatible embedded runtime: verifies packaged schema, never claims restricted authority. */
+export async function verifySupervisedSchemaReadiness({ database }) {
+  // Ignore caller-controlled MIGRATIONS_DIR/SCHEMA_FILE, just as the fixed worker does.
+  return verifySchemaReadiness({ database, environment: {}, restrictedAuthority: false });
+}
+
+async function verifySchemaReadiness({ database, environment, restrictedAuthority }) {
   const files = requireMigrationFiles(createMigrationRunner({ env: environment }));
   const client = await database.pool.connect();
   const lease = createDatabaseClientLease(client, { operation: 'schema_readiness' });
@@ -47,12 +57,14 @@ export async function verifyRuntimeSchemaReadiness({ database, environment = pro
     await client.query('BEGIN READ ONLY');
     await client.query("SET LOCAL statement_timeout = '5s'");
     await client.query("SET LOCAL lock_timeout = '1s'");
-    const authority = await client.query(RUNTIME_AUTHORITY_SQL);
-    lease.assertHealthy();
-    const row = authority.rows[0];
-    if (!row || !['direct_login', 'restricted', 'no_membership', 'no_database_create',
-      'no_schema_create', 'no_ownership'].every(key => row[key] === true)) {
-      throw new Error('runtime_schema_authority_not_restricted');
+    if (restrictedAuthority) {
+      const authority = await client.query(RUNTIME_AUTHORITY_SQL);
+      lease.assertHealthy();
+      const row = authority.rows[0];
+      if (!row || !['direct_login', 'restricted', 'no_membership', 'no_database_create',
+        'no_schema_create', 'no_ownership'].every(key => row[key] === true)) {
+        throw new Error('runtime_schema_authority_not_restricted');
+      }
     }
     const applied = await readSchemaLedger(client);
     lease.assertHealthy();
@@ -60,6 +72,10 @@ export async function verifyRuntimeSchemaReadiness({ database, environment = pro
     const appliedSet = new Set(applied);
     if (!applied || files.some(filename => !appliedSet.has(filename))) {
       throw new Error('schema_maintenance_required');
+    }
+    if (!restrictedAuthority) {
+      const gate = await client.query('SELECT gate_state FROM public.policy_native_intent_reconciliation_restore_gates WHERE gate_id = 1');
+      if (gate.rows[0]?.gate_state !== 'ready') throw new Error('schema_maintenance_restore_verification_required');
     }
     await client.query('COMMIT');
     lease.assertHealthy();

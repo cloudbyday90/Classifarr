@@ -16,6 +16,7 @@ test.each([
   ['CLASSIFARR_SCHEMA_MAINTENANCE', 'STARTUP'], ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', 'stdio-v1'],
   ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', ''], ['CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL', 'private-secret'],
   ['CLASSIFARR_IMAGE_INDEX_CHANNEL', 'stdio-v1'], ['CLASSIFARR_IMAGE_INDEX_CHANNEL', ''],
+  ['CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF', 'supervised-v1'], ['CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF', ''],
 ])('rejects %s=%j before even reading accounts', async (key, value) => {
   const read = jest.fn(), run = jest.fn();
   await expect(provisionEmbeddedIdentity({ environment: { [key]: value }, uid: 0, gid: 0, read, run })).rejects.toThrow();
@@ -25,7 +26,7 @@ test.each([
 
 test.each(['CLASSIFARR_RUNTIME_MODE must be normal or restore',
   'CLASSIFARR_SCHEMA_MAINTENANCE must be startup or external.', 'embedded_external_schema_unsupported',
-  'embedded_maintenance_channel_unsupported', 'embedded_nonroot_account_unavailable'])('explains fixed refusal %s', message => {
+  'embedded_maintenance_channel_unsupported', 'embedded_schema_handoff_unsupported', 'embedded_nonroot_account_unavailable'])('explains fixed refusal %s', message => {
   const text = embeddedStartupFailureMessage(new Error(message));
   expect(text).toMatch(/^Embedded startup refused before data ownership changes\./);
   expect(text).not.toContain('Check non-root PUID');

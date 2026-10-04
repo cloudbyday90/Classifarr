@@ -112,3 +112,34 @@ test('external mode cannot load the privileged restore runtime', async () => {
   await expect(s.start()).rejects.toThrow('separate maintenance process');
   expect(s.options.loadRestore).not.toHaveBeenCalled();
 });
+
+test('supervised readiness runs under admission before imports, without gate seeding or authority claims', async () => {
+  const s = setup();
+  s.options.environment.CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF = 'supervised-v1';
+  s.options.verifySupervisedSchema = jest.fn().mockResolvedValue({ status: 'ready' });
+  s.options.verifySchema = jest.fn();
+  await expect(s.start()).resolves.toBe('normal');
+  expect(s.options.verifySupervisedSchema).toHaveBeenCalledWith({ database: s.options.database });
+  expect(s.options.acquireAdmission.mock.invocationCallOrder[0]).toBeLessThan(s.options.verifySupervisedSchema.mock.invocationCallOrder[0]);
+  expect(s.options.verifySupervisedSchema.mock.invocationCallOrder[0]).toBeLessThan(s.options.loadNormal.mock.invocationCallOrder[0]);
+  expect(await s.options.acquireAdmission.mock.calls[0][0].seedMissingGate()).toBe(false);
+  expect(s.options.verifySchema).not.toHaveBeenCalled();
+});
+test('failed supervised readiness starts no services and holds admission until exit', async () => {
+  const s = setup();
+  s.options.environment.CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF = 'supervised-v1';
+  s.options.verifySupervisedSchema = jest.fn().mockRejectedValue(new Error('schema_maintenance_required'));
+  await expect(s.start()).rejects.toThrow('schema_maintenance_required');
+  expect(s.options.loadNormal).not.toHaveBeenCalled();
+  expect(s.admission.release).not.toHaveBeenCalled();
+  s.options.processRef.emit('exit');
+  expect(s.admission.release).toHaveBeenCalledTimes(1);
+});
+test.each([{ CLASSIFARR_SCHEMA_MAINTENANCE: 'external' }, { CLASSIFARR_RUNTIME_MODE: 'restore' }])('rejects supervised hint with %j before any imports', async mode => {
+  const s = setup();
+  s.options.environment = { ...mode, CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF: 'supervised-v1' };
+  await expect(s.start()).rejects.toThrow('handoff_invalid');
+  expect(s.options.acquireAdmission).not.toHaveBeenCalled();
+  expect(s.options.loadNormal).not.toHaveBeenCalled();
+  expect(s.options.loadRestore).not.toHaveBeenCalled();
+});

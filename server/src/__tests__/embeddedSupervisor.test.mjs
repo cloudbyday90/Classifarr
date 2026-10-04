@@ -293,6 +293,17 @@ test.each([true, false])('maintenance timeout forces confirmed cleanup=%s', asyn
   expect(f.database.stop).toHaveBeenCalledTimes(joined ? 1 : 0);
 });
 
+test('schema startup deadline is configurable without extending shutdown drain', async () => {
+  const f = fixture();
+  f.options.maintenanceTimeoutMs = 920_000;
+  f.options.startMaintenance = () => ({ done: new Promise(() => {}), signal: jest.fn() });
+  f.options.waitForExit = jest.fn().mockRejectedValueOnce(new Error('deadline'))
+    .mockResolvedValueOnce({ code: null, signal: 'SIGTERM' });
+  expect(await runEmbeddedSupervisor(f.options)).toBe(1);
+  expect(f.options.waitForExit.mock.calls.map(call => call[1])).toEqual([920_000, 2000]);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+});
+
 test('child error after spawn is not proof of exit; output and arguments are fixed', async () => {
   const child = Object.assign(new EventEmitter(), { pid: 55, kill: jest.fn() });
   const spawnFn = jest.fn(() => child);
@@ -335,6 +346,6 @@ test('fixed embedded launch contract accepts custom non-root identity', () => {
 test.each([{ uid: 0 }, { uid: undefined }, { platform: 'win32' }, { cwd: '/tmp' }, { args: [] }, { args: ['--run', '--force'] }])('rejects unsafe launch context %j', change => {
   expect(() => assertEmbeddedSupervisorEnvironment(environment, { ...context, ...change })).toThrow('environment_invalid');
 });
-test.each(['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'CLASSIFARR_SCHEMA_MAINTENANCE'])('rejects altered %s', key => {
+test.each(['POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'CLASSIFARR_SCHEMA_MAINTENANCE', 'CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF'])('rejects altered %s', key => {
   expect(() => assertEmbeddedSupervisorEnvironment({ ...environment, [key]: 'external' }, context)).toThrow('environment_invalid');
 });

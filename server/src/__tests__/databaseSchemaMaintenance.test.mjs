@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { jest } from '@jest/globals';
 import { createMigrationRunner } from '../config/migrations.mjs';
 import { readSchemaMaintenanceMode } from '../config/schemaMaintenanceMode.mjs';
-import { verifyRuntimeSchemaReadiness } from '../services/databaseSchemaReadiness.mjs';
+import { verifyRuntimeSchemaReadiness, verifySupervisedSchemaReadiness } from '../services/databaseSchemaReadiness.mjs';
 import { runDatabaseSchemaMaintenance } from '../services/databaseSchemaMaintenance.mjs';
 import { runSchemaMaintenanceCommand } from '../scripts/runDatabaseSchemaMaintenance.mjs';
 
@@ -146,6 +146,38 @@ test('readiness detects a connection error before accepting its result', async (
   s.client.query.mockImplementationOnce(async () => { s.client.emit('error', new Error('lost')); return {}; });
   await expect(s.verify()).rejects.toThrow('lost');
   expect(s.client.release).toHaveBeenCalledWith(true);
+});
+
+test('compatible readiness is read-only and verifies schema without pretending to restrict the shared identity', async () => {
+  const s = setup({ authority: null });
+  await expect(verifySupervisedSchemaReadiness({ database: s.database })).resolves.toMatchObject({ status: 'ready' });
+  expect(s.client.query).toHaveBeenCalledWith('BEGIN READ ONLY');
+  expect(s.client.query.mock.calls.some(([sql]) => sql.includes('AS direct_login'))).toBe(false);
+  expect(s.client.query.mock.calls.some(([sql]) => sql.startsWith('SELECT gate_state'))).toBe(true);
+  expect(s.client.query).toHaveBeenCalledWith('COMMIT');
+  expect(s.client.release).toHaveBeenCalledWith(true);
+});
+test.each([
+  [{ ledger: null }, 'schema_maintenance_required'],
+  [{ ledger: files.slice(1) }, 'schema_maintenance_required'],
+  [{ ledger: [...files, '20990101_000000_future.sql'] }, 'schema_version_not_supported'],
+  [{ gate: null }, 'restore_verification_required'],
+  [{ gate: 'blocked' }, 'restore_verification_required'],
+])('compatible readiness fails closed for %j', async (state, reason) => {
+  const s = setup(state);
+  await expect(verifySupervisedSchemaReadiness({ database: s.database })).rejects.toThrow(reason);
+  expect(s.client.query).not.toHaveBeenCalledWith('COMMIT');
+  expect(s.client.release).toHaveBeenCalledWith(true);
+});
+test('compatible readiness ignores inherited migration path overrides', async () => {
+  const previous = process.env.MIGRATIONS_DIR;
+  try {
+    process.env.MIGRATIONS_DIR = 'nonexistent-supervised-migration-directory';
+    await expect(verifySupervisedSchemaReadiness({ database: setup().database })).resolves.toMatchObject({ status: 'ready' });
+  } finally {
+    if (previous === undefined) delete process.env.MIGRATIONS_DIR;
+    else process.env.MIGRATIONS_DIR = previous;
+  }
 });
 test.each([[[], 0], [['--help'], 0], [['--wat'], 2], [['--apply', '--force'], 2]])('CLI args %j do not load the database', async (args, code) => {
   const loadDatabase = jest.fn();

@@ -4,7 +4,7 @@ import { createEmbeddedDatabaseControl } from '../bootstrap/embeddedDatabaseCont
 import { runEmbeddedSupervisor } from '../bootstrap/embeddedSupervisor.mjs';
 import { createCompatibleQueueMaintenanceBroker } from '../bootstrap/embeddedCompatibleQueueMaintenance.mjs';
 import { createCompatibleImageIndexBroker } from '../bootstrap/embeddedCompatibleImageIndex.mjs';
-import { startCompatibleProfilingMaintenance } from '../bootstrap/embeddedCompatibleProfilingMaintenance.mjs';
+import { startCompatibleStartupMaintenance } from '../bootstrap/embeddedCompatibleStartupMaintenance.mjs';
 import { readOperatingMode } from '../config/operatingMode.mjs';
 
 export function assertEmbeddedSupervisorEnvironment(environment, { uid, platform, cwd, args }) {
@@ -12,6 +12,7 @@ export function assertEmbeddedSupervisorEnvironment(environment, { uid, platform
     || args.length !== 1 || args[0] !== '--run'
     || environment.CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL !== undefined
     || environment.CLASSIFARR_IMAGE_INDEX_CHANNEL !== undefined
+    || environment.CLASSIFARR_EMBEDDED_SCHEMA_HANDOFF !== undefined
     || (environment.CLASSIFARR_SCHEMA_MAINTENANCE ?? 'startup') !== 'startup'
     || environment.POSTGRES_HOST !== 'localhost' || environment.POSTGRES_PORT !== '5432'
     || environment.POSTGRES_DB !== 'classifarr' || environment.POSTGRES_USER !== 'classifarr') {
@@ -21,12 +22,12 @@ export function assertEmbeddedSupervisorEnvironment(environment, { uid, platform
 
 export function embeddedRuntimeComposition({ environment = process.env, start = startEmbeddedApplication,
   attach = createCompatibleQueueMaintenanceBroker, attachIndexes = createCompatibleImageIndexBroker, report = () => {},
-  startProfiling = startCompatibleProfilingMaintenance,
+  startMaintenance = startCompatibleStartupMaintenance,
 } = {}) {
   const normal = readOperatingMode(environment) === 'normal';
   return {
-    ...(normal ? { startMaintenance: () => startProfiling({ report }) } : {}),
-    startApplication: () => start({ environment, queueMaintenance: normal, imageIndexMaintenance: normal }),
+    ...(normal ? { startMaintenance: () => startMaintenance({ report }), maintenanceTimeoutMs: 920_000 } : {}),
+    startApplication: () => start({ environment, queueMaintenance: normal, imageIndexMaintenance: normal, schemaMaintenance: normal }),
     ...(normal ? { attachRuntimeMaintenance: (application, onFatal) => {
       const brokers = [];
       try {

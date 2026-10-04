@@ -19,6 +19,7 @@ import { routingConfigIntegrityService } from '../services/routingConfigIntegrit
 import { postUpgradeService } from '../services/postUpgradeService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { readSchemaMaintenanceMode } from '../config/schemaMaintenanceMode.mjs';
+import { hasEmbeddedSchemaHandoff } from '../config/embeddedSchemaHandoff.mjs';
 
 const logger = createLogger('Preflight');
 
@@ -155,10 +156,11 @@ export async function runStartupPreflight({
   postUpgradeTaskService = postUpgradeService,
 }) {
   const externalSchema = readSchemaMaintenanceMode(environment) === 'external';
+  const supervisedSchema = hasEmbeddedSchemaHandoff(environment);
   await database.query('SELECT 1');
   logger.info('Database connected successfully');
 
-  if (!externalSchema) await runMigrations(migrationRunnerService);
+  if (!externalSchema && !supervisedSchema) await runMigrations(migrationRunnerService);
   setLoggerDb(database);
   await auditClarificationSeedIntegrity(clarificationSeedService);
   await auditAiEmbeddingProviderIntegrity(aiEmbeddingProviderIntegrityAuditService);
