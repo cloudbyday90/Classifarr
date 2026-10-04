@@ -20,7 +20,9 @@ test('immutable image mode reuses all four aliases, never builds or removes the 
   expect(run.mock.calls.filter(([, args]) => args[0] === 'tag')).toHaveLength(4);
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   const launch = run.mock.calls.find(([, args]) => args[7] === 'run')[1];
-  expect(launch).toEqual(expect.arrayContaining(['--no-build', '--pull', 'never']));
+  expect(launch).toEqual(expect.arrayContaining(['--pull', 'never']));
+  expect(launch).not.toContain('--build');
+  expect(launch).not.toContain('--no-build');
   expect(run.mock.calls.some(([, args]) => args.includes('rm') && args.includes(image))).toBe(false);
   expect(run.mock.calls.at(-1)[1]).toEqual(['image', 'inspect', image, '--format', '{{.Id}}']);
 });

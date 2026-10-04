@@ -68,7 +68,8 @@ export function runEmbeddedIsolationCompose({ image, run = spawnSync, random = r
     if (image) {
       for (const service of services) imageCommand(['tag', image, `${project}-${service}:latest`]);
     } else command(['build', ...services], 1_200_000);
-    command(['run', '--rm', '--no-deps', '--no-build', '--pull', 'never', 'drill'], 600_000);
+    // `run` has --build (opt-in), not the --no-build option accepted by `up`.
+    command(['run', '--rm', '--no-deps', '--pull', 'never', 'drill'], 600_000);
     verify(command);
   } finally {
     try {

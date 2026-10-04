@@ -70,6 +70,9 @@ Sources discovered through web search and retrieved 2026-10-04:
   any future privileged gateway needs a trusted search path and selective EXECUTE grants.
 - [Docker resource constraints](https://docs.docker.com/engine/containers/resource_constraints):
   specify independent resource bounds instead of relying on Docker defaults.
+- [Docker Compose run](https://docs.docker.com/reference/cli/docker/compose/run/):
+  `run` builds only when requested with `--build`; use `--pull never` with the
+  pre-existing project aliases. Unlike `up`, it has no `--no-build` option.
 - [Node.js child processes](https://r2.nodejs.org/docs/latest-v24.x/api/child_process.html):
   fixed executable/argument arrays, no shell and bounded child lifetime.
 
