@@ -42,10 +42,30 @@ afterEach(() => {
 })
 
 describe('Modal.vue', () => {
+  it('disables dismissal while a caller-owned request is pending', async () => {
+    const wrapper = buildModal({ closeDisabled: true })
+    await nextTick()
+    const dialog = document.querySelector('dialog')
+    const close = dialog.querySelector('button')
+    expect(close.disabled).toBe(true)
+    close.click()
+    dispatchKeydown(dialog, 'Escape')
+    const cancel = new Event('cancel', { cancelable: true })
+    dialog.dispatchEvent(cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    await wrapper.setProps({ closeDisabled: false })
+    close.click()
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+  })
+
   it('keeps its parent authoritative and forwards dialog attributes without submitting', async () => {
     const wrapper = buildModal({ title: '', 'aria-label': 'Recovery options', 'aria-describedby': 'help' })
     await nextTick()
     const dialog = document.querySelector('[role="dialog"]')
+    expect(dialog).toBeInstanceOf(HTMLDialogElement)
+    expect(dialog.open).toBe(true)
+    expect(dialog.hasAttribute('tabindex')).toBe(false)
     expect(dialog.getAttribute('aria-label')).toBe('Recovery options')
     expect(dialog.getAttribute('aria-describedby')).toBe('help')
     expect(dialog.hasAttribute('aria-labelledby')).toBe(false)
@@ -56,6 +76,21 @@ describe('Modal.vue', () => {
     await nextTick()
     expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
     expect(document.querySelector('[role="dialog"]')).toBe(dialog)
+    expect(dialog.open).toBe(true)
+  })
+
+  it('prevents native cancellation until its parent accepts the close request', async () => {
+    const wrapper = buildModal()
+    await nextTick()
+    const dialog = document.querySelector('dialog')
+    const cancel = new Event('cancel', { cancelable: true })
+    dialog.dispatchEvent(cancel)
+    await nextTick()
+    expect(cancel.defaultPrevented).toBe(true)
+    expect(dialog.open).toBe(true)
+    expect(wrapper.emitted('update:modelValue')).toEqual([[false]])
+    await wrapper.setProps({ modelValue: false })
+    expect(dialog.isConnected).toBe(false)
   })
 
   it('allows a child to handle Escape and ignores composition or modified Tab', async () => {
@@ -89,7 +124,7 @@ describe('Modal.vue', () => {
     close.disabled = true
     retry.disabled = true
     dispatchKeydown(dialog, 'Tab')
-    expect(document.activeElement).toBe(dialog)
+    expect(document.activeElement).toBe(dialog.querySelector('h3'))
   })
 
   it.each(['removed', 'hidden', 'disabled', 'inert'])('uses a caller-owned fallback when the opener is %s', async state => {

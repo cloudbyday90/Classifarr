@@ -19,6 +19,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Keep preset forms busy for the actual save request, preserve rejected drafts,
+  and show actionable errors inside the dialog. Bound saves to one timed attempt;
+  uncertain results lead to reviewing saved presets instead of replaying a write.
+- Use browser-native shared dialogs for background isolation and nested stacking.
+  Preserve parent-controlled dismissal and route focus handoffs, return preset
+  customization to search, and prevent drag-out gestures from closing a dialog.
+  Keep deletion errors inside the active dialog. Remove the exit fade so closed
+  dialogs cannot block the next screen.
 - Harden shared modal focus handling for hidden/inert content, disabled fieldsets,
   keyboard boundaries and close/unmount transitions. Add safe caller-owned focus
   return after preset deletion, reduced-motion support and strict Vue contracts.

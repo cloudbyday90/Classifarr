@@ -16,3 +16,15 @@ const defineStorage = (name, impl) => {
 
 defineStorage('localStorage', new MemoryStorage())
 defineStorage('sessionStorage', new MemoryStorage())
+
+// jsdom has no native modal implementation. This double checks connection and
+// records opening only; browser tests prove focus, inertness and top-layer order.
+if (globalThis.HTMLDialogElement && !globalThis.HTMLDialogElement.prototype.showModal) {
+  Object.defineProperty(globalThis.HTMLDialogElement.prototype, 'showModal', {
+    configurable: true,
+    value() {
+      if (!this.isConnected) throw new DOMException('Dialog is disconnected', 'InvalidStateError')
+      this.open = true
+    },
+  })
+}

@@ -49,6 +49,35 @@ function mountForm(props = {}) {
 }
 
 describe('CustomPresetForm.vue', () => {
+  it('keeps the draft busy and blocks submit and dismissal while the parent is saving', async () => {
+    const wrapper = mountForm()
+    await wrapper.get('input[type="text"]').setValue('My draft')
+    await wrapper.setProps({ saving: true })
+    expect(wrapper.get('form').attributes('aria-busy')).toBe('true')
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[role="status"]').text()).toBe('Saving preset…')
+    await wrapper.get('form').trigger('submit')
+    wrapper.getComponent(ModalStub).vm.$emit('update:modelValue', false)
+    expect(wrapper.emitted('save')).toBeUndefined()
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    await wrapper.setProps({ saving: false, saveError: 'Check the name and try again.' })
+    expect(wrapper.get('input[type="text"]').element.value).toBe('My draft')
+    expect(wrapper.get('[role="alert"]').text()).toBe('Check the name and try again.')
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
+  it('offers review instead of another save after an uncertain result', async () => {
+    const wrapper = mountForm({ saveNeedsReview: true, saveError: 'Check saved presets.' })
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
+    expect(wrapper.findAll('button').some(button => button.text() === 'Create Preset')).toBe(false)
+    await wrapper.findAll('button').find(button => button.text() === 'Check saved presets').trigger('click')
+    expect(wrapper.emitted('review-saved')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('connects real keyword editors and respects the read-only fieldset', async () => {
     const wrapper = mount(CustomPresetForm, {
       props: { modelValue: true },

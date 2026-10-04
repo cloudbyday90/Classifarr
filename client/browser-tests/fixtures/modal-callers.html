@@ -1,0 +1,32 @@
+<!-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Native modal caller regression fixture</title>
+  </head>
+  <body class="bg-background text-white">
+    <div id="app"></div>
+    <script type="module">
+      import { createApp, h } from 'vue'
+      import { createPinia } from 'pinia'
+      import { createMemoryHistory, createRouter } from 'vue-router'
+      import Fixture from './ModalCallers.vue'
+      import LibraryDetail from '../../src/views/LibraryDetail.vue'
+      import '../../src/style.css'
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [
+          { path: '/', name: 'Fixture', component: { render: () => h('span') } },
+          { path: '/libraries/:id', name: 'LibraryDetail', component: LibraryDetail },
+        ],
+      })
+      // A real navigation guard exercises rejected route handoffs, too.
+      router.beforeEach(to => !(location.search.includes('reject') && to.name === 'LibraryDetail'))
+      const app = createApp(Fixture).use(createPinia()).use(router)
+      await router.isReady()
+      app.mount('#app')
+    </script>
+  </body>
+</html>

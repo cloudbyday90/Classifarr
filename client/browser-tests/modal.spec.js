@@ -4,8 +4,8 @@ import { expect, test } from '@playwright/test'
 const openWorkflow = async page => {
   await page.goto('/browser-tests/fixtures/modal.html')
   await page.getByRole('button', { name: 'Open workflow', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Recovery options' })).toBeFocused()
-  return page.getByRole('dialog', { name: 'Recovery options' })
+  await expect(page.getByRole('heading', { name: 'Dialog behavior test' })).toBeFocused()
+  return page.getByRole('dialog', { name: 'Dialog behavior test' })
 }
 
 test('uses actual browser focus for hidden/inert/disabled controls and one Escape delivery', async ({ page }) => {
@@ -16,7 +16,7 @@ test('uses actual browser focus for hidden/inert/disabled controls and one Escap
     await route.abort()
   })
   const dialog = await openWorkflow(page)
-  const close = dialog.getByRole('button', { name: 'Close Recovery options', exact: true })
+  const close = dialog.getByRole('button', { name: 'Close Dialog behavior test', exact: true })
   const finish = dialog.getByRole('button', { name: 'Finish', exact: true })
   await page.keyboard.press('Tab')
   await expect(close).toBeFocused()
@@ -45,7 +45,7 @@ test('uses actual browser focus for hidden/inert/disabled controls and one Escap
 test('uses a logical fallback when the opener disappears and restores after unmount', async ({ page }) => {
   let dialog = await openWorkflow(page)
   await dialog.getByRole('button', { name: 'Remove opener and close' }).click()
-  await expect(page.getByRole('heading', { name: 'Recovery workflows', exact: true })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Developer dialog test fixture', exact: true })).toBeFocused()
   await expect(dialog).toHaveCount(0)
   dialog = await openWorkflow(page)
   await dialog.getByRole('button', { name: 'Unmount dialog' }).click()
@@ -53,7 +53,7 @@ test('uses a logical fallback when the opener disappears and restores after unmo
   await expect(dialog).toHaveCount(0)
 })
 
-test('leaving transitions cannot reclaim focus from a route or a newer dialog', async ({ page }) => {
+test('removal cannot reclaim focus from a route or a newer dialog', async ({ page }) => {
   let dialog = await openWorkflow(page)
   await dialog.getByRole('button', { name: 'Continue to route' }).click()
   await expect(page.getByRole('button', { name: 'Route destination' })).toBeFocused()
@@ -65,16 +65,16 @@ test('leaving transitions cannot reclaim focus from a route or a newer dialog', 
   await expect(dialog).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Next step' })).toBeFocused()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('heading', { name: 'Recovery workflows', exact: true })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Developer dialog test fixture', exact: true })).toBeFocused()
 })
 
-test('reopening during leave retains focus and usable controls; backdrop closes once', async ({ page }) => {
+test('immediate reopening retains focus and usable controls; backdrop closes once', async ({ page }) => {
   const dialog = await openWorkflow(page)
   await dialog.getByRole('button', { name: 'Close and reopen' }).click()
   await expect(dialog.getByRole('heading')).toBeFocused()
   await expect(dialog).not.toHaveAttribute('inert')
   await page.keyboard.press('Tab')
-  await expect(dialog.getByRole('button', { name: 'Close Recovery options', exact: true })).toBeFocused()
+  await expect(dialog.getByRole('button', { name: 'Close Dialog behavior test', exact: true })).toBeFocused()
   await page.mouse.click(5, 5)
   await expect(page.getByLabel('Close deliveries')).toHaveText('1')
   await expect(dialog).toHaveCount(0)
@@ -91,6 +91,68 @@ test('mobile heading focus is visible and reduced motion removes fading', async 
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(844)
   expect(await title.evaluate(element => globalThis.getComputedStyle(element).boxShadow)).not.toBe('none')
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
-  expect(await dialog.evaluate(element => globalThis.getComputedStyle(element.parentElement).transitionDuration)).toBe('0s')
+  expect(await dialog.evaluate(element => globalThis.getComputedStyle(element).animationDuration)).toBe('0s')
   await page.screenshot({ path: testInfo.outputPath('modal-mobile.png'), fullPage: true })
+})
+
+test('native top-layer isolation blocks background focus and pointer activation', async ({ page }) => {
+  const dialog = await openWorkflow(page)
+  expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
+  const background = page.getByRole('button', { name: 'Route destination', includeHidden: true })
+  await background.evaluate(element => element.focus())
+  await expect(dialog.getByRole('heading')).toBeFocused()
+  const box = await background.boundingBox()
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(page.getByLabel('Background clicks')).toHaveText('0')
+  await expect(dialog).toHaveCount(0)
+  await background.click()
+  await expect(page.getByLabel('Background clicks')).toHaveText('1')
+})
+
+test('nested dialogs restore the parent and tolerate removal of a lower modal', async ({ page }) => {
+  const first = await openWorkflow(page)
+  const nestedOpener = first.getByRole('button', { name: 'Open nested dialog' })
+  await nestedOpener.click()
+  const top = page.getByRole('dialog', { name: 'Next step' })
+  await expect(top.getByRole('heading')).toBeFocused()
+  expect(await page.locator('dialog:modal').count()).toBe(2)
+  await first.locator('h3').evaluate(element => element.focus())
+  await expect(top.getByRole('heading')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(nestedOpener).toBeFocused()
+  await nestedOpener.click()
+  const remove = top.getByRole('button', { name: 'Remove lower dialog' })
+  await remove.click()
+  await expect(first).toHaveCount(0)
+  await expect(remove).toBeFocused()
+  expect(await top.evaluate(element => element.matches(':modal'))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('heading', { name: 'Developer dialog test fixture', exact: true })).toBeFocused()
+})
+
+test('dragging content onto the backdrop does not dismiss', async ({ page }) => {
+  const dialog = await openWorkflow(page)
+  const box = await dialog.getByRole('textbox').boundingBox()
+  await page.mouse.move(box.x + 10, box.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(5, 5)
+  await page.mouse.up()
+  await expect(dialog).toBeVisible()
+  await expect(page.getByLabel('Close deliveries')).toHaveText('0')
+  await page.mouse.click(5, 5)
+  await expect(dialog).toHaveCount(0)
+})
+
+test('native cancellation cannot override a parent that rejects closing', async ({ page }) => {
+  await page.goto('/browser-tests/fixtures/modal.html')
+  await page.getByRole('checkbox', { name: 'Keep dialog open' }).check()
+  await page.getByRole('button', { name: 'Open workflow', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Dialog behavior test' })
+  await expect(dialog.getByRole('heading')).toBeFocused()
+  await dialog.evaluate(element => element.requestClose())
+  await expect(page.getByLabel('Close deliveries')).toHaveText('1')
+  expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Close deliveries')).toHaveText('2')
+  expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true)
 })

@@ -154,17 +154,23 @@
 
     <!-- Custom Preset Form Modal -->
     <CustomPresetForm
-      v-model="showPresetForm"
+      v-model="presetFormOpen"
       :preset="editingPreset"
       :source-preset="customizingPreset"
       :readonly="isFormReadonly"
+      :saving="savingPreset"
+      :save-error="presetSaveError"
+      :save-needs-review="presetSaveNeedsReview"
+      :fallback-focus-target="() => presetSearchRef"
       @save="handleSavePreset"
+      @review-saved="reviewSavedPresets"
     />
 
     <!-- Preset Summary Modal (for system presets) -->
     <PresetSummaryModal
       v-model="showSummaryModal"
       :preset="viewingPreset"
+      :fallback-focus-target="() => presetSearchRef"
       @customize="handleCustomize"
     />
 
@@ -172,16 +178,25 @@
     <Modal
       v-model="showDeleteConfirm"
       title="Delete Custom Preset"
+      :close-disabled="deleting"
       :fallback-focus-target="() => presetSearchRef"
     >
       <p class="text-gray-300">
         Are you sure you want to delete <strong>{{ deleteTarget?.name }}</strong>?
         This action cannot be undone.
       </p>
+      <p
+        v-if="deleteError"
+        role="alert"
+        class="mt-4 rounded-lg border border-red-700 bg-red-900/20 p-3 text-sm text-red-400"
+      >
+        {{ deleteError }}
+      </p>
       <template #footer>
         <div class="flex justify-end gap-3">
           <Button
             variant="ghost"
+            :disabled="deleting"
             @click="showDeleteConfirm = false"
           >
             Cancel
@@ -211,6 +226,7 @@ import PresetSummaryModal from '@/components/presets/PresetSummaryModal.vue'
 import PresetCard from '@/components/presets/PresetCard.vue'
 import presetsApi from '@/api/presets'
 import { useToast } from '@/stores/toast'
+import { usePresetSave } from '@/composables/usePresetSave'
 
 const toast = useToast()
 const presetSearchRef = ref(null)
@@ -243,6 +259,13 @@ const customizingPreset = ref(null)
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref(null)
 const deleting = ref(false)
+const deleteError = ref('')
+const { pending: savingPreset, error: presetSaveError, needsReview: presetSaveNeedsReview,
+  reset: resetPresetSave, save: savePreset } = usePresetSave(presetsApi)
+const presetFormOpen = computed({
+  get: () => showPresetForm.value,
+  set: value => { if (!savingPreset.value) showPresetForm.value = value },
+})
 
 // Categories - combined from both system and custom presets
 const categories = computed(() => {
@@ -306,9 +329,10 @@ async function fetchCustomPresets() {
   errorCustom.value = ''
   try {
     customPresets.value = await presetsApi.getCustomPresets()
-  } catch (error) {
-    console.error('Error fetching custom presets:', error)
-    errorCustom.value = error.response?.data?.error || error.message
+    return true
+  } catch {
+    errorCustom.value = 'Could not load saved presets. Try again.'
+    return false
   } finally {
     loadingCustom.value = false
   }
@@ -318,6 +342,8 @@ const isFormReadonly = ref(false)
 
 // Modal Handlers
 function openCreateModal() {
+  if (savingPreset.value) return
+  resetPresetSave()
   editingPreset.value = null
   customizingPreset.value = null
   isFormReadonly.value = false
@@ -325,6 +351,8 @@ function openCreateModal() {
 }
 
 function openEditModal(preset) {
+  if (savingPreset.value) return
+  resetPresetSave()
   editingPreset.value = preset
   customizingPreset.value = null
   isFormReadonly.value = false
@@ -337,6 +365,8 @@ function openViewModal(preset) {
 }
 
 function handleCustomize(preset) {
+  if (savingPreset.value) return
+  resetPresetSave()
   // Close summary modal
   showSummaryModal.value = false
   viewingPreset.value = null
@@ -349,44 +379,39 @@ function handleCustomize(preset) {
 }
 
 function confirmDelete(preset) {
+  if (deleting.value) return
+  deleteError.value = ''
   deleteTarget.value = preset
   showDeleteConfirm.value = true
 }
 
 async function handleSavePreset(presetData) {
-  try {
-    const isEditing = !!editingPreset.value?.id
-    const isCustomizing = !!customizingPreset.value
-    
-    if (isEditing) {
-      await presetsApi.updateCustomPreset(editingPreset.value.id, presetData)
-    } else {
-      await presetsApi.createCustomPreset(presetData)
-    }
+  if (!showPresetForm.value || isFormReadonly.value) return
+  const isCustomizing = !!customizingPreset.value
+  if (!await savePreset(presetData, editingPreset.value?.id)) return
+  showPresetForm.value = false
+  editingPreset.value = null
+  customizingPreset.value = null
+  activeTab.value = 'custom'
+  if (isCustomizing) toast.success(`Custom preset '${presetData.name}' created!`)
+  // An acknowledged save stays successful even if this separate read fails.
+  await fetchCustomPresets()
+}
 
-    // Refresh custom presets list
-    await fetchCustomPresets()
-    
-    // Close modal
-    showPresetForm.value = false
-    editingPreset.value = null
-    customizingPreset.value = null
-
-    // If customizing, show success toast and switch to custom tab
-    if (isCustomizing) {
-      toast.success(`Custom preset '${presetData.name}' created!`)
-      activeTab.value = 'custom'
-    }
-  } catch (error) {
-    console.error('Error saving preset:', error)
-    throw error // Let the form handle the error display
-  }
+async function reviewSavedPresets() {
+  if (savingPreset.value) return
+  showPresetForm.value = false
+  activeTab.value = 'custom'
+  searchQuery.value = ''
+  categoryFilter.value = ''
+  if (await fetchCustomPresets()) resetPresetSave({ reviewed: true })
 }
 
 async function handleDelete() {
-  if (!deleteTarget.value) return
+  if (!deleteTarget.value || deleting.value) return
   
   deleting.value = true
+  deleteError.value = ''
   try {
     await presetsApi.deleteCustomPreset(deleteTarget.value.id)
 
@@ -396,9 +421,8 @@ async function handleDelete() {
     // Close modal
     showDeleteConfirm.value = false
     deleteTarget.value = null
-  } catch (error) {
-    console.error('Error deleting preset:', error)
-    errorCustom.value = error.response?.data?.error || error.message
+  } catch {
+    deleteError.value = 'Could not delete this preset. Try again.'
   } finally {
     deleting.value = false
   }

@@ -10,13 +10,15 @@
   <Modal
     v-model="isOpen"
     :title="modalTitle"
+    :close-disabled="saving"
     class="max-w-4xl"
   >
     <form
       class="space-y-6"
+      :aria-busy="saving"
       @submit.prevent="handleSubmit"
     >
-      <fieldset :disabled="readonly">
+      <fieldset :disabled="readonly || saving || saveNeedsReview">
         <!-- Basic Information -->
         <div class="space-y-4">
           <h3 class="text-lg font-semibold text-primary">
@@ -24,11 +26,19 @@
           </h3>
         
           <div>
-            <label class="block text-sm font-medium mb-2">Name *</label>
+            <label
+              :for="nameId"
+              class="block text-sm font-medium mb-2"
+            >Name *</label>
             <input
+              :id="nameId"
+              ref="nameRef"
               v-model="form.name"
               type="text"
               required
+              maxlength="100"
+              :aria-invalid="error ? 'true' : undefined"
+              :aria-describedby="error ? errorId : undefined"
               placeholder="e.g., Family Friendly Animation"
               class="w-full px-3 py-2 bg-background border border-gray-700 rounded-lg focus:border-primary focus:outline-hidden"
             >
@@ -249,15 +259,22 @@
             </div>
           </div>
         </div>
-
-        <div
-          v-if="error"
-          class="p-3 bg-red-900/20 border border-red-700 rounded-lg text-red-400 text-sm"
-        >
-          {{ error }}
-        </div>
       </fieldset>
+      <p
+        v-if="error || saveError"
+        :id="errorId"
+        role="alert"
+        class="p-3 bg-red-900/20 border border-red-700 rounded-lg text-red-400 text-sm"
+      >
+        {{ error || saveError }}
+      </p>
     </form>
+    <p
+      role="status"
+      class="mt-3 text-sm text-gray-300"
+    >
+      {{ saving ? 'Saving preset…' : '' }}
+    </p>
 
     <template #footer>
       <div class="flex justify-end gap-3">
@@ -272,11 +289,20 @@
         <template v-else>
           <Button
             variant="ghost"
+            :disabled="saving"
             @click="close"
           >
-            Cancel
+            {{ saveNeedsReview ? 'Close' : 'Cancel' }}
           </Button>
           <Button
+            v-if="saveNeedsReview"
+            variant="primary"
+            @click="emit('review-saved')"
+          >
+            Check saved presets
+          </Button>
+          <Button
+            v-else
             variant="primary"
             :loading="saving"
             @click="handleSubmit"
@@ -290,7 +316,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, useId } from 'vue'
 import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import TagInput from '@/components/common/TagInput.vue'
@@ -300,14 +326,17 @@ const props = defineProps({
   modelValue: { type: Boolean, default: false },
   preset: { type: Object, default: null },
   readonly: { type: Boolean, default: false },
-  sourcePreset: { type: Object, default: null }
+  sourcePreset: { type: Object, default: null },
+  saving: { type: Boolean, default: false },
+  saveError: { type: String, default: '' },
+  saveNeedsReview: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue', 'save'])
+const emit = defineEmits(['update:modelValue', 'save', 'review-saved'])
 
 const isOpen = computed({
   get: () => props.modelValue,
-  set: (v) => emit('update:modelValue', v)
+  set: (v) => { if (!props.saving) emit('update:modelValue', v) }
 })
 
 const isEditing = computed(() => !!props.preset?.id)
@@ -320,8 +349,10 @@ const modalTitle = computed(() => {
   return 'Create Custom Preset'
 })
 
-const saving = ref(false)
 const error = ref('')
+const nameRef = ref(null)
+const nameId = `preset-name-${useId()}`
+const errorId = `${nameId}-error`
 
 const availableRatings = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'TV-Y', 'TV-Y7', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA', 'NR']
 const availableGenres = [
@@ -414,35 +445,27 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
-async function handleSubmit() {
+function handleSubmit() {
+  if (props.readonly || props.saving || props.saveNeedsReview) return
   error.value = ''
   
   if (!form.value.name.trim()) {
     error.value = 'Please enter a preset name'
+    nameRef.value?.focus()
     return
   }
 
-  saving.value = true
-  
-  try {
-    const presetData = {
-      name: form.value.name.trim(),
-      description: form.value.description.trim(),
-      icon: form.value.icon || DEFAULT_EMOJI,
-      category: form.value.category,
-      signals: form.value.signals
-    }
-
-    // Emit save event - parent will handle closing on success
-    emit('save', presetData)
-  } catch (err) {
-    error.value = err.message || 'Failed to save preset'
-  } finally {
-    saving.value = false
-  }
+  emit('save', {
+    name: form.value.name.trim(),
+    description: form.value.description.trim(),
+    icon: form.value.icon || DEFAULT_EMOJI,
+    category: form.value.category,
+    signals: form.value.signals,
+  })
 }
 
 function close() {
+  if (props.saving) return
   emit('update:modelValue', false)
   form.value = defaultForm()
   error.value = ''

@@ -55,7 +55,7 @@ describe('customPresetsApi', () => {
     const data = { name: 'Test', signals: {} }
     mockPost.mockResolvedValueOnce({ data: { id: 10 } })
     const result = await createCustomPreset(data)
-    expect(mockPost).toHaveBeenCalledWith('/presets/custom', data)
+    expect(mockPost).toHaveBeenCalledWith('/presets/custom', data, { skipAutomaticRetry: true, timeout: 30_000 })
     expect(result).toEqual({ data: { id: 10 } })
   })
 
@@ -63,7 +63,7 @@ describe('customPresetsApi', () => {
     const data = { name: 'Updated' }
     mockPut.mockResolvedValueOnce({ data: { ok: true } })
     const result = await updateCustomPreset(3, data)
-    expect(mockPut).toHaveBeenCalledWith('/presets/custom/3', data)
+    expect(mockPut).toHaveBeenCalledWith('/presets/custom/3', data, { skipAutomaticRetry: true, timeout: 30_000 })
     expect(result).toEqual({ data: { ok: true } })
   })
 

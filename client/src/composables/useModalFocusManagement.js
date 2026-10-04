@@ -12,7 +12,7 @@ import { focusAvailableTarget, getModalTabStops } from '@/utils/modalFocusTarget
 /**
  * @param {{
  *   isOpen: import('vue').ComputedRef<boolean>,
- *   dialogRef: Readonly<import('vue').Ref<HTMLElement | null>>,
+ *   dialogRef: Readonly<import('vue').Ref<HTMLDialogElement | null>>,
  *   titleRef: Readonly<import('vue').Ref<HTMLElement | null>>,
  *   restoreFocus: import('vue').ComputedRef<boolean>,
  *   fallbackFocusTarget: () => HTMLElement | null,
@@ -29,24 +29,14 @@ export function useModalFocusManagement({
   let returnTarget = null
   /** @type {HTMLElement | null} */
   let openedDialog = null
-  /** @type {HTMLElement | null} */
-  let inertOnLeave = null
   let generation = 0
   let disposed = false
-
-  const makeLeavingInert = () => {
-    if (openedDialog && !openedDialog.hasAttribute('inert')) {
-      inertOnLeave = openedDialog
-      openedDialog.setAttribute('inert', '')
-    }
-  }
 
   const restorePreviousFocus = () => {
     const target = returnTarget
     const previousDialog = openedDialog
     returnTarget = null
     openedDialog = null
-    inertOnLeave = null
     if (!restoreFocus.value || !previousDialog) return
     const active = previousDialog.ownerDocument.activeElement
     // A route handoff or another dialog already owns focus: do not steal it.
@@ -61,9 +51,6 @@ export function useModalFocusManagement({
       if (active instanceof HTMLElement && active !== document.body && !openedDialog?.contains(active)) {
         returnTarget = active
       }
-    } else {
-      // Vue's leave transition must not leave interactive controls behind.
-      makeLeavingInert()
     }
     await nextTick()
     if (disposed || revision !== generation) return
@@ -71,9 +58,10 @@ export function useModalFocusManagement({
       restorePreviousFocus()
       return
     }
-    openedDialog = dialogRef.value
-    if (openedDialog === inertOnLeave) openedDialog?.removeAttribute('inert')
-    inertOnLeave = null
+    const dialog = dialogRef.value
+    if (!dialog?.isConnected) return
+    openedDialog = dialog
+    dialog.showModal()
     if (focusAvailableTarget(titleRef.value)) return
     for (const target of getModalTabStops(openedDialog)) {
       if (focusAvailableTarget(target)) return
@@ -84,7 +72,9 @@ export function useModalFocusManagement({
   onBeforeUnmount(() => {
     disposed = true
     generation++
-    makeLeavingInert()
+    // Vue removes the native dialog (and its top-layer entry) synchronously.
+    // Calling close() instead would force the browser's opener-focus return,
+    // even when this instance explicitly opts out for a route handoff.
     // Allow the parent's next view to establish focus before considering return.
     void nextTick().then(restorePreviousFocus)
   })
@@ -106,7 +96,7 @@ export function useModalFocusManagement({
     if (active === boundary || !stops.some(stop => stop === active)) {
       event.preventDefault()
       const ordered = event.shiftKey ? [...stops].reverse() : stops
-      if (!ordered.some(focusAvailableTarget)) focusAvailableTarget(dialog)
+      if (!ordered.some(focusAvailableTarget) && !focusAvailableTarget(titleRef.value)) focusAvailableTarget(dialog)
     }
     return true
   }

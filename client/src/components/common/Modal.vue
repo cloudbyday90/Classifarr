@@ -8,62 +8,57 @@
 
 <template>
   <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="modelValue"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      >
-        <div
-          class="absolute inset-0 bg-black/75"
-          :onClick="close"
-        />
-        <div
-          ref="dialogRef"
-          class="relative bg-background-light rounded-lg border border-gray-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          role="dialog"
-          aria-modal="true"
-          :aria-labelledby="title ? titleId : undefined"
+    <dialog
+      v-if="modelValue"
+      ref="dialogRef"
+      class="modal-panel bg-background-light rounded-lg border border-gray-800 max-w-2xl overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="title ? titleId : undefined"
+      v-bind="$attrs"
+      :onKeydown="onKeydown"
+      :onCancel="onCancel"
+      :onPointerdown="onPointerdown"
+      :onPointercancel="onPointercancel"
+      :onClick="onBackdropClick"
+    >
+      <div class="flex items-center justify-between p-6 border-b border-gray-800">
+        <h3
+          v-if="title"
+          :id="titleId"
+          ref="titleRef"
+          class="rounded-sm text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background-light"
           tabindex="-1"
-          v-bind="$attrs"
-          :onKeydown="onKeydown"
         >
-          <div class="flex items-center justify-between p-6 border-b border-gray-800">
-            <h3
-              v-if="title"
-              :id="titleId"
-              ref="titleRef"
-              class="rounded-sm text-xl font-semibold focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background-light"
-              tabindex="-1"
-            >
-              {{ title }}
-            </h3>
-            <button
-              type="button"
-              class="text-primary hover:text-primary-light text-2xl leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background-light"
-              :aria-label="closeLabel"
-              :onClick="close"
-            >
-              &times;
-            </button>
-          </div>
-          <div class="p-6">
-            <slot />
-          </div>
-          <div
-            v-if="$slots.footer"
-            class="flex items-center justify-end gap-3 p-6 border-t border-gray-800"
-          >
-            <slot name="footer" />
-          </div>
-        </div>
+          {{ title }}
+        </h3>
+        <button
+          type="button"
+          class="text-primary hover:text-primary-light text-2xl leading-none transition-colors focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 focus:ring-offset-background-light disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="closeDisabled"
+          :aria-label="closeLabel"
+          :onClick="close"
+        >
+          &times;
+        </button>
       </div>
-    </Transition>
+      <div class="p-6">
+        <slot />
+      </div>
+      <div
+        v-if="$slots.footer"
+        class="flex items-center justify-end gap-3 p-6 border-t border-gray-800"
+      >
+        <slot name="footer" />
+      </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup>
 import { computed, useId, useTemplateRef } from 'vue'
 import { useModalFocusManagement } from '@/composables/useModalFocusManagement'
+import { useModalDismissal } from '@/composables/useModalDismissal'
 
 defineOptions({ inheritAttrs: false })
 
@@ -79,6 +74,10 @@ const props = defineProps({
   restoreFocus: {
     type: Boolean,
     default: true,
+  },
+  closeDisabled: {
+    type: Boolean,
+    default: false,
   },
   fallbackFocusTarget: {
     type: /** @type {import('vue').PropType<() => HTMLElement | null>} */ (Function),
@@ -111,25 +110,35 @@ const onKeydown = event => {
 }
 
 const close = () => {
+  if (props.closeDisabled) return
   emit('update:modelValue', false)
 }
+
+const { onCancel, onPointerdown, onPointercancel, onBackdropClick } = useModalDismissal(dialogRef, close)
 </script>
 
 <style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
+.modal-panel {
+  margin: auto;
+  padding: 0;
+  width: calc(100% - 2rem);
+  max-height: 90dvh;
+  color: inherit;
+  animation: modal-enter 0.15s ease;
 }
 
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
+.modal-panel::backdrop {
+  background: rgb(0 0 0 / 75%);
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .modal-enter-active,
-  .modal-leave-active {
-    transition: none;
+  .modal-panel {
+    animation: none;
   }
 }
 </style>

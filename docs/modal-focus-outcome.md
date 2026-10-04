@@ -4,6 +4,10 @@ Date: 2026-10-03. Starting revision:
 `b7619d488a83bcd2ea5f7ed79021d8757e822a7b` on `main`.
 Local environment: Windows, Node 24.21.0, npm 12.2.0.
 
+Follow-up: [native modal isolation](native-modal-outcome.md) replaces this
+round's custom overlay and exit fade. The results below describe the earlier
+focus-lifecycle patch, not the later native-dialog validation.
+
 ## Delivered
 
 - Extracted DOM eligibility and tab ordering into `modalFocusTargets.js`.

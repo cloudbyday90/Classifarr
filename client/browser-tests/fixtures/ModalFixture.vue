@@ -12,6 +12,12 @@ const destinationRef = ref(null)
 const restore = ref(true)
 const escapes = ref(0)
 const closes = ref(0)
+const backgroundClicks = ref(0)
+const rejectClose = ref(false)
+const handleClose = value => {
+  closes.value++
+  if (!rejectClose.value) open.value = value
+}
 const removeOpener = () => { showOpener.value = false; open.value = false }
 const handoff = async () => {
   restore.value = false
@@ -30,7 +36,7 @@ const reopen = async () => { open.value = false; await nextTick(); open.value = 
       tabindex="-1"
       class="text-xl focus-visible:outline-2 focus-visible:outline-primary"
     >
-      Recovery workflows
+      Developer dialog test fixture
     </h1>
     <button
       v-if="showOpener"
@@ -43,21 +49,30 @@ const reopen = async () => { open.value = false; await nextTick(); open.value = 
     <button
       ref="destinationRef"
       type="button"
+      @click="backgroundClicks++"
     >
       Route destination
     </button>
     <output aria-label="Close deliveries">{{ closes }}</output>
     <output aria-label="Handled escapes">{{ escapes }}</output>
+    <output aria-label="Background clicks">{{ backgroundClicks }}</output>
+    <label>
+      <input
+        v-model="rejectClose"
+        type="checkbox"
+      >
+      Keep dialog open
+    </label>
     <Modal
       v-if="mounted"
-      v-model="open"
-      title="Recovery options"
+      :model-value="open"
+      title="Dialog behavior test"
       :restore-focus="restore"
       :fallback-focus-target="() => fallbackRef"
-      :on-update:model-value.camel="() => closes++"
+      :on-update:model-value.camel="handleClose"
     >
       <div class="space-y-4">
-        <p>Choose an action. These fixture controls do not call the server.</p>
+        <p>Developer-only controls. No recovery jobs or server calls run here.</p>
         <fieldset disabled>
           <legend>
             <button type="button">
@@ -91,6 +106,12 @@ const reopen = async () => { open.value = false; await nextTick(); open.value = 
           @click="switchDialog"
         >
           Open next dialog
+        </button>
+        <button
+          type="button"
+          @click="secondOpen = true"
+        >
+          Open nested dialog
         </button>
         <button
           type="button"
@@ -153,6 +174,12 @@ const reopen = async () => { open.value = false; await nextTick(); open.value = 
       :fallback-focus-target="() => fallbackRef"
     >
       <p>Independent dialog with a separate focus lifecycle.</p>
+      <button
+        type="button"
+        @click="mounted = false"
+      >
+        Remove lower dialog
+      </button>
     </Modal>
   </main>
 </template>

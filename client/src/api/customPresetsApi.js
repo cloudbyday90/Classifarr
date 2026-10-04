@@ -23,11 +23,11 @@ export function getCustomPresets() {
 }
 
 export function createCustomPreset(data) {
-  return apiClient.post('/presets/custom', data)
+  return apiClient.post('/presets/custom', data, { skipAutomaticRetry: true, timeout: 30_000 })
 }
 
 export function updateCustomPreset(id, data) {
-  return apiClient.put(`/presets/custom/${id}`, data)
+  return apiClient.put(`/presets/custom/${id}`, data, { skipAutomaticRetry: true, timeout: 30_000 })
 }
 
 export function deleteCustomPreset(id) {

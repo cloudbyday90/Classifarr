@@ -78,8 +78,8 @@ const SpinnerStub = { name: 'SpinnerStub', template: '<div data-test="spinner" /
 
 const CustomPresetFormStub = {
   name: 'CustomPresetFormStub',
-  props: ['modelValue', 'preset', 'sourcePreset', 'readonly'],
-  emits: ['update:modelValue', 'save'],
+  props: ['modelValue', 'preset', 'sourcePreset', 'readonly', 'saving', 'saveError', 'saveNeedsReview'],
+  emits: ['update:modelValue', 'save', 'review-saved'],
   template: `<div v-if="modelValue" data-test="custom-form">
     <span>{{ preset?.name || 'new' }}</span>
     <button data-test="save-btn" @click="$emit('save', { name: 'Test Preset' })">Save</button>
@@ -127,6 +127,86 @@ function mountView(realTabs = false, realModal = false) {
 }
 
 describe('PresetsManager.vue', () => {
+  it('owns save state, blocks concurrent events and does not confuse refresh failure with save failure', async () => {
+    const request = Promise.withResolvers()
+    presetsApi.createCustomPreset.mockReturnValueOnce(request.promise)
+    const wrapper = mountView()
+    try {
+      await flushPromises()
+      await switchToCustomTab(wrapper)
+      await wrapper.findAll('button').find(button => button.text().includes('Create New Preset')).trigger('click')
+      const form = wrapper.getComponent(CustomPresetFormStub)
+      form.vm.$emit('save', { name: 'Created' })
+      form.vm.$emit('save', { name: 'Duplicate' })
+      form.vm.$emit('update:modelValue', false)
+      await flushPromises()
+      expect(form.props('saving')).toBe(true)
+      expect(form.props('modelValue')).toBe(true)
+      expect(presetsApi.createCustomPreset).toHaveBeenCalledTimes(1)
+      presetsApi.getCustomPresets.mockRejectedValueOnce(new Error('private data'))
+      request.resolve({ data: { id: 42 } })
+      await flushPromises()
+      expect(form.props('modelValue')).toBe(false)
+      expect(form.props('saveError')).toBe('')
+      expect(wrapper.text()).toContain('Could not load saved presets. Try again.')
+      expect(wrapper.text()).not.toContain('private data')
+    } finally { wrapper.unmount() }
+  })
+
+  it('only clears an uncertain save after an explicit successful review fetch', async () => {
+    presetsApi.createCustomPreset.mockRejectedValueOnce(new Error('Connection lost'))
+    const wrapper = mountView()
+    try {
+      await flushPromises()
+      await switchToCustomTab(wrapper)
+      const open = () => wrapper.findAll('button').find(button => button.text().includes('Create New Preset')).trigger('click')
+      await open()
+      const form = wrapper.getComponent(CustomPresetFormStub)
+      form.vm.$emit('save', { name: 'Uncertain' })
+      await flushPromises()
+      expect(form.props('saveNeedsReview')).toBe(true)
+      form.vm.$emit('update:modelValue', false)
+      await flushPromises()
+      await open()
+      expect(form.props('saveNeedsReview')).toBe(true)
+      presetsApi.getCustomPresets.mockRejectedValueOnce(new Error('Review unavailable'))
+      form.vm.$emit('review-saved')
+      await flushPromises()
+      await open()
+      expect(form.props('saveNeedsReview')).toBe(true)
+      await wrapper.get('#preset-search').setValue('Hidden by filter')
+      await wrapper.get('#category-filter').setValue('genre')
+      form.vm.$emit('review-saved')
+      await flushPromises()
+      expect(wrapper.get('#preset-search').element.value).toBe('')
+      expect(wrapper.get('#category-filter').element.value).toBe('')
+      await open()
+      expect(form.props('saveNeedsReview')).toBe(false)
+      expect(presetsApi.createCustomPreset).toHaveBeenCalledTimes(1)
+    } finally { wrapper.unmount() }
+  })
+
+  it('ignores duplicate delete requests while the first request is pending', async () => {
+    let finish
+    presetsApi.deleteCustomPreset.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    const wrapper = mountView(false, true)
+    try {
+      await flushPromises()
+      await switchToCustomTab(wrapper)
+      await wrapper.get('[data-preset-id="9"] [data-test="delete-btn"]').trigger('click')
+      await flushPromises()
+      const confirm = document.querySelector('dialog [data-variant="error"]')
+      confirm.click()
+      confirm.click()
+      expect(presetsApi.deleteCustomPreset).toHaveBeenCalledTimes(1)
+      finish({})
+      await flushPromises()
+      expect(document.querySelector('dialog')).toBeNull()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('returns to preset search after deletion removes the invoking card', async () => {
     const wrapper = mountView(false, true)
     try {
@@ -383,6 +463,11 @@ describe('PresetsManager.vue', () => {
 
       expect(wrapper.find('[data-test="summary-modal"]').exists()).toBe(false)
       expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(true)
+      await wrapper.get('[data-test="save-btn"]').trigger('click')
+      await flushPromises()
+      expect(presetsApi.createCustomPreset).toHaveBeenCalledWith({ name: 'Test Preset' })
+      expect(mockToast.success).toHaveBeenCalledWith("Custom preset 'Test Preset' created!")
+      expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(false)
     })
 
     it('opens delete confirmation modal', async () => {
@@ -438,7 +523,8 @@ describe('PresetsManager.vue', () => {
       await confirmDeleteBtn.trigger('click')
       await flushPromises()
 
-      expect(wrapper.text()).toContain('Delete failed')
+      expect(wrapper.get('[data-test="modal"] [role="alert"]').text()).toBe('Could not delete this preset. Try again.')
+      expect(wrapper.text()).not.toContain('Delete failed')
     })
 
     it('calls updateCustomPreset when editing an existing preset', async () => {
@@ -455,6 +541,10 @@ describe('PresetsManager.vue', () => {
       await flushPromises()
 
       expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(true)
+      await wrapper.get('[data-test="save-btn"]').trigger('click')
+      await flushPromises()
+      expect(presetsApi.updateCustomPreset).toHaveBeenCalledWith(9, { name: 'Test Preset' })
+      expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(false)
     })
   })
 })
