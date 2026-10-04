@@ -39,8 +39,8 @@ caller. No runtime-supplied role, relation, SQL, path or capability is accepted.
   Never silently revoke grants, terminate a session, retry, or reset a budget.
 - Use fixed schema-qualified names and `search_path=pg_catalog,pg_temp`. Install
   and revoke PUBLIC execution in the existing single installation transaction.
-- Existing five-second statements, one-second lock waits, fifteen-second cutover
-  transactions and 1,000-item rehearsal bounds remain. Add no network work,
+- Existing five-second fixture statements, one-second cutover lock waits,
+  fifteen-second cutover transactions and 1,000-item rehearsal bounds remain. Add no network work,
   service, timer, schema migration or production startup hook.
 - A corrected configuration can be reviewed and tried again. A lost-owner token
   remains invalid. This does not claim atomic protection against a concurrent
