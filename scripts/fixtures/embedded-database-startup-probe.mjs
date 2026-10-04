@@ -2,7 +2,8 @@
 // Only run by the disposable startup smoke harness; never on an installation.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, appendFileSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { once } from 'node:events';
 import { createEmbeddedDatabaseStartupProcess } from '/app/src/bootstrap/embeddedDatabaseStartupProcess.mjs';
 import { runEmbeddedDatabaseStartup } from '/app/src/bootstrap/embeddedDatabaseStartup.mjs';
@@ -19,19 +20,20 @@ appendFileSync(`${data}/postgresql.conf`, "\nlisten_addresses = 'localhost'\nuni
 const query = sql => run('psql', ['-h', '/run/postgresql', '-U', 'classifarr', '-d', 'postgres', '-At', '-v', 'ON_ERROR_STOP=1', '-c', sql]).trim();
 const stop = mode => run('pg_ctl', ['-D', data, '-m', mode, '-w', '-t', '20', 'stop']);
 let owned;
-async function start({ stallMs = 0, timeoutMs = 300_000, signal } = {}) {
+async function start({ stallMs = 0, timeoutMs = 300_000, signal, events = [], injectSignal } = {}) {
   const adapter = createEmbeddedDatabaseStartupProcess();
   let resume;
   try {
     await runEmbeddedDatabaseStartup({ ...adapter, timeoutMs, signal,
       launch: () => {
         owned = adapter.launch();
+        if (injectSignal) process.kill(owned.pid, injectSignal);
         if (stallMs) {
           process.kill(owned.pid, 'SIGSTOP');
           resume = setTimeout(() => { if (!owned.hasExited()) process.kill(owned.pid, 'SIGCONT'); }, stallMs);
         }
         return owned;
-      }, report: event => process.stdout.write(`${JSON.stringify(event)}\n`),
+      }, report: event => { events.push(event); process.stdout.write(`${JSON.stringify(event)}\n`); },
     });
   } finally { clearTimeout(resume); }
 }
@@ -55,6 +57,49 @@ assert.match(readFileSync('/app/data/postgres.log', 'utf8'), /automatic recovery
 assert.equal(query('SHOW fsync'), 'on');
 stop('fast');
 process.stdout.write('PASS: crash recovery preserves committed data and durability\n');
+
+// Deterministic PID-reuse fixture. Only this fresh disposable cluster is
+// modified; native lock files are NEVER rewritten by application recovery.
+await readFile('/proc/self/status'); // Ensure this fixture's persistent I/O pool exists.
+const worker = readdirSync('/proc/self/task').find(tid =>
+  /^Name:\s+libuv-worker$/m.test(readFileSync(`/proc/self/task/${tid}/status`, 'utf8')));
+assert.ok(worker, 'fixture requires a persistent libuv worker');
+const staleWorkerIdentity = existingIdentity.replace(/^\d+/, worker);
+writeFileSync(`${data}/postmaster.pid`, staleWorkerIdentity);
+const raw = createEmbeddedDatabaseStartupProcess().launch();
+try { assert.deepEqual(await raw.done, { code: 1, signal: null }); }
+finally { raw.detach(); }
+assert.equal(readFileSync(`${data}/postmaster.pid`, 'utf8'), staleWorkerIdentity);
+const reuseEvents = [];
+await start({ events: reuseEvents });
+assert.ok(reuseEvents.some(event => event.status === 'parent_thread_pid_reused'));
+assert.equal(query('SELECT value FROM startup_sentinel'), 'preserved');
+assert.notEqual(readFileSync(`${data}/postmaster.pid`, 'utf8').split('\n')[0], worker);
+stop('fast');
+process.stdout.write('PASS: verified parent-worker PID reuse recovers without deleting the native lock\n');
+
+// A foreign process is deliberately NOT exempted, even if it is harmless.
+const foreign = spawn('/bin/sleep', ['30'], { stdio: 'ignore' });
+const foreignExit = once(foreign, 'exit');
+try {
+  const foreignIdentity = existingIdentity.replace(/^\d+/, String(foreign.pid));
+  writeFileSync(`${data}/postmaster.pid`, foreignIdentity);
+  const events = [];
+  await assert.rejects(start({ events }), /database_startup_process_exited/);
+  assert.equal(readFileSync(`${data}/postmaster.pid`, 'utf8'), foreignIdentity);
+  process.kill(foreign.pid, 0); // Refusal must leave the unrelated process alive.
+  assert.ok(events.some(event => event.status === 'failed' && event.exitCode === 1 && event.exitSignal === null));
+  assert.equal(events.some(event => event.status === 'parent_thread_pid_reused'), false);
+} finally { foreign.kill('SIGTERM'); await foreignExit; }
+await start(); // PostgreSQL itself now reclaims its lock after the foreign PID exits.
+assert.equal(query('SELECT value FROM startup_sentinel'), 'preserved');
+stop('fast');
+process.stdout.write('PASS: foreign live PID is refused and its native exit code is retained\n');
+
+const killedEvents = [];
+await assert.rejects(start({ events: killedEvents, injectSignal: 'SIGKILL' }), /database_startup_process_exited/);
+assert.ok(killedEvents.some(event => event.status === 'failed' && event.exitCode === null && event.exitSignal === 'SIGKILL'));
+process.stdout.write('PASS: actual child signal termination remains distinct from native refusal\n');
 
 await assert.rejects(start({ stallMs: 4000, timeoutMs: 1000 }), /timeout/);
 assert.equal(owned.hasExited(), true);

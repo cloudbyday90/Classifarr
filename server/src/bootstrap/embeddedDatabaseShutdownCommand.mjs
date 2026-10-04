@@ -2,7 +2,10 @@
 import { spawn } from 'node:child_process';
 import { observeEmbeddedChild } from './embeddedChildProcess.mjs';
 
-/** Only two fixed helpers. Their exit does not alone prove PostgreSQL stopped. */
+/**
+ * Only two fixed helpers. Their exit does not alone prove PostgreSQL stopped.
+ * @param {string} kind @param {{signal?: AbortSignal, spawnFn?: typeof spawn}} [options]
+ */
 export async function runEmbeddedDatabaseShutdownCommand(kind, { signal, spawnFn = spawn } = {}) {
   if (!['stop', 'control'].includes(kind)) throw new Error('database_command_invalid');
   signal?.throwIfAborted();

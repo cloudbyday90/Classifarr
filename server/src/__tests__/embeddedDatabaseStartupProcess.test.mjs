@@ -36,6 +36,18 @@ test('closes the parent log descriptor even if spawning fails', () => {
   expect(f.input.closeLog.mock.calls).toEqual([[42]]);
 });
 
+test('launch strips inherited PID exemptions and only uses the preflight environment', async () => {
+  const f = fixture();
+  f.input.environment.PG_GRANDPARENT_PID = 'unverified';
+  const prepareEnvironment = jest.fn(async () => ({ environment: { LC_ALL: 'C', PG_GRANDPARENT_PID: '157' }, ownThreadCollision: true }));
+  const adapter = createEmbeddedDatabaseStartupProcess({ ...f.input, prepareEnvironment });
+  adapter.launch();
+  expect(f.input.spawnFn.mock.calls[0][2].env).not.toHaveProperty('PG_GRANDPARENT_PID');
+  expect(await adapter.prepare()).toEqual({ ownThreadCollision: true });
+  adapter.launch();
+  expect(f.input.spawnFn.mock.calls[1][2].env.PG_GRANDPARENT_PID).toBe('157');
+});
+
 test('requires own PID, fixed port, native ready state and successful local probe with identity readback', async () => {
   const f = fixture();
   expect(await f.adapter.probe(123)).toMatchObject({ ready: true });

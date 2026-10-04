@@ -1,40 +1,35 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { spawn, execFile } from 'node:child_process';
 import { openSync, closeSync } from 'node:fs';
-import { open } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { observeEmbeddedChild } from './embeddedChildProcess.mjs';
 import { parseEmbeddedDatabaseIdentity } from './embeddedDatabaseControl.mjs';
+import { readStartupPidFile, prepareEmbeddedDatabaseStartupEnvironment } from './embeddedDatabaseStartupPreflight.mjs';
 
 const execute = promisify(execFile);
 const PG_DATA = '/app/data/postgres';
 
-async function readPidFile() {
-  let file;
-  try {
-    file = await open('/app/data/postgres/postmaster.pid', 'r');
-    const buffer = Buffer.alloc(2048);
-    const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
-    if (bytesRead === buffer.length) throw new Error('database_startup_identity_invalid');
-    return buffer.toString('utf8', 0, bytesRead);
-  } catch (error) {
-    if (error.code === 'ENOENT') return '';
-    throw error;
-  } finally { await file?.close(); }
-}
-
 /** Fixed binaries/cluster, direct child ownership, no PID-file removal. */
 export function createEmbeddedDatabaseStartupProcess({
-  spawnFn = spawn, run = execute, read = readPidFile,
+  spawnFn = spawn, run = execute, read = readStartupPidFile,
   openLog = () => openSync('/app/data/postgres.log', 'a', 0o600), closeLog = closeSync,
-  environment = process.env,
+  environment = process.env, prepareEnvironment = prepareEmbeddedDatabaseStartupEnvironment,
 } = {}) {
+  /** @type {NodeJS.ProcessEnv} */
+  let launchEnvironment = { ...environment, LC_ALL: 'C' };
+  delete launchEnvironment.PG_GRANDPARENT_PID;
   return {
+    async prepare(signal) {
+      const prepared = await prepareEnvironment({ readPid: read, environment, signal });
+      signal?.throwIfAborted();
+      launchEnvironment = prepared.environment;
+      return { ownThreadCollision: prepared.ownThreadCollision };
+    },
     launch() {
       const fd = openLog();
       try {
         const child = spawnFn('/usr/libexec/postgresql18/postgres', ['-D', PG_DATA], {
-          cwd: '/app', env: { ...environment, LC_ALL: 'C' }, shell: false,
+          cwd: '/app', env: launchEnvironment, shell: false,
           detached: true, stdio: ['ignore', fd, fd],
         });
         return { ...observeEmbeddedChild(child), pid: child.pid, detach: () => child.unref() };
@@ -42,7 +37,7 @@ export function createEmbeddedDatabaseStartupProcess({
     },
     async probe(pid, signal) {
       signal?.throwIfAborted();
-      const before = await read();
+      const before = await read(signal);
       signal?.throwIfAborted();
       const lines = before.trim().split('\n');
       // A stale/other PID is not adopted. Let our launched postgres either
@@ -67,7 +62,7 @@ export function createEmbeddedDatabaseStartupProcess({
         }
         throw error;
       }
-      const after = await read();
+      const after = await read(signal);
       signal?.throwIfAborted();
       if (parseEmbeddedDatabaseIdentity(after) !== identity) throw new Error('database_startup_identity_changed');
       return { ready: after.trim().split('\n')[7]?.trim() === 'ready', phase: 'waiting_for_connections' };

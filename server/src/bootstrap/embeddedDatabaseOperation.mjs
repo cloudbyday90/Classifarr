@@ -3,7 +3,11 @@ import { waitForEmbeddedExit } from './embeddedChildProcess.mjs';
 
 const failure = reason => Object.assign(new Error(`database_operation_${reason}`), { code: `database_operation_${reason}` });
 
-/** Deadline includes all I/O; an abandoned operation never returns success. */
+/**
+ * Deadline includes all I/O; an abandoned operation never returns success.
+ * @param {Function} work
+ * @param {{signal?: AbortSignal, timeoutMs?: number, now?: () => number}} [options]
+ */
 export async function runEmbeddedDatabaseOperation(work, { signal, timeoutMs, now = () => performance.now() } = {}) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 25_000) throw failure('budget_invalid');
   if (signal?.aborted) throw failure('cancelled');

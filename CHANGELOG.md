@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover embedded PostgreSQL startup when an old database PID is reused by
+  the startup helper's verified I/O worker. Preserve native database locks and
+  refuse unknown owners; retain native exit codes and signals for diagnosis.
+  No Compose or Unraid template update is required.
 - Preserve bounded, sanitized container diagnostics when isolated routing
   restart checks fail. Identify the failed exit/OOM/startup check without
   weakening acceptance, exposing raw logs, or skipping fixture cleanup.

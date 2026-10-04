@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { readContainerLifecycleEvents } from '../../../../scripts/lib/containerLifecycleDiagnostics.mjs';
+import { readContainerLifecycleEvents, formatContainerLifecycleEvents } from '../../../../scripts/lib/containerLifecycleDiagnostics.mjs';
 
 const event = (fields = {}) => ({ component: 'EmbeddedDatabaseStartup', status: 'failed',
   reason: 'database_startup_process_exited', ...fields });
@@ -51,4 +51,22 @@ test('bounds lines, input and individual JSON events without parsing truncated f
   }
   expect(readContainerLifecycleEvents({ stdout: JSON.stringify(event({ payload: 'x'.repeat(4096) })) }).events).toEqual([]);
   expect(readContainerLifecycleEvents({ stdout: null, stderr: {} })).toEqual({ events: [], limited: false });
+});
+
+test.each([[1, null], [0, null], [null, 'SIGSEGV'], [null, 'SIGKILL']])('preserves only a valid startup exit tuple %j %j', (exitCode, exitSignal) => {
+  const result = readContainerLifecycleEvents({ stdout: JSON.stringify(event({ exitCode, exitSignal, detail: 'private' })) });
+  expect(result.events[0]).toEqual({ ...event(), stream: 'stdout', exitCode, exitSignal });
+  expect(formatContainerLifecycleEvents(result)).toContain(exitSignal ?? `exit=${exitCode}`);
+  expect(JSON.stringify(result)).not.toContain('private');
+});
+
+test.each([[-1, null], [256, null], ['1', null], [1, 'SIGKILL'], [null, 'SECRET'], [null, null], [1.5, null]])(
+  'omits invalid startup exit tuple %j %j', (exitCode, exitSignal) => {
+    expect(readContainerLifecycleEvents({ stdout: JSON.stringify(event({ exitCode, exitSignal })) }).events[0])
+      .toEqual({ ...event(), stream: 'stdout' });
+  });
+
+test.each(['ready', 'parent_thread_pid_reused'])('does not attach exit evidence to %s', status => {
+  const result = readContainerLifecycleEvents({ stdout: JSON.stringify(event({ status, reason: undefined, exitCode: 1, exitSignal: null })) });
+  expect(result.events[0]).toEqual({ component: 'EmbeddedDatabaseStartup', status, stream: 'stdout' });
 });

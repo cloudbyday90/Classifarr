@@ -1,10 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { DOCKER_CHECK_OUTPUT_LIMIT } from './dockerCheckCommand.mjs';
+import { projectDatabaseStartupExit } from '../../server/src/bootstrap/embeddedDatabaseStartupExit.mjs';
 
 // Exact emitted vocabulary only. A prefix/regex match could disclose untrusted text.
 const components = new Map([
   ['EmbeddedDatabaseStartup', {
-    status: ['starting', 'waiting', 'ready', 'failed', 'process_stopped', 'shutdown_unconfirmed'],
+    status: ['starting', 'waiting', 'ready', 'failed', 'process_stopped', 'shutdown_unconfirmed', 'parent_thread_pid_reused'],
     reason: ['database_startup_cancelled', 'database_startup_timeout', 'database_startup_process_exited',
       'database_startup_probe_failed', 'database_startup_identity_invalid', 'database_startup_port_invalid',
       'database_startup_identity_changed'],
@@ -47,6 +48,10 @@ export function readContainerLifecycleEvents(logs) {
         for (const key of ['reason', 'phase']) {
           if (allowed[key].includes(value[key])) event[key] = value[key];
         }
+        if (value.component === 'EmbeddedDatabaseStartup' && value.status === 'failed'
+          && value.reason === 'database_startup_process_exited') {
+          Object.assign(event, projectDatabaseStartupExit({ code: value.exitCode, signal: value.exitSignal }));
+        }
         tail.push(event);
         if (tail.length > 16) { tail.shift(); limited = true; }
       } catch { /* Unknown/malformed log content is private, not a diagnosis. */ }
@@ -59,5 +64,7 @@ export function readContainerLifecycleEvents(logs) {
 export function formatContainerLifecycleEvents({ events, limited }) {
   return `Lifecycle observations (per stream only${limited ? '; tail limited' : ''}): ` +
     (events.map(event => `${event.component}:${event.status}` +
-      `${event.reason ? `/${event.reason}` : ''}${event.phase ? `/${event.phase}` : ''} (${event.stream})`).join(', ') || 'none recognized') + '.';
+      `${event.reason ? `/${event.reason}` : ''}${event.phase ? `/${event.phase}` : ''}` +
+      `${Number.isInteger(event.exitCode) ? `/exit=${event.exitCode}` : ''}${event.exitSignal ? `/${event.exitSignal}` : ''}` +
+      ` (${event.stream})`).join(', ') || 'none recognized') + '.';
 }

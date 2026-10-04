@@ -5,10 +5,14 @@ import { spawn } from 'node:child_process';
 export function startEmbeddedApplication({ spawnFn = spawn, environment = process.env, queueMaintenance = false, imageIndexMaintenance = false } = {}) {
   if (typeof queueMaintenance !== 'boolean' || typeof imageIndexMaintenance !== 'boolean'
     || (imageIndexMaintenance && !queueMaintenance)) throw new Error('embedded_application_launch_invalid');
+  /** @type {import('node:child_process').StdioOptions} */
+  const stdio = ['ignore', 'inherit', 'inherit'];
+  if (queueMaintenance) stdio.push('pipe');
+  if (imageIndexMaintenance) stdio.push('pipe');
   const child = spawnFn(process.execPath, ['/app/src/index.mjs'], {
     cwd: '/app', env: queueMaintenance ? { ...environment, CLASSIFARR_QUEUE_MAINTENANCE_CHANNEL: 'stdio-v1',
       ...(imageIndexMaintenance ? { CLASSIFARR_IMAGE_INDEX_CHANNEL: 'stdio-v1' } : {}) } : environment,
-    shell: false, stdio: ['ignore', 'inherit', 'inherit', ...(queueMaintenance ? ['pipe'] : []), ...(imageIndexMaintenance ? ['pipe'] : [])],
+    shell: false, stdio,
   });
   return { ...observeEmbeddedChild(child), ...(queueMaintenance ? { maintenanceChannel: child.stdio[3] } : {}),
     ...(imageIndexMaintenance ? { imageIndexChannel: child.stdio[4] } : {}) };

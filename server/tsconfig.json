@@ -17,6 +17,10 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/bootstrap/embeddedDatabaseStartup.mjs",
+    "src/bootstrap/embeddedDatabaseStartupProcess.mjs",
+    "src/bootstrap/embeddedDatabaseStartupPreflight.mjs",
+    "src/bootstrap/embeddedDatabaseStartupExit.mjs",
     "src/routes/helpers/discordDeliveryVerificationHandler.mjs",
     "src/services/discordDeliveryReviewRepository.mjs",
     "src/routes/helpers/discordDeliveryReviewHandler.mjs",

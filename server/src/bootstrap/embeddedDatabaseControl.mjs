@@ -36,6 +36,7 @@ export function createEmbeddedDatabaseControl({ command = runEmbeddedDatabaseShu
     if (!identity || current !== identity) throw new Error('database_identity_changed');
   };
   return {
+    /** @param {{signal?: AbortSignal}} [options] */
     async adopt({ signal } = {}) {
       if (state !== 'new') throw new Error('database_adoption_unavailable');
       return exclusive(async () => {
@@ -53,6 +54,7 @@ export function createEmbeddedDatabaseControl({ command = runEmbeddedDatabaseShu
         } catch (error) { state = 'failed'; throw error; }
       });
     },
+    /** @param {{signal?: AbortSignal}} [options] */
     async check({ signal } = {}) {
       requireAdopted();
       return exclusive(async () => {
@@ -68,6 +70,7 @@ export function createEmbeddedDatabaseControl({ command = runEmbeddedDatabaseShu
         if (failure) throw failure;
       });
     },
+    /** @param {{signal?: AbortSignal}} [options] */
     async stop({ signal } = {}) {
       requireAdopted();
       return exclusive(async () => {

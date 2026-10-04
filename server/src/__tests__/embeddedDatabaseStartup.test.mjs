@@ -83,6 +83,52 @@ test('process death interrupts a pending readiness probe without another signal'
   expect(f.child.signal).not.toHaveBeenCalled();
 });
 
+test.each([{ code: 0, signal: null }, { code: 1, signal: null }, { code: null, signal: 'SIGKILL' }])(
+  'preserves the observed native exit tuple %j without changing failure', async result => {
+    const f = fixture();
+    f.options.probe.mockImplementation(() => { f.finish(result); return new Promise(() => {}); });
+    await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('process_exited');
+    expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_process_exited',
+      exitCode: result.code, exitSignal: result.signal });
+    expect(f.child.signal).not.toHaveBeenCalled();
+  });
+
+test('a failed spawn has no fabricated native exit observation', async () => {
+  const f = fixture(); f.child.pid = undefined;
+  f.options.probe.mockImplementation(() => { f.finish({ code: 1, signal: null }); return new Promise(() => {}); });
+  await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('process_exited');
+  expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_process_exited' });
+});
+
+test('preflight shares the startup deadline and a late completion cannot launch', async () => {
+  const f = fixture(); let finish, signal;
+  const prepare = jest.fn(cancellation => { signal = cancellation; return new Promise(resolve => { finish = resolve; }); });
+  await expect(runEmbeddedDatabaseStartup({ ...f.options, prepare, timeoutMs: 20 })).rejects.toThrow('timeout');
+  expect(signal.aborted).toBe(true);
+  finish({ ownThreadCollision: true }); await Promise.resolve();
+  expect(f.options.launch).not.toHaveBeenCalled();
+  expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_timeout' });
+});
+
+test('cancellation during preflight cannot launch a child', async () => {
+  const f = fixture();
+  const prepare = async () => { f.abort.abort(); return { ownThreadCollision: true }; };
+  await expect(runEmbeddedDatabaseStartup({ ...f.options, prepare })).rejects.toThrow('cancelled');
+  expect(f.options.launch).not.toHaveBeenCalled();
+});
+
+test.each([false, true])('preflight collision=%s emits a fixed event only when proven', async ownThreadCollision => {
+  const f = fixture();
+  const prepare = jest.fn(async () => {
+    expect(f.options.launch).not.toHaveBeenCalled(); return { ownThreadCollision };
+  });
+  f.options.probe.mockResolvedValue({ ready: true });
+  await runEmbeddedDatabaseStartup({ ...f.options, prepare });
+  expect(f.options.launch).toHaveBeenCalledTimes(1);
+  expect(f.options.report.mock.calls.filter(([event]) => event.status === 'parent_thread_pid_reused'))
+    .toHaveLength(Number(ownThreadCollision));
+});
+
 test('shutdown uncertainty is explicit and never escalates to a database SIGKILL', async () => {
   const f = fixture();
   f.options.probe.mockRejectedValue(new Error('private provider details'));

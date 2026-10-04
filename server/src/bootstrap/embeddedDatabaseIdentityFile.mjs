@@ -2,7 +2,10 @@
 import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 
-/** Fixed bounded read. The caller supplies the operation deadline and join. */
+/**
+ * Fixed bounded read. The caller supplies the operation deadline and join.
+ * @param {{signal?: AbortSignal, openFile?: typeof open}} [options]
+ */
 export async function readEmbeddedDatabaseIdentityFile({ signal, openFile = open } = {}) {
   let file;
   const limit = 2048;

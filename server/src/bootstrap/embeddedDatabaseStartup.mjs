@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { setTimeout as sleep } from 'node:timers/promises';
 import { waitForEmbeddedExit } from './embeddedChildProcess.mjs';
+import { projectDatabaseStartupExit } from './embeddedDatabaseStartupExit.mjs';
 
 export function readDatabaseStartupTimeout(environment = process.env) {
   const value = environment.CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS ?? environment.PGCTLTIMEOUT ?? '300';
@@ -12,7 +13,7 @@ export function readDatabaseStartupTimeout(environment = process.env) {
 
 /** One launch, one finite budget. Progress never renews the deadline. */
 export async function runEmbeddedDatabaseStartup({
-  launch, probe, timeoutMs = 300_000, signal, report = () => {},
+  launch, probe, prepare, timeoutMs = 300_000, signal, report = (_event) => {},
   now = () => performance.now(), delay = sleep, waitForExit = waitForEmbeddedExit,
 }) {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 1_800_000) {
@@ -21,6 +22,7 @@ export async function runEmbeddedDatabaseStartup({
   const started = now();
   const probeController = new AbortController();
   let child;
+  let exitResult;
   let timer;
   let wakeAbort;
   let lastReport = -Infinity;
@@ -35,11 +37,10 @@ export async function runEmbeddedDatabaseStartup({
   };
   try {
     inspectDeadline();
-    child = launch();
-    const exited = child.done.then(() => ({ kind: 'exited' }));
+    let exited;
     const step = async operation => {
       const result = await Promise.race([
-        operation.then(value => ({ kind: 'value', value })), exited, cancelled, expired,
+        operation.then(value => ({ kind: 'value', value })), ...(exited ? [exited] : []), cancelled, expired,
       ]);
       if (result.kind !== 'value') {
         throw new Error(`database_startup_${result.kind === 'exited' ? 'process_exited' : result.kind}`);
@@ -48,6 +49,13 @@ export async function runEmbeddedDatabaseStartup({
       return result.value;
     };
     report({ status: 'starting', timeoutSeconds: timeoutMs / 1000 });
+    if (prepare) {
+      const prepared = await step(prepare(probeController.signal));
+      if (prepared?.ownThreadCollision === true) report({ status: 'parent_thread_pid_reused' });
+    }
+    inspectDeadline();
+    child = launch();
+    exited = child.done.then(result => { exitResult = result; return { kind: 'exited' }; });
     while (true) {
       inspectDeadline();
       const state = await step(probe(child.pid, probeController.signal));
@@ -69,7 +77,8 @@ export async function runEmbeddedDatabaseStartup({
     // Codes only: PostgreSQL's own log contains diagnostics, not arbitrary
     // command output or environment values in application status messages.
     const reason = /^database_startup_[a-z_]+$/.test(error.message) ? error.message : 'database_startup_probe_failed';
-    report({ status: 'failed', reason });
+    report({ status: 'failed', reason, ...(reason === 'database_startup_process_exited'
+      && Number.isSafeInteger(child?.pid) && child.pid > 0 ? projectDatabaseStartupExit(exitResult) : {}) });
     if (child && !child.hasExited()) {
       try {
         child.signal('SIGINT'); // PostgreSQL fast shutdown; never SIGKILL.

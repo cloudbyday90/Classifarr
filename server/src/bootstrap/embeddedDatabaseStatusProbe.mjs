@@ -2,7 +2,10 @@
 import { spawn } from 'node:child_process';
 import { observeEmbeddedChild } from './embeddedChildProcess.mjs';
 
-/** Read-only helper: cancellation must observe exit, not just signal delivery. */
+/**
+ * Read-only helper: cancellation must observe exit, not just signal delivery.
+ * @param {{signal?: AbortSignal, spawnFn?: typeof spawn}} [options]
+ */
 export async function runEmbeddedDatabaseStatusProbe({ signal, spawnFn = spawn } = {}) {
   signal?.throwIfAborted();
   const child = spawnFn('/usr/libexec/postgresql18/pg_ctl', ['-D', '/app/data/postgres', 'status'], {
