@@ -53,6 +53,22 @@ const count = ref(3)
 
   test.each([
     {
+      name: 'tab label shape', code: '2322',
+      source: `<script setup>
+import Tabs from '@/components/common/Tabs.vue'
+</script>
+<template><Tabs model-value="one" :tabs="[{ id: 'one', label: 2 }]" /></template>
+`,
+    },
+    {
+      name: 'tab string model', code: '2322',
+      source: `<script setup>
+import Tabs from '@/components/common/Tabs.vue'
+</script>
+<template><Tabs :model-value="42" :tabs="[]" /></template>
+`,
+    },
+    {
       name: 'tag string-array model', code: '2322',
       source: `<script setup>
 import TagInput from '@/components/common/TagInput.vue'

@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Modernize preset tabs with named panels, keyboard navigation, visible focus
+  and strict Vue contracts. Preserve active-only content mounting and keep
+  focused tabs visible on narrow screens without changing selection on focus.
 - Modernize tag editors with connected labels/help, named non-submitting Add/Remove
   controls and strict string-array checks. Preserve drafts during removal, restore
   keyboard focus, and guard composition input, held keys and read-only fields.

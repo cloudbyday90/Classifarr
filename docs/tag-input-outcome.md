@@ -89,11 +89,9 @@ it was not suppressed or treated as an application failure.
    explicit keyboard, composition and focus tests.
 2. Keep runtime, real-compiler and browser checks together. Each catches a
    different class of regression; compilation alone does not prove interaction.
-3. Next modernize **Tabs**. Its shared component currently uses untyped tab
-   objects/events and buttons without explicit types; it lacks tab/panel
-   associations and a tab keyboard contract. Review its callers first to
-   distinguish in-page panels from navigation, then implement the appropriate
-   semantics, focus behavior and typed model without a blanket ARIA conversion.
+3. Modernize **Tabs** next. This follow-up is now implemented in
+   [Tabs outcome](tabs-outcome.md), with a caller review, manual keyboard
+   activation, panel associations and typed model/events.
 4. Keep dependency/tooling updates separate from this interaction change and
    retain Vue's supported compiler plus the existing checked-listener convention.
 

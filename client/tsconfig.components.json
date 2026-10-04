@@ -11,6 +11,7 @@
     "src/components/common/Input.vue",
     "src/components/common/PasswordInput.vue",
     "src/components/common/TagInput.vue",
+    "src/components/common/Tabs.vue",
     "src/components/common/Select.vue",
     "src/components/common/Toggle.vue",
     "src/components/common/Slider.vue",

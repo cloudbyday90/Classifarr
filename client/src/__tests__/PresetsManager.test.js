@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import PresetsManager from '../views/PresetsManager.vue'
+import Tabs from '../components/common/Tabs.vue'
 
 async function switchToCustomTab(wrapper) {
   const customTab = wrapper.findAll('[data-test="tab"]').find(t => t.text().includes('My Presets'))
@@ -108,12 +109,12 @@ const customPresets = [
   { id: 10, name: 'Action Remix', category: 'genre', signals: {} }
 ]
 
-function mountView() {
+function mountView(realTabs = false) {
   return mount(PresetsManager, {
     attachTo: document.body,
     global: {
       stubs: {
-        Tabs: TabsStub,
+        Tabs: realTabs ? false : TabsStub,
         Button: ButtonStub,
         PresetCard: PresetCardStub,
         Modal: ModalStub,
@@ -126,6 +127,32 @@ function mountView() {
 }
 
 describe('PresetsManager.vue', () => {
+  it('uses real named tabs without refetching or opening the inactive panel on arrow navigation', async () => {
+    const wrapper = mountView(true)
+    try {
+      await flushPromises()
+      const widget = wrapper.getComponent(Tabs)
+      const controls = widget.findAll('[role="tab"]')
+      expect(widget.get('[role="tablist"]').attributes('aria-label')).toBe('Preset types')
+      expect(controls.map(tab => tab.text())).toEqual(['📋 Built-in Presets', '⚙️ My Presets'])
+      controls[0].element.focus()
+      await controls[0].trigger('keydown', { key: 'ArrowRight' })
+      expect(document.activeElement).toBe(controls[1].element)
+      expect(widget.props('modelValue')).toBe('system')
+      expect(wrapper.findAll('[data-test="preset-card"]')).toHaveLength(3)
+      await controls[1].trigger('click')
+      expect(widget.props('modelValue')).toBe('custom')
+      expect(wrapper.findAll('[data-test="preset-card"]')).toHaveLength(2)
+      expect(presetsApi.getSystemPresets).toHaveBeenCalledTimes(1)
+      expect(presetsApi.getCustomPresets).toHaveBeenCalledTimes(1)
+      expect(presetsApi.createCustomPreset).not.toHaveBeenCalled()
+      expect(presetsApi.updateCustomPreset).not.toHaveBeenCalled()
+      expect(presetsApi.deleteCustomPreset).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     presetsApi.getSystemPresets.mockResolvedValue([...systemPresets])

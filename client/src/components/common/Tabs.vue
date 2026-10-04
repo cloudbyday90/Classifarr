@@ -8,47 +8,87 @@
 
 <template>
   <div>
-    <div class="border-b border-gray-700">
-      <nav class="-mb-px flex overflow-x-auto space-x-4 sm:space-x-8 scrollbar-none">
+    <div
+      v-if="items.length"
+      class="border-b border-gray-700"
+    >
+      <div
+        ref="listRef"
+        role="tablist"
+        :aria-label="label"
+        aria-orientation="horizontal"
+        class="flex overflow-x-auto gap-4 sm:gap-8 p-1"
+        :onFocusout="leaveList"
+      >
         <button
-          v-for="tab in tabs"
+          v-for="tab in items"
+          :id="tabId(tab.id)"
           :key="tab.id"
+          type="button"
+          role="tab"
+          :aria-selected="selectedId === tab.id"
+          :aria-controls="panelId(tab.id)"
+          :tabindex="entryId === tab.id ? 0 : -1"
           :class="[
-            'whitespace-nowrap flex-shrink-0 py-4 px-1 border-b-2 font-medium text-sm transition-colors',
-            modelValue === tab.id
-              ? 'border-primary text-primary'
+            'whitespace-nowrap flex-shrink-0 py-4 px-2 border-b-2 font-medium text-sm rounded-sm scroll-m-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+            selectedId === tab.id
+              ? 'border-primary-light text-primary-light'
               : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'
           ]"
-          @click="$emit('update:modelValue', tab.id)"
+          :onClick="event => activate(tab.id, event)"
+          :onFocus="event => focusTab(tab.id, event)"
+          :onKeydown="handleKeydown"
         >
           <span
             v-if="tab.icon"
             class="mr-2"
+            aria-hidden="true"
           >{{ tab.icon }}</span>
           {{ tab.label }}
           <span
-            v-if="tab.badge"
-            class="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary"
+            v-if="tab.badge !== undefined && tab.badge !== ''"
+            class="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary-light"
           >
             {{ tab.badge }}
           </span>
         </button>
-      </nav>
+      </div>
     </div>
-    <div class="mt-6">
-      <slot :name="modelValue" />
+    <div
+      v-for="tab in items"
+      :id="panelId(tab.id)"
+      :key="tab.id"
+      role="tabpanel"
+      :aria-labelledby="tabId(tab.id)"
+      :hidden="selectedId !== tab.id"
+      tabindex="0"
+      class="mt-6 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      <slot
+        v-if="selectedId === tab.id"
+        :name="tab.id"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { useTemplateRef } from 'vue'
+import { useTabs } from '@/composables/useTabs.js'
+
+const listRef = useTemplateRef('listRef')
+const props = defineProps({
   modelValue: { type: String, required: true },
-  tabs: { 
-    type: Array, 
-    required: true 
-    // [{ id: 'general', label: 'General', icon: '⚙️', badge: '3' }]
-  }
+  tabs: { type: /** @type {import('vue').PropType<import('@/composables/useTabs.js').TabItem[]>} */ (Array), required: true },
+  label: { type: String, default: 'Sections' },
 })
-defineEmits(['update:modelValue'])
+const emit = defineEmits({
+  'update:modelValue': /** @param {string} id */ id => typeof id === 'string',
+})
+const { items, selectedId, entryId, tabId, panelId, focusTab, leaveList, activate, handleKeydown } = useTabs({
+  getTabs: () => props.tabs,
+  getValue: () => props.modelValue,
+  list: listRef,
+  onUpdate: id => emit('update:modelValue', id),
+})
 </script>

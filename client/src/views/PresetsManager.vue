@@ -61,6 +61,7 @@
     <Tabs
       v-model="activeTab"
       :tabs="tabs"
+      label="Preset types"
     >
       <!-- Built-in Presets Tab -->
       <template #system>

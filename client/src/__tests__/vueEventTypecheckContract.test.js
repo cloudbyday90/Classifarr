@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { expectVueDiagnostic, typecheck } from './helpers/vueTypecheck.js'
 
 const controls = [
+  { name: 'Tabs', props: ':tabs="[{ id: \'one\', label: \'One\' }]" model-value="one"', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
   { name: 'Input', props: '', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
   { name: 'PasswordInput', props: '', valid: 'toUpperCase()', invalid: 'toFixed(0)', code: '2551', wrongType: 'number' },
   { name: 'TagInput', props: '', valid: 'map(tag => tag.toUpperCase())', invalid: 'toUpperCase()', code: '2339', wrongType: 'string' },
