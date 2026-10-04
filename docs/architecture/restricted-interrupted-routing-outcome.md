@@ -19,7 +19,7 @@ unrecorded observations, cleanup failure, invalid paths and held HTTP responses.
 
 ## Verification so far
 
-- 249 focused unit tests in 12 suites passed.
+- 250 focused unit tests in 12 suites passed.
 - 27 real PostgreSQL manual-routing integration tests in two suites passed.
 - Backend ESLint, TypeScript and Knip passed.
 - The development-image interrupted-routing phase passed: two accepted adds,

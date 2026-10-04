@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { assertProbeEnvironment, assertContainerLayout } from './contract.mjs';
-import { seedInterruptedRouting, readInterruptedRouting, disableInterruptedRouting } from './interruptedRoutingState.mjs';
 
 try {
   const mode = process.argv[2];
@@ -10,6 +9,8 @@ try {
   assert(['seed', 'read', 'disable'].includes(mode));
   assertProbeEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
   assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
+  // Routing validation imports application dependencies; load only after isolation checks.
+  const { seedInterruptedRouting, readInterruptedRouting, disableInterruptedRouting } = await import('./interruptedRoutingState.mjs');
   const { default: pg } = await import('pg');
   const pool = new pg.Pool({ host: process.env.POSTGRES_HOST, port: 5432,
     database: process.env.POSTGRES_DB, user: process.env.POSTGRES_USER,

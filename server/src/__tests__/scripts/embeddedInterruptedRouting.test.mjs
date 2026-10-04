@@ -1,8 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
+import { readFile } from 'node:fs/promises';
 import { runInterruptedRoutingFixture, crashRoutingRuntime } from '../../scripts/embeddedIsolationDrill/interruptedRoutingFixture.mjs';
 import { startRoutingProvider, fixtureRequest } from '../../scripts/embeddedIsolationDrill/httpRoutingTransport.mjs';
 import { seedInterruptedRouting, readInterruptedRouting } from '../../scripts/embeddedIsolationDrill/interruptedRoutingState.mjs';
+
+test('data probe guards the environment and mounts before loading application dependencies', async () => {
+  const source = await readFile(new URL('../../scripts/embeddedIsolationDrill/interruptedRoutingDataProbe.mjs', import.meta.url), 'utf8');
+  const loaded = source.indexOf("await " + "import('./interruptedRoutingState.mjs')");
+  expect(source).not.toMatch(/^import .* from ['"].*interruptedRoutingState/m);
+  expect(loaded).toBeGreaterThan(source.indexOf('assertProbeEnvironment(process.env'));
+  expect(loaded).toBeGreaterThan(source.indexOf("assertContainerLayout(await readFile('/proc/self/mountinfo'"));
+});
 
 function harness(fault) {
   const counts = { tmdb: 0, movieReads: 0, tvReads: 0, movieAdds: 0, tvAdds: 0, healthReads: 0, unexpected: 0 };
