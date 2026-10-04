@@ -75,8 +75,44 @@ no broker, dependency update or deployment-template change is required.
 - Full frontend coverage: **434 files / 6,294 tests passed**; statements **86.67%**,
   branches **79.55%**, functions **86.22%**, lines **88.55%**. The coverage ratchet
   passed without baseline changes. Markdown: **1,858 files, zero errors**.
-- The requested no-cache Compose rebuild/post-build schema dump follows the code
-  commit; its results will be recorded before final handoff.
+
+## Requested local rebuild and schema dump
+
+After validation, code was committed as
+`8dd2d85a13a1e3c6a63c139ee62ca0f006fe3eb4`. Ran Compose build with `--no-cache` and
+that exact `VCS_REF`, then recreated only `classifarr` with `--no-build --wait`.
+The existing `/app/data` and `/data/media` mounts, ports and limits were preserved;
+other applications were not replaced. No image was published or release created.
+
+The resulting local image ID is
+`sha256:1698431eae292dce86dd3add8b22edb291928719d02740781b5d3d0fc4b7c807`.
+It reports the code commit above, Node 24.21.0, npm 12.2.0, Alpine 3.24.2 and
+PostgreSQL 18.6. Container health and HTTP `/health` passed; read-only SQL confirmed
+the new migration and retry table. There were no retained alerts or receipts to
+replay in this local database; live Discord delivery is not claimed as tested.
+
+**After the rebuild**, the existing `dumpSchema` generator ran twice using
+PostgreSQL in a disposable instance of that exact image: starting schema upgrade,
+idempotent migration replay, fresh snapshot load and re-dump. Both completed and
+the committed snapshot had **zero drift**. The instance used no network, no host
+data volumes, read-only root, tmpfs storage, UID 1000, dropped capabilities,
+2 CPUs, 1 GiB and 128 PIDs. Ownership-checked cleanup removed only that disposable
+database container; no application data was used in the dump.
+
+Before replacement, a spot check showed about 418 MiB/2 GiB and 0.86% CPU. After
+replacement, about 340 MiB/2 GiB and 0.92% CPU, 45 PIDs, zero restarts and no OOM
+event. Near three minutes, about 398 MiB, 0.54% CPU and 41 PIDs. These are startup
+samples, not sustained-load or memory-leak evidence.
+The existing Compose file has a memory limit but no CPU quota; this change does
+not silently change installation-wide resource policy.
+
+The dispatcher registered successfully and no dispatcher failure was logged.
+Read-only post-start inspection found **two existing `legacy_owner_unknown`
+warnings and one library source-item skip warning**, all from `mediaSync`; no
+ERROR records were present in that observation window. Rebuilding did not repair
+those ingestion records. No ownership was fabricated, takeover forced or warning
+suppressed. Operational follow-up should review these blocked/skipped imports
+before treating the deployment as fully recovered.
 
 ## Limits, recommendation and next item
 
@@ -90,7 +126,7 @@ Fresh/unconfigured bots make no provider requests, but the scheduler still perfo
 bounded local retention checks. No-op passes suppress routine start/completion
 logs; meaningful work logs only aggregate counts and failures use fixed messages.
 
-Next: capture bounded durable intent **before channel lookup/preparation**. Those
+Next notification change: capture bounded durable intent **before channel lookup/preparation**. Those
 failures and cooldown refusals before receipt creation still have no retry buffer.
 Add explicit cancellation/expiry reasons to operator review as part of that step.
 Never reconstruct legacy payloads or replay uncertain sends to improve success rates.

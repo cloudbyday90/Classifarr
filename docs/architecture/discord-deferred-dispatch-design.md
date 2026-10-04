@@ -1,6 +1,7 @@
 # Discord deferred delivery dispatcher — design
 
-Date: 2026-10-04. Starting revision: `32f915e6`. No release or deployment.
+Date: 2026-10-04. Starting revision: `32f915e6`. No release. The later requested
+local rebuild and deployment checks are recorded in the outcome document.
 
 ## Decision and scope
 
