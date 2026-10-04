@@ -2,6 +2,29 @@
 import { expect, test } from '@playwright/test'
 import { mockModalCallers } from './support/modalCallerFixtures.js'
 
+async function mockReceipts(page, onComplete) {
+  let active = null, sequence = 0
+  await page.route('**/api/presets/custom/save-requests**', async route => {
+    const path = new globalThis.URL(route.request().url()).pathname
+    if (route.request().method() === 'GET') return route.fulfill({ json: { request: active } })
+    if (path.endsWith('/save-requests')) {
+      if (active) return route.fulfill({ status: 409, json: { error: 'Check previous save' } })
+      active = { requestId: `efb9b919-5d23-4778-b731-${String(++sequence).padStart(12, '0')}`,
+        state: 'pending', resolved: false, presetId: null }
+      return route.fulfill({ status: 201, json: active })
+    }
+    if (path.endsWith('/complete')) {
+      const result = await onComplete(route)
+      if (result.saved) active = { ...active, state: 'saved', presetId: 42 }
+      return route.fulfill({ status: result.status, json: result.status === 200 ? active : { error: 'Private validation detail' } })
+    }
+    expect(path).toContain('/resolve')
+    const resolved = { ...active, state: active.state === 'pending' ? 'cancelled' : 'saved', resolved: true }
+    active = null
+    return route.fulfill({ json: resolved })
+  })
+}
+
 async function openCreate(page) {
   await page.goto('/browser-tests/fixtures/modal-callers.html')
   await page.getByRole('tab', { name: 'My Presets', exact: true }).click()
@@ -13,16 +36,15 @@ test('real preset form stays busy, preserves a rejected draft and allows one exp
   const unexpected = await mockModalCallers(page)
   const release = Promise.withResolvers()
   let attempts = 0
-  await page.route('**/api/presets/custom', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: [] })
+  await mockReceipts(page, async route => {
     expect(route.request().method()).toBe('POST')
     expect(route.request().postDataJSON().name).toBe('Family draft')
     attempts++
     if (attempts === 1) {
       await release.promise
-      return route.fulfill({ status: 400, json: { error: 'Private validation detail' } })
+      return { status: 400, saved: false }
     }
-    return route.fulfill({ status: 201, json: { id: 42 } })
+    return { status: 200, saved: true }
   })
   const dialog = await openCreate(page)
   await dialog.getByLabel('Name *', { exact: true }).fill('Family draft')
@@ -36,9 +58,10 @@ test('real preset form stays busy, preserves a rejected draft and allows one exp
   await expect(dialog).toBeVisible()
   expect(attempts).toBe(1)
   release.resolve()
-  await expect(dialog.getByRole('alert')).toHaveText('Could not save this preset. Check its name and settings, then try again.')
+  await expect(dialog.getByRole('alert')).toHaveText('Could not confirm the save. Check save status before trying again.')
   await expect(dialog).not.toContainText('Private validation detail')
   await expect(dialog.getByLabel('Name *', { exact: true })).toHaveValue('Family draft')
+  await dialog.getByRole('button', { name: 'Check save status', exact: true }).click()
   await expect(dialog.getByLabel('Name *', { exact: true })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Create Preset', exact: true }).click()
   await expect(dialog).toHaveCount(0)
@@ -52,24 +75,30 @@ test('uncertain save is never automatically replayed and review shows the commit
   await page.clock.install()
   let attempts = 0
   await page.route('**/api/presets/custom', route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: attempts ? [
+    expect(route.request().method()).toBe('GET')
+    return route.fulfill({ json: attempts ? [
       { id: 42, name: 'Saved despite lost response', category: 'custom', signals: {} },
     ] : [] })
+  })
+  await mockReceipts(page, route => {
     expect(route.request().method()).toBe('POST')
     attempts++
-    return route.fulfill({ status: 503, json: { error: 'Private provider detail' } })
+    return { status: 503, saved: true }
   })
   const dialog = await openCreate(page)
   await dialog.getByLabel('Name *', { exact: true }).fill('Saved despite lost response')
   await dialog.getByRole('button', { name: 'Create Preset', exact: true }).click()
-  await expect(dialog.getByRole('alert')).toHaveText('Could not confirm the save. Check saved presets before trying again.')
+  await expect(dialog.getByRole('alert')).toHaveText('Could not confirm the save. Check save status before trying again.')
   await page.clock.fastForward(10_000)
   expect(attempts).toBe(1)
   await expect(dialog.getByRole('button', { name: 'Create Preset', exact: true })).toHaveCount(0)
   await expect(dialog.getByLabel('Name *', { exact: true })).toBeDisabled()
-  await dialog.getByRole('button', { name: 'Check saved presets', exact: true }).click()
+  await page.reload()
+  await expect(page.getByText('A previous save needs checking before you create another preset.')).toBeVisible()
+  await page.getByRole('button', { name: 'Check save status', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect(page.getByText('Saved despite lost response', { exact: true })).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Preset saved.' })).toHaveText('Preset saved.')
   expect(attempts).toBe(1)
   expect(unexpected).toEqual([])
 })

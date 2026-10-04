@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Make preset creation recoverable after a lost response or page reload, using
+  authenticated save receipts and atomic database writes. Checking save status
+  confirms success or closes the old attempt before allowing another save;
+  preserve drafts and never replay uncertain creation automatically.
 - Keep preset forms busy for the actual save request, preserve rejected drafts,
   and show actionable errors inside the dialog. Bound saves to one timed attempt;
   uncertain results lead to reviewing saved presets instead of replaying a write.

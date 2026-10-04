@@ -17,6 +17,9 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/routes/customPresetSaveRoutes.mjs",
+    "src/services/customPresetSaveService.mjs",
+    "src/services/customPresetSavePayload.mjs",
     "src/routes/helpers/aiSettingsHandlers.mjs",
     "src/routes/helpers/aiSettingsPersistence.mjs",
     "src/routes/helpers/aiSettingsConfigSupport.mjs",

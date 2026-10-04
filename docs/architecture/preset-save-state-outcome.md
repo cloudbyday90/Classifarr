@@ -2,6 +2,10 @@
 
 Date: 2026-10-03. Branch: `main`. Starting revision: `5393ca7d`.
 
+Follow-up: [durable creation receipts](preset-save-receipts-outcome.md) supersede
+the creation-recovery limitations below. This document retains the prior round's
+measured results; the update path still uses manual review.
+
 ## Delivered
 
 - The manager owns request state through the small ESM `usePresetSave`

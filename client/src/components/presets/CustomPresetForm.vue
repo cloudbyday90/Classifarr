@@ -273,7 +273,7 @@
       role="status"
       class="mt-3 text-sm text-gray-300"
     >
-      {{ saving ? 'Saving preset…' : '' }}
+      {{ saving ? busyLabel : saveNotice }}
     </p>
 
     <template #footer>
@@ -297,9 +297,10 @@
           <Button
             v-if="saveNeedsReview"
             variant="primary"
+            :loading="saving"
             @click="emit('review-saved')"
           >
-            Check saved presets
+            {{ reviewLabel }}
           </Button>
           <Button
             v-else
@@ -330,6 +331,9 @@ const props = defineProps({
   saving: { type: Boolean, default: false },
   saveError: { type: String, default: '' },
   saveNeedsReview: { type: Boolean, default: false },
+  saveNotice: { type: String, default: '' },
+  reviewLabel: { type: String, default: 'Check saved presets' },
+  busyLabel: { type: String, default: 'Saving preset…' },
 })
 
 const emit = defineEmits(['update:modelValue', 'save', 'review-saved'])

@@ -30,6 +30,24 @@ export function updateCustomPreset(id, data) {
   return apiClient.put(`/presets/custom/${id}`, data, { skipAutomaticRetry: true, timeout: 30_000 })
 }
 
+export function getPendingCustomPresetSave() {
+  return getDataRequest('/presets/custom/save-requests', { skipAutomaticRetry: true, timeout: 30_000 })
+}
+
+export function beginCustomPresetSave() {
+  return apiClient.post('/presets/custom/save-requests', {}, { skipAutomaticRetry: true, timeout: 30_000 })
+}
+
+export function completeCustomPresetSave(requestId, data) {
+  return apiClient.post(`/presets/custom/save-requests/${encodeURIComponent(requestId)}/complete`, data,
+    { skipAutomaticRetry: true, timeout: 30_000 })
+}
+
+export function resolveCustomPresetSave(requestId) {
+  return apiClient.post(`/presets/custom/save-requests/${encodeURIComponent(requestId)}/resolve`, {},
+    { skipAutomaticRetry: true, timeout: 30_000 })
+}
+
 export function deleteCustomPreset(id) {
   return apiClient.delete(`/presets/custom/${id}`)
 }
@@ -37,6 +55,10 @@ export function deleteCustomPreset(id) {
 const customPresetsApi = {
   getCustomPresets,
   createCustomPreset,
+  getPendingCustomPresetSave,
+  beginCustomPresetSave,
+  completeCustomPresetSave,
+  resolveCustomPresetSave,
   updateCustomPreset,
   deleteCustomPreset,
 }

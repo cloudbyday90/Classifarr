@@ -19,6 +19,9 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { mountCustomPresetSaveRoutes } from './customPresetSaveRoutes.mjs';
+import { buildCustomPresetKey } from '../utils/customPresetKey.mjs';
+export { buildCustomPresetKey, slugifyPresetName } from '../utils/customPresetKey.mjs';
 
 export function isValidSignalsPayload(signals) {
   return Boolean(signals) && typeof signals === 'object' && !Array.isArray(signals);
@@ -35,19 +38,6 @@ export function normalizeCustomPresetRow(row) {
     created_by_username: row.created_by_username ?? null,
     source: 'custom',
   };
-}
-
-export function slugifyPresetName(name) {
-  const slug = String(name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-
-  return slug || 'preset';
-}
-
-export function buildCustomPresetKey(id, name) {
-  return `custom_${id}_${slugifyPresetName(name)}`.slice(0, 50);
 }
 
 export function createGetCustomPresetById(db) {
@@ -73,6 +63,7 @@ export function createGetCustomPresetById(db) {
 export function createPresetsRouter({ express, db, logger, listPresets }) {
   const router = express.Router();
   const getCustomPresetById = createGetCustomPresetById(db);
+  mountCustomPresetSaveRoutes(router, { db });
 
   router.get('/custom', asyncHandler(async (_req, res) => {
     const result = await db.query(

@@ -4,6 +4,6 @@
     "types": ["vite/client", "node"],
     "strict": false
   },
-  "include": ["src/api/**/*.js", "src/api/**/*.d.ts", "src/utils/csrf.js", "src/env.d.ts", "vite.config.js", "vitest.config.js", "vitest.setup.js"],
+  "include": ["src/api/**/*.js", "src/api/**/*.d.ts", "src/utils/csrf.js", "src/composables/usePresetSave.js", "src/utils/presetSaveReceipt.js", "src/env.d.ts", "vite.config.js", "vitest.config.js", "vitest.setup.js"],
   "exclude": ["src/__tests__/**", "coverage/**", "dist/**"]
 }

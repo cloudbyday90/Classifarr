@@ -54,6 +54,7 @@ export async function mockModalCallers(page) {
   const responses = new Map([
     ['/api/policies/presets/all', [{ id: 1, name: 'Family Friendly', category: 'audience', signals: {} }]],
     ['/api/presets/custom', []],
+    ['/api/presets/custom/save-requests', { request: null }],
     ['/api/policies/presets/1/usage', { count: 0 }],
     ['/api/libraries', [library]],
     ['/api/libraries/1', library],

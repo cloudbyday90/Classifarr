@@ -35,6 +35,10 @@ vi.mock('../../api/core', () => ({
 import {
   getCustomPresets,
   createCustomPreset,
+  getPendingCustomPresetSave,
+  beginCustomPresetSave,
+  completeCustomPresetSave,
+  resolveCustomPresetSave,
   updateCustomPreset,
   deleteCustomPreset,
 } from '../../api/customPresetsApi'
@@ -42,6 +46,22 @@ import {
 describe('customPresetsApi', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('reads the pending request with bounded single-attempt options', async () => {
+    mockGetDataRequest.mockResolvedValue({ request: null })
+    expect(await getPendingCustomPresetSave()).toEqual({ request: null })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/presets/custom/save-requests', { skipAutomaticRetry: true, timeout: 30_000 })
+  })
+
+  it('uses named single-attempt mutations and encodes request IDs', async () => {
+    const options = { skipAutomaticRetry: true, timeout: 30_000 }
+    await beginCustomPresetSave()
+    expect(mockPost).toHaveBeenLastCalledWith('/presets/custom/save-requests', {}, options)
+    await completeCustomPresetSave('a/b', { name: 'Draft' })
+    expect(mockPost).toHaveBeenLastCalledWith('/presets/custom/save-requests/a%2Fb/complete', { name: 'Draft' }, options)
+    await resolveCustomPresetSave('a/b')
+    expect(mockPost).toHaveBeenLastCalledWith('/presets/custom/save-requests/a%2Fb/resolve', {}, options)
   })
 
   it('getCustomPresets calls getDataRequest with correct URL', async () => {

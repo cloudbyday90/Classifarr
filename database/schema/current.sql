@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-03T11:28:29.261Z
--- Latest Migration: 20261003_140000_manual_routing_provider_guard.sql
+-- Generated: 2026-10-04T09:18:41.470Z
+-- Latest Migration: 20261004_120000_custom_preset_save_requests.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3159,6 +3159,26 @@ CREATE SEQUENCE public.content_presets_id_seq
 --
 
 ALTER SEQUENCE public.content_presets_id_seq OWNED BY public.content_presets.id;
+
+
+--
+-- Name: custom_preset_save_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.custom_preset_save_requests (
+    id uuid NOT NULL,
+    user_id integer NOT NULL,
+    state text DEFAULT 'pending'::text NOT NULL,
+    fingerprint character varying(64),
+    preset_id integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    resolved_at timestamp with time zone,
+    CONSTRAINT custom_preset_save_requests_check CHECK ((((state = 'saved'::text) AND (fingerprint IS NOT NULL)) OR ((state <> 'saved'::text) AND (fingerprint IS NULL) AND (preset_id IS NULL)))),
+    CONSTRAINT custom_preset_save_requests_check1 CHECK (((state <> 'cancelled'::text) OR (resolved_at IS NOT NULL))),
+    CONSTRAINT custom_preset_save_requests_check2 CHECK (((state <> 'pending'::text) OR (resolved_at IS NULL))),
+    CONSTRAINT custom_preset_save_requests_fingerprint_check CHECK (((fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT custom_preset_save_requests_state_check CHECK ((state = ANY (ARRAY['pending'::text, 'saved'::text, 'cancelled'::text])))
+);
 
 
 --
@@ -10313,6 +10333,14 @@ ALTER TABLE ONLY public.content_presets
 
 
 --
+-- Name: custom_preset_save_requests custom_preset_save_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_preset_save_requests
+    ADD CONSTRAINT custom_preset_save_requests_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: custom_presets custom_presets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11949,6 +11977,20 @@ ALTER TABLE ONLY public.webhook_log
 --
 
 CREATE INDEX automatic_evaluation_history_observed_idx ON public.automatic_evaluation_history USING btree (last_observed_at DESC, result_key DESC);
+
+
+--
+-- Name: custom_preset_save_requests_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX custom_preset_save_requests_retention ON public.custom_preset_save_requests USING btree (user_id, resolved_at) WHERE (resolved_at IS NOT NULL);
+
+
+--
+-- Name: custom_preset_save_requests_unresolved_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX custom_preset_save_requests_unresolved_user ON public.custom_preset_save_requests USING btree (user_id) WHERE (resolved_at IS NULL);
 
 
 --
@@ -14703,6 +14745,22 @@ ALTER TABLE ONLY public.content_presets
 
 ALTER TABLE ONLY public.content_presets
     ADD CONSTRAINT content_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: custom_preset_save_requests custom_preset_save_requests_preset_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_preset_save_requests
+    ADD CONSTRAINT custom_preset_save_requests_preset_id_fkey FOREIGN KEY (preset_id) REFERENCES public.content_presets(id) ON DELETE SET NULL;
+
+
+--
+-- Name: custom_preset_save_requests custom_preset_save_requests_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_preset_save_requests
+    ADD CONSTRAINT custom_preset_save_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -17848,6 +17906,7 @@ FROM unnest(ARRAY[
     '20261002_000000_ingestion_recovery_progress.sql',
     '20261002_120000_upgrade_pgvector_to_0_8_7.sql',
     '20261003_120000_manual_routing_checks.sql',
-    '20261003_140000_manual_routing_provider_guard.sql'
+    '20261003_140000_manual_routing_provider_guard.sql',
+    '20261004_120000_custom_preset_save_requests.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

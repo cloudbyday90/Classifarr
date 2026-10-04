@@ -2,6 +2,10 @@
 
 Date: 2026-10-03. Scope: the existing Presets Manager and custom-preset form.
 
+Creation's manual-list-review limitation is superseded by the
+[2026-10-04 durable receipt design](preset-save-receipts-design.md).
+The single-attempt update contract below remains in effect.
+
 ## Evidence and decision
 
 The form emits `save` synchronously, then immediately clears its local busy

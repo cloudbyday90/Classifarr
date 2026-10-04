@@ -17,6 +17,9 @@ async function switchToCustomTab(wrapper) {
   await flushPromises()
 }
 
+const requestId = 'efb9b919-5d23-4778-b731-888343987e71'
+const receipt = (state = 'pending', resolved = false, presetId = null) => ({ requestId, state, resolved, presetId })
+
 const mockToast = {
   success: vi.fn(),
   error: vi.fn()
@@ -26,7 +29,10 @@ vi.mock('../api/presets', () => ({
   default: {
     getSystemPresets: vi.fn(),
     getCustomPresets: vi.fn(),
-    createCustomPreset: vi.fn(),
+    completeCustomPresetSave: vi.fn(),
+    beginCustomPresetSave: vi.fn(),
+    getPendingCustomPresetSave: vi.fn(),
+    resolveCustomPresetSave: vi.fn(),
     updateCustomPreset: vi.fn(),
     deleteCustomPreset: vi.fn()
   }
@@ -129,7 +135,7 @@ function mountView(realTabs = false, realModal = false) {
 describe('PresetsManager.vue', () => {
   it('owns save state, blocks concurrent events and does not confuse refresh failure with save failure', async () => {
     const request = Promise.withResolvers()
-    presetsApi.createCustomPreset.mockReturnValueOnce(request.promise)
+    presetsApi.completeCustomPresetSave.mockReturnValueOnce(request.promise)
     const wrapper = mountView()
     try {
       await flushPromises()
@@ -142,9 +148,9 @@ describe('PresetsManager.vue', () => {
       await flushPromises()
       expect(form.props('saving')).toBe(true)
       expect(form.props('modelValue')).toBe(true)
-      expect(presetsApi.createCustomPreset).toHaveBeenCalledTimes(1)
+      expect(presetsApi.completeCustomPresetSave).toHaveBeenCalledTimes(1)
       presetsApi.getCustomPresets.mockRejectedValueOnce(new Error('private data'))
-      request.resolve({ data: { id: 42 } })
+      request.resolve({ data: receipt('saved', false, 42) })
       await flushPromises()
       expect(form.props('modelValue')).toBe(false)
       expect(form.props('saveError')).toBe('')
@@ -153,8 +159,8 @@ describe('PresetsManager.vue', () => {
     } finally { wrapper.unmount() }
   })
 
-  it('only clears an uncertain save after an explicit successful review fetch', async () => {
-    presetsApi.createCustomPreset.mockRejectedValueOnce(new Error('Connection lost'))
+  it('only clears an uncertain creation after explicit receipt reconciliation', async () => {
+    presetsApi.completeCustomPresetSave.mockRejectedValueOnce(new Error('Connection lost'))
     const wrapper = mountView()
     try {
       await flushPromises()
@@ -169,7 +175,7 @@ describe('PresetsManager.vue', () => {
       await flushPromises()
       await open()
       expect(form.props('saveNeedsReview')).toBe(true)
-      presetsApi.getCustomPresets.mockRejectedValueOnce(new Error('Review unavailable'))
+      presetsApi.resolveCustomPresetSave.mockRejectedValueOnce(new Error('Review unavailable'))
       form.vm.$emit('review-saved')
       await flushPromises()
       await open()
@@ -182,7 +188,7 @@ describe('PresetsManager.vue', () => {
       expect(wrapper.get('#category-filter').element.value).toBe('')
       await open()
       expect(form.props('saveNeedsReview')).toBe(false)
-      expect(presetsApi.createCustomPreset).toHaveBeenCalledTimes(1)
+      expect(presetsApi.completeCustomPresetSave).toHaveBeenCalledTimes(1)
     } finally { wrapper.unmount() }
   })
 
@@ -249,7 +255,7 @@ describe('PresetsManager.vue', () => {
       expect(wrapper.findAll('[data-test="preset-card"]')).toHaveLength(2)
       expect(presetsApi.getSystemPresets).toHaveBeenCalledTimes(1)
       expect(presetsApi.getCustomPresets).toHaveBeenCalledTimes(1)
-      expect(presetsApi.createCustomPreset).not.toHaveBeenCalled()
+      expect(presetsApi.completeCustomPresetSave).not.toHaveBeenCalled()
       expect(presetsApi.updateCustomPreset).not.toHaveBeenCalled()
       expect(presetsApi.deleteCustomPreset).not.toHaveBeenCalled()
     } finally {
@@ -258,7 +264,11 @@ describe('PresetsManager.vue', () => {
   })
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    presetsApi.getPendingCustomPresetSave.mockResolvedValue({ request: null })
+    presetsApi.beginCustomPresetSave.mockResolvedValue({ data: receipt() })
+    presetsApi.completeCustomPresetSave.mockResolvedValue({ data: receipt('saved', false, 99) })
+    presetsApi.resolveCustomPresetSave.mockResolvedValue({ data: receipt('saved', true, 99) })
     presetsApi.getSystemPresets.mockResolvedValue([...systemPresets])
     presetsApi.getCustomPresets.mockResolvedValue([...customPresets])
   })
@@ -423,7 +433,7 @@ describe('PresetsManager.vue', () => {
     })
 
     it('closes preset form modal on successful create', async () => {
-      presetsApi.createCustomPreset.mockResolvedValue({ id: 99, name: 'New Preset' })
+      presetsApi.completeCustomPresetSave.mockResolvedValue({ data: receipt('saved', false, 99) })
       presetsApi.getCustomPresets.mockResolvedValueOnce([...customPresets]).mockResolvedValueOnce([
         ...customPresets,
         { id: 99, name: 'New Preset', category: null, signals: {} }
@@ -441,12 +451,12 @@ describe('PresetsManager.vue', () => {
       await wrapper.find('[data-test="save-btn"]').trigger('click')
       await flushPromises()
 
-      expect(presetsApi.createCustomPreset).toHaveBeenCalled()
+      expect(presetsApi.completeCustomPresetSave).toHaveBeenCalled()
       expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(false)
     })
 
     it('shows toast and switches tab after customizing a system preset', async () => {
-      presetsApi.createCustomPreset.mockResolvedValue({ id: 99 })
+      presetsApi.completeCustomPresetSave.mockResolvedValue({ data: receipt('saved', false, 99) })
       presetsApi.getCustomPresets.mockResolvedValue([...customPresets])
 
       const wrapper = mountView()
@@ -465,7 +475,7 @@ describe('PresetsManager.vue', () => {
       expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(true)
       await wrapper.get('[data-test="save-btn"]').trigger('click')
       await flushPromises()
-      expect(presetsApi.createCustomPreset).toHaveBeenCalledWith({ name: 'Test Preset' })
+      expect(presetsApi.completeCustomPresetSave).toHaveBeenCalledWith(requestId, { name: 'Test Preset' })
       expect(mockToast.success).toHaveBeenCalledWith("Custom preset 'Test Preset' created!")
       expect(wrapper.find('[data-test="custom-form"]').exists()).toBe(false)
     })

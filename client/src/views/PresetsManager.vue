@@ -18,6 +18,33 @@
       </p>
     </div>
 
+    <div
+      v-if="presetSaveNeedsReview && !showPresetForm"
+      class="rounded-lg border border-amber-600 p-4 space-y-3"
+    >
+      <p role="status">
+        {{ presetSaveError }}
+      </p>
+      <Button
+        :loading="savingPreset"
+        @click="reviewSavedPresets"
+      >
+        Check save status
+      </Button>
+    </div>
+    <p
+      v-if="presetSaveNotice && !showPresetForm"
+      role="status"
+    >
+      {{ presetSaveNotice }}
+    </p>
+    <p
+      v-if="savingPreset && !showPresetForm"
+      role="status"
+    >
+      Checking save status…
+    </p>
+
     <!-- Search and Filter Bar -->
     <div class="flex gap-4">
       <div class="flex-1">
@@ -103,6 +130,7 @@
         <div class="mb-4">
           <Button
             variant="primary"
+            :disabled="savingPreset"
             @click="openCreateModal"
           >
             <PlusCircleIcon class="w-5 h-5 mr-2" />
@@ -160,7 +188,10 @@
       :readonly="isFormReadonly"
       :saving="savingPreset"
       :save-error="presetSaveError"
+      :save-notice="presetSaveNotice"
       :save-needs-review="presetSaveNeedsReview"
+      :review-label="isCreationReview() ? 'Check save status' : 'Check saved presets'"
+      :busy-label="isCreationReview() ? 'Checking save status…' : 'Saving preset…'"
       :fallback-focus-target="() => presetSearchRef"
       @save="handleSavePreset"
       @review-saved="reviewSavedPresets"
@@ -261,7 +292,8 @@ const deleteTarget = ref(null)
 const deleting = ref(false)
 const deleteError = ref('')
 const { pending: savingPreset, error: presetSaveError, needsReview: presetSaveNeedsReview,
-  reset: resetPresetSave, save: savePreset } = usePresetSave(presetsApi)
+  notice: presetSaveNotice, reset: resetPresetSave, save: savePreset, initialize: initializePresetSave,
+  reviewCreation, isCreationReview } = usePresetSave(presetsApi)
 const presetFormOpen = computed({
   get: () => showPresetForm.value,
   set: value => { if (!savingPreset.value) showPresetForm.value = value },
@@ -400,6 +432,16 @@ async function handleSavePreset(presetData) {
 
 async function reviewSavedPresets() {
   if (savingPreset.value) return
+  if (isCreationReview()) {
+    const outcome = await reviewCreation()
+    if (!outcome) return
+    if (outcome === 'saved') showPresetForm.value = false
+    activeTab.value = 'custom'
+    searchQuery.value = ''
+    categoryFilter.value = ''
+    await fetchCustomPresets()
+    return
+  }
   showPresetForm.value = false
   activeTab.value = 'custom'
   searchQuery.value = ''
@@ -430,6 +472,7 @@ async function handleDelete() {
 
 // Load data on mount
 onMounted(() => {
+  initializePresetSave()
   fetchSystemPresets()
   fetchCustomPresets()
 })
