@@ -38,7 +38,7 @@ no OOM, and `EmbeddedDatabaseStartup` reported
 startup. Its underlying PostgreSQL refusal was not retained in that first run;
 it does not prove a PID collision, storage failure or the original CI cause.
 
-A subsequent full replay passed all eight phases, preserving history, retry
+Two subsequent full replays passed all eight phases, preserving history, retry
 budgets and authentication pauses, with two movie reads, two TV reads and zero
 provider writes. Five additional crash/restart cycles on a disposable unseeded
 database also passed; those simpler cycles are not routing acceptance evidence.
@@ -47,17 +47,18 @@ removed, no other process was signalled and no automatic startup retry was added
 
 The newer [CI run 37219904673](https://github.com/cloudbyday90/Classifarr/actions/runs/37219904673),
 on earlier `main` revision `338c2607454f267c418dd8c8d154504d990a5fb5`, passed
-its installation and database jobs. That is separate evidence, not a validation
-of this uncommitted patch or a causal explanation of the original failure.
+Build and Test, installation, database and release-readout jobs; publication
+jobs were skipped. That is separate evidence, not a validation of this patch
+or a causal explanation of the original failure.
 
 ## Verification
 
 - Regression-first checks failed before implementation: missing owned-container
   diagnostic capture and missing named exit/OOM assertions. Tests also exposed
   Node's appended assertion diff and cross-realm error handling; both are covered.
-- Script and ownership unit scope: 145 suites / 1,946 tests passed. After adding
-  the final fixed PostgreSQL marker test, the focused diagnostic/installation
-  scope passed 6 suites / 173 tests. No skips in these runs.
+- Final script and ownership unit scope: 145 suites / 1,947 tests passed. The
+  focused diagnostic/installation scope passed 6 suites / 173 tests. No skips
+  in these runs.
 - Real isolated PostgreSQL legacy reconciliation and recovery progress:
   2 suites / 55 tests passed. These use synthetic libraries and credentials;
   they do not recover the local installation or Unraid.
@@ -72,6 +73,53 @@ of this uncommitted patch or a causal explanation of the original failure.
   drift passed without refreshing its baseline; `productionCompatible` remains
   false for the existing writer debt. Full application/frontend suites were not
   repeated for this tooling-only patch.
+- Static-import and ESM mock-shape checks passed. Staged secret scanning found
+  no leaks.
+
+## No-cache local rebuild and schema dump
+
+Committed code revision `6f01dbde69d6970218a392327afd8089f2f23689` was built with
+`docker compose build --no-cache --build-arg VCS_REF=<revision> classifarr`.
+Only local Classifarr was recreated, using `--no-deps --no-build --force-recreate
+--wait`. The exact local image ID is
+`sha256:0cf38db57f67000849dbe15f208df4b1bf3846ebb1dccdf33e858c31f0f4c70b`.
+
+Container `b333ca94d065` started at `2026-10-04T17:43:41.966144598Z`, became
+healthy and returned HTTP 200. Node 24.21.0, PostgreSQL 18.6 and pgvector 0.8.7
+were confirmed. Existing data/media mounts, UID/GID 1000, read-only root and
+2 GiB memory limit were preserved; no CPU quota was added. Unraid and the other
+local application containers were not changed.
+
+The local startup cycle completed eight imports and logged exactly two
+`legacy_owner_unknown` warnings, with no ERROR rows for this container. The same
+two Family and six Movies legacy markers remain. Log evaluation was scoped by
+container hostname; timestamp queries used a timezone-aware startup value because
+this database uses `America/New_York`. No recovery attestation was submitted.
+
+Spot samples showed 382.5–410.7 MiB container memory and 39–46 PIDs,
+with 0.62% CPU near startup and a 52.77% sample during startup work. There was no
+OOM or container restart. These short samples do not certify sustained resource
+headroom or absence of memory leaks.
+
+After the build, `dumpSchema` ran against a fresh network-isolated PostgreSQL
+instance from the exact new image, seeded from the committed schema. Loading
+that dump into a second fresh database and dumping again produced zero drift.
+`database/schema/current.sql` has no Git diff. The owned schema-test container
+was removed and its absence verified. Neither local application data nor Unraid
+was used as the schema dump source.
+
+The exact rebuilt image then passed all eight phases of the isolated routing
+upgrade/restart rehearsal with the pinned baseline above: preserved history,
+attempt budgets and credential pauses; two movie and two TV reads; zero provider
+writes; forced exit 137 and graceful exit 0 with no OOM; verified container and
+volume cleanup. Synthetic deadlines are advanced by the existing fixture where
+documented; this does not prove a real provider cooldown elapsed. This successful
+candidate replay does not establish a repair for the intermittent historical
+PostgreSQL startup failure.
+
+The recovery-change skill kept diagnosis and test faults separate from operator
+attestation and production recovery. The release-evidence skill kept the failed
+historical run, locally rebuilt source and passing candidate evidence distinct.
 
 ## Ownership is a separate issue
 
