@@ -22,6 +22,8 @@ const SIGNALS = [
     'Application startup failed, but its specific cause is unrecognized. Reproduce in an isolated environment and inspect private logs.'],
   ['database_startup_failed', 'PostgreSQL startup did not complete.',
     'PostgreSQL startup failed. Inspect the isolated database startup and storage; do not remove ownership files or bypass admission.'],
+  ['database_pid_lock_exists', 'FATAL:  lock file "postmaster.pid" already exists',
+    'PostgreSQL refused an existing PID lock. Verify process identity in the isolated fixture; do not delete the lock based on age.'],
   ['supervisor_startup_refused', 'Embedded supervisor refused startup;',
     'The embedded supervisor refused startup. Check the packaged entrypoint and disposable test configuration.'],
 ];

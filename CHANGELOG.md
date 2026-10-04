@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve bounded, sanitized container diagnostics when isolated routing
+  restart checks fail. Identify the failed exit/OOM/startup check without
+  weakening acceptance, exposing raw logs, or skipping fixture cleanup.
 - Cancel identity-verification reads and rate-limit waits when an import loses
   its owner connection. Bound source evidence responses, preserve retry state
   and inventory, and keep cancellation distinct from provider failures.

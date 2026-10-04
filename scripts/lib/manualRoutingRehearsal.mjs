@@ -37,7 +37,9 @@ export async function runManualRoutingRehearsal(options, { container = withRouti
       const restart = async killed => {
         currentPhase = killed ? 'forced-restart' : 'graceful-restart';
         await docker(killed ? ['kill', '--signal', 'SIGKILL', name] : ['stop', '--timeout', '60', name], 70_000);
-        const state = await inspect(); assert.equal(state.OOMKilled, false); assert.equal(state.ExitCode, killed ? 137 : 0);
+        const state = await inspect();
+        assert.equal(state.OOMKilled, false, 'routing_exit_oom');
+        assert.equal(state.ExitCode, killed ? 137 : 0, 'routing_exit_code');
         await docker(['start', name]); await healthy(); await provider();
       };
       report('START routing_baseline');
@@ -45,7 +47,7 @@ export async function runManualRoutingRehearsal(options, { container = withRouti
       await start(baseline); await step('seed');
       currentPhase = 'baseline-stop';
       await docker(['stop', '--timeout', '60', name], 70_000);
-      assert.equal((await inspect()).ExitCode, 0); await removeContainer();
+      assert.equal((await inspect()).ExitCode, 0, 'routing_exit_code'); await removeContainer();
       report('START routing_candidate');
       currentPhase = 'candidate';
       await start(candidate); await step('upgraded');

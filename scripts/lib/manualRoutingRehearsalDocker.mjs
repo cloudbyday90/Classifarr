@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { captureRoutingFailureContext } from './routingFailureDiagnostic.mjs';
 
 export const ROUTING_BASELINE = 'eef03e57ffdd26d638f32f1593c424b438041ea2';
 const fixture = resolve(import.meta.dirname, '../fixtures/manualRoutingRehearsal');
@@ -15,7 +16,8 @@ export function routingReceipt(output) {
 }
 
 /** Only immutable image inputs. No existing container, data, endpoint or command override. */
-export async function withRoutingRehearsal({ baseline, candidate, execute = promisify(execFile), random = randomBytes }, check) {
+export async function withRoutingRehearsal({ baseline, candidate, execute = promisify(execFile), random = randomBytes,
+  captureFailure = captureRoutingFailureContext }, check) {
   for (const image of [baseline, candidate]) assert.match(image ?? '', /^sha256:[a-f0-9]{64}$/);
   assert.notEqual(baseline, candidate, 'upgrade_requires_distinct_images');
   const suffix = random(16).toString('hex'); assert.match(suffix, /^[a-f0-9]{32}$/);
@@ -36,7 +38,10 @@ export async function withRoutingRehearsal({ baseline, candidate, execute = prom
   assert.equal(await docker(['image', 'inspect', '--format', '{{index .Config.Labels "org.opencontainers.image.revision"}}', baseline]), ROUTING_BASELINE);
   assert.equal(await docker(['ps', '-aq', '--filter', `name=^/${name}$`]), '', 'routing_container_collision');
   assert.equal(await docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]), '', 'routing_volume_collision');
-  const inspect = async () => JSON.parse(await docker(['inspect', '--format', '{{json .State}}', name]));
+  // Do not read Docker errors or health-check output into the scenario runner.
+  const stateFormat = '{"Running":{{.State.Running}},"OOMKilled":{{.State.OOMKilled}},"ExitCode":{{.State.ExitCode}},' +
+    '"Health":{"Status":{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}}}}';
+  const inspect = async () => JSON.parse(await docker(['inspect', '--format', stateFormat, name]));
   const waitFor = async (test, timeout = 90_000) => {
     const deadline = performance.now() + timeout;
     do { if (await test()) return; await sleep(250); } while (performance.now() < deadline);
@@ -73,7 +78,12 @@ export async function withRoutingRehearsal({ baseline, candidate, execute = prom
       probe: async phase => routingReceipt(await docker(['exec', name, 'node', '/app/routing-fixture/probe.mjs', phase])),
       provider: () => docker(['exec', '--detach', name, 'node', '/app/routing-fixture/provider.mjs']),
     });
-  } catch (error) { failure = error; }
+  } catch (error) {
+    failure = error;
+    try {
+      if (await docker(['ps', '-aq', ...containerFilter])) captureFailure(error, name);
+    } catch { /* Diagnostics cannot replace the original error or prevent cleanup. */ }
+  }
   try {
     await removeContainer();
     const owned = await docker(['volume', 'ls', '-q', ...volumeFilter]);

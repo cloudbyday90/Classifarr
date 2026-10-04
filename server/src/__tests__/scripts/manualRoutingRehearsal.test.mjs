@@ -25,7 +25,7 @@ function dockerFixture({ collision, failure, wrongRevision = false, cleanupFailu
     if (args[0] === failure) throw Object.assign(new Error('secret'), { stderr: 'secret credential' });
     return { stdout: '' };
   });
-  return { baseline, candidate, name, execute, random: size => Buffer.alloc(size, 9) };
+  return { baseline, candidate, name, execute, captureFailure: jest.fn(), random: size => Buffer.alloc(size, 9) };
 }
 
 test.each(['classifarr:latest', '', 'sha256:bad', '--privileged'])('rejects mutable or malformed candidate %s', async candidate => {
@@ -61,12 +61,55 @@ test('uses unchanged production entrypoint, no network or host data and bounded 
   const removal = f.execute.mock.calls.findIndex(([, args]) => args[0] === 'rm');
   expect(f.execute.mock.calls[removal - 1][1]).toContain(`label=classifarr.routing-drill=${'09'.repeat(16)}`);
   expect(f.execute.mock.calls.some(([, args]) => args[0] === 'image' && args[1] === 'rm')).toBe(false);
+  expect(f.captureFailure).not.toHaveBeenCalled();
+  const stateFormat = f.execute.mock.calls.find(([, args]) => args[0] === 'inspect')[1][2];
+  expect(stateFormat).not.toContain('{{json .State}}');
+  expect(stateFormat).not.toMatch(/Health\.Log|State\.Error/);
 });
 test('cleans owned resources after ambiguous create failure and suppresses subprocess secrets', async () => {
   const f = dockerFixture({ failure: 'create' });
   await expect(withRoutingRehearsal(f, ctx => ctx.start(f.baseline))).rejects.toThrow('routing_docker_failed:create');
   expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm')).toBe(true);
   expect(f.execute.mock.calls.some(([, args]) => args[0] === 'volume' && args[1] === 'rm')).toBe(true);
+});
+
+test('captures a failed owned container before removal and keeps the original error', async () => {
+  const f = dockerFixture(), failure = new Error('private assertion value');
+  f.captureFailure.mockImplementation((error, name) => {
+    expect(error).toBe(failure); expect(name).toBe(f.name);
+    expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm')).toBe(false);
+  });
+  await expect(withRoutingRehearsal(f, async ctx => { await ctx.start(f.baseline); throw failure; })).rejects.toBe(failure);
+  expect(f.captureFailure).toHaveBeenCalledTimes(1);
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm')).toBe(true);
+});
+
+test('diagnostic failure cannot replace the original failure or prevent cleanup', async () => {
+  const f = dockerFixture(), failure = new Error('original');
+  f.captureFailure.mockImplementation(() => { throw new Error('private diagnostic error'); });
+  await expect(withRoutingRehearsal(f, async ctx => { await ctx.start(f.baseline); throw failure; })).rejects.toBe(failure);
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm')).toBe(true);
+});
+
+test('does not inspect failure context when no container was created', async () => {
+  const f = dockerFixture(), failure = new Error('before startup');
+  await expect(withRoutingRehearsal(f, async () => { throw failure; })).rejects.toBe(failure);
+  expect(f.captureFailure).not.toHaveBeenCalled();
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'volume' && args[1] === 'rm')).toBe(true);
+});
+
+test('cleanup failure still takes precedence after capturing the original failure', async () => {
+  const f = dockerFixture({ cleanupFailure: true }), failure = new Error('original');
+  await expect(withRoutingRehearsal(f, async ctx => { await ctx.start(f.baseline); throw failure; }))
+    .rejects.toThrow(`routing_cleanup_failed:${f.name}`);
+  expect(f.captureFailure).toHaveBeenCalledWith(failure, f.name);
+});
+
+test('does not collect logs from a foreign-label container on failure', async () => {
+  const f = dockerFixture({ foreignLabel: true });
+  await expect(withRoutingRehearsal(f, async ctx => { await ctx.start(f.baseline); throw new Error('failed'); }))
+    .rejects.toThrow('routing_cleanup_failed');
+  expect(f.captureFailure).not.toHaveBeenCalled();
 });
 test('never reports success if cleanup failed', async () => {
   const f = dockerFixture({ cleanupFailure: true });
@@ -131,6 +174,17 @@ test('runs image replacement and actual interruption before accepting a complete
   expect(ctx.probe.mock.calls.flat()).toEqual(['seed', 'upgraded', 'arm-crash', 'crash-ready', 'restarted',
     'movie-ready', 'exhausted', 'pause-ready', 'paused', 'repair', 'complete-ready', 'complete']);
   expect(result).toMatchObject({ status: 'passed', providerWrites: 0, movieGets: 2, tvGets: 2 });
+});
+
+test.each([
+  ['oom', { OOMKilled: true, ExitCode: 137 }, 'exit_oom'],
+  ['exit', { OOMKilled: false, ExitCode: 0 }, 'exit_code'],
+])('reports the specific forced-restart %s assertion without its raw values', async (_kind, state, check) => {
+  const ctx = scenario(), report = jest.fn();
+  ctx.inspect.mockResolvedValueOnce({ OOMKilled: false, ExitCode: 0 }).mockResolvedValue(state);
+  await expect(runManualRoutingRehearsal({}, { container: (_, run) => run(ctx), report })).rejects.toThrow();
+  expect(report).toHaveBeenLastCalledWith(`ROUTING_FAILURE ${JSON.stringify({ phase: 'forced-restart', reason: 'assertion_failed', check })}`);
+  expect(ctx.probe).not.toHaveBeenCalledWith('restarted');
 });
 test.each(['missing', 'writes', 'ready', 'oom', 'exit'])('rejects contradictory %s evidence', async failure => {
   const ctx = scenario(), original = ctx.probe.getMockImplementation();
