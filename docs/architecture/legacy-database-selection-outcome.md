@@ -119,6 +119,11 @@ admission before activating unattended recovery. Preserve ordinary non-root
 compatibility while defining and testing that transition. Recovery completion
 means import plus metadata backfill, not disabled optional AI work.
 
+The next increment connects selection to the existing supervisor in the isolated
+drill; see its [design](selected-database-startup-design.md) and
+[separate results](selected-database-startup-outcome.md). It is not production
+activation of the remaining protected entrypoint and writer boundaries.
+
 This avoids post-upgrade write loss at the cost of a small protected receipt and
 additional startup integration. A published-image upgrade, physical Unraid/
 Synology validation, power-loss durability and completed unattended legacy import

@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Compose selected-database verification with supervised maintenance, restricted
+  runtime startup and ordered shutdown. Add isolated PostgreSQL checks for lease
+  contention and host cancellation; deployed identity/ownership recovery remains
+  unchanged until the protected production path is ready.
 - Document and test the queued-routing query's fixed SQL construction and bound
   values, resolving its pre-existing code-health validation failure.
 - Clarify legacy Compose/Unraid upgrade settings, keep the README media mount

@@ -7,6 +7,7 @@ import { inspectMigrationTree, digestMigrationTree } from '../../bootstrap/embed
 import { assertDrillEnvironment, assertContainerLayout } from './contract.mjs';
 import { SOURCE, MIGRATION_ROOT, MIGRATION_SOCKET, MIGRATION_DATABASE, migrationEnvironment,
   migrationCommand, migrationSql } from './identityMigrationDatabase.mjs';
+import { verifySelectedStartup } from './identityStartupProbe.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assert.equal(process.argv.length, 2);
@@ -81,8 +82,14 @@ for (const point of ['before:verify', 'verified', 'selected', 'runtime-write', '
 }
 await worker(undefined, true);
 await worker(undefined, true);
+await verifySelectedStartup({ signalRuntime: true });
+await verifySelectedStartup();
+// Re-read the earlier committed write after the selected supervisor lifecycle.
+await worker('restart-read', true);
+await worker(undefined, true);
 assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), originalDigest);
 const selection = JSON.parse(await readFile('/identity-migration/selection.json', 'utf8'));
 assert.deepEqual(selection, { version: 1, binding: receipt.binding, phase: 'selected' });
 process.stdout.write('PASS durable_candidate_selection_retains_committed_writes_after_process_death\n');
+process.stdout.write('PASS selected_startup_maintenance_runtime_sigterm_and_exclusive_lease\n');
 process.stdout.write('PASS resumable_legacy_identity_copy_and_real_process_crash_recovery\n');

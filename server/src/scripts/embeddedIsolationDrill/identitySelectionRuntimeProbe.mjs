@@ -5,7 +5,7 @@ import { MIGRATION_DATABASE, MIGRATION_SOCKET } from './identityMigrationDatabas
 
 assert.equal(process.platform, 'linux');
 assert.equal(process.getuid(), 1000);
-assert.equal(process.argv.length, 2);
+assert(process.argv.length === 2 || (process.argv.length === 3 && process.argv[2] === '--wait'));
 assert.equal(process.env.CLASSIFARR_EMBEDDED_ISOLATION_DRILL, 'disposable-v1');
 const client = new pg.Client({ host: MIGRATION_SOCKET, database: MIGRATION_DATABASE, user: 'cf_runtime',
   connectionTimeoutMillis: 2000, statement_timeout: 3000 });
@@ -17,3 +17,8 @@ try {
   assert.deepEqual((await client.query('SELECT id,value FROM migration_sentinel ORDER BY id')).rows,
     [{ id: 1, value: 'preserved' }, { id: 3, value: 'selected-runtime-write' }]);
 } finally { await client.end(); }
+if (process.argv[2] === '--wait') {
+  const timer = setInterval(() => {}, 1000);
+  process.once('SIGTERM', () => clearInterval(timer));
+  process.stdout.write('selected-runtime-ready\n');
+}
