@@ -21,7 +21,6 @@ import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { mountCustomPresetSaveRoutes } from './customPresetSaveRoutes.mjs';
 import { buildCustomPresetKey } from '../utils/customPresetKey.mjs';
-export { buildCustomPresetKey, slugifyPresetName } from '../utils/customPresetKey.mjs';
 
 export function isValidSignalsPayload(signals) {
   return Boolean(signals) && typeof signals === 'object' && !Array.isArray(signals);

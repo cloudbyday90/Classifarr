@@ -19,6 +19,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh Discord's compatible HTTP transport with upstream response-settlement
+  and connection-lifecycle fixes. Add real loopback regression tests while
+  preserving notification contracts and the application's separate HTTP transport.
+- Remove unused preset-route re-exports reported by dependency validation;
+  retain the shared key utility and existing route behavior.
 - Refresh the frontend DOM test environment and retire its obsolete transport
   override. Add regression checks for hidden focus targets, form resets, live
   styles and real HTTP loading without changing application runtime behavior.

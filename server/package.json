@@ -127,10 +127,10 @@
     "ip-address": "10.7.1",
     "socket.io-parser": "4.2.7",
     "discord.js": {
-      "undici": "6.28.1"
+      "undici": "6.29.0"
     },
     "@discordjs/rest": {
-      "undici": "6.28.1"
+      "undici": "6.29.0"
     }
   }
 }
