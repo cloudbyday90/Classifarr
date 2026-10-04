@@ -4,6 +4,7 @@ import { createEmbeddedDatabaseControl } from '../bootstrap/embeddedDatabaseCont
 import { runEmbeddedSupervisor } from '../bootstrap/embeddedSupervisor.mjs';
 import { createCompatibleQueueMaintenanceBroker } from '../bootstrap/embeddedCompatibleQueueMaintenance.mjs';
 import { createCompatibleImageIndexBroker } from '../bootstrap/embeddedCompatibleImageIndex.mjs';
+import { startCompatibleProfilingMaintenance } from '../bootstrap/embeddedCompatibleProfilingMaintenance.mjs';
 import { readOperatingMode } from '../config/operatingMode.mjs';
 
 export function assertEmbeddedSupervisorEnvironment(environment, { uid, platform, cwd, args }) {
@@ -20,9 +21,11 @@ export function assertEmbeddedSupervisorEnvironment(environment, { uid, platform
 
 export function embeddedRuntimeComposition({ environment = process.env, start = startEmbeddedApplication,
   attach = createCompatibleQueueMaintenanceBroker, attachIndexes = createCompatibleImageIndexBroker, report = () => {},
+  startProfiling = startCompatibleProfilingMaintenance,
 } = {}) {
   const normal = readOperatingMode(environment) === 'normal';
   return {
+    ...(normal ? { startMaintenance: () => startProfiling({ report }) } : {}),
     startApplication: () => start({ environment, queueMaintenance: normal, imageIndexMaintenance: normal }),
     ...(normal ? { attachRuntimeMaintenance: (application, onFatal) => {
       const brokers = [];

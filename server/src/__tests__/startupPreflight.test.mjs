@@ -158,7 +158,7 @@ describe('runStartupPreflight', () => {
     expect(policyThresholdIntegrityService.auditPersistedThresholds).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(routingConfigIntegrityService.auditPersistedMappings).toHaveBeenCalledWith({ source: 'startup_preflight' });
     expect(database.prewarmHnswIndexes).toHaveBeenCalled();
-    expect(database.ensurePgStatStatements).toHaveBeenCalled();
+    expect(database.ensurePgStatStatements).not.toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
     expect(runtimeSettings.ensureRuntimeSettingsFile).toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe('runStartupPreflight', () => {
     expect(avxGuard.run).not.toHaveBeenCalled();
   });
 
-  it('continues when pg_stat_statements auto-install is unavailable', async () => {
+  it('observes unavailable profiling without attempting installation in the web process', async () => {
     database.ensurePgStatStatements.mockResolvedValueOnce({
       ensured: false,
       reason: 'extension runtime files are not available in this image',
@@ -215,7 +215,7 @@ describe('runStartupPreflight', () => {
       postUpgradeTaskService: postUpgradeService,
     });
 
-    expect(database.ensurePgStatStatements).toHaveBeenCalled();
+    expect(database.ensurePgStatStatements).not.toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
   });

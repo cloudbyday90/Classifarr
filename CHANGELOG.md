@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Move optional query-profiling installation into a bounded embedded startup
+  maintenance worker. Keep web-process checks read-only, defer unknown state,
+  and preserve restore/runtime exclusion without changing saved templates.
 - Harden the isolated ingestion-recovery gateway against restored unsafe
   privileges and cached legacy-session evidence. Recheck before admission,
   writes and completion; production automatic legacy recovery remains disabled.
