@@ -78,6 +78,13 @@ POSTs (not just stored provider records). Any synthetic deadline advance must be
 reported as such, not elapsed-time evidence. Rebuild without cache, rerun against
 the immutable image, and regenerate the schema from an isolated database.
 
+The existing compatible-maintenance rehearsal also needs stable synthetic dead
+rows. Temporarily raise both vacuum trigger thresholds on its disposable queue
+table, keeping autovacuum enabled for the production admission checks, then
+restore the verified original values. Otherwise autovacuum can remove the test
+pressure before the manual worker runs. This fixture control is not a production
+tuning recommendation and does not disable PostgreSQL's wraparound protection.
+
 ## Official sources
 
 Retrieved 2026-10-04 through web search and opened directly:
@@ -89,3 +96,6 @@ Retrieved 2026-10-04 through web search and opened directly:
 - [PostgreSQL 18 explicit locking](https://www.postgresql.org/docs/18/explicit-locking.html):
   row locks coordinate concurrent writers and end with the transaction. A durable
   marker is needed beyond that transaction and beyond a process lifetime.
+- [PostgreSQL 18 vacuum configuration](https://www.postgresql.org/docs/18/runtime-config-vacuum.html):
+  updated/deleted tuples and inserted tuples have separate vacuum triggers, with
+  per-table overrides. Both matter when stabilizing a disposable pressure fixture.
