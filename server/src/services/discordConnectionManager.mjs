@@ -8,11 +8,11 @@
  * (at your option) any later version.
  */
 import {
-  Client,
   GatewayIntentBits,
   EmbedBuilder,
 } from 'discord.js';
 import { createLogger } from '../utils/logger.mjs';
+import { createDiscordClient } from './discordClientFactory.mjs';
 import {
   checkChannelPermissions,
   findMissingCriticalPermissions,
@@ -24,7 +24,7 @@ const logger = createLogger('discordConnectionManager');
 export { checkChannelPermissions } from './discordChannelPermissions.mjs';
 
 async function createEphemeralClient(token, intents) {
-  const client = new Client({ intents });
+  const client = createDiscordClient({ intents });
   try {
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -59,7 +59,7 @@ export async function testConnection(botToken, channelId, config, permissionChec
       return { success: false, error: 'No bot token provided' };
     }
 
-    testClient = new Client({
+    testClient = createDiscordClient({
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
     });
 

@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Bound Discord REST responses by total time, size and per-client concurrency.
+  Share cleanup across bot and settings clients, settle error bodies before SDK
+  retries, and avoid replaying notifications after uncertain response failures.
 - Refresh Discord's compatible HTTP transport with upstream response-settlement
   and connection-lifecycle fixes. Add real loopback regression tests while
   preserving notification contracts and the application's separate HTTP transport.

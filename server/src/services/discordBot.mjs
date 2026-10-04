@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 import {
-  Client,
   GatewayIntentBits,
 } from 'discord.js';
 import * as db from '../config/database.mjs';
@@ -18,6 +17,7 @@ import { discordConfigIntegrityService } from './discordConfigIntegrityService.m
 import * as systemAlertService from './systemAlertService.mjs';
 import * as interactionHandler from './discordInteractionHandler.mjs';
 import * as connectionManager from './discordConnectionManager.mjs';
+import { createDiscordClient } from './discordClientFactory.mjs';
 import { sendConfidenceBasedNotification as sendConfidenceNotification } from './discordConfidenceNotification.mjs';
 import { sendClassificationNotification as sendClassificationNotificationFn } from './discordClassificationNotification.mjs';
 import { sendPendingDecisionNotification as sendPendingDecisionNotificationFn } from './discordPendingNotification.mjs';
@@ -105,7 +105,7 @@ class DiscordBotService {
       throw new ServiceUnavailableError("Discord bot not configured or not enabled");
     }
 
-    this.client = new Client({
+    this.client = createDiscordClient({
       intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
     });
 
