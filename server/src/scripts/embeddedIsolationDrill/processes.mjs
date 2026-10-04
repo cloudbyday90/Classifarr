@@ -13,8 +13,10 @@ export async function asUser(user, command, args, { admin = false, restored = fa
   });
 }
 
-export function startRuntime() {
-  const child = spawn('/sbin/su-exec', ['classifarr', 'node', 'src/index.mjs'], {
+export function startRuntime({ classification = false } = {}) {
+  const program = classification
+    ? ['src/scripts/embeddedIsolationDrill/classificationProbe.mjs', '--run'] : ['src/index.mjs'];
+  const child = spawn('/sbin/su-exec', ['classifarr', 'node', ...program], {
     cwd: '/app', env: childEnvironment(), stdio: ['ignore', 'inherit', 'inherit'],
   });
   // Attach immediately, before waiting for HTTP; no unhandled error/exit race.

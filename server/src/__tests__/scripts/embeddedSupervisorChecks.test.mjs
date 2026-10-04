@@ -52,7 +52,7 @@ test('production verification failure still cleans only the generated project', 
   const run = jest.fn(() => ({ status: 0, stdout: '' }));
   expect(() => runEmbeddedIsolationCompose({ run, random: size => Buffer.alloc(size, 8),
     verify: () => { throw new Error('verification failed'); } })).toThrow('verification failed');
-  expect(run.mock.calls.at(-1)[1][7]).toBe('down');
+  expect(run.mock.calls.findLast(([, args]) => args[0] === 'compose')[1][7]).toBe('down');
 });
 
 test('launcher captures bounded output and permits only expected process exit statuses', () => {

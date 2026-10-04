@@ -1,14 +1,53 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
-import { runEmbeddedIsolationCompose } from '../../../../scripts/lib/embeddedIsolationCompose.mjs';
+import { parseEmbeddedIsolationArguments, runEmbeddedIsolationCompose } from '../../../../scripts/lib/embeddedIsolationCompose.mjs';
 import { assertDrillEnvironment, assertContainerLayout, assertProbeEnvironment, childEnvironment, HBA, IDENT } from '../../scripts/embeddedIsolationDrill/contract.mjs';
 import { stopRuntime, waitForRuntime } from '../../scripts/embeddedIsolationDrill/processes.mjs';
 
 const random = size => Buffer.alloc(size, 9);
 const success = () => ({ status: 0, stdout: '' });
 const config = readFileSync(new URL('../../../../docker-compose.embedded-isolation-drill.yml', import.meta.url), 'utf8');
+const image = `sha256:${'a'.repeat(64)}`;
+const imageRun = (_cmd, args) => args[0] === 'image' && args[1] === 'inspect'
+  ? { status: 0, stdout: args.at(-1) === '{{.Id}}' ? image : JSON.stringify({ Id: image, RepoTags: ['caller:latest'] }) }
+  : success();
 afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers(); });
+
+test('immutable image mode reuses all four aliases, never builds or removes the caller image ID', () => {
+  const run = jest.fn(imageRun);
+  expect(runEmbeddedIsolationCompose({ image, run, random, verify: () => {} })).toEqual({ status: 'passed', cleanup: 'passed', image });
+  expect(run.mock.calls.filter(([, args]) => args[0] === 'tag')).toHaveLength(4);
+  expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
+  const launch = run.mock.calls.find(([, args]) => args[7] === 'run')[1];
+  expect(launch).toEqual(expect.arrayContaining(['--no-build', '--pull', 'never']));
+  expect(run.mock.calls.some(([, args]) => args.includes('rm') && args.includes(image))).toBe(false);
+  expect(run.mock.calls.at(-1)[1]).toEqual(['image', 'inspect', image, '--format', '{{.Id}}']);
+});
+
+test.each(['mutable-tag', 'missing', 'untagged', 'wrong-id', 'bad-json'])('rejects %s image before acquiring mutation ownership', scenario => {
+  const run = jest.fn((_cmd, args) => args[0] !== 'image' || args[1] !== 'inspect' ? success()
+    : scenario === 'missing' ? { status: 1 }
+      : { status: 0, stdout: scenario === 'bad-json' ? 'no' : JSON.stringify({
+        Id: scenario === 'wrong-id' ? 'other' : image, RepoTags: scenario === 'untagged' ? [] : ['caller:latest'],
+      }) });
+  expect(() => runEmbeddedIsolationCompose({ image: scenario === 'mutable-tag' ? 'latest' : image, run, random })).toThrow();
+  expect(run.mock.calls.some(([, args]) => args[0] === 'tag' || args[0] === 'compose')).toBe(false);
+});
+
+test('partial alias setup still cleans only the owned project', () => {
+  const run = jest.fn((cmd, args) => args[0] === 'tag' && args[2].includes('-custom:') ? { status: 1 } : imageRun(cmd, args));
+  expect(() => runEmbeddedIsolationCompose({ image, run, random })).toThrow('drill_image_failed');
+  expect(run.mock.calls.findLast(([, args]) => args[0] === 'compose')[1][7]).toBe('down');
+});
+
+test('CLI accepts no args or an immutable ID only', () => {
+  expect(parseEmbeddedIsolationArguments([])).toEqual({});
+  expect(parseEmbeddedIsolationArguments(['--image', image])).toEqual({ image });
+  for (const args of [['--image'], ['--image', 'latest'], ['--image', image, 'extra'], ['--live']]) {
+    expect(() => parseEmbeddedIsolationArguments(args)).toThrow('invalid_arguments');
+  }
+});
 
 test('launcher builds and cleans only its isolated project, excluding ambient Compose overrides', () => {
   const old = process.env.COMPOSE_FILE;
@@ -51,7 +90,16 @@ test.each([{ status: 1 }, { status: 0, stdout: '', error: new Error('timeout') }
 test.each(['build', 'run'])('%s failure still cleans its own project but never passes', operation => {
   const run = jest.fn((_cmd, args) => args[7] === operation ? { status: 1 } : success());
   expect(() => runEmbeddedIsolationCompose({ run, random })).toThrow(`drill_${operation}_failed`);
-  expect(run.mock.calls.at(-1)[1][7]).toBe('down');
+  expect(run.mock.calls.findLast(([, args]) => args[0] === 'compose')[1][7]).toBe('down');
+});
+
+test('leftover owned resources make cleanup fail even when Compose reports success', () => {
+  let stopped = false;
+  const run = jest.fn((_cmd, args) => {
+    if (args[7] === 'down') stopped = true;
+    return { status: 0, stdout: stopped && args[0] === 'volume' ? 'leftover' : '' };
+  });
+  expect(() => runEmbeddedIsolationCompose({ run, random, verify: () => {} })).toThrow('drill_cleanup_failed:');
 });
 
 test('cleanup failure identifies the exact orphaned project and is fatal', () => {

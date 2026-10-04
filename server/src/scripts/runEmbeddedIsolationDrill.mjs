@@ -11,6 +11,9 @@ const sql = (text, database = DATABASE) => pg('psql', ['-X', '-v', 'ON_ERROR_STO
   '-h', SOCKET, '-U', ADMIN_ROLE, '-d', database, '-c', text]);
 const maintain = () => pg('node', ['src/scripts/runDatabaseSchemaMaintenance.mjs', '--apply']);
 const probe = () => asUser('classifarr', 'node', ['src/scripts/embeddedIsolationDrill/runtimeProbe.mjs']);
+const classificationReceipt = async (restored = false) => (await asUser('classifarr', 'node',
+  ['src/scripts/embeddedIsolationDrill/classificationProbe.mjs', restored ? '--verify-restored' : '--verify'],
+  { restored, timeout: 40_000 })).stdout.trim();
 const stopDatabase = () => pg('pg_ctl', ['-D', PG_DATA, '-m', 'fast', '-w', '-t', '20', 'stop']);
 const startDatabase = () => pg('pg_ctl', ['-D', PG_DATA, '-l', `${STATE}/postgres.log`, '-w', '-t', '30', 'start']);
 const assertNoStartupErrors = () => sql("DO $$ BEGIN IF EXISTS (SELECT 1 FROM error_log WHERE level = 'ERROR') THEN RAISE EXCEPTION 'runtime_startup_errors_recorded'; END IF; END $$;");
@@ -67,8 +70,9 @@ export async function runEmbeddedIsolationDrill() {
       INSERT INTO isolation_sentinel VALUES (1, 'preserved');`);
     await probe();
     record('fresh_schema_repeat_maintenance_and_runtime_boundary');
-    runtime = startRuntime();
+    runtime = startRuntime({ classification: true });
     await waitForRuntime(runtime);
+    const classified = await classificationReceipt();
     assert.equal((await fetch('http://127.0.0.1:21324/api/libraries', { signal: AbortSignal.timeout(2000) })).status, 401);
     await assert.rejects(maintain(), error => error.code === 75);
     await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--busy']);
@@ -76,6 +80,7 @@ export async function runEmbeddedIsolationDrill() {
     runtime = null;
     await assertNoStartupErrors();
     record('real_runtime_health_auth_maintenance_exclusion_and_sigterm');
+    record('restricted_application_movie_tv_classification_and_persistence');
 
     await pg('node', ['src/scripts/embeddedIsolationDrill/restoreProbe.mjs', '--apply']);
     record('encrypted_restore_process_exclusion_quarantine_and_explicit_recovery');
@@ -94,6 +99,7 @@ export async function runEmbeddedIsolationDrill() {
       GRANT CONNECT ON DATABASE ${RESTORED_DATABASE} TO ${RUNTIME_ROLE};`, RESTORED_DATABASE);
     await pg('node', ['src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs'], { restored: true });
     await asUser('classifarr', 'node', ['src/scripts/embeddedIsolationDrill/runtimeProbe.mjs', '--restored'], { restored: true });
+    assert.equal(await classificationReceipt(true), classified, 'restored_classification_changed');
     record('stopped_runtime_dump_restore_and_real_image_index_rebuild');
 
     await stopDatabase();
@@ -106,6 +112,7 @@ export async function runEmbeddedIsolationDrill() {
     await sql("DO $$ BEGIN IF (SELECT value FROM isolation_sentinel WHERE id = 1) IS DISTINCT FROM 'preserved' THEN RAISE EXCEPTION 'sentinel_lost'; END IF; END $$;");
     runtime = startRuntime();
     await waitForRuntime(runtime);
+    assert.equal(await classificationReceipt(), classified, 'restarted_classification_changed');
     await stopRuntime(runtime);
     runtime = null;
     await assertNoStartupErrors();

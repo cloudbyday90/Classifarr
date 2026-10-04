@@ -94,6 +94,8 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/scripts/runEmbeddedIsolationDrill.mjs',
     'server/src/scripts/embeddedIsolationDrill/contract.mjs',
     'server/src/scripts/embeddedIsolationDrill/processes.mjs',
+    'server/src/scripts/embeddedIsolationDrill/classificationFixture.mjs',
+    'server/src/scripts/embeddedIsolationDrill/classificationProbe.mjs',
     'server/src/scripts/embeddedIsolationDrill/runtimeProbe.mjs',
     'server/src/scripts/embeddedIsolationDrill/maintenanceProbe.mjs',
     'server/src/bootstrap/normalRuntime.mjs',

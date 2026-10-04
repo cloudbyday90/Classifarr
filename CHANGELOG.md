@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend the restricted-runtime drill with real movie/TV classification,
+  persistence and restart/restore checks. Allow testing an exact local image
+  without rebuilding it; production permissions and saved templates are unchanged.
 - Run embedded schema migrations in supervised startup maintenance before web
   services load. Independently verify the schema in read-only mode, refuse
   incomplete handoffs, and preserve existing templates and restore safeguards.

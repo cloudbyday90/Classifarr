@@ -46,7 +46,9 @@ afterEach(() => {
 test('real commands are ordered behind identity checks and a stopped runtime', async () => {
   const result = await runEmbeddedIsolationDrill();
   expect(result).toMatchObject({ status: 'passed', productionCutover: false });
-  expect(result.checks).toHaveLength(8);
+  expect(result.checks).toHaveLength(9);
+  expect(commands.startRuntime).toHaveBeenNthCalledWith(1, { classification: true });
+  expect(result.checks).toContain('restricted_application_movie_tv_classification_and_persistence');
   expect(result.checks).toContain('restricted_runtime_queue_handoff_independent_admission_and_budget_denial');
   const stops = events.flatMap((value, index) => value === 'stop_runtime' ? [index] : []);
   const dump = events.findIndex(value => value.startsWith('postgres:pg_dump:'));
@@ -76,10 +78,11 @@ test.each(['wrong-mode', 'wrong-platform', 'wrong-uid', 'extra-argument', 'occup
   expect(commands.asUser).not.toHaveBeenCalled();
 });
 
-test.each(['probe', 'restore', 'index', 'handoff'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
+test.each(['probe', 'classification', 'restore', 'index', 'handoff'])('%s failure cannot pass and still stops PostgreSQL', async scenario => {
   const original = commands.asUser.getMockImplementation();
   commands.asUser.mockImplementation(async (...args) => {
     if ((scenario === 'probe' && args[2][0]?.endsWith('runtimeProbe.mjs'))
+      || (scenario === 'classification' && args[2][0]?.endsWith('classificationProbe.mjs'))
       || (scenario === 'restore' && args[1] === 'pg_restore')
       || (scenario === 'index' && args[2][0]?.endsWith('maintenanceProbe.mjs'))
       || (scenario === 'handoff' && args[2][0]?.endsWith('queueHandoffProbe.mjs'))) throw new Error('scenario_failed');
@@ -87,6 +90,19 @@ test.each(['probe', 'restore', 'index', 'handoff'])('%s failure cannot pass and 
   });
   await expect(runEmbeddedIsolationDrill()).rejects.toThrow('scenario_failed');
   expect(events.some(value => value.endsWith(' stop'))).toBe(true);
+});
+
+test.each(['--verify-restored', '--verify'])('changed classification after %s fails the drill', async mode => {
+  const original = commands.asUser.getMockImplementation();
+  let reads = 0;
+  commands.asUser.mockImplementation(async (...args) => {
+    const result = await original(...args);
+    if (args[2][0]?.endsWith('classificationProbe.mjs') && args[2][1] === mode && ++reads > (mode === '--verify' ? 1 : 0)) {
+      return { stdout: 'changed' };
+    }
+    return result;
+  });
+  await expect(runEmbeddedIsolationDrill()).rejects.toThrow(/classification_changed/);
 });
 
 test('startup failure still joins Node before stopping PostgreSQL', async () => {
