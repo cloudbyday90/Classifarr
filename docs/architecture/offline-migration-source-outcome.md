@@ -29,7 +29,57 @@ Linux-only and skipped on Windows. The first full run passed 1,698 suites and
 reviewed entries were then updated. The final full run passed all 1,699 suites:
 52,783 passed, one Linux-only skip. Backend lint/typecheck, copyright, ownership
 review, both dependency gates, Markdown lint, ESM import/mock checks and staged
-Gitleaks scan passed. Actual image results are recorded after the rebuild.
+Gitleaks scan passed.
+
+### No-cache image and schema
+
+- Source: `61f145a2f5a25a70333843f9212494c5156837d6`, clean `main` checkout.
+- Built with `docker-compose-smart.mjs build --no-cache --require-provenance
+  classifarr`; local image ID (not a registry manifest digest):
+  `sha256:70c59b71520684fe102c436e9cbb5e584a1fa05cba946898fcab7b776909a553`.
+  Linux/amd64, AVX2 build selected by the existing CPU detector.
+- The Windows-skipped directory-fsync scenario passed on this exact Linux image:
+  complete exclusive copy, preserved original and refusal to overwrite.
+- After rebuilding, the existing `dump-schema.mjs` ran against disposable PG18
+  from this image. Fresh snapshot load, dump, second fresh load and dump had zero
+  drift; `database/schema/current.sql` stayed unchanged. Synthetic container
+  cleanup passed. No live database was used to regenerate the snapshot.
+- All 12 core isolation checks passed on this image, including the new real
+  source-registration/partial-copy process deaths and missing/changed-provenance
+  refusals, existing phase interruption/selection, old-credential denial,
+  restricted routing, restore quarantine and maintenance/runtime separation.
+  Core duration was 207,406 ms; the runner reported 92,496 KiB maximum RSS for
+  its own process, not a container-wide memory peak. Production cutover remained
+  false. These synthetic same-image checks are not published-old-image upgrades.
+- Standard UID 1000, custom UID/GID 2345 and Unraid-style UID 99/GID 100
+  profiles passed startup, code/extension immutability, on-demand maintenance,
+  unchanged 10-second host stop deadlines and restart preservation. The standard
+  profile also passed unexpected Node exit, database-loss handling and forced
+  host-kill/WAL recovery. The launcher reported passed and verified cleanup of
+  only its random test project; the caller's built image was retained.
+
+### Local installation evaluation
+
+Recreated only the local `classifarr` Compose service from the tested image with
+`--no-build --force-recreate --wait`. Existing mounts, forced UID/GID 1000,
+read-only root filesystem and saved configuration were retained. Unraid and the
+separate Harmoniarr container were not changed.
+
+At 153 seconds of PostgreSQL uptime, health was healthy, restart count zero and
+OOM false. Read-only queries showed no ERROR entries since startup, but one
+`mediaSync` warning remained: `legacy_owner_unknown`, library 5 (Movies). Before
+and after replacement, Family was complete at 866/866 with no ownerless running
+imports; Movies had six ownerless running imports. No ownership was fabricated,
+imports reset or warnings suppressed. Removing this warning requires the gated
+production conversion/fencing work below, not another rebuild of this component.
+
+Short samples showed 0.67–1.47% CPU, 324.6–401.7 MiB memory out of the existing
+2 GiB limit, and 38–48 container tasks/threads. A process snapshot showed two
+Node processes plus PostgreSQL processes and Tini. No CPU quota or PID limit is
+configured locally. These observations do not establish a sustained resource
+ceiling or disprove leaks; a workload soak and deployment resource review remain
+separate work. ARM64, physical NAS and published-old-image upgrade coverage were
+not performed in this round.
 
 No real library recovery, source mutation, credential rotation or Unraid update
 was performed. This component does not yet remove `legacy_owner_unknown` warnings.
@@ -45,7 +95,8 @@ integrities matched the proposed patch.
 
 Applied locally without merging: dependency-tooling tests went from 30/30 to
 29/30 because the Node-24 type/runtime alignment assertion rejected Node-26 types.
-The patch was reversed and manifests/locks remain unchanged. This is a tested
+The patch was reversed and manifests/locks remain unchanged; the restored tooling
+suite passed 30/30 again. This is a tested
 compatibility rejection, not a runtime installation or adoption of the PR.
 Keeping runtime and declarations aligned avoids advertising APIs absent in the
 supported runtime; the tradeoff is postponing the major type update.
