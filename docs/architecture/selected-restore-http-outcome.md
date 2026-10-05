@@ -3,9 +3,12 @@
 Date: 2026-10-05. See [design and sources](selected-restore-http-design.md).
 
 Implemented modular ESM source-file preparation, one-use stream client/broker,
-restricted HTTP launcher and entrypoint. The existing authenticated restore UI
-contract delegates to a narrow service rather than importing the privileged
-backup service. The worker revalidates input and retains existing SQL exclusion
+restricted HTTP launcher and entrypoint. The selected profile's authenticated
+restore routes delegate to a narrow service rather than importing the privileged
+backup service. Its success response supplies the four counts displayed by the
+current UI and `newApiKey: null`; it does not reproduce every legacy statistics
+field. The existing production profile is unchanged. The worker revalidates
+input and retains existing SQL exclusion
 and durable quarantine. Existing encryption/API keys are not regenerated.
 
 ## Validation
@@ -36,9 +39,38 @@ and durable quarantine. Existing encryption/API keys are not regenerated.
   build. Fresh load and dump round trip had zero drift; no migration or tracked
   schema change was needed.
 
-Final no-cache rebuild and local replacement after the wording correction are
-pending. No release, live restore, template update or production selection is
-performed. The existing unknown ingestion-owner warning is not resolved here.
+## Final image and local evaluation
+
+The final no-cache image includes the validation-message correction, from clean
+source `a275b19f86cea6a16f2acb2d519fc880470beaad`. Its inspected local Docker ID is
+`sha256:010c77698f39fe8ff88f1d7f491e02c87443f39eeea8ae2ac548733167fbc0c3`.
+This is Linux/amd64 AVX2 local evidence, not a registry or multi-platform receipt.
+
+All 12 isolated checks passed again in 162.560 seconds. Standard, custom and
+Unraid-shaped profiles passed; unchanged ten-second host stop windows completed
+in 2.310, 2.352 and 2.358 seconds, respectively, including verification. The
+runner cleaned up its exact owned synthetic resources. Linux filesystem checks
+and isolated PostgreSQL 18 schema dump/round trip passed again with zero drift.
+
+Only the local test Compose service was recreated, using that exact image without
+another build. Existing installation volumes were preserved. At 146 seconds
+after PostgreSQL startup it was healthy, with zero restarts, no OOM kill and no
+persisted startup errors. The sample was 0.39% CPU, 381.4 MiB of a 2 GiB memory
+limit and 39 PIDs. The saved deployment has no CPU or PID cap; this short startup
+sample is not a sustained soak or proof against leaks. Process names showed two
+Node processes (supervisor/application) and PostgreSQL, not a growing worker pool.
+
+Read-only checks found Family complete at 866/866 with no ownerless running
+records. Movies still has six legacy running sync records without an ingestion
+owner. The expected `legacy_owner_unknown` warning occurred once for library 5;
+no live records were reset or recovered. Local and Unraid databases remain
+separate, and Unraid was not modified.
+
+No release, live restore, template update or production selection was performed.
+The existing unknown ingestion-owner warning is not resolved by this change.
+
+These outcome notes follow the tested source commit; no runtime source changed
+after the final image build.
 
 The recovery skill required bounded work, no replay after uncertainty and an
 actual isolated HTTP/database test. The release-evidence skill separates that
