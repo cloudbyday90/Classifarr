@@ -45,6 +45,21 @@ describe('getSystemContext', () => {
 // ---------------------------------------------------------------------------
 
 describe('getRequestContext', () => {
+  test('removes query values from every request-context representation without changing the request', () => {
+    const req = {
+      method: 'POST', url: '/webhook/request?key=synthetic_secret',
+      path: '/webhook/request', params: {},
+      query: { key: 'synthetic_secret', 'key[]': ['synthetic_secret'], filter: 'movie', redirect: 'https://example.test/?key=synthetic_secret' },
+      get: () => null,
+    };
+    const before = JSON.stringify(req);
+    const context = getRequestContext(req);
+    expect(context.url).toBe('/webhook/request');
+    expect(context.query).toEqual({ key: '[REDACTED]', 'key[]': '[REDACTED]', filter: '[REDACTED]', redirect: '[REDACTED]' });
+    expect(JSON.stringify(context)).not.toContain('synthetic_secret');
+    expect(JSON.stringify(req)).toBe(before);
+  });
+
   test('returns null when req is null', () => {
     expect(getRequestContext(null)).toBe(null);
   });

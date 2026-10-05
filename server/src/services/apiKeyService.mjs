@@ -27,6 +27,7 @@ import {
   constantTimeCompare
 } from '../utils/encryption.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { requestLogUrl } from '../utils/logging/requestLogPrivacy.mjs';
 
 const logger = createLogger('apiKeyService');
 
@@ -231,7 +232,7 @@ export async function logAudit(apiKeyId, action, options = {}) {
     await db.query(
       `INSERT INTO api_key_audit (api_key_id, action, endpoint, ip_address, user_agent)
        VALUES ($1, $2, $3, $4, $5)`,
-      [apiKeyId, action, endpoint || null, ipAddress || null, userAgent || null]
+      [apiKeyId, action, requestLogUrl(endpoint) || null, ipAddress || null, userAgent || null]
     );
   } catch (error) {
     logger.error('Failed to log API key audit:', { error: error.message });

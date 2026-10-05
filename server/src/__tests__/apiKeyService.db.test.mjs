@@ -305,6 +305,17 @@ describe('API Key Service - database-backed behavior', () => {
     );
   });
 
+  test('logAudit strips query credentials at the shared persistence boundary', async () => {
+    db.query.mockResolvedValueOnce(createDbRowsResult());
+    const options = { endpoint: '/api/webhook?%6b%65%79=synthetic_secret', ipAddress: '127.0.0.1', userAgent: 'test-client' };
+    await apiKeyService.logAudit(7, 'used', options);
+    expect(db.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO api_key_audit'),
+      [7, 'used', '/api/webhook', '127.0.0.1', 'test-client']
+    );
+    expect(options.endpoint).toContain('synthetic_secret');
+  });
+
   test('logAudit swallows insert errors and logs them', async () => {
     const errorSpy = createConsoleSpy('error', { suppress: true });
     db.query.mockRejectedValueOnce(new Error('audit insert failed'));

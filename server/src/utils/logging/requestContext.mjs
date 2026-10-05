@@ -18,6 +18,7 @@
 
 import os from 'node:os';
 import { sanitizeData } from './sanitize.mjs';
+import { requestLogQuery, requestLogUrl } from './requestLogPrivacy.mjs';
 
 /**
  * @param {unknown} value
@@ -61,10 +62,10 @@ export function getRequestContext(req) {
 
   const context = sanitizeData({
     method: req.method,
-    url: req.url,
+    url: requestLogUrl(req.url),
     path: req.path,
     params: req.params,
-    query: req.query,
+    query: requestLogQuery(req.query),
     headers: {
       'user-agent': req.get?.('user-agent'),
       'content-type': req.get?.('content-type'),

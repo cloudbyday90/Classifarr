@@ -68,6 +68,21 @@ bypass or compatibility regression within this scope. This is not a claim of
 an exhaustive repository security audit; the complete release checklist and
 remote scanners remain required.
 
+The maintainer also approved closing the query-credential logging gap found
+later in the checklist. A shared logging-only URL projection strips query,
+fragment and user-info from access-log request/referrer URLs, error request
+context URLs and API-key audit endpoints. Parsed diagnostic queries retain
+field names but redact every value, including nested URLs and unknown aliases.
+This deliberately trades query-value diagnostics for a boundary that does not
+depend on maintaining a credential-name denylist. Method, route, status and
+ordinary access metadata remain available; Morgan's escaping and skip rules
+remain intact. No request object, authentication input or stored key is changed.
+Historical records and external reverse-proxy logs are outside this fix.
+
+This follows [OWASP's exclusion of credentials from logs](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+and uses Morgan's documented [custom formatter and token contract](https://expressjs.com/en/resources/middleware/morgan/)
+(checked 2026-10-05), without replacing its request completion or escaping logic.
+
 ## Validation and handoff
 
 Before freezing, focused HTTP/publication checks passed (9 suites, 140 tests),

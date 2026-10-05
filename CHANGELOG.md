@@ -150,6 +150,8 @@ The development record was consolidated on 2026-10-05 without rewriting it.
   trusted local AI endpoints, with aggregate-only context for other providers.
   Unexpected production server errors hide internal messages, and unknown API
   paths return a generic JSON 404 instead of falling through to the UI.
+  Access logs, request diagnostics and API-key audit endpoints omit URL query
+  values; legacy webhook query-key authentication remains compatible.
 - **Network and supply-chain hardening** — Enforce response-size/deadline limits,
   cancellation and vector validation; retain TLS verification by default.
   Update vulnerable runtime/tooling dependencies and pgvector to 0.8.7

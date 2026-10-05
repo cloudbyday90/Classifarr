@@ -28,6 +28,7 @@ import {
 import { generateSpec as generateSwaggerSpecDefault } from '../utils/swaggerSpec.mjs';
 import { evaluateCorsOrigin as evaluateCorsOriginDefault } from '../utils/corsPolicy.mjs';
 import { registerStaticApplicationDelivery } from './staticApplicationDelivery.mjs';
+import { accessLogFormat } from '../utils/logging/accessLogFormat.mjs';
 const publicDir = path.resolve(import.meta.dirname, '../../public');
 const ACCESS_LOG_NOTIFICATION_PATHS = new Set(['/api/notifications', '/api/notifications/unread-count']);
 const ACCESS_LOG_HEALTH_PATHS = new Set(['/health', '/api/system/health']);
@@ -70,7 +71,7 @@ function buildAccessLogMiddleware(accessLogger = morgan) {
     return (_req, _res, next) => next();
   }
 
-  return accessLogger('combined', { skip: shouldSkipAccessLog });
+  return accessLogger(accessLogFormat, { skip: shouldSkipAccessLog });
 }
 
 function buildCorsOptions(runtimeSettings, evaluateCorsOrigin) {

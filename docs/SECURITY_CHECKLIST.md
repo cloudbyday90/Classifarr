@@ -203,6 +203,19 @@ grep -rn "console.log\|logger\." server/src/routes/apiKeys*.js server/src/servic
 ```
 **Pass:** no statement that logs the raw API key value; masked/truncated display only.
 
+Also exercise indirect URL copies with the focused request-log privacy tests:
+
+```bash
+cd server
+node scripts/run-jest.mjs --runInBand --no-coverage --testPathPatterns='createApp.test.mjs|logging/requestLogPrivacy.test.mjs|logging/requestContext.test.mjs|apiKeyService.db.test.mjs'
+```
+
+**Pass:** access-log request/referrer URLs, persisted request context and API-key
+audit endpoints do not retain synthetic query credentials (including encoded
+names and rejected parser forms). Authentication sees the original request;
+ordinary route/status logging and escaping remain intact. Historical logs and
+external reverse-proxy settings require separate review.
+
 ### F2. API key encrypted at rest
 ```bash
 grep -rn "encrypt\|decrypt\|cipher" server/src/services/apiKey*.js server/src/models/apiKey*.js 2>/dev/null | head -10

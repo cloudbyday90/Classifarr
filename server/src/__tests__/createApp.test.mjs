@@ -36,6 +36,53 @@ describe('createApp', () => {
   const originalSecurityHeadersStrict = process.env.SECURITY_HEADERS_STRICT;
   const originalEnforceHttpsHeaders = process.env.ENFORCE_HTTPS_HEADERS;
 
+  it.each([
+    ['key=synthetic_query_secret', 200],
+    ['%6b%65%79=synthetic_query_secret', 200],
+    ['key=synthetic%5Fquery%5Fsecret', 200],
+    ['key=synthetic_query_secret&key=other', 401],
+    ['key[]=synthetic_query_secret', 401],
+    ['key=synthetic_query_secret%ZZ', 401],
+  ])('redacts real access output without changing query authentication: %s', async (query, status) => {
+    const previous = process.env.CLASSIFARR_TEST_ACCESS_LOGS;
+    process.env.CLASSIFARR_TEST_ACCESS_LOGS = '1';
+    const lines = [];
+    const output = jest.spyOn(process.stdout, 'write').mockImplementation((chunk) => {
+      lines.push(String(chunk));
+      return true;
+    });
+    try {
+      apiRouter = createRouter((router) => {
+        router.post('/webhook/request', (req, res) => {
+          res.status(req.query.key === 'synthetic_query_secret' ? 200 : 401).json({
+            originalUrl: req.originalUrl, query: req.query,
+          });
+        });
+      });
+      const app = await createApp({
+        database, runtimeSettings, port: 21324, apiRouter, authRouter, setupRouter,
+        systemRouter, userRouter, swaggerUi, ensureCsrfCookie, csrfProtection,
+        generateSwaggerSpec, evaluateCorsOrigin,
+      });
+      const url = `/api/webhook/request?${query}`;
+      const response = await request(app).post(url)
+        .set('Referer', 'https://user:synthetic_referrer_secret@example.test/settings?key=synthetic_referrer_secret#synthetic_fragment_secret')
+        .set('User-Agent', 'safe"agent\\value');
+      expect(response.status).toBe(status);
+      expect(response.body.originalUrl).toBe(url);
+      if (status === 200) expect(response.body.query.key).toBe('synthetic_query_secret');
+      const log = lines.join('');
+      expect(log).toContain(`"POST /api/webhook/request HTTP/1.1" ${status}`);
+      expect(log).toContain('https://example.test/settings');
+      expect(log).not.toMatch(/synthetic|%5F|\?key|%6b/i);
+      expect(log).toContain('safe\\"agent\\\\value');
+    } finally {
+      output.mockRestore();
+      if (previous === undefined) delete process.env.CLASSIFARR_TEST_ACCESS_LOGS;
+      else process.env.CLASSIFARR_TEST_ACCESS_LOGS = previous;
+    }
+  });
+
   const buildTestApp = () => createApp({
     database, runtimeSettings, port: 21324, apiRouter, authRouter, setupRouter,
     systemRouter, userRouter, swaggerUi, ensureCsrfCookie, csrfProtection,

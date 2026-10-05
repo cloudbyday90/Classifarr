@@ -175,6 +175,12 @@ receipts instead of automatically submitting duplicate writes.
   context for those paths. Unexpected production server errors hide internal
   details while retaining diagnostic IDs; unknown API paths return a generic
   JSON 404 without falling through to the interface.
+- **Credential-safe request logging:** request and referrer URLs no longer copy
+  query values or URL credentials into access logs. Request diagnostics and
+  API-key audit endpoints use the same privacy boundary. Existing webhook query
+  keys still work. Historical logs are not rewritten: if credential-bearing logs
+  were shared, review that exposure and rotate the affected keys. Reverse-proxy
+  logs require their own redaction settings.
 - **Maintainability:** smaller ESM services, centralized client API calls,
   stronger Vue/API checks and bounded cross-platform test workers make the
   expanded platform easier to validate and maintain.
