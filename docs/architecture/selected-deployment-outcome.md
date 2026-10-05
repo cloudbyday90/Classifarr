@@ -39,9 +39,66 @@ ESM static imports/mock shapes and Markdown passed. The ownership inventory rema
 19 owned, 287 separately coordinated and 502 unresolved; this is not an all-writers
 isolation claim. No client code changed and no new client coverage claim is made.
 
-Full backend validation, clean-source no-cache build, isolated image rehearsal,
-schema dump and local replacement evaluation are pending below; no completion
-claim is made until those checks finish.
+Final full backend run: **1,691 suites, 52,380 tests passed**, one Windows skip,
+266.975 seconds. The first run overlapped the ownership-review update and failed
+only that stale-review check; its focused rerun passed all 39 checks, followed by
+the clean full repeat above. No assertion was weakened. The Linux directory-fsync
+copy/source-preservation/overwrite-refusal probe passed in the actual image; the
+Windows Jest case itself remains skipped. The staged secret scan found no leaks.
+
+## Image and schema evidence
+
+Clean-source no-cache build: `4c8e1e784fa543e2ab2f1111d6aedaea7fbbd618`.
+Docker's inspected local image ID:
+`sha256:f48e4b730ba8b4786c459e60810fd296ed827c81d64333bef433181f39bf3a2a`.
+Its OCI revision matches. This is local linux/amd64 AVX2 evidence, not a published
+registry digest or a multi-platform release attestation. Initial test invocations
+used the build's config digest, which Docker did not expose as a runnable image;
+they refused before creating fixtures. Acceptance used the inspected ID above.
+
+All **12 core recovery scenarios passed** in 175.000 seconds, including the
+deployment-compiled custom profile and 31 actual application environment settings
+(the prior thirty tuning settings plus the 1536 MiB heap). Existing authenticated
+decryption, JSON precedence, unchanged file bytes, restricted SQL admission,
+interrupted restore/routing, source preservation and joined shutdown passed.
+These are same-image synthetic scenarios, not a published-old-image upgrade.
+
+Saved-profile rehearsals passed for 1000:1000, custom 2345:2345 and Unraid-style
+99:100. Clean stops under the unchanged ten-second host timeout took 2.454,
+2.627 and 2.586 seconds respectively, including verification. Forced host kill
+remained nonzero and recovered committed synthetic data on restart; it is not
+counted as graceful shutdown. Normal runtime had no idle maintenance workers.
+
+After the rebuild, the existing schema dump implementation ran against isolated,
+network-disabled PostgreSQL 18 from this image. Load/dump/load/dump had zero drift;
+`database/schema/current.sql` is unchanged. No migration was added.
+
+Cleanup passed. A separate inventory found no containers, volumes or networks for
+`classifarr-isolation-drill-77ed747ae12a609e31028950f5d9c692`. The exact disposable
+schema and filesystem-test containers were removed. Only synthetic test resources
+were deleted; they are reproducible, and installation data/caller images remained.
+
+## Local evaluation
+
+Recreated only the local `classifarr` Compose service with the tested image using
+`up --no-build --force-recreate --wait`; existing volumes were preserved. Both the
+running image ID and OCI revision match the tested build. HTTP health returned
+200, Docker health is healthy, restarts are zero, and no OOM occurred. Live Unraid
+and its separate database/appdata were not accessed.
+
+At 40 seconds after PostgreSQL startup, there were no new WARN/ERROR rows;
+CPU was 4.52%, memory 364.8 MiB of 2 GiB, and 38 PIDs. At 161 seconds, CPU was
+0.51%, memory 395.3 MiB and 38 PIDs. There were zero ERROR rows and one
+`mediaSync` warning: `legacy_owner_unknown` for Movies (5). Read-only inspection
+confirmed Family (4) complete at 866/866 with no ownerless running records;
+Movies still has six. No ingestion records were repaired or reset by these checks.
+
+The process sample found exactly one application, one supervisor and zero
+compatible/selected maintenance workers. The actual application environment
+retained the saved 1536 MiB heap without exposing its other values. Node remains
+24.21.0. The saved profile is still UID/GID 1000:1000, read-only, limited to 2 GiB,
+with no CPU quota or PID ceiling. No host resource limits were changed. These
+short samples are not a sustained resource soak or proof against memory leaks.
 
 ## Next
 

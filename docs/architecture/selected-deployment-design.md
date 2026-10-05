@@ -32,6 +32,8 @@ age retention. Database/JSON precedence remains with existing consumers.
   HTTP mode produce fixed errors without keys, values or credentials.
 - Only known image/container metadata is discarded. Unknown platform extensions
   need review; there is no broad prefix-based allowlist.
+- The privileged bootstrap itself must start with a constructed environment.
+  This compiler cannot undo Node options interpreted before its own process ran.
 - Legacy embedded database identity may be absent or exactly match the bundled
   local database. Remote/alternate credentials and privileged retirement settings
   are not converted. Credentials never enter the maintenance environment.
