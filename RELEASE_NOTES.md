@@ -1,6 +1,213 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.48.4-beta`. Package files use semver-safe versions such as `0.48.4-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.0-beta`. Package files use semver-safe versions such as `0.49.0-beta`.
+
+## v0.49.0-beta
+
+**A stronger foundation for libraries that learn, recover and stay under your control**
+
+This is a broad update across Classifarr's movie and TV workflow, from discovering
+what is already in your libraries to explaining a classification, delivering it
+to Radarr or Sonarr, and recovering safely when something interrupts the work.
+It also modernizes the application, container and release tooling underneath.
+
+Classifarr has reached **20,421 Docker Hub pulls** as of October 5, 2026
+([Docker Hub statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
+Thank you to everyone testing, reporting issues and contributing. This figure
+counts image pulls, not unique installations, and excludes GHCR.
+
+The central change is continuity: existing installations can fill gaps left by
+older versions, background work keeps its progress across restarts, and the
+Command Center explains what is happening and when an administrator needs to act.
+More automation does not mean fewer safeguards—uncertain results stay uncertain,
+incomplete scans do not erase inventory, and learned observations do not silently
+rewrite your policies.
+
+### Before you upgrade
+
+- **Back up your database and persistent app-data, including encryption keys.**
+  This release includes database migrations and substantial recovery changes.
+  Retain a restorable pre-upgrade backup; do not assume an older image can safely
+  run against an upgraded database.
+- **Keep existing app-data mounts, keys and configuration.** Do not recreate
+  storage, regenerate keys, or delete migration records to clear a warning.
+  Existing Compose and Unraid templates remain supported for the compatible
+  recovery/maintenance path; a new template is not required merely to enable it.
+- **Stop older Classifarr processes that share this database before upgrading.**
+  Separate installations using separate databases can share a Plex server.
+  Import ownership refers to a background writer's database claim, not the
+  administrator's account or ownership of your Plex library.
+- **Allow import and metadata catch-up to finish.** Older libraries may need a
+  full scan, metadata enrichment and profile rebuilding. Follow progress in the
+  Command Center and library settings. Provider quotas, outages and resource
+  limits can delay this work without losing its place.
+- **Review any actionable banner after startup.** If database safeguards or a
+  migration need repair, follow the scenario-specific instructions. Unknown
+  failures provide a sanitized diagnostic trail and guidance for opening a
+  GitHub issue; do not bypass the checks or rerun an already-applied migration.
+- **Source installations require Node 24.21.0 and npm/npx 12.2.0.** Container
+  users receive the updated runtime in the image. This remains a beta release.
+
+### Libraries: safer discovery, recovery and backfill
+
+Plex, Jellyfin and Emby now share more consistent handling of outages, pagination
+and interrupted scans. A partial scan retains existing inventory; removal of
+missing items requires a complete enumeration. A library that disappears from
+discovery is retained for review and can be archived reversibly, rather than
+having its local history deleted automatically.
+
+Legacy movie/TV imports can recover without repeated manual intervention when
+the database's compatibility safeguards are verified. Recovery retains existing
+inventory, resumes a full import and schedules metadata backfill. A recovery is
+complete when import and metadata work finish; disabled optional embedding or AI
+services do not keep it open indefinitely. Missing or altered safeguards still
+block takeover and produce repair guidance.
+
+TMDb, OMDb and web-search enrichment share durable cooldowns, quota tracking and
+credential-aware recovery. Backfill is bounded and distributed across libraries,
+preserves valid metadata, and rejects conflicting or cross-media identities.
+Reviewed identity repairs retain an audit record instead of silently guessing
+which movie or show an item represents.
+
+### Classification: richer context without losing policy control
+
+Library profiles now draw on refreshed metadata, descriptions and production
+companies, including eligible items that have source-server identity but no
+TMDb ID. Coverage and freshness are visible; missing information is not presented
+as measured absence. Common traits and library overlap help explain why an item
+fits—or why a boundary needs review.
+
+Description, semantic and image retrieval reuse bounded, current vector caches,
+exclude self-matches and stale evidence, and recover preparation work in the
+background. Ordinary retrieval remains available when optional library-comparison
+context is deferred, with more specific reasons for the delay.
+
+Candidate comparisons can use this learned context alongside policy evidence.
+Structured AI proposals can abstain. Automatic decisions still depend on fresh
+qualifying evidence, your policy thresholds and existing confirmation rules;
+neither a suggested library trait nor an evaluation result grants routing
+authority on its own.
+
+Saved Ollama configurations on older installations receive readiness backfill.
+Changing the endpoint or model invalidates the relevant capability result and
+requires a current check. Provider outages pause AI-dependent retries while
+deterministic work can continue.
+
+### Policies, feedback and quality review
+
+Policy authoring adds revision-checked library-purpose declarations, grouped
+draft review, overlap/cohort previews and evidence digests. Suggested traits stay
+separate from declared intent. Maintenance and calibration reports help identify
+what deserves attention, but cannot automatically retune rules.
+
+History and feedback preserve the original decision, candidate evidence, media
+identity and recording time through retries and cleanup. Duplicate or conflicting
+feedback and stale suggestion application are rejected. Statistics use clearer
+denominators, UTC windows and incomplete-sample handling instead of turning
+unknown outcomes into an accuracy claim.
+
+Private evaluation tools support frozen, held-out movie/TV studies, independent
+review packets, consensus and correction reports. Optional recurring AI capture
+is bounded and budgeted. These tools help compare evidence under a known policy
+and model context; they do not establish a universal accuracy score or silently
+change production routing. Local evaluation payloads remain outside public
+release artifacts.
+
+### Routing, reclassification and notifications
+
+Radarr/Sonarr routing records the intended destination before contacting the
+provider, verifies identity and destination before declaring success, and uses
+bounded read-only checks to reconcile uncertain outcomes. A timeout or restart
+does not justify blindly repeating an add request that may already have worked.
+
+Reclassification batches retain progress and pause/cancel intent. Journaled
+movie/TV moves reconcile exact receipts after interruption instead of repeating
+file copies or deletions. Discord notifications similarly retain send intent,
+delivery receipts and shared rate-limit state; uncertain delivery stays visible
+for administrator review while interaction replies remain independent.
+
+Queue claims, completion and the handoff from scans to backfill are more durable.
+Stale workers cannot complete a newer claim, overlapping scheduled tasks are
+bounded, and retry timing survives restarts. Shared memory admission and wakeups
+help queued work proceed without treating resource pressure as lost work.
+
+### Operations, backups and the interface
+
+The Command Center brings together recovery actions, metadata/profile progress,
+AI readiness and operational status with details available when needed. Error
+Logs and sensitive exports require a current administrator. Migration diagnostics
+retain useful context while removing secrets and installation-specific payloads.
+
+Configuration backups use consistent snapshots and preserve destination mappings,
+preferences and optional learned evidence across changed IDs. Restore mode
+excludes normal workers and serializes attempts. An incomplete verification blocks
+normal startup until explicit recovery, rather than quietly resuming on a
+partially restored system.
+
+On-demand maintenance workers assess queue vacuum needs and eligible image-vector
+index repair when the system is idle and resources allow. Durable attempt limits
+and health summaries distinguish waiting from failed recovery. This compatible
+path does not need a permanent extra service or a Compose/template change.
+
+The Vue interface has calmer summaries, progressive disclosure and improved
+dialogs, tabs, forms, tag editors and credential controls. Keyboard focus,
+nested dialogs, labels, narrow layouts and stale-request cleanup receive shared
+fixes. Settings and preset saves preserve drafts and recover lost responses from
+receipts instead of automatically submitting duplicate writes.
+
+### Deployment, runtime and security
+
+- **Docker, Unraid and Synology:** updated Compose/Community Apps examples,
+  optional media mounts and shutdown guidance preserve existing app-data and
+  legacy settings. Modern Synology compatibility is documented; isolated saved-
+  template tests are not a claim that every NAS model has been tested.
+- **Database:** PostgreSQL startup, supported upgrades, extension recovery and
+  shutdown receive bounded readiness and process-identity checks. pgvector moves
+  to **0.8.7**, including the fix for **CVE-2026-103484**, with portable builds and
+  integrity verification.
+- **Runtime and dependencies:** Node **24.21.0**, Alpine **3.24.2** and npm/npx
+  **12.2.0**, plus refreshed Vue, server, test and build dependencies. A bounded
+  ESM Markdown runner and native Node watching replace the affected lint/watch
+  dependency chain.
+- **Network safety:** bounded response sizes and deadlines, cancellation, vector
+  validation and TLS verification by default. Sensitive library context remains
+  restricted to trusted local AI endpoints; other providers receive aggregate
+  context for those paths. Unexpected production server errors hide internal
+  details while retaining diagnostic IDs; unknown API paths return a generic
+  JSON 404 without falling through to the interface.
+- **Maintainability:** smaller ESM services, centralized client API calls,
+  stronger Vue/API checks and bounded cross-platform test workers make the
+  expanded platform easier to validate and maintain.
+- **Release assurance:** source checks, isolated installation/recovery tests,
+  published-image health checks and native AMD64/ARM64 routing receipts are tied
+  to the release source and image digest. Public evidence accompanies the notes;
+  image `latest` promotion waits for verified publication and consumer checks.
+
+### Important limits
+
+- Supported ingestion and recovery cover **movies and TV**, not music. Unreleased
+  music intake has been removed, and unsupported work is skipped.
+- The compatibility fence rejects writes from unmodified older Classifarr
+  versions; it is **not** isolation from a database superuser deliberately
+  bypassing safeguards. Stronger OS/database privilege separation and automatic
+  protected-identity conversion remain separate, gated work.
+- Recovery never silently regenerates encryption keys, bypasses migration
+  checks, changes your policy, or authorizes a media-routing decision.
+- Background backfill is not instantaneous, and provider availability, quotas
+  and hardware still matter. Synthetic tests do not prove live-model accuracy,
+  long-term absence of leaks, or compatibility with every historical setup.
+- GHCR and Docker Hub aliases cannot update atomically. A partial promotion
+  remains a reported failure rather than an unverified success.
+
+### Full change record
+
+The [system-level changelog](https://github.com/cloudbyday90/Classifarr/blob/v0.49.0-beta/CHANGELOG.md)
+covers every changed component. The [preserved development record](https://github.com/cloudbyday90/Classifarr/blob/v0.49.0-beta/docs/changelog/CHANGELOG-2026-10-pre-release.md)
+retains the detailed history, intermediate designs and PR references. See the
+[release runbook](https://github.com/cloudbyday90/Classifarr/blob/v0.49.0-beta/.agent/workflows/release.md)
+for the verification and publication procedure.
+
+---
 
 ## v0.48.4-beta
 **Title: Safer local AI verification with clearer Ollama guidance**

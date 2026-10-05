@@ -3,14 +3,16 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.48.4--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.49.0--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
 Classifarr supports movies and TV shows. Library-agnostic learning means discovering what belongs in your movie and TV libraries from their contents, without depending on predefined library names or categories. Music libraries and audio items are ignored based on their source media type.
 
-**Source version:** `v0.48.4-beta`. It becomes a public release only after its tag pipeline succeeds; until then, use the latest published release shown in GitHub Releases. Package files use the semver-safe form `0.48.4-beta`, while the UI, release notes, and Git tags use `v0.48.4-beta`. Docker Hub reports **20,000+ pulls** for `cloudbyday90/classifarr` as of 2026-08-29. This beta line is positioned as stable and production-capable for self-hosted media library operators, with the Policy Builder Intent Model as its central routing experience.
+**Source version:** `v0.49.0-beta`. It becomes a public release only after its tag pipeline succeeds; until then, use the latest published release shown in GitHub Releases. Package files use `0.49.0-beta`, while the UI, release notes, and Git tags use `v0.49.0-beta`. This beta brings safer movie/TV library recovery, richer learned context and policy review, and more dependable routing and operations. Read the upgrade guidance in [RELEASE_NOTES.md](RELEASE_NOTES.md) before updating an existing installation.
+
+**20,421 Docker Hub pulls** as of 2026-10-05 ([repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)). This counts image pulls, not unique installations, and does not include GHCR.
 
 ## Why Classifarr
 

@@ -9,15 +9,17 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+## [v0.49.0-beta] - 2026-10-05
+
 **TL;DR:** Safer movie/TV imports and recovery, richer library learning and
 classification review, and more reliable routing, notifications and restores.
 The runtime, user interface, security controls and release checks have also
 been modernized.
 
-This is a system-level summary of the current unreleased changes. The
+This is a system-level summary of the changes since v0.48.4-beta. The
 [complete development record](docs/changelog/CHANGELOG-2026-10-pre-release.md)
 preserves every original entry, including intermediate designs and PR references.
-No release or version change is part of this consolidation.
+The development record was consolidated on 2026-10-05 without rewriting it.
 
 ### Added
 
@@ -107,7 +109,8 @@ No release or version change is part of this consolidation.
   schema replay, crash/restore/routing recovery and resource limits on isolated
   images. Release evidence is bound to source and image digest, with native
   architecture checks; GHCR/Docker Hub `latest` promotion waits for verified
-  publication. Local tests and synthetic studies are not release approval.
+  publication. Published notes include the reviewed release narrative alongside
+  verification evidence. Local tests and synthetic studies are not release approval.
 
 ### Removed
 
@@ -145,6 +148,8 @@ No release or version change is part of this consolidation.
   exports and recovery actions to current administrators. Bound diagnostics,
   retention and aggregate reports; sensitive library evidence stays limited to
   trusted local AI endpoints, with aggregate-only context for other providers.
+  Unexpected production server errors hide internal messages, and unknown API
+  paths return a generic JSON 404 instead of falling through to the UI.
 - **Network and supply-chain hardening** — Enforce response-size/deadline limits,
   cancellation and vector validation; retain TLS verification by default.
   Update vulnerable runtime/tooling dependencies and pgvector to 0.8.7

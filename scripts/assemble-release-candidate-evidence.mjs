@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import process from 'node:process';
 import { resolve } from 'node:path';
 import { routingWorkflowIdentity } from './lib/publishedRoutingReceipt.mjs';
+import { buildReleasePublicationNotes } from './lib/releasePublicationNotes.mjs';
 
 import {
   RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS,
@@ -111,7 +112,18 @@ export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), no
     sourceRevision: options['--source-revision'],
     tag: options['--tag'],
   });
-  const notes = buildReleaseCandidateNotes(evidence);
+  // The workflow checks out the approved tag. Fail before writing artifacts if
+  // its reviewed release notes are absent, empty or for another version.
+  const notesFile = resolve(cwd, 'RELEASE_NOTES.md');
+  const notesStat = fs.statSync(notesFile);
+  if (!notesStat.isFile() || notesStat.size > 2 * 1024 * 1024) {
+    throw new Error('release_notes_invalid');
+  }
+  const notes = buildReleasePublicationNotes({
+    releaseNotes: fs.readFileSync(notesFile, 'utf8'),
+    tag: evidence.tag,
+    evidenceNotes: buildReleaseCandidateNotes(evidence),
+  });
   const outputPaths = createReleaseCandidateOutputPaths({ cwd, tag: evidence.tag });
   fs.mkdirSync(resolve(cwd, '.tmp', 'release-candidate'), { recursive: true, mode: 0o700 });
   // The tag is validated before paths are constructed; evidence has no secrets or runtime configuration.

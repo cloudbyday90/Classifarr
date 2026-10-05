@@ -116,6 +116,46 @@ describe('errorHandler middleware', () => {
         expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
+    test.each([
+        [500, 'statusCode'], [502, 'statusCode'], [503, 'status'],
+        [504, 'httpStatus'], [599, 'statusCode'],
+    ])('sanitizes unexpected production %i errors selected by %s', async (status, field) => {
+        process.env.NODE_ENV = 'production';
+        const error = new Error('private upstream address and credential detail');
+        error[field] = status;
+        error.code = 'PRIVATE_UPSTREAM_CODE';
+        error.toJSON = jest.fn(() => ({ error: 'private serialized detail' }));
+        const app = express();
+        app.get('/unexpected', (_req, _res, next) => next(error));
+        app.use(errorHandler);
+
+        const response = await request(app).get('/unexpected');
+
+        expect(response.status).toBe(status);
+        expect(response.body).toEqual({
+            error: 'Internal Server Error',
+            message: 'Internal Server Error',
+            errorId: 'error-id-123',
+        });
+        expect(error.toJSON).not.toHaveBeenCalled();
+        expect(mockLogger.error).toHaveBeenCalledWith(error.message, expect.any(Object),
+            expect.objectContaining({ error }));
+    });
+
+    test('retains unexpected non-500 diagnostics in development', async () => {
+        process.env.NODE_ENV = 'development';
+        const error = Object.assign(new Error('local debugging detail'), { status: 502 });
+        const app = express();
+        app.get('/unexpected', (_req, _res, next) => next(error));
+        app.use(errorHandler);
+
+        const response = await request(app).get('/unexpected');
+
+        expect(response.status).toBe(502);
+        expect(response.body).toEqual({ error: error.message, message: error.message,
+            errorId: 'error-id-123', stack: error.stack });
+    });
+
     test('returns a bounded retryable response for database statement timeouts', async () => {
         const timeoutError = new Error('canceling statement due to statement timeout');
         timeoutError.code = '57014';

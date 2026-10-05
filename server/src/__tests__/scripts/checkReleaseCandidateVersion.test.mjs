@@ -18,17 +18,18 @@
 
 import { resolve } from 'node:path';
 
-import { checkReleaseCandidateVersion } from '../../../../scripts/check-release-candidate-version.mjs';
+import { checkReleaseCandidateVersion, derivePackageVersionFromReleaseTag } from '../../../../scripts/check-release-candidate-version.mjs';
+import { APP_DISPLAY_VERSION } from '../../../../client/src/constants/appVersion.js';
 
 const REPOSITORY_ROOT = resolve(import.meta.dirname, '../../../..');
 
 describe('checkReleaseCandidateVersion', () => {
-  test('accepts the prepared v0.48.4-beta package, lockfile, display, and public documentation surfaces', () => {
+  test('keeps package, lockfile and public documentation aligned with the displayed version', () => {
     expect(checkReleaseCandidateVersion({
       cwd: REPOSITORY_ROOT,
-      tag: 'v0.48.4-beta',
+      tag: APP_DISPLAY_VERSION,
     })).toEqual({
-      expectedPackageVersion: '0.48.4-beta',
+      expectedPackageVersion: derivePackageVersionFromReleaseTag(APP_DISPLAY_VERSION),
       issues: [],
       ok: true,
     });

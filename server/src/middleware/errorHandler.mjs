@@ -113,7 +113,9 @@ async function errorHandler(err, req, res, _next) {
     }
   );
 
-  const publicError = statusCode === 500 ? 'Internal Server Error' : err.message;
+  const publicError = (statusCode === 500 || (statusCode >= 500 && isProduction))
+    ? 'Internal Server Error'
+    : err.message;
   const publicMessage = (statusCode >= 500 && isProduction)
     ? 'Internal Server Error'
     : err.message;

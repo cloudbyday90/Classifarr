@@ -36,6 +36,13 @@ describe('createApp', () => {
   const originalSecurityHeadersStrict = process.env.SECURITY_HEADERS_STRICT;
   const originalEnforceHttpsHeaders = process.env.ENFORCE_HTTPS_HEADERS;
 
+  const buildTestApp = () => createApp({
+    database, runtimeSettings, port: 21324, apiRouter, authRouter, setupRouter,
+    systemRouter, userRouter, swaggerUi, ensureCsrfCookie, csrfProtection,
+    generateSwaggerSpec, evaluateCorsOrigin,
+    accessLogMiddleware: (_req, _res, next) => next(),
+  });
+
   beforeEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     if (originalSecurityHeadersStrict === undefined) {
@@ -123,6 +130,54 @@ describe('createApp', () => {
     expect(response.headers['x-test-csrf-cookie']).toBe('1');
     expect(ensureCsrfCookie).toHaveBeenCalled();
     expect(csrfProtection).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['get', '/api/unknown'], ['post', '/api/unknown'], ['put', '/api/unknown'],
+    ['patch', '/api/unknown'], ['delete', '/api/unknown'], ['get', '/API/unknown'],
+    ['get', '/api/unknown/?private=value'], ['get', '/api/%2funknown'],
+    ['get', '/api//unknown'],
+  ])('returns a generic JSON 404 for unknown %s %s', async (method, pathname) => {
+    process.env.NODE_ENV = 'production';
+    const response = await request(await buildTestApp())[method](pathname);
+
+    expect(response.status).toBe(404);
+    expect(response.type).toBe('application/json');
+    expect(response.body).toEqual({ error: 'Not Found' });
+    expect(response.text).not.toContain('unknown');
+    expect(response.text).not.toContain('private');
+  });
+
+  it('keeps HEAD bodyless and leaves CORS OPTIONS handling intact', async () => {
+    const app = await buildTestApp();
+    const head = await request(app).head('/api/unknown');
+    expect(head.status).toBe(404);
+    expect(head.type).toBe('application/json');
+    expect(head.text).toBeUndefined();
+    const options = await request(app).options('/api/unknown')
+      .set('Origin', 'http://localhost:3000').set('Access-Control-Request-Method', 'POST');
+    expect(options.status).toBe(204);
+  });
+
+  it('preserves registered API, documentation, health and authorization responses', async () => {
+    apiRouter.get('/', (_req, res) => res.json({ name: 'Classifarr API' }));
+    apiRouter.use('/protected', (_req, res) => res.status(401).json({ error: 'Authentication required' }));
+    const app = await buildTestApp();
+    expect((await request(app).get('/api')).body).toEqual({ name: 'Classifarr API' });
+    expect((await request(app).get('/api/ping')).body).toEqual({ ok: true });
+    expect((await request(app).get('/api/docs')).body).toEqual({ docs: true });
+    expect((await request(app).get('/health')).status).toBe(200);
+    expect((await request(app).get('/api/protected/unknown')).status).toBe(401);
+  });
+
+  it('preserves CSRF and malformed JSON rejection before API fallthrough', async () => {
+    csrfProtection = jest.fn((req, res, next) => req.cookies.access_token
+      ? res.status(403).json({ error: 'CSRF validation failed' }) : next());
+    const app = await buildTestApp();
+    const csrf = await request(app).post('/api/unknown').set('Cookie', 'access_token=synthetic');
+    expect(csrf.status).toBe(403);
+    expect(csrf.body).toEqual({ error: 'CSRF validation failed' });
+    expect((await request(app).post('/api/unknown').set('Content-Type', 'application/json').send('{')).status).toBe(400);
   });
 
   it('uses the injected database for the health check route', async () => {

@@ -225,6 +225,7 @@ describe('releaseCandidateEvidence', () => {
     fs.writeFileSync(providerFaultReceiptPath, JSON.stringify(createProviderFaultReceipt()));
     fs.writeFileSync(join(cwd, 'amd64.json'), JSON.stringify(receipt()));
     fs.writeFileSync(join(cwd, 'arm64.json'), JSON.stringify(receipt('linux/arm64')));
+    fs.writeFileSync(join(cwd, 'RELEASE_NOTES.md'), `# Release Notes\n\n## ${TAG}\n\nReviewed upgrade guidance.\n\n## v0.47.5-beta\n\nOlder prose.`);
 
     try {
       const result = assembleReleaseCandidateEvidence([
@@ -247,6 +248,21 @@ describe('releaseCandidateEvidence', () => {
       expect(JSON.parse(fs.readFileSync(result.outputPaths.evidencePath, 'utf8')))
         .toEqual(result.evidence);
       expect(fs.readFileSync(result.outputPaths.notesPath, 'utf8')).toContain(`# Classifarr ${TAG}`);
+      expect(fs.readFileSync(result.outputPaths.notesPath, 'utf8')).toContain('Reviewed upgrade guidance.');
+      expect(fs.readFileSync(result.outputPaths.notesPath, 'utf8')).toContain('## Release evidence');
+      expect(fs.readFileSync(result.outputPaths.notesPath, 'utf8')).not.toContain('Older prose.');
+
+      fs.rmSync(result.outputPaths.notesPath);
+      fs.rmSync(result.outputPaths.evidencePath);
+      fs.writeFileSync(join(cwd, 'RELEASE_NOTES.md'), '## v9.9.9\nWrong version.');
+      expect(() => assembleReleaseCandidateEvidence([
+        '--tag', TAG, '--source-revision', SOURCE_REVISION, '--digest', DIGEST,
+        '--ci-readout', 'ci-readout.json', '--consumer-smoke', 'consumer-smoke.json',
+        '--provider-fault-receipt', 'provider-fault-receipt.json',
+        '--routing-amd64', 'amd64.json', '--routing-arm64', 'arm64.json',
+      ], { cwd, env: ENV, now: () => new Date(GENERATED_AT) })).toThrow('release_notes_version_mismatch');
+      expect(fs.existsSync(result.outputPaths.evidencePath)).toBe(false);
+      expect(fs.existsSync(result.outputPaths.notesPath)).toBe(false);
     } finally {
       fs.rmSync(cwd, { force: true, recursive: true });
     }

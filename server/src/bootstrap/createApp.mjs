@@ -202,6 +202,7 @@ export async function createApp({
   app.use('/api/system', systemRouter);
   app.use('/api', apiRouter);
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use('/api', (_req, res) => res.status(404).json({ error: 'Not Found' }));
 
   registerHealthRoute(app, database);
 

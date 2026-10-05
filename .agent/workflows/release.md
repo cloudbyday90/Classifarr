@@ -82,6 +82,24 @@ mapping in `scripts/lib/releaseCandidateVersion.mjs`; do not invent another.
 Refresh lockfile metadata with `npm install --package-lock-only --ignore-scripts`
 in each package and review the diff for unintended dependency changes.
 
+### Refresh the release's download milestone
+
+For every release, check the live Docker Hub repository statistics at
+<https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/>. Confirm the
+response identifies `cloudbyday90/classifarr` and has a non-negative integer
+`pull_count`; do not use a cached search snippet or the previous release's count.
+
+- Include the verified count, observation date and source link in both the
+  README and the new `RELEASE_NOTES.md` entry before freezing the candidate.
+- Label it **Docker Hub image pulls**, not users, downloads by unique people or
+  installations. State that it excludes GHCR; do not infer a combined total.
+- Record the exact observation time/count in the release outcome. Do not claim
+  a growth percentage unless both dated counts and the comparison are verified.
+- If the live count cannot be verified, record that gap and omit a new milestone
+  claim rather than inventing a value or presenting an old figure as current.
+
+### Validate the public version and notes
+
 Validate the selected tag using the direct ESM command, which avoids npm flag
 forwarding differences on Windows:
 
@@ -89,8 +107,14 @@ forwarding differences on Windows:
 node scripts/check-release-candidate-version.mjs --tag vX.Y.Z-beta
 ```
 
-Keep release notes short: user-visible changes, required action, known limits,
-and a changelog link. Include charts or percentages only when measured, with a
+Keep release notes readable: user-visible changes, required action, known limits,
+and a changelog link. Substantial releases need enough detail to explain every
+changed system without repeating development chronology. The publication
+assembler includes the first matching-version section of `RELEASE_NOTES.md`
+before its generated evidence; it rejects missing, empty or mismatched notes.
+Use third-level headings inside that release section and links that also work
+from GitHub Releases. Review the assembled body before freezing the candidate.
+Include charts or percentages only when measured, with a
 denominator and evidence. Do not invent reliability or speed scores. Compose's
 documented `latest` update channel is separate from the source-version marker;
 do not automatically replace every image reference during a version bump.
