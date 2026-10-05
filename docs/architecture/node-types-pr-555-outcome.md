@@ -9,6 +9,7 @@ without fetching or merging a branch. The existing runtime-baseline test passed
 failure, not evidence that every application API breaks at runtime.
 
 Removed only that trial diff; the unchanged baseline test then passed 8/8 again.
+The complete dependency/tooling test set then passed all 30 tests.
 No packages were installed, install scripts executed,
 security overrides relaxed or runtime versions changed. The PR remains open and
 unmerged; its update is not retained in the final tree. Full install, audit,
