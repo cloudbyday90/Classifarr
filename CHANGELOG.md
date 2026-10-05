@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Record the original offline database identity durably before migration copying.
+  Reject missing provenance, changed sources and selected-candidate overwrite;
+  verify resumable copy integrity while preserving the original database.
 - Add a production-code verifier for converted PostgreSQL candidates and a
   bounded, clean-environment bootstrap handoff. Reject unsafe policy, cluster
   identity and runtime privileges before selection; automatic conversion remains

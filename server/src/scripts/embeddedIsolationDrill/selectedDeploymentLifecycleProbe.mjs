@@ -53,7 +53,7 @@ export async function verifySelectedDeploymentLifecycle() {
   });
   for (const mode of ['normal', 'restore', 'normal']) {
     await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
-      const { binding } = await prepareIdentityMigration();
+      const { binding } = await prepareIdentityMigration({ journal });
       const processRef = new EventEmitter(), events = [];
       let application, completed = false, exerciseFailure;
       const launched = start => options => { application = start(options); return application; };

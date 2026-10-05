@@ -34,7 +34,7 @@ async function checkedFile(path, flags) {
   }
 }
 
-// Private factory: only the two fixed basenames below are admitted by composition.
+// Private factory: only the three fixed basenames below are admitted by composition.
 function receiptStore(directory, basename) {
   const destination = join(directory, `${basename}.json`);
   return {
@@ -70,6 +70,7 @@ export async function withEmbeddedMigrationJournal(directory, callback) {
       stdio: ['ignore', 'ignore', 'ignore', lock.fd], env: {}, timeout: 5000, shell: false,
     });
     if (result.error || result.status !== 0) throw new Error('migration_lock_unavailable');
-    return await callback({ ...receiptStore(directory, 'migration'), selection: receiptStore(directory, 'selection') });
+    return await callback({ ...receiptStore(directory, 'migration'), selection: receiptStore(directory, 'selection'),
+      source: receiptStore(directory, 'source') });
   } finally { await lock.close(); }
 }

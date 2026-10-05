@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { readFile, lstat, rm, writeFile, chown, chmod, open, statfs } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
-import { inspectMigrationTree, digestMigrationTree, copyMigrationTree, ownMigrationTree } from '../../bootstrap/embeddedMigrationTree.mjs';
+import { lstat, writeFile, chown, chmod, open } from 'node:fs/promises';
+import { inspectMigrationTree, copyMigrationTree, ownMigrationTree } from '../../bootstrap/embeddedMigrationTree.mjs';
+import { prepareOfflineMigrationCopy } from '../../bootstrap/offlineMigrationCopy.mjs';
 import { assertProtectedMigrationDirectory } from '../../bootstrap/embeddedMigrationJournal.mjs';
 import { assertDrillEnvironment } from './contract.mjs';
 import { SOURCE, CANDIDATE, MIGRATION_ROOT, MIGRATION_SOCKET, databaseIdentity,
@@ -16,18 +16,20 @@ const control = async (path, user) => (await migrationCommand(user, 'pg_controld
 const systemId = text => text.match(/Database system identifier:\s+(\d+)/)?.[1];
 const clean = text => assert.match(text, /Database cluster state:\s+shut down\s*\n/);
 
-export async function prepareIdentityMigration({ checkpoint = async () => {} } = {}) {
+export async function prepareIdentityMigration({ journal, checkpoint = async () => {}, partialCopy = false }) {
   assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
   await assertProtectedMigrationDirectory(MIGRATION_ROOT);
   const identity = await databaseIdentity();
-  const originalControl = await control(SOURCE, 'classifarr');
-  clean(originalControl);
-  assert(await absent(`${SOURCE}/postmaster.pid`), 'legacy_database_not_stopped');
-  assert.equal((await readFile('/identity-migration/source/PG_VERSION', 'utf8')).trim(), '18');
-  const tree = await inspectMigrationTree(SOURCE);
-  const digest = await digestMigrationTree(SOURCE, tree);
-  const binding = createHash('sha256').update(JSON.stringify({ contract: 1, systemId: systemId(originalControl),
-    digest, identity, source: SOURCE, candidate: CANDIDATE })).digest('hex');
+  const original = await prepareOfflineMigrationCopy({ journal, source: SOURCE, candidate: CANDIDATE,
+    ...(partialCopy ? { copy: async (source, candidate, tree, options) => {
+      // Actual durable partial tree, then real process death. Never normal behavior.
+      await copyMigrationTree(source, candidate, { ...tree, entries: tree.entries.slice(0, 2) }, options);
+      await checkpoint('partial-copy');
+      throw new Error('partial_copy_fixture_not_interrupted');
+    } } : {}),
+  });
+  await checkpoint('source-recorded');
+  const { binding } = original;
   const stopCandidate = async () => {
     if (!(await absent(`${CANDIDATE}/postmaster.pid`))) await candidateStop();
   };
@@ -39,7 +41,7 @@ export async function prepareIdentityMigration({ checkpoint = async () => {} } =
       await migrationCommand('classifarr', 'node', ['src/scripts/embeddedIsolationDrill/identityMigrationRuntimeProbe.mjs']);
     } finally { await candidateStop(); }
     clean(await control(CANDIDATE, 'postgres'));
-    assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), digest);
+    await original.verifySource();
   };
   return { binding, steps: {
     prepare: async receipt => {
@@ -47,20 +49,11 @@ export async function prepareIdentityMigration({ checkpoint = async () => {} } =
       if (!(await absent(CANDIDATE))) {
         // Do not follow a substituted candidate even to stop it.
         await inspectMigrationTree(CANDIDATE);
-        if (receipt.completed > 0) assert.equal(systemId(await control(CANDIDATE, 'root')), systemId(originalControl));
+        if (receipt.completed > 0) assert.equal(systemId(await control(CANDIDATE, 'root')), original.record.systemId);
         await stopCandidate();
       }
     },
-    copy: async () => {
-      const space = await statfs(MIGRATION_ROOT);
-      assert(space.bavail * space.bsize >= tree.bytes * 1.1, 'migration_space_insufficient');
-      // Only this unpublished, journal-registered fixed candidate is replaced on copy retry.
-      // The checked root-owned parent cannot be changed by either runtime identity.
-      await rm(CANDIDATE, { recursive: true, force: true });
-      await copyMigrationTree(SOURCE, CANDIDATE, tree);
-      assert.equal(await digestMigrationTree(CANDIDATE, await inspectMigrationTree(CANDIDATE)), digest);
-      assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), digest);
-    },
+    copy: original.copy,
     ownership: async () => {
       await ownMigrationTree(CANDIDATE, await inspectMigrationTree(CANDIDATE), identity.uid, identity.gid);
       await chown('/app/data/embedded-postgres/socket', identity.uid, identity.gid);

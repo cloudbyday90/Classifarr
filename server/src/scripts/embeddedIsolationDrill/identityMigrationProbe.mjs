@@ -13,6 +13,7 @@ import { verifySelectedDeploymentLifecycle } from './selectedDeploymentLifecycle
 import { verifyApplicationLayout } from './applicationLayoutProbe.mjs';
 import { verifySelectedMaintenance } from './identityMaintenanceProbe.mjs';
 import { seedSelectedConfigurationCipher } from './selectedConfigurationProbe.mjs';
+import { verifyOfflineSourceFailures } from './offlineSourceProbe.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assert.equal(process.argv.length, 2);
@@ -86,12 +87,15 @@ async function worker(fault, selection = false) {
 }
 
 // Each run resumes the prior incomplete phase; the source is never repurposed.
+await worker('source-recorded'); // No phase intent/candidate yet; the original identity survives process death.
+await worker('partial-copy'); // Only the registered partial candidate may be replaced on the next attempt.
 for (const phase of ['copy', 'ownership', 'authentication']) await worker(`applied:${phase}`);
 await worker('database-started'); // PostgreSQL survives Node; resume must stop the registered candidate.
 await worker('applied:roles');
 await worker('applied:verification');
 await worker();
 await worker(); // Completed receipt is revalidated, not blindly trusted.
+await verifyOfflineSourceFailures();
 assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), originalDigest);
 assert.equal((await lstat('/identity-migration/source')).uid, 1000);
 assert.equal((await lstat('/app/data/embedded-postgres/pg_hba.conf')).uid, 0);

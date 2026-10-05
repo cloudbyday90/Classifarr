@@ -19,7 +19,7 @@ const checkpoint = async phase => {
   await new Promise(() => { setInterval(() => {}, 1000); });
 };
 await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
-  const { binding, steps } = await prepareIdentityMigration();
+  const { binding, steps } = await prepareIdentityMigration({ journal });
   const result = await selectEmbeddedMigration({ journal, binding, checkpoint, verify: async () => {
     await steps.prepare(validateMigrationReceipt(await journal.read(), binding));
     await steps.verification();

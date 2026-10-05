@@ -38,10 +38,12 @@ export async function inspectMigrationTree(root, { maxEntries = 50000, maxBytes 
   return { entries, bytes };
 }
 
-export async function digestMigrationTree(root, tree) {
+export async function digestMigrationTree(root, tree, { signal } = {}) {
+  signal?.throwIfAborted();
   const hash = createHash('sha256');
   const buffer = Buffer.alloc(1024 * 1024);
   for (const entry of tree.entries) {
+    signal?.throwIfAborted();
     hash.update(JSON.stringify([entry.relative, entry.directory]));
     if (entry.directory) continue;
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- validated regular-file entry, never follow a replaced symlink
@@ -52,7 +54,9 @@ export async function digestMigrationTree(root, tree) {
       const content = createHash('sha256');
       let consumed = 0;
       for (;;) {
+        signal?.throwIfAborted();
         const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
+        signal?.throwIfAborted();
         if (!bytesRead) break;
         consumed += bytesRead;
         if (consumed > stat.size) throw new Error('migration_tree_changed');
@@ -65,8 +69,10 @@ export async function digestMigrationTree(root, tree) {
   return hash.digest('hex');
 }
 
-export async function copyMigrationTree(source, target, tree) {
+export async function copyMigrationTree(source, target, tree, { signal } = {}) {
+  signal?.throwIfAborted();
   for (const entry of tree.entries) {
+    signal?.throwIfAborted();
     const destination = join(target, entry.relative);
     if (entry.directory) {
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- new protected candidate, exclusive caller lease
@@ -74,16 +80,19 @@ export async function copyMigrationTree(source, target, tree) {
     } else {
       // Preflighted cold regular-file tree; never overwrite candidate files.
       await copyFile(join(source, entry.relative), destination, constants.COPYFILE_EXCL);
+      signal?.throwIfAborted();
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- fsync copied candidate before durable receipt
       const file = await open(destination, constants.O_RDONLY | constants.O_NOFOLLOW);
       try { await file.sync(); } finally { await file.close(); }
     }
   }
   for (const entry of tree.entries.filter(entry => entry.directory).reverse()) {
+    signal?.throwIfAborted();
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- fsync the copied directories bottom-up
     const file = await open(join(target, entry.relative), constants.O_RDONLY);
     try { await file.sync(); } finally { await file.close(); }
   }
+  signal?.throwIfAborted();
 }
 
 export async function ownMigrationTree(root, tree, uid, gid) {

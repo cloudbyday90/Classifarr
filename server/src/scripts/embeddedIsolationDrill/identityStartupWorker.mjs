@@ -26,7 +26,7 @@ const cancelStartup = process.argv[2] === '--cancel-start';
 const restore = process.argv[2] === '--restore';
 const custom = process.argv[2]?.startsWith('--custom-');
 await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
-  const { binding, steps } = await prepareIdentityMigration();
+  const { binding, steps } = await prepareIdentityMigration({ journal });
   const identities = requireSeparatedEmbeddedAccounts(readEmbeddedAccounts(await readFile('/etc/passwd', 'utf8'), await readFile('/etc/group', 'utf8')));
   const password = randomBytes(32).toString('hex');
   const request = restore ? Buffer.from(JSON.stringify({ version: 1, mode: 'merge', password,

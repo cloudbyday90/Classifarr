@@ -34,6 +34,13 @@ test('rejects root files and hard-linked files', async () => {
   await link(join(source, 'PG_VERSION'), join(source, 'linked'));
   await expect(inspectMigrationTree(source)).rejects.toThrow('migration_tree_unsupported');
 });
+test('cancelled hashing/copying has no candidate effects and preserves source', async () => {
+  const tree = await inspectMigrationTree(source), signal = AbortSignal.abort();
+  await expect(digestMigrationTree(source, tree, { signal })).rejects.toThrow();
+  await expect(copyMigrationTree(source, join(root, 'cancelled'), tree, { signal })).rejects.toThrow();
+  await expect(readFile(join(root, 'cancelled', 'PG_VERSION'))).rejects.toMatchObject({ code: 'ENOENT' });
+  expect(await readFile(join(source, 'PG_VERSION'), 'utf8')).toBe('18\n');
+});
 // Directory fsync is a Linux deployment operation. Ubuntu CI runs this case;
 // Windows validation must also run it in Linux, not remove the fsync requirement.
 (process.platform === 'linux' ? test : test.skip)('Linux directory fsync: copy is complete, exclusive and leaves source unchanged', async () => {

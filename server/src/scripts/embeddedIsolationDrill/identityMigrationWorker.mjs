@@ -11,7 +11,7 @@ assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process
 assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
 assert(process.argv.length === 2 || process.argv.length === 3);
 const fault = process.argv[2];
-assert(fault === undefined || [...MIGRATION_PHASES.map(phase => `applied:${phase}`), 'database-started'].includes(fault));
+assert(fault === undefined || [...MIGRATION_PHASES.map(phase => `applied:${phase}`), 'database-started', 'source-recorded', 'partial-copy'].includes(fault));
 const checkpoint = async phase => {
   if (phase !== fault) return;
   process.stdout.write('migration-fault-ready\n');
@@ -19,7 +19,7 @@ const checkpoint = async phase => {
   await new Promise(() => { setInterval(() => {}, 1000); });
 };
 await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
-  const { binding, steps } = await prepareIdentityMigration({ checkpoint });
+  const { binding, steps } = await prepareIdentityMigration({ journal, checkpoint, partialCopy: fault === 'partial-copy' });
   const result = await runEmbeddedMigrationPhases({ journal, binding, steps, checkpoint });
   process.stdout.write(`${JSON.stringify(result)}\n`);
 });
