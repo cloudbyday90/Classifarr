@@ -4,6 +4,7 @@ import { createCipheriv, randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { migrationCommand, migrationSql } from './identityMigrationDatabase.mjs';
 import { boundedJson } from './httpRoutingTransport.mjs';
+import { SELECTED_TUNING_FIXTURE, verifySelectedTuningProcess } from './selectedTuningProbe.mjs';
 
 const originalKey = '/app/data/secrets/api_key_encryption_key';
 const customKey = '/app/data/secrets/selected-key';
@@ -39,7 +40,8 @@ export async function prepareSelectedConfigurationProfile(mode) {
   `]);
   const before = await snapshot();
   return {
-    configuration: { API_KEY_ENCRYPTION_KEY_FILE: mode === 'file' ? customKey : '/app/data/secrets/absent-selected-key',
+    configuration: { ...SELECTED_TUNING_FIXTURE,
+      API_KEY_ENCRYPTION_KEY_FILE: mode === 'file' ? customKey : '/app/data/secrets/absent-selected-key',
       ...(mode === 'environment' ? { API_KEY_ENCRYPTION_KEY: before[0].toString('utf8').trim() } : {}),
       RUNTIME_SETTINGS_FILE: settingsPath, LOG_DIR: '/app/data/logs/selected', BACKUP_DIR: '/app/data/backups/selected',
       LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'true', FORCE_SECURE_COOKIES: 'false',
@@ -72,6 +74,7 @@ export async function verifySelectedConfigurationHttp(session, { custom = false,
   assert.equal(response.status, 200);
   assert.equal((await boundedJson(response.body)).key, syntheticApiKey, 'legacy_ciphertext_not_preserved');
   if (custom) {
+    await verifySelectedTuningProcess();
     assert(cookies.some(cookie => cookie.startsWith('access_token=') && /; Secure(;|$)/.test(cookie)), 'runtime_json_cookie_setting_ignored');
     const cors = await fetch('http://127.0.0.1:21324/api/auth/me', {
       headers: { ...session, origin: 'https://selected.example' }, redirect: 'error', signal: AbortSignal.timeout(5000),

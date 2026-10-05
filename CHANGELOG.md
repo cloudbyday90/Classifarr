@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve reviewed retention, provider retry, vector recall and database-pool
+  tuning in protected startup, including disabled cleanup settings. Reject unsafe
+  values and track documented deployment settings separately from application
+  configuration; existing Compose/Unraid startup remains unchanged.
 - Preserve existing encryption keys and reviewed custom settings/paths in protected
   application startup. Refuse unsafe or corrupt configuration before services
   start, without regenerating keys or changing legacy deployment permissions.

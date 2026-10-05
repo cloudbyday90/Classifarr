@@ -31,6 +31,6 @@ export async function verifySelectedApplication(application, identity, { custom 
   // Actual normal runtime admission, not a synthetic SQL lock, excludes maintenance.
   assert.deepEqual(await startSelectedMaintenance({ operation: 'schema', identity }).done, { code: 75, signal: null });
   const rows = (await migrationSql("SELECT count(*) FROM pg_stat_activity WHERE datname='classifarr' AND usename='cf_runtime'")).stdout.trim();
-  assert(Number(rows) > 0 && Number(rows) <= 5, 'selected_runtime_pool_not_bounded');
+  assert(Number(rows) > 0 && Number(rows) <= (custom ? 4 : 5), 'selected_runtime_pool_not_bounded');
   assert.equal((await migrationSql("SELECT count(*) FROM error_log WHERE level='ERROR'")).stdout.trim(), '0', 'selected_runtime_startup_errors');
 }

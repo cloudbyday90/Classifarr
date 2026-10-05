@@ -2,6 +2,13 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+The subsequent operator-tuning batch at base
+`d540b4e4e84d9be485b7822bc6384c2ecd9492e3` independently enumerated open PRs
+555/556 and randomly selected 556 again. MCP confirmed it remained open and
+unmerged at the same head. Registry metadata and the exact applied two-file
+diff were unchanged: 8/8 baseline tests, 7/8 candidate tests (Node-major failure).
+The trial was removed before installation; no PR merge or dependency upgrade.
+
 Rechecked during the selected-configuration batch at base
 `df6fd77db323cfc96141b46b36d0063ea5cc6d09`: a fresh random draw from the two
 currently open PRs again selected 556 at the same immutable head. Registry

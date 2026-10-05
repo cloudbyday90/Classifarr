@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { posix } from 'node:path';
+import { SELECTED_TUNING_RULES, validSelectedTuning, validSelectedTuningRelationships } from './selectedTuningConfiguration.mjs';
 
 const encryptionKeyPath = '/app/data/secrets/api_key_encryption_key';
 export const SELECTED_APPLICATION_DEFAULTS = Object.freeze({
@@ -10,12 +11,15 @@ export const SELECTED_APPLICATION_DEFAULTS = Object.freeze({
 });
 const paths = new Set(['API_KEY_ENCRYPTION_KEY_FILE', 'RUNTIME_SETTINGS_FILE', 'LOG_DIR', 'BACKUP_DIR']);
 const booleans = new Set(['FILE_LOGGING_ENABLED', 'FORCE_SECURE_COOKIES', 'CSRF_PROTECTION',
-  'SECURITY_HEADERS_STRICT', 'ENFORCE_HTTPS_HEADERS']);
+  'SECURITY_HEADERS_STRICT', 'ENFORCE_HTTPS_HEADERS', 'REFRESH_TOKEN_CLEANUP_ENABLED',
+  'POLICY_INTENT_REPLAY_TMDB_METADATA_LIVE_PREVIEW_ENABLED']);
 const integers = new Set(['OMDB_REQUEST_TIMEOUT_MS', 'OMDB_MAX_REQUEST_TIMEOUT_MS', 'OMDB_MAX_RETRIES',
   'OMDB_SSL_WARN_THROTTLE_MS', 'OMDB_SSL_BLOCK_MS', 'LOG_MAX_FILE_SIZE', 'LOG_MAX_FILES',
   'LOG_MAX_AGE_DAYS', 'LOG_MAX_TOTAL_SIZE']);
 const keys = new Set([...Object.keys(SELECTED_APPLICATION_DEFAULTS), ...booleans, ...integers,
+  ...Object.keys(SELECTED_TUNING_RULES), 'PGVECTOR_HNSW_ITERATIVE_SCAN',
   'API_KEY_ENCRYPTION_KEY', 'CORS_ORIGIN', 'OMDB_RETRY_TIMEOUT_MULTIPLIER', 'LOG_COMPRESS']);
+export const isSelectedApplicationSetting = key => keys.has(key);
 const invalid = () => new Error('selected_application_configuration_invalid');
 export const validSelectedKey = value => typeof value === 'string' && /^[a-fA-F0-9]{64}$/.test(value);
 
@@ -34,6 +38,8 @@ export function selectedApplicationConfiguration(input = {}) {
   for (const [key, value] of Object.entries(input)) {
     if (!keys.has(key) || typeof value !== 'string' || value.length > 4096 || /[\x00-\x1f\x7f]/.test(value)) throw invalid();
     if (paths.has(key)) assertSelectedConfigurationPath(value);
+    else if (Object.hasOwn(SELECTED_TUNING_RULES, key)) { if (!validSelectedTuning(key, value)) throw invalid(); }
+    else if (key === 'PGVECTOR_HNSW_ITERATIVE_SCAN') { if (!['off', 'strict_order', 'relaxed_order'].includes(value)) throw invalid(); }
     else if (key === 'API_KEY_ENCRYPTION_KEY') { if (!validSelectedKey(value)) throw invalid(); }
     else if (booleans.has(key) || key === 'LOG_COMPRESS') { if (!['true', 'false'].includes(value)) throw invalid(); }
     else if (integers.has(key)) { if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value))) throw invalid(); }
@@ -52,6 +58,7 @@ export function selectedApplicationConfiguration(input = {}) {
       }
     }
   }
+  if (!validSelectedTuningRelationships(input)) throw invalid();
   return { ...SELECTED_APPLICATION_DEFAULTS, ...input };
 }
 

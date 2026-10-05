@@ -49,7 +49,9 @@ test.each([{ uid: 0 }, { uid: 70 }, { gid: 70 }, { platform: 'win32' }, { cwd: '
 });
 
 test.each(['POSTGRES_HOST', 'POSTGRES_USER', 'POSTGRES_DB', 'NODE_OPTIONS', 'CLASSIFARR_RUNTIME_MODE',
-  'HOME', 'PORT', 'PGPASSWORD', 'RUNTIME_SETTINGS_FILE', 'API_KEY_ENCRYPTION_KEY', 'EXTRA'])('rejects altered/extra %s before imports', async key => {
+  'HOME', 'PORT', 'PGPASSWORD', 'RUNTIME_SETTINGS_FILE', 'API_KEY_ENCRYPTION_KEY', 'EXTRA',
+  'POSTGRES_POOL_MAX', 'POSTGRES_STATEMENT_TIMEOUT_MS', 'TASK_QUEUE_RETENTION_DAYS',
+  'OLLAMA_PREFLIGHT_RETRY_BASE_MS', 'REFRESH_TOKEN_CLEANUP_ENABLED', 'PGVECTOR_EF_SEARCH'])('rejects altered/extra %s before imports', async key => {
   const f = fixture();
   await expect(runSelectedApplication({ ...f.options, environment: { ...f.options.environment, [key]: 'untrusted' } })).rejects.toThrow();
   expect(f.loadDatabase).not.toHaveBeenCalled();
