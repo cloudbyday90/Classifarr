@@ -11,17 +11,18 @@ settings travel through bounded canonical JSON stdin to a fixed Node executable
 with a constructed environment; their Node options cannot control that process.
 
 The existing isolated lifecycle rehearsal now uses this production verifier and
-tests wrong cluster identity, injected configuration and an escalated runtime
-role. No production conversion, permissions repair, key rotation or ingestion
+tests wrong cluster identity, injected configuration, an escalated runtime
+role and role-setting overrides, between successful verifications. No production
+conversion, permissions repair, key rotation or ingestion
 record reset is enabled. The trusted parent still supplies independently recorded
 cluster identity and retains the migration lease. The production offline
 conversion/provisioning and root entrypoint handoff remain follow-up work.
 
 ## Validation
 
-The complete backend run passed all 1,697 suites: 52,680 tests passed and one
-Linux-only filesystem test was skipped on Windows. Focused checks passed six
-suites / 126 tests, with that same filesystem skip. Backend lint/typecheck,
+The final complete backend unit run passed all 1,697 suites: 52,680 tests passed
+and one Linux-only filesystem test was skipped on Windows. Focused checks passed
+six suites / 139 tests, with that same filesystem skip. Backend lint/typecheck,
 copyright, scoped ownership review, both knip checks, 30 tooling tests, ESM
 guards and Markdown checks passed. The scoped staged diff passed Gitleaks with
 no leaks. No frontend source changed or frontend coverage claim is made.
@@ -42,7 +43,32 @@ catalog verifier: it referenced `rolconfig` on `pg_authid`, where that column do
 not exist. Corrected the query to rely on `pg_db_role_setting`, added successful
 verification before the negative cases and a real role-setting override case,
 and preserved the original failure when lifecycle cleanup follows a rejection.
-Final rebuilt-image rehearsal and local evaluation are pending.
+The corrected clean source `26391269fdedd5fab3afd23ebf6739ef760feb0f` was rebuilt
+without cache as local image
+`sha256:8b034e4a3ef687f2d50155e6edab021a060fc3d1a3c13c4a5aca3e6fdb845ad1`.
+Its 12 core isolated checks passed, including the production verifier, normal →
+restore → normal HTTP lifecycle, preserved keys, identity mismatch/configuration/
+role refusals and confirmed stopped PostgreSQL. The schema dump/load round trip
+and Linux filesystem test were repeated successfully on this exact image.
+The standard, custom-ID and Unraid-style unchanged-template profiles passed:
+fresh startup, on-demand workers, image immutability, clean 10-second host stop,
+restart/data preservation, and the applicable application/database-loss and
+forced-kill recovery checks. Cleanup passed; only random disposable rehearsal
+resources were removed. This is not a live Unraid test or a published-image
+upgrade. The local test container was replaced with this exact image. At 157
+seconds of PostgreSQL uptime it was healthy, with zero restarts/OOM events and
+no new ERROR rows. The delayed check produced one `legacy_owner_unknown` warning
+for Movies (library 5), which still has six ownerless running records. Family
+(library 4) remains complete at 866/866 with no ownerless running records. No
+ownership records were reset and no inventory was deleted.
+
+Two brief post-startup samples measured 0.59–0.71% CPU, 374.6–414.7 MiB of the
+2 GiB container limit, and 43–47 PIDs/threads. The process snapshot contained the
+supervisor/application and PostgreSQL processes. This is not a sustained-load or
+leak assessment. The saved local Compose still has no CPU or PID limit; neither
+its settings nor the live Unraid deployment were changed. Test resources were
+disposable; the local persistent app-data and other application were preserved.
+The final documentation commit does not change the tested runtime source.
 
 A fresh random draw from currently open PRs 555/556 selected
 [PR 556](https://github.com/cloudbyday90/Classifarr/pull/556), head
