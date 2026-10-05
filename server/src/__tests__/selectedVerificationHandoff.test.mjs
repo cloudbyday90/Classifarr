@@ -78,6 +78,8 @@ test('catalog helper uses fixed read-only SQL, peer identity and scrubbed client
   expect(file).toBe('/sbin/su-exec'); expect(args[0]).toBe('70:70');
   expect(args).toContain('-X'); expect(args).toContain('-w'); expect(args.at(-1)).toMatch(/^BEGIN READ ONLY;/);
   expect(args.at(-1)).toContain('pg_catalog.pg_auth_members'); expect(args.at(-1)).toContain('pg_catalog.pg_shdepend');
+  expect(args.at(-1)).toContain('pg_catalog.pg_db_role_setting');
+  expect(args.at(-1)).not.toContain('rolconfig');
   expect(options.env.PGOPTIONS).toContain('session_preload_libraries=');
   expect(options.env.PGPASSWORD).toBeUndefined(); expect(options.shell).toBe(false);
   f.finish(); await result;

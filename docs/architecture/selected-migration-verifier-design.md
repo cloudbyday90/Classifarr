@@ -56,6 +56,10 @@ Sources discovered through MCP web search and opened on 2026-10-05:
   role flags alone do not prove that membership cannot grant additional authority.
 - [PostgreSQL parameter precedence](https://www.postgresql.org/docs/18/config-setting.html):
   client startup options and per-role/database settings require explicit treatment.
+- [PostgreSQL authorization catalog](https://www.postgresql.org/docs/18/catalog-pg-authid.html)
+  and [role/database settings](https://www.postgresql.org/docs/18/catalog-pg-db-role-setting.html):
+  role flags/passwords and configuration overrides reside in different catalogs;
+  the verifier queries both and the real-image test exercises an override refusal.
 
 ## Alternatives and recommendation
 

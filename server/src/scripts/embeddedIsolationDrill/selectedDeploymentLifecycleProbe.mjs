@@ -23,6 +23,8 @@ export async function verifySelectedDeploymentLifecycle() {
     LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'false' };
   await withEmbeddedMigrationJournal(MIGRATION_ROOT, async () => {
     const verify = () => verifySelectedMigrationThroughHandoff({ environment, expectedSystemId });
+    // Prove a healthy candidate passes before interpreting any expected refusal.
+    await verify();
     await assert.rejects(verifySelectedMigrationThroughHandoff({ environment,
       expectedSystemId: (BigInt(expectedSystemId) + 1n).toString() }), /selected_verification_failed/);
     const config = await readFile('/app/data/embedded-postgres/postgresql.conf', 'utf8');
@@ -40,12 +42,20 @@ export async function verifySelectedDeploymentLifecycle() {
       await candidateStart();
       try { await migrationSql('ALTER ROLE cf_runtime NOBYPASSRLS'); } finally { await candidateStop(); }
     }
+    await candidateStart();
+    try { await migrationSql("ALTER ROLE cf_runtime SET search_path='public'"); } finally { await candidateStop(); }
+    try { await assert.rejects(verify(), /selected_verification_failed/); }
+    finally {
+      await candidateStart();
+      try { await migrationSql('ALTER ROLE cf_runtime RESET ALL'); } finally { await candidateStop(); }
+    }
+    await verify();
   });
   for (const mode of ['normal', 'restore', 'normal']) {
     await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
       const { binding } = await prepareIdentityMigration();
       const processRef = new EventEmitter(), events = [];
-      let application, completed = false;
+      let application, completed = false, exerciseFailure;
       const launched = start => options => { application = start(options); return application; };
       const run = runSelectedDeploymentLifecycle({ journal, binding, processRef,
         environment: { ...environment, CLASSIFARR_RUNTIME_MODE: mode },
@@ -85,9 +95,11 @@ export async function verifySelectedDeploymentLifecycle() {
           assert.equal(response.status, 200); assert.equal(response.body.newApiKey, null);
           assert.equal((await migrationSql("SELECT gate_state FROM policy_native_intent_reconciliation_restore_gates WHERE gate_id=1")).stdout.trim(), 'ready');
         } else assert(events.includes('maintenance_completed'), 'normal_http_skipped_schema');
-      } finally {
+      } catch (error) { exerciseFailure = error; throw error; }
+      finally {
         processRef.emit('SIGTERM');
-        assert.equal(await run, 0, 'deployment_shutdown_failed');
+        const result = await run;
+        if (!exerciseFailure) assert.equal(result, 0, 'deployment_shutdown_failed');
       }
       assert(application.hasExited()); assert(events.includes('database_stopped'));
       assert.equal(processRef.listenerCount('SIGTERM'), 0);

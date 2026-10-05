@@ -10,10 +10,10 @@ DO $$ DECLARE runtime oid; BEGIN
   SELECT oid INTO runtime FROM pg_catalog.pg_authid WHERE rolname='cf_runtime'
     AND rolcanlogin AND NOT rolsuper AND NOT rolcreatedb AND NOT rolcreaterole
     AND NOT rolinherit AND NOT rolreplication AND NOT rolbypassrls AND rolpassword IS NULL
-    AND rolconfig IS NULL AND rolvaliduntil IS NULL
+    AND rolvaliduntil IS NULL
     AND pg_catalog.shobj_description(oid,'pg_authid')='classifarr.embedded-runtime.v1';
   IF runtime IS NULL OR current_user <> 'classifarr'
-    OR NOT EXISTS (SELECT FROM pg_catalog.pg_authid WHERE rolname='classifarr' AND rolsuper AND rolpassword IS NULL AND rolconfig IS NULL)
+    OR NOT EXISTS (SELECT FROM pg_catalog.pg_authid WHERE rolname='classifarr' AND rolsuper AND rolpassword IS NULL)
     OR EXISTS (SELECT FROM pg_catalog.pg_auth_members WHERE member=runtime)
     OR EXISTS (SELECT FROM pg_catalog.pg_shdepend WHERE refclassid='pg_catalog.pg_authid'::regclass AND refobjid=runtime AND deptype='o')
     OR EXISTS (SELECT FROM pg_catalog.pg_db_role_setting WHERE setrole IN (0,runtime,(SELECT oid FROM pg_catalog.pg_roles WHERE rolname='classifarr'))
