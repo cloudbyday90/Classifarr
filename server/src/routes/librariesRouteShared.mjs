@@ -32,6 +32,7 @@ import { registerSourceRepairWorklistRoutes } from './librariesRouteSourceRepair
 import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
 import { registerIngestionReconciliationRoutes } from './librariesRouteIngestionReconciliation.mjs';
+import { registerSafeguardRepairRoutes } from './librariesRouteSafeguardRepair.mjs';
 import { registerLegacyRetryRoutes } from './librariesRouteLegacyRetries.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
@@ -81,6 +82,7 @@ export function createLibrariesRouter({
   registerSourceObservationRoutes(router, { db });
   registerSourceRepairWorklistRoutes(router, { db });
   registerIngestionReconciliationRoutes(router, { db });
+  registerSafeguardRepairRoutes(router, { db });
   registerLegacyRetryRoutes(router, { db });
 
   registerCrudRoutes(router, { db });

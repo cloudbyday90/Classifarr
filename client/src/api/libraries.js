@@ -22,6 +22,7 @@ import libraryRulesApi from './libraryRulesApi'
 import libraryIngestionApi from './libraryIngestionApi'
 import libraryArchiveApi from './libraryArchiveApi'
 import legacyEnrichmentRetryApi from './legacyEnrichmentRetryApi'
+import ingestionSafeguardApi from './ingestionSafeguardApi'
 
 const librariesApi = {
   ...libraryCatalogApi,
@@ -30,6 +31,7 @@ const librariesApi = {
   ...libraryIngestionApi,
   ...libraryArchiveApi,
   ...legacyEnrichmentRetryApi,
+  ...ingestionSafeguardApi,
 }
 
 export default librariesApi

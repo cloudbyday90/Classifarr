@@ -5,7 +5,7 @@ import { URL } from 'node:url'
 test('recovery banner is read-only, responsive, keyboard accessible and clears stale guidance', async ({ page }, testInfo) => {
   let writes = 0, reads = 0, denied = false
   let libraries = [
-    { id: 5, name: 'Movies', media_type: 'movie', is_active: true,
+    { id: 5, name: 'SYNTHETIC TEST — Movies', media_type: 'movie', is_active: true,
       ingestion_status: { state: 'legacy_owner_unknown', recoveryMode: 'deployment_required', recoveryDiagnostic: {
         migration: '20261005_180000_ingestion_compatibility_fence.sql', migrationRecorded: true, protocolReady: true,
         checks: [{ table: 'media_server_items', trigger: 'ingestion_compatibility_rows', status: 'not_always_enabled' }],
@@ -33,7 +33,7 @@ test('recovery banner is read-only, responsive, keyboard accessible and clears s
   const banner = page.getByRole('region', { name: '1 library needs attention' })
   await expect(banner).toBeVisible()
   await expect(banner).toContainText('Automatic recovery queued')
-  await expect(banner.getByRole('link', { name: /Open library\s*:\s*Movies/ })).toHaveAttribute('href', '/libraries/5')
+  await expect(banner.getByRole('link', { name: /Open library\s*:\s*SYNTHETIC TEST — Movies/ })).toHaveAttribute('href', '/libraries/5')
   await expect(banner.getByRole('link', { name: /View import\s*:\s*Family/ })).toHaveAttribute('href', '/libraries/6')
   await expect(banner.locator('.deployment-guidance details p').first()).not.toBeVisible()
   await banner.getByText('What Classifarr checked', { exact: true }).focus()

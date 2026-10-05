@@ -74,10 +74,16 @@ non-embedded runtimes, not a general workaround for Docker startup failures.
 ## Library import diagnostics
 
 Command Center identifies the exact compatibility migration, its recorded state,
-the connection protocol and named missing/changed/disabled import triggers. It
-does not run repairs. Disabled but otherwise matching triggers require the database
-administrator to restore `ENABLE ALWAYS` while writers are stopped. Missing or
-changed definitions require a reviewed repair.
+the connection protocol and named missing/changed/disabled import triggers. Reads
+do not run repairs. For disabled, otherwise matching safeguards, open the library
+and choose **Check repair options**. A confirmed repair creates and verifies a
+private database archive, briefly excludes import writes with database locks,
+enables only verified safeguards and records an atomic audit. No broader web
+credentials or Compose/template edits are introduced. Missing or changed
+definitions still require a reviewed software repair.
+
+See the [repair procedure and limits](architecture/ingestion-safeguard-repair-outcome.md)
+for backup retention, specific refusals and the authorized maintenance CLI.
 
 These checks do not reconstruct a historical migration failure or diagnose
 arbitrary host mounts. See the

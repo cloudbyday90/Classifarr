@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a reviewed, administrator-only repair for disabled import safeguards with
+  a private verified-readable backup, bounded write locks, and an atomic audit.
+  Preserve inventory and reject changed definitions or insufficient permissions.
 - Show actionable library recovery guidance in Command Center, distinguishing
   automatic recovery from operator review and missing database safeguards.
   Reuse existing status polling without granting new recovery permissions.

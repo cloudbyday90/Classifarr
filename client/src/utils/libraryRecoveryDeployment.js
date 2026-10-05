@@ -26,7 +26,7 @@ export function libraryRecoveryDeployment(diagnostic) {
   } else if (diagnostic.checks.length) {
     facts.push(`The database records ${migration} as applied, but its safeguards do not match.`)
     if (diagnostic.checks.every(check => check.status === 'not_always_enabled')) {
-      steps.push('Stop all Classifarr processes using this database and back it up. Have the database administrator restore the listed triggers to ENABLE ALWAYS, then restart Classifarr.')
+      steps.push('Open the library and choose Check repair options. Classifarr will verify whether it can back up the database and repair these safeguards. Review and confirm before anything changes.')
     } else {
       steps.push('Back up the database and report the missing or changed safeguards listed below for a reviewed repair. Restarting alone will not recreate them.')
     }

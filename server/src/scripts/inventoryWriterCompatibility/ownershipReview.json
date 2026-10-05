@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "confirmed_safeguard_repair",
+      "classification": "separately_coordinated",
+      "reason": "Administrator-confirmed schema repair only: actor-bound expiring one-use catalog plans, database advisory exclusion and shared maintenance admission precede a bounded private backup. Fixed six-table locks drain writes; exact function, trigger and marker-column checks are repeated under locks. Only disabled matching triggers are enabled, with an atomic audit. No inventory DML, migration replay, ownership marker reset or new database grants. Dynamic query arguments were reviewed against the frozen identifier allowlist.",
+      "followUp": "Preserve separately managed maintenance for restricted runtime roles and missing or changed definitions. Compatibility gates do not contain a deliberately privileged writer. Keep lost-commit outcomes unknown, retain backups and verify real-image backup restoration separately. Unresolved writer paths elsewhere remain unauthorized."
+    },
+    {
       "id": "ingestion_compatibility_recovery",
       "classification": "separately_coordinated",
       "reason": "Administrator-selected compatibility boundary, not privileged-writer isolation. Transactional DDL drains old writes; six row/truncate gates reject unmodified older clients. Marker provenance is stamped on current writes. Library/slot ownership and bounded table/row locks protect at-most-100-marker retirement with atomic system audit, configuration checks and durable full import/metadata continuation. Current-protocol foreign work remains blocked. History adds system receipts without exposing another administrator manual receipt; fixtures announce the protocol only for synthetic writes.",
@@ -464,6 +470,7 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/ingestionSafeguardRepair.mjs","digest":"86866e4e911b0e2821905aa8bca7839dc19d04768229252cb10eb3857723a2c5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"confirmed_safeguard_repair"},
     {"path":"database/migrations/20261005_180000_ingestion_compatibility_fence.sql","digest":"7f976b4d94acd4ed4a11ff2a801c33ddd36b4b2f5377b7e35c89a64cc39f1bf5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"ingestion_compatibility_recovery"},
     {"path":"server/src/services/ingestionCompatibilityRecovery.mjs","digest":"f3e9eacf7e2cb4e23646d46986b52310b26ffcc5922959199a021d4ffe2696cd","analysisDigest":"aa17956a06711bf1e86b1cb5b75c5cfe9d1846d9c5c422f07d8b3577756ab99a","review":"ingestion_compatibility_recovery"},
     {"path":"server/src/bootstrap/offlineMigrationControl.mjs","digest":"9c802ba09f935032d24dad192c6e9a2dbc489a060c585a44fb3091fd90facf0d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"offline_migration_source"},

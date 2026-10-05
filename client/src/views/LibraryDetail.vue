@@ -128,9 +128,13 @@
         :unavailable="syncReadFailed"
       />
       <LegacyIngestionReview
-        v-if="showLegacyReview"
+        v-if="showLegacyReview && library.ingestion_status?.recoveryMode !== 'deployment_required'"
         :library-id="library.id"
         @reconciled="refreshSyncStatus"
+      />
+      <IngestionSafeguardRepair
+        :needed="library.ingestion_status?.recoveryMode === 'deployment_required'"
+        @repaired="refreshSyncStatus"
       />
       <LibraryIngestionHistory :library-id="library.id" />
       <LibraryArchiveReview
@@ -496,6 +500,7 @@ import LibraryProfile from '@/components/library/LibraryProfile.vue'
 import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
 import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
 import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
+import IngestionSafeguardRepair from '@/components/library/IngestionSafeguardRepair.vue'
 import LibraryIngestionHistory from '@/components/library/LibraryIngestionHistory.vue'
 import LegacyEnrichmentRetryReview from '@/components/library/LegacyEnrichmentRetryReview.vue'
 import LibraryArchiveReview from '@/components/library/LibraryArchiveReview.vue'

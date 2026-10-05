@@ -6,8 +6,8 @@ const diagnostic = (extra = {}) => ({ migration: '20261005_180000_ingestion_comp
 it('gives a specific disabled-trigger repair without offering to redo an applied migration', () => {
   const result = libraryRecoveryDeployment(diagnostic())
   expect(result.facts.join(' ')).toContain('media_server_items / ingestion_compatibility_rows: not enabled for all writes')
-  expect(result.steps.join(' ')).toContain('ENABLE ALWAYS')
-  expect(result.steps.join(' ')).toContain('Do not delete the migration record')
+  expect(result.steps.join(' ')).toContain('Check repair options')
+  expect(result.steps.join(' ')).not.toContain('ENABLE ALWAYS')
 })
 it.each(['missing', 'definition_mismatch'])('does not suggest merely enabling a %s trigger', status => {
   const result = libraryRecoveryDeployment(diagnostic({ checks: [{ table: 'media_server_items', trigger: 'ingestion_compatibility_rows', status }] }))
