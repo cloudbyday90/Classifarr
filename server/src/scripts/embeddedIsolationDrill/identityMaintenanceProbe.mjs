@@ -18,7 +18,7 @@ const state = async () => JSON.parse(await scalar(`SELECT json_build_object('gat
   'value',(SELECT value FROM settings WHERE key='selected_restore_probe'))
   FROM policy_native_intent_reconciliation_restore_gates WHERE gate_id=1`));
 
-async function withBlocker(kind, work) {
+export async function withBlocker(kind, work) {
   const sql = kind === 'runtime' ? `SELECT pg_advisory_lock(${RUNTIME_MAINTENANCE_LOCK_KEY})`
     : 'LOCK TABLE settings IN ACCESS EXCLUSIVE MODE';
   const child = spawn('/sbin/su-exec', ['postgres', '/usr/bin/psql', '-X', '-v', 'ON_ERROR_STOP=1',

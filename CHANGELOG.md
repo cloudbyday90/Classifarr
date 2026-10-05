@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an internal authenticated restore HTTP handoff that keeps the web process
+  under restricted database permissions. Bound backup reads and worker execution,
+  preserve keys, and prevent automatic replay; production cutover remains gated.
 - Add strict saved-deployment configuration admission for protected startup,
   preserving reviewed heap limits and compatible pool/retry defaults. Keep
   supervisor settings separate and reject unsupported inputs before conversion;

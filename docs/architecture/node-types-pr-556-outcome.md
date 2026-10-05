@@ -2,6 +2,14 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+The restricted-restore HTTP batch at base `c752c2cf` freshly enumerated PRs
+555/556 and randomly selected 556, still open at
+`9d74537d7917c248d15926f37b2e40ceba7559a4`. MCP supplied the same two-file diff;
+official registry metadata confirmed the version, dependency and integrity.
+Local application again changed nine lines each way: baseline 8/8 passed,
+candidate 7/8 passed with the unchanged Node-major check rejecting 26 on Node 24.
+Only this trial was removed. No candidate install or remote merge was performed.
+
 The subsequent operator-tuning batch at base
 `d540b4e4e84d9be485b7822bc6384c2ecd9492e3` independently enumerated open PRs
 555/556 and randomly selected 556 again. MCP confirmed it remained open and
