@@ -8,7 +8,9 @@ Reference: [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/)
 
 ## Entry Format
 
-Each entry under a category heading is a single bullet, 1–2 lines max.
+Write one compact bullet per system and distinct outcome, usually one or two
+sentences. Wrap long lines for readability; do not turn an entry into a list of
+implementation steps.
 
 ```markdown
 - **Short topic** — concise description of what changed and why.
@@ -16,10 +18,25 @@ Each entry under a category heading is a single bullet, 1–2 lines max.
 
 **Rules:**
 
-- Bold the topic prefix, followed by an em-dash (`—`) and a plain-language description.
+- Bold the system or component name, followed by an em-dash (`—`) and a plain-language description of the outcome.
 - No multi-paragraph explanations. If more detail is needed, link to a relevant doc or commit.
 - No issue numbers in the topic line. Use the description if a reference is needed (e.g., `...resolves rare race condition in advisory lock acquisition`).
-- Group related sub-items into a single bullet with a parenthetical summary when there are many (e.g., `ESM modular extractions (35+ sub-modules): ...`).
+- Update the existing system entry when related work lands. Do not add one bullet per commit, PR, extracted file, test or retry of the same fix.
+- Describe the current combined behavior, not every intermediate design. Keep superseded development steps in the detailed archive or design documents.
+- Retain meaningful component coverage: name affected providers, deployment targets or workflows when their differences matter. Do not compress unrelated systems into a vague “reliability improvements” entry.
+- Keep operator actions, compatibility changes, data preservation, security boundaries and unfinished rollout gates explicit. Shorter wording must not imply that a prototype is enabled or a release is approved.
+- Put exact dependency/PR chronology, test counts and design tradeoffs in linked engineering records; retain important runtime requirements and security advisories in the summary.
+
+### System-Level Summary
+
+Start a substantial Unreleased section with a short **TL;DR** paragraph, followed
+by system-level entries under the standard categories. The paragraph is an
+overview, not a replacement for coverage of all changed systems.
+
+Keep a system in one entry where practical. Separate entries are appropriate
+for distinct outcomes, such as a new recovery workflow and its security boundary;
+do not repeat the same behavior under Added, Changed and Fixed. Omit repeated
+“no PR merge or release” statements from individual entries.
 
 ### Categories
 
@@ -31,10 +48,13 @@ Use the six standard Keep a Changelog categories in this order:
 | `### Changed` | Behavioral changes, refactors, dependency bumps, updates |
 | `### Deprecated` | Features marked for removal in a future release       |
 | `### Removed` | Features, endpoints, or modules deleted                  |
-| `### Fixed`   | Bug fixes, regression fixes, CVE remediations            |
+| `### Fixed`   | Bug fixes and regression fixes                          |
 | `### Security`| Vulnerability patches, auth hardening                    |
 
-Omit categories with no entries (do not leave empty headings).
+Omit categories with no entries (do not leave empty headings). Each category
+appears at most once per version. Put performance work under its system in
+Changed or Fixed, and release-workflow changes under Changed or Security rather
+than adding parallel category headings. Preserve historical archives as recorded.
 
 ### Examples
 
@@ -43,14 +63,19 @@ Omit categories with no entries (do not leave empty headings).
 ```markdown
 ### Added
 
-- **V8 module compile cache** — `module.enableCompileCache()` in `server/src/index.mjs` speeds up server startups.
-- **Weak-overlap policy race escalation** — candidates surviving only on compatibility evidence now degrade to manual review.
-- **ESM modular extractions** (14 sub-modules): `discordNotificationBuilder`, `healthCheckImageEmbeddings`, `policyEngineUtils`, ...
+- **Operational health** — Command Center shows library recovery progress and specific next steps, with read-only background refreshes.
+
+### Changed
+
+- **Media-server imports** — Plex, Jellyfin and Emby share bounded outage recovery; incomplete scans preserve inventory rather than pruning it.
 
 ### Fixed
 
-- **Fixed spurious `same_mode_without_primary_provider` integrity warning** — early-return guard when `primary_provider='none'`.
-- **Fixed CVE-2026-46625** — override `js-cookie` to >=3.0.7.
+- **Settings and preset mutations** — Lost responses recover through saved receipts instead of repeating writes, preserving drafts and rejecting stale results.
+
+### Security
+
+- **Recovery security boundary** — Compatibility safeguards reject unmodified legacy writers; stronger database privilege isolation remains separate work.
 ```
 
 **Bad (do not do this):**
@@ -64,9 +89,12 @@ Omit categories with no entries (do not leave empty headings).
 
 - fixed stuff
 - Issue #46625
+- Extracted another helper and added three tests.
+- Updated the same dependency again; no PR merge or release.
 ```
 
-Problems: first entry is a multi-paragraph deep dive, second is too vague, third uses a bare issue number.
+Problems: implementation detail overwhelms the first entry; the others are vague,
+use a bare issue number, or describe development steps rather than system outcomes.
 
 ---
 
@@ -88,13 +116,13 @@ Problems: first entry is a multi-paragraph deep dive, second is too vague, third
 
 | Scope          | Location                          | Audience        |
 |----------------|-----------------------------------|-----------------|
-| Unreleased     | `CHANGELOG.md` top                | Engineers       |
+| Unreleased     | `CHANGELOG.md` top                | Operators and engineers |
 | Current release| `CHANGELOG.md` below Unreleased   | Everyone        |
 | Older versions | `docs/changelog/CHANGELOG-YYYY-MM.md` or `CHANGELOG-YYYY-MM-label.md` | Everyone |
 
 ### Unreleased vs Release Commit
 
-- **During development**: add entries under `## [Unreleased]` as work is completed.
+- **During development**: update the relevant system entry under `## [Unreleased]` as work is completed; add a new entry only for a distinct system or outcome.
 - **At release**: rename `## [Unreleased]` to `## [VERSION] - YYYY-MM-DD` and add a fresh `## [Unreleased]` heading above it.
 
 ---
@@ -103,7 +131,10 @@ Problems: first entry is a multi-paragraph deep dive, second is too vague, third
 
 ### When to Archive
 
-When the main `CHANGELOG.md` exceeds **~300 lines**, archive older versions to monthly files.
+Keep the main `CHANGELOG.md` near **300 lines or fewer**. When released history
+causes the excess, archive older versions to monthly files. When Unreleased is
+the cause, consolidate it by system using the pre-release procedure below;
+moving short released sections alone will not solve development-log growth.
 
 ### How to Archive
 
@@ -132,6 +163,13 @@ large for release review, keep a concise release-facing summary in
 4. Keep the root summary self-contained, non-duplicative, and within the
    standard category order.
 5. Do not use a pre-release archive to replace released-version archives.
+6. Check that every changed system/component has a summary entry and that
+   compatibility, operator actions, security limits and unfinished work survive
+   consolidation. Do not promote an intermediate experiment to a shipped feature.
+7. Compare the archived Unreleased block with the pre-edit record and confirm
+   existing published-version blocks are unchanged. Validate links and Markdown.
+8. Do not overwrite an existing archive; use a descriptive suffix for a later
+   consolidation in the same month. Keep any earlier detailed archive reachable.
 
 ### Archive File Format
 
@@ -160,7 +198,7 @@ Each archive file is self-contained:
 | **Audience**       | Engineers, operators                    | General public, end users          |
 | **Tone**           | Technical, precise                      | Plain language, benefit-focused    |
 | **Format**         | Keep a Changelog bullets                | Emoji headers, visual blocks       |
-| **Scope**          | Every notable change                    | Highlights only                    |
+| **Scope**          | Every changed system and notable outcome; detailed chronology linked | Highlights only |
 | **Written by**     | Engineer during development             | Engineer at release time           |
 
 Never copy `CHANGELOG.md` entries verbatim into `RELEASE_NOTES.md`. Rewrite for the target audience.
@@ -169,8 +207,9 @@ Never copy `CHANGELOG.md` entries verbatim into `RELEASE_NOTES.md`. Rewrite for 
 
 ## Checklist for Adding an Entry
 
-1. Is the entry under the correct category?
-2. Is it 1–2 lines max (no multi-paragraph deep dives)?
+1. Does it update an existing system entry where possible, under one correct category?
+2. Is it a compact outcome summary rather than a per-commit development log?
 3. Does it use the bold-topic + em-dash + description pattern?
-4. Is it technically accurate and specific?
+4. Is it technically accurate, including operator actions, compatibility and safety limits?
 5. Would a new team member understand what changed and why?
+6. Are category headings unique within Unreleased, with detailed history linked rather than lost?

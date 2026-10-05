@@ -4,7 +4,7 @@ description: Prepare, verify, and explicitly authorize a Classifarr release
 
 # Classifarr release runbook
 
-Reviewed 2026-10-03. Commands run from the repository root unless noted.
+Reviewed 2026-10-05. Commands run from the repository root unless noted.
 The checked-in workflow and validators are authoritative; this document does not
 authorize publication, live deployment, or a version bump.
 
@@ -27,6 +27,46 @@ Do not reuse a published version or silently carry unrelated changes.
 Use Node from `.nvmrc` and npm from `package.json#packageManager`. Install from
 the three committed lockfiles with `npm ci`, `npm --prefix server ci`, and
 `npm --prefix client ci`. Do not run an unpinned NPX tool to prepare a release.
+
+### Consolidate the changelog before freezing the candidate
+
+This review is required for every release. Follow the
+[changelog conventions](../../docs/CHANGELOG-CONVENTIONS.md):
+
+1. Review Unreleased against the changes since the previous published release.
+   Account for every changed system/component, including deployment, migrations,
+   dependencies, tooling and security; do not reduce the record to feature highlights.
+2. Lead with a short TL;DR, then group entries by system and current outcome.
+   Consolidate related entries and duplicate sections; use each standard category
+   at most once, in the documented order. Replace per-commit/PR chronology with
+   the combined result, not a list of implementation steps.
+3. Preserve required operator actions, compatibility changes, data-preservation
+   behavior, security boundaries and known limits. Distinguish enabled behavior
+   from experiments or gated work; local validation is not release approval.
+4. Keep the root changelog near 300 lines or fewer. If Unreleased is too long,
+   preserve its original entries verbatim in a dated pre-release archive before
+   shortening it. Record the consolidation date, link the archive from both the
+   root archive list and Unreleased, and keep earlier archives reachable. Never
+   overwrite an existing archive; use a descriptive suffix when necessary.
+5. Compare the archive with the pre-edit record and confirm no development entries
+   were lost or rewritten. Leave published entries unchanged; if older releases
+   need archiving, move their complete blocks unchanged and retain working links.
+6. Check local links, heading uniqueness/order and system coverage manually.
+   Run the documentation checks below and review the diff. Do not mark this review
+   complete just because Markdown lint passes; it cannot establish coverage or
+   historical fidelity.
+
+```bash
+npm run lint:docs
+npm run policy:product-language-audit
+git diff --check
+```
+
+Finish and commit this documentation review before the frozen candidate rehearsal.
+Record its outcome and any omissions with the release evidence. Consolidation
+alone does not authorize a version bump, tag, release or deployment.
+
+### Align version metadata only after approval
 
 Ordinary development keeps changes under **Unreleased**. Only after explicit
 release approval, choose a new SemVer tag such as `vX.Y.Z-beta` and align:
