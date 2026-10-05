@@ -81,6 +81,34 @@ ordinary background updates must not move focus from elsewhere.
 4. Keep privilege isolation separate: this UI does not strengthen the compatibility
    fence against a deliberately privileged database writer.
 
+## Follow-up: make maintenance executable
+
+The disabled-trigger fixture is not a detected competing process. Missing database
+protection and a live competing writer are different conditions; neither should be
+inferred from the other. A session snapshot also cannot rule out a disconnected
+writer returning later.
+
+The current feature diagnoses and explains, but does not supply an in-app repair
+for damaged database safeguards. That limitation is material: "ask the database
+administrator" is not an end-to-end recovery experience for a self-hosting admin.
+The application administrator may be the same person, but signing into Classifarr
+does not confer database maintenance privileges.
+
+The next change should provide a reviewed maintenance plan, a preview of its exact
+scope, and an installation-appropriate execution path. It must verify a backup,
+coordinate stopped writers, acquire bounded locks, recheck definitions under the
+lock, change only allowlisted disabled safeguards, verify the result, and record a
+sanitized outcome before normal recovery resumes. Missing or changed definitions
+must remain a separate reviewed repair. Healthy setups perform no work. No blanket
+trigger enablement, fabricated migration record, elevated web-process credentials,
+or Docker socket access belongs in that workflow.
+
+For a genuinely disabled, otherwise verified trigger, PostgreSQL's underlying
+operation is `ALTER TABLE ... ENABLE ALWAYS TRIGGER ...`; this affects firing mode,
+not library ownership. This is background for the follow-up, not a command to run on
+a healthy installation. The existing pending-migration CLI does not repair an
+already-recorded migration's altered objects.
+
 ## Verification plan
 
 Test healthy/fresh, active/retry, disabled/archived, missing configuration, unknown
@@ -100,3 +128,6 @@ deployment and no release.
 - [Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/):
   mount permissions affect the host; do not recommend broad writable mounts or
   infer host configuration from an unrelated application error.
+- [PostgreSQL 18 ALTER TABLE](https://www.postgresql.org/docs/18/sql-altertable.html):
+  individually named trigger enablement controls firing mode; ALWAYS also fires
+  under replica mode. Repair needs appropriate database authority and locking.

@@ -57,8 +57,51 @@ explicitly: their analysis digests and classifications are unchanged. The existi
 - ESM static-import checks, Markdown lint (1,916 files), whitespace checks and
   staged-secret scanning passed.
 
-The requested exact-image no-cache rebuild/schema/local health checks are recorded
-below after completion.
+## No-cache image and local evaluation
+
+Built with `docker-compose-smart.mjs build --no-cache --require-provenance` from
+clean source `040ff8bfd0ecf14456df13a266f878dad10320e4`.
+The local Docker image identity is
+`sha256:6660a86a6581a6890225296a7a620e882ea133a969891e2244ac1a1c5813fb61`.
+This is local image evidence, not a published registry or multi-platform release.
+The final documentation receipt commit does not change this tested code revision.
+
+After building, ran the repository schema-dump implementation against an isolated
+PostgreSQL 18 database in that exact image, then loaded and dumped the snapshot
+again. The snapshot round trip had zero drift and no tracked schema change.
+The same image passed a network-isolated Linux smoke of the production migration
+tree functions: directory fsync, complete exclusive copy, source preservation and
+refusal to overwrite. This supplements the Windows-only test skip; it is not a
+claim that the Jest suite ran inside the production image. Disposable containers
+were removed; no live data was mounted in either check.
+
+Recreated only the local Compose service with `--no-build --force-recreate --wait`.
+It is healthy on the exact image, with zero restarts or OOM kills. Health returns
+200 and the anonymous library API still returns 401. No Unraid container, remote
+database, published image, or saved deployment template was changed.
+
+Read-only checks before and after replacement show all 10 local libraries have
+completed imports, including Family and Movies. Inventory counts are unchanged.
+There are zero unfinished legacy markers. The compatibility migration is recorded,
+the connection uses protocol 1, and all 12 safeguard triggers use ALWAYS mode.
+Every post-upgrade library has null recovery mode/diagnostics, so no repair warning
+is indicated. This proves import status, not completion of optional or metadata
+backfill work.
+
+After the startup recovery interval, the exact catalog diagnostic also reports no
+failed checks. New-container logs contain no legacy-ownership warning, unavailable
+source-pair error, migration failure, or WARN/ERROR-level line during this short
+observation. CPU samples varied from 0.66% to 100% (Docker's per-core scale), memory
+from roughly 448 to 784 MiB within the existing 2 GiB limit, and task counts from
+39 to 46. The saved local configuration has no explicit CPU quota or PID limit.
+These samples and zero OOM/restarts are not a sustained soak or proof that every
+background workload is bounded; keep that resource-hardening work separate.
+
+All observed client connections to this database were loopback connections. That
+is consistent with the local-only setup; a point-in-time view cannot prove that a
+disconnected writer will never reconnect. The damaged-safeguard screenshot came
+from synthetic browser responses, not the local database. No maintenance repair
+or ownership claim is needed on the observed local state.
 
 ## Random open PR trial
 
@@ -85,10 +128,15 @@ Retaining the runtime-compatible Node 24 declarations is the recommendation.
 1. Keep read-only guidance and guarded library recovery together: actionable and
    compatible with saved templates; a dashboard cannot diagnose an app that failed
    to boot.
-2. Next, add durable, sanitized startup-failure receipts so a failed migration can
-   name its actual error after startup is restored. Current diagnostics identify
-   catalog discrepancies, not historical failure causes or arbitrary host mounts.
-3. Continue privileged-writer isolation separately. The compatibility fence blocks
+2. Next, provide a guided, narrowly scoped maintenance repair for verified disabled
+   safeguards. The user's "how?" feedback identifies a real gap: diagnostics are
+   implemented, but telling a self-hosting admin to enable triggers is not a usable
+   end-to-end repair. The design records the required backup, locking, recheck,
+   privilege and audit boundaries; that repair is not implemented in this round.
+3. Add durable, sanitized startup-failure receipts so a failed migration can name
+   its actual error after startup is restored. Current diagnostics identify catalog
+   discrepancies, not historical failure causes or arbitrary host mounts.
+4. Continue privileged-writer isolation separately. The compatibility fence blocks
    unmodified older clients, not a database owner deliberately bypassing it.
-4. Keep metadata-completion tracking on the follow-up list: import completion alone
+5. Keep metadata-completion tracking on the follow-up list: import completion alone
    is not proof that import-and-metadata recovery has finished.
