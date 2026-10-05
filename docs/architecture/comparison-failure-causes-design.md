@@ -14,7 +14,7 @@ Steps cover readiness/state reads, shared admission, provider inspection, snapsh
 reads, source validation, profile build, post-build verification and publication.
 Diagnostics are bounded scalar fields, not an exception dump: no SQL, row values,
 model names, media, endpoints, credentials, raw stacks or response bodies. Examine
-at most four nested causes with cycle/getter protection. Fixed legacy internal
+at most four error/cause nodes with cycle/getter protection. Fixed legacy internal
 sentinels may be mapped by exact equality, never substring matching.
 
 The shared readiness wrapper gains an opt-in diagnostic hook for this consumer;
