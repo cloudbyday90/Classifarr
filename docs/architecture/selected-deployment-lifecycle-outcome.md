@@ -36,7 +36,7 @@ Gitleaks 8.30.1 scanned the scoped commit diff with no leaks; its downloaded
 release archive was checked against the publisher's checksum. No client source
 changed, and no new frontend coverage claim is made.
 
-The clean-source no-cache image was built from
+The first clean-source no-cache image was built from
 `410d913cd2f82b0b0c0a0b2f8401cf6aeb7cc146`; inspected local Docker ID:
 `sha256:002b3424032c093f3c4000982685bf7daad1afce28c075526dbb37f840803e66`.
 This is local Linux/amd64 AVX2 evidence, not a published multi-platform receipt.
@@ -45,7 +45,42 @@ with zero drift and no new migration. The first image rehearsal found a fixture
 error: it expected the restore-only `operatingMode` field from normal health.
 The normal server was healthy with its existing `status`/`database` contract.
 The fixture now checks each mode's actual contract; no API was changed to satisfy
-the test. The corrected image rehearsal and local replacement are still pending.
+the test.
+
+The corrected clean-source no-cache image was built from
+`76e121d7365584c6a5159d0cfde021c320474052`; inspected local Docker ID:
+`sha256:89aca29864304a4942e4c730d63c2fcd73dacd7448022e2b55145cd6407cb28d`.
+The schema dump/load round trip and Linux copy/fsync check passed again on this
+exact image. All 12 embedded-isolation checks passed in 185,455 ms, including the
+new normal → restore → normal sequence, authenticated restore, preserved key
+bytes, exclusive selection lease and confirmed application/database shutdown.
+The selected sequence uses a synthetic process event for its host stop; the
+saved-template checks below deliver actual container signals.
+
+All three saved-template profiles passed (UID/GID 1000:1000, 2345:2345 and 99:100):
+image-code write denial, bounded compatible workers, clean stop/restart and
+preserved synthetic data. Each clean stop completed under the unchanged 10-second
+host deadline. Unexpected application exit and database loss failed the container
+correctly. Forced host termination exited 137 and recovered committed data after
+restart; this is crash recovery, not a clean shutdown. Exact disposable project
+cleanup passed, preserving the caller's image. These are synthetic same-image
+tests, not an old published-image upgrade or evidence from a physical Unraid NAS.
+
+Recreated only the local `classifarr` service from that exact image, preserving
+saved mounts/settings. At 154 seconds of database uptime it was healthy with zero
+restarts/OOM events and no new ERROR records. One delayed `mediaSync` warning
+remained: `legacy_owner_unknown` for Movies (library 5), whose six running import
+records have no corresponding ownership state. Family (library 4) remained
+complete at 866/866 with no ownerless running records. This batch does not clear
+or repair those legacy records, and the successful rebuild is not an ownership
+recovery claim. Database evaluation was read-only; Unraid was not changed.
+
+Short local samples showed 327–396.1 MiB of the existing 2 GiB memory limit,
+0.42–0.48% CPU and 40–48 tasks/threads. The process listing showed the expected
+supervisor, application and PostgreSQL processes, not a continuously running
+maintenance worker. The saved Compose configuration still has no CPU/PID cap;
+this small observation is not proof against leaks or sustained overload. The
+isolated rehearsals used explicit CPU/memory/PID limits.
 
 Random current open [PR 556](node-types-pr-556-outcome.md) was applied and tested
 locally. It failed the Node 24 declaration-major check and was removed before
