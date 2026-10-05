@@ -144,6 +144,9 @@ test('one-shot restore shutdown failure is not success', async () => {
 });
 
 test.each([{ maintenanceOnly: 'true' }, { maintenanceOnly: true },
+  { restoreHttp: 'true' }, { restoreHttp: true },
+  { restoreHttp: true, startMaintenance: null, maintenanceOnly: true, startApplication: null },
+  { restoreHttp: true, startMaintenance: null, attachRuntimeMaintenance: () => {} },
   { maintenanceOnly: true, startApplication: null, attachRuntimeMaintenance: () => {} },
 ])('invalid one-shot composition is rejected before selection (%#)', async change => {
   const f = fixture();

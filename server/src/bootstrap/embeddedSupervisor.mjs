@@ -23,7 +23,10 @@ export async function runEmbeddedSupervisor({
   let request;
   let wake;
   const stopped = new Promise(resolve => { wake = resolve; });
-  const requestStop = event => { if (!request) { request = event; adoption.abort(); wake(); } };
+  const requestStop = event => {
+    if (request) { if (event.failed) request.failed = true; return; }
+    request = event; adoption.abort(); wake();
+  };
   const onTerm = () => requestStop({ reason: 'SIGTERM', failed: false });
   const onInt = () => requestStop({ reason: 'SIGINT', failed: false });
   processRef.on('SIGTERM', onTerm);
@@ -55,9 +58,12 @@ export async function runEmbeddedSupervisor({
       }
     }
     if (!request) {
-      application = startApplication();
+      application = startApplication({ onFatal: () => requestStop({ reason: 'application_failure', failed: true }) });
       applicationStopped = false;
-      application.done.then(result => requestStop({ reason: 'application_exit', failed: result.code !== 0 || result.signal !== null }));
+      application.done.then(
+        result => requestStop({ reason: 'application_exit', failed: result.code !== 0 || result.signal !== null }),
+        () => requestStop({ reason: 'application_exit_unconfirmed', failed: true }),
+      );
       if (attachRuntimeMaintenance) {
         runtimeMaintenance = attachRuntimeMaintenance(application, () => requestStop({ reason: 'maintenance_exit_unconfirmed', failed: true }));
         runtimeMaintenanceStopped = false;
@@ -125,6 +131,8 @@ export async function runEmbeddedSupervisor({
     processRef.removeListener('SIGTERM', onTerm);
     processRef.removeListener('SIGINT', onInt);
   }
+  // A worker can report fatal uncertainty while an earlier host stop is draining.
+  failed ||= request?.failed === true;
   report(failed ? 'failed' : 'stopped');
   return failed ? 1 : 0;
 }

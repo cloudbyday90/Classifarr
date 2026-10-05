@@ -10,6 +10,15 @@ const base = { NODE_OPTIONS: '--max-old-space-size=1536' };
 const accounts = { users: [{ name: 'classifarr', uid: 1000, gid: 1000 }, { name: 'postgres', uid: 70, gid: 70 }] };
 const context = { uid: 1000, gid: 1000, platform: 'linux', cwd: '/app', args: ['--run'] };
 
+test('restore HTTP compilation requires explicit reviewed admission', () => {
+  const environment = { ...base, CLASSIFARR_RUNTIME_MODE: 'restore' };
+  expect(() => compile(environment)).toThrow('mode_unsupported');
+  expect(compile(environment, { allowRestoreHttp: true }).mode).toBe('restore');
+  expect(compile(base).mode).toBe('normal');
+  expect(() => compile(environment, { allowRestoreHttp: 'true' })).toThrow('invalid');
+  expect(() => compile({ ...base, CLASSIFARR_RUNTIME_MODE: 'invalid' }, { allowRestoreHttp: true })).toThrow('mode_unsupported');
+});
+
 test('preserves compatible effective defaults, explicit zero/false, credentials and supervisor choices separately', () => {
   const input = Object.freeze({ ...base, PUID: '99', PGID: '100', UMASK: '002', TZ: 'America/New_York',
     PGVECTOR_RUNTIME_STAGING: 'disabled', CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: '600',

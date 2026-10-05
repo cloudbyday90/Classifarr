@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Integrate saved settings with the selected normal/restore startup lifecycle,
+  preserving identity, heap, pool and startup limits. Treat rejected child exits
+  and late fatal errors as failed shutdowns; automatic production conversion
+  remains blocked pending the production migration verifier.
 - Add an internal authenticated restore HTTP handoff that keeps the web process
   under restricted database permissions. Bound backup reads and worker execution,
   preserve keys, and prevent automatic replay; production cutover remains gated.

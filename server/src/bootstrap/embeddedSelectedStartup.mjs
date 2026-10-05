@@ -9,10 +9,12 @@ import { runEmbeddedSupervisor } from './embeddedSupervisor.mjs';
 export async function runSelectedEmbeddedStartup({ journal, binding, verify, database,
   startMaintenance, startApplication, attachRuntimeMaintenance = null,
   processRef = process, report = () => {},
-  maintenanceOnly = false,
+  maintenanceOnly = false, restoreHttp = false,
 }) {
-  if (typeof verify !== 'function' || typeof startMaintenance !== 'function'
-    || typeof maintenanceOnly !== 'boolean'
+  if (typeof verify !== 'function'
+    || typeof maintenanceOnly !== 'boolean' || typeof restoreHttp !== 'boolean'
+    || (restoreHttp ? maintenanceOnly || startMaintenance !== null || attachRuntimeMaintenance !== null
+      : typeof startMaintenance !== 'function')
     || (maintenanceOnly ? startApplication != null || attachRuntimeMaintenance != null : typeof startApplication !== 'function')
     || !['adopt', 'check', 'stop'].every(key => typeof database?.[key] === 'function')) {
     throw new Error('selected_startup_composition_invalid');

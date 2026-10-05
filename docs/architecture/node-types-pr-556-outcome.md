@@ -2,6 +2,14 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+The selected-lifecycle batch at base `feaeb7c4` freshly enumerated open PRs
+555/556 through MCP and the saved CLI login; a cryptographic random draw selected
+556 at the same immutable head below. The official npm registry confirmed both
+versions, the dependency constraint and package integrities. Applied the exact
+two-file MCP diff: baseline 8/8, candidate 7/8 with the unchanged Node-major test
+rejecting 26 on 24. Removed only this trial before installation. No merge,
+candidate lifecycle scripts or complete candidate audit is claimed.
+
 The restricted-restore HTTP batch at base `c752c2cf` freshly enumerated PRs
 555/556 and randomly selected 556, still open at
 `9d74537d7917c248d15926f37b2e40ceba7559a4`. MCP supplied the same two-file diff;

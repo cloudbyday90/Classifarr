@@ -18,7 +18,8 @@ const fail = reason => { throw new Error(`selected_deployment_${reason}`); };
  * Internal compiler only. Caller must not log the returned secret-bearing profile
  * or discard supervisor fields. Does not attest accounts/mounts or select a runtime.
  */
-export function selectedDeploymentConfiguration(environment) {
+export function selectedDeploymentConfiguration(environment, { allowRestoreHttp = false } = {}) {
+  if (typeof allowRestoreHttp !== 'boolean') fail('invalid');
   if (!environment || Object.getPrototypeOf(environment) !== Object.prototype) fail('invalid');
   const descriptors = Object.getOwnPropertyDescriptors(environment);
   const names = Reflect.ownKeys(descriptors);
@@ -40,7 +41,8 @@ export function selectedDeploymentConfiguration(environment) {
     else if (key === 'PATH') { if (value !== imagePath) fail('authority_unsupported'); }
     else fail('setting_unreviewed');
   }
-  if ((snapshot.CLASSIFARR_RUNTIME_MODE ?? 'normal') !== 'normal') fail('mode_unsupported');
+  const mode = snapshot.CLASSIFARR_RUNTIME_MODE ?? 'normal';
+  if (!(allowRestoreHttp ? ['normal', 'restore'] : ['normal']).includes(mode)) fail('mode_unsupported');
   if ((snapshot.CLASSIFARR_SCHEMA_MAINTENANCE ?? 'startup') !== 'startup') fail('authority_unsupported');
   if (!Object.hasOwn(snapshot, 'NODE_OPTIONS')) fail('heap_unresolved');
   const umask = snapshot.UMASK ?? '022';
@@ -55,6 +57,7 @@ export function selectedDeploymentConfiguration(environment) {
     databaseStartupTimeoutMs = readDatabaseStartupTimeout(snapshot);
   } catch { fail('invalid'); }
   return {
+    mode,
     configuration,
     supervisor: { uid, gid, umask, vectorStaging, databaseStartupTimeoutMs },
   };

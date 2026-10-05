@@ -9,6 +9,7 @@ import { SOURCE, MIGRATION_ROOT, MIGRATION_SOCKET, MIGRATION_DATABASE, migration
   migrationCommand, migrationSql } from './identityMigrationDatabase.mjs';
 import { verifySelectedStartup } from './identityStartupProbe.mjs';
 import { verifySelectedRestoreHttp } from './selectedRestoreHttpProbe.mjs';
+import { verifySelectedDeploymentLifecycle } from './selectedDeploymentLifecycleProbe.mjs';
 import { verifyApplicationLayout } from './applicationLayoutProbe.mjs';
 import { verifySelectedMaintenance } from './identityMaintenanceProbe.mjs';
 import { seedSelectedConfigurationCipher } from './selectedConfigurationProbe.mjs';
@@ -108,6 +109,7 @@ await verifySelectedStartup({ signalRuntime: true });
 await verifySelectedStartup({ restore: true });
 await verifySelectedStartup();
 await verifySelectedRestoreHttp();
+await verifySelectedDeploymentLifecycle();
 await verifySelectedStartup({ configuration: 'file' });
 await verifySelectedStartup({ configuration: 'environment' });
 // Re-read the earlier committed write after the selected supervisor lifecycle.
@@ -121,6 +123,7 @@ process.stdout.write('PASS selected_startup_maintenance_runtime_sigterm_and_excl
 process.stdout.write('PASS selected_peer_maintenance_busy_killed_restore_quarantine_and_verified_resume\n');
 process.stdout.write('PASS selected_real_application_auth_runtime_exclusion_and_restore_only_dispatch\n');
 process.stdout.write('PASS selected_restore_http_auth_csrf_restricted_peer_worker_and_no_replay\n');
+process.stdout.write('PASS selected_deployment_normal_restore_normal_saved_settings_and_joined_shutdown\n');
 process.stdout.write('PASS selected_configuration_key_ciphertext_custom_settings_and_paths_preserved\n');
 process.stdout.write('PASS fixed_database_adapter_cancelled_start_and_protected_entrypoint_guard\n');
 process.stdout.write('PASS resumable_legacy_identity_copy_and_real_process_crash_recovery\n');
