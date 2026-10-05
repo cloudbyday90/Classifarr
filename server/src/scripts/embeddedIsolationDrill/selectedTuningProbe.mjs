@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { migrationCommand } from './identityMigrationDatabase.mjs';
 
 export const SELECTED_TUNING_FIXTURE = Object.freeze({
+  NODE_OPTIONS: '--max-old-space-size=1536',
   TASK_QUEUE_RETENTION_DAYS: '0', TASK_QUEUE_FAILED_RETENTION_DAYS: '0', TASK_QUEUE_CANCELLED_RETENTION_DAYS: '0',
   TASK_QUEUE_MAX_TOTAL_ROWS: '250000', REFRESH_TOKEN_CLEANUP_ENABLED: 'false', API_AUDIT_RETENTION_DAYS: '120',
   OMDB_SSL_RECOVERY_PROBE_MS: '90000', OLLAMA_CONNECTIVITY_TIMEOUT_MS: '6000', OLLAMA_PROBE_TIMEOUT_MS: '150000',

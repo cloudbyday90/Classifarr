@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { posix } from 'node:path';
+import { validSelectedNodeOptions } from './selectedNodeOptions.mjs';
 import { SELECTED_TUNING_RULES, validSelectedTuning, validSelectedTuningRelationships } from './selectedTuningConfiguration.mjs';
 
 const encryptionKeyPath = '/app/data/secrets/api_key_encryption_key';
@@ -18,7 +19,7 @@ const integers = new Set(['OMDB_REQUEST_TIMEOUT_MS', 'OMDB_MAX_REQUEST_TIMEOUT_M
   'LOG_MAX_AGE_DAYS', 'LOG_MAX_TOTAL_SIZE']);
 const keys = new Set([...Object.keys(SELECTED_APPLICATION_DEFAULTS), ...booleans, ...integers,
   ...Object.keys(SELECTED_TUNING_RULES), 'PGVECTOR_HNSW_ITERATIVE_SCAN',
-  'API_KEY_ENCRYPTION_KEY', 'CORS_ORIGIN', 'OMDB_RETRY_TIMEOUT_MULTIPLIER', 'LOG_COMPRESS']);
+  'API_KEY_ENCRYPTION_KEY', 'CORS_ORIGIN', 'OMDB_RETRY_TIMEOUT_MULTIPLIER', 'LOG_COMPRESS', 'NODE_OPTIONS']);
 export const isSelectedApplicationSetting = key => keys.has(key);
 const invalid = () => new Error('selected_application_configuration_invalid');
 export const validSelectedKey = value => typeof value === 'string' && /^[a-fA-F0-9]{64}$/.test(value);
@@ -37,7 +38,8 @@ export function selectedApplicationConfiguration(input = {}) {
   if (!input || Object.getPrototypeOf(input) !== Object.prototype) throw invalid();
   for (const [key, value] of Object.entries(input)) {
     if (!keys.has(key) || typeof value !== 'string' || value.length > 4096 || /[\x00-\x1f\x7f]/.test(value)) throw invalid();
-    if (paths.has(key)) assertSelectedConfigurationPath(value);
+    if (key === 'NODE_OPTIONS') { if (!validSelectedNodeOptions(value)) throw invalid(); }
+    else if (paths.has(key)) assertSelectedConfigurationPath(value);
     else if (Object.hasOwn(SELECTED_TUNING_RULES, key)) { if (!validSelectedTuning(key, value)) throw invalid(); }
     else if (key === 'PGVECTOR_HNSW_ITERATIVE_SCAN') { if (!['off', 'strict_order', 'relaxed_order'].includes(value)) throw invalid(); }
     else if (key === 'API_KEY_ENCRYPTION_KEY') { if (!validSelectedKey(value)) throw invalid(); }

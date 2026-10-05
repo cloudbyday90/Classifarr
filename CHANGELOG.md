@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add strict saved-deployment configuration admission for protected startup,
+  preserving reviewed heap limits and compatible pool/retry defaults. Keep
+  supervisor settings separate and reject unsupported inputs before conversion;
+  existing Compose/Unraid startup and legacy ownership handling remain unchanged.
 - Preserve reviewed retention, provider retry, vector recall and database-pool
   tuning in protected startup, including disabled cleanup settings. Reject unsafe
   values and track documented deployment settings separately from application

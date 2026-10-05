@@ -2,6 +2,12 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Repeated during the saved-deployment admission batch: a fresh GitHub MCP/CLI
+enumeration found open PRs 555 and 556. A `node:crypto.randomInt` draw selected
+555, still at `5545605b53c854de8847b44e24fa083ff4218080`. The exact two-file
+trial again reproduced 8/8 baseline versus 7/8 candidate. Only the trial was
+reversed; no package installation or merge occurred.
+
 Applied the exact two-file diff from open PR 555's immutable head locally on main,
 without fetching or merging a branch. The existing runtime-baseline test passed
 8/8 before the change, then failed 1/8 with it: the client declaration major was

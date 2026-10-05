@@ -1,6 +1,9 @@
 # Protected startup: preserve operator tuning
 
 Date: 2026-10-05. Follows [configuration preservation](selected-configuration-design.md).
+The subsequent [deployment admission design](selected-deployment-design.md)
+adds heap-only Node options and compatible pool/retry defaults for compiled
+deployment profiles; direct internal launches keep their earlier defaults.
 
 ## Decision and scope
 

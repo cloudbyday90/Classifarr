@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { migrationCommand, migrationSql } from './identityMigrationDatabase.mjs';
 import { boundedJson } from './httpRoutingTransport.mjs';
 import { SELECTED_TUNING_FIXTURE, verifySelectedTuningProcess } from './selectedTuningProbe.mjs';
+import { selectedDeploymentConfiguration } from '../../bootstrap/selectedDeploymentConfiguration.mjs';
 
 const originalKey = '/app/data/secrets/api_key_encryption_key';
 const customKey = '/app/data/secrets/selected-key';
@@ -39,13 +40,18 @@ export async function prepareSelectedConfigurationProfile(mode) {
     await mkdir('/app/data/backups/selected',{recursive:true,mode:0o700});
   `]);
   const before = await snapshot();
+  const deployment = selectedDeploymentConfiguration({ ...SELECTED_TUNING_FIXTURE,
+    PUID: '1000', PGID: '1000', UMASK: '022', PGVECTOR_RUNTIME_STAGING: 'auto',
+    CLASSIFARR_RUNTIME_MODE: 'normal', CLASSIFARR_SCHEMA_MAINTENANCE: 'startup',
+    CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: '300',
+    API_KEY_ENCRYPTION_KEY_FILE: mode === 'file' ? customKey : '/app/data/secrets/absent-selected-key',
+    ...(mode === 'environment' ? { API_KEY_ENCRYPTION_KEY: before[0].toString('utf8').trim() } : {}),
+    RUNTIME_SETTINGS_FILE: settingsPath, LOG_DIR: '/app/data/logs/selected', BACKUP_DIR: '/app/data/backups/selected',
+    LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'true', FORCE_SECURE_COOKIES: 'false',
+    CORS_ORIGIN: 'https://ignored-environment.example', TZ: 'America/New_York' });
+  assert.deepEqual(deployment.supervisor, { uid: 1000, gid: 1000, umask: '022', vectorStaging: 'auto', databaseStartupTimeoutMs: 300000 });
   return {
-    configuration: { ...SELECTED_TUNING_FIXTURE,
-      API_KEY_ENCRYPTION_KEY_FILE: mode === 'file' ? customKey : '/app/data/secrets/absent-selected-key',
-      ...(mode === 'environment' ? { API_KEY_ENCRYPTION_KEY: before[0].toString('utf8').trim() } : {}),
-      RUNTIME_SETTINGS_FILE: settingsPath, LOG_DIR: '/app/data/logs/selected', BACKUP_DIR: '/app/data/backups/selected',
-      LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'true', FORCE_SECURE_COOKIES: 'false',
-      CORS_ORIGIN: 'https://ignored-environment.example', TZ: 'America/New_York' },
+    configuration: deployment.configuration,
     async prepareFileFallback() {
       // Schema reconciliation seeds DB overrides, which intentionally outrank
       // JSON. Remove only these known synthetic defaults after maintenance so

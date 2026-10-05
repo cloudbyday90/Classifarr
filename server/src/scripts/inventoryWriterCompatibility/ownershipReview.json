@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "selected_deployment_admission",
+      "classification": "separately_coordinated",
+      "reason": "Pure bounded environment compilation preserves application tuning and compatible pool/retry defaults while returning supervisor identity, umask, vector staging and startup deadline separately. Heap-only NODE_OPTIONS validation excludes loading/debugger/TLS flags before spawn. Unknown settings and alternate database authority are refused without reflecting values. Synthetic network-none fixtures compile reviewed deployment settings and check the actual application environment. No ingestion writes, permission changes, key regeneration or production activation.",
+      "followUp": "Production dispatch must consume every supervisor field and independently verify actual OS identity, mounts, files, writer quiescence and selection. Keep forced-non-root compatible startup; unresolved heap sizing and restricted restore HTTP remain deferred. Preserve database-enforced ingestion fencing as a separate prerequisite for unattended recovery."
+    },
+    {
       "id": "selected_operator_tuning",
       "classification": "separately_coordinated",
       "reason": "Explicit bounded application tuning preserves queue retention zero, disabled cleanup, provider preflight, vector recall and pool/timeouts without changing database identity, schema authority, executable or privileged worker environment. Unknown and malformed profile options refuse startup before child launch. The synthetic network-none image probe checks only the exact application child environment without logging it; the tighter custom pool observation remains bounded. No live ingestion writes or production activation.",
@@ -428,11 +434,13 @@
     }
   ],
   "entries": [
-    {"path":"server/src/bootstrap/selectedApplicationConfiguration.mjs","digest":"eee26ef254ae3cf90fed2844a5398d31310c9bc133493e8e3ac5a6103ce23b21","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_operator_tuning"},
+    {"path":"server/src/bootstrap/selectedDeploymentConfiguration.mjs","digest":"050174ac69beedfb95aca2be898de67219ad4e9f4878489de550edcc9cc762b9","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_deployment_admission"},
+    {"path":"server/src/bootstrap/selectedNodeOptions.mjs","digest":"928cc796220b387795f4aff0488ce195e704812ceec7161a76451c03cdcd02c5","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_deployment_admission"},
+    {"path":"server/src/bootstrap/selectedApplicationConfiguration.mjs","digest":"05e41fcf02c5ee147c5cc123289c407a05b5dd31be2f765323ccaa4d5bb496e4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_deployment_admission"},
     {"path":"server/src/bootstrap/selectedTuningConfiguration.mjs","digest":"75c4670fb7bd691542d523931b204f3293ca629b0b93d7587ee6c21c1d988006","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_operator_tuning"},
-    {"path":"server/src/scripts/embeddedIsolationDrill/selectedTuningProbe.mjs","digest":"1c09003f66a77b07a50974f515e51190391cf2b9e41bf578d3b7b056b15166ff","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_operator_tuning"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/selectedTuningProbe.mjs","digest":"6ad54f794bc892589504b7a0744c491a3f691b6125e963a234c05a5ab814faa5","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_deployment_admission"},
     {"path":"server/src/bootstrap/selectedConfigurationFiles.mjs","digest":"82a64bf94648ccb6932acd479f28a63d1ee41d2410b3b8e4d415ae2209a48bb4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_runtime_configuration"},
-    {"path":"server/src/scripts/embeddedIsolationDrill/selectedConfigurationProbe.mjs","digest":"5418a33bef0509f60675a2a56486b2176a1eab75a1702f17fd62137b00b931e4","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_operator_tuning"},
+    {"path":"server/src/scripts/embeddedIsolationDrill/selectedConfigurationProbe.mjs","digest":"801bacde715db4243964cc835c3a97d5970367bf98574d23ec9b297d5bbe43bd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_deployment_admission"},
     {"path":"server/src/scripts/embeddedIsolationDrill/selectedConfigurationFailureProbe.mjs","digest":"52b7a80507e2a1aabcaf6974e3c5b65bb4c58d7ad74788703d3e7c1ac8ececf2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_runtime_configuration"},
     {"path":"server/src/bootstrap/embeddedSelectedApplication.mjs","digest":"3aa8ad13a2ad535504c970d5d1d199f4fd08833dae02daf333519c4741efcd30","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_runtime_configuration"},
     {"path":"server/src/bootstrap/embeddedSelectedRuntimeComposition.mjs","digest":"94908c7bc8f9d3103ef70ce074f97065951a33039d114876ca48604523b9e6e9","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_runtime_configuration"},
