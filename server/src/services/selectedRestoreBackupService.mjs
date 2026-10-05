@@ -4,7 +4,9 @@ import { readRestoreMaintenanceInput } from './backupRestoreMaintenanceInput.mjs
 import { SELECTED_RESTORE_MAX_BYTES } from '../bootstrap/embeddedSelectedMaintenanceContract.mjs';
 import { AppError } from '../utils/appError.mjs';
 
-const failure = (status, code) => new AppError('Restore unavailable. Review maintenance status before restarting to try again.',
+const failure = (status, code) => new AppError(status === 400
+  ? 'Backup could not be read or validated. Check the file, password and restore mode.'
+  : 'Restore unavailable. Review maintenance status before restarting to try again.',
   status, { code, isOperational: true });
 
 /** Narrow substitute for the backup route; cannot execute SQL restore or generate keys. */

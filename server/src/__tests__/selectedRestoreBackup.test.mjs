@@ -50,7 +50,9 @@ test.each(['wrong-mode', 'bad-json', 'bad-reference', 'wrong-password'])('invali
   if (failure === 'bad-json') f.files.read.mockRejectedValueOnce(new Error('private'));
   if (failure === 'bad-reference') f.files.read.mockResolvedValueOnce({ version: '2', data: { libraries: [{ media_server_id: 999 }] } });
   if (failure === 'wrong-password') f.files.read.mockResolvedValueOnce({ encrypted: true, data: encryptBackupPayload(backup(), 'secret') });
-  await expect(f.service.restoreBackup(filename, { mode: failure === 'wrong-mode' ? 'sql' : 'merge', password: 'wrong' })).rejects.toMatchObject({ statusCode: 400 });
+  await expect(f.service.restoreBackup(filename, { mode: failure === 'wrong-mode' ? 'sql' : 'merge', password: 'wrong' })).rejects.toMatchObject({
+    statusCode: 400, message: 'Backup could not be read or validated. Check the file, password and restore mode.',
+  });
   expect(f.handoff.request).not.toHaveBeenCalled();
   expect(await f.service.listBackups()).toEqual([]);
 });
