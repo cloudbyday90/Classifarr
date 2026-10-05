@@ -21,7 +21,7 @@ for (const width of [390, 1280]) test(`synthetic migration diagnostics at ${widt
     if (path.includes('native-intent-reconciliation') || path.includes('held-out-semantic')) status = 403
     if (path === '/api/libraries/migration-diagnostics') {
       reads++
-      data = { status: 'available', ledgerStatus: 'not_recorded', guidance: 'Save this synthetic report for review. Do not rerun SQL manually.',
+      data = { status: 'available', ledgerStatus: 'not_recorded', needsIssue: true, guidance: 'Open a GitHub issue with this sanitized synthetic report and image version. Do not rerun SQL manually.',
         report: { attemptId: 'SYNTHETIC-ATTEMPT', finishedAt: '2026-10-05T12:00:00Z', outcome: 'failed', omittedEvents: 0,
           limitations: 'Sanitized trace only. SQL and raw error text are omitted.', events: [{ step: 'migration_failed', errors: [{ code: 'P0001' }] }] } }
     }
@@ -35,6 +35,7 @@ for (const width of [390, 1280]) test(`synthetic migration diagnostics at ${widt
   await button.focus(); await page.keyboard.press('Enter')
   await expect(region.getByRole('status')).toContainText('not recorded as applied')
   await expect(button).toBeFocused()
+  await expect(region.getByRole('link', { name: 'Open a GitHub issue (new tab)' })).toHaveAttribute('href', 'https://github.com/cloudbyday90/Classifarr/issues')
   await region.getByText('View recorded steps and error chain').focus(); await page.keyboard.press('Enter')
   await expect(region.getByLabel('Sanitized migration diagnostic JSON')).toContainText('P0001')
   const download = page.waitForEvent('download')

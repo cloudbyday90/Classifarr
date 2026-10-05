@@ -77,6 +77,16 @@ Discovered and read October 5, 2026:
 
 ## Operator access
 
+Unknown/unmapped failures explicitly ask the administrator to open an issue on the
+[verified Classifarr issues page](https://github.com/cloudbyday90/Classifarr/issues),
+attaching the reviewed sanitized report and image version so maintainers can provide
+a proper fix. The fixed link opens in a labelled new tab with no referrer, diagnostic
+query parameters, automatic upload or automatic issue creation. Known operational
+failures retain their specific instructions; recovered/applied historical failures
+do not request a new issue solely because the old report exists. The offline reader
+provides the same unknown-failure GitHub instruction. URL verified through GitHub's
+repository-to-Issues navigation on October 5, 2026.
+
 When Command Center or a library shows a deployment-related import problem, choose
 **View migration diagnostics**, then **Download sanitized report**. This is a
 read-only inspection; it does not claim that a historical failure caused the current

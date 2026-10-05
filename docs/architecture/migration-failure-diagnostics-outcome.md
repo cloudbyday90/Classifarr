@@ -23,6 +23,12 @@ checked; API keys, query-selected paths and mutations are not supported. A curre
 ledger lookup distinguishes historical applied migrations. Failed startup remains
 blocked; the offline reader works without a database connection.
 
+Unknown failures now explicitly ask the administrator to open a GitHub issue with
+the reviewed sanitized report and image version. The UI uses the verified fixed
+repository issues link; there is no automatic upload, issue creation, diagnostic
+query string or outbound referrer. Known operational and resolved historical cases
+do not incorrectly receive the unknown-failure escalation.
+
 ## Validation
 
 - Targeted backend: 120 tests passed, including access denial, unknown/aggregate

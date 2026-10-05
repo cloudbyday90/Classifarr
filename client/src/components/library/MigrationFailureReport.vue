@@ -21,6 +21,13 @@
       <p>This is the last saved migration failure, not proof of the cause of this library issue.</p>
       <p>Attempt {{ result.report.attemptId }} · {{ result.report.finishedAt }}</p>
       <p>{{ result.guidance }}</p>
+      <a
+        v-if="result.needsIssue === true"
+        href="https://github.com/cloudbyday90/Classifarr/issues"
+        target="_blank"
+        rel="noopener noreferrer"
+        referrerpolicy="no-referrer"
+      >Open a GitHub issue (new tab)</a>
       <p>{{ result.report.limitations }}</p>
       <p v-if="result.report.omittedEvents">
         {{ result.report.omittedEvents }} earlier trace events were omitted by the size limit.

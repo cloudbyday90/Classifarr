@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createMigrationDiagnosticStore } from './migrationDiagnosticStore.mjs';
-import { migrationTargetHash, migrationDiagnosticGuidance } from './migrationDiagnosticContract.mjs';
+import { migrationTargetHash, migrationDiagnosticGuidance, migrationDiagnosticKind } from './migrationDiagnosticContract.mjs';
 import { requireReviewActor } from './mediaIdentityReviewRepository.mjs';
 import { reviewInteger } from './mediaIdentityReviewContract.mjs';
 import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
@@ -9,7 +9,9 @@ export async function readMigrationDiagnostic({ environment = process.env, store
   const result = await store.read();
   if (result.status !== 'available') return result;
   if (result.report.targetHash !== migrationTargetHash(environment)) return { status: 'target_mismatch' };
-  return { ...result, ledgerStatus: 'unknown', guidance: migrationDiagnosticGuidance(result.report) };
+  const needsIssue = migrationDiagnosticKind(result.report) === 'unknown';
+  return { ...result, ledgerStatus: 'unknown', guidance: migrationDiagnosticGuidance(result.report), needsIssue,
+    ...(needsIssue ? { issueUrl: 'https://github.com/cloudbyday90/Classifarr/issues' } : {}) };
 }
 
 export function createMigrationDiagnosticReader(database, options = {}) {
@@ -38,7 +40,11 @@ export function createMigrationDiagnosticReader(database, options = {}) {
             ? await query('SELECT 1 FROM public.schema_migrations WHERE filename = $1', [failed.migration])
             : { rows: [] };
           result.ledgerStatus = applied.rows.length ? 'applied_since_failure' : 'not_recorded';
-          if (applied.rows.length) result.guidance = 'This migration is now recorded as applied. Do not replay it because of this historical report. Follow the current library guidance for any remaining issue.';
+          if (applied.rows.length) {
+            result.needsIssue = false;
+            delete result.issueUrl;
+            result.guidance = 'This migration is now recorded as applied. Do not replay it because of this historical report. Follow the current library guidance for any remaining issue.';
+          }
         }
       }
       await query('COMMIT');

@@ -158,9 +158,20 @@ test.each([true, false])('admin read compares the current ledger without writing
   }) };
   const read = createMigrationDiagnosticReader({ pool: { connect: async () => client } }, { environment, store });
   expect((await read(1)).ledgerStatus).toBe(applied ? 'applied_since_failure' : 'not_recorded');
+  expect((await read(1)).needsIssue).toBe(!applied);
   expect(client.query).toHaveBeenCalledWith('SELECT 1 FROM public.schema_migrations WHERE filename = $1', [filename]);
   expect(client.query.mock.calls.some(([sql]) => /INSERT|DELETE|UPDATE|CREATE|ALTER/.test(sql))).toBe(false);
   expect(client.release).toHaveBeenCalledWith(true);
+});
+test('unknown failures explicitly request a GitHub issue with reviewed sanitized evidence', async () => {
+  await failure();
+  const result = await readMigrationDiagnostic({ environment, store });
+  expect(result.needsIssue).toBe(true);
+  expect(result.guidance).toContain('Open a GitHub issue');
+  expect(result.issueUrl).toBe('https://github.com/cloudbyday90/Classifarr/issues');
+  expect(result.guidance).toContain('do not include credentials or raw database logs');
+  await failure(Object.assign(new Error('sensitive path'), { code: 'ENOSPC' }));
+  expect((await readMigrationDiagnostic({ environment, store })).needsIssue).toBe(false);
 });
 test('disabled administrator cannot read a saved report', async () => {
   const readStore = { read: jest.fn() };

@@ -79,12 +79,22 @@ export function sanitizeMigrationError(error) {
   return { errors, errorChainTruncated: truncated || pending.length > 0 };
 }
 
-export function migrationDiagnosticGuidance(report) {
-  if (report.outcome === 'recovered') return 'This attempt completed after an earlier failure. Do not repair or replay a migration solely because this historical report exists. Check current library guidance separately.';
+export function migrationDiagnosticKind(report) {
+  if (report.outcome === 'recovered') return 'recovered';
   const codes = (report.events.findLast(event => event.errors?.length)?.errors || []).map(error => error.code);
-  if (codes.includes('42501') || codes.includes('EACCES') || codes.includes('EPERM')) return 'Check the maintenance database role and app-data permissions. Do not grant the web process superuser access. Save this report before changing deployment settings.';
-  if (codes.includes('55P03') || codes.includes('57014')) return 'The operation encountered a lock or timeout. Check database activity for this database, stop the conflicting maintenance operation if confirmed, and retry the normal container startup. Do not delete migration history.';
-  if (codes.includes('53100') || codes.includes('ENOSPC')) return 'Check free space on the database and app-data volumes, preserve a backup, then retry normal startup after resolving the storage problem.';
-  if (codes.some(code => code.startsWith('08') || ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT'].includes(code))) return 'Check PostgreSQL availability and the configured connection target, then retry normal startup. Do not reset the database.';
-  return 'Save this report and the image version for the maintainer. An unknown failure needs review before any repair. Do not delete migration records, rerun SQL manually, or weaken database safeguards.';
+  if (codes.includes('42501') || codes.includes('EACCES') || codes.includes('EPERM')) return 'permissions';
+  if (codes.includes('55P03') || codes.includes('57014')) return 'timeout';
+  if (codes.includes('53100') || codes.includes('ENOSPC')) return 'storage';
+  if (codes.some(code => code.startsWith('08') || ['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT'].includes(code))) return 'connection';
+  return 'unknown';
+}
+
+export function migrationDiagnosticGuidance(report) {
+  const kind = migrationDiagnosticKind(report);
+  if (kind === 'recovered') return 'This attempt completed after an earlier failure. Do not repair or replay a migration solely because this historical report exists. Check current library guidance separately.';
+  if (kind === 'permissions') return 'Check the maintenance database role and app-data permissions. Do not grant the web process superuser access. Save this report before changing deployment settings.';
+  if (kind === 'timeout') return 'The operation encountered a lock or timeout. Check database activity for this database, stop the conflicting maintenance operation if confirmed, and retry the normal container startup. Do not delete migration history.';
+  if (kind === 'storage') return 'Check free space on the database and app-data volumes, preserve a backup, then retry normal startup after resolving the storage problem.';
+  if (kind === 'connection') return 'Check PostgreSQL availability and the configured connection target, then retry normal startup. Do not reset the database.';
+  return 'Open a GitHub issue so the maintainers can investigate this unknown failure and provide a proper fix. Attach the sanitized report and image version. Review attachments first; do not include credentials or raw database logs. Do not replay migrations or weaken safeguards.';
 }
