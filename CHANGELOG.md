@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a fixed-target, separately identified schema/restore worker for protected
+  database startup. Verify busy admission, killed-restore quarantine and safe
+  restart on the real image; legacy templates and automatic takeover remain gated.
 - Preserve the specific unfinished-restore refusal through supervised startup
   maintenance without exposing raw worker logs or weakening restore admission.
   Keep interrupted-restore acceptance checks strict about the reason for refusal.

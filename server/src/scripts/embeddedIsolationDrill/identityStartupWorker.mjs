@@ -5,12 +5,13 @@ import { runSelectedEmbeddedStartup } from '../../bootstrap/embeddedSelectedStar
 import { withEmbeddedMigrationJournal } from '../../bootstrap/embeddedMigrationJournal.mjs';
 import { validateMigrationReceipt } from '../../bootstrap/embeddedMigrationPhases.mjs';
 import { assertDrillEnvironment, assertContainerLayout } from './contract.mjs';
-import { MIGRATION_ROOT } from './identityMigrationDatabase.mjs';
+import { MIGRATION_ROOT, databaseIdentity } from './identityMigrationDatabase.mjs';
 import { prepareIdentityMigration } from './identityMigrationSteps.mjs';
 import { startSelectedFixtureChild } from './identityStartupAdapter.mjs';
 import { createSelectedEmbeddedDatabase } from '../../bootstrap/embeddedSelectedDatabase.mjs';
 import { launchSelectedDatabase, verifySelectedDatabaseShutdown } from '../../bootstrap/embeddedSelectedDatabaseProcess.mjs';
 import { provisionEmbeddedApplicationLayout } from '../../bootstrap/embeddedApplicationLayout.mjs';
+import { startSelectedMaintenance } from '../../bootstrap/embeddedSelectedMaintenance.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
@@ -19,6 +20,7 @@ const wait = process.argv[2] === '--signal';
 const cancelStartup = process.argv[2] === '--cancel-start';
 await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
   const { binding, steps } = await prepareIdentityMigration();
+  const identity = await databaseIdentity();
   let launched;
   const database = createSelectedEmbeddedDatabase({ launch: account => {
     launched = launchSelectedDatabase(account);
@@ -34,7 +36,7 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
       await provisionEmbeddedApplicationLayout({ signal });
     },
     database,
-    startMaintenance: () => { assert(!cancelStartup); return startSelectedFixtureChild('schema'); },
+    startMaintenance: () => { assert(!cancelStartup); return startSelectedMaintenance({ operation: 'schema', identity }); },
     startApplication: () => { assert(!cancelStartup); return startSelectedFixtureChild('runtime', { wait,
       onReady: () => process.stdout.write('selected-startup-ready\n') }); },
   });

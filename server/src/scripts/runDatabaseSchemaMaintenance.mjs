@@ -1,4 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { SchemaRestoreVerificationRequiredError, RESTORE_VERIFICATION_REQUIRED_EXIT,
+  RESTORE_VERIFICATION_REQUIRED_MESSAGE } from '../utils/schemaMaintenanceFailure.mjs';
 
 export async function runSchemaMaintenanceCommand({
   args = process.argv.slice(2),
@@ -15,9 +17,15 @@ export async function runSchemaMaintenanceCommand({
   try {
     database = await loadDatabase();
     const { runDatabaseSchemaMaintenance } = await loadMaintenance();
-    const result = await runDatabaseSchemaMaintenance({ database });
-    output(JSON.stringify(result));
-    exitCode = result.status === 'complete' ? 0 : 75;
+    try {
+      const result = await runDatabaseSchemaMaintenance({ database });
+      output(JSON.stringify(result));
+      exitCode = result.status === 'complete' ? 0 : 75;
+    } catch (error) {
+      if (!(error instanceof SchemaRestoreVerificationRequiredError)) throw error;
+      output(RESTORE_VERIFICATION_REQUIRED_MESSAGE);
+      exitCode = RESTORE_VERIFICATION_REQUIRED_EXIT;
+    }
   } catch {
     output('Schema maintenance failed. Keep normal workers stopped; inspect maintenance logs and restore verification before retrying.');
   } finally {

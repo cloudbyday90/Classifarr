@@ -69,7 +69,7 @@ export async function prepareIdentityMigration({ checkpoint = async () => {} } =
     authentication: async () => {
       // No legacy includes, preload paths, archive commands or trust rules are inherited.
       const files = [
-        ['/app/data/embedded-postgres/pg_hba.conf', 'local all classifarr peer map=maintenance\nlocal classifarr_identity_migration cf_runtime peer map=runtime\nlocal all all reject\nhost all all 0.0.0.0/0 reject\nhost all all ::0/0 reject\n'],
+        ['/app/data/embedded-postgres/pg_hba.conf', 'local all classifarr peer map=maintenance\nlocal classifarr cf_runtime peer map=runtime\nlocal all all reject\nhost all all 0.0.0.0/0 reject\nhost all all ::0/0 reject\n'],
         ['/app/data/embedded-postgres/pg_ident.conf', 'maintenance postgres classifarr\nruntime classifarr cf_runtime\n'],
         ['/app/data/embedded-postgres/postgresql.conf', `data_directory='${CANDIDATE}'\nhba_file='/app/data/embedded-postgres/pg_hba.conf'\nident_file='/app/data/embedded-postgres/pg_ident.conf'\nlisten_addresses=''\nunix_socket_directories='${MIGRATION_SOCKET}'\nshared_preload_libraries='pg_stat_statements'\nshared_buffers='32MB'\nmax_connections=20\n`],
         [`${CANDIDATE}/postgresql.auto.conf`, ''],

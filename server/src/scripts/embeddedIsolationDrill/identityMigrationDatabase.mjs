@@ -10,7 +10,7 @@ export const MIGRATION_ROOT = '/identity-migration';
 export const SOURCE = '/identity-migration/source';
 export const CANDIDATE = SELECTED_DATABASE_DATA;
 export const MIGRATION_SOCKET = SELECTED_DATABASE_SOCKET;
-export const MIGRATION_DATABASE = 'classifarr_identity_migration';
+export const MIGRATION_DATABASE = 'classifarr';
 export const migrationEnvironment = () => ({ ...childEnvironment({ admin: true }),
   POSTGRES_HOST: MIGRATION_SOCKET, POSTGRES_DB: MIGRATION_DATABASE });
 
@@ -57,8 +57,8 @@ DO $$ BEGIN
 END $$;
 ALTER ROLE classifarr PASSWORD NULL;
 ALTER ROLE cf_runtime PASSWORD NULL;
-REVOKE ALL ON DATABASE classifarr_identity_migration FROM PUBLIC;
-GRANT CONNECT ON DATABASE classifarr_identity_migration TO cf_runtime;
+REVOKE ALL ON DATABASE classifarr FROM PUBLIC;
+GRANT CONNECT ON DATABASE classifarr TO cf_runtime;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO cf_runtime;
 GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO cf_runtime;

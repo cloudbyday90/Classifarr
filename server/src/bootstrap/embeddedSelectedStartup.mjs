@@ -31,6 +31,6 @@ export async function runSelectedEmbeddedStartup({ journal, binding, verify, dat
       stop: () => database.stop(),
     },
     startMaintenance, startApplication, attachRuntimeMaintenance,
-    processRef, report,
+    processRef, report, maintenanceTimeoutMs: 920_000,
   });
 }
