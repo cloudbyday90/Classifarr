@@ -47,7 +47,9 @@ export async function verifySelectedDeploymentLifecycle() {
           assert(!completed, 'deployment_exited_before_ready');
           try {
             const response = await fetch('http://127.0.0.1:21324/health', { signal: AbortSignal.timeout(1000) });
-            return response.ok && (await boundedJson(response.body)).operatingMode === mode;
+            const health = await boundedJson(response.body);
+            return response.ok && (mode === 'restore' ? health.operatingMode === 'restore'
+              : health.status === 'healthy' && health.database === 'connected');
           } catch { return false; }
         }, 'deployment_http_ready', 60_000);
         await assert.rejects(withEmbeddedMigrationJournal(MIGRATION_ROOT, async () => {}), /migration_lock_unavailable/);

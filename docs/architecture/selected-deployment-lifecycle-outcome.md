@@ -22,9 +22,30 @@ and saved-template installations retain their compatible startup path.
 
 ## Validation
 
-Focused tests passed before image testing. Full backend, final quality checks,
-same-image isolated lifecycle rehearsal, schema dump and local replacement are
-pending. Outcomes below will be recorded after those checks finish.
+Final focused checks passed: seven suites, 224 tests. The final full backend run passed
+all 1,695 suites: 52,558 tests passed and one Linux-only filesystem test was
+skipped on Windows. Equivalent copy/fsync, unchanged-source and no-overwrite
+assertions passed inside the rebuilt Linux image. The first full run started
+before the reviewed ownership manifest was settled and failed only that check;
+the complete rerun passed after the six scoped entries were reviewed.
+
+Backend lint/typecheck, copyright, both knip checks, ESM guards, 30 tooling tests
+and Markdown checks passed. Ownership inventory: 19 owned, 297 separately
+coordinated and 502 unresolved; this is not permission to run unresolved writers.
+Gitleaks 8.30.1 scanned the scoped commit diff with no leaks; its downloaded
+release archive was checked against the publisher's checksum. No client source
+changed, and no new frontend coverage claim is made.
+
+The clean-source no-cache image was built from
+`410d913cd2f82b0b0c0a0b2f8401cf6aeb7cc146`; inspected local Docker ID:
+`sha256:002b3424032c093f3c4000982685bf7daad1afce28c075526dbb37f840803e66`.
+This is local Linux/amd64 AVX2 evidence, not a published multi-platform receipt.
+The isolated PostgreSQL 18 schema dump/load round trip passed after rebuilding
+with zero drift and no new migration. The first image rehearsal found a fixture
+error: it expected the restore-only `operatingMode` field from normal health.
+The normal server was healthy with its existing `status`/`database` contract.
+The fixture now checks each mode's actual contract; no API was changed to satisfy
+the test. The corrected image rehearsal and local replacement are still pending.
 
 Random current open [PR 556](node-types-pr-556-outcome.md) was applied and tested
 locally. It failed the Node 24 declaration-major check and was removed before
