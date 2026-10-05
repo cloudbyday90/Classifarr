@@ -11,6 +11,7 @@ import { runDatabaseSchemaMaintenance } from '../../services/databaseSchemaMaint
 import { verifyRuntimeSchemaReadiness, verifySupervisedSchemaReadiness } from '../../services/databaseSchemaReadiness.mjs';
 import { acquireNormalRuntimeAdmission } from '../../bootstrap/runtimeAdmission.mjs';
 import { withBackupRestoreSession } from '../../services/backupRestoreSession.mjs';
+import { createMigrationDiagnostics } from '../../services/migrationDiagnostics.mjs';
 
 function identifier(value) {
   if (!/^cf_schema_[a-f0-9]+$/.test(value)) throw new Error('unowned_fixture_identifier');
@@ -159,7 +160,13 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
       readFileSync: (file, encoding) => path.basename(file) === filename
         ? 'CREATE TABLE public.schema_boundary_rollback(id integer); SELECT 1/0;' : fs.readFileSync(file, encoding),
     } });
-    await expect(maintain({ runnerFactory: factory })).rejects.toThrow('division by zero');
+    let report;
+    const diagnostics = createMigrationDiagnostics({ enabled: true, store: { write: async value => { report = value; } } });
+    await expect(maintain({ runnerFactory: factory, diagnostics })).rejects.toMatchObject({ cause: { code: '22012' } });
+    expect(report.outcome).toBe('failed');
+    expect(report.events.some(event => event.step === 'migration_failed' && event.migration === filename)).toBe(true);
+    expect(report.events.some(event => event.step === 'transaction_rollback')).toBe(true);
+    expect(JSON.stringify(report)).not.toContain('SELECT 1/0');
     expect((await getPool().query("SELECT to_regclass('public.schema_boundary_rollback') AS object")).rows[0].object).toBeNull();
     expect((await getPool().query('SELECT 1 FROM schema_migrations WHERE filename=$1', [filename])).rowCount).toBe(0);
     await expect(maintain()).resolves.toMatchObject({ status: 'complete' });

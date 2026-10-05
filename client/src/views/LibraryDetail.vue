@@ -136,6 +136,7 @@
         :needed="library.ingestion_status?.recoveryMode === 'deployment_required'"
         @repaired="refreshSyncStatus"
       />
+      <MigrationFailureReport v-if="library.ingestion_status?.recoveryMode === 'deployment_required'" />
       <LibraryIngestionHistory :library-id="library.id" />
       <LibraryArchiveReview
         :library-id="library.id"
@@ -501,6 +502,7 @@ import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverag
 import LibraryIngestionStatus from '@/components/library/LibraryIngestionStatus.vue'
 import LegacyIngestionReview from '@/components/library/LegacyIngestionReview.vue'
 import IngestionSafeguardRepair from '@/components/library/IngestionSafeguardRepair.vue'
+import MigrationFailureReport from '@/components/library/MigrationFailureReport.vue'
 import LibraryIngestionHistory from '@/components/library/LibraryIngestionHistory.vue'
 import LegacyEnrichmentRetryReview from '@/components/library/LegacyEnrichmentRetryReview.vue'
 import LibraryArchiveReview from '@/components/library/LibraryArchiveReview.vue'

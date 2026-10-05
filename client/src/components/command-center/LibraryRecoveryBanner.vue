@@ -77,6 +77,7 @@
             View all libraries ({{ report.items.length - 5 }} more affected)
           </RouterLink>
         </details>
+        <MigrationFailureReport v-if="report.items.some(item => item.deployment)" />
       </template>
     </section>
   </div>
@@ -85,6 +86,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import MigrationFailureReport from '../library/MigrationFailureReport.vue'
 
 const props = defineProps({ report: { type: Object, required: true }, refreshing: Boolean })
 const emit = defineEmits(['refresh'])

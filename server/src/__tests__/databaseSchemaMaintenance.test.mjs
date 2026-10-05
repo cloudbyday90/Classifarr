@@ -143,6 +143,24 @@ test('lost pinned session never reconnects or commits', async () => {
   expect(s.database.pool.connect).toHaveBeenCalledTimes(1);
   expect(s.client.listenerCount('error')).toBe(0);
 });
+
+test('rollback failure preserves the original error and forbids further work on the session', async () => {
+  const s = setup();
+  const original = new Error('original_failure');
+  const normalQuery = s.client.query.getMockImplementation();
+  s.client.query.mockImplementation(async sql => {
+    if (sql === 'ROLLBACK') throw new Error('rollback_failure');
+    return normalQuery(sql);
+  });
+  s.runner.run.mockImplementation(async () => {
+    const adapter = s.runnerFactory.mock.calls[0][0].dbClient;
+    await expect(adapter.withTransaction(async () => { throw original; })).rejects.toBe(original);
+    await adapter.query('SELECT should_not_run');
+  });
+  await expect(s.maintain()).rejects.toBe(original);
+  expect(s.client.query).not.toHaveBeenCalledWith('SELECT should_not_run');
+  expect(s.client.release).toHaveBeenCalledWith(true);
+});
 test('readiness detects a connection error before accepting its result', async () => {
   const s = setup();
   s.client.query.mockImplementationOnce(async () => { s.client.emit('error', new Error('lost')); return {}; });

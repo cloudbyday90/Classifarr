@@ -23,6 +23,7 @@ import libraryIngestionApi from './libraryIngestionApi'
 import libraryArchiveApi from './libraryArchiveApi'
 import legacyEnrichmentRetryApi from './legacyEnrichmentRetryApi'
 import ingestionSafeguardApi from './ingestionSafeguardApi'
+import migrationDiagnosticsApi from './migrationDiagnosticsApi'
 
 const librariesApi = {
   ...libraryCatalogApi,
@@ -32,6 +33,7 @@ const librariesApi = {
   ...libraryArchiveApi,
   ...legacyEnrichmentRetryApi,
   ...ingestionSafeguardApi,
+  ...migrationDiagnosticsApi,
 }
 
 export default librariesApi

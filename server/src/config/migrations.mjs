@@ -10,8 +10,10 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import * as db from './database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { createMigrationDiagnostics } from '../services/migrationDiagnostics.mjs';
 
 const logger = createLogger('Migrations');
 
@@ -75,12 +77,16 @@ class MigrationRunner {
         fileSystem = fs,
         pathModule = path,
         currentDir = import.meta.dirname,
+        onEvent = () => {},
+        diagnostics,
     } = {}) {
         this.db = dbClient;
         this.env = env;
         this.fs = fileSystem;
         this.path = pathModule;
         this.currentDir = currentDir;
+        this.onEvent = onEvent;
+        this.diagnostics = diagnostics;
 
         // Resolve paths intelligently for both Local development and Docker environments
         // Local:  server/src/config/migrations.mjs -> ../../../database/migrations
@@ -133,7 +139,7 @@ class MigrationRunner {
     `);
     }
 
-    async initializeFreshInstall() {
+    async initializeFreshInstall(onEvent = this.onEvent) {
         if (!this.fs.existsSync(this.schemaFile)) {
             logger.warn('[Migrations] Schema snapshot not found, using legacy migrations');
             return false;
@@ -142,16 +148,19 @@ class MigrationRunner {
         logger.info('[Migrations] 🆕 Fresh install detected - loading schema snapshot');
         logger.info('[Migrations] ⚡ This is much faster than running 76+ individual migrations');
 
-        const schemaSQL = this.fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
-
         try {
+            onEvent('snapshot_read', { migration: 'current.sql' });
+            const schemaSQL = this.fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
+            onEvent('snapshot_execute', { migration: 'current.sql', contentHash: createHash('sha256').update(schemaSQL).digest('hex') });
             await this.db.withTransaction(async (client) => {
                 await client.query(schemaSQL);
             });
+            onEvent('snapshot_complete', { migration: 'current.sql' });
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');
             return true;
         } catch (error) {
-            logger.error('[Migrations] Schema snapshot failed:', error.message);
+            onEvent('snapshot_failed', { migration: 'current.sql', error });
+            logger.error('[Migrations] Schema snapshot failed; see migration diagnostics');
             return false;
         }
     }
@@ -177,24 +186,35 @@ class MigrationRunner {
         return files;
     }
 
-    async applyMigration(filename) {
+    async applyMigration(filename, onEvent = this.onEvent) {
+        onEvent('migration_read', { migration: filename });
         const filepath = this.path.join(this.migrationsDir, filename);
         const sql = this.fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
+        const context = { migration: filename, contentHash: createHash('sha256').update(sql).digest('hex') };
 
         await this.db.withTransaction(async (client) => {
+            onEvent('migration_execute', context);
             await client.query(sql);
+            onEvent('migration_ledger', context);
             await client.query(
                 'INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
                 [filename]
             );
         });
+        onEvent('migration_committed', context);
         return true;
     }
 
     async run() {
+        if (this.diagnostics) return this.diagnostics.run(onEvent => this.runSteps(onEvent));
+        return this.runSteps(this.onEvent);
+    }
+
+    async runSteps(onEvent) {
         try {
             logger.info('[Migrations] Checking for pending database migrations...');
 
+            onEvent('ledger_probe');
             const { rows } = await this.db.query(`
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
@@ -205,15 +225,18 @@ class MigrationRunner {
             let usedSnapshot = false;
             if (!rows[0].exists) {
                 try {
-                    usedSnapshot = await this.initializeFreshInstall();
+                    usedSnapshot = await this.initializeFreshInstall(onEvent);
                 } catch (error) {
-                    logger.error('[Migrations] Fresh install snapshot threw unexpectedly:', error.message);
+                    onEvent('snapshot_failed', { migration: 'current.sql', error });
+                    logger.error('[Migrations] Fresh install snapshot threw unexpectedly; see migration diagnostics');
                     usedSnapshot = false;
                 }
             }
 
+            onEvent('ledger_ensure');
             await this.ensureMigrationsTable();
 
+            onEvent('migration_discovery');
             const applied = await this.getAppliedMigrations();
             const allFiles = this.getMigrationFiles();
             const pending = allFiles.filter(f => !applied.includes(f));
@@ -229,19 +252,20 @@ class MigrationRunner {
             for (const filename of pending) {
                 try {
                     logger.info('[Migrations] Applying: ' + filename);
-                    await this.applyMigration(filename);
+                    await this.applyMigration(filename, onEvent);
                     successCount++;
                     logger.info('[Migrations] Applied: ' + filename);
                 } catch (error) {
-                    logger.error('[Migrations] Failed to apply ' + filename + ': ' + error.message);
-                    throw new Error('Migration failed: ' + filename + ' - ' + error.message);
+                    onEvent('migration_failed', { migration: filename, error });
+                    logger.error('[Migrations] Failed to apply ' + filename + '; see migration diagnostics');
+                    throw new Error('Migration failed: ' + filename, { cause: error });
                 }
             }
 
             logger.info('[Migrations] Successfully applied ' + successCount + ' migration(s)');
             return { applied: successCount, total: applied.length + successCount, method: usedSnapshot ? 'snapshot+migrations' : 'migrations' };
         } catch (error) {
-            logger.error('[Migrations] Migration runner error: ' + error.message);
+            logger.error('[Migrations] Migration runner failed; see migration diagnostics');
             throw error;
         }
     }
@@ -251,6 +275,6 @@ export function createMigrationRunner(options) {
     return new MigrationRunner(options);
 }
 
-const migrationRunner = createMigrationRunner();
+const migrationRunner = createMigrationRunner({ diagnostics: createMigrationDiagnostics() });
 
 export { migrationRunner };

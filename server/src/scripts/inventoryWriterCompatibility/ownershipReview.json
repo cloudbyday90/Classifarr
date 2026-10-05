@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "read_only_migration_diagnostics",
+      "classification": "separately_coordinated",
+      "reason": "Administrator access session plus current active administrator recheck. A pinned, bounded READ ONLY transaction reads only users and schema_migrations; fixed parameterized queries determine whether a historical failed filename is now applied. Private validated file reads grant no database or recovery authority. The dynamic query adapter was inspected: no inventory DML, SQL replay, schema mutation or repair is reachable.",
+      "followUp": "Preserve offline-only inspection when schema admission prevents startup, keep target mismatch and missing evidence explicit, and never promote diagnostic evidence into permission to repair. Existing unresolved writer paths remain unauthorized."
+    },
+    {
       "id": "confirmed_safeguard_repair",
       "classification": "separately_coordinated",
       "reason": "Administrator-confirmed schema repair only: actor-bound expiring one-use catalog plans, database advisory exclusion and shared maintenance admission precede a bounded private backup. Fixed six-table locks drain writes; exact function, trigger and marker-column checks are repeated under locks. Only disabled matching triggers are enabled, with an atomic audit. No inventory DML, migration replay, ownership marker reset or new database grants. Dynamic query arguments were reviewed against the frozen identifier allowlist.",
@@ -649,8 +655,9 @@
     {"path":"server/src/services/databaseProfilingMaintenance.mjs","digest":"208dc0e4a2890e0082fedf217103432b3fee706419d8e78f8560a53a3482e388","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"bounded_profiling_maintenance"},
     {"path":"server/src/services/databaseProfilingStatus.mjs","digest":"f60aed285c4d4411f15aa0d4d204152bc2f9ccb89aa16f5afce020288ac09bbd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"bounded_profiling_maintenance"},
     {"path":"server/src/config/schemaMaintenanceMode.mjs","digest":"16fa7cefdaf35405963c962dd47ae4430a63ba34079a01babd39541c7b597156","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"explicit_schema_maintenance_boundary"},
-    {"path":"server/src/scripts/runDatabaseSchemaMaintenance.mjs","digest":"a98b3a683ac3fbcc87debb79bacce0aa8e8327673bfcdab04ec500f8d9470c0d","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
-    {"path":"server/src/services/databaseSchemaMaintenance.mjs","digest":"db7110a3648df35a664da46df800991d3ddf3f7926b2cc810dd6cc675e0f368f","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"startup_restore_refusal"},
+    {"path":"server/src/scripts/runDatabaseSchemaMaintenance.mjs","digest":"53f4996e9fae18c2ac92a7093e2f3f140486b485c7aa21cdf6c9510a420898ec","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
+    {"path":"server/src/services/databaseSchemaMaintenance.mjs","digest":"9e3a57b996de7b95aceca190ef0b9aba6ae07191a1f6cc63aff049b41d73c2db","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"startup_restore_refusal"},
+    {"path":"server/src/services/migrationDiagnosticReader.mjs","digest":"159f8602475740250c873af4cfdc8736af985d565e0c9be2e37b9927a5cf983a","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_migration_diagnostics"},
     {"path":"server/src/utils/schemaMaintenanceFailure.mjs","digest":"70f2235d3bc1a995a812767efc44f65478f260ab0761c2383493e992b6cedea2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"startup_restore_refusal"},
     {"path":"server/src/services/databaseSchemaReadiness.mjs","digest":"cb2650e5f76f2606e3e45e8b4d2878533cd9d7a1f5e024ac213fa0558d1bd030","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"supervised_schema_maintenance"},
     {"path":"server/src/scripts/ingestionWriterFence/client.mjs","digest":"4c279655e5e6b87ca13541633647ef61d09b8071d1f7d8b73e7a97fec0039993","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"isolated_ingestion_writer_fence"},
@@ -1076,7 +1083,7 @@
     {"path":"server/src/services/legacyEnrichmentRetryService.mjs","digest":"328c5aabd4f140b7e99d5448adad0081760186cb888faa3167ef160ccdea6ddb","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"legacy_enrichment_retry_review"},
     {"path":"scripts/reset_data.mjs","digest":"e66c88105e96781b08b612bfa293ec94d59537eb1b0f29e2f1fb20f3567480ce","analysisDigest":"1b9637b0e9596c5ee46b9013ca1129172197ad43bfe548a6060f164e53c56965","review":"maintenance_debt"},
     {"path":"server/src/config/database.mjs","digest":"69b6dafcbdab577315198fb5e7435546eb3cb36f260d7e6f814b537e25dc561a","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/config/migrations.mjs","digest":"b815f5ee9eca79fbff3364ada78e21161c969c42b764ece96727dbd71461b510","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/config/migrations.mjs","digest":"e587a5611b3f62e3a8cccb5e394f57b900fbc7d2eee3c18ee15752df10022e1e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/classificationRouteHistory.mjs","digest":"d929b1b7083a290d43eda700e1cfb915e9df8e8577414968b3b69508e88ccf08","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/helpers/providerConfigHelpers.mjs","digest":"8af1d36e1697e37cada260da2454539b8eeff36bd1b6398fc29538a3b79dce85","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/helpers/ragDiagnosticsLoop.mjs","digest":"578ae765b9cf9c7c662ca14d4ce4fd6c6a3b9aaec6760209a60298c621ca7b53","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

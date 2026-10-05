@@ -47,6 +47,7 @@ describe('library recovery banner', () => {
     expect(deployment.text()).toContain('Setup check unavailable')
     expect(deployment.text()).not.toContain('ownership')
     expect(deployment.text()).not.toContain('Compose')
-    expect(deployment.findAll('button')).toHaveLength(1)
+    expect(deployment.findAll('button')).toHaveLength(2)
+    expect(deployment.findAll('button')[1].text()).toBe('View migration diagnostics')
   })
 })

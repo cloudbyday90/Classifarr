@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain bounded, sanitized migration failure traces in app-data, including
+  unexpected errors, nested causes, execution steps and runtime context. Add
+  administrator-only inspection/download and an offline reader without bypassing
+  schema readiness, replaying migrations or exposing SQL and credentials.
 - Add a reviewed, administrator-only repair for disabled import safeguards with
   a private verified-readable backup, bounded write locks, and an atomic audit.
   Preserve inventory and reject changed definitions or insufficient permissions.

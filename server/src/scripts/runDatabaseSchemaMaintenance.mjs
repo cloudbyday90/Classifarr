@@ -28,6 +28,7 @@ export async function runSchemaMaintenanceCommand({
     }
   } catch {
     output('Schema maintenance failed. Keep normal workers stopped; inspect maintenance logs and restore verification before retrying.');
+    output('Read the sanitized failure trace with: node src/scripts/readMigrationDiagnostics.mjs (same maintenance identity and app-data).');
   } finally {
     if (database) {
       try { await database.pool.end(); }

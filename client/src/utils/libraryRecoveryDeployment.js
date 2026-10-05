@@ -22,7 +22,7 @@ export function libraryRecoveryDeployment(diagnostic) {
   if (!diagnostic.migrationRecorded) {
     facts.push(`Required database update is not recorded: ${migration}.`)
     steps.push('Back up the database. For the bundled database, leave CLASSIFARR_SCHEMA_MAINTENANCE unset or set to startup, then restart Classifarr. For separately managed migrations, ask the database administrator to apply the named update.')
-    steps.push('If startup fails, find the filename below in the container logs and resolve that error before retrying. The missing record alone does not tell us why the update was not applied.')
+    steps.push('Choose View migration diagnostics for the recorded failure and next steps. If startup cannot finish, use the offline report reader described in the recovery guide. The missing record alone does not tell us why the update was not applied.')
   } else if (diagnostic.checks.length) {
     facts.push(`The database records ${migration} as applied, but its safeguards do not match.`)
     if (diagnostic.checks.every(check => check.status === 'not_always_enabled')) {
