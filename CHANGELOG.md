@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Connect the protected database to the real restricted application and an
+  exclusive one-shot restore lifecycle. Preserve saved-template compatibility;
+  automatic conversion and legacy ownership recovery remain gated.
 - Add a fixed-target, separately identified schema/restore worker for protected
   database startup. Verify busy admission, killed-restore quarantine and safe
   restart on the real image; legacy templates and automatic takeover remain gated.

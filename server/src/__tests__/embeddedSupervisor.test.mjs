@@ -8,6 +8,16 @@ import { assertEmbeddedSupervisorEnvironment } from '../scripts/runEmbeddedSuper
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const tick = () => new Promise(resolve => { setImmediate(resolve); });
 
+test.each([{ maintenanceOnly: 'true' }, { maintenanceOnly: true },
+  { maintenanceOnly: true, startMaintenance: () => {}, startApplication: () => {} },
+  { maintenanceOnly: true, startMaintenance: () => {}, attachRuntimeMaintenance: () => {} },
+])('invalid maintenance-only mode has no adoption or signal-handler effects (%#)', async options => {
+  const database = { adopt: jest.fn() }, processRef = new EventEmitter();
+  await expect(runEmbeddedSupervisor({ database, processRef, ...options })).rejects.toThrow('composition_invalid');
+  expect(database.adopt).not.toHaveBeenCalled();
+  expect(processRef.eventNames()).toEqual([]);
+});
+
 function fixture() {
   const exit = deferred();
   const processRef = new EventEmitter();

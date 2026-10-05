@@ -9,7 +9,12 @@ export async function runEmbeddedSupervisor({
   delay = sleep, waitForExit = waitForEmbeddedExit, startMaintenance = null,
   attachRuntimeMaintenance = null,
   maintenanceTimeoutMs = 200_000,
+  maintenanceOnly = false,
 }) {
+  if (typeof maintenanceOnly !== 'boolean' || (maintenanceOnly
+    && (typeof startMaintenance !== 'function' || startApplication != null || attachRuntimeMaintenance != null))) {
+    throw new Error('maintenance_only_composition_invalid');
+  }
   const monitor = new AbortController();
   const adoption = new AbortController();
   const report = (...args) => { try { diagnostic(...args); } catch { /* diagnostics cannot interrupt cleanup */ } };
@@ -46,6 +51,7 @@ export async function runEmbeddedSupervisor({
         maintenanceStopped = true;
         if (result.code !== 0 || result.signal !== null) throw new Error('maintenance_failed');
         report('maintenance_completed');
+        if (maintenanceOnly) requestStop({ reason: 'maintenance_completed', failed: false });
       }
     }
     if (!request) {
@@ -60,7 +66,8 @@ export async function runEmbeddedSupervisor({
       report('supervising');
     }
     await stopped;
-    failed = request.failed;
+    // A cancelled one-shot restore is not a completed restoration, even if drained cleanly.
+    failed = request.failed || (maintenanceOnly && request.reason !== 'maintenance_completed');
     report('stopping', request.reason);
   } catch (error) {
     failed = true;

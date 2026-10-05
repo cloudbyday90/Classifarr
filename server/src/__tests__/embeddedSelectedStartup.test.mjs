@@ -119,3 +119,34 @@ test.each(['verify', 'startMaintenance', 'startApplication', 'database'])('requi
   await expect(runSelectedEmbeddedStartup({ ...f.options, [key]: null })).rejects.toThrow('composition_invalid');
   expect(f.journal.read).not.toHaveBeenCalled();
 });
+
+test.each([0, 1, 2, 75])('one-shot restore exit %i joins maintenance then stops the database without runtime', async code => {
+  const f = fixture(); f.job.resolve({ code, signal: null });
+  expect(await runSelectedEmbeddedStartup({ ...f.options, maintenanceOnly: true, startApplication: null })).toBe(code === 0 ? 0 : 1);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+  expect(f.events.at(-1)).toBe('stop');
+});
+
+test.each(['SIGTERM', 'SIGINT'])('cancelled one-shot restore with %s cannot report successful completion', async signal => {
+  const f = fixture();
+  const run = runSelectedEmbeddedStartup({ ...f.options, maintenanceOnly: true, startApplication: null });
+  await tick(); f.processRef.emit(signal);
+  expect(await run).toBe(1);
+  expect(f.options.startApplication).not.toHaveBeenCalled();
+  expect(f.database.stop).toHaveBeenCalledTimes(1);
+});
+
+test('one-shot restore shutdown failure is not success', async () => {
+  const f = fixture(); f.job.resolve({ code: 0, signal: null });
+  f.database.stop.mockRejectedValue(new Error('private'));
+  expect(await runSelectedEmbeddedStartup({ ...f.options, maintenanceOnly: true, startApplication: null })).toBe(1);
+});
+
+test.each([{ maintenanceOnly: 'true' }, { maintenanceOnly: true },
+  { maintenanceOnly: true, startApplication: null, attachRuntimeMaintenance: () => {} },
+])('invalid one-shot composition is rejected before selection (%#)', async change => {
+  const f = fixture();
+  await expect(runSelectedEmbeddedStartup({ ...f.options, ...change })).rejects.toThrow('composition_invalid');
+  expect(f.journal.read).not.toHaveBeenCalled();
+});
