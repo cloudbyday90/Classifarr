@@ -38,6 +38,13 @@ Exact-image rehearsal, schema dump and local replacement results will be recorde
 after completion. Protected defaults still differ from compatible startup's
 resource defaults; production selection remains deferred, not silently activated.
 
+The first no-cache build used `7434fd144347b99ce16f73c59d401452433237c7`.
+A separate disposable Linux probe showed that root without `SYS_PTRACE` cannot
+read the application user's process environment, while that same user can.
+The image-check fixture was corrected to inspect as the application identity;
+no capability or production permission was added. The first image was not
+deployed or treated as acceptance evidence. A new clean-source build follows.
+
 [PR 556](node-types-pr-556-outcome.md) was selected randomly from current open
 PRs 555/556, applied locally and rejected by the Node-major policy (7/8 candidate
 versus 8/8 baseline). Removed only the trial change; all 30 tooling checks passed.

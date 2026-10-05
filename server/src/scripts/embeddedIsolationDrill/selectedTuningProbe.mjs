@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
+import { migrationCommand } from './identityMigrationDatabase.mjs';
 
 export const SELECTED_TUNING_FIXTURE = Object.freeze({
   TASK_QUEUE_RETENTION_DAYS: '0', TASK_QUEUE_FAILED_RETENTION_DAYS: '0', TASK_QUEUE_CANCELLED_RETENTION_DAYS: '0',
@@ -18,6 +19,13 @@ export const SELECTED_TUNING_FIXTURE = Object.freeze({
 
 /** Guarded disposable network-none fixture only. Never output the process environment. */
 export async function verifySelectedTuningProcess() {
+  if (process.getuid?.() === 0) {
+    // No SYS_PTRACE privilege: inspect only from the same application identity.
+    await migrationCommand('classifarr', 'node', ['--input-type=module', '-e',
+      "import { verifySelectedTuningProcess } from '/app/src/scripts/embeddedIsolationDrill/selectedTuningProbe.mjs'; await verifySelectedTuningProcess();"]);
+    return;
+  }
+  assert.equal(process.getuid?.(), 1000, 'fixture_application_user_required');
   const pids = (await readdir('/proc')).filter(name => /^[1-9]\d*$/.test(name));
   assert(pids.length <= 256, 'fixture_process_budget_exceeded');
   const matches = [];
