@@ -21,7 +21,7 @@ separate from recoverable configuration failures.
 ## Local validation
 
 - Final backend unit run: **1,689 suites, 52,216 tests passed**, one Windows skip,
-  274.669 seconds. The skipped directory-fsync copy/preservation/no-overwrite
+  317.481 seconds on final code. The skipped directory-fsync copy/preservation/no-overwrite
   behavior was separately exercised against the actual Linux image; that is not
   a claim that the skipped Windows Jest case itself ran.
 - Focused configuration, startup, ownership and code-health run: **5 suites,
@@ -42,9 +42,9 @@ separate from recoverable configuration failures.
 
 ## Exact image and schema
 
-No-cache local Compose build from clean source
-`ce8b0b0c99c8baddb64873665bd4f1ecc1e1cf3f` produced local image ID
-`sha256:02c397e07ca3746765500b8c930542faeb89588415861c71a18ce068b9620e38`.
+Final no-cache local Compose build from clean source
+`7e8892f409872c520ba962782a700bc87c8310eb` produced local image ID
+`sha256:62a99f622ea6180778068b4806fc0b0d5c07fcc1347cf3580df2b83ce906838c`.
 Its OCI revision matches; this is local linux/amd64 AVX2 evidence, not a
 published registry digest or multi-platform release attestation.
 
@@ -55,7 +55,9 @@ zero drift. `database/schema/current.sql` is unchanged; there is no new migratio
 The exact labeled schema fixture was removed. The separate Linux fsync fixture
 also exited and was removed.
 
-The first image rehearsal failed the new secure-cookie assertion: the fixture
+The first build (`ce8b0b0c99c8baddb64873665bd4f1ecc1e1cf3f`, local image
+`sha256:02c397e07ca3746765500b8c930542faeb89588415861c71a18ce068b9620e38`)
+failed the new secure-cookie assertion during image rehearsal: the fixture
 incorrectly expected JSON to outrank seeded database settings. Production
 precedence is intentionally **database, then file, then environment/defaults**.
 The corrected custom-profile fixture checks and removes only its two synthetic
@@ -63,7 +65,15 @@ database defaults after successful schema maintenance, before launching the
 application, to exercise file-over-environment fallback. No production setting
 precedence was changed or assertion removed. Failed-project cleanup passed.
 
-Corrected image rehearsal and replacement evaluation are pending; update this
+The second build reached the same cookie assertion because the loopback request
+was plain HTTP. The existing cookie policy intentionally falls back to non-secure
+cookies on HTTP, even when forcing is configured. The fixture now supplies the
+existing HTTPS-proxy indication for custom-profile login. This tests the real
+cookie options under that indication, not TLS termination or proxy trust. The
+assertion remains strict; application cookie behavior is unchanged. This failed
+project also cleaned up completely.
+
+Final image rehearsal and replacement evaluation are pending; update this
 section with actual results before handoff.
 
 ## Recommendation stack

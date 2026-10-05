@@ -19,6 +19,9 @@ export async function verifySelectedApplication(application, identity, { custom 
   const password = 'Synthetic-selected-fixture-v1!';
   const empty = (await migrationSql('SELECT count(*) FROM users')).stdout.trim() === '0';
   const login = await fixtureRequest(empty ? '/api/setup/create-admin' : '/api/auth/login', {
+    // Synthetic proxy indication on loopback; verifies cookie configuration,
+    // not real TLS termination or reverse-proxy trust enforcement.
+    session: custom ? { 'x-forwarded-proto': 'https' } : undefined,
     body: empty ? { username: 'selected-fixture', password, confirmPassword: password }
       : { identifier: 'selected-fixture', password },
   });
