@@ -7,7 +7,7 @@ Date: 2026-10-05. Branch: main. No release, PR merge or Unraid deployment.
 The [design](ingestion-safeguard-repair-design.md) now has a bounded implementation.
 Command Center directs an affected library to **Check repair options**. The library
 screen previews the database-wide changes and requires explicit confirmation before
-**Back up and repair**. Healthy libraries do not start this service or create backups.
+**Back up and repair**. Healthy libraries do not request repairs or create backups.
 
 Small ESM modules separate strict catalog verification, backup subprocess/storage,
 repair admission/transaction, administrator-only HTTP routes, and the maintenance
@@ -72,8 +72,58 @@ stale plans, cross-actor refusal, restricted roles and concurrent repair exclusi
 The ownership inventory gained one explicitly reviewed entry for the repair's
 indirect fixed SQL call; no existing unresolved writer was reclassified.
 
-Full regression, final browser and exact-image results are pending the final
-validation pass. No release-readiness claim is made by these focused results.
+- Frontend coverage: 439 files / 6,359 tests passed; 88.60% lines, 79.62% branches,
+  86.26% functions. Two Chromium scenarios passed, including keyboard confirmation,
+  prevention of duplicate submission, focus return and a 390-pixel layout.
+- Focused backend guards: 32,925 tests passed; final backup/route/CLI rerun passed
+  14 tests after adding sanitized storage-error guidance.
+- Lint, server/client typechecks, ESM static imports, ownership/dependency
+  preflight, Markdown and staged secret checks passed. Existing coverage and
+  security baselines were not relaxed.
+- Full backend coverage: 1,703 suites / 52,923 tests passed, with one Linux-only
+  directory-fsync test skipped on Windows and exercised below in the Linux image.
+  Coverage was 89.78% lines/statements, 85.62% branches and 91.17% functions.
+  The combined server/client coverage ratchet passed without baseline changes.
+
+### Exact local image
+
+Built with `--no-cache --require-provenance` from clean commit
+`ab7e87879ecc04ed8142326cf30bc4b04f73b588`, using the existing AVX2 selection.
+Docker's local image identity is
+`sha256:9a51b3d86af2fc8333b6f68c5e7523cc2235dfd0faff9820027e0bf4ff077093`.
+This is local build evidence, not published multi-platform provenance.
+
+A network-isolated, disposable PostgreSQL 18 fixture ran the image's production
+repair service and actual `pg_dump`/`pg_restore` tools. Repair retained inventory,
+produced owner-only files, and restored the pre-repair archive into a second
+database with its original inventory and disabled trigger intact. Further checks
+refused unsafe directory permissions, a symlinked root, unsupported TLS options,
+and a fourth retained backup. A cancelled attempt retained its private partial
+file rather than claiming success or deleting evidence. All fixture containers
+were removed; no caller data was mounted.
+
+After the build, `dump-schema` ran against an isolated database using this image.
+Loading and redumping the snapshot produced zero drift; `current.sql` is unchanged.
+The actual Linux image also passed exclusive migration-tree copy, directory fsync,
+source preservation and refusal to overwrite an existing candidate. This exercises
+the platform-specific behavior that Windows cannot test directly.
+
+### Local replacement and observation
+
+Recreated only the local Compose `classifarr` service with the tested image and
+`--no-build --wait`. Health returned 200; anonymous library access remained 401.
+All ten library imports remained complete, including Family and Movies; unfinished
+legacy markers were zero, all 12 safeguards were enabled, and the new strict repair
+check returned `not_needed`. No local safeguards were disabled for demonstration.
+No repair or backup was requested against the real local database. Unraid and its
+separate database were not changed.
+
+Short post-startup observations found no ownership warnings, structured warning/error
+entries, restarts or OOMs. Memory settled from approximately 723 MiB to 396 MiB;
+sampled CPU fell from 35.12% to 4.72%. The saved container retains a 2 GiB memory
+limit, but no CPU quota or PID cap. Observed processes were the supervisor,
+application and PostgreSQL; this is not a sustained load/leak test or proof that
+every deployed environment has the same behavior.
 
 ## Open PR trial
 
