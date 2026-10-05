@@ -85,7 +85,7 @@ test('live SWR copies only a new fit, not verification or unchanged revalidation
   expect(await v.worker.run()).toEqual({ status: 'revalidated' });
   expect(copies).toBe(1);
   vector[0] = NaN; v.advance(300000);
-  expect(await v.worker.run()).toEqual({ status: 'unavailable' });
+  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'source_validation', code: 'cached_vector_invalid' } });
   expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).toHaveBeenCalledTimes(1);
 });
 
@@ -98,7 +98,7 @@ test('failed discovery serves raw/broad but retries after backoff; transport fai
   v.advance(60000); expect(await v.worker.run()).toEqual({ status: 'ready' });
   expect(v.build).toHaveBeenCalledTimes(2);
   v.advance(300000); v.repository.read.mockRejectedValueOnce(new Error('PRIVATE endpoint'));
-  expect(await v.worker.run()).toEqual({ status: 'unavailable' });
+  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'snapshot_read', code: 'unknown' } });
   expect(await v.worker.retrieve(v.input)).toBeNull();
   v.advance(59999); expect(await v.worker.run()).toEqual({ status: 'not_due' });
   v.advance(1); expect(await v.worker.run()).toEqual({ status: 'ready' });
@@ -132,7 +132,7 @@ test('publication requires unchanged source, configuration, model and revision a
   }
   const v = setup(); v.embedder.inspect.mockResolvedValueOnce(v.identity)
     .mockResolvedValueOnce({ ...v.identity, digest: 'b'.repeat(64) });
-  expect(await v.worker.run()).toEqual({ status: 'unavailable' });
+  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'provider_verify', code: 'provider_model_changed' } });
   expect(await v.worker.retrieve(v.input)).toBeNull();
 });
 
@@ -153,8 +153,10 @@ test('capacity, incomplete inputs and invalid clocks fail closed without private
   expect(await v.worker.run()).toEqual({ status: 'capacity' });
   expect(await v.worker.retrieve(v.input)).toBeNull();
   const partial = setup(); partial.snapshot.vectors.clear();
-  expect(await partial.worker.run()).toEqual({ status: 'unavailable' }); expect(partial.build).not.toHaveBeenCalled();
-  const bad = setup(); bad.setTime(NaN); expect(await bad.worker.run()).toEqual({ status: 'unavailable' });
+  expect(await partial.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'source_validation', code: 'cached_vectors_incomplete' } });
+  expect(partial.build).not.toHaveBeenCalled();
+  const bad = setup(); bad.setTime(NaN);
+  expect(await bad.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'clock', code: 'clock_invalid' } });
   const disabled = setup(); disabled.state.ollama_host = 'https://example.com';
   expect(await disabled.worker.run()).toEqual({ status: 'disabled' });
 });
@@ -165,4 +167,55 @@ test('retrieval exceptions and invalidation during retrieval preserve the baseli
   expect(await v.worker.retrieve(v.input)).toBeNull();
   v.handle.retrieve.mockImplementationOnce(async () => { v.revise(); return { purpose: 'retrieval_context_only', candidates: [] }; });
   expect(await v.worker.retrieve(v.input)).toBeNull();
+});
+
+test.each(['state_read', 'snapshot_read', 'snapshot_verify', 'state_verify', 'profile_build', 'provider_inspection'])(
+  'reports the actual %s boundary, clears context and retains retry backoff', async stage => {
+    const v = setup();
+    await v.worker.run(); v.advance(300000);
+    const error = Object.assign(new Error('PRIVATE database and provider details'), { code: '57014' });
+    if (stage === 'state_read') v.readState.mockRejectedValueOnce(error);
+    if (stage === 'snapshot_read') v.repository.read.mockRejectedValueOnce(error);
+    if (stage === 'snapshot_verify') v.repository.read.mockResolvedValueOnce(v.snapshot).mockRejectedValueOnce(error);
+    if (stage === 'state_verify') v.readState.mockResolvedValueOnce(v.state).mockRejectedValueOnce(error);
+    if (stage === 'provider_inspection') v.embedder.inspect.mockRejectedValueOnce(error);
+    if (stage === 'profile_build') {
+      v.advance(300001); // Expire the cached build, preserving the normal cache contract.
+      v.build.mockRejectedValueOnce(error);
+    }
+    const code = ['profile_build', 'provider_inspection'].includes(stage) ? 'unknown' : 'database_query_cancelled';
+    expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage, code } });
+    expect(await v.worker.retrieve(v.input)).toBeNull();
+    expect(await v.worker.run()).toEqual({ status: 'not_due' });
+    v.advance(60000);
+    expect(await v.worker.run()).toEqual({ status: 'ready' });
+  });
+
+test('admission and publication errors retain distinct boundaries without publishing', async () => {
+  const admission = setup({ withAdmission: async () => { throw Object.assign(new Error('PRIVATE'), { code: '55P03' }); } });
+  expect(await admission.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'admission', code: 'database_lock_unavailable' } });
+  expect(admission.embedder.inspect).not.toHaveBeenCalled();
+  const publication = setup({ cache: { clear() {}, get() { return null; }, set() { throw new Error('PRIVATE'); } } });
+  expect(await publication.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'publication', code: 'unknown' } });
+  expect(await publication.worker.retrieve(publication.input)).toBeNull();
+});
+
+test('attempt deadline is distinct from caller cancellation, which takes precedence', async () => {
+  for (const cancelled of [false, true]) {
+    const deadline = new AbortController(), caller = new AbortController();
+    const timeout = jest.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal);
+    try {
+      const v = setup();
+      v.build.mockImplementationOnce(async (_source, { signal }) => {
+        deadline.abort(new DOMException('PRIVATE', 'TimeoutError'));
+        if (cancelled) caller.abort();
+        signal.throwIfAborted();
+      });
+      expect(await v.worker.run({ signal: caller.signal })).toEqual(cancelled ? { status: 'cancelled' } : {
+        status: 'unavailable', failure: { stage: 'profile_build', code: 'attempt_timeout' },
+      });
+      expect(timeout).toHaveBeenCalledWith(360000);
+      expect(await v.worker.retrieve(v.input)).toBeNull();
+    } finally { timeout.mockRestore(); }
+  }
 });

@@ -37,18 +37,22 @@ export async function readInventoryBackgroundReadiness(database, { requireRag = 
 }
 
 /** Cheap demand probe before cache scans, heavy locks, model clients or evaluation writes. */
-export function withInventoryBackgroundReadiness(worker, database, read = readInventoryBackgroundReadiness) {
+export function withInventoryBackgroundReadiness(worker, database, read = readInventoryBackgroundReadiness, diagnoseFailure) {
     let stopped = false, active = null;
     return { ...worker,
         stop() { stopped = true; worker.stop(); },
         run(...args) {
             if (stopped) return Promise.resolve({ status: 'stopped' });
             active ??= (async () => {
-                let reason;
+                let reason, failure;
                 try { reason = await read(database); }
-                catch { reason = 'unavailable'; }
+                catch (error) {
+                    reason = 'unavailable';
+                    // Optional diagnostics must never change readiness admission or expose errors.
+                    try { failure = diagnoseFailure?.(error); } catch { /* Keep the original refusal if diagnosis fails. */ }
+                }
                 if (stopped) return { status: 'stopped' };
-                if (reason !== 'ready') return { status: 'deferred', reason };
+                if (reason !== 'ready') return { status: 'deferred', reason, ...(failure ? { failure } : {}) };
                 return worker.run(...args);
             })().finally(() => { active = null; });
             return active;

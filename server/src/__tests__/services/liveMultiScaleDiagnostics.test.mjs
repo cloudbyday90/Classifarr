@@ -34,3 +34,13 @@ test.each(['ready', 'revalidated', 'cancelled', 'stopped', 'yielded', 'disabled'
   'does not manufacture a retry for %s', status => {
     expect(describeLiveMultiScaleRetry({ status })).toBeNull();
   });
+
+test.each([{ status: 'deferred', reason: 'unavailable' }, { status: 'unavailable' }])(
+  'reports allowlisted stage and cause for unavailable %j', report => {
+    expect(describeLiveMultiScaleRetry({ ...report, failure: { stage: 'readiness', code: 'database_schema', stack: 'PRIVATE' } })).toEqual({
+      ...report, reason: 'unavailable', stage: 'readiness', code: 'database_schema', recovery: expect.stringContaining('migration diagnostics'),
+    });
+    const unknown = describeLiveMultiScaleRetry({ ...report, failure: { stage: 'PRIVATE', code: 'PRIVATE', recovery: 'PRIVATE' } });
+    expect(unknown).toMatchObject({ stage: 'unknown', code: 'unknown', recovery: expect.stringContaining('open a GitHub issue') });
+    expect(JSON.stringify(unknown)).not.toContain('PRIVATE');
+  });

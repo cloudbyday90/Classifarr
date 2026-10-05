@@ -6,6 +6,7 @@ import { diagnoseProviderResponse } from '../../services/providerResponseDiagnos
 import { createInventoryDescriptionRefreshWorker } from '../../services/inventoryDescriptionRefreshWorker.mjs';
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 import { createMemoryDescriptionIsolation } from '../fixtures/descriptionIsolation.mjs';
+import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 
 let server;
 let config;
@@ -109,6 +110,25 @@ test.each([
   expect(diagnoseProviderResponse(error)).toMatchObject({ code, phase: 'inspection' });
   expect(JSON.stringify(error)).not.toMatch(/PRIVATE|127\.0\.0\.1|https/);
 });
+
+test.each([['error', 'provider_http_busy'], ['malformed', 'provider_json'], ['oversized', 'provider_body_limit']])(
+  'comparison worker retains safe cause from actual HTTP %s without extra requests', async (value, code) => {
+    mode = value;
+    let time = 0;
+    const repository = { read: jest.fn() };
+    const worker = createLiveMultiScaleRefresh({ repository, readState: async () => ({ ...config, busy: false }),
+      createEmbedder: createLocalStudyEmbeddingClient, now: () => time, random: () => 0 });
+    try {
+      expect(await worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'provider_inspection', code } });
+      expect(requests).toHaveLength(1);
+      expect(await worker.run()).toEqual({ status: 'not_due' });
+      expect(requests).toHaveLength(1);
+      time += 60000;
+      expect(await worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'provider_inspection', code } });
+      expect(requests).toHaveLength(2);
+      expect(repository.read).not.toHaveBeenCalled();
+    } finally { worker.stop(); }
+  });
 
 test.each([[400, 'http_rejected'], [401, 'http_auth'], [403, 'http_auth'], [404, 'http_missing'],
   [408, 'timeout'], [429, 'http_busy'], [503, 'http_busy']])('classifies HTTP %i without retaining the error body', async (status, code) => {

@@ -50,6 +50,14 @@ test('readiness coalesces and stop fences an outstanding probe; DB errors fail c
     expect(await withInventoryBackgroundReadiness(worker, {}, async () => { throw new Error('private'); }).run())
         .toEqual({ status: 'deferred', reason: 'unavailable' });
 });
+test('optional diagnosis failure cannot bypass readiness or leak an exception', async () => {
+    const worker = { run: jest.fn(), stop: jest.fn() };
+    const read = async () => { throw new Error('PRIVATE database'); };
+    const diagnose = () => { throw new Error('PRIVATE diagnostic'); };
+    expect(await withInventoryBackgroundReadiness(worker, {}, read, diagnose).run())
+        .toEqual({ status: 'deferred', reason: 'unavailable' });
+    expect(worker.run).not.toHaveBeenCalled();
+});
 test('progress validates actor/filters and rechecks revocation after the read-only snapshot', async () => {
     const query = jest.fn(async sql => ({ rows: sql.includes('CASE') ? [{ readiness: 'ready' }] : [{ as_of: asOf, items: [] }] }));
     const db = { query: jest.fn(async () => ({ rows: [{ role: 'admin', is_active: true }] })), withTransaction: fn => fn({ query }) };

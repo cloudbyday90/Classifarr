@@ -50,6 +50,35 @@ test('runtime construction is inert and disabled configuration performs no model
   expect(await runtime.run()).toEqual({ status: 'stopped' });
 });
 
+test('production readiness failure retains a safe database cause without admitting work', async () => {
+  const database = { withTransaction: jest.fn(async () => { throw Object.assign(new Error('PRIVATE SQL'), { code: '42501' }); }),
+    withSessionAdvisoryLock: jest.fn() };
+  const runtime = createLiveMultiScaleRuntime(database);
+  try {
+    expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'unavailable', failure: { stage: 'readiness', code: 'database_permissions' } });
+    expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
+  } finally { runtime.stop(); }
+});
+
+test('a changed failing stage or cause produces new evidence while identical failures stay quiet', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  const worker = { stop: jest.fn(), run: jest.fn() }, log = { info: jest.fn(), warn: jest.fn() };
+  registerLiveMultiScaleSchedule(scheduler, { worker, log });
+  const run = scheduler.schedule.mock.calls[0][2];
+  try {
+    for (const failure of [{ stage: 'snapshot_read', code: 'database_schema' },
+      { stage: 'state_read', code: 'database_schema' }, { stage: 'state_read', code: 'database_connection' }]) {
+      worker.run.mockResolvedValue({ status: 'unavailable', failure });
+      await run(); await run();
+      expect(log.warn).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining(failure));
+    }
+    expect(log.warn).toHaveBeenCalledTimes(3);
+    expect(log.info).not.toHaveBeenCalled();
+    worker.run.mockResolvedValue({ status: 'ready' }); await run(); await run();
+    expect(log.info).toHaveBeenCalledTimes(1);
+  } finally { scheduler.liveMultiScaleWorker.stop(); }
+});
+
 test('logs changed reasons once and only confirms recovery after ready context', async () => {
   const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
   const worker = { stop: jest.fn(), run: jest.fn() }, log = { info: jest.fn(), warn: jest.fn() };

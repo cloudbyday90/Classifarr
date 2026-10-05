@@ -10,12 +10,14 @@ import { createLogger } from '../utils/logger.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 import { describeLiveMultiScaleRetry } from './liveMultiScaleDiagnostics.mjs';
+import { diagnoseLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
 
 export function createLiveMultiScaleRuntime(database = db) {
   return withInventoryBackgroundReadiness(createLiveMultiScaleRefresh({ repository: createInventoryRepresentativeProfileRepository(database),
     withAdmission: createInventoryDiscoveryAdmission(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
-    createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision }), database);
+    createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision }), database,
+    undefined, error => diagnoseLiveMultiScaleFailure('readiness', error));
 }
 
 export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveMultiScaleRuntime(),
@@ -27,7 +29,7 @@ export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveM
   const run = async () => {
     const report = await worker.run();
     const diagnostic = describeLiveMultiScaleRetry(report);
-    const state = diagnostic ? `${diagnostic.status}:${diagnostic.reason}`
+    const state = diagnostic ? `${diagnostic.status}:${diagnostic.reason}:${diagnostic.stage || ''}:${diagnostic.code || ''}`
       : ['ready', 'revalidated'].includes(report.status) ? 'ready' : null;
     if (state && state !== last) {
       if (diagnostic) {

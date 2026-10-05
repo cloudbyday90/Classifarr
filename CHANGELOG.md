@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Identify failed comparison-preparation steps with safe database, provider and
+  cache cause codes. Include targeted recovery guidance while preserving retry
+  limits, cancellation, ownership safeguards and ordinary retrieval.
 - Explain comparison-context retries with safe reason codes and specific guidance;
   treat normal background contention as informational and retain memory safeguards.
 - Retain bounded, sanitized migration failure traces in app-data, including

@@ -6,6 +6,7 @@ import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryM
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
+import { diagnoseLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
 
 const configKey = state => {
   try { return state?.rag_enabled === true ? JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) : null; }
@@ -49,36 +50,49 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
       if (stopped || signal?.aborted) return { status: 'cancelled' };
       if (active) return { status: 'already_running' };
       const controller = new AbortController(); active = controller;
-      const abort = AbortSignal.any([controller.signal, AbortSignal.timeout(360_000), ...(signal ? [signal] : [])]);
+      const deadline = AbortSignal.timeout(360_000);
+      const abort = AbortSignal.any([controller.signal, deadline, ...(signal ? [signal] : [])]);
+      let stage = 'clock';
       try {
         const time = clock();
-        if (!Number.isFinite(time)) { clear(); return { status: 'unavailable' }; }
+        if (!Number.isFinite(time)) { clear(); return { status: 'unavailable', failure: diagnoseLiveMultiScaleFailure(stage) }; }
+        stage = 'state_read';
         const state = await readState(), expected = configKey(state), revision = getRevision();
         abort.throwIfAborted();
         if (!expected) { clear(); nextAt = 0; failures = 0; return { status: 'disabled' }; }
         if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; }
         if (state.busy !== false) { clear(); return { status: 'yielded' }; }
         if (time < nextAt) return { status: 'not_due' };
+        stage = 'admission';
         return await withAdmission(async (abort, checkpoint) => {
+          stage = 'provider_inspection';
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
+          stage = 'snapshot_read';
           const snapshot = await repository.read(identity);
           abort.throwIfAborted();
           if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
             clear(); due(); return { status: 'invalidated' };
           }
+          stage = 'source_validation';
           const source = inspectUnseenMultiScaleSource(snapshot, identity);
           if (entry?.key !== source.key) clear();
           const stored = cache.get(source.key), cached = stored?.cacheable ? stored : null;
+          stage = 'profile_build';
           const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
+          stage = 'snapshot_verify';
           const fresh = await repository.read(identity);
+          stage = 'provider_verify';
           await verifyDescriptionRepresentation(embedder, identity, abort);
+          stage = 'state_verify';
           const finalState = await readState();
           abort.throwIfAborted();
+          stage = 'source_validation';
           if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
               configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
               inspectUnseenMultiScaleSource(fresh, identity).key !== source.key) {
             clear(); due(); return { status: 'invalidated' };
           }
+          stage = 'publication';
           const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
           checkpoint();
           if (!cache.set(source.key, built, built.weight + fresh.observedKeys.size * 128)) {
@@ -95,7 +109,8 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
         if (controller.signal.aborted || signal?.aborted) { clear(); return { status: 'cancelled' }; }
         due(); return error instanceof DiscoveryDeferredError
-          ? { status: 'deferred', reason: error.reason } : { status: 'unavailable' };
+          ? { status: 'deferred', reason: error.reason }
+          : { status: 'unavailable', failure: diagnoseLiveMultiScaleFailure(stage, error, { deadlineExpired: deadline.aborted }) };
       } finally { active = null; }
     },
   };
