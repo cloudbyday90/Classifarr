@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve the specific unfinished-restore refusal through supervised startup
+  maintenance without exposing raw worker logs or weakening restore admission.
+  Keep interrupted-restore acceptance checks strict about the reason for refusal.
 - Add bounded, restart-safe provisioning for application-writable directories
   beneath protected appdata, preserving existing settings and keys. Verify real
   Linux permission boundaries before selected runtime startup; saved legacy

@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { assertCompatibleWorkerEnvironment } from '../bootstrap/embeddedCompatibleWorkerBoundary.mjs';
 import { runDatabaseProfilingMaintenance } from '../services/databaseProfilingMaintenance.mjs';
+import { RESTORE_VERIFICATION_REQUIRED_EXIT, SchemaRestoreVerificationRequiredError } from '../utils/schemaMaintenanceFailure.mjs';
 
 export async function runCompatibleStartupMaintenance({ environment = process.env,
   context = { uid: process.getuid?.(), gid: process.getgid?.(), platform: process.platform,
@@ -14,7 +15,13 @@ export async function runCompatibleStartupMaintenance({ environment = process.en
     if (context.args.length !== 1 || context.args[0] !== '--assess') return 2;
     database = await loadDatabase();
     const { runDatabaseSchemaMaintenance } = await loadSchema();
-    const schema = await runDatabaseSchemaMaintenance({ database, environment: {} });
+    let schema;
+    try {
+      schema = await runDatabaseSchemaMaintenance({ database, environment: {} });
+    } catch (error) {
+      if (!(error instanceof SchemaRestoreVerificationRequiredError)) throw error;
+      code = RESTORE_VERIFICATION_REQUIRED_EXIT;
+    }
     if (schema?.status === 'deferred') code = 75;
     else if (schema?.status === 'complete') {
       const result = await run({ database });

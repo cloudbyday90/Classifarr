@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { parseEmbeddedId } from './embeddedIdentityPolicy.mjs';
 import { observeEmbeddedMaintenance } from './embeddedMaintenanceOutput.mjs';
 import { compatibleMaintenanceEnvironment } from './embeddedCompatibleMaintenanceEnvironment.mjs';
+import { RESTORE_VERIFICATION_REQUIRED_EXIT, RESTORE_VERIFICATION_REQUIRED_MESSAGE } from '../utils/schemaMaintenanceFailure.mjs';
 
 /** One pre-runtime assessment using today's identity; not privilege separation. */
 export function startCompatibleStartupMaintenance({ spawnFn = spawn, report = () => {},
@@ -20,7 +21,11 @@ export function startCompatibleStartupMaintenance({ spawnFn = spawn, report = ()
   return { ...observed, done: observed.done.then(result => {
     const status = result.signal === null ? { 0: 'already_active', 10: 'installed', 20: 'deferred' }[result.code] : undefined;
     try {
-      report(status ? 'complete' : result.signal === null && result.code === 75 ? 'deferred' : 'failed', 'shared_identity', 'schema');
+      if (result.signal === null && result.code === RESTORE_VERIFICATION_REQUIRED_EXIT) {
+        report('restore_verification_incomplete', 'shared_identity', 'schema', RESTORE_VERIFICATION_REQUIRED_MESSAGE);
+      } else {
+        report(status ? 'complete' : result.signal === null && result.code === 75 ? 'deferred' : 'failed', 'shared_identity', 'schema');
+      }
       if (status) report(status, 'shared_identity', 'query_profiling');
     }
     catch { /* Diagnostics cannot change child completion. */ }

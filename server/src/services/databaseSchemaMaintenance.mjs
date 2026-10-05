@@ -3,6 +3,7 @@
 import { createMigrationRunner } from '../config/migrations.mjs';
 import { createDatabaseClientLease } from '../utils/databaseClientLease.mjs';
 import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../utils/backupRestoreSessionContract.mjs';
+import { SchemaRestoreVerificationRequiredError } from '../utils/schemaMaintenanceFailure.mjs';
 import { assertKnownMigrations, readSchemaLedger, requireMigrationFiles } from './databaseSchemaReadiness.mjs';
 
 const SEED_MIGRATION = '20260927_120000_seed_restore_admission_gate.sql';
@@ -13,7 +14,7 @@ async function assertRestoreGate(client, applied, { allowLegacySeed = false } = 
   const gate = await client.query('SELECT gate_state FROM public.policy_native_intent_reconciliation_restore_gates WHERE gate_id = 1');
   if (gate.rows[0]?.gate_state === 'ready') return;
   if (allowLegacySeed && gate.rows.length === 0 && applied && !applied.includes(SEED_MIGRATION)) return;
-  throw new Error('schema_maintenance_restore_verification_required');
+  throw new SchemaRestoreVerificationRequiredError();
 }
 
 /** Explicit one-shot operation: uses only the invoking process's database credential. */

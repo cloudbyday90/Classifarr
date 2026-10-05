@@ -5,6 +5,10 @@ import { startCompatibleStartupMaintenance } from '../bootstrap/embeddedCompatib
 import { runCompatibleStartupMaintenance } from '../scripts/runCompatibleStartupMaintenance.mjs';
 import { compatibleMaintenanceEnvironment } from '../bootstrap/embeddedCompatibleMaintenanceEnvironment.mjs';
 import { embeddedRuntimeComposition } from '../scripts/runEmbeddedSupervisor.mjs';
+import { runEmbeddedSupervisor } from '../bootstrap/embeddedSupervisor.mjs';
+import { RESTORE_VERIFICATION_REQUIRED_EXIT, RESTORE_VERIFICATION_REQUIRED_MESSAGE,
+  SchemaRestoreVerificationRequiredError } from '../utils/schemaMaintenanceFailure.mjs';
+import { collectContainerStartupDiagnostic } from '../../../scripts/lib/containerStartupDiagnostics.mjs';
 
 const context = { uid: 99, gid: 100, platform: 'linux', cwd: '/app', args: ['--assess'] };
 const environment = compatibleMaintenanceEnvironment();
@@ -99,4 +103,70 @@ test('mandatory schema completes before optional profiling, using only packaged 
     loadDatabase: async () => database, loadSchema: async () => ({ runDatabaseSchemaMaintenance: schema }) })).toBe(0);
   expect(schema).toHaveBeenCalledWith({ database, environment: {} });
   expect(schema.mock.invocationCallOrder[0]).toBeLessThan(run.mock.invocationCallOrder[0]);
+});
+
+test.each([false, true])('typed schema refusal stays distinct unless pool cleanup fails=%s', async cleanupFails => {
+  const database = { pool: { end: jest.fn(async () => { if (cleanupFails) throw new Error('private'); }) } };
+  const run = jest.fn();
+  const code = await runCompatibleStartupMaintenance({ context, environment, run,
+    loadDatabase: async () => database, loadSchema: async () => ({ runDatabaseSchemaMaintenance: async () => {
+      throw new SchemaRestoreVerificationRequiredError();
+    } }) });
+  expect(code).toBe(cleanupFails ? 1 : RESTORE_VERIFICATION_REQUIRED_EXIT);
+  expect(run).not.toHaveBeenCalled();
+  expect(database.pool.end).toHaveBeenCalledTimes(1);
+});
+
+test.each(['schema_text', 'schema_code', 'load', 'profiling'])('does not misclassify %s as restore refusal', async phase => {
+  const database = { pool: { end: jest.fn() } };
+  const lookalike = Object.assign(new Error('schema_maintenance_restore_verification_required'),
+    { code: RESTORE_VERIFICATION_REQUIRED_EXIT });
+  const code = await runCompatibleStartupMaintenance({ context, environment, loadDatabase: async () => database,
+    loadSchema: async () => {
+      if (phase === 'load') throw new SchemaRestoreVerificationRequiredError();
+      return { runDatabaseSchemaMaintenance: async () => {
+        if (phase === 'schema_text') throw new Error(lookalike.message);
+        if (phase === 'schema_code') throw lookalike;
+        return { status: 'complete' };
+      } };
+    }, run: async () => { throw new SchemaRestoreVerificationRequiredError(); } });
+  expect(code).toBe(1);
+  expect(database.pool.end).toHaveBeenCalledTimes(1);
+});
+
+test.each(['normal', 'overflow', 'signal', 'stream_error'])('restore refusal exit with %s preserves process safety', async kind => {
+  const f = fixture(), job = startCompatibleStartupMaintenance({ ...f, ...context });
+  f.child.stderr.emit('data', Buffer.from('private provider token'));
+  if (kind === 'overflow') f.child.stdout.emit('data', Buffer.alloc(65537));
+  if (kind === 'stream_error') f.child.stderr.emit('error', new Error('private'));
+  const signal = kind === 'signal' ? 'SIGKILL' : null;
+  f.child.emit('exit', RESTORE_VERIFICATION_REQUIRED_EXIT, signal);
+  await Promise.resolve(); expect(f.report).not.toHaveBeenCalled();
+  f.child.emit('close', RESTORE_VERIFICATION_REQUIRED_EXIT, signal);
+  expect(await job.done).not.toEqual({ code: 0, signal: null });
+  if (kind === 'normal') {
+    expect(f.report).toHaveBeenCalledWith('restore_verification_incomplete', 'shared_identity', 'schema',
+      RESTORE_VERIFICATION_REQUIRED_MESSAGE);
+  } else expect(f.report).toHaveBeenCalledWith('failed', 'shared_identity', 'schema');
+  expect(f.report).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(f.report.mock.calls)).not.toContain('private');
+});
+
+test('typed worker refusal crosses the launcher boundary, blocks the app and remains diagnosable', async () => {
+  const database = { pool: { end: jest.fn() } };
+  const code = await runCompatibleStartupMaintenance({ context, environment, loadDatabase: async () => database,
+    loadSchema: async () => ({ runDatabaseSchemaMaintenance: async () => { throw new SchemaRestoreVerificationRequiredError(); } }) });
+  const f = fixture(), job = startCompatibleStartupMaintenance({ ...f, ...context });
+  const startApplication = jest.fn();
+  const control = { adopt: jest.fn(), stop: jest.fn() };
+  const supervision = runEmbeddedSupervisor({ database: control, processRef: new EventEmitter(),
+    startMaintenance: () => job, startApplication });
+  f.child.emit('exit', code, null); f.child.emit('close', code, null);
+  expect(await supervision).toBe(1);
+  expect(startApplication).not.toHaveBeenCalled();
+  expect(control.stop).toHaveBeenCalledTimes(1);
+  const diagnostic = collectContainerStartupDiagnostic('fixture', { command: args => args[0] === 'inspect'
+    ? { ok: true, stdout: JSON.stringify({ status: 'exited', exitCode: 1, oomKilled: false, errorPresent: false, health: 'none' }) }
+    : { ok: true, stdout: JSON.stringify(f.report.mock.calls) } });
+  expect(diagnostic.signals).toContainEqual({ code: 'restore_verification_incomplete', stream: 'stdout' });
 });

@@ -54,8 +54,9 @@ if (import.meta.main) {
     });
     code = await runEmbeddedSupervisor({
       database: createEmbeddedDatabaseControl(),
-      ...embeddedRuntimeComposition({ report: (status, authority, operation) =>
-        process.stdout.write(`${JSON.stringify({ component: 'EmbeddedQueueMaintenance', status, authority, operation })}\n`) }),
+      ...embeddedRuntimeComposition({ report: (status, authority, operation, message) =>
+        process.stdout.write(`${JSON.stringify({ component: 'EmbeddedQueueMaintenance', status, authority, operation,
+          ...(message ? { message } : {}) })}\n`) }),
       report: (status, reason) => process.stdout.write(`${JSON.stringify({ component: 'EmbeddedSupervisor', status, ...(reason ? { reason } : {}) })}\n`),
     });
   } catch {

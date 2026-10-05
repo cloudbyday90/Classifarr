@@ -6,6 +6,7 @@ import { readSchemaMaintenanceMode } from '../config/schemaMaintenanceMode.mjs';
 import { verifyRuntimeSchemaReadiness, verifySupervisedSchemaReadiness } from '../services/databaseSchemaReadiness.mjs';
 import { runDatabaseSchemaMaintenance } from '../services/databaseSchemaMaintenance.mjs';
 import { runSchemaMaintenanceCommand } from '../scripts/runDatabaseSchemaMaintenance.mjs';
+import { SchemaRestoreVerificationRequiredError } from '../utils/schemaMaintenanceFailure.mjs';
 
 const files = createMigrationRunner().getMigrationFiles();
 const restricted = Object.fromEntries(['direct_login', 'restricted', 'no_membership',
@@ -89,8 +90,9 @@ test('missing migration package fails before migrations', async () => {
 });
 test.each(['verifying', 'blocked', null])('restore state %s is not rewritten', async gate => {
   const s = setup({ gate });
-  await expect(s.maintain()).rejects.toThrow('restore_verification_required');
+  await expect(s.maintain()).rejects.toThrow(SchemaRestoreVerificationRequiredError);
   expect(s.runner.run).not.toHaveBeenCalled();
+  expect(s.client.release).toHaveBeenCalledWith(true);
 });
 test('legacy missing row permits only the existing pending seed migration', async () => {
   const s = setup({ gate: null, ledger: files.filter(f => f !== '20260927_120000_seed_restore_admission_gate.sql') });
