@@ -67,6 +67,11 @@
         :stats="queueStats"
         :unavailable="resourceStatusUnavailable"
       />
+      <LibraryRecoveryBanner
+        :report="libraryRecovery"
+        :refreshing="libraryStatusRefreshing"
+        @refresh="refreshLibraryRecovery"
+      />
 
       <p
         v-if="actionError"
@@ -311,6 +316,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'
 import ResourceAdmissionStatus from '@/components/queue/ResourceAdmissionStatus.vue'
+import LibraryRecoveryBanner from '@/components/command-center/LibraryRecoveryBanner.vue'
 import BatchActivityPanel from '@/components/command-center/BatchActivityPanel.vue'
 import NeedsAttentionPanel from '@/components/command-center/NeedsAttentionPanel.vue'
 import PurposeHealthSummary from '@/components/command-center/PurposeHealthSummary.vue'
@@ -405,6 +411,9 @@ const {
   queuePendingCount,
   queueStats,
   resourceStatusUnavailable,
+  libraryRecovery,
+  libraryStatusRefreshing,
+  refreshLibraryRecovery,
   refreshOperationalData,
   recentlyCompletedItems,
   showConfigureMediaServerCta,

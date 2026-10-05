@@ -2,6 +2,20 @@
 import { INGESTION_OWNER_ACTIVE_SQL, INGESTION_FOREIGN_MARKERS_SQL as foreignOwner,
   INGESTION_UNFINISHED_MARKERS_SQL, INGESTION_LEGACY_COMPATIBLE_SQL } from './libraryIngestionPredicates.mjs';
 import { SOURCE_CONTENT_STATUS_SQL, SOURCE_CONTENT_COOLING_SQL } from './sourceContentStatus.mjs';
+import { INGESTION_COMPATIBILITY_FENCE_SQL } from './ingestionCompatibilityFence.mjs';
+import { INGESTION_COMPATIBILITY_DIAGNOSTICS_SQL } from './ingestionCompatibilityDiagnostics.mjs';
+
+// Read-only guidance, never a substitute for transaction-time recovery checks.
+const recoveryMode = `(SELECT CASE
+  WHEN NOT ${foreignOwner} THEN NULL
+  WHEN NOT l.is_active OR NOT EXISTS (SELECT 1 FROM media_server ms WHERE ms.id=l.media_server_id AND ms.is_active) THEN 'disabled'
+  WHEN NOT EXISTS (SELECT 1 FROM media_server ms WHERE ms.id=l.media_server_id
+    AND length(btrim(ms.url))>0 AND length(btrim(ms.api_key))>0) THEN 'unconfigured'
+  WHEN ${INGESTION_OWNER_ACTIVE_SQL} THEN 'active'
+  WHEN NOT ${INGESTION_LEGACY_COMPATIBLE_SQL} THEN 'review'
+  WHEN ${INGESTION_COMPATIBILITY_FENCE_SQL} THEN 'automatic'
+  ELSE 'deployment_required' END
+  FROM (SELECT 1) singleton LEFT JOIN library_ingestion_state s ON s.library_id=l.id)`;
 
 export const LIBRARY_INGESTION_STATUS_SQL = `(COALESCE((SELECT jsonb_build_object(
     'state',CASE WHEN s.phase<>'complete' AND (NOT l.is_active OR NOT EXISTS
@@ -23,7 +37,10 @@ export const LIBRARY_INGESTION_STATUS_SQL = `(COALESCE((SELECT jsonb_build_objec
         WHEN NOT EXISTS (SELECT 1 FROM media_server ms WHERE ms.id=l.media_server_id
           AND length(btrim(ms.url))>0 AND length(btrim(ms.api_key))>0) THEN 'unconfigured'
         WHEN ${INGESTION_OWNER_ACTIVE_SQL} THEN 'active' ELSE 'awaiting_import' END,
-      'needsReconciliation',false) END) || jsonb_build_object('sourceRecovery',${SOURCE_CONTENT_STATUS_SQL}))`;
+      'needsReconciliation',false) END) || jsonb_build_object('sourceRecovery',${SOURCE_CONTENT_STATUS_SQL},
+        'recoveryMode',${recoveryMode},
+        'recoveryDiagnostic',CASE WHEN ${recoveryMode}='deployment_required'
+          THEN ${INGESTION_COMPATIBILITY_DIAGNOSTICS_SQL} ELSE NULL END))`;
 
 export const LIBRARY_INGESTION_WATCHDOG_SQL = `SELECT l.id,l.name FROM libraries l
   JOIN media_server ms ON ms.id=l.media_server_id AND ms.is_active

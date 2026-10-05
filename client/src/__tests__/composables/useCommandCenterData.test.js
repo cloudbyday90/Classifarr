@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { useCommandCenterData } from '@/composables/useCommandCenterData'
+import api from '@/api'
 
 const swr = vi.hoisted(() => ({ calls: [] }))
 vi.mock('@/composables/useSWR', () => ({
@@ -11,9 +12,41 @@ vi.mock('@/composables/useSWR', () => ({
     return state
   },
 }))
-vi.mock('@/api', () => ({ default: { getLiveStats: vi.fn().mockResolvedValue({ libraryEvaluation: { status: 'available' } }) } }))
+vi.mock('@/api', () => ({ default: { getLibraries: vi.fn(), getLiveStats: vi.fn().mockResolvedValue({ libraryEvaluation: { status: 'available' } }) } }))
 
 describe('Command Center evaluation SWR wiring', () => {
+  it('reuses memory-only library polling and clears stale diagnoses on failure, offline and role loss', async () => {
+    swr.calls.length = 0
+    const result = useCommandCenterData({ router: { push: vi.fn() } })
+    expect(swr.calls).toHaveLength(11)
+    const libraries = swr.calls.find(call => call.key === 'command-center:libraries')
+    expect(libraries.options).toMatchObject({ persist: false, pollOnlyWhenVisible: true })
+    expect(result.libraryRecovery.value.state).toBe('loading')
+    api.getLibraries.mockResolvedValue([{ id: 5, media_type: 'movie', ingestion_status: { state: 'legacy_owner_unknown', recoveryMode: 'review' } }])
+    libraries.state.data.value = await libraries.fetcher()
+    expect(result.libraryRecovery.value.attention).toBe(1)
+    libraries.state.isStale.value = true
+    expect(result.libraryRecovery.value.attention).toBe(1)
+    libraries.state.error.value = { status: 403 }
+    expect(result.libraryRecovery.value).toMatchObject({ state: 'unavailable', items: [] })
+    libraries.state.error.value = null
+    libraries.state.isOffline.value = true
+    expect(result.libraryRecovery.value.state).toBe('unavailable')
+    libraries.state.isOffline.value = false
+    api.getLibraries.mockResolvedValue({ data: [] })
+    await expect(libraries.fetcher()).rejects.toThrow('Invalid library status snapshot')
+    let resolveRefresh
+    libraries.state.refresh.mockImplementation(() => new Promise(resolve => { resolveRefresh = resolve }))
+    const pending = result.refreshLibraryRecovery()
+    expect(result.libraryStatusRefreshing.value).toBe(true)
+    await result.refreshLibraryRecovery()
+    expect(libraries.state.refresh).toHaveBeenCalledTimes(1)
+    resolveRefresh()
+    await pending
+    expect(result.libraryStatusRefreshing.value).toBe(false)
+    libraries.state.data.value = []
+    expect(result.libraryRecovery.value).toMatchObject({ state: 'ready', items: [] })
+  })
   it('reuses the existing memory-only live-stats request and reacts to role loss and failures', async () => {
     swr.calls.length = 0
     const result = useCommandCenterData({ router: { push: vi.fn() } })

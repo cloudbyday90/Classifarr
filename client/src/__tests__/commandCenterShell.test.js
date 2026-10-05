@@ -28,7 +28,7 @@ vi.mock('@/api', () => ({
     getPendingClassifications: vi.fn().mockResolvedValue({ data: { items: [] } }),
     getAiGenerationStatus: vi.fn().mockResolvedValue({ data: { isActive: false } }),
     getAIUsage: vi.fn().mockResolvedValue({ data: { budget: { limit: null, used: 0, percentUsed: 0 } } }),
-    getLibraries: vi.fn().mockResolvedValue({ data: [] }),
+    getLibraries: vi.fn().mockResolvedValue([]),
     getLiveFeed: vi.fn().mockResolvedValue({ data: { items: [] } }),
     getMediaServerConfig: vi.fn().mockResolvedValue({ data: null }),
     getArrConfigStatus: vi.fn().mockResolvedValue({ data: { incompleteConfigs: [] } }),

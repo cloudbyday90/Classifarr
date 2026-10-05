@@ -48,6 +48,16 @@ import {
 } from '../../api/libraryCatalogApi'
 
 describe('libraryCatalogApi', () => {
+  it('preserves read-only recovery diagnostics through the existing list and detail endpoints', async () => {
+    const library = { id: 5, ingestion_status: { state: 'legacy_owner_unknown', recoveryMode: 'deployment_required',
+      recoveryDiagnostic: { migration: '20261005_180000_ingestion_compatibility_fence.sql', migrationRecorded: true,
+        protocolReady: true, checks: [{ table: 'media_server_items', trigger: 'ingestion_compatibility_rows', status: 'not_always_enabled' }] } } }
+    mockGetDataRequest.mockResolvedValueOnce([library]).mockResolvedValueOnce(library)
+    expect(await getLibraries()).toEqual([library])
+    expect(await getLibrary(5)).toEqual(library)
+    expect(mockPost).not.toHaveBeenCalled()
+    expect(mockPut).not.toHaveBeenCalled()
+  })
   it('preserves pending adoption status for populated legacy libraries', async () => {
     const library = { id: 19, item_count: 300, ingestion_status: { state: 'awaiting_import', needsReconciliation: false } }
     mockGetDataRequest.mockResolvedValueOnce([library])

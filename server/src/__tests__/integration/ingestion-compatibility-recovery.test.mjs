@@ -11,7 +11,7 @@ import { readIngestionRecoveryHistory } from '../../services/legacyIngestionHist
 jest.unstable_mockModule('../../services/contentTypeAnalyzer.mjs', () => ({ contentTypeAnalyzer: { analyze: async () => ({ analyzed: false }) } }));
 const { createMediaSyncOwnership } = await import('../../services/mediaSyncOwnership.mjs');
 const { MediaSyncService } = await import('../../services/mediaSync.mjs');
-const { LIBRARY_INGESTION_WATCHDOG_SQL } = await import('../../services/libraryIngestionStatus.mjs');
+const { LIBRARY_INGESTION_WATCHDOG_SQL, LIBRARY_INGESTION_STATUS_SQL } = await import('../../services/libraryIngestionStatus.mjs');
 const db = createIntegrationDatabaseModuleMock();
 const tables = ['media_server_items', 'media_server_sync_status', 'media_source_capture_state',
   'library_ingestion_state', 'media_source_observations', 'media_server_collections'];
@@ -31,6 +31,7 @@ afterEach(async () => {
 const claim = () => createMediaSyncOwnership({ pool: getPool() })(libraryId, owner => owner.claim());
 const pending = async () => Number((await db.query("SELECT count(*) FROM media_server_sync_status WHERE library_id=$1 AND status='running'", [libraryId])).rows[0].count);
 const inventory = async () => (await db.query('SELECT external_id FROM media_server_items WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows.map(r => r.external_id);
+const status = async () => (await db.query(`SELECT ${LIBRARY_INGESTION_STATUS_SQL} AS status FROM libraries l WHERE l.id=$1`, [libraryId])).rows[0].status;
 async function seedLegacy(count = 6) {
   // Only this disposable suite database: emulate rows that existed before DDL cutover.
   await db.withTransaction(async client => {
@@ -106,6 +107,7 @@ test.each(['plex', 'jellyfin', 'emby'].flatMap(provider => ['movie', 'tv'].map(m
   await db.query('UPDATE media_server SET type=$2 WHERE id=$1', [serverId, provider]);
   await db.query('UPDATE libraries SET media_type=$2 WHERE id=$1', [libraryId, mediaType]);
   await seedLegacy();
+  expect(await status()).toMatchObject({ state: 'legacy_owner_unknown', recoveryMode: 'automatic' });
   expect((await db.query(LIBRARY_INGESTION_WATCHDOG_SQL)).rows.map(r => r.id)).toContain(libraryId);
   const makeSync = getLibraryItems => new MediaSyncService({ resourceAdmission: resourceAdmissionFixture(),
     mediaServerServices: { getMediaServerService: async () => withSourcePageFixtures({ getLibraryItems, getCollections: async () => [] }) },
@@ -151,6 +153,11 @@ test.each(['disabled', 'archived', 'unconfigured', 'current_writer', 'missing_fe
   if (mode === 'current_writer') await db.query("INSERT INTO media_server_sync_status(library_id,sync_type,status) VALUES ($1,'full','running')", [libraryId]);
   if (mode === 'missing_fence') await db.query('ALTER TABLE media_server_items DISABLE TRIGGER ingestion_compatibility_rows');
   try {
+    const modes = { disabled: 'disabled', archived: 'disabled', unconfigured: 'unconfigured', current_writer: 'review', missing_fence: 'deployment_required' };
+    expect(await status()).toMatchObject({ recoveryMode: modes[mode] });
+    if (mode === 'missing_fence') expect((await status()).recoveryDiagnostic).toMatchObject({
+      protocolReady: true, migrationRecorded: true, checks: [{ table: 'media_server_items', trigger: 'ingestion_compatibility_rows', status: 'not_always_enabled' }],
+    });
     expect(await claim()).toEqual({ reason: 'legacy_owner_unknown' });
     expect(await pending()).toBe(mode === 'current_writer' ? 7 : 6);
     expect(await inventory()).toEqual(['retained']);
@@ -159,7 +166,42 @@ test.each(['disabled', 'archived', 'unconfigured', 'current_writer', 'missing_fe
   }
 });
 
+test('diagnostics distinguish missing history, missing triggers and an incompatible connection without writing', async () => {
+  await seedLegacy();
+  const old = await oldClient();
+  try {
+    const result = await old.query(`SELECT ${LIBRARY_INGESTION_STATUS_SQL} AS status FROM libraries l WHERE l.id=$1`, [libraryId]);
+    expect(result.rows[0].status.recoveryDiagnostic).toMatchObject({ protocolReady: false, migrationRecorded: true, checks: [] });
+    const rollback = new Error('rollback synthetic diagnostic fixture');
+    await expect(db.withTransaction(async client => {
+      await client.query('DROP TRIGGER ingestion_compatibility_truncate ON media_server_items');
+      await client.query("DELETE FROM schema_migrations WHERE filename='20261005_180000_ingestion_compatibility_fence.sql'");
+      const read = await client.query(`SELECT ${LIBRARY_INGESTION_STATUS_SQL} AS status FROM libraries l WHERE l.id=$1`, [libraryId]);
+      expect(read.rows[0].status.recoveryDiagnostic).toEqual({
+        migration: '20261005_180000_ingestion_compatibility_fence.sql', migrationRecorded: false, protocolReady: true,
+        checks: [{ table: 'media_server_items', trigger: 'ingestion_compatibility_truncate', status: 'missing' }],
+      });
+      // Roll back synthetic catalog/history changes together, even when assertions fail.
+      throw rollback;
+    })).rejects.toBe(rollback);
+    await expect(db.withTransaction(async client => {
+      await client.query('DROP TRIGGER ingestion_compatibility_rows ON media_server_items');
+      await client.query(`CREATE TRIGGER ingestion_compatibility_rows BEFORE UPDATE ON media_server_items
+        FOR EACH ROW EXECUTE FUNCTION enforce_ingestion_compatibility()`);
+      await client.query('ALTER TABLE media_server_items DISABLE TRIGGER ingestion_compatibility_rows');
+      const read = await client.query(`SELECT ${LIBRARY_INGESTION_STATUS_SQL} AS status FROM libraries l WHERE l.id=$1`, [libraryId]);
+      expect(read.rows[0].status.recoveryDiagnostic.checks).toEqual([
+        { table: 'media_server_items', trigger: 'ingestion_compatibility_rows', status: 'definition_mismatch' },
+      ]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await pending()).toBe(6);
+    expect(await inventory()).toEqual(['retained']);
+  } finally { await old.end(); }
+});
+
 test('audit failure rolls back retired markers and no fresh install recovery is fabricated', async () => {
+  expect(await status()).toMatchObject({ state: 'awaiting_import', recoveryMode: null, recoveryDiagnostic: null });
   expect(await claim()).toEqual({ replay: true });
   expect(Number((await db.query('SELECT count(*) FROM ingestion_recovery_progress WHERE library_id=$1', [libraryId])).rows[0].count)).toBe(0);
   await seedLegacy();
@@ -182,6 +224,7 @@ test('legacy capture alone recovers, but a competing current owner is never disp
   });
   const own = createMediaSyncOwnership({ pool: getPool() });
   await own(libraryId, async () => {
+    expect(await status()).toMatchObject({ recoveryMode: 'active' });
     expect(await claim()).toMatchObject({ deferred: true, reason: 'ingestion_owned' });
     expect((await db.query('SELECT phase FROM media_source_capture_state WHERE library_id=$1', [libraryId])).rows[0].phase).toBe('collecting');
   });

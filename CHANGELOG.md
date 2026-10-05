@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Show actionable library recovery guidance in Command Center, distinguishing
+  automatic recovery from operator review and missing database safeguards.
+  Reuse existing status polling without granting new recovery permissions.
 - Recover pre-upgrade library imports automatically after a database compatibility
   fence blocks unmodified older writers. Preserve inventory, resume full import
   and metadata backfill, and show system recovery receipts without requiring

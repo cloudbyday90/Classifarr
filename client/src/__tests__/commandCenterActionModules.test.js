@@ -664,7 +664,7 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('No evidence-safety calibration changed this score.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)
     expect(wrapper.text()).toContain('Review 1 alternative candidate')
-    expect(wrapper.find('details').element.open).toBe(false)
+    expect(wrapper.find('.review-evidence-and-safeguards').element.open).toBe(false)
     expect(wrapper.find('.technical-review-details').element.open).toBe(false)
 
     const confirmButton = wrapper.findAll('button').find(node => node.text() === 'Confirm Movies')

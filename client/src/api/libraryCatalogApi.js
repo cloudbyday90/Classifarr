@@ -18,6 +18,7 @@
 
 import { apiClient, getDataRequest } from './core'
 
+/** Includes read-only ingestion_status recoveryMode/recoveryDiagnostic guidance; never starts recovery. */
 export function getLibraries() {
   return getDataRequest('/libraries')
 }
@@ -59,7 +60,7 @@ export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
 }
 
-/** Includes ingestion_status.preflight and sourceRecovery (shared wait or null); reads never start ingestion. */
+/** Includes ingestion preflight, sourceRecovery, recoveryMode and recoveryDiagnostic; reads never start ingestion. */
 export function getLibrary(id) {
   return getDataRequest(`/libraries/${id}`)
 }

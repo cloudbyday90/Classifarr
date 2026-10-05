@@ -3,10 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import api from '@/api'
 import { useSWR } from '@/composables/useSWR'
 import { CACHE_TTL, POLL_INTERVALS } from '@/constants/cacheKeys'
+import { libraryRecoveryReport } from '@/utils/libraryRecoveryGuidance'
 
 export function useCommandCenterData({ router }) {
   function getOperationalPollInterval() {
@@ -63,11 +64,24 @@ export function useCommandCenterData({ router }) {
     { ttl: CACHE_TTL.MEDIUM, pollInterval: getSecondaryPollInterval, pollOnlyWhenVisible: true }
   )
 
-  const { data: librariesData, refresh: refreshLibraries, cacheTimestamp: librariesTimestamp } = useSWR(
+  const { data: librariesData, error: librariesError, isOffline: librariesOffline, isLoading: librariesLoading, refresh: refreshLibraries, cacheTimestamp: librariesTimestamp } = useSWR(
     'command-center:libraries',
-    async () => await api.getLibraries() ?? [],
-    { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true }
+    async () => {
+      const result = await api.getLibraries()
+      if (!Array.isArray(result)) throw new TypeError('Invalid library status snapshot')
+      return result
+    },
+    { ttl: CACHE_TTL.LONG, pollInterval: POLL_INTERVALS.SLOW, pollOnlyWhenVisible: true, persist: false }
   )
+  const libraryRecovery = computed(() => libraryRecoveryReport(librariesData.value,
+    { unavailable: Boolean(librariesError?.value || librariesOffline?.value) }))
+  const libraryRefreshPending = ref(false)
+  const libraryStatusRefreshing = computed(() => Boolean(librariesLoading?.value || libraryRefreshPending.value))
+  async function refreshLibraryRecovery() {
+    if (libraryRefreshPending.value) return
+    libraryRefreshPending.value = true
+    try { await refreshLibraries() } finally { libraryRefreshPending.value = false }
+  }
 
   const { data: liveFeedData, isStale: liveFeedStale, refresh: refreshLiveFeed, cacheTimestamp: liveFeedTimestamp } = useSWR(
     'command-center:live-feed',
@@ -293,6 +307,7 @@ export function useCommandCenterData({ router }) {
       refreshPendingClassifications(),
       refreshAiGenerationStatus(),
       refreshAiUsage(),
+      refreshLibraries(),
       refreshLiveFeed(),
       refreshMediaServerConfig(),
       refreshArrConfigStatus(),
@@ -311,6 +326,9 @@ export function useCommandCenterData({ router }) {
 
   return {
     libraryEvaluation,
+    libraryRecovery,
+    libraryStatusRefreshing,
+    refreshLibraryRecovery,
     activeLibraries,
     activeLibrariesSummary,
     activeProcessingTasks,
