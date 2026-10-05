@@ -49,3 +49,33 @@ test('runtime construction is inert and disabled configuration performs no model
   expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'disabled' }); runtime.stop();
   expect(await runtime.run()).toEqual({ status: 'stopped' });
 });
+
+test('logs changed reasons once and only confirms recovery after ready context', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  const worker = { stop: jest.fn(), run: jest.fn() }, log = { info: jest.fn(), warn: jest.fn() };
+  registerLiveMultiScaleSchedule(scheduler, { worker, log });
+  const run = scheduler.schedule.mock.calls[0][2];
+  try {
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'busy' });
+    await run(); await run();
+    expect(log.info).toHaveBeenCalledTimes(1);
+    expect(log.info).toHaveBeenLastCalledWith(expect.stringContaining('waiting'), expect.objectContaining({ reason: 'busy' }));
+    expect(log.warn).not.toHaveBeenCalled();
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'memory_pressure' });
+    await run(); await run();
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.warn).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ reason: 'memory_pressure' }));
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'memory_unknown' });
+    await run();
+    expect(log.warn).toHaveBeenCalledTimes(2);
+    expect(log.warn).toHaveBeenLastCalledWith(expect.any(String), expect.objectContaining({ reason: 'memory_unknown' }));
+    for (const report of [{ status: 'deferred', reason: 'ingesting' }, { status: 'cancelled' }, { status: 'not_due' }]) {
+      worker.run.mockResolvedValue(report); await run();
+    }
+    expect(log.info).toHaveBeenCalledTimes(1);
+    expect(log.warn).toHaveBeenCalledTimes(2);
+    worker.run.mockResolvedValue({ status: 'revalidated' }); await run(); await run();
+    expect(log.info).toHaveBeenCalledTimes(2);
+    expect(log.info).toHaveBeenLastCalledWith('Library comparison context recovered automatically');
+  } finally { scheduler.liveMultiScaleWorker.stop(); }
+});

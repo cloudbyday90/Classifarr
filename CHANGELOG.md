@@ -19,6 +19,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain comparison-context retries with safe reason codes and specific guidance;
+  treat normal background contention as informational and retain memory safeguards.
 - Retain bounded, sanitized migration failure traces in app-data, including
   unexpected errors, nested causes, execution steps and runtime context. Add
   administrator-only inspection/download and an offline reader without bypassing
