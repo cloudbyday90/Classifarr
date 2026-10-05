@@ -67,6 +67,9 @@ Official sources discovered through web search and opened on 2026-10-05:
   minimize access/exposure and preserve long-lived storage encryption material.
   Prefer appropriately permissioned mounted secrets where practical; do not
   require a template rewrite merely to preserve an already configured key.
+- [OWASP Cryptographic Storage](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html):
+  plan rotation and existing-data migration together. Retain retired keys as
+  needed for older backups; replacing a lost key cannot decrypt old ciphertext.
 
 | Option | Benefit | Cost / risk |
 | --- | --- | --- |

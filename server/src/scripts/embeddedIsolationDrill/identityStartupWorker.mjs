@@ -60,6 +60,14 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
       await database.stop();
     } },
     ...composition,
+    startMaintenance: () => {
+      const maintenance = composition.startMaintenance();
+      if (!profile) return maintenance;
+      return { ...maintenance, done: maintenance.done.then(async result => {
+        if (result.code === 0 && result.signal === null) await profile.prepareFileFallback();
+        return result;
+      }) };
+    },
     startApplication: restore ? null : () => {
       assert(!cancelStartup);
       const application = composition.startApplication();

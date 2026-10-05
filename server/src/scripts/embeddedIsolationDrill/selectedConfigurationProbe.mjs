@@ -44,6 +44,18 @@ export async function prepareSelectedConfigurationProfile(mode) {
       RUNTIME_SETTINGS_FILE: settingsPath, LOG_DIR: '/app/data/logs/selected', BACKUP_DIR: '/app/data/backups/selected',
       LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'true', FORCE_SECURE_COOKIES: 'false',
       CORS_ORIGIN: 'https://ignored-environment.example', TZ: 'America/New_York' },
+    async prepareFileFallback() {
+      // Schema reconciliation seeds DB overrides, which intentionally outrank
+      // JSON. Remove only these known synthetic defaults after maintenance so
+      // this disposable case exercises JSON-over-environment fallback.
+      await migrationSql(`DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM settings
+          WHERE (key='force_secure_cookies' AND value IS DISTINCT FROM 'false')
+            OR (key='cors_origin' AND value IS DISTINCT FROM ''))
+        THEN RAISE EXCEPTION 'unexpected_fixture_security_override'; END IF;
+      END $$;
+      DELETE FROM settings WHERE key IN ('force_secure_cookies','cors_origin');`);
+    },
     async verifyPreserved() {
       const after = await snapshot();
       for (let index = 0; index < before.length; index++) assert(before[index].equals(after[index]), 'configuration_bytes_changed');
