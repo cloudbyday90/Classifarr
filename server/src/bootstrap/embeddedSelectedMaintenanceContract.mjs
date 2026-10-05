@@ -10,7 +10,8 @@ export function selectedMaintenanceTimeout(operation) {
 }
 
 export function selectedMaintenanceEnvironment() {
-  return { PATH: '/usr/local/bin:/usr/bin:/bin', HOME: '/tmp', LANG: 'C.UTF-8', TZ: 'UTC',
+  // su-exec sets HOME from the selected passwd entry, even with a numeric UID.
+  return { PATH: '/usr/local/bin:/usr/bin:/bin', HOME: '/var/lib/postgresql', LANG: 'C.UTF-8', TZ: 'UTC',
     NODE_ENV: 'production', NODE_OPTIONS: '--max-old-space-size=512',
     LOG_LEVEL: 'silent', FILE_LOGGING_ENABLED: 'false', CLASSIFARR_RUNTIME_MODE: 'normal',
     CLASSIFARR_SCHEMA_MAINTENANCE: 'startup', POSTGRES_HOST: SELECTED_DATABASE_SOCKET,

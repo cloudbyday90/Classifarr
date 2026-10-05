@@ -54,6 +54,14 @@ No PR was merged and no rejected dependency update remains in the tree.
 Image, schema and local replacement results will be recorded after
 execution; this initial record does not claim those checks have completed.
 
+The first exact-image drill rejected the protected worker before database access:
+the packaged `su-exec` changes HOME to the target passwd entry even for a numeric
+UID. A disposable no-network probe reproduced `/tmp` becoming
+`/var/lib/postgresql`. Corrected the constructed environment to the packaged
+PostgreSQL account home and added a regression test; the exact-environment guard
+was not relaxed. That failed rehearsal cleaned up its project and volumes. The
+local application was not replaced with that unverified image.
+
 ## Next item
 
 Wire the protected runtime and restore-mode dispatcher, including custom writable

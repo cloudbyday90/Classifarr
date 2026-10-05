@@ -411,7 +411,7 @@
   ],
   "entries": [
     {"path":"server/src/bootstrap/embeddedSelectedMaintenance.mjs","digest":"8f2c9527faafe1bc5071ab2f3a2b92a9e54c3e5713d60ac809b0072c266a7eb6","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
-    {"path":"server/src/bootstrap/embeddedSelectedMaintenanceContract.mjs","digest":"b87f22648bb152d63e01dcb1b57ca23044cb776a1f3680577e70fd7b22e346ff","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
+    {"path":"server/src/bootstrap/embeddedSelectedMaintenanceContract.mjs","digest":"51fa508175f0efd40bd4b4cfae4fdba2e83f0b6f87006cedb2ecbea222d1b7f8","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
     {"path":"server/src/scripts/embeddedIsolationDrill/identityMaintenanceProbe.mjs","digest":"b71764a5f1893647ee22b2413768b1ec11b82ce0d0dbfa81bc50a05ad602960f","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
     {"path":"server/src/scripts/runSelectedMaintenance.mjs","digest":"2a42152564730ecbf8c5d12e9f343319286448994338d87732e50040f1ae3cdc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"selected_maintenance_handoff"},
     {"path":"server/src/bootstrap/embeddedApplicationLayout.mjs","digest":"5ca1a27ae29369304b602fa421e6468f8ed848898ad1a202f7da0263d95484dd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"protected_application_layout"},

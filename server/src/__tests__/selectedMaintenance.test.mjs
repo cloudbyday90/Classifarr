@@ -19,6 +19,13 @@ const finish = (child, code = 0, signal = null) => { child.emit('exit', code, si
 const worker = extra => ({ environment: selectedMaintenanceEnvironment(), context,
   accounts: async () => accounts, assertNoEnvFile: jest.fn(), ...extra });
 
+test('the exact environment admits the packaged su-exec PostgreSQL HOME, not its caller HOME', async () => {
+  expect(selectedMaintenanceEnvironment().HOME).toBe('/var/lib/postgresql');
+  const loadSchema = jest.fn();
+  expect(await runSelectedMaintenance(worker({ environment: { ...selectedMaintenanceEnvironment(), HOME: '/tmp' }, loadSchema }))).toBe(1);
+  expect(loadSchema).not.toHaveBeenCalled();
+});
+
 test.each(['schema', 'restore'])('launches fixed %s worker with no ambient credentials or paths', async operation => {
   const f = fixture(), request = operation === 'restore' ? Buffer.from('{"secret":"stdin-only"}') : null;
   const observed = startSelectedMaintenance({ ...f.options, operation, request });

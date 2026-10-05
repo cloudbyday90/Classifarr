@@ -57,6 +57,10 @@ Official sources discovered through web search and opened on 2026-10-05:
   documents constructed environments, shell-free launch, limited pipes and the
   distinction between process exit and stream closure. Retain bounded draining
   and join the actual child before stopping PostgreSQL.
+- [su-exec implementation](https://github.com/ncopa/su-exec/blob/master/su-exec.c)
+  sets HOME from the selected passwd entry, including numeric UIDs. The constructed
+  environment therefore pins `/var/lib/postgresql`, matching the packaged account;
+  it does not accept an arbitrary inherited home after the identity change.
 
 | Option | Benefit | Cost / risk |
 | --- | --- | --- |
