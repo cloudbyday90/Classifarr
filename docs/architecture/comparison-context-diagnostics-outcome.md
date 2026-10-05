@@ -33,6 +33,11 @@ results are recorded in the [migration diagnostics outcome](migration-failure-di
 No cache TTL, retry budget, concurrency, ownership gate, provider or memory limit
 changed. No schema migration was necessary.
 
+The rebuilt local image subsequently emitted a real `deferred` / `busy` event at
+info level, confirming the new reason survives production logging. It did not
+claim recovery merely because inventory readiness passed. The earlier warning's
+historical record remains intact; this change does not delete or rewrite old logs.
+
 ## Recommendation
 
 Keep automatic retries and ordinary retrieval fallback. The benefit is protected
