@@ -30,6 +30,13 @@ test('clean-control helper joins exit and closed output, not just signal deliver
   expect(f.spawnFn.mock.calls[0][0]).toBe('/usr/libexec/postgresql18/pg_controldata');
 });
 
+test.each(['123456', '654321', undefined])('verifies independent cluster identifier against %s', async actual => {
+  const f = fixture(); const result = verifySelectedDatabaseShutdown({ ...f, expectedSystemId: '123456' });
+  const checked = actual === '123456' ? expect(result).resolves.toBeUndefined() : expect(result).rejects.toThrow('shutdown_unconfirmed');
+  f.child.stdout.emit('data', Buffer.from(`Database cluster state: shut down\n${actual ? `Database system identifier: ${actual}\n` : ''}`));
+  f.child.emit('exit', 0, null); f.child.emit('close'); await checked;
+});
+
 test.each(['unclean', 'exit', 'overflow', 'stream', 'cancel'])('control rejects %s', async failure => {
   const f = fixture(), controller = new AbortController();
   const result = verifySelectedDatabaseShutdown({ ...f, signal: controller.signal });

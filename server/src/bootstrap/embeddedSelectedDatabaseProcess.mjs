@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { observeEmbeddedChild } from './embeddedChildProcess.mjs';
 import { parseEmbeddedId } from './embeddedIdentityPolicy.mjs';
 import { SELECTED_DATABASE_DATA, SELECTED_DATABASE_SOCKET } from './embeddedSelectedDatabaseLayout.mjs';
+import { validateSelectedSystemIdentifier } from './selectedMigrationPolicy.mjs';
 
 const environment = () => ({ PATH: '/usr/bin:/bin', LC_ALL: 'C' });
 
@@ -20,7 +21,8 @@ export function launchSelectedDatabase({ uid, gid }, spawnFn = spawn) {
 }
 
 /** Read-only fixed helper; parent operation supplies the bounded join deadline. */
-export async function verifySelectedDatabaseShutdown({ signal, spawnFn = spawn } = {}) {
+export async function verifySelectedDatabaseShutdown({ signal, expectedSystemId, spawnFn = spawn } = {}) {
+  if (expectedSystemId !== undefined) validateSelectedSystemIdentifier(expectedSystemId);
   signal?.throwIfAborted();
   const child = spawnFn('/usr/libexec/postgresql18/pg_controldata', [SELECTED_DATABASE_DATA], {
     cwd: '/app', shell: false, env: environment(), stdio: ['ignore', 'pipe', 'ignore'],
@@ -42,6 +44,9 @@ export async function verifySelectedDatabaseShutdown({ signal, spawnFn = spawn }
     const [result] = await Promise.all([observed.done, closed]);
     signal?.throwIfAborted();
     if (rejected || result.code !== 0 || result.signal !== null
-      || !/Database cluster state:\s+shut down\s*\n/.test(output)) throw new Error('selected_database_shutdown_unconfirmed');
+      || !/Database cluster state:\s+shut down\s*\n/.test(output)
+      || (expectedSystemId !== undefined && output.match(/^Database system identifier:\s+(\d+)\s*$/m)?.[1] !== expectedSystemId)) {
+      throw new Error('selected_database_shutdown_unconfirmed');
+    }
   } finally { clearTimeout(timer); signal?.removeEventListener('abort', kill); }
 }

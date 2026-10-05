@@ -23,6 +23,12 @@ test('deterministic digest covers names, empty directories and complete file con
 test.each([{ maxEntries: 2 }, { maxBytes: 4 }])('enforces tree budget %j', async limits => {
   await expect(inspectMigrationTree(source, limits)).rejects.toThrow('migration_tree_budget_exceeded');
 });
+
+test('verification can reject a wrong owner and a cancelled scan without changing files', async () => {
+  await expect(inspectMigrationTree(source, { identity: { uid: 2147483647, gid: 2147483647 } })).rejects.toThrow('permissions_invalid');
+  await expect(inspectMigrationTree(source, { signal: AbortSignal.abort() })).rejects.toThrow();
+  expect(await readFile(join(source, 'PG_VERSION'), 'utf8')).toBe('18\n');
+});
 test('rejects root files and hard-linked files', async () => {
   await expect(inspectMigrationTree(join(source, 'PG_VERSION'))).rejects.toThrow('migration_tree_unsupported');
   await link(join(source, 'PG_VERSION'), join(source, 'linked'));

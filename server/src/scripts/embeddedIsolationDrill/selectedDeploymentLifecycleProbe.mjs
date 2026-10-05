@@ -1,36 +1,56 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { runSelectedDeploymentLifecycle } from '../../bootstrap/selectedDeploymentLifecycle.mjs';
 import { startSelectedApplication } from '../../bootstrap/embeddedSelectedApplication.mjs';
 import { startSelectedRestoreHttp } from '../../bootstrap/embeddedSelectedRestoreHttp.mjs';
 import { withEmbeddedMigrationJournal } from '../../bootstrap/embeddedMigrationJournal.mjs';
-import { validateMigrationReceipt } from '../../bootstrap/embeddedMigrationPhases.mjs';
 import { verifySelectedDatabaseShutdown } from '../../bootstrap/embeddedSelectedDatabaseProcess.mjs';
+import { verifySelectedMigrationThroughHandoff } from '../../bootstrap/selectedVerificationHandoff.mjs';
 import { prepareIdentityMigration } from './identityMigrationSteps.mjs';
-import { MIGRATION_ROOT, migrationSql } from './identityMigrationDatabase.mjs';
+import { SOURCE, MIGRATION_ROOT, migrationCommand, migrationSql, candidateStart, candidateStop } from './identityMigrationDatabase.mjs';
 import { waitFor } from '../restoreRecoveryProcess.mjs';
 import { boundedJson, fixtureRequest, fixtureSession } from './httpRoutingTransport.mjs';
 
 /** Synthetic caller owns the journal; never an operator command or live converter. */
 export async function verifySelectedDeploymentLifecycle() {
   const keyBefore = await readFile('/app/data/secrets/api_key_encryption_key');
+  const expectedSystemId = (await migrationCommand('root', 'pg_controldata', [SOURCE])).stdout.match(/Database system identifier:\s+(\d+)/)[1];
+  const environment = { CLASSIFARR_RUNTIME_MODE: 'normal', PUID: '1000', PGID: '1000',
+    UMASK: process.umask().toString(8).padStart(3, '0'), NODE_OPTIONS: '--max-old-space-size=1536',
+    PGVECTOR_RUNTIME_STAGING: 'disabled', CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: '60',
+    LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'false' };
+  await withEmbeddedMigrationJournal(MIGRATION_ROOT, async () => {
+    const verify = () => verifySelectedMigrationThroughHandoff({ environment, expectedSystemId });
+    await assert.rejects(verifySelectedMigrationThroughHandoff({ environment,
+      expectedSystemId: (BigInt(expectedSystemId) + 1n).toString() }), /selected_verification_failed/);
+    const config = await readFile('/app/data/embedded-postgres/postgresql.conf', 'utf8');
+    try {
+      await writeFile('/app/data/embedded-postgres/postgresql.conf', `${config}include='/tmp/untrusted.conf'\n`);
+      await assert.rejects(verify(), /selected_verification_failed/);
+      await assert.rejects(readFile('/app/data/embedded-postgres/candidate/postmaster.pid'), error => error.code === 'ENOENT');
+    } finally { await writeFile('/app/data/embedded-postgres/postgresql.conf', config); }
+    await candidateStart();
+    try { await migrationSql('ALTER ROLE cf_runtime BYPASSRLS'); } finally { await candidateStop(); }
+    try {
+      await assert.rejects(verify(), /selected_verification_failed/);
+      await verifySelectedDatabaseShutdown({ expectedSystemId, signal: AbortSignal.timeout(5000) });
+    } finally {
+      await candidateStart();
+      try { await migrationSql('ALTER ROLE cf_runtime NOBYPASSRLS'); } finally { await candidateStop(); }
+    }
+  });
   for (const mode of ['normal', 'restore', 'normal']) {
     await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
-      const { binding, steps } = await prepareIdentityMigration();
+      const { binding } = await prepareIdentityMigration();
       const processRef = new EventEmitter(), events = [];
       let application, completed = false;
       const launched = start => options => { application = start(options); return application; };
       const run = runSelectedDeploymentLifecycle({ journal, binding, processRef,
-        environment: { CLASSIFARR_RUNTIME_MODE: mode, PUID: '1000', PGID: '1000',
-          UMASK: process.umask().toString(8).padStart(3, '0'), NODE_OPTIONS: '--max-old-space-size=1536',
-          PGVECTOR_RUNTIME_STAGING: 'disabled', CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: '60',
-          LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'false' },
-        verify: async ({ signal }) => {
-          await steps.prepare(validateMigrationReceipt(await journal.read(), binding));
-          signal.throwIfAborted(); await steps.verification();
-        },
+        environment: { ...environment, CLASSIFARR_RUNTIME_MODE: mode },
+        verify: ({ signal }) => verifySelectedMigrationThroughHandoff({
+          environment: { ...environment, CLASSIFARR_RUNTIME_MODE: mode }, expectedSystemId, signal }),
         verifyVectorStaging: async ({ mode: staging, signal }) => {
           assert.equal(staging, 'disabled');
           const configuration = await readFile('/app/data/embedded-postgres/postgresql.conf', 'utf8');

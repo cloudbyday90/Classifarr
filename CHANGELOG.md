@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a production-code verifier for converted PostgreSQL candidates and a
+  bounded, clean-environment bootstrap handoff. Reject unsafe policy, cluster
+  identity and runtime privileges before selection; automatic conversion remains
+  gated until production provisioning and upgrade verification are complete.
 - Integrate saved settings with the selected normal/restore startup lifecycle,
   preserving identity, heap, pool and startup limits. Treat rejected child exits
   and late fatal errors as failed shutdowns; automatic production conversion

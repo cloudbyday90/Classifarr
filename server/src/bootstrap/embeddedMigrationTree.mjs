@@ -5,7 +5,8 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 /** Offline, exclusively controlled tree only. External WAL/tablespaces are refused. */
-export async function inspectMigrationTree(root, { maxEntries = 50000, maxBytes = 8 * 1024 ** 3 } = {}) {
+export async function inspectMigrationTree(root, { maxEntries = 50000, maxBytes = 8 * 1024 ** 3, signal, identity } = {}) {
+  signal?.throwIfAborted();
   const entries = [];
   let bytes = 0;
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- trusted cold cluster path; symlinks and mount crossings rejected below
@@ -13,12 +14,17 @@ export async function inspectMigrationTree(root, { maxEntries = 50000, maxBytes 
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('migration_tree_unsupported');
   const device = rootStat.dev;
   async function visit(relative, depth = 0) {
+    signal?.throwIfAborted();
     if (depth > 64) throw new Error('migration_tree_budget_exceeded');
     const path = join(root, relative);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- enumerated path; lstat rejects symlinks before traversal
     const stat = await lstat(path);
+    signal?.throwIfAborted();
     if (stat.dev !== device || (!stat.isDirectory() && !stat.isFile()) || (stat.isFile() && stat.nlink !== 1)) {
       throw new Error('migration_tree_unsupported');
+    }
+    if (identity && (stat.uid !== identity.uid || stat.gid !== identity.gid || (stat.mode & 0o077))) {
+      throw new Error('migration_tree_permissions_invalid');
     }
     bytes += stat.isFile() ? stat.size : 0;
     if (entries.length >= maxEntries || bytes > maxBytes) throw new Error('migration_tree_budget_exceeded');
