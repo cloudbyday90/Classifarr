@@ -2,7 +2,7 @@
 import { constants } from 'node:fs';
 import { lstat, open, readFile } from 'node:fs/promises';
 import { assertProtectedMigrationDirectory } from './embeddedMigrationJournal.mjs';
-import { parseEmbeddedId, readEmbeddedAccounts } from './embeddedIdentityPolicy.mjs';
+import { requireSeparatedEmbeddedAccounts, readEmbeddedAccounts } from './embeddedIdentityPolicy.mjs';
 
 export const SELECTED_DATABASE_ROOT = '/app/data/embedded-postgres';
 export const SELECTED_DATABASE_DATA = '/app/data/embedded-postgres/candidate';
@@ -49,15 +49,8 @@ export async function prepareSelectedDatabase({ signal, protect = assertProtecte
   signal?.throwIfAborted();
   await protect(SELECTED_DATABASE_ROOT);
   signal?.throwIfAborted();
-  const users = (await accounts()).users;
-  const database = users.find(user => user.name === 'postgres');
-  const app = users.find(user => user.name === 'classifarr');
-  const uid = parseEmbeddedId(database?.uid), gid = parseEmbeddedId(database?.gid);
-  parseEmbeddedId(app?.uid); parseEmbeddedId(app?.gid);
+  const { database: { uid, gid } } = requireSeparatedEmbeddedAccounts(await accounts());
   signal?.throwIfAborted();
-  if (!app || uid === app.uid || gid === app.gid || users.some(user => user.uid === uid && user.name !== 'postgres')) {
-    throw new Error('selected_database_identity_collision');
-  }
   for (const path of [SELECTED_DATABASE_DATA, SELECTED_DATABASE_SOCKET]) {
     // Fixed protected children; reject links before use.
     const entry = await stat(path);

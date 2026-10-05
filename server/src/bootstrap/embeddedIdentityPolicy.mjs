@@ -19,6 +19,21 @@ export function readEmbeddedAccounts(passwd, group) {
   return { users, groups };
 }
 
+/** Actual OS identities, not requested PUID/PGID; no account mutation. */
+export function requireSeparatedEmbeddedAccounts({ users }) {
+  const database = users.find(user => user.name === 'postgres');
+  const application = users.find(user => user.name === 'classifarr');
+  for (const account of [database, application]) {
+    parseEmbeddedId(account?.uid); parseEmbeddedId(account?.gid);
+  }
+  if (database.uid === application.uid || database.gid === application.gid
+    || users.some(user => user.uid === database.uid && user.name !== 'postgres')
+    || users.some(user => user.uid === application.uid && user.name !== 'classifarr')) {
+    throw new Error('selected_database_identity_collision');
+  }
+  return { database, application };
+}
+
 /** Plan first: invalid input or account collisions cannot leave partial mutations. */
 export function planEmbeddedIdentity({ environment, uid, gid, accounts }) {
   const targetUid = parseEmbeddedId(environment.PUID || '1000');

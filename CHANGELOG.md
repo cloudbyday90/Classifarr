@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded, restart-safe provisioning for application-writable directories
+  beneath protected appdata, preserving existing settings and keys. Verify real
+  Linux permission boundaries before selected runtime startup; saved legacy
+  deployments remain unchanged until production conversion is integrated.
 - Add a fixed-path, process-owned startup adapter for the separated database,
   with bounded cancellation and verified shutdown. Prevent compatible startup
   from changing a protected database layout; unattended legacy recovery remains

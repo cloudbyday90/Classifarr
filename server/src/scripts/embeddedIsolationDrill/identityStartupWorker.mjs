@@ -10,6 +10,7 @@ import { prepareIdentityMigration } from './identityMigrationSteps.mjs';
 import { startSelectedFixtureChild } from './identityStartupAdapter.mjs';
 import { createSelectedEmbeddedDatabase } from '../../bootstrap/embeddedSelectedDatabase.mjs';
 import { launchSelectedDatabase, verifySelectedDatabaseShutdown } from '../../bootstrap/embeddedSelectedDatabaseProcess.mjs';
+import { provisionEmbeddedApplicationLayout } from '../../bootstrap/embeddedApplicationLayout.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
@@ -30,6 +31,7 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
       await steps.prepare(validateMigrationReceipt(await journal.read(), binding));
       signal.throwIfAborted();
       await steps.verification();
+      await provisionEmbeddedApplicationLayout({ signal });
     },
     database,
     startMaintenance: () => { assert(!cancelStartup); return startSelectedFixtureChild('schema'); },

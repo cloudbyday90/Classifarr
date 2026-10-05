@@ -8,6 +8,7 @@ import { assertDrillEnvironment, assertContainerLayout } from './contract.mjs';
 import { SOURCE, MIGRATION_ROOT, MIGRATION_SOCKET, MIGRATION_DATABASE, migrationEnvironment,
   migrationCommand, migrationSql } from './identityMigrationDatabase.mjs';
 import { verifySelectedStartup } from './identityStartupProbe.mjs';
+import { verifyApplicationLayout } from './applicationLayoutProbe.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assert.equal(process.argv.length, 2);
@@ -27,6 +28,7 @@ assert.equal(guarded.status, 1);
 assert.match(guarded.stderr, /Protected database layout detected/);
 assert.equal((await lstat('/app/data')).uid, 0);
 assert.equal((await readdir('/app/data/embedded-postgres')).length, 0);
+await verifyApplicationLayout();
 for (const path of [SOURCE, MIGRATION_SOCKET]) {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed directories in the disposable migration volume
   await mkdir(path, { mode: 0o700 });
