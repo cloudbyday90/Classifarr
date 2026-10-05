@@ -21,11 +21,11 @@ separate from recoverable configuration failures.
 ## Local validation
 
 - Final backend unit run: **1,689 suites, 52,216 tests passed**, one Windows skip,
-  317.481 seconds on final code. The skipped directory-fsync copy/preservation/no-overwrite
+  292.263 seconds on final code. The skipped directory-fsync copy/preservation/no-overwrite
   behavior was separately exercised against the actual Linux image; that is not
   a claim that the skipped Windows Jest case itself ran.
-- Focused configuration, startup, ownership and code-health run: **5 suites,
-  32,667 tests passed**. Initial broad validation caught the not-yet-reviewed
+- Final focused configuration, startup, ownership, code-health and cookie-policy
+  run: **6 suites, 32,674 tests passed**. Initial broad validation caught the not-yet-reviewed
   ownership fingerprints and a false-positive secret-path literal; both were
   corrected without weakening either check, followed by the full passing run.
 - Server lint/typecheck, copyright, ownership gate, both knip checks, static ESM
@@ -43,8 +43,8 @@ separate from recoverable configuration failures.
 ## Exact image and schema
 
 Final no-cache local Compose build from clean source
-`7e8892f409872c520ba962782a700bc87c8310eb` produced local image ID
-`sha256:62a99f622ea6180778068b4806fc0b0d5c07fcc1347cf3580df2b83ce906838c`.
+`49d9f019b8e1e92080c9dd7b85e86604a8c8c3da` produced local image ID
+`sha256:55aa44988aa81a71c574f84fad805d0e035541e1af03cf943e43c8e16fd90859`.
 Its OCI revision matches; this is local linux/amd64 AVX2 evidence, not a
 published registry digest or multi-platform release attestation.
 
@@ -65,7 +65,9 @@ database defaults after successful schema maintenance, before launching the
 application, to exercise file-over-environment fallback. No production setting
 precedence was changed or assertion removed. Failed-project cleanup passed.
 
-The second build reached the same cookie assertion because the loopback request
+The second build (`7e8892f409872c520ba962782a700bc87c8310eb`, local image
+`sha256:62a99f622ea6180778068b4806fc0b0d5c07fcc1347cf3580df2b83ce906838c`)
+reached the same cookie assertion because the loopback request
 was plain HTTP. The existing cookie policy intentionally falls back to non-secure
 cookies on HTTP, even when forcing is configured. The fixture now supplies the
 existing HTTPS-proxy indication for custom-profile login. This tests the real
@@ -73,8 +75,53 @@ cookie options under that indication, not TLS termination or proxy trust. The
 assertion remains strict; application cookie behavior is unchanged. This failed
 project also cleaned up completely.
 
-Final image rehearsal and replacement evaluation are pending; update this
-section with actual results before handoff.
+The final image passed all **12 core isolation/recovery scenarios** in 185.239
+seconds. Within the legacy-copy scenario, real application HTTP decrypted an
+API credential encrypted before conversion, using the preserved default key,
+custom file key and explicit environment key. Custom JSON security settings
+remained effective over environment fallback; key/JSON bytes stayed unchanged,
+and the ignored missing key path was not created. Seven real Linux invalid-file
+cases refused startup before service imports without regenerating a key.
+Normal authenticated startup, maintenance exclusion, restore-only operation,
+interruption/restart checks and the unchanged source-database digest also passed.
+These are synthetic legacy-identity fixtures in the candidate image, not proof
+of an upgrade from a published older image.
+
+All three saved-profile rehearsals passed: non-root UID/GID 1000:1000,
+custom UID/GID 2345:2345, and Unraid-style 99:100. They cover image immutability,
+on-demand queue/image workers, clean stop/restart and data preservation. Stops
+within unchanged ten-second host windows were observed in 2.865, 2.695 and
+3.678 seconds respectively (including verification). The standard profile also
+passed unexpected application/database exit and forced-host-kill recovery.
+Forced kill is not described as clean shutdown. Final fixture cleanup passed;
+no project containers, volumes or networks remain.
+
+## Local replacement
+
+Only the existing `classifarr` service in local Docker Desktop was recreated
+using the tested image, without rebuilding again or deleting volumes. Its image
+ID matches the one above, health is healthy, HTTP health returns 200, and there
+are no restarts or OOM kills. Live Unraid was not accessed or replaced.
+
+At 26 seconds after PostgreSQL startup, there were no new WARN/ERROR database
+log records; memory was 322 MiB of the unchanged 2 GiB limit and CPU sampled at
+9.48%. At 105 seconds, memory was 387.2 MiB and CPU 0.61%; at 137 seconds,
+411.1 MiB and 63.07%. At 193 seconds, memory was 414.6 MiB and CPU settled to
+0.54%, with zero ERROR records and the same single mediaSync warning:
+`legacy_owner_unknown` for Movies (5). These are short startup samples, not a
+sustained-load or memory-leak assessment.
+
+The process check found one application, one supervisor and zero active
+compatible/selected maintenance workers. The local saved profile remains
+read-only, UID/GID 1000:1000, with a 2 GiB memory limit but no CPU quota or PID
+ceiling. No deployment resource limits were silently changed.
+
+Read-only library inspection found Family (4) complete at 866/866 and Movies
+(5) still blocked with six ownerless legacy running records. This increment
+does not recover them or infer ownership from age. Separate Unraid/local
+databases do not share an ownership lease merely because they use one Plex
+server. The remaining database-enforced writer-isolation work is still needed
+before unattended legacy recovery can be enabled safely.
 
 ## Recommendation stack
 
