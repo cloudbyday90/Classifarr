@@ -2,6 +2,12 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+Rechecked during the selected-configuration batch at base
+`df6fd77db323cfc96141b46b36d0063ea5cc6d09`: a fresh random draw from the two
+currently open PRs again selected 556 at the same immutable head. Registry
+metadata and the two-file diff were unchanged. Repeated the local apply/test/
+remove sequence below: 8/8 baseline, 7/8 candidate, then 30/30 tooling checks.
+
 Applied the exact reviewed PR diff locally on main, without merging a branch.
 Runtime-baseline tests passed 8/8 beforehand; the candidate passed 7/8 and failed
 the unchanged server Node-major alignment check (26 versus deployed 24).

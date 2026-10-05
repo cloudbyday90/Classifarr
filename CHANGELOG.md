@@ -19,6 +19,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve existing encryption keys and reviewed custom settings/paths in protected
+  application startup. Refuse unsafe or corrupt configuration before services
+  start, without regenerating keys or changing legacy deployment permissions.
 - Connect the protected database to the real restricted application and an
   exclusive one-shot restore lifecycle. Preserve saved-template compatibility;
   automatic conversion and legacy ownership recovery remain gated.

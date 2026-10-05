@@ -10,6 +10,7 @@ import { SOURCE, MIGRATION_ROOT, MIGRATION_SOCKET, MIGRATION_DATABASE, migration
 import { verifySelectedStartup } from './identityStartupProbe.mjs';
 import { verifyApplicationLayout } from './applicationLayoutProbe.mjs';
 import { verifySelectedMaintenance } from './identityMaintenanceProbe.mjs';
+import { seedSelectedConfigurationCipher } from './selectedConfigurationProbe.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assert.equal(process.argv.length, 2);
@@ -30,6 +31,7 @@ assert.match(guarded.stderr, /Protected database layout detected/);
 assert.equal((await lstat('/app/data')).uid, 0);
 assert.equal((await readdir('/app/data/embedded-postgres')).length, 0);
 await verifyApplicationLayout();
+await migrationCommand('classifarr', 'node', ['src/scripts/embeddedIsolationDrill/selectedConfigurationFailureProbe.mjs']);
 for (const path of [SOURCE, MIGRATION_SOCKET]) {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed directories in the disposable migration volume
   await mkdir(path, { mode: 0o700 });
@@ -42,6 +44,7 @@ await migrationCommand('classifarr', 'pg_ctl', ['-D', SOURCE, '-l', `${SOURCE}/l
 try {
   await migrationCommand('classifarr', 'createdb', ['-h', MIGRATION_SOCKET, '-U', 'classifarr', MIGRATION_DATABASE]);
   await migrationCommand('classifarr', 'node', ['src/scripts/runDatabaseSchemaMaintenance.mjs', '--apply']);
+  await seedSelectedConfigurationCipher();
   await migrationSql("ALTER ROLE classifarr PASSWORD 'synthetic_previous_password'; CREATE TABLE migration_sentinel(id integer PRIMARY KEY,value text); INSERT INTO migration_sentinel VALUES(1,'preserved');", 'classifarr');
 } finally { await migrationCommand('classifarr', 'pg_ctl', ['-D', SOURCE, '-m', 'fast', '-w', 'stop']); }
 
@@ -103,6 +106,8 @@ await verifySelectedMaintenance();
 await verifySelectedStartup({ signalRuntime: true });
 await verifySelectedStartup({ restore: true });
 await verifySelectedStartup();
+await verifySelectedStartup({ configuration: 'file' });
+await verifySelectedStartup({ configuration: 'environment' });
 // Re-read the earlier committed write after the selected supervisor lifecycle.
 await worker('restart-read', true);
 await worker(undefined, true);
@@ -113,5 +118,6 @@ process.stdout.write('PASS durable_candidate_selection_retains_committed_writes_
 process.stdout.write('PASS selected_startup_maintenance_runtime_sigterm_and_exclusive_lease\n');
 process.stdout.write('PASS selected_peer_maintenance_busy_killed_restore_quarantine_and_verified_resume\n');
 process.stdout.write('PASS selected_real_application_auth_runtime_exclusion_and_restore_only_dispatch\n');
+process.stdout.write('PASS selected_configuration_key_ciphertext_custom_settings_and_paths_preserved\n');
 process.stdout.write('PASS fixed_database_adapter_cancelled_start_and_protected_entrypoint_guard\n');
 process.stdout.write('PASS resumable_legacy_identity_copy_and_real_process_crash_recovery\n');

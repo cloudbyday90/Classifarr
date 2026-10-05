@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import { startSelectedApplication, selectedApplicationEnvironment } from '../bootstrap/embeddedSelectedApplication.mjs';
 import { selectedRuntimeComposition } from '../bootstrap/embeddedSelectedRuntimeComposition.mjs';
 import { runSelectedApplication } from '../scripts/runSelectedApplication.mjs';
+import { selectedApplicationConfiguration } from '../bootstrap/selectedApplicationConfiguration.mjs';
 
 const identities = { application: { uid: 1000, gid: 1000 }, database: { uid: 70, gid: 70 } };
 const accounts = { users: [{ name: 'postgres', ...identities.database }, { name: 'classifarr', ...identities.application }] };
@@ -14,7 +15,8 @@ function fixture() {
   const loadApplication = jest.fn(async () => ({ startApplication }));
   return { startApplication, loadDatabase, loadApplication, options: {
     environment: selectedApplicationEnvironment(), context, accounts: async () => accounts,
-    assertNoEnvFile: jest.fn(), onAdmissionLost: jest.fn(), loadDatabase, loadApplication,
+    assertNoEnvFile: jest.fn(), inspectConfiguration: jest.fn(async () => 'ab'.repeat(32)),
+    onAdmissionLost: jest.fn(), loadDatabase, loadApplication,
   } };
 }
 
@@ -53,12 +55,13 @@ test.each(['POSTGRES_HOST', 'POSTGRES_USER', 'POSTGRES_DB', 'NODE_OPTIONS', 'CLA
   expect(f.loadDatabase).not.toHaveBeenCalled();
 });
 
-test.each(['missing_env', 'identity_collision', 'dotenv', 'no_fail_stop'])('rejects %s before imports', async failure => {
+test.each(['missing_env', 'identity_collision', 'dotenv', 'no_fail_stop', 'configuration'])('rejects %s before imports', async failure => {
   const f = fixture();
   if (failure === 'missing_env') delete f.options.environment.POSTGRES_DB;
   if (failure === 'identity_collision') f.options.accounts = async () => ({ users: [...accounts.users, { name: 'alias', uid: 1000, gid: 1000 }] });
   if (failure === 'dotenv') f.options.assertNoEnvFile.mockRejectedValue(new Error('present or inaccessible'));
   if (failure === 'no_fail_stop') f.options.onAdmissionLost = null;
+  if (failure === 'configuration') f.options.inspectConfiguration.mockRejectedValue(new Error('unavailable'));
   await expect(runSelectedApplication(f.options)).rejects.toThrow();
   expect(f.loadDatabase).not.toHaveBeenCalled();
 });
@@ -66,6 +69,7 @@ test.each(['missing_env', 'identity_collision', 'dotenv', 'no_fail_stop'])('reje
 test('starts the real application contract only after guard checks, preserving fail-stop', async () => {
   const f = fixture();
   expect(await runSelectedApplication(f.options)).toBe('server');
+  expect(f.options.environment.API_KEY_ENCRYPTION_KEY).toBe('ab'.repeat(32));
   expect(f.startApplication).toHaveBeenCalledWith({ database: { pool: 'database' }, environment: f.options.environment,
     onAdmissionLost: f.options.onAdmissionLost });
 });
@@ -77,7 +81,8 @@ test.each(['normal', 'restore'])('dispatches %s to a closed operation vocabulary
   composition.startMaintenance();
   expect(startMaintenance).toHaveBeenCalledWith({ operation: mode === 'normal' ? 'schema' : 'restore',
     identity: identities.database, request, report: expect.any(Function) });
-  if (mode === 'normal') { composition.startApplication(); expect(startApplication).toHaveBeenCalledWith({ identity: identities.application }); }
+  if (mode === 'normal') { composition.startApplication(); expect(startApplication).toHaveBeenCalledWith({ identity: identities.application,
+    configuration: selectedApplicationConfiguration() }); }
   else { expect(composition.startApplication).toBeNull(); expect(startApplication).not.toHaveBeenCalled(); }
   expect(composition.maintenanceOnly).toBe(mode === 'restore');
 });
@@ -86,8 +91,20 @@ test.each([{ mode: 'unknown' }, { mode: 'normal', request: Buffer.from('{}') }, 
   { mode: 'restore', request: '{}' }, { mode: 'restore', request: Buffer.alloc(0) },
   { mode: 'restore', request: Buffer.alloc(64 * 1024 * 1024 + 1) },
   { identities: null }, { identities: { application: identities.database, database: identities.database } },
+  { configuration: { POSTGRES_USER: 'postgres' } },
+  { mode: 'restore', request: Buffer.from('{}'), configuration: { LOG_LEVEL: 'error' } },
 ])('invalid dispatch fails before effects (%#)', change => {
   const startApplication = jest.fn(), startMaintenance = jest.fn();
   expect(() => selectedRuntimeComposition({ mode: 'normal', identities, startApplication, startMaintenance, ...change })).toThrow();
   expect(startApplication).not.toHaveBeenCalled(); expect(startMaintenance).not.toHaveBeenCalled();
+});
+
+test('copies reviewed configuration before composition and never forwards it to schema maintenance', () => {
+  const configuration = { API_KEY_ENCRYPTION_KEY: 'cd'.repeat(32), RUNTIME_SETTINGS_FILE: '/config/runtime.json' };
+  const startApplication = jest.fn(), startMaintenance = jest.fn();
+  const composition = selectedRuntimeComposition({ mode: 'normal', identities, configuration, startApplication, startMaintenance });
+  configuration.API_KEY_ENCRYPTION_KEY = 'changed';
+  composition.startApplication(); composition.startMaintenance();
+  expect(startApplication.mock.calls[0][0].configuration.API_KEY_ENCRYPTION_KEY).toBe('cd'.repeat(32));
+  expect(startMaintenance.mock.calls[0][0]).not.toHaveProperty('configuration');
 });

@@ -2,6 +2,7 @@
 import { readFile, lstat } from 'node:fs/promises';
 import { readEmbeddedAccounts } from '../bootstrap/embeddedIdentityPolicy.mjs';
 import { assertSelectedApplicationBoundary } from '../bootstrap/embeddedSelectedApplication.mjs';
+import { inspectSelectedConfiguration } from '../bootstrap/selectedConfigurationFiles.mjs';
 
 export async function runSelectedApplication({ environment = process.env,
   context = { uid: process.getuid?.(), gid: process.getgid?.(), platform: process.platform,
@@ -14,11 +15,16 @@ export async function runSelectedApplication({ environment = process.env,
   },
   loadDatabase = () => import('../config/database.mjs'),
   loadApplication = () => import('../bootstrap/startApplication.mjs'),
+  inspectConfiguration = inspectSelectedConfiguration,
   onAdmissionLost,
 } = {}) {
   assertSelectedApplicationBoundary(environment, context, await accounts());
   if (typeof onAdmissionLost !== 'function') throw new Error('selected_application_fail_stop_required');
   await assertNoEnvFile();
+  // Pin the validated key before any module can generate or fall back to a key.
+  // It stays in this child's memory; no arguments, logs or new secret files.
+  environment.API_KEY_ENCRYPTION_KEY = await inspectConfiguration({ environment,
+    identity: { uid: context.uid, gid: context.gid } });
   const database = await loadDatabase();
   const { startApplication } = await loadApplication();
   return startApplication({ database, environment, onAdmissionLost });

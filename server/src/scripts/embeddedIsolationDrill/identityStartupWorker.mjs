@@ -15,13 +15,16 @@ import { selectedRuntimeComposition } from '../../bootstrap/embeddedSelectedRunt
 import { readEmbeddedAccounts, requireSeparatedEmbeddedAccounts } from '../../bootstrap/embeddedIdentityPolicy.mjs';
 import { encryptBackupPayload } from '../../services/backupCipher.mjs';
 import { verifySelectedApplication } from './identityApplicationProbe.mjs';
+import { prepareSelectedConfigurationProfile } from './selectedConfigurationProbe.mjs';
 
 assertDrillEnvironment(process.env, { uid: process.getuid?.(), platform: process.platform });
 assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
-assert(process.argv.length === 2 || (process.argv.length === 3 && ['--signal', '--cancel-start', '--restore'].includes(process.argv[2])));
+assert(process.argv.length === 2 || (process.argv.length === 3
+  && ['--signal', '--cancel-start', '--restore', '--custom-file', '--custom-environment'].includes(process.argv[2])));
 const wait = process.argv[2] === '--signal';
 const cancelStartup = process.argv[2] === '--cancel-start';
 const restore = process.argv[2] === '--restore';
+const custom = process.argv[2]?.startsWith('--custom-');
 await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
   const { binding, steps } = await prepareIdentityMigration();
   const identities = requireSeparatedEmbeddedAccounts(readEmbeddedAccounts(await readFile('/etc/passwd', 'utf8'), await readFile('/etc/group', 'utf8')));
@@ -29,7 +32,9 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
   const request = restore ? Buffer.from(JSON.stringify({ version: 1, mode: 'merge', password,
     backup: { encrypted: true, data: encryptBackupPayload({ version: '2.0',
       data: { settings: [{ key: 'selected_dispatch_restore_probe', value: 'restored' }] } }, password) } })) : null;
-  const composition = selectedRuntimeComposition({ mode: restore ? 'restore' : 'normal', identities, request });
+  const profile = custom ? await prepareSelectedConfigurationProfile(process.argv[2].slice('--custom-'.length)) : null;
+  const composition = selectedRuntimeComposition({ mode: restore ? 'restore' : 'normal', identities, request,
+    configuration: restore ? {} : profile?.configuration ?? { LOG_LEVEL: 'error', FILE_LOGGING_ENABLED: 'false' } });
   let applicationCheck;
   let launched;
   const database = createSelectedEmbeddedDatabase({ launch: account => {
@@ -58,7 +63,7 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
     startApplication: restore ? null : () => {
       assert(!cancelStartup);
       const application = composition.startApplication();
-      applicationCheck = verifySelectedApplication(application, identities.database).then(() => {
+      applicationCheck = verifySelectedApplication(application, identities.database, { custom }).then(() => {
         if (wait) process.stdout.write('selected-startup-ready\n');
         else application.signal('SIGTERM');
       });
@@ -67,6 +72,7 @@ await withEmbeddedMigrationJournal(MIGRATION_ROOT, async journal => {
     },
   }); } finally { request?.fill(0); }
   await applicationCheck;
+  await profile?.verifyPreserved();
   assert.equal(code, cancelStartup ? 1 : 0, 'selected_startup_failed');
   if (cancelStartup) {
     assert(launched?.hasExited(), 'cancelled_database_child_not_joined');

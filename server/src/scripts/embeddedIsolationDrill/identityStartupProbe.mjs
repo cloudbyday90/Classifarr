@@ -4,9 +4,11 @@ import { spawn } from 'node:child_process';
 import { withEmbeddedMigrationJournal } from '../../bootstrap/embeddedMigrationJournal.mjs';
 import { MIGRATION_ROOT, migrationEnvironment } from './identityMigrationDatabase.mjs';
 
-export async function verifySelectedStartup({ signalRuntime = false, cancelStartup = false, restore = false } = {}) {
+export async function verifySelectedStartup({ signalRuntime = false, cancelStartup = false, restore = false, configuration = null } = {}) {
+  assert([null, 'file', 'environment'].includes(configuration));
   const child = spawn(process.execPath, ['src/scripts/embeddedIsolationDrill/identityStartupWorker.mjs',
-    ...(signalRuntime ? ['--signal'] : cancelStartup ? ['--cancel-start'] : restore ? ['--restore'] : [])], { cwd: '/app', env: migrationEnvironment(), stdio: ['ignore', 'pipe', 'pipe'] });
+    ...(signalRuntime ? ['--signal'] : cancelStartup ? ['--cancel-start'] : restore ? ['--restore']
+      : configuration ? [`--custom-${configuration}`] : [])], { cwd: '/app', env: migrationEnvironment(), stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '', errors = '', signalled = false, lockProbe;
   const timer = setTimeout(() => child.kill('SIGKILL'), 120_000);
   child.stdout.on('data', chunk => {
