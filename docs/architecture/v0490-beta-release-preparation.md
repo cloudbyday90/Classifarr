@@ -18,6 +18,11 @@ The version consistency smoke test follows the displayed version instead of
 requiring a test rewrite for each release; the publication CLI still checks
 every surface against the explicitly supplied release tag.
 
+The complete database run also exposed an order-dependent recovery assertion:
+it selected an arbitrary sync-history row after two attempts. The test now
+selects the attempt referenced by the library's ingestion state and verifies
+that both history rows remain. No recovery behavior or history is changed.
+
 ## Publication notes
 
 Previously the evidence assembler generated a release body containing only its

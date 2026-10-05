@@ -147,7 +147,14 @@ test('recovery canary permissions preserve the collection cause through the oute
   respond = (req, res) => new URL(req.url, url).searchParams.get('IncludeItemTypes') === 'BoxSet' ? send(res, {}, 403) : healthy(req, res);
   expect(await sync().syncLibrary(libraries[0])).toMatchObject({ reason: 'source_preflight_unavailable', phase: 'collections', detail: 'access_denied' });
   expect(await circuit()).toMatchObject({ state: 'open', reason: 'probe_inconclusive' });
-  const { rows: [status] } = await db.query('SELECT error_message FROM media_server_sync_status WHERE library_id=$1', [libraries[0]]);
+  // Both the initial outage and the canary have history rows. Check the current
+  // owned attempt, not whichever historic row the query planner returns first.
+  const { rows: [status] } = await db.query(`SELECT ss.error_message
+    FROM library_ingestion_state ingestion
+    JOIN media_server_sync_status ss ON ss.id=ingestion.sync_status_id
+    WHERE ingestion.library_id=$1`, [libraries[0]]);
+  const { rows: history } = await db.query('SELECT id FROM media_server_sync_status WHERE library_id=$1', [libraries[0]]);
+  expect(history).toHaveLength(2);
   expect(status.error_message).toContain('collections:access_denied');
   await due(); respond = healthy;
   expect((await sync().syncLibrary(libraries[1])).success).toBe(true);
