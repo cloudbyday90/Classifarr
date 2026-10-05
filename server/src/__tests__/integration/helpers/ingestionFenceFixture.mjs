@@ -15,9 +15,14 @@ export async function createIngestionFenceFixture() {
       await Promise.allSettled([...clients].map(client => client.end()));
       if (identities) {
         const names = Object.values(identities).map(identity => fenceRole(identity.user));
-        const { rows } = await admin.query(`SELECT pg_terminate_backend(pid,5000) stopped FROM pg_stat_activity
+        await admin.query(`SELECT pg_terminate_backend(pid,5000) stopped FROM pg_stat_activity
           WHERE datname=current_database() AND usename=ANY($1::text[]) AND pid<>pg_backend_pid()`, [names]);
-        if (rows.some(row => row.stopped !== true)) throw new Error('fence_fixture_sessions_not_drained');
+        // Client.end() can race server-side exit. A false signal result for an
+        // already-exited backend is not a remaining session; verify fresh state.
+        await admin.query('SELECT pg_stat_clear_snapshot()');
+        const { rows: [sessions] } = await admin.query(`SELECT EXISTS(SELECT 1 FROM pg_stat_activity
+          WHERE datname=current_database() AND usename=ANY($1::text[]) AND pid<>pg_backend_pid()) AS remaining`, [names]);
+        if (sessions.remaining) throw new Error('fence_fixture_sessions_not_drained');
         await admin.query(`REASSIGN OWNED BY ${names.join(',')} TO CURRENT_USER`);
         await admin.query(`DROP OWNED BY ${names.join(',')}`);
         await admin.query(`DROP ROLE ${names.join(',')}`);

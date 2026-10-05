@@ -112,7 +112,9 @@ describe('repository source inventory', () => {
         expect.objectContaining({ path: 'server/src/services/backupRestore.mjs', kind: 'cascade_parent' }),
         expect.objectContaining({ path: 'server/src/services/backupRestoreTables.mjs', kind: 'dynamic_target' })
     ]));
-    expect(report.triggers).toHaveLength(7);
+    expect(report.triggers).toHaveLength(9);
+    expect(report.triggers).toContainEqual(expect.objectContaining({ name: 'ingestion_compatibility_rows' }));
+    expect(report.triggers).toContainEqual(expect.objectContaining({ name: 'ingestion_compatibility_truncate' }));
     expect(report.triggers).toContainEqual(expect.objectContaining({ name: 'zz_inventory_recovery_progress' }));
     }, 30000);
 });

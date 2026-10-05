@@ -2,6 +2,12 @@
 
 Date: 2026-09-30. Status: isolated executable contract; not enabled in production.
 
+October 5 update: the user selected a narrower
+[compatibility fence](ingestion-compatibility-recovery-design.md) for unattended
+legacy recovery without deployment changes. It rejects unmodified older writers;
+it does not satisfy the stronger privileged-writer isolation described here.
+This document and its unresolved writer review remain the security-hardening plan.
+
 ## Decision and evidence
 
 The next component after the [unknown-owner investigation](legacy-ingestion-september30-incident.md)

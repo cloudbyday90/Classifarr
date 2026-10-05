@@ -56,6 +56,8 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
       return { success: false, deferred: true, reason: claim.reason };
     }
     if (claim.replay) incremental = false;
+    if (claim.recovered !== undefined) logger.info('Legacy import fenced; automatic full import and metadata backfill starting',
+      { libraryId, retiredMarkers: claim.recovered, verification: 'compatibility_protocol_1' });
     const { type, url, api_key, media_server_id, external_id } = library;
 
     let syncStatusId, sourceCapture, completed = false;

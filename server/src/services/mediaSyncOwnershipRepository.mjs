@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
-import { advanceRecoveryAttempt, recordRecoveryImport } from './ingestionRecoveryLifecycle.mjs';
+import { advanceRecoveryAttempt, recordRecoveryImport, startRecoveryProgress } from './ingestionRecoveryLifecycle.mjs';
+import { recoverCompatibleLegacyIngestion } from './ingestionCompatibilityRecovery.mjs';
 
 export function createMediaSyncOwnershipRepository(db, libraryId) {
   let runId;
@@ -28,17 +29,19 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
           EXISTS (SELECT 1 FROM media_source_capture_state WHERE library_id=$1 AND phase='collecting'
             AND (generation IS DISTINCT FROM $3::bigint OR source<>'media_sync')) AS present`,
         [libraryId, previous?.sync_status_id ?? null, previous?.capture_generation ?? null]);
-        if (foreign.present) return { reason: 'legacy_owner_unknown' };
+        const recovery = foreign.present ? await recoverCompatibleLegacyIngestion(client, libraryId, previous) : null;
+        if (foreign.present && !recovery) return { reason: 'legacy_owner_unknown' };
+        if (recovery?.moreBatches) return { reason: 'legacy_recovery_pending' };
         if (previous && previous.phase !== 'complete') {
           const { rows: [clock] } = await client.query('SELECT $1::timestamptz>clock_timestamp() AS cooling', [previous.retry_after]);
-          if (clock.cooling) return { reason: 'retry_wait' };
+          if (clock.cooling && !recovery) return { reason: 'retry_wait' };
           await client.query(`UPDATE media_server_sync_status SET status='failed',completed_at=clock_timestamp(),
             error_message='Interrupted ingestion; automatic full replay scheduled' WHERE id=$1 AND status IN ('pending','running')`, [previous.sync_status_id]);
           await client.query(`UPDATE media_source_capture_state SET phase='failed',completed_at=clock_timestamp()
             WHERE library_id=$1 AND generation=$2 AND source='media_sync' AND phase='collecting'`, [libraryId, previous.capture_generation]);
         }
         runId = randomUUID();
-        const replay = Boolean(previous && previous.phase !== 'complete');
+        const replay = Boolean(recovery || (previous && previous.phase !== 'complete'));
         await client.query(`INSERT INTO library_ingestion_state(library_id,run_id,phase,retry_after)
           VALUES ($1,$2,'running',clock_timestamp()+interval '1 minute')
           ON CONFLICT(library_id) DO UPDATE SET run_id=EXCLUDED.run_id,phase='running',sync_status_id=NULL,capture_generation=NULL,
@@ -49,10 +52,14 @@ export function createMediaSyncOwnershipRepository(db, libraryId) {
               THEN LEAST(3600,30*power(2,LEAST(library_ingestion_state.attempt_count,7))) ELSE 60 END+random()*30)`,
         [libraryId, runId, replay]);
         await advanceRecoveryAttempt(client, libraryId, previous, runId);
+        if (recovery) {
+          await startRecoveryProgress(client, { ...recovery, libraryId, runId });
+          await client.query("UPDATE ingestion_recovery_progress SET stage='importing' WHERE audit_id=$1", [recovery.auditId]);
+        }
         // Existing items or old completed syncs are not proof of a complete owned
         // capture. First adoption must backfill the whole library, even when an
         // incremental caller arrives before the watchdog. It is not a restart.
-        return { replay: !previous || replay };
+        return { replay: !previous || replay, ...(recovery ? { recovered: recovery.markerCount } : {}) };
       });
     },
     async attach(syncId, capture = null) {

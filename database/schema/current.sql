@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-04T22:07:45.952Z
--- Latest Migration: 20261004_230000_queue_routing_replay_guard.sql
+-- Generated: 2026-10-05T16:44:44.419Z
+-- Latest Migration: 20261005_180000_ingestion_compatibility_fence.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -321,6 +321,35 @@ BEGIN
         USING ERRCODE = '55000';
 END;
 $$;
+
+
+--
+-- Name: enforce_ingestion_compatibility(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_ingestion_compatibility() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+  IF current_setting('classifarr.ingestion_protocol', true) IS DISTINCT FROM '1' THEN
+    RAISE EXCEPTION USING ERRCODE = '55000', MESSAGE = 'ingestion_writer_upgrade_required',
+      HINT = 'This database requires a protocol-aware Classifarr writer. Upgrade the writer; do not bypass the fence.';
+  END IF;
+  IF TG_OP IN ('INSERT','UPDATE') AND TG_TABLE_NAME IN ('media_server_sync_status','media_source_capture_state') THEN
+    NEW.ingestion_protocol := 1;
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END
+$$;
+
+
+--
+-- Name: FUNCTION enforce_ingestion_compatibility(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.enforce_ingestion_compatibility() IS 'Rejects unmodified pre-protocol writers, including late writes. Not isolation from a database owner or superuser.';
 
 
 --
@@ -5377,6 +5406,8 @@ CREATE TABLE public.media_server_sync_status (
     started_at timestamp without time zone,
     completed_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
+    ingestion_protocol smallint DEFAULT 0 NOT NULL,
+    CONSTRAINT media_server_sync_status_ingestion_protocol_check CHECK ((ingestion_protocol = ANY (ARRAY[0, 1]))),
     CONSTRAINT media_server_sync_status_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('running'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text])))
 );
 
@@ -5418,7 +5449,9 @@ CREATE TABLE public.media_source_capture_state (
     rejected_count integer DEFAULT 0 NOT NULL,
     uncapturable_count integer DEFAULT 0 NOT NULL,
     omitted_count integer DEFAULT 0 NOT NULL,
+    ingestion_protocol smallint DEFAULT 0 NOT NULL,
     CONSTRAINT media_source_capture_state_generation_check CHECK ((generation > 0)),
+    CONSTRAINT media_source_capture_state_ingestion_protocol_check CHECK ((ingestion_protocol = ANY (ARRAY[0, 1]))),
     CONSTRAINT media_source_capture_state_mode_check CHECK ((mode = ANY (ARRAY['full'::text, 'incremental'::text]))),
     CONSTRAINT media_source_capture_state_observed_count_check CHECK ((observed_count >= 0)),
     CONSTRAINT media_source_capture_state_omitted_count_check CHECK ((omitted_count >= 0)),
@@ -12864,6 +12897,13 @@ CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.p
 
 
 --
+-- Name: idx_ingestion_compatibility_history; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ingestion_compatibility_history ON public.audit_log USING btree (((metadata ->> 'libraryId'::text)), id DESC) WHERE (((action)::text = 'library_ingestion_compatibility_recovered'::text) AND (user_id IS NULL) AND ((metadata ->> 'moreBatches'::text) = 'false'::text));
+
+
+--
 -- Name: idx_ingestion_reconciliation_history; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14415,6 +14455,114 @@ CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON pub
 --
 
 CREATE TRIGGER database_health_transition_receipts_append_only BEFORE DELETE OR UPDATE ON public.database_health_transition_receipts FOR EACH ROW EXECUTE FUNCTION public.enforce_database_health_transition_receipts_append_only();
+
+
+--
+-- Name: library_ingestion_state ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.library_ingestion_state FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.library_ingestion_state ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: media_server_collections ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.media_server_collections FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_collections ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: media_server_items ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.media_server_items FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_items ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: media_server_sync_status ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.media_server_sync_status FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_sync_status ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: media_source_capture_state ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.media_source_capture_state FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_source_capture_state ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: media_source_observations ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_rows BEFORE INSERT OR DELETE OR UPDATE ON public.media_source_observations FOR EACH ROW EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_source_observations ENABLE ALWAYS TRIGGER ingestion_compatibility_rows;
+
+
+--
+-- Name: library_ingestion_state ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.library_ingestion_state FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.library_ingestion_state ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
+
+
+--
+-- Name: media_server_collections ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.media_server_collections FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_collections ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
+
+
+--
+-- Name: media_server_items ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.media_server_items FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_items ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
+
+
+--
+-- Name: media_server_sync_status ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.media_server_sync_status FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_server_sync_status ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
+
+
+--
+-- Name: media_source_capture_state ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.media_source_capture_state FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_source_capture_state ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
+
+
+--
+-- Name: media_source_observations ingestion_compatibility_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER ingestion_compatibility_truncate BEFORE TRUNCATE ON public.media_source_observations FOR EACH STATEMENT EXECUTE FUNCTION public.enforce_ingestion_compatibility();
+
+ALTER TABLE public.media_source_observations ENABLE ALWAYS TRIGGER ingestion_compatibility_truncate;
 
 
 --
@@ -18069,6 +18217,7 @@ FROM unnest(ARRAY[
     '20261004_180000_discord_delivery_verification.sql',
     '20261004_200000_discord_delivery_deferral.sql',
     '20261004_210000_discord_delivery_outbox.sql',
-    '20261004_230000_queue_routing_replay_guard.sql'
+    '20261004_230000_queue_routing_replay_guard.sql',
+    '20261005_180000_ingestion_compatibility_fence.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

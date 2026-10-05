@@ -19,6 +19,7 @@ import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 import { runAbortableDatabaseRead } from '../utils/databaseAbortableRead.mjs';
 import { createDatabaseReadCanceller } from '../utils/databaseReadCancellation.mjs';
 import { readDatabaseProfilingStatus } from '../services/databaseProfilingStatus.mjs';
+import { ingestionConnectionOptions } from './ingestionProtocol.mjs';
 
 function createSlowQueryThreshold(environment) {
   const parsedSlowQueryThreshold = environment.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
@@ -66,6 +67,7 @@ function isTransientConnectionError(error) {
 
 function createPoolConfig(environment) {
   return {
+    options: ingestionConnectionOptions(environment.PGOPTIONS),
     host: environment.POSTGRES_HOST || 'localhost',
     port: parseInt(environment.POSTGRES_PORT || '5432', 10),
     database: environment.POSTGRES_DB || 'classifarr',

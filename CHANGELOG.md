@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover pre-upgrade library imports automatically after a database compatibility
+  fence blocks unmodified older writers. Preserve inventory, resume full import
+  and metadata backfill, and show system recovery receipts without requiring
+  Compose or Unraid template changes. Privilege isolation remains separate work.
 - Record the original offline database identity durably before migration copying.
   Reject missing provenance, changed sources and selected-candidate overwrite;
   verify resumable copy integrity while preserving the original database.

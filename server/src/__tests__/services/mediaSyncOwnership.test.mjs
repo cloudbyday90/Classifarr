@@ -75,7 +75,7 @@ test('foreign work and cooldowns never replace an owner', async () => {
   for (const [options, reason] of [[{ foreign: true }, 'legacy_owner_unknown'], [{ previous: { phase: 'retry_wait' }, cooling: true }, 'retry_wait']]) {
     const { db, repo } = repository(options);
     expect(await repo.claim()).toEqual({ reason });
-    expect(db.query.mock.calls.every(([sql]) => sql.startsWith('SELECT'))).toBe(true);
+    expect(db.query.mock.calls.some(([sql]) => /^(INSERT|UPDATE|DELETE)/.test(sql))).toBe(false);
   }
 });
 test('source validation is parameterized and fails closed on configuration changes', async () => {

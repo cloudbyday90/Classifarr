@@ -6,6 +6,7 @@ import pg from 'pg';
 import { observeEmbeddedChild } from '../../bootstrap/embeddedChildProcess.mjs';
 import { createCompatibleQueueMaintenanceBroker, startCompatibleQueueMaintenance } from '../../bootstrap/embeddedCompatibleQueueMaintenance.mjs';
 import { assessQueueVacuumHandoff } from '../../services/queueVacuumHandoffAssessment.mjs';
+import { ingestionConnectionOptions } from '../../config/ingestionProtocol.mjs';
 
 // Only the collision-checked Compose drill invokes this against its fresh volumes.
 assert.equal(process.env.CLASSIFARR_EMBEDDED_ISOLATION_DRILL, 'disposable-v1');
@@ -15,7 +16,7 @@ assert.deepEqual(await readdir('/sys/class/net'), ['lo']);
 const mounts = await readFile('/proc/self/mountinfo', 'utf8');
 assert(mounts.split('\n').some(line => line.split(' ')[4] === '/app/data'));
 const connection = { host: 'localhost', port: 5432, user: 'classifarr', database: 'classifarr',
-  connectionTimeoutMillis: 3000, statement_timeout: 5000 };
+  connectionTimeoutMillis: 3000, statement_timeout: 5000, options: ingestionConnectionOptions() };
 async function sql(text) {
   const client = new pg.Client(connection);
   try { await client.connect(); return (await client.query(text)).rows; }

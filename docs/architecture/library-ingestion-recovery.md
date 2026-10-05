@@ -71,12 +71,16 @@ value/event API. A regression test covers distinct IDs and normal editing.
 ## Existing installations
 
 New ownership records are created only when work is actually admitted. No setup
-means no owned import; disabled sources do not start. Existing running statuses or
-external captures without matching ownership evidence are **not** automatically
-cleared. They produce `legacy_owner_unknown`: verify the older/external worker has
-stopped before reconciling its status. This intentionally leaves legacy takeover
-as a separate, explicit operational decision. Scheduled/manual log retention is
-unchanged; ownership is independent of historical sync-status retention.
+means no owned import; disabled sources do not start. As of the October 5
+[compatibility recovery change](ingestion-compatibility-recovery-design.md),
+pre-upgrade import markers recover automatically once database triggers reject
+unmodified older writers. Batches preserve inventory and reuse full import plus
+metadata backfill. Existing Compose and Unraid templates need no changes.
+
+Unknown work created by current software still requires reviewed recovery;
+missing/disabled fence checks also fail closed. The compatibility signal is not
+protection against a database superuser deliberately bypassing it. Scheduled/manual
+log retention is unchanged; ownership is independent of sync-status retention.
 
 ## Options and recommendation stack
 

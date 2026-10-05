@@ -21,7 +21,8 @@ const sql = async text => (await pg('psql', ['-X', '-h', '/run/postgresql', '-U'
 const status = () => pg('pg_ctl', ['-D', PG_DATA, 'status']);
 const database = { adopt: status, check: status,
   stop: () => pg('pg_ctl', ['-D', PG_DATA, '-m', 'fast', '-w', '-t', '20', 'stop']) };
-await sql(`REVOKE ALL ON queue_vacuum_recovery_state FROM cf_runtime;
+await sql(`SET classifarr.ingestion_protocol='1';
+  REVOKE ALL ON queue_vacuum_recovery_state FROM cf_runtime;
   GRANT SELECT ON queue_vacuum_recovery_state TO cf_runtime;
   DELETE FROM queue_vacuum_recovery_state;
   INSERT INTO libraries (external_id, name, media_type) VALUES ('handoff-fixture', 'Synthetic handoff', 'movie');

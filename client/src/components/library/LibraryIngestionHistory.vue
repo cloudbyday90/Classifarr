@@ -6,11 +6,11 @@
     @toggle="setOpened($event.target.open)"
   >
     <summary class="cursor-pointer font-semibold">
-      Your recovery history
+      Recovery history
     </summary>
     <template v-if="opened">
       <p class="text-sm text-gray-300">
-        Your recovery requests and verified progress. Optional AI work is separate.
+        Automatic recovery and your requests, with verified progress. Optional AI work is separate.
       </p>
       <Button
         :disabled="loading"
@@ -53,6 +53,9 @@
           >
             <p class="font-medium">
               Receipt #{{ receipt.auditId }} — {{ receipt.replay === 'scheduled' ? 'Full import requested' : 'Library was left disabled' }}
+            </p>
+            <p v-if="receipt.automatic">
+              Started automatically after blocking pre-upgrade writers.
             </p>
             <time :datetime="receipt.confirmedAt">{{ receipt.confirmedAt }}</time>
             <p class="break-all">

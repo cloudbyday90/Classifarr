@@ -17,3 +17,6 @@
  */
 
 process.env.NODE_ENV = 'test';
+// Test seed/cleanup clients use the same explicit protocol as the application.
+// Old-writer regression clients deliberately override options to an empty string.
+process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c classifarr.ingestion_protocol=1`.trim();

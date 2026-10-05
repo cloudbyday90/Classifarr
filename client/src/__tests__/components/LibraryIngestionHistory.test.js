@@ -17,6 +17,15 @@ beforeEach(() => {
   localStorage.clear(); sessionStorage.clear()
 })
 
+it('identifies system recovery separately from personal confirmations without claiming completion', async () => {
+  historyRead.mockResolvedValueOnce({ ...result, receipts: [{ ...receipt, automatic: true }] })
+  const wrapper = mount(LibraryIngestionHistory, { props: { libraryId: 1 } })
+  await toggle(wrapper, true)
+  expect(wrapper.text()).toContain('Started automatically after blocking pre-upgrade writers.')
+  expect(wrapper.text()).toContain('not a finished import')
+  wrapper.unmount()
+})
+
 it('reads only on demand and rediscovers recorded requests on a new mount without saved approval', async () => {
   let wrapper = mount(LibraryIngestionHistory, { props: { libraryId: 1 } })
   await flushPromises(); expect(historyRead).not.toHaveBeenCalled()
