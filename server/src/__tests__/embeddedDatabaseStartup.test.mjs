@@ -88,7 +88,7 @@ test.each([{ code: 0, signal: null }, { code: 1, signal: null }, { code: null, s
     const f = fixture();
     f.options.probe.mockImplementation(() => { f.finish(result); return new Promise(() => {}); });
     await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('process_exited');
-    expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_process_exited',
+    expect(f.options.report).toHaveBeenCalledWith({ status: 'failed', reason: 'database_startup_process_exited',
       exitCode: result.code, exitSignal: result.signal });
     expect(f.child.signal).not.toHaveBeenCalled();
   });
@@ -97,7 +97,7 @@ test('a failed spawn has no fabricated native exit observation', async () => {
   const f = fixture(); f.child.pid = undefined;
   f.options.probe.mockImplementation(() => { f.finish({ code: 1, signal: null }); return new Promise(() => {}); });
   await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('process_exited');
-  expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_process_exited' });
+  expect(f.options.report).toHaveBeenCalledWith({ status: 'failed', reason: 'database_startup_process_exited' });
 });
 
 test('preflight shares the startup deadline and a late completion cannot launch', async () => {
@@ -107,7 +107,8 @@ test('preflight shares the startup deadline and a late completion cannot launch'
   expect(signal.aborted).toBe(true);
   finish({ ownThreadCollision: true }); await Promise.resolve();
   expect(f.options.launch).not.toHaveBeenCalled();
-  expect(f.options.report).toHaveBeenLastCalledWith({ status: 'failed', reason: 'database_startup_timeout' });
+  expect(f.options.report).toHaveBeenCalledWith({ status: 'failed', reason: 'database_startup_timeout' });
+  expect(f.options.report).toHaveBeenLastCalledWith({ status: 'operation_unjoined' });
 });
 
 test('cancellation during preflight cannot launch a child', async () => {
@@ -138,4 +139,23 @@ test('shutdown uncertainty is explicit and never escalates to a database SIGKILL
   expect(f.options.report).toHaveBeenLastCalledWith({ status: 'shutdown_unconfirmed' });
   expect(JSON.stringify(f.options.report.mock.calls)).not.toContain('private provider');
   expect(f.child.detach).toHaveBeenCalledTimes(1);
+});
+
+test('cancellation joins the pending probe before signalling the database', async () => {
+  const f = fixture(); let joined = false;
+  f.options.probe.mockImplementation((_pid, signal) => new Promise(resolve => {
+    signal.addEventListener('abort', () => { joined = true; resolve({ ready: false }); }, { once: true });
+    f.abort.abort();
+  }));
+  f.child.signal.mockImplementation(() => { expect(joined).toBe(true); f.finish({ code: 0, signal: null }); });
+  await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('cancelled');
+  expect(f.options.report).not.toHaveBeenCalledWith({ status: 'operation_unjoined' });
+});
+
+test('throwing diagnostics cannot prevent owned-child cleanup', async () => {
+  const f = fixture();
+  f.options.report.mockImplementation(() => { throw new Error('broken_sink'); });
+  f.options.probe.mockRejectedValue(new Error('read_failed'));
+  await expect(runEmbeddedDatabaseStartup(f.options)).rejects.toThrow('read_failed');
+  expect(f.child.hasExited()).toBe(true);
 });

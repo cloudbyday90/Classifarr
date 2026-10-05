@@ -13,13 +13,14 @@ export function readDatabaseStartupTimeout(environment = process.env) {
 
 /** One launch, one finite budget. Progress never renews the deadline. */
 export async function runEmbeddedDatabaseStartup({
-  launch, probe, prepare, timeoutMs = 300_000, signal, report = (_event) => {},
+  launch, probe, prepare, timeoutMs = 300_000, signal, report: diagnostic = (_event) => {},
   now = () => performance.now(), delay = sleep, waitForExit = waitForEmbeddedExit,
 }) {
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 1_800_000) {
     throw new Error('database_startup_timeout_invalid');
   }
   const started = now();
+  const report = event => { try { diagnostic(event); } catch { /* diagnostics cannot prevent cleanup */ } };
   const probeController = new AbortController();
   let child;
   let exitResult;
@@ -27,6 +28,7 @@ export async function runEmbeddedDatabaseStartup({
   let wakeAbort;
   let lastReport = -Infinity;
   let lastPhase;
+  let pending;
   const cancelled = new Promise(resolve => { wakeAbort = () => resolve({ kind: 'cancelled' }); });
   const expired = new Promise(resolve => { timer = setTimeout(() => resolve({ kind: 'timeout' }), timeoutMs); });
   signal?.addEventListener('abort', wakeAbort, { once: true });
@@ -39,9 +41,12 @@ export async function runEmbeddedDatabaseStartup({
     inspectDeadline();
     let exited;
     const step = async operation => {
+      pending = operation.then(value => ({ kind: 'value', value }), error => ({ kind: 'error', error }));
       const result = await Promise.race([
-        operation.then(value => ({ kind: 'value', value })), ...(exited ? [exited] : []), cancelled, expired,
+        pending, ...(exited ? [exited] : []), cancelled, expired,
       ]);
+      if (result.kind === 'value' || result.kind === 'error') pending = null;
+      if (result.kind === 'error') throw result.error;
       if (result.kind !== 'value') {
         throw new Error(`database_startup_${result.kind === 'exited' ? 'process_exited' : result.kind}`);
       }
@@ -79,6 +84,10 @@ export async function runEmbeddedDatabaseStartup({
     const reason = /^database_startup_[a-z_]+$/.test(error.message) ? error.message : 'database_startup_probe_failed';
     report({ status: 'failed', reason, ...(reason === 'database_startup_process_exited'
       && Number.isSafeInteger(child?.pid) && child.pid > 0 ? projectDatabaseStartupExit(exitResult) : {}) });
+    if (pending) {
+      try { await waitForExit(pending, 1000); }
+      catch { report({ status: 'operation_unjoined' }); }
+    }
     if (child && !child.hasExited()) {
       try {
         child.signal('SIGINT'); // PostgreSQL fast shutdown; never SIGKILL.

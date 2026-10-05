@@ -19,6 +19,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a fixed-path, process-owned startup adapter for the separated database,
+  with bounded cancellation and verified shutdown. Prevent compatible startup
+  from changing a protected database layout; unattended legacy recovery remains
+  gated pending production provisioning and writer fencing.
 - Compose selected-database verification with supervised maintenance, restricted
   runtime startup and ordered shutdown. Add isolated PostgreSQL checks for lease
   contention and host cancellation; deployed identity/ownership recovery remains

@@ -15,8 +15,8 @@ for (const user of ['classifarr', 'postgres']) {
   try { await assert.rejects(client.connect(), error => error.code === '28000'); }
   finally { await client.end(); }
 }
-await assert.rejects(readFile('/identity-migration/candidate/PG_VERSION'), error => error.code === 'EACCES');
-await assert.rejects(open('/identity-migration/pg_hba.conf', 'r+'), error => error.code === 'EACCES');
+await assert.rejects(readFile('/app/data/embedded-postgres/candidate/PG_VERSION'), error => error.code === 'EACCES');
+await assert.rejects(open('/app/data/embedded-postgres/pg_hba.conf', 'r+'), error => error.code === 'EACCES');
 const client = new pg.Client(config);
 await client.connect();
 try {
@@ -25,7 +25,7 @@ try {
   await client.query("INSERT INTO migration_sentinel VALUES (2,'runtime-write')");
   await client.query('ROLLBACK');
   for (const sql of ['SET ROLE classifarr', 'CREATE TABLE public.forbidden(id integer)', 'CREATE ROLE forbidden',
-    "SELECT pg_read_file('/identity-migration/candidate/PG_VERSION')"]) {
+    "SELECT pg_read_file('/app/data/embedded-postgres/candidate/PG_VERSION')"]) {
     await assert.rejects(client.query(sql), error => error.code === '42501');
   }
 } finally { await client.end(); }

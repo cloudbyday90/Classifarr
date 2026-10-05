@@ -4,11 +4,12 @@ import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { readEmbeddedAccounts, parseEmbeddedId } from '../../bootstrap/embeddedIdentityPolicy.mjs';
 import { childEnvironment } from './contract.mjs';
+import { SELECTED_DATABASE_DATA, SELECTED_DATABASE_SOCKET } from '../../bootstrap/embeddedSelectedDatabaseLayout.mjs';
 
 export const MIGRATION_ROOT = '/identity-migration';
 export const SOURCE = '/identity-migration/source';
-export const CANDIDATE = '/identity-migration/candidate';
-export const MIGRATION_SOCKET = '/identity-migration/socket';
+export const CANDIDATE = SELECTED_DATABASE_DATA;
+export const MIGRATION_SOCKET = SELECTED_DATABASE_SOCKET;
 export const MIGRATION_DATABASE = 'classifarr_identity_migration';
 export const migrationEnvironment = () => ({ ...childEnvironment({ admin: true }),
   POSTGRES_HOST: MIGRATION_SOCKET, POSTGRES_DB: MIGRATION_DATABASE });
@@ -34,7 +35,7 @@ export async function migrationCommand(user, command, args) {
 
 export const candidateStop = () => migrationCommand('postgres', 'pg_ctl', ['-D', CANDIDATE, '-m', 'fast', '-w', '-t', '20', 'stop']);
 export const candidateStart = () => migrationCommand('postgres', 'pg_ctl', ['-D', CANDIDATE,
-  '-l', `${CANDIDATE}/migration.log`, '-o', '-c config_file=/identity-migration/postgresql.conf', '-w', '-t', '30', 'start']);
+  '-l', `${CANDIDATE}/migration.log`, '-o', '-c config_file=/app/data/embedded-postgres/postgresql.conf', '-w', '-t', '30', 'start']);
 export const migrationSql = (text, user = 'postgres') => migrationCommand(user, 'psql', ['-X', '-v', 'ON_ERROR_STOP=1',
   '-h', MIGRATION_SOCKET, '-U', 'classifarr', '-d', MIGRATION_DATABASE, '-At', '-c', text]);
 

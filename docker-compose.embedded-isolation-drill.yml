@@ -84,6 +84,7 @@ services:
       - rehearsal-state:/rehearsal
       - app-data:/app/data
       - migration-state:/identity-migration
+      - selected-state:/app/data/embedded-postgres
 volumes:
   runtime-data:
   custom-data:
@@ -91,3 +92,4 @@ volumes:
   rehearsal-state:
   app-data:
   migration-state:
+  selected-state:

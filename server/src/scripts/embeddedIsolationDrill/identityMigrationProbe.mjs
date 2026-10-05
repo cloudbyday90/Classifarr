@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, chown, chmod, readFile, readdir, writeFile, lstat, symlink, unlink, link } from 'node:fs/promises';
 import { withEmbeddedMigrationJournal } from '../../bootstrap/embeddedMigrationJournal.mjs';
 import { inspectMigrationTree, digestMigrationTree } from '../../bootstrap/embeddedMigrationTree.mjs';
@@ -14,6 +14,19 @@ assert.equal(process.argv.length, 2);
 assertContainerLayout(await readFile('/proc/self/mountinfo', 'utf8'), await readdir('/sys/class/net'));
 assert.equal((await readdir('/identity-migration')).length, 0);
 await chmod('/identity-migration', 0o755);
+assert.equal((await readdir('/app/data/embedded-postgres')).length, 0);
+// The earlier application fixture is drained. Provision only this disposable volume.
+await chown('/app/data', 0, 0);
+await chmod('/app/data', 0o755);
+await chown('/app/data/embedded-postgres', 0, 0);
+await chmod('/app/data/embedded-postgres', 0o755);
+const guarded = spawnSync('/bin/sh', ['/app/docker-entrypoint.sh'], {
+  cwd: '/app', env: { PATH: '/usr/bin:/bin' }, timeout: 5000, maxBuffer: 4096, encoding: 'utf8',
+});
+assert.equal(guarded.status, 1);
+assert.match(guarded.stderr, /Protected database layout detected/);
+assert.equal((await lstat('/app/data')).uid, 0);
+assert.equal((await readdir('/app/data/embedded-postgres')).length, 0);
 for (const path of [SOURCE, MIGRATION_SOCKET]) {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed directories in the disposable migration volume
   await mkdir(path, { mode: 0o700 });
@@ -73,7 +86,7 @@ await worker();
 await worker(); // Completed receipt is revalidated, not blindly trusted.
 assert.equal(await digestMigrationTree(SOURCE, await inspectMigrationTree(SOURCE)), originalDigest);
 assert.equal((await lstat('/identity-migration/source')).uid, 1000);
-assert.equal((await lstat('/identity-migration/pg_hba.conf')).uid, 0);
+assert.equal((await lstat('/app/data/embedded-postgres/pg_hba.conf')).uid, 0);
 const receipt = JSON.parse(await readFile('/identity-migration/migration.json', 'utf8'));
 assert.equal(receipt.completed, 5);
 assert.equal(receipt.pending, null);
@@ -82,6 +95,7 @@ for (const point of ['before:verify', 'verified', 'selected', 'runtime-write', '
 }
 await worker(undefined, true);
 await worker(undefined, true);
+await verifySelectedStartup({ cancelStartup: true });
 await verifySelectedStartup({ signalRuntime: true });
 await verifySelectedStartup();
 // Re-read the earlier committed write after the selected supervisor lifecycle.
@@ -92,4 +106,5 @@ const selection = JSON.parse(await readFile('/identity-migration/selection.json'
 assert.deepEqual(selection, { version: 1, binding: receipt.binding, phase: 'selected' });
 process.stdout.write('PASS durable_candidate_selection_retains_committed_writes_after_process_death\n');
 process.stdout.write('PASS selected_startup_maintenance_runtime_sigterm_and_exclusive_lease\n');
+process.stdout.write('PASS fixed_database_adapter_cancelled_start_and_protected_entrypoint_guard\n');
 process.stdout.write('PASS resumable_legacy_identity_copy_and_real_process_crash_recovery\n');

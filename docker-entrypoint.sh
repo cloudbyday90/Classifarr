@@ -11,6 +11,13 @@ PG_DATA="$DATA_DIR/postgres"
 PG_RUN="/run/postgresql"
 VERSION_FILE="$DATA_DIR/app_version"
 
+# Reserved separated layout must never enter the legacy recursive chown/startup.
+# Activation is not supported by this entrypoint yet. Include dangling symlinks.
+if [ -e "$DATA_DIR/embedded-postgres" ] || [ -L "$DATA_DIR/embedded-postgres" ]; then
+    echo "Protected database layout detected; compatible startup refused before data changes. Use a supported separated-layout image; do not delete or change ownership of this directory." >&2
+    exit 1
+fi
+
 # Default values for PUID/PGID/UMASK
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
