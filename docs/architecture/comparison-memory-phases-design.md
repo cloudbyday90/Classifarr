@@ -26,6 +26,13 @@ neighborhood hooks remain outside this fixture and must be named as a limitation
 
 ## Safety and completion
 
+Add a separate `copies` allocation control after phase measurement: retain a
+synthetic decoded snapshot, an owned fitting copy, a same-isolate structured
+clone and two independent normalization results, measuring collected heap after
+each. Then leave that scope and collect again. This estimates incremental
+reachable allocation on this Node build, not worker serialization peak or real
+GC timing. It uses the same private fixture and bounds, never live snapshots.
+
 No production scheduler, fit algorithm, vector ownership, admission, deadline,
 cache bound, cancellation or freshness check changes. Incomplete inputs remain
 unavailable and memory pressure remains deferred. Existing factory shutdown and

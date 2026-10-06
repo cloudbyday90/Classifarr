@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 import { withPrivateStudyLock } from '../../scripts/comparisonMemoryStudy/fixture.mjs';
 import { createComparisonStudyTiming } from '../../scripts/comparisonMemoryStudy/timing.mjs';
 import { createComparisonStudyPhases } from '../../scripts/comparisonMemoryStudy/phases.mjs';
+import { measureVectorCopies } from '../../scripts/comparisonMemoryStudy/copies.mjs';
+import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
-test.each([['natural'], ['elapsed'], ['collect'], ['collect', '--unexpected'], ['unknown']])(
+test.each([['natural'], ['elapsed'], ['collect'], ['copies'], ['collect', '--unexpected'], ['unknown']])(
   'synthetic memory study refuses execution without explicit isolation flag (%#)', async (...args) => {
     const run = promisify(execFile);
     await expect(run(process.execPath, [fileURLToPath(new URL('../../scripts/comparisonMemoryStudy/run.mjs', import.meta.url)), ...args], {
@@ -57,6 +59,21 @@ test.each(['fit', 'discover'])('phase observer propagates %s failure without inv
   const observer = createComparisonStudyPhases(metrics, 'cycle_1', { [method]: async () => { throw failure; } });
   await expect(observer[method]()).rejects.toBe(failure);
   expect(events).toHaveLength(1); expect(metrics.track).not.toHaveBeenCalled();
+});
+
+test('copy control uses independent valid copies without changing the source', async () => {
+  const corpus = prepareInventoryDescriptionCorpus([{ media_type: 'movie', tmdb_id: 1, library_id: 1, overview: 'Synthetic copy control' }]);
+  const snapshot = { libraries: [{ id: 1, media_type: 'movie' }], corpus,
+    vectors: new Map([[corpus.documents[0].hash, [3, 4]]]) };
+  const before = structuredClone(snapshot);
+  const read = jest.fn(async () => snapshot), phases = [], mark = jest.fn();
+  const identity = { provider: 'ollama', model: 'study:latest', digest: 'a'.repeat(64), dimensions: 2 };
+  await measureVectorCopies({ fixture: { identity, repository: { read } },
+    metrics: { settled: async name => { phases.push(name); }, mark } });
+  expect(snapshot).toEqual(before);
+  expect(read).toHaveBeenCalledWith(identity, { requireCompleteVectors: true });
+  expect(phases).toEqual(['copies_snapshot', 'copies_owned', 'copies_clone', 'copies_normalized', 'copies_duplicate']);
+  expect(mark).toHaveBeenCalledWith('copies_retained', { vectorCounts: [1, 1, 1, 1, 1], dimensions: 2 });
 });
 
 test.each(['acquire_failure', 'busy', 'callback_failure', 'unlock_failure', 'complete'])(
