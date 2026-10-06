@@ -23,3 +23,12 @@ Official sources rediscovered through MCP on October 6, 2026:
 
 Record this round's gate outcome separately; no dependency change is implied by
 recording the design.
+
+## Bounded-vector-reader review
+
+The next October 6 round again queried the current pool (#555 and #556) and
+`Get-Random` selected #555 at the same immutable head. Repeat its exact two-file
+local trial against the runtime-major gate, without installation or merge.
+Official DefinitelyTyped guidance was retrieved again; the supported Node 24
+runtime remains unchanged. A repeated random selection does not make this major
+upgrade compatible or justify disabling its gate.

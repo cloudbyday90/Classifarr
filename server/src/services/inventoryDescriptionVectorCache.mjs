@@ -10,7 +10,7 @@ export function validateDescriptionRepresentation(value) {
   return [INVENTORY_DESCRIPTION_PROJECTION_VERSION, value.model, value.digest, value.dimensions];
 }
 
-function validateHashes(hashes, maximum) {
+export function validateInventoryDescriptionHashes(hashes, maximum) {
   if (!Array.isArray(hashes) || hashes.length > maximum || new Set(hashes).size !== hashes.length ||
       hashes.some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))) throw new Error('inventory_description_hashes_invalid');
 }
@@ -18,7 +18,7 @@ function validateHashes(hashes, maximum) {
 /** Capture only scoped encoded rows inside the transaction; decode after it commits. */
 export async function readInventoryDescriptionVectorRows(query, representation, hashes) {
   const parameters = validateDescriptionRepresentation(representation);
-  validateHashes(hashes, 10000);
+  validateInventoryDescriptionHashes(hashes, 10000);
   const captured = [], seen = new Set();
   for (let offset = 0; offset < hashes.length; offset += 256) {
     const requested = new Set(hashes.slice(offset, offset + 256));
@@ -44,7 +44,7 @@ export function createInventoryDescriptionVectorCache({ query }) {
   return {
     async findPresent(representation, hashes) {
       const parameters = validateDescriptionRepresentation(representation);
-      validateHashes(hashes, 10000);
+      validateInventoryDescriptionHashes(hashes, 10000);
       if (!hashes.length) return new Set();
       const { rows } = await query(`SELECT description_hash FROM inventory_description_vector_cache
         WHERE projection_version=$1 AND model_name=$2 AND model_digest=$3 AND dimensions=$4
@@ -63,7 +63,7 @@ export function createInventoryDescriptionVectorCache({ query }) {
     async write(representation, entries) {
       const parameters = validateDescriptionRepresentation(representation);
       if (!Array.isArray(entries)) throw new Error('inventory_description_cache_entries_invalid');
-      validateHashes(entries.map(entry => entry.hash), 8);
+      validateInventoryDescriptionHashes(entries.map(entry => entry.hash), 8);
       if (!entries.length) return;
       const encoded = entries.map(entry => ({ hash: entry.hash, vector: JSON.stringify(validateEmbedding(entry.vector, representation.dimensions)) }));
       await query(`INSERT INTO inventory_description_vector_cache

@@ -68,20 +68,36 @@ test('novelty identity budget rejects before training or vector loading', async 
   expect(client.query.mock.calls.some(([sql]) => sql === REPRESENTATIVE_PROFILE_CORPUS_SQL)).toBe(false);
 });
 
-test('vector decoding and readiness processing happen after snapshot ownership ends', async () => {
+test('vector decoding stays within the bounded read-only snapshot', async () => {
   const { identity, client, snapshot } = setup();
   const query = client.query.getMockImplementation();
   let open = false;
   client.query.mockImplementation(async (sql, params) => {
     const result = await query(sql, params);
     if (sql.includes('embedding::text')) return { rows: result.rows.map(row => ({ description_hash: row.description_hash,
-      get embedding() { expect(open).toBe(false); return row.embedding; } })) };
+      get embedding() { expect(open).toBe(true); return row.embedding; } })) };
     return result;
   });
   const repository = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
     open = true; try { return await callback(client); } finally { open = false; }
   } });
   expect((await repository.read(identity)).vectors).toEqual(snapshot.vectors);
+});
+
+test('cancellation refuses acquisition and stops before another query or decoded result', async () => {
+  const { repository, identity, client, withTransaction } = setup();
+  const controller = new AbortController();
+  controller.abort(new Error('stopped'));
+  await expect(repository.read(identity, { signal: controller.signal })).rejects.toThrow('stopped');
+  expect(withTransaction).not.toHaveBeenCalled();
+  const active = new AbortController(), query = client.query.getMockImplementation();
+  client.query.mockImplementation(async (sql, params) => {
+    const result = await query(sql, params);
+    if (sql === REPRESENTATIVE_PROFILE_CORPUS_SQL) active.abort(new Error('stopped'));
+    return result;
+  });
+  await expect(repository.read(identity, { signal: active.signal })).rejects.toThrow('stopped');
+  expect(client.query.mock.calls.some(([sql]) => sql.includes('embedding::text'))).toBe(false);
 });
 
 test('complete-only preflight refuses missing vectors before payload transport', async () => {

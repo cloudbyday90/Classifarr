@@ -65,8 +65,8 @@ test('cold requests cannot fit, warm requests reuse context, unchanged refresh r
   const v = setup();
   expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).not.toHaveBeenCalled();
   expect(await v.worker.run()).toEqual({ status: 'ready' });
-  expect(v.repository.read).toHaveBeenNthCalledWith(1, v.identity, { requireCompleteVectors: true });
-  expect(v.repository.read).toHaveBeenNthCalledWith(2, v.identity, { requireCompleteVectors: true });
+  expect(v.repository.read).toHaveBeenNthCalledWith(1, v.identity, { requireCompleteVectors: true, signal: expect.any(AbortSignal) });
+  expect(v.repository.read).toHaveBeenNthCalledWith(2, v.identity, { requireCompleteVectors: true, signal: v.repository.read.mock.calls[0][1].signal });
   expect(await v.worker.retrieve(v.input)).toEqual(new Map([[1, []], [2, []]]));
   expect(await v.worker.run()).toEqual({ status: 'not_due' });
   v.advance(300000);

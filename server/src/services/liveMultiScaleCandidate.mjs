@@ -4,7 +4,7 @@ import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryM
 /** End the repository snapshot's lifetime before asynchronous fitting starts. */
 async function readCandidate({ repository, identity, signal, isCurrent, selectCached, setStage }) {
   setStage('snapshot_read');
-  const snapshot = await repository.read(identity, { requireCompleteVectors: true });
+  const snapshot = await repository.read(identity, { requireCompleteVectors: true, signal });
   signal.throwIfAborted();
   if (!isCurrent(snapshot.state)) return null;
   setStage('source_validation');

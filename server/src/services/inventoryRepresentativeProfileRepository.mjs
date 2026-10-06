@@ -2,7 +2,8 @@
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus, inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
 import { collectInventoryObservationReadiness } from './inventoryObservationReadiness.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
-import { createInventoryDescriptionVectorCache, readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { createInventoryDescriptionVectorCache, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { readInventoryDescriptionVectors } from './inventoryDescriptionVectorReader.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
 
@@ -18,25 +19,32 @@ export const REPRESENTATIVE_PROFILE_IDENTITIES_SQL = `SELECT DISTINCT msi.media_
 
 export function createInventoryRepresentativeProfileRepository({ withTransaction }) {
   return {
-    async read(identity, { requireCompleteVectors = false } = {}) {
+    async read(identity, { requireCompleteVectors = false, signal } = {}) {
       validateDescriptionRepresentation(identity);
+      signal?.throwIfAborted();
       const source = await withTransaction(async client => {
-        await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-        await client.query("SET LOCAL statement_timeout = '15s'");
-        await client.query("SET LOCAL lock_timeout = '1s'");
-        await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
-        await client.query("SET LOCAL transaction_timeout = '90s'");
-        const state = (await client.query(INVENTORY_DESCRIPTION_REFRESH_STATE_SQL)).rows[0];
-        const libraries = (await client.query(REPRESENTATIVE_PROFILE_LIBRARIES_SQL)).rows;
+        const query = async (...args) => {
+          signal?.throwIfAborted();
+          const result = await client.query(...args);
+          signal?.throwIfAborted();
+          return result;
+        };
+        await query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        await query("SET LOCAL statement_timeout = '15s'");
+        await query("SET LOCAL lock_timeout = '1s'");
+        await query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
+        await query("SET LOCAL transaction_timeout = '90s'");
+        const state = (await query(INVENTORY_DESCRIPTION_REFRESH_STATE_SQL)).rows[0];
+        const libraries = (await query(REPRESENTATIVE_PROFILE_LIBRARIES_SQL)).rows;
         if (libraries.length > 64) throw new Error('inventory_representative_library_budget');
-        const identities = (await client.query(REPRESENTATIVE_PROFILE_IDENTITIES_SQL)).rows;
+        const identities = (await query(REPRESENTATIVE_PROFILE_IDENTITIES_SQL)).rows;
         if (identities.length > 50000) throw new Error('inventory_representative_identity_budget');
-        const { rows } = await client.query(REPRESENTATIVE_PROFILE_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+        const { rows } = await query(REPRESENTATIVE_PROFILE_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
         const corpus = prepareInventoryDescriptionCorpus(rows);
         if (corpus.texts.size * identity.dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT) {
           throw new Error('inventory_representative_vector_budget');
         }
-        const query = (sql, params) => client.query(sql, params), hashes = [...corpus.texts.keys()];
+        const hashes = [...corpus.texts.keys()];
         if (requireCompleteVectors) {
           const present = await createInventoryDescriptionVectorCache({ query }).findPresent(identity, hashes);
           if (present.size !== hashes.length) {
@@ -46,11 +54,12 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
             } });
           }
         }
-        const vectorRows = await readInventoryDescriptionVectorRows(query, identity, hashes);
-        return { state, libraries, corpus, vectorRows, identities, rows };
+        const vectors = await readInventoryDescriptionVectors(query, identity, hashes, { signal });
+        return { state, libraries, corpus, vectors, identities, rows };
       });
-      const { vectorRows, identities, rows, ...snapshot } = source;
-      return { ...snapshot, vectors: decodeInventoryDescriptionVectorRows(vectorRows, identity),
+      signal?.throwIfAborted();
+      const { identities, rows, ...snapshot } = source;
+      return { ...snapshot,
         observedKeys: new Set(identities.map(inventoryDescriptionIdentity)), observationReadiness: collectInventoryObservationReadiness(rows) };
     },
   };

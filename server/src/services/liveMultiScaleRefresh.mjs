@@ -82,7 +82,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           }
           const { key, built, reused } = candidate;
           stage = 'snapshot_verify';
-          const fresh = await repository.read(identity, { requireCompleteVectors: true });
+          const fresh = await repository.read(identity, { requireCompleteVectors: true, signal: abort });
           stage = 'provider_verify';
           await verifyDescriptionRepresentation(embedder, identity, abort);
           stage = 'state_verify';

@@ -45,3 +45,11 @@ the decision. Reapplied the exact manifest/lockfile diff locally: again seven ga
 checks passed and the client Node-major check failed. Removed only that trial;
 no install, merge or retained dependency update. This repeated result is not a new
 integration. Other outdated patch candidates remain separate follow-up work.
+
+## Bounded-vector-reader recheck
+
+The next October 6 round freshly selected #555 from the unchanged open pool.
+Applied the immutable two-file diff: seven checks passed, one rejected Node 26
+declarations against the Node 24 runtime. Reverted only those manifest/lockfile
+edits without installing packages or merging. This remains a rejected local trial,
+not an integrated upgrade; no compatibility gate was weakened.

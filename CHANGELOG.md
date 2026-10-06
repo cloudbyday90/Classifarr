@@ -16,6 +16,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   vectors and provide actionable coverage diagnostics. Whole-refresh retention
   profiling covers workers, snapshots and caches. Release comparison snapshots and
   fitting inputs before subsequent phases; memory safeguards remain unchanged.
+  Read and decode representative/comparison vectors in bounded batches within
+  one consistent snapshot, with cancellation checks between batches.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
 

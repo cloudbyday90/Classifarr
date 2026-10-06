@@ -37,7 +37,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   async function refresh(state, signal, runRevision, expected, checkpoint) {
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
-    const snapshot = await repository.read(identity);
+    const snapshot = await repository.read(identity, { signal });
     signal.throwIfAborted();
     if (!current(snapshot.state, expected) || getRevision() !== runRevision) { clear(); return report('invalidated'); }
     if (!snapshot.corpus.texts.size) { clear(); return report('empty_corpus'); }
@@ -64,7 +64,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
       if (representativeValidationIssue(error) !== 'unknown_check') throw error;
       // Optional recovery service failures still leave ordinary backfill available.
     }
-    const fresh = await repository.read(identity);
+    const fresh = await repository.read(identity, { signal });
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
     if (!current(fresh.state, expected) ||
