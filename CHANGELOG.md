@@ -42,6 +42,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   in one isolated application catalog, separating workload completion from
   evidence of recovery after memory pressure.
   Preserve bounded numeric phase peaks when a study fails, without retaining raw payloads.
+  Attribute resident memory to the study process, PostgreSQL and container cache,
+  alongside committed V8 heap; retain explicit gaps when measurements are unavailable.
   Production admission limits and garbage-collection behavior are unchanged.
 
 ## [v0.49.0-beta] - 2026-10-05
