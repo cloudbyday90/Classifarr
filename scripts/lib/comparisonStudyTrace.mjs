@@ -2,13 +2,15 @@
 const NUMBERS = ['elapsedMs', 'rss', 'heapUsed', 'heapTotal', 'external', 'arrayBuffers',
   'containerBytes', 'kernelPeakBytes', 'pids', 'activeWorkers', 'workerHeapUsed',
   'memoryLimitHits', 'oomKill', 'createdWorkers', 'exitedWorkers', 'estimatedCacheBytes', 'reads', 'builds',
-  'attempt', 'availableBytes', 'reserveBytes', 'reservedBytes', 'workBytes', 'hysteresisBytes', 'requiredBytes'];
+  'attempt', 'availableBytes', 'reserveBytes', 'reservedBytes', 'workBytes', 'hysteresisBytes', 'requiredBytes',
+  'inventory', 'completed', 'descriptions', 'cached'];
 const REFERENCES = ['snapshot', 'decodedVector', 'ownedSource', 'ownedVector',
   'comparisonHandle', 'communityRows', 'communityVector'];
-const PHASE = /^(setup|baseline|stopped|post_stop_idle|summary|recovery_(admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
+const PHASE = /^(setup|baseline|stopped|post_stop_idle|summary|catalog_drained|recovery_(admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
 const STATUSES = new Set(['ready', 'published', 'up_to_date', 'revalidated', 'deferred', 'unavailable', 'degraded',
   'not_due', 'yielded', 'cancelled', 'disabled', 'already_running', 'cooldown', 'failed', 'invalidated', 'capacity']);
-const REASONS = new Set(['busy', 'memory_pressure', 'memory_unknown']);
+const REASONS = new Set(['busy', 'memory_pressure', 'memory_unknown', 'ingesting', 'backfilling',
+  'waiting_for_libraries', 'waiting_for_inventory', 'disabled', 'unavailable']);
 
 /** Failure evidence is a numeric projection, never raw logs or provider payloads. */
 export function collectComparisonStudyTrace(output) {

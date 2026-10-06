@@ -21,7 +21,8 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
     await metrics.mark(`${phase()}_read_${reads}`);
     return snapshot;
   } };
-  const shared = { repository, readState: async () => fixture.state, now,
+  const shared = { repository, readState: fixture.readState ?? (async () => fixture.state), now,
+    getRevision: fixture.getRevision ?? (() => 0),
     createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }),
     withAdmission: createInventoryDiscoveryAdmission({ ...fixture.database,
       resourceAdmission }) };

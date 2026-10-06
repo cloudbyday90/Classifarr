@@ -13,6 +13,7 @@ import { assertImageIndexMixedReceipt } from '../../server/src/scripts/imageInde
 import { COMPARISON_CONCURRENT_PROFILE, assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 import { collectComparisonStudyTrace } from './comparisonStudyTrace.mjs';
 import { COMPARISON_RECOVERY_PROFILE, assertComparisonRecoveryReceipt } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
+import { assertComparisonCatalogReceipt } from '../../server/src/scripts/comparisonMemoryStudy/catalogContract.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -30,7 +31,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
   const mixed = ['image-index-mixed', 'classification-retrieval'].includes(mode);
-  const recovery = mode === 'comparison-recovery';
+  const catalog = mode === 'comparison-catalog';
+  const recovery = catalog || mode === 'comparison-recovery';
   const comparison = recovery || ['comparison-control', 'comparison-concurrent'].includes(mode);
   const profile = recovery ? COMPARISON_RECOVERY_PROFILE : comparison ? COMPARISON_CONCURRENT_PROFILE
     : mode === 'image-index' || mixed ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
@@ -121,7 +123,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
     if (comparison) {
       if (result.study.profile !== mode) throw new Error('resource_study_profile_mismatch');
-      if (recovery) assertComparisonRecoveryReceipt(result.study, budget);
+      if (catalog) assertComparisonCatalogReceipt(result.study, budget);
+      else if (recovery) assertComparisonRecoveryReceipt(result.study, budget);
       else assertComparisonConcurrentReceipt(result.study, budget);
     }
     else if (mixed) {

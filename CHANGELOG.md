@@ -32,6 +32,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   post-stop observation.
   Add natural scheduled-recovery checks that retain live refreshers and record
   exact admission budgets through deferral, recovery and revalidation.
+  Exercise scheduled comparison refreshes alongside real import/metadata services
+  in one isolated application catalog, separating workload completion from
+  evidence of recovery after memory pressure.
   Production admission limits and garbage-collection behavior are unchanged.
 
 ## [v0.49.0-beta] - 2026-10-05

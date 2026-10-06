@@ -4,9 +4,20 @@ import { formatImageIndexStudySummary } from './imageIndexStudySummary.mjs';
 import { formatImageIndexMixedSummary } from './imageIndexMixedSummary.mjs';
 import { assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 import { assertComparisonRecoveryReceipt, comparisonRecoveryEvidence } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
+import { assertComparisonCatalogReceipt } from '../../server/src/scripts/comparisonMemoryStudy/catalogContract.mjs';
 
 /** Only validated aggregates enter Markdown; no payloads or arbitrary text. */
 export function formatResourceStudySummary(result) {
+  if (result?.mode === 'comparison-catalog') {
+    if (result.cleanup !== 'passed') throw new Error('resource_study_summary_invalid');
+    assertComparisonCatalogReceipt(result.study, result.budget);
+    return '# Shared-catalog comparison observation\n\nOwned cleanup: passed.\n\n' +
+      'Single migrated application database; real ingestion, metadata, catalog queries and refresh schedules.\n' +
+      'Synthetic providers/vectors and schedule adapter; not full application or capacity evidence.\n\n' +
+      `Unique metadata completions: ${result.study.work.completed}. Load drained at ${result.study.drainedAtMs} ms.\n` +
+      `Natural pressure recovery observed: ${result.study.pressureRecoveryObserved ? 'yes' : 'no; not proven by this run'}.\n` +
+      'No forced GC, restart, altered clocks or reduced safeguards. See JSON for peaks and admission decisions.\n';
+  }
   if (result?.mode === 'comparison-recovery') {
     if (result.cleanup !== 'passed') throw new Error('resource_study_summary_invalid');
     assertComparisonRecoveryReceipt(result.study, result.budget);

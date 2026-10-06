@@ -53,6 +53,28 @@ test('ordinary environment cannot seed or launch services', async () => {
   expect(f.options.seed).not.toHaveBeenCalled(); expect(f.queue.startWorker).not.toHaveBeenCalled();
   expect(f.db.query).not.toHaveBeenCalled();
 });
+test('catalog load bounds and post-scan preparation preserve a single joined drain', async () => {
+  const f = loadFixture(), afterScan = jest.fn(async () => {});
+  await expect(createComparisonStudyLoad(f.db, {}, { ...f.options, expectedItems: 100000 })).rejects.toThrow();
+  expect(f.options.seed).not.toHaveBeenCalled();
+  f.rows.inventory = 5776; f.rows.completed = 5776;
+  const load = await createComparisonStudyLoad(f.db, {}, { ...f.options, expectedItems: 5776, afterScan });
+  load.start(); const drain = load.drain(); expect(load.drain()).toBe(drain);
+  expect(await drain).toMatchObject({ completed: 5776, waves: 20 }); await load.close();
+  expect(afterScan).toHaveBeenCalledTimes(21);
+});
+test('shutdown joins an in-flight drain scan before stopping the metadata consumer', async () => {
+  const f = loadFixture(); let finish, calls = 0;
+  f.scan.mockImplementation(() => ++calls === 81
+    ? new Promise(resolve => { finish = resolve; }) : Promise.resolve({ success: true }));
+  const load = await createComparisonStudyLoad(f.db, {}, f.options); load.start();
+  const drain = load.drain();
+  for (let attempt = 0; !finish && attempt < 1000; attempt++) await Promise.resolve();
+  expect(finish).toBeDefined();
+  const closing = load.close(); await Promise.resolve(); expect(f.queue.stopWorker).not.toHaveBeenCalled();
+  finish({ success: true }); await drain; await closing;
+  expect(f.queue.stopWorker).toHaveBeenCalledTimes(1);
+});
 function receipt(profile = 'comparison-concurrent') {
   const initial = resourceStudyStartupFixture('bounded').metrics;
   return { version: 'comparison_concurrent.v1', status: 'measured', profile, budget: 'bounded', durationMs: 1_000_000,
