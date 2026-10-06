@@ -28,7 +28,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 - **Memory diagnostics:** add build-phase measurements, kernel memory high-water
   readings and real-time refresh-cycle profiling to the isolated synthetic study.
   Add matched control/concurrent ingestion-and-metadata scenarios with shared
-  admission, overlap checks and five-minute natural post-stop observation.
+  admission, overlap checks, sanitized failure traces and five-minute natural
+  post-stop observation.
   Production admission limits and garbage-collection behavior are unchanged.
 
 ## [v0.49.0-beta] - 2026-10-05

@@ -11,11 +11,17 @@ import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStu
 import { IMAGE_INDEX_STUDY_PROFILE, assertImageIndexStudyReceipt } from '../../server/src/scripts/imageIndexStudyContract.mjs';
 import { assertImageIndexMixedReceipt } from '../../server/src/scripts/imageIndexMixedContract.mjs';
 import { COMPARISON_CONCURRENT_PROFILE, assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
+import { collectComparisonStudyTrace } from './comparisonStudyTrace.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
 /** Reuses the isolated installation topology, never the user's compose project. */
 export async function runResourceStudyCompose({ mode = 'soak', budget = 'baseline', candidateImageId, run = spawnSync, random = randomBytes,
+  saveTrace = (project, trace) => {
+    const directory = resolve(root, '.tmp/resource-study', project);
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    writeFileSync(resolve(directory, 'comparison-trace.json'), JSON.stringify(trace, null, 2), { mode: 0o600 });
+  },
   report = message => process.stdout.write(`${message}\n`), save = (project, result) => {
     const directory = resolve(root, '.tmp/resource-study', project);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -47,6 +53,13 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     let result;
     try { result = run('docker', args, { cwd: root, env: { ...env }, shell: false, windowsHide: true,
       encoding: 'utf8', timeout, maxBuffer: 8 * 1024 * 1024 }); } catch { /* Fixed error only. */ }
+    if (comparison && args.includes('src/scripts/runResourceStudy.mjs') && args.at(-1) === mode) {
+      const trace = collectComparisonStudyTrace(result?.stdout);
+      if (trace.length) {
+        saveTrace(project, trace);
+        report(`RESOURCE_STUDY_TRACE .tmp/resource-study/${project}/comparison-trace.json`);
+      }
+    }
     if (!result || result.error || (!allowFailure && result.status !== 0) || typeof result.stdout !== 'string') {
       // The study CLI emits fixed classifications and source locations, not payloads.
       if (args.includes('src/scripts/runResourceStudy.mjs')) {

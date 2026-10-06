@@ -92,8 +92,9 @@ test('admission observer preserves denials and counts only actual permitted over
   expect(admission.classes.queue).toMatchObject({ allowed: 1, memory_pressure: 1, active: 0 });
   expect(release).toHaveBeenCalledTimes(4);
 });
-test.each(['comparison-control', 'comparison-concurrent'])('launcher keeps one immutable image and cleans owned resources (%s)', async mode => {
-  const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn();
+test.each(['comparison-control', 'comparison-concurrent'].flatMap(mode => [[mode, false], [mode, true]]))(
+  'launcher retains sanitized evidence and cleans resources (%s, failed=%s)', async (mode, failed) => {
+  const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn();
   const run = jest.fn((_command, args) => {
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = imageId;
@@ -103,14 +104,21 @@ test.each(['comparison-control', 'comparison-concurrent'])('launcher keeps one i
     if (args.includes('src/scripts/publishedUpgradeProbe.mjs')) stdout = 'UPGRADE_PROBE {"status":"passed"}';
     if (args.includes('src/scripts/runResourceStudy.mjs')) {
       const action = args.at(-1);
+      if (action === mode) return { status: failed ? 1 : 0, stderr: failed ? 'resource_study_failed assertion' : '',
+        stdout: 'STUDY_PROGRESS {"phase":"cycle_2_comparison","status":"deferred","reason":"memory_pressure","message":"private"}\n' +
+          `RESOURCE_STUDY ${JSON.stringify(receipt(mode))}` };
       stdout = `RESOURCE_STUDY ${JSON.stringify(action === 'seed' ? { seeded: true }
         : action.startsWith('budget-') ? resourceStudyStartupFixture('bounded') : receipt(mode))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
-  await expect(runResourceStudyCompose({ mode, budget: 'bounded', candidateImageId: imageId,
-    run, save, report: () => {}, random: size => Buffer.alloc(size, 3) })).resolves.toMatchObject({ cleanup: 'passed', imageId });
+  const pending = runResourceStudyCompose({ mode, budget: 'bounded', candidateImageId: imageId,
+    run, save, saveTrace, report: () => {}, random: size => Buffer.alloc(size, 3) });
+  if (failed) await expect(pending).rejects.toThrow('resource_study_command_failed');
+  else await expect(pending).resolves.toMatchObject({ cleanup: 'passed', imageId });
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
-  expect(save).toHaveBeenCalledTimes(1);
+  expect(save).toHaveBeenCalledTimes(failed ? 0 : 1);
+  expect(saveTrace).toHaveBeenCalledWith(expect.stringMatching(/^classifarr-resource-study-[a-f0-9]{32}$/),
+    [{ phase: 'cycle_2_comparison', status: 'deferred', reason: 'memory_pressure' }]);
 });

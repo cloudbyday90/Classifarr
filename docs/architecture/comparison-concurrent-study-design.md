@@ -38,6 +38,11 @@ owned project. Retries are a new isolated run, never replayed against live data.
 No secrets, media, raw SQL text or provider bodies enter receipts. A five-minute
 tail is an observation, not a promise V8 returns memory immediately.
 
+The host launcher also saves up to 128 allowlisted numeric/status checkpoints to
+`comparison-trace.json` in its ignored per-project results directory, including
+when the completion assertion fails. Arbitrary log text, payloads and unknown
+fields are discarded. This diagnostic trace is not a successful completion receipt.
+
 ## Options and recommendation
 
 | Option | Benefit | Cost / decision |
@@ -55,7 +60,7 @@ separate. A measured higher peak must remain visible, not be explained away.
 
 Discovered and opened through MCP on October 6, 2026:
 
-- [Node process memory](https://nodejs.org/api/process.html): RSS spans worker
+- [Node 24 process memory](https://nodejs.org/docs/latest-v24.x/api/process.html): RSS spans worker
   threads; other memory fields are thread-local. Record both, not a summed heap.
 - [Node worker threads](https://github.com/nodejs/node/blob/main/doc/api/worker_threads.md):
   structured cloning and worker resource limits do not provide a global memory guarantee.
