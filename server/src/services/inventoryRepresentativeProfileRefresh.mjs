@@ -6,6 +6,7 @@ import { inventoryRepresentativeSourceKey, INVENTORY_REPRESENTATIVE_PROFILE_VERS
 import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 import { prepareInventoryRepresentativeCandidate } from './inventoryRepresentativeCandidate.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
+import { createRepresentativeRefreshRetry } from './representativeRefreshRetry.mjs';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -20,7 +21,8 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 * 1024, ttlMs: 1_800_000, now }),
 }) {
   let active = null, stopped = false, key = null, revision = -1, configKey = null, available = false;
-  let nextRunAt = 0, backoffUntil = 0, failures = 0, verifiedAt = null;
+  let nextRunAt = 0, verifiedAt = null;
+  const retry = createRepresentativeRefreshRetry({ now });
   let lastReport = { version: INVENTORY_REPRESENTATIVE_PROFILE_VERSION, mode: 'shadow_cache', status: 'pending' };
   const invalidate = () => { available = false; verifiedAt = null; neighborhoodRecovery?.clearMetadata?.(); };
   const clear = () => { cache.clear(); key = null; invalidate(); };
@@ -79,22 +81,22 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         const state = await readState();
         runSignal.throwIfAborted();
         const expected = configKeyOf(state);
-        if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; backoffUntil = 0; failures = 0; configKey = expected; }
+        if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; retry.reset(); configKey = expected; }
         if (!expected) { clear(); observer?.clear(); return report(state?.rag_enabled === true ? 'unsupported_provider' : 'disabled'); }
         if (state.busy !== false) { invalidate(); return report('yielded'); }
-        if (now() < backoffUntil) return report('cooldown');
+        if (retry.isCoolingDown()) return report('cooldown');
         const runRevision = getRevision();
         if (!pending && now() < nextRunAt && revision === runRevision && available && key && cache.get(key)) return { ...lastReport, status: 'not_due' };
         const result = await withAdmission((admittedSignal, checkpoint) =>
           refresh(state, admittedSignal, runRevision, expected, checkpoint), { signal: runSignal });
-        failures = 0; backoffUntil = 0;
+        retry.reset();
         return result;
       } catch (error) {
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
         if (controller.signal.aborted || signal?.aborted) { clear(); return report('cancelled'); }
         if (representativeValidationIssue(error) !== 'unknown_check') diagnostics.report(representativeValidationIssue(error));
-        failures = Math.min(failures + 1, 7);
-        backoffUntil = now() + Math.min(3_600_000, 60_000 * 2 ** (failures - 1));
+        if (error instanceof DiscoveryDeferredError) retry.defer();
+        else retry.fail();
         return error instanceof DiscoveryDeferredError ? report('deferred', { reason: error.reason }) : report('failed');
       } finally { active = null; }
     },
