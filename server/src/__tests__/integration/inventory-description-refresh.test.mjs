@@ -60,8 +60,15 @@ test('outlier-aware movie and TV references prioritize supported gaps while ordi
     catch (error) { await client.query('ROLLBACK'); throw error; }
   } });
   const cache = createInventoryDescriptionVectorCache(repository), empty = await profiles.read(identity);
+  await expect(profiles.read(identity, { requireCompleteVectors: true })).rejects.toMatchObject({
+    coverage: { eligibleDescriptions: 28, cachedDescriptions: 0, missingDescriptions: 28 },
+  });
   const rows = empty.corpus.documents.map(doc => ({ hash: doc.hash, vector: doc.id % 14 === 0 ? [0, 1, 0] : [1, 0, 0] }));
   for (let index = 0; index < rows.length; index += 8) await cache.write(identity, rows.slice(index, index + 8));
+  expect((await profiles.read(identity, { requireCompleteVectors: true })).vectors.size).toBe(28);
+  await expect(profiles.read({ ...identity, digest: 'b'.repeat(64) }, { requireCompleteVectors: true })).rejects.toMatchObject({
+    coverage: { eligibleDescriptions: 28, cachedDescriptions: 0, missingDescriptions: 28 },
+  });
   const vectorsByText = new Map(rows.map(row => [empty.corpus.texts.get(row.hash), row.vector]));
   const neighborhoodRecovery = createInventoryNeighborhoodRecovery();
   const worker = createInventoryRepresentativeProfileRefresh({ repository: profiles, readState: repository.readState,
@@ -81,6 +88,9 @@ test('outlier-aware movie and TV references prioritize supported gaps while ordi
     }
     await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days' WHERE description_hash=ANY($1::text[])", [[...supported, ...unassigned]]);
     const partial = await profiles.read(identity);
+    await expect(profiles.read(identity, { requireCompleteVectors: true })).rejects.toMatchObject({
+      coverage: { eligibleDescriptions: 28, cachedDescriptions: 22, missingDescriptions: 6 },
+    });
     const priority = neighborhoodRecovery.prioritize({ corpus: partial.corpus, identity, configKey, present: new Set(partial.vectors.keys()) });
     expect(priority.summary).toMatchObject({ referencedLibraries: 2, unknownLibraries: 0, prioritizedDescriptions: 4 });
     expect(new Set(priority.priority)).toEqual(new Set(supported));

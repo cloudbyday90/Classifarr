@@ -1,0 +1,75 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { Session } from 'node:inspector/promises';
+import { setImmediate } from 'node:timers/promises';
+import { readStudyCgroup, assertStudyCgroup } from '../resourceStudyMetrics.mjs';
+import { assertStudyBudget } from '../resourceStudyBudget.mjs';
+
+/** Aggregate-only observer. Weak references never own the measured snapshots. */
+export function createComparisonMemoryMetrics({ collect = false, emit = value => process.stdout.write(`${JSON.stringify(value)}\n`) } = {}) {
+  const workers = new Map(), references = [], phases = new Map();
+  let created = 0, exited = 0, phase = 'setup', sampling = null, sampleError = null, timer;
+  const session = collect ? new Session() : null;
+  session?.connect();
+  const onWorker = worker => {
+    created++; workers.set(worker.threadId, worker);
+    const id = worker.threadId;
+    worker.once('exit', () => { exited++; workers.delete(id); });
+  };
+  process.on('worker', onWorker);
+  const sample = async () => {
+    const name = phase, usage = process.memoryUsage(), cgroup = await readStudyCgroup();
+    assertStudyCgroup(cgroup); assertStudyBudget(cgroup, 'bounded');
+    const heaps = await Promise.all([...workers.values()].map(worker => worker.getHeapStatistics().catch(error => {
+      if (error.code !== 'ERR_WORKER_NOT_RUNNING') throw error;
+      return null;
+    })));
+    const current = { ...usage, containerBytes: cgroup.memoryBytes, pids: cgroup.pids,
+      activeWorkers: workers.size, workerHeapUsed: heaps.reduce((sum, row) => sum + (row?.used_heap_size ?? 0), 0),
+      memoryLimitHits: cgroup.memoryLimitHits, oomKill: cgroup.oomKill };
+    if (!phases.has(name) && phases.size >= 128) throw new Error('comparison_memory_phase_budget');
+    const peak = phases.get(name) ?? { samples: 0 };
+    peak.samples++;
+    for (const [key, value] of Object.entries(current)) peak[key] = Math.max(peak[key] ?? 0, value);
+    phases.set(name, peak);
+    return current;
+  };
+  const sampleOnce = () => {
+    sampling ??= sample().finally(() => { sampling = null; });
+    return sampling;
+  };
+  return {
+    track(kind, value) {
+      if (references.length >= 256) throw new Error('comparison_memory_reference_budget');
+      references.push({ kind, ref: new WeakRef(value) });
+    },
+    async start() {
+      await sampleOnce();
+      timer = setInterval(() => {
+        if (!sampling) void sampleOnce().catch(error => { sampleError = error; });
+      }, 1000);
+      timer.unref();
+    },
+    async mark(name, extra = {}) {
+      await sampling;
+      if (sampleError) throw sampleError;
+      phase = name;
+      emit({ phase, ...await sampleOnce(), createdWorkers: created, exitedWorkers: exited, ...extra });
+    },
+    async settled(name, extra = {}) {
+      // Separate turns before collection avoid WeakRef's same-job keep-alive guarantee.
+      await setImmediate();
+      if (session) { await session.post('HeapProfiler.collectGarbage'); await setImmediate(); }
+      const alive = {};
+      for (const { kind, ref } of references) alive[kind] = (alive[kind] ?? 0) + Number(Boolean(ref.deref()));
+      await this.mark(name, { ...extra, diagnosticGc: collect, alive });
+    },
+    async close() {
+      clearInterval(timer); await sampling;
+      process.off('worker', onWorker); session?.disconnect();
+      emit({ phase: 'summary', createdWorkers: created, exitedWorkers: exited, activeWorkers: workers.size,
+        peaks: Object.fromEntries(phases) });
+      if (sampleError) throw sampleError;
+      if (workers.size || created !== exited) throw new Error('comparison_memory_worker_not_settled');
+    },
+  };
+}

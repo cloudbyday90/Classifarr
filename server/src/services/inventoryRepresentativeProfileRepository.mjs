@@ -2,7 +2,7 @@
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus, inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
 import { collectInventoryObservationReadiness } from './inventoryObservationReadiness.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
-import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { createInventoryDescriptionVectorCache, readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
 
@@ -18,7 +18,7 @@ export const REPRESENTATIVE_PROFILE_IDENTITIES_SQL = `SELECT DISTINCT msi.media_
 
 export function createInventoryRepresentativeProfileRepository({ withTransaction }) {
   return {
-    async read(identity) {
+    async read(identity, { requireCompleteVectors = false } = {}) {
       validateDescriptionRepresentation(identity);
       const source = await withTransaction(async client => {
         await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -36,7 +36,17 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
         if (corpus.texts.size * identity.dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT) {
           throw new Error('inventory_representative_vector_budget');
         }
-        const vectorRows = await readInventoryDescriptionVectorRows((sql, params) => client.query(sql, params), identity, [...corpus.texts.keys()]);
+        const query = (sql, params) => client.query(sql, params), hashes = [...corpus.texts.keys()];
+        if (requireCompleteVectors) {
+          const present = await createInventoryDescriptionVectorCache({ query }).findPresent(identity, hashes);
+          if (present.size !== hashes.length) {
+            throw Object.assign(new Error('multi_scale_complete_cache_required'), { coverage: {
+              eligibleDescriptions: hashes.length, cachedDescriptions: present.size,
+              missingDescriptions: hashes.length - present.size,
+            } });
+          }
+        }
+        const vectorRows = await readInventoryDescriptionVectorRows(query, identity, hashes);
         return { state, libraries, corpus, vectorRows, identities, rows };
       });
       const { vectorRows, identities, rows, ...snapshot } = source;

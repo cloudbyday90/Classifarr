@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "comparison_cache_readiness",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete repository adapter and synthetic memory fixture. Production reads remain bounded repeatable-read/read-only transactions; hash presence uses the same scoped model/content/freshness predicate before vector transport. No protected inventory DML or ownership reset is introduced. The fixture creates its own private Unix-socket PostgreSQL cluster under mkdtemp, with synthetic catalog adapters and no caller database target. Its only data mutations create, update or delete synthetic vector-cache rows. Dynamic query forwarding is retained as explicit parser debt, not inferred writer safety.",
+      "followUp": "Preserve post-build fresh verification, default representative partial coverage, memory admission and private fixture isolation. Recheck forwarded SQL on change; this review does not resolve unrelated ingestion writers or grant live recovery authority."
+    },
+    {
       "id": "read_only_migration_diagnostics",
       "classification": "separately_coordinated",
       "reason": "Administrator access session plus current active administrator recheck. A pinned, bounded READ ONLY transaction reads only users and schema_migrations; fixed parameterized queries determine whether a historical failed filename is now applied. Private validated file reads grant no database or recovery authority. The dynamic query adapter was inspected: no inventory DML, SQL replay, schema mutation or repair is reachable.",
@@ -1193,7 +1199,8 @@
     {"path":"server/src/services/inventoryProviderRecoveryPersistence.mjs","digest":"e93fc888e2e9dff5300e2be52d6d8d5b86c5b793c854ae5b24a1339e63acd647","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/inventoryRecoveryProgressService.mjs","digest":"89655488be7131d1d928b9c8004d76607a56db3353506d5b5d994b4201b53fb9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryRecoveryReadService.mjs","digest":"b198b16247c1ec12e658818da9fda3cc81e6ae1dc878105978d343d15df83283","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/inventoryRepresentativeProfileRepository.mjs","digest":"967d494250cdaa0687a19dfa5591e95df798ef25ca0cfd780c33f7e5dac8a55e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/scripts/comparisonMemoryStudy/fixture.mjs","digest":"d5da07e365bc81c11fed360ce326d86d034efafac54399176f35b3d3ddedd7a7","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"comparison_cache_readiness"},
+    {"path":"server/src/services/inventoryRepresentativeProfileRepository.mjs","digest":"16a776788d200091b7a2a1648b47d9241087ea4a9192d8f01a3a5b4521dda24e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"comparison_cache_readiness"},
     {"path":"server/src/services/inventorySemanticSampler.mjs","digest":"09641a9ad5164c642f11e05298becc06c0a51adb8abc12c9600f46819f6f79f4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryTrainingProvenance.mjs","digest":"94ef1fcd8d299a127d2d0f720837f409d74c277b7e936de6c299493b1872929c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/legacyIngestionContract.mjs","digest":"9cc9c8e1638a2719e11c8f0388bb1b0baac24fb37228225fcb18b5690caaf011","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"reconciliation"},

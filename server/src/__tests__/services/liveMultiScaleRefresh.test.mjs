@@ -65,6 +65,8 @@ test('cold requests cannot fit, warm requests reuse context, unchanged refresh r
   const v = setup();
   expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).not.toHaveBeenCalled();
   expect(await v.worker.run()).toEqual({ status: 'ready' });
+  expect(v.repository.read).toHaveBeenNthCalledWith(1, v.identity, { requireCompleteVectors: true });
+  expect(v.repository.read).toHaveBeenNthCalledWith(2, v.identity, { requireCompleteVectors: true });
   expect(await v.worker.retrieve(v.input)).toEqual(new Map([[1, []], [2, []]]));
   expect(await v.worker.run()).toEqual({ status: 'not_due' });
   v.advance(300000);
@@ -72,6 +74,20 @@ test('cold requests cannot fit, warm requests reuse context, unchanged refresh r
   expect(v.build).toHaveBeenCalledTimes(1);
   v.advance(600000); expect(await v.worker.retrieve(v.input)).toBeNull();
   expect(await v.worker.run()).toEqual({ status: 'ready' }); expect(v.build).toHaveBeenCalledTimes(2);
+});
+
+test.each([1, 2])('cache preflight refusal at read %s withholds publication and preserves bounded retry', async readNumber => {
+  const v = setup(), coverage = { eligibleDescriptions: 12, cachedDescriptions: 11, missingDescriptions: 1 };
+  if (readNumber === 2) v.repository.read.mockResolvedValueOnce(v.snapshot);
+  v.repository.read.mockRejectedValueOnce(Object.assign(new Error('multi_scale_complete_cache_required'), { coverage }));
+  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: {
+    stage: readNumber === 1 ? 'snapshot_read' : 'snapshot_verify', code: 'cached_vectors_incomplete', coverage,
+  } });
+  expect(v.build).toHaveBeenCalledTimes(readNumber - 1);
+  expect(await v.worker.retrieve(v.input)).toBeNull();
+  expect(await v.worker.run()).toEqual({ status: 'not_due' });
+  v.advance(60000);
+  expect(await v.worker.run()).toEqual({ status: 'ready' });
 });
 
 test('live SWR copies only a new fit, not verification or unchanged revalidation', async () => {

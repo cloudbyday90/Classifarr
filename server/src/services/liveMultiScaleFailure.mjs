@@ -33,12 +33,21 @@ const guidance = new Map([
   ['database_schema', 'A required database table or column was unavailable. Review migration diagnostics and image compatibility; do not replay SQL manually.'],
   ['database_capacity', 'PostgreSQL reported a resource limit. Check database disk, memory and connection usage before changing limits.'],
   ['database_conflict', 'Database work conflicted with another transaction. Automatic retry remains enabled; investigate competing work if persistent.'],
-  ['cached_vectors_incomplete', 'Some description vectors are not cached for the current model. Allow description backfill to finish; check its diagnostics if this persists.'],
+  ['cached_vectors_incomplete', 'Description-vector backfill is not complete for the current model. Open Libraries, select a library, and check Library evidence coverage. Import completion does not include optional vectors. If coverage stops advancing, review description-backfill diagnostics; do not reset imports or disable memory safeguards.'],
   ['cached_vector_invalid', 'A cached vector failed validation. Review description-cache diagnostics and report persistent failures; do not pad, truncate or edit vectors.'],
   ['source_budget_or_shape', 'The inventory snapshot failed a size or structure check. Report persistent failures with this fixed code; do not bypass snapshot limits.'],
   ['source_invalid', 'The inventory snapshot failed scope or identity validation. It will be re-read; report persistent failures without exporting media data.'],
 ]);
 const read = (value, key) => { try { return value?.[key]; } catch { return undefined; } };
+const incompleteCoverage = value => {
+  const eligibleDescriptions = read(value, 'eligibleDescriptions');
+  const cachedDescriptions = read(value, 'cachedDescriptions');
+  const missingDescriptions = read(value, 'missingDescriptions');
+  if (![eligibleDescriptions, cachedDescriptions, missingDescriptions].every(Number.isInteger) ||
+      eligibleDescriptions < 1 || eligibleDescriptions > 10000 || cachedDescriptions < 0 ||
+      cachedDescriptions >= eligibleDescriptions || missingDescriptions !== eligibleDescriptions - cachedDescriptions) return {};
+  return { coverage: { eligibleDescriptions, cachedDescriptions, missingDescriptions } };
+};
 
 /** Bounded cause traversal. Stage is supplied by the worker, never by an exception. */
 export function diagnoseLiveMultiScaleFailure(stage, error, { deadlineExpired = false } = {}) {
@@ -57,7 +66,8 @@ export function diagnoseLiveMultiScaleFailure(stage, error, { deadlineExpired = 
     }
     if (['snapshot_read', 'snapshot_verify', 'source_validation', 'profile_build'].includes(safeStage)) {
       const mapped = internalCodes.get(read(current, 'message'));
-      if (mapped) return { stage: safeStage, code: mapped };
+      if (mapped) return { stage: safeStage, code: mapped,
+        ...(mapped === 'cached_vectors_incomplete' ? incompleteCoverage(read(current, 'coverage')) : {}) };
     }
     if (read(current, 'name') === 'TimeoutError') return { stage: safeStage, code: 'operation_timeout' };
   }
@@ -74,5 +84,6 @@ export function describeLiveMultiScaleFailure(failure) {
     return { stage: safeStage, code, recovery: `${provider.problem} ${provider.steps}` };
   }
   const safeCode = guidance.has(code) ? code : 'unknown';
-  return { stage: safeStage, code: safeCode, recovery: guidance.get(safeCode) };
+  return { stage: safeStage, code: safeCode, recovery: guidance.get(safeCode),
+    ...(safeCode === 'cached_vectors_incomplete' ? incompleteCoverage(read(failure, 'coverage')) : {}) };
 }

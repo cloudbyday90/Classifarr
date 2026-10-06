@@ -42,6 +42,7 @@
     "socket.io"
   ],
   "ignoreExportsUsedInFile": true,
+  "ignoreBinaries": ["postgres"],
   "tags": [
     "-lintignore"
   ],

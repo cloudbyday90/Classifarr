@@ -61,3 +61,29 @@ test('log boundary rejects arbitrary fields and revalidates provider stages', ()
   expect(describeLiveMultiScaleFailure({ stage: 'state_read', code: 'provider_http_auth' }).code).toBe('unknown');
   expect(describeLiveMultiScaleFailure({ stage: 'state_read', code: 'database_schema' }).recovery).toContain('migration diagnostics');
 });
+
+test('incomplete cache diagnosis carries only validated aggregate counts through both boundaries', () => {
+  const coverage = { eligibleDescriptions: 12, cachedDescriptions: 10, missingDescriptions: 2 };
+  const failure = diagnoseLiveMultiScaleFailure('snapshot_read', Object.assign(new Error('multi_scale_complete_cache_required'),
+    { coverage: { ...coverage, titles: 'PRIVATE' } }));
+  expect(failure).toEqual({ stage: 'snapshot_read', code: 'cached_vectors_incomplete', coverage });
+  const result = describeLiveMultiScaleFailure(failure);
+  expect(result.coverage).toEqual(coverage);
+  expect(result.recovery).toContain('Library evidence coverage');
+  expect(JSON.stringify(result)).not.toContain('PRIVATE');
+  expect(describeLiveMultiScaleFailure({ ...failure, code: 'unknown' })).not.toHaveProperty('coverage');
+});
+
+test.each([
+  null, {}, { eligibleDescriptions: '12', cachedDescriptions: 10, missingDescriptions: 2 },
+  { eligibleDescriptions: 12, cachedDescriptions: -1, missingDescriptions: 13 },
+  { eligibleDescriptions: 12, cachedDescriptions: 12, missingDescriptions: 0 },
+  { eligibleDescriptions: 12, cachedDescriptions: 10, missingDescriptions: 3 },
+  { eligibleDescriptions: 10001, cachedDescriptions: 10, missingDescriptions: 9991 },
+  { eligibleDescriptions: Infinity, cachedDescriptions: 10, missingDescriptions: Infinity },
+  new Proxy({}, { get() { throw new Error('PRIVATE'); } }),
+])('invalid cache coverage is discarded at both boundaries (%#)', coverage => {
+  expect(diagnoseLiveMultiScaleFailure('snapshot_verify', Object.assign(new Error('multi_scale_complete_cache_required'),
+    { coverage }))).not.toHaveProperty('coverage');
+  expect(describeLiveMultiScaleFailure({ stage: 'snapshot_read', code: 'cached_vectors_incomplete', coverage })).not.toHaveProperty('coverage');
+});

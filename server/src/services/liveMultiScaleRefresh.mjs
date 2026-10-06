@@ -68,7 +68,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           stage = 'provider_inspection';
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
           stage = 'snapshot_read';
-          const snapshot = await repository.read(identity);
+          const snapshot = await repository.read(identity, { requireCompleteVectors: true });
           abort.throwIfAborted();
           if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
             clear(); due(); return { status: 'invalidated' };
@@ -80,7 +80,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           stage = 'profile_build';
           const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
           stage = 'snapshot_verify';
-          const fresh = await repository.read(identity);
+          const fresh = await repository.read(identity, { requireCompleteVectors: true });
           stage = 'provider_verify';
           await verifyDescriptionRepresentation(embedder, identity, abort);
           stage = 'state_verify';

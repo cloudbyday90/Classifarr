@@ -16,6 +16,9 @@ function setup() {
     if (sql === REPRESENTATIVE_PROFILE_CORPUS_SQL) return { rows: fixture.rows };
     if (sql.includes('embedding::text')) return { rows: params[4].flatMap(hash => fixture.snapshot.vectors.has(hash)
       ? [{ description_hash: hash, embedding: JSON.stringify(fixture.snapshot.vectors.get(hash)) }] : []) };
+    if (sql.includes('SELECT description_hash FROM inventory_description_vector_cache')) {
+      return { rows: params[4].filter(hash => fixture.snapshot.vectors.has(hash)).map(description_hash => ({ description_hash })) };
+    }
     return { rows: [] };
   }) };
   const withTransaction = jest.fn(callback => callback(client));
@@ -79,4 +82,35 @@ test('vector decoding and readiness processing happen after snapshot ownership e
     open = true; try { return await callback(client); } finally { open = false; }
   } });
   expect((await repository.read(identity)).vectors).toEqual(snapshot.vectors);
+});
+
+test('complete-only preflight refuses missing vectors before payload transport', async () => {
+  const { repository, identity, client, snapshot } = setup();
+  const eligibleDescriptions = snapshot.corpus.texts.size;
+  snapshot.vectors.delete(snapshot.vectors.keys().next().value);
+  await expect(repository.read(identity, { requireCompleteVectors: true })).rejects.toMatchObject({
+    message: 'multi_scale_complete_cache_required',
+    coverage: { eligibleDescriptions, cachedDescriptions: eligibleDescriptions - 1, missingDescriptions: 1 },
+  });
+  expect(client.query.mock.calls.some(([sql]) => sql.includes('embedding::text'))).toBe(false);
+});
+
+test('complete-only presence and vector reads share one snapshot and representation', async () => {
+  const { repository, identity, client, snapshot, withTransaction } = setup();
+  expect((await repository.read(identity, { requireCompleteVectors: true })).vectors).toEqual(snapshot.vectors);
+  expect(withTransaction).toHaveBeenCalledTimes(1);
+  const [presenceSql, presenceParams] = client.query.mock.calls.find(([sql]) => sql.includes('SELECT description_hash FROM'));
+  const [vectorSql, vectorParams] = client.query.mock.calls.find(([sql]) => sql.includes('embedding::text'));
+  expect(presenceParams).toEqual(vectorParams);
+  const predicate = sql => sql.slice(sql.indexOf('WHERE')).replace(/\s+/g, ' ');
+  expect(predicate(presenceSql)).toBe(predicate(vectorSql));
+});
+
+test('complete-only empty corpus does not request cache rows; corrupt complete rows still reject', async () => {
+  const { repository, identity, client, rows, snapshot } = setup();
+  snapshot.vectors.set(snapshot.vectors.keys().next().value, [Number.NaN]);
+  await expect(repository.read(identity, { requireCompleteVectors: true })).rejects.toThrow();
+  rows.splice(0); client.query.mockClear();
+  expect((await repository.read(identity, { requireCompleteVectors: true })).vectors.size).toBe(0);
+  expect(client.query.mock.calls.some(([sql]) => sql.includes('FROM inventory_description_vector_cache'))).toBe(false);
 });
