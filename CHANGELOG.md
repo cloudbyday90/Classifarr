@@ -19,6 +19,12 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
 
+### Changed
+
+- **Memory diagnostics:** add build-phase measurements, kernel memory high-water
+  readings and real-time refresh-cycle profiling to the isolated synthetic study.
+  Production admission limits and garbage-collection behavior are unchanged.
+
 ## [v0.49.0-beta] - 2026-10-05
 
 **TL;DR:** Safer movie/TV imports and recovery, richer library learning and

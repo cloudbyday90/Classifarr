@@ -4,14 +4,60 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { withPrivateStudyLock } from '../../scripts/comparisonMemoryStudy/fixture.mjs';
+import { createComparisonStudyTiming } from '../../scripts/comparisonMemoryStudy/timing.mjs';
+import { createComparisonStudyPhases } from '../../scripts/comparisonMemoryStudy/phases.mjs';
 
-test.each([['natural'], ['collect'], ['collect', '--unexpected'], ['unknown']])(
+test.each([['natural'], ['elapsed'], ['collect'], ['collect', '--unexpected'], ['unknown']])(
   'synthetic memory study refuses execution without explicit isolation flag (%#)', async (...args) => {
     const run = promisify(execFile);
     await expect(run(process.execPath, [fileURLToPath(new URL('../../scripts/comparisonMemoryStudy/run.mjs', import.meta.url)), ...args], {
       env: { ...process.env, CLASSIFARR_SYNTHETIC_MEMORY_STUDY: '0' }, timeout: 10000, maxBuffer: 16384,
     })).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining('comparison_memory_isolated_only') });
   });
+
+test('fast study advances only its injected clock and does not sleep', async () => {
+  const wait = jest.fn(), timing = createComparisonStudyTiming({ wait });
+  expect(timing.now()).toBe(1_000_000);
+  await timing.beforeCycle(0); await timing.beforeCycle(1);
+  expect(timing.now()).toBe(1_600_002); expect(wait).not.toHaveBeenCalled();
+});
+
+test('elapsed study uses the real clock and verifies monotonic time across short waits', async () => {
+  let elapsed = 0, wall = 100;
+  const wait = jest.fn(async ms => { elapsed += ms / 2; if (ms < 1) elapsed++; });
+  const timing = createComparisonStudyTiming({ elapsed: true, wait, monotonic: () => elapsed, wallClock: () => wall });
+  await timing.beforeCycle(0); expect(wait).not.toHaveBeenCalled();
+  expect(timing.now()).toBe(100); wall = 200; expect(timing.now()).toBe(200);
+  await timing.beforeCycle(1);
+  expect(elapsed).toBeGreaterThanOrEqual(300_001);
+  expect(wait.mock.calls.every(([ms]) => ms > 0 && ms <= 30_000)).toBe(true);
+  const previous = elapsed; await timing.beforeCycle(2);
+  expect(elapsed - previous).toBeGreaterThanOrEqual(300_001);
+});
+
+test('phase observer passes inputs/results through unchanged and tracks only weak-reference candidates', async () => {
+  const events = [], metrics = { mark: async name => { events.push(name); }, track: jest.fn() };
+  const input = {}, options = {}, model = {}, vector = [1, 0], rows = [{ vector }];
+  const result = { libraries: [], media: new Map([['movie', { rows }], ['tv', { rows: [] }]]) };
+  const fit = jest.fn(async () => model), discover = jest.fn(async () => result);
+  const observer = createComparisonStudyPhases(metrics, 'cycle_0', { fit, discover });
+  expect(await observer.fit(input, 2, options)).toBe(model);
+  expect(fit).toHaveBeenCalledWith(input, 2, options);
+  expect(await observer.discover(input, options)).toBe(result);
+  expect(discover).toHaveBeenCalledWith(input, options);
+  expect(events).toEqual(['cycle_0_worker_fit', 'cycle_0_control', 'cycle_0_community', 'cycle_0_quality']);
+  expect(metrics.track).toHaveBeenCalledWith('communityRows', rows);
+  expect(metrics.track).toHaveBeenCalledWith('communityVector', vector);
+  expect(metrics.track).toHaveBeenCalledTimes(3);
+});
+
+test.each(['fit', 'discover'])('phase observer propagates %s failure without inventing completion', async method => {
+  const failure = new Error('synthetic_failure'), events = [];
+  const metrics = { mark: async name => { events.push(name); }, track: jest.fn() };
+  const observer = createComparisonStudyPhases(metrics, 'cycle_1', { [method]: async () => { throw failure; } });
+  await expect(observer[method]()).rejects.toBe(failure);
+  expect(events).toHaveLength(1); expect(metrics.track).not.toHaveBeenCalled();
+});
 
 test.each(['acquire_failure', 'busy', 'callback_failure', 'unlock_failure', 'complete'])(
   'private study lock always returns its client (%s)', async scenario => {

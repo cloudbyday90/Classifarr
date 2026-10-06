@@ -36,10 +36,11 @@ export async function readStudyCgroup(read = path => readFile(path, 'utf8')) {
   if (typeof controllers !== 'string') {
     const values = await readMany(['memory/memory.usage_in_bytes', 'memory/memory.limit_in_bytes',
       'memory/memory.oom_control', 'cpuacct/cpuacct.usage', 'cpu/cpu.stat', 'pids/pids.current', 'memory/memory.failcnt',
-      'cpu/cpu.cfs_quota_us', 'cpu/cpu.cfs_period_us', 'pids/pids.max', 'pids/pids.events']);
+      'cpu/cpu.cfs_quota_us', 'cpu/cpu.cfs_period_us', 'pids/pids.max', 'pids/pids.events', 'memory/memory.max_usage_in_bytes']);
     const memory = parseResourceFields(values[2]), cpu = parseResourceFields(values[4]);
     const toUsec = value => value === null || value === undefined ? null : value / 1000;
     return { version: 1, memoryBytes: parseResourceCounter(values[0]), limitBytes: parseResourceCounter(values[1]),
+      memoryPeakBytes: parseResourceCounter(values[11]),
       oom: null, oomKill: memory.oom_kill ?? null, underOom: memory.under_oom ?? null,
       memoryLimitHits: parseResourceCounter(values[6]), cpuUsec: toUsec(parseResourceCounter(values[3])),
       throttledUsec: toUsec(cpu.throttled_time), pids: parseResourceCounter(values[5]),
@@ -48,10 +49,11 @@ export async function readStudyCgroup(read = path => readFile(path, 'utf8')) {
       pidsLimit: parseResourceLimit(values[9]), pidsLimitHits: parseResourceFields(values[10]).max ?? null };
   }
   const values = await readMany(['memory.current', 'memory.max', 'memory.events', 'cpu.stat', 'pids.current',
-    'cpu.max', 'pids.max', 'pids.events']);
+    'cpu.max', 'pids.max', 'pids.events', 'memory.peak']);
   const memory = parseResourceFields(values[2]), cpu = parseResourceFields(values[3]);
   const quota = typeof values[5] === 'string' ? values[5].trim().split(/\s+/) : [];
   return { version: 2, memoryBytes: parseResourceCounter(values[0]), limitBytes: parseResourceCounter(values[1]),
+    memoryPeakBytes: parseResourceCounter(values[8]),
     underOom: null, memoryLimitHits: memory.max ?? null,
     oom: memory.oom ?? null, oomKill: memory.oom_kill ?? null, cpuUsec: cpu.usage_usec ?? null,
     throttledUsec: cpu.throttled_usec ?? null, pids: parseResourceCounter(values[4]),

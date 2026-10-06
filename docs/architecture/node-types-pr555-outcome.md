@@ -36,3 +36,12 @@ Recommendation: keep Node 24 declarations until a separately reviewed runtime
 major upgrade. Benefit: runtime/type alignment. Cost: Node 26-specific declarations
 remain unavailable. Review compatible Node 24 updates separately; do not bundle
 other outdated packages into this memory/response-contract fix.
+
+## Phase-study recheck
+
+The subsequent phase-study round randomly selected the same still-open immutable
+head from the two-PR pool. The [separate design](node-types-pr555-design.md) records
+the decision. Reapplied the exact manifest/lockfile diff locally: again seven gate
+checks passed and the client Node-major check failed. Removed only that trial;
+no install, merge or retained dependency update. This repeated result is not a new
+integration. Other outdated patch candidates remain separate follow-up work.

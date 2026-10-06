@@ -31,6 +31,20 @@ test('nearest-rank summaries ignore unknown values, with explicit sample counts'
     rssBytes: { samples: 2, min: 1, p50: 1, p95: 5, max: 5 }, heapBytes: null });
   expect(summarizeStudySamples([]).rssBytes).toBeNull();
 });
+
+test.each([1, 2])('cgroup v%s high-water remains distinct from sampled usage and unavailable is not zero', async version => {
+  const counters = version === 1
+    ? { 'memory.usage_in_bytes': '1024', 'memory.max_usage_in_bytes': '8192' }
+    : { 'cgroup.controllers': 'memory', 'memory.current': '1024', 'memory.peak': '8192' };
+  const read = async path => counters[path.split('/').at(-1)];
+  expect(await readStudyCgroup(read)).toMatchObject({ version, memoryBytes: 1024, memoryPeakBytes: 8192 });
+  const key = version === 1 ? 'memory.max_usage_in_bytes' : 'memory.peak';
+  for (const value of [undefined, 'invalid', '-1', '9007199254740992']) {
+    counters[key] = value;
+    expect((await readStudyCgroup(read)).memoryPeakBytes).toBeNull();
+  }
+  counters[key] = '0'; expect((await readStudyCgroup(read)).memoryPeakBytes).toBe(0);
+});
 test('cgroup v1 normalizes nanoseconds and keeps limit hits distinct from OOM kills', async () => {
   const metrics = await readStudyCgroup(async path => ({ 'memory.usage_in_bytes': '1024',
     'memory.limit_in_bytes': '2048', 'memory.oom_control': 'under_oom 0\noom_kill 0',

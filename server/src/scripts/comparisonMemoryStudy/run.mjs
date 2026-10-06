@@ -8,7 +8,7 @@ import { assertStudyBudget } from '../resourceStudyBudget.mjs';
 
 const mode = process.argv[2];
 if (process.platform !== 'linux' || process.env.CLASSIFARR_SYNTHETIC_MEMORY_STUDY !== '1' ||
-    process.argv.length !== 3 || !['natural', 'collect', 'incomplete-baseline', 'incomplete-preflight'].includes(mode)) throw new Error('comparison_memory_isolated_only');
+    process.argv.length !== 3 || !['natural', 'elapsed', 'collect', 'incomplete-baseline', 'incomplete-preflight'].includes(mode)) throw new Error('comparison_memory_isolated_only');
 const limits = await readStudyCgroup();
 assertStudyCgroup(limits); assertStudyBudget(limits, 'bounded');
 const metrics = createComparisonMemoryMetrics({ collect: mode === 'collect' });
@@ -19,7 +19,7 @@ try {
   if (mode.startsWith('incomplete-')) {
     await measureIncompleteCache({ fixture, metrics, requireCompleteVectors: mode === 'incomplete-preflight' });
   } else {
-    await measureRefreshCycles({ fixture, metrics });
+    await measureRefreshCycles({ fixture, metrics, elapsed: mode === 'elapsed' });
   }
 } finally {
   try { await fixture?.close(); } finally { await metrics.close(); }
