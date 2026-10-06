@@ -18,7 +18,8 @@ not overlaid. This is a synthetic lifecycle experiment, not release acceptance.
 The fixture used 5,776 unique 1,024-dimensional vectors, ten synthetic libraries,
 real PostgreSQL vector reads/decoding, production refresh factories, fitting
 workers and model caches. Catalog/state queries and provider inspection were
-synthetic. No inference or live database access occurred. Limits were 2 GiB,
+synthetic; optional representative-observer and neighborhood-recovery hooks
+were not wired. No inference or live database access occurred. Limits were 2 GiB,
 two CPUs, 128 PIDs and 1,536 MiB V8 old space, with a private cluster in 512 MiB
 tmpfs. Containers were read-only, network-disabled and automatically removed.
 
@@ -96,6 +97,17 @@ inherited application healthcheck therefore reports unhealthy on longer runs;
 this is not an application failure. The documented reproduction below disables
 that irrelevant probe. Study success is its checked exit status, completed
 phases, worker cleanup and resource counters. All study containers were removed.
+
+The final no-cache image/index
+`sha256:a057d278894e6921ce47aeb48190a927a55b37ec5f072f1f013aa4251870cf16`,
+built from `17bb11d4daf2ff0094dd7ccec9aac8657f7d67c3`, also repeated the natural
+control with its own files and no application healthcheck. Cold publication
+completed and both fitting workers exited. At idle, main heap was 535.81 MiB,
+process RSS 999.40 MiB and raw container usage 1,132.00 MiB. The next four
+attempts were still deferred by the unchanged memory guard; no further fitting
+workers started. No OOM or memory-limit event occurred. This confirms the
+remaining temporary-footprint problem; it is not five successful natural cycles.
+The final revision changes diagnostic cleanup, not the runtime memory policy.
 
 ## Reproduction
 
