@@ -104,7 +104,8 @@ The development record was consolidated on 2026-10-05 without rewriting it.
 - **Architecture and developer workflows** — Continue modular ESM services,
   centralized client APIs and stricter Vue/API contracts. Dependency, recovery
   and release-evidence skills/runbooks document validation and authority boundaries;
-  tests use bounded workers and cross-platform process handling.
+  tests use bounded workers, isolated lint-contract scheduling and cross-platform
+  process handling without relaxing assertions or coverage gates.
 - **CI, upgrades and release assurance** — Verify fresh installs, pinned-release
   schema replay, crash/restore/routing recovery and resource limits on isolated
   images. Release evidence is bound to source and image digest, with native

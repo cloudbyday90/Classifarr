@@ -173,6 +173,18 @@ Official sources checked 2026-10-05:
 - [KaTeX advisory](https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7), [0.17.0](https://github.com/KaTeX/KaTeX/releases/tag/v0.17.0), [0.18.0](https://github.com/KaTeX/KaTeX/releases/tag/v0.18.0) and [0.18.2](https://github.com/KaTeX/KaTeX/releases/tag/v0.18.2) release notes.
 - [smol-toml advisory](https://github.com/squirrelchat/smol-toml/security/advisories/GHSA-r4xh-jqrq-34v2) and [1.9.0 compatibility notes](https://github.com/squirrelchat/smol-toml/releases/tag/v1.9.0).
 
+### Approved frontend harness follow-up
+
+The maintainer approved a fix for the intermittent Windows ESLint setup timeout
+that left 21 checks unexecuted in otherwise passing full runs. The two real lint
+contracts now run in an isolated, sequential project before application tests.
+Configuration discovery, assertions, worker isolation, hook/test deadlines and
+coverage requirements are unchanged. An executable configuration check verifies
+the resolved inventory and settings; full-suite timestamps verify group order.
+See the separate
+[design](client-lint-test-scheduling-design.md) and
+[validation outcome](client-lint-test-scheduling-outcome.md).
+
 ### Final candidate evidence
 
 Before freezing, focused HTTP/publication checks passed (9 suites, 140 tests),
