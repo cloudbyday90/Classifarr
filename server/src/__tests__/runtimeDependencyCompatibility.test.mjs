@@ -9,6 +9,40 @@ import morgan from 'morgan';
 import { httpGet } from '../utils/httpClient.mjs';
 
 describe('runtime dependency compatibility', () => {
+  test.each(['::ffff:10.0.0.0/8', '::/1', ['::ffff:10.0.0.0/8', '10.0.0.0/8']])(
+    'malformed cross-family proxy trust cannot spoof client IP: %j', async (subnets) => {
+      const app = express();
+      app.set('trust proxy', subnets);
+      const trust = app.get('trust proxy fn');
+      expect(trust('203.0.113.9', 0)).toBe(false);
+      expect(trust('::ffff:203.0.113.9', 0)).toBe(false);
+      app.get('/', (req, res) => res.json({ ip: req.ip, peer: req.socket.remoteAddress, ips: req.ips }));
+      const response = await request(app).get('/').set('X-Forwarded-For', '203.0.113.9').expect(200);
+      expect(response.body.ip).toBe(response.body.peer);
+      expect(response.body.ips).toEqual([]);
+    }
+  );
+
+  test.each(['10.0.0.0/8', '::ffff:10.0.0.0/104', ['::ffff:10.0.0.0/104', '2001:db8::/32']])(
+    'valid proxy trust retains IPv4 and mapped-address compatibility: %j', (subnets) => {
+      const app = express();
+      app.set('trust proxy', subnets);
+      const trust = app.get('trust proxy fn');
+      expect(trust('10.0.0.1', 0)).toBe(true);
+      expect(trust('::ffff:10.0.0.1', 0)).toBe(true);
+      expect(trust('203.0.113.9', 0)).toBe(false);
+      expect(trust('::1', 0)).toBe(false);
+    }
+  );
+
+  test('the application default ignores forwarded IP claims', async () => {
+    const app = express();
+    expect(app.get('trust proxy')).toBe(false);
+    app.get('/', (req, res) => res.json({ ip: req.ip, peer: req.socket.remoteAddress }));
+    const response = await request(app).get('/').set('X-Forwarded-For', '203.0.113.9').expect(200);
+    expect(response.body.ip).toBe(response.body.peer);
+  });
+
   test('request log tokens escape quotes, delimiters and controls without adding a forged line', () => {
     const hostile = 'agent"\\\r\nforged\tline';
     const token = morgan['user-agent']({ headers: { 'user-agent': hostile } }, {});

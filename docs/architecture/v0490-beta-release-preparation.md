@@ -13,7 +13,8 @@ actions and known limits. The [changelog](../../CHANGELOG.md) retains a concise
 system-level index linked to the unchanged detailed development archive.
 
 Version metadata is aligned across the three packages and lockfiles, the UI,
-README and release documents. Lockfile changes contain version metadata only.
+README and release documents. The initial lockfile changes contained version
+metadata only; the later approved dependency corrections are recorded below.
 The version consistency smoke test follows the displayed version instead of
 requiring a test rewrite for each release; the publication CLI still checks
 every surface against the explicitly supplied release tag.
@@ -84,6 +85,54 @@ and uses Morgan's documented [custom formatter and token contract](https://expre
 (checked 2026-10-05), without replacing its request completion or escaping logic.
 
 ## Validation and handoff
+
+### Approved dependency gate corrections
+
+The OSV run for `ea2f6e5c` reported three advisories absent from the earlier
+passing run, despite all three npm audits still reporting zero. The maintainer
+approved only these upstream patches: `proxy-addr` 2.0.7 → 2.0.8,
+`source-map-js` 1.2.1 → 1.2.2 and `postcss-selector-parser` 7.1.4 → 7.1.6.
+Exact overrides and regenerated lockfiles keep this batch reproducible; all
+inspected parent ranges accept these versions. No installer permission or
+application trust setting changes. Other outdated packages are deferred.
+
+The recommendation is upstream patches plus consumer regressions and the full
+release gates. This adds small override maintenance, but avoids both a broad
+toolchain refresh before release and a local third-party backport. Scanner
+suppression is not an alternative. Original regressions exercise unsafe proxy
+trust, invalid/nested source-map offsets and repeated selector membership scans
+without running an unbounded resource-exhaustion payload.
+
+The proxy advisory's critical rating is not a claim of a working Classifarr
+exploit: normal and restore applications leave Express proxy trust disabled.
+The client packages are used by build/lint/test consumers; no untrusted runtime
+entry point was identified. Vue compiler-sfc and Vite also contain embedded
+parser copies that standalone overrides do not update; this batch makes no
+claim to repair those copies. Their build-time scope remains a separate
+dependency-review item.
+
+Independent review also found a separate repeated keyframe-percentage regex
+scan in selector-parser 7.1.6 for a digit prefix followed by many classes. Small
+bounded probes confirmed the repeat count; the patch's Set-based membership
+fix does not remove that path. The standalone consumer parses trusted ESLint
+rule selectors, not HTTP input. Follow up on upstream bundled parsers and this
+remaining complexity path; do not describe this batch as eliminating all parser
+resource-exhaustion risks or patch third-party code without separate review.
+
+Clean installs, both dependency-tree checks, all three npm audits, lint, type
+checks, both server Knip checks, 30 tooling tests, the client build and eight
+production-policy browser checks passed. Before the updates, the focused suite
+reproduced three proxy-trust failures and ten client parser/map failures; after
+the updates, all 11 server and 15 client tests passed. These focused results
+do not replace the fresh full suite, image rehearsals or remote security gates.
+
+Official advisories and release notes, checked 2026-10-05:
+
+- [proxy-addr trust-subnet advisory](https://github.com/jshttp/proxy-addr/security/advisories/GHSA-jqcg-44mw-7w3h) and [2.0.8 release](https://github.com/jshttp/proxy-addr/releases/tag/v2.0.8).
+- [source-map-js offset advisory](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) and [1.2.2 release](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2).
+- [selector-parser complexity advisory](https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf) and [7.1.6 release](https://github.com/postcss/postcss-selector-parser/releases/tag/7.1.6).
+
+### Final candidate evidence
 
 Before freezing, focused HTTP/publication checks passed (9 suites, 140 tests),
 followed by the version/runbook checks (2 suites, 6 tests). Source lint,
