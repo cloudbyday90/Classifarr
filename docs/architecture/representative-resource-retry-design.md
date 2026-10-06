@@ -25,6 +25,8 @@ The existing minute schedule and one initial attempt remain; a late tick runs at
 most one attempt and never catches up missed ticks in a burst. Eligibility is a
 minimum delay, not a promise of exact-minute execution. Restart loses ephemeral
 retry state as before, but must pass all normal admission and consistency checks.
+The recurring worker still has no lifetime attempt cap; this bounds frequency,
+concurrency and each run's duration, not the installation's total future retries.
 
 ## Safety and completion
 
