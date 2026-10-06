@@ -163,3 +163,7 @@ Reduce temporary full-snapshot/model-copy overlap during successful refreshes,
 then repeat natural complete-cycle measurements. Preserve exact identities,
 owned worker inputs, fresh verification and all memory safeguards. Do not
 accelerate provider backfill or rewrite model storage without measured evidence.
+
+The first [phase-lifetime follow-up](comparison-refresh-lifetimes-outcome.md)
+is now implemented and measured. Its remaining work is to separate internal
+fitting/normalization costs and observe natural elapsed-time recovery.

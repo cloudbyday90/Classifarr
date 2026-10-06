@@ -80,6 +80,11 @@ reduce snapshot/copy lifetime overlap during **complete** refreshes, preserving
 owned worker inputs, exact source identity and fresh post-build verification.
 Repeat natural multi-cycle observation before choosing a transport/storage rewrite.
 
+Follow-up: the [phase-lifetime change](comparison-refresh-lifetimes-outcome.md)
+now releases the comparison coordinator's initial snapshot and fitting input
+before later phases. Its repeated peak measurements were mixed and natural
+memory deferrals remain; it does not claim the whole workload is solved.
+
 ## Rebuilt-image confirmation
 
 The no-cache candidate built from `421cf28ab2a7f965cbf631e45b8a34a8738f2aa0`,
