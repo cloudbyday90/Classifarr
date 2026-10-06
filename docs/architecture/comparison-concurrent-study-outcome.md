@@ -26,6 +26,12 @@ unresolved production ownership debt remains unresolved.
 Image execution results and limitations will be recorded after the controlled runs.
 No lower memory peak, leak fix or release-capacity claim is made from harness tests.
 
+The first image trial exposed a fixture omission: metadata tasks completed, but
+OMDb enrichment was correctly skipped because no active synthetic provider was
+configured. The incomplete trial was stopped, not counted as a measurement. The
+fixture now seeds that configuration behind the existing isolated-environment
+guard, with a regression assertion. The completion requirement remains unchanged.
+
 The freshly selected [PR #555 trial](node-types-pr555-outcome.md) failed the Node-major
 alignment gate and was reverted without installation or merge. No dependency change
 is retained.

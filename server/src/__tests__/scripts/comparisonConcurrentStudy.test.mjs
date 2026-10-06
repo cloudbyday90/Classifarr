@@ -25,6 +25,7 @@ function loadFixture() {
 }
 test('load is explicit, bounded, non-overlapping and drain requires unique completion', async () => {
   const f = loadFixture(), load = await createComparisonStudyLoad(f.db, {}, f.options);
+  expect(f.db.query).toHaveBeenCalledWith("INSERT INTO omdb_config(api_key,is_active,daily_limit) VALUES ('synthetic-only',true,10000)");
   expect(f.scan).not.toHaveBeenCalled(); load.start(); load.start();
   expect(await load.drain()).toMatchObject({ waves: 20, inventory: 1600, completed: 1600, pending: 0 });
   await load.close();
@@ -50,6 +51,7 @@ test('ordinary environment cannot seed or launch services', async () => {
   const f = loadFixture(); process.env.CLASSIFARR_RESOURCE_STUDY = '0';
   await expect(createComparisonStudyLoad(f.db, {}, f.options)).rejects.toThrow();
   expect(f.options.seed).not.toHaveBeenCalled(); expect(f.queue.startWorker).not.toHaveBeenCalled();
+  expect(f.db.query).not.toHaveBeenCalled();
 });
 function receipt(profile = 'comparison-concurrent') {
   const initial = resourceStudyStartupFixture('bounded').metrics;

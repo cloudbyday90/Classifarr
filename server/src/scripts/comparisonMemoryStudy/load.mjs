@@ -16,6 +16,8 @@ export async function createComparisonStudyLoad(db, admission, {
 } = {}) {
   assertStudyProviderEnvironment();
   const fixture = createFixture(), libraries = await seed(db);
+  // The real enrichment path skips absent providers even when its transport is stubbed.
+  await db.query("INSERT INTO omdb_config(api_key,is_active,daily_limit) VALUES ('synthetic-only',true,10000)");
   let failure, producer, worker, stopped = false;
   const controller = new AbortController();
   const counts = { waves: 0, scans: 0, scanDeferrals: 0, serviceErrors: 0 };
