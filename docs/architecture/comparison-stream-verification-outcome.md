@@ -186,3 +186,7 @@ allowlisted trace projection with tests for the new metadata/stream markers. The
 evaluate the remaining full-map cache-hit reads or community-build allocations
 against that evidence. Do not raise limits, force production GC or hide deferrals.
 No release, tag, new branch or Unraid mutation.
+
+Follow-up: the [resident-memory study](comparison-resident-memory-outcome.md)
+separates anonymous/V8/PostgreSQL/cache measurements and records a failed
+revalidation deadline caused by comparison retry timing that needs attention next.
