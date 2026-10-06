@@ -79,6 +79,24 @@ reduce snapshot/copy lifetime overlap during **complete** refreshes, preserving
 owned worker inputs, exact source identity and fresh post-build verification.
 Repeat natural multi-cycle observation before choosing a transport/storage rewrite.
 
+## Rebuilt-image confirmation
+
+The no-cache candidate built from `421cf28ab2a7f965cbf631e45b8a34a8738f2aa0`,
+image/index `sha256:d4bfc31f002a1362bb0529796fc0a8c88456539400375e71b3543adf6b13d3d6`,
+repeated the five-cycle collected study using its own files with **no source or
+harness overlay**. All five cycles completed: cold and changed-source models
+published, unchanged models revalidated. Twenty reads, three comparison builds
+and six fitting workers completed; all six workers exited. Post-collection heap
+stayed between 171.09 and 171.61 MiB, then fell to 8.58 MiB after stop. Sampled
+snapshots and training vectors were collectible; only the active comparison
+handle remained until stop. No OOM or memory-limit hit occurred.
+
+Diagnostic containers run the study instead of the application server. The
+inherited application healthcheck therefore reports unhealthy on longer runs;
+this is not an application failure. The documented reproduction below disables
+that irrelevant probe. Study success is its checked exit status, completed
+phases, worker cleanup and resource counters. All study containers were removed.
+
 ## Reproduction
 
 The reusable ESM entry point is
@@ -88,7 +106,7 @@ in the application container. Replace `IMAGE_ID` with an inspected immutable
 local image ID; do not mount appdata, credentials or a Docker socket.
 
 ```sh
-docker run --rm --network none --read-only --user 1000:1000 \
+docker run --rm --no-healthcheck --network none --read-only --user 1000:1000 \
   --cpus 2 --memory 2g --pids-limit 128 --cap-drop ALL \
   --security-opt no-new-privileges \
   --tmpfs /tmp:rw,size=512m,uid=1000,gid=1000 \

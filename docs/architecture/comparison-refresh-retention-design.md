@@ -75,3 +75,10 @@ Discovered and opened through MCP web search on October 6, 2026:
   post-build verification instead of weakening snapshot consistency.
 - [OpenTelemetry log semantics](https://opentelemetry.io/docs/specs/otel/logs/data-model/):
   distinguish non-erroneous progress from warnings and preserve useful context.
+- [Node's heap-snapshot safety guidance](https://github.com/nodejs/learn/blob/main/pages/diagnostics/memory/using-heap-snapshot.md):
+  snapshots can pause execution and consume substantial additional memory. Keep
+  this investigation aggregate-only and isolated instead of dumping a live heap.
+- [ECMAScript weak-reference processing](https://262.ecma-international.org/15.0/):
+  collection timing is not guaranteed, and dereferencing keeps a target alive
+  during the current synchronous job. Separate turns before diagnostic collection;
+  an uncollected weak reference alone is not proof of a leak.

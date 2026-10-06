@@ -11,6 +11,19 @@ import { INVENTORY_DESCRIPTION_PROJECTION_VERSION } from '../../services/invento
 const execute = promisify(execFile);
 const run = (command, args) => execute(command, args, { timeout: 30_000, maxBuffer: 1024 * 1024 });
 
+export async function withPrivateStudyLock(pool, key, callback) {
+  const client = await pool.connect();
+  let locked = false;
+  try {
+    locked = (await client.query('SELECT pg_try_advisory_lock($1) AS locked', [key])).rows[0].locked;
+    if (locked) await callback({});
+    return locked;
+  } finally {
+    try { if (locked) await client.query('SELECT pg_advisory_unlock($1)', [key]); }
+    finally { client.release(); }
+  }
+}
+
 /** Synthetic catalog adapter; vector SQL, transactions and advisory locks are real. */
 export async function createComparisonMemoryFixture() {
   const directory = await mkdtemp('/tmp/comparison-memory-');
@@ -66,18 +79,7 @@ export async function createComparisonMemoryFixture() {
         } catch (error) { await client.query('ROLLBACK'); throw error; }
         finally { client.release(); }
       },
-      async withSessionAdvisoryLock(key, callback) {
-        const client = await pool.connect();
-        let locked = false;
-        try {
-          locked = (await client.query('SELECT pg_try_advisory_lock($1) AS locked', [key])).rows[0].locked;
-          if (locked) await callback({});
-          return locked;
-        } finally {
-          if (locked) await client.query('SELECT pg_advisory_unlock($1)', [key]);
-          client.release();
-        }
-      },
+      withSessionAdvisoryLock: (key, callback) => withPrivateStudyLock(pool, key, callback),
     };
     return { identity, state, database, repository: createInventoryRepresentativeProfileRepository(database), close,
       async omitDescriptions() {
