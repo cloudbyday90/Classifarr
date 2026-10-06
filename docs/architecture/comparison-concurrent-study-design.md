@@ -38,10 +38,12 @@ owned project. Retries are a new isolated run, never replayed against live data.
 No secrets, media, raw SQL text or provider bodies enter receipts. A five-minute
 tail is an observation, not a promise V8 returns memory immediately.
 
-The host launcher also saves up to 128 allowlisted numeric/status checkpoints to
+The host launcher also saves up to 256 allowlisted numeric/status checkpoints to
 `comparison-trace.json` in its ignored per-project results directory, including
 when the completion assertion fails. Arbitrary log text, payloads and unknown
 fields are discarded. This diagnostic trace is not a successful completion receipt.
+The [natural-recovery extension](comparison-natural-recovery-design.md) adds exact
+admission budgets without changing these concurrent-study completion requirements.
 
 ## Options and recommendation
 
