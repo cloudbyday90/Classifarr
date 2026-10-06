@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage } from './inventoryRepresentativeCoverage.mjs';
 import { coverageTrainingSnapshot } from './inventoryCoverageMasks.mjs';
-import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { updateInventoryVectorFingerprint } from './inventoryVectorFingerprint.mjs';
 
 export const MULTI_SCALE_VERSION = 'inventory_multi_scale_context_v1';
 
@@ -45,8 +45,6 @@ function prepareSource(snapshot, representation, held) {
     throw new Error('multi_scale_unscoped_source');
   }
   const training = coverageTrainingSnapshot(snapshot, held);
-  // Validate fresh exact values even on hits; ownership is acquired only after admission.
-  for (const vector of training.vectors.values()) validateEmbedding(vector, dimensions);
   const { index } = inspectRepresentativeCoverage(training);
   // Canonicalize copies/order; irrelevant names and metadata cannot trigger an expensive refit.
   training.libraries.sort((a, b) => a.id - b.id);
@@ -54,8 +52,7 @@ function prepareSource(snapshot, representation, held) {
     libraryIds: [...row.libraries].sort((a, b) => a - b) })).sort((a, b) => a.type.localeCompare(b.type) || a.hash.localeCompare(b.hash));
   const digest = createHash('sha256').update(JSON.stringify([MULTI_SCALE_VERSION, representation.model, representation.digest,
     dimensions, [...held].sort(), training.libraries, training.corpus.documents]));
-  for (const [hash, vector] of [...training.vectors].sort(([a], [b]) => a.localeCompare(b))) {
-    digest.update(hash).update(JSON.stringify(vector));
-  }
+  // Validate and fingerprint fresh exact values even on hits; copy only after admission.
+  updateInventoryVectorFingerprint(digest, training.vectors, dimensions);
   return { training, dimensions, held: new Set(held), key: digest.digest('hex') };
 }

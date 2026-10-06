@@ -580,32 +580,32 @@ const {
   async () => {
     const response = await api.getRagDetailed({ hours: 24 })
     
-    if (response.error) {
+    if (response?.error) {
       throw new Error(response.error)
     }
     
-    if (!response.stats) {
+    if (!response?.stats || typeof response.stats !== 'object' || Array.isArray(response.stats)) {
       throw new Error('Invalid response structure from server')
     }
     
     return {
       stats: {
-        totalEmbeddings: response.data.stats.totalEmbeddings || 0,
-        pendingCount: response.data.stats.pendingCount || 0,
-        failed24h: response.data.stats.totalFailedCount ?? response.data.stats.failedCount ?? 0,
-        avgGenerationTime: response.data.stats.avgGenerationTime || 0
+        totalEmbeddings: response.stats.totalEmbeddings || 0,
+        pendingCount: response.stats.pendingCount || 0,
+        failed24h: response.stats.totalFailedCount ?? response.stats.failedCount ?? 0,
+        avgGenerationTime: response.stats.avgGenerationTime || 0
       },
-      providerOnline: response.data.providerOnline || false,
-      embeddingAvailability: normalizeEmbeddingAvailability(response.data.embeddingAvailability),
-      providerMetrics: response.data.providerMetrics || {},
-      circuitBreaker: response.data.circuitBreaker || {
+      providerOnline: response.providerOnline || false,
+      embeddingAvailability: normalizeEmbeddingAvailability(response.embeddingAvailability),
+      providerMetrics: response.providerMetrics || {},
+      circuitBreaker: response.circuitBreaker || {
         state: 'CLOSED',
         failureCount: 0,
         config: { failureThreshold: 5 },
         lastFailureTime: null,
         stateHistory: []
       },
-      backfillHistory: response.data.backfillHistory || []
+      backfillHistory: response.backfillHistory || []
     }
   },
   { ttl: CACHE_TTL.SHORT, pollInterval: POLL_INTERVALS.FAST, pollOnlyWhenVisible: true }

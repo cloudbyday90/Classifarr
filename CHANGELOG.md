@@ -9,6 +9,13 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Fixed
+
+- **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
+  with bounded binary hashing, preserving exact-vector validation and memory safeguards.
+- **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
+  the unwrapped API response consistently, with regression coverage for errors and retry.
+
 ## [v0.49.0-beta] - 2026-10-05
 
 **TL;DR:** Safer movie/TV imports and recovery, richer library learning and
