@@ -10,6 +10,7 @@ import { formatResourceStudySummary } from './resourceStudySummary.mjs';
 import { parseStudyBudgetDiagnostic } from '../../server/src/scripts/resourceStudyBudgetDiagnostic.mjs';
 import { IMAGE_INDEX_STUDY_PROFILE, assertImageIndexStudyReceipt } from '../../server/src/scripts/imageIndexStudyContract.mjs';
 import { assertImageIndexMixedReceipt } from '../../server/src/scripts/imageIndexMixedContract.mjs';
+import { COMPARISON_CONCURRENT_PROFILE, assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -22,8 +23,11 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
   const mixed = ['image-index-mixed', 'classification-retrieval'].includes(mode);
-  const profile = mode === 'image-index' || mixed ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
+  const comparison = ['comparison-control', 'comparison-concurrent'].includes(mode);
+  const profile = comparison ? COMPARISON_CONCURRENT_PROFILE
+    : mode === 'image-index' || mixed ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
+  if (comparison && budget !== 'bounded') throw new Error('resource_study_budget_invalid');
   if ((budget === 'image-capacity' && mode !== 'image-index' && !mixed)
     || (mixed && budget !== 'image-capacity')) throw new Error('resource_study_budget_invalid');
   if (candidateImageId !== undefined && !/^sha256:[a-f0-9]{64}$/.test(candidateImageId)) throw new Error('resource_study_image_invalid');
@@ -100,7 +104,11 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     assertStudyBudgetContinuity(freshStartup.metrics, maintenanceStartup.metrics);
     report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
-    if (mixed) {
+    if (comparison) {
+      if (result.study.profile !== mode) throw new Error('resource_study_profile_mismatch');
+      assertComparisonConcurrentReceipt(result.study, budget);
+    }
+    else if (mixed) {
       if (result.study.profile !== mode) throw new Error('resource_study_profile_mismatch');
       assertImageIndexMixedReceipt(result.study, budget);
     }

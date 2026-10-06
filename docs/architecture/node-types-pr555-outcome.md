@@ -53,3 +53,12 @@ Applied the immutable two-file diff: seven checks passed, one rejected Node 26
 declarations against the Node 24 runtime. Reverted only those manifest/lockfile
 edits without installing packages or merging. This remains a rejected local trial,
 not an integrated upgrade; no compatibility gate was weakened.
+
+## Concurrent-comparison study recheck
+
+The next fresh random selection again chose #555 at the same immutable head.
+Applied its complete two-file diff: seven runtime checks passed and the client
+Node-major check failed. Reverted only the trial without installing or merging.
+The unchanged Node 24 dependency graph is intentional; this is not an integrated
+upgrade. Current registry review also lists PostCSS 8.5.29 and Vite 8.3.3 as
+compatible-range candidates, deferred to a separate tooling round.

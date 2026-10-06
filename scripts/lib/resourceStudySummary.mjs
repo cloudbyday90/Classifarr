@@ -2,9 +2,21 @@
 import { assertResourceStudyReceipt } from '../../server/src/scripts/resourceStudyProfiles.mjs';
 import { formatImageIndexStudySummary } from './imageIndexStudySummary.mjs';
 import { formatImageIndexMixedSummary } from './imageIndexMixedSummary.mjs';
+import { assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 
 /** Only validated aggregates enter Markdown; no payloads or arbitrary text. */
 export function formatResourceStudySummary(result) {
+  if (['comparison-control', 'comparison-concurrent'].includes(result?.mode)) {
+    if (result.cleanup !== 'passed' || result.mode !== result.study?.profile) throw new Error('resource_study_summary_invalid');
+    assertComparisonConcurrentReceipt(result.study, result.budget);
+    return `# Comparison concurrency observation\n\nProfile: ${result.mode}. Owned cleanup: passed.\n\n` +
+      'Real ingestion/metadata services share admission and process memory with the comparison refresher.\n' +
+      'The comparison catalog is a separate synthetic fixture, not same-catalog scheduler evidence.\n\n' +
+      `Refresh attempts: ${result.study.refresh.cycles.length}; builds: ${result.study.refresh.builds}.\n` +
+      `Unique metadata completions: ${result.study.work?.completed ?? 0}.\n` +
+      `Admissions during discovery: ingestion ${result.study.overlap.ingestion}, queue ${result.study.overlap.queue}.\n\n` +
+      'See the JSON receipt for phase peaks, deferrals and five-minute natural post-stop observations.\n';
+  }
   if (['image-index-mixed', 'classification-retrieval'].includes(result?.mode)) return formatImageIndexMixedSummary(result);
   if (result?.mode === 'image-index') return formatImageIndexStudySummary(result);
   if (result?.cleanup !== 'passed' || result.mode !== result.study?.profile || result.budget !== result.study?.budget) {

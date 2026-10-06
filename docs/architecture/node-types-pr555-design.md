@@ -1,5 +1,9 @@
 # Client Node declarations: repeat compatibility review
 
+The concurrent-comparison study round on October 6 freshly selected the same
+open PR/head from #555 and #556. Repeat the reviewed manifest/lockfile trial only;
+the supported Node major is unchanged.
+
 Date: 2026-10-06, during the comparison-memory phase investigation.
 
 The freshly queried open pool still contains #555 and #556. `Get-Random` selected

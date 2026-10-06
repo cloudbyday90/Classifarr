@@ -71,10 +71,12 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
     async close() {
       clearInterval(timer); await sampling;
       process.off('worker', onWorker); session?.disconnect();
-      emit({ phase: 'summary', createdWorkers: created, exitedWorkers: exited, activeWorkers: workers.size,
-        peaks: Object.fromEntries(phases) });
+      const summary = { phase: 'summary', createdWorkers: created, exitedWorkers: exited, activeWorkers: workers.size,
+        peaks: Object.fromEntries(phases) };
+      emit(summary);
       if (sampleError) throw sampleError;
       if (workers.size || created !== exited) throw new Error('comparison_memory_worker_not_settled');
+      return summary;
     },
   };
 }

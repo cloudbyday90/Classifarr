@@ -11,8 +11,11 @@ import { createBackgroundResourceAdmission } from '../../services/backgroundReso
 import { createComparisonStudyTiming } from './timing.mjs';
 import { createComparisonStudyPhases } from './phases.mjs';
 
-export async function measureRefreshCycles({ fixture, metrics, elapsed = false }) {
+export async function measureRefreshCycles({ fixture, metrics, elapsed = false, cycles = 5,
+  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, onCycle = () => {} }) {
+  assert.ok([3, 5].includes(cycles), 'study_cycle_budget');
   let cycle = 0, reads = 0, builds = 0;
+  const results = [];
   const timing = createComparisonStudyTiming({ elapsed }), { now } = timing;
   const repository = { read: async (identity, options) => {
     const snapshot = await fixture.repository.read(identity, options); reads++;
@@ -24,13 +27,14 @@ export async function measureRefreshCycles({ fixture, metrics, elapsed = false }
   const shared = { repository, readState: async () => fixture.state, now,
     createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }),
     withAdmission: createInventoryDiscoveryAdmission({ ...fixture.database,
-      resourceAdmission: createBackgroundResourceAdmission() }) };
+      resourceAdmission }) };
   const cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 256 * 1024 ** 2, ttlMs: 600_000, now });
   const comparison = createLiveMultiScaleRefresh({ ...shared, cache,
     build: async (source, options) => {
       builds++; metrics.track('ownedSource', source);
       metrics.track('ownedVector', source.training.vectors.values().next().value);
       await metrics.mark(`cycle_${cycle}_build_start`);
+      onBuild();
       const model = await buildMultiScaleProfile(source, { ...options,
         ...createComparisonStudyPhases(metrics, `cycle_${cycle}`) });
       metrics.track('comparisonHandle', model.handle);
@@ -43,19 +47,22 @@ export async function measureRefreshCycles({ fixture, metrics, elapsed = false }
   } });
   try {
     await metrics.settled('baseline');
-    for (cycle = 0; cycle < 5; cycle++) {
+    for (cycle = 0; cycle < cycles; cycle++) {
       await timing.beforeCycle(cycle);
       if (cycle === 2 || cycle === 4) await fixture.changeDescription(cycle);
       await metrics.mark(`cycle_${cycle}_start`, { timing: elapsed ? 'elapsed' : 'injected' });
       const rep = await representative.run();
       await metrics.mark(`cycle_${cycle}_representative`, { status: rep.status, reason: rep.reason });
       const result = await comparison.run();
+      results.push({ representative: rep.status, comparison: result.status, reason: result.reason ?? null });
       await metrics.mark(`cycle_${cycle}_comparison`, { status: result.status, reason: result.reason, reads, builds });
+      await onCycle();
       await delay(2000);
       await metrics.settled(`cycle_${cycle}_idle`);
     }
     comparison.stop(); representative.stop();
     await delay(2000); await metrics.settled('stopped');
     assert.equal(reads > 0 && builds > 0, true, 'study_did_not_exercise_refresh');
+    return { cycles: results, reads, builds };
   } finally { comparison.stop(); representative.stop(); }
 }
