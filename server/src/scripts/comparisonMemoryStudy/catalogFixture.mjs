@@ -7,6 +7,7 @@ import { createInventoryDescriptionRefreshRepository } from '../../services/inve
 import { createInventoryRepresentativeProfileRepository } from '../../services/inventoryRepresentativeProfileRepository.mjs';
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
 import { getInventoryDescriptionRefreshRevision } from '../../services/inventoryDescriptionRefreshSignal.mjs';
+import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 
 /** Synthetic transports only; all catalog, readiness, vector and lock SQL stays real. */
 export async function createComparisonCatalogFixture(database) {
@@ -22,7 +23,7 @@ export async function createComparisonCatalogFixture(database) {
       VALUES ('jellyfin','Synthetic shared catalog','http://synthetic.invalid','synthetic-only',true) RETURNING id`);
     await client.query("INSERT INTO tmdb_config(api_key,is_active) VALUES ('synthetic-only',true)");
     await client.query(`UPDATE ai_provider_config SET rag_enabled=true,primary_provider='ollama',
-      embedding_provider_mode='same',embedding_model='study',ollama_host='http://synthetic.invalid' WHERE id=1`);
+      embedding_provider_mode='same',embedding_model='study',ollama_host='localhost' WHERE id=1`);
     const result = [];
     for (let index = 0; index < 10; index++) {
       const key = `catalog-${index}`, type = index < 5 ? 'movie' : 'tv';
@@ -34,6 +35,8 @@ export async function createComparisonCatalogFixture(database) {
   let growth = 0;
   const identity = { provider: 'ollama', model: 'study:latest', digest: 'a'.repeat(64), dimensions: 1024 };
   const descriptions = createInventoryDescriptionRefreshRepository(database);
+  // Validate the real saved configuration before spending time on a disabled study.
+  assert.equal(resolveLocalStudyEmbeddingConfig(await descriptions.readState()).model, identity.model);
   const vectors = createInventoryDescriptionVectorCache({ query: descriptions.query });
   const provider = createResourceStudyFixture().provider;
   const transport = { provider,

@@ -75,6 +75,23 @@ test('shutdown joins an in-flight drain scan before stopping the metadata consum
   finish({ success: true }); await drain; await closing;
   expect(f.queue.stopWorker).toHaveBeenCalledTimes(1);
 });
+test('drain continues paginated handoffs without resetting successful final scans', async () => {
+  const f = loadFixture(); let refills = 0;
+  f.rows.handoffs = 1;
+  f.queue.refillQueue.mockImplementation(async () => { if (++refills === 23) f.rows.handoffs = 0; });
+  const load = await createComparisonStudyLoad(f.db, {}, f.options); load.start();
+  await expect(load.drain()).resolves.toMatchObject({ handoffs: 0 }); await load.close();
+  expect(f.queue.refillQueue).toHaveBeenCalledTimes(23);
+  expect(f.scan).toHaveBeenCalledTimes(84); // 20 waves and one final scan, not 3 new generations.
+});
+test('drain retries only libraries refused by final admission', async () => {
+  const f = loadFixture(); let calls = 0;
+  f.scan.mockImplementation(async () => ++calls === 81 ? { deferred: true } : { success: true });
+  const load = await createComparisonStudyLoad(f.db, {}, f.options); load.start();
+  await expect(load.drain()).resolves.toMatchObject({ scanDeferrals: 1 }); await load.close();
+  expect(f.scan).toHaveBeenCalledTimes(85);
+  expect(f.scan.mock.calls.at(-1)[0]).toBe(1);
+});
 function receipt(profile = 'comparison-concurrent') {
   const initial = resourceStudyStartupFixture('bounded').metrics;
   return { version: 'comparison_concurrent.v1', status: 'measured', profile, budget: 'bounded', durationMs: 1_000_000,

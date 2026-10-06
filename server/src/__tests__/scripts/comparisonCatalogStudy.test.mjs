@@ -12,7 +12,9 @@ const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; });
 function databaseFixture() {
   Object.assign(process.env, resourceStudyEnvironment);
-  const state = { busy: true, rag_enabled: true }, present = new Set(), counts = { libraries: 0, servers: 0, items: 0 };
+  const state = { busy: true, rag_enabled: true, primary_provider: 'ollama', embedding_provider_mode: 'same',
+    embedding_model: 'study', ollama_host: 'localhost' };
+  const present = new Set(), counts = { libraries: 0, servers: 0, items: 0 };
   let id = 0;
   const query = jest.fn(async (sql, args) => {
     if (sql.includes('AS libraries,')) return { rows: [counts] };
@@ -51,6 +53,10 @@ test('same database supplies real busy state, bounded pages and finite source gr
   expect(total).toBe(5776);
   await expect(fixture.transport.adapter.getLibraryPage('', '', 'unknown', { offset: 0, limit: 100 })).rejects.toThrow();
   await expect(fixture.transport.adapter.getLibraryPage('', '', 'catalog-0', { offset: 0, limit: 101 })).rejects.toThrow();
+});
+test('invalid saved embedding configuration fails before launching a disabled measurement', async () => {
+  const f = databaseFixture(); f.state.ollama_host = 'http://synthetic.invalid';
+  await expect(createComparisonCatalogFixture(f.db)).rejects.toThrow('local_study_endpoint_required');
 });
 test('vector preparation uses production hashes/cache writes in batches of eight and never rewrites present keys', async () => {
   const f = databaseFixture(), fixture = await createComparisonCatalogFixture(f.db);

@@ -33,17 +33,19 @@ export async function createComparisonStudyLoad(db, admission, {
     omdbService: { getByTitle: async (_title, _year, type) => ({ type: type === 'tv' ? 'series' : 'movie', rated: 'PG' }) },
     queueWebSearchEnrichmentService: { enrich: async () => {} },
     completeTask: (...args) => queue.completeTask(...args), failTask: (...args) => queue.failTask(...args) });
-  const scan = async () => {
-    for (let i = 0; i < libraries.length; i += 2) {
-      const results = await Promise.allSettled(libraries.slice(i, i + 2).map(async library => {
+  const scan = async (selected = libraries) => {
+    const deferred = [];
+    for (let i = 0; i < selected.length; i += 2) {
+      const results = await Promise.allSettled(selected.slice(i, i + 2).map(async library => {
         const result = await sync.syncLibrary(library.id, { batchSize: 100 });
-        if (result.deferred) counts.scanDeferrals++;
+        if (result.deferred) { counts.scanDeferrals++; deferred.push(library); }
         else { assert.equal(result.success, true); counts.scans++; }
       }));
       const rejected = results.find(result => result.status === 'rejected');
       if (rejected) throw rejected.reason;
     }
     await afterScan();
+    return deferred;
   };
   const check = () => { if (failure) throw failure; assert.equal(counts.serviceErrors, 0, 'comparison_study_service_errors'); };
   const observe = promise => { promise.catch(error => { failure ??= error; }); return promise; };
@@ -76,12 +78,16 @@ export async function createComparisonStudyLoad(db, admission, {
         assert.ok(producer, 'comparison_study_load_not_started');
         await producer; check();
         const deadline = now() + 240_000;
+        let unscanned = libraries;
         for (let attempt = 0; attempt < 240 && now() < deadline; attempt++) {
           assert.equal(stopped, false, 'comparison_study_drain_cancelled');
-          await scan(); await queue.refillQueue(); check();
+          // A new scan resets the handoff generation. Continue its bounded pages,
+          // retrying only libraries whose final scan was never admitted.
+          if (unscanned.length) unscanned = await scan(unscanned);
+          await queue.refillQueue(); check();
           const result = await read();
           assert.equal(result.failed, 0); assert.equal(result.routing, 0);
-          if (result.inventory === expectedItems && result.completed === expectedItems && !result.pending && !result.handoffs) return { ...counts, ...result };
+          if (!unscanned.length && result.inventory === expectedItems && result.completed === expectedItems && !result.pending && !result.handoffs) return { ...counts, ...result };
           await wait(1000);
         }
         throw new Error('comparison_study_drain_incomplete');

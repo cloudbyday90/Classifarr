@@ -40,7 +40,19 @@ this memory experiment. The typings decision follows
 
 ## Image and local evaluation
 
-Pending the clean-source no-cache build and bounded shared-catalog measurement.
+A first isolated pilot exposed a fixture drain error above the 5000-row refill
+budget. Each drain iteration reimported all libraries, restarting their backfill
+generations before the remaining pages could be visited. Inventory reached 5776
+but metadata stopped at 5000; no failed tasks or provider retries explained it.
+The fixture now scans each library once at final drain, retries only refused scans,
+then continues the existing handoffs. Dedicated regressions retain the production
+page budget and verify no repeated successful scans. The pilot also used an
+untrusted synthetic Ollama hostname, correctly disabling comparison. The fixture
+now uses a trusted loopback name with the same in-process embedding stub and
+validates saved configuration before starting. No trust rule was weakened.
+The pilot was stopped, its trace retained and its owned resources removed. It is
+not memory/recovery evidence. The corrected image measurement is pending.
+
 Before rebuilding, a private 75,643,924-byte local database archive passed checksum
 and archive-list verification, and the exact previous image was retained as
 `classifarr:pre-memory-1ca81666-fac4-4e6f-b32a-c5233c228d8a`:
