@@ -105,6 +105,25 @@ test('live SWR copies only a new fit, not verification or unchanged revalidation
   expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).toHaveBeenCalledTimes(1);
 });
 
+test('a changed initial snapshot refuses fitting before candidate preparation', async () => {
+  const v = setup();
+  v.repository.read.mockResolvedValueOnce({ ...v.snapshot, state: { ...v.state, busy: true } });
+  expect(await v.worker.run()).toEqual({ status: 'invalidated' });
+  expect(v.build).not.toHaveBeenCalled();
+  expect(v.repository.read).toHaveBeenCalledTimes(1);
+  expect(await v.worker.retrieve(v.input)).toBeNull();
+});
+
+test('cancellation at the owned-copy boundary never starts a fit', async () => {
+  const v = setup(), caller = new AbortController();
+  const vector = v.snapshot.vectors.values().next().value, original = [...vector];
+  vector[Symbol.iterator] = function* () { caller.abort(); yield* original; };
+  expect(await v.worker.run({ signal: caller.signal })).toEqual({ status: 'cancelled' });
+  expect(v.build).not.toHaveBeenCalled();
+  expect(v.repository.read).toHaveBeenCalledTimes(1);
+  expect(await v.worker.retrieve(v.input)).toBeNull();
+});
+
 test('failed discovery serves raw/broad but retries after backoff; transport failure clears and self-recovers', async () => {
   const v = setup();
   v.build.mockResolvedValueOnce({ handle: v.handle, cacheable: false, weight: 1000 });

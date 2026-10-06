@@ -2,7 +2,8 @@
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryMultiScaleSource.mjs';
+import { inspectUnseenMultiScaleSource } from './inventoryMultiScaleSource.mjs';
+import { buildLiveMultiScaleCandidate } from './liveMultiScaleCandidate.mjs';
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
@@ -67,18 +68,19 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         return await withAdmission(async (abort, checkpoint) => {
           stage = 'provider_inspection';
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
-          stage = 'snapshot_read';
-          const snapshot = await repository.read(identity, { requireCompleteVectors: true });
-          abort.throwIfAborted();
-          if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
+          const candidate = await buildLiveMultiScaleCandidate({ repository, identity, signal: abort, build,
+            isCurrent: state => configKey(state) === expected && state.busy === false && getRevision() === revision,
+            setStage: value => { stage = value; },
+            selectCached: key => {
+              if (entry?.key !== key) clear();
+              const stored = cache.get(key);
+              return stored?.cacheable ? stored : null;
+            },
+          });
+          if (!candidate) {
             clear(); due(); return { status: 'invalidated' };
           }
-          stage = 'source_validation';
-          const source = inspectUnseenMultiScaleSource(snapshot, identity);
-          if (entry?.key !== source.key) clear();
-          const stored = cache.get(source.key), cached = stored?.cacheable ? stored : null;
-          stage = 'profile_build';
-          const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
+          const { key, built, reused } = candidate;
           stage = 'snapshot_verify';
           const fresh = await repository.read(identity, { requireCompleteVectors: true });
           stage = 'provider_verify';
@@ -89,20 +91,20 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           stage = 'source_validation';
           if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
               configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
-              inspectUnseenMultiScaleSource(fresh, identity).key !== source.key) {
+              inspectUnseenMultiScaleSource(fresh, identity).key !== key) {
             clear(); due(); return { status: 'invalidated' };
           }
           stage = 'publication';
           const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
           checkpoint();
-          if (!cache.set(source.key, built, built.weight + fresh.observedKeys.size * 128)) {
+          if (!cache.set(key, built, built.weight + fresh.observedKeys.size * 128)) {
             clear(); due(); return { status: 'capacity' };
           }
-          entry = { key: source.key, configKey: expected, revision, bound };
+          entry = { key, configKey: expected, revision, bound };
           if (built.cacheable) { failures = 0; nextAt = now() + 300_000; }
           else due();
           // Degraded raw/broad context may serve, but optional discovery must retry rather than be reused.
-          return { status: cached ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
+          return { status: reused ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
         }, { signal: abort });
       } catch (error) {
         // Contention does not invalidate an already verified entry; its TTL/revision still govern serving.

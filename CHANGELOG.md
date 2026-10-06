@@ -14,7 +14,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 - **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
   with bounded binary hashing; check description-cache completeness before loading
   vectors and provide actionable coverage diagnostics. Whole-refresh retention
-  profiling covers workers, snapshots and caches; memory safeguards remain unchanged.
+  profiling covers workers, snapshots and caches. Release comparison snapshots and
+  fitting inputs before subsequent phases; memory safeguards remain unchanged.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
 
