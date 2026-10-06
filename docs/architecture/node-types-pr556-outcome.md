@@ -19,3 +19,8 @@ only the trial, all eight checks passed and both package files matched HEAD.
 No installation, lifecycle execution or retained dependency change. Read-only
 `npm outdated` also listed express-rate-limit 8.7.1 and js-yaml 5.4.3 as patch
 candidates; review those separately rather than expanding this memory change.
+
+The natural-recovery round freshly selected #556 again from the two open PRs
+at the same head. Applying its exact two-file diff again produced seven passes
+and the Node-major failure. Only those trial edits were reverted before install;
+the recovery work retains no dependency change and leaves the PR open.

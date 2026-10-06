@@ -21,10 +21,17 @@ test('rejects arbitrary phases and malformed, excessive or irrelevant input', ()
   expect(collectComparisonStudyTrace(line({ phase: 'baseline', padding: 'x'.repeat(16_384) }))).toEqual([]);
 });
 test('bounds checkpoints and preserves zero counters', () => {
-  const input = Array.from({ length: 129 }, () => line({ phase: 'post_stop_idle', activeWorkers: 0, alive: { snapshot: 0 } })).join('\n');
+  const input = Array.from({ length: 257 }, () => line({ phase: 'post_stop_idle', activeWorkers: 0, alive: { snapshot: 0 } })).join('\n');
   const trace = collectComparisonStudyTrace(input);
-  expect(trace).toHaveLength(128);
+  expect(trace).toHaveLength(256);
   expect(trace[0]).toEqual({ phase: 'post_stop_idle', activeWorkers: 0, alive: { snapshot: 0 } });
   expect(collectComparisonStudyTrace(line({ phase: 'summary', createdWorkers: 2, exitedWorkers: 1, activeWorkers: 1,
     peaks: { arbitrary: 'private' } }))).toEqual([{ phase: 'summary', createdWorkers: 2, exitedWorkers: 1, activeWorkers: 1 }]);
+});
+
+test('recovery budget projection excludes arbitrary context and preserves decisions', () => {
+  expect(collectComparisonStudyTrace(line({ phase: 'recovery_admission', worker: 'comparison', kind: 'discovery',
+    allowed: false, reason: 'memory_pressure', requiredBytes: 100, availableBytes: 99, attempt: 3, secret: 'private' })))
+    .toEqual([{ phase: 'recovery_admission', worker: 'comparison', kind: 'discovery', allowed: false,
+      reason: 'memory_pressure', requiredBytes: 100, availableBytes: 99, attempt: 3 }]);
 });

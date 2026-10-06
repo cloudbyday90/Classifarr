@@ -11,17 +11,14 @@ import { createBackgroundResourceAdmission } from '../../services/backgroundReso
 import { createComparisonStudyTiming } from './timing.mjs';
 import { createComparisonStudyPhases } from './phases.mjs';
 
-export async function measureRefreshCycles({ fixture, metrics, elapsed = false, cycles = 5,
-  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, onCycle = () => {} }) {
-  assert.ok([3, 5].includes(cycles), 'study_cycle_budget');
-  let cycle = 0, reads = 0, builds = 0;
-  const results = [];
-  const timing = createComparisonStudyTiming({ elapsed }), { now } = timing;
+export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.now, phase = () => 'cycle_0',
+  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {} }) {
+  let reads = 0, builds = 0;
   const repository = { read: async (identity, options) => {
     const snapshot = await fixture.repository.read(identity, options); reads++;
     metrics.track('snapshot', snapshot);
     metrics.track('decodedVector', snapshot.vectors.values().next().value);
-    await metrics.mark(`cycle_${cycle}_read_${reads}`);
+    await metrics.mark(`${phase()}_read_${reads}`);
     return snapshot;
   } };
   const shared = { repository, readState: async () => fixture.state, now,
@@ -33,18 +30,28 @@ export async function measureRefreshCycles({ fixture, metrics, elapsed = false, 
     build: async (source, options) => {
       builds++; metrics.track('ownedSource', source);
       metrics.track('ownedVector', source.training.vectors.values().next().value);
-      await metrics.mark(`cycle_${cycle}_build_start`);
+      await metrics.mark(`${phase()}_build_start`);
       onBuild();
       const model = await buildMultiScaleProfile(source, { ...options,
-        ...createComparisonStudyPhases(metrics, `cycle_${cycle}`) });
+        ...createComparisonStudyPhases(metrics, phase()) });
       metrics.track('comparisonHandle', model.handle);
-      await metrics.mark(`cycle_${cycle}_build_end`, { estimatedCacheBytes: model.weight });
+      await metrics.mark(`${phase()}_build_end`, { estimatedCacheBytes: model.weight });
       return model;
     } });
   const representative = createInventoryRepresentativeProfileRefresh({ ...shared, fit: async (...args) => {
-    await metrics.mark(`cycle_${cycle}_representative_fit`);
+    await metrics.mark(`${phase()}_representative_fit`);
     return fitInventoryRepresentativeProfile(...args);
   } });
+  return { comparison, representative, counts: () => ({ reads, builds }) };
+}
+
+export async function measureRefreshCycles({ fixture, metrics, elapsed = false, cycles = 5,
+  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, onCycle = () => {} }) {
+  assert.ok([3, 5].includes(cycles), 'study_cycle_budget');
+  let cycle = 0;
+  const results = [], timing = createComparisonStudyTiming({ elapsed });
+  const { comparison, representative, counts } = createComparisonStudyRefreshers({ fixture, metrics,
+    resourceAdmission, now: timing.now, phase: () => `cycle_${cycle}`, onBuild });
   try {
     await metrics.settled('baseline');
     for (cycle = 0; cycle < cycles; cycle++) {
@@ -55,14 +62,14 @@ export async function measureRefreshCycles({ fixture, metrics, elapsed = false, 
       await metrics.mark(`cycle_${cycle}_representative`, { status: rep.status, reason: rep.reason });
       const result = await comparison.run();
       results.push({ representative: rep.status, comparison: result.status, reason: result.reason ?? null });
-      await metrics.mark(`cycle_${cycle}_comparison`, { status: result.status, reason: result.reason, reads, builds });
+      await metrics.mark(`cycle_${cycle}_comparison`, { status: result.status, reason: result.reason, ...counts() });
       await onCycle();
       await delay(2000);
       await metrics.settled(`cycle_${cycle}_idle`);
     }
     comparison.stop(); representative.stop();
     await delay(2000); await metrics.settled('stopped');
-    assert.equal(reads > 0 && builds > 0, true, 'study_did_not_exercise_refresh');
-    return { cycles: results, reads, builds };
+    assert.equal(counts().reads > 0 && counts().builds > 0, true, 'study_did_not_exercise_refresh');
+    return { cycles: results, ...counts() };
   } finally { comparison.stop(); representative.stop(); }
 }

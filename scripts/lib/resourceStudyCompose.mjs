@@ -12,6 +12,7 @@ import { IMAGE_INDEX_STUDY_PROFILE, assertImageIndexStudyReceipt } from '../../s
 import { assertImageIndexMixedReceipt } from '../../server/src/scripts/imageIndexMixedContract.mjs';
 import { COMPARISON_CONCURRENT_PROFILE, assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 import { collectComparisonStudyTrace } from './comparisonStudyTrace.mjs';
+import { COMPARISON_RECOVERY_PROFILE, assertComparisonRecoveryReceipt } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -29,8 +30,9 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     writeFileSync(resolve(directory, 'result.md'), formatResourceStudySummary(result), { mode: 0o600 });
   } } = {}) {
   const mixed = ['image-index-mixed', 'classification-retrieval'].includes(mode);
-  const comparison = ['comparison-control', 'comparison-concurrent'].includes(mode);
-  const profile = comparison ? COMPARISON_CONCURRENT_PROFILE
+  const recovery = mode === 'comparison-recovery';
+  const comparison = recovery || ['comparison-control', 'comparison-concurrent'].includes(mode);
+  const profile = recovery ? COMPARISON_RECOVERY_PROFILE : comparison ? COMPARISON_CONCURRENT_PROFILE
     : mode === 'image-index' || mixed ? IMAGE_INDEX_STUDY_PROFILE : resourceStudyProfile(mode);
   const limits = resourceStudyBudget(budget);
   if (comparison && budget !== 'bounded') throw new Error('resource_study_budget_invalid');
@@ -119,7 +121,8 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
     if (comparison) {
       if (result.study.profile !== mode) throw new Error('resource_study_profile_mismatch');
-      assertComparisonConcurrentReceipt(result.study, budget);
+      if (recovery) assertComparisonRecoveryReceipt(result.study, budget);
+      else assertComparisonConcurrentReceipt(result.study, budget);
     }
     else if (mixed) {
       if (result.study.profile !== mode) throw new Error('resource_study_profile_mismatch');

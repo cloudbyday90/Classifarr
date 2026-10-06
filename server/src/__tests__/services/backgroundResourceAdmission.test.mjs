@@ -5,6 +5,38 @@ import { createBackgroundResourceAdmission } from '../../services/backgroundReso
 const MIB = 1024 * 1024;
 const memory = available => ({ available: available * MIB, constrained: 2048 * MIB, total: 16384 * MIB });
 
+test('opt-in observer reports the exact decision budget, including hysteresis and reservations', () => {
+  let available = 1023, reads = 0;
+  const events = [];
+  const admission = createBackgroundResourceAdmission({ readMemory: () => { reads++; return memory(available); },
+    onDecision: event => events.push(event) });
+  expect(admission.tryAcquire('discovery').allowed).toBe(false);
+  available = 1088;
+  const permit = admission.tryAcquire('discovery');
+  expect(permit.allowed).toBe(true);
+  expect(events[0]).toEqual({ kind: 'discovery', allowed: false, reason: 'memory_pressure',
+    availableBytes: 1023 * MIB, reserveBytes: 256 * MIB, reservedBytes: 0, workBytes: 768 * MIB,
+    hysteresisBytes: 0, requiredBytes: 1024 * MIB });
+  expect(events[1]).toMatchObject({ allowed: true, reservedBytes: 0, hysteresisBytes: 64 * MIB, requiredBytes: 1088 * MIB });
+  const queue = admission.tryAcquire('queue');
+  expect(events[2]).toMatchObject({ allowed: true, reservedBytes: 768 * MIB, requiredBytes: 1088 * MIB });
+  expect(reads).toBe(3); expect(Object.isFrozen(events[0])).toBe(true);
+  queue.release(); permit.release(); permit.release();
+  admission.tryAcquire('discovery').release();
+  expect(events.at(-1)).toMatchObject({ reservedBytes: 0, hysteresisBytes: 0 });
+});
+
+test('observer exceptions cannot change admission, busy/unknown results or release', () => {
+  let value = memory(2048);
+  const admission = createBackgroundResourceAdmission({ readMemory: () => value,
+    onDecision: () => { throw new Error('private observer failure'); } });
+  const first = admission.tryAcquire('discovery'); expect(first.allowed).toBe(true);
+  expect(admission.tryAcquire('discovery')).toEqual({ allowed: false, reason: 'busy' });
+  first.release(); value = null;
+  expect(admission.tryAcquire('discovery')).toEqual({ allowed: false, reason: 'memory_unknown' });
+  value = memory(2048); const next = admission.tryAcquire('discovery'); expect(next.allowed).toBe(true); next.release();
+});
+
 test('competing work shares one budget; ingestion/backfill take priority over new discovery', () => {
   const admission = createBackgroundResourceAdmission({ readMemory: () => memory(512) });
   const ingestion = admission.tryAcquire('ingestion');

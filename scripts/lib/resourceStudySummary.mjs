@@ -3,9 +3,19 @@ import { assertResourceStudyReceipt } from '../../server/src/scripts/resourceStu
 import { formatImageIndexStudySummary } from './imageIndexStudySummary.mjs';
 import { formatImageIndexMixedSummary } from './imageIndexMixedSummary.mjs';
 import { assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
+import { assertComparisonRecoveryReceipt, comparisonRecoveryEvidence } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
 
 /** Only validated aggregates enter Markdown; no payloads or arbitrary text. */
 export function formatResourceStudySummary(result) {
+  if (result?.mode === 'comparison-recovery') {
+    if (result.cleanup !== 'passed') throw new Error('resource_study_summary_invalid');
+    assertComparisonRecoveryReceipt(result.study, result.budget);
+    const { pressure, recovered, revalidated } = comparisonRecoveryEvidence(result.study.attempts, result.study.decisions);
+    return '# Natural comparison recovery\n\nOwned cleanup: passed.\n\n' +
+      `Pressure at ${pressure.elapsedMs} ms; recovered at ${recovered.elapsedMs} ms; revalidated at ${revalidated.elapsedMs} ms.\n\n` +
+      'Real schedule registrations and refreshers; separate synthetic catalog, not full application scheduler or capacity evidence.\n' +
+      'No forced GC, restart, altered clocks or reduced safeguards. See JSON for exact admission decisions.\n';
+  }
   if (['comparison-control', 'comparison-concurrent'].includes(result?.mode)) {
     if (result.cleanup !== 'passed' || result.mode !== result.study?.profile) throw new Error('resource_study_summary_invalid');
     assertComparisonConcurrentReceipt(result.study, result.budget);
