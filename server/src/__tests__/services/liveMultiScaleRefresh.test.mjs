@@ -23,7 +23,7 @@ function setup(extra = {}) {
     advance: delta => { time += delta; }, setTime: val => { time = val; }, revise: () => { revision++; } };
 }
 
-test('memory deferral precedes snapshot/provider work and retries automatically after backoff', async () => {
+test('memory deferral precedes snapshot/provider work and retries automatically after cooldown', async () => {
   let available = 0;
   const withAdmission = createInventoryDiscoveryAdmission({
     withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
@@ -39,6 +39,75 @@ test('memory deferral precedes snapshot/provider work and retries automatically 
   v.advance(300000); available = 0;
   expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
   expect(await v.worker.retrieve(v.input)).toBeNull();
+  available = 2 ** 31;
+  v.advance(60000); expect(await v.worker.run()).toEqual({ status: 'ready' });
+});
+
+test.each(['busy', 'memory_pressure', 'memory_unknown'])(
+  '%s after mixed failures uses bounded resource retries without erasing failure history', async reason => {
+    let refusal = false;
+    const withAdmission = jest.fn(createInventoryDiscoveryAdmission({
+      withSessionAdvisoryLock: async (_key, callback) => {
+        if (refusal && reason === 'busy') return false;
+        await callback({}); return true;
+      },
+      readMemory: () => {
+        if (refusal && reason === 'memory_unknown') throw new Error('PRIVATE telemetry');
+        return { available: refusal && reason === 'memory_pressure' ? 0 : 2 ** 31,
+          constrained: 2 ** 31, total: 2 ** 34 };
+      },
+    }));
+    const v = setup({ withAdmission });
+    for (const [index, delay] of [60000, 120000, 240000].entries()) {
+      if (index === 1) v.repository.read.mockRejectedValueOnce(new Error('PRIVATE source'));
+      else v.repository.read.mockResolvedValueOnce({ ...v.snapshot, state: { ...v.state, busy: true } });
+      expect((await v.worker.run()).status).toBe(index === 1 ? 'unavailable' : 'invalidated');
+      v.advance(delay - 1);
+      expect(await v.worker.run()).toEqual({ status: 'not_due' });
+      v.advance(1);
+    }
+    refusal = true;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      expect(await v.worker.run()).toEqual({ status: 'deferred', reason });
+      expect(await v.worker.retrieve(v.input)).toBeNull();
+      const admissions = withAdmission.mock.calls.length;
+      v.advance(59999);
+      expect(await v.worker.run()).toEqual({ status: 'not_due' });
+      expect(withAdmission).toHaveBeenCalledTimes(admissions);
+      expect(v.repository.read).toHaveBeenCalledTimes(3);
+      expect(v.embedder.inspect).toHaveBeenCalledTimes(3);
+      expect(v.build).not.toHaveBeenCalled();
+      v.advance(1);
+    }
+    refusal = false;
+    v.repository.read.mockRejectedValueOnce(new Error('PRIVATE source'));
+    expect((await v.worker.run()).status).toBe('unavailable');
+    // Fourth genuine failure, regardless of the four intervening resource refusals.
+    v.advance(479999); expect(await v.worker.run()).toEqual({ status: 'not_due' });
+    v.advance(1); expect(await v.worker.run()).toEqual({ status: 'ready' });
+    expect(await v.worker.retrieve(v.input)).not.toBeNull();
+    v.advance(300000);
+    v.repository.read.mockRejectedValueOnce(new Error('PRIVATE source'));
+    expect((await v.worker.run()).status).toBe('unavailable');
+    v.advance(60000); expect(await v.worker.run()).toEqual({ status: 'ready' });
+  });
+
+test('resource cooldown survives readiness pauses and pre-cancellation; late ticks admit once', async () => {
+  let available = 0;
+  const withAdmission = jest.fn(createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
+    readMemory: () => ({ available, constrained: 2 ** 31, total: 2 ** 34 }),
+  }));
+  const v = setup({ withAdmission });
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
+  v.state.busy = true; expect(await v.worker.run()).toEqual({ status: 'yielded' });
+  v.state.busy = false; available = 2 ** 31;
+  expect(await v.worker.run({ signal: AbortSignal.abort() })).toEqual({ status: 'cancelled' });
+  v.advance(59999); expect(await v.worker.run()).toEqual({ status: 'not_due' });
+  expect(withAdmission).toHaveBeenCalledTimes(1);
+  v.advance(600000); expect(await v.worker.run()).toEqual({ status: 'ready' });
+  expect(withAdmission).toHaveBeenCalledTimes(2);
+  expect(await v.worker.run()).toEqual({ status: 'not_due' });
 });
 
 test('pressure before publication rejects the result without retaining the profile', async () => {
@@ -53,6 +122,30 @@ test('pressure before publication rejects the result without retaining the profi
   expect(await v.worker.retrieve(v.input)).toBeNull();
 });
 
+test('a final admission checkpoint refusal clears publication without resetting earlier failures', async () => {
+  let available = 2 ** 31;
+  const values = new Map();
+  const cache = {
+    clear: () => values.clear(), get: key => values.get(key),
+    set: (key, value) => { values.set(key, value); available = 0; return true; },
+  };
+  const withAdmission = createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
+    readMemory: () => ({ available, constrained: 2 ** 31, total: 2 ** 34 }),
+  });
+  const v = setup({ withAdmission, cache });
+  for (const delay of [60000, 120000, 240000]) {
+    v.repository.read.mockRejectedValueOnce(new Error('PRIVATE source'));
+    expect((await v.worker.run()).status).toBe('unavailable'); v.advance(delay);
+  }
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
+  expect(values.size).toBe(0); expect(await v.worker.retrieve(v.input)).toBeNull();
+  v.advance(60000); available = 2 ** 31;
+  v.repository.read.mockRejectedValueOnce(new Error('PRIVATE source'));
+  expect((await v.worker.run()).status).toBe('unavailable');
+  v.advance(479999); expect(await v.worker.run()).toEqual({ status: 'not_due' });
+});
+
 test('contention retains valid SWR context until its existing TTL expires', async () => {
   let busy = false;
   const withAdmission = createInventoryDiscoveryAdmission({
@@ -64,8 +157,36 @@ test('contention retains valid SWR context until its existing TTL expires', asyn
   v.advance(300000); busy = true;
   expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'busy' });
   expect(await v.worker.retrieve(v.input)).not.toBeNull();
-  v.advance(300001); expect(await v.worker.retrieve(v.input)).toBeNull();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    v.advance(60000); expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'busy' });
+    expect(await v.worker.retrieve(v.input)).not.toBeNull();
+  }
+  v.advance(60001); expect(await v.worker.retrieve(v.input)).toBeNull();
+  busy = false;
+  expect(await v.worker.run()).toEqual({ status: 'ready' });
 });
+
+test.each(['clock', 'cold_config', 'disabled'])(
+  '%s retains the existing retry reset boundary', async change => {
+    const v = setup();
+    v.repository.read.mockRejectedValue(new Error('PRIVATE source'));
+    expect((await v.worker.run()).status).toBe('unavailable');
+    if (change === 'clock') v.setTime(999999);
+    else if (change === 'disabled') {
+      v.state.rag_enabled = false;
+      expect(await v.worker.run()).toEqual({ status: 'disabled' });
+      v.state.rag_enabled = true;
+    } else {
+      v.state.ollama_host = '127.0.0.1';
+      expect(await v.worker.run()).toEqual({ status: 'not_due' });
+      v.advance(60000);
+    }
+    expect((await v.worker.run()).status).toBe('unavailable');
+    v.advance(change === 'disabled' ? 59999 : 119999);
+    expect(await v.worker.run()).toEqual({ status: 'not_due' });
+    v.advance(1); v.repository.read.mockResolvedValue(v.snapshot);
+    expect(await v.worker.run()).toEqual({ status: 'ready' });
+  });
 
 test('cold requests cannot fit, warm requests reuse context, unchanged refresh revalidates without rebuilding', async () => {
   const v = setup();

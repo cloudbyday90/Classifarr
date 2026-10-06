@@ -7,6 +7,7 @@ import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 import { diagnoseLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
+import { createComparisonRefreshRetry } from './comparisonRefreshRetry.mjs';
 
 const configKey = state => {
   try { return state?.rag_enabled === true ? JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) : null; }
@@ -19,19 +20,15 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
   withAdmission = (callback, { signal }) => callback(signal, () => signal.throwIfAborted()),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 256 * 1024 * 1024, ttlMs: 600_000, now }),
 }) {
-  let active = null, stopped = false, entry = null, nextAt = 0, failures = 0, lastTime = null;
+  let active = null, stopped = false, entry = null, nextAt = 0, lastTime = null;
+  const retry = createComparisonRefreshRetry({ now, random });
   const clear = () => { entry = null; cache.clear(); };
   const clock = () => {
     const time = now();
-    if (!Number.isFinite(time) || (lastTime !== null && time < lastTime)) { clear(); nextAt = 0; }
+    if (!Number.isFinite(time) || (lastTime !== null && time < lastTime)) { clear(); nextAt = 0; retry.clearDeadlines(); }
     lastTime = time; return time;
   };
-  const due = () => {
-    failures = Math.min(6, failures + 1);
-    const jitter = random();
-    nextAt = now() + Math.min(1_800_000, 60_000 * 2 ** (failures - 1)) *
-      (1 + (Number.isFinite(jitter) ? Math.max(0, Math.min(1, jitter)) : 0) * 0.25);
-  };
+  const due = () => { nextAt = 0; retry.fail(); };
   return {
     stop() { stopped = true; active?.abort(); clear(); },
     async retrieve(input) {
@@ -59,12 +56,12 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         stage = 'state_read';
         const state = await readState(), expected = configKey(state), revision = getRevision();
         abort.throwIfAborted();
-        if (!expected) { clear(); nextAt = 0; failures = 0; return { status: 'disabled' }; }
-        if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; }
+        if (!expected) { clear(); nextAt = 0; retry.reset(); return { status: 'disabled' }; }
+        if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; retry.clearDeadlines(); }
         if (state.busy !== false) { clear(); return { status: 'yielded' }; }
-        if (time < nextAt) return { status: 'not_due' };
+        if (time < nextAt || retry.isCoolingDown(time)) return { status: 'not_due' };
         stage = 'admission';
-        return await withAdmission(async (abort, checkpoint) => {
+        const result = await withAdmission(async (abort, checkpoint) => {
           stage = 'provider_inspection';
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
           const candidate = await buildLiveMultiScaleCandidate({ repository, identity, signal: abort, build,
@@ -100,16 +97,20 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
             clear(); due(); return { status: 'capacity' };
           }
           entry = { key, configKey: expected, revision, bound };
-          if (built.cacheable) { failures = 0; nextAt = now() + 300_000; }
-          else due();
+          if (!built.cacheable) due();
           // Degraded raw/broad context may serve, but optional discovery must retry rather than be reused.
           return { status: reused ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
         }, { signal: abort });
+        // Admission has its own final checkpoint; a refusal there is not a successful refresh.
+        if (['ready', 'revalidated'].includes(result.status)) { retry.reset(); nextAt = now() + 300_000; }
+        return result;
       } catch (error) {
         // Contention does not invalidate an already verified entry; its TTL/revision still govern serving.
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
         if (controller.signal.aborted || signal?.aborted) { clear(); return { status: 'cancelled' }; }
-        due(); return error instanceof DiscoveryDeferredError
+        if (error instanceof DiscoveryDeferredError) { nextAt = 0; retry.defer(); }
+        else due();
+        return error instanceof DiscoveryDeferredError
           ? { status: 'deferred', reason: error.reason }
           : { status: 'unavailable', failure: diagnoseLiveMultiScaleFailure(stage, error, { deadlineExpired: deadline.aborted }) };
       } finally { active = null; }

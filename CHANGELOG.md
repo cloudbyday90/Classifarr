@@ -24,7 +24,7 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   verification, retaining both reads and all publication safeguards.
   Stream comparison verification vectors in bounded batches while preserving exact
   source fingerprints and independent fresh-snapshot publication checks.
-  Separate bounded resource-deferral retries from representative fitting failures
+  Separate bounded resource-deferral retries from representative and comparison fitting failures
   so temporary memory pressure does not accumulate long failure cooldowns.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
