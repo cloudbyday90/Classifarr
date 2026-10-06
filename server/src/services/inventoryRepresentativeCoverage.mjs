@@ -8,13 +8,18 @@ export const REPRESENTATIVE_PROFILE_COMPONENT_LIMIT = 8_000_000;
 export const REPRESENTATIVE_MIN_COVERAGE_PERCENT = 90;
 
 export function assertRepresentativeSnapshotBudget(snapshot, dimensions, code = 'inventory_representative_profile_input_budget') {
+  assertRepresentativeMetadataBudget(snapshot, dimensions, code);
+  if (!isMap(snapshot.vectors) || [...snapshot.vectors.keys()].some(hash => !snapshot.corpus.texts.has(hash))) throw new Error(code);
+}
+
+/** Structural limits shared by full fitting snapshots and streamed verification. */
+export function assertRepresentativeMetadataBudget(snapshot, dimensions, code = 'inventory_representative_profile_input_budget') {
   if (!Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > 16000 ||
       !Array.isArray(snapshot?.libraries) || snapshot.libraries.length > 64 ||
       !Array.isArray(snapshot.corpus?.documents) || snapshot.corpus.documents.length > 50000 ||
       !isMap(snapshot.corpus.texts) || snapshot.corpus.texts.size > 10000 ||
       snapshot.corpus.texts.size * dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT ||
-      snapshot.corpus.documents.length * dimensions * REPRESENTATIVE_RECOVERY_WORK_COMPONENTS > 80_000_000_000 ||
-      !isMap(snapshot.vectors) || [...snapshot.vectors.keys()].some(hash => !snapshot.corpus.texts.has(hash))) throw new Error(code);
+      snapshot.corpus.documents.length * dimensions * REPRESENTATIVE_RECOVERY_WORK_COMPONENTS > 80_000_000_000) throw new Error(code);
   if ([...snapshot.corpus.texts.keys()].some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) ||
       snapshot.corpus.documents.some(doc => !['movie', 'tv'].includes(doc?.type) || !snapshot.corpus.texts.has(doc.hash) ||
         !Array.isArray(doc.libraryIds) || doc.libraryIds.length > 64)) throw new Error(code);

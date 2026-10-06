@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { setImmediate } from 'node:timers/promises';
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
+import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
 
 // Run only in a separate test process; neither Jest call histories nor production
 // code should retain the observed objects or request garbage collection.
@@ -26,6 +27,10 @@ const worker = createLiveMultiScaleRefresh({
     const snapshot = liveFixture().snapshot;
     if (reads % 2 === 1) snapshotRef = new WeakRef(snapshot);
     return snapshot;
+  }, async readVerification() {
+    const snapshot = await this.read();
+    const key = inspectUnseenMultiScaleSource(snapshot, identity).key;
+    return { ...snapshot, vectors: undefined, key };
   } },
   async build(input) {
     builds++; inputRef = new WeakRef(input);

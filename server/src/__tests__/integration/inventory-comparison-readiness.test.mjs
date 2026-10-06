@@ -7,8 +7,9 @@ import { createInventoryRepresentativeProfileRepository, REPRESENTATIVE_PROFILE_
   REPRESENTATIVE_PROFILE_IDENTITIES_SQL, REPRESENTATIVE_PROFILE_CORPUS_SQL } from '../../services/inventoryRepresentativeProfileRepository.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
+import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
 
-test('presence and decoded batches stay consistent across concurrent deletion and update; fresh reads detect both', async () => {
+test.each(['read', 'readVerification'])('%s stays consistent across concurrent deletion and update; fresh reads detect both', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   // Generated identifier only; no application or user input enters SQL identifiers.
   const table = `comparison_cache_${randomUUID().replaceAll('-', '')}`;
@@ -17,8 +18,12 @@ test('presence and decoded batches stay consistent across concurrent deletion an
   let client, removed = false, batches = 0;
   try {
     const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => pool.query(scoped(sql), params) });
-    const entries = [...fixture.snapshot.vectors].map(([hash, vector]) => ({ hash, vector }));
+    const ordered = [...fixture.snapshot.vectors];
+    if (method === 'readVerification') ordered.sort(([a], [b]) => a.localeCompare(b));
+    const entries = ordered.map(([hash, vector]) => ({ hash, vector }));
     for (let i = 0; i < entries.length; i += 8) await cache.write(fixture.identity, entries.slice(i, i + 8));
+    const expectedKey = inspectUnseenMultiScaleSource({ ...fixture.snapshot,
+      vectors: await cache.read(fixture.identity, entries.map(entry => entry.hash)) }, fixture.identity).key;
     client = await pool.connect();
     const profiles = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
       await client.query('BEGIN');
@@ -40,22 +45,29 @@ test('presence and decoded batches stay consistent across concurrent deletion an
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); throw error; }
     } });
-    const initial = (await profiles.read(fixture.identity, { requireCompleteVectors: true })).vectors;
-    expect(initial.size).toBe(entries.length);
+    const initial = await profiles[method](fixture.identity, { requireCompleteVectors: true });
+    if (method === 'read') {
+      expect(initial.vectors.size).toBe(entries.length);
+      expect(initial.vectors.get(entries[298].hash)).not.toEqual([0, 1]);
+      expect(initial.vectors.has(entries[299].hash)).toBe(true);
+    } else {
+      expect(initial).not.toHaveProperty('vectors');
+      expect(initial.key).toBe(expectedKey);
+    }
     expect(batches).toBe(2);
-    expect(initial.get(entries[298].hash)).not.toEqual([0, 1]);
-    expect(initial.has(entries[299].hash)).toBe(true);
     expect(removed).toBe(true);
-    await expect(profiles.read(fixture.identity, { requireCompleteVectors: true })).rejects.toMatchObject({
+    await expect(profiles[method](fixture.identity, { requireCompleteVectors: true })).rejects.toMatchObject({
       coverage: { eligibleDescriptions: entries.length, cachedDescriptions: entries.length - 1, missingDescriptions: 1 },
     });
     const fresh = (await profiles.read(fixture.identity)).vectors;
     expect(fresh.get(entries[298].hash)).toEqual([0, 1]);
     expect(fresh.has(entries[299].hash)).toBe(false);
+    await cache.write(fixture.identity, [entries[299]]);
+    expect((await profiles.readVerification(fixture.identity)).key).not.toBe(expectedKey);
   } finally { client?.release(); await pool.query(`DROP TABLE ${table}`); }
 });
 
-test('aborted batch read rolls back and releases a usable connection without returning partial vectors', async () => {
+test.each(['read', 'readVerification'])('aborted %s rolls back and releases a usable connection without returning partial evidence', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   const client = await pool.connect(), controller = new AbortController();
   let batches = 0, rolledBack = false;
@@ -78,7 +90,7 @@ test('aborted batch read rolls back and releases a usable connection without ret
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); rolledBack = true; throw error; }
     } });
-    await expect(repository.read(fixture.identity, { signal: controller.signal })).rejects.toThrow('stopped');
+    await expect(repository[method](fixture.identity, { signal: controller.signal })).rejects.toThrow('stopped');
     expect(batches).toBe(1); expect(rolledBack).toBe(true);
     expect((await client.query('SHOW transaction_isolation')).rows[0].transaction_isolation).toBe('read committed');
     expect((await cache.read(fixture.identity, entries.map(entry => entry.hash))).size).toBe(300);

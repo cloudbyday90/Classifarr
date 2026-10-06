@@ -11,3 +11,18 @@ test('comparison releases read and fit inputs before subsequent phases, includin
   });
   expect(stdout).toContain('comparison_phase_lifetimes_passed');
 });
+
+test('streaming verification releases completed vector batches before the next query', async () => {
+  const { stdout } = await promisify(execFile)(process.execPath, ['--expose-gc',
+    fileURLToPath(new URL('../helpers/comparisonVerificationLifetimeProbe.mjs', import.meta.url))], {
+    timeout: 10000, maxBuffer: 32768, env: { ...process.env, NODE_OPTIONS: '' },
+  });
+  expect(stdout).toContain('comparison_verification_batches_released');
+});
+
+test('the full-map control demonstrates why verification batches remained reachable', async () => {
+  await expect(promisify(execFile)(process.execPath, ['--expose-gc',
+    fileURLToPath(new URL('../helpers/comparisonVerificationLifetimeProbe.mjs', import.meta.url)), '--full-map-control'], {
+    timeout: 10000, maxBuffer: 32768, env: { ...process.env, NODE_OPTIONS: '' },
+  })).rejects.toMatchObject({ stderr: expect.stringContaining('completed_batch_vectors_retained') });
+});

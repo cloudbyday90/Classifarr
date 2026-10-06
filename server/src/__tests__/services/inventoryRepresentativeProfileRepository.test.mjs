@@ -6,6 +6,20 @@ import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventor
 import { collectInventoryObservationReadiness } from '../../services/inventoryObservationReadiness.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
+import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
+
+test('verification reads fresh complete evidence without returning a vector map', async () => {
+  const v = setup();
+  const fresh = await v.repository.readVerification(v.identity);
+  expect(fresh).not.toHaveProperty('vectors');
+  expect(fresh.key).toBe(inspectUnseenMultiScaleSource(v.snapshot, v.identity).key);
+  expect(fresh.observedKeys).toEqual(v.snapshot.observedKeys);
+  expect(v.withTransaction).toHaveBeenCalledTimes(1);
+  expect(v.client.query.mock.calls[0]).toEqual(['SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY']);
+  v.snapshot.vectors.delete(v.snapshot.vectors.keys().next().value); v.client.query.mockClear();
+  await expect(v.repository.readVerification(v.identity)).rejects.toMatchObject({ coverage: { missingDescriptions: 1 } });
+  expect(v.client.query.mock.calls.some(([sql]) => sql.includes('embedding::text'))).toBe(false);
+});
 
 function setup() {
   const fixture = representativeProfileFixture();

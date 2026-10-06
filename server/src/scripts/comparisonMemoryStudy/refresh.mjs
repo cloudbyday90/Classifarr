@@ -20,6 +20,11 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
     metrics.track('decodedVector', snapshot.vectors.values().next().value);
     await metrics.mark(`${phase()}_read_${reads}`);
     return snapshot;
+  }, readVerification: async (identity, options) => {
+    const snapshot = await fixture.repository.readVerification(identity, options); reads++;
+    metrics.track('verificationMetadata', snapshot);
+    await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true });
+    return snapshot;
   } };
   const shared = { repository, readState: fixture.readState ?? (async () => fixture.state), now,
     getRevision: fixture.getRevision ?? (() => 0),

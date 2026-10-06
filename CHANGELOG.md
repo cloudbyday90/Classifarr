@@ -22,6 +22,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   duplicate arrays while preserving corruption checks and numerical results.
   End representative fitting-snapshot and staged-callback lifetimes before fresh
   verification, retaining both reads and all publication safeguards.
+  Stream comparison verification vectors in bounded batches while preserving exact
+  source fingerprints and independent fresh-snapshot publication checks.
   Separate bounded resource-deferral retries from representative fitting failures
   so temporary memory pressure does not accumulate long failure cooldowns.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming

@@ -2,7 +2,6 @@
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { inspectUnseenMultiScaleSource } from './inventoryMultiScaleSource.mjs';
 import { buildLiveMultiScaleCandidate } from './liveMultiScaleCandidate.mjs';
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
@@ -82,7 +81,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           }
           const { key, built, reused } = candidate;
           stage = 'snapshot_verify';
-          const fresh = await repository.read(identity, { requireCompleteVectors: true, signal: abort });
+          const fresh = await repository.readVerification(identity, { signal: abort });
           stage = 'provider_verify';
           await verifyDescriptionRepresentation(embedder, identity, abort);
           stage = 'state_verify';
@@ -91,7 +90,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           stage = 'source_validation';
           if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
               configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
-              inspectUnseenMultiScaleSource(fresh, identity).key !== key) {
+              fresh.key !== key) {
             clear(); due(); return { status: 'invalidated' };
           }
           stage = 'publication';

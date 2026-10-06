@@ -3,6 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
 import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
+import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
 
 function setup(extra = {}) {
   const value = liveFixture(); let time = 1_000_000, revision = 0;
@@ -10,6 +11,11 @@ function setup(extra = {}) {
   const build = jest.fn(async () => ({ handle, cacheable: true, weight: 1000 }));
   const readState = jest.fn(async () => value.state);
   const repository = { read: jest.fn(async () => value.snapshot) };
+  repository.readVerification = jest.fn(async (identity, { signal }) => {
+    const snapshot = await repository.read(identity, { requireCompleteVectors: true, signal });
+    const key = inspectUnseenMultiScaleSource(snapshot, identity).key;
+    return { ...snapshot, vectors: undefined, key };
+  });
   const embedder = { ...value.identity, inspect: jest.fn(async () => value.identity) };
   const worker = createLiveMultiScaleRefresh({ repository, readState, build, createEmbedder: () => embedder,
     now: () => time, getRevision: () => revision, random: () => 0, ...extra });
