@@ -2,6 +2,9 @@
 
 Date: 2026-10-06. [Design, sources and tradeoffs](comparison-memory-phases-design.md).
 
+Follow-up: [bounded vector decoding](comparison-vector-batches-outcome.md) measures
+the first allocation-lifetime change against these findings.
+
 ## Implemented scope
 
 Small ESM diagnostic modules now distinguish worker fitting, broad-control
