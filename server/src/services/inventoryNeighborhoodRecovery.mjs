@@ -20,6 +20,21 @@ export function createInventoryNeighborhoodRecovery({ now = Date.now, getRevisio
     for (const [id, reference] of references) if (reference.expiresAt <= now() ||
         source.libraries.get(id)?.binding !== reference.binding) { references.delete(id); metadataPlan = null; }
   };
+  // Created outside prepare's lexical scope: never capture its snapshot/model.
+  const stageCommit = ({ token, revision, source, staged, identity, configKey, signal }) => ({ commit(fresh) {
+    if (token !== generation || signal?.aborted || revision !== getRevision()) return;
+    if (!fresh) throw new Error('neighborhood_recovery_fresh_snapshot_required');
+    const verified = inventoryNeighborhoodRecoverySource(fresh.corpus, identity, configKey);
+    if (verified.libraries.size !== source.libraries.size || [...source.libraries].some(([id, library]) =>
+        verified.libraries.get(id)?.binding !== library.binding)) return;
+    const readiness = buildInventoryGroupReadiness(fresh, staged);
+    if (representation !== source.representation) references.clear();
+    representation = source.representation;
+    prune(source);
+    for (const [id, reference] of staged) references.set(id, { ...reference, expiresAt: now() + REFERENCE_TTL_MS });
+    metadataPlan = { ...readiness, revision, expiresAt: now() + REFERENCE_TTL_MS };
+    generation++; // A previously staged publication cannot supersede this one.
+  } });
   return {
     clear,
     clearMetadata() { metadataPlan = null; generation++; },
@@ -39,19 +54,7 @@ export function createInventoryNeighborhoodRecovery({ now = Date.now, getRevisio
         const groups = await validatedRecoveryGroups(profile, snapshot.vectors, identity.dimensions, signal);
         if (groups) staged.set(id, { binding: library.binding, groups });
       }
-      return { commit(fresh = snapshot) {
-        if (token !== generation || signal?.aborted || revision !== getRevision()) return;
-        const verified = inventoryNeighborhoodRecoverySource(fresh.corpus, identity, configKey);
-        if (verified.libraries.size !== source.libraries.size || [...source.libraries].some(([id, library]) =>
-          verified.libraries.get(id)?.binding !== library.binding)) return;
-        const readiness = buildInventoryGroupReadiness(fresh, staged);
-        if (representation !== source.representation) references.clear();
-        representation = source.representation;
-        prune(source);
-        for (const [id, reference] of staged) references.set(id, { ...reference, expiresAt: now() + REFERENCE_TTL_MS });
-        metadataPlan = { ...readiness, revision, expiresAt: now() + REFERENCE_TTL_MS };
-        generation++; // A previously staged publication cannot supersede this one.
-      } };
+      return stageCommit({ token, revision, source, staged, identity, configKey, signal });
     },
     prioritize({ corpus, identity, configKey, present }) {
       const source = inventoryNeighborhoodRecoverySource(corpus, identity, configKey);

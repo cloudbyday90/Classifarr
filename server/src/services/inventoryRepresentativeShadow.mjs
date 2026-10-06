@@ -10,6 +10,18 @@ export const REPRESENTATIVE_SHADOW_COUNTERS = Object.freeze([...REPRESENTATIVE_S
   'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']);
 const LIMIT = 32, COMPONENT_LIMIT = 262144, TTL = 300000;
 
+// Keep scoring closures that use the full snapshot out of the commit environment.
+function prepareShadowResults(context, batch, monotonic) {
+  const noveltyKey = representativeNoveltyKey(context.snapshot);
+  const results = batch.map(([key, observation]) => {
+    const start = monotonic();
+    let issue = null;
+    const reason = compareInventoryRepresentativeShadow({ ...context, observation, onInvalid: code => { issue = code; } });
+    return { key, observation, reason, duration: monotonic() - start, issue };
+  });
+  return { noveltyKey, results };
+}
+
 /** Bounded ephemeral capsules and decision-time observations; no media objects are retained. */
 export function createInventoryRepresentativeShadow({ now = Date.now, monotonic = () => performance.now(),
   diagnostics = createRepresentativeValidationDiagnostics({ now }),
@@ -69,14 +81,7 @@ export function createInventoryRepresentativeShadow({ now = Date.now, monotonic 
     prepare(context) {
       prune();
       if (stopped || !pending.size) return null;
-      const noveltyKey = representativeNoveltyKey(context.snapshot), batch = [...pending].slice(0, 8);
-      const results = batch.map(([key, observation]) => {
-        const start = monotonic();
-        let issue = null;
-        const reason = compareInventoryRepresentativeShadow({ ...context, observation, onInvalid: code => { issue = code; } });
-        const duration = monotonic() - start;
-        return { key, observation, reason, duration, issue };
-      });
+      const { noveltyKey, results } = prepareShadowResults(context, [...pending].slice(0, 8), monotonic);
       let committed = false;
       return { commit(fresh) {
         if (committed || stopped) return; committed = true;

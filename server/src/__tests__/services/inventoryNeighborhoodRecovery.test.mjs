@@ -21,11 +21,20 @@ async function setup(perLibrary = 12) {
   return { ...fixture, movie, tv, input, recovery, inspect, advance: ms => { time += ms; } };
 }
 
+test('staged recovery requires the explicitly verified fresh snapshot', async () => {
+  const { input, recovery, inspect } = await setup();
+  const batch = await recovery.prepare(input);
+  expect(() => batch.commit()).toThrow('neighborhood_recovery_fresh_snapshot_required');
+  expect(inspect().summary.referencedLibraries).toBe(0);
+  batch.commit(structuredClone(input.snapshot));
+  expect(inspect().summary.referencedLibraries).toBe(2);
+});
+
 test('lost minority group is prioritized despite 99% global coverage; backfill restores readiness', async () => {
   const { input, recovery, movie, tv, inspect, snapshot } = await setup(400);
   const prepared = await recovery.prepare(input);
   expect(inspect().summary).toMatchObject({ referencedLibraries: 0, unknownLibraries: 2 });
-  prepared.commit();
+  prepared.commit(input.snapshot);
   const lost = movie.slice(-3);
   const present = new Set([...movie.slice(0, -3), ...tv]);
   expect(present.size / snapshot.vectors.size).toBeGreaterThan(0.99);
@@ -38,7 +47,7 @@ test('lost minority group is prioritized despite 99% global coverage; backfill r
 
 test('movie and TV groups are both repaired, lowest coverage first, without name rules', async () => {
   const { input, recovery, movie, tv, inspect } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   const present = new Set([...movie.slice(0, -3), ...tv.slice(1)]);
   const repair = inspect({ present });
   // One missing out of twelve TV members is not under-covered; three remaining movie members are all missing.
@@ -52,11 +61,11 @@ test('movie and TV groups are both repaired, lowest coverage first, without name
 
 test('partial fits preserve but cannot renew a complete reference; TTL and restart fall back', async () => {
   const { input, recovery, snapshot, movie, inspect, advance } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   snapshot.vectors.delete(movie.at(-1));
   advance(1_700_000);
   input.model = await buildInventoryRepresentativeProfile({ snapshot, dimensions: input.identity.dimensions });
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   expect(inspect().priority).toEqual([movie.at(-1)]);
   advance(100_000);
   expect(inspect().summary).toMatchObject({ referencedLibraries: 1, unknownLibraries: 1, prioritizedDescriptions: 0 });
@@ -66,7 +75,7 @@ test('partial fits preserve but cannot renew a complete reference; TTL and resta
 
 test.each(['text', 'membership', 'cross_library', 'type'])('%s changes invalidate only affected source memberships', async mode => {
   const { input, recovery, snapshot, movie, inspect } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   const doc = snapshot.corpus.documents.find(row => row.hash === movie[0]);
   if (mode === 'text') { doc.hash = 'f'.repeat(64); snapshot.corpus.texts.set(doc.hash, 'CHANGED PRIVATE'); }
   if (mode === 'membership') snapshot.corpus.documents.splice(snapshot.corpus.documents.indexOf(doc), 1);
@@ -77,17 +86,17 @@ test.each(['text', 'membership', 'cross_library', 'type'])('%s changes invalidat
 
 test.each(['model', 'config'])('%s changes discard references and staged publications', async mode => {
   const { input, recovery, inspect } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   const staged = await recovery.prepare(input);
   const change = mode === 'model' ? { identity: { ...input.identity, digest: 'b'.repeat(64) } } : { configKey: 'CHANGED PRIVATE' };
   expect(inspect({ ...change, present: new Set() }).priority).toEqual([]);
-  staged.commit();
+  staged.commit(input.snapshot);
   expect(inspect({ present: new Set() }).priority).toEqual([]);
 });
 
 test('duplicate copies do not renew or amplify membership; shared descriptions cannot become exclusive', async () => {
   const { input, recovery, snapshot, movie, inspect } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   snapshot.corpus.documents.push({ ...snapshot.corpus.documents[0], key: 'movie:duplicate' });
   expect(inspect({ present: new Set() }).summary.referencedLibraries).toBe(2);
   snapshot.corpus.documents.push({ ...snapshot.corpus.documents[0], key: 'movie:shared', libraryIds: [3] });
@@ -103,7 +112,7 @@ test('invalid support and unconverged fits cannot establish a reference', async 
   expect(inspect().summary.referencedLibraries).toBe(0);
   profile.starts[profile.selectedStart].groups[0].support++;
   profile.starts[profile.selectedStart].converged = false;
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   expect(inspect().summary.referencedLibraries).toBe(1);
 });
 
@@ -118,14 +127,14 @@ test('equal total support with incorrect per-group assignments is rejected', asy
 test('clear, cancellation and newer publication prevent stale commits', async () => {
   const { input, recovery, inspect } = await setup();
   const old = await recovery.prepare(input);
-  recovery.clear(); old.commit();
+  recovery.clear(); old.commit(input.snapshot);
   expect(inspect().summary.referencedLibraries).toBe(0);
   const controller = new AbortController();
   const cancelled = await recovery.prepare({ ...input, signal: controller.signal });
-  controller.abort(); cancelled.commit();
+  controller.abort(); cancelled.commit(input.snapshot);
   await expect(recovery.prepare({ ...input, signal: controller.signal })).rejects.toThrow();
   const first = await recovery.prepare(input), second = await recovery.prepare(input);
-  second.commit(); first.commit();
+  second.commit(input.snapshot); first.commit(input.snapshot);
   expect(inspect().summary.referencedLibraries).toBe(2);
 });
 
@@ -142,11 +151,11 @@ test('metadata readiness uses final verified snapshot, expires and invalidates o
   time = 1_800_000;
   expect(recovery.readReadiness()).toBeNull();
   expect(recovery.prioritizeMetadata(rows)).toBe(rows);
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   expect(recovery.readReadiness().groupsWithObservationGaps).toBeGreaterThan(0);
   revision++;
   expect(recovery.readReadiness()).toBeNull();
-  const stale = await recovery.prepare(input); revision++; stale.commit();
+  const stale = await recovery.prepare(input); revision++; stale.commit(input.snapshot);
   expect(recovery.readReadiness()).toBeNull();
 });
 
@@ -156,7 +165,7 @@ test('source drift cannot publish metadata targets and clear removes all readine
   const fresh = structuredClone(snapshot); fresh.corpus.documents.pop();
   batch.commit(fresh);
   expect(recovery.readReadiness()).toBeNull();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   expect(recovery.readReadiness()).not.toBeNull();
   recovery.clear();
   expect(recovery.readReadiness()).toBeNull();
@@ -165,9 +174,9 @@ test('source drift cannot publish metadata targets and clear removes all readine
 
 test('metadata invalidation withdraws hints and staged plans without losing vector recovery references', async () => {
   const { input, recovery, inspect } = await setup();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   const staged = await recovery.prepare(input);
-  recovery.clearMetadata(); staged.commit();
+  recovery.clearMetadata(); staged.commit(input.snapshot);
   expect(recovery.readReadiness()).toBeNull();
   expect(inspect({ present: new Set() }).summary.prioritizedDescriptions).toBeGreaterThan(0);
 });

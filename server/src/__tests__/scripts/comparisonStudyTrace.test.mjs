@@ -35,3 +35,19 @@ test('recovery budget projection excludes arbitrary context and preserves decisi
     .toEqual([{ phase: 'recovery_admission', worker: 'comparison', kind: 'discovery', allowed: false,
       reason: 'memory_pressure', requiredBytes: 100, availableBytes: 99, attempt: 3 }]);
 });
+
+test('preserves bounded numeric phase peaks on failures, excluding payloads and unknown phases', () => {
+  const peaks = { recovery_build_end: { samples: 12, rss: 500, workerHeapUsed: 120, activeWorkers: 2,
+    heapUsed: -1, external: 1.5, secret: 'PRIVATE', nested: { token: 'PRIVATE' } },
+  private_phase: { samples: 1, rss: 123 }, stopped: { samples: 0 }, baseline: null };
+  expect(collectComparisonStudyTrace(line({ phase: 'summary', peaks, padding: 'x'.repeat(17000) }))).toEqual([
+    { phase: 'summary', peaks: { recovery_build_end: { samples: 12, rss: 500, workerHeapUsed: 120, activeWorkers: 2 } } },
+  ]);
+  expect(collectComparisonStudyTrace(line({ phase: 'summary', peaks, padding: 'x'.repeat(65536) }))).toEqual([]);
+  expect(collectComparisonStudyTrace(line({ phase: 'stopped', peaks }))).toEqual([{ phase: 'stopped' }]);
+});
+
+test.each([[], null, { baseline: [] }, Object.fromEntries(Array.from({ length: 129 }, (_, i) =>
+  [`recovery_read_${i}`, { samples: 1, rss: 100 }]))])('rejects invalid or excessive phase-peak containers (%#)', peaks => {
+  expect(collectComparisonStudyTrace(line({ phase: 'summary', peaks }))).toEqual([{ phase: 'summary' }]);
+});

@@ -17,7 +17,7 @@ async function fixture(outliers = 1) {
 
 test.each([1, 2])('supported groups recover in both media types despite %i unassigned descriptions', async outliers => {
   const input = await fixture(outliers), recovery = createInventoryNeighborhoodRecovery();
-  (await recovery.prepare(input)).commit();
+  (await recovery.prepare(input)).commit(input.snapshot);
   const present = new Set(input.snapshot.vectors.keys()), lost = [], unassigned = [];
   for (const profile of input.model.libraries.values()) {
     expect(profile.membership.groups).toHaveLength(1);

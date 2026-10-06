@@ -20,6 +20,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   one consistent snapshot, with cancellation checks between batches.
   Reuse exactly revalidated normalized vectors within comparison builds to avoid
   duplicate arrays while preserving corruption checks and numerical results.
+  End representative fitting-snapshot and staged-callback lifetimes before fresh
+  verification, retaining both reads and all publication safeguards.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
 
@@ -35,6 +37,7 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   Exercise scheduled comparison refreshes alongside real import/metadata services
   in one isolated application catalog, separating workload completion from
   evidence of recovery after memory pressure.
+  Preserve bounded numeric phase peaks when a study fails, without retaining raw payloads.
   Production admission limits and garbage-collection behavior are unchanged.
 
 ## [v0.49.0-beta] - 2026-10-05

@@ -3,11 +3,8 @@ import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mj
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { inventoryRepresentativeSourceKey, INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
-import { representativeValidationError } from './representativeValidation.mjs';
 import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
-import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage } from './inventoryRepresentativeCoverage.mjs';
-import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
-import { isMap } from 'node:util/types';
+import { prepareInventoryRepresentativeCandidate } from './inventoryRepresentativeCandidate.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 
 const configKeyOf = state => {
@@ -37,33 +34,12 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   async function refresh(state, signal, runRevision, expected, checkpoint) {
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
-    const snapshot = await repository.read(identity, { signal });
-    signal.throwIfAborted();
-    if (!current(snapshot.state, expected) || getRevision() !== runRevision) { clear(); return report('invalidated'); }
-    if (!snapshot.corpus.texts.size) { clear(); return report('empty_corpus'); }
-    assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
-    const coverage = inspectRepresentativeCoverage(snapshot);
-    if (!coverage.summary.readyLibraries) { clear(); return report('waiting_for_vectors', coverage.summary); }
-    const sourceKey = inventoryRepresentativeSourceKey(snapshot, identity, expected);
-    if (key !== sourceKey) clear();
-    const cached = cache.get(sourceKey);
-    const model = cached ?? await fit(snapshot, identity.dimensions, { signal });
-    signal.throwIfAborted();
-    if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow' ||
-        !isMap(model.libraries)) {
-      throw representativeValidationError('profile_header');
-    }
-    const summary = validateInventoryRepresentativeProfileCoverage(model, snapshot, identity.dimensions);
-    let batch = null;
-    try { batch = observer?.prepare({ model, snapshot, identity, configKey: expected }); }
-    catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
-    let recoveryBatch = null;
-    try { recoveryBatch = await neighborhoodRecovery?.prepare({ model, snapshot, identity, configKey: expected, signal }); }
-    catch (error) {
-      // Known malformed evidence must use the redacted diagnostic/backoff path, not look healthy.
-      if (representativeValidationIssue(error) !== 'unknown_check') throw error;
-      // Optional recovery service failures still leave ordinary backfill available.
-    }
+    const candidate = await prepareInventoryRepresentativeCandidate({ repository, identity, expected, signal,
+      fit, observer, neighborhoodRecovery,
+      isCurrent: state => current(state, expected) && getRevision() === runRevision,
+      selectCached: sourceKey => { if (key !== sourceKey) clear(); return cache.get(sourceKey); } });
+    if (candidate.status) { clear(); return report(candidate.status, candidate.summary); }
+    const { sourceKey, model, summary, reused, batch, recoveryBatch } = candidate;
     const fresh = await repository.read(identity, { signal });
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
@@ -80,7 +56,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
     try { recoveryBatch?.commit(fresh); } catch { /* Ordinary backfill remains available. */ }
     const readiness = neighborhoodRecovery?.readReadiness?.();
-    return report(cached ? 'up_to_date' : 'published', { ...summary, ...(readiness ? { observationReadiness: readiness } : {}) });
+    return report(reused ? 'up_to_date' : 'published', { ...summary, ...(readiness ? { observationReadiness: readiness } : {}) });
   }
 
   return {

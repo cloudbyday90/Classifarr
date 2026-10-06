@@ -66,7 +66,7 @@ test('backfill repairs a lost group first while ordinary new-library work shares
   const model = await buildInventoryRepresentativeProfile({ snapshot, dimensions: identity.dimensions });
   const neighborhoodRecovery = createInventoryNeighborhoodRecovery();
   (await neighborhoodRecovery.prepare({ model, snapshot, identity,
-    configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) })).commit();
+    configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) })).commit(snapshot);
   hashes.slice(0, 67).forEach(hash => saved.add(`${identity.digest}:${hash}`));
   rows.push(...Array.from({ length: 100 }, (_, i) => ({ media_type: 'tv', tmdb_id: i + 100,
     library_id: 2, overview: `PRIVATE newly discovered TV description ${i}` })));
