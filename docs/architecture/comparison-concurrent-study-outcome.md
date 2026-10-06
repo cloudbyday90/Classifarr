@@ -121,6 +121,50 @@ release evidence. One unloaded control and two loaded observations are not a
 statistical performance comparison. Host background processes were not stopped,
 so elapsed durations are not latency benchmarks. All owned study resources cleaned.
 
+## Final local rebuild
+
+Built again without cache from clean source
+`57e41a3ae159b114bc076ad7a737aa24129565c1`, including the host trace saver:
+
+- Image/index: `sha256:4bbc39c94809d18f347fd7ab3b32328fd14be09706695f92a380c73177a5b0a3`.
+- Native manifest: `sha256:18cb6622868f561e58e060725e03a16201489a19b0d5718e4d70936a3f418da3`.
+- Config: `sha256:3792e57869f411dccf89a8f19656ce8b51d2650ad091e7ec5cb306e1f5dd9951`.
+
+The measured comparison modules, production services, client and schema have no
+source changes between the study and final image. Measurements above belong to
+the earlier immutable study image; no claim that the final build reran those
+long scenarios is made. The final image received local startup/schema validation.
+
+A 75,670,010-byte local database archive passed checksum and archive-list checks;
+the previous local image was tagged for rollback. The backup is private/ignored;
+archive readability is not a restore rehearsal. Local replacement started at
+16:59:25 UTC, preserving mounts, user 1000:1000, the 2 GiB limit, and the existing
+unset CPU quota/PID cap. Read-only checks found 5839 inventory items, 323 recorded
+migrations, ten complete ingestion states, PostgreSQL 18.6 and pgvector 0.8.7.
+Inventory may grow normally from the configured media server.
+
+Fresh isolated schema dump and independent snapshot check both passed and cleaned
+their disposable resources. `database/schema/current.sql` remained unchanged.
+Unraid was not accessed or modified. No Git tag, merge or release was created.
+
+Bounded read-only local logs also show earlier memory-pressure warnings at
+15:33:45 and 16:10:45 UTC followed by automatic recovery at 15:36:45 and
+16:13:46 respectively, before this rebuild. That is evidence of prior local
+automatic recovery, not a controlled post-pressure test of the new image.
+The initial post-rebuild readiness check reported `backfilling`; ingestion was
+complete but metadata handoff checkpoints were unfinished, with no pending or
+processing queue tasks at the subsequent check. No manual reset was attempted.
+A separate diagnostic process's permitted memory check is not the main process's
+comparison-readiness result.
+
+From 17:01:02–17:05:58 UTC, all 19 local samples were healthy: raw cgroup
+399.56–493.48 MiB, kernel high-water 859.67 MiB, no limit events, OOM kill or
+restart. This five-minute observation is a startup/health check, not sustained
+capacity evidence. At 17:05 UTC, three active libraries still had unfinished
+metadata handoff checkpoints, and no new `LibraryComparisonContext` warning had
+been recorded since replacement. Backfill/comparison readiness is not claimed
+complete from this short window.
+
 ## Recommendation stack
 
 1. Keep the existing memory headroom, reservations and safe ordinary-retrieval
@@ -136,6 +180,8 @@ so elapsed durations are not latency benchmarks. All owned study resources clean
    from measured phase costs. Potential benefit: fewer clones/resident pages;
    cost: transfer ownership, cancellation and exact-number compatibility work.
    Do not lower safeguards, add periodic restarts or force GC to make a test pass.
+
+## PR trial
 
 The freshly selected [PR #555 trial](node-types-pr555-outcome.md) failed the Node-major
 alignment gate and was reverted without installation or merge. No dependency change
