@@ -2,6 +2,10 @@
 
 Date: 2026-09-19
 
+October 6 follow-up: [bounded comparison vector decoding](comparison-vector-batches-design.md)
+revises only representative/comparison vector parsing to avoid retaining every
+encoded batch. Other post-commit work and connection-error containment remain.
+
 ## Evidence and scope
 
 The previous guarded AI comparison was interrupted when the application logged

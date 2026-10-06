@@ -1,5 +1,9 @@
 # Inventory transaction recovery outcome
 
+October 6 follow-up: [bounded comparison vector decoding outcome](comparison-vector-batches-outcome.md)
+records the later, narrowly scoped change to vector parsing. The results below
+describe the original transaction-lifetime change.
+
 Date: 2026-09-19
 
 ## What changed

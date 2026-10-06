@@ -10,6 +10,10 @@ Decode one batch at a time into the final private vector map, inside the existin
 repeatable-read, read-only transaction. Do not reuse an earlier snapshot or skip
 the independently read verification snapshot. This changes allocation lifetime,
 not vector values, training membership, fingerprints or publication criteria.
+This narrowly revises the earlier [post-commit decoding design](inventory-transaction-recovery-design.md):
+only bounded vector parsing/validation moves into the transaction. Fitting,
+metadata aggregation and context construction remain outside it; the original
+connection-error containment and no-replay guarantees stay intact.
 
 Use a small ESM reader over the existing parameterized vector transport. Validate
 the complete hash list before SQL; retain exact representation, expiry, duplicate,

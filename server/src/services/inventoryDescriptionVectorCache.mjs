@@ -15,7 +15,7 @@ export function validateInventoryDescriptionHashes(hashes, maximum) {
       hashes.some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))) throw new Error('inventory_description_hashes_invalid');
 }
 
-/** Capture only scoped encoded rows inside the transaction; decode after it commits. */
+/** Capture scoped encoded rows; callers choose bounded in-snapshot or post-commit decoding. */
 export async function readInventoryDescriptionVectorRows(query, representation, hashes) {
   const parameters = validateDescriptionRepresentation(representation);
   validateInventoryDescriptionHashes(hashes, 10000);
