@@ -26,3 +26,7 @@ Official sources discovered/opened through MCP on October 6, 2026:
   automatically compatible with the deployed runtime.
 
 Record results separately after the local trial.
+
+The normalization-reuse round re-enumerated the open pool on October 6 and again
+randomly selected #556 at the same immutable head. Repeat the exact trial against
+the current Node 24 baseline; do not carry a failing type-major change.

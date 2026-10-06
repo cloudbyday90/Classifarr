@@ -4,12 +4,12 @@ import { representativeSimilarity as similarity } from './representativeFitSessi
 import { fitLocalCommunities, summarizeCommunity } from './inventoryLocalCommunities.mjs';
 
 /** Placement is inspected only after the content-only discovery fit. */
-export async function discoverCommunityParticipation(index, vectors, dimensions, signal) {
+export async function discoverCommunityParticipation(index, vectors, dimensions, signal, normalize = normalizeDescriptionVector) {
   const libraries = [...index.scope].map(([id, mediaType]) => ({ id, mediaType, available: false, groups: [] }));
   const media = new Map();
   for (const type of ['movie', 'tv']) {
     const rows = [...index.groups.values()].filter(row => row.type === type)
-      .map(row => ({ hash: row.hash, vector: normalizeDescriptionVector(vectors.get(row.hash), dimensions), libraries: row.libraries }));
+      .map(row => ({ hash: row.hash, vector: normalize(vectors.get(row.hash), dimensions), libraries: row.libraries }));
     const byHash = new Map(rows.map(row => [row.hash, row]));
     const fitted = await fitLocalCommunities(rows.map(({ hash, vector }) => ({ hash, vector })), dimensions, { signal });
     const projected = new Set(), assigned = new Set(fitted.groups.flatMap(group => group.hashes));

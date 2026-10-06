@@ -18,6 +18,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   fitting inputs before subsequent phases; memory safeguards remain unchanged.
   Read and decode representative/comparison vectors in bounded batches within
   one consistent snapshot, with cancellation checks between batches.
+  Reuse exactly revalidated normalized vectors within comparison builds to avoid
+  duplicate arrays while preserving corruption checks and numerical results.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
 

@@ -12,3 +12,10 @@ Removed only the trial edits and verified both package files match the starting
 revision. No installation or lifecycle scripts ran. This is a tested, rejected
 local implementation, not a retained dependency upgrade. Keep Node 24 type
 alignment; evaluate a runtime-major upgrade separately. No PR was changed.
+
+The normalization-reuse round repeated the randomly selected immutable diff:
+seven gate checks passed and the server type-major check failed. After reverting
+only the trial, all eight checks passed and both package files matched HEAD.
+No installation, lifecycle execution or retained dependency change. Read-only
+`npm outdated` also listed express-rate-limit 8.7.1 and js-yaml 5.4.3 as patch
+candidates; review those separately rather than expanding this memory change.

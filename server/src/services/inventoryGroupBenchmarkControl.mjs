@@ -4,7 +4,7 @@ import { validateRepresentativeMembership, validatedRecoveryGroups } from './inv
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
 
 /** Shared fail-closed control reader for discovery experiments. */
-export async function readGroupBenchmarkControl(training, model, dimensions, signal) {
+export async function readGroupBenchmarkControl(training, model, dimensions, signal, normalize = normalizeDescriptionVector) {
   const coverage = inspectRepresentativeCoverage(training), { index } = coverage;
   if (model.libraries.size !== index.scope.size || [...index.scope].some(([id, type]) => model.libraries.get(id)?.mediaType !== type)) {
     throw new Error('group_benchmark_scope_changed');
@@ -12,7 +12,7 @@ export async function readGroupBenchmarkControl(training, model, dimensions, sig
   const buckets = new Map([...index.scope.keys()].map(id => [id, []]));
   for (const group of index.groups.values()) if (group.libraries.size === 1) {
     buckets.get([...group.libraries][0]).push({ hash: group.hash,
-      vector: normalizeDescriptionVector(training.vectors.get(group.hash), dimensions) });
+      vector: normalize(training.vectors.get(group.hash), dimensions) });
   }
   const libraries = [];
   for (const [id, mediaType] of index.scope) {
@@ -23,7 +23,7 @@ export async function readGroupBenchmarkControl(training, model, dimensions, sig
     }
     // The existing fitter omits membership below three available descriptions.
     validateRepresentativeMembership(profile, new Set((profile.coverage.status === 'complete' ? items : []).map(row => row.hash)));
-    const hashes = await validatedRecoveryGroups(profile, training.vectors, dimensions, signal);
+    const hashes = await validatedRecoveryGroups(profile, training.vectors, dimensions, signal, normalize);
     libraries.push({ id, mediaType, available: Boolean(hashes),
       groups: hashes ? profile.starts[profile.selectedStart].groups.map((group, i) => ({ ...group, hashes: hashes[i] })) : [] });
   }

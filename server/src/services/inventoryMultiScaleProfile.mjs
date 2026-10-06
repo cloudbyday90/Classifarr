@@ -7,6 +7,7 @@ import { summarizeGroupValues } from './inventoryGroupQuality.mjs';
 import { representativeSimilarity as similarity } from './representativeFitSession.mjs';
 import { retrieveMultiScaleContext } from './inventoryMultiScaleRetrieval.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
+import { createDescriptionVectorNormalizer } from './descriptionVectorNormalizer.mjs';
 
 // A separate closure scope must not retain community/control scratch vectors after fitting.
 function createProfileHandle(state, summary) {
@@ -50,14 +51,15 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
   discover = discoverCommunityParticipation } = {}) {
   const { training, dimensions, held } = source;
   const model = await fit(training, dimensions, { signal });
-  const control = await readGroupBenchmarkControl(training, model, dimensions, signal);
+  const normalize = createDescriptionVectorNormalizer();
+  const control = await readGroupBenchmarkControl(training, model, dimensions, signal, normalize);
   const vectors = new Map([...control.buckets.values()].flatMap(rows => rows.map(row => [row.hash, row.vector])));
   for (const [hash, vector] of training.vectors) if (!vectors.has(hash)) {
-    vectors.set(hash, normalizeDescriptionVector(vector, dimensions));
+    vectors.set(hash, normalize(vector, dimensions));
   }
   let communities, localFailureReason, localStatus = 'available', localStage = 'discovery';
   try {
-    communities = await discover(control.index, training.vectors, dimensions, signal);
+    communities = await discover(control.index, training.vectors, dimensions, signal, normalize);
     localStage = 'validation';
     validateLocalGroups(communities, control, dimensions);
   } catch (error) {

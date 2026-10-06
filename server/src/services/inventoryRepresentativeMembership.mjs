@@ -32,7 +32,7 @@ export function validateRepresentativeMembership(profile, expectedHashes) {
 }
 
 /** Validate retained means in O(source components), not nearest-centroid reassignment. */
-export async function validatedRecoveryGroups(profile, vectors, dimensions, signal) {
+export async function validatedRecoveryGroups(profile, vectors, dimensions, signal, normalize = normalizeDescriptionVector) {
   const selected = profile.starts[profile.selectedStart];
   if (profile.coverage.status !== 'complete' || !selected.converged || !selected.groups.length) return null;
   const groups = profile.membership.groups.map(hashes => [...hashes]);
@@ -41,7 +41,7 @@ export async function validatedRecoveryGroups(profile, vectors, dimensions, sign
     const sum = Array(dimensions).fill(0);
     for (const hash of groups[index]) {
       if (processed++ % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
-      const vector = normalizeDescriptionVector(vectors.get(hash), dimensions);
+      const vector = normalize(vectors.get(hash), dimensions);
       for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
     }
     const norm = Math.sqrt(sum.reduce((total, value) => total + value * value, 0));
