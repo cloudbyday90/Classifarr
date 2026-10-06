@@ -132,6 +132,47 @@ Official advisories and release notes, checked 2026-10-05:
 - [source-map-js offset advisory](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) and [1.2.2 release](https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2).
 - [selector-parser complexity advisory](https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf) and [7.1.6 release](https://github.com/postcss/postcss-selector-parser/releases/tag/7.1.6).
 
+### Approved development-tool follow-up
+
+The maintainer subsequently approved the two development-tool findings from
+OSV run `37392167456`: KaTeX 0.16.47 → 0.18.2 and smol-toml 1.8.0 → 1.9.0.
+Use exact overrides and separately exercise their real consumers. No newer
+released Markdown lint parent accepts KaTeX's fixed version yet; replacing the
+whole linter would add unrelated change. This override crosses the parent's
+`^0.16.0` range and must remain documented until upstream adopts it.
+
+KaTeX's intervening breaks affect internal function registration and CSS class
+names. Our Markdown runner uses the math syntax extension only, not HTML output,
+custom KaTeX CSS or internal registration. Tests must still cover inherited
+trust, setting metadata and macro lookup, plus ordinary math parsing/rendering.
+smol-toml 1.9.0 returns null-prototype tables and tightens invalid syntax; Knip
+uses named `parse`, property access, arrays and own-property-safe operations.
+Exercise a real TOML-configured plugin and preserve its dependency diagnostics.
+Neither package is an application HTTP parser. No script permission, scanner
+exception, production trust setting or application dependency is changed.
+
+Only the two intended lock entries changed. Clean installs and dependency-tree
+checks passed; all three npm audits reported zero findings. The focused suite
+reproduced seven KaTeX failures on 0.16.47, then passed all ten checks on 0.18.2.
+The TOML work-bound regression failed on 1.8.0 and passed on 1.9.0; all 14 TOML
+and Knip consumer checks passed. The full 40-test dependency-tooling suite,
+source lint, type checks, both Knip modes and documentation lint also passed.
+Independent read-only review covered both upstream module builds, alternate
+quoted/dotted/inline TOML keys and inherited option getters without finding a
+concrete candidate regression. This is scoped compatibility evidence, not
+general support for every KaTeX API outside the parent's declared range.
+
+KaTeX tests inspect macro lookup through a function-valued macro: parsing an
+inherited command name also reaches separate function/symbol registries and is
+not a direct namespace-isolation assertion. These checks do not certify every
+renderer behavior in an already prototype-polluted process. Classifarr's lint
+consumer does not insert generated KaTeX HTML into an application page.
+
+Official sources checked 2026-10-05:
+
+- [KaTeX advisory](https://github.com/KaTeX/KaTeX/security/advisories/GHSA-238p-pmpm-9mq7), [0.17.0](https://github.com/KaTeX/KaTeX/releases/tag/v0.17.0), [0.18.0](https://github.com/KaTeX/KaTeX/releases/tag/v0.18.0) and [0.18.2](https://github.com/KaTeX/KaTeX/releases/tag/v0.18.2) release notes.
+- [smol-toml advisory](https://github.com/squirrelchat/smol-toml/security/advisories/GHSA-r4xh-jqrq-34v2) and [1.9.0 compatibility notes](https://github.com/squirrelchat/smol-toml/releases/tag/v1.9.0).
+
 ### Final candidate evidence
 
 Before freezing, focused HTTP/publication checks passed (9 suites, 140 tests),

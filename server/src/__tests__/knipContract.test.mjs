@@ -54,6 +54,20 @@ function reported(result, type) {
 }
 
 describe('installed Knip CLI contracts', () => {
+  test('TOML-configured Bun preloads retain dependencies and expose genuine missing imports', () => {
+    withFixture({
+      'entry.mjs': 'export {};\n',
+      'bunfig.toml': '[test]\npreload = ["./setup.mjs"]\n',
+      'setup.mjs': "import 'fixture-retained';\nimport 'fixture-missing';\n",
+      'node_modules/fixture-retained/package.json': JSON.stringify({ name: 'fixture-retained', version: '1.0.0', type: 'module' }),
+    }, directory => {
+      const result = runKnip(directory);
+      expect(result.status).toBe(1);
+      expect(reported(result, 'devDependencies')).toEqual([]);
+      expect(reported(result, 'unlisted')).toEqual(['setup.mjs:fixture-missing']);
+    }, { manifest: { scripts: { test: 'bun test' }, devDependencies: { 'fixture-retained': '1.0.0' } } });
+  });
+
   test.each([
     ['direct', "/** @lintignore */\nexport { retained } from './source.mjs';\n", {}],
     ['renamed', "/** @lintignore */\nexport { retained as publicName } from './source.mjs';\n", {}],

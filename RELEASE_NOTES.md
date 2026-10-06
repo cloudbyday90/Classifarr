@@ -170,9 +170,10 @@ receipts instead of automatically submitting duplicate writes.
   ESM Markdown runner and native Node watching replace the affected lint/watch
   dependency chain.
 - **Pre-release dependency fixes:** patched proxy-address trust matching,
-  indexed source-map bounds and CSS selector parsing address the three newly
-  reported dependency advisories. Express proxy trust remains disabled by
-  default; the fixes do not broaden which forwarding headers the app trusts.
+  indexed source-map bounds and CSS selector parsing address reported dependency
+  advisories. Markdown math and TOML analysis tooling also receive tested security
+  updates. Express proxy trust remains disabled by default; the fixes do not
+  broaden which forwarding headers the app trusts.
 - **Network safety:** bounded response sizes and deadlines, cancellation, vector
   validation and TLS verification by default. Sensitive library context remains
   restricted to trusted local AI endpoints; other providers receive aggregate

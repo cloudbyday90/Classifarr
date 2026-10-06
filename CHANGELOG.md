@@ -158,6 +158,8 @@ The development record was consolidated on 2026-10-05 without rewriting it.
   (CVE-2026-103484), with portable builds, integrity checks and pinned CI actions.
   Patch proxy-address trust, indexed source-map bounds and CSS selector parsing
   with targeted compatibility and resource-work regressions.
+  Update Markdown math and TOML tooling against inherited-option trust bypass
+  and repeated parser scans, preserving lint and dependency diagnostics.
 - **Recovery security boundary** — Compatibility safeguards contain unmodified
   legacy writers, not a database superuser deliberately bypassing them. Stronger
   OS/database privilege isolation remains separate work; recovery never silently
