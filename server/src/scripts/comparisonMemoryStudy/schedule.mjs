@@ -39,10 +39,11 @@ export function createComparisonStudySchedule({ execute, createTask = cron.sched
       closed = true;
       for (const timer of timers) clearTimer(timer);
       try {
-        await Promise.all(tasks.map(task => task.destroy()));
+        const stopped = await Promise.allSettled(tasks.map(task => Promise.resolve().then(() => task.destroy())));
+        failure ??= stopped.find(result => result.status === 'rejected')?.reason;
       } finally {
-        stopWorkers();
-        await Promise.all([...running]);
+        try { stopWorkers(); } catch (error) { failure ??= error; }
+        finally { await Promise.all([...running]); }
       }
       if (failure) throw failure;
     },

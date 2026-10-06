@@ -49,6 +49,18 @@ test('callback failures and excessive callbacks remain failures after cleanup', 
   await g.callbacks[0](); expect(() => g.scheduler.check()).toThrow('failed');
   await expect(g.scheduler.close(() => {})).rejects.toThrow('failed');
 });
+test('cleanup errors cannot skip joining already admitted work', async () => {
+  let finish, closed = false;
+  const f = schedulerFixture();
+  f.destroy.mockImplementation(() => { throw new Error('destroy_failed'); });
+  f.scheduler.schedule(task, '45 * * * * *', () => new Promise(resolve => { finish = resolve; }), null, { noOverlap: true });
+  const running = f.callbacks[0](); await Promise.resolve();
+  const closing = f.scheduler.close(() => { throw new Error('stop_failed'); }).finally(() => { closed = true; });
+  // Observe the rejection now so this test never creates an unhandled rejection.
+  const assertion = expect(closing).rejects.toThrow('destroy_failed');
+  await Promise.resolve(); expect(closed).toBe(false);
+  finish(); await running; await assertion; expect(f.scheduler.active).toBe(0);
+});
 function receipt() {
   const initial = resourceStudyStartupFixture('bounded').metrics;
   const attempts = ['deferred', 'ready', 'revalidated'].map((status, i) => ({ worker: 'comparison',
@@ -59,13 +71,13 @@ function receipt() {
     workBytes: 768 * 1024 ** 2, hysteresisBytes: (i === 1 ? 64 : 0) * 1024 ** 2,
     requiredBytes: (i === 1 ? 1088 : 1024) * 1024 ** 2 }));
   return { version: 'comparison_recovery.v1', status: 'measured', profile: 'comparison-recovery', budget: 'bounded',
-    durationMs: 800_000, initial, final: { ...initial }, sourceChanges: 1, attempts, decisions,
+    durationMs: 800_000, initial, final: { ...initial }, sourceChanges: 1, sourceChangedAtMs: 400_000, attempts, decisions,
     measurement: { createdWorkers: 2, exitedWorkers: 2, activeWorkers: 0 },
     admission: { ingestion: { active: 0 }, queue: { active: 0 }, discovery: { active: 0 } } };
 }
 test('requires an actual shared-budget deferral, natural recovery and later revalidation', () => {
   const study = receipt(); expect(() => assertComparisonRecoveryReceipt(study, 'bounded')).not.toThrow();
-  expect(comparisonRecoveryEvidence(study.attempts, study.decisions).revalidated.attempt).toBe(3);
+  expect(comparisonRecoveryEvidence(study.attempts, study.decisions, study.sourceChangedAtMs).revalidated.attempt).toBe(3);
   expect(formatResourceStudySummary({ mode: study.profile, cleanup: 'passed', budget: study.budget, study }))
     .toContain('not full application scheduler or capacity evidence');
 });
@@ -77,6 +89,7 @@ test.each([
   s => { s.admission.discovery.active = 1; }, s => { s.final.oomKill = 1; },
   s => { s.final.memoryLimitHits = 1; }, s => { s.sourceChanges = 0; },
   s => { s.attempts[1].attempt = s.attempts[0].attempt; }, s => { s.decisions = []; },
+  s => { s.sourceChangedAtMs = 790_001; }, s => { s.sourceChangedAtMs = null; },
 ])('incomplete or contradictory recovery evidence fails (%#)', change => {
   const study = receipt(); change(study); expect(() => assertComparisonRecoveryReceipt(study, 'bounded')).toThrow();
 });

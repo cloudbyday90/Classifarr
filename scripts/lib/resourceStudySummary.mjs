@@ -10,7 +10,7 @@ export function formatResourceStudySummary(result) {
   if (result?.mode === 'comparison-recovery') {
     if (result.cleanup !== 'passed') throw new Error('resource_study_summary_invalid');
     assertComparisonRecoveryReceipt(result.study, result.budget);
-    const { pressure, recovered, revalidated } = comparisonRecoveryEvidence(result.study.attempts, result.study.decisions);
+    const { pressure, recovered, revalidated } = comparisonRecoveryEvidence(result.study.attempts, result.study.decisions, result.study.sourceChangedAtMs);
     return '# Natural comparison recovery\n\nOwned cleanup: passed.\n\n' +
       `Pressure at ${pressure.elapsedMs} ms; recovered at ${recovered.elapsedMs} ms; revalidated at ${revalidated.elapsedMs} ms.\n\n` +
       'Real schedule registrations and refreshers; separate synthetic catalog, not full application scheduler or capacity evidence.\n' +

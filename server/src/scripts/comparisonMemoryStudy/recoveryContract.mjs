@@ -5,13 +5,13 @@ import { assertStudyCgroup } from '../resourceStudyMetrics.mjs';
 
 export const COMPARISON_RECOVERY_PROFILE = Object.freeze({ durationMs: 1_500_000, idleMs: 120_000 });
 
-export function comparisonRecoveryEvidence(attempts, decisions) {
+export function comparisonRecoveryEvidence(attempts, decisions, sourceChangedAtMs) {
   const pressure = attempts.find(row => row.worker === 'comparison' && row.status === 'deferred' &&
     row.reason === 'memory_pressure' && decisions.some(decision => decision.worker === row.worker &&
       decision.attempt === row.attempt && decision.reason === 'memory_pressure' && decision.allowed === false &&
       decision.availableBytes < decision.requiredBytes));
-  const recovered = pressure && attempts.find(row => row.worker === 'comparison' &&
-    row.attempt > pressure.attempt && ['ready', 'revalidated'].includes(row.status));
+  const recovered = pressure && Number.isSafeInteger(sourceChangedAtMs) && attempts.find(row => row.worker === 'comparison' &&
+    row.attempt > pressure.attempt && row.elapsedMs > sourceChangedAtMs && ['ready', 'revalidated'].includes(row.status));
   const revalidated = recovered && attempts.find(row => row.worker === 'comparison' &&
     row.attempt > recovered.attempt && row.status === 'revalidated' && row.elapsedMs - recovered.elapsedMs >= 300_000);
   return { pressure, recovered, revalidated };
@@ -21,6 +21,7 @@ export function assertComparisonRecoveryReceipt(study, budget) {
   assert.equal(budget, 'bounded'); assert.equal(study?.budget, budget);
   assert.equal(study.version, 'comparison_recovery.v1'); assert.equal(study.profile, 'comparison-recovery');
   assert.equal(study.status, 'measured'); assert.equal(study.sourceChanges, 1);
+  assert.ok(Number.isSafeInteger(study.sourceChangedAtMs) && study.sourceChangedAtMs > 0 && study.sourceChangedAtMs < study.durationMs);
   assert.ok(Number.isSafeInteger(study.durationMs) && study.durationMs >= 600_000 && study.durationMs <= 1_800_000);
   for (const row of [study.initial, study.final]) {
     assertStudyCgroup(row); assertStudyBudget(row, budget);
@@ -52,7 +53,7 @@ export function assertComparisonRecoveryReceipt(study, budget) {
       assert.equal(row.allowed, row.availableBytes >= row.requiredBytes);
     }
   }
-  const evidence = comparisonRecoveryEvidence(study.attempts, study.decisions);
+  const evidence = comparisonRecoveryEvidence(study.attempts, study.decisions, study.sourceChangedAtMs);
   assert.ok(evidence.pressure && evidence.recovered && evidence.revalidated, 'comparison_natural_recovery_not_proven');
   for (const row of [evidence.recovered, evidence.revalidated]) assert.ok(study.decisions.some(decision =>
     decision.worker === row.worker && decision.attempt === row.attempt && decision.allowed === true));

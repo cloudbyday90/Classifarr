@@ -33,3 +33,10 @@ resource regression and security scans. Those results do not validate this new c
 Pending the exact-image elapsed-time run and local no-cache rebuild evaluation.
 This section will record observed pressure, recovery, limitations and cleanup;
 passing harness tests alone do not prove natural recovery or lower memory use.
+
+An initial pilot was deliberately stopped after review found a completion-order
+edge case: source mutation could coincide with an older successful revalidation.
+The tightened receipt requires recovery and revalidation after the recorded
+source-change time. Cleanup now also joins active callbacks if timer destruction
+or worker shutdown throws. These checks have dedicated regressions; the stopped
+pilot is not accepted as recovery evidence.

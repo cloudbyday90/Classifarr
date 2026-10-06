@@ -29,7 +29,7 @@ export async function runComparisonRecoveryStudy(budget, emit) {
     decisions.push(row); emit({ phase: 'recovery_admission', ...row });
   } }));
   const metrics = createComparisonMemoryMetrics({ emit }), controller = new AbortController();
-  let fixture, refreshers, schedule, measurement, failure, firstReadyAt = null, sourceChanges = 0;
+  let fixture, refreshers, schedule, measurement, failure, firstReadyAt = null, sourceChanges = 0, sourceChangedAtMs = null;
   const stopWorkers = () => {
     controller.abort(); schedule?.liveMultiScaleWorker?.stop(); schedule?.inventoryRepresentativeProfileWorker?.stop();
     refreshers?.comparison.stop(); refreshers?.representative.stop();
@@ -52,10 +52,10 @@ export async function runComparisonRecoveryStudy(budget, emit) {
     while (performance.now() < deadline) {
       schedule.check(); assert.equal(observerFailed, false, 'comparison_recovery_observer_failed');
       if (!sourceChanges && firstReadyAt !== null && performance.now() - firstReadyAt >= 300_000 && !schedule.active) {
-        await fixture.changeDescription(1); sourceChanges++;
+        await fixture.changeDescription(1); sourceChanges++; sourceChangedAtMs = elapsed();
         await metrics.mark('recovery_source_changed');
       }
-      if (sourceChanges && comparisonRecoveryEvidence(attempts, decisions).revalidated) break;
+      if (sourceChanges && comparisonRecoveryEvidence(attempts, decisions, sourceChangedAtMs).revalidated) break;
       await delay(1000);
     }
   } catch (error) { failure = error; }
@@ -70,7 +70,7 @@ export async function runComparisonRecoveryStudy(budget, emit) {
   }
   if (failure) throw failure;
   const result = { version: 'comparison_recovery.v1', status: 'measured', profile: 'comparison-recovery', budget,
-    durationMs: elapsed(), initial, final: await readStudyCgroup(), sourceChanges, attempts, decisions,
+    durationMs: elapsed(), initial, final: await readStudyCgroup(), sourceChanges, sourceChangedAtMs, attempts, decisions,
     measurement, admission: admission.classes, refresh: refreshers.counts() };
   assertComparisonRecoveryReceipt(result, budget); return result;
 }

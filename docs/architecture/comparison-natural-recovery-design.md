@@ -33,7 +33,7 @@ OOM/limit hits and cleanup failures cannot produce a passing receipt. A new run
 starts fresh isolated data; no persisted production retry state is reset.
 
 Completion requires a shared-budget memory-pressure refusal, a corresponding
-comparison deferral, a later admitted comparison success and a subsequent scheduled
+comparison deferral, a later admitted comparison success after the source change and a subsequent scheduled
 revalidation at least five minutes later, with zero active workers/permits and
 unchanged resource limits. Ordinary retrieval remains the production fallback.
 Natural allocation may not reproduce pressure on every host: report that honestly
