@@ -2,6 +2,9 @@
 
 Date: 2026-10-06. [Design and tradeoffs](comparison-refresh-lifetimes-design.md).
 
+Follow-up: [phase, copy-allocation and elapsed-cycle measurements](comparison-memory-phases-outcome.md)
+separate worker fitting from verification and real waiting from injected clocks.
+
 ## Implemented
 
 The comparison coordinator now uses a small ESM candidate service with separate
