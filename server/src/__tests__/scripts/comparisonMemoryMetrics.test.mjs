@@ -12,6 +12,18 @@ const observe = jest.fn(() => new Promise(resolve => { resolveObservation = reso
 jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/residentMemory.mjs', () => ({ readComparisonResidentMemory: observe }));
 const { createComparisonMemoryMetrics } = await import('../../scripts/comparisonMemoryStudy/metrics.mjs');
 
+test('synchronous boundaries emit only main-thread/process memory without a proc walk', async () => {
+  const records = [], metrics = createComparisonMemoryMetrics({ emit: row => records.push(row) });
+  const before = observe.mock.calls.length;
+  try {
+    expect(metrics.markSync('recovery_shadow_prepare_start')).toBeUndefined();
+    expect(records[0]).toMatchObject({ phase: 'recovery_shadow_prepare_start', mainThreadOnly: true });
+    for (const key of ['rss', 'heapUsed', 'mainHeapPhysicalBytes']) expect(records[0][key]).toBeGreaterThan(0);
+    for (const key of ['containerBytes', 'workerHeapUsed', 'resident']) expect(records[0]).not.toHaveProperty(key);
+    expect(observe.mock.calls.length).toBe(before);
+  } finally { await metrics.close(); }
+});
+
 test('concurrent marks share one proc walk, retain their labels and await it on close', async () => {
   const records = [], listeners = process.listenerCount('worker');
   const metrics = createComparisonMemoryMetrics({ emit: value => records.push(value) });

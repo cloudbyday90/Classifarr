@@ -8,16 +8,20 @@ import { buildInventoryRepresentativeProfile, inventoryRepresentativeSourceKey }
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { representativeProfileFixture } from './inventoryRepresentativeProfileFixture.mjs';
 import { representativeShadowFixture } from './inventoryRepresentativeShadowFixture.mjs';
+import { createComparisonStudyConsumers } from '../../scripts/comparisonMemoryStudy/consumers.mjs';
+import { resourceStudyEnvironment } from './resourceStudyEnvironment.mjs';
 
 // Deliberate GC is confined to a synthetic test subprocess, never a runtime/study switch.
 assert.equal(typeof globalThis.gc, 'function', 'lifetime_test_requires_explicit_gc');
 const mode = process.argv[2];
-assert.ok(['plain', 'callbacks', 'retained-control'].includes(mode));
+assert.ok(['plain', 'callbacks', 'retained-control', 'study-consumers'].includes(mode));
 const { state } = representativeProfileFixture();
 const fixture = await representativeShadowFixture();
 fixture.snapshot.state = state;
-const observer = mode === 'plain' ? null : createInventoryRepresentativeShadow();
-const neighborhoodRecovery = mode === 'plain' ? null : createInventoryNeighborhoodRecovery();
+Object.assign(process.env, resourceStudyEnvironment);
+const consumers = mode === 'study-consumers' ? createComparisonStudyConsumers({ metrics: { markSync() {}, track() {} } }) : null;
+const observer = consumers?.observer ?? (mode === 'plain' ? null : createInventoryRepresentativeShadow());
+const neighborhoodRecovery = consumers?.neighborhoodRecovery ?? (mode === 'plain' ? null : createInventoryNeighborhoodRecovery());
 const retained = [], references = [], checks = [];
 let reads = 0, verifications = 0, time = 0;
 const repository = { async read() {
@@ -42,7 +46,7 @@ const worker = createInventoryRepresentativeProfileRefresh({ repository, observe
   fit: (snapshot, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot, dimensions }, options) });
 try {
   for (let cycle = 0; cycle < 2; cycle++) {
-    if (observer) {
+    if (observer && !consumers) {
       const metadata = { ...fixture.metadata, tmdb_id: 90000 + cycle };
       observer.remember(metadata, { ...fixture.query, request: { ...fixture.query.request, key: `movie:${metadata.tmdb_id}` },
         configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) });
@@ -58,4 +62,4 @@ try {
   assert.equal(verifications, 2);
   assert.equal(retained.length, mode === 'retained-control' ? 2 : 0);
   process.stdout.write('representative_snapshot_lifetime_passed\n');
-} finally { worker.stop(); }
+} finally { worker.stop(); consumers?.stop(); }

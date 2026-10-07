@@ -14,6 +14,7 @@ import { createComparisonCatalogFixture } from './catalogFixture.mjs';
 import { createComparisonStudyLoad } from './load.mjs';
 import { createComparisonMemoryMetrics } from './metrics.mjs';
 import { createComparisonStudyRefreshers } from './refresh.mjs';
+import { createComparisonStudyConsumers } from './consumers.mjs';
 import { observeComparisonStudyAdmission } from './admission.mjs';
 import { createComparisonStudySchedule } from './schedule.mjs';
 import { COMPARISON_RECOVERY_PROFILE, comparisonRecoveryEvidence } from './recoveryContract.mjs';
@@ -33,10 +34,11 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
     decisions.push(row); emit({ phase: 'recovery_admission', ...row });
   } }));
   const metrics = createComparisonMemoryMetrics({ emit }), controller = new AbortController();
-  let refreshers, schedule, load, drain, measurement, failure, work, coverage, drainedAtMs = null;
+  let refreshers, schedule, load, drain, measurement, failure, work, coverage, consumers, beforeStop, drainedAtMs = null;
   const stopWorkers = () => {
     controller.abort(); schedule?.liveMultiScaleWorker?.stop(); schedule?.inventoryRepresentativeProfileWorker?.stop();
     refreshers?.comparison.stop(); refreshers?.representative.stop();
+    consumers?.stop();
   };
   try {
     await metrics.start();
@@ -44,12 +46,17 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
     load = await createComparisonStudyLoad(database, admission, { expectedItems: 5776,
       seed: async () => fixture.libraries, createFixture: () => fixture.transport,
       afterScan: async () => { coverage = await fixture.cacheDescriptions(); } });
-    refreshers = createComparisonStudyRefreshers({ fixture, metrics, resourceAdmission: admission, phase: () => 'recovery' });
+    consumers = createComparisonStudyConsumers({ metrics, getRevision: fixture.getRevision });
+    refreshers = createComparisonStudyRefreshers({ fixture, metrics, consumers,
+      resourceAdmission: admission, phase: () => 'recovery' });
     schedule = createComparisonStudySchedule({ execute: (worker, attempt, callback) => scope.run({ worker, attempt }, async () => {
       const report = await callback();
       const row = { worker, attempt, elapsedMs: elapsed(), status: report.status, reason: report.reason ?? null };
       attempts.push(row);
-      await metrics.settled(`recovery_${worker}`, { ...row, ...refreshers.counts() });
+      const consumerState = consumers.read();
+      assert.equal(consumerState.errors, 0, 'comparison_consumer_observer_failed');
+      await metrics.settled(`recovery_${worker}`, { ...row, ...refreshers.counts(),
+        shadowProcessed: consumerState.processed, readinessGroups: consumerState.groups });
     }) });
     const log = { info() {}, warn() {} };
     const wrap = worker => withInventoryBackgroundReadiness({ stop: () => worker.stop(),
@@ -71,6 +78,7 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
     }
   } catch (error) { failure ??= error; }
   finally {
+    beforeStop = consumers?.read();
     try { if (schedule) await schedule.close(stopWorkers); else stopWorkers(); }
     catch (error) { failure ??= error; }
     try { await load?.close(); } catch (error) { failure ??= error; }
@@ -82,9 +90,10 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
     scope.disable();
   }
   if (failure) throw failure;
-  const result = { version: 'comparison_catalog.v1', status: 'measured', profile: 'comparison-catalog', budget,
+  const result = { version: 'comparison_catalog.v2', status: 'measured', profile: 'comparison-catalog', budget,
     durationMs: elapsed(), initial, final: await readStudyCgroup(), drainedAtMs, work, coverage, attempts, decisions,
     pressureRecoveryObserved: Boolean(comparisonRecoveryEvidence(attempts, decisions, drainedAtMs).revalidated),
-    measurement, admission: admission.classes, overlap: admission.overlap, refresh: refreshers.counts() };
+    measurement, consumers: { beforeStop, afterStop: consumers.read() },
+    admission: admission.classes, overlap: admission.overlap, refresh: refreshers.counts() };
   assertComparisonCatalogReceipt(result, budget); return result;
 }

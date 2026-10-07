@@ -6,12 +6,13 @@ const NUMBERS = ['elapsedMs', 'rss', 'heapUsed', 'heapTotal', 'external', 'array
   'containerBytes', 'kernelPeakBytes', 'pids', 'activeWorkers', 'workerHeapUsed',
   'memoryLimitHits', 'oomKill', 'createdWorkers', 'exitedWorkers', 'estimatedCacheBytes', 'reads', 'builds',
   'attempt', 'availableBytes', 'reserveBytes', 'reservedBytes', 'workBytes', 'hysteresisBytes', 'requiredBytes',
-  'inventory', 'completed', 'descriptions', 'cached', ...HEAP_NUMBERS];
+  'inventory', 'completed', 'descriptions', 'cached', 'shadowProcessed', 'readinessGroups', ...HEAP_NUMBERS];
 const REFERENCES = ['snapshot', 'decodedVector', 'ownedSource', 'ownedVector',
-  'comparisonHandle', 'communityRows', 'communityVector', 'verificationMetadata'];
+  'comparisonHandle', 'communityRows', 'communityVector', 'verificationMetadata',
+  'shadowBatch', 'neighborhoodBatch', 'representativeModel'];
 const PEAK_NUMBERS = ['samples', 'rss', 'heapUsed', 'heapTotal', 'external', 'arrayBuffers',
   'containerBytes', 'kernelPeakBytes', 'pids', 'activeWorkers', 'workerHeapUsed', 'memoryLimitHits', 'oomKill', ...HEAP_NUMBERS];
-const PHASE = /^(setup|baseline|stopped|post_stop_idle|summary|catalog_drained|recovery_(admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
+const PHASE = /^(setup|baseline|stopped|post_stop_idle|summary|catalog_drained|recovery_((shadow|neighborhood)_(prepare|commit)_(start|end)|admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
 const STATUSES = new Set(['ready', 'published', 'up_to_date', 'revalidated', 'deferred', 'unavailable', 'degraded',
   'not_due', 'yielded', 'cancelled', 'disabled', 'unsupported_provider', 'cache_budget_exceeded',
   'already_running', 'cooldown', 'failed', 'invalidated', 'capacity']);
@@ -47,6 +48,7 @@ export function collectComparisonStudyTrace(output) {
     if (REASONS.has(value.reason)) row.reason = value.reason;
     if (typeof value.diagnosticGc === 'boolean') row.diagnosticGc = value.diagnosticGc;
     if (typeof value.streamedVerification === 'boolean') row.streamedVerification = value.streamedVerification;
+    if (typeof value.mainThreadOnly === 'boolean') row.mainThreadOnly = value.mainThreadOnly;
     const resident = projectComparisonResident(value.resident);
     if (resident) row.resident = resident;
     if (['comparison', 'representative'].includes(value.worker)) row.worker = value.worker;

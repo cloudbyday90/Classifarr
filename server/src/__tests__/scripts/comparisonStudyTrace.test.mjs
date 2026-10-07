@@ -3,6 +3,14 @@ import { expect, test } from '@jest/globals';
 import { collectComparisonStudyTrace } from '../../../../scripts/lib/comparisonStudyTrace.mjs';
 
 const line = value => `STUDY_PROGRESS ${JSON.stringify(value)}`;
+test('consumer phases preserve aggregate boundary measurements, not private inputs', () => {
+  expect(collectComparisonStudyTrace(line({ phase: 'recovery_shadow_prepare_end', heapUsed: 123,
+    mainThreadOnly: true, vector: [1, 2], key: 'PRIVATE', alive: { shadowBatch: 1, neighborhoodBatch: 0 } })))
+    .toEqual([{ phase: 'recovery_shadow_prepare_end', heapUsed: 123, mainThreadOnly: true,
+      alive: { shadowBatch: 1, neighborhoodBatch: 0 } }]);
+  expect(collectComparisonStudyTrace(line({ phase: 'recovery_representative', shadowProcessed: 4, readinessGroups: 10 })))
+    .toEqual([{ phase: 'recovery_representative', shadowProcessed: 4, readinessGroups: 10 }]);
+});
 test('preserves useful failure measurements without raw payloads or unknown values', () => {
   expect(collectComparisonStudyTrace(line({ phase: 'cycle_2_comparison', status: 'deferred', reason: 'memory_pressure',
     rss: 200, heapUsed: -1, pids: 2.5, message: 'private', url: 'private',

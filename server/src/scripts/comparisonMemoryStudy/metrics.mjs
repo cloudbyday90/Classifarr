@@ -49,6 +49,12 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
     return sampling;
   };
   return {
+    markSync(name) {
+      // Never introduce an async hold on a synchronous consumer's input snapshot.
+      const usage = process.memoryUsage(), heap = getHeapStatistics();
+      emit({ phase: name, elapsedMs: Math.round(performance.now() - started), mainThreadOnly: true,
+        ...usage, mainHeapPhysicalBytes: heap.total_physical_size, mainV8MallocBytes: heap.malloced_memory });
+    },
     track(kind, value) {
       if (references.length >= 256) throw new Error('comparison_memory_reference_budget');
       references.push({ kind, ref: new WeakRef(value) });

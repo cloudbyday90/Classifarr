@@ -52,6 +52,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   alongside committed V8 heap; retain explicit gaps when measurements are unavailable.
   Add opt-in, sanitized major-GC page-pool tracing to distinguish reusable runtime
   pages from live data across complete catalog refreshes.
+  Include real shadow-comparison and neighborhood-readiness consumers in the
+  isolated catalog study, with preparation/publication memory boundaries and
+  verified warm-cycle completion and shutdown.
   Production admission limits and garbage-collection behavior are unchanged.
 
 ## [v0.49.0-beta] - 2026-10-05

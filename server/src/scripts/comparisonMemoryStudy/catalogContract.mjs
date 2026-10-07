@@ -8,16 +8,19 @@ export function comparisonCatalogCompletion(attempts, drainedAtMs) {
   if (!Number.isSafeInteger(drainedAtMs) || drainedAtMs <= 0) return false;
   const published = attempts.find(row => row.worker === 'comparison' &&
     row.elapsedMs > drainedAtMs && ['ready', 'revalidated'].includes(row.status));
+  const representative = attempts.find(row => row.worker === 'representative' &&
+    row.elapsedMs > drainedAtMs && ['published', 'up_to_date'].includes(row.status));
   return Boolean(published && attempts.some(row => row.worker === 'comparison' &&
     row.attempt > published.attempt && row.status === 'revalidated' && row.elapsedMs - published.elapsedMs >= 300_000) &&
-    attempts.some(row => row.worker === 'representative' && row.elapsedMs > drainedAtMs &&
-      ['published', 'up_to_date'].includes(row.status)));
+    representative && attempts.some(row => row.worker === 'representative' &&
+      row.attempt > representative.attempt && row.status === 'up_to_date' &&
+      row.elapsedMs - representative.elapsedMs >= 300_000));
 }
 
 /** Workload completion is distinct from proof of naturally occurring pressure recovery. */
 export function assertComparisonCatalogReceipt(study, budget) {
   assert.equal(budget, 'bounded'); assert.equal(study?.budget, budget);
-  assert.equal(study.version, 'comparison_catalog.v1'); assert.equal(study.profile, 'comparison-catalog');
+  assert.equal(study.version, 'comparison_catalog.v2'); assert.equal(study.profile, 'comparison-catalog');
   assert.equal(study.status, 'measured');
   assert.ok(Number.isSafeInteger(study.durationMs) && study.durationMs >= 900_000 && study.durationMs <= 1_800_000);
   for (const row of [study.initial, study.final]) {
@@ -58,6 +61,19 @@ export function assertComparisonCatalogReceipt(study, budget) {
   }
   const recovered = Boolean(comparisonRecoveryEvidence(study.attempts, study.decisions, study.drainedAtMs).revalidated);
   assert.equal(study.pressureRecoveryObserved, recovered);
+  const { beforeStop, afterStop } = study.consumers;
+  for (const row of [beforeStop, afterStop]) {
+    for (const key of ['shadowPrepared', 'shadowCommitted', 'neighborhoodPrepared', 'neighborhoodCommitted']) {
+      assert.ok(Number.isSafeInteger(row[key]) && row[key] >= 2 && row[key] <= 60, 'comparison_consumer_evidence_missing');
+    }
+    assert.ok(row.shadowCommitted <= row.shadowPrepared && row.neighborhoodCommitted <= row.neighborhoodPrepared);
+    assert.ok(Number.isSafeInteger(row.processed) && row.processed >= 4 && row.processed <= 120);
+    assert.equal(row.errors, 0); assert.equal(row.invalidInputs, 0); assert.equal(row.routingAffected, false);
+    assert.equal(row.pending, 0);
+  }
+  assert.ok(Number.isSafeInteger(beforeStop.groups) && beforeStop.groups > 0 && beforeStop.groups <= 50000);
+  assert.equal(beforeStop.stopped, false);
+  assert.deepEqual(afterStop, { ...beforeStop, groups: 0, stopped: true });
   assert.ok(Number.isSafeInteger(study.measurement.createdWorkers) && study.measurement.createdWorkers > 0);
   assert.equal(study.measurement.createdWorkers, study.measurement.exitedWorkers); assert.equal(study.measurement.activeWorkers, 0);
   for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(study.admission[kind].active, 0);

@@ -71,14 +71,18 @@ function receipt() {
   const initial = resourceStudyStartupFixture('bounded').metrics;
   const attempts = [{ worker: 'comparison', attempt: 1, status: 'ready', elapsedMs: 660_000 },
     { worker: 'representative', attempt: 1, status: 'published', elapsedMs: 680_000 },
-    { worker: 'comparison', attempt: 2, status: 'revalidated', elapsedMs: 980_000 }];
-  return { version: 'comparison_catalog.v1', profile: 'comparison-catalog', budget: 'bounded', status: 'measured',
+    { worker: 'comparison', attempt: 2, status: 'revalidated', elapsedMs: 980_000 },
+    { worker: 'representative', attempt: 2, status: 'up_to_date', elapsedMs: 981_000 }];
+  const beforeStop = { shadowPrepared: 2, shadowCommitted: 2, neighborhoodPrepared: 2, neighborhoodCommitted: 2,
+    processed: 4, pending: 0, groups: 10, errors: 0, invalidInputs: 0, routingAffected: false, stopped: false };
+  return { version: 'comparison_catalog.v2', profile: 'comparison-catalog', budget: 'bounded', status: 'measured',
     durationMs: 990_000, drainedAtMs: 610_000, initial, final: { ...initial }, attempts,
     decisions: attempts.map(row => ({ ...row, elapsedMs: row.elapsedMs - 1, kind: 'discovery', allowed: true,
       availableBytes: 1500 * 1024 ** 2, requiredBytes: 1024 * 1024 ** 2, reserveBytes: 256 * 1024 ** 2,
       reservedBytes: 0, workBytes: 768 * 1024 ** 2, hysteresisBytes: 0 })),
     work: { waves: 20, libraries: 10, owners: 10, inventory: 5776, completed: 5776, pending: 0, failed: 0, routing: 0, handoffs: 0, serviceErrors: 0 },
     coverage: { descriptions: 5776, cached: 5776 }, pressureRecoveryObserved: false,
+    consumers: { beforeStop, afterStop: { ...beforeStop, groups: 0, stopped: true } },
     measurement: { createdWorkers: 2, exitedWorkers: 2, activeWorkers: 0 },
     admission: { ingestion: { active: 0 }, queue: { active: 0 }, discovery: { active: 0 } }, overlap: { ingestion: 0, queue: 0 } };
 }
@@ -95,6 +99,10 @@ test.each([
   s => { s.drainedAtMs = 670_000; }, s => { s.attempts[2].elapsedMs = 800_000; },
   s => { s.attempts[1].status = 'yielded'; }, s => { s.decisions[0].allowed = false; },
   s => { s.decisions[0].requiredBytes--; },
+  s => { s.version = 'comparison_catalog.v1'; }, s => { s.consumers.beforeStop.processed = 0; },
+  s => { s.consumers.beforeStop.groups = 0; }, s => { s.consumers.afterStop.pending = 1; },
+  s => { s.consumers.beforeStop.errors = 1; }, s => { s.consumers.beforeStop.invalidInputs = 1; },
+  s => { s.consumers.beforeStop.shadowCommitted = 0; }, s => { s.attempts[3].status = 'not_due'; },
 ])('rejects incomplete or contradictory catalog evidence (%#)', change => {
   const s = receipt(); change(s); expect(() => assertComparisonCatalogReceipt(s, 'bounded')).toThrow();
 });

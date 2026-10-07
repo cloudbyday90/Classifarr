@@ -12,7 +12,7 @@ import { createComparisonStudyTiming } from './timing.mjs';
 import { createComparisonStudyPhases } from './phases.mjs';
 
 export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.now, phase = () => 'cycle_0',
-  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {} }) {
+  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, consumers = null }) {
   let reads = 0, builds = 0;
   const repository = { read: async (identity, options) => {
     const snapshot = await fixture.repository.read(identity, options); reads++;
@@ -49,7 +49,8 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
       await metrics.mark(`${phase()}_build_end`, { estimatedCacheBytes: model.weight });
       return model;
     } });
-  const representative = createInventoryRepresentativeProfileRefresh({ ...shared, fit: async (...args) => {
+  const representative = createInventoryRepresentativeProfileRefresh({ ...shared,
+    observer: consumers?.observer, neighborhoodRecovery: consumers?.neighborhoodRecovery, fit: async (...args) => {
     await metrics.mark(`${phase()}_representative_fit`);
     return fitInventoryRepresentativeProfile(...args);
   } });
