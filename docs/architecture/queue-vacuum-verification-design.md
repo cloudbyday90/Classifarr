@@ -48,7 +48,7 @@ privilege grant, Compose/template requirement or memory-policy change is intende
   supported relation/statistics epoch and increases in both manual counters.
 - An admitted failure retains its attempt and cooldown across disconnect/restart.
   Cancellation or unknown completion cannot authorize another immediate write.
-- Evidence must identify the stage and fixed failure reason without SQL text,
+- Evidence must identify the failure category and whether VACUUM was issued without SQL text,
   raw notice/error messages, credentials, row payloads, user names or addresses.
   Numeric/bounded counter evidence must preserve unknowns, not invent zeroes.
 - Real database tests must control competing maintenance in their success fixture

@@ -194,3 +194,12 @@ the cost is additional platform-specific instrumentation. Another cache rewrite
 now would be simpler to propose but lacks a demonstrated retained-reference
 cause. Forced collection or relaxed limits would change the experiment and are
 not recommended.
+
+## Follow-up: queue fixture boundary
+
+The [queue-maintenance follow-up](queue-vacuum-verification-outcome.md) reproduced
+autovacuum competing after admission and corrected the success fixture, with a
+separate deterministic test for the skipped-attempt cooldown. Production
+verification remains unchanged. That reproduction does not retroactively prove
+the exact cause of the historic CI failure. Continue with the native/mapping-level
+investigation above once the new source's CI evidence is checked.
