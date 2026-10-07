@@ -109,6 +109,123 @@ rewrite, removal of checks, or a larger memory allowance.
 Prior documentation commit `a0399d89` has a failed
 [CI run 37652685022](https://github.com/cloudbyday90/Classifarr/actions/runs/37652685022),
 despite successful Build and Test, Tests with Database and Fresh Install/Published
-Upgrade jobs. The API lists no acceptance-readout job or failed job log. This is
-an unresolved workflow-level result, not a regression attributed to this change.
-The new source revision needs its own CI receipt; no release approval is implied.
+Upgrade jobs. The API lists no acceptance-readout job or failed job log. The run
+page identifies a GitHub Actions internal server error, correlation ID
+`d1e34456-3303-44de-b5d1-9a778a967e26`. This is an incomplete workflow receipt,
+not a failed application test or a regression attributed to this change.
+The new source revision has its own successful
+[CI run 37656159799](https://github.com/cloudbyday90/Classifarr/actions/runs/37656159799),
+including Build and Test, Tests with Database, Fresh Install/Published Upgrade
+and the acceptance readout. Resource Capacity Regression, OSV, Trivy, CodeQL,
+Gitleaks and copyright checks also passed for `697b9897`. Publication jobs were
+skipped as expected; no release approval, image publication or release is implied.
+
+## No-cache image and diagnostic
+
+Source commit: `697b9897d84df242e8a37db8521d505a072c8d50`.
+The local Compose no-cache build produced image
+`sha256:16d37021966c27192c7c1aa98af448d169f160db2c7cdb013f64bfe9ccd9944f`.
+Its OCI revision matches the source. Schema dump and independent verification
+ran against that exact image in separate disposable containers. Both passed;
+the tracked schema is unchanged, and neither container remains.
+
+The actual image CLI completed in 5.174 seconds with 12 successful windows,
+5,776 rows and 5,914,624 components per window. Count, checksum and fingerprint
+equivalence passed. Cumulative sampled allocation was:
+
+| History | Decode MiB | Decode plus fingerprint MiB |
+| --- | ---: | ---: |
+| Parsed conditioning | 44.32–47.36 | 51.36–59.40 |
+| Structured-clone conditioning | 166.13–188.23 | 181.78–190.26 |
+
+The validator-attributed samples ranged from 124.30–140.37 MiB for clone-conditioned
+decoding and 58.15–68.71 MiB with fingerprinting. Optimized attribution can move
+among helpers: a zero sampled category or a smaller category is not proof of
+zero allocation or lower total cost. These results reproduce the unresolved
+temporary allocation; they do not measure retained memory or demonstrate a fix.
+Receipt SHA-256:
+`6c3ec545d651345c07797d9d208e638f5ebdc4520fd5644e44251479bc288213`.
+
+The wrong-PID-budget control exited 1 with only the fixed failure classification
+and no successful receipt. The Linux-only directory-fsync/exclusive-copy control
+also passed in the candidate image, covering the platform-specific unit skip.
+
+## Complete natural catalog cycle
+
+The same image completed the allocation-sampling-disabled catalog study in
+1,171,119 ms (19.52 minutes), with natural GC and unchanged resource admission.
+Project: `classifarr-resource-study-c5658c66526946b2e53c82d7d0c2dd2d`.
+Real database queries and schedulers used synthetic transports in an isolated
+network with disposable storage; no production provider or appdata was used.
+
+- All 20 growth waves, ten libraries and 5,776 imports/descriptions/cached vectors
+  completed. No pending/failed work, routing, handoffs or service errors remained.
+- Four builds and 29 reads completed. Comparison became ready at 852,222 ms and
+  revalidated at 1,170,983 ms. Representative publication at 799,262 ms was followed
+  by an up-to-date refresh at 1,158,012 ms. Both exceed the required five-minute
+  warm interval after the final drain at 619,479 ms.
+- Admission recorded nine ingestion, 89 queue and three discovery memory-pressure
+  deferrals. The strict receipt validator confirmed subsequent discovery recovery;
+  this run genuinely observed pressure recovery, not just queue deferral.
+- All 11 workers exited. Sixteen consumer operations completed with no errors or
+  invalid input; pending consumers and active admission slots were zero. Consumer
+  groups dropped from 80 to zero when stopped.
+
+| Peak measurement | MiB |
+| --- | ---: |
+| Main heap used | 626.87 |
+| Process RSS | 789.33 |
+| Worker heap | 201.85 |
+| Sampled whole-container usage | 1,182.53 |
+| Kernel whole-container high-water mark | 1,196.13 |
+
+No OOM, OOM kill or memory-limit hit occurred. These are observations, not a
+matched improvement over an earlier run: production code is unchanged and build,
+read and deferral counts differ. Do not use them to justify raising safeguards.
+
+At stop, the tracked source snapshots, decoded vectors, owned sources/vectors and
+consumer batches had zero live weak samples. One comparison handle, two community
+vectors, two verification-metadata samples and two representative models remained
+observable. Without forcing GC, that neither proves a leak nor proves every cache
+has been released. The 143 major-GC events included a natural main-heap reduction
+from 596.8 to 218.2 MiB; allocator pooled memory is distinct from retained objects.
+
+Receipt SHA-256:
+`cfd57f664093078f8be4253b6672eb3870b2371ae2c146d9a49959f8afd3e409`.
+Trace SHA-256:
+`ef1a3eede9cb032a943020ca6ccff48e9dc354b95addc542b3d0bb414c6920e3`.
+GC trace SHA-256:
+`e8973fce1dff24a7ff5c3ea099244ac3a3cb105ce372795a715bb1582dc1184e`.
+The receipt passed the existing strict contract. Project container, network and
+volume cleanup passed and independent Docker listings found none remaining.
+
+## Local deployment
+
+Before recreation, a fresh 75,546,149-byte backup was saved as
+`.tmp/pre-memory-fingerprint-c4c07914-14a3-4aa3-9ab6-efb2b5973c47.dump`.
+Checksum and archive-list verification passed; this is not a restore rehearsal.
+Rollback tag `classifarr:pre-memory-c4c07914-14a3-4aa3-9ab6-efb2b5973c47`
+pins the prior running `sha256:797b3347…` image. These local recovery artifacts
+remain outside Git.
+
+Compose recreated only local `classifarr` from the already-built candidate and
+waited for health. Container `252606b77b0723c067535a0a4db0752755bc063f386a3137bee8d15e6998121d`
+runs the exact candidate image. Appdata/media mounts, user `1000:1000`, read-only
+root, capabilities, no-new-privileges and the 2 GiB limit were preserved.
+The health endpoint reports a connected database, and read-only inventory
+readiness reports `ready`. Unraid and Harmoniarr were not modified.
+
+The five-minute smoke recorded 19 healthy samples from 17:32:19 to 17:37:15 UTC:
+sampled raw-container peak 828.21 MiB, kernel high-water mark 974.34 MiB, final
+raw usage 618.57 MiB, zero memory-limit hits, zero OOMs and zero restarts.
+This short startup check is not a sustained-load or retention guarantee.
+
+Readiness briefly changed to `backfilling`. Read-only checks found three completed
+imports with unfinished current-generation backfill cursors and no due/active/
+failed queue tasks. All three checkpoints completed automatically at 17:40 UTC;
+the final readiness check returned `ready`. No manual recovery or database edits
+were performed. The newest recorded comparison memory-pressure warning remained
+the pre-recreation 16:43:45 event, followed by recovery at 16:46:45. This absence
+of new warnings during a short window does not establish that the original
+temporary-allocation problem is fixed. Helper-process admission readings were
+not used as measurements of the application daemon's heap.
