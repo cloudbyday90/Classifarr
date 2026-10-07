@@ -28,6 +28,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   so temporary memory pressure does not accumulate long failure cooldowns.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
   the unwrapped API response consistently, with regression coverage for errors and retry.
+- **CI reliability:** verify provider-study quota reservations per UTC day so runs
+  crossing midnight retain strict accounting without failing on a valid daily reset.
 
 ### Changed
 

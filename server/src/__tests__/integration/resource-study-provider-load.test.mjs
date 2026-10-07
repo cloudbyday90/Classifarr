@@ -3,6 +3,7 @@ import { jest, test, expect, afterEach } from '@jest/globals';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { resourceStudyEnvironment } from '../helpers/resourceStudyEnvironment.mjs';
+import { installStudyQuotaAudit, assertStudyQuotaAudit } from '../helpers/studyQuotaAudit.mjs';
 const db = createIntegrationDatabaseModuleMock();
 const { createStudyProviderLoad } = await import('../../scripts/resourceStudyProviderLoad.mjs');
 const { seedResourceStudyLibraries } = await import('../../scripts/resourceStudyFixtures.mjs');
@@ -11,6 +12,7 @@ afterEach(() => jest.restoreAllMocks());
 
 test('real HTTP faults retain waits, recover with production cooldowns and settle unique evidence', async () => {
   jest.replaceProperty(process, 'env', { ...process.env, ...resourceStudyEnvironment });
+  await installStudyQuotaAudit(db);
   const libraries = await seedResourceStudyLibraries(db);
   for (const library of libraries) {
     await db.query(`INSERT INTO media_server_items(media_server_id,library_id,external_id,title,media_type,metadata)
@@ -39,8 +41,8 @@ test('real HTTP faults retain waits, recover with production cooldowns and settl
     expect(receipt).toMatchObject({ uniqueCompleted: 8, httpAttempts: 11, chargedAttempts: 2, pending: 0 });
     const snapshot = (await db.query('SELECT * FROM enrichment_retry_queue ORDER BY id')).rows;
     await study.pass('drain'); expect((await db.query('SELECT * FROM enrichment_retry_queue ORDER BY id')).rows).toEqual(snapshot);
-    expect((await db.query('SELECT requests_today,is_active FROM omdb_config WHERE is_active')).rows[0])
-      .toMatchObject({ requests_today: 11, is_active: true });
+    // Daily usage can reset while this real-time test crosses UTC midnight.
+    await assertStudyQuotaAudit(db, 11);
     expect(active).toBe(0); expect(logger.error).not.toHaveBeenCalled();
   } finally { await study.close(); }
 }, 270000);
