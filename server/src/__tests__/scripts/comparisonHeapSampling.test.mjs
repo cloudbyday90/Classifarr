@@ -51,6 +51,14 @@ test('keeps both validator boundaries and their shared error helper visible', ()
   expect(result.components).toEqual({ vector_validation: 17 });
 });
 
+test('keeps extracted centroid arithmetic in membership allocation totals', () => {
+  const result = summarizeComparisonHeapProfile(profile(node(source('inventoryRepresentativeMembership'), '', 2, [
+    node(source('representativeCentroidArithmetic'), 'accumulateRepresentativeVector', 3, [node('', '', 5)]),
+  ])));
+  expect(result.components).toEqual({ membership_validation: 10 });
+  expect(result.sampledEstimatedBytes).toBe(10);
+});
+
 function fixture(failMethod) {
   return { connect: jest.fn(), disconnect: jest.fn(), post: jest.fn(async method => {
     if (method === failMethod) throw new Error('private protocol failure');

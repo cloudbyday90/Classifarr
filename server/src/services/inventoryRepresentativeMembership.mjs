@@ -2,6 +2,7 @@
 import { setImmediate } from 'node:timers/promises';
 import { representativeValidationError } from './representativeValidation.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
+import { accumulateRepresentativeVector } from './representativeCentroidArithmetic.mjs';
 
 function validateMean(sum, centroid) {
   const norm = Math.sqrt(sum.reduce((total, value) => total + value * value, 0));
@@ -48,8 +49,13 @@ export async function validatedRecoveryGroups(profile, vectors, dimensions, sign
     const sum = Array(dimensions).fill(0);
     for (const hash of groups[index]) {
       if (processed++ % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
-      const vector = normalize(vectors.get(hash), dimensions);
-      for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
+      if (normalize === normalizeDescriptionVector) {
+        accumulateRepresentativeVector(sum, vectors.get(hash), dimensions);
+      } else {
+        // Build-local cached/custom normalizers retain their existing contract.
+        const vector = normalize(vectors.get(hash), dimensions);
+        for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
+      }
     }
     validateMean(sum, selected.groups[index].centroid);
   }
@@ -63,8 +69,7 @@ async function sumRecoveryBatch(readVectors, hashes, sum, dimensions, signal) {
   signal?.throwIfAborted();
   for (let index = 0; index < hashes.length; index++) {
     if (index % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
-    const vector = normalizeDescriptionVector(vectors.get(hashes[index]), dimensions);
-    for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
+    accumulateRepresentativeVector(sum, vectors.get(hashes[index]), dimensions);
   }
 }
 

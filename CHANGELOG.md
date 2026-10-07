@@ -44,6 +44,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   preserving exact results, signed zero and validation on every cache lookup.
   Reuse private representative-fingerprint byte storage instead of allocating it
   per vector, preserving exact v4 fingerprints and validation on every append.
+  Validate representative centroids without temporary normalized-vector arrays,
+  retaining exact arithmetic, injected normalizers and cancellation boundaries.
   End representative fitting-snapshot and staged-callback lifetimes before fresh
   verification, retaining both reads and all publication safeguards.
   Stream comparison verification vectors in bounded batches while preserving exact

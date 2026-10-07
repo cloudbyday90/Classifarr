@@ -21,6 +21,7 @@ function component({ url = '', functionName = '' } = {}) {
     descriptionVectorNormalizer: 'shared_normalization', inventoryDescriptionSimilarity: 'vector_normalization',
     descriptionVectorArithmetic: 'normalization_arithmetic',
     inventoryGroupBenchmarkControl: 'broad_control', inventoryRepresentativeMembership: 'membership_validation',
+    representativeCentroidArithmetic: 'membership_validation',
     inventoryMultiScaleProfile: 'profile_assembly',
     inventoryDescriptionVectorReader: 'vector_read', inventoryDescriptionVectorCache: 'vector_cache',
     inventoryDescriptionVectorParsing: 'vector_parsing', inventoryDescriptionVectorDecoding: 'vector_assembly',

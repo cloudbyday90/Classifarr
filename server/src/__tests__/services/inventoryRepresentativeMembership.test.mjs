@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { expect, test } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import { fitRepresentativeGeometry } from '../../services/inventoryRepresentativeGeometry.mjs';
 import { fitStableRepresentativeGeometry } from '../../services/inventoryRepresentativeStability.mjs';
 import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
@@ -147,4 +147,62 @@ test('streamed geometry bounds components and preserves membership order across 
     calls.push(batch); return new Map(batch.map(hash => [hash, vector]));
   }, dimensions)).toEqual([hashes]);
   expect(calls.map(batch => batch.length)).toEqual([16, 16, 8]); expect(calls.flat()).toEqual(hashes);
+});
+
+function centroidFixture(vector = [1, 0], count = 3) {
+  const hashes = Array.from({ length: count }, (_, i) => i.toString(16).padStart(64, '0'));
+  const vectors = new Map(hashes.map(hash => [hash, [...vector]]));
+  const profile = { coverage: { status: 'complete' }, selectedStart: 0,
+    starts: [{ converged: true, groups: [{ centroid: [1, 0] }] }], membership: { groups: [hashes] } };
+  return { hashes, vectors, profile, read: async batch => new Map(batch.map(hash => [hash, vectors.get(hash)])) };
+}
+
+test('injected normalizers are still called and their returned values drive the mean', async () => {
+  const { hashes, vectors, profile } = centroidFixture();
+  profile.starts[0].groups[0].centroid = [0, 1];
+  const borrowed = Object.freeze([0, 1]);
+  const normalize = jest.fn(() => borrowed);
+  expect(await validatedRecoveryGroups(profile, vectors, 2, undefined, normalize)).toEqual([hashes]);
+  expect(normalize.mock.calls).toEqual(hashes.map(hash => [vectors.get(hash), 2]));
+  expect(borrowed).toEqual([0, 1]);
+  await expect(validatedRecoveryGroups(profile, vectors, 2)).rejects.toMatchObject({ representativeIssue: 'profile_structure' });
+});
+
+test.each(['full', 'streamed'])('%s preserves centroid tolerance and returns owned memberships', async mode => {
+  const { hashes, vectors, profile, read } = centroidFixture();
+  const validate = () => mode === 'full' ? validatedRecoveryGroups(profile, vectors, 2)
+    : validatedRecoveryGroupsStreamed(profile, read, 2);
+  profile.starts[0].groups[0].centroid[1] = 0.5e-6;
+  const result = await validate();
+  expect(result).toEqual([hashes]); expect(result[0]).not.toBe(hashes);
+  result[0].fill('changed'); expect(profile.membership.groups[0]).toEqual(hashes);
+  profile.starts[0].groups[0].centroid[1] = 1.1e-6;
+  await expect(validate()).rejects.toMatchObject({ representativeIssue: 'profile_structure' });
+});
+
+test.each(['full', 'streamed'])('%s still rejects a changed source vector on subsequent validation', async mode => {
+  const { hashes, vectors, profile, read } = centroidFixture();
+  const validate = () => mode === 'full' ? validatedRecoveryGroups(profile, vectors, 2)
+    : validatedRecoveryGroupsStreamed(profile, read, 2);
+  await validate(); vectors.get(hashes[1])[1] = Infinity;
+  await expect(validate()).rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
+});
+
+test.each(['full', 'streamed'])('%s aborts at its existing cooperative boundary', async mode => {
+  const { vectors, profile, read } = centroidFixture([1, 0], 300);
+  const controller = new AbortController(), error = new Error('synthetic_abort');
+  const pending = mode === 'full' ? validatedRecoveryGroups(profile, vectors, 2, controller.signal)
+    : validatedRecoveryGroupsStreamed(profile, read, 2, controller.signal);
+  controller.abort(error);
+  await expect(pending).rejects.toBe(error);
+});
+
+test('streamed validation propagates read failures and performs no read after a pre-abort', async () => {
+  const { profile } = centroidFixture();
+  const error = new Error('synthetic_read_failure'), read = jest.fn(async () => { throw error; });
+  await expect(validatedRecoveryGroupsStreamed(profile, read, 2)).rejects.toBe(error);
+  read.mockClear();
+  const controller = new AbortController(); controller.abort(error);
+  await expect(validatedRecoveryGroupsStreamed(profile, read, 2, controller.signal)).rejects.toBe(error);
+  expect(read).not.toHaveBeenCalled();
 });
