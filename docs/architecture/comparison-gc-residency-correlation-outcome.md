@@ -189,6 +189,9 @@ No release, version bump, PR merge, new branch or Unraid mutation.
 
 ## Recommendation stack
 
+Follow-up: the [fingerprint-buffer outcome](comparison-fingerprint-buffer-outcome.md)
+records the implemented prototype, exact-hash checks and separate image measurements.
+
 1. Keep memory admission and runtime GC policy unchanged. The benefit is genuine
    protection while pooled pages still occupy RAM; the tradeoff is that optional
    work can defer until natural reclamation. Forced GC or discounting pools would
