@@ -40,5 +40,6 @@ the earlier failed receipt is not retroactively described as passing.
 
 Keep exact total and per-day accounting. Do not weaken the assertion to a range,
 skip tests near midnight or modify production quotas to fit a lifetime assertion.
-Keep the real-clock HTTP test and explicit boundary regression together. CI still
-needs its own passing receipt; local verification does not substitute for that run.
+Keep the real-clock HTTP test and explicit boundary regression together. Track
+the [follow-up CI receipt](https://github.com/cloudbyday90/Classifarr/actions/runs/37551094913)
+for commit `e559f873` separately; local verification does not substitute for that run.

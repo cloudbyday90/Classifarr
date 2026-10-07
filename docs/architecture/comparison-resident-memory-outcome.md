@@ -183,6 +183,12 @@ and no PR merge. Registry metadata confirms the proposed undici-types range.
 
 ## Next decision
 
+Follow-up: the [separate comparison retry policy](comparison-resource-retry-outcome.md)
+has now passed mixed-failure regression tests and the unchanged full catalog study
+through revalidation. That later run did not encounter comparison pressure, so it
+does not replace this failed trace or prove natural comparison-pressure recovery.
+Native/anonymous-allocation attribution remains the next memory investigation.
+
 1. Separate bounded comparison resource-deferral timing from actual build/provider
    failure backoff, as already done for representative fitting. Preserve existing
    admission, TTL/revision checks, cancellation and genuine-failure budgets. This
