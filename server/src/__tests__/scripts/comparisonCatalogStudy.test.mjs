@@ -98,8 +98,12 @@ test.each([
 ])('rejects incomplete or contradictory catalog evidence (%#)', change => {
   const s = receipt(); change(s); expect(() => assertComparisonCatalogReceipt(s, 'bounded')).toThrow();
 });
-test.each([false, true])('launcher preserves immutable image, bounded evidence and owned cleanup (failure=%s)', async failed => {
-  const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn();
+test.each([
+  { failed: false, traceGc: false }, { failed: true, traceGc: false },
+  { failed: false, traceGc: true }, { failed: true, traceGc: true },
+  { failed: false, traceGc: true, missingGc: true },
+])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc }) => {
+  const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn(), saveGcTrace = jest.fn();
   const run = jest.fn((_command, args) => {
     let stdout = '';
     if (args[0] === 'image' && args[1] === 'inspect') stdout = imageId;
@@ -110,21 +114,42 @@ test.each([false, true])('launcher preserves immutable image, bounded evidence a
     if (args.includes('src/scripts/runResourceStudy.mjs')) {
       const action = args.at(-1);
       if (action === 'comparison-catalog') return { status: failed ? 1 : 0, stderr: '',
-        stdout: 'STUDY_PROGRESS {"phase":"catalog_drained","inventory":5776,"secret":"private"}\n' +
+        stdout: (traceGc && !missingGc ? '[123:0xabcdef] 100 ms: Mark-Compact 50.0 (60.0) -> 20.0 (30.0) MB, pooled: 20 MB, 1.00 / 0.00 ms private\n' : '') +
+          'STUDY_PROGRESS {"phase":"catalog_drained","inventory":5776,"secret":"private"}\n' +
           `RESOURCE_STUDY ${JSON.stringify(receipt())}` };
       stdout = `RESOURCE_STUDY ${JSON.stringify(action === 'seed' ? { seeded: true } : resourceStudyStartupFixture('bounded'))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
   const pending = runResourceStudyCompose({ mode: 'comparison-catalog', budget: 'bounded', candidateImageId: imageId,
-    run, save, saveTrace, report: () => {}, random: size => Buffer.alloc(size, 7) });
+    run, save, saveTrace, traceGc, saveGcTrace, report: () => {}, random: size => Buffer.alloc(size, 7) });
   if (failed) await expect(pending).rejects.toThrow('resource_study_command_failed');
+  else if (missingGc) await expect(pending).rejects.toThrow('resource_study_gc_evidence_incomplete');
   else await expect(pending).resolves.toMatchObject({ imageId, cleanup: 'passed' });
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
-  expect(save).toHaveBeenCalledTimes(failed ? 0 : 1);
+  expect(save).toHaveBeenCalledTimes(failed || missingGc ? 0 : 1);
   expect(saveTrace.mock.calls[0][1]).toEqual([{ phase: 'catalog_drained', inventory: 5776 }]);
+  expect(saveGcTrace).toHaveBeenCalledTimes(traceGc ? 1 : 0);
+  if (traceGc) {
+    expect(saveGcTrace.mock.calls[0][1].status).toBe(missingGc ? 'unavailable' : 'complete');
+    expect(JSON.stringify(saveGcTrace.mock.calls)).not.toMatch(/private|abcdef|123/);
+  }
+  for (const [, args, options] of run.mock.calls) {
+    const enabled = traceGc && args.includes('src/scripts/runResourceStudy.mjs') && args.at(-1) === 'comparison-catalog';
+    expect(args.includes('--trace-gc')).toBe(enabled);
+    expect(args.includes('--trace-gc-ignore-scavenger')).toBe(enabled);
+    expect(options.shell).toBe(false);
+    expect(args).not.toContain('--expose-gc');
+  }
 });
+
+test.each([{ mode: 'soak', traceGc: true }, { mode: 'comparison-catalog', traceGc: 'true' }])(
+  'GC tracing refuses invalid scope before Docker (%j)', async options => {
+    const run = jest.fn();
+    await expect(runResourceStudyCompose({ ...options, run })).rejects.toThrow('resource_study_gc_scope_invalid');
+    expect(run).not.toHaveBeenCalled();
+  });
 test('catalog trace keeps numeric evidence and rejects payload fields', () => {
   expect(collectComparisonStudyTrace('STUDY_PROGRESS {"phase":"catalog_drained","completed":5776,"cached":5776,"url":"private"}'))
     .toEqual([{ phase: 'catalog_drained', completed: 5776, cached: 5776 }]);

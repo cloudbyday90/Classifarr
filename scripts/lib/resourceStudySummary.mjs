@@ -16,6 +16,7 @@ export function formatResourceStudySummary(result) {
       'Synthetic providers/vectors and schedule adapter; not full application or capacity evidence.\n\n' +
       `Unique metadata completions: ${result.study.work.completed}. Load drained at ${result.study.drainedAtMs} ms.\n` +
       `Natural pressure recovery observed: ${result.study.pressureRecoveryObserved ? 'yes' : 'no; not proven by this run'}.\n` +
+      (result.gcTrace ? 'Opt-in major-GC tracing enabled: attribution only, not an uninstrumented timing comparison. See sanitized comparison-gc-trace.json.\n' : '') +
       'No forced GC, restart, altered clocks or reduced safeguards. See JSON for peaks and admission decisions.\n';
   }
   if (result?.mode === 'comparison-recovery') {
