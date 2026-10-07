@@ -39,8 +39,9 @@ Database/unknown errors during streamed recovery abort this attempt rather than
 publishing incomplete preparation. Subsequent scheduled retries use the existing
 budgets; no counter resets, forced GC or relaxed memory admission.
 
-Completion means a verified model and staged optional consumers published together
-after fresh checks, not completion of import/backfill. Optional AI does not hold
+Completion means the model passed fresh checks and eligible optional consumer
+batches may commit; their independent callbacks are not a database transaction.
+It does not mean completion of import/backfill. Optional AI does not hold
 import-plus-metadata recovery open. No live Unraid recovery is part of this work.
 
 ## Research and tradeoffs

@@ -208,6 +208,10 @@ No release, tag, version change, new branch or Unraid deployment.
 
 ## Recommendation stack
 
+Follow-up: [bounded warm preparation](representative-warm-preparation-outcome.md)
+implements item 2 below and records complete-cycle measurements. The first full
+warm vector map is gone; overall peak memory still needs investigation.
+
 1. Keep this expanded profiler and all memory safeguards. It now measures real
    optional consumers, but it is deliberately not a production memory fix.
 2. Next prototype **bounded warm representative preparation**: avoid the first
