@@ -17,6 +17,7 @@ export function formatResourceStudySummary(result) {
       `Unique metadata completions: ${result.study.work.completed}. Load drained at ${result.study.drainedAtMs} ms.\n` +
       `Natural pressure recovery observed: ${result.study.pressureRecoveryObserved ? 'yes' : 'no; not proven by this run'}.\n` +
       (result.study.postStopGc ? `Post-stop main-thread major GC: ${result.study.postStopGc.status === 'observed' ? 'observed; surviving weak references are not a leak verdict' : 'not observed within five minutes; retention remains inconclusive'}. See JSON for before/after counts.\n` : '') +
+      (result.study.postStopResidency ? 'Post-GC quiet window: five mapping-category observations over two minutes; mapping categories do not establish allocator ownership. See JSON for availability and counters.\n' : '') +
       (result.gcTrace ? 'Opt-in major-GC tracing enabled: attribution only, not an uninstrumented timing comparison. See sanitized comparison-gc-trace.json.\n' : '') +
       'No forced GC, restart, altered clocks or reduced safeguards. See JSON for peaks and admission decisions.\n';
   }

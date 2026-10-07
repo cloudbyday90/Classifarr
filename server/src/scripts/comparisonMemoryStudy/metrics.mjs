@@ -8,6 +8,8 @@ import { assertStudyBudget } from '../resourceStudyBudget.mjs';
 import { readComparisonResidentMemory } from './residentMemory.mjs';
 import { observeNaturalMajorGc } from './naturalMajorGc.mjs';
 import { projectPostStopSample, assertPostStopGcReceipt } from './postStopGcContract.mjs';
+import { readComparisonMappings } from './mappingMemory.mjs';
+import { observeQuiescentResidency } from './quiescentResidency.mjs';
 
 /** Aggregate-only observer. Weak references never own the measured snapshots. */
 export function createComparisonMemoryMetrics({ collect = false, emit = value => process.stdout.write(`${JSON.stringify(value)}\n`) } = {}) {
@@ -76,7 +78,9 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
       // Concurrent phase callbacks share this observation, never start overlapping proc walks.
       residentSampling ??= readComparisonResidentMemory(cgroupVersion).finally(() => { residentSampling = null; });
       const resident = await residentSampling;
+      const mappings = /^post_stop_(gc_(before|after)|residency_[0-4])$/.test(name) ? await readComparisonMappings() : undefined;
       const row = { phase: name, elapsedMs: Math.round(performance.now() - started), ...current, resident,
+        ...(mappings ? { mappings } : {}),
         createdWorkers: created, exitedWorkers: exited, ...extra };
       emit(row); return row;
     },
@@ -95,6 +99,14 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
       const after = projectPostStopSample(await this.settled('post_stop_gc_after'));
       const result = { version: 1, ...observation, before, after };
       assertPostStopGcReceipt(result); return result;
+    },
+    async observePostStopResidency(check) {
+      const initialWorkers = created;
+      return observeQuiescentResidency({ sample: name => this.mark(name), check: () => {
+        if (collect || workers.size || created !== exited || created !== initialWorkers) throw new Error('comparison_residency_not_quiescent');
+        if (sampleError) throw sampleError;
+        check();
+      } });
     },
     async close() {
       clearInterval(timer); await sampling; await residentSampling;

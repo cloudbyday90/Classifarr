@@ -23,6 +23,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   Correlate post-stop model/cache weak-reference counts with natural major GC in
   an opt-in bounded study; distinguish collection evidence from an inconclusive
   timeout without forcing GC or changing production safeguards.
+  Observe resident mapping categories through a bounded post-GC quiet window,
+  without recording process addresses or changing allocation policy.
 
 ### Fixed
 

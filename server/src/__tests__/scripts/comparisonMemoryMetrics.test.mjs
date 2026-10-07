@@ -11,6 +11,8 @@ jest.unstable_mockModule('../../scripts/resourceStudyMetrics.mjs', () => ({ ...a
 let resolveObservation;
 const observe = jest.fn(() => new Promise(resolve => { resolveObservation = resolve; }));
 jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/residentMemory.mjs', () => ({ readComparisonResidentMemory: observe }));
+const mappings = jest.fn(async () => ({ status: 'unavailable' }));
+jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/mappingMemory.mjs', () => ({ readComparisonMappings: mappings }));
 const gc = jest.fn(async () => ({ status: 'observed', scope: 'main_thread_major_gc_event',
   windowStartMs: 0, windowEndMs: 0, waitBudgetMs: 300000, event: { startMs: 0, durationMs: 0, kind: 4, flags: 0 } }));
 jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/naturalMajorGc.mjs', () => ({ observeNaturalMajorGc: gc, POST_STOP_GC_WAIT_MS: 300000 }));
@@ -18,6 +20,7 @@ const { createComparisonMemoryMetrics } = await import('../../scripts/comparison
 beforeEach(() => {
   observe.mockReset().mockImplementation(() => new Promise(resolve => { resolveObservation = resolve; }));
   gc.mockClear();
+  mappings.mockClear();
 });
 
 test('synchronous boundaries emit only main-thread/process memory without a proc walk', async () => {
@@ -29,6 +32,7 @@ test('synchronous boundaries emit only main-thread/process memory without a proc
     for (const key of ['rss', 'heapUsed', 'mainHeapPhysicalBytes']) expect(records[0][key]).toBeGreaterThan(0);
     for (const key of ['containerBytes', 'workerHeapUsed', 'resident']) expect(records[0]).not.toHaveProperty(key);
     expect(observe.mock.calls.length).toBe(before);
+    expect(mappings).not.toHaveBeenCalled();
   } finally { await metrics.close(); }
 });
 
@@ -48,6 +52,7 @@ test('post-stop observation refuses active workers; after exit it samples only t
     expect(result.after.alive.comparisonHandle).toBe(1);
     expect(result.before.createdWorkers).toBe(1); expect(result.after.activeWorkers).toBe(0);
     expect(gc).toHaveBeenCalledTimes(1);
+    expect(mappings).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(result)).not.toContain('ref');
   } finally { await metrics.close(); }
 });

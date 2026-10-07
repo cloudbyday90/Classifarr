@@ -64,6 +64,10 @@ new isolated build, or call the existing `runResourceStudyCompose` with
 `mode: 'comparison-catalog', budget: 'bounded', observePostStopGc: true` and an
 immutable `candidateImageId`. Do not point the fixture at an existing database.
 
+The [quiescent-residency extension](comparison-quiescent-residency-design.md)
+now adds five mapping-category observations over two minutes when this option
+observes a qualifying GC event. A no-event timeout does not run that extension.
+
 Test event filtering, asynchronous delivery, timeout, forced flags, cleanup,
 worker/admission refusal, bounded sanitized receipts and runner option propagation.
 Run a no-cache exact-image full catalog with this option, dump/check the schema in

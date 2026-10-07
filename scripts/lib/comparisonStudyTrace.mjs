@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { projectComparisonResident } from './comparisonResidentProjection.mjs';
+import { projectComparisonMappings } from '../../server/src/scripts/comparisonMemoryStudy/mappingContract.mjs';
 
 const HEAP_NUMBERS = ['mainHeapPhysicalBytes', 'mainV8MallocBytes', 'workerHeapPhysicalBytes'];
 const NUMBERS = ['elapsedMs', 'rss', 'heapUsed', 'heapTotal', 'external', 'arrayBuffers',
@@ -12,7 +13,7 @@ const REFERENCES = ['snapshot', 'decodedVector', 'ownedSource', 'ownedVector',
   'shadowBatch', 'neighborhoodBatch', 'representativeModel'];
 const PEAK_NUMBERS = ['samples', 'rss', 'heapUsed', 'heapTotal', 'external', 'arrayBuffers',
   'containerBytes', 'kernelPeakBytes', 'pids', 'activeWorkers', 'workerHeapUsed', 'memoryLimitHits', 'oomKill', ...HEAP_NUMBERS];
-const PHASE = /^(setup|baseline|stopped|post_stop_idle|post_stop_gc_(before|after)|summary|catalog_drained|recovery_((shadow|neighborhood)_(prepare|commit)_(start|end)|admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
+const PHASE = /^(setup|baseline|stopped|post_stop_idle|post_stop_gc_(before|after)|post_stop_residency_[0-4]|summary|catalog_drained|recovery_((shadow|neighborhood)_(prepare|commit)_(start|end)|admission|source_changed|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|worker_fit|control|community|quality)|cycle_[0-4]_(start|read_\d{1,2}|build_start|build_end|representative_fit|representative|comparison|idle|worker_fit|control|community|quality))$/;
 const STATUSES = new Set(['ready', 'published', 'up_to_date', 'revalidated', 'deferred', 'unavailable', 'degraded',
   'not_due', 'yielded', 'cancelled', 'disabled', 'unsupported_provider', 'cache_budget_exceeded',
   'already_running', 'cooldown', 'failed', 'invalidated', 'capacity']);
@@ -51,6 +52,8 @@ export function collectComparisonStudyTrace(output) {
     if (typeof value.mainThreadOnly === 'boolean') row.mainThreadOnly = value.mainThreadOnly;
     const resident = projectComparisonResident(value.resident);
     if (resident) row.resident = resident;
+    const mappings = projectComparisonMappings(value.mappings);
+    if (mappings) row.mappings = mappings;
     if (['comparison', 'representative'].includes(value.worker)) row.worker = value.worker;
     if (value.kind === 'discovery') row.kind = value.kind;
     if (typeof value.allowed === 'boolean') row.allowed = value.allowed;

@@ -93,6 +93,12 @@ passed, but is not substituted for the new source's result. No
 release, tag or PR merge was created. Documentation-only
 follow-up commits record results and do not change the image's tested runtime.
 
+Subsequent check on 2026-10-07: that exact source run completed successfully,
+including Build and Test and Tests with Database. This closes the pending CI
+check above; it does not turn the historical generic error into a proven diagnosis
+or authorize a release. Continue with the
+[quiescent-residency investigation](comparison-quiescent-residency-design.md).
+
 ## Random open PR trial
 
 Fresh random selection from two open PRs chose

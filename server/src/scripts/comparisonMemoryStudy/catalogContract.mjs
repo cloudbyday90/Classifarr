@@ -6,6 +6,7 @@ import { comparisonRecoveryEvidence } from './recoveryContract.mjs';
 import { assertComparisonAllocationReceipt } from './allocationContract.mjs';
 import { assertPostStopGcReceipt } from './postStopGcContract.mjs';
 import { POST_STOP_GC_WAIT_MS } from './naturalMajorGc.mjs';
+import { assertQuiescentResidency, QUIESCENT_RESIDENCY_MS } from './quiescentResidency.mjs';
 
 export function comparisonCatalogCompletion(attempts, drainedAtMs) {
   if (!Number.isSafeInteger(drainedAtMs) || drainedAtMs <= 0) return false;
@@ -32,9 +33,18 @@ export function assertComparisonCatalogReceipt(study, budget) {
     assert.equal(study.allocations, undefined); assertPostStopGcReceipt(study.postStopGc);
     const span = study.postStopGc.after.elapsedMs - study.postStopGc.before.elapsedMs;
     assert.ok(study.durationMs - workloadDuration >= span);
-    assert.ok(study.durationMs - workloadDuration <= POST_STOP_GC_WAIT_MS + 30_000);
+    assert.ok(study.durationMs - workloadDuration <= POST_STOP_GC_WAIT_MS + 30_000 +
+      (study.postStopResidency ? QUIESCENT_RESIDENCY_MS + 30_000 : 0));
     assert.equal(study.postStopGc.after.createdWorkers, study.measurement.createdWorkers);
   } else assert.equal(study.workloadDurationMs, undefined);
+  if (study.postStopResidency !== undefined) {
+    assert.equal(study.postStopGc?.status, 'observed');
+    assertQuiescentResidency(study.postStopResidency);
+    const samples = study.postStopResidency.samples;
+    assert.ok(samples[0].elapsedMs >= study.postStopGc.after.elapsedMs);
+    assert.ok(samples[4].elapsedMs <= study.durationMs);
+    assert.equal(samples[0].createdWorkers, study.measurement.createdWorkers);
+  }
   for (const row of [study.initial, study.final]) {
     assertStudyCgroup(row); assertStudyBudget(row, budget);
     assert.equal(row.oomKill, 0); assert.equal(row.memoryLimitHits, 0); assert.ok([null, 0].includes(row.oom));

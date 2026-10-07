@@ -153,6 +153,25 @@ test('allocation receipt requires bounded correlated build and actual post-drain
     expect(() => assertComparisonCatalogReceipt(invalid, 'bounded')).toThrow();
   }
 });
+test('quiet residency must follow observed GC, fit the study interval and retain exited worker identity', () => {
+  const gc = postStopReceipt();
+  Object.assign(gc, { status: 'observed', windowEndMs: 1000100, event: { startMs: 1000000, durationMs: 100, kind: 4, flags: 0 } });
+  gc.after.elapsedMs = 990101;
+  const samples = Array.from({ length: 5 }, (_, index) => ({ elapsedMs: 990101 + index * 30000,
+    rss: 30, heapUsed: 10, heapTotal: 20, external: 4, arrayBuffers: 2, containerBytes: 40,
+    createdWorkers: 2, exitedWorkers: 2, activeWorkers: 0, mainHeapPhysicalBytes: 20, mainV8MallocBytes: 1,
+    mappings: { status: 'unavailable' } }));
+  const row = { ...receipt(), postStopGc: gc, workloadDurationMs: 990000, durationMs: 1110102,
+    postStopResidency: { version: 1, durationMs: 120000, samples } };
+  expect(() => assertComparisonCatalogReceipt(row, 'bounded')).not.toThrow();
+  expect(formatResourceStudySummary({ mode: row.profile, budget: row.budget, cleanup: 'passed', study: row })).toContain('five mapping-category observations');
+  for (const change of [r => { delete r.postStopGc; }, r => { r.durationMs--; r.durationMs--; },
+    r => { r.postStopResidency.samples[0].elapsedMs = 990100; },
+    r => { r.postStopResidency.samples[4].createdWorkers++; }]) {
+    const invalid = structuredClone(row); change(invalid);
+    expect(() => assertComparisonCatalogReceipt(invalid, 'bounded')).toThrow();
+  }
+});
 test('completion requires settled loaded context and later real scheduled revalidation, not invented pressure', () => {
   const s = receipt(); expect(comparisonCatalogCompletion(s.attempts, null)).toBe(false);
   expect(() => assertComparisonCatalogReceipt(s, 'bounded')).not.toThrow();
@@ -182,8 +201,9 @@ test.each([
   { failed: true, traceGc: false, profileAllocations: true },
   { failed: false, traceGc: false, observePostStopGc: true },
   { failed: false, traceGc: false, observePostStopGc: true, missingPostStop: true },
+  { failed: false, traceGc: false, observePostStopGc: true, missingResidency: true },
   { failed: true, traceGc: false, observePostStopGc: true },
-])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc, profileAllocations = false, missingAllocations = false, observePostStopGc = false, missingPostStop = false }) => {
+])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc, profileAllocations = false, missingAllocations = false, observePostStopGc = false, missingPostStop = false, missingResidency = false }) => {
   const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn(), saveGcTrace = jest.fn();
   const run = jest.fn((_command, args) => {
     let stdout = '';
@@ -198,7 +218,7 @@ test.each([
         stdout: (traceGc && !missingGc ? '[123:0xabcdef] 100 ms: Mark-Compact 50.0 (60.0) -> 20.0 (30.0) MB, pooled: 20 MB, 1.00 / 0.00 ms private\n' : '') +
           'STUDY_PROGRESS {"phase":"catalog_drained","inventory":5776,"secret":"private"}\n' +
           `RESOURCE_STUDY ${JSON.stringify({ ...receipt(), ...(profileAllocations && !missingAllocations ? { allocations: allocationReceipt() } : {}),
-            ...(observePostStopGc && !missingPostStop ? { postStopGc: postStopReceipt(), durationMs: 1290002, workloadDurationMs: 990000 } : {}) })}` };
+            ...(observePostStopGc && !missingPostStop ? { postStopGc: { ...postStopReceipt(), ...(missingResidency ? { status: 'observed' } : {}) }, durationMs: 1290002, workloadDurationMs: 990000 } : {}) })}` };
       stdout = `RESOURCE_STUDY ${JSON.stringify(action === 'seed' ? { seeded: true } : resourceStudyStartupFixture('bounded'))}`;
     }
     return { status: 0, stdout, stderr: '' };
@@ -209,10 +229,11 @@ test.each([
   else if (missingGc) await expect(pending).rejects.toThrow('resource_study_gc_evidence_incomplete');
   else if (missingAllocations) await expect(pending).rejects.toThrow('resource_study_allocation_evidence_missing');
   else if (missingPostStop) await expect(pending).rejects.toThrow('resource_study_post_stop_evidence_missing');
+  else if (missingResidency) await expect(pending).rejects.toThrow('resource_study_residency_evidence_missing');
   else await expect(pending).resolves.toMatchObject({ imageId, cleanup: 'passed' });
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
-  expect(save).toHaveBeenCalledTimes(failed || missingGc || missingAllocations || missingPostStop ? 0 : 1);
+  expect(save).toHaveBeenCalledTimes(failed || missingGc || missingAllocations || missingPostStop || missingResidency ? 0 : 1);
   expect(saveTrace.mock.calls[0][1]).toEqual([{ phase: 'catalog_drained', inventory: 5776 }]);
   expect(saveGcTrace).toHaveBeenCalledTimes(traceGc ? 1 : 0);
   if (traceGc) {
@@ -230,7 +251,7 @@ test.each([
       expect(args).toContain(`CLASSIFARR_STUDY_ALLOCATIONS=${sampled ? '1' : '0'}`);
       const postStop = observePostStopGc && args.at(-1) === 'comparison-catalog';
       expect(args).toContain(`CLASSIFARR_STUDY_POST_STOP_GC=${postStop ? '1' : '0'}`);
-      if (args.at(-1) === 'comparison-catalog') expect(options.timeout).toBe(1920000 + (postStop ? 300000 : 0));
+      if (args.at(-1) === 'comparison-catalog') expect(options.timeout).toBe(1920000 + (postStop ? 450000 : 0));
     }
   }
 });

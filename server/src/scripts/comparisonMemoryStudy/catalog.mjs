@@ -38,7 +38,7 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
   } }));
   const metrics = createComparisonMemoryMetrics({ emit }), controller = new AbortController();
   let refreshers, schedule, load, drain, measurement, failure, work, coverage, consumers, beforeStop, drainedAtMs = null;
-  let postStopGc, workloadDurationMs;
+  let postStopGc, postStopResidency, workloadDurationMs;
   const stopWorkers = () => {
     controller.abort(); schedule?.liveMultiScaleWorker?.stop(); schedule?.inventoryRepresentativeProfileWorker?.stop();
     refreshers?.comparison.stop(); refreshers?.representative.stop();
@@ -93,10 +93,15 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
     workloadDurationMs = elapsed();
     try {
       if (!failure && observePostStopGc) {
-        const stopped = consumers.read();
-        assert.equal(stopped.stopped, true); assert.equal(stopped.pending, 0); assert.equal(stopped.groups, 0);
-        for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(admission.classes[kind].active, 0);
+        const check = () => {
+          const stopped = consumers.read();
+          assert.equal(stopped.stopped, true); assert.equal(stopped.pending, 0); assert.equal(stopped.groups, 0);
+          for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(admission.classes[kind].active, 0);
+        };
+        check();
         postStopGc = await metrics.observePostStopGc();
+        check();
+        if (postStopGc.status === 'observed') postStopResidency = await metrics.observePostStopResidency(check);
       }
     } catch (error) { failure ??= error; }
     try { measurement = await metrics.close(); }
@@ -107,6 +112,7 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
   const result = { version: 'comparison_catalog.v2', status: 'measured', profile: 'comparison-catalog', budget,
     durationMs: elapsed(), initial, final: await readStudyCgroup(), drainedAtMs, work, coverage, attempts, decisions,
     ...(observePostStopGc ? { postStopGc, workloadDurationMs } : {}),
+    ...(postStopResidency ? { postStopResidency } : {}),
     pressureRecoveryObserved: Boolean(comparisonRecoveryEvidence(attempts, decisions, drainedAtMs).revalidated),
     measurement, ...(profileAllocations ? { allocations: allocations.read() } : {}), consumers: { beforeStop, afterStop: consumers.read() },
     admission: admission.classes, overlap: admission.overlap, refresh: refreshers.counts() };
