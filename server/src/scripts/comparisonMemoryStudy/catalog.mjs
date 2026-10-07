@@ -21,8 +21,9 @@ import { COMPARISON_RECOVERY_PROFILE, comparisonRecoveryEvidence } from './recov
 import { comparisonCatalogCompletion, assertComparisonCatalogReceipt } from './catalogContract.mjs';
 import { createComparisonAllocationWindows } from './allocationWindows.mjs';
 
-export async function runComparisonCatalogStudy(database, budget, emit, { profileAllocations = false } = {}) {
+export async function runComparisonCatalogStudy(database, budget, emit, { profileAllocations = false, observePostStopGc = false } = {}) {
   assertStudyProviderEnvironment(); assert.equal(budget, 'bounded');
+  assert.equal(typeof observePostStopGc, 'boolean'); assert.ok(!observePostStopGc || !profileAllocations);
   const started = performance.now(), initial = await readStudyCgroup(), scope = new AsyncLocalStorage();
   assertStudyBudget(initial, budget);
   const attempts = [], decisions = [], elapsed = () => Math.round(performance.now() - started);
@@ -37,6 +38,7 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
   } }));
   const metrics = createComparisonMemoryMetrics({ emit }), controller = new AbortController();
   let refreshers, schedule, load, drain, measurement, failure, work, coverage, consumers, beforeStop, drainedAtMs = null;
+  let postStopGc, workloadDurationMs;
   const stopWorkers = () => {
     controller.abort(); schedule?.liveMultiScaleWorker?.stop(); schedule?.inventoryRepresentativeProfileWorker?.stop();
     refreshers?.comparison.stop(); refreshers?.representative.stop();
@@ -88,6 +90,15 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
     await drain;
     try { await metrics.settled('stopped'); }
     catch (error) { failure ??= error; }
+    workloadDurationMs = elapsed();
+    try {
+      if (!failure && observePostStopGc) {
+        const stopped = consumers.read();
+        assert.equal(stopped.stopped, true); assert.equal(stopped.pending, 0); assert.equal(stopped.groups, 0);
+        for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(admission.classes[kind].active, 0);
+        postStopGc = await metrics.observePostStopGc();
+      }
+    } catch (error) { failure ??= error; }
     try { measurement = await metrics.close(); }
     catch (error) { failure ??= error; }
     scope.disable();
@@ -95,6 +106,7 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
   if (failure) throw failure;
   const result = { version: 'comparison_catalog.v2', status: 'measured', profile: 'comparison-catalog', budget,
     durationMs: elapsed(), initial, final: await readStudyCgroup(), drainedAtMs, work, coverage, attempts, decisions,
+    ...(observePostStopGc ? { postStopGc, workloadDurationMs } : {}),
     pressureRecoveryObserved: Boolean(comparisonRecoveryEvidence(attempts, decisions, drainedAtMs).revalidated),
     measurement, ...(profileAllocations ? { allocations: allocations.read() } : {}), consumers: { beforeStop, afterStop: consumers.read() },
     admission: admission.classes, overlap: admission.overlap, refresh: refreshers.counts() };

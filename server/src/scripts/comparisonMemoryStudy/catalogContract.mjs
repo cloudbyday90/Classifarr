@@ -4,6 +4,8 @@ import { assertStudyBudget, assertStudyBudgetContinuity } from '../resourceStudy
 import { assertStudyCgroup } from '../resourceStudyMetrics.mjs';
 import { comparisonRecoveryEvidence } from './recoveryContract.mjs';
 import { assertComparisonAllocationReceipt } from './allocationContract.mjs';
+import { assertPostStopGcReceipt } from './postStopGcContract.mjs';
+import { POST_STOP_GC_WAIT_MS } from './naturalMajorGc.mjs';
 
 export function comparisonCatalogCompletion(attempts, drainedAtMs) {
   if (!Number.isSafeInteger(drainedAtMs) || drainedAtMs <= 0) return false;
@@ -23,7 +25,16 @@ export function assertComparisonCatalogReceipt(study, budget) {
   assert.equal(budget, 'bounded'); assert.equal(study?.budget, budget);
   assert.equal(study.version, 'comparison_catalog.v2'); assert.equal(study.profile, 'comparison-catalog');
   assert.equal(study.status, 'measured');
-  assert.ok(Number.isSafeInteger(study.durationMs) && study.durationMs >= 900_000 && study.durationMs <= 1_800_000);
+  const workloadDuration = study.postStopGc === undefined ? study.durationMs : study.workloadDurationMs;
+  assert.ok(Number.isSafeInteger(workloadDuration) && workloadDuration >= 900_000 && workloadDuration <= 1_800_000);
+  assert.ok(Number.isSafeInteger(study.durationMs) && study.durationMs >= workloadDuration);
+  if (study.postStopGc !== undefined) {
+    assert.equal(study.allocations, undefined); assertPostStopGcReceipt(study.postStopGc);
+    const span = study.postStopGc.after.elapsedMs - study.postStopGc.before.elapsedMs;
+    assert.ok(study.durationMs - workloadDuration >= span);
+    assert.ok(study.durationMs - workloadDuration <= POST_STOP_GC_WAIT_MS + 30_000);
+    assert.equal(study.postStopGc.after.createdWorkers, study.measurement.createdWorkers);
+  } else assert.equal(study.workloadDurationMs, undefined);
   for (const row of [study.initial, study.final]) {
     assertStudyCgroup(row); assertStudyBudget(row, budget);
     assert.equal(row.oomKill, 0); assert.equal(row.memoryLimitHits, 0); assert.ok([null, 0].includes(row.oom));
@@ -41,7 +52,7 @@ export function assertComparisonCatalogReceipt(study, budget) {
     let previous = 0, elapsed = 0;
     for (const row of study.attempts.filter(row => row.worker === worker)) {
       assert.ok(Number.isSafeInteger(row.attempt) && row.attempt > previous && row.attempt <= 60);
-      assert.ok(Number.isSafeInteger(row.elapsedMs) && row.elapsedMs >= elapsed && row.elapsedMs <= study.durationMs);
+      assert.ok(Number.isSafeInteger(row.elapsedMs) && row.elapsedMs >= elapsed && row.elapsedMs <= workloadDuration);
       previous = row.attempt; elapsed = row.elapsedMs;
     }
   }

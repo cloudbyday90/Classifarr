@@ -6,6 +6,8 @@ import { getHeapStatistics } from 'node:v8';
 import { readStudyCgroup, assertStudyCgroup } from '../resourceStudyMetrics.mjs';
 import { assertStudyBudget } from '../resourceStudyBudget.mjs';
 import { readComparisonResidentMemory } from './residentMemory.mjs';
+import { observeNaturalMajorGc } from './naturalMajorGc.mjs';
+import { projectPostStopSample, assertPostStopGcReceipt } from './postStopGcContract.mjs';
 
 /** Aggregate-only observer. Weak references never own the measured snapshots. */
 export function createComparisonMemoryMetrics({ collect = false, emit = value => process.stdout.write(`${JSON.stringify(value)}\n`) } = {}) {
@@ -74,8 +76,9 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
       // Concurrent phase callbacks share this observation, never start overlapping proc walks.
       residentSampling ??= readComparisonResidentMemory(cgroupVersion).finally(() => { residentSampling = null; });
       const resident = await residentSampling;
-      emit({ phase: name, elapsedMs: Math.round(performance.now() - started), ...current, resident,
-        createdWorkers: created, exitedWorkers: exited, ...extra });
+      const row = { phase: name, elapsedMs: Math.round(performance.now() - started), ...current, resident,
+        createdWorkers: created, exitedWorkers: exited, ...extra };
+      emit(row); return row;
     },
     async settled(name, extra = {}) {
       // Separate turns before collection avoid WeakRef's same-job keep-alive guarantee.
@@ -83,7 +86,15 @@ export function createComparisonMemoryMetrics({ collect = false, emit = value =>
       if (session) { await session.post('HeapProfiler.collectGarbage'); await setImmediate(); }
       const alive = {};
       for (const { kind, ref } of references) alive[kind] = (alive[kind] ?? 0) + Number(Boolean(ref.deref()));
-      await this.mark(name, { ...extra, diagnosticGc: collect, alive });
+      return this.mark(name, { ...extra, diagnosticGc: collect, alive });
+    },
+    async observePostStopGc() {
+      if (collect || workers.size || created !== exited) throw new Error('comparison_gc_not_quiescent');
+      const before = projectPostStopSample(await this.settled('post_stop_gc_before'));
+      const observation = await observeNaturalMajorGc();
+      const after = projectPostStopSample(await this.settled('post_stop_gc_after'));
+      const result = { version: 1, ...observation, before, after };
+      assertPostStopGcReceipt(result); return result;
     },
     async close() {
       clearInterval(timer); await sampling; await residentSampling;

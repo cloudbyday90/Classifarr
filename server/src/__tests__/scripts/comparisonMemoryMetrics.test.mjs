@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { expect, jest, test } from '@jest/globals';
+import { beforeEach, expect, jest, test } from '@jest/globals';
 import { setImmediate } from 'node:timers/promises';
+import { EventEmitter } from 'node:events';
 
 const cgroup = { version: 1, memoryBytes: 100, limitBytes: 2 * 1024 ** 3, memoryLimitHits: 0,
   oomKill: 0, underOom: 0, cpuUsec: 0, throttledUsec: 0, pids: 1, cpuPeriods: 0,
@@ -10,7 +11,14 @@ jest.unstable_mockModule('../../scripts/resourceStudyMetrics.mjs', () => ({ ...a
 let resolveObservation;
 const observe = jest.fn(() => new Promise(resolve => { resolveObservation = resolve; }));
 jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/residentMemory.mjs', () => ({ readComparisonResidentMemory: observe }));
+const gc = jest.fn(async () => ({ status: 'observed', scope: 'main_thread_major_gc_event',
+  windowStartMs: 0, windowEndMs: 0, waitBudgetMs: 300000, event: { startMs: 0, durationMs: 0, kind: 4, flags: 0 } }));
+jest.unstable_mockModule('../../scripts/comparisonMemoryStudy/naturalMajorGc.mjs', () => ({ observeNaturalMajorGc: gc, POST_STOP_GC_WAIT_MS: 300000 }));
 const { createComparisonMemoryMetrics } = await import('../../scripts/comparisonMemoryStudy/metrics.mjs');
+beforeEach(() => {
+  observe.mockReset().mockImplementation(() => new Promise(resolve => { resolveObservation = resolve; }));
+  gc.mockClear();
+});
 
 test('synchronous boundaries emit only main-thread/process memory without a proc walk', async () => {
   const records = [], metrics = createComparisonMemoryMetrics({ emit: row => records.push(row) });
@@ -21,6 +29,26 @@ test('synchronous boundaries emit only main-thread/process memory without a proc
     for (const key of ['rss', 'heapUsed', 'mainHeapPhysicalBytes']) expect(records[0][key]).toBeGreaterThan(0);
     for (const key of ['containerBytes', 'workerHeapUsed', 'resident']) expect(records[0]).not.toHaveProperty(key);
     expect(observe.mock.calls.length).toBe(before);
+  } finally { await metrics.close(); }
+});
+
+test('post-stop observation refuses active workers; after exit it samples only twice and holds no referents', async () => {
+  const metrics = createComparisonMemoryMetrics({ emit: () => {} }), worker = new EventEmitter();
+  worker.threadId = 123;
+  const target = {};
+  metrics.track('comparisonHandle', target);
+  try {
+    process.emit('worker', worker);
+    await expect(metrics.observePostStopGc()).rejects.toThrow('comparison_gc_not_quiescent');
+    expect(gc).not.toHaveBeenCalled();
+    worker.emit('exit');
+    observe.mockResolvedValue({ status: 'partial', cgroupVersion: 1 });
+    const result = await metrics.observePostStopGc();
+    expect(result.before.alive.comparisonHandle).toBe(1);
+    expect(result.after.alive.comparisonHandle).toBe(1);
+    expect(result.before.createdWorkers).toBe(1); expect(result.after.activeWorkers).toBe(0);
+    expect(gc).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(result)).not.toContain('ref');
   } finally { await metrics.close(); }
 });
 

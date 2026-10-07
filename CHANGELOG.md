@@ -20,6 +20,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   bounded numeric batch counters that distinguish refresh work from overlap.
   Add a bounded, offline vector-validation reproduction across parsed and cloned
   input histories, with semantic regression coverage; no validator relaxation.
+  Correlate post-stop model/cache weak-reference counts with natural major GC in
+  an opt-in bounded study; distinguish collection evidence from an inconclusive
+  timeout without forcing GC or changing production safeguards.
 
 ### Fixed
 

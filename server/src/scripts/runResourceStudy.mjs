@@ -14,6 +14,9 @@ export async function runResourceStudy(mode) {
   const allocationMode = process.env.CLASSIFARR_STUDY_ALLOCATIONS ?? '0';
   assert.ok(['0', '1'].includes(allocationMode));
   assert.ok(allocationMode === '0' || mode === 'comparison-catalog');
+  const postStopMode = process.env.CLASSIFARR_STUDY_POST_STOP_GC ?? '0';
+  assert.ok(['0', '1'].includes(postStopMode));
+  assert.ok(postStopMode === '0' || (mode === 'comparison-catalog' && allocationMode === '0'));
   assert.ok(['seed', 'smoke', 'soak', 'capacity', 'image-index', 'image-index-mixed', 'classification-retrieval',
     'comparison-control', 'comparison-concurrent', 'comparison-recovery', 'comparison-catalog', 'budget-normal', 'budget-restore'].includes(mode));
   assert.equal(process.env.CLASSIFARR_RUNTIME_MODE, ['seed', 'budget-normal'].includes(mode) ? 'normal' : 'restore');
@@ -39,7 +42,8 @@ export async function runResourceStudy(mode) {
     if (mode === 'comparison-catalog') {
       const { runComparisonCatalogStudy } = await import('./comparisonMemoryStudy/catalog.mjs');
       return await runComparisonCatalogStudy(db, budget,
-        value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`), { profileAllocations: allocationMode === '1' });
+        value => process.stdout.write(`STUDY_PROGRESS ${JSON.stringify(value)}\n`),
+        { profileAllocations: allocationMode === '1', observePostStopGc: postStopMode === '1' });
     }
     if (mode === 'comparison-recovery') {
       const { runComparisonRecoveryStudy } = await import('./comparisonMemoryStudy/recovery.mjs');

@@ -15,11 +15,12 @@ import { collectComparisonStudyTrace } from './comparisonStudyTrace.mjs';
 import { collectComparisonGcTrace } from './comparisonGcTrace.mjs';
 import { COMPARISON_RECOVERY_PROFILE, assertComparisonRecoveryReceipt } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
 import { assertComparisonCatalogReceipt } from '../../server/src/scripts/comparisonMemoryStudy/catalogContract.mjs';
+import { POST_STOP_GC_WAIT_MS } from '../../server/src/scripts/comparisonMemoryStudy/naturalMajorGc.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
 /** Reuses the isolated installation topology, never the user's compose project. */
-export async function runResourceStudyCompose({ mode = 'soak', budget = 'baseline', candidateImageId, traceGc = false, profileAllocations = false, run = spawnSync, random = randomBytes,
+export async function runResourceStudyCompose({ mode = 'soak', budget = 'baseline', candidateImageId, traceGc = false, profileAllocations = false, observePostStopGc = false, run = spawnSync, random = randomBytes,
   saveGcTrace = (project, trace) => {
     const directory = resolve(root, '.tmp/resource-study', project);
     mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -40,6 +41,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   const catalog = mode === 'comparison-catalog';
   if (typeof profileAllocations !== 'boolean' || (profileAllocations && !catalog)) throw new Error('resource_study_allocation_scope_invalid');
   if (typeof traceGc !== 'boolean' || (traceGc && !catalog)) throw new Error('resource_study_gc_scope_invalid');
+  if (typeof observePostStopGc !== 'boolean' || (observePostStopGc && (!catalog || profileAllocations))) throw new Error('resource_study_post_stop_scope_invalid');
   const recovery = catalog || mode === 'comparison-recovery';
   const comparison = recovery || ['comparison-control', 'comparison-concurrent'].includes(mode);
   const profile = recovery ? COMPARISON_RECOVERY_PROFILE : comparison ? COMPARISON_CONCURRENT_PROFILE
@@ -101,8 +103,10 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
   const probe = mode => parseUpgradeReceipt(compose(['exec', '-T', '-e', 'CLASSIFARR_RESOURCE_STUDY=isolated-synthetic-v1',
     '-e', `CLASSIFARR_RESOURCE_STUDY_BUDGET=${budget}`,
     '-e', `CLASSIFARR_STUDY_ALLOCATIONS=${profileAllocations && mode === 'comparison-catalog' ? '1' : '0'}`,
+    '-e', `CLASSIFARR_STUDY_POST_STOP_GC=${observePostStopGc && mode === 'comparison-catalog' ? '1' : '0'}`,
     'app', 'node', ...(traceGc && mode === 'comparison-catalog' ? ['--trace-gc', '--trace-gc-ignore-scavenger'] : []),
-    'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + profile.idleMs + STUDY_FINISH_BUDGET_MS).stdout, 'RESOURCE_STUDY');
+    'src/scripts/runResourceStudy.mjs', mode], mode === 'seed' ? 120000 : profile.durationMs + profile.idleMs + STUDY_FINISH_BUDGET_MS +
+      (observePostStopGc && mode === 'comparison-catalog' ? POST_STOP_GC_WAIT_MS : 0)).stdout, 'RESOURCE_STUDY');
   const containerId = () => {
     const id = compose(['ps', '--quiet', 'app']).stdout.trim();
     if (!/^[a-f0-9]{12,64}$/.test(id)) throw new Error('resource_study_container_invalid');
@@ -138,6 +142,7 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     report(`RESOURCE_STUDY_RUNNING ${mode} ${budget}`);
     result = { mode, budget, imageId, startup: { fresh: freshStartup, maintenance: maintenanceStartup }, study: probe(mode) };
     if (Boolean(result.study.allocations) !== profileAllocations) throw new Error('resource_study_allocation_evidence_missing');
+    if (Boolean(result.study.postStopGc) !== observePostStopGc) throw new Error('resource_study_post_stop_evidence_missing');
     if (traceGc) {
       if (gcEvidence?.status !== 'complete') throw new Error('resource_study_gc_evidence_incomplete');
       result.gcTrace = { version: 1, status: gcEvidence.status, events: gcEvidence.events.length,
