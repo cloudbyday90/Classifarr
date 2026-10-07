@@ -22,7 +22,7 @@ export async function withRepresentativePreparationReader(query, identity, snaps
     if (active) return Promise.reject(new Error('representative_preparation_batch'));
     pending = readBatch(hashes);
     // Also observe unjoined reads: the transaction must not release a busy connection.
-    pending.catch(() => {});
+    pending.catch(() => {}); // swallow-error: caller receives this rejection; observe unjoined reads until cleanup.
     return pending;
   };
   try {
@@ -30,5 +30,8 @@ export async function withRepresentativePreparationReader(query, identity, snaps
     signal?.throwIfAborted();
     if (active) throw new Error('representative_preparation_reader_active');
     return result;
-  } finally { open = false; await pending?.catch(() => {}); }
+  } finally {
+    open = false;
+    await pending?.catch(() => {}); // swallow-error: preserve the preparation/active-reader error while joining cleanup.
+  }
 }
