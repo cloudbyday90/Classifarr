@@ -26,6 +26,14 @@ workers use `execArgv: []`; do not alter them. A real image probe established th
 V8 tracing is process-wide and worker events still appear despite that empty list.
 Ordinary studies remain unchanged.
 
+Reproduce from the repository root with
+`node scripts/run-resource-study.mjs --comparison-catalog-gc`. The runner builds
+its own isolated candidate by default. For an already built immutable image,
+call `runResourceStudyCompose` with `mode: 'comparison-catalog'`, `budget: 'bounded'`,
+`traceGc: true` and the verified `candidateImageId`. This round uses that pinned
+image path. Sanitized evidence is saved under the runner's random private
+`.tmp/resource-study/` project directory, including on probe failure.
+
 Parse only the pinned trace's major-collection numeric fields: event time, used
 and committed heap before/after, local pool MiB, pause time and reduce/interleaved
 markers. Use bounded opaque numeric source tokens, never raw isolate addresses.
@@ -38,6 +46,10 @@ order. V8's isolate clock and study elapsed clock have different origins: do not
 subtract them or claim atomic synchronization. MiB are rounded upstream; they are
 not exact RSS accounting or allocation call stacks. Local pools exclude shared
 pool contributions after worker teardown.
+The version-1 trace fields named `committedBeforeMiB` / `committedAfterMiB`
+specifically contain V8 `MemoryAllocator::Size()` (allocated spaces). They are
+not the phase sampler's `total_physical_size` or kernel resident memory; do not
+substitute one counter for another.
 
 Keep raw output transient within the existing 8 MiB command buffer. Persist only
 numeric/allowlisted data, never PID, isolate address, arbitrary GC cause, paths,
@@ -73,6 +85,12 @@ Sources discovered through web search and GitHub API and retrieved October 7 UTC
 - [Pinned trace implementation](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/gc-tracer.cc)
   prints local pooled page MiB; it is version-specific diagnostic output, not a
   stable Node API. Refuse changed formats instead of inferring zero.
+- [Allocator counter definition](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/memory-allocator.h)
+  defines `Size()` as allocated spaces; the trace samples this separately from
+  pooled chunks.
+- [Page-pool lifecycle](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/page-pool.cc)
+  distinguishes local pools from shared pages after isolate teardown. Source tokens
+  and isolated GC events do not measure that shared pool atomically.
 - [Linux proc accounting](https://cdn.kernel.org/doc/html/latest/filesystems/proc.html)
   distinguishes anonymous, private dirty and LazyFree pages. Keep kernel counters
   separate from rounded V8 measurements and never subtract them from admission.
