@@ -42,6 +42,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   duplicate arrays while preserving corruption checks and numerical results.
   Reduce normalization callback allocations with shared dense numeric arithmetic,
   preserving exact results, signed zero and validation on every cache lookup.
+  Reuse private representative-fingerprint byte storage instead of allocating it
+  per vector, preserving exact v4 fingerprints and validation on every append.
   End representative fitting-snapshot and staged-callback lifetimes before fresh
   verification, retaining both reads and all publication safeguards.
   Stream comparison verification vectors in bounded batches while preserving exact
