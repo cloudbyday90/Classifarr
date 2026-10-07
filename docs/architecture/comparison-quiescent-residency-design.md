@@ -69,6 +69,8 @@ Test parser boundaries, malformed/duplicate/missing counters, privacy projection
 read failure/cleanup, quiet-window timing, resumed work refusal, receipt integrity
 and launch timeout/cleanup. Run backend/tooling checks, then build the local image
 without cache and measure the complete isolated workload on its immutable ID.
-Record actual results and limitations in the separate outcome document. Back up
-local app-data before recreation; generate schema from an owned disposable image
-container. Production Unraid remains untouched.
+Record actual results and limitations in the separate
+[outcome document](comparison-quiescent-residency-outcome.md). Preserve a verified
+rollback image reference before replacing a build tag; back up local data before
+recreation and state the backup's actual scope. Generate schema from an owned
+disposable image container. Production Unraid remains untouched.

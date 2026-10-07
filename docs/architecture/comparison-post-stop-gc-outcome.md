@@ -203,3 +203,13 @@ separate deterministic test for the skipped-attempt cooldown. Production
 verification remains unchanged. That reproduction does not retroactively prove
 the exact cause of the historic CI failure. Continue with the native/mapping-level
 investigation above once the new source's CI evidence is checked.
+
+## Follow-up: bounded quiet-window result
+
+The [quiescent-residency follow-up](comparison-quiescent-residency-outcome.md)
+completed on a no-cache image with passing source CI. RSS stayed high briefly
+after natural major GC, then fell from about 595 to 138 MiB during the two-minute
+quiet window as small writable anonymous mappings were released. This refines
+the earlier snapshot: delayed reclamation was observed, not established persistent
+retention. Runtime attribution remains a hypothesis; production safeguards stay
+unchanged.
