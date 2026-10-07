@@ -26,6 +26,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   one consistent snapshot, with cancellation checks between batches.
   Reuse exactly revalidated normalized vectors within comparison builds to avoid
   duplicate arrays while preserving corruption checks and numerical results.
+  Reduce normalization callback allocations with shared dense numeric arithmetic,
+  preserving exact results, signed zero and validation on every cache lookup.
   End representative fitting-snapshot and staged-callback lifetimes before fresh
   verification, retaining both reads and all publication safeguards.
   Stream comparison verification vectors in bounded batches while preserving exact

@@ -31,6 +31,15 @@ test('rejects malformed, deep, cyclic and oversized profiles with fixed errors',
   }
 });
 
+test('keeps extracted normalization arithmetic visible in allocation totals', () => {
+  const result = summarizeComparisonHeapProfile(profile(node(source('descriptionVectorNormalizer'), '', 2, [
+    node(source('descriptionVectorArithmetic'), 'divideDescriptionVector', 3, [node('', '', 5)]),
+    node(source('inventoryDescriptionSimilarity'), 'normalizeDescriptionVector', 7),
+  ])));
+  expect(result.sampledEstimatedBytes).toBe(17);
+  expect(result.components).toEqual({ shared_normalization: 2, normalization_arithmetic: 8, vector_normalization: 7 });
+});
+
 function fixture(failMethod) {
   return { connect: jest.fn(), disconnect: jest.fn(), post: jest.fn(async method => {
     if (method === failMethod) throw new Error('private protocol failure');

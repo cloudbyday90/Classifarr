@@ -1,10 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { descriptionVectorNorm, divideDescriptionVector } from './descriptionVectorArithmetic.mjs';
 
 export function normalizeDescriptionVector(vector, dimensions) {
   validateEmbedding(vector, dimensions);
-  const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
-  return vector.map(value => value / norm);
+  return divideDescriptionVector(vector, descriptionVectorNorm(vector));
 }
 
 export function descriptionCosineSimilarity(a, b) {

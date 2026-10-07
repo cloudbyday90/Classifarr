@@ -13,6 +13,7 @@ function component({ url = '', functionName = '' } = {}) {
   const files = {
     adaptiveGroupSplit: 'community_centroid', inventoryCommunityParticipation: 'community_participation',
     descriptionVectorNormalizer: 'shared_normalization', inventoryDescriptionSimilarity: 'vector_normalization',
+    descriptionVectorArithmetic: 'normalization_arithmetic',
     inventoryGroupBenchmarkControl: 'broad_control', inventoryRepresentativeMembership: 'membership_validation',
     inventoryMultiScaleProfile: 'profile_assembly',
   };
