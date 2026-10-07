@@ -25,6 +25,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   timeout without forcing GC or changing production safeguards.
   Observe resident mapping categories through a bounded post-GC quiet window,
   without recording process addresses or changing allocation policy.
+  Correlate those observations with natural major-GC traces and local page-pool
+  readings, keeping ambiguous or missing evidence explicit.
 
 ### Fixed
 

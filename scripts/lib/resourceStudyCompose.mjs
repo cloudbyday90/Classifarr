@@ -17,6 +17,7 @@ import { COMPARISON_RECOVERY_PROFILE, assertComparisonRecoveryReceipt } from '..
 import { assertComparisonCatalogReceipt } from '../../server/src/scripts/comparisonMemoryStudy/catalogContract.mjs';
 import { POST_STOP_GC_WAIT_MS } from '../../server/src/scripts/comparisonMemoryStudy/naturalMajorGc.mjs';
 import { QUIESCENT_RESIDENCY_MS } from '../../server/src/scripts/comparisonMemoryStudy/quiescentResidency.mjs';
+import { correlateComparisonGcResidency } from './comparisonGcResidency.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -163,6 +164,9 @@ export async function runResourceStudyCompose({ mode = 'soak', budget = 'baselin
     else if (mode === 'image-index') assertImageIndexStudyReceipt(result.study, budget);
     else assertResourceStudyReceipt(result.study, mode, budget);
     assertStudyBudgetContinuity(maintenanceStartup.metrics, result.study.initial, result.study.final);
+    if (traceGc && observePostStopGc) {
+      result.gcResidency = correlateComparisonGcResidency(result.study.postStopResidency, gcEvidence);
+    }
     const id = containerId();
     if (!/^[a-f0-9]{12,64}$/.test(id) || docker(['inspect', '--format', '{{.State.OOMKilled}} {{.State.Health.Status}}', id]).stdout.trim() !== 'false healthy') {
       throw new Error('resource_study_container_unhealthy');

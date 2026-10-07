@@ -203,6 +203,9 @@ test.each([
   { failed: false, traceGc: false, observePostStopGc: true, missingPostStop: true },
   { failed: false, traceGc: false, observePostStopGc: true, missingResidency: true },
   { failed: true, traceGc: false, observePostStopGc: true },
+  { failed: false, traceGc: true, observePostStopGc: true },
+  { failed: true, traceGc: true, observePostStopGc: true },
+  { failed: false, traceGc: true, observePostStopGc: true, missingGc: true },
 ])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc, profileAllocations = false, missingAllocations = false, observePostStopGc = false, missingPostStop = false, missingResidency = false }) => {
   const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn(), saveGcTrace = jest.fn();
   const run = jest.fn((_command, args) => {
@@ -234,6 +237,13 @@ test.each([
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
   expect(save).toHaveBeenCalledTimes(failed || missingGc || missingAllocations || missingPostStop || missingResidency ? 0 : 1);
+  if (save.mock.calls.length) {
+    const result = save.mock.calls[0][1];
+    if (traceGc && observePostStopGc) expect(result.gcResidency).toEqual({
+      version: 1, status: 'unavailable', reason: 'quiet_window_missing', intervals: [],
+    });
+    else expect(result.gcResidency).toBeUndefined();
+  }
   expect(saveTrace.mock.calls[0][1]).toEqual([{ phase: 'catalog_drained', inventory: 5776 }]);
   expect(saveGcTrace).toHaveBeenCalledTimes(traceGc ? 1 : 0);
   if (traceGc) {

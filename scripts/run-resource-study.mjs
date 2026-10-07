@@ -4,10 +4,11 @@ import { runResourceBudgetComparison } from './lib/resourceBudgetComparison.mjs'
 
 try {
   const args = process.argv.slice(2);
-  if (args.length > 1 || (args.length === 1 && !['--smoke', '--soak', '--capacity', '--budget-comparison', '--image-index', '--image-index-capacity', '--image-index-mixed', '--classification-retrieval', '--comparison-control', '--comparison-concurrent', '--comparison-recovery', '--comparison-catalog', '--comparison-catalog-gc', '--comparison-catalog-post-stop-gc'].includes(args[0]))) throw new Error('resource_study_arguments_invalid');
+  if (args.length > 1 || (args.length === 1 && !['--smoke', '--soak', '--capacity', '--budget-comparison', '--image-index', '--image-index-capacity', '--image-index-mixed', '--classification-retrieval', '--comparison-control', '--comparison-concurrent', '--comparison-recovery', '--comparison-catalog', '--comparison-catalog-gc', '--comparison-catalog-post-stop-gc', '--comparison-catalog-gc-residency'].includes(args[0]))) throw new Error('resource_study_arguments_invalid');
   if (args[0] === '--budget-comparison') await runResourceBudgetComparison();
   else if (args[0] === '--comparison-catalog-gc') await runResourceStudyCompose({ mode: 'comparison-catalog', budget: 'bounded', traceGc: true });
   else if (args[0] === '--comparison-catalog-post-stop-gc') await runResourceStudyCompose({ mode: 'comparison-catalog', budget: 'bounded', observePostStopGc: true });
+  else if (args[0] === '--comparison-catalog-gc-residency') await runResourceStudyCompose({ mode: 'comparison-catalog', budget: 'bounded', traceGc: true, observePostStopGc: true });
   else if (['--comparison-control', '--comparison-concurrent', '--comparison-recovery', '--comparison-catalog'].includes(args[0])) await runResourceStudyCompose({ mode: args[0].slice(2), budget: 'bounded' });
   else if (args[0] === '--image-index-capacity') await runResourceStudyCompose({ mode: 'image-index', budget: 'image-capacity' });
   else if (args[0] === '--image-index-mixed') await runResourceStudyCompose({ mode: 'image-index-mixed', budget: 'image-capacity' });
