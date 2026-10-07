@@ -5,6 +5,8 @@ import { inspectQueueVacuum, loadQueueVacuumState } from '../../services/queueVa
 import { runQueueVacuumMaintenance } from '../../services/queueVacuumMaintenance.mjs';
 import { prepareQueueVacuumRecovery, reserveQueueVacuumAttempt, finishQueueVacuumAttempt } from '../../services/queueVacuumRecoveryRepository.mjs';
 import { queueVacuumRow } from '../helpers/queueVacuumFixture.mjs';
+import { readQueueTableOptions, withQueueVacuumPressure } from '../helpers/queueVacuumPressureFixture.mjs';
+import { observeQueueVacuumAttempt } from '../helpers/queueVacuumAttemptEvidence.mjs';
 
 const query = (sql, params) => getPool().query(sql, params);
 const maintain = options => runQueueVacuumMaintenance({ database: { pool: getPool() }, ...options });
@@ -16,7 +18,7 @@ beforeEach(async () => {
 });
 
 test('fresh settings include existing tuning; manual vacuum preserves queue rows and verifies both counters', async () => {
-  await query("INSERT INTO task_queue (task_type, payload) VALUES ('synthetic_vacuum', '{}')");
+  await query("INSERT INTO task_queue (task_type, payload, status) VALUES ('synthetic_vacuum', '{}', 'completed')");
   const before = await query('SELECT count(*) FROM task_queue');
   expect(await inspectQueueVacuum({ database: { query } })).toMatchObject({ status: 'autovacuum_enabled',
     vacuumThreshold: 50, vacuumScaleFactor: 0.01, analyzeScaleFactor: 0.05 });
@@ -117,40 +119,61 @@ test('disabled table autovacuum requests review without changing the setting', a
   } finally { await query('ALTER TABLE task_queue RESET (autovacuum_enabled)'); }
 });
 
-test('eligible backend recovery vacuums real dead tuples only after durable admission on an idle platform', async () => {
-  const library = (await query(`INSERT INTO libraries (external_id, name, media_type)
-    VALUES ('vacuum-fixture', 'Synthetic vacuum fixture', 'movie') RETURNING id`)).rows[0].id;
-  const writer = await getPool().connect();
-  try {
-    await query(`INSERT INTO media_server_items (library_id, external_id, title, media_type, enrichment_status)
-      VALUES ($1, 'vacuum-fixture', 'Synthetic fixture', 'movie', 'not_needed')`, [library]);
-    await query("UPDATE task_queue SET status = 'completed' WHERE task_type = 'synthetic_vacuum'");
-    await query('ALTER TABLE task_queue SET (autovacuum_enabled = false)');
-    await writer.query(`INSERT INTO task_queue (task_type, payload, status)
-      SELECT 'synthetic_vacuum_pressure', '{}', 'completed' FROM generate_series(1, 15000)`);
-    await writer.query("DELETE FROM task_queue WHERE task_type = 'synthetic_vacuum_pressure'");
-    await writer.query('SELECT pg_stat_force_next_flush()');
-    await writer.query('SELECT 1');
-    const before = await loadQueueVacuumState(query);
-    expect(Number(before.n_dead_tup)).toBeGreaterThanOrEqual(10000);
-    const epoch = `${before.relation_oid}:${before.stats_reset == null ? 'initial' : new Date(before.stats_reset).toISOString()}`;
-    await query(`UPDATE queue_vacuum_recovery_state SET statistics_epoch = $1,
-      vacuum_progress = $2, pressure_since = clock_timestamp() - INTERVAL '2 hours',
-      observed_at = clock_timestamp() - INTERVAL '15 minutes'`,
-    [epoch, `${before.vacuum_count}:${before.autovacuum_count}`]);
-    await query('ALTER TABLE task_queue RESET (autovacuum_enabled)');
+test.each([1, 2, 3])('eligible recovery verifies real reclamation and restores its fixture (cycle %i)', async () => {
+  const options = await readQueueTableOptions(query);
+  await withQueueVacuumPressure(getPool(), async before => {
     const reports = [];
-    expect(await maintain({ automatic: true, report: value => reports.push(value) })).toMatchObject({ status: 'complete' });
+    const outcome = await observeQueueVacuumAttempt(getPool(), { report: value => reports.push(value) });
+    // The full bounded outcome is included in Jest's diff if verification fails.
+    expect(outcome).toMatchObject({ result: { status: 'complete' }, error: null,
+      evidence: { commands: 1, notices: [] } });
     expect(reports).toEqual([expect.objectContaining({ status: 'started', reason: 'sustained_pressure' })]);
     expect(await state()).toMatchObject({ attempts: 1, last_result: 'completed' });
     expect(new Date((await state()).next_attempt_at).getTime()).toBeGreaterThan(Date.now() + 5 * 3600000);
-    expect(Number((await loadQueueVacuumState(query)).n_dead_tup)).toBeLessThan(10000);
+    const after = await loadQueueVacuumState(query);
+    expect(BigInt(after.vacuum_count)).toBeGreaterThan(BigInt(before.vacuum_count));
+    expect(BigInt(after.analyze_count)).toBeGreaterThan(BigInt(before.analyze_count));
+    expect(Number(after.n_dead_tup)).toBeLessThan(10000);
     expect(await maintain({ automatic: true })).toMatchObject({ status: 'idle' });
     expect((await state()).attempts).toBe(0);
-  } finally {
-    writer.release(true);
-    await query('ALTER TABLE task_queue RESET (autovacuum_enabled)');
-    await query('DELETE FROM media_server_items WHERE library_id = $1', [library]);
-    await query('DELETE FROM libraries WHERE id = $1', [library]);
-  }
+  });
+  expect((await readQueueTableOptions(query)).sort()).toEqual(options.sort());
+});
+
+test('a lock arriving after reservation cannot claim completion or authorize an immediate retry', async () => {
+  await withQueueVacuumPressure(getPool(), async before => {
+    const owner = await getPool().connect();
+    let reserved;
+    try {
+      const outcome = await observeQueueVacuumAttempt(getPool(), { beforeVacuum: async () => {
+        reserved = await state();
+        await owner.query('BEGIN');
+        await owner.query('LOCK TABLE public.task_queue IN SHARE UPDATE EXCLUSIVE MODE');
+      } });
+      expect(reserved).toMatchObject({ attempts: 1, last_result: 'running' });
+      expect(outcome).toMatchObject({ result: null,
+        error: { category: 'completion_unverified', diagnosis: { reason: 'lock_interference' } },
+        evidence: { commands: 1, notices: [{ warning: true, code: '55P03' }] } });
+      const after = await loadQueueVacuumState(query);
+      expect(after.vacuum_count).toBe(before.vacuum_count);
+      expect(after.analyze_count).toBe(before.analyze_count);
+      expect(await state()).toMatchObject({ attempts: 1, last_result: 'unverified',
+        next_attempt_at: reserved.next_attempt_at });
+    } finally { await owner.query('ROLLBACK'); owner.release(true); }
+    const retry = await observeQueueVacuumAttempt(getPool());
+    expect(retry).toMatchObject({ result: { reason: 'cooldown' }, error: null, evidence: { commands: 0 } });
+    expect(await state()).toMatchObject({ attempts: 1, last_result: 'cooldown',
+      next_attempt_at: reserved.next_attempt_at });
+  });
+});
+
+test('pressure fixture restores table settings and removes its inventory when its callback fails', async () => {
+  const original = await readQueueTableOptions(query);
+  const libraries = (await query('SELECT count(*) FROM libraries')).rows;
+  const items = (await query('SELECT count(*) FROM media_server_items')).rows;
+  await expect(withQueueVacuumPressure(getPool(), async () => { throw new Error('synthetic callback failure'); }))
+    .rejects.toThrow('synthetic callback failure');
+  expect((await readQueueTableOptions(query)).sort()).toEqual(original.sort());
+  expect((await query('SELECT count(*) FROM libraries')).rows).toEqual(libraries);
+  expect((await query('SELECT count(*) FROM media_server_items')).rows).toEqual(items);
 });

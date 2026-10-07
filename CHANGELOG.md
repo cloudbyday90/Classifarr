@@ -54,6 +54,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   the unwrapped API response consistently, with regression coverage for errors and retry.
 - **CI reliability:** verify provider-study quota reservations per UTC day so runs
   crossing midnight retain strict accounting without failing on a valid daily reset.
+  Isolate queue-maintenance success fixtures from competing autovacuum and verify
+  that skipped attempts retain their retry limits, with bounded failure diagnostics.
 
 ### Changed
 
