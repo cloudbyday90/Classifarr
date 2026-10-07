@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Diagnostics
+
+- Add isolated, repeatable cold comparison allocation profiles to distinguish
+  construction costs from retained memory before tuning; production memory
+  safeguards and refresh behavior are unchanged.
+
 ### Fixed
 
 - **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
