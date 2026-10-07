@@ -7,6 +7,7 @@ import { resourceStudyStartupFixture } from '../helpers/resourceStudyReceiptFixt
 import { runResourceStudyCompose } from '../../../../scripts/lib/resourceStudyCompose.mjs';
 import { formatResourceStudySummary } from '../../../../scripts/lib/resourceStudySummary.mjs';
 import { collectComparisonStudyTrace } from '../../../../scripts/lib/comparisonStudyTrace.mjs';
+import { emptyVectorReadObservation } from '../../scripts/comparisonMemoryStudy/vectorReadObservation.mjs';
 
 const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; });
@@ -94,8 +95,10 @@ function allocationReceipt() {
     ['comparison_verification', 'comparison', 2, 979_000], ['representative_preparation', 'representative', 2, 980_000],
   ].map(([phase, worker, attempt, startMs]) => ({ phase, worker, attempt, startMs, endMs: startMs + 1,
     heapStart: 100, heapEnd: 101, rssStart: 200, rssEnd: 201,
-    profile: { sampledEstimatedBytes: 10, nodes: 1, samples: 1, components: { other: 10 } } }));
-  return { version: 1, mode: 'allocations', intervalBytes: 524288, windows };
+    profile: { sampledEstimatedBytes: 10, nodes: 1, samples: 1, components: { other: 10 } },
+    vectorReads: { ...emptyVectorReadObservation(), owned: Object.fromEntries(['read', 'decode'].map(stage =>
+      [stage, { batches: 23, rows: 5776, components: 5776 * 1024, encodedChars: 100_000_000 }])) } }));
+  return { version: 2, mode: 'allocations', intervalBytes: 524288, windows };
 }
 
 test('allocation receipt requires bounded correlated build and actual post-drain warm phases', () => {
@@ -106,6 +109,11 @@ test('allocation receipt requires bounded correlated build and actual post-drain
     r => { r.allocations.windows[0].phase = 'untrusted'; },
     r => { r.allocations.windows[0].worker = 'representative'; },
     r => { r.allocations.windows[0].attempt = 60; },
+    r => { r.allocations.version = 1; },
+    r => { r.allocations.windows[0].vectorReads.owned.read.rows = 1e9; },
+    r => { r.allocations.windows[0].vectorReads.owned.read.secret = 'private'; },
+    r => { r.allocations.windows[4].vectorReads = emptyVectorReadObservation(); },
+    r => { r.allocations.windows[5].vectorReads.owned.decode.components--; },
     r => { r.allocations.windows[0].endMs = 660_001; },
     r => { r.allocations.windows[1].startMs = 650_000; },
     r => { r.allocations.windows[0].profile.components.other = 11; },

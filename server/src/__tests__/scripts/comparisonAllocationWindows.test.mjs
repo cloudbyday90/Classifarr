@@ -1,7 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { expect, jest, test } from '@jest/globals';
+import { expect, jest, test, afterEach } from '@jest/globals';
+import { hasSubscribers } from 'node:diagnostics_channel';
+import { VECTOR_READ_CHANNEL, observeInventoryVectorBatch } from '../../services/inventoryVectorReadDiagnostics.mjs';
 import { createComparisonAllocationWindows } from '../../scripts/comparisonMemoryStudy/allocationWindows.mjs';
 import { createComparisonStudyPhases } from '../../scripts/comparisonMemoryStudy/phases.mjs';
+
+afterEach(() => expect(hasSubscribers(VECTOR_READ_CHANNEL)).toBe(false));
 
 function fixture(options = {}) {
   let time = 10, timeout;
@@ -36,6 +40,17 @@ test('bounded windows preserve result and emit only fixed numeric summaries', as
   expect(JSON.stringify(report)).not.toMatch(/private|secret|password/);
   expect(f.sessions[0].post.mock.calls.map(call => call[0])).toEqual(['HeapProfiler.startSampling', 'HeapProfiler.stopSampling']);
   expect(f.sessions[0].disconnect).toHaveBeenCalledTimes(1);
+});
+
+test('window captures real counters and invalid observation cannot produce a successful receipt', async () => {
+  const f = fixture();
+  await f.windows.run('comparison_verification', async () => observeInventoryVectorBatch('read', [{ embedding: '[1]' }], 1));
+  expect(f.windows.read().version).toBe(2);
+  expect(f.windows.read().windows[0].vectorReads.owned.read).toEqual({ batches: 1, rows: 1, components: 1, encodedChars: 3 });
+  const invalid = fixture();
+  await expect(invalid.windows.run('comparison_verification', async () => observeInventoryVectorBatch('read', null, 1)))
+    .rejects.toThrow('comparison_allocation_failed');
+  expect(() => invalid.windows.read()).toThrow('comparison_allocation_failed');
 });
 
 test('overlap fails evidence without queuing or opening another session', async () => {

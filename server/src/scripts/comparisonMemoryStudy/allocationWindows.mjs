@@ -3,6 +3,7 @@ import { Session } from 'node:inspector/promises';
 import { performance } from 'node:perf_hooks';
 import { summarizeComparisonHeapProfile } from './heapSampling.mjs';
 import { ALLOCATION_PHASES } from './allocationContract.mjs';
+import { createVectorReadObservation } from './vectorReadObservation.mjs';
 
 /** Synthetic main-isolate windows; never queue competing work to obtain a sample. */
 export function createComparisonAllocationWindows({ enabled = false, context = () => null,
@@ -21,10 +22,11 @@ export function createComparisonAllocationWindows({ enabled = false, context = (
         identity?.worker !== ALLOCATION_PHASES[phase] || !Number.isSafeInteger(identity.attempt) ||
         identity.attempt < 1 || identity.attempt > 60) invalid();
     const token = {}; active = token;
-    let session, timer, disconnected = false, finished = false, startMs, before;
+    let session, observation, timer, disconnected = false, finished = false, startMs, before;
     const disconnect = () => {
       if (disconnected) return;
       disconnected = true;
+      try { observation?.close(); } catch { failed = true; }
       try { session?.disconnect(); } catch { failed = true; }
     };
     try {
@@ -33,6 +35,7 @@ export function createComparisonAllocationWindows({ enabled = false, context = (
       await session.post('HeapProfiler.startSampling', { samplingInterval: 524288,
         includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
       check(); startMs = now(); before = memory();
+      observation = createVectorReadObservation(identity, context);
     } catch {
       clearTimer(timer); disconnect(); active = null; invalid();
     }
@@ -43,11 +46,13 @@ export function createComparisonAllocationWindows({ enabled = false, context = (
         if (!completed || active !== token) invalid();
         check();
         const endMs = now(), after = memory();
+        observation.close();
+        const vectorReads = observation.read();
         const { profile } = await session.post('HeapProfiler.stopSampling');
         check();
         windows.push({ phase, worker: identity.worker, attempt: identity.attempt, startMs, endMs,
           heapStart: before.heapUsed, heapEnd: after.heapUsed, rssStart: before.rss, rssEnd: after.rss,
-          profile: summarizeComparisonHeapProfile(profile) });
+          profile: summarizeComparisonHeapProfile(profile), vectorReads });
       } catch { invalid(); }
       finally { clearTimer(timer); disconnect(); active = null; }
       check();
@@ -66,7 +71,7 @@ export function createComparisonAllocationWindows({ enabled = false, context = (
     read() {
       if (!enabled) return null;
       check(); if (active) invalid();
-      return { version: 1, mode: 'allocations', intervalBytes: 524288, windows: structuredClone(windows) };
+      return { version: 2, mode: 'allocations', intervalBytes: 524288, windows: structuredClone(windows) };
     },
   };
 }

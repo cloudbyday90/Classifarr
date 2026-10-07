@@ -4,6 +4,10 @@ import { Session } from 'node:inspector/promises';
 // Fixed labels only: never serialize inspector URLs, names, stacks or raw profiles.
 function component({ url = '', functionName = '' } = {}) {
   if (typeof url !== 'string' || typeof functionName !== 'string') return null;
+  if (url.endsWith('/utils/embeddingValidation.mjs')) return 'vector_validation';
+  if (url.includes('/node_modules/pg-protocol/')) return 'database_transport';
+  if (url.includes('/node_modules/pg/')) return 'database_client';
+  if (url.endsWith('/comparisonMemoryStudy/vectorReadObservation.mjs')) return 'diagnostic_overhead';
   if (url.endsWith('/services/localCommunityGraph.mjs')) {
     return functionName === 'insertNeighbor' ? 'community_neighbors' : 'community_graph';
   }
@@ -17,6 +21,8 @@ function component({ url = '', functionName = '' } = {}) {
     inventoryGroupBenchmarkControl: 'broad_control', inventoryRepresentativeMembership: 'membership_validation',
     inventoryMultiScaleProfile: 'profile_assembly',
     inventoryDescriptionVectorReader: 'vector_read', inventoryDescriptionVectorCache: 'vector_cache',
+    inventoryDescriptionVectorParsing: 'vector_parsing', inventoryDescriptionVectorDecoding: 'vector_assembly',
+    inventoryVectorReadDiagnostics: 'diagnostic_overhead',
     inventoryVectorFingerprint: 'vector_fingerprint', inventoryRepresentativeFingerprint: 'vector_fingerprint',
     inventoryMultiScaleVerification: 'comparison_verification', inventoryRepresentativeVerification: 'representative_verification',
     inventoryRepresentativePreparationReader: 'representative_preparation',

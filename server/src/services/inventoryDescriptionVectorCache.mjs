@@ -2,6 +2,10 @@
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { canonicalStudyModel } from './localStudyEmbeddingClient.mjs';
 import { INVENTORY_DESCRIPTION_PROJECTION_VERSION } from './inventoryDescriptionProjection.mjs';
+import { decodeInventoryDescriptionVectorRows } from './inventoryDescriptionVectorDecoding.mjs';
+import { observeInventoryVectorBatch } from './inventoryVectorReadDiagnostics.mjs';
+
+export { decodeInventoryDescriptionVectorRows };
 
 export function validateDescriptionRepresentation(value) {
   if (value?.provider !== 'ollama' || canonicalStudyModel(value.model) !== value.model ||
@@ -31,12 +35,9 @@ export async function readInventoryDescriptionVectorRows(query, representation, 
       seen.add(row.description_hash);
       captured.push(row);
     }
+    observeInventoryVectorBatch('read', rows, representation.dimensions);
   }
   return captured;
-}
-
-export function decodeInventoryDescriptionVectorRows(rows, representation) {
-  return new Map(rows.map(row => [row.description_hash, validateEmbedding(JSON.parse(row.embedding), representation.dimensions)]));
 }
 
 /** Immutable representation/content keys; no plaintext or inventory membership. */

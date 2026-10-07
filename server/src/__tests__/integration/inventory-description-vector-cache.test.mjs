@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { beforeEach, afterEach, expect, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
+import { createVectorReadObservation } from '../../scripts/comparisonMemoryStudy/vectorReadObservation.mjs';
 
 let client;
 let cache;
@@ -60,4 +61,28 @@ test('maintenance presence lookup is content and representation scoped, without 
   await expect(cache.findPresent(identity, [hash, hash])).rejects.toThrow();
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
   expect(await cache.findPresent(identity, [hash])).toEqual(new Set());
+});
+
+test('observes real database read batches separately from the aggregated decode', async () => {
+  const hashes = Array.from({ length: 257 }, (_, index) => index.toString(16).padStart(64, '0'));
+  for (let offset = 0; offset < hashes.length; offset += 8) {
+    await cache.write(identity, hashes.slice(offset, offset + 8).map(hash => ({ hash, vector: [1, 0, 0] })));
+  }
+  const owner = { worker: 'fixture', attempt: 1 };
+  const observation = createVectorReadObservation(owner, () => owner);
+  try {
+    const vectors = await cache.read(identity, hashes);
+    expect(vectors.size).toBe(257);
+    for (const hash of hashes) expect(vectors.get(hash)).toEqual([1, 0, 0]);
+    expect(observation.read()).toEqual({
+      owned: {
+        read: { batches: 2, rows: 257, components: 771, encodedChars: 1799 },
+        decode: { batches: 1, rows: 257, components: 771, encodedChars: 1799 },
+      },
+      overlap: {
+        read: { batches: 0, rows: 0, components: 0, encodedChars: 0 },
+        decode: { batches: 0, rows: 0, components: 0, encodedChars: 0 },
+      },
+    });
+  } finally { observation.close(); }
 });

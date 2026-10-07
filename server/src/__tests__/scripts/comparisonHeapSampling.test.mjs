@@ -47,6 +47,23 @@ function fixture(failMethod) {
   }) };
 }
 
+test('separates cache assembly, parsing, validation, transport and observer frames', () => {
+  const result = summarizeComparisonHeapProfile(profile(node(source('inventoryDescriptionVectorCache'), '', 1, [
+    node(source('inventoryDescriptionVectorDecoding'), '', 2, [
+      node(source('inventoryDescriptionVectorParsing'), '', 3, [node('', 'JSON.parse', 4)]),
+      node('file:///private/utils/embeddingValidation.mjs', '', 5),
+    ]),
+    node('/app/node_modules/pg-protocol/dist/parser.js', '', 6),
+    node('/app/node_modules/pg/lib/client.js', '', 7),
+    node(source('inventoryVectorReadDiagnostics'), '', 8),
+    node('file:///private/comparisonMemoryStudy/vectorReadObservation.mjs', '', 9),
+  ])));
+  expect(result.sampledEstimatedBytes).toBe(45);
+  expect(result.components).toEqual({ vector_cache: 1, vector_assembly: 2, vector_parsing: 7,
+    vector_validation: 5, database_transport: 6, database_client: 7, diagnostic_overhead: 17 });
+  expect(JSON.stringify(result)).not.toMatch(/private|JSON\.parse|node_modules/);
+});
+
 test.each(['allocations', 'survivors'])('samples %s without forced GC or a remote port', async mode => {
   const session = fixture(), work = jest.fn(async () => 42);
   const result = await sampleColdBuild(mode, work, { session });
