@@ -35,7 +35,8 @@ receipts remain historical evidence, not evidence of this expanded workload.
 
 ## Bounds and failure behavior
 
-Retain the 30-minute deadline, real schedules/cooldowns, two independent reads,
+Retain the 25-minute work deadline and 30-minute receipt ceiling, real
+schedules/cooldowns, two independent reads,
 2 GiB container, 128 PIDs, CPU limits, internal network, no published ports and
 random owned volume. Retain production capsule/vector/TTL and hash-reference
 bounds; cap synthetic preparation batches at 60. Keep existing numeric trace,
@@ -55,7 +56,7 @@ production semantic accuracy. The catalog's real queue remains unchanged.
 
 Official sources discovered through web search and opened on 2026-10-07:
 
-- [Node process memory documentation](https://nodejs.org/api/process.html): RSS
+- [Node 24 process memory documentation](https://nodejs.org/docs/latest-v24.x/api/process.html): RSS
   covers the whole process; other memory fields describe the calling thread.
   Do not add worker RSS to process RSS, or arrayBuffers to external memory.
 - [Node V8 statistics](https://nodejs.org/api/v8.html): physical heap and used

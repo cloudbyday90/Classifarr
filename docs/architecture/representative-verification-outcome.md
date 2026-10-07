@@ -170,6 +170,10 @@ do not change the tested runtime image's source revision.
 
 ## Next item
 
+Follow-up: the [real-consumer profiling round](comparison-consumer-profile-outcome.md)
+has now completed. Its results prioritize bounded warm first-read preparation;
+the recommendations below record the sequence identified in this earlier round.
+
 1. Keep the bounded second verification: same digest and freshness checks, no
    second full map. Cost: all vectors still require transport/validation; corpus
    metadata and the first full read remain.
