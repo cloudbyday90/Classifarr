@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { assertRepresentativeMetadataBudget } from './inventoryRepresentativeCoverage.mjs';
-import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { validateInventoryVector } from './inventoryVectorValidation.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v4';
 
@@ -20,7 +20,7 @@ export function createRepresentativeFingerprint(snapshot, identity, configKey) {
     append(key, present, value) {
       add([key, present]);
       if (!present) return;
-      const vector = validateEmbedding(value, identity.dimensions);
+      const vector = validateInventoryVector(value, identity.dimensions);
       const bytes = Buffer.allocUnsafe(vector.length * 4);
       vector.forEach((component, index) => bytes.writeFloatLE(component, index * 4));
       hash.update(bytes);

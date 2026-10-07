@@ -1,12 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
-// pgvector's storage limit; index and model compatibility are separate contracts.
-const MAX_VECTOR_DIMENSIONS = 16000;
-
-function invalidEmbedding(embeddingIssue) {
-  return Object.assign(new Error('Embedding must contain a nonzero finite float32 vector with consistent dimensions'),
-    { code: 'INVALID_EMBEDDING', embeddingIssue });
-}
+import { MAX_VECTOR_DIMENSIONS, invalidEmbedding } from './embeddingValidationContract.mjs';
 
 /** Reject malformed data without coercion, normalization, or logging payloads. */
 export function validateEmbedding(embedding, dims = undefined) {

@@ -40,6 +40,17 @@ test('keeps extracted normalization arithmetic visible in allocation totals', ()
   expect(result.components).toEqual({ shared_normalization: 2, normalization_arithmetic: 8, vector_normalization: 7 });
 });
 
+test('keeps both validator boundaries and their shared error helper visible', () => {
+  const result = summarizeComparisonHeapProfile(profile(node('', '', 0, [
+    node('file:///private/utils/embeddingValidation.mjs', '', 2),
+    node(source('inventoryVectorValidation'), '', 3, [
+      node('file:///private/utils/embeddingValidationContract.mjs', '', 5, [node('', '', 7)]),
+    ]),
+  ])));
+  expect(result.sampledEstimatedBytes).toBe(17);
+  expect(result.components).toEqual({ vector_validation: 17 });
+});
+
 function fixture(failMethod) {
   return { connect: jest.fn(), disconnect: jest.fn(), post: jest.fn(async method => {
     if (method === failMethod) throw new Error('private protocol failure');

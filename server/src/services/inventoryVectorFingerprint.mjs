@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { Buffer } from 'node:buffer';
-import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { validateInventoryVector } from './inventoryVectorValidation.mjs';
 
 /** Append exact vectors to a synchronous hash using one bounded scratch buffer. */
 export function updateInventoryVectorFingerprint(digest, vectors, dimensions) {
@@ -16,7 +16,7 @@ export function createInventoryVectorFingerprint(digest, dimensions) {
   const scratch = Buffer.alloc(dimensions * 8);
   digest.update(`inventory_vectors_float64le_v1:${dimensions}:`);
   return (hash, vector) => {
-    validateEmbedding(vector, dimensions);
+    validateInventoryVector(vector, dimensions);
     for (let index = 0; index < dimensions; index++) {
       // JSON's previous identity treated -0 and +0 as equal. Keep exact nonzero values.
       scratch.writeDoubleLE(vector[index] === 0 ? 0 : vector[index], index * 8);

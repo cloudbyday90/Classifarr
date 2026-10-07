@@ -4,7 +4,9 @@ import { Session } from 'node:inspector/promises';
 // Fixed labels only: never serialize inspector URLs, names, stacks or raw profiles.
 function component({ url = '', functionName = '' } = {}) {
   if (typeof url !== 'string' || typeof functionName !== 'string') return null;
-  if (url.endsWith('/utils/embeddingValidation.mjs')) return 'vector_validation';
+  if (url.endsWith('/utils/embeddingValidation.mjs') ||
+      url.endsWith('/utils/embeddingValidationContract.mjs') ||
+      url.endsWith('/services/inventoryVectorValidation.mjs')) return 'vector_validation';
   if (url.includes('/node_modules/pg-protocol/')) return 'database_transport';
   if (url.includes('/node_modules/pg/')) return 'database_client';
   if (url.endsWith('/comparisonMemoryStudy/vectorReadObservation.mjs')) return 'diagnostic_overhead';
