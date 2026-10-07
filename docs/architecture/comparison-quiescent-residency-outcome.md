@@ -193,3 +193,14 @@ neither the prior source's pass nor the local build substitutes for current CI.
 5. Pin and verify the running rollback image before replacing a build tag next
    time. The fallback worked here, but an older source-equivalent image is weaker
    rollback evidence than the exact pre-change artifact.
+
+## Follow-up: GC correlation
+
+The [combined GC/residency observation](comparison-gc-residency-correlation-outcome.md)
+completed on the rebuilt image. A normal post-stop major collection left a
+426 MiB local V8 pool; a later natural memory-reducing collection emptied it
+while RSS fell about 448 MiB. This supports delayed runtime page reclamation for
+that run, without weakening admission or claiming every deployed warning is
+resolved. The exact old image was pinned before rebuilding this time. Next:
+prototype lower-allocation representative fingerprinting with exact-hash and
+matched memory evidence.

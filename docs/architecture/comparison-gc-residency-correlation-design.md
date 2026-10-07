@@ -52,6 +52,12 @@ Sources discovered/retrieved through web search and GitHub MCP on 2026-10-07:
   distinguishes local and shared pools; worker teardown can schedule shared-page
   release after eight seconds. Do not equate a local `pooled` trace field with all
   process memory or infer a worker leak from a later RSS sample.
+- The pinned [major-collection implementation](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/heap.cc)
+  explicitly releases local pooled chunks during memory-reducing collections.
+  The [GC trace implementation](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/gc-tracer.cc)
+  reports the isolate-relative clock and rounded local pool size via the
+  [allocator](https://github.com/nodejs/node/blob/v24.21.0/deps/v8/src/heap/memory-allocator.cc).
+  This provides a mechanism to test, not proof of ownership of an OS mapping.
 
 | Option | Benefit | Cost / limitation | Recommendation |
 | --- | --- | --- | --- |
