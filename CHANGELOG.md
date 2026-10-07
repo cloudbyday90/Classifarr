@@ -18,6 +18,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   correlated with real scheduled attempts and validated without saving raw profiles.
   Separate cached-vector parsing, validation and transport attribution, with
   bounded numeric batch counters that distinguish refresh work from overlap.
+  Add a bounded, offline vector-validation reproduction across parsed and cloned
+  input histories, with semantic regression coverage; no validator relaxation.
 
 ### Fixed
 
