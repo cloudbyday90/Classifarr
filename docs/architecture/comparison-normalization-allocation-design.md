@@ -1,6 +1,7 @@
 # Comparison normalization allocation design
 
-Reviewed: 2026-10-07. Status: implementation and measurement planned; not a release.
+Reviewed: 2026-10-07. Status: implemented and measured; not a release.
+See the [outcome](comparison-normalization-allocation-outcome.md) for results and limitations.
 
 ## Evidence and scope
 
