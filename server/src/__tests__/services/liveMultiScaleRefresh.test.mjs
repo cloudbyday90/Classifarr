@@ -228,7 +228,8 @@ test('live SWR copies only a new fit, not verification or unchanged revalidation
   expect(await v.worker.run()).toEqual({ status: 'revalidated' });
   expect(copies).toBe(1);
   vector[0] = NaN; v.advance(300000);
-  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'source_validation', code: 'cached_vector_invalid' } });
+  // Warm vector validation now happens inside the streamed repository read.
+  expect(await v.worker.run()).toEqual({ status: 'unavailable', failure: { stage: 'snapshot_read', code: 'cached_vector_invalid' } });
   expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).toHaveBeenCalledTimes(1);
 });
 

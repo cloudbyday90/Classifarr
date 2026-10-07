@@ -1,6 +1,18 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryMultiScaleSource.mjs';
 
+/** Release probe metadata before a full read or the independent publication read. */
+async function readCachedCandidate({ repository, identity, signal, isCurrent, selectCached, setStage }) {
+  setStage('snapshot_read');
+  const snapshot = await repository.readVerification(identity, { signal });
+  signal.throwIfAborted();
+  if (!isCurrent(snapshot.state)) return null;
+  setStage('source_validation');
+  const cached = selectCached(snapshot.key);
+  // Undefined is a valid cache miss; null means the source was invalidated.
+  return cached ? { key: snapshot.key, cached, input: null } : undefined;
+}
+
 /** End the repository snapshot's lifetime before asynchronous fitting starts. */
 async function readCandidate({ repository, identity, signal, isCurrent, selectCached, setStage }) {
   setStage('snapshot_read');
@@ -15,7 +27,8 @@ async function readCandidate({ repository, identity, signal, isCurrent, selectCa
 
 /** Return no training input to the verification scope. Do not clear caller data. */
 export async function buildLiveMultiScaleCandidate(options) {
-  const candidate = await readCandidate(options);
+  const probed = options.hasCachedModel ? await readCachedCandidate(options) : undefined;
+  const candidate = probed === undefined ? await readCandidate(options) : probed;
   if (!candidate) return null;
   options.signal.throwIfAborted();
   options.setStage('profile_build');

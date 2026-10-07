@@ -9,7 +9,7 @@ import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScal
 // code should retain the observed objects or request garbage collection.
 assert.equal(typeof globalThis.gc, 'function', 'diagnostic_gc_required');
 const { state, identity } = liveFixture();
-let time = 1_000_000, reads = 0, builds = 0, snapshotRef, inputRef;
+let time = 1_000_000, reads = 0, verifications = 0, builds = 0, snapshotRef, inputRef, probeRef;
 const collect = async () => {
   for (let pass = 0; pass < 3; pass++) { await setImmediate(); globalThis.gc(); }
   await setImmediate();
@@ -19,18 +19,20 @@ const worker = createLiveMultiScaleRefresh({
   now: () => time, random: () => 0,
   repository: { async read() {
     reads++;
-    if (reads % 2 === 0) {
-      await collect();
-      assert.equal(snapshotRef.deref(), undefined, 'first_snapshot_retained_during_verification');
-      assert.equal(inputRef.deref(), undefined, 'owned_input_retained_during_verification');
-    }
     const snapshot = liveFixture().snapshot;
-    if (reads % 2 === 1) snapshotRef = new WeakRef(snapshot);
+    snapshotRef = new WeakRef(snapshot);
     return snapshot;
   }, async readVerification() {
-    const snapshot = await this.read();
+    verifications++;
+    await collect();
+    assert.equal(snapshotRef.deref(), undefined, 'first_snapshot_retained_during_verification');
+    assert.equal(inputRef.deref(), undefined, 'owned_input_retained_during_verification');
+    if (verifications === 3) assert.equal(probeRef.deref(), undefined, 'warm_probe_retained_during_verification');
+    const snapshot = liveFixture().snapshot;
     const key = inspectUnseenMultiScaleSource(snapshot, identity).key;
-    return { ...snapshot, vectors: undefined, key };
+    const result = { ...snapshot, vectors: undefined, key };
+    if (verifications === 2) probeRef = new WeakRef(result);
+    return result;
   } },
   async build(input) {
     builds++; inputRef = new WeakRef(input);
@@ -44,6 +46,6 @@ try {
   assert.deepEqual(await worker.run(), { status: 'ready' });
   time += 300_000;
   assert.deepEqual(await worker.run(), { status: 'revalidated' });
-  assert.equal(reads, 4); assert.equal(builds, 1);
+  assert.equal(reads, 1); assert.equal(verifications, 3); assert.equal(builds, 1);
   process.stdout.write('comparison_phase_lifetimes_passed\n');
 } finally { worker.stop(); }

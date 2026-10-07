@@ -65,6 +65,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           stage = 'provider_inspection';
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
           const candidate = await buildLiveMultiScaleCandidate({ repository, identity, signal: abort, build,
+            hasCachedModel: Boolean(entry && cache.get(entry.key)?.cacheable),
             isCurrent: state => configKey(state) === expected && state.busy === false && getRevision() === revision,
             setStage: value => { stage = value; },
             selectCached: key => {
