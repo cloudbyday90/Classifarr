@@ -62,6 +62,35 @@ function setup() {
   return { ...fixture, client, withTransaction, repository: createInventoryRepresentativeProfileRepository({ withTransaction }) };
 }
 
+test('warm preparation gets explicit presence and an expiring bounded reader in the same transaction', async () => {
+  const v = setup(); let expired;
+  const result = await v.repository.prepareRepresentative(v.identity, { configKey: 'fixture-config' }, async (snapshot, readVectors) => {
+    expect(snapshot).not.toHaveProperty('vectors');
+    expect(snapshot.presentHashes).toEqual(new Set(v.snapshot.vectors.keys()));
+    expect(snapshot.key).toBe(inventoryRepresentativeSourceKey(v.snapshot, v.identity, 'fixture-config'));
+    expect(snapshot.observedKeys).toEqual(v.snapshot.observedKeys);
+    const hashes = [...snapshot.presentHashes];
+    expect(await readVectors(hashes)).toEqual(v.snapshot.vectors);
+    await expect(readVectors(['f'.repeat(64)])).rejects.toThrow('batch');
+    await expect(readVectors(Array(257).fill(hashes[0]))).rejects.toThrow('batch');
+    expired = readVectors;
+    return { prepared: true };
+  });
+  expect(result).toEqual({ prepared: true });
+  expect(v.withTransaction).toHaveBeenCalledTimes(1);
+  const calls = v.client.query.mock.calls.length;
+  await expect(expired([...v.snapshot.vectors.keys()])).rejects.toThrow('closed');
+  expect(v.client.query).toHaveBeenCalledTimes(calls);
+});
+
+test('warm preparation errors expire the reader and do not return a candidate', async () => {
+  const v = setup(); let expired;
+  await expect(v.repository.prepareRepresentative(v.identity, { configKey: 'fixture-config' }, async (_snapshot, readVectors) => {
+    expired = readVectors; throw new Error('preparation_failed');
+  })).rejects.toThrow('preparation_failed');
+  await expect(expired([])).rejects.toThrow('closed');
+});
+
 test('snapshot is read-only, bounded and current; conflict exclusions and vector representation remain scoped', async () => {
   const { repository, identity, client, withTransaction, snapshot, rows } = setup();
   expect(await repository.read(identity)).toEqual({ ...snapshot, observationReadiness: collectInventoryObservationReadiness(rows) });

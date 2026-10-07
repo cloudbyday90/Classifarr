@@ -6,6 +6,7 @@ import { buildInventoryRepresentativeProfile } from '../../services/inventoryRep
 import { validateInventoryRepresentativeProfileCoverage } from '../../services/inventoryRepresentativeProfileValidation.mjs';
 import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
+import { validatedRecoveryGroups, validatedRecoveryGroupsStreamed } from '../../services/inventoryRepresentativeMembership.mjs';
 
 async function fixture(outliers = 1) {
   const data = representativeProfileFixture({ perLibrary: 14 });
@@ -117,4 +118,33 @@ test('geometry validation cooperatively aborts before publication', async () => 
   controller.abort();
   await expect(pending).rejects.toThrow();
   expect(recovery.prioritize({ ...input, corpus: input.snapshot.corpus, present: new Set() }).priority).toEqual([]);
+});
+
+test.each(['unchanged', 'centroid', 'swapped', 'zero_mean'])('streamed geometry matches full-map validation for %s evidence', async mode => {
+  const input = await fixture(2), profile = input.model.libraries.get(1);
+  if (mode === 'centroid') profile.starts[profile.selectedStart].groups[0].centroid = [0, 1];
+  if (mode === 'swapped') {
+    const members = profile.membership.groups[0], unassigned = profile.membership.unassigned;
+    [members[0], unassigned[0]] = [unassigned[0], members[0]];
+  }
+  if (mode === 'zero_mean') profile.membership.groups[0].forEach((hash, index) => input.snapshot.vectors.set(hash, index % 2 ? [-1, 0] : [1, 0]));
+  const read = async hashes => new Map(hashes.map(hash => [hash, input.snapshot.vectors.get(hash)]));
+  const full = validatedRecoveryGroups(profile, input.snapshot.vectors, 2);
+  const streamed = validatedRecoveryGroupsStreamed(profile, read, 2);
+  const results = await Promise.allSettled([full, streamed]);
+  expect(results[1].status).toBe(results[0].status);
+  if (mode === 'unchanged') expect(results[1].value).toEqual(results[0].value);
+  else expect(results.map(row => row.reason.representativeIssue)).toEqual(['profile_structure', 'profile_structure']);
+});
+
+test('streamed geometry bounds components and preserves membership order across batches', async () => {
+  const dimensions = 16000, hashes = Array.from({ length: 40 }, (_, i) => i.toString(16).padStart(64, '0'));
+  const vector = Array(dimensions).fill(0); vector[0] = 1;
+  const profile = { coverage: { status: 'complete' }, selectedStart: 0,
+    starts: [{ converged: true, groups: [{ centroid: vector }] }], membership: { groups: [hashes] } };
+  const calls = [];
+  expect(await validatedRecoveryGroupsStreamed(profile, async batch => {
+    calls.push(batch); return new Map(batch.map(hash => [hash, vector]));
+  }, dimensions)).toEqual([hashes]);
+  expect(calls.map(batch => batch.length)).toEqual([16, 16, 8]); expect(calls.flat()).toEqual(hashes);
 });

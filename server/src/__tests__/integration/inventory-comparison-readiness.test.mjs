@@ -11,8 +11,9 @@ import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScal
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 import { inventoryRepresentativeSourceKey, buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
 import { createInventoryRepresentativeProfileRefresh } from '../../services/inventoryRepresentativeProfileRefresh.mjs';
+import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
 
-test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s stays consistent across concurrent deletion and update; fresh reads detect both', async method => {
+test.each(['read', 'readVerification', 'readRepresentativeVerification', 'prepareRepresentative'])('%s stays consistent across concurrent deletion and update; fresh reads detect both', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   // Generated identifier only; no application or user input enters SQL identifiers.
   const table = `comparison_cache_${randomUUID().replaceAll('-', '')}`;
@@ -26,7 +27,8 @@ test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s st
     const entries = ordered.map(([hash, vector]) => ({ hash, vector }));
     for (let i = 0; i < entries.length; i += 8) await cache.write(fixture.identity, entries.slice(i, i + 8));
     const source = { ...fixture.snapshot, vectors: await cache.read(fixture.identity, entries.map(entry => entry.hash)) };
-    const expectedKey = method === 'readRepresentativeVerification'
+    const representative = ['readRepresentativeVerification', 'prepareRepresentative'].includes(method);
+    const expectedKey = representative
       ? inventoryRepresentativeSourceKey(source, fixture.identity, 'fixture-config')
       : inspectUnseenMultiScaleSource(source, fixture.identity).key;
     client = await pool.connect();
@@ -50,7 +52,12 @@ test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s st
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); throw error; }
     } });
-    const initial = await profiles[method](fixture.identity, { requireCompleteVectors: true, configKey: 'fixture-config' });
+    const initial = await profiles[method](fixture.identity, { requireCompleteVectors: true, configKey: 'fixture-config' }, async (snapshot, readVectors) => {
+      const vectors = await readVectors(entries.slice(298).map(entry => entry.hash));
+      expect(vectors.get(entries[298].hash)).toEqual(source.vectors.get(entries[298].hash));
+      expect(vectors.has(entries[299].hash)).toBe(true);
+      return snapshot;
+    });
     if (method === 'read') {
       expect(initial.vectors.size).toBe(entries.length);
       expect(initial.vectors.get(entries[298].hash)).not.toEqual([0, 1]);
@@ -59,10 +66,10 @@ test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s st
       expect(initial).not.toHaveProperty('vectors');
       expect(initial.key).toBe(expectedKey);
     }
-    expect(batches).toBe(2);
+    expect(batches).toBe(method === 'prepareRepresentative' ? 3 : 2);
     expect(removed).toBe(true);
-    if (method === 'readRepresentativeVerification') {
-      expect((await profiles[method](fixture.identity, { configKey: 'fixture-config' })).key).not.toBe(expectedKey);
+    if (representative) {
+      expect((await profiles[method](fixture.identity, { configKey: 'fixture-config' }, snapshot => snapshot)).key).not.toBe(expectedKey);
     } else await expect(profiles[method](fixture.identity, { requireCompleteVectors: true })).rejects.toMatchObject({
       coverage: { eligibleDescriptions: entries.length, cachedDescriptions: entries.length - 1, missingDescriptions: 1 },
     });
@@ -70,11 +77,11 @@ test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s st
     expect(fresh.get(entries[298].hash)).toEqual([0, 1]);
     expect(fresh.has(entries[299].hash)).toBe(false);
     await cache.write(fixture.identity, [entries[299]]);
-    expect((await profiles[method === 'read' ? 'readVerification' : method](fixture.identity, { configKey: 'fixture-config' })).key).not.toBe(expectedKey);
+    expect((await profiles[method === 'read' ? 'readVerification' : method](fixture.identity, { configKey: 'fixture-config' }, snapshot => snapshot)).key).not.toBe(expectedKey);
   } finally { client?.release(); await pool.query(`DROP TABLE ${table}`); }
 });
 
-test.each(['read', 'readVerification', 'readRepresentativeVerification'])('aborted %s rolls back and releases a usable connection without returning partial evidence', async method => {
+test.each(['read', 'readVerification', 'readRepresentativeVerification', 'prepareRepresentative'])('aborted %s rolls back and releases a usable connection without returning partial evidence', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   const client = await pool.connect(), controller = new AbortController();
   let batches = 0, rolledBack = false;
@@ -97,7 +104,9 @@ test.each(['read', 'readVerification', 'readRepresentativeVerification'])('abort
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); rolledBack = true; throw error; }
     } });
-    await expect(repository[method](fixture.identity, { signal: controller.signal, configKey: 'fixture-config' })).rejects.toThrow('stopped');
+    await expect(repository[method](fixture.identity, { signal: controller.signal, configKey: 'fixture-config' }, () => {
+      throw new Error('must_not_prepare_aborted_source');
+    })).rejects.toThrow('stopped');
     expect(batches).toBe(1); expect(rolledBack).toBe(true);
     expect((await client.query('SHOW transaction_isolation')).rows[0].transaction_isolation).toBe('read committed');
     expect((await cache.read(fixture.identity, entries.map(entry => entry.hash))).size).toBe(300);
@@ -141,11 +150,11 @@ test.each([
       } catch (error) { await client.query('ROLLBACK'); throw error; }
       finally { client.release(); }
     } });
-    const repository = { read: jest.fn(profiles.read), readVerification: jest.fn(profiles.readVerification),
+    const repository = { read: jest.fn(profiles.read), readVerification: jest.fn(profiles.readVerification), prepareRepresentative: jest.fn(profiles.prepareRepresentative),
       readRepresentativeVerification: jest.fn(profiles.readRepresentativeVerification) };
     const build = jest.fn(async () => ({ handle: {}, cacheable: true, weight: 1000 }));
     const fit = jest.fn((snapshot, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot, dimensions }, options));
-    const dependencies = { repository, readState: async () => fixture.state, build, fit,
+    const dependencies = { repository, readState: async () => fixture.state, build, fit, neighborhoodRecovery: createInventoryNeighborhoodRecovery(),
       createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }), now: () => time, random: () => 0 };
     worker = kind === 'comparison' ? createLiveMultiScaleRefresh(dependencies) : createInventoryRepresentativeProfileRefresh(dependencies);
     expect(await worker.run()).toMatchObject({ status: kind === 'comparison' ? 'ready' : 'published' });
@@ -162,7 +171,8 @@ test.each([
     expect(transactions).toBe(2);
     expect(repository.readVerification).toHaveBeenCalledTimes(kind === 'comparison' ? 2 : 0);
     expect(repository.readRepresentativeVerification).toHaveBeenCalledTimes(kind === 'representative' ? 1 : 0);
-    expect(repository.read).toHaveBeenCalledTimes(kind === 'representative' ? 1 : 0);
+    expect(repository.read).not.toHaveBeenCalled();
+    expect(repository.prepareRepresentative).toHaveBeenCalledTimes(kind === 'representative' ? 1 : 0);
     expect(build).not.toHaveBeenCalled(); expect(fit).not.toHaveBeenCalled();
   } finally { worker?.stop(); await pool.query(`DROP TABLE ${table}`); }
 });

@@ -2,7 +2,7 @@
 import { createInventoryNeighborhoodIndex } from './inventoryNeighborhoodProfiles.mjs';
 import { representativeValidationError } from './representativeValidation.mjs';
 import { REPRESENTATIVE_RECOVERY_WORK_COMPONENTS } from './inventoryRepresentativeStability.mjs';
-import { isMap } from 'node:util/types';
+import { isMap, isSet } from 'node:util/types';
 
 export const REPRESENTATIVE_PROFILE_COMPONENT_LIMIT = 8_000_000;
 export const REPRESENTATIVE_MIN_COVERAGE_PERCENT = 90;
@@ -10,6 +10,12 @@ export const REPRESENTATIVE_MIN_COVERAGE_PERCENT = 90;
 export function assertRepresentativeSnapshotBudget(snapshot, dimensions, code = 'inventory_representative_profile_input_budget') {
   assertRepresentativeMetadataBudget(snapshot, dimensions, code);
   if (!isMap(snapshot.vectors) || [...snapshot.vectors.keys()].some(hash => !snapshot.corpus.texts.has(hash))) throw new Error(code);
+}
+
+/** Explicit metadata-only preparation contract; presence is not a fabricated vector map. */
+export function assertRepresentativePresenceBudget(snapshot, dimensions, code = 'inventory_representative_profile_input_budget') {
+  assertRepresentativeMetadataBudget(snapshot, dimensions, code);
+  if (!isSet(snapshot.presentHashes) || [...snapshot.presentHashes].some(hash => !snapshot.corpus.texts.has(hash))) throw new Error(code);
 }
 
 /** Structural limits shared by full fitting snapshots and streamed verification. */
@@ -44,19 +50,19 @@ export function validateRepresentativeCoverage(coverage) {
 }
 
 /** Membership is resolved BEFORE availability filtering. Shared/missing copies cannot create votes. */
-export function inspectRepresentativeCoverage(snapshot) {
+export function inspectRepresentativeCoverage(snapshot, present = snapshot.vectors) {
   const index = createInventoryNeighborhoodIndex(snapshot.corpus.documents, null, snapshot.libraries);
   const libraries = new Map([...index.scope.keys()].sort((a, b) => a - b)
     .map(id => [id, { eligibleDescriptions: 0, availableDescriptions: 0, status: 'sparse' }]));
   for (const group of index.groups.values()) if (group.libraries.size === 1) {
     const coverage = libraries.get([...group.libraries][0]);
     coverage.eligibleDescriptions++;
-    coverage.availableDescriptions += Number(snapshot.vectors.has(group.hash));
+    coverage.availableDescriptions += Number(present.has(group.hash));
   }
   for (const coverage of libraries.values()) coverage.status = coverageStatus(coverage.eligibleDescriptions, coverage.availableDescriptions);
   return { index, libraries, summary: {
-    eligibleDescriptions: snapshot.corpus.texts.size, availableDescriptions: snapshot.vectors.size,
-    missingDescriptions: snapshot.corpus.texts.size - snapshot.vectors.size,
+    eligibleDescriptions: snapshot.corpus.texts.size, availableDescriptions: present.size,
+    missingDescriptions: snapshot.corpus.texts.size - present.size,
     readyLibraries: [...libraries.values()].filter(representativeCoverageReady).length,
     partialLibraries: [...libraries.values()].filter(row => row.status === 'partial').length,
     waitingLibraries: [...libraries.values()].filter(row => row.status === 'waiting').length,

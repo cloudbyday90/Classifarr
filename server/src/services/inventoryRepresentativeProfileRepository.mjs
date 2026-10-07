@@ -8,6 +8,7 @@ import { fingerprintMultiScaleVerification } from './inventoryMultiScaleVerifica
 import { fingerprintRepresentativeVerification } from './inventoryRepresentativeVerification.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
+import { withRepresentativePreparationReader } from './inventoryRepresentativePreparationReader.mjs';
 
 export const REPRESENTATIVE_PROFILE_LIBRARIES_SQL = `SELECT id, media_type FROM libraries
   WHERE is_active=true AND media_type IN ('movie','tv') ORDER BY id LIMIT 65`;
@@ -20,7 +21,7 @@ export const REPRESENTATIVE_PROFILE_IDENTITIES_SQL = `SELECT DISTINCT msi.media_
   WHERE msi.media_type IN ('movie','tv') AND msi.tmdb_id > 0 ORDER BY msi.media_type, msi.tmdb_id LIMIT 50001`;
 
 export function createInventoryRepresentativeProfileRepository({ withTransaction }) {
-  const readSnapshot = async (identity, { requireCompleteVectors = false, signal, configKey } = {}, verification = null) => {
+  const readSnapshot = async (identity, { requireCompleteVectors = false, signal, configKey } = {}, verification = null, prepare = null) => {
     validateDescriptionRepresentation(identity);
     if (verification === 'representative' && (typeof configKey !== 'string' || !configKey)) {
       throw new Error('inventory_representative_config_required');
@@ -58,14 +59,20 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
           } });
         }
       }
+      const presentHashes = prepare ? new Set() : null;
       const evidence = verification === 'representative'
-        ? { key: await fingerprintRepresentativeVerification(query, identity, { libraries, corpus }, configKey, signal) }
+        ? { key: await fingerprintRepresentativeVerification(query, identity, { libraries, corpus }, configKey, signal, presentHashes) }
         : verification === 'comparison'
         ? { key: await fingerprintMultiScaleVerification(query, identity, { libraries, corpus }, signal) }
         : { vectors: await readInventoryDescriptionVectors(query, identity, hashes, { signal }) };
+      if (prepare) return withRepresentativePreparationReader(query, identity, {
+        state, libraries, corpus, ...evidence, presentHashes,
+        observedKeys: new Set(identities.map(inventoryDescriptionIdentity)), observationReadiness: collectInventoryObservationReadiness(rows),
+      }, signal, prepare);
       return { state, libraries, corpus, ...evidence, identities, rows };
     });
     signal?.throwIfAborted();
+    if (prepare) return source;
     const { identities, rows, ...snapshot } = source;
     return { ...snapshot,
       observedKeys: new Set(identities.map(inventoryDescriptionIdentity)), observationReadiness: collectInventoryObservationReadiness(rows) };
@@ -74,5 +81,9 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
     read: (identity, options) => readSnapshot(identity, options),
     readVerification: (identity, options) => readSnapshot(identity, { ...options, requireCompleteVectors: true }, 'comparison'),
     readRepresentativeVerification: (identity, options) => readSnapshot(identity, { ...options, requireCompleteVectors: false }, 'representative'),
+    prepareRepresentative(identity, options, prepare) {
+      if (typeof prepare !== 'function') throw new Error('representative_preparation_callback_required');
+      return readSnapshot(identity, { ...options, requireCompleteVectors: false }, 'representative', prepare);
+    },
   };
 }

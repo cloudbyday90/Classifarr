@@ -10,16 +10,17 @@ import { representativeProfileFixture } from './inventoryRepresentativeProfileFi
 import { representativeShadowFixture } from './inventoryRepresentativeShadowFixture.mjs';
 import { createComparisonStudyConsumers } from '../../scripts/comparisonMemoryStudy/consumers.mjs';
 import { resourceStudyEnvironment } from './resourceStudyEnvironment.mjs';
+import { withRepresentativePreparationReader } from '../../services/inventoryRepresentativePreparationReader.mjs';
 
 // Deliberate GC is confined to a synthetic test subprocess, never a runtime/study switch.
 assert.equal(typeof globalThis.gc, 'function', 'lifetime_test_requires_explicit_gc');
 const mode = process.argv[2];
-assert.ok(['plain', 'callbacks', 'retained-control', 'study-consumers'].includes(mode));
+assert.ok(['plain', 'callbacks', 'retained-control', 'study-consumers', 'warm-consumers'].includes(mode));
 const { state } = representativeProfileFixture();
 const fixture = await representativeShadowFixture();
 fixture.snapshot.state = state;
 Object.assign(process.env, resourceStudyEnvironment);
-const consumers = mode === 'study-consumers' ? createComparisonStudyConsumers({ metrics: { markSync() {}, track() {} } }) : null;
+const consumers = ['study-consumers', 'warm-consumers'].includes(mode) ? createComparisonStudyConsumers({ metrics: { markSync() {}, track() {} } }) : null;
 const observer = consumers?.observer ?? (mode === 'plain' ? null : createInventoryRepresentativeShadow());
 const neighborhoodRecovery = consumers?.neighborhoodRecovery ?? (mode === 'plain' ? null : createInventoryNeighborhoodRecovery());
 const retained = [], references = [], checks = [];
@@ -40,6 +41,22 @@ const repository = { async read() {
   const { vectors: _vectors, ...metadata } = fixture.snapshot;
   return { ...structuredClone(metadata), key: inventoryRepresentativeSourceKey(fixture.snapshot, identity, configKey) };
 } };
+if (mode === 'warm-consumers') repository.prepareRepresentative = async (identity, { configKey, signal }, prepare) => {
+  const { vectors: _vectors, ...metadata } = fixture.snapshot;
+  const snapshot = { ...structuredClone(metadata), presentHashes: new Set(fixture.snapshot.vectors.keys()),
+    key: inventoryRepresentativeSourceKey(fixture.snapshot, identity, configKey) };
+  references.push(new WeakRef(snapshot), new WeakRef(snapshot.presentHashes));
+  return withRepresentativePreparationReader(async (_sql, params) => ({ rows: params[4].map(hash => ({
+    description_hash: hash, embedding: JSON.stringify(fixture.snapshot.vectors.get(hash)),
+  })) }), identity, snapshot, signal, (source, readVectors) => {
+    references.push(new WeakRef(readVectors));
+    return prepare(source, async hashes => {
+      const vectors = await readVectors(hashes);
+      references.push(new WeakRef(vectors), new WeakRef(vectors.values().next().value));
+      return vectors;
+    });
+  });
+};
 const worker = createInventoryRepresentativeProfileRefresh({ repository, observer, neighborhoodRecovery,
   readState: async () => state, now: () => time,
   createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }),
@@ -53,12 +70,13 @@ try {
       observer.observe({ ...fixture.decision, metadata });
     }
     const report = await worker.run();
-    assert.deepEqual(checks.at(-1), Array((cycle + 1) * 3).fill(mode === 'retained-control'), 'snapshot_reachability');
+    assert.deepEqual(checks.at(-1), Array(references.length).fill(mode === 'retained-control'), 'snapshot_reachability');
     assert.equal(report.status, cycle ? 'up_to_date' : 'published');
     if (observer) assert.equal(observer.read().pending, 0);
     time += 300_000;
   }
-  assert.equal(reads, 2);
+  assert.equal(reads, mode === 'warm-consumers' ? 1 : 2);
+  assert.equal(references.length, mode === 'warm-consumers' ? 10 : 6);
   assert.equal(verifications, 2);
   assert.equal(retained.length, mode === 'retained-control' ? 2 : 0);
   process.stdout.write('representative_snapshot_lifetime_passed\n');

@@ -37,7 +37,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
     const candidate = await prepareInventoryRepresentativeCandidate({ repository, identity, expected, signal,
-      fit, observer, neighborhoodRecovery,
+      fit, observer, neighborhoodRecovery, hasCached: Boolean(key && cache.get(key)),
       isCurrent: state => current(state, expected) && getRevision() === runRevision,
       selectCached: sourceKey => { if (key !== sourceKey) clear(); return cache.get(sourceKey); } });
     if (candidate.status) { clear(); return report(candidate.status, candidate.summary); }

@@ -28,6 +28,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   preserving partial coverage, fresh observation metadata and backfill priorities.
   Revalidate unchanged cached comparison models without materializing a full vector
   snapshot, retaining both independent reads and invalidation safeguards.
+  Stream warm representative preparation and centroid validation without retaining
+  a full vector map; preserve corruption, coverage and fresh-publication checks.
   Separate bounded resource-deferral retries from representative and comparison fitting failures
   so temporary memory pressure does not accumulate long failure cooldowns.
 - **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming

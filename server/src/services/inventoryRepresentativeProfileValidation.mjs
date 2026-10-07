@@ -5,12 +5,12 @@ import { isMap } from 'node:util/types';
 import { validateRepresentativeMembership } from './inventoryRepresentativeMembership.mjs';
 
 /** A thread/cache result cannot claim readiness or support absent from its source snapshot. */
-export function validateInventoryRepresentativeProfileCoverage(model, snapshot, dimensions) {
-  const expected = inspectRepresentativeCoverage(snapshot);
+export function validateInventoryRepresentativeProfileCoverage(model, snapshot, dimensions, present = snapshot.vectors) {
+  const expected = inspectRepresentativeCoverage(snapshot, present);
   if (!isMap(model.libraries) || model.libraries.size !== expected.libraries.size) throw representativeValidationError('profile_structure');
   validateRepresentativeProfiles([...model.libraries.values()], dimensions);
   const hashes = new Map([...expected.libraries.keys()].map(id => [id, new Set()]));
-  for (const group of expected.index.groups.values()) if (group.libraries.size === 1 && snapshot.vectors.has(group.hash)) {
+  for (const group of expected.index.groups.values()) if (group.libraries.size === 1 && present.has(group.hash)) {
     const id = [...group.libraries][0];
     if (representativeCoverageReady(expected.libraries.get(id))) hashes.get(id).add(group.hash);
   }

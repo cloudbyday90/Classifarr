@@ -3,6 +3,13 @@ import { setImmediate } from 'node:timers/promises';
 import { representativeValidationError } from './representativeValidation.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
 
+function validateMean(sum, centroid) {
+  const norm = Math.sqrt(sum.reduce((total, value) => total + value * value, 0));
+  if (norm <= 1e-12 || sum.some((value, dimension) => Math.abs(value / norm - centroid[dimension]) > 1e-6)) {
+    throw representativeValidationError('profile_structure');
+  }
+}
+
 /** Exact selected partition of available, exclusive source hashes; never infer missing labels. */
 export function validateRepresentativeMembership(profile, expectedHashes) {
   const membership = profile.membership, selected = profile.starts[profile.selectedStart];
@@ -44,11 +51,36 @@ export async function validatedRecoveryGroups(profile, vectors, dimensions, sign
       const vector = normalize(vectors.get(hash), dimensions);
       for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
     }
-    const norm = Math.sqrt(sum.reduce((total, value) => total + value * value, 0));
-    const centroid = selected.groups[index].centroid;
-    if (norm <= 1e-12 || sum.some((value, dimension) => Math.abs(value / norm - centroid[dimension]) > 1e-6)) {
-      throw representativeValidationError('profile_structure');
+    validateMean(sum, selected.groups[index].centroid);
+  }
+  signal?.throwIfAborted();
+  return groups;
+}
+
+// Batch scope ends before another batch is read; preserve the original membership order.
+async function sumRecoveryBatch(readVectors, hashes, sum, dimensions, signal) {
+  const vectors = await readVectors(hashes);
+  signal?.throwIfAborted();
+  for (let index = 0; index < hashes.length; index++) {
+    if (index % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
+    const vector = normalizeDescriptionVector(vectors.get(hashes[index]), dimensions);
+    for (let dimension = 0; dimension < dimensions; dimension++) sum[dimension] += vector[dimension];
+  }
+}
+
+/** Same centroid evidence as the full-map path, with bounded transaction-scoped reads. */
+export async function validatedRecoveryGroupsStreamed(profile, readVectors, dimensions, signal) {
+  const selected = profile.starts[profile.selectedStart];
+  if (profile.coverage.status !== 'complete' || !selected.converged || !selected.groups.length) return null;
+  const groups = profile.membership.groups.map(hashes => [...hashes]);
+  const batchSize = Math.min(256, Math.floor(262144 / dimensions));
+  for (let index = 0; index < groups.length; index++) {
+    const sum = Array(dimensions).fill(0), hashes = groups[index];
+    for (let offset = 0; offset < hashes.length; offset += batchSize) {
+      signal?.throwIfAborted();
+      await sumRecoveryBatch(readVectors, hashes.slice(offset, offset + batchSize), sum, dimensions, signal);
     }
+    validateMean(sum, selected.groups[index].centroid);
   }
   signal?.throwIfAborted();
   return groups;

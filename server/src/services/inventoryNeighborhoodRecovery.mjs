@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { inventoryNeighborhoodRecoverySource } from './inventoryNeighborhoodRecoverySource.mjs';
-import { assertRepresentativeSnapshotBudget, REPRESENTATIVE_MIN_COVERAGE_PERCENT } from './inventoryRepresentativeCoverage.mjs';
+import { assertRepresentativeSnapshotBudget, assertRepresentativePresenceBudget, REPRESENTATIVE_MIN_COVERAGE_PERCENT } from './inventoryRepresentativeCoverage.mjs';
 import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
-import { validatedRecoveryGroups } from './inventoryRepresentativeMembership.mjs';
+import { validatedRecoveryGroups, validatedRecoveryGroupsStreamed } from './inventoryRepresentativeMembership.mjs';
 import { buildInventoryGroupReadiness, orderInventoryReadinessRefill } from './inventoryGroupReadiness.mjs';
 
 const REFERENCE_TTL_MS = 1_800_000;
@@ -40,18 +40,21 @@ export function createInventoryNeighborhoodRecovery({ now = Date.now, getRevisio
     clearMetadata() { metadataPlan = null; generation++; },
     readReadiness() { const plan = currentPlan(); return plan ? { ...plan.summary } : null; },
     prioritizeMetadata(rows) { const plan = currentPlan(); return plan ? orderInventoryReadinessRefill(rows, plan.targets) : rows; },
-    async prepare({ model, snapshot, identity, configKey, signal }) {
+    async prepare({ model, snapshot, identity, configKey, signal, readVectors = null }) {
       const token = generation;
       const revision = getRevision();
-      assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
-      validateInventoryRepresentativeProfileCoverage(model, snapshot, identity.dimensions);
+      if (readVectors) assertRepresentativePresenceBudget(snapshot, identity.dimensions);
+      else assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
+      validateInventoryRepresentativeProfileCoverage(model, snapshot, identity.dimensions, readVectors ? snapshot.presentHashes : snapshot.vectors);
       const source = inventoryNeighborhoodRecoverySource(snapshot.corpus, identity, configKey);
       const staged = new Map();
       for (const [id, library] of source.libraries) {
         signal?.throwIfAborted();
         const profile = model.libraries.get(id);
         if (!profile || profile.mediaType !== library.type) continue;
-        const groups = await validatedRecoveryGroups(profile, snapshot.vectors, identity.dimensions, signal);
+        const groups = readVectors
+          ? await validatedRecoveryGroupsStreamed(profile, readVectors, identity.dimensions, signal)
+          : await validatedRecoveryGroups(profile, snapshot.vectors, identity.dimensions, signal);
         if (groups) staged.set(id, { binding: library.binding, groups });
       }
       return stageCommit({ token, revision, source, staged, identity, configKey, signal });

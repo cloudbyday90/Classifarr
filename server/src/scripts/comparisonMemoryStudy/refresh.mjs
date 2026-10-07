@@ -30,7 +30,12 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
     metrics.track('verificationMetadata', snapshot);
     await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true, worker: 'representative' });
     return snapshot;
-  } };
+  }, prepareRepresentative: (identity, options, prepare) =>
+    fixture.repository.prepareRepresentative(identity, options, async (snapshot, readVectors) => {
+      reads++; metrics.track('verificationMetadata', snapshot);
+      await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true, worker: 'representative' });
+      return prepare(snapshot, readVectors);
+    }) };
   const shared = { repository, readState: fixture.readState ?? (async () => fixture.state), now,
     getRevision: fixture.getRevision ?? (() => 0),
     createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }),
