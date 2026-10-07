@@ -24,6 +24,9 @@ alone. Do not change admission limits, retries, ownership, deadlines or GC polic
 - Produce an ordinary dense Array. Reuse a build-local WeakMap result only after
   checking its length, own elements and exact values with Object.is; signed zero,
   mutated inputs and mutated borrowed outputs remain significant.
+  Allocate its final length and assign every slot before returning. The first
+  growing-array candidate reduced churn but showed higher end-of-build heap;
+  compare fixed-length allocation before selecting the final implementation.
 - Allocation growth remains bounded by the existing 16,000-element validation
   limit. No global cache, background task, additional concurrency or I/O is added.
 - Callers retain cancellation, freshness/revision checks and atomic publication.

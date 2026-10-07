@@ -12,8 +12,10 @@ export function descriptionVectorNorm(vector) {
 }
 
 export function divideDescriptionVector(vector, norm) {
-  const result = [];
-  for (let index = 0; index < vector.length; index++) result.push(vector[index] / norm);
+  // Exact-sized backing storage avoids the spare capacity of repeated push.
+  // Every slot is assigned before the result escapes.
+  const result = new Array(vector.length);
+  for (let index = 0; index < vector.length; index++) result[index] = vector[index] / norm;
   return result;
 }
 
