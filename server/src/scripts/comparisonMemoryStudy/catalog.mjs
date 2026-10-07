@@ -19,12 +19,14 @@ import { observeComparisonStudyAdmission } from './admission.mjs';
 import { createComparisonStudySchedule } from './schedule.mjs';
 import { COMPARISON_RECOVERY_PROFILE, comparisonRecoveryEvidence } from './recoveryContract.mjs';
 import { comparisonCatalogCompletion, assertComparisonCatalogReceipt } from './catalogContract.mjs';
+import { createComparisonAllocationWindows } from './allocationWindows.mjs';
 
-export async function runComparisonCatalogStudy(database, budget, emit) {
+export async function runComparisonCatalogStudy(database, budget, emit, { profileAllocations = false } = {}) {
   assertStudyProviderEnvironment(); assert.equal(budget, 'bounded');
   const started = performance.now(), initial = await readStudyCgroup(), scope = new AsyncLocalStorage();
   assertStudyBudget(initial, budget);
   const attempts = [], decisions = [], elapsed = () => Math.round(performance.now() - started);
+  const allocations = createComparisonAllocationWindows({ enabled: profileAllocations, context: () => scope.getStore(), now: elapsed });
   let observerFailed = false;
   const admission = observeComparisonStudyAdmission(createBackgroundResourceAdmission({ onDecision: decision => {
     if (decision.kind !== 'discovery') return;
@@ -48,9 +50,10 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
       afterScan: async () => { coverage = await fixture.cacheDescriptions(); } });
     consumers = createComparisonStudyConsumers({ metrics, getRevision: fixture.getRevision });
     refreshers = createComparisonStudyRefreshers({ fixture, metrics, consumers,
-      resourceAdmission: admission, phase: () => 'recovery' });
+      resourceAdmission: admission, phase: () => 'recovery', allocations: profileAllocations ? allocations : null });
     schedule = createComparisonStudySchedule({ execute: (worker, attempt, callback) => scope.run({ worker, attempt }, async () => {
       const report = await callback();
+      allocations.check();
       const row = { worker, attempt, elapsedMs: elapsed(), status: report.status, reason: report.reason ?? null };
       attempts.push(row);
       const consumerState = consumers.read();
@@ -93,7 +96,7 @@ export async function runComparisonCatalogStudy(database, budget, emit) {
   const result = { version: 'comparison_catalog.v2', status: 'measured', profile: 'comparison-catalog', budget,
     durationMs: elapsed(), initial, final: await readStudyCgroup(), drainedAtMs, work, coverage, attempts, decisions,
     pressureRecoveryObserved: Boolean(comparisonRecoveryEvidence(attempts, decisions, drainedAtMs).revalidated),
-    measurement, consumers: { beforeStop, afterStop: consumers.read() },
+    measurement, ...(profileAllocations ? { allocations: allocations.read() } : {}), consumers: { beforeStop, afterStop: consumers.read() },
     admission: admission.classes, overlap: admission.overlap, refresh: refreshers.counts() };
   assertComparisonCatalogReceipt(result, budget); return result;
 }

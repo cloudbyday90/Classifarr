@@ -12,8 +12,9 @@ import { createComparisonStudyTiming } from './timing.mjs';
 import { createComparisonStudyPhases } from './phases.mjs';
 
 export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.now, phase = () => 'cycle_0',
-  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, consumers = null }) {
+  resourceAdmission = createBackgroundResourceAdmission(), onBuild = () => {}, consumers = null, allocations = null }) {
   let reads = 0, builds = 0;
+  const sample = (name, work) => allocations ? allocations.run(name, work) : work();
   const repository = { read: async (identity, options) => {
     const snapshot = await fixture.repository.read(identity, options); reads++;
     metrics.track('snapshot', snapshot);
@@ -21,21 +22,21 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
     await metrics.mark(`${phase()}_read_${reads}`);
     return snapshot;
   }, readVerification: async (identity, options) => {
-    const snapshot = await fixture.repository.readVerification(identity, options); reads++;
+    const snapshot = await sample('comparison_verification', () => fixture.repository.readVerification(identity, options)); reads++;
     metrics.track('verificationMetadata', snapshot);
     await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true });
     return snapshot;
   }, readRepresentativeVerification: async (identity, options) => {
-    const snapshot = await fixture.repository.readRepresentativeVerification(identity, options); reads++;
+    const snapshot = await sample('representative_verification', () => fixture.repository.readRepresentativeVerification(identity, options)); reads++;
     metrics.track('verificationMetadata', snapshot);
     await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true, worker: 'representative' });
     return snapshot;
   }, prepareRepresentative: (identity, options, prepare) =>
-    fixture.repository.prepareRepresentative(identity, options, async (snapshot, readVectors) => {
+    sample('representative_preparation', () => fixture.repository.prepareRepresentative(identity, options, async (snapshot, readVectors) => {
       reads++; metrics.track('verificationMetadata', snapshot);
       await metrics.mark(`${phase()}_read_${reads}`, { streamedVerification: true, worker: 'representative' });
       return prepare(snapshot, readVectors);
-    }) };
+    })) };
   const shared = { repository, readState: fixture.readState ?? (async () => fixture.state), now,
     getRevision: fixture.getRevision ?? (() => 0),
     createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }),
@@ -48,8 +49,10 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
       metrics.track('ownedVector', source.training.vectors.values().next().value);
       await metrics.mark(`${phase()}_build_start`);
       onBuild();
-      const model = await buildMultiScaleProfile(source, { ...options,
-        ...createComparisonStudyPhases(metrics, phase()) });
+      const phases = createComparisonStudyPhases(metrics, phase(), { allocations });
+      let model, completed = false;
+      try { model = await buildMultiScaleProfile(source, { ...options, ...phases }); completed = true; }
+      finally { await phases.close(completed); }
       metrics.track('comparisonHandle', model.handle);
       await metrics.mark(`${phase()}_build_end`, { estimatedCacheBytes: model.weight });
       return model;

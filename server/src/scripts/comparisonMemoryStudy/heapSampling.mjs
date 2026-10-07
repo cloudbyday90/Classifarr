@@ -16,6 +16,11 @@ function component({ url = '', functionName = '' } = {}) {
     descriptionVectorArithmetic: 'normalization_arithmetic',
     inventoryGroupBenchmarkControl: 'broad_control', inventoryRepresentativeMembership: 'membership_validation',
     inventoryMultiScaleProfile: 'profile_assembly',
+    inventoryDescriptionVectorReader: 'vector_read', inventoryDescriptionVectorCache: 'vector_cache',
+    inventoryVectorFingerprint: 'vector_fingerprint', inventoryRepresentativeFingerprint: 'vector_fingerprint',
+    inventoryMultiScaleVerification: 'comparison_verification', inventoryRepresentativeVerification: 'representative_verification',
+    inventoryRepresentativePreparationReader: 'representative_preparation',
+    inventoryRepresentativeProfileValidation: 'representative_validation', inventoryDescriptionCorpus: 'description_corpus',
   };
   for (const [file, label] of Object.entries(files)) if (url.endsWith(`/services/${file}.mjs`)) return label;
   return null;

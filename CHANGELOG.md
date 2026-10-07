@@ -14,6 +14,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 - Add isolated, repeatable cold comparison allocation profiles to distinguish
   construction costs from retained memory before tuning; production memory
   safeguards and refresh behavior are unchanged.
+  Add opt-in allocation windows for concurrent build and warm-verification phases,
+  correlated with real scheduled attempts and validated without saving raw profiles.
 
 ### Fixed
 

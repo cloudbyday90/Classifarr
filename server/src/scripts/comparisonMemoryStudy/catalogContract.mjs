@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { assertStudyBudget, assertStudyBudgetContinuity } from '../resourceStudyBudget.mjs';
 import { assertStudyCgroup } from '../resourceStudyMetrics.mjs';
 import { comparisonRecoveryEvidence } from './recoveryContract.mjs';
+import { assertComparisonAllocationReceipt } from './allocationContract.mjs';
 
 export function comparisonCatalogCompletion(attempts, drainedAtMs) {
   if (!Number.isSafeInteger(drainedAtMs) || drainedAtMs <= 0) return false;
@@ -78,4 +79,5 @@ export function assertComparisonCatalogReceipt(study, budget) {
   assert.equal(study.measurement.createdWorkers, study.measurement.exitedWorkers); assert.equal(study.measurement.activeWorkers, 0);
   for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(study.admission[kind].active, 0);
   for (const kind of ['ingestion', 'queue']) assert.ok(Number.isSafeInteger(study.overlap[kind]) && study.overlap[kind] >= 0);
+  if (study.allocations !== undefined) assertComparisonAllocationReceipt(study.allocations, study);
 }

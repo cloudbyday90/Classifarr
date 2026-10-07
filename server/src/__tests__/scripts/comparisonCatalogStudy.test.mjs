@@ -86,6 +86,40 @@ function receipt() {
     measurement: { createdWorkers: 2, exitedWorkers: 2, activeWorkers: 0 },
     admission: { ingestion: { active: 0 }, queue: { active: 0 }, discovery: { active: 0 } }, overlap: { ingestion: 0, queue: 0 } };
 }
+
+function allocationReceipt() {
+  const windows = [
+    ['build_control', 'comparison', 1, 650_000], ['community_build', 'comparison', 1, 651_000],
+    ['build_quality', 'comparison', 1, 652_000], ['representative_verification', 'representative', 1, 679_000],
+    ['comparison_verification', 'comparison', 2, 979_000], ['representative_preparation', 'representative', 2, 980_000],
+  ].map(([phase, worker, attempt, startMs]) => ({ phase, worker, attempt, startMs, endMs: startMs + 1,
+    heapStart: 100, heapEnd: 101, rssStart: 200, rssEnd: 201,
+    profile: { sampledEstimatedBytes: 10, nodes: 1, samples: 1, components: { other: 10 } } }));
+  return { version: 1, mode: 'allocations', intervalBytes: 524288, windows };
+}
+
+test('allocation receipt requires bounded correlated build and actual post-drain warm phases', () => {
+  const s = { ...receipt(), allocations: allocationReceipt() };
+  expect(() => assertComparisonCatalogReceipt(s, 'bounded')).not.toThrow();
+  for (const change of [
+    r => { r.allocations.windows[0].secret = 'private'; },
+    r => { r.allocations.windows[0].phase = 'untrusted'; },
+    r => { r.allocations.windows[0].worker = 'representative'; },
+    r => { r.allocations.windows[0].attempt = 60; },
+    r => { r.allocations.windows[0].endMs = 660_001; },
+    r => { r.allocations.windows[1].startMs = 650_000; },
+    r => { r.allocations.windows[0].profile.components.other = 11; },
+    r => { r.allocations.windows[0].profile.components.secret = 1; },
+    r => { r.allocations.windows[0].profile.nodes = 50_001; },
+    r => { r.allocations.windows[0].heapEnd = NaN; },
+    r => { r.allocations.windows[4].phase = 'build_quality'; },
+    r => { r.allocations.windows[5].phase = 'representative_verification'; },
+    r => { r.allocations.windows[4].attempt = 1; },
+  ]) {
+    const invalid = structuredClone(s); change(invalid);
+    expect(() => assertComparisonCatalogReceipt(invalid, 'bounded')).toThrow();
+  }
+});
 test('completion requires settled loaded context and later real scheduled revalidation, not invented pressure', () => {
   const s = receipt(); expect(comparisonCatalogCompletion(s.attempts, null)).toBe(false);
   expect(() => assertComparisonCatalogReceipt(s, 'bounded')).not.toThrow();
@@ -110,7 +144,10 @@ test.each([
   { failed: false, traceGc: false }, { failed: true, traceGc: false },
   { failed: false, traceGc: true }, { failed: true, traceGc: true },
   { failed: false, traceGc: true, missingGc: true },
-])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc }) => {
+  { failed: false, traceGc: false, profileAllocations: true },
+  { failed: false, traceGc: false, profileAllocations: true, missingAllocations: true },
+  { failed: true, traceGc: false, profileAllocations: true },
+])('launcher preserves immutable image, scoped tracing and owned cleanup (%j)', async ({ failed, traceGc, missingGc, profileAllocations = false, missingAllocations = false }) => {
   const imageId = `sha256:${'a'.repeat(64)}`, save = jest.fn(), saveTrace = jest.fn(), saveGcTrace = jest.fn();
   const run = jest.fn((_command, args) => {
     let stdout = '';
@@ -124,19 +161,20 @@ test.each([
       if (action === 'comparison-catalog') return { status: failed ? 1 : 0, stderr: '',
         stdout: (traceGc && !missingGc ? '[123:0xabcdef] 100 ms: Mark-Compact 50.0 (60.0) -> 20.0 (30.0) MB, pooled: 20 MB, 1.00 / 0.00 ms private\n' : '') +
           'STUDY_PROGRESS {"phase":"catalog_drained","inventory":5776,"secret":"private"}\n' +
-          `RESOURCE_STUDY ${JSON.stringify(receipt())}` };
+          `RESOURCE_STUDY ${JSON.stringify({ ...receipt(), ...(profileAllocations && !missingAllocations ? { allocations: allocationReceipt() } : {}) })}` };
       stdout = `RESOURCE_STUDY ${JSON.stringify(action === 'seed' ? { seeded: true } : resourceStudyStartupFixture('bounded'))}`;
     }
     return { status: 0, stdout, stderr: '' };
   });
   const pending = runResourceStudyCompose({ mode: 'comparison-catalog', budget: 'bounded', candidateImageId: imageId,
-    run, save, saveTrace, traceGc, saveGcTrace, report: () => {}, random: size => Buffer.alloc(size, 7) });
+    run, save, saveTrace, traceGc, saveGcTrace, profileAllocations, report: () => {}, random: size => Buffer.alloc(size, 7) });
   if (failed) await expect(pending).rejects.toThrow('resource_study_command_failed');
   else if (missingGc) await expect(pending).rejects.toThrow('resource_study_gc_evidence_incomplete');
+  else if (missingAllocations) await expect(pending).rejects.toThrow('resource_study_allocation_evidence_missing');
   else await expect(pending).resolves.toMatchObject({ imageId, cleanup: 'passed' });
   expect(run.mock.calls.some(([, args]) => args.includes('build'))).toBe(false);
   expect(run.mock.calls.some(([, args]) => args.includes('down') && args.includes('--volumes'))).toBe(true);
-  expect(save).toHaveBeenCalledTimes(failed || missingGc ? 0 : 1);
+  expect(save).toHaveBeenCalledTimes(failed || missingGc || missingAllocations ? 0 : 1);
   expect(saveTrace.mock.calls[0][1]).toEqual([{ phase: 'catalog_drained', inventory: 5776 }]);
   expect(saveGcTrace).toHaveBeenCalledTimes(traceGc ? 1 : 0);
   if (traceGc) {
@@ -149,8 +187,19 @@ test.each([
     expect(args.includes('--trace-gc-ignore-scavenger')).toBe(enabled);
     expect(options.shell).toBe(false);
     expect(args).not.toContain('--expose-gc');
+    if (args.includes('src/scripts/runResourceStudy.mjs')) {
+      const sampled = profileAllocations && args.at(-1) === 'comparison-catalog';
+      expect(args).toContain(`CLASSIFARR_STUDY_ALLOCATIONS=${sampled ? '1' : '0'}`);
+    }
   }
 });
+
+test.each([{ mode: 'soak', profileAllocations: true }, { mode: 'comparison-catalog', profileAllocations: 'true' }])(
+  'allocation sampling refuses invalid scope before Docker (%j)', async options => {
+    const run = jest.fn();
+    await expect(runResourceStudyCompose({ ...options, run })).rejects.toThrow('resource_study_allocation_scope_invalid');
+    expect(run).not.toHaveBeenCalled();
+  });
 
 test.each([{ mode: 'soak', traceGc: true }, { mode: 'comparison-catalog', traceGc: 'true' }])(
   'GC tracing refuses invalid scope before Docker (%j)', async options => {
