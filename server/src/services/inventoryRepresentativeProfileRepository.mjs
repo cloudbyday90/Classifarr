@@ -5,6 +5,7 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthor
 import { createInventoryDescriptionVectorCache, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { readInventoryDescriptionVectors } from './inventoryDescriptionVectorReader.mjs';
 import { fingerprintMultiScaleVerification } from './inventoryMultiScaleVerification.mjs';
+import { fingerprintRepresentativeVerification } from './inventoryRepresentativeVerification.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
 
@@ -19,8 +20,11 @@ export const REPRESENTATIVE_PROFILE_IDENTITIES_SQL = `SELECT DISTINCT msi.media_
   WHERE msi.media_type IN ('movie','tv') AND msi.tmdb_id > 0 ORDER BY msi.media_type, msi.tmdb_id LIMIT 50001`;
 
 export function createInventoryRepresentativeProfileRepository({ withTransaction }) {
-  const readSnapshot = async (identity, { requireCompleteVectors = false, signal } = {}, verification = false) => {
+  const readSnapshot = async (identity, { requireCompleteVectors = false, signal, configKey } = {}, verification = null) => {
     validateDescriptionRepresentation(identity);
+    if (verification === 'representative' && (typeof configKey !== 'string' || !configKey)) {
+      throw new Error('inventory_representative_config_required');
+    }
     signal?.throwIfAborted();
     const source = await withTransaction(async client => {
       const query = async (...args) => {
@@ -54,7 +58,9 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
           } });
         }
       }
-      const evidence = verification
+      const evidence = verification === 'representative'
+        ? { key: await fingerprintRepresentativeVerification(query, identity, { libraries, corpus }, configKey, signal) }
+        : verification === 'comparison'
         ? { key: await fingerprintMultiScaleVerification(query, identity, { libraries, corpus }, signal) }
         : { vectors: await readInventoryDescriptionVectors(query, identity, hashes, { signal }) };
       return { state, libraries, corpus, ...evidence, identities, rows };
@@ -66,6 +72,7 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
   };
   return {
     read: (identity, options) => readSnapshot(identity, options),
-    readVerification: (identity, options) => readSnapshot(identity, { ...options, requireCompleteVectors: true }, true),
+    readVerification: (identity, options) => readSnapshot(identity, { ...options, requireCompleteVectors: true }, 'comparison'),
+    readRepresentativeVerification: (identity, options) => readSnapshot(identity, { ...options, requireCompleteVectors: false }, 'representative'),
   };
 }

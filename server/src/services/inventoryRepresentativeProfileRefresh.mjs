@@ -2,7 +2,7 @@
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { inventoryRepresentativeSourceKey, INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
+import { INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
 import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 import { prepareInventoryRepresentativeCandidate } from './inventoryRepresentativeCandidate.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
@@ -42,11 +42,11 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
       selectCached: sourceKey => { if (key !== sourceKey) clear(); return cache.get(sourceKey); } });
     if (candidate.status) { clear(); return report(candidate.status, candidate.summary); }
     const { sourceKey, model, summary, reused, batch, recoveryBatch } = candidate;
-    const fresh = await repository.read(identity, { signal });
+    const fresh = await repository.readRepresentativeVerification(identity, { signal, configKey: expected });
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
     if (!current(fresh.state, expected) ||
-        inventoryRepresentativeSourceKey(fresh, identity, expected) !== sourceKey ||
+        fresh.key !== sourceKey ||
         !current(await readState(), expected) || getRevision() !== runRevision) {
       clear(); return report('invalidated');
     }

@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { createInventoryRepresentativeProfileRefresh } from '../../services/inventoryRepresentativeProfileRefresh.mjs';
-import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
+import { buildInventoryRepresentativeProfile, inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
 import { withInventoryBackgroundReadiness } from '../../services/inventoryBackgroundReadiness.mjs';
 import { DiscoveryDeferredError } from '../../services/inventoryDiscoveryAdmission.mjs';
 import { registerInventoryRepresentativeProfileSchedule } from '../../services/inventoryRepresentativeProfileScheduler.mjs';
@@ -20,7 +20,11 @@ function setup() {
     readMemory: () => ({ available: control.available, constrained: 2048 * MIB, total: 16_384 * MIB }) });
   const dependencies = { now: () => control.time,
     readState: jest.fn(async () => ({ ...fixture.state })),
-    repository: { read: jest.fn(async () => structuredClone(fixture.snapshot)) },
+    repository: { read: jest.fn(async () => structuredClone(fixture.snapshot)),
+      readRepresentativeVerification: jest.fn(async (identity, { configKey }) => {
+        const { vectors: _vectors, ...metadata } = fixture.snapshot;
+        return { ...structuredClone(metadata), key: inventoryRepresentativeSourceKey(fixture.snapshot, identity, configKey) };
+      }) },
     createEmbedder: jest.fn(() => ({ ...fixture.identity, inspect: async () => ({ ...fixture.identity }) })),
     fit: jest.fn(async (snapshot, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot, dimensions }, options)),
     withAdmission: jest.fn(admission) };

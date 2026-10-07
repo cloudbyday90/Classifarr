@@ -9,8 +9,10 @@ import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventor
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
 import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
+import { inventoryRepresentativeSourceKey, buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
+import { createInventoryRepresentativeProfileRefresh } from '../../services/inventoryRepresentativeProfileRefresh.mjs';
 
-test.each(['read', 'readVerification'])('%s stays consistent across concurrent deletion and update; fresh reads detect both', async method => {
+test.each(['read', 'readVerification', 'readRepresentativeVerification'])('%s stays consistent across concurrent deletion and update; fresh reads detect both', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   // Generated identifier only; no application or user input enters SQL identifiers.
   const table = `comparison_cache_${randomUUID().replaceAll('-', '')}`;
@@ -20,11 +22,13 @@ test.each(['read', 'readVerification'])('%s stays consistent across concurrent d
   try {
     const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => pool.query(scoped(sql), params) });
     const ordered = [...fixture.snapshot.vectors];
-    if (method === 'readVerification') ordered.sort(([a], [b]) => a.localeCompare(b));
+    if (method !== 'read') ordered.sort(([a], [b]) => a.localeCompare(b));
     const entries = ordered.map(([hash, vector]) => ({ hash, vector }));
     for (let i = 0; i < entries.length; i += 8) await cache.write(fixture.identity, entries.slice(i, i + 8));
-    const expectedKey = inspectUnseenMultiScaleSource({ ...fixture.snapshot,
-      vectors: await cache.read(fixture.identity, entries.map(entry => entry.hash)) }, fixture.identity).key;
+    const source = { ...fixture.snapshot, vectors: await cache.read(fixture.identity, entries.map(entry => entry.hash)) };
+    const expectedKey = method === 'readRepresentativeVerification'
+      ? inventoryRepresentativeSourceKey(source, fixture.identity, 'fixture-config')
+      : inspectUnseenMultiScaleSource(source, fixture.identity).key;
     client = await pool.connect();
     const profiles = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
       await client.query('BEGIN');
@@ -46,7 +50,7 @@ test.each(['read', 'readVerification'])('%s stays consistent across concurrent d
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); throw error; }
     } });
-    const initial = await profiles[method](fixture.identity, { requireCompleteVectors: true });
+    const initial = await profiles[method](fixture.identity, { requireCompleteVectors: true, configKey: 'fixture-config' });
     if (method === 'read') {
       expect(initial.vectors.size).toBe(entries.length);
       expect(initial.vectors.get(entries[298].hash)).not.toEqual([0, 1]);
@@ -57,18 +61,20 @@ test.each(['read', 'readVerification'])('%s stays consistent across concurrent d
     }
     expect(batches).toBe(2);
     expect(removed).toBe(true);
-    await expect(profiles[method](fixture.identity, { requireCompleteVectors: true })).rejects.toMatchObject({
+    if (method === 'readRepresentativeVerification') {
+      expect((await profiles[method](fixture.identity, { configKey: 'fixture-config' })).key).not.toBe(expectedKey);
+    } else await expect(profiles[method](fixture.identity, { requireCompleteVectors: true })).rejects.toMatchObject({
       coverage: { eligibleDescriptions: entries.length, cachedDescriptions: entries.length - 1, missingDescriptions: 1 },
     });
     const fresh = (await profiles.read(fixture.identity)).vectors;
     expect(fresh.get(entries[298].hash)).toEqual([0, 1]);
     expect(fresh.has(entries[299].hash)).toBe(false);
     await cache.write(fixture.identity, [entries[299]]);
-    expect((await profiles.readVerification(fixture.identity)).key).not.toBe(expectedKey);
+    expect((await profiles[method === 'read' ? 'readVerification' : method](fixture.identity, { configKey: 'fixture-config' })).key).not.toBe(expectedKey);
   } finally { client?.release(); await pool.query(`DROP TABLE ${table}`); }
 });
 
-test.each(['read', 'readVerification'])('aborted %s rolls back and releases a usable connection without returning partial evidence', async method => {
+test.each(['read', 'readVerification', 'readRepresentativeVerification'])('aborted %s rolls back and releases a usable connection without returning partial evidence', async method => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   const client = await pool.connect(), controller = new AbortController();
   let batches = 0, rolledBack = false;
@@ -91,14 +97,17 @@ test.each(['read', 'readVerification'])('aborted %s rolls back and releases a us
         await client.query('COMMIT'); return result;
       } catch (error) { await client.query('ROLLBACK'); rolledBack = true; throw error; }
     } });
-    await expect(repository[method](fixture.identity, { signal: controller.signal })).rejects.toThrow('stopped');
+    await expect(repository[method](fixture.identity, { signal: controller.signal, configKey: 'fixture-config' })).rejects.toThrow('stopped');
     expect(batches).toBe(1); expect(rolledBack).toBe(true);
     expect((await client.query('SHOW transaction_isolation')).rows[0].transaction_isolation).toBe('read committed');
     expect((await cache.read(fixture.identity, entries.map(entry => entry.hash))).size).toBe(300);
   } finally { client.release(true); }
 });
 
-test.each(['unchanged', 'updated', 'deleted'])('warm streamed refresh detects %s vectors across separate real transactions', async change => {
+test.each([
+  ['comparison', 'unchanged'], ['comparison', 'updated'], ['comparison', 'deleted'],
+  ['representative', 'unchanged'], ['representative', 'updated'], ['representative', 'deleted'], ['representative', 'backfilled'],
+])('warm %s refresh detects %s vectors across separate real transactions', async (kind, change) => {
   const pool = getPool(), fixture = representativeProfileFixture({ perLibrary: 150 });
   const table = `comparison_cache_${randomUUID().replaceAll('-', '')}`;
   const scoped = sql => sql.replaceAll('inventory_description_vector_cache', table);
@@ -107,7 +116,8 @@ test.each(['unchanged', 'updated', 'deleted'])('warm streamed refresh detects %s
   try {
     const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => pool.query(scoped(sql), params) });
     const entries = [...fixture.snapshot.vectors].map(([hash, vector]) => ({ hash, vector }));
-    for (let i = 0; i < entries.length; i += 8) await cache.write(fixture.identity, entries.slice(i, i + 8));
+    const initial = change === 'backfilled' ? entries.slice(0, -1) : entries;
+    for (let i = 0; i < initial.length; i += 8) await cache.write(fixture.identity, initial.slice(i, i + 8));
     const profiles = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
       const client = await pool.connect();
       try {
@@ -126,25 +136,33 @@ test.each(['unchanged', 'updated', 'deleted'])('warm streamed refresh detects %s
         if (warm && transactions === 1 && change === 'deleted') {
           await pool.query(`DELETE FROM ${table} WHERE description_hash=$1`, [entries[299].hash]);
         }
+        if (warm && transactions === 1 && change === 'backfilled') await cache.write(fixture.identity, [entries[299]]);
         return result;
       } catch (error) { await client.query('ROLLBACK'); throw error; }
       finally { client.release(); }
     } });
-    const repository = { read: jest.fn(profiles.read), readVerification: jest.fn(profiles.readVerification) };
+    const repository = { read: jest.fn(profiles.read), readVerification: jest.fn(profiles.readVerification),
+      readRepresentativeVerification: jest.fn(profiles.readRepresentativeVerification) };
     const build = jest.fn(async () => ({ handle: {}, cacheable: true, weight: 1000 }));
-    worker = createLiveMultiScaleRefresh({ repository, readState: async () => fixture.state, build,
-      createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }), now: () => time, random: () => 0 });
-    expect(await worker.run()).toEqual({ status: 'ready' });
+    const fit = jest.fn((snapshot, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot, dimensions }, options));
+    const dependencies = { repository, readState: async () => fixture.state, build, fit,
+      createEmbedder: () => ({ ...fixture.identity, inspect: async () => fixture.identity }), now: () => time, random: () => 0 };
+    worker = kind === 'comparison' ? createLiveMultiScaleRefresh(dependencies) : createInventoryRepresentativeProfileRefresh(dependencies);
+    expect(await worker.run()).toMatchObject({ status: kind === 'comparison' ? 'ready' : 'published' });
     time += 300000; warm = true; transactions = 0;
-    repository.read.mockClear(); repository.readVerification.mockClear(); build.mockClear();
+    repository.read.mockClear(); repository.readVerification.mockClear(); repository.readRepresentativeVerification.mockClear();
+    build.mockClear(); fit.mockClear();
     const result = await worker.run();
-    if (change === 'deleted') expect(result).toEqual({ status: 'unavailable', failure: {
+    if (kind === 'representative') expect(result).toMatchObject({ status: change === 'unchanged' ? 'up_to_date' : 'invalidated' });
+    else if (change === 'deleted') expect(result).toEqual({ status: 'unavailable', failure: {
       stage: 'snapshot_verify', code: 'cached_vectors_incomplete',
       coverage: { eligibleDescriptions: 300, cachedDescriptions: 299, missingDescriptions: 1 },
     } });
     else expect(result).toEqual({ status: change === 'unchanged' ? 'revalidated' : 'invalidated' });
     expect(transactions).toBe(2);
-    expect(repository.readVerification).toHaveBeenCalledTimes(2);
-    expect(repository.read).not.toHaveBeenCalled(); expect(build).not.toHaveBeenCalled();
+    expect(repository.readVerification).toHaveBeenCalledTimes(kind === 'comparison' ? 2 : 0);
+    expect(repository.readRepresentativeVerification).toHaveBeenCalledTimes(kind === 'representative' ? 1 : 0);
+    expect(repository.read).toHaveBeenCalledTimes(kind === 'representative' ? 1 : 0);
+    expect(build).not.toHaveBeenCalled(); expect(fit).not.toHaveBeenCalled();
   } finally { worker?.stop(); await pool.query(`DROP TABLE ${table}`); }
 });

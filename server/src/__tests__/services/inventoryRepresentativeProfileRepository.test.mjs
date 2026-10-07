@@ -7,6 +7,29 @@ import { collectInventoryObservationReadiness } from '../../services/inventoryOb
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
 import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
+import { inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
+
+test.each(['complete', 'partial', 'missing'])('representative verification preserves %s coverage without materializing a vector map', async mode => {
+  const v = setup(), configKey = 'fixture-config';
+  if (mode === 'partial') v.snapshot.vectors.delete(v.snapshot.vectors.keys().next().value);
+  if (mode === 'missing') v.snapshot.vectors.clear();
+  const fresh = await v.repository.readRepresentativeVerification(v.identity, { configKey });
+  expect(fresh).not.toHaveProperty('vectors');
+  expect(fresh.key).toBe(inventoryRepresentativeSourceKey(v.snapshot, v.identity, configKey));
+  expect(fresh.observedKeys).toEqual(v.snapshot.observedKeys);
+  expect(fresh.observationReadiness).toEqual(collectInventoryObservationReadiness(v.rows));
+  expect(v.withTransaction).toHaveBeenCalledTimes(1);
+  expect(v.client.query.mock.calls[0]).toEqual(['SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY']);
+});
+
+test('representative verification requires configuration before SQL and rejects corrupt partial evidence', async () => {
+  const v = setup();
+  await expect(v.repository.readRepresentativeVerification(v.identity)).rejects.toThrow('config_required');
+  expect(v.withTransaction).not.toHaveBeenCalled();
+  const hashes = [...v.snapshot.vectors.keys()];
+  v.snapshot.vectors.delete(hashes[0]); v.snapshot.vectors.set(hashes[1], [0, 0]);
+  await expect(v.repository.readRepresentativeVerification(v.identity, { configKey: 'fixture-config' })).rejects.toThrow();
+});
 
 test('verification reads fresh complete evidence without returning a vector map', async () => {
   const v = setup();

@@ -1,33 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { createHash } from 'node:crypto';
 import { fitStableRepresentativeGeometry } from './inventoryRepresentativeStability.mjs';
-import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
-import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { createRepresentativeFingerprint, INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeFingerprint.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
 import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage, representativeCoverageReady } from './inventoryRepresentativeCoverage.mjs';
 export { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeCoverage.mjs';
 
-export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v4';
+export { INVENTORY_REPRESENTATIVE_PROFILE_VERSION };
 
 /** Private canonical source digest. Neither the key nor these inputs belong in logs. */
 export function inventoryRepresentativeSourceKey(snapshot, identity, configKey) {
-  const representation = validateDescriptionRepresentation(identity);
   assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
-  const hash = createHash('sha256');
-  const add = value => hash.update(JSON.stringify(value)).update('\n');
-  add([INVENTORY_REPRESENTATIVE_PROFILE_VERSION, representation, configKey]);
-  add(snapshot.libraries.map(row => [row.id, row.media_type]).sort((a, b) => a[0] - b[0]));
-  add(snapshot.corpus.documents.map(row => [row.key, row.type, row.hash, [...row.libraryIds].sort((a, b) => a - b)])
-    .sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  const fingerprint = createRepresentativeFingerprint(snapshot, identity, configKey);
   for (const key of [...snapshot.corpus.texts.keys()].sort()) {
-    add([key, snapshot.vectors.has(key)]);
-    if (!snapshot.vectors.has(key)) continue;
-    const vector = validateEmbedding(snapshot.vectors.get(key), identity.dimensions);
-    const bytes = Buffer.allocUnsafe(vector.length * 4);
-    vector.forEach((value, index) => bytes.writeFloatLE(value, index * 4));
-    hash.update(bytes);
+    fingerprint.append(key, snapshot.vectors.has(key), snapshot.vectors.get(key));
   }
-  return hash.digest('hex');
+  return fingerprint.finish();
 }
 
 /** Full inventory scope, possibly partial vectors; never the benchmark's held-out model contract. */

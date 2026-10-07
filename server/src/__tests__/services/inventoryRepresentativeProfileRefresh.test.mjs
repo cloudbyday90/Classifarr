@@ -15,7 +15,13 @@ function setup(observer = null, diagnostics = undefined, options = {}) {
   let time = 0, revision = 0;
   const { state, identity, snapshot } = fixture;
   const embedder = { model: identity.model, provider: identity.provider, inspect: jest.fn(async () => ({ ...identity })), embedBatch: jest.fn() };
-  const dependencies = { observer, diagnostics, repository: { read: jest.fn(async () => ({ ...structuredClone(snapshot), observedKeys: new Set(snapshot.observedKeys) })) },
+  const dependencies = { observer, diagnostics, repository: {
+    read: jest.fn(async () => ({ ...structuredClone(snapshot), observedKeys: new Set(snapshot.observedKeys) })),
+    readRepresentativeVerification: jest.fn(async (identity, { configKey }) => {
+      const { vectors: _vectors, ...metadata } = snapshot;
+      return { ...structuredClone(metadata), observedKeys: new Set(snapshot.observedKeys), key: inventoryRepresentativeSourceKey(snapshot, identity, configKey) };
+    }),
+  },
     readState: jest.fn(async () => ({ ...state })), createEmbedder: jest.fn(() => embedder),
     fit: jest.fn(async (input, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot: input, dimensions }, options)),
     now: () => time, getRevision: () => revision };
@@ -51,7 +57,8 @@ test('publishes atomically; quiet/periodic reconciliation reuses cached fits wit
   advance();
   expect(await worker.run()).toMatchObject({ status: 'up_to_date' });
   expect(dependencies.fit).toHaveBeenCalledTimes(1);
-  expect(dependencies.repository.read).toHaveBeenCalledTimes(4);
+  expect(dependencies.repository.read).toHaveBeenCalledTimes(2);
+  expect(dependencies.repository.readRepresentativeVerification).toHaveBeenCalledTimes(2);
   expect(embedder.embedBatch).not.toHaveBeenCalled();
   expect(JSON.stringify(worker.getStatus())).not.toMatch(/PRIVATE|hash|digest|localhost|libraryId|vector/i);
 });
@@ -73,6 +80,43 @@ test('recovery reference commits only after source validation and clears on disa
   expect((await worker.run()).status).toBe('disabled');
   expect(neighborhoodRecovery.clear).toHaveBeenCalledTimes(2);
   worker.stop(); expect(neighborhoodRecovery.clear).toHaveBeenCalledTimes(3);
+});
+
+test('sidecars commit fresh metadata without vectors; readiness changes do not reuse stale observations', async () => {
+  const fixture = setup(), neighborhoodRecovery = createInventoryNeighborhoodRecovery();
+  fixture.snapshot.observationReadiness = new Map(fixture.snapshot.corpus.documents.map(doc => [`${doc.key}:${doc.libraryIds[0]}`, 'current']));
+  const read = fixture.dependencies.repository.readRepresentativeVerification.getMockImplementation();
+  fixture.dependencies.repository.readRepresentativeVerification.mockImplementation(async (...args) => {
+    const fresh = await read(...args);
+    fresh.observationReadiness = new Map([...fresh.observationReadiness.keys()].map(key => [key, 'stale']));
+    expect(fresh).not.toHaveProperty('vectors');
+    return fresh;
+  });
+  const worker = createInventoryRepresentativeProfileRefresh({ ...fixture.dependencies, neighborhoodRecovery });
+  expect(await worker.run()).toMatchObject({ status: 'published', observationReadiness: {
+    groups: 2, groupsWithObservationGaps: 2, groupsWithCurrentObservations: 0,
+  } });
+  worker.stop();
+});
+
+test.each(['error', 'abort', 'busy', 'revision'])('verification %s cannot publish or commit staged work', async mode => {
+  const commit = jest.fn(), fixture = setup({ prepare: () => ({ commit }), hasPending: () => false });
+  const read = fixture.dependencies.repository.readRepresentativeVerification.getMockImplementation();
+  const controller = new AbortController();
+  fixture.dependencies.repository.readRepresentativeVerification.mockImplementationOnce(async (...args) => {
+    if (mode === 'error') throw new Error('PRIVATE verification failure');
+    const fresh = await read(...args);
+    if (mode === 'abort') controller.abort();
+    if (mode === 'busy') fresh.state.busy = true;
+    if (mode === 'revision') fixture.sync();
+    return fresh;
+  });
+  expect((await fixture.worker.run({ signal: controller.signal })).status).toBe(
+    mode === 'error' ? 'failed' : mode === 'abort' ? 'cancelled' : 'invalidated');
+  expect(commit).not.toHaveBeenCalled();
+  expect(fixture.worker.getStatus().cacheStored).toBe(false);
+  expect(fixture.dependencies.repository.read).toHaveBeenCalledTimes(1);
+  expect(JSON.stringify(fixture.worker.getStatus())).not.toContain('PRIVATE');
 });
 
 test.each(['prepare', 'commit'])('optional recovery %s failure cannot discard a valid profile', async phase => {
