@@ -2,6 +2,10 @@
 
 Date: 2026-10-07. See the [design](vector-validation-allocation-design.md).
 
+Follow-up: [engine attribution and the inventory-boundary fix](vector-validation-engine-outcome.md)
+records the subsequent investigation. The decision below describes this earlier
+experiment, before the engine-level cause was established.
+
 ## Decision
 
 **Keep the production validator unchanged.** Thirteen small alternative loops

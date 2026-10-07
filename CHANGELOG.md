@@ -24,10 +24,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 ### Fixed
 
 - **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
-  with bounded binary hashing and isolate cached-vector validation from unrelated
-  provider/worker array feedback while retaining all numeric checks.
-  Check description-cache completeness before loading
-  vectors and provide actionable coverage diagnostics. Whole-refresh retention
+  and cached-vector validation without weakening numeric checks. Check
+  description-cache completeness before loading vectors and provide actionable
+  coverage diagnostics. Whole-refresh retention
   profiling covers workers, snapshots and caches. Release comparison snapshots and
   fitting inputs before subsequent phases; memory safeguards remain unchanged.
   Read and decode representative/comparison vectors in bounded batches within
