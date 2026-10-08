@@ -22,7 +22,7 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   const [checkout, node, run, budget, upload, diagnostic] = job.steps;
   assert.equal(checkout.uses, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1');
   assert.deepEqual(checkout.with, { 'persist-credentials': false, 'fetch-depth': 0 });
-  assert.equal(node.uses, 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020');
+  assert.equal(node.uses, 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1');
   assert.deepEqual(node.with, { 'node-version-file': '.nvmrc' });
   assert.equal(run.run, 'node scripts/run-runtime-installation-acceptance.mjs --ci');
   assert.equal(run.id, 'acceptance');
@@ -36,14 +36,14 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   for (const step of job.steps) assert.equal(step['continue-on-error'], undefined);
   for (const step of [checkout, node]) assert.equal(step.if, undefined);
   assert.equal(upload.if, 'always()');
-  assert.equal(upload.uses, 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
+  assert.equal(upload.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
   assert.deepEqual(upload.with, { name: 'runtime-installation-acceptance',
     path: '.tmp/ci/runtime-installation-acceptance.json\n.tmp/ci/runtime-installation-acceptance.md\n',
     'include-hidden-files': true, 'if-no-files-found': 'error', 'retention-days': 90 });
   // A separate artifact preserves the receipt download layout and never feeds the gate.
   assert.equal(diagnostic.if, 'failure()');
   assert.equal(diagnostic.run, undefined);
-  assert.equal(diagnostic.uses, 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a');
+  assert.equal(diagnostic.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
   assert.deepEqual(diagnostic.with, { name: 'runtime-installation-failure-diagnostics',
     path: '.tmp/published-upgrade/classifarr-upgrade-drill-*/failure.log',
     'include-hidden-files': true, 'if-no-files-found': 'ignore', 'retention-days': 14 });
@@ -52,7 +52,7 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   assert.equal(acceptance.steps.length, 5);
   assert.deepEqual(acceptance.needs, ['build-and-test', 'database-tests', 'runtime-installation-acceptance']);
   const download = acceptance.steps.find(step => step.name === 'Download same-run installation receipt');
-  assert.equal(download.uses, 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c');
+  assert.equal(download.uses, 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333');
   assert.equal(download.if, "needs.runtime-installation-acceptance.result == 'success'");
   assert.deepEqual(download.with, { name: 'runtime-installation-acceptance', path: '.tmp/ci/installation' });
   assert.equal(download.run, undefined);

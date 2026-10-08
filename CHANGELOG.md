@@ -78,6 +78,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **CI and release tooling:** refresh immutable Node-setup and artifact-transfer
+  action pins, with regression checks for stale or floating references; preserve
+  permissions, receipt identity checks and release approval gates.
 - **Developer tooling:** improve unused-code and dependency detection with updated
   entry-point analysis and executable regression checks; existing quality gates
   and runtime safeguards are unchanged.

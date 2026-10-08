@@ -36,13 +36,13 @@ export function validateReleaseImagePromotionWorkflow(ci, reusable) {
   assert.deepEqual(job.steps, [
     { name: 'Checkout promotion code and ancestry', uses: 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
       with: { 'fetch-depth': 0, 'persist-credentials': false } },
-    { name: 'Setup Node.js', uses: 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020', with: { 'node-version-file': '.nvmrc' } },
+    { name: 'Setup Node.js', uses: 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1', with: { 'node-version-file': '.nvmrc' } },
     { name: 'Setup Buildx', uses: 'docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069' },
     { name: 'Log in to GHCR', uses: login, with: { registry: 'ghcr.io', username: expression('github.actor'), password: expression('secrets.GITHUB_TOKEN') } },
     { name: 'Log in to Docker Hub', uses: login, with: { username: expression('secrets.DOCKERHUB_USERNAME'), password: expression('secrets.DOCKERHUB_TOKEN') } },
     { name: 'Verify release and promote exact indexes', env: { GH_TOKEN: expression('github.token'), SOURCE_TAG: expression('inputs.source_tag'),
       SOURCE_REVISION: expression('inputs.source_revision'), IMAGE_DIGEST: expression('inputs.image_digest') }, run: 'node scripts/promote-release-images.mjs --write' },
-    { name: 'Upload promotion evidence', if: 'always()', uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',
+    { name: 'Upload promotion evidence', if: 'always()', uses: 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9',
       with: { name: 'published-release-image-alias-promotion', path: '.tmp/ci/published-release-image-alias-promotion.json',
         'if-no-files-found': 'error', 'include-hidden-files': true, 'retention-days': 90 } },
   ]);

@@ -1,9 +1,21 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { expect, test } from '@jest/globals';
 
 const workflow = name => load(readFileSync(new URL(`../../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
+
+test.each([
+  ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 13],
+  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 13],
+  ['download-artifact', '9000827ccba6bdab643e8b6fd33ac0654aef8333', 6],
+])('all %s steps use the reviewed immutable release', (action, revision, count) => {
+  const files = readdirSync(new URL('../../../../.github/workflows/', import.meta.url)).filter(file => file.endsWith('.yml'));
+  const references = files.flatMap(file => Object.values(workflow(file.slice(0, -4)).jobs)
+    .flatMap(job => job.steps ?? []).filter(step => step.uses?.startsWith(`actions/${action}@`)));
+  expect(references).toHaveLength(count);
+  for (const step of references) expect(step.uses).toBe(`actions/${action}@${revision}`);
+});
 
 test('PR 537 pins verified Docker revisions without changing tag-only publishing', () => {
   const ci = workflow('ci'), job = ci.jobs['docker-release'];

@@ -5,6 +5,19 @@ import { validateRuntimeInstallationWorkflow } from '../../scripts/checkRuntimeI
 test('checked-in CI requires isolated installation acceptance before publication', () => {
   expect(validateRuntimeInstallationWorkflow(loadWorkflow())).toBe(true);
 });
+
+test.each([
+  ['runtime-installation-acceptance', 1, 'setup-node', '820762786026740c76f36085b0efc47a31fe5020', 'v7'],
+  ['runtime-installation-acceptance', 4, 'upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', 'v7'],
+  ['runtime-installation-acceptance', 5, 'upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', 'v7'],
+  ['release-acceptance', 2, 'download-artifact', '3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c', 'v8'],
+].flatMap(([job, step, action, stale, tag]) => [stale, tag, 'main', undefined]
+  .map(ref => [job, step, action, ref])))('rejects unreviewed %s step %i (%s@%s)', (job, step, action, ref) => {
+  const workflow = loadWorkflow();
+  workflow.jobs[job].steps[step].uses = ref ? `actions/${action}@${ref}` : undefined;
+  expect(() => validateRuntimeInstallationWorkflow(workflow)).toThrow();
+});
+
 test.each([
   ['write permission', w => { w.jobs['runtime-installation-acceptance'].permissions.contents = 'write'; }],
   ['skip job', w => { w.jobs['runtime-installation-acceptance'].if = 'false'; }],
