@@ -31,7 +31,7 @@ Production restore/normal admission, schema maintenance, leases, memory limits,
 retry budgets, privileges and migrations are unchanged. There is no automatic
 takeover or relaxed busy check in this fix.
 
-## Verification recorded before image evaluation
+## Local verification
 
 - Original focused admission baseline: 4 passed.
 - Controlled admission suite: 5 passed.
@@ -45,8 +45,88 @@ takeover or relaxed busy check in this fix.
 - Ownership preflight passed its unchanged reviewed baseline: 501 unresolved
   paths and `productionCompatible: false`. This is not full writer isolation.
 
-Full integration, image evaluation and exact revision details are appended after
-they finish; this document does not yet claim release readiness.
+- The first full database run passed 2,942 tests across 244 suites, with one
+  failure and one intentionally skipped test/suite. The failure was a five-second
+  PostgreSQL **connection** timeout in the existing private-read authority case
+  of `ingestion-fence-authority.test.mjs`, not an admission assertion. This run
+  overlapped the Docker build. After the build, the isolated authority suite
+  passed all 38 tests in 3.101 seconds without a timeout change. This establishes
+  that the failure was not reproduced in isolation, not that build contention
+  has been proven to be its cause.
+- The final full database rerun, after the build and against the unchanged
+  implementation, passed **2,943 tests across 245 suites**, with one deliberate
+  skipped test/suite, in 975.266 seconds. Its disposable database was removed.
+  Existing five-second connection deadlines and all assertions remain unchanged.
+  Together with the isolated rerun and hosted CI pass, this leaves no reproduced
+  authority-test failure in this round; the initial timeout remains recorded.
+- The default database matrix excludes `ai-provider-fault-compose.test.mjs`,
+  which requires its dedicated isolated provider-stub runner. That deliberate
+  skip is not described as a passing provider-fault rehearsal.
+
+## No-cache image and schema evaluation
+
+Built from clean implementation commit
+`0f95bd9e12f3815a91106adfdaa8577471f55adc`, on `main`, using the existing local
+Compose override, `PGVECTOR_BUILD=multi`, `--no-cache` and
+`--require-provenance`. The local image ID is
+`sha256:690bc2f56940fe8b4a5d1c092f375eac1bbb836442f44fe4dbbfc71a60054765`.
+This is a local Docker identity, not a published registry acceptance claim;
+`PGVECTOR_BUILD=multi` builds CPU variants, not a native architecture matrix.
+
+Before replacement, a local database backup was created and verified by checksum
+and `pg_restore --list` (75,923,700 bytes). Its private scratch path is
+`.tmp/pre-memory-fingerprint-d5225167-9963-4d0d-9b45-21b2b04c7d43.dump`.
+The rollback image is retained as
+`classifarr:pre-memory-d5225167-9963-4d0d-9b45-21b2b04c7d43`; backup contents and
+credentials are not committed. No restore was performed.
+
+Image checks passed for Linux directory fsync, complete exclusive migration
+copy, unchanged source and duplicate-destination refusal. Candidate and prior
+image both passed the real loopback HTTP/2 transfer (26,624 bytes, nghttp2 1.70.0).
+Their production inventories are equal: 172 npm packages and 58 APK packages,
+Node 24.21.0, with Knip absent from the runtime image. Probe containers used
+read-only filesystems, non-root users, no network and no extra capabilities;
+their cleanup was verified.
+
+Ran `check-schema-snapshot-container.mjs --dump`, then its check mode, against
+the exact candidate image. Both used disposable PostgreSQL 18 databases and
+cleaned up. All 22 data-only migration seeds were included; the migration tip
+remains `20261005_180000_ingestion_compatibility_fence.sql`, and
+`database/schema/current.sql` is unchanged. No live database was used for schema
+generation.
+
+Only the existing local Compose container was recreated. It reports the expected
+image/revision, is healthy, and retains user `1000:1000`, read-only root,
+no-new-privileges, capability drop ALL with the existing CHOWN/SETUID/SETGID
+allowlist, and its 2 GiB limit. No Compose/template settings or Unraid deployment
+were modified.
+
+Five-minute observation collected 19 samples, all healthy, with zero cgroup
+allocation failures, OOM kills or restarts. Sampled raw cgroup usage ranged from
+377.6 to 845.4 MiB; the recorded cgroup peak was 850.6 MiB. The final sample was
+399.9 MiB. A read-only aggregate of application error-log rows since this
+container started was empty. These are whole-container observations, not Node
+heap measurements or proof of long-term memory retention/absence of leaks.
+
+## Hosted checks and release limits
+
+Implementation commit `0f95bd9e12f3815a91106adfdaa8577471f55adc` is pushed to
+`origin/main`.
+[CI run 37771035502, attempt 1](https://github.com/cloudbyday90/Classifarr/actions/runs/37771035502)
+passed. Its integration log reports 2,943 tests passed across 245 suites, with
+the same one deliberate provider-fault skip, in 777.348 seconds. The database
+job also passed released-schema replay and mixed-profile upgrade steps.
+Server/client tests, lint, typechecks, coverage
+ratchet and the production-policy/shared-control browser steps also passed.
+Image verification, schema drift, PostgreSQL startup/monitoring/lifecycle,
+loaded shutdown, queue-claim recovery, installation acceptance and the CI release
+readout jobs/steps passed. The readout is not permission to publish a release.
+
+The same revision's Gitleaks, OSV, Trivy, CodeQL, copyright and resource-capacity
+workflows passed. Release-only provider-fault receipts, registry publication and
+native multi-platform acceptance were not run for this ordinary `main` push.
+The local image remains tied to the implementation commit even when a subsequent
+documentation-only commit records the final results. No release was created.
 
 ## Random open PR trial
 
@@ -60,6 +140,8 @@ baseline tests changed from 8 passing to 7 passing / 1 failing: Node declaration
 no longer matched deployed Node 24. Reverted only that trial; all 8 pass again,
 and both client files are unchanged. No compatibility gate was relaxed and no
 part of this incompatible PR is retained.
+At final enumeration both PRs remain open; PR 556 is the corresponding server
+Node 26 declaration update, not a compatible alternative to the selected trial.
 
 ## Recommendations
 
