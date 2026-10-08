@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { afterEach, expect, test } from '@jest/globals';
+import { afterEach, expect, jest, test } from '@jest/globals';
 import { execFile } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -7,9 +7,11 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import dotenv from 'dotenv';
+import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 let directory;
 afterEach(async () => {
+    jest.restoreAllMocks();
     if (directory) await rm(directory, { recursive: true, force: true });
     directory = null;
 });
@@ -43,4 +45,37 @@ test.each(['path', 'url'])('quiet configuration accepts a file %s and preserves 
     expect(result.error).toBeUndefined();
     expect(result.parsed).toEqual({ SYNTHETIC_ONLY: 'from_file', ADDED: 'value' });
     expect(target).toEqual({ SYNTHETIC_ONLY: 'external', ADDED: 'value' });
+});
+
+test.each([undefined, false, 'false', '0'])('populate preserves external values when override is %s', override => {
+    const target = { SYNTHETIC_ONLY: 'external', EMPTY: '' };
+    const parsed = { SYNTHETIC_ONLY: 'from_file', EMPTY: 'from_file', ADDED: 'value' };
+    dotenv.populate(target, parsed, { override });
+    expect(target).toEqual({ SYNTHETIC_ONLY: 'external', EMPTY: '', ADDED: 'value' });
+    expect(parsed).toEqual({ SYNTHETIC_ONLY: 'from_file', EMPTY: 'from_file', ADDED: 'value' });
+});
+
+test.each([true, 'true', '1'])('populate retains explicit override support for %s', override => {
+    const target = { SYNTHETIC_ONLY: 'external' };
+    dotenv.populate(target, { SYNTHETIC_ONLY: 'from_file' }, { override });
+    expect(target).toEqual({ SYNTHETIC_ONLY: 'from_file' });
+});
+
+test('string false disables populate debug output as well as override', () => {
+    const log = createConsoleSpy('log', { suppress: true });
+    const error = createConsoleSpy('error', { suppress: true });
+    const target = { SYNTHETIC_ONLY: 'external' };
+    dotenv.populate(target, { SYNTHETIC_ONLY: 'from_file' }, { debug: 'false', override: 'false' });
+    expect(log.spy).not.toHaveBeenCalled();
+    expect(error.spy).not.toHaveBeenCalled();
+    expect(target.SYNTHETIC_ONLY).toBe('external');
+});
+
+test('a missing optional env file reports an error without changing supplied values', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    const target = { SYNTHETIC_ONLY: 'external' };
+    const result = dotenv.config({ path: join(directory, 'missing.env'), quiet: true, processEnv: target });
+    expect(result.error?.code).toBe('ENOENT');
+    expect(result.parsed).toEqual({});
+    expect(target).toEqual({ SYNTHETIC_ONLY: 'external' });
 });

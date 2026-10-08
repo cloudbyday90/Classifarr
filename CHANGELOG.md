@@ -69,6 +69,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **Runtime configuration:** update dotenv to preserve false-valued override/debug
+  options correctly, with regression tests for environment precedence and quiet loading.
 - **Memory diagnostics:** add build-phase measurements, kernel memory high-water
   readings and real-time refresh-cycle profiling to the isolated synthetic study.
   Add matched control/concurrent ingestion-and-metadata scenarios with shared
