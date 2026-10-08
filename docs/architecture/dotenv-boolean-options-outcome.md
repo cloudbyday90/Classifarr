@@ -110,11 +110,18 @@ failure count stayed zero, with no OOM kill or container restart. These are
 container-wide readings, not retained JavaScript heap or evidence of a memory
 improvement caused by dotenv.
 
-Bounded read-only diagnostics found zero new error-log entries since startup;
-inventory readiness progressed from ingesting to backfilling. The latest saved
-comparison warning predates replacement and has a subsequent recovery event.
-Backfill is not yet complete. This short startup observation is not a long-term
-memory soak or a new complete-refresh retention study.
+Inventory readiness progressed from ingesting to backfilling. At this handoff,
+the latest saved comparison warning predated replacement and had a subsequent
+recovery event; backfill was not yet complete. This short startup observation is
+not a long-term memory soak or a new complete-refresh retention study.
+
+Correction from the subsequent [rate-limit evaluation](rate-limit-debug-allocation-outcome.md):
+the original local diagnostic helper's claim of zero new error-log entries is
+withdrawn. Its UTC-string comparison against a timezone-less database timestamp
+undercounted records. A timezone-correct read-only review found three `mediaSync`
+warnings at 09:07:33–09:07:42 UTC, within this observation window. Later comparison
+and provider-transport events are recorded separately in that follow-up; they
+must not be attributed to the rate-limit candidate before its deployment.
 
 ## Hosted checks at handoff
 
