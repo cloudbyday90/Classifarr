@@ -69,6 +69,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **HTTP request protection:** update rate-limit middleware to avoid unnecessary
+  debug allocations, with regression coverage for authentication quotas, retry
+  headers, client-IP boundaries and fail-closed errors; limits are unchanged.
 - **Runtime configuration:** update dotenv to preserve false-valued override/debug
   options correctly, with regression tests for environment precedence and quiet loading.
 - **Memory diagnostics:** add build-phase measurements, kernel memory high-water
