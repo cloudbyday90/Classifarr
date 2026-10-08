@@ -67,6 +67,28 @@ describe('swaggerSpec — extractSwaggerBlocks (via generateSpec)', () => {
     }
   });
 
+  test('retains a schema annotation with a whitespace-only block example', async () => {
+    const yaml = [
+      'components:',
+      '  schemas:',
+      '    BlankExample:',
+      '      oneOf:',
+      '        - type: string',
+      '          example: |+',
+      ' '.repeat(12),
+      '        - type: array',
+    ];
+    const filePath = tmpFile([
+      '/**', ' * @openapi', ...yaml.map((line) => ` * ${line}`), ' */', '',
+    ].join('\n'));
+    created.push(filePath);
+
+    const spec = await generateSpec({ definition: BASE_DEF, apis: [filePath] });
+    expect(spec.components?.schemas?.BlankExample).toEqual({
+      oneOf: [{ type: 'string', example: '\n' }, { type: 'array' }],
+    });
+  });
+
   test('parses a @swagger path annotation', async () => {
     const filePath = tmpFile(`
 /**

@@ -30,6 +30,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **API documentation:** update YAML parsing so valid whitespace-only examples
+  no longer cause schema annotations to disappear; retain malformed-input and
+  merge-budget safeguards.
 - **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
   and cached-vector validation without weakening numeric checks. Check
   description-cache completeness before loading vectors and provide actionable
