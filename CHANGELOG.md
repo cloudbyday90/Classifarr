@@ -79,6 +79,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   and runtime safeguards are unchanged.
   Document pinned and transitive update gaps, intentional compatibility holds and
   separate runtime, frontend and CI upgrade priorities.
+  Align frontend build/test dependency pins with their supported parent versions,
+  update CSS parsing and bundling, and add executable file-access and parser
+  regressions without relaxing install policies or production safeguards.
 - **HTTP request protection:** update rate-limit middleware to avoid unnecessary
   debug allocations, with regression coverage for authentication quotas, retry
   headers, client-IP boundaries and fail-closed errors; limits are unchanged.
