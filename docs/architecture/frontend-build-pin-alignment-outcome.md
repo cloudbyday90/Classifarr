@@ -32,6 +32,7 @@ configuration or application data is read.
 - Full-scope client `npm audit --json`: zero reported vulnerabilities, including
   development dependencies, on this date.
 - Dependency/toolchain contracts: 40 passed, no skips.
+- Client test-project configuration: passed; all suites remain included.
 - Client lint and both Vue API/component typechecks: passed.
 - Full client coverage run: 445 files / 6,421 tests passed, no skips, in
   249.14 seconds. Statements 86.96%, branches 80.37%, functions 86.54%,
@@ -42,10 +43,76 @@ configuration or application data is read.
   mutations. Only the existing conflicting color-environment warning appeared
   in the browser runner; it is not a build or application failure.
 - Copyright check: passed for 1,543 files.
-- Markdown lint: passed for 2,014 files at the initial documentation check.
+- Backend coverage: 1,751 suites / 54,344 tests passed in 748.216 seconds.
+  One existing Linux directory-fsync test is skipped on Windows; its real
+  operation passed separately inside the candidate Linux image, as below.
+  Statements/lines 89.74%, branches 85.81%, functions 91.12%.
+- Coverage ratchet passed using both fresh reports. No baseline was changed.
+- Markdown lint: passed for 2,015 files after adding this outcome.
 
-Backend coverage, the coverage ratchet and exact-image results are recorded
-below after execution; this preliminary checkpoint is not release approval.
+## No-cache image evaluation
+
+Built on clean `main` commit `d8ec4dc9cf8779a17547e68e1e235295d423a596`, using
+the existing local Compose override, `PGVECTOR_BUILD=multi`, `--no-cache` and
+`--require-provenance`. Local Docker image ID:
+`sha256:1dc10c5ce8c6becf35f060ef9934600ec8a5c6dd43a23d6cb3faaffebe2c4fa8`.
+This is not a published registry or native multi-platform acceptance claim.
+The pgvector `multi` option builds CPU variants, not multiple architectures.
+
+Before replacement, the local database backup was checksum-verified and read
+with `pg_restore --list`: 76,112,548 bytes, private path
+`.tmp/pre-memory-fingerprint-146ef933-0417-4791-8840-9b6c951e7fed.dump`.
+The exact prior image is retained as
+`classifarr:pre-memory-146ef933-0417-4791-8840-9b6c951e7fed`; no restore occurred.
+Backup contents and credentials are not committed.
+
+Candidate-image Linux directory fsync, exclusive migration copy, unchanged
+source and duplicate-destination refusal passed. Candidate and prior images
+both passed a real 26,624-byte loopback HTTP/2 transfer using nghttp2 1.70.0.
+Production inventories match: 172 npm and 58 APK packages, Node 24.21.0,
+with Knip absent. Disposable non-root, read-only, network-isolated probe
+containers were removed and cleanup verified.
+
+After the rebuild, ran `check-schema-snapshot-container.mjs --dump` and then
+check mode against the exact candidate. Both disposable PostgreSQL 18 databases
+passed and were cleaned up. All 22 seed migrations were included, migration tip
+`20261005_180000_ingestion_compatibility_fence.sql` is unchanged, and
+`database/schema/current.sql` has no diff. No live database supplied this dump.
+
+Recreated only the existing local Compose container. It reports the expected
+image/revision and is healthy, with user `1000:1000`, read-only root,
+no-new-privileges, drop ALL plus the existing CHOWN/SETUID/SETGID allowlist,
+and the unchanged 2 GiB limit. No Compose/template or Unraid changes.
+A bounded loopback probe inside this exact container read the HTML entry and
+all 71 compiled JavaScript/CSS assets: HTTP status, MIME type and response hash
+matched the image files (2,177,757 bytes including HTML). It made no API calls.
+This checks Linux-built asset delivery; the eight browser navigation tests above
+used the separate Windows production build and synthetic intercepted APIs.
+
+Five-minute observation collected 19 healthy samples, with no allocation
+failures, OOM kills or restarts. Raw cgroup usage ranged from 368.9 to 917.5 MiB;
+the recorded peak was 934.3 MiB and the final sample 893.9 MiB. A read-only
+aggregate of application error-log rows since startup was empty. These are
+whole-container observations, not Node heap measurements, a controlled
+before/after comparison, or proof that long-term memory retention is resolved.
+Memory safeguards and admission limits remain unchanged.
+
+## Hosted checks and limits
+
+Implementation commit `d8ec4dc9cf8779a17547e68e1e235295d423a596` is pushed to
+`origin/main`. At 22:37 UTC, [CI attempt 1](https://github.com/cloudbyday90/Classifarr/actions/runs/37852609737)
+had passed database integration and fresh-install/published-upgrade jobs, plus
+server/client tests, lint, typechecks, coverage, production-route and shared-control
+Chromium checks. Its verification image and schema drift check also passed;
+remaining PostgreSQL lifecycle/shutdown/queue recovery steps were still running.
+This checkpoint does not claim the entire pipeline has completed.
+
+The same revision's OSV, Trivy, Gitleaks, CodeQL, copyright and resource-capacity
+workflows passed. Manual tag cleanup and optional synthetic replay were skipped
+by their normal conditions, not counted as passes. No release-only provider-fault,
+registry publication or native multi-platform acceptance was performed locally.
+The final outcome-only commit does not replace the image's implementation
+revision. No version, release tag, branch, PR state or production deployment changed.
 
 ## Random open-PR trial
 
