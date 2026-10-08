@@ -63,8 +63,9 @@ an expansion of the repository's dependency-only production gate.
 The [6.39.0 design](../knip-refresh-design.md) and
 [validation outcome](../knip-refresh-outcome.md) record the upgrade separately
 from this ongoing gate policy.
-The [6.40.0 design](knip-640-update-design.md) covers the follow-up entry-discovery
-and plugin-cache changes. If configuration or path changes produce unexpected
+The [6.40.0 design](knip-640-update-design.md) and
+[outcome](knip-640-update-outcome.md) cover the follow-up entry-discovery and
+plugin-cache changes. If configuration or path changes produce unexpected
 cached results, compare uncached analysis first; do not suppress findings or
 delete a shared cache to make an upgrade pass.
 
