@@ -54,9 +54,19 @@ and invalid configuration. It runs with the normal backend unit suite; fixtures
 do not install packages or use application credentials. It does not replace
 either full-repository Knip command.
 
+`src/__tests__/knipEntryContract.test.mjs` additionally checks wildcard package
+exports against test-only usage, development entry negations and null/private
+export paths. Both suites share the bounded, shell-free ESM fixture helper.
+Production-only unused-export detection here is a synthetic tool contract, not
+an expansion of the repository's dependency-only production gate.
+
 The [6.39.0 design](../knip-refresh-design.md) and
 [validation outcome](../knip-refresh-outcome.md) record the upgrade separately
 from this ongoing gate policy.
+The [6.40.0 design](knip-640-update-design.md) covers the follow-up entry-discovery
+and plugin-cache changes. If configuration or path changes produce unexpected
+cached results, compare uncached analysis first; do not suppress findings or
+delete a shared cache to make an upgrade pass.
 
 ## Sources
 

@@ -72,6 +72,9 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **Developer tooling:** improve unused-code and dependency detection with updated
+  entry-point analysis and executable regression checks; existing quality gates
+  and runtime safeguards are unchanged.
 - **HTTP request protection:** update rate-limit middleware to avoid unnecessary
   debug allocations, with regression coverage for authentication quotas, retry
   headers, client-IP boundaries and fail-closed errors; limits are unchanged.
