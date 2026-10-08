@@ -30,6 +30,10 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Runtime networking:** update transport and IP-parsing dependencies to preserve
+  usable connections after invalid close requests, bound heartbeat extensions,
+  enforce compression negotiation and reject oversized reverse-address input
+  early. Retain IPv4/IPv6 rate-limit boundaries and existing memory safeguards.
 - **API documentation:** update YAML parsing so valid whitespace-only examples
   no longer cause schema annotations to disappear; retain malformed-input and
   merge-budget safeguards.

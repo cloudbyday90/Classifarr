@@ -6,6 +6,10 @@ Follow-up: the [frontend alignment design](frontend-build-pin-alignment-design.m
 and [outcome](frontend-build-pin-alignment-outcome.md) track the next implemented
 batch. The tables below preserve the earlier inventory, not the final versions.
 
+The subsequent runtime transport/IP batch is tracked in its
+[design](runtime-transport-ip-update-design.md) and
+[outcome](runtime-transport-ip-update-outcome.md).
+
 Read-only inventory alongside the restore-admission test fix. No dependency,
 lockfile, image-base or workflow pin is changed in this round. Use separately
 tested batches rather than a blanket update immediately before release.

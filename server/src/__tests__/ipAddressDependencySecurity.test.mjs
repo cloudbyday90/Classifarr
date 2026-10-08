@@ -4,6 +4,29 @@ import { Address4, Address6 } from 'ip-address';
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
+import { jest } from '@jest/globals';
+
+test.each([
+  ['42.2.0.192.IN-ADDR.ARPA.', '192.0.2.42'],
+  ['42.2.0.192.in-addr.arpa', '192.0.2.42'],
+  ['42.2.0.192.In-AdDr.ArPa', '192.0.2.42'],
+  ['255/32.255.255.255.in-addr.arpa.', '255.255.255.255'],
+  ['0/25.2.0.192.in-addr.arpa.', '192.0.2.0'],
+])('reverse IPv4 parsing preserves supported forms: %s', (input, expected) => {
+  expect(Address4.fromArpa(input).correctForm()).toBe(expected);
+});
+
+test('oversized reverse IPv4 input is rejected before splitting or expanded diagnostics', () => {
+  const split = jest.spyOn(String.prototype, 'split');
+  try {
+    let failure;
+    try { Address4.fromArpa('.'.repeat(1024 * 1024)); } catch (error) { failure = error; }
+    expect(split).not.toHaveBeenCalled();
+    expect(failure?.name).toBe('AddressError');
+    expect(failure?.message).toMatch(/32/);
+    expect(failure?.parseMessage).toBeUndefined();
+  } finally { split.mockRestore(); }
+});
 
 test.each([
   '64:ff9b:1::', '64:ff9b:1:ffff:ffff:ffff:ffff:ffff',
