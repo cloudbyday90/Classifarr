@@ -42,6 +42,8 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   duplicate arrays while preserving corruption checks and numerical results.
   Reduce normalization callback allocations with shared dense numeric arithmetic,
   preserving exact results, signed zero and validation on every cache lookup.
+  Reduce temporary allocation during exact normalized-cache matching while
+  retaining signed-zero, invalid-value and borrowed-output mutation checks.
   Reuse private representative-fingerprint byte storage instead of allocating it
   per vector, preserving exact v4 fingerprints and validation on every append.
   Validate representative centroids without temporary normalized-vector arrays,

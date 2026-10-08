@@ -2,6 +2,7 @@
 import { expect, test } from '@jest/globals';
 import { createDescriptionVectorNormalizer } from '../../services/descriptionVectorNormalizer.mjs';
 import { normalizeDescriptionVector } from '../../services/inventoryDescriptionSimilarity.mjs';
+import { matchesNormalizedDescriptionVector } from '../../services/descriptionVectorArithmetic.mjs';
 
 // Independent pre-change oracle. Do not rewrite this alongside production arithmetic.
 function original(vector) {
@@ -86,4 +87,52 @@ test.each([0, NaN, Infinity, 1e100, 1e-100, '1'])('never accepts invalid cached 
   normalize(vector, 1);
   vector[0] = value;
   expect(() => normalize(vector, 1)).toThrow(expect.objectContaining({ code: 'INVALID_EMBEDDING' }));
+});
+
+test('cache matching agrees with Object.is across numeric bit patterns and corrupted values', () => {
+  const values = [0, -0, NaN, Infinity, -Infinity, Number.MIN_VALUE, -Number.MIN_VALUE,
+    Number.MAX_VALUE, -Number.MAX_VALUE, 1, -1, 0.1, undefined, null, '0', false, 0n,
+    { valueOf() { throw new Error('must_not_coerce_borrowed_value'); } }];
+  let state = 42;
+  const bits = new DataView(new ArrayBuffer(8));
+  for (let sample = 0; sample < 256; sample++) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0; bits.setUint32(0, state);
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0; bits.setUint32(4, state);
+    values.push(bits.getFloat64(0));
+  }
+  for (const value of values.filter(value => typeof value === 'number')) {
+    for (const norm of [1, -1, 3, Number.MIN_VALUE, Number.MAX_VALUE, 0, -0, Infinity, NaN]) {
+      const expected = value / norm;
+      for (const actual of [expected, -expected, ...values.slice(0, 18)]) {
+        expect(matchesNormalizedDescriptionVector([actual], [value], norm)).toBe(Object.is(actual, expected));
+      }
+    }
+  }
+});
+
+test('matching preserves slot checks and does not read inherited values', () => {
+  const previous = [0.6, 0.8];
+  delete previous[1];
+  Object.setPrototypeOf(previous, { get 1() { throw new Error('inherited_read'); } });
+  expect(matchesNormalizedDescriptionVector(previous, [3, 4], 5)).toBe(false);
+  expect(matchesNormalizedDescriptionVector(undefined, [3, 4], 5)).toBe(false);
+  expect(matchesNormalizedDescriptionVector([0.6], [3, 4], 5)).toBe(false);
+});
+
+test('cache hits still revalidate parsed and cloned inputs and repair borrowed output types', () => {
+  const normalize = createDescriptionVectorNormalizer();
+  for (const vector of [JSON.parse('[0.1,-0.2,0.3]'), structuredClone([0.1, -0.2, 0.3])]) {
+    for (const corrupt of ['0', null, undefined, Infinity, false, { valueOf: () => 1 }]) {
+      const previous = normalize(vector, 3);
+      previous[1] = corrupt;
+      const repaired = normalize(vector, 3);
+      expect(repaired).not.toBe(previous);
+      assertExact(repaired, original(vector));
+      expect(normalize(vector, 3)).toBe(repaired);
+    }
+    vector[1] = -0;
+    assertExact(normalize(vector, 3), original(vector));
+    delete vector[1];
+    expect(() => normalize(vector, 3)).toThrow(expect.objectContaining({ code: 'INVALID_EMBEDDING' }));
+  }
 });

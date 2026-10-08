@@ -22,7 +22,13 @@ export function divideDescriptionVector(vector, norm) {
 export function matchesNormalizedDescriptionVector(previous, vector, norm) {
   if (previous?.length !== vector.length) return false;
   for (let index = 0; index < vector.length; index++) {
-    if (!Object.hasOwn(previous, index) || !Object.is(previous[index], vector[index] / norm)) return false;
+    if (!Object.hasOwn(previous, index)) return false;
+    const actual = previous[index], expected = vector[index] / norm;
+    // Numeric SameValue avoids measured Object.is-path allocation in the pinned
+    // runtime. Keep signed zero and NaN semantics; never coerce a borrowed value.
+    if (actual === expected) {
+      if (actual === 0 && 1 / actual !== 1 / expected) return false;
+    } else if (!Number.isNaN(actual) || !Number.isNaN(expected)) return false;
   }
   return true;
 }
