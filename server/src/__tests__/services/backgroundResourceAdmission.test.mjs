@@ -112,3 +112,15 @@ test('300 mixed recovery cycles drain reservations without a growing waiter list
     expect(discovery.allowed).toBe(true); discovery.release();
   }
 });
+
+test('per-attempt observation counts current work without mutating global observations or reservations', () => {
+  const admission = createBackgroundResourceAdmission({ readMemory: () => memory(400) });
+  const ingestion = admission.tryAcquire('ingestion'), decisions = [];
+  expect(admission.tryAcquire('queue', { onDecision: value => decisions.push(value) }).allowed).toBe(false);
+  expect(decisions[0]).toMatchObject({ phase: 'shared_admission', constrainedBytes: 2048 * MIB,
+    active: { ingestion: 1, queue: 0, discovery: 0 }, reservedBytes: 128 * MIB, requiredBytes: 448 * MIB });
+  ingestion.release();
+  expect(decisions[0].active.ingestion).toBe(1);
+  const queue = admission.tryAcquire('queue', { onDecision: () => { throw new Error('PRIVATE'); } });
+  expect(queue.allowed).toBe(true); queue.release();
+});

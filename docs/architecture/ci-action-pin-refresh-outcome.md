@@ -19,7 +19,7 @@ branch and absent action references on the installation receipt path. Existing
 wrong-run/image, skipped download, masked failure and privilege mutations remain.
 All four directly executed workflow validator CLIs also passed.
 
-The 40 tooling/install-policy tests, backend test/security lint, typecheck,
+The 40 tooling/install-policy tests, both Knip modes, backend test/security lint, typecheck,
 copyright and Markdown checks passed. This CI-only batch did not rerun complete
 backend/client application coverage locally; hosted CI remains required. Before
 the change, implementation [run 37856102748](https://github.com/cloudbyday90/Classifarr/actions/runs/37856102748)
@@ -38,16 +38,34 @@ installed for this incompatible trial; no PR was merged or dependency retained.
 
 ## Build and hosted verification
 
-Pending clean-source no-cache build, isolated schema dump/check, installed-package
-comparison and local-container observation. Hosted execution must establish actual
-Node setup and artifact transfer; unit tests alone do not do that. Tag-only release
-jobs will remain skipped, and no release is authorized by this batch.
+Clean-source no-cache build of `c56297b61a312234fe686864eb01898fdecd1cd3`
+produced image `sha256:8134a2c8f2def87301ef88ad93a93dbb402da906786e2b7ce70c3f87d08b8fba`.
+All 172 npm and 58 APK package versions matched the prior local image. Isolated
+filesystem, networking and HTTP/2 probes passed. Schema dump and independent check
+ran afterward in disposable databases; the tracked schema stayed unchanged and
+the fixture containers were removed.
+
+Local Compose was replaced with that exact image at 23:30:32 UTC after a private,
+checksum-verified 76,142,800-byte backup and rollback image tag. The backup's archive
+listing was checked, not a full restore rehearsal. All 71 served JS/CSS assets and
+the HTML matched the image. Nineteen readings from 23:31:06 to 23:36:04 UTC stayed
+healthy with zero memory-limit failures or OOM flag. Sampled raw cgroup usage ranged
+from 400,343,040 to 881,827,840 bytes; the observed kernel peak was 885,805,056 bytes.
+No warnings/errors appeared in the current-start database log query. This is a
+five-minute health observation, not a retention benchmark. Unraid was untouched.
+
+For implementation [run 37859276234](https://github.com/cloudbyday90/Classifarr/actions/runs/37859276234),
+Node setup succeeded in all three jobs; database tests and fresh-install/published
+upgrade passed, with Build and Test still running at this check. Exact-source OSV,
+Trivy, Gitleaks and copyright runs passed. Do not infer a release-artifact receipt
+from these checks: tag-only jobs remain skipped and no release was created.
 
 ## Added warning investigation
 
 The newly supplied comparison memory warning was found in the local database and
 recovered automatically after about three minutes. See the separate
 [read-only investigation](comparison-warning-2026-10-08-outcome.md). No memory
-fix or capacity improvement is claimed. Next add sanitized decision-time memory
-budget evidence to future warnings while retaining all safeguards, then complete
+fix or capacity improvement is claimed. The subsequent user request authorized
+[decision-time evidence and reference points](comparison-memory-evidence-design.md)
+as a separate implementation slice. Retain all safeguards, then complete
 the exact-source release-readiness review before considering a release.

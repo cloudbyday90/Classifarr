@@ -17,6 +17,7 @@ const configKey = state => {
 /** Scheduler-owned SWR, not a request-driven fitter. Only validated unchanged entries can serve. */
 export function createLiveMultiScaleRefresh({ repository, readState, createEmbedder,
   getRevision = () => 0, now = Date.now, random = Math.random, build = buildMultiScaleProfile,
+  memoryEvidence = null,
   withAdmission = (callback, { signal }) => callback(signal, () => signal.throwIfAborted()),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 256 * 1024 * 1024, ttlMs: 600_000, now }),
 }) {
@@ -49,7 +50,9 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
       const controller = new AbortController(); active = controller;
       const deadline = AbortSignal.timeout(360_000);
       const abort = AbortSignal.any([controller.signal, deadline, ...(signal ? [signal] : [])]);
-      let stage = 'clock';
+      let stage = 'clock', evidence = null, outcome = null;
+      const observe = (method, value) => { try { return evidence?.[method](value); } catch { return undefined; } };
+      const setStage = value => { stage = value; observe('stage', value); };
       try {
         const time = clock();
         if (!Number.isFinite(time)) { clear(); return { status: 'unavailable', failure: diagnoseLiveMultiScaleFailure(stage) }; }
@@ -60,14 +63,15 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; retry.clearDeadlines(); }
         if (state.busy !== false) { clear(); return { status: 'yielded' }; }
         if (time < nextAt || retry.isCoolingDown(time)) return { status: 'not_due' };
+        try { evidence = memoryEvidence?.begin(() => cache.inspect?.()); } catch { /* Optional telemetry only. */ }
         stage = 'admission';
         const result = await withAdmission(async (abort, checkpoint) => {
-          stage = 'provider_inspection';
+          setStage('provider_inspection');
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
           const candidate = await buildLiveMultiScaleCandidate({ repository, identity, signal: abort, build,
             hasCachedModel: Boolean(entry && cache.get(entry.key)?.cacheable),
             isCurrent: state => configKey(state) === expected && state.busy === false && getRevision() === revision,
-            setStage: value => { stage = value; },
+            setStage, observeSource: value => observe('source', value),
             selectCached: key => {
               if (entry?.key !== key) clear();
               const stored = cache.get(key);
@@ -78,20 +82,20 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
             clear(); due(); return { status: 'invalidated' };
           }
           const { key, built, reused } = candidate;
-          stage = 'snapshot_verify';
+          setStage('snapshot_verify');
           const fresh = await repository.readVerification(identity, { signal: abort });
-          stage = 'provider_verify';
+          setStage('provider_verify');
           await verifyDescriptionRepresentation(embedder, identity, abort);
-          stage = 'state_verify';
+          setStage('state_verify');
           const finalState = await readState();
           abort.throwIfAborted();
-          stage = 'source_validation';
+          setStage('source_validation');
           if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
               configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
               fresh.key !== key) {
             clear(); due(); return { status: 'invalidated' };
           }
-          stage = 'publication';
+          setStage('publication');
           const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
           checkpoint();
           if (!cache.set(key, built, built.weight + fresh.observedKeys.size * 128)) {
@@ -101,20 +105,25 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
           if (!built.cacheable) due();
           // Degraded raw/broad context may serve, but optional discovery must retry rather than be reused.
           return { status: reused ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
-        }, { signal: abort });
+        }, { signal: abort, ...(evidence ? { onMemoryDecision: value => observe('decision', value) } : {}) });
         // Admission has its own final checkpoint; a refusal there is not a successful refresh.
         if (['ready', 'revalidated'].includes(result.status)) { retry.reset(); nextAt = now() + 300_000; }
-        return result;
+        outcome = result; return outcome;
       } catch (error) {
         // Contention does not invalidate an already verified entry; its TTL/revision still govern serving.
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
-        if (controller.signal.aborted || signal?.aborted) { clear(); return { status: 'cancelled' }; }
+        if (controller.signal.aborted || signal?.aborted) { clear(); outcome = { status: 'cancelled' }; return outcome; }
         if (error instanceof DiscoveryDeferredError) { nextAt = 0; retry.defer(); }
         else due();
-        return error instanceof DiscoveryDeferredError
+        outcome = error instanceof DiscoveryDeferredError
           ? { status: 'deferred', reason: error.reason }
           : { status: 'unavailable', failure: diagnoseLiveMultiScaleFailure(stage, error, { deadlineExpired: deadline.aborted }) };
-      } finally { active = null; }
+        return outcome;
+      } finally {
+        active = null;
+        const memory = observe('finish', outcome);
+        if (memory && outcome) outcome.memory = memory;
+      }
     },
   };
 }

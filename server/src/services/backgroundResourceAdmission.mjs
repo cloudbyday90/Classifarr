@@ -22,30 +22,42 @@ export function createBackgroundResourceAdmission({ readMemory = readRuntimeMemo
   };
 
   return {
-    tryAcquire(kind) {
+    tryAcquire(kind, { onDecision: onAttemptDecision = null } = {}) {
       if (!Object.hasOwn(WORK, kind)) throw new TypeError('Unknown background work class');
       const { bytes, maximum } = WORK[kind];
+      const attemptDecision = (allowed, reason, budget = {}, raw = null) => {
+        if (!onAttemptDecision) return;
+        try { onAttemptDecision(Object.freeze({ phase: 'shared_admission', allowed, reason,
+          active: Object.freeze({ ...active }), reservedBytes: reserved,
+          constrainedBytes: raw?.constrained,
+          effectiveLimitBytes: raw?.constrained > 0 ? Math.min(raw.constrained, raw.total) : raw?.total, ...budget })); }
+        catch { /* Observation must never change the admission decision. */ }
+      };
+      let memory, raw;
       if (active[kind] >= maximum || (kind === 'discovery' && active.ingestion + active.queue > 0)) {
         observe(kind, false, 'busy');
+        attemptDecision(false, 'busy');
         return { allowed: false, reason: 'busy' };
       }
-      let memory;
-      try { memory = inspectRuntimeMemory(readMemory()); } catch { /* Unknown telemetry fails closed. */ }
+      try { raw = readMemory(); memory = inspectRuntimeMemory(raw); } catch { /* Unknown telemetry fails closed. */ }
       if (!memory) {
         recovering[kind] = true;
         observe(kind, false, 'memory_unknown');
+        attemptDecision(false, 'memory_unknown');
         return { allowed: false, reason: 'memory_unknown' };
       }
       const hysteresis = recovering[kind] ? 64 * MIB : 0;
       const required = memory.reserve + reserved + bytes + hysteresis;
-      const budget = onDecision ? { availableBytes: memory.available, reserveBytes: memory.reserve,
+      const budget = onDecision || onAttemptDecision ? { availableBytes: memory.available, reserveBytes: memory.reserve,
         workBytes: bytes, hysteresisBytes: hysteresis, requiredBytes: required } : undefined;
       if (memory.available < required) {
         recovering[kind] = true;
         observe(kind, false, 'memory_pressure', budget);
+        attemptDecision(false, 'memory_pressure', budget, raw);
         return { allowed: false, reason: 'memory_pressure' };
       }
       recovering[kind] = false;
+      attemptDecision(true, null, budget, raw);
       const reservedBefore = reserved;
       active[kind] += 1;
       reserved += bytes;

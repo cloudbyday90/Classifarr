@@ -14,13 +14,15 @@ async function readCachedCandidate({ repository, identity, signal, isCurrent, se
 }
 
 /** End the repository snapshot's lifetime before asynchronous fitting starts. */
-async function readCandidate({ repository, identity, signal, isCurrent, selectCached, setStage }) {
+async function readCandidate({ repository, identity, signal, isCurrent, selectCached, setStage, observeSource }) {
   setStage('snapshot_read');
   const snapshot = await repository.read(identity, { requireCompleteVectors: true, signal });
   signal.throwIfAborted();
   if (!isCurrent(snapshot.state)) return null;
   setStage('source_validation');
   const source = inspectUnseenMultiScaleSource(snapshot, identity);
+  observeSource?.({ libraries: snapshot.libraries.length, documents: snapshot.corpus.documents.length,
+    vectors: snapshot.vectors.size, dimensions: identity.dimensions });
   const cached = selectCached(source.key);
   return { key: source.key, cached, input: cached ? null : ownMultiScaleSource(source) };
 }

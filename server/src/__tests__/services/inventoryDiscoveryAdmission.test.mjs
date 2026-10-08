@@ -102,3 +102,44 @@ test('caller/lease loss cancel admitted work, exceptions release ownership, no o
   await expect(pending).rejects.toThrow('lease lost');
   expect(jest.getTimerCount()).toBe(0);
 });
+
+test.each(['start', 'running', 'unknown'])('diagnostic observer captures %s refusal before ownership release', async phase => {
+  jest.useFakeTimers();
+  let current = phase === 'start' ? memory(0) : memory(), settled = false;
+  const decisions = [], release = jest.fn();
+  const run = createInventoryDiscoveryAdmission({
+    resourceAdmission: { tryAcquire: () => ({ allowed: true, release }) },
+    withSessionAdvisoryLock: lease, readMemory: () => current,
+  });
+  const onMemoryDecision = value => {
+    if (value.allowed === false) expect(settled).toBe(false);
+    decisions.push(value);
+  };
+  let finish;
+  const pending = run(() => new Promise(resolve => { finish = resolve; }), { onMemoryDecision });
+  const rejected = expect(pending).rejects.toMatchObject({ reason: phase === 'unknown' ? 'memory_unknown' : 'memory_pressure' });
+  if (phase !== 'start') {
+    current = phase === 'unknown' ? null : memory(1);
+    await jest.advanceTimersByTimeAsync(250);
+    expect(release).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(decisions.filter(value => !value.allowed)).toHaveLength(1);
+    settled = true; finish();
+  }
+  await rejected;
+  expect(decisions.at(-1)).toMatchObject({ allowed: false,
+    phase: phase === 'start' ? 'start_checkpoint' : 'running_checkpoint' });
+  expect(release).toHaveBeenCalledTimes(1); expect(jest.getTimerCount()).toBe(0);
+});
+
+test('throwing diagnostics cannot refuse work, mask real pressure or leak the shared permit', async () => {
+  let current = memory();
+  const admission = resourceAdmissionFixture(() => current);
+  const run = createInventoryDiscoveryAdmission({ resourceAdmission: admission, readMemory: () => current,
+    withSessionAdvisoryLock: lease });
+  const onMemoryDecision = () => { throw new Error('PRIVATE'); };
+  expect(await run(async () => 'ok', { onMemoryDecision })).toBe('ok');
+  await expect(run(async (_signal, checkpoint) => { current = memory(0); checkpoint(); }, { onMemoryDecision }))
+    .rejects.toMatchObject({ reason: 'memory_pressure' });
+  current = memory(); expect(await run(async () => 'again', { onMemoryDecision })).toBe('again');
+});

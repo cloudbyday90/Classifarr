@@ -15,14 +15,14 @@ export class DiscoveryDeferredError extends Error {
 export function createInventoryDiscoveryAdmission({ withSessionAdvisoryLock, readMemory = readDiscoveryMemory,
   resourceAdmission = backgroundResourceAdmission }) {
   let active = false;
-  return async function withAdmission(callback, { signal } = {}) {
+  return async function withAdmission(callback, { signal, onMemoryDecision } = {}) {
     signal?.throwIfAborted();
     if (active) throw new DiscoveryDeferredError('busy');
     active = true;
     try {
       let result;
       const acquired = await withSessionAdvisoryLock(INVENTORY_DISCOVERY_LOCK, async ({ signal: lockSignal } = {}) => {
-        const permit = resourceAdmission.tryAcquire('discovery');
+        const permit = resourceAdmission.tryAcquire('discovery', { onDecision: onMemoryDecision });
         if (!permit.allowed) throw new DiscoveryDeferredError(permit.reason);
         let timer;
         try {
@@ -30,9 +30,25 @@ export function createInventoryDiscoveryAdmission({ withSessionAdvisoryLock, rea
           const abort = AbortSignal.any([pressure.signal, ...[signal, lockSignal].filter(Boolean)]);
           const check = starting => {
             try {
-              const memory = assessDiscoveryMemory(readMemory(), starting);
+              const raw = readMemory();
+              const memory = assessDiscoveryMemory(raw, starting);
+              if (onMemoryDecision && !pressure.signal.aborted && (starting || !memory.allowed)) {
+                try { onMemoryDecision({ phase: starting ? 'start_checkpoint' : 'running_checkpoint',
+                  allowed: memory.allowed, reason: memory.allowed ? null : memory.reason,
+                  availableBytes: memory.available, constrainedBytes: memory.constrained,
+                  effectiveLimitBytes: memory.limit,
+                  requiredBytes: memory.required, reserveBytes: memory.reserve,
+                  workBytes: starting ? memory.required - memory.reserve : 0, reservedBytes: 0, hysteresisBytes: 0 }); }
+                catch { /* Diagnostics never bypass or cause cancellation. */ }
+              }
               if (!memory.allowed) pressure.abort(new DiscoveryDeferredError(memory.reason));
-            } catch { pressure.abort(new DiscoveryDeferredError('memory_unknown')); }
+            } catch {
+              if (onMemoryDecision && !pressure.signal.aborted) {
+                try { onMemoryDecision({ phase: starting ? 'start_checkpoint' : 'running_checkpoint', allowed: false, reason: 'memory_unknown' }); }
+                catch { /* Diagnostics are best effort. */ }
+              }
+              pressure.abort(new DiscoveryDeferredError('memory_unknown'));
+            }
           };
           check(true); abort.throwIfAborted();
           timer = setInterval(() => check(false), 250);

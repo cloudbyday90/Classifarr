@@ -12,5 +12,7 @@ export function assessDiscoveryMemory(memory, starting = false) {
   if (!inspected) return { allowed: false, reason: 'memory_unknown' };
   const { available, reserve } = inspected;
   const required = reserve + (starting ? DISCOVERY_START_HEADROOM : 0);
-  return { allowed: available >= required, reason: 'memory_pressure', reserve, required };
+  return { allowed: available >= required, reason: 'memory_pressure', reserve, required,
+    available, constrained: memory.constrained,
+    limit: memory.constrained > 0 ? Math.min(memory.constrained, memory.total) : memory.total };
 }

@@ -11,9 +11,11 @@ import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 import { describeLiveMultiScaleRetry } from './liveMultiScaleDiagnostics.mjs';
 import { diagnoseLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
+import { createComparisonMemoryEvidence, describeComparisonMemoryEvidence } from './comparisonMemoryEvidence.mjs';
 
 export function createLiveMultiScaleRuntime(database = db) {
   return withInventoryBackgroundReadiness(createLiveMultiScaleRefresh({ repository: createInventoryRepresentativeProfileRepository(database),
+    memoryEvidence: createComparisonMemoryEvidence(),
     withAdmission: createInventoryDiscoveryAdmission(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
     createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision }), database,
@@ -35,7 +37,11 @@ export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveM
       if (diagnostic) {
         if (diagnostic.reason === 'busy') log.info('Library comparison context is waiting for other background work', diagnostic);
         else log.warn('Library comparison context is retrying automatically; ordinary retrieval remains available', diagnostic);
-      } else if (last && last !== 'ready') log.info('Library comparison context recovered automatically');
+      } else if (last && last !== 'ready') {
+        const memory = describeComparisonMemoryEvidence(report.memory);
+        if (memory) log.info('Library comparison context recovered automatically', { memory });
+        else log.info('Library comparison context recovered automatically');
+      }
       last = state;
     }
     return report;

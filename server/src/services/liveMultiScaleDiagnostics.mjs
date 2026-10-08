@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { describeLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
+import { describeComparisonMemoryEvidence } from './comparisonMemoryEvidence.mjs';
 const deferred = new Map([
   ['busy', 'Another background job is using the shared work budget. No action is needed; this optional context will retry automatically.'],
   ['memory_pressure', 'Optional comparison work paused to protect memory. If this persists, review container memory usage and competing jobs; do not disable memory safeguards.'],
@@ -20,7 +21,9 @@ export function describeLiveMultiScaleRetry(report) {
     if (quietReasons.has(report.reason)) return null;
     const reason = deferred.has(report.reason) ? report.reason : 'unknown';
     if (reason === 'unavailable' && report.failure) return { status: 'deferred', reason, ...describeLiveMultiScaleFailure(report.failure) };
-    return { status: 'deferred', reason, recovery: deferred.get(reason) ?? retrying.get('unavailable') };
+    const memory = ['memory_pressure', 'memory_unknown'].includes(reason) ? describeComparisonMemoryEvidence(report.memory) : undefined;
+    return { status: 'deferred', reason, recovery: deferred.get(reason) ?? retrying.get('unavailable'),
+      ...(memory ? { memory } : {}) };
   }
   if (!retrying.has(report.status)) return null;
   if (report.status === 'unavailable' && report.failure) return { status: 'unavailable', reason: 'unavailable', ...describeLiveMultiScaleFailure(report.failure) };

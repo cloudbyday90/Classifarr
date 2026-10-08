@@ -46,4 +46,6 @@ into this warning. Use a small allowlisted ESM projection, not raw worker report
 or a new persistent sampler. Preserve warning deduplication and all admission,
 retry, timeout and cache policies. This adds a little diagnostic plumbing but
 allows future reports to distinguish actual capacity pressure from missing context
-before selecting another optimization. It is recommended, not implemented here.
+before selecting another optimization. This investigation did not implement it;
+the subsequent request is covered by the separate
+[memory-evidence design](comparison-memory-evidence-design.md).

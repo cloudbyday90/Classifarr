@@ -19,6 +19,8 @@ export function createLiveInventoryModelCache({ maxEntries = 8, maxWeight = 16 *
   };
   const validKey = key => typeof key === 'string' && /^[a-f0-9]{64}$/.test(key);
   return Object.freeze({
+    // Observation must not prune entries, touch LRU order, or extend their lifetime.
+    inspect() { return { entries: entries.size, estimatedBytes: weight }; },
     clear() { entries.clear(); weight = 0; },
     get(key) {
       prune();

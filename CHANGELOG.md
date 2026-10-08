@@ -11,6 +11,11 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
 
 ### Diagnostics
 
+- **Memory-pressure reports:** correlate comparison pauses and recovery with a
+  shared reference, exact admission budgets, refresh-stage readings and recent
+  completed-cycle comparisons, without weakening memory safeguards or taking
+  automatic heap dumps.
+
 - Add isolated, repeatable cold comparison allocation profiles to distinguish
   construction costs from retained memory before tuning; production memory
   safeguards and refresh behavior are unchanged.
