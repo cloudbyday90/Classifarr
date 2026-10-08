@@ -12,6 +12,7 @@ import { verifyRuntimeSchemaReadiness, verifySupervisedSchemaReadiness } from '.
 import { acquireNormalRuntimeAdmission } from '../../bootstrap/runtimeAdmission.mjs';
 import { withBackupRestoreSession } from '../../services/backupRestoreSession.mjs';
 import { createMigrationDiagnostics } from '../../services/migrationDiagnostics.mjs';
+import { trackDatabaseSessions } from './helpers/databaseSessionExit.mjs';
 
 function identifier(value) {
   if (!/^cf_schema_[a-f0-9]+$/.test(value)) throw new Error('unowned_fixture_identifier');
@@ -21,7 +22,16 @@ function identifier(value) {
 describe('one-shot schema maintenance and authenticated runtime readiness', () => {
   let runtimePool, config, role, parentRole;
   const admin = () => ({ pool: getPool() });
-  const maintain = (options = {}) => runDatabaseSchemaMaintenance({ database: admin(), ...options });
+  const maintain = async (options = {}, pool = getPool()) => {
+    const sessions = trackDatabaseSessions(pool);
+    try {
+      return await runDatabaseSchemaMaintenance({ database: sessions.database, ...options });
+    } finally {
+      // Observe real teardown before another test attempts exclusive admission.
+      try { await sessions.waitForExit(); }
+      finally { await sessions.cleanup(); }
+    }
+  };
   const verify = () => verifyRuntimeSchemaReadiness({ database: { pool: runtimePool } });
   beforeAll(async () => {
     const runtime = readRuntime();
@@ -59,26 +69,33 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
     await expect(verifyRuntimeSchemaReadiness({ database: admin() })).rejects.toThrow('authority_not_restricted');
   });
   test('compatible handoff verifies current schema with existing credentials under runtime admission', async () => {
-    const admission = await acquireNormalRuntimeAdmission({ database: admin(), onLost: jest.fn(), seedMissingGate: async () => false });
+    const sessions = trackDatabaseSessions(getPool());
+    const admission = await acquireNormalRuntimeAdmission({ database: sessions.database, onLost: jest.fn(), seedMissingGate: async () => false });
     try {
       await expect(verifySupervisedSchemaReadiness({ database: admin() })).resolves.toMatchObject({ status: 'ready' });
       await expect(maintain()).resolves.toMatchObject({ status: 'deferred' });
-    } finally { admission.release(); }
+    } finally { admission.release(); await sessions.waitForExit(); }
   });
   test('shared runtime admission prevents schema execution until the last owner exits', async () => {
-    const first = await acquireNormalRuntimeAdmission({ database: { pool: runtimePool }, onLost: jest.fn() });
-    const second = await acquireNormalRuntimeAdmission({ database: { pool: runtimePool }, onLost: jest.fn() });
+    const sessions = trackDatabaseSessions(runtimePool);
+    const first = await acquireNormalRuntimeAdmission({ database: sessions.database, onLost: jest.fn() });
+    const second = await acquireNormalRuntimeAdmission({ database: sessions.database, onLost: jest.fn() });
     try {
       await expect(maintain()).resolves.toEqual({ status: 'deferred', reason: 'runtime_or_restore_active' });
       first.release();
       await expect(maintain()).resolves.toMatchObject({ status: 'deferred' });
     } finally { first.release(); second.release(); }
+    await sessions.waitForExit();
     await expect(maintain()).resolves.toMatchObject({ status: 'complete' });
   });
   test('restore and schema maintenance share exclusive admission', async () => {
-    await withBackupRestoreSession({ database: admin() }, async () => {
-      await expect(maintain()).resolves.toMatchObject({ status: 'deferred' });
-    });
+    const sessions = trackDatabaseSessions(getPool());
+    try {
+      await withBackupRestoreSession({ database: sessions.database }, async () => {
+        await expect(maintain()).resolves.toMatchObject({ status: 'deferred' });
+      });
+      await sessions.waitForExit();
+    } finally { await sessions.cleanup(); }
   });
   test('schema owner blocks normal admission and another maintenance invocation', async () => {
     let entered = false;
@@ -186,9 +203,8 @@ describe('one-shot schema maintenance and authenticated runtime readiness', () =
     const freshPool = new pg.Pool({ host: runtime.host, port: runtime.port,
       database: name, user: runtime.user, password: runtime.password, max: 2 });
     try {
-      const database = { pool: freshPool };
-      await expect(runDatabaseSchemaMaintenance({ database })).resolves.toMatchObject({ status: 'complete' });
-      await expect(runDatabaseSchemaMaintenance({ database })).resolves.toMatchObject({ status: 'complete', applied: 0 });
+      await expect(maintain({}, freshPool)).resolves.toMatchObject({ status: 'complete' });
+      await expect(maintain({}, freshPool)).resolves.toMatchObject({ status: 'complete', applied: 0 });
     } finally {
       await freshPool.end();
       // Only the generated, validated fixture database created above is removed.

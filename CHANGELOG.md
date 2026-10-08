@@ -69,12 +69,16 @@ Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG
   crossing midnight retain strict accounting without failing on a valid daily reset.
   Isolate queue-maintenance success fixtures from competing autovacuum and verify
   that skipped attempts retain their retry limits, with bounded failure diagnostics.
+  Observe database session exit before restore-admission test transitions, with
+  delayed-disconnect coverage; production restore exclusion remains unchanged.
 
 ### Changed
 
 - **Developer tooling:** improve unused-code and dependency detection with updated
   entry-point analysis and executable regression checks; existing quality gates
   and runtime safeguards are unchanged.
+  Document pinned and transitive update gaps, intentional compatibility holds and
+  separate runtime, frontend and CI upgrade priorities.
 - **HTTP request protection:** update rate-limit middleware to avoid unnecessary
   debug allocations, with regression coverage for authentication quotas, retry
   headers, client-IP boundaries and fail-closed errors; limits are unchanged.
