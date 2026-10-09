@@ -12,6 +12,12 @@ both entries were local and had syntactically valid, **different** model digests
 Repeated inspection at 19:43 UTC confirmed this. The existing client requires
 exactly one matching entry and correctly rejected the ambiguous identity.
 
+By 19:47 UTC the five missing vectors had backfilled normally and policy replay
+was complete. At 19:50 UTC, limits and reservations were still zero. The provider
+identity, not a stuck import, remained the blocker. A 796.1 MiB container sample
+under the unchanged 2 GiB limit is a point-in-time observation, not a memory-leak
+or complete-cycle retention assessment.
+
 This explains why this local configuration cannot start the planned AI capture;
 it is not evidence that Unraid has the same model listing. No Unraid access, model
 download, provider configuration edit, budget activation, reservation reset or
@@ -38,17 +44,51 @@ capture or claim that policy/inventory/resource checks passed.
   names, including distinct model digests, stop before `/api/show`, generation or
   quota reservation. Fixed diagnoses, cancellation, privacy and CLI separation
   are covered.
+- Expanded affected CLI/scheduler/evaluation unit checks: 9 suites, 148 tests
+  passed, including those 92 tests.
 - Random open [PR 555](node-types-pr-555-outcome.md): exact local trial rejected
   by the existing runtime-major contract (8/8 → 7/8 → 8/8). No merge or install.
 - Tooling policy: 40/40 passed through the supported npm entry point.
 - Isolated PostgreSQL: 3 suites, 36 tests passed, covering the actual read-only
   transaction plus existing quota/capture/replay contracts. Quota and cache rows
   remain unchanged by the diagnostic.
+- Additional affected destination/correction CLI integration checks: 2 suites,
+  33 tests passed (69 PostgreSQL tests total, no skips).
 - Lint, backend/frontend typechecks, Markdown, copyright and ESM gates passed.
   No dependencies were installed or changed; fresh registry metadata matched the
   rejected PR's package integrity and transitive declaration version.
-- Rebuilt-image checks will be recorded below. Full application coverage is not
-  claimed for this scoped diagnostic change.
+- Development/production dependency analysis passed. The ownership drift gate
+  initially flagged the two changed query adapters. Reviewed the complete call
+  chains, retained `adjudicationBudgetCommand` as unresolved analysis debt, and
+  added a narrow read-only review for `adjudicationProviderStatus`. Only those two
+  manifest entries changed; the gate then passed with no unreviewed drift. Its
+  `productionCompatible: false` disclaimer still applies to unrelated writer debt.
+- Ownership inventory/gate regression checks: 2 suites, 54 tests passed.
+  Full application coverage is not claimed for this scoped diagnostic change.
+
+## No-cache local image
+
+Built from clean code commit `e9a18d4b45fc0a2e21d1d655499fd11e697beb7b` with
+`docker-compose-smart.mjs ... build --no-cache --require-provenance` and recreated
+only the local `classifarr` service with `--no-build --force-recreate --wait`.
+Image ID: `sha256:04c0d8f2cf48acf02550989469c03d59ce1e5280cc01a3f1a696151a24ef782e`.
+The OCI revision matches that code commit; the follow-up commit contains this
+verification record and the explicitly reviewed ownership manifest, not a runtime
+code change.
+
+The container became healthy with zero restarts and no OOM. It retains UID/GID
+1000, a read-only root, the existing appdata/media mounts and 2 GiB memory limit.
+Health returned 200; unauthenticated evaluation history returned 401. At 19:57 UTC,
+the packaged CLI returned `model_ambiguous` with exit 1 as designed, no raw model
+metadata, and the specific corrective action. The separate status command confirmed
+disabled capture, zero limits and zero reservations. A startup sample of 654.1 MiB
+is not a sustained-memory or leak assessment. Unraid and the unrelated local
+Harmoniarr container were not changed.
+
+After recreation, ran `check-schema-snapshot-container.mjs --dump` against this
+image using a fresh isolated database. The schema dump passed with no tracked
+schema difference. The runner removed its exact temporary container and appdata
+directory; both removals were verified. No existing appdata was used for dumping.
 
 ## Recommendation
 

@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "read_only_adjudication_provider",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete adjudicationProviderStatus module, the fixed FRESH_POLICY_CONFIG_SQL SELECT from ai_provider_config, private CLI dispatch and local metadata client. The configuration read runs in an explicit READ ONLY transaction with local timeouts; that transaction completes before bounded /api/tags and /api/show requests. No inventory mutation, ownership claim, budget reservation, model generation/pull or response-cache publication is reachable from this diagnostic. Its fixed report excludes raw configuration, identity and errors.",
+      "followUp": "Retain real PostgreSQL read-only/unchanged-quota checks, real HTTP duplicate-model rejection before generation, CLI mode conflicts and private logging. The changed budget command retains its previous unresolved analysis-debt classification because its separate configure branch can still write the budget. This narrow read-only review does not authorize live recovery or resolve other writer paths. Re-review the diagnostic if its query or provider capabilities change."
+    },
+    {
       "id": "read_only_evaluation_inventory",
       "classification": "separately_coordinated",
       "reason": "Reviewed the complete evaluationInventoryReadiness module, its imported readiness SQL, evaluationActivity caller, readEvaluationHistory transaction and protected stats GET. The indirect query argument is a fixed composition of SELECT-only admission and aggregate progress queries. It runs inside the existing five-second, REPEATABLE READ READ ONLY transaction. No row locks, inventory DML, ownership claim, queue insert, provider call or recovery entry point is invoked. Only fixed counts, a status and a current-run page timestamp are projected; no names, cursors or credentials are returned.",
@@ -1154,7 +1160,8 @@
     {"path":"server/src/scripts/runInventoryCompanyBenchmark.mjs","digest":"87724ad4becaeb08fa09823b7ce9abefb489969b39cb8352099d58a8e07a88fc","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"maintenance_debt"},
     {"path":"server/src/scripts/runInventoryOutcomeCalibration.mjs","digest":"b10a4b2f9cbc4fca87561d09115e1a9c1f292aa8143bf00670df52ef091d8212","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"maintenance_debt"},
     {"path":"server/src/scripts/schemaReleaseReplay.mjs","digest":"2f9b9766c930566141df7611ac72c23fae7e672ebdb27fa1c4e401e36e4191e0","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"maintenance_debt"},
-    {"path":"server/src/services/adjudicationBudgetCommand.mjs","digest":"eb562b181e532ae6d1aa43fdbf1555589b43c1a39159925e99ee19a7efc1f4c4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/adjudicationBudgetCommand.mjs","digest":"fc6ddcf143a0e1bda5d41cfa440cf359bf9fcfa1aafaea388920b1e925f07387","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/adjudicationProviderStatus.mjs","digest":"9b3ed0240ea0a4a62d15a3465753e1aee37a4d2b4d71665dfdc70181f3e5a8d6","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_adjudication_provider"},
     {"path":"server/src/services/adjudicationBudgetRepository.mjs","digest":"cca3426006e512513cbf556f66a349641797e84c43331cd543bcdd34cbf9d73c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/aiProviderCapabilityMetricsFailureBreakdownRepository.mjs","digest":"cb84266f996824955fe401917cf1bf5f2c8c0b51daa082c6a523446fefc9efcf","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/aiProviderCapabilityMetricsFailureCategoryCoverageRepository.mjs","digest":"43c5b40756625f9b4aa9db4f05a1bcd68cfc5100d34f8117e04428a183462c50","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
