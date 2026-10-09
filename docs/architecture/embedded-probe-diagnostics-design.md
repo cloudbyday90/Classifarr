@@ -35,6 +35,29 @@ SQL, raw errors or provider data. Existing container logs retain the trail acros
 ordinary restarts; recreation/log rotation can remove it. This is not a durable
 incident database. Operators should preserve the bounded records when reporting.
 
+## Reading an incident
+
+In the container log, find `component: EmbeddedSupervisor` and
+`status: database_probe_diagnostic`. Group records by `diagnostics.episodeId`;
+the outer `reason` is the episode phase (waiting, recovered, cancelled or stop
+reason). Preserve that group and the surrounding supervisor shutdown records.
+`lastHealthy` can be null when the first monitored check fails; this is not
+evidence that the database was never healthy.
+
+| Evidence | What it establishes | What to check next |
+| --- | --- | --- |
+| `deadline.stage` is `identity_before` or `identity_after` | The identity read had not completed at the deadline | Filesystem latency and host scheduling in that timestamp window |
+| `helperTimeout.stage` is `status_spawn` | No child spawn event was observed before timeout | Process creation/resource limits and supervisor scheduling |
+| `helperTimeout.stage` is `status_wait` | The helper spawned but had not reported exit | Status-helper delay, host load and filesystem evidence |
+| Large `overshootMs` | The observation happened after its intended deadline | Event-loop activity and host scheduling; not proof of CPU saturation |
+
+Use the first failure and last healthy sequence/timestamp as reference points,
+then compare the latest sample at recovery or stop. Helper elapsed time includes
+its synchronous spawn setup; overshoot is elapsed time beyond the helper's
+two-second budget, not an isolated measurement of timer latency. Resource metrics
+alone do not identify the host process responsible. Do not infer OOM from a
+timeout or infer safe takeover from a healthy sample.
+
 ## Options and recommendation stack
 
 | Option | Benefit | Limitation |
