@@ -14,8 +14,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 - **Evaluation visibility** — Command Center separates completed policy replay
   from saved comparison coverage and AI-capture configuration. Unsupported
   selections, missing responses, disabled capture and stale results now have
-  distinct explanations; viewing the summary does not start AI work or change
-  routing, quotas or memory safeguards.
+  distinct explanations. Current-run backfill scan progress, queued work and a
+  saved checkpoint reference explain inventory waits; viewing the summary does
+  not start AI work or change routing, quotas or memory safeguards.
 - **Independent policy evaluation** — Offline replay rebuilds supported
   inferred-only library purposes from held-out training folds, preserving
   declared constraints and excluding tested items. Versioned results distinguish

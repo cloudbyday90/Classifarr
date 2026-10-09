@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "read_only_evaluation_inventory",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete evaluationInventoryReadiness module, its imported readiness SQL, evaluationActivity caller, readEvaluationHistory transaction and protected stats GET. The indirect query argument is a fixed composition of SELECT-only admission and aggregate progress queries. It runs inside the existing five-second, REPEATABLE READ READ ONLY transaction. No row locks, inventory DML, ownership claim, queue insert, provider call or recovery entry point is invoked. Only fixed counts, a status and a current-run page timestamp are projected; no names, cursors or credentials are returned.",
+      "followUp": "Retain real PostgreSQL empty-queue/pending-scan, generation replacement, due-task, disabled-library and held-row-lock checks, plus administrator-only no-store GET and malformed-result rejection. This review authorizes no live repair and does not resolve existing writer debt. Re-review this exact module and call chain if diagnostic SQL gains side effects."
+    },
+    {
       "id": "comparison_post_stop_observation",
       "classification": "separately_coordinated",
       "reason": "Reviewed all three resource-study launchers and the post-stop observer/receipt modules. The opt-in is restricted to the existing isolated synthetic catalog without allocation sampling. Empty random-project checks, immutable image validation, internal network, fresh database checks, restore-mode guard, production ingestion ownership, queue claims and scoped cleanup are unchanged. A five-minute GC observation may now be followed by a two-minute bounded mapping observation with 30 seconds of completion tolerance; work and admission deadlines are unchanged. This adds no SQL, provider call, live target, ownership reset, forced GC or production entrypoint.",
@@ -494,6 +500,7 @@
     }
   ],
   "entries": [
+    {"path":"server/src/services/evaluationInventoryReadiness.mjs","digest":"932bc5837db49757bcdf75043ddf0efa42ab2923bb3387b8c8f0daadabed0234","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_evaluation_inventory"},
     {"path":"server/src/services/ingestionSafeguardRepair.mjs","digest":"86866e4e911b0e2821905aa8bca7839dc19d04768229252cb10eb3857723a2c5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"confirmed_safeguard_repair"},
     {"path":"database/migrations/20261005_180000_ingestion_compatibility_fence.sql","digest":"7f976b4d94acd4ed4a11ff2a801c33ddd36b4b2f5377b7e35c89a64cc39f1bf5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"ingestion_compatibility_recovery"},
     {"path":"server/src/services/ingestionCompatibilityRecovery.mjs","digest":"f3e9eacf7e2cb4e23646d46986b52310b26ffcc5922959199a021d4ffe2696cd","analysisDigest":"aa17956a06711bf1e86b1cb5b75c5cfe9d1846d9c5c422f07d8b3577756ab99a","review":"ingestion_compatibility_recovery"},

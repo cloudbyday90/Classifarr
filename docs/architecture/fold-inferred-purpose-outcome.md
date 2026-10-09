@@ -96,3 +96,8 @@ again before considering any administrator-approved capture budget. Obtain
 independent reference labels before making quality claims. For the separate
 tooling queue, review Knip 6.41.0; do not advance Node declarations to a different
 runtime major just to clear an open PR.
+
+Follow-up on 2026-10-09: those three handoffs completed through the normal scheduler,
+and policy replay v2 subsequently ran. See the separate
+[readiness diagnosis and outcome](evaluation-backfill-readiness-outcome.md);
+the earlier snapshot was temporary waiting, not proof of a stalled backfill.

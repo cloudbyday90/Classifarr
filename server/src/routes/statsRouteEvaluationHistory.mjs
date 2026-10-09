@@ -2,7 +2,7 @@
 import { libraryObservationHealthLimiterConfig } from '../config/rateLimits.mjs';
 import { readEvaluationHistory } from '../services/evaluationHistoryRepository.mjs';
 
-/** Versioned aggregate only: v4 separates activity from history; access and no-store are unchanged. */
+/** v4 adds optional inventory readiness under activity; protected, aggregate-only, read-only. */
 export function registerEvaluationHistoryRoutes(router, { db, requireAdmin, rateLimit }) {
   if (typeof requireAdmin !== 'function' || typeof rateLimit !== 'function') throw new TypeError('Evaluation history requires protected access');
   router.get('/evaluation-history', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); },

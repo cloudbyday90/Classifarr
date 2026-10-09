@@ -23,6 +23,9 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
       if (denied) status = 403
       else data = { version: 'evaluation_history_summary.v4', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
         activity: { checkedAt: '2026-10-09T12:00:00Z',
+          inventory: { version: 'evaluation_inventory_readiness.v1', status: busy ? 'ready' : 'backfilling',
+            completedImports: 10, notStarted: 0, scanning: busy ? 0 : 3, completedHandoffs: busy ? 10 : 7,
+            dueTasks: 0, processingTasks: 0, latestCheckpointAt: busy ? null : '2026-10-09T11:55:00Z' },
           policy: busy ? { status: 'busy', observedAt: '2026-10-09T12:00:00Z', counts: null }
             : { status: 'complete', observedAt: '2026-10-09T12:00:00Z', counts: { cases: 300, paired: 300,
             baseline: { automatic: 40, review: 37, manual: 223, unavailable: 0 },
@@ -42,7 +45,16 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect(panel).toContainText('20 completed comparisons from 120 candidate items')
   await expect(panel).toContainText('300 cases evaluated by policy replay')
   await expect(panel).toContainText('Disabled — no AI calls are scheduled for evaluation capture')
-  await expect(panel.locator('details')).not.toHaveAttribute('open')
+  await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
+  const savedDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Saved results and scope' }) })
+  const backfillDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Backfill progress' }) })
+  await expect(savedDetails).not.toHaveAttribute('open')
+  await backfillDetails.locator('summary').focus()
+  await page.keyboard.press('Enter')
+  await expect(backfillDetails).toHaveAttribute('open', '')
+  await expect(backfillDetails).toContainText('3 scans in progress')
+  await expect(backfillDetails).toContainText('0 due queued tasks')
+  await expect(backfillDetails).toContainText('Latest saved page')
   await panel.screenshot({ path: testInfo.outputPath('evaluation-history-desktop.png') })
   await panel.getByRole('button', { name: 'Pause summary' }).focus()
   await page.keyboard.press('Space')
@@ -53,13 +65,16 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect.poll(() => reads).toBeGreaterThan(1)
   await expect(panel).toContainText('20 completed comparisons')
   await expect(panel).toContainText('300 cases evaluated by policy replay')
+  await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
   await panel.getByRole('button', { name: 'Resume summary' }).press('Space')
   await expect(panel).toContainText('25 completed comparisons')
   await expect(panel).toContainText('last attempt waited for competing background work')
   await expect(panel).not.toContainText('300 cases evaluated by policy replay')
-  const disclosure = panel.locator('summary')
+  await expect(panel).toContainText('The inventory check passed. Other worker safeguards still apply.')
+  await expect(backfillDetails).toHaveAttribute('open', '')
+  const disclosure = savedDetails.locator('summary')
   await disclosure.focus(); await page.keyboard.press('Enter')
-  await expect(panel.locator('details')).toHaveAttribute('open', '')
+  await expect(savedDetails).toHaveAttribute('open', '')
   await expect(panel).toContainText('historical results, not live model verification')
   await expect(panel).toContainText('23 — Cached AI response missing')
   await expect(panel).toContainText('2 — AI response rejected')

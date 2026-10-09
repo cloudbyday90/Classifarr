@@ -2,6 +2,11 @@
 
 Date: 2026-10-05.
 
+Rechecked 2026-10-09 for backfill-readiness diagnostics: the saved CLI login listed
+open PRs 555/556 and a fresh PowerShell `Get-Random` draw selected 555 at the same
+head below. GitHub MCP returned its exact two-file diff. Repeat the unchanged
+pre-install compatibility gate; retain only a runtime-aligned candidate.
+
 The saved GitHub CLI login found one open PR. A uniform random selection from the
 singleton candidate set `[555]` selected [PR 555](https://github.com/cloudbyday90/Classifarr/pull/555),
 head `5545605b53c854de8847b44e24fa083ff4218080`. Its immutable diff changes only the

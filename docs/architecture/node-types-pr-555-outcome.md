@@ -2,6 +2,15 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Rechecked again on 2026-10-09 for backfill-readiness diagnostics. Open candidates
+were 555 and 556; a fresh `Get-Random` draw selected 555 at the same immutable
+head. Applied the exact GitHub MCP diff on main: 8/8 baseline, 7/8 candidate
+(client Node-major mismatch), 8/8 after reversing only the trial. Official npm
+registry metadata matched the candidate dependencies and both package integrities.
+No candidate install or merge occurred. Current client `npm outdated` also lists
+Playwright 1.64.0 and Vue Router 5.4.0 as compatible-range candidates, and the
+separately held TypeScript 7.0.2 major. None are included in this diagnostic change.
+
 Rechecked 2026-10-09 for the evaluation-activity batch. The saved GitHub CLI login
 listed open non-draft PRs 555 and 556; a PowerShell `Get-Random` draw selected 555,
 still at `5545605b53c854de8847b44e24fa083ff4218080`. Applied its exact manifest and

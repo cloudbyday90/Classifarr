@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readAutomaticPolicyReport } from './automaticPolicyReplayReport.mjs';
 import { ADJUDICATION_RESERVED_TOKENS } from './adjudicationBudgetContract.mjs';
+import { readEvaluationInventoryReadiness } from './evaluationInventoryReadiness.mjs';
 
 const captureStates = new Set(['disabled', 'ready', 'captured', 'waiting_for_replay', 'budget_exhausted', 'deferred', 'unavailable']);
 const policyDeferrals = new Set(['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider',
@@ -51,6 +52,7 @@ export async function readEvaluationActivity(client) {
     FROM automatic_source_pair_evaluation WHERE singleton=true`);
   const { rows: [budget] } = await client.query(`SELECT daily_calls,daily_tokens,quota_day::text,
     calls_reserved,tokens_reserved,status FROM adjudication_capture_budget WHERE singleton=true`);
-  const { rows: [clock] } = await client.query('SELECT transaction_timestamp()::text AS checked_at');
-  return projectEvaluationActivity(policy, budget, clock?.checked_at);
+  const { rows: [clock] } = await client.query('SELECT statement_timestamp()::text AS checked_at');
+  const activity = projectEvaluationActivity(policy, budget, clock?.checked_at);
+  return { ...activity, inventory: await readEvaluationInventoryReadiness(client, activity.checkedAt) };
 }

@@ -5,6 +5,7 @@
       Policy-work and AI-capture status are not available from this server. Saved comparison counts are shown separately.
     </p>
     <template v-else>
+      <EvaluationInventoryReadiness :inventory="activity.inventory" />
       <h3>Latest policy work</h3>
       <template v-if="activity.policy.counts">
         <p><strong>{{ activity.policy.counts.cases }} cases evaluated by policy replay.</strong> No AI calls were needed for this pass.</p>
@@ -52,6 +53,7 @@
 
 <script setup>
 import { evaluationPolicyStatus, evaluationCaptureOutcome } from '@/utils/evaluationActivity'
+import EvaluationInventoryReadiness from './EvaluationInventoryReadiness.vue'
 defineProps({ activity: { type: Object, default: null } })
 </script>
 

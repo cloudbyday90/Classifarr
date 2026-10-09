@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { normalizeEvaluationInventoryReadiness } from './evaluationInventoryReadiness'
 const policyStates = ['complete', 'never_run', 'failed', 'stale', 'unknown', 'no_policies', 'cache_incomplete', 'no_eligible_cases',
   'busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable',
   'evidence_budget', 'deadline', 'evaluation_unavailable']
@@ -33,7 +34,8 @@ export function normalizeEvaluationActivity(value) {
     !/^\d{4}-\d{2}-\d{2}$/.test(capture.quotaDay ?? '') || !validTime(capture.quotaDay) ||
     new Date(capture.quotaDay).toISOString().slice(0, 10) !== capture.quotaDay ||
     !(capture.enabled ? capture.dailyCalls > 0 && capture.dailyTokens >= 8448 : capture.dailyCalls === 0 && capture.dailyTokens === 0)) return null
-  return { checkedAt: value.checkedAt, policy: { status: policy.status, observedAt: policy.observedAt, counts },
+  return { checkedAt: value.checkedAt, inventory: normalizeEvaluationInventoryReadiness(value.inventory, value.checkedAt),
+    policy: { status: policy.status, observedAt: policy.observedAt, counts },
     capture: Object.fromEntries(['enabled', 'dailyCalls', 'dailyTokens', 'quotaDay', 'callsReserved', 'tokensReserved', 'lastOutcome'].map(key => [key, capture[key]])) }
 }
 
