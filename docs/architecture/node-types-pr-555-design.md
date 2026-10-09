@@ -2,6 +2,12 @@
 
 Date: 2026-10-05.
 
+Rechecked 2026-10-09 for capture guidance: current open candidates were again
+555 and 556; the isolated `Get-Random` draw selected 555 at the immutable head
+below. MCP supplied its diff. The same runtime-major gate applies. Fresh registry
+metadata now also lists a compatible 24.19.2 patch and latest 26.6.5; the selected
+PR itself still proposes 26.6.4. Review the 24.x patch separately.
+
 Rechecked 2026-10-09 for backfill-readiness diagnostics: the saved CLI login listed
 open PRs 555/556 and a fresh PowerShell `Get-Random` draw selected 555 at the same
 head below. GitHub MCP returned its exact two-file diff. Repeat the unchanged

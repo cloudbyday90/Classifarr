@@ -16,11 +16,15 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   selections, missing responses, disabled capture and stale results now have
   distinct explanations. Current-run backfill scan progress, queued work and a
   saved checkpoint reference explain inventory waits; viewing the summary does
-  not start AI work or change routing, quotas or memory safeguards.
+  not start AI work or change routing, quotas or memory safeguards. Collapsed
+  console guidance explains how to inspect and deliberately configure optional
+  AI-response capture without changing deployment templates.
 - **Independent policy evaluation** — Offline replay rebuilds supported
   inferred-only library purposes from held-out training folds, preserving
   declared constraints and excluding tested items. Versioned results distinguish
   the new experiment from older coverage; live policies and AI budgets are unchanged.
+- **Evaluation test isolation** — Database fixtures include current inventory
+  readiness relations, restoring integration coverage without weakening runtime checks.
 
 ## [v0.49.1-beta] - 2026-10-08
 

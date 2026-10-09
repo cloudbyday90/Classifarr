@@ -36,7 +36,9 @@ it('distinguishes configured capture, old reservations and unknown or legacy con
   expect(wrapper.text()).not.toContain('Disabled —')
   value.capture = { enabled: null, dailyCalls: null, dailyTokens: null, quotaDay: null, callsReserved: null, tokensReserved: null, lastOutcome: 'unknown' }
   expect(mount(EvaluationActivitySummary, { props: { activity: normalizeEvaluationActivity(value) } }).text()).toContain('configuration is unknown')
-  expect(mount(EvaluationActivitySummary).text()).toContain('not available from this server')
+  const legacy = mount(EvaluationActivitySummary)
+  expect(legacy.text()).toContain('not available from this server')
+  expect(legacy.findComponent({ name: 'EvaluationCaptureHelp' }).exists()).toBe(false)
 })
 
 it('rejects malformed or contradictory aggregates and strips unrelated fields', () => {

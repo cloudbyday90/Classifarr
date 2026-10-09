@@ -40,7 +40,12 @@ const due = () => client.query(`UPDATE automatic_source_pair_evaluation SET obse
 
 beforeEach(async () => {
   client = await getPool().connect();
-  await client.query(`CREATE TEMP TABLE libraries(id integer,name text,media_type text,is_active boolean);
+  // Keep the unsupported-media sentinel below; isolate every readiness relation
+  // so this fixture cannot accidentally read public ingestion state.
+  await client.query(`CREATE TEMP TABLE libraries(id integer,name text,media_type text,is_active boolean,media_server_id integer);
+    CREATE TEMP TABLE media_server(LIKE public.media_server INCLUDING DEFAULTS);
+    CREATE TEMP TABLE library_ingestion_state(LIKE public.library_ingestion_state INCLUDING ALL);
+    CREATE TEMP TABLE media_source_capture_state(LIKE public.media_source_capture_state INCLUDING ALL);
     CREATE TEMP TABLE media_server_items(id serial,library_id integer,media_server_id integer,external_id text,
       media_type text,tmdb_id integer,imdb_id text,tvdb_id integer,metadata jsonb,genres jsonb,studio text,content_rating text,
       title text DEFAULT 'Synthetic test item',year integer);
@@ -71,6 +76,9 @@ beforeEach(async () => {
     INSERT INTO ai_provider_config VALUES(1,true,'same','ollama','test',NULL,NULL,NULL,'localhost',11434,NULL,1);`);
   fixture = sourcePairFixture(48);
   for (const library of fixture.libraries) await client.query('INSERT INTO libraries VALUES($1,$2,$3,true)', [library.id, library.name, library.media_type]);
+  await client.query(`INSERT INTO library_ingestion_state(library_id,run_id,phase,backfill_run_id,backfill_completed_at)
+    SELECT id,'00000000-0000-4000-8000-000000000001','complete',
+      '00000000-0000-4000-8000-000000000001',now() FROM libraries`);
   for (const row of fixture.rows) await client.query(`INSERT INTO media_server_items
     (library_id,media_server_id,external_id,media_type,tmdb_id,metadata,genres,studio,content_rating)
     VALUES($1,$2,$3,$4,$5,jsonb_build_object('overview',$6::text),$7::jsonb,$8,$9)`,
@@ -87,6 +95,25 @@ beforeEach(async () => {
   repository = createAutomaticSourcePairRepository(database); worker = makeWorker();
 });
 afterEach(() => { worker?.stop(); client?.release(true); client=null; });
+
+test('history reads isolated readiness and preserves disabled capture budgets and cache', async () => {
+  const relations = ['libraries', 'media_server', 'library_ingestion_state', 'media_source_capture_state',
+    'media_server_items', 'media_server_sync_status', 'task_queue'];
+  for (const relation of relations) {
+    const { rows: [row] } = await client.query(`SELECT relnamespace=pg_my_temp_schema() AS isolated
+      FROM pg_class WHERE oid=to_regclass($1)`, [relation]);
+    expect(row.isolated).toBe(true);
+  }
+  const before = (await client.query('SELECT * FROM adjudication_capture_budget')).rows;
+  const first = await readEvaluationHistory(database);
+  expect(first.activity.inventory).toMatchObject({ status: 'ready', completedImports: fixture.libraries.length,
+    completedHandoffs: fixture.libraries.length, notStarted: 0, scanning: 0, dueTasks: 0, processingTasks: 0 });
+  expect(first.activity.capture).toMatchObject({ enabled: false, dailyCalls: 0, dailyTokens: 0 });
+  await client.query('UPDATE library_ingestion_state SET backfill_completed_at=NULL,backfill_after_id=1 WHERE library_id=1');
+  expect((await readEvaluationHistory(database)).activity.inventory).toMatchObject({ status: 'backfilling', scanning: 1 });
+  expect((await client.query('SELECT * FROM adjudication_capture_budget')).rows).toEqual(before);
+  expect((await client.query('SELECT count(*)::int AS count FROM cached_adjudication_batch')).rows[0].count).toBe(0);
+});
 
 test('private quality experiment reads a coherent snapshot without changing evaluation, capture or retention state', async () => {
   await client.query(`UPDATE ai_provider_config SET ollama_model='test:latest';

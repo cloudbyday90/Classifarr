@@ -2,6 +2,13 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Capture-guidance trial on 2026-10-09: applied the selected PR's exact manifest
+and lockfile diff at `5545605b53c854de8847b44e24fa083ff4218080`. The existing gate
+passed 8/8 before, failed the Node declaration major check (7/8 passed), and
+passed 8/8 after removing only the trial. No candidate install, merge, comment
+or PR closure occurred. Latest registry metadata now lists compatible 24.19.2
+and latest-major 26.6.5; neither was silently substituted for the selected diff.
+
 Rechecked again on 2026-10-09 for backfill-readiness diagnostics. Open candidates
 were 555 and 556; a fresh `Get-Random` draw selected 555 at the same immutable
 head. Applied the exact GitHub MCP diff on main: 8/8 baseline, 7/8 candidate

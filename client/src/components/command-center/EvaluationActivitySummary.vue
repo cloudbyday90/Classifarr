@@ -43,6 +43,7 @@
       <p v-else>
         Capture configuration is unknown. No disabled or ready state is assumed.
       </p>
+      <EvaluationCaptureHelp />
       <p>
         Status checked: <time :datetime="activity.checkedAt">{{ new Date(activity.checkedAt).toLocaleString() }}</time>.
         Policy work and comparison history are separate snapshots; do not add their counts.
@@ -54,6 +55,7 @@
 <script setup>
 import { evaluationPolicyStatus, evaluationCaptureOutcome } from '@/utils/evaluationActivity'
 import EvaluationInventoryReadiness from './EvaluationInventoryReadiness.vue'
+import EvaluationCaptureHelp from './EvaluationCaptureHelp.vue'
 defineProps({ activity: { type: Object, default: null } })
 </script>
 
