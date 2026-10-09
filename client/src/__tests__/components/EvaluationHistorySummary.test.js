@@ -6,6 +6,7 @@ import EvaluationHistorySummary from '@/components/command-center/EvaluationHist
 import { normalizeEvaluationHistory } from '@/utils/evaluationHistorySummary'
 import { evaluationGapDetails, normalizeEvaluationGaps } from '@/utils/evaluationCoverageGaps'
 import api from '@/api'
+import { evaluationActivityFixture } from '../fixtures/evaluationActivity'
 
 vi.mock('@/api', () => ({ default: { getEvaluationHistory: vi.fn() } }))
 const network = vi.hoisted(() => ({ online: null }))
@@ -14,6 +15,11 @@ const group = () => ({ latestAt: '2026-09-25T12:00:00Z', windows: 1, sampled: 60
   selected: 25, paired: 20, labeled: 5, gains: 2, regressions: 1, deferralsReduced: 3, deferralsIncreased: 1, moviePaired: 10, tvPaired: 10 })
 const report = () => ({ version: 'evaluation_history_summary.v1', retentionDays: 30, windowLimit: 500,
   windows: 1, revisions: 1, groups: [group()], providerCalls: 0, routingWrites: 0, promotionAllowed: false, fullPipelineAccuracy: null })
+const activityReport = () => ({ ...report(), version: 'evaluation_history_summary.v4', activity: evaluationActivityFixture(),
+  groups: [{ ...group(), sampled: 300, eligible: 260, selected: 75, paired: 0, labeled: 0, gains: 0, regressions: 0,
+    deferralsReduced: 0, deferralsIncreased: 0, moviePaired: 0, tvPaired: 0,
+    deterministicPairs: 0, mixedPairs: 0, aiPairs: 0, legacyPairs: 0,
+    gaps: { ...normalizeEvaluationGaps(null, 0, true), not_adjudication: 73, cache_missing: 2 } }] })
 let wrapper
 beforeEach(() => {
   vi.useFakeTimers(); vi.clearAllMocks(); network.online = ref(true)
@@ -26,7 +32,7 @@ afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.restoreAllMocks() }
 
 it('uses nonpersistent SWR with bounded visible polling and collapsed detail, without claiming accuracy', async () => {
   wrapper = mount(EvaluationHistorySummary); await flushPromises()
-  expect(wrapper.text()).toContain('20 of 50 eligible items compared')
+  expect(wrapper.text()).toContain('20 completed comparisons from 50 candidate items')
   expect(wrapper.text()).toContain('15 remain unlabelled')
   expect(wrapper.text()).toContain('This is coverage, not accuracy')
   expect(wrapper.find('details').attributes('open')).toBeUndefined()
@@ -46,13 +52,13 @@ it('pauses presentation, resumes latest values and clears even paused snapshots 
   const next = report(); next.groups[0].selected = 30; next.groups[0].paired = 25; next.groups[0].moviePaired = 15
   api.getEvaluationHistory.mockResolvedValue(next)
   await vi.advanceTimersByTimeAsync(300_000)
-  expect(wrapper.text()).toContain('20 of 50')
+  expect(wrapper.text()).toContain('20 completed comparisons')
   await wrapper.get('button').trigger('click')
-  expect(wrapper.text()).toContain('25 of 50')
+  expect(wrapper.text()).toContain('25 completed comparisons')
   await wrapper.get('button').trigger('click')
   api.getEvaluationHistory.mockRejectedValue(new Error('PRIVATE secret'))
   await vi.advanceTimersByTimeAsync(300_000)
-  expect(wrapper.text()).not.toContain('25 of 50')
+  expect(wrapper.text()).not.toContain('25 completed comparisons')
   expect(wrapper.text()).toContain('unavailable')
   expect(JSON.stringify(console.error.mock.calls)).not.toContain('PRIVATE')
 })
@@ -105,7 +111,7 @@ it('explains v2 gaps, label limitations and bounded recovery without offering in
   Object.assign(value.groups[0].gaps, { cache_missing: 3, invalid_response: 1, evidence_unavailable: 1 })
   api.getEvaluationHistory.mockResolvedValue(value)
   wrapper = mount(EvaluationHistorySummary); await flushPromises()
-  expect(wrapper.text()).toContain('25 eligible items have not reached a selected window')
+  expect(wrapper.text()).toContain('25 candidate items have not reached a selected window')
   expect(wrapper.text()).toContain('5 selected items have no completed comparison')
   expect(wrapper.text()).toContain('3 — Cached AI response missing')
   expect(wrapper.text()).toContain('when enabled, admitted and within quota')
@@ -146,4 +152,34 @@ it('shows bounded v3 comparison origins and does not reinterpret legacy pairs', 
     const malformed = structuredClone(value); malformed.groups[0].deterministicPairs = bad
     expect(normalizeEvaluationHistory(malformed)).toBeNull()
   }
+})
+
+it('separates completed policy work, unsupported selections and disabled capture in v4', async () => {
+  const value = activityReport(); api.getEvaluationHistory.mockResolvedValue(value)
+  wrapper = mount(EvaluationHistorySummary); await flushPromises()
+  expect(wrapper.text()).toContain('300 cases evaluated by policy replay')
+  expect(wrapper.text()).toContain('0 completed comparisons from 260 candidate items')
+  expect(wrapper.text()).toContain('73 unsupported')
+  expect(wrapper.text()).toContain('2 missing AI responses')
+  expect(wrapper.text()).toContain('185 not yet selected')
+  expect(wrapper.text()).toContain('Disabled — no AI calls are scheduled')
+  expect(normalizeEvaluationHistory(report()).activity).toBeNull()
+  expect(normalizeEvaluationHistory({ ...value, activity: null })).toBeNull()
+})
+
+it('pauses all activity fields and discards them on lost access', async () => {
+  const value = activityReport(); api.getEvaluationHistory.mockResolvedValue(value)
+  wrapper = mount(EvaluationHistorySummary); await flushPromises()
+  await wrapper.get('button').trigger('click')
+  const next = structuredClone(value); next.activity.policy = { status: 'failed', observedAt: value.activity.checkedAt, counts: null }
+  api.getEvaluationHistory.mockResolvedValue(next)
+  await vi.advanceTimersByTimeAsync(300_000)
+  expect(wrapper.text()).toContain('300 cases evaluated')
+  await wrapper.get('button').trigger('click')
+  expect(wrapper.text()).not.toContain('300 cases evaluated')
+  expect(wrapper.text()).toContain('last policy evaluation failed')
+  await wrapper.get('button').trigger('click')
+  api.getEvaluationHistory.mockRejectedValue({ response: { status: 403 } })
+  await vi.advanceTimersByTimeAsync(300_000)
+  expect(wrapper.find('section').exists()).toBe(false)
 })

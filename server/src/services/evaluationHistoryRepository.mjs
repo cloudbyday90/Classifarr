@@ -2,6 +2,7 @@
 import { adjudicationDigest } from './cachedAdjudicationContract.mjs';
 import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 import { projectEvaluationHistory } from './evaluationHistorySummary.mjs';
+import { readEvaluationActivity } from './evaluationActivity.mjs';
 
 export const PRUNE_EVALUATION_HISTORY_SQL = `DELETE FROM automatic_evaluation_history WHERE
   observed_at <= statement_timestamp() - INTERVAL '30 days' OR observed_at > statement_timestamp()
@@ -25,12 +26,13 @@ export async function appendEvaluationHistory(client, history, observedAt) {
 
 export async function readEvaluationHistory(database) {
   return database.withTransaction(async client => {
-    await client.query('SET TRANSACTION READ ONLY');
+    await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL statement_timeout = '5s'");
     const { rows } = await client.query(`SELECT last_observed_at::text AS observed_at,result FROM automatic_evaluation_history
       WHERE observed_at>statement_timestamp()-INTERVAL '30 days' AND observed_at<=statement_timestamp()
         AND last_observed_at<=statement_timestamp()
       ORDER BY last_observed_at DESC,result_key DESC LIMIT 500`);
-    return projectEvaluationHistory(rows);
+    return { ...projectEvaluationHistory(rows), version: 'evaluation_history_summary.v4',
+      activity: await readEvaluationActivity(client) };
   });
 }

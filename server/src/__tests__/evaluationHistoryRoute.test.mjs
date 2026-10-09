@@ -8,7 +8,9 @@ import { registerEvaluationHistoryRoutes } from '../routes/statsRouteEvaluationH
 import { evaluationHistoryFixture } from './fixtures/evaluationHistoryFixture.mjs';
 
 function setup() {
-  const client = { query: jest.fn(async () => ({ rows: [{ observed_at: '2026-09-25', result: evaluationHistoryFixture() }] })) };
+  const client = { query: jest.fn(async sql => ({ rows: sql.includes('transaction_timestamp()')
+    ? [{ checked_at: '2026-10-09T12:00:00Z' }] : sql.includes('FROM automatic_evaluation_history')
+      ? [{ observed_at: '2026-09-25', result: evaluationHistoryFixture() }] : [] })) };
   const db = { withTransaction: jest.fn(callback => callback(client)) };
   const app = express(), router = express.Router();
   app.use((req, _res, next) => { req.user = { role: req.get('x-test-role') || 'viewer' }; next(); });
@@ -24,7 +26,8 @@ test('administrator-only, parameter-free, no-store aggregate read with no privat
   expect(db.withTransaction).not.toHaveBeenCalled();
   const response = await request(app).get('/api/stats/evaluation-history').set('x-test-role', 'admin').expect(200);
   expect(response.headers['cache-control']).toBe('no-store');
-  expect(response.body.version).toBe('evaluation_history_summary.v3');
+  expect(response.body.version).toBe('evaluation_history_summary.v4');
+  expect(response.body.activity).toMatchObject({ policy: { status: 'never_run', counts: null }, capture: { enabled: null } });
   expect(response.body.groups[0]).toMatchObject({ paired: 25, labeled: 25, gains: 25, aiPairs: 25, mixedPairs: 0, deterministicPairs: 0, legacyPairs: 0 });
   expect(JSON.stringify(response.body)).not.toMatch(/[a-f0-9]{64}|PRIVATE|cases|item"/);
   expect(client.query.mock.calls.every(([sql]) => /^(SET|SELECT)/.test(sql))).toBe(true);

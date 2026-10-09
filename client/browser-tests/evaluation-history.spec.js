@@ -21,7 +21,13 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
     if (path === '/api/stats/evaluation-history') {
       reads++
       if (denied) status = 403
-      else data = { version: 'evaluation_history_summary.v3', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
+      else data = { version: 'evaluation_history_summary.v4', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
+        activity: { checkedAt: '2026-10-09T12:00:00Z',
+          policy: { status: 'complete', observedAt: '2026-10-09T12:00:00Z', counts: { cases: 300, paired: 300,
+            baseline: { automatic: 40, review: 37, manual: 223, unavailable: 0 },
+            sourceAware: { automatic: 40, review: 37, manual: 223, unavailable: 0 } } },
+          capture: { enabled: false, dailyCalls: 0, dailyTokens: 0, quotaDay: '2026-10-09',
+            callsReserved: 0, tokensReserved: 0, lastOutcome: 'disabled' } },
         groups: [{ latestAt: '2026-09-25T12:00:00Z', windows: 3, sampled: 300, eligible: 120, selected: 50, paired,
           labeled: 5, gains: 2, regressions: 1, deferralsReduced: 4, deferralsIncreased: 1, moviePaired: paired - 10, tvPaired: 10,
           deterministicPairs: 5, mixedPairs: 10, aiPairs: paired - 15, legacyPairs: 0,
@@ -32,17 +38,20 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   })
   await page.goto('/')
   const panel = page.getByRole('region', { name: 'Evaluation progress' })
-  await expect(panel).toContainText('20 of 120 eligible items compared')
+  await expect(panel).toContainText('20 completed comparisons from 120 candidate items')
+  await expect(panel).toContainText('300 cases evaluated by policy replay')
+  await expect(panel).toContainText('Disabled — no AI calls are scheduled for evaluation capture')
   await expect(panel.locator('details')).not.toHaveAttribute('open')
   await panel.screenshot({ path: testInfo.outputPath('evaluation-history-desktop.png') })
   await panel.getByRole('button', { name: 'Pause summary' }).focus()
   await page.keyboard.press('Space')
   paired = 25
-  await page.clock.runFor(300_000)
+  // Advance one polling interval without replaying every unrelated dashboard animation frame.
+  await page.clock.fastForward(300_000)
   await expect.poll(() => reads).toBeGreaterThan(1)
-  await expect(panel).toContainText('20 of 120')
+  await expect(panel).toContainText('20 completed comparisons')
   await panel.getByRole('button', { name: 'Resume summary' }).press('Space')
-  await expect(panel).toContainText('25 of 120')
+  await expect(panel).toContainText('25 completed comparisons')
   const disclosure = panel.locator('summary')
   await disclosure.focus(); await page.keyboard.press('Enter')
   await expect(panel.locator('details')).toHaveAttribute('open', '')
@@ -63,7 +72,7 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:evaluation-history'))).toBeNull()
   await panel.getByRole('button', { name: 'Pause summary' }).press('Space')
   denied = true
-  await page.clock.runFor(300_000)
+  await page.clock.fastForward(300_000)
   await expect(panel).toHaveCount(0)
   expect(writes).toBe(0)
 })

@@ -6,7 +6,7 @@ import api from '@/api'
 import leaf, { getEvaluationHistory } from '@/api/evaluationHistoryApi'
 
 it('wires the named read through the stats aggregator and barrel', async () => {
-  const response = { version: 'evaluation_history_summary.v3', groups: [] }
+  const response = { version: 'evaluation_history_summary.v4', groups: [], activity: {} }
   getDataRequest.mockResolvedValue(response)
   expect(api.getEvaluationHistory).toBe(getEvaluationHistory)
   expect(leaf.getEvaluationHistory).toBe(getEvaluationHistory)

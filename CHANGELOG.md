@@ -9,6 +9,14 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Fixed
+
+- **Evaluation visibility** — Command Center separates completed policy replay
+  from saved comparison coverage and AI-capture configuration. Unsupported
+  selections, missing responses, disabled capture and stale results now have
+  distinct explanations; viewing the summary does not start AI work or change
+  routing, quotas or memory safeguards.
+
 ## [v0.49.1-beta] - 2026-10-08
 
 **TL;DR:** Lower temporary memory costs for library comparisons, clearer

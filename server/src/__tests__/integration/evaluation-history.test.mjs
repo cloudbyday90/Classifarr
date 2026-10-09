@@ -6,6 +6,7 @@ import { evaluationHistoryFixture } from '../fixtures/evaluationHistoryFixture.m
 import { appendEvaluationHistory, readEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from '../../services/evaluationHistoryRepository.mjs';
 import { adjudicationDigest } from '../../services/cachedAdjudicationContract.mjs';
 import { evaluationHistoryCase } from '../../services/evaluationHistoryContract.mjs';
+import { createAutomaticPolicyMetrics, addAutomaticPolicyMetrics, createAutomaticPolicyReport } from '../../services/automaticPolicyReplayReport.mjs';
 
 const query = (...args) => getPool().query(...args);
 const database = () => createIntegrationDatabaseModuleMock();
@@ -38,6 +39,33 @@ test('rollback publishes neither partial history nor duplicates', async () => {
   expect((await readEvaluationHistory(database())).windows).toBe(0);
   await save(evaluationHistoryFixture());
   expect((await readEvaluationHistory(database())).windows).toBe(1);
+});
+
+test('activity reads policy work and disabled capture separately from zero completed comparisons without writes', async () => {
+  const metrics = createAutomaticPolicyMetrics();
+  const byMedia = { movie: createAutomaticPolicyMetrics(), tv: createAutomaticPolicyMetrics() };
+  const manual = { kind: 'manual', action: 'manual', destination: null };
+  for (let index = 0; index < 300; index++) {
+    addAutomaticPolicyMetrics(metrics, manual, manual);
+    addAutomaticPolicyMetrics(byMedia[index < 148 ? 'movie' : 'tv'], manual, manual);
+  }
+  await query('TRUNCATE automatic_source_pair_evaluation');
+  await query(`INSERT INTO automatic_source_pair_evaluation(status,input_fingerprint,report,observed_at,evaluated_at,next_check_at,cohort,cohort_created_at)
+    VALUES('complete',$1,$2,now(),now(),now()+interval '5 minutes','[]',now())`,
+  ['a'.repeat(64), JSON.stringify({ sampled: 300, policyReplay: createAutomaticPolicyReport('complete', { metrics, byMedia }), private: 'PRIVATE' })]);
+  await query(`UPDATE adjudication_capture_budget SET daily_calls=0,daily_tokens=0,status='disabled',
+    quota_day=current_date-1,calls_reserved=2,tokens_reserved=16896`);
+  await save(evaluationHistoryFixture({ status: 'misses' }));
+  const before = (await query('SELECT * FROM adjudication_capture_budget')).rows;
+  const report = await readEvaluationHistory(database());
+  expect(report).toMatchObject({ version: 'evaluation_history_summary.v4', groups: [{ paired: 0 }], activity: {
+    policy: { status: 'complete', counts: { cases: 300, paired: 300, baseline: { manual: 300 } } },
+    capture: { enabled: false, callsReserved: 2, tokensReserved: 16896, lastOutcome: 'disabled' } } });
+  expect((await query('SELECT * FROM adjudication_capture_budget')).rows).toEqual(before);
+  expect((await query('SELECT count(*)::int AS count FROM automatic_evaluation_history')).rows[0].count).toBe(1);
+  expect(JSON.stringify(report)).not.toContain('PRIVATE');
+  await query("UPDATE automatic_source_pair_evaluation SET observed_at=now()-interval '16 minutes',evaluated_at=now()-interval '16 minutes'");
+  expect((await readEvaluationHistory(database())).activity.policy).toMatchObject({ status: 'stale', counts: null });
 });
 
 test('read-only filtering and scheduled pruning enforce 30 days, future clock exclusion and 500 windows', async () => {

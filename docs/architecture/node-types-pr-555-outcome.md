@@ -2,6 +2,15 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Rechecked 2026-10-09 for the evaluation-activity batch. The saved GitHub CLI login
+listed open non-draft PRs 555 and 556; a PowerShell `Get-Random` draw selected 555,
+still at `5545605b53c854de8847b44e24fa083ff4218080`. Applied its exact manifest and
+lockfile diff locally on main. On pinned Node 24.21.0, the existing compatibility
+gate passed 8/8 before, failed 1/8 with the candidate, and passed 8/8 after removing
+only the trial. The failed check was the client Node declaration major (26 versus
+deployed 24). The candidate was rejected at this pre-install gate: no dependency
+installation, candidate runtime testing, merge or PR modification is claimed.
+
 Repeated during the saved-deployment admission batch: a fresh GitHub MCP/CLI
 enumeration found open PRs 555 and 556. A `node:crypto.randomInt` draw selected
 555, still at `5545605b53c854de8847b44e24fa083ff4218080`. The exact two-file

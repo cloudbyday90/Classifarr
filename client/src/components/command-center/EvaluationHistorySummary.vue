@@ -22,13 +22,20 @@
       {{ errorMessage || (isLoading ? 'Loading evaluation history…' : paused ? 'Summary paused.' : '') }}
     </p>
     <template v-if="snapshot">
+      <EvaluationActivitySummary :activity="snapshot.activity" />
       <p v-if="!latest">
         No saved evaluation windows yet. Background replay records future results automatically.
       </p>
       <template v-else>
+        <h3>Saved comparison coverage</h3>
         <p>
-          <strong>{{ latest.paired }} of {{ latest.eligible }} eligible items compared</strong>
+          <strong>{{ latest.paired }} completed comparisons from {{ latest.eligible }} candidate items</strong>
           in the latest saved revision · {{ latest.moviePaired }} movies · {{ latest.tvPaired }} TV shows.
+        </p>
+        <p>
+          {{ latest.selected }} selected · {{ latest.gaps.not_adjudication }} unsupported ·
+          {{ latest.gaps.cache_missing }} missing AI responses · {{ latest.eligible - latest.selected }} not yet selected.
+          Selected items are not necessarily supported by this test.
         </p>
         <p>
           {{ latest.labeled }} compared items have reference labels; {{ latest.paired - latest.labeled }} remain unlabelled.
@@ -82,6 +89,7 @@
 import { computed } from 'vue'
 import { useEvaluationHistory } from '@/composables/useEvaluationHistory'
 import EvaluationCoverageGaps from './EvaluationCoverageGaps.vue'
+import EvaluationActivitySummary from './EvaluationActivitySummary.vue'
 const { available, paused, snapshot, isLoading, togglePause, errorMessage } = useEvaluationHistory()
 const latest = computed(() => snapshot.value?.groups[0])
 </script>
@@ -90,6 +98,7 @@ const latest = computed(() => snapshot.value?.groups[0])
 .evaluation-history { margin-bottom: 1rem; padding: 1rem 1.25rem; border: 1px solid #374151; border-radius: .75rem; background: #1f2937; color: #e5e7eb; }
 .heading-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem; }
 h2 { font-size: 1rem; font-weight: 700; }
+h3 { margin-top: .75rem; font-weight: 600; }
 p, li { margin-top: .5rem; font-size: .875rem; line-height: 1.5; }
 button, summary { color: #bfdbfe; cursor: pointer; min-height: 2rem; }
 button { padding: .25rem .5rem; border: 1px solid #64748b; border-radius: .375rem; }

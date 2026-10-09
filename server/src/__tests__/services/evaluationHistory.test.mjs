@@ -48,7 +48,8 @@ test('guards input bounds, timestamps and inconsistent within-revision populatio
   expect(() => projectEvaluationHistory([row(undefined, 'invalid')])).toThrow('invalid');
   const changed = evaluationHistoryFixture(); changed.sampled++;
   expect(() => projectEvaluationHistory([row(), row(changed)])).toThrow('inconsistent');
-  const client = { query: jest.fn(async () => ({ rows: [row()] })) };
+  const client = { query: jest.fn(async sql => ({ rows: sql.includes('transaction_timestamp()')
+    ? [{ checked_at: '2026-10-09T12:00:00Z' }] : sql.includes('FROM automatic_evaluation_history') ? [row()] : [] })) };
   expect(await readEvaluationHistory({ withTransaction: callback => callback(client) })).toMatchObject({ windows: 1 });
   expect(client.query.mock.calls[0][0]).toContain('READ ONLY');
   await expect(appendEvaluationHistory(client, {}, new Date())).rejects.toThrow('invalid');
