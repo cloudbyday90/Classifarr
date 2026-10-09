@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { resolve } from 'node:path';
 import { loadWorkflow } from '../../scripts/checkReleaseCandidatePublicationWorkflow.mjs';
-import { validateDockerHubPullWorkflows } from '../../scripts/dockerHubPullWorkflowContract.mjs';
+import { validateDockerHubPullWorkflows, validateDockerHubPullAction } from '../../scripts/dockerHubPullWorkflowContract.mjs';
 
 const resourcePath = resolve(import.meta.dirname, '../../../../.github/workflows/resource-capacity.yml');
 const load = () => ({ ci: loadWorkflow(), resource: loadWorkflow(resourcePath) });
@@ -39,6 +39,7 @@ const mutations = [
   ['masked job failure', job => { job['continue-on-error'] = true; }],
   ['credentials retained', job => { login(job).with.logout = false; }],
   ['Buildx-only credentials', job => { login(job).with.scope = 'cloudbyday90/classifarr@pull'; }],
+  ['unbounded step', job => { delete login(job)['timeout-minutes']; }],
   ['credential env', job => { job.env = { TOKEN: '${{ secrets.DOCKERHUB_PULL_TOKEN }}' }; }],
   ['credential output', job => { job.outputs = { token: '${{ secrets.DOCKERHUB_PULL_TOKEN }}' }; }],
   ['extra credential step', job => { job.steps.push({ run: 'echo $TOKEN', env: { TOKEN: '${{ secrets.DOCKERHUB_PULL_TOKEN }}' } }); }],
@@ -70,5 +71,17 @@ test.each(['ci', 'resource'])('rejects global credentials in %s', workflow => {
 test('resource gate retains read-only workflow permissions', () => {
   const workflows = load();
   workflows.resource.permissions.contents = 'write';
+  expect(() => validate(workflows)).toThrow();
+});
+
+test.each(['post', 'post-if', 'main', 'using'])('action rejects changed %s cleanup/runtime contract', key => {
+  const action = loadWorkflow(resolve(import.meta.dirname, '../../../../.github/actions/dockerhub-pull/action.yml'));
+  action.runs[key] = 'unsafe';
+  expect(() => validateDockerHubPullAction(action)).toThrow();
+});
+
+test('registry comparison cannot be skipped or mask pull failures', () => {
+  const workflows = load();
+  workflows.ci.jobs['database-tests'].steps.find(step => step.name.startsWith('Compare Docker CLI'))['continue-on-error'] = true;
   expect(() => validate(workflows)).toThrow();
 });

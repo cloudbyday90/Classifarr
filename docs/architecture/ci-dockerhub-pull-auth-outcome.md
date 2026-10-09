@@ -6,7 +6,8 @@ Date: 2026-10-09. [Design and tradeoffs](ci-dockerhub-pull-auth-design.md).
 
 The maintainer selected a dedicated read-only token. Before implementation,
 GitHub listed only `DOCKERHUB_USERNAME` and the publishing `DOCKERHUB_TOKEN`;
-secret values were not retrieved. The pull credential still needs provisioning.
+secret values were not retrieved. The token was subsequently saved on 2026-10-09
+at 21:25:20 UTC (GitHub secret metadata only; scope and expiry are not exposed).
 
 1. In Docker Account settings, open Personal access tokens and create
    `Classifarr CI pulls`. Prefer **Repo Public Read-only** for these public images
@@ -49,8 +50,10 @@ gates intact and kept local tests separate from hosted authentication evidence.
 The action's pinned source was also inspected: it supplies the password through
 stdin and rejects an empty password before attempting login.
 
-Hosted authentication remains **blocked on secret provisioning**. No successful
-authenticated pull is claimed until the secret is installed and CI uses it.
+Provisioning is complete, but **hosted authentication is not yet verified**.
+CI run 37992640685 attempt 2 and Resource Capacity run 37992640309 attempts 2–3
+reached Docker login with nonempty masked inputs and failed on HTTP 500 or
+`auth.docker.io` timeouts. This is not evidence of rejected credentials.
 The four image-consuming jobs are deliberately not allowed an anonymous or
 publishing-token fallback on trusted main. Tag-triggered tests and PR tests keep
 their pre-existing credential behavior and remain a follow-up quota concern.
@@ -59,7 +62,7 @@ No application code, schema, Compose deployment, Unraid service, shared provider
 release or published image is changed by this setup. A local image rebuild was
 not repeated for a CI-credential-only change; it could not verify hosted secrets.
 
-Next: provision the dedicated secret, then inspect the login, actual pulls,
-integration results and cleanup for this exact commit. Investigate any remaining
-installation/resource failure from its own error evidence rather than assuming
-all previous failures shared the confirmed database pull-limit cause.
+The [registry resilience design](ci-registry-resilience-design.md) supersedes the
+single-attempt action, adding bounded transient retries and safe same-run
+diagnostics. Inspect actual login, pulls, integration results and cleanup on its
+new commit. Do not attribute every failure to the original anonymous limit.

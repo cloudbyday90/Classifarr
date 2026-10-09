@@ -1,0 +1,14 @@
+name: Bounded Docker Hub pull authentication
+description: Diagnose and retry transient trusted-main login failures without exposing credentials
+inputs:
+  username:
+    description: Docker account owning the read-only token
+    required: true
+  password:
+    description: Dedicated read-only pull token
+    required: true
+runs:
+  using: node24
+  main: index.mjs
+  post: post.mjs
+  post-if: always()

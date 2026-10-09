@@ -2,6 +2,12 @@
 
 Date: 2026-10-09. Scope: trusted main-branch test jobs, not image publishing.
 
+The credential/trust decision remains current. The original single-attempt action
+below is superseded by the [bounded recovery design](ci-registry-resilience-design.md),
+after token provisioning exposed transport failures. GitHub-hosted public-image
+pulls normally have a rate-limit exemption; the original failure still requires
+credential-resolution evidence rather than a blanket quota assumption.
+
 ## Problem and decision
 
 The database job in [CI run 37990799264](https://github.com/cloudbyday90/Classifarr/actions/runs/37990799264)
