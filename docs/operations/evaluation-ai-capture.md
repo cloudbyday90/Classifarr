@@ -88,6 +88,12 @@ For other versions or persistent duplicates, inspect the provider/proxy mapping;
 do not assume this specific upstream bug. Preserve the sanitized report and
 related log IDs for a GitHub issue if the failure remains unexplained.
 
+For the native Windows Ollama app, its
+[official upgrade guidance](https://github.com/ollama/ollama/blob/main/docs/faq.mdx)
+uses the tray/taskbar menu's **Restart to update** action when an update has
+downloaded. Confirm the server version afterward. Coordinate with other clients
+first: separate Classifarr databases can still share one inference server.
+
 ### Enable a bounded allowance
 
 Missing/remote models, invalid identity metadata and unsupported capabilities have
