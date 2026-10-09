@@ -62,7 +62,46 @@ Unraid reproduction or database-lock test.
 Typecheck, both Knip modes, lint, copyright, Markdown and the unchanged ownership
 inventory gate passed. The ownership gate remains a static drift check and does
 not assert that every legacy writer is production-compatible. The full backend
-suite and new no-cache image evaluation are pending at this implementation checkpoint.
+non-integration suite passed 1,755 suites / 54,425 tests, with one Linux-only
+test skipped on Windows. The separate focused run covers the three final
+diagnostic failure cases as well. Coverage instrumentation and client unit coverage were not rerun;
+no client code changed. The Linux-only directory-fsync scenario passed in the
+candidate image, so the Windows skip is not the sole evidence for that behavior.
+
+## Local image and hosted checks
+
+Clean-source no-cache build of `1fa40626ad2725011800f3db250a17f6c63c98eb` produced
+local image `sha256:e73cd1e500f8d7cf5157763176176d7ba00932b6bb123c725f2bc7d6aebb5905`.
+All 172 npm and 58 APK versions match the prior local image. Read-only, non-root,
+network-isolated probes passed for directory fsync, transport behavior, HTTP/2 and
+the new comparison diagnostic path. The latter used synthetic pressure values,
+proved exact budgets and correlated refusals, and made zero provider calls.
+It did not manufacture pressure in the running application.
+
+After the build, a schema dump and independent schema check passed in separate
+disposable databases. The tracked snapshot is unchanged; fixture cleanup was
+verified. Before replacement, a private 76,148,365-byte custom-format backup was
+checksum-verified and its archive listing read. This is not a full restore drill.
+Rollback tag `classifarr:pre-memory-41bcc5d8-1271-4d35-9382-dd42c8a9e57e` retains
+the exact preceding local image. Backups remain ignored and were not committed.
+
+Local container `b671949fcc272ca1b9f0a5faf140556f2a2ed2969d5840ce473e0b7fbd6248ac`
+started at 2026-10-08 23:54:37 UTC, healthy with no restart or OOM flag. Its 2 GiB
+limit, non-root user, read-only root, capability restrictions and data/media mounts
+are unchanged. All 71 served JS/CSS assets plus HTML match the built files.
+Nineteen readings from 2026-10-08 23:55:38 to 2026-10-09 00:00:36 UTC stayed
+healthy with zero cgroup memory-limit failures and no OOM flag. Sampled raw cgroup
+usage ranged from 516,988,928 to 817,053,696 bytes; the observed kernel peak was
+948,908,032 bytes. The current-start database log query contained no warnings or
+errors. This is a five-minute startup check, not a leak test, full refresh soak,
+or proof of a memory improvement. No artificial pressure was applied to the local
+daemon. Unraid has not been modified.
+
+For [implementation CI run 37861507004](https://github.com/cloudbyday90/Classifarr/actions/runs/37861507004),
+the main pipeline is still running at this check; fresh-install/published-upgrade
+passed. Exact-source CodeQL, OSV, Trivy, Gitleaks, copyright and resource-capacity
+runs passed. The earlier CI-action batch
+has its own completed receipt; it does not prove the new runtime instrumentation.
 
 ## Recommendation
 

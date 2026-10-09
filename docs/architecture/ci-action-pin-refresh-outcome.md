@@ -55,9 +55,11 @@ No warnings/errors appeared in the current-start database log query. This is a
 five-minute health observation, not a retention benchmark. Unraid was untouched.
 
 For implementation [run 37859276234](https://github.com/cloudbyday90/Classifarr/actions/runs/37859276234),
-Node setup succeeded in all three jobs; database tests and fresh-install/published
-upgrade passed, with Build and Test still running at this check. Exact-source OSV,
-Trivy, Gitleaks and copyright runs passed. Do not infer a release-artifact receipt
+Node setup succeeded in all three jobs; the complete pipeline passed, including
+database tests, fresh-install/published upgrade and Build and Test. The installation
+receipt upload, same-run download and acceptance-readout upload all succeeded on
+the new pins. Exact-source OSV, Trivy, Gitleaks and copyright runs passed.
+Do not infer a release-artifact receipt
 from these checks: tag-only jobs remain skipped and no release was created.
 
 ## Added warning investigation
