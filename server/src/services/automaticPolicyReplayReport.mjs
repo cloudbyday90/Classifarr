@@ -8,6 +8,7 @@ export const createAutomaticPolicyMetrics = () => ({ cases: 0, paired: 0, labele
   automaticGains: 0, automaticRegressions: 0, baseline: arm(), sourceAware: arm() });
 const limits = Object.freeze({ scope: 'deterministic_policy_training_ablation', fullPipelineAccuracy: null,
   independentBlindLabels: 0, temporalSeparationOnly: true, providerCalls: 0, routingWrites: 0, promotionAllowed: false });
+const foldLimits = Object.freeze({ ...limits, inferredPurpose: 'fold_training_only' });
 
 export function projectAutomaticPolicyOutcome(common, retrieval, libraries, mediaType) {
   const result = common?.policyResult, action = result?.action;
@@ -44,7 +45,7 @@ export function addAutomaticPolicyMetrics(target, a, b, label) {
 }
 
 export function createAutomaticPolicyReport(status, { metrics = null, byMedia = null, correctionLabels = 0, eligibleLabels = 0 } = {}) {
-  return { version: 'automatic_policy_replay.v1', status, correctionLabels, eligibleLabels, metrics, byMedia, limits: { ...limits } };
+  return { version: 'automatic_policy_replay.v2', status, correctionLabels, eligibleLabels, metrics, byMedia, limits: { ...foldLimits } };
 }
 
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 50000;
@@ -67,10 +68,11 @@ function validMetrics(value) {
 
 /** Only fixed aggregate keys survive persistence; no labels, policy names or titles. */
 export function readAutomaticPolicyReport(value, sampled) {
-  if (!exact(value, createAutomaticPolicyReport('')) || value.version !== 'automatic_policy_replay.v1' ||
+  const expectedLimits = value?.version === 'automatic_policy_replay.v1' ? limits : foldLimits;
+  if (!exact(value, createAutomaticPolicyReport('')) || !['automatic_policy_replay.v1', 'automatic_policy_replay.v2'].includes(value.version) ||
       !['complete', 'no_policies', 'cache_incomplete', 'no_eligible_cases'].includes(value.status) ||
       !count(value.correctionLabels) || !count(value.eligibleLabels) || value.eligibleLabels > value.correctionLabels ||
-      !exact(value.limits, limits) || Object.entries(limits).some(([key, expected]) => value.limits[key] !== expected)) return null;
+      !exact(value.limits, expectedLimits) || Object.entries(expectedLimits).some(([key, expected]) => value.limits[key] !== expected)) return null;
   if (value.status !== 'complete') return value.metrics === null && value.byMedia === null ? value : null;
   if (!exact(value.byMedia, { movie: 0, tv: 0 }) || ![value.metrics, ...Object.values(value.byMedia)].every(validMetrics) ||
       value.metrics.cases !== sampled || value.metrics.labeledPairs > value.eligibleLabels ||

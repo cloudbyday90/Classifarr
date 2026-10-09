@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createFreshInventoryPolicyEvidence } from './freshInventoryPolicyEvidence.mjs';
 import { evaluateFreshInventoryPolicyCase } from './freshInventoryPolicyPreparation.mjs';
-import { withoutInferredProfileSources } from './heldOutSemanticStudyPreparation.mjs';
+import { createFoldInferredPolicyPurpose } from './foldInferredPolicyPurpose.mjs';
 import { screenCorrectionsAfterPolicySources } from './operatorCorrectionPolicyProvenance.mjs';
 import { createAutomaticPolicyMetrics, addAutomaticPolicyMetrics, projectAutomaticPolicyOutcome,
   createAutomaticPolicyReport } from './automaticPolicyReplayReport.mjs';
@@ -16,13 +16,16 @@ export async function evaluateAutomaticPolicyReplay(source, arms, retrievalRepor
     feedbackRows: source.operatorFeedbackRows, policies: source.policies, policySourceRevisionRows: source.policySourceRevisionRows });
   const outcomes = [];
   for (const arm of arms) {
+    const foldPolicies = createFoldInferredPolicyPurpose(source.policies);
     const { operatorFeedbackRows: _labels, policySourceRevisionRows: _revisions, adjudicationBatch: _batch, ...unlabeled } = arm.source;
     const policySource = { ...unlabeled, fingerprint: retrievalReport.snapshotFingerprint,
-      policies: source.policies.map(withoutInferredProfileSources) };
+      policies: foldPolicies.withoutTraining };
     const evidence = createFreshInventoryPolicyEvidence(policySource, arm.prepared, { trainingExcludedKeys: arm.trainingExcludedKeys });
     const rows = new Map();
     for (const entry of arm.prepared.cases) {
       const runtime = evidence.forCase(entry), retrieval = { requested: false, unavailable: false };
+      const caseSource = { ...policySource,
+        policies: runtime ? foldPolicies.forProfiles(runtime.profiles) : policySource.policies };
       let failed = false;
       const retriever = { async retrieve(request) {
         retrieval.requested = true;
@@ -32,11 +35,11 @@ export async function evaluateAutomaticPolicyReplay(source, arms, retrievalRepor
           return result;
         } catch (error) { failed = true; throw error; }
       } };
-      const { common, runtime: preparedRuntime } = await evaluate(entry, policySource, evidence, undefined, { retriever });
+      const { common, runtime: preparedRuntime } = await evaluate(entry, caseSource, evidence, undefined, { retriever });
       if (failed) throw new Error('automatic_policy_retrieval_failed');
       const key = entry.itemIdentity.tmdbId === null ? entry.itemIdentity.sourceKey : `${entry.mediaType}:${entry.itemIdentity.tmdbId}`;
       rows.set(entry.descriptionHash, { key, mediaType: entry.mediaType,
-        ...(onOutcomes ? { common, runtime: preparedRuntime, policies: policySource.policies } : {}),
+        ...(onOutcomes ? { common, runtime: preparedRuntime, policies: caseSource.policies } : {}),
         outcome: projectAutomaticPolicyOutcome(common, retrieval, source.libraries, entry.mediaType) });
     }
     outcomes.push(rows);

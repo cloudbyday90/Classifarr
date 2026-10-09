@@ -43,7 +43,7 @@ export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainin
       const rows = snapshot.evaluationRows.filter(row => row.library_id === library.id &&
         trainingKeys.has(keyOf(row)));
       const observation = buildLibraryProfileObservation(rows.map(row => ({ ...row, metadata: row.evaluation_metadata })));
-      return [library.id, { profile: { media_type: library.media_type,
+      return [library.id, { profile: { media_type: library.media_type, item_count: observation.itemCount,
         rating_distribution: observationDistribution(observation, 'rating'),
         genre_distribution: observationDistribution(observation, 'genres'),
         keyword_distribution: observationDistribution(observation, 'keywords') },

@@ -117,6 +117,8 @@ it('explains v2 gaps, label limitations and bounded recovery without offering in
   expect(wrapper.text()).toContain('when enabled, admitted and within quota')
   expect(wrapper.text()).toContain('do not retry until it passes')
   expect(wrapper.text()).toContain('cannot supply independent ground truth')
+  expect(wrapper.text()).toContain('rebuild supported inferred-only purposes from training data that excludes the tested items')
+  expect(wrapper.text()).toContain('Live policy rules are unchanged')
   expect(wrapper.findAll('button')).toHaveLength(1)
 })
 

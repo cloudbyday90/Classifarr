@@ -2,6 +2,12 @@
 
 Date: 2026-10-05.
 
+Rechecked 2026-10-09 during fold-purpose evaluation work. A fresh `Get-Random`
+draw from the current open PRs 555/556 selected 556 at the same immutable head.
+The official registry and freshly opened DefinitelyTyped guidance still support
+the decision below. Server outdated: Node types current/wanted 24.19.1, latest
+26.6.4; Knip current 6.40.0, wanted/latest 6.41.0 (separate follow-up).
+
 The saved GitHub login found open PRs 555 and 556. A uniform `crypto.randomInt`
 draw from `[555, 556]` selected [PR 556](https://github.com/cloudbyday90/Classifarr/pull/556),
 immutable head `9d74537d7917c248d15926f37b2e40ceba7559a4`.

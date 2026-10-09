@@ -2,6 +2,18 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+## 2026-10-09 fold-purpose evaluation recheck
+
+Freshly selected open PR 556 at `9d74537d7917c248d15926f37b2e40ceba7559a4`.
+Applied its exact two-file, nine-line replacement locally: baseline 8/8 passed;
+candidate 7/8 passed, with the unchanged server Node-major gate rejecting Node
+26 declarations on the supported Node 24 runtime. Removed only that trial before
+installation. No candidate audit, typecheck, runtime compatibility or merge is
+claimed. Keep the aligned declarations; Knip 6.41.0 is the next separate tooling
+candidate identified by the current registry check.
+
+## Earlier checks
+
 The selected-lifecycle batch at base `feaeb7c4` freshly enumerated open PRs
 555/556 through MCP and the saved CLI login; a cryptographic random draw selected
 556 at the same immutable head below. The official npm registry confirmed both

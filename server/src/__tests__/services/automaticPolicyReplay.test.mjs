@@ -13,6 +13,12 @@ import { createFreshInventoryPolicyEvidence } from '../../services/freshInventor
 import { projectAdjudicationConfig } from '../../services/cachedAdjudicationRepository.mjs';
 import { evaluateFreshInventoryPolicyCase } from '../../services/freshInventoryPolicyPreparation.mjs';
 import { replayCachedAdjudication } from '../../services/cachedAdjudicationReplay.mjs';
+import { buildPolicyLibraryProfileInitialIntentContract } from '../../services/policyLibraryProfileInitialIntent.mjs';
+import { buildLibraryProfileObservation, observationDistribution } from '../../services/libraryProfileObservation.mjs';
+import { inventorySourceDescriptionKey } from '../../services/inventorySourceDescriptionIdentity.mjs';
+import { createEvaluationHistory } from '../../services/evaluationHistoryContract.mjs';
+import { collectInventoryCandidateMetadata } from '../../services/inventoryMetadataCandidates.mjs';
+import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
 function snapshot(count = 48) {
   const source = sourcePairFixture(count);
@@ -39,6 +45,84 @@ function prepare(source) {
   const report = evaluateSourceDescriptionPair(source, sourcePairIdentity, {}, { onPreparedArm: arm => arms.push(arm) });
   return { arms, report };
 }
+
+function inferredSnapshot(count = 48) {
+  const input = snapshot(count), source = input.inputs.source;
+  source.policies = source.policies.map(policy => ({ ...policy,
+    policy_runtime_authority: { sourceId: 'native_intent', validationOk: true },
+    policy_intent_contract: buildPolicyLibraryProfileInitialIntentContract({ policy: { ...policy,
+      libraryProfile: { item_count: 100, genre_distribution: { STORED_PURPOSE: 100 },
+        last_generated_at: '2026-09-24T00:00:00.000Z' } }, now: new Date('2026-09-24T00:00:00.000Z') }).contract,
+  }));
+  source.adjudicationConfig = projectAdjudicationConfig({ primary_provider: 'ollama', ollama_model: 'test:latest', ollama_host: 'localhost' });
+  return input;
+}
+
+test('inferred-only worker prepares real movie/TV comparisons without provider calls or exporting private purposes', async () => {
+  const input = inferredSnapshot();
+  // Shared genres deliberately remove the fixture's unique deterministic anchors.
+  input.inputs.source.rows.forEach(row => { row.genres = ['Shared genre']; });
+  input.inputs.source.candidateMetadata = collectInventoryCandidateMetadata(input.inputs.source.rows, inventorySourceDescriptionKey);
+  const before = structuredClone(input);
+  const result = await runAutomaticSourcePairThread(input, null, undefined, { includePlan: true });
+  expect(result.report.policyReplay).toMatchObject({ version: 'automatic_policy_replay.v2', status: 'complete',
+    metrics: { paired: 48 }, limits: { inferredPurpose: 'fold_training_only', providerCalls: 0, routingWrites: 0, independentBlindLabels: 0 } });
+  expect(result.plan.length).toBeGreaterThan(0);
+  expect(result.plan.length).toBeLessThanOrEqual(50);
+  expect(result.captureAdmission.map(row => row.mediaType)).toEqual(expect.arrayContaining(['movie', 'tv']));
+  expect(result.report.aiReplay.baseline.misses).toBeGreaterThan(0);
+  expect(result.report.aiReplay.sourceAware.misses).toBeGreaterThan(0);
+  expect(result.report.aiReplay.paired).toBe(0);
+  expect(JSON.stringify(result.report)).not.toMatch(/PRIVATE|STORED_PURPOSE|TRAINING|title|library_id/);
+  expect(JSON.stringify(result.plan)).not.toContain('STORED_PURPOSE');
+  expect(input).toEqual(before);
+});
+
+test('inferred purposes use exactly the same excluded training identities as each arm and fold', async () => {
+  const { source } = inferredSnapshot().inputs;
+  source.rows[0].genres = ['HELD_ONLY'];
+  source.rows.push({ ...source.rows[0], tmdb_id: 777, library_id: 2, external_id: 'PRIVATE duplicate' });
+  source.corpus = prepareInventoryDescriptionCorpus(source.rows, { includeSourceItems: true });
+  source.candidateMetadata = collectInventoryCandidateMetadata(source.rows, inventorySourceDescriptionKey);
+  const { arms, report } = prepare(source);
+  let calls = 0;
+  await evaluateAutomaticPolicyReplay(source, arms, report, { evaluate: async (entry, policySource, evidence) => {
+    const arm = arms[Math.floor(calls++ / report.sampled)], runtime = evidence.forCase(entry);
+    const keys = new Set(arm.source.corpus.documents.filter(doc => doc.type === entry.mediaType &&
+      !entry.heldDescriptionHashes.has(doc.hash) && !arm.trainingExcludedKeys.has(doc.key)).map(doc => doc.key));
+    // This corrected identity and its copied description cannot train any fold.
+    expect(keys.has('movie:1')).toBe(false);
+    expect(keys.has('movie:777')).toBe(false);
+    expect(JSON.stringify(policySource.policies)).not.toContain('HELD_ONLY');
+    expect(keys.has(entry.itemIdentity.tmdbId === null ? entry.itemIdentity.sourceKey : `${entry.mediaType}:${entry.itemIdentity.tmdbId}`)).toBe(false);
+    for (const policy of policySource.policies.filter(policy => policy.library_media_type === entry.mediaType)) {
+      const rows = source.evaluationRows.filter(row => row.library_id === policy.library_id && keys.has(inventorySourceDescriptionKey(row)));
+      const observation = buildLibraryProfileObservation(rows.map(row => ({ ...row, metadata: row.evaluation_metadata })));
+      expect(runtime.profiles.get(policy.library_id).profile.item_count).toBe(rows.length);
+      const expected = buildPolicyLibraryProfileInitialIntentContract({ policy: { ...policy, libraryProfile: {
+        item_count: rows.length, genre_distribution: observationDistribution(observation, 'genres'),
+        last_generated_at: '1970-01-01T00:00:00.000Z' } }, now: new Date(0) });
+      expect(policy.policy_intent_contract.purpose).toEqual(expected.contract.purpose);
+    }
+    return evaluateFreshInventoryPolicyCase(entry, policySource, evidence);
+  } });
+  expect(calls).toBe(report.sampled * 2);
+});
+
+test('legacy policy reports cannot be reused as fold-purpose results and history revisions remain separate', async () => {
+  const input = inferredSnapshot(), first = await executeAutomaticSourcePair(input, null);
+  const oldState = stateOf(first);
+  oldState.report = structuredClone(first.report);
+  oldState.report.policyReplay.version = 'automatic_policy_replay.v1';
+  delete oldState.report.policyReplay.limits.inferredPurpose;
+  const rerun = await executeAutomaticSourcePair(input, oldState);
+  expect(rerun.unchanged).toBe(false);
+  expect(rerun.cohort).toEqual(first.cohort);
+  expect((await executeAutomaticSourcePair(input, stateOf(rerun))).unchanged).toBe(true);
+  const history = createEvaluationHistory(input, rerun, []);
+  const changed = structuredClone(input); changed.inputs.source.policies[0].priority++;
+  expect(createEvaluationHistory(changed, rerun, []).evidenceRevision).not.toBe(history.evidenceRevision);
+});
 
 test('real fixed worker replays 300 movie/TV and source-only cases without exporting private evidence', async () => {
   const result = await runAutomaticSourcePairThread(snapshot(400), null);

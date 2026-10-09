@@ -23,8 +23,9 @@
     </p>
     <p>
       Matching automatic decisions are excluded from this comparison pool, but are counted in policy replay.
-      The independent test excludes inferred library-purpose rules; inferred-only policies can become unsupported.
-      This does not remove rules from live classification or establish the cause of every unsupported case.
+      New evaluations rebuild supported inferred-only purposes from training data that excludes the tested items.
+      Older results and policies without enough separate training data can still be unsupported.
+      Live policy rules are unchanged; this summary does not identify the cause of every unsupported case.
     </p>
     <p>
       Missing reference labels are separate from these gaps: extra AI calls cannot supply independent ground truth.

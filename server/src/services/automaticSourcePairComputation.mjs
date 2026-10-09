@@ -13,7 +13,8 @@ export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluat
   const frozen = freezeAutomaticSourcePairCohort(source, state, snapshot.observedAt);
   const fingerprint = fingerprintAutomaticSourcePairInputs(snapshot, frozen);
   const unchanged = frozen.reason === 'reused' && state?.status === 'complete' && state.input_fingerprint === fingerprint &&
-    readAutomaticSourcePairReport(state.report) !== null && (!source.policies || state.report.version === 'automatic_source_pair.v3');
+    readAutomaticSourcePairReport(state.report) !== null && (!source.policies ||
+      (state.report.version === 'automatic_source_pair.v3' && state.report.policyReplay?.version === 'automatic_policy_replay.v2'));
   const report = unchanged ? state.report : projectAutomaticSourcePairReport(
     evaluate(source, identity, AUTOMATIC_SOURCE_PAIR_OPTIONS, { fixedSampleKeys: frozen.fixedSampleKeys }),
     frozen.reason, Math.ceil(performance.now() - started));
@@ -23,7 +24,7 @@ export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluat
 /** Logical evidence identity; Map transport order is not evidence drift. */
 export function fingerprintAutomaticSourcePairInputs(snapshot, frozen) {
   const { source, identity, configuration } = snapshot.inputs;
-  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v3:history_v3',
+  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v3:history_v3:fold_purpose_v1',
     identity, configuration, cohort: frozen.cohort, cohortCreatedAt: frozen.cohortCreatedAt,
     adjudicationConfig: source.adjudicationConfig, adjudicationBatch: adjudicationBatchDigest(source.adjudicationBatch),
     adjudicationSelectionOffset: source.adjudicationSelectionOffset ?? 0,

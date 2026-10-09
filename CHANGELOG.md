@@ -16,6 +16,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   selections, missing responses, disabled capture and stale results now have
   distinct explanations; viewing the summary does not start AI work or change
   routing, quotas or memory safeguards.
+- **Independent policy evaluation** — Offline replay rebuilds supported
+  inferred-only library purposes from held-out training folds, preserving
+  declared constraints and excluding tested items. Versioned results distinguish
+  the new experiment from older coverage; live policies and AI budgets are unchanged.
 
 ## [v0.49.1-beta] - 2026-10-08
 
