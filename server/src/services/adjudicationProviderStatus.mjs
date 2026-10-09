@@ -4,7 +4,7 @@ import { createLocalDescriptionBenchmarkClient } from './localDescriptionBenchma
 
 const diagnoses = new Map([
   ['description_benchmark_model_ambiguous', ['model_ambiguous',
-    'The configured endpoint lists this model more than once. Configure the provider to expose one unambiguous local model identity, then repeat this check. Do not bypass digest checks.']],
+    'The configured endpoint lists this model more than once. If the server runs Ollama 0.40.1, update it to 0.40.2, which fixes duplicate listings after model conversion. Otherwise, review the provider model mapping. Repeat this check before enabling capture. Do not delete models or bypass digest checks.']],
   ['description_benchmark_installed_local_model_required', ['model_missing',
     'The configured model was not found in the local model listing. Verify the configured endpoint and model name; this check does not install models.']],
   ['description_benchmark_remote_model', ['remote_model',

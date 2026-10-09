@@ -2,6 +2,18 @@
 
 Date: 2026-10-05. See [design and sources](node-types-pr-556-design.md).
 
+## 2026-10-09 Ollama model-list investigation
+
+At base `b60f050e`, MCP enumerated the two open PRs 555/556 and a fresh
+`Get-Random` draw selected 556, still open at the immutable head below. Official
+registry metadata confirmed its integrity and `undici-types ~8.9.0` declaration.
+Applied the exact MCP two-file diff: baseline 8/8, candidate 7/8, rejected by the
+unchanged Node-major contract. Removed only this trial before installation; no
+candidate audit, runtime test or merge is claimed. The repository remains on
+Node 24 declarations. Current registry wanted/latest values also identify
+compatible Node types 24.19.2, dotenv 18.0.7, Express 5.3.0 and Knip 6.41.0 for
+separate scoped reviews; they were not installed in this provider investigation.
+
 ## 2026-10-09 fold-purpose evaluation recheck
 
 Freshly selected open PR 556 at `9d74537d7917c248d15926f37b2e40ceba7559a4`.

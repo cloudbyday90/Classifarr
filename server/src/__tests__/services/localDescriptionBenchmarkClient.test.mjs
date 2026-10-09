@@ -53,6 +53,11 @@ beforeEach(async () => {
     if (mode === 'error') { response.writeHead(500); response.end('PRIVATE error'); return; }
     if (mode === 'malformed') { response.end('not json'); return; }
     const model = mode === 'reasoning' ? 'qwen3:latest' : 'local:latest';
+    if (request.url === '/api/tags' && ['converted_first', 'legacy_first'].includes(mode)) {
+      const models = [{ name: model, model, digest: identity.digest, details: { runner: 'ggml' } },
+        { name: model, model, digest: 'b'.repeat(64), details: { runner: 'llamacpp' } }];
+      response.end(JSON.stringify({ models: mode === 'converted_first' ? models.reverse() : models })); return;
+    }
     if (request.url === '/api/tags' && ['duplicate', 'duplicate_same', 'missing', 'invalid_identity', 'invalid_listing'].includes(mode)) {
       const models = mode === 'missing' ? [] : mode === 'invalid_identity' ? [{ name: model, digest: 'PRIVATE invalid identity' }]
         : [{ name: model, digest: identity.digest }, { name: model, digest: mode === 'duplicate_same' ? identity.digest : 'b'.repeat(64) }];
@@ -100,6 +105,20 @@ test('provider preflight reports the real duplicate-tag HTTP response without ex
   expect(result).toMatchObject({ status: 'blocked', providerStatus: 'model_ambiguous', generationCalls: 0, databaseWrites: 0 });
   expect(JSON.stringify(result)).not.toMatch(/127\.0\.0\.1|local:latest|aaaaaaaa|bbbbbbbb/);
   expect(requests.map(entry => entry.path)).toEqual(['/api/tags']);
+});
+
+test.each(['converted_first', 'legacy_first'])('converted model listing stays blocked regardless of runner order: %s', async value => {
+  mode = value;
+  const database = { withTransaction: callback => callback({ query: async () => ({ rows: [config] }) }) };
+  const result = await readAdjudicationProviderStatus(database);
+  expect(result).toMatchObject({ status: 'blocked', providerStatus: 'model_ambiguous',
+    generationCalls: 0, databaseWrites: 0, capturePermissionChanged: false });
+  expect(result.recovery).toContain('If the server runs Ollama 0.40.1');
+  let reservations = 0;
+  await expect(createLocalDescriptionBenchmarkClient(config).generate({ prompt: 'Private evidence', count: 3, context: 32768,
+    identity, onGenerationCall: () => reservations++ })).rejects.toThrow('description_benchmark_model_ambiguous');
+  expect(reservations).toBe(0);
+  expect(requests.map(entry => entry.path)).toEqual(['/api/tags', '/api/tags']);
 });
 
 test.each(['redirect', 'oversized', 'error', 'malformed', 'remote', 'no_completion', 'changed', 'wrong_model', 'unfinished', 'bad_usage'])('rejects %s', async value => {

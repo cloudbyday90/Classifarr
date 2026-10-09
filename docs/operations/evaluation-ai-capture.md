@@ -65,6 +65,31 @@ model/endpoint. Do not remove digest validation or arbitrarily use the first ent
 Two entries can share a name while referring to different model bytes. Repeat this
 check after correcting the provider configuration, before enabling capture.
 
+### Known cause: Ollama 0.40.1 model conversion
+
+Ollama 0.40.1 can list both the original GGML model and its converted llama.cpp
+copy under the same name. [Ollama 0.40.2](https://github.com/ollama/ollama/releases/tag/v0.40.2)
+includes the [upstream listing fix](https://github.com/ollama/ollama/pull/18874/files):
+the API returns the locally selected model instead. This is provider metadata,
+not a Classifarr import-ownership or database migration failure.
+
+1. Check the version of the **configured Ollama server**, not just a local CLI.
+   Confirm which applications share it and schedule its update/restart accordingly.
+2. For a server on 0.40.1, update to 0.40.2 using that server's existing deployment
+   method, retaining its model storage and configuration. Rebuilding Classifarr
+   does not update Ollama on another host. Do not delete backup models or select
+   internal `llamacpp:<digest>` downgrade guard aliases as a workaround.
+3. Repeat `--source-pair-ai-provider-status`. It must pass before activation;
+   an updated version number alone does not prove the model listing is correct.
+4. Verify current inventory, vectors and policy readiness before the bounded
+   trial below. Disable the recurring budget afterward and check saved replay.
+
+For other versions or persistent duplicates, inspect the provider/proxy mapping;
+do not assume this specific upstream bug. Preserve the sanitized report and
+related log IDs for a GitHub issue if the failure remains unexplained.
+
+### Enable a bounded allowance
+
 Missing/remote models, invalid identity metadata and unsupported capabilities have
 separate actions. Unknown inspection failures request a sanitized GitHub issue.
 Do not post provider URLs, secrets, raw responses or database dumps. For a one-time

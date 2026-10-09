@@ -61,6 +61,20 @@ test('database failure and pre-cancelled inspection never reach the provider', a
   expect(createClient).not.toHaveBeenCalled();
 });
 
+test('duplicate model guidance names the upstream remedy conditionally without enabling capture', async () => {
+  const { database, createClient, inspect } = fixture();
+  inspect.mockRejectedValue(new Error('description_benchmark_model_ambiguous'));
+  const result = await readAdjudicationProviderStatus(database, { createClient });
+  expect(result).toMatchObject({ status: 'blocked', providerStatus: 'model_ambiguous',
+    generationCalls: 0, databaseWrites: 0, capturePermissionChanged: false });
+  expect(result.recovery).toContain('If the server runs Ollama 0.40.1');
+  expect(result.recovery).toContain('update it to 0.40.2');
+  expect(result.recovery).toContain('Otherwise, review the provider model mapping');
+  expect(result.recovery).toContain('Repeat this check before enabling capture');
+  expect(result.recovery).toContain('Do not delete models or bypass digest checks');
+  expect(inspect).toHaveBeenCalledTimes(1);
+});
+
 test('inspection deadline cancels transport and retains a fixed diagnosis', async () => {
   const { database, createClient, inspect } = fixture();
   const controller = new AbortController();
