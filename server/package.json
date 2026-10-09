@@ -1,6 +1,6 @@
 {
   "name": "classifarr-server",
-  "version": "0.49.0-beta",
+  "version": "0.49.1-beta",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "packageManager": "npm@12.2.0",

@@ -5,119 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Archived changelogs: [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
+Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md) | [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
 
 ## [Unreleased]
 
-### Diagnostics
+## [v0.49.1-beta] - 2026-10-08
 
-- **Memory-pressure reports:** correlate comparison pauses and recovery with a
-  shared reference, exact admission budgets, refresh-stage readings and recent
-  completed-cycle comparisons, without weakening memory safeguards or taking
-  automatic heap dumps.
+**TL;DR:** Lower temporary memory costs for library comparisons, clearer
+memory-pressure diagnostics and recovery, a working RAG statistics dashboard,
+and updated runtime networking and development tooling. Memory safeguards,
+classification rules and compatibility boundaries remain intact.
 
-- Add isolated, repeatable cold comparison allocation profiles to distinguish
-  construction costs from retained memory before tuning; production memory
-  safeguards and refresh behavior are unchanged.
-  Add opt-in allocation windows for concurrent build and warm-verification phases,
-  correlated with real scheduled attempts and validated without saving raw profiles.
-  Separate cached-vector parsing, validation and transport attribution, with
-  bounded numeric batch counters that distinguish refresh work from overlap.
-  Add a bounded, offline vector-validation reproduction across parsed and cloned
-  input histories, with semantic regression coverage; no validator relaxation.
-  Correlate post-stop model/cache weak-reference counts with natural major GC in
-  an opt-in bounded study; distinguish collection evidence from an inconclusive
-  timeout without forcing GC or changing production safeguards.
-  Observe resident mapping categories through a bounded post-GC quiet window,
-  without recording process addresses or changing allocation policy.
-  Correlate those observations with natural major-GC traces and local page-pool
-  readings, keeping ambiguous or missing evidence explicit.
+The [complete development record](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md)
+preserves the original Unreleased entries, consolidated on 2026-10-08.
 
-### Fixed
+### Added
 
-- **Runtime networking:** update transport and IP-parsing dependencies to preserve
-  usable connections after invalid close requests, bound heartbeat extensions,
-  enforce compression negotiation and reject oversized reverse-address input
-  early. Retain IPv4/IPv6 rate-limit boundaries and existing memory safeguards.
-- **API documentation:** update YAML parsing so valid whitespace-only examples
-  no longer cause schema annotations to disappear; retain malformed-input and
-  merge-budget safeguards.
-- **Inventory comparison:** reduce temporary allocation during snapshot fingerprinting
-  and cached-vector validation without weakening numeric checks. Check
-  description-cache completeness before loading vectors and provide actionable
-  coverage diagnostics. Whole-refresh retention
-  profiling covers workers, snapshots and caches. Release comparison snapshots and
-  fitting inputs before subsequent phases; memory safeguards remain unchanged.
-  Read and decode representative/comparison vectors in bounded batches within
-  one consistent snapshot, with cancellation checks between batches.
-  Reuse exactly revalidated normalized vectors within comparison builds to avoid
-  duplicate arrays while preserving corruption checks and numerical results.
-  Reduce normalization callback allocations with shared dense numeric arithmetic,
-  preserving exact results, signed zero and validation on every cache lookup.
-  Reduce temporary allocation during exact normalized-cache matching while
-  retaining signed-zero, invalid-value and borrowed-output mutation checks.
-  Reuse private representative-fingerprint byte storage instead of allocating it
-  per vector, preserving exact v4 fingerprints and validation on every append.
-  Validate representative centroids without temporary normalized-vector arrays,
-  retaining exact arithmetic, injected normalizers and cancellation boundaries.
-  End representative fitting-snapshot and staged-callback lifetimes before fresh
-  verification, retaining both reads and all publication safeguards.
-  Stream comparison verification vectors in bounded batches while preserving exact
-  source fingerprints and independent fresh-snapshot publication checks.
-  Stream representative-profile verification without a second full vector map,
-  preserving partial coverage, fresh observation metadata and backfill priorities.
-  Revalidate unchanged cached comparison models without materializing a full vector
-  snapshot, retaining both independent reads and invalidation safeguards.
-  Stream warm representative preparation and centroid validation without retaining
-  a full vector map; preserve corruption, coverage and fresh-publication checks.
-  Separate bounded resource-deferral retries from representative and comparison fitting failures
-  so temporary memory pressure does not accumulate long failure cooldowns.
-- **Statistics & Analytics:** restore the RAG & Embeddings dashboard by consuming
-  the unwrapped API response consistently, with regression coverage for errors and retry.
-- **CI reliability:** verify provider-study quota reservations per UTC day so runs
-  crossing midnight retain strict accounting without failing on a valid daily reset.
-  Isolate queue-maintenance success fixtures from competing autovacuum and verify
-  that skipped attempts retain their retry limits, with bounded failure diagnostics.
-  Observe database session exit before restore-admission test transitions, with
-  delayed-disconnect coverage; production restore exclusion remains unchanged.
+- **Memory-pressure diagnostics** — Comparison pauses and recovery share a
+  reference, exact admission budgets, refresh-stage measurements and recent
+  completed-cycle comparisons. Reports contain bounded aggregate context,
+  not automatic heap dumps or a claim that one sample proves a leak.
+- **Isolated memory investigation** — Synthetic catalog studies profile complete
+  refresh cycles, workers, snapshots, caches and real comparison consumers under
+  concurrent import/metadata work. Opt-in allocation and natural-GC studies
+  distinguish live data, runtime page pools and container residency, retaining
+  inconclusive results without forcing collection or changing production policy.
 
 ### Changed
 
-- **CI and release tooling:** refresh immutable Node-setup and artifact-transfer
-  action pins, with regression checks for stale or floating references; preserve
-  permissions, receipt identity checks and release approval gates.
-- **Developer tooling:** improve unused-code and dependency detection with updated
-  entry-point analysis and executable regression checks; existing quality gates
-  and runtime safeguards are unchanged.
-  Document pinned and transitive update gaps, intentional compatibility holds and
-  separate runtime, frontend and CI upgrade priorities.
-  Align frontend build/test dependency pins with their supported parent versions,
-  update CSS parsing and bundling, and add executable file-access and parser
-  regressions without relaxing install policies or production safeguards.
-- **HTTP request protection:** update rate-limit middleware to avoid unnecessary
-  debug allocations, with regression coverage for authentication quotas, retry
-  headers, client-IP boundaries and fail-closed errors; limits are unchanged.
-- **Runtime configuration:** update dotenv to preserve false-valued override/debug
-  options correctly, with regression tests for environment precedence and quiet loading.
-- **Memory diagnostics:** add build-phase measurements, kernel memory high-water
-  readings and real-time refresh-cycle profiling to the isolated synthetic study.
-  Add matched control/concurrent ingestion-and-metadata scenarios with shared
-  admission, overlap checks, sanitized failure traces and five-minute natural
-  post-stop observation.
-  Add natural scheduled-recovery checks that retain live refreshers and record
-  exact admission budgets through deferral, recovery and revalidation.
-  Exercise scheduled comparison refreshes alongside real import/metadata services
-  in one isolated application catalog, separating workload completion from
-  evidence of recovery after memory pressure.
-  Preserve bounded numeric phase peaks when a study fails, without retaining raw payloads.
-  Attribute resident memory to the study process, PostgreSQL and container cache,
-  alongside committed V8 heap; retain explicit gaps when measurements are unavailable.
-  Add opt-in, sanitized major-GC page-pool tracing to distinguish reusable runtime
-  pages from live data across complete catalog refreshes.
-  Include real shadow-comparison and neighborhood-readiness consumers in the
-  isolated catalog study, with preparation/publication memory boundaries and
-  verified warm-cycle completion and shutdown.
-  Production admission limits and garbage-collection behavior are unchanged.
+- **Comparison memory use** — Bounded snapshot decoding and streamed warm
+  preparation, cache revalidation and publication verification avoid extra full
+  vector maps. Earlier snapshot release and less temporary fingerprint,
+  normalization and centroid storage preserve exact numeric validation,
+  fresh-snapshot checks, cancellation and publication safeguards.
+- **Runtime configuration and HTTP protection** — Updated environment loading
+  honors false-valued options; rate limiting avoids disabled-debug allocations.
+  Environment precedence, authentication quotas, client-IP boundaries, retry
+  headers and fail-closed behavior remain unchanged.
+- **Frontend and developer tooling** — Align build/test pins with supported
+  parent versions; update CSS parsing, bundling and unused-code analysis with
+  executable parser, file-access and entry-point regressions. Node 24.21.0 and
+  npm 12.2.0 requirements remain unchanged; intentional dependency holds remain
+  documented rather than bypassed.
+- **CI and release verification** — Refresh immutable setup/artifact action pins
+  without changing permissions or approval gates. Provider quota tests account
+  for UTC midnight; queue-vacuum and restore-admission fixtures observe actual
+  contention and database-session exit while retaining retry and exclusion rules.
+
+### Fixed
+
+- **Comparison readiness and retries** — Check current-model description-cache
+  completeness before loading vectors and report actionable coverage gaps.
+  Temporary resource deferrals no longer accumulate fitting-failure cooldowns;
+  ordinary retrieval remains available while optional comparison work waits.
+- **Statistics & Analytics** — Restore the RAG & Embeddings dashboard's API
+  response handling, including error and retry behavior.
+- **API documentation** — Preserve valid whitespace-only YAML examples so schema
+  annotations do not disappear, while retaining malformed-input and merge limits.
+- **Runtime networking** — Updated WebSocket/Engine.IO transport dependencies
+  preserve connections after invalid close requests, bound heartbeat extensions
+  and enforce compression negotiation.
+
+### Security
+
+- **IP parsing boundaries** — Reject oversized reverse-address input early
+  while preserving IPv4/IPv6 rate-limit behavior. Memory limits, recovery
+  ownership checks and the separate database privilege-hardening boundary
+  are not relaxed.
 
 ## [v0.49.0-beta] - 2026-10-05
 

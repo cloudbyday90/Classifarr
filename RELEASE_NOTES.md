@@ -1,6 +1,111 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.49.0-beta`. Package files use semver-safe versions such as `0.49.0-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.1-beta`. Package files use semver-safe versions such as `0.49.1-beta`.
+
+## v0.49.1-beta
+
+**Leaner library comparisons, clearer diagnostics and dependable everyday tools**
+
+This maintenance release follows the broad foundation work in v0.49.0-beta.
+It focuses on the memory cost of library-comparison work, explains resource
+pauses with useful context, restores the RAG statistics view and updates the
+networking and tooling underneath Classifarr. Your classification policies,
+memory safeguards and import-ownership protections stay in place.
+
+Classifarr has reached **20,667 Docker Hub image pulls** as of October 8, 2026
+([Docker Hub statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
+Thank you for testing and reporting issues. This is an image-pull count, not a
+count of users or unique installations, and it excludes GHCR.
+
+### Before you upgrade
+
+- Back up your database and persistent app-data, including encryption keys.
+  Preserve existing mounts, keys and configuration; do not recreate storage to
+  clear a warning. No new database migration or Compose/Unraid-template edit is
+  required by the changes from v0.49.0-beta.
+- If upgrading from an older release, also read the
+  [v0.49.0-beta upgrade guidance](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.49.0-beta).
+  Those migrations and recovery requirements still apply. Stop older writers
+  sharing the same Classifarr database before upgrading.
+- Source installations still require Node 24.21.0 and npm/npx 12.2.0. Container
+  installations receive the runtime in the image. This remains a beta release.
+
+### Library comparisons: less temporary memory, the same safeguards
+
+Comparison and representative-profile refreshes read and decode vectors in
+bounded batches. Warm preparation, unchanged-model validation and final
+publication checks stream their inputs instead of retaining another full
+vector map. Completed fitting snapshots are released before later phases.
+Fingerprinting, normalization and centroid checks also create fewer temporary
+arrays and buffers.
+
+These changes preserve exact numeric checks, source fingerprints, cancellation
+and independent fresh-data verification before publication. They do not weaken
+memory admission limits or turn uncertain library evidence into an automatic
+routing decision.
+
+Temporary memory-pressure deferrals now have their own bounded retry path,
+separate from fitting failures. A busy period therefore does not accumulate
+long failure cooldowns. Classifarr also checks whether current-model description
+vectors are ready before loading them and reports incomplete coverage more
+clearly. Ordinary retrieval remains available when optional comparison context
+must wait; missing vectors still need normal backfill to finish.
+
+### Memory warnings: a reference and a comparison point
+
+New comparison memory-pressure reports connect the pause and its recovery with
+a shared reference. They include the exact admission budget, active cooperative
+jobs, refresh-stage readings and recent successful refresh summaries. This
+makes it possible to compare an incident with earlier work in the same process
+instead of relying on one process-memory number or the host's free RAM alone.
+
+The record is deliberately bounded and contains aggregate measurements, not
+provider payloads or an automatic heap dump. References reset after recovery
+or process restart; earlier warnings cannot be retroactively reconstructed.
+A sampled peak is not a continuous peak, and a successful refresh is not an
+idle or post-GC baseline. This release improves investigation; it does not
+claim every source of elevated memory has been resolved.
+
+### Statistics, API documentation and connections
+
+The **Statistics & Analytics → RAG & Embeddings** tab works again after fixing
+its handling of the API's already-unwrapped response. Error and retry states
+are covered as well.
+
+API documentation retains valid whitespace-only YAML examples instead of
+losing the affected schema annotations. Malformed-input and expansion limits
+remain enforced.
+
+Updated WebSocket and Engine.IO dependencies preserve usable connections after
+invalid close requests, bound heartbeat extensions and enforce compression
+negotiation. IP parsing rejects oversized reverse-address inputs earlier while
+retaining IPv4/IPv6 rate-limit boundaries. Rate limiting avoids unnecessary
+disabled-debug allocations without changing quotas or fail-closed behavior;
+environment loading correctly honors false-valued options.
+
+### Testing, tooling and release integrity
+
+Isolated synthetic studies now follow complete refresh cycles, including
+workers, snapshots, caches, real comparison consumers and overlapping import
+and metadata work. Optional allocation and natural-GC studies distinguish live
+data from runtime page pools and container residency without forcing collection
+in production. Missing or inconclusive evidence stays explicit.
+
+Frontend build/test pins, CSS parsing, bundling and unused-code analysis have
+been updated with regression checks. CI fixtures handle UTC quota resets,
+autovacuum contention and delayed database-session exit without weakening the
+production rules they test. Immutable setup/artifact action pins are refreshed;
+release approval, image provenance and receipt-identity checks remain required.
+
+Intentional dependency holds remain documented. This release does not remove
+the separate database privilege-hardening work or certify a long-term absence
+of memory leaks. If comparison pressure persists, retain its diagnostic
+reference and report the context; do not disable memory safeguards.
+
+See the [system-level changelog](https://github.com/cloudbyday90/Classifarr/blob/v0.49.1-beta/CHANGELOG.md)
+and [complete development record](https://github.com/cloudbyday90/Classifarr/blob/v0.49.1-beta/docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md).
+
+---
 
 ## v0.49.0-beta
 

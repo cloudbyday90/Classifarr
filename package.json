@@ -1,6 +1,6 @@
 {
   "name": "classifarr",
-  "version": "0.49.0-beta",
+  "version": "0.49.1-beta",
   "private": true,
   "type": "module",
   "packageManager": "npm@12.2.0",
