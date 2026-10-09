@@ -46,6 +46,31 @@ local AI generation. Check the configured Ollama provider and model, inventory
 readiness, policy replay and current-model description-vector coverage first.
 This worker does not fall back to a cloud provider or download a missing model.
 
+Inspect the configured model without generating, downloading or loading it:
+
+```sh
+node /app/src/scripts/runOperatorCorrectionPolicyEvaluation.mjs --source-pair-ai-provider-status
+```
+
+This explicit diagnostic reads saved configuration and requests only provider
+metadata (`/api/tags` and, for a unique local identity, `/api/show`). It does not
+change the budget or contact a cloud fallback. `providerStatus: ready` confirms
+metadata only, not inventory readiness or permission to run. A blocked check exits
+nonzero and includes a fixed explanation and action, never a raw provider error.
+
+If it reports `model_ambiguous`, the endpoint lists the configured model more than
+once. Check the Ollama server/proxy model listing. Have the provider expose one
+unambiguous local identity for that model, or deliberately configure a unique local
+model/endpoint. Do not remove digest validation or arbitrarily use the first entry.
+Two entries can share a name while referring to different model bytes. Repeat this
+check after correcting the provider configuration, before enabling capture.
+
+Missing/remote models, invalid identity metadata and unsupported capabilities have
+separate actions. Unknown inspection failures request a sanitized GitHub issue.
+Do not post provider URLs, secrets, raw responses or database dumps. For a one-time
+trial, explicitly disable the recurring budget afterward; daily limits are not an
+automatic expiry.
+
 For a small starting allowance of five calls per UTC day:
 
 ```sh

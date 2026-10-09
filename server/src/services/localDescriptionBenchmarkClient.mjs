@@ -31,13 +31,17 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   }
   async function inspect(signal) {
     const tags = await request('/api/tags', undefined, signal);
+    if (!Array.isArray(tags?.models)) throw new Error('description_benchmark_response_invalid');
     const matches = (Array.isArray(tags?.models) ? tags.models : []).filter(entry => {
       try { return canonicalStudyModel(entry.name ?? entry.model) === model; } catch { return false; }
     });
     const entry = matches[0];
-    if (matches.length !== 1 || entry.remote_host || entry.remote_model || !/^(sha256:)?[a-f0-9]{64}$/.test(entry.digest ?? '')) {
+    if (matches.length > 1) throw new Error('description_benchmark_model_ambiguous');
+    if (!entry) {
       throw new Error('description_benchmark_installed_local_model_required');
     }
+    if (entry.remote_host || entry.remote_model) throw new Error('description_benchmark_remote_model');
+    if (!/^(sha256:)?[a-f0-9]{64}$/.test(entry.digest ?? '')) throw new Error('description_benchmark_model_identity_invalid');
     const details = await request('/api/show', { model, verbose: false }, signal);
     const architecture = details?.model_info?.['general.architecture'];
     const contextLength = details?.model_info?.[`${architecture}.context_length`];

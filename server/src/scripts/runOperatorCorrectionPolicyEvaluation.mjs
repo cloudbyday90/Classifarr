@@ -16,11 +16,15 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
     'capture-source-pair-ai': { type: 'boolean', default: false }, 'max-calls': { type: 'string' },
     'configure-source-pair-ai-budget': { type: 'boolean', default: false },
     'source-pair-ai-budget-status': { type: 'boolean', default: false },
+    'source-pair-ai-provider-status': { type: 'boolean', default: false },
     'daily-calls': { type: 'string' }, 'daily-tokens': { type: 'string' },
   } });
   const budgetOptions = parseAdjudicationBudgetCommand(values);
   if (budgetOptions) {
     process.env.LOG_LEVEL = 'fatal'; process.env.FILE_LOGGING_ENABLED = 'false';
+    if (budgetOptions.providerStatus) {
+      process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on -c statement_timeout=3000 -c lock_timeout=1000`.trim();
+    }
     const run = evaluate ?? (await import('../services/adjudicationBudgetCommand.mjs')).runAdjudicationBudgetCommand;
     return run(budgetOptions);
   }

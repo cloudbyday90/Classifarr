@@ -5,6 +5,7 @@ import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
 import { projectAdjudicationBudget } from '../../services/adjudicationBudgetContract.mjs';
 import { readCachedAdjudication } from '../../services/cachedAdjudicationRepository.mjs';
+import { readAdjudicationProviderStatus } from '../../services/adjudicationProviderStatus.mjs';
 
 let repository, db;
 const template = () => ({ version: 'cached_adjudication.v1',configuration: 'a'.repeat(64),
@@ -17,6 +18,28 @@ const query = (...args) => getPool().query(...args);
 beforeEach(async () => {
   await query('TRUNCATE adjudication_capture_budget,cached_adjudication_batch; INSERT INTO adjudication_capture_budget(singleton) VALUES(true)');
   db = createIntegrationDatabaseModuleMock(); repository = createAdjudicationBudgetRepository(db);
+});
+
+test('provider inspection uses a real read-only transaction and leaves quota/progress unchanged', async () => {
+  const state = await configure(5,42240);
+  await repository.reserve(state.revision);
+  const before = (await query('SELECT * FROM adjudication_capture_budget')).rows;
+  const readOnlyDatabase = { withTransaction: callback => db.withTransaction(async client => {
+    const reader = { query: async (...args) => {
+      const result = await client.query(...args);
+      if (args[0].startsWith('SELECT rag_enabled')) {
+        expect((await client.query('SHOW transaction_read_only')).rows[0].transaction_read_only).toBe('on');
+      }
+      return result;
+    } };
+    return callback(reader);
+  }) };
+  const result = await readAdjudicationProviderStatus(readOnlyDatabase, { createClient: () => ({
+    inspect: async () => { throw new Error('description_benchmark_model_ambiguous'); },
+  }) });
+  expect(result).toMatchObject({ status: 'blocked', providerStatus: 'model_ambiguous', generationCalls: 0 });
+  expect((await query('SELECT * FROM adjudication_capture_budget')).rows).toEqual(before);
+  expect((await query('SELECT count(*)::int AS count FROM cached_adjudication_batch')).rows[0].count).toBe(0);
 });
 
 test('default off, concurrent atomic reservation, restart and configuration changes cannot reset quotas', async () => {

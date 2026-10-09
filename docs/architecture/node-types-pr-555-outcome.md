@@ -2,6 +2,13 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Provider-preflight trial on 2026-10-09: a new random draw from open PRs 555/556
+selected 555 at the same immutable head. Exact local patch: 8/8 runtime-baseline
+tests before, 7/8 with the Node-major mismatch, 8/8 after removing only the trial.
+No candidate installation or PR mutation. The full supported tooling gate passed
+40/40; an earlier direct Node invocation of its npm-policy file failed because it
+requires `npm_execpath`, then passed through its documented npm entry point.
+
 Capture-guidance trial on 2026-10-09: applied the selected PR's exact manifest
 and lockfile diff at `5545605b53c854de8847b44e24fa083ff4218080`. The existing gate
 passed 8/8 before, failed the Node declaration major check (7/8 passed), and

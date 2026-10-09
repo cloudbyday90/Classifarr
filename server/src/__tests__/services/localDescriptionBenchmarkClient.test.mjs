@@ -3,6 +3,7 @@ import { beforeEach, afterEach, expect, test } from '@jest/globals';
 import { createServer } from 'node:http';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { candidateAdjudicationResponseSchema } from '../../services/aiResponseSchema.mjs';
+import { readAdjudicationProviderStatus } from '../../services/adjudicationProviderStatus.mjs';
 
 let server, config, mode, requests;
 const identity = { model: 'local:latest', digest: 'a'.repeat(64), contextLength: 32768 };
@@ -52,6 +53,11 @@ beforeEach(async () => {
     if (mode === 'error') { response.writeHead(500); response.end('PRIVATE error'); return; }
     if (mode === 'malformed') { response.end('not json'); return; }
     const model = mode === 'reasoning' ? 'qwen3:latest' : 'local:latest';
+    if (request.url === '/api/tags' && ['duplicate', 'duplicate_same', 'missing', 'invalid_identity', 'invalid_listing'].includes(mode)) {
+      const models = mode === 'missing' ? [] : mode === 'invalid_identity' ? [{ name: model, digest: 'PRIVATE invalid identity' }]
+        : [{ name: model, digest: identity.digest }, { name: model, digest: mode === 'duplicate_same' ? identity.digest : 'b'.repeat(64) }];
+      response.end(JSON.stringify(mode === 'invalid_listing' ? {} : { models })); return;
+    }
     if (request.url === '/api/tags') response.end(JSON.stringify({ models: [{ name: model, digest: mode === 'changed' ? 'b'.repeat(64) : identity.digest,
       ...(mode === 'remote' ? { remote_host: 'https://example.com' } : {}) }] }));
     else if (request.url === '/api/show') response.end(JSON.stringify({ capabilities: mode === 'no_completion' ? [] : ['completion'],
@@ -72,6 +78,28 @@ test('uses saved installed local model, fixed inference controls and explicit us
   expect(result).toMatchObject({ response: '{"candidate":1}', promptTokens: 100, outputTokens: 5, inputTruncation: 'unknown', contextLimitSuspected: false });
   expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({ stream: false, think: false,
     options: { temperature: 0, seed: 42, num_ctx: 32768, num_predict: 64 } });
+});
+
+test.each([
+  ['duplicate', 'model_ambiguous'], ['duplicate_same', 'model_ambiguous'],
+  ['missing', 'installed_local_model_required'], ['invalid_identity', 'model_identity_invalid'],
+  ['remote', 'remote_model'], ['invalid_listing', 'response_invalid'],
+])('inspection identifies %s without requesting generation or reserving quota', async (value, code) => {
+  mode = value;
+  let reservations = 0;
+  await expect(createLocalDescriptionBenchmarkClient(config).generate({ prompt: 'PRIVATE', count: 2, context: 8192,
+    identity, onGenerationCall: () => reservations++ })).rejects.toThrow(`description_benchmark_${code}`);
+  expect(reservations).toBe(0);
+  expect(requests.map(entry => entry.path)).toEqual(['/api/tags']);
+});
+
+test('provider preflight reports the real duplicate-tag HTTP response without exposing metadata', async () => {
+  mode = 'duplicate';
+  const database = { withTransaction: callback => callback({ query: async () => ({ rows: [config] }) }) };
+  const result = await readAdjudicationProviderStatus(database);
+  expect(result).toMatchObject({ status: 'blocked', providerStatus: 'model_ambiguous', generationCalls: 0, databaseWrites: 0 });
+  expect(JSON.stringify(result)).not.toMatch(/127\.0\.0\.1|local:latest|aaaaaaaa|bbbbbbbb/);
+  expect(requests.map(entry => entry.path)).toEqual(['/api/tags']);
 });
 
 test.each(['redirect', 'oversized', 'error', 'malformed', 'remote', 'no_completion', 'changed', 'wrong_model', 'unfinished', 'bad_usage'])('rejects %s', async value => {

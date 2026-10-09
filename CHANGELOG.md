@@ -18,7 +18,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   saved checkpoint reference explain inventory waits; viewing the summary does
   not start AI work or change routing, quotas or memory safeguards. Collapsed
   console guidance explains how to inspect and deliberately configure optional
-  AI-response capture without changing deployment templates.
+  AI-response capture without changing deployment templates. A read-only provider
+  diagnostic distinguishes ambiguous model identities and other inspection failures
+  before enabling capture, retaining model verification and quota safeguards.
 - **Independent policy evaluation** — Offline replay rebuilds supported
   inferred-only library purposes from held-out training folds, preserving
   declared constraints and excluding tested items. Versioned results distinguish
