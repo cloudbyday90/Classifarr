@@ -2,6 +2,32 @@
 
 Date: 2026-10-09. Scope: local testing only; no Unraid change or release.
 
+## Post-provider-update trial
+
+At 20:47 UTC on October 9 the local database reports all ten imports and backfill
+handoffs complete, no due/processing jobs and completed policy replay. The
+operator updated Ollama to 0.40.2 and confirmed that Windows Ollama is shared with
+Unraid production. Repeat the metadata preflight before activating only the local
+budget. Shared inference can contend with production: keep the five-call ceiling,
+stop on the first unavailable outcome and do not restart/reconfigure Ollama.
+Do not activate Unraid's budget. The temporary ESM supervisor uses the existing
+CLI, a 20-minute deadline, same-UTC-day guard and `finally` disable/verification;
+it does not invoke capture directly or override scheduler readiness.
+
+The existing official sources below were reopened through MCP on October 9,
+along with the [Ollama 0.40.2 release](https://github.com/ollama/ollama/releases/tag/v0.40.2).
+The random PR was freshly enumerated/selected again: PR 555 at the same immutable
+head below. No runtime refactor is warranted unless this trial reproduces a defect.
+See the [live trial outcome](evaluation-capture-live-outcome.md); the original
+[preflight outcome](evaluation-capture-trial-outcome.md) records the earlier block.
+
+If the ordinary survey has moved beyond capture's window, a read-only replay of
+that saved window may validate the response boundary separately. Use the existing
+discovery advisory lock, memory admission and bounded worker; read snapshots in
+read-only transactions and report aggregates only. Do not call provider endpoints,
+save the report, move either cursor, or present this diagnostic as ordinary saved
+replay. A memory/lock refusal ends the probe without bypassing its admission.
+
 ## Decision and prerequisites
 
 Exercise the existing recurring worker with five calls and 42,240 reserved tokens
@@ -82,6 +108,11 @@ Discovered/retrieved through MCP on 2026-10-09:
 - [DefinitelyTyped versioning](https://github.com/Definitelytyped/DefinitelyTyped):
   declaration major/minor describes the corresponding library; keep Node 24 types
   with this deployment rather than weaken the compatibility gate.
+- [Node 24 process memory](https://nodejs.org/download/release/v24.20.0/docs/api/process.html):
+  available memory and OS constraints are different from host free memory or
+  process RSS; worker heap counters apply to the current thread. Retrieved through
+  MCP search on October 9. Use these distinctions when interpreting a deferral,
+  not a later sample as proof of the original admission decision.
 
 The selected architecture is our application of these sources. The separate
 outcome document will distinguish observations from remaining uncertainty.

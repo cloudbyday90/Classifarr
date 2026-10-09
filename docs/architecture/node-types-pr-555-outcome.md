@@ -2,6 +2,14 @@
 
 Date: 2026-10-05. See [review and recommendation](node-types-pr-555-design.md).
 
+Post-provider-update capture trial on 2026-10-09: freshly selected PR 555 from
+open PRs 555/556 and applied the exact MCP diff locally. Runtime-baseline tests
+passed 8/8 before, 7/8 with the candidate (Node 26 declarations versus Node 24),
+and 8/8 after reversing only the trial. The complete tooling gate passed 40/40.
+No install, merge or PR mutation occurred. Registry metadata still identifies
+Node 24 types 24.19.2, Playwright 1.64.0 and Vue Router 5.4.0 as separate review
+candidates; none was silently substituted or installed.
+
 Provider-preflight trial on 2026-10-09: a new random draw from open PRs 555/556
 selected 555 at the same immutable head. Exact local patch: 8/8 runtime-baseline
 tests before, 7/8 with the Node-major mismatch, 8/8 after removing only the trial.

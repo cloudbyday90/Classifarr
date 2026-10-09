@@ -21,7 +21,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   AI-response capture without changing deployment templates. A read-only provider
   diagnostic distinguishes ambiguous model identities and other inspection failures
   before enabling capture, with specific guidance for Ollama's converted-model
-  listing issue, retaining model verification and quota safeguards.
+  listing issue, retaining model verification and quota safeguards. Operator
+  guidance separates reserved calls, published responses and saved comparisons,
+  with explicit trial cleanup and unchanged resource admission during replay.
 - **Independent policy evaluation** — Offline replay rebuilds supported
   inferred-only library purposes from held-out training folds, preserving
   declared constraints and excluding tested items. Versioned results distinguish

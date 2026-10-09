@@ -2,6 +2,11 @@
 
 Date: 2026-10-05.
 
+Rechecked 2026-10-09 for the post-Ollama-update live capture trial: MCP and the
+saved CLI login enumerated open PRs 555/556; a fresh `Get-Random` draw selected
+555 at the same immutable head below. Repeat the exact two-file trial and the
+pre-install runtime-major contract, without substituting the compatible patch.
+
 Rechecked 2026-10-09 for capture guidance: current open candidates were again
 555 and 556; the isolated `Get-Random` draw selected 555 at the immutable head
 below. MCP supplied its diff. The same runtime-major gate applies. Fresh registry

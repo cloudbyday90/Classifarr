@@ -130,6 +130,32 @@ and saved comparison timestamp. Capture publication and replay are separate
 steps: a cached batch is not immediately a new saved comparison or an accuracy
 measurement. Counts can change as different windows are surveyed.
 
+For a supervised trial, record the image revision, UTC start time and starting
+reservation counts. Stop after publication, an unavailable outcome or the agreed
+observation deadline; disable and verify the limits even if replay is still
+waiting. Do not leave a daily allowance enabled overnight by accident. Cleanup
+in a terminal script is not a durable expiry if that terminal or host crashes.
+
+Five reserved calls do not promise five compared items. An item can require two
+different responses, and responses must still pass replay validation. Record
+these checkpoints separately:
+
+1. **Calls reserved:** admission accounting, including uncertain/failed calls.
+2. **Responses published:** reusable output for the exact model/configuration and
+   evidence, not permission to perform more inference.
+3. **Saved pairs:** both comparison sides are usable in a newer saved revision.
+
+After disabling, `captureStatus: disabled` replaces the last capture outcome;
+this does not erase published responses or same-day reservations. Keep the
+publication timestamp so it can be compared with the next saved revision.
+
+If policy replay reports `memory_pressure`, preserve that timestamp and image
+reference and allow the normal cooldown. Do not regenerate already published
+responses, reset imports, force garbage collection or relax admission limits.
+Host free memory and a later Docker sample do not reconstruct the refused
+admission check. Persistent pressure needs per-attempt memory evidence, including
+container headroom and concurrent reservations, before selecting a fix.
+
 | Capture outcome | What to do |
 | --- | --- |
 | `disabled` | No recurring calls are scheduled; opt in only if wanted. |

@@ -2,6 +2,10 @@
 
 Date: 2026-10-09. See the separate [design](evaluation-capture-trial-design.md).
 
+Historical preflight result, before the operator's Ollama update. The later
+[live trial outcome](evaluation-capture-live-outcome.md) supersedes the blocker
+and next-step recommendation below; the original validation record is retained.
+
 ## Finding
 
 The five-call trial stopped at preflight, before budget activation or generation.
