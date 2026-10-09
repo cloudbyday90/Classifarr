@@ -11,6 +11,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **CI image pulls** — Trusted main-branch tests use a dedicated Docker Hub
+  read-only credential with automatic logout, avoiding anonymous pull-limit
+  failures without sharing publishing credentials or exposing secrets to PRs.
 - **Evaluation visibility** — Command Center separates completed policy replay
   from saved comparison coverage and AI-capture configuration. Unsupported
   selections, missing responses, disabled capture and stale results now have

@@ -6,6 +6,7 @@ import { createStudyQueueRecovery } from '../../scripts/resourceStudyQueueRecove
 import { resourceStudyProfile, assertResourceStudyReceipt } from '../../scripts/resourceStudyProfiles.mjs';
 import { resourceStudyEvaluationSnapshot } from '../../scripts/resourceStudyFixtures.mjs';
 import { resourceStudyReceiptFixture as receipt } from '../helpers/resourceStudyReceiptFixture.mjs';
+import { validateDockerHubPullJob } from '../../scripts/dockerHubPullWorkflowContract.mjs';
 
 function setup() {
   let time = 0;
@@ -138,7 +139,8 @@ test('CI is isolated, bounded, least-privilege, SHA-pinned and never publishes i
   expect(Object.keys(workflow.jobs)).toEqual(['resource-capacity']);
   const job = workflow.jobs['resource-capacity'];
   expect(job['runs-on']).toBe('ubuntu-latest'); expect(job['timeout-minutes']).toBe("${{ inputs.profile == 'soak' && 50 || 35 }}");
-  expect(job.steps.filter(step => step.uses).every(step => /^actions\/[a-z-]+@[a-f0-9]{40}$/.test(step.uses))).toBe(true);
+  const stepsWithoutLogin = validateDockerHubPullJob(job, 'Run short resource gate');
+  expect(stepsWithoutLogin.filter(step => step.uses).every(step => /^actions\/[a-z-]+@[a-f0-9]{40}$/.test(step.uses))).toBe(true);
   expect(job.steps[0].with['persist-credentials']).toBe(false);
   expect(job.steps.filter(step => step.run).map(step => step.run)).toEqual([
     'node scripts/run-resource-study.mjs --smoke', 'node scripts/run-resource-study.mjs --capacity',
@@ -146,5 +148,6 @@ test('CI is isolated, bounded, least-privilege, SHA-pinned and never publishes i
   expect(job.steps.find(step => step.name === 'Run opt-in sustained observation').if).toBe("github.event_name == 'workflow_dispatch' && inputs.profile == 'soak'");
   expect(job.steps.at(-1).with).toMatchObject({ path: '.tmp/resource-study/classifarr-resource-study-*/result.json\n.tmp/resource-study/classifarr-resource-study-*/result.md\n.tmp/resource-study/comparison-*/result.json\n',
     'include-hidden-files': true, 'if-no-files-found': 'error', 'retention-days': 14 });
-  expect(JSON.stringify(workflow)).not.toMatch(/secrets\.|pull_request_target|self-hosted|continue-on-error|docker login|docker push/);
+  const withoutLogin = { ...workflow, jobs: { 'resource-capacity': { ...job, steps: stepsWithoutLogin } } };
+  expect(JSON.stringify(withoutLogin)).not.toMatch(/secrets\.|pull_request_target|self-hosted|continue-on-error|docker login|docker push/);
 });

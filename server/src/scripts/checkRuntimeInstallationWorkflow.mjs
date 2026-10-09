@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import { loadWorkflow } from './checkReleaseCandidatePublicationWorkflow.mjs';
+import { validateDockerHubPullJob, validateDockerHubPullWorkflows } from './dockerHubPullWorkflowContract.mjs';
 const expression = value => '$' + `{{ ${value} }}`;
 
 /** Keep the installation gate in the same run and out of publishing privileges. */
@@ -18,8 +20,9 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   assert.deepEqual(job.outputs, { 'candidate-image-id': expression('steps.acceptance.outputs.candidate-image-id || steps.budget.outputs.candidate-image-id') });
   assert.deepEqual(job.permissions, { contents: 'read', attestations: 'read' });
   for (const key of ['continue-on-error', 'environment', 'secrets', 'container', 'services', 'env', 'needs']) assert.equal(job[key], undefined);
-  assert.equal(job.steps.length, 6);
-  const [checkout, node, run, budget, upload, diagnostic] = job.steps;
+  const installationSteps = validateDockerHubPullJob(job, 'Run isolated installation acceptance');
+  assert.equal(installationSteps.length, 6);
+  const [checkout, node, run, budget, upload, diagnostic] = installationSteps;
   assert.equal(checkout.uses, 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1');
   assert.deepEqual(checkout.with, { 'persist-credentials': false, 'fetch-depth': 0 });
   assert.equal(node.uses, 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1');
@@ -86,6 +89,9 @@ export function validateRuntimeInstallationWorkflow(workflow) {
 }
 
 if (import.meta.main) {
-  validateRuntimeInstallationWorkflow(loadWorkflow());
+  const workflow = loadWorkflow();
+  validateRuntimeInstallationWorkflow(workflow);
+  validateDockerHubPullWorkflows(workflow,
+    loadWorkflow(resolve(import.meta.dirname, '../../../.github/workflows/resource-capacity.yml')));
   process.stdout.write('Runtime installation acceptance workflow contract passed.\n');
 }
