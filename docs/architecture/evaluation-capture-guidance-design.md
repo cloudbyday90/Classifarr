@@ -9,7 +9,7 @@ replay, ready inventory, capture disabled, zero configured daily limits and no
 cached response batches. The latest saved comparison group reported 252 missing
 responses and 23 unsupported comparison paths. These counts describe that saved
 group, not every item or the Unraid installation. Missing responses do not prove
-a provider failure: recurring capture has never been authorized here.
+a provider failure: recurring capture is not currently authorized here.
 
 CI run 37922140772 also exposed a separate fixture defect: three integration
 tests fail because their temporary `libraries` table lacks `media_server_id`.
@@ -35,8 +35,9 @@ do not bypass production readiness SQL or weaken acceptance gates.
   capture deadline. No worker policy is changed by this work.
 - Read-only status may be repeated safely. Do not reset reservations, retry an
   uncertain generation manually or invoke the separate one-shot capture mode as
-  a workaround. Disabled/cancelled, deferred, unsupported and unknown outcomes
-  remain distinct; an unknown outcome calls for sanitized diagnostic review.
+  a workaround. Do not label a deferral as disabled or successful. Unsupported
+  comparison paths remain a separate coverage gap; an unknown outcome calls for
+  sanitized diagnostic review.
 - Complete means guidance works with keyboard/mobile and access loss, and the
   real PostgreSQL regression passes with all readiness relations isolated.
   It does not mean capture was enabled, every cache gap filled or accuracy proven.
