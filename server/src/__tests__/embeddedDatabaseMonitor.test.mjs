@@ -18,14 +18,23 @@ test('one transient failure recovers without requesting a stop', async () => {
     .mockImplementationOnce(async () => f.abort.abort());
   expect(await watchEmbeddedDatabase(f.options)).toEqual({ joined: true });
   expect(f.options.requestStop).not.toHaveBeenCalled();
-  expect(f.options.report.mock.calls).toEqual([['database_probe_waiting', 'database_probe_timeout'], ['database_probe_recovered']]);
+  expect(f.options.report.mock.calls.filter(([event]) => event !== 'database_probe_diagnostic'))
+    .toEqual([['database_probe_waiting', 'database_probe_timeout'], ['database_probe_recovered']]);
+  const records = f.options.report.mock.calls.filter(([event]) => event === 'database_probe_diagnostic');
+  expect(records.map(([, phase]) => phase)).toEqual(['waiting', 'recovered']);
+  expect(records[1][2].episodeId).toBe(records[0][2].episodeId);
+  expect(records[1][2].firstFailure).toEqual(records[0][2].firstFailure);
+  expect(records[1][2].latest.state).toBe('ok');
 });
 test('repeated transient failures cannot extend the first grace deadline', async () => {
   const f = fixture([transient, transient, transient, transient]);
   await watchEmbeddedDatabase(f.options);
   expect(f.options.now()).toBe(20_000);
   expect(f.options.probe).toHaveBeenCalledTimes(3);
-  expect(f.options.report).toHaveBeenCalledTimes(1);
+  expect(f.options.report).toHaveBeenCalledTimes(3);
+  const records = f.options.report.mock.calls.filter(([event]) => event === 'database_probe_diagnostic');
+  expect(records.map(([, phase]) => phase)).toEqual(['waiting', 'database_probe_grace_expired']);
+  expect(records[1][2]).toMatchObject({ uncertainForMs: 15000, firstFailure: { sequence: 1 }, latest: { sequence: 3 } });
   expect(f.options.requestStop.mock.calls).toEqual([[{ reason: 'database_probe_grace_expired', failed: true }]]);
 });
 test('concrete failure during grace stops immediately', async () => {

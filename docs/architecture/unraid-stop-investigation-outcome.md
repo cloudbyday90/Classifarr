@@ -3,7 +3,8 @@
 Date: 2026-10-09. Scope: read-only inspection of the reported production stop.
 No production settings, containers, databases or shared providers were changed.
 The deployed image reports source `7d94ef136c7a4b8d77ab0f4c10e38b271bb98268`
-(`v0.49.1-beta` preparation); the relevant probe code matches this checkout.
+(`v0.49.1-beta` preparation); the relevant probe code matched the investigation
+baseline `bce87b3e` before the diagnostic instrumentation below.
 
 ## Findings
 
@@ -42,7 +43,7 @@ The monitor checks process liveness, not SQL readiness: identity-file reads plus
 a `pg_ctl status` child. The child has a two-second deadline; the full check has a
 three-second deadline and bounded cancellation/join. An uncertain result starts
 a 15-second grace period, after which the supervisor drains the application and
-stops the owned database. The current timeout code does not distinguish child
+stops the owned database. The incident image's timeout code does not distinguish child
 startup/status latency from identity-file latency or event-loop scheduling delay.
 The observed shutdown therefore establishes the trigger, not the underlying
 source of the probe delay.
@@ -83,3 +84,8 @@ Official sources discovered and reviewed on 2026-10-09:
 Next item: distinguish a genuinely lost database from a slow liveness probe, then
 make the smallest verified supervisor or deployment correction. No application
 crash fix is claimed here, and no probe deadline was relaxed.
+
+Follow-up: [bounded probe diagnostics](embedded-probe-diagnostics-design.md) now
+implements stage attribution without changing the timeout decisions. Its
+[separate outcome](embedded-probe-diagnostics-outcome.md) records verification;
+this does not retroactively identify the original latency source.

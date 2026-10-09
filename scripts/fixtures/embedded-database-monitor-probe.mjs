@@ -26,7 +26,7 @@ await start();
 query("CREATE TABLE monitor_sentinel(value text); INSERT INTO monitor_sentinel VALUES ('preserved')");
 
 let helper;
-const stalledProbe = signal => runEmbeddedDatabaseStatusProbe({ signal, spawnFn: () => {
+const stalledProbe = options => runEmbeddedDatabaseStatusProbe({ ...options, spawnFn: () => {
   // Fault injection replaces only the read-only status helper, not PostgreSQL.
   helper = spawn(process.execPath, ['--input-type=module', '-e', 'setInterval(() => {}, 1000)'], { shell: false, stdio: 'ignore' });
   return helper;
@@ -49,9 +49,9 @@ async function supervise({ status, onReport, delay } = {}) {
   await once(child.stdout, 'data', { signal: AbortSignal.timeout(5000) });
   const result = await runEmbeddedSupervisor({ database, processRef, delay,
     startApplication: () => { started++; return application; },
-    report: (state, reason) => {
-      events.push([state, reason]);
-      onReport?.({ state, reason, processRef, child });
+    report: (state, reason, diagnostics) => {
+      events.push([state, reason, diagnostics]);
+      onReport?.({ state, reason, diagnostics, processRef, child });
     },
   });
   assert.equal(started, 1);
@@ -63,7 +63,7 @@ async function supervise({ status, onReport, delay } = {}) {
 let checks = 0;
 const identity = readFileSync(`${data}/postmaster.pid`, 'utf8');
 const recovered = await supervise({
-  status: ({ signal }) => ++checks === 1 ? stalledProbe(signal) : runEmbeddedDatabaseStatusProbe({ signal }),
+  status: options => ++checks === 1 ? stalledProbe(options) : runEmbeddedDatabaseStatusProbe(options),
   onReport: ({ state, child, processRef }) => {
     if (state !== 'database_probe_recovered') return;
     assert.equal(helper.signalCode, 'SIGKILL');
@@ -77,11 +77,17 @@ assert.equal(recovered.result, 0);
 assert.equal(checks, 2);
 assert.ok(recovered.events.some(([state]) => state === 'database_probe_waiting'));
 assert.ok(recovered.events.some(([state]) => state === 'database_stopped'));
+const recoveredDiagnostics = recovered.events.filter(([state]) => state === 'database_probe_diagnostic');
+assert.deepEqual(recoveredDiagnostics.map(([, phase]) => phase), ['waiting', 'recovered']);
+assert.equal(recoveredDiagnostics[0][2].latest.helperTimeout.stage, 'status_wait');
+assert.equal(recoveredDiagnostics[0][2].latest.joined, true);
+assert.equal(recoveredDiagnostics[1][2].episodeId, recoveredDiagnostics[0][2].episodeId);
+assert.equal(recoveredDiagnostics[1][2].latest.state, 'ok');
 process.stdout.write('PASS: real timed-out helper exits; recovery keeps application and database identity unchanged\n');
 
 await start();
 let waitingAt;
-const expired = await supervise({ status: ({ signal }) => stalledProbe(signal),
+const expired = await supervise({ status: options => stalledProbe(options),
   onReport: ({ state, reason }) => {
     if (state === 'database_probe_waiting') waitingAt = performance.now();
     if (state === 'stopping') {
@@ -94,6 +100,11 @@ const expired = await supervise({ status: ({ signal }) => stalledProbe(signal),
 assert.equal(expired.result, 1);
 assert.equal(expired.events.filter(([state]) => state === 'database_probe_waiting').length, 1);
 assert.ok(expired.events.some(([state]) => state === 'database_stopped'));
+const stoppedDiagnostics = expired.events.filter(([state]) => state === 'database_probe_diagnostic');
+assert.deepEqual(stoppedDiagnostics.map(([, phase]) => phase), ['waiting', 'database_probe_grace_expired']);
+assert.equal(stoppedDiagnostics[1][2].firstFailure.sequence, 1);
+assert.ok(stoppedDiagnostics[1][2].latest.sequence > 1);
+assert.ok(JSON.stringify(stoppedDiagnostics[1][2]).length < 6000);
 process.stdout.write('PASS: repeated helper timeouts exhaust one fixed grace window and drain once\n');
 
 await start();
@@ -106,7 +117,7 @@ process.stdout.write('PASS: actual stopped PostgreSQL fails without a transient 
 await start();
 let cancelTimer;
 const cancelled = await supervise({
-  status: ({ signal }) => stalledProbe(signal),
+  status: options => stalledProbe(options),
   delay: async () => {},
   onReport: ({ state, processRef }) => {
     if (state === 'supervising') cancelTimer = setTimeout(() => processRef.emit('SIGTERM'), 250);

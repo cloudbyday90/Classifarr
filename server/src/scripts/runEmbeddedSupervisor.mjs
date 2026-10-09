@@ -57,7 +57,8 @@ if (import.meta.main) {
       ...embeddedRuntimeComposition({ report: (status, authority, operation, message) =>
         process.stdout.write(`${JSON.stringify({ component: 'EmbeddedQueueMaintenance', status, authority, operation,
           ...(message ? { message } : {}) })}\n`) }),
-      report: (status, reason) => process.stdout.write(`${JSON.stringify({ component: 'EmbeddedSupervisor', status, ...(reason ? { reason } : {}) })}\n`),
+      report: (status, reason, diagnostics) => process.stdout.write(`${JSON.stringify({ component: 'EmbeddedSupervisor', status,
+        ...(reason ? { reason } : {}), ...(diagnostics ? { diagnostics } : {}) })}\n`),
     });
   } catch {
     process.stderr.write('Embedded supervisor refused startup; verify the packaged embedded entrypoint and configuration.\n');

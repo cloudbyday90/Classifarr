@@ -29,3 +29,18 @@ and all **40/40** tooling tests then passed. No guards were weakened.
 Recommendation: retain Node 24 types. Review the available 24.19.2 patch separately;
 consider the Node 26 major only alongside an explicitly planned runtime migration.
 Neither open PR was merged, closed or modified remotely.
+
+## Probe-diagnostics round recheck
+
+Starting from `bce87b3e`, a fresh open-PR query still returned 555 and 556;
+`Get-Random` again selected 555 at the same immutable head. Reapplying the reviewed
+candidate and running strict `npm ci` succeeded with zero npm audit advisories.
+The correctly invoked `npm run test:tooling:dependencies` again passed 39/40,
+failing only the Node-major compatibility contract. A preliminary direct Node
+invocation also failed three installer checks because it lacked npm's execution
+context; those are invocation errors, not candidate regressions.
+
+Restored the manifest and lockfile byte-for-byte, reinstalled, and verified 40/40
+tooling checks pass. This round did not repeat the candidate's previously recorded
+client typechecks/build. The runtime and PR head are unchanged; the recommendation
+remains to retain Node 24 types, not to weaken the compatibility check.

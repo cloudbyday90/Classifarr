@@ -3,6 +3,7 @@ import { runEmbeddedDatabaseStatusProbe } from './embeddedDatabaseStatusProbe.mj
 import { runEmbeddedDatabaseOperation } from './embeddedDatabaseOperation.mjs';
 import { readEmbeddedDatabaseIdentityFile } from './embeddedDatabaseIdentityFile.mjs';
 import { runEmbeddedDatabaseShutdownCommand } from './embeddedDatabaseShutdownCommand.mjs';
+import { observeProbe } from './embeddedProbeDiagnostics.mjs';
 
 const PG_DATA = '/app/data/postgres';
 
@@ -54,20 +55,24 @@ export function createEmbeddedDatabaseControl({ command = runEmbeddedDatabaseShu
         } catch (error) { state = 'failed'; throw error; }
       });
     },
-    /** @param {{signal?: AbortSignal}} [options] */
-    async check({ signal } = {}) {
+    /** @param {{signal?: AbortSignal, observe?: Function}} [options] */
+    async check({ signal, observe } = {}) {
       requireAdopted();
       return exclusive(async () => {
+        observeProbe(observe, 'identity_before');
         await verifyIdentity(signal);
         let failure;
-        try { await status({ signal }); }
+        observeProbe(observe, 'status_spawn');
+        try { await status({ signal, observe }); }
         catch (error) {
           if (!['database_probe_timeout', 'database_probe_resource_pressure'].includes(error?.code)) throw error;
           failure = error;
         }
         // Neither success nor a transient result grants replacement ownership.
+        observeProbe(observe, 'identity_after');
         await verifyIdentity(signal);
         if (failure) throw failure;
+        observeProbe(observe, 'complete');
       });
     },
     /** @param {{signal?: AbortSignal}} [options] */

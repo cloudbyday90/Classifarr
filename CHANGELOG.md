@@ -9,6 +9,13 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Added
+
+- **Container shutdown diagnostics** — Database liveness failures now include
+  bounded stage timings, timeout and cancellation details, supervisor resource
+  context, and a shared reference linking the last healthy check to recovery or
+  shutdown. Ownership checks, deadlines and memory safeguards are unchanged.
+
 ### Fixed
 
 - **CI image pulls** — Trusted main-branch tests use a dedicated Docker Hub

@@ -4,6 +4,7 @@ import { runEmbeddedDatabaseOperation } from './embeddedDatabaseOperation.mjs';
 import { waitForEmbeddedExit } from './embeddedChildProcess.mjs';
 import { prepareSelectedDatabase, readSelectedDatabaseFile, SELECTED_DATABASE_DATA } from './embeddedSelectedDatabaseLayout.mjs';
 import { launchSelectedDatabase, verifySelectedDatabaseShutdown } from './embeddedSelectedDatabaseProcess.mjs';
+import { observeProbe } from './embeddedProbeDiagnostics.mjs';
 
 function identityOf(text, pid) {
   const lines = text.split('\n');
@@ -60,10 +61,12 @@ export function createSelectedEmbeddedDatabase({ prepare = prepareSelectedDataba
         } catch (error) { state = 'failed'; throw error; }
       });
     },
-    async check({ signal } = {}) {
+    async check({ signal, observe } = {}) {
       requireAdopted();
       return exclusive(async () => {
+        observeProbe(observe, 'identity_before');
         if (!(await current(signal)).ready) throw new Error('selected_database_not_ready');
+        observeProbe(observe, 'complete');
       });
     },
     async stop() {
