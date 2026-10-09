@@ -4,7 +4,7 @@ import { URL } from 'node:url'
 import { normalizeEvaluationGaps } from '../src/utils/evaluationCoverageGaps.js'
 
 test('saved evaluation coverage is compact, keyboard-pausable and clears after lost access', async ({ page }, testInfo) => {
-  let paired = 20, denied = false, reads = 0, writes = 0
+  let paired = 20, busy = false, denied = false, reads = 0, writes = 0
   await page.clock.install()
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const path = new URL(route.request().url()).pathname
@@ -23,7 +23,8 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
       if (denied) status = 403
       else data = { version: 'evaluation_history_summary.v4', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
         activity: { checkedAt: '2026-10-09T12:00:00Z',
-          policy: { status: 'complete', observedAt: '2026-10-09T12:00:00Z', counts: { cases: 300, paired: 300,
+          policy: busy ? { status: 'busy', observedAt: '2026-10-09T12:00:00Z', counts: null }
+            : { status: 'complete', observedAt: '2026-10-09T12:00:00Z', counts: { cases: 300, paired: 300,
             baseline: { automatic: 40, review: 37, manual: 223, unavailable: 0 },
             sourceAware: { automatic: 40, review: 37, manual: 223, unavailable: 0 } } },
           capture: { enabled: false, dailyCalls: 0, dailyTokens: 0, quotaDay: '2026-10-09',
@@ -46,12 +47,16 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await panel.getByRole('button', { name: 'Pause summary' }).focus()
   await page.keyboard.press('Space')
   paired = 25
+  busy = true
   // Advance one polling interval without replaying every unrelated dashboard animation frame.
   await page.clock.fastForward(300_000)
   await expect.poll(() => reads).toBeGreaterThan(1)
   await expect(panel).toContainText('20 completed comparisons')
+  await expect(panel).toContainText('300 cases evaluated by policy replay')
   await panel.getByRole('button', { name: 'Resume summary' }).press('Space')
   await expect(panel).toContainText('25 completed comparisons')
+  await expect(panel).toContainText('last attempt waited for competing background work')
+  await expect(panel).not.toContainText('300 cases evaluated by policy replay')
   const disclosure = panel.locator('summary')
   await disclosure.focus(); await page.keyboard.press('Enter')
   await expect(panel.locator('details')).toHaveAttribute('open', '')

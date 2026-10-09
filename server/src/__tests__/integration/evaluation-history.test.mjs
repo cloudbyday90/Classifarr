@@ -66,6 +66,9 @@ test('activity reads policy work and disabled capture separately from zero compl
   expect(JSON.stringify(report)).not.toContain('PRIVATE');
   await query("UPDATE automatic_source_pair_evaluation SET observed_at=now()-interval '16 minutes',evaluated_at=now()-interval '16 minutes'");
   expect((await readEvaluationHistory(database())).activity.policy).toMatchObject({ status: 'stale', counts: null });
+  await query(`UPDATE automatic_source_pair_evaluation SET status='failed',report=NULL,input_fingerprint=NULL,
+    evaluated_at=NULL,failure_code='busy',failure_count=1`);
+  expect((await readEvaluationHistory(database())).activity.policy).toMatchObject({ status: 'busy', counts: null });
 });
 
 test('read-only filtering and scheduled pruning enforce 30 days, future clock exclusion and 500 windows', async () => {

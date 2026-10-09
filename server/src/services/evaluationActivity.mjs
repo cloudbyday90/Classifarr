@@ -3,6 +3,8 @@ import { readAutomaticPolicyReport } from './automaticPolicyReplayReport.mjs';
 import { ADJUDICATION_RESERVED_TOKENS } from './adjudicationBudgetContract.mjs';
 
 const captureStates = new Set(['disabled', 'ready', 'captured', 'waiting_for_replay', 'budget_exhausted', 'deferred', 'unavailable']);
+const policyDeferrals = new Set(['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider',
+  'representation_unavailable', 'evidence_budget', 'deadline', 'evaluation_unavailable']);
 const timestamp = value => value != null && Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : null;
 const count = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
 const outcomeCounts = arm => Object.fromEntries(['automatic', 'review', 'manual', 'unavailable'].map(key => [key, arm[key]]));
@@ -12,7 +14,7 @@ function policyActivity(row, checkedAt) {
   const empty = status => ({ status, observedAt, counts: null });
   if (!row) return empty('never_run');
   if (!observedAt) return empty('unknown');
-  if (row.status === 'failed') return empty('failed');
+  if (row.status === 'failed') return empty(policyDeferrals.has(row.failure_code) ? row.failure_code : 'failed');
   if (row.status !== 'complete') return empty('unknown');
   const age = Date.parse(checkedAt) - Date.parse(observedAt);
   if (age < 0 || age >= 15 * 60_000) return empty('stale');
@@ -44,7 +46,7 @@ export function projectEvaluationActivity(policy, budget, checkedAt) {
 }
 
 export async function readEvaluationActivity(client) {
-  const { rows: [policy] } = await client.query(`SELECT status, observed_at::text,
+  const { rows: [policy] } = await client.query(`SELECT status, failure_code, observed_at::text,
     report->'policyReplay' AS policy_report, report->'sampled' AS sampled
     FROM automatic_source_pair_evaluation WHERE singleton=true`);
   const { rows: [budget] } = await client.query(`SELECT daily_calls,daily_tokens,quota_day::text,

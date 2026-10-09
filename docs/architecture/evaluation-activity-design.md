@@ -35,6 +35,11 @@ readiness: reservations are labeled with their UTC day, and a saved outcome is
 not a live worker heartbeat. A failed refresh clears the entire displayed snapshot
 even while paused. Resume displays the latest authorized snapshot.
 
+Persisted scheduler `failed` records can mean a normal busy/resource deferral.
+Project only the known categorical reason into fixed operator guidance; never
+display a raw exception. Unknown reasons retain the generic failed state. Reading
+does not clear the deferral, shorten its cooldown or claim a worker is running.
+
 No mutation is repeated by this work. Restart reads durable state; cancellation,
 ownership fencing, resource admission and inference quotas are unchanged.
 No new work is necessary on a fresh/disabled installation. Completion means the

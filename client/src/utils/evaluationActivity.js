@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-const policyStates = ['complete', 'never_run', 'failed', 'stale', 'unknown', 'no_policies', 'cache_incomplete', 'no_eligible_cases']
+const policyStates = ['complete', 'never_run', 'failed', 'stale', 'unknown', 'no_policies', 'cache_incomplete', 'no_eligible_cases',
+  'busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable',
+  'evidence_budget', 'deadline', 'evaluation_unavailable']
 const captureStates = ['disabled', 'ready', 'captured', 'waiting_for_replay', 'budget_exhausted', 'deferred', 'unavailable', 'unknown']
 const count = (value, max) => Number.isInteger(value) && value >= 0 && value <= max
 const validTime = value => typeof value === 'string' && Number.isFinite(Date.parse(value))
@@ -43,6 +45,15 @@ export const evaluationPolicyStatus = Object.freeze({
   no_policies: 'No active policies were available for the last evaluation.',
   cache_incomplete: 'The last evaluation was waiting for description vectors. Check library evidence coverage.',
   no_eligible_cases: 'No cases were available for the last evaluation.',
+  busy: 'The last attempt waited for competing background work. Automatic retries remain subject to resource safeguards.',
+  memory_pressure: 'Memory safeguards paused the last attempt. Review memory diagnostics if this persists; do not disable the safeguards.',
+  memory_unknown: 'The last attempt could not verify available memory. Check memory diagnostics if retries do not recover.',
+  disabled: 'The last attempt found RAG disabled. Check RAG settings.',
+  unsupported_provider: 'The last attempt found an unsupported description provider. Check description-provider settings.',
+  representation_unavailable: 'The last attempt could not find ready current-model description vectors. Check library evidence coverage.',
+  evidence_budget: 'The last attempt exceeded this evaluation’s evidence capacity. Review evaluation diagnostics; do not reset imports.',
+  deadline: 'The last attempt reached its time limit. Review competing work if retries do not recover.',
+  evaluation_unavailable: 'Policy evaluation could not complete. Review evaluation diagnostics if automatic retries do not recover.',
 })
 
 export const evaluationCaptureOutcome = Object.freeze({

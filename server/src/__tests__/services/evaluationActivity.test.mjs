@@ -52,6 +52,12 @@ test.each(['no_policies', 'cache_incomplete', 'no_eligible_cases'])('keeps incom
   expect(projectEvaluationActivity(row, budget(), now).policy).toMatchObject({ status, counts: null });
 });
 
+test.each(['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider',
+  'representation_unavailable', 'evidence_budget', 'deadline', 'evaluation_unavailable'])('explains the allowlisted scheduler deferral %s', failure_code => {
+  expect(projectEvaluationActivity({ ...policy(), status: 'failed', failure_code }, budget(), now).policy)
+    .toMatchObject({ status: failure_code, counts: null });
+});
+
 test.each(['ready', 'captured', 'waiting_for_replay', 'budget_exhausted', 'deferred', 'unavailable'])('reports configured quota separately from saved outcome %s', status => {
   const row = { ...budget(), status, daily_calls: 5, daily_tokens: 42240, quota_day: '2026-10-08', calls_reserved: 5, tokens_reserved: 42240 };
   expect(projectEvaluationActivity(policy(), row, now).capture).toMatchObject({ enabled: true, lastOutcome: status,
