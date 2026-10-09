@@ -113,5 +113,60 @@ deferral here recovered without intervention; it does not justify weakening the
 safeguard. These follow-ups are recommendations, not implemented permission or
 scheduler changes in this documentation-only batch.
 
+## Requested local rebuild and schema dump
+
+Built without cache from clean commit `ee18970771a6cbe2afa9325c88eb59c0ed1d4056`
+using `docker-compose-smart.mjs ... build --no-cache --require-provenance`.
+Recreated only the local `classifarr` service with `--no-build --force-recreate
+--wait`; no appdata was deleted. The resulting local image ID is
+`sha256:17c7fd36cb28cba75dd6d4f87ff73ecbae78a93c647068e576dcea98cbfe30d5`, with
+the matching OCI revision. This is a local image identity, not a published image
+or signed provenance claim. This follow-up documentation is not a runtime change.
+
+The container started at 21:01:40 UTC and became healthy with zero restarts/no OOM.
+It retained UID/GID 1000, a read-only root, the existing appdata/media mounts and
+2 GiB limit. Health returned 200; unauthenticated evaluation history returned 401.
+The provider's metadata-only preflight was ready. At 21:02:30 the database still
+held the five cached responses, zero configured capture limits, and five charged
+calls / 42,240 reserved tokens. All ten import/backfill handoffs were complete.
+No additional capture allowance was granted after restart.
+
+After recreation, `check-schema-snapshot-container.mjs --dump` passed against a
+fresh isolated database using the new image. `database/schema/current.sql` had no
+tracked difference. The exact owned schema-check container and its temporary
+appdata directory were removed by the runner; both removals were verified. The
+running local application's database was not used for the schema dump.
+
+## Remote CI scope
+
+The first Resource Capacity Regression attempt for the exact commit above,
+[run 37990798850](https://github.com/cloudbyday90/Classifarr/actions/runs/37990798850),
+failed before its workload marker. Its log contained only
+`resource_study_command_failed`, without a failing Docker stage or underlying
+diagnostic. No application/resource assertion failure can be inferred from that
+message. One failed-job rerun on the same source also failed before the workload;
+the original failure is retained, not relabeled as a pass.
+
+The concurrent [CI run 37990799264](https://github.com/cloudbyday90/Classifarr/actions/runs/37990799264)
+provides a concrete cause for its database job: PostgreSQL test setup failed to
+pull an image because Docker Hub reported the **unauthenticated pull rate limit**.
+No integration suites ran in that job. Installation acceptance also failed early;
+the resource/installation messages alone do not prove they share the same cause.
+Remote CI is not green, despite the successful local tests and rebuild.
+
+[Docker's official pull guidance](https://docs.docker.com/docker-hub/usage/pulls/),
+discovered through MCP on October 9, recommends authenticating automated pulls and
+distinguishes account pull quotas from shared-address abuse limits. The repository
+has publishing credentials, but these test jobs currently pull anonymously.
+Before release, address trusted-job pull authentication with a dedicated read-only
+token where possible; keep PR jobs secret-free and preserve digest/version pins.
+Reusing publishing credentials would be simpler but grants more privilege than
+pull-only jobs need. The operator was asked to choose the credential scope; no
+secret, workflow permission or registry configuration was changed in this round.
+That CI prerequisite now precedes the replay-handoff recommendation above. Also
+retain the missing stage diagnostic as follow-up work rather than infer a cause
+from the resource runner's generic failure.
+
 The recovery skill preserved admission, identity and quota boundaries; the
-dependency skill isolated the incompatible PR and kept its gate intact.
+dependency skill isolated the incompatible PR and kept its gate intact. The
+release-evidence skill kept local image validation separate from remote CI.
