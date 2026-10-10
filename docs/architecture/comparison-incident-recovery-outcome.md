@@ -61,7 +61,31 @@ The rollback image is
 Docker Desktop could not copy the temporary mount directly; the existing helper
 streams the generated binary backup and verifies its checksum instead.
 
-The no-cache rebuild, health and isolated schema results follow after completion.
+Built with `docker-compose-smart.mjs build --no-cache --require-provenance` using
+the existing local Compose override and AVX2 selection. Exact source revision:
+`039bef517faf036c31d7462eb85cf32bc49c7120`. Docker image ID:
+`sha256:3bdd05d25e3d9402afed7f674c61d2b0ed4aeb7ebbd49a65312a5fed2159ffaa`.
+This outcome-only follow-up does not change its runtime source.
+
+Only local `classifarr` was recreated, preserving its data and media mounts.
+The candidate started at 2026-10-10 00:03:49 UTC (October 9 locally). At
+00:04:23 and 00:05:30 UTC it reported healthy, HTTP 200, zero restarts and
+`OOMKilled=false`. Description refresh reported `up_to_date` at 00:04:56 UTC.
+One container-memory sample was 631.1 MiB of the unchanged 2 GiB limit; this is
+a startup observation, not a sustained memory soak or leak conclusion.
+
+The Linux-only directory-fsync, complete/exclusive-copy and unchanged-source
+behavior skipped by Windows Jest passed using the candidate image's module in
+a network-disabled, resource-bounded disposable container. No production data
+was mounted. Its container was removed after the check.
+
+After rebuilding, `check-schema-snapshot-container.mjs --dump` applied fresh
+migrations and generated the schema from a separate disposable database.
+`database/schema/current.sql` is unchanged. Verified removal of the schema
+container and its temporary host data. A read-only local query confirmed that
+the original historical warning remains unresolved and has no fabricated
+incident/recovery metadata. These are local checks, not a production upgrade
+rehearsal or a claim that remote CI has completed.
 
 ## Limits and recommendation
 
