@@ -25,10 +25,53 @@ Existing parser, file URL, side-effect import and missing-file checks remain.
 - All 40 toolchain/install-policy tests passed on the retained dependencies.
 - Server lint, TypeScript, knip and production dependency analysis passed.
 - Documentation, copyright, static ESM checks and `git diff --check` passed.
+- Full server unit run: 1,763 suites passed, 54,891 tests passed, one existing
+  platform-specific test skipped (54,892 total), in 408 seconds. The Linux
+  image probe below exercises the directory-fsync behavior unavailable on Windows.
 
-Full server and exact-image results are recorded below after completion. This
-document does not claim a new frontend coverage run or a coverage ratchet from
-old reports; no frontend behavior or client API contract changed.
+No database driver, SQL or API contract changed, so a new full database
+integration or frontend coverage run was not required. No coverage ratchet is
+claimed from old reports.
+
+## Exact local image
+
+The no-cache Compose build used clean source
+`b65a94d3ea44835b9ad472ca9127f263cca63a4c`. Docker identified the result as
+`sha256:d4ec658346e18fba4705bee5bca00cae22a881d417dd673bca196d87de533efe`.
+The revision label matched. This is local image evidence, not a published
+multi-platform release or signed-provenance claim.
+
+Fourteen synthetic dotenv/Node contracts passed against that image, including
+the new undefined-option and CLI quiet cases. The probe had no network, a
+read-only root, UID/GID 1000, dropped capabilities, bounded CPU/memory/PIDs and
+only disposable tmpfs writes. A separate Linux directory-fsync/exclusive-copy
+probe also passed against the image's migration-tree module without app-data.
+
+Before replacement, a 76,670,986-byte local database archive was checksum-verified
+and its archive index read successfully. The prior image is retained as
+`classifarr:pre-memory-b8351fb8-5232-4083-b9f0-3625570dec41`. The private backup
+remains in ignored `.tmp/`, not in the repository.
+
+The post-build schema dump ran against a new disposable database using this
+exact image. It passed through migration
+`20261009_230000_comparison_incident_ledger.sql`, included all 22 seed migrations,
+and left `database/schema/current.sql` unchanged. The owned container and its
+temporary directory were cleaned up.
+
+Only the local Compose service was recreated, with `--no-build --pull never
+--no-deps --force-recreate --wait`. Container
+`b0033c2742a75e40f91d90ec4c3d2dc9dc5495f1c94bf72adbe21e419fe984d4`
+started at `2026-10-10T03:09:44.023150653Z` using the exact image above.
+Docker reported healthy and `/health` returned 200. Read-only database checks
+confirmed the latest migration, no WARN/ERROR rows since startup and the same
+twelve unresolved identity conflicts. There were zero restarts and no OOM.
+The read-only root, UID/GID 1000, no-new-privileges and 2 GiB memory limit stayed
+intact. An early sample was 368.2 MiB; this is not a sustained-memory or leak
+test. Unraid and shared Ollama were not redeployed or reconfigured.
+
+The release-evidence skill kept these local checks tied to the tested image.
+The final follow-up commit updates this outcome document only; it does not
+change runtime bytes or claim remote CI has already completed.
 
 ## Open PR trial
 
