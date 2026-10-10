@@ -74,7 +74,13 @@ tests cover stalled input, invalid UTF-8/JSON, chunked byte limits and exact
 specials, partial scope, duplicate edges, canonical fingerprints, 256-season and
 64-work boundaries, unknown keys and attempted actor/library authority.
 
-Final quality gates and exact-image evaluation are recorded after completion.
+Focused coverage for the two new modules is 100% statements, branches, functions
+and lines (69 tests in two suites); this is scoped coverage, not whole-repository
+coverage. The complete client suite, lint, typechecks and dependency/ownership
+preflight pass. The [metadata failure outcome](classification-metadata-failure-outcome.md)
+records the shared final-image, schema and backend verification receipts.
+The rebuilt image's network-none mapping fixture returns a valid draft with
+`canApply: false`; the read-only local cross-reference counts are unchanged.
 No production recovery or release-readiness claim is implied.
 
 ## Next recommendation
