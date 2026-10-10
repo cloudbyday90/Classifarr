@@ -36,6 +36,7 @@ export function parseSourceIdentityIssues(value, offset) {
         !isCount(item.libraryId) || item.libraryId === 0 || !isText(item.libraryName) || !isText(item.title) ||
         !(item.year === null || (isCount(item.year) && item.year > 0 && item.year <= 9999)) ||
         ![null, 'movie', 'tv'].includes(item.mediaType) || !owns(issueLabels, item.issue) || !validProviderFields(item.providerFields) ||
+        !(item.sourceVersion == null || (typeof item.sourceVersion === 'string' && /^[a-f0-9]{64}$/.test(item.sourceVersion))) ||
         !owns(recoveryLabels, item.recoveryState) || !isDate(item.lastSeenAt) ||
         !(item.retryAfter === null || isDate(item.retryAfter)) || !validRecoveryOutcome(item.lastRecovery, value.asOf) ||
         (['retry_wait', 'retry_due'].includes(item.recoveryState) && !isDate(item.retryAfter))) return null

@@ -30,6 +30,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   rematching media or activating mappings. Optional exact-ID checks explain
   remaining episode gaps using typed IMDb/TVDB cross-references, with bounded
   reads and explicit missing, conflicting and out-of-series outcomes.
+  Administrators can now check unsaved whole-work or season-mapping drafts beside
+  unresolved items. Reviews detect stored-source changes, retain parent conflicts
+  and exclude unverified content from backfill; they do not activate mappings.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or

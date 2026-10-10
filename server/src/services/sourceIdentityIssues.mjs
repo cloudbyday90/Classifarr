@@ -18,6 +18,12 @@ const READ_ISSUES = `WITH ${COMPLETE_SOURCE_CAPTURES_CTE}, issues AS MATERIALIZE
         o.media_type, o.identity_issue, o.provider_fields, o.recovery_retry_after, o.last_seen_at,
         o.recovery_outcome, o.recovery_attempted_at, o.recovery_completed_at,
         l.name AS library_name,
+        (SELECT encode(sha256(convert_to(jsonb_build_array(
+            o.library_id,o.media_server_id,o.external_id,o.xmin::text,o.generation,
+            o.title,o.year,o.media_type,o.identity_issue,o.provider_fields,o.last_seen_at,
+            c.capture_revision,l.xmin::text,l.external_id,l.name,l.media_type,
+            s.xmin::text,s.type,s.url,s.api_key)::text,'UTF8')),'hex')
+            FROM media_server s WHERE s.id=o.media_server_id AND s.is_active) AS source_version,
         CASE WHEN o.identity_issue IN ('invalid_provider_ids','invalid_media_type') THEN 'source_review'
             WHEN o.recovery_outcome IN ('insufficient_evidence','external_ids_disagree',
                 'candidate_not_supported','title_year_mismatch') THEN 'source_review'
@@ -42,6 +48,7 @@ SELECT statement_timestamp() AS as_of, totals.*,
     COALESCE((SELECT jsonb_agg(jsonb_build_object(
         'libraryId',library_id,'libraryName',library_name,'mediaServerId',media_server_id,'externalId',external_id,
         'title',title,'year',year,'mediaType',media_type,'issue',identity_issue,'providerFields',provider_fields,
+        'sourceVersion',source_version,
         'recoveryState',recovery_state,'retryAfter',recovery_retry_after,'lastSeenAt',last_seen_at,
         'lastRecovery', CASE WHEN recovery_attempted_at IS NULL AND recovery_completed_at IS NULL THEN NULL
             ELSE jsonb_build_object('reason',recovery_outcome,'attemptedAt',recovery_attempted_at,
@@ -79,6 +86,8 @@ export async function readSourceIdentityIssues(db, offset = 0) {
         recovery,
         items: row.items.map(item => ({
             key: createHash('sha256').update(JSON.stringify([item.libraryId, item.mediaServerId, item.externalId])).digest('hex'),
+            sourceVersion: typeof item.sourceVersion === 'string' && /^[a-f0-9]{64}$/.test(item.sourceVersion)
+                ? item.sourceVersion : null,
             libraryId: item.libraryId, libraryName: text(item.libraryName), title: text(item.title),
             year: item.year, mediaType: item.mediaType, issue: item.issue,
             providerFields: providerFields(item.providerFields),

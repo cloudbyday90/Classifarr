@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import express from 'express';
+import rateLimit from 'express-rate-limit';
+import { libraryObservationHealthLimiterConfig } from '../config/rateLimits.mjs';
 import { ForbiddenError } from '../utils/appError.mjs';
 import { reviewInteger } from '../services/mediaIdentityReviewContract.mjs';
 
@@ -14,6 +16,8 @@ export function createMediaIdentityReviewRouter({ authenticateToken, requireAdmi
     next();
   });
   router.get('/', async (req, res) => res.json(await service.list(req.reviewActorId, req.query)));
+  router.post('/source-scopes/:key/review', rateLimit(libraryObservationHealthLimiterConfig),
+    async (req, res) => res.json(await service.reviewSourceScope(req.reviewActorId, req.params.key, req.body)));
   router.get('/:itemId/receipts/:previewId', async (req, res) => res.json(await service.getReceipt(req.reviewActorId, req.params.itemId, req.params.previewId)));
   router.post('/:itemId/preview', async (req, res) => res.json(await service.preview(req.reviewActorId, req.params.itemId, req.body)));
   router.post('/:itemId/confirm', async (req, res) => res.json(await service.confirm(req.reviewActorId, req.params.itemId, req.body)));

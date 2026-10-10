@@ -53,17 +53,21 @@ function copySeasonScope(scope) {
     mappings: mappings.sort((a, b) => a.sourceSeason - b.sourceSeason) };
 }
 
+/** Canonical structural scope only; declarations are not verified inventory. */
+export function copySourceCatalogScope(mediaType, input) {
+  if (!['movie', 'tv'].includes(mediaType)) return null;
+  if (input?.kind === 'whole_work' && keysAre(input, ['kind', 'tmdbId']) && positiveId(input.tmdbId)) {
+    return { kind: 'whole_work', tmdbId: input.tmdbId };
+  }
+  return input?.kind === 'seasons' && mediaType === 'tv' ? copySeasonScope(input) : null;
+}
+
 function copyPlan(input) {
   if (!keysAre(input, ['version', 'intent', 'source', 'scope']) ||
       input.version !== 'source_catalog_scope_plan.v1' || input.intent !== 'preserve_source_grouping') return null;
   const source = copySource(input.source);
   if (!source) return null;
-  let scope;
-  if (input.scope?.kind === 'whole_work' && keysAre(input.scope, ['kind', 'tmdbId']) && positiveId(input.scope.tmdbId)) {
-    scope = { kind: 'whole_work', tmdbId: input.scope.tmdbId };
-  } else if (input.scope?.kind === 'seasons' && source.mediaType === 'tv') {
-    scope = copySeasonScope(input.scope);
-  }
+  const scope = copySourceCatalogScope(source.mediaType, input.scope);
   return scope ? { version: input.version, intent: input.intent, source, scope } : null;
 }
 

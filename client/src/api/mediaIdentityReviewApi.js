@@ -17,4 +17,8 @@ export function getMediaIdentityReceipt(itemId, previewId) {
   return getDataRequest(`/media-identity-review/${encodeURIComponent(itemId)}/receipts/${encodeURIComponent(previewId)}`, { skipAutomaticRetry: true })
 }
 
-export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt }
+export function reviewSourceScope(key, body) {
+  return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/review`, body, { skipAutomaticRetry: true })
+}
+
+export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt, reviewSourceScope }

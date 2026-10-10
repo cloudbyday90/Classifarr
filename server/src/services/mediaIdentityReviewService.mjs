@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
 import { assertReviewSource, projectReviewCandidate, projectReviewSource, reviewBody, reviewInteger, reviewPreviewId } from './mediaIdentityReviewContract.mjs';
 import { getMediaIdentityReceipt } from './mediaIdentityReceiptReadService.mjs';
+import { reviewSourceScope } from './sourceScopeReview.mjs';
 import { applyReviewedIdentity, listReviewSources, readReviewSource, requireReviewActor, storeReviewPreview } from './mediaIdentityReviewRepository.mjs';
 
 export function createMediaIdentityReviewService({ db, getIdentityDetails }) {
   return {
+    reviewSourceScope: (actorId, key, body) => reviewSourceScope(db, actorId, key, body),
     getReceipt: (actorId, itemId, previewId) => getMediaIdentityReceipt(db, actorId, itemId, previewId),
     async list(actorId, query = {}) {
       await requireReviewActor(db, actorId);

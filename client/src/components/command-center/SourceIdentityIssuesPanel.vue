@@ -113,6 +113,12 @@
           <RouterLink :to="`/libraries/${item.libraryId}`">
             Open library
           </RouterLink>
+          <SourceScopeDraft
+            v-if="item.sourceVersion && item.issue === 'conflicting_provider_ids' && ['movie', 'tv'].includes(item.mediaType)"
+            :key="item.key + item.sourceVersion"
+            :source="item"
+            :offset="offset"
+          />
         </li>
       </ol>
       <nav
@@ -151,6 +157,7 @@ import { nextTick, ref, watch } from 'vue'
 import { useSourceIdentityIssues } from '@/composables/useSourceIdentityIssues'
 import { recoveryLabels, sourceIssueExplanation, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
 import { recoveryOutcomeLabel } from '@/utils/sourceRecoveryOutcomes'
+import SourceScopeDraft from '@/components/library/SourceScopeDraft.vue'
 defineProps({ expectedCount: { type: Number, required: true } })
 const { report, offset, error, refresh, isStale } = useSourceIdentityIssues()
 const heading = ref(null)

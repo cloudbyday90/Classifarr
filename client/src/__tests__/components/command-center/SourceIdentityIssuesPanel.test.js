@@ -7,6 +7,16 @@ import { sourceIssuePage } from '../../fixtures/sourceIdentityIssues'
 
 vi.mock('@/api/libraryCatalogApi', () => ({ getLibrarySourceIdentityIssues: vi.fn() }))
 let wrapper
+it('offers the draft review only when a current stored revision is available', async () => {
+  const report = sourceIssuePage()
+  report.items[0].sourceVersion = 'a'.repeat(64)
+  vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValue(report)
+  render(); await flushPromises()
+  expect(wrapper.text()).toContain('Draft a catalog mapping (admin)')
+  report.items[0].sourceVersion = null
+  await wrapper.find('button').trigger('click'); await flushPromises()
+  expect(wrapper.text()).not.toContain('Draft a catalog mapping (admin)')
+})
 beforeEach(() => { vi.clearAllMocks() })
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks() })
 const render = () => {

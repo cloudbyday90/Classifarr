@@ -3,7 +3,7 @@
 // Shared by the Command Center total and its drill-down. No rotating window or
 // preview limit: pagination limits output, never the population being counted.
 export const COMPLETE_SOURCE_CAPTURES_CTE = `complete_captures AS MATERIALIZED (
-    SELECT c.library_id, c.media_server_id, c.generation
+    SELECT c.library_id, c.media_server_id, c.generation, c.xmin::text AS capture_revision
     FROM media_source_capture_state c JOIN libraries l ON l.id=c.library_id
     WHERE l.is_active AND c.media_server_id=l.media_server_id
         AND c.phase='complete' AND c.mode='full'

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 vi.mock('../../api/core', () => ({ getDataRequest: (...args) => mockGet(...args), apiClient: { post: (...args) => mockPost(...args) } }))
-import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt } from '../../api/mediaIdentityReviewApi'
+import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt, reviewSourceScope } from '../../api/mediaIdentityReviewApi'
 import mediaServerApi from '../../api/mediaServer'
 
 beforeEach(() => vi.clearAllMocks())
@@ -32,6 +32,12 @@ describe('media identity API leaf', () => {
     expect(mockPost).not.toHaveBeenCalled()
   })
   it('wires all named functions through the domain aggregator', () => {
-    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt })
+    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt, reviewSourceScope })
+  })
+  it('checks scope drafts without automatic replay and preserves the raw response', async () => {
+    const response = { data: { canApply: false } }, body = { scope: {} }
+    mockPost.mockResolvedValue(response)
+    expect(await reviewSourceScope('key/next', body)).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/media-identity-review/source-scopes/key%2Fnext/review', body, { skipAutomaticRetry: true })
   })
 })
