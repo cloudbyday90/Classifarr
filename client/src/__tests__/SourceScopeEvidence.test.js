@@ -76,3 +76,32 @@ it('projects safe fields only and accepts a single typed movie declaration', () 
   value.comparison = { unit: 'movie', total: 1, matched: 1, exclusions: [] }
   expect(parseSourceScopeEvidence(value, draft()).matched).toBe(1)
 })
+
+it('shows exact typed works and actionable exclusion guidance without rendering provider HTML', async () => {
+  const value = response(); value.catalogWorks = [{ tmdbId: 10, mediaType: 'tv', title: '<img src=x>', releaseDate: '2001-01-01', secret: 'private' }]
+  inspectSourceScope.mockResolvedValue({ data: value }); render()
+  await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.get('[aria-label="Catalog works checked"]').text()).toContain('TMDb series 10')
+  expect(wrapper.text()).toContain('series poster or synopsis does not supply this episode ID')
+  expect(wrapper.find('img').exists()).toBe(false)
+  expect(JSON.stringify(parseSourceScopeEvidence(value, draft()))).not.toContain('private')
+})
+it.each([
+  [], [{ tmdbId: 11, mediaType: 'tv', title: 'Wrong', releaseDate: null }],
+  [{ tmdbId: 10, mediaType: 'movie', title: 'Wrong type', releaseDate: null }],
+  [{ tmdbId: 10, mediaType: 'tv', title: '', releaseDate: null }],
+  [{ tmdbId: 10, mediaType: 'tv', title: 'Bad date', releaseDate: 'private' }],
+].map(catalogWorks => ({ catalogWorks })))('rejects catalog works outside the typed proposal', ({ catalogWorks }) => {
+  expect(parseSourceScopeEvidence({ ...response(), catalogWorks }, draft())).toBeNull()
+})
+it.each([
+  ['scope_catalog_season_missing', 'series ID and season number together'],
+  ['scope_catalog_invalid', 'inconsistent season data'], ['scope_evidence_timed_out', 'deadline'],
+  ['scope_evidence_busy', 'Another evidence check'], ['private-token', 'GitHub issue'],
+])('gives sanitized repair guidance for %s', async (code, text) => {
+  inspectSourceScope.mockRejectedValue({ response: { status: 503, data: { code, message: 'secret' } } })
+  render(); await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.get('[role="alert"]').text()).toContain(text)
+  expect(wrapper.text()).not.toContain('secret')
+  expect(wrapper.text()).not.toContain('private-token')
+})

@@ -40,6 +40,37 @@
     </p>
     <template v-if="result">
       <p>Membership is not independent cross-provider identity verification. Your explicit approval is still required.</p>
+      <section
+        v-if="result.catalogWorks.length"
+        aria-label="Catalog works checked"
+      >
+        <h5>Catalog works checked</h5>
+        <ul>
+          <li
+            v-for="work in result.catalogWorks"
+            :key="work.tmdbId"
+          >
+            {{ work.title }}{{ work.releaseDate ? ` (${work.releaseDate})` : '' }} —
+            TMDb {{ work.mediaType === 'tv' ? 'series' : 'movie' }} {{ work.tmdbId }}
+          </li>
+        </ul>
+        <p>These are the works in your proposal, not automatically selected matches. Check their identity before approval.</p>
+      </section>
+      <section
+        v-if="result.exclusions.length || !result.total"
+        aria-label="How to review this mapping"
+      >
+        <h5>What to check next</h5>
+        <p v-if="!result.total">
+          {{ guidance.empty_source }}
+        </p>
+        <p
+          v-for="reason in [...new Set(result.exclusions.map(item => item.reason))]"
+          :key="reason"
+        >
+          {{ guidance[reason] }}
+        </p>
+      </section>
       <details v-if="result.exclusions.length">
         <summary>View excluded {{ result.unit === 'episode' ? 'episodes' : 'movie' }} ({{ result.exclusions.length }})</summary>
         <ul>
@@ -71,6 +102,7 @@
 <script setup>
 import { useSourceScopeEvidence } from '@/composables/useSourceScopeEvidence'
 import { scopeExclusionLabels } from '@/utils/sourceScopeEvidence'
+import { sourceMappingGuidance as guidance } from '@/utils/sourceMappingGuidance'
 import SourceMappingApproval from './SourceMappingApproval.vue'
 const props = defineProps({ draft: { type: Object, required: true }, offset: { type: Number, required: true } })
 const { result, error, busy, notice, inspect, cancel } = useSourceScopeEvidence(() => props.draft, () => props.offset)
@@ -78,7 +110,7 @@ const { result, error, busy, notice, inspect, cancel } = useSourceScopeEvidence(
 
 <style scoped>
 section { margin-top: 1rem; border-top: 1px solid #64748b; padding-top: .75rem; }
-p, li { margin: .75rem 0; }
+p, li { margin: .75rem 0; overflow-wrap: anywhere; }
 button, summary { min-height: 2.75rem; padding: .5rem; cursor: pointer; }
 button { border: 1px solid #64748b; border-radius: .35rem; margin-right: .5rem; background: #1e293b; color: #f1f5f9; }
 button:disabled { opacity: .5; cursor: not-allowed; }

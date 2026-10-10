@@ -1388,8 +1388,8 @@
     {"path":"server/src/utils/ragLogger.mjs","digest":"fd958004adc2a223563442d19a51c4cc54060fd591eb417df2610e856a2326f9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/staleClassificationHandoffRepository.mjs","digest":"122089f02d6fea5d71158606648e4117b0623e4fa94e156f375dde98d1951dc8","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"atomic_classification_handoff"},
     {"path":"database/migrations/20261010_220000_source_catalog_mappings.sql","digest":"25e0da7cf4ef3268bce84143f63f69068333aa291fc58790bf39fd1f3d8f9242","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"source_mapping_schema"},
-    {"path":"server/src/services/sourceMappingManagement.mjs","digest":"cf38d259bd7ab726e9f2f5a202d9b06e4d884ae22ff1e67db0d6a5174e7065a8","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"source_mapping_admin_revocation"},
+    {"path":"server/src/services/sourceMappingManagement.mjs","digest":"a9cd6ba71cd18510b2198d6778c438fecf7884c2d1c3e3beb014bc104771fb71","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"source_mapping_admin_revocation"},
     {"path":"server/src/services/sourceMappingPersistence.mjs","digest":"1af04206bb5eb7ce71d48f429da0a92567ce1e2d85673b4f295fca0ac8b8b92e","analysisDigest":"e0e5cae7477ce104ea6fa841923194c0896dd42403f676f7873a61eddab0f6a9","review":"source_mapping_owned_recovery"},
-    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"0b08dd034ba7c27c77cf65145a25c2d8e3c806fb633fe8d1aed534a5e68ec6fd","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
+    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"cfe21a95298705974ff43a790002a8b6a095ca75761132f3e5164a0557e498c3","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
   ]
 }

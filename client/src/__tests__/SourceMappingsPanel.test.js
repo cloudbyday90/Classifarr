@@ -51,3 +51,12 @@ it.each([
 ])('fails closed on malformed saved state', change => {
   const value = report(); change(value); expect(parseSourceMappings(value)).toBeNull()
 })
+
+it.each([['missing_tmdb_episode_id', 'episode-level metadata'], ['check_unconfirmed', 'interrupted'], ['private-token', 'GitHub issue'], [undefined, 'GitHub issue']])('shows fixed saved guidance for %s without leaking arbitrary diagnostics', async (code, text) => {
+  const value = report(); value.items[0].status = 'verification_deferred'; value.items[0].diagnostic = { code, message: 'secret' }
+  getSourceMappings.mockResolvedValue(value); await load()
+  expect(wrapper.text()).toContain(text)
+  expect(wrapper.text()).not.toContain('secret')
+  expect(wrapper.text()).not.toContain('private-token')
+  expect(revokeSourceMapping).not.toHaveBeenCalled()
+})

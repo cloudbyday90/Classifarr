@@ -30,6 +30,9 @@
       >
         <strong>{{ item.title }}</strong> · {{ item.libraryName }}
         <p>{{ labels[item.status] }}</p>
+        <p v-if="item.guidance">
+          {{ item.guidance }}
+        </p>
         <p v-if="item.scope.kind === 'whole_work'">
           Whole work: TMDb {{ item.scope.tmdbId }}
         </p>
@@ -114,7 +117,7 @@ async function revoke(id) {
     const { data } = await revokeSourceMapping(id)
     if (ticket !== sequence) return
     if (data?.version !== 'source_mapping_revocation.v1' || data.mappingId !== id || data.status !== 'revoked') throw new Error('invalid_receipt')
-    report.value.items = report.value.items.map(item => item.id === id ? { ...item, status: 'revoked' } : item)
+    report.value.items = report.value.items.map(item => item.id === id ? { ...item, status: 'revoked', guidance: null } : item)
     selected.value = []; notice.value = 'Mapping revoked. Refresh metadata issues to see the current count.'
   } catch {
     if (ticket === sequence) { uncertain.value = true; error.value = 'Revocation could not be confirmed. Refresh saved mappings before submitting again.' }

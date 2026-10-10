@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../utils/appError
 import { MEDIA_SYNC_OWNER_LOCK } from './mediaSyncLockKeys.mjs';
 import { reviewBody, reviewPreviewId, reviewInteger } from './mediaIdentityReviewContract.mjs';
 import { requireReviewActor } from './mediaIdentityReviewRepository.mjs';
+import { sourceMappingDiagnostic } from './sourceMappingDiagnostics.mjs';
 
 /** Read committed state after an uncertain response; never retry approval automatically. */
 export function createSourceMappingManagement(db) {
@@ -24,7 +25,8 @@ export function createSourceMappingManagement(db) {
       return { version: 'source_mappings.v1', offset, hasMore: rows.length > 50, items: rows.slice(0, 50).map(row => ({
         id: row.id, title: row.title?.slice(0, 500) ?? 'Source item', libraryName: row.library_name?.slice(0, 500),
         scope: row.scope, approvedAt: row.approved_at, retryAfter: row.retry_after,
-        status: row.revoked_at ? 'revoked' : row.last_outcome === 'verification_deferred' ? 'verification_deferred'
+        diagnostic: row.revoked_at ? null : sourceMappingDiagnostic(row.last_outcome),
+        status: row.revoked_at ? 'revoked' : sourceMappingDiagnostic(row.last_outcome) ? 'verification_deferred'
           : row.materialized_at && row.current_receipt ? 'materialized' : 'awaiting_sync',
       })) };
     },

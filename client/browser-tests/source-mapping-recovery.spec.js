@@ -40,6 +40,7 @@ test('explicit mapping approval survives a lost response without clearing the un
     }
     if (path.endsWith('/evidence')) data = { ...draft, version: 'source_scope_evidence.v1', reference: id,
       evidenceFingerprint: 'd'.repeat(64), verification: 'typed_catalog_membership', crossProviderVerified: false,
+      catalogWorks: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01' }],
       comparison: { unit: 'movie', total: 1, matched: 1, exclusions: [] } }
     if (path.endsWith('/approve')) {
       approvals++
@@ -48,7 +49,7 @@ test('explicit mapping approval survives a lost response without clearing the un
     }
     if (path.endsWith('/source-scopes/mappings')) data = { version: 'source_mappings.v1', offset: 0, hasMore: false,
       items: approvals ? [{ id, title: 'Fixture title 1', libraryName: 'Fixture library', scope: { kind: 'whole_work', tmdbId: 10 },
-        retryAfter: null, status: revocations ? 'revoked' : 'awaiting_sync' }] : [] }
+        diagnostic: { code: 'catalog_unavailable' }, retryAfter: '2026-10-11T12:00:00Z', status: revocations ? 'revoked' : 'verification_deferred' }] : [] }
     if (path.endsWith('/revoke')) { revocations++; data = { version: 'source_mapping_revocation.v1', mappingId: id, status: 'revoked' } }
     if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
@@ -60,6 +61,7 @@ test('explicit mapping approval survives a lost response without clearing the un
   await page.getByLabel('TMDb movie ID', { exact: true }).fill('10')
   await page.getByRole('button', { name: 'Check draft structure' }).click()
   await page.getByRole('button', { name: 'Check source and catalog evidence' }).click()
+  await expect(page.getByRole('region', { name: 'Catalog works checked' })).toContainText('Catalog fixture (2001-01-01)')
   const approval = page.getByRole('region', { name: 'Approve complete source mapping' })
   await expect(approval.getByRole('button')).toBeDisabled()
   await approval.getByRole('checkbox').check()
@@ -68,7 +70,7 @@ test('explicit mapping approval survives a lost response without clearing the un
   await expect(approval.getByRole('button')).toBeDisabled()
   const saved = page.getByRole('region', { name: 'Saved source mappings' })
   await saved.getByRole('button', { name: 'Refresh saved mappings' }).click()
-  await expect(saved).toContainText('Awaiting successful verification')
+  await expect(saved).toContainText('Check TMDb configuration and availability')
   await expect(overview.locator('.issue-number')).toHaveText('1')
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 })

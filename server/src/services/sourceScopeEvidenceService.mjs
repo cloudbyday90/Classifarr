@@ -53,6 +53,7 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
           asOf: new Date().toISOString(), verification: 'typed_catalog_membership', crossProviderVerified: false,
           evidenceFingerprint: scopeEvidenceDigest([draft.draftFingerprint, source.digest, catalog.digest]),
           backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' },
+          catalogWorks: catalog.details.map(({ tmdbId, mediaType, title, releaseDate }) => ({ tmdbId, mediaType, title, releaseDate })),
           comparison };
         if (onVerified) result = await onVerified({ actorId, key, input, target, source, catalog, result, signal: scopedSignal });
       });

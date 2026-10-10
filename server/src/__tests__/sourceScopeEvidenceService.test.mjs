@@ -28,6 +28,7 @@ test('rechecks both providers and configuration without writes, leaking secrets 
   expect(result).toMatchObject({ version: 'source_scope_evidence.v1', verification: 'typed_catalog_membership', crossProviderVerified: false,
     canApply: false, persisted: false, comparison: { unit: 'movie', total: 1, matched: 1, exclusions: [] },
     backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' } });
+  expect(result.catalogWorks).toEqual([{ tmdbId: 10, mediaType: 'movie', title: 'Fixture', releaseDate: null }]);
   expect(result.reference).toMatch(/^[a-f0-9-]{36}$/);
   expect(s.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
   expect(s.provider.getIdentityDetails).toHaveBeenCalledTimes(2);

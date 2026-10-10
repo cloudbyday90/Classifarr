@@ -9,6 +9,7 @@
       Keep this source item grouped as it is. First check the draft, then verify the
       source and catalog evidence. Saving a complete mapping requires a separate confirmation.
     </p>
+    <p>Use a TMDb movie or series ID, not a TVDB or episode ID. For a grouped show, map each source season to its own TMDb series and season. Descriptions and posters do not settle conflicting IDs.</p>
     <form
       :aria-describedby="`${id}-help`"
       @submit.prevent="submit"

@@ -2,8 +2,9 @@
 import { sourceMappingConfiguration, approvedScopeDocuments } from './sourceMappingContract.mjs';
 import { scopeEvidencePlan, readScopeCatalog, compareScopeEvidence } from './sourceScopeCatalogEvidence.mjs';
 import { sourceMetadata } from './mediaSourceIdentity.mjs';
+import { SourceMappingCheckError, sourceMappingFailureCode } from './sourceMappingDiagnostics.mjs';
 
-export const READ_SOURCE_MAPPING = `SELECT m.*, l.external_id AS library_external_id,
+export const READ_SOURCE_MAPPING = `SELECT m.*, m.retry_after>clock_timestamp() AS retry_pending, l.external_id AS library_external_id,
   s.type AS server_type,s.url,s.api_key,s.is_active,
   (SELECT jsonb_build_object('id',t.id,'active',t.is_active,'key',t.api_key)
    FROM tmdb_config t ORDER BY (t.is_active IS TRUE) DESC,t.id DESC LIMIT 1) AS catalog_config
@@ -23,6 +24,7 @@ export function createSourceMappingRecovery({ store, context, source, createCata
     });
     if (!mapping) return null;
     const refused = { handled: true, proof: null };
+    if (mapping.retry_pending) return refused;
     if (layoutIds === null) await store.withCurrentCapture(context, async tx => {
       const { rows } = await tx.query(`SELECT id FROM source_catalog_mappings WHERE library_id=$1 AND media_server_id=$2
         AND revoked_at IS NULL AND (retry_after IS NULL OR retry_after<=clock_timestamp())
@@ -33,6 +35,9 @@ export function createSourceMappingRecovery({ store, context, source, createCata
     if (layoutReads >= 20) return refused;
     const deadline = AbortSignal.timeout(90000);
     const signal = source.signal ? AbortSignal.any([source.signal, deadline]) : deadline;
+    const recordFailure = code => store.withCurrentCapture(context, tx => tx.query(`UPDATE source_catalog_mappings
+      SET last_outcome=$2,retry_after=COALESCE(retry_after,clock_timestamp()+interval '1 day')
+      WHERE id=$1 AND revoked_at IS NULL`, [mapping.id, `deferred:${code}`]));
     const read = () => source.service.getLibraryItemLayout(source.url, source.apiKey,
       source.libraryKey, item.external_id, { signal });
     const validConfiguration = mapping.source_digest === item.source_identity_evidence.snapshotDigest &&
@@ -47,7 +52,14 @@ export function createSourceMappingRecovery({ store, context, source, createCata
         if (layout.digest === mapping.layout_digest && layout.identity.snapshotDigest === mapping.source_digest) {
           return recoveredProof(item, mapping, layout.digest, mapping.documents, mapping.catalog_verified_at);
         }
-      } catch { source.signal?.throwIfAborted(); return refused; }
+      } catch (error) {
+        source.signal?.throwIfAborted();
+        // Cached verification is still a provider attempt; retain its failure across restarts.
+        await store.withCurrentCapture(context, tx => tx.query(`UPDATE source_catalog_mappings
+          SET retry_after=clock_timestamp()+interval '1 day',attempt_count=LEAST(attempt_count+1,1000000),last_outcome=$2
+          WHERE id=$1 AND revoked_at IS NULL`, [mapping.id, `deferred:${sourceMappingFailureCode(error, 'source', signal)}`]));
+        return refused;
+      }
     }
     if (attempts >= 4) return refused;
     if (admittedIds === null) await store.withCurrentCapture(context, async tx => {
@@ -65,27 +77,42 @@ export function createSourceMappingRecovery({ store, context, source, createCata
     });
     if (!claimed) return refused;
     attempts++;
+    let stage = 'validation';
     try {
-      if (!validConfiguration) throw new Error('mapping_changed');
+      if (mapping.source_digest !== item.source_identity_evidence.snapshotDigest) throw new SourceMappingCheckError('source_changed');
+      if (!validConfiguration) throw new SourceMappingCheckError('configuration_changed');
+      stage = 'catalog';
       const provider = await createCatalogProvider(mapping.catalog_config);
       layoutReads++;
+      stage = 'source';
       const layout = await read();
-      if (layout.identity.snapshotDigest !== mapping.source_digest) throw new Error('mapping_changed');
+      stage = 'validation';
+      if (layout.identity.snapshotDigest !== mapping.source_digest) throw new SourceMappingCheckError('source_changed');
       const plan = scopeEvidencePlan(layout, mapping.scope);
+      stage = 'catalog';
       const catalog = await readScopeCatalog(plan, provider, signal);
+      stage = 'validation';
       const comparison = compareScopeEvidence(layout, plan, catalog.catalog);
-      if (!comparison.total || comparison.matched !== comparison.total || comparison.exclusions.length) throw new Error('mapping_incomplete');
+      if (!comparison.total) throw new SourceMappingCheckError('empty_source');
+      if (comparison.matched !== comparison.total || comparison.exclusions.length) {
+        throw new SourceMappingCheckError(comparison.exclusions[0]?.reason);
+      }
+      stage = 'catalog';
       const freshCatalog = await readScopeCatalog(plan, provider, signal);
+      stage = 'source';
       const fresh = await read();
-      if (layout.digest !== fresh.digest || catalog.digest !== freshCatalog.digest) throw new Error('mapping_changed');
+      stage = 'validation';
+      if (layout.digest !== fresh.digest) throw new SourceMappingCheckError('source_changed');
+      if (catalog.digest !== freshCatalog.digest) throw new SourceMappingCheckError('catalog_changed');
+      stage = 'catalog';
       await provider.recheck();
       signal.throwIfAborted();
+      stage = 'validation';
       return recoveredProof(item, mapping, layout.digest,
         approvedScopeDocuments(mapping.scope, mapping.media_type, catalog), new Date().toISOString());
-    } catch {
+    } catch (error) {
       source.signal?.throwIfAborted();
-      await store.withCurrentCapture(context, tx => tx.query(`UPDATE source_catalog_mappings
-        SET last_outcome='verification_deferred' WHERE id=$1 AND revoked_at IS NULL`, [mapping.id]));
+      await recordFailure(sourceMappingFailureCode(error, stage, signal));
       return refused;
     }
   };

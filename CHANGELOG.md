@@ -23,7 +23,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   missing or reused episode IDs and distinguish catalog membership from identity
   approval. Owned library sync applies only complete verified mappings; partial
   mappings remain unresolved. Saved status, audit records and revocation separate
-  approval from completion. Season descriptions retain their typed scope for
+  approval from completion. Review shows the exact typed catalog works checked,
+  actionable episode-level exclusions and durable, sanitized failure reasons;
+  interrupted checks remain unconfirmed and cached-source failures retain cooldowns.
+  Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not
   automatically approved on upgrade; ownership and memory safeguards remain.

@@ -2,6 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { inspectSourceScope } from '@/api/mediaIdentityReviewApi'
 import { parseSourceScopeEvidence } from '@/utils/sourceScopeEvidence'
+import { sourceScopeFailureMessage } from '@/utils/sourceMappingGuidance'
 
 export function useSourceScopeEvidence(draft, offset) {
   const result = ref(null), error = ref(''), busy = ref(false), notice = ref('')
@@ -24,11 +25,7 @@ export function useSourceScopeEvidence(draft, offset) {
       result.value = parsed
     } catch (failure) {
       if (ticket !== sequence) return
-      const status = failure?.response?.status
-      error.value = status === 409 ? 'The source or catalog changed. Refresh items and review the draft again.'
-        : [401, 403].includes(status) ? 'An active administrator session is required.'
-          : status === 429 ? 'Too many checks. Wait before trying again.'
-            : 'Evidence could not be checked within the safety limits. Nothing was saved. Try again later or use the bounded diagnostics.'
+      error.value = sourceScopeFailureMessage(failure)
     } finally { if (ticket === sequence) { busy.value = false; controller = null } }
   }
   return { result, error, busy, notice, inspect, cancel }

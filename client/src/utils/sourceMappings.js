@@ -1,7 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { sourceMappingGuidance } from './sourceMappingGuidance'
 export const sourceMappingStatusLabels = Object.freeze({
   awaiting_sync: 'Awaiting successful verification by a library sync. This is not a completed repair.',
-  verification_deferred: 'Verification was deferred. The item remains unresolved; check the source and catalog mapping before replacing it.',
+  verification_deferred: 'This verification has not completed. The item remains unresolved. See the recorded reason below.',
   materialized: 'The complete mapping was verified and applied. Optional description vectors may still be backfilling.',
   revoked: 'Mapping revoked. It no longer authorizes recovery.',
 })
@@ -21,6 +22,8 @@ export function parseSourceMappings(data) {
         !scope.mappings.length || scope.mappings.length > 32 || scope.mappings.some(edge =>
           !integer(edge?.sourceSeason) || !integer(edge.tmdbSeriesId) || !edge.tmdbSeriesId || !integer(edge.tmdbSeason))) return null
     items.push({ id: item.id, title: item.title, libraryName: item.libraryName, status: item.status, retryAfter: item.retryAfter,
+      guidance: item.status === 'verification_deferred'
+        ? sourceMappingGuidance[Object.hasOwn(sourceMappingGuidance, item.diagnostic?.code ?? '') ? item.diagnostic.code : 'unknown'] : null,
       scope: scope.kind === 'whole_work' ? { kind: scope.kind, tmdbId: scope.tmdbId }
         : { kind: scope.kind, mappings: scope.mappings.map(({ sourceSeason, tmdbSeriesId, tmdbSeason }) => ({ sourceSeason, tmdbSeriesId, tmdbSeason })) } })
   }

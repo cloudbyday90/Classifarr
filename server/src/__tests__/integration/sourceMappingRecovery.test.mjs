@@ -157,8 +157,50 @@ test('failed verification cooldown survives a new recovery instance and a new sc
   expect(await recover(context)(item)).toEqual({ handled: true, proof: null });
   expect(provider.getIdentityDetails).toHaveBeenCalledTimes(5);
   expect((await pool.query('SELECT attempt_count,last_outcome FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rows[0])
-    .toEqual({ attempt_count: 1, last_outcome: 'verification_deferred' });
+    .toEqual({ attempt_count: 1, last_outcome: 'deferred:catalog_unavailable' });
   expect(await count()).toBe(1);
+});
+
+test.each(['source_changed', 'configuration_changed', 'source_seasons_changed', 'missing_tmdb_episode_id', 'catalog_season_missing'])('records a specific deferred reason without clearing the issue: %s', async code => {
+  const approved = await approve(); const context = await capture();
+  if (code === 'source_changed') item.source_identity_evidence.snapshotDigest = '0'.repeat(64);
+  if (code === 'configuration_changed') await pool.query("UPDATE media_server SET api_key='changed' WHERE id=$1", [serverId]);
+  if (code === 'source_seasons_changed') layout.seasons.push({ number: 3 });
+  if (code === 'missing_tmdb_episode_id') layout.episodes[0].providerIds.tmdb_id = [];
+  if (code === 'catalog_season_missing') provider.getIdentityDetails.mockResolvedValue({ id: 10, name: 'Fixture', seasons: [] });
+  expect(await recover(context)(item)).toEqual({ handled: true, proof: null });
+  const saved = (await createSourceMappingManagement(db).listSourceMappings(actorId)).items.find(value => value.id === approved.mappingId);
+  expect(saved).toMatchObject({ status: 'verification_deferred', diagnostic: { code } });
+  expect(saved.retryAfter).toBeTruthy();
+  expect(await count()).toBe(1);
+});
+
+test('cached layout failure retains cooldown across scans and exposes no provider text', async () => {
+  const approved = await approve(); let context = await capture();
+  await persistSourceMapping(store, context, (await recover(context)(item)).proof, { analyze });
+  await store.finish(context);
+  const read = jest.fn(async () => { throw new Error('secret provider URL'); });
+  deps.getMediaServerService = () => ({ getLibraryItemLayout: read });
+  context = await capture(); const attempt = recover(context);
+  expect(await attempt(item)).toEqual({ handled: true, proof: null });
+  expect(await attempt(item)).toEqual({ handled: true, proof: null });
+  await store.finish(context);
+  context = await capture(); expect(await recover(context)(item)).toEqual({ handled: true, proof: null });
+  expect(read).toHaveBeenCalledTimes(1);
+  const saved = (await createSourceMappingManagement(db).listSourceMappings(actorId)).items.find(value => value.id === approved.mappingId);
+  expect(saved).toMatchObject({ status: 'verification_deferred', diagnostic: { code: 'source_unavailable' } });
+  expect(JSON.stringify(saved)).not.toContain('secret');
+  expect(await count()).toBe(1);
+});
+
+test('legacy and interrupted attempts remain explicitly unconfirmed without provider reads', async () => {
+  const approved = await approve(); const reads = provider.getIdentityDetails.mock.calls.length;
+  for (const [outcome, code] of [['verification_deferred', 'unknown'], ['checking', 'check_unconfirmed'], ['deferred:private', 'unknown']]) {
+    await pool.query('UPDATE source_catalog_mappings SET last_outcome=$1 WHERE id=$2', [outcome, approved.mappingId]);
+    expect((await createSourceMappingManagement(db).listSourceMappings(actorId)).items.find(value => value.id === approved.mappingId))
+      .toMatchObject({ status: 'verification_deferred', diagnostic: { code } });
+  }
+  expect(provider.getIdentityDetails).toHaveBeenCalledTimes(reads);
 });
 
 test('an inventory completion failure rolls back the receipt, description documents and observation deletion', async () => {

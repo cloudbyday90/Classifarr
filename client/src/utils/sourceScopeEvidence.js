@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { parseScopeCatalogWorks } from './sourceMappingGuidance'
 export const scopeExclusionLabels = Object.freeze({
   unmapped_season: 'No season mapping proposed',
   ambiguous_episode_ids: 'Conflicting episode IDs',
@@ -40,6 +41,8 @@ export function parseSourceScopeEvidence(data, draft) {
   if (comparison.unit === 'movie' && comparison.total !== 1) return null
   // Old servers can still display a preview, but cannot enable approval without a fingerprint.
   const evidenceFingerprint = /^[a-f0-9]{64}$/.test(data.evidenceFingerprint ?? '') ? data.evidenceFingerprint : null
+  const catalogWorks = parseScopeCatalogWorks(data.catalogWorks, draft, comparison.unit)
+  if (!catalogWorks) return null
   return { reference: data.reference, evidenceFingerprint, unit: comparison.unit, total: comparison.total,
-    matched: comparison.matched, exclusions }
+    matched: comparison.matched, exclusions, catalogWorks }
 }
