@@ -59,13 +59,41 @@ relaxed. This is not recorded as a clean full-suite run or a fresh coverage-ratc
 pass.
 
 The full backend CI command passed all 1,770 suites: 55,209 tests passed and one
-platform-specific test was skipped (1,068.844 seconds). The candidate-image Linux
-filesystem check and final build/evaluation are recorded below when complete.
+platform-specific test was skipped (1,068.844 seconds). That Linux directory-fsync
+case was exercised separately with the actual candidate-image module: complete
+exclusive copy, identical digest, unchanged source and `EEXIST` on a repeat copy
+all passed. The disposable probe was non-root, network-isolated, read-only outside
+an 8 MiB tmpfs, limited to 128 MiB memory, and removed after completion.
 
 The ownership inventory initially rejected the newly extracted SQL module.
 Reviewed its complete constant statement and added only that source to a scoped
 `atomic_classification_handoff` review. Existing unresolved writer debt and all
 other security baselines remain unchanged.
+
+## Local image and schema evaluation
+
+- Built local Compose **without cache**, with clean source provenance at
+  `77de5cc548d75d82e74e87fc420f64db218f8ee6`.
+- Inspected Docker image ID:
+  `sha256:e10eab954d311ccbae48befe177c931ed41023ea1865c59817ab557e0b33235f`.
+  This is local image evidence, not a published multi-platform release receipt.
+- Recreated only the local Classifarr service. Healthy, `/health` HTTP 200,
+  zero restarts, no OOM, UID/GID 1000:1000, read-only root and unchanged 2 GiB cap.
+  Startup memory observed at 337.6 MiB; this is not a sustained memory-soak result.
+- Read-only before/after checks: 43 pending histories, four awaiting decisions,
+  zero new handoff receipts. The scheduled operation was not manually invoked on
+  local or production data. A pre-rebuild 76,799,099-byte backup was checksum
+  verified and its archive listing read; the previous exact image was retained.
+  This was backup verification, not a restore rehearsal.
+- Post-rebuild replay reference `035e0076-b016-43dc-8d10-4dc8e6606995` returned the
+  same eleven observations and provider breakdown. No unresolved ID was cleared.
+- Ran `node scripts/check-schema-snapshot-container.mjs --dump` **after rebuilding**,
+  pinned to the inspected image. The isolated fresh-database dump passed and its
+  container/data directory were cleaned up. The generated snapshot has no semantic
+  or tracked-file change; no schema migration was introduced.
+- This final evidence update changes documentation only. The tested runtime is
+  the source revision above. Unraid and the shared Plex/Ollama services were not
+  modified; no PR merge, branch creation, tag or release was performed.
 
 ## Next recommendation
 
