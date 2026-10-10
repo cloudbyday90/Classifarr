@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-10T13:42:38.461Z
--- Latest Migration: 20261010_140000_classification_metadata_failure_context.sql
+-- Generated: 2026-10-10T21:50:12.368Z
+-- Latest Migration: 20261010_220000_source_catalog_mappings.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8511,6 +8511,44 @@ ALTER SEQUENCE public.sonarr_config_id_seq OWNED BY public.sonarr_config.id;
 
 
 --
+-- Name: source_catalog_mappings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.source_catalog_mappings (
+    id uuid NOT NULL,
+    library_id integer NOT NULL,
+    media_server_id integer NOT NULL,
+    external_id text NOT NULL,
+    media_type text NOT NULL,
+    provider_fields text[] NOT NULL,
+    source_digest text NOT NULL,
+    layout_digest text NOT NULL,
+    configuration_digest text NOT NULL,
+    evidence_fingerprint text NOT NULL,
+    scope jsonb NOT NULL,
+    documents jsonb NOT NULL,
+    approved_by integer,
+    approved_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    revoked_at timestamp with time zone,
+    materialized_at timestamp with time zone,
+    catalog_verified_at timestamp with time zone,
+    retry_after timestamp with time zone,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    last_outcome text,
+    CONSTRAINT source_catalog_mappings_attempt_count_check CHECK (((attempt_count >= 0) AND (attempt_count <= 1000000))),
+    CONSTRAINT source_catalog_mappings_configuration_digest_check CHECK ((configuration_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT source_catalog_mappings_documents_check CHECK (((jsonb_typeof(documents) = 'array'::text) AND (jsonb_array_length(documents) <= 32) AND (octet_length((documents)::text) <= 262144))),
+    CONSTRAINT source_catalog_mappings_evidence_fingerprint_check CHECK ((evidence_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT source_catalog_mappings_external_id_check CHECK (((length(external_id) >= 1) AND (length(external_id) <= 500))),
+    CONSTRAINT source_catalog_mappings_layout_digest_check CHECK ((layout_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT source_catalog_mappings_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT source_catalog_mappings_provider_fields_check CHECK (((cardinality(provider_fields) <= 3) AND (provider_fields <@ ARRAY['tmdb_id'::text, 'tvdb_id'::text, 'imdb_id'::text]))),
+    CONSTRAINT source_catalog_mappings_scope_check CHECK (((jsonb_typeof(scope) = 'object'::text) AND (octet_length((scope)::text) <= 32768))),
+    CONSTRAINT source_catalog_mappings_source_digest_check CHECK ((source_digest ~ '^[a-f0-9]{64}$'::text))
+);
+
+
+--
 -- Name: source_identity_evidence_replay_observations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11956,6 +11994,22 @@ ALTER TABLE ONLY public.settings
 
 ALTER TABLE ONLY public.sonarr_config
     ADD CONSTRAINT sonarr_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: source_catalog_mappings source_catalog_mappings_library_id_media_server_id_external_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_catalog_mappings
+    ADD CONSTRAINT source_catalog_mappings_library_id_media_server_id_external_key UNIQUE (library_id, media_server_id, external_id);
+
+
+--
+-- Name: source_catalog_mappings source_catalog_mappings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_catalog_mappings
+    ADD CONSTRAINT source_catalog_mappings_pkey PRIMARY KEY (id);
 
 
 --
@@ -16048,6 +16102,30 @@ ALTER TABLE ONLY public.sonarr_config
 
 
 --
+-- Name: source_catalog_mappings source_catalog_mappings_approved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_catalog_mappings
+    ADD CONSTRAINT source_catalog_mappings_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: source_catalog_mappings source_catalog_mappings_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_catalog_mappings
+    ADD CONSTRAINT source_catalog_mappings_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: source_catalog_mappings source_catalog_mappings_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_catalog_mappings
+    ADD CONSTRAINT source_catalog_mappings_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
 -- Name: source_library_policy_links source_library_policy_links_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18248,6 +18326,7 @@ FROM unnest(ARRAY[
     '20261004_230000_queue_routing_replay_guard.sql',
     '20261005_180000_ingestion_compatibility_fence.sql',
     '20261009_230000_comparison_incident_ledger.sql',
-    '20261010_140000_classification_metadata_failure_context.sql'
+    '20261010_140000_classification_metadata_failure_context.sql',
+    '20261010_220000_source_catalog_mappings.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

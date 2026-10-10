@@ -73,14 +73,14 @@ test('explicit mapping approval survives a lost response without clearing the un
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     await saved.scrollIntoViewIfNeeded()
-    await page.evaluate(() => window.scrollTo(0, window.scrollY))
+    await page.evaluate(() => globalThis.scrollTo(0, globalThis.scrollY))
     expect(await saved.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
-    expect(await saved.evaluate(element => element.getBoundingClientRect().left >= 0 && element.getBoundingClientRect().right <= window.innerWidth)).toBe(true)
+    expect(await saved.evaluate(element => element.getBoundingClientRect().left >= 0 && element.getBoundingClientRect().right <= globalThis.innerWidth)).toBe(true)
   }
   // A taller capture shows the whole panel; narrow-width reflow was checked above.
   await page.setViewportSize({ width: 320, height: 1200 })
   await saved.scrollIntoViewIfNeeded()
-  await page.evaluate(() => window.scrollTo(0, window.scrollY))
+  await page.evaluate(() => globalThis.scrollTo(0, globalThis.scrollY))
   await saved.screenshot({ path: testInfo.outputPath('saved-mapping-mobile.png') })
   await saved.getByRole('checkbox').check()
   await saved.getByRole('button', { name: 'Revoke mapping for Fixture title 1' }).click()
