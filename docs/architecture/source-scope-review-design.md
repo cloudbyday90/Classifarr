@@ -75,3 +75,6 @@ Fresh open-PR enumeration found #555 and #556; a random draw selected
 24.19.2 → 26.6.4 and undici-types 7.24.6 → 8.9.0 diff separately. Registry
 integrity agrees; neither package declares an installer. Retain Node 24 and
 restore the trial if runtime-alignment checks reject it. No PR merge or release.
+
+See [the outcome](source-scope-review-outcome.md) for the completed trial, live
+count observations, verification and exact-image evidence.
