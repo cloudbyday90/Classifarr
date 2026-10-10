@@ -47,6 +47,10 @@ dependency change is retained and no check was weakened.
 The same inventory found Express 5.2.1 → 5.3.0 and Knip 6.40.0 → 6.41.0 available
 within existing ranges. These are deferred, separate update candidates, not
 claimed compatible upgrades. `npm outdated` is not a vulnerability assessment.
+The official [Express 5.3.0 release](https://github.com/expressjs/express/releases/tag/v5.3.0)
+includes HTTP and header-handling changes that warrant API regression checks;
+the [Knip 6.41.0 release](https://github.com/webpro-nl/knip/releases/tag/knip@6.41.0)
+changes traversal and resolution behavior. Both sources were opened on 2026-10-10.
 
 ## Verification
 
@@ -69,8 +73,60 @@ two adapter edits before their review. Only those exact source digests were
 updated after reviewing the new fingerprint projection and redirect refusal;
 neither changes ingestion SQL or ownership. Their analysis digests are unchanged.
 
-Broad coverage, exact-image evaluation and post-build schema evidence are recorded
-below after completion; focused tests are not a substitute for those checks.
+The full backend coverage run passed 1,784 of 1,785 suites and 55,891 tests, with
+one existing skipped test. Its sole failure was the ownership digest gate run
+before the two reviewed adapter entries were updated. A subsequent rerun against
+the committed files passed that suite's 39 tests. The full run's coverage is
+89.69% lines/statements, 91.09% functions and 86.07% branches. Both new backend
+modules have 100% line/function coverage and over 98% branch coverage. This records
+the initial failure and retest separately; it is not a claim of a green first run.
+
+The first full frontend run passed 453 files and 6,695 tests; the remaining lint
+contract suite hit its existing 10-second setup deadline, leaving 21 tests
+unexecuted. A full rerun with coverage, unchanged deadlines and two workers after
+the backend workload finished passed all 454 files / 6,716 tests, including those
+21 lint contract tests. Client coverage is 87.18% statements, 80.79% branches,
+86.78% functions and 88.96% lines. The fresh server/client coverage ratchet passed
+without changing its baseline. The four production naming, language, delivery
+boundary and runtime-maintenance policy audits also completed successfully.
+
+## Local image and real-source evaluation
+
+The no-cache Compose build used clean source commit
+`353ab1dad303778a8f0395238b7916ea218d7c4e`, producing immutable local image
+`sha256:542722dba843e88e7e21bbd603da37c21e5b68a064f431ad7772d7ef4df9a2cc`.
+Its OCI revision matches that commit. A checksum-verified, readable 76,876,442-byte
+local backup and exact old-image rollback tag were retained before replacing only
+the local Classifarr service. The replacement is healthy, returns HTTP 200 for
+`/health`, runs as `1000:1000` with a read-only root filesystem and the unchanged
+2 GiB limit, and initially reports zero restarts and no OOM kill.
+The later verification-note commit changes only Markdown excluded from the image
+context. The tested image remains identified by its code commit above, not by the
+documentation follow-up or a claimed published registry digest.
+
+After the build, `dumpSchema()` ran against a fresh, network-isolated container
+of that exact image. The tracked schema snapshot is unchanged. Fresh-install
+checks found no invented pending work or unresolved identities; the generated
+container and its owned temporary data directory were removed and their absence
+verified. This is local image/fresh-schema evidence, not a production upgrade.
+
+At 23:31:32 UTC, a read-only local aggregate check again found eleven unresolved
+items (nine source-review, two retry-wait) and ten current library captures.
+Two representative candidate lookups then exercised the actual new service and
+configured source/catalog providers with database writes prohibited:
+
+- One dual-TVDB conflict produced one available whole-series candidate. The
+  source TMDb and IMDb identifiers agreed with one TVDB lookup; the second TVDB
+  identifier had no catalog match. Another-scope match was reported, not promoted.
+- One grouped source produced two available TMDb series candidates. Its TVDB
+  lookup matched another scope only, not a whole series.
+
+Both returned non-applicable, non-persisted results. The unresolved count remained
+eleven, with zero mapping approvals and zero provider writes. These observations
+help explain the conflict categories but do not verify every source season or
+authorize selecting/discarding an identifier. Private item details stay in ignored
+local diagnostics, not this document. No Classifarr tab was present in the connected
+browser during the fresh check, so no fresh Unraid count is claimed.
 
 ## Operator path and recommendation stack
 

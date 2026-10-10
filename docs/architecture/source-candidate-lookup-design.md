@@ -62,7 +62,7 @@ Discovered and opened through MCP on 2026-10-10:
   several object types. TVDB supports shows, seasons and episodes, not movies.
 - [TMDb rate limits](https://developer.themoviedb.org/docs/rate-limiting) requires
   respecting 429 responses; published limits can change. Keep requests bounded.
-- [W3C status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html?trk=article-ssr-frontend-pulse_little-text-block)
+- [W3C status messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
   distinguishes result lists from the announced search status. Announce counts
   and errors without moving focus or making the entire result list a live region.
 - [DefinitelyTyped guidance](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/README.md)
