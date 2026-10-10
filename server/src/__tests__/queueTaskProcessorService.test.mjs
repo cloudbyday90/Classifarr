@@ -35,7 +35,11 @@ test.each([[404, 'task_metadata_not_found'], [503, 'task_metadata_fetch_failed']
   { id: 9, task_type: 'classification', attempts: 0, max_attempts: 5, claim_token: 'owned', webhook_log_id: 2 });
   expect(failTask).toHaveBeenCalledWith(9, reason, 0, 5, 'owned');
   expect(db.query).toHaveBeenCalledWith(expect.any(String), [2, reason]);
-  expect(logger.error).toHaveBeenCalledWith('Task processing failed', { taskId: 9, taskType: 'classification', reasonCode: reason });
+  expect(logger.error).toHaveBeenCalledWith('Task processing failed', {
+    taskId: 9, taskType: 'classification', reasonCode: reason,
+    metadataFailure: { category: status === 404 ? 'not_found' : 'upstream_error', httpStatus: status, transportCode: null },
+  });
+  expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private');
 });
 
 test.each([['55P03', 'image_index_lock_contention'], ['57014', 'image_index_query_cancelled'],

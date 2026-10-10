@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-10T00:30:17.557Z
--- Latest Migration: 20261009_230000_comparison_incident_ledger.sql
+-- Generated: 2026-10-10T13:42:38.461Z
+-- Latest Migration: 20261010_140000_classification_metadata_failure_context.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -18247,6 +18247,7 @@ FROM unnest(ARRAY[
     '20261004_210000_discord_delivery_outbox.sql',
     '20261004_230000_queue_routing_replay_guard.sql',
     '20261005_180000_ingestion_compatibility_fence.sql',
-    '20261009_230000_comparison_incident_ledger.sql'
+    '20261009_230000_comparison_incident_ledger.sql',
+    '20261010_140000_classification_metadata_failure_context.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

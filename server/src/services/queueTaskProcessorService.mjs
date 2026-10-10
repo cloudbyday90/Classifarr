@@ -13,7 +13,7 @@ import { processRatingNormalization as _processRatingNormalization } from './que
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
-import { classificationMetadataFailureReason } from './classificationMetadataFailure.mjs';
+import { classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
 import {
@@ -243,6 +243,7 @@ export class QueueTaskProcessorService {
                 taskId: task.id,
                 taskType: task.task_type,
                 reasonCode: failureReason,
+                ...(task.task_type === 'classification' ? classificationMetadataFailureLogFields(error) : {}),
                 ...(task.task_type === 'rebuild_hnsw_index' ? imageIndexFailureLogFields(error) : {}),
             });
             const acknowledged = await this.failTask(

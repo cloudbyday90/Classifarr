@@ -17,6 +17,8 @@ plain message. The queue then stores only `task_processing_failed`.
 
 - Preserve a sanitized typed metadata failure, not the original error/cause,
   credential-bearing URL, response body, title or request configuration.
+  Persist its bounded category/status/transport/retry-after fields in the task
+  failure log alongside the task reference; a generic reason alone loses context.
 - Only a 404 from the details request identifies a missing catalog record.
   Certification or later enrichment failures must not assert missing identity.
 - Missing details stop automatic retries on the owned queue claim. Count the
@@ -57,3 +59,8 @@ maintenance's non-atomic reset/enqueue handoff and missing history lineage.
   resources from authentication, throttling and upstream failures.
 - [PostgreSQL transaction isolation](https://www.postgresql.org/docs/18/transaction-iso.html):
   conditional updates re-evaluate changed rows under Read Committed.
+- [W3C error identification](https://www.w3.org/WAI/WCAG22/Understanding/error-identification)
+  and [error suggestions](https://www.w3.org/WAI/WCAG21/Understanding/error-suggestion.html):
+  name the affected item, explain the problem in text and offer a known safe
+  correction. These criteria address input errors; their communication principles
+  inform this background-task guidance, not a claim of WCAG conformance.

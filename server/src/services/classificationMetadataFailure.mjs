@@ -14,3 +14,8 @@ export class ClassificationMetadataFailure extends Error {
 export function classificationMetadataFailureReason(error) {
   return error instanceof ClassificationMetadataFailure ? error.reasonCode : null;
 }
+
+export function classificationMetadataFailureLogFields(error) {
+  return error instanceof ClassificationMetadataFailure
+    ? { metadataFailure: error.observation } : {};
+}
