@@ -25,6 +25,11 @@ job or permission to alter production. It performs bounded source and TMDb GETs.
 
 ## Interpreting results
 
+The [catalog-scope follow-up](source-identity-catalog-scope-outcome.md) adds the
+version-2 IMDb/TVDB breakdown and explains why an absent TMDb mapping does not
+establish an invalid or obsolete TVDB series ID. The receipts below preserve
+the original version-1 run rather than relabelling it as new evidence.
+
 - `agreement_with_missing_mappings`: some IDs agree with a source candidate,
   but at least one has no match in the requested movie/series bucket. Missing
   mappings are not evidence that an ID can safely be discarded.

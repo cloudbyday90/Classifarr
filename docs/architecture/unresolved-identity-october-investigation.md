@@ -9,6 +9,12 @@ remain; the unchanged Unraid deployment still displays twelve. The new
 missing catalog mappings from contradictory results without selecting an ID.
 The findings below describe the original twelve-item snapshot.
 
+The subsequent [catalog-scope investigation](source-identity-catalog-scope-design.md)
+found actual TVDB series records behind eight of nine extra TVDB IDs, including
+specials and follow-on/regional records. Missing TMDb mappings do not mean those
+IDs are invalid. Provider-specific diagnostic counts retain that distinction;
+automatic acceptance and retry budgets are unchanged.
+
 ## Read-only findings — 9 October 2026
 
 The same twelve TV titles were confirmed in the local database and the Unraid

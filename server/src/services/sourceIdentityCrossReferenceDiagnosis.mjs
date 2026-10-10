@@ -3,12 +3,13 @@ import { randomUUID } from 'node:crypto';
 import {
   copyCrossReferenceEvidence, crossReferenceRequests, inspectCrossReferenceResponse, summarizeCrossReferences,
 } from './sourceIdentityCrossReferenceEvidence.mjs';
+import { addCrossReferenceCounts, countCrossReferenceLookups, countCrossReferenceProviders } from './sourceIdentityCrossReferenceCounts.mjs';
 
 export const SOURCE_IDENTITY_CROSS_REFERENCE_LIMITS = Object.freeze({
   maximumObservations: 12, maximumObservationsPerLibrary: 4, libraryLimit: 12, retentionDays: 30,
   maximumLookupsPerObservation: 4, timeoutMs: 120000,
 });
-const VERSION = 'source_identity_cross_reference_diagnosis.v1';
+const VERSION = 'source_identity_cross_reference_diagnosis.v2';
 const PROVIDER_FIELDS = new Set(['tmdb_id', 'imdb_id', 'tvdb_id']);
 
 async function inspectOne(row, { getMediaServerService, tmdbService, signal }) {
@@ -53,7 +54,7 @@ async function inspectOne(row, { getMediaServerService, tmdbService, signal }) {
       return { outcome: 'provider_unavailable' };
     }
     signal.throwIfAborted();
-    findings.push(inspectCrossReferenceResponse(evidence.mediaType, response));
+    findings.push({ ...inspectCrossReferenceResponse(evidence.mediaType, response), source: request.source });
   }
   let fresh;
   try { fresh = await readSource(); } catch {
@@ -92,13 +93,13 @@ export function createSourceIdentityCrossReferenceDiagnosis({ readRows, getMedia
         }
         summary = { selectedObservations: selected.length, inspectedObservations: 0,
           limits: SOURCE_IDENTITY_CROSS_REFERENCE_LIMITS, outcomes: {},
-          stableEvidenceLookups: { lookups: 0, matched: 0, notFound: 0, reviewRequired: 0, lookupsWithOtherMediaResults: 0 } };
+          stableEvidenceLookups: countCrossReferenceLookups(), stableEvidenceByProvider: countCrossReferenceProviders() };
         for (const row of selected) {
           signal.throwIfAborted();
           const finding = await inspectOne(row, { getMediaServerService, tmdbService, signal });
           summary.outcomes[finding.outcome] = (summary.outcomes[finding.outcome] ?? 0) + 1;
           summary.inspectedObservations += 1;
-          for (const key of Object.keys(summary.stableEvidenceLookups)) summary.stableEvidenceLookups[key] += finding[key] ?? 0;
+          addCrossReferenceCounts(summary, finding);
         }
         result.status.id = selected.length ? 'complete' : 'no_current_conflicts';
       } catch {

@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildTmdbExternalIdRequest, decideTmdbExternalIdMatch } from './tmdbExternalIdMatch.mjs';
+import { countCrossReferenceLookups, countCrossReferenceProviders } from './sourceIdentityCrossReferenceCounts.mjs';
 
 const FIELDS = ['tmdb_id', 'imdb_id', 'tvdb_id'];
 const BUCKETS = ['movie_results', 'tv_results', 'tv_season_results', 'tv_episode_results', 'person_results'];
@@ -49,9 +50,5 @@ export function summarizeCrossReferences(evidence, findings) {
   else if (!evidence.providerIds.tmdb_id.includes([...ids][0])) outcome = 'matches_outside_source_candidates';
   else if (findings.some(item => item.status === 'not_found')) outcome = 'agreement_with_missing_mappings';
   else outcome = 'all_agree_current_candidate';
-  return { outcome, lookups: findings.length,
-    matched: findings.filter(item => item.status === 'resolved').length,
-    notFound: findings.filter(item => item.status === 'not_found').length,
-    reviewRequired: findings.filter(item => item.status === 'review_required').length,
-    lookupsWithOtherMediaResults: findings.filter(item => item.otherMediaResults).length };
+  return { outcome, ...countCrossReferenceLookups(findings), byProvider: countCrossReferenceProviders(findings) };
 }

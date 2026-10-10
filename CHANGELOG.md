@@ -32,7 +32,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   and avoids rematching a correct title merely to clear a warning. Identity
   disagreements remain unresolved. An opt-in, read-only cross-reference diagnostic
   separates missing catalog mappings from contradictory matches, with bounded
-  requests and aggregate-only output. Memory safeguards remain unchanged.
+  requests and aggregate-only IMDb/TVDB breakdowns. Missing series mappings and
+  results for other media types do not authorize dropping an ID or rematching
+  a correctly grouped series. Memory safeguards remain unchanged.
 - **Runtime configuration** — Update environment loading so undefined optional
   settings preserve configured defaults and command-line quiet mode honors env
   files, while explicit options retain precedence.

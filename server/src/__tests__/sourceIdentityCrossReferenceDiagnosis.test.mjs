@@ -24,7 +24,7 @@ afterEach(() => jest.restoreAllMocks());
 test('separates missing mappings from contradictions; never outputs private evidence', async () => {
   const t = setup({ responses: [response(10), response(10), { ...response(), tv_episode_results: [{ id: 99 }] }] });
   const result = await t.replay.replay();
-  expect(result).toMatchObject({ status: { id: 'complete' }, summary: { selectedObservations: 1, inspectedObservations: 1,
+  expect(result).toMatchObject({ version: 'source_identity_cross_reference_diagnosis.v2', status: { id: 'complete' }, summary: { selectedObservations: 1, inspectedObservations: 1,
     outcomes: { agreement_with_missing_mappings: 1 }, stableEvidenceLookups: {
       lookups: 3, matched: 2, notFound: 1, reviewRequired: 0, lookupsWithOtherMediaResults: 1,
     } } });
@@ -35,6 +35,11 @@ test('separates missing mappings from contradictions; never outputs private evid
     .toEqual([['tt00010', 'imdb_id'], [20, 'tvdb_id'], [21, 'tvdb_id']]);
   expect(t.source.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
   expect(t.tmdbService.findIdentityByExternalId.mock.calls[0][2].signal).toBeInstanceOf(AbortSignal);
+  expect(result.summary.stableEvidenceByProvider).toEqual({
+    imdb_id: { lookups: 1, matched: 1, notFound: 0, reviewRequired: 0, lookupsWithOtherMediaResults: 0, notFoundWithOtherMediaResults: 0 },
+    tvdb_id: { lookups: 2, matched: 1, notFound: 1, reviewRequired: 0, lookupsWithOtherMediaResults: 1, notFoundWithOtherMediaResults: 1 },
+  });
+  expect(result.summary.stableEvidenceLookups.notFoundWithOtherMediaResults).toBe(1);
 });
 
 test.each([
@@ -59,6 +64,8 @@ test.each([
   const result = await t.replay.replay();
   expect(result.summary.outcomes).toEqual({ source_changed: 1 });
   expect(result.summary.stableEvidenceLookups.lookups).toBe(0);
+  expect(result.summary.stableEvidenceByProvider.imdb_id.lookups).toBe(0);
+  expect(result.summary.stableEvidenceByProvider.tvdb_id.lookups).toBe(0);
 });
 
 test('candidate order changes do not change the meaning of a snapshot', async () => {
@@ -66,6 +73,51 @@ test('candidate order changes do not change the meaning of a snapshot', async ()
   t.source.getLibraryItemIdentityEvidence.mockReset().mockResolvedValueOnce(evidence)
     .mockResolvedValueOnce({ ...evidence, providerIds: { ...evidence.providerIds, tvdb_id: [21, 20] } });
   expect((await t.replay.replay()).summary.outcomes).toEqual({ agreement_with_missing_mappings: 1 });
+});
+
+test('attributes results to the requested provider, not fields returned by the catalog', async () => {
+  const t = setup({ responses: [
+    { ...response(), source: 'private-secret', tv_episode_results: [{ id: 50 }] },
+    { ...response(10), source: 'imdb_id', tv_season_results: [{ id: 50 }] },
+    { tv_results: null, source: 'imdb_id' },
+  ] });
+  const result = await t.replay.replay();
+  expect(result.summary.outcomes).toEqual({ provider_review_required: 1 });
+  expect(result.summary.stableEvidenceByProvider).toEqual({
+    imdb_id: { lookups: 1, matched: 0, notFound: 1, reviewRequired: 0, lookupsWithOtherMediaResults: 1, notFoundWithOtherMediaResults: 1 },
+    tvdb_id: { lookups: 2, matched: 1, notFound: 0, reviewRequired: 1, lookupsWithOtherMediaResults: 1, notFoundWithOtherMediaResults: 0 },
+  });
+  for (const key of Object.keys(result.summary.stableEvidenceLookups)) {
+    expect(result.summary.stableEvidenceLookups[key]).toBe(
+      result.summary.stableEvidenceByProvider.imdb_id[key] + result.summary.stableEvidenceByProvider.tvdb_id[key],
+    );
+  }
+  expect(JSON.stringify(result)).not.toContain('private-secret');
+});
+
+test('does not publish partial provider counts when a later lookup fails', async () => {
+  const t = setup();
+  t.tmdbService.findIdentityByExternalId.mockReset().mockResolvedValueOnce(response(10))
+    .mockRejectedValueOnce(new Error('private-secret'));
+  const result = await t.replay.replay();
+  expect(result.summary.outcomes).toEqual({ provider_unavailable: 1 });
+  for (const counts of Object.values(result.summary.stableEvidenceByProvider)) {
+    expect(Object.values(counts)).toEqual([0, 0, 0, 0, 0, 0]);
+  }
+});
+
+test('multiple observations accumulate independently without retaining candidate IDs', async () => {
+  const t = setup({ rows: [row, { ...row, external_id: 'second-private-item' }],
+    responses: [response(10), response(10), response(), response(), response(), response()] });
+  const result = await t.replay.replay();
+  expect(result.summary.stableEvidenceByProvider).toMatchObject({
+    imdb_id: { lookups: 2, matched: 1, notFound: 1 }, tvdb_id: { lookups: 4, matched: 1, notFound: 3 },
+  });
+  expect(result.summary.outcomes).toEqual({ agreement_with_missing_mappings: 1, no_typed_matches: 1 });
+  expect(result.summary.stableEvidenceLookups).toMatchObject({ lookups: 6, matched: 2, notFound: 4 });
+  expect(JSON.stringify(result)).not.toMatch(/private|tmdbId|providerIds|externalId/u);
+  const next = await setup({ rows: [] }).replay.replay();
+  expect(next.summary.stableEvidenceByProvider.imdb_id.lookups).toBe(0);
 });
 
 test.each([
@@ -99,7 +151,10 @@ test('movie evidence uses the movie bucket and does not query unsupported TVDB m
   const t = setup({ rows: [{ ...row, media_type: 'movie', provider_fields: ['tmdb_id'] }],
     sourceEvidence: { ...evidence, mediaType: 'movie', providerIds: { ...evidence.providerIds, tmdb_id: [10, 11] } },
     responses: [{ movie_results: [{ id: 10 }], tv_results: [{ id: 99 }] }] });
-  expect((await t.replay.replay()).summary.outcomes).toEqual({ all_agree_current_candidate: 1 });
+  const result = await t.replay.replay();
+  expect(result.summary.outcomes).toEqual({ all_agree_current_candidate: 1 });
+  expect(result.summary.stableEvidenceByProvider.imdb_id).toMatchObject({ lookups: 1, matched: 1, lookupsWithOtherMediaResults: 1 });
+  expect(result.summary.stableEvidenceByProvider.tvdb_id.lookups).toBe(0);
   expect(t.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(1);
 });
 
@@ -132,6 +187,7 @@ test('cancellation preserves partial progress and does not start another item', 
     .mockImplementationOnce(async () => { controller.abort(new Error('private-secret')); return evidence; });
   const result = await t.replay.replay({ signal: controller.signal });
   expect(result).toMatchObject({ status: { id: 'cancelled' }, summary: { selectedObservations: 2, inspectedObservations: 1 } });
+  expect(result.summary.stableEvidenceByProvider).toMatchObject({ imdb_id: { lookups: 1 }, tvdb_id: { lookups: 2 } });
   expect(JSON.stringify(result)).not.toContain('private-secret');
   expect(t.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(3);
 });

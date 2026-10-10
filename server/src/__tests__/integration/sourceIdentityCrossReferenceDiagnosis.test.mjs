@@ -50,7 +50,9 @@ test('real read-only selection finishes before provider work and preserves every
   const before = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
   const t = setup();
   expect(await t.replay.replay()).toMatchObject({ status: { id: 'complete' },
-    summary: { inspectedObservations: 1, outcomes: { agreement_with_missing_mappings: 1 } } });
+    summary: { inspectedObservations: 1, outcomes: { agreement_with_missing_mappings: 1 },
+      stableEvidenceByProvider: { imdb_id: { lookups: 1, matched: 1, notFound: 0 },
+        tvdb_id: { lookups: 2, matched: 1, notFound: 1 } } } });
   expect(t.source.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
   expect((await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
   expect((await pool.query('SELECT id FROM media_server_items WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
