@@ -12,6 +12,7 @@ function fixture(patch = {}, candidates = { tmdb_id: [11, 22], imdb_id: ['tt123'
 }
 function setup(item = fixture(), options = {}) {
   const tmdbService = { findIdentityByExternalId: jest.fn().mockResolvedValue({ movie_results: [{ id: 22 }], tv_results: [{ id: 22 }] }),
+    getIdentityAlternativeTitles: jest.fn().mockResolvedValue({ id: 22, titles: [], results: [] }),
     getIdentityDetails: jest.fn().mockResolvedValue({ id: 22, title: 'Fixture', name: 'Fixture', release_date: '2001-01-01', first_air_date: '2001-01-01' }) };
   const service = { getLibraryItemIdentityEvidence: jest.fn().mockResolvedValue(item.source_identity_evidence) };
   const claimAttempt = jest.fn().mockResolvedValue(true);
@@ -81,6 +82,42 @@ test('TV recovery requires its supplied TVDB and IMDb IDs to agree', async () =>
   expect(test.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(2);
   test.tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ tv_results: [{ id: 11 }] });
   expect(await test.run()).toBeNull();
+});
+
+test('exact catalog alias recovers a TV candidate and reuses only source-checked recent proof', async () => {
+  const t = setup(fixture({ media_type: 'tv', title: 'Fixture (US)' }));
+  t.tmdbService.getIdentityAlternativeTitles.mockResolvedValue({ id: 22, results: [{ title: 'Fixture (US)' }] });
+  const first = await t.run();
+  expect(first).toMatchObject({ item: { tmdb_id: 22, title: 'Fixture (US)' } });
+  expect(t.tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(2);
+  expect(t.tmdbService.getIdentityAlternativeTitles.mock.invocationCallOrder[0])
+    .toBeLessThan(t.service.getLibraryItemIdentityEvidence.mock.invocationCallOrder[0]);
+  expect(await t.run({ readReceipt: async () => first.receipt })).toEqual({ item: first.item, receipt: first.receipt });
+  expect(t.tmdbService.getIdentityAlternativeTitles).toHaveBeenCalledTimes(1);
+  expect(t.service.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
+});
+
+test.each(['source_changed', 'cancelled', 'outage', 'malformed', 'wrong_year', 'cooldown', 'disagreement'])
+('alternative-title recovery remains fenced: %s', async scenario => {
+  const t = setup(fixture({ media_type: 'tv', title: 'Fixture (US)' }));
+  const controller = new AbortController(); const recordOutcome = jest.fn();
+  t.tmdbService.getIdentityAlternativeTitles.mockResolvedValue({ id: 22, results: [{ title: 'Fixture (US)' }] });
+  if (scenario === 'source_changed') t.service.getLibraryItemIdentityEvidence.mockResolvedValue({ snapshotDigest: 'changed' });
+  if (scenario === 'cancelled') t.tmdbService.getIdentityAlternativeTitles.mockImplementation(async () => { controller.abort(); });
+  if (scenario === 'outage') t.tmdbService.getIdentityAlternativeTitles.mockRejectedValue(new Error('private provider body'));
+  if (scenario === 'malformed') t.tmdbService.getIdentityAlternativeTitles.mockResolvedValue({ id: 99, results: [{ title: 'Fixture (US)' }] });
+  if (scenario === 'wrong_year') t.tmdbService.getIdentityDetails.mockResolvedValue({ id: 22, name: 'Fixture', first_air_date: '2002-01-01' });
+  if (scenario === 'cooldown') t.claimAttempt.mockResolvedValue(false);
+  if (scenario === 'disagreement') t.tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ tv_results: [{ id: 11 }] });
+  const pending = t.run({ signal: controller.signal, recordOutcome });
+  if (scenario === 'cancelled') {
+    await expect(pending).rejects.toThrow(); expect(recordOutcome).not.toHaveBeenCalled();
+  } else expect(await pending).toBeNull();
+  if (scenario !== 'source_changed') expect(t.service.getLibraryItemIdentityEvidence).not.toHaveBeenCalled();
+  if (['wrong_year', 'cooldown', 'disagreement'].includes(scenario)) expect(t.tmdbService.getIdentityAlternativeTitles).not.toHaveBeenCalled();
+  if (scenario === 'outage') expect(recordOutcome.mock.calls[0][1].reason).toBe('provider_unavailable');
+  if (scenario === 'malformed') expect(recordOutcome.mock.calls[0][1].reason).toBe('provider_response_invalid');
+  expect(JSON.stringify(recordOutcome.mock.calls)).not.toContain('private provider body');
 });
 
 test.each([

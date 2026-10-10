@@ -34,6 +34,19 @@ function releaseYear(value) {
 
 const abstain = (reason) => Object.freeze({ tmdbId: null, reason });
 
+/** Shared strict typed detail validation; aliases must not bypass these checks. */
+export function readTmdbIdentityTitleDetails(row, mediaType) {
+  const id = positiveDatabaseInteger(row?.id);
+  const type = row?.media_type === undefined ? mediaType : canonicalMediaType(row.media_type);
+  const localized = mediaType === 'movie' ? row?.title : row?.name;
+  const original = mediaType === 'movie' ? row?.original_title : row?.original_name;
+  const titles = [localized, original].filter(value => value !== undefined).map(normalizeIdentityTitle);
+  const year = releaseYear(mediaType === 'movie' ? row?.release_date : row?.first_air_date);
+  if (!['movie', 'tv'].includes(mediaType) || !id || type !== mediaType ||
+      !titles.length || titles.some(title => !title) || !year) return null;
+  return { id, titles, year };
+}
+
 /** Completeness is relative to this bounded provider response, not all real-world media. */
 export function decideTmdbTitleMatch(request, response) {
   request = buildTmdbTitleRequest(request?.title, request?.mediaType, request?.year);
@@ -49,15 +62,11 @@ export function decideTmdbTitleMatch(request, response) {
   const seen = new Set();
   const matches = [];
   for (const row of response.results) {
-    const id = positiveDatabaseInteger(row?.id);
-    const type = row?.media_type === undefined ? request.mediaType : canonicalMediaType(row.media_type);
-    const localized = request.mediaType === 'movie' ? row?.title : row?.name;
-    const original = request.mediaType === 'movie' ? row?.original_title : row?.original_name;
-    const titles = [localized, original].filter((value) => value !== undefined).map(normalizeIdentityTitle);
-    const year = releaseYear(request.mediaType === 'movie' ? row?.release_date : row?.first_air_date);
-    if (!id || type !== request.mediaType || seen.has(id) || !titles.length || titles.some((title) => !title) || !year) {
+    const details = readTmdbIdentityTitleDetails(row, request.mediaType);
+    if (!details || seen.has(details.id)) {
       return abstain('invalid_response');
     }
+    const { id, titles, year } = details;
     seen.add(id);
     if (year === request.year && titles.includes(request.normalizedTitle)) matches.push(id);
   }

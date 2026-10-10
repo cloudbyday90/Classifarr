@@ -22,6 +22,7 @@ import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 import { wrapTmdbDetailsFailure } from './tmdbObservationFailure.mjs';
 import { findTmdbIdentityByExternalId, getTmdbIdentityDetails, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
+import { getTmdbIdentityAlternativeTitles } from './tmdbIdentityAlternativeTitles.mjs';
 import {
     classifyHealthError,
     mapSearchResults,
@@ -260,6 +261,14 @@ class TMDBService {
 
   async getIdentityDetails(id, mediaType, options = {}) {
     return getTmdbIdentityDetails(id, mediaType, {
+      baseUrl: this.baseUrl, httpGet,
+      getApiKey: () => this.getApiKey(),
+      executeRateLimited: (fn, requestOptions) => this.executeRateLimited(fn, requestOptions),
+    }, options);
+  }
+
+  async getIdentityAlternativeTitles(id, mediaType, options = {}) {
+    return getTmdbIdentityAlternativeTitles(id, mediaType, {
       baseUrl: this.baseUrl, httpGet,
       getApiKey: () => this.getApiKey(),
       executeRateLimited: (fn, requestOptions) => this.executeRateLimited(fn, requestOptions),

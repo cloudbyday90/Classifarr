@@ -10,6 +10,7 @@ import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRec
 import { createMediaSyncSkipReporter } from '../../services/mediaSyncSkipReporter.mjs';
 import { readRefillCandidatePage } from '../../services/queueRefillCandidates.mjs';
 import { recordSyncIdentityRecoveryOutcome } from '../../services/mediaSyncIdentityRecoveryOutcomes.mjs';
+import { createMediaSyncIdentityRecovery } from '../../services/mediaSyncIdentityRecovery.mjs';
 
 let pool, store, serverId, libraryId, item, recovery;
 const analyze = async () => ({ analyzed: false });
@@ -32,6 +33,27 @@ afterEach(async () => {
 });
 async function capture() { const context = await store.start(serverId, libraryId); await store.capture(context, [item]); return context; }
 async function countConflicts() { return (await pool.query('SELECT count(*)::int AS count FROM media_source_observations WHERE library_id=$1', [libraryId])).rows[0].count; }
+
+test.each([false, true])('alias-verified recovery commits only while the capture is current (superseded=%s)', async superseded => {
+  item.title = 'Fixture (US)';
+  item.source_identity_evidence = sourceIdentityRecoveryEvidence(item, 'library-1', item.source_identity_evidence.providerIds);
+  const context = await capture();
+  const engine = createMediaSyncIdentityRecovery({ tmdbService: {
+    findIdentityByExternalId: async () => ({ movie_results: [{ id: 22 }] }),
+    getIdentityDetails: async () => ({ id: 22, title: 'Fixture', release_date: '2001-01-01' }),
+    getIdentityAlternativeTitles: async () => ({ id: 22, titles: [{ title: 'Fixture (US)' }] }),
+  } });
+  const verified = await engine.recover(item, { libraryKey: 'library-1', url: 'http://fixture.invalid', apiKey: 'synthetic',
+    service: { getLibraryItemIdentityEvidence: async () => item.source_identity_evidence },
+    claimAttempt: (source, token) => claimSyncIdentityRecovery(store, context, source, token),
+  });
+  expect(verified).toMatchObject({ item: { tmdb_id: 22 }, attemptId: expect.any(String) });
+  if (superseded) await capture();
+  expect(await persistRecoveredSyncItem(store, context, verified, { analyze })).toBe(!superseded);
+  expect(await countConflicts()).toBe(superseded ? 1 : 0);
+  const rows = (await pool.query('SELECT tmdb_id,inventory_tmdb_fetched_at FROM media_server_items WHERE library_id=$1', [libraryId])).rows;
+  expect(rows).toEqual(superseded ? [] : [{ tmdb_id: 22, inventory_tmdb_fetched_at: null }]);
+});
 const warning = count => ({ skippedItemCount: count, reasonCounts: { invalid_source_identity: count }, identityIssueCounts: { conflicting_provider_ids: count } });
 const reportContext = id => ({ libraryId, mediaServerId: serverId, syncStatusId: id, sourceType: 'plex' });
 

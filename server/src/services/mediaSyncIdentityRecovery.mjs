@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { tmdbService as defaultTmdbService } from './tmdb.mjs';
 import { resolveTmdbExternalIdentity } from './tmdbExternalIdentityResolution.mjs';
-import { buildTmdbTitleRequest, decideTmdbTitleMatch } from './tmdbTitleMatch.mjs';
+import { verifyTmdbRecoveryTitle } from './tmdbRecoveryTitleVerification.mjs';
 import { sourceIdentityRecoveryEvidence } from './sourceIdentityRecoveryEvidence.mjs';
 import { recoveredIdentity, reusableIdentityRecoveryReceipt } from './sourceIdentityRecoveryReceipt.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
@@ -78,10 +78,9 @@ export function createMediaSyncIdentityRecovery({ tmdbService = defaultTmdbServi
         const details = await tmdbService.getIdentityDetails(resolution.tmdbId, item.media_type, { signal });
         signal?.throwIfAborted();
         if (positiveDatabaseInteger(details?.id) !== resolution.tmdbId) return defer('provider_response_invalid');
-        const match = decideTmdbTitleMatch(buildTmdbTitleRequest(item.title, item.media_type, item.year),
-          { page: 1, total_pages: 1, total_results: 1, results: [details] });
-        if (match.tmdbId !== resolution.tmdbId) return defer(match.reason === 'invalid_response'
-          ? 'provider_response_invalid' : 'title_year_mismatch');
+        const match = await verifyTmdbRecoveryTitle(item, resolution.tmdbId, details, tmdbService, { signal });
+        signal?.throwIfAborted();
+        if (match.tmdbId !== resolution.tmdbId) return defer(match.reason);
         failureReason = 'source_unavailable';
         const current = await service.getLibraryItemIdentityEvidence(url, apiKey, libraryKey, item.external_id, { signal });
         signal?.throwIfAborted();
