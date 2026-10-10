@@ -6,7 +6,10 @@
  * See LICENSE file for details.
  */
 
-const POSTER_CONDITION = "NULLIF(COALESCE(ch.metadata->>'poster_path', ch.metadata->>'posterPath', msi.metadata->>'posterPath', msi.metadata->>'poster_path'), '') IS NOT NULL";
+import { CLASSIFICATION_POSTER_SQL, classificationPosterJoinSql } from './classificationPosterSelection.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
+
+const POSTER_CONDITION = `${CLASSIFICATION_POSTER_SQL} IS NOT NULL`;
 
 export async function getStats({ db, logger }, shouldIncludeImageEmbeddings) {
     try {
@@ -49,10 +52,8 @@ export async function getImageStats({ db, logger }) {
                 ) as pending
             FROM classification_history ch
             LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
-            LEFT JOIN media_server_items msi
-              ON msi.tmdb_id = ch.tmdb_id
-             AND msi.media_type = ch.media_type
-        `);
+            ${classificationPosterJoinSql('$1')}
+        `, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
 
         return {
             total: parseInt(result.rows[0]?.total || 0),
@@ -86,11 +87,9 @@ export async function getPendingCount({ db, logger }, { includeText = true, incl
             SELECT COUNT(*) as count
             FROM classification_history ch
             LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
-            LEFT JOIN media_server_items msi
-              ON msi.tmdb_id = ch.tmdb_id
-             AND msi.media_type = ch.media_type
+            ${includeImage ? classificationPosterJoinSql('$1') : ''}
             WHERE ${whereClause}
-        `);
+        `, includeImage ? [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS] : []);
 
         return parseInt(result.rows[0].count) || 0;
     } catch (error) {
@@ -111,10 +110,8 @@ export async function getPendingBreakdown({ db, logger }) {
                 ) AS pending_image
             FROM classification_history ch
             LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
-            LEFT JOIN media_server_items msi
-              ON msi.tmdb_id = ch.tmdb_id
-             AND msi.media_type = ch.media_type
-        `);
+            ${classificationPosterJoinSql('$1')}
+        `, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
 
         const pendingText = parseInt(result.rows[0]?.pending_text || 0);
         const pendingImage = parseInt(result.rows[0]?.pending_image || 0);
@@ -164,13 +161,11 @@ export async function getPendingEmbeddings({ db, logger }, { limit = 10, include
                 ${needsImageExpr} AS needs_image
             FROM classification_history ch
             LEFT JOIN classification_embeddings ce ON ce.classification_id = ch.id
-            LEFT JOIN media_server_items msi
-              ON msi.tmdb_id = ch.tmdb_id
-             AND msi.media_type = ch.media_type
+            ${includeImage ? classificationPosterJoinSql('$2') : ''}
             WHERE ${whereClause}
-            ORDER BY ch.created_at DESC
+            ORDER BY ch.created_at DESC, ch.id DESC
             LIMIT $1
-        `, [limit]);
+        `, includeImage ? [limit, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS] : [limit]);
 
         return result.rows.map(row => ({
             id: row.id,

@@ -237,7 +237,7 @@ describe('EmbeddingService', () => {
             expect(url).toBe('https://example.com/poster.jpg');
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringContaining('FROM classification_history'),
-                [42]
+                [42, 30]
             );
         });
     });

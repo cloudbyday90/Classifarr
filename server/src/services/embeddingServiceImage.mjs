@@ -21,6 +21,7 @@ import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { classificationPosterPath, readClassificationPosterPath } from './classificationPosterSelection.mjs';
 
 const logger = createLogger('EmbeddingService');
 
@@ -29,7 +30,7 @@ export function hashValue(value) {
 }
 
 export function resolvePosterUrl(metadata) {
-    const raw = metadata?.poster_path || metadata?.posterPath;
+    const raw = classificationPosterPath(metadata);
     if (!raw) return null;
     if (/^https?:\/\//i.test(raw)) return raw;
     return `https://image.tmdb.org/t/p/w500${raw}`;
@@ -41,25 +42,13 @@ export async function resolvePosterUrlForClassification(classificationId, metada
     if (!classificationId) return null;
 
     try {
-        const result = await db.query(`
-            SELECT msi.metadata->>'posterPath' AS poster_path
-            FROM classification_history ch
-            JOIN media_server_items msi
-              ON msi.tmdb_id = ch.tmdb_id
-             AND msi.media_type = ch.media_type
-            WHERE ch.id = $1
-            ORDER BY msi.last_synced DESC
-            LIMIT 1
-        `, [classificationId]);
-
-        const posterPath = result.rows[0]?.poster_path;
+        const posterPath = await readClassificationPosterPath(db.query, classificationId);
         if (posterPath) {
-            return posterPath;
+            return resolvePosterUrl({ poster_path: posterPath });
         }
-    } catch (error) {
+    } catch {
         logger.debug('Failed to resolve poster URL from media server cache', {
-            classificationId,
-            error: error.message
+            classificationId
         });
     }
 

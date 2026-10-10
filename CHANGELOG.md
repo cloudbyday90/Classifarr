@@ -44,6 +44,11 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Embedding inventory consistency** — Count each classification once across
+  overlapping libraries and use one shared, deterministic artwork selection rule
+  for statistics and backfill. Inactive or identity-conflicted inventory cannot
+  supply fallback artwork; source grouping and unresolved identity safeguards
+  remain unchanged.
 - **Classification failure recovery** — Preserve safe metadata-failure categories,
   stop automatic retries for confirmed missing TMDb records, and explain the next
   check in Command Center. An upgrade backfill restores known failure-stage
