@@ -23,7 +23,7 @@ afterEach(async () => {
   await pool.query('DELETE FROM media_server WHERE id=$1', [serverId]);
 });
 
-function setup({ scopePreview = false, onDetails = async () => {} } = {}) {
+function setup({ scopePreview = false, episodePreview = false, onDetails = async () => {} } = {}) {
   let inTransaction = false;
   const reader = createSourceIdentityExternalEvidenceReplayReadService({ withTransaction: async fn => {
     const client = await pool.connect();
@@ -41,14 +41,18 @@ function setup({ scopePreview = false, onDetails = async () => {} } = {}) {
   }), getLibraryItemLayout: jest.fn(async () => {
     expect(inTransaction).toBe(false);
     return { identity: item.source_identity_evidence, digest: 'a'.repeat(64), episodeCount: 1,
+      episodes: [{ season: 1, episode: 1, providerIds: { tmdb_id: [100] } }],
       seasons: [{ number: 1, episodes: [1] }] };
   }) };
-  const factory = scopePreview ? createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
+  const factory = scopePreview || episodePreview ? createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
   return { source, replay: factory({ readRows: limits => reader.read(limits),
-    getMediaServerService: () => source,
+    getMediaServerService: () => source, ...(episodePreview ? { mode: 'episodes' } : {}),
     tmdbService: { getIdentityDetails: async () => {
       expect(inTransaction).toBe(false); await onDetails();
       return { id: 11, name: 'Synthetic', seasons: [{ id: 12, season_number: 1, episode_count: 1 }] };
+    }, getIdentitySeasonDetails: async () => {
+      expect(inTransaction).toBe(false);
+      return { id: 12, season_number: 1, episodes: [{ id: 100, show_id: 11, season_number: 1, episode_number: 1 }] };
     }, findIdentityByExternalId: async id => {
       expect(inTransaction).toBe(false); return { tv_results: id === 22 ? [] : [{ id: 11 }] };
     } } }) };
@@ -112,4 +116,21 @@ test('layout preview does not inspect incomplete source captures', async () => {
   const t = setup({ scopePreview: true });
   expect((await t.replay.replay()).status.id).toBe('no_current_conflicts');
   expect(t.source.getLibraryItemLayout).not.toHaveBeenCalled();
+});
+
+test('episode preview has no database writes and finishes transactions before season HTTP', async () => {
+  await store.finish(context);
+  const before = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
+  expect(await setup({ episodePreview: true }).replay.replay()).toMatchObject({ status: { id: 'complete' },
+    canApply: false, summary: { comparisons: { episode_numbering_agrees: 1 } } });
+  expect((await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
+  expect((await pool.query('SELECT id FROM media_server_items WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+});
+test.each(['configuration', 'disabled'])('episode preview rejects actual %s drift during provider work', async mode => {
+  await store.finish(context);
+  const t = setup({ episodePreview: true, onDetails: async () => {
+    if (mode === 'disabled') await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+    else await pool.query("UPDATE media_server SET api_key='changed-fixture' WHERE id=$1", [serverId]);
+  } });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'selection_changed' }, summary: null });
 });

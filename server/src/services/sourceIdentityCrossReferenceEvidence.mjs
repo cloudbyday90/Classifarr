@@ -9,18 +9,22 @@ const positiveId = value => Number.isSafeInteger(value) && value > 0 && value <=
 /** Copy transient evidence before asynchronous reads; never return it to the operator. */
 export function copyCrossReferenceEvidence(evidence) {
   if (!['movie', 'tv'].includes(evidence?.mediaType) ||
-      typeof evidence.snapshotDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(evidence.snapshotDigest) ||
-      !evidence.providerIds || Object.keys(evidence.providerIds).length !== FIELDS.length) return null;
+      typeof evidence.snapshotDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(evidence.snapshotDigest)) return null;
+  const providerIds = copyCrossReferenceProviderIds(evidence.providerIds);
+  return providerIds ? Object.freeze({ mediaType: evidence.mediaType, snapshotDigest: evidence.snapshotDigest, providerIds }) : null;
+}
+
+export function copyCrossReferenceProviderIds(input) {
+  if (!input || Object.keys(input).length !== FIELDS.length) return null;
   const providerIds = {};
   for (const field of FIELDS) {
-    const values = evidence.providerIds[field];
+    const values = input[field];
     if (!Array.isArray(values) || values.length > 20 || new Set(values).size !== values.length ||
         Array.from(values).some(value => field !== 'imdb_id' ? !positiveId(value)
           : !buildTmdbExternalIdRequest(value, field))) return null;
     providerIds[field] = Object.freeze([...values].sort());
   }
-  return Object.freeze({ mediaType: evidence.mediaType, snapshotDigest: evidence.snapshotDigest,
-    providerIds: Object.freeze(providerIds) });
+  return Object.freeze(providerIds);
 }
 
 export function crossReferenceRequests(evidence) {

@@ -25,6 +25,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   A bounded, read-only live preview now compares source episode membership with
   typed catalog season structure across Plex, Jellyfin and Emby, detects observed
   source/configuration drift, and keeps numbering agreement separate from identity.
+  Episode-level catalog checks distinguish numbering differences, missing or
+  reused IDs, and source groups spanning multiple catalog series without
+  rematching media or activating mappings.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or

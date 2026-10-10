@@ -34,9 +34,9 @@ export async function readMediaSourceLayout(kind, url, apiKey, libraryId, extern
   const readPage = async ({ offset, limit }) => {
     const response = await httpGet(plex ? `${url}/library/metadata/${encodeURIComponent(externalId)}/grandchildren` : `${url}/Items`, {
       ...options,
-      params: plex ? { 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit } :
+      params: plex ? { includeGuids: 1, 'X-Plex-Container-Start': offset, 'X-Plex-Container-Size': limit } :
         { ParentId: externalId, Recursive: true, IncludeItemTypes: 'Episode', StartIndex: offset, Limit: limit,
-          EnableTotalRecordCount: true, Fields: 'ParentId', EnableImages: false, EnableUserData: false },
+          EnableTotalRecordCount: true, Fields: 'ParentId,ProviderIds', EnableImages: false, EnableUserData: false },
     });
     const page = plex ? readPlexSourcePage(response) : readEmbySourcePage(response);
     return { offset: page.offset, total: page.total, items: page.items.map(item => {
@@ -47,7 +47,8 @@ export async function readMediaSourceLayout(kind, url, apiKey, libraryId, extern
           (item.librarySectionID !== undefined && String(item.librarySectionID) !== libraryId) :
           item.Type !== 'Episode' || String(item.SeriesId) !== externalId) reject();
       return { id: String(plex ? item.ratingKey : item.Id), season: plex ? item.parentIndex : item.ParentIndexNumber,
-        episode: plex ? item.index : item.IndexNumber, end: plex ? item.indexEnd : item.IndexNumberEnd };
+        episode: plex ? item.index : item.IndexNumber, end: plex ? item.indexEnd : item.IndexNumberEnd,
+        providerIds: plex ? collectPlexGuidCandidates(item.Guid ?? []) : collectProviderIdCandidates(item.ProviderIds ?? {}) };
     }) };
   };
   try {

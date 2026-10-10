@@ -23,6 +23,7 @@ import { rateLimiters } from '../utils/rateLimiter.mjs';
 import { wrapTmdbDetailsFailure } from './tmdbObservationFailure.mjs';
 import { findTmdbIdentityByExternalId, getTmdbIdentityDetails, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import { getTmdbIdentityAlternativeTitles } from './tmdbIdentityAlternativeTitles.mjs';
+import { getTmdbIdentitySeasonDetails } from './tmdbEpisodeCatalog.mjs';
 import {
     classifyHealthError,
     mapSearchResults,
@@ -257,6 +258,14 @@ class TMDBService {
       getApiKey: () => this.getApiKey(),
       executeRateLimited: (fn) => this.executeRateLimited(fn),
     });
+  }
+
+  async getIdentitySeasonDetails(id, seasonNumber, options = {}) {
+    return getTmdbIdentitySeasonDetails(id, seasonNumber, {
+      baseUrl: this.baseUrl, httpGet,
+      getApiKey: () => this.getApiKey(),
+      executeRateLimited: (fn, requestOptions) => this.executeRateLimited(fn, requestOptions),
+    }, options);
   }
 
   async getIdentityDetails(id, mediaType, options = {}) {

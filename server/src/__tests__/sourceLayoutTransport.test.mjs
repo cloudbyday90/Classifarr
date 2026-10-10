@@ -7,10 +7,11 @@ import { createIdentityHttpFixture, withinIdentityTestDeadline } from './helpers
 const plexParent = { ratingKey: 'show', librarySectionID: 'library', type: 'show', title: 'Synthetic',
   year: 2020, Guid: [{ id: 'tmdb://10' }] };
 const plexEpisode = { ratingKey: 'episode', type: 'episode', grandparentRatingKey: 'show',
-  parentIndex: 1, index: 1 };
+  parentIndex: 1, index: 1, Guid: [{ id: 'tmdb://100' }, { id: 'imdb://tt123' }, { id: 'tvdb://200' }] };
 const embyParent = { Id: 'show', ParentId: 'library', Type: 'Series', Name: 'Synthetic',
   ProductionYear: 2020, ProviderIds: { Tmdb: '10' } };
-const embyEpisode = { Id: 'episode', Type: 'Episode', SeriesId: 'show', ParentIndexNumber: 1, IndexNumber: 1 };
+const embyEpisode = { Id: 'episode', Type: 'Episode', SeriesId: 'show', ParentIndexNumber: 1, IndexNumber: 1,
+  ProviderIds: { Tmdb: '100', Imdb: 'tt123', Tvdb: '200' } };
 
 async function fixture(kind, { parent, episode, page = {}, redirect = false } = {}) {
   const requests = [];
@@ -38,10 +39,11 @@ test.each(['plex', 'emby'])('real HTTP captures bounded normalized membership: %
     expect(result).toMatchObject({ identity: { mediaType: 'tv', providerIds: { tmdb_id: [10] } },
       episodeCount: 1, seasons: [{ number: 1, episodes: [1] }] });
     expect(result.digest).toMatch(/^[a-f0-9]{64}$/u);
+    expect(result.episodes[0].providerIds).toEqual({ tmdb_id: [100], imdb_id: ['tt123'], tvdb_id: [200] });
     expect(f.requests).toHaveLength(2);
     expect(f.requests[1].query).toMatchObject(kind === 'plex'
-      ? { 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '100' }
-      : { ParentId: 'show', IncludeItemTypes: 'Episode', StartIndex: '0', Limit: '100', Recursive: 'true' });
+      ? { includeGuids: '1', 'X-Plex-Container-Start': '0', 'X-Plex-Container-Size': '100' }
+      : { ParentId: 'show', IncludeItemTypes: 'Episode', StartIndex: '0', Limit: '100', Recursive: 'true', Fields: 'ParentId,ProviderIds' });
     expect(f.requests[0].headers[kind === 'plex' ? 'x-plex-token' : 'x-emby-token']).toBe('synthetic-token');
     expect(JSON.stringify(result)).not.toMatch(/Synthetic|token|http|library/u);
   } finally { await f.close(); }

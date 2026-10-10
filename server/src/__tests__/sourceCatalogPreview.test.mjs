@@ -8,13 +8,19 @@ const row = { library_id: 1, media_server_id: 2, external_id: 'private-item', me
 const layout = { identity: { mediaType: 'tv', providerIds: { tmdb_id: [10] } }, digest: 'a'.repeat(64),
   episodeCount: 2, seasons: [{ number: 1, episodes: [1, 2] }] };
 const details = { id: 10, name: 'private-title', seasons: [{ id: 11, season_number: 1, episode_count: 2 }] };
-function setup(rows = [row]) {
+function setup(rows = [row], mode = 'layout') {
   const readRows = jest.fn().mockResolvedValue(rows);
   const adapter = { getLibraryItemLayout: jest.fn().mockResolvedValue(layout) };
   const getMediaServerService = jest.fn().mockReturnValue(adapter);
-  const tmdbService = { getIdentityDetails: jest.fn().mockResolvedValue(details) };
+  const tmdbService = { getIdentityDetails: jest.fn().mockResolvedValue(details),
+    getIdentitySeasonDetails: jest.fn().mockResolvedValue({ id: 11, season_number: 1, episodes: [
+      { id: 100, show_id: 10, season_number: 1, episode_number: 1 },
+      { id: 200, show_id: 10, season_number: 1, episode_number: 2 }] }) };
+  if (mode === 'episodes') adapter.getLibraryItemLayout.mockResolvedValue({ ...layout, episodes: [
+    { season: 1, episode: 1, providerIds: { tmdb_id: [100] } },
+    { season: 2, episode: 1, providerIds: { tmdb_id: [200] } }] });
   return { readRows, adapter, getMediaServerService, tmdbService,
-    replay: createSourceCatalogPreview({ readRows, getMediaServerService, tmdbService }) };
+    replay: createSourceCatalogPreview({ readRows, getMediaServerService, tmdbService, mode }) };
 }
 
 test('only aggregate stable evidence escapes the read-only preview', async () => {
@@ -128,4 +134,40 @@ test('CLI admits only an explicit single preview flag and always closes runtime'
   expect(loadRuntime).toHaveBeenCalledWith({ scopePreview: true });
   expect(runtime.close).toHaveBeenCalledTimes(1);
   await expect(runSourceIdentityExternalEvidenceReplay({ argv: ['--scope-preview', '--apply'], loadRuntime })).rejects.toThrow();
+});
+
+test('episode preview reports catalog membership, not activation or independently verified order', async () => {
+  const t = setup([row], 'episodes');
+  const result = await t.replay.replay();
+  expect(result).toMatchObject({ version: 'source_episode_preview.v1', verification: 'episode_catalog_membership',
+    canApply: false, orderVerified: false, crossProviderVerified: false, status: { id: 'complete' },
+    summary: { outcomes: { episodes_inspected: 1 }, groupsSpanningCatalogSeries: 0,
+      comparisons: { episode_numbering_agrees: 1, episode_numbering_differs: 1 } } });
+  expect(JSON.stringify(result)).not.toMatch(/private|digest|tmdb_id/u);
+  expect(t.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect(t.readRows).toHaveBeenCalledTimes(2);
+});
+test.each(['source', 'configuration', 'cancelled', 'provider'])('episode preview discards findings after %s failure', async stage => {
+  const t = setup([row], 'episodes'), controller = new AbortController();
+  if (stage === 'source') t.tmdbService.getIdentitySeasonDetails.mockImplementation(async () => {
+    t.adapter.getLibraryItemLayout.mockResolvedValue({ ...layout, digest: 'b'.repeat(64) });
+    return { id: 11, season_number: 1, episodes: [
+      { id: 100, show_id: 10, season_number: 1, episode_number: 1 },
+      { id: 200, show_id: 10, season_number: 1, episode_number: 2 }] };
+  });
+  if (stage === 'configuration') t.readRows.mockResolvedValueOnce([row]).mockResolvedValue([{ ...row, url: 'changed' }]);
+  if (stage === 'cancelled') t.tmdbService.getIdentitySeasonDetails.mockImplementation(async () => { controller.abort(); return {}; });
+  if (stage === 'provider') t.tmdbService.getIdentitySeasonDetails.mockRejectedValue(new Error('private'));
+  const result = await t.replay.replay({ signal: controller.signal });
+  if (['configuration', 'cancelled'].includes(stage)) expect(result.summary).toBeNull();
+  else expect(result.summary).toMatchObject({ comparisons: {}, catalogCandidates: 0, sourceEpisodes: 0 });
+  expect(JSON.stringify(result)).not.toContain('private');
+});
+test('episode CLI remains explicit and closes runtime even on failure', async () => {
+  const runtime = { replay: { replay: jest.fn().mockRejectedValue(new Error('fixture')) }, close: jest.fn() };
+  const loadRuntime = jest.fn().mockResolvedValue(runtime);
+  await expect(runSourceIdentityExternalEvidenceReplay({ argv: ['--episode-preview'], loadRuntime })).rejects.toThrow('fixture');
+  expect(loadRuntime).toHaveBeenCalledWith({ episodePreview: true });
+  expect(runtime.close).toHaveBeenCalledTimes(1);
+  await expect(runSourceIdentityExternalEvidenceReplay({ argv: ['--episode-preview', '--scope-preview'], loadRuntime })).rejects.toThrow();
 });

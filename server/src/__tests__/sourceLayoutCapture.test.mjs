@@ -10,6 +10,16 @@ const capture = (items = [episode(1)], extra = {}) => captureSourceLayout({ read
   readPage: async () => ({ offset: 0, total: items.length, items }), ...extra });
 const details = (seasons = [{ id: 11, season_number: 1, episode_count: 1 }]) => ({ id: 10, name: 'Synthetic', seasons });
 
+test('episode identity changes invalidate the snapshot, while provider order does not', async () => {
+  const providerIds = { tmdb_id: [10, 20], tvdb_id: [30], imdb_id: ['tt123'] };
+  const a = await capture([{ ...episode(1), providerIds }]);
+  const b = await capture([{ ...episode(1), providerIds: { ...providerIds, tmdb_id: [20, 10] } }]);
+  expect(a.digest).toBe(b.digest);
+  expect((await capture([{ ...episode(1), providerIds: { ...providerIds, tmdb_id: [10] } }])).digest).not.toBe(a.digest);
+  expect(a.episodes[0].providerIds).toEqual(providerIds);
+  await expect(capture([{ ...episode(1), providerIds: null }])).rejects.toThrow('source_layout_invalid');
+});
+
 test('canonicalizes adapter-neutral source membership without exposing titles', async () => {
   const a = await capture([episode(2), episode(1), episode(1, 0)]);
   const b = await capture([episode(1, 0), episode(1), episode(2)]);

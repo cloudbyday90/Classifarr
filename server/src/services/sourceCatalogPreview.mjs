@@ -2,6 +2,8 @@
 import { randomUUID } from 'node:crypto';
 import { SOURCE_IDENTITY_CROSS_REFERENCE_LIMITS } from './sourceIdentityCrossReferenceDiagnosis.mjs';
 import { compareSourceCatalogLayout } from './sourceCatalogLayoutComparison.mjs';
+import { inspectSourceCatalogEpisodes } from './sourceEpisodeCatalogInspection.mjs';
+import { CATALOG_EPISODE_LIMITS } from './catalogEpisodeEvidence.mjs';
 
 const LIMITS = Object.freeze({ ...SOURCE_IDENTITY_CROSS_REFERENCE_LIMITS, maximumCandidates: 4 });
 const increment = (counts, id) => { counts[id] = (counts[id] ?? 0) + 1; };
@@ -25,7 +27,25 @@ function selectedRows(rows) {
   return selected;
 }
 
-async function inspect(row, { getMediaServerService, tmdbService, signal }) {
+async function inspectLayout(source, tmdbService, signal) {
+  const candidates = source.identity.providerIds.tmdb_id;
+  if (!candidates.length) return { outcome: 'no_tmdb_candidate' };
+  if (candidates.length > LIMITS.maximumCandidates) return { outcome: 'candidate_limit' };
+  const comparisons = {};
+  for (const id of candidates) {
+    signal.throwIfAborted();
+    let details;
+    try { details = await tmdbService.getIdentityDetails(id, source.identity.mediaType, { signal }); } catch {
+      signal.throwIfAborted();
+      return { outcome: 'catalog_unavailable' };
+    }
+    signal.throwIfAborted();
+    increment(comparisons, compareSourceCatalogLayout(source, id, details));
+  }
+  return { outcome: 'layout_inspected', comparisons, candidates: candidates.length };
+}
+
+async function inspect(row, { getMediaServerService, tmdbService, signal, mode, budget }) {
   let adapter;
   try { adapter = getMediaServerService(row.media_server_type); } catch { /* fixed result below */ }
   if (typeof adapter?.getLibraryItemLayout !== 'function') return { outcome: 'source_adapter_unavailable' };
@@ -36,20 +56,10 @@ async function inspect(row, { getMediaServerService, tmdbService, signal }) {
     return { outcome: error?.message === 'source_layout_invalid' ? 'source_layout_invalid' : 'source_unavailable' };
   }
   if (source?.identity?.mediaType !== row.media_type) return { outcome: 'source_type_changed' };
-  const candidates = source.identity.providerIds.tmdb_id;
-  if (!candidates.length) return { outcome: 'no_tmdb_candidate' };
-  if (candidates.length > LIMITS.maximumCandidates) return { outcome: 'candidate_limit' };
-  const comparisons = {};
-  for (const id of candidates) {
-    signal.throwIfAborted();
-    let details;
-    try { details = await tmdbService.getIdentityDetails(id, row.media_type, { signal }); } catch {
-      signal.throwIfAborted();
-      return { outcome: 'catalog_unavailable' };
-    }
-    signal.throwIfAborted();
-    increment(comparisons, compareSourceCatalogLayout(source, id, details));
-  }
+  const inspection = mode === 'episodes'
+    ? await inspectSourceCatalogEpisodes(source, tmdbService, { signal, budget })
+    : await inspectLayout(source, tmdbService, signal);
+  if (!inspection.comparisons) return inspection;
   let fresh;
   try { fresh = await read(); } catch {
     signal.throwIfAborted();
@@ -57,20 +67,23 @@ async function inspect(row, { getMediaServerService, tmdbService, signal }) {
   }
   signal.throwIfAborted();
   if (fresh?.digest !== source.digest) return { outcome: 'source_changed' };
-  return { outcome: 'layout_inspected', comparisons, seasons: source.seasons.length,
-    episodes: source.episodeCount, candidates: candidates.length };
+  return { ...inspection, seasons: source.seasons.length, episodes: source.episodeCount };
 }
 
 /** A diagnostic sample, not a persisted mapping preview or authorization receipt. */
-export function createSourceCatalogPreview({ readRows, getMediaServerService, tmdbService }) {
+export function createSourceCatalogPreview({ readRows, getMediaServerService, tmdbService, mode = 'layout' }) {
   if (typeof readRows !== 'function' || typeof getMediaServerService !== 'function' ||
-      typeof tmdbService?.getIdentityDetails !== 'function') throw new TypeError('invalid_preview_dependencies');
+      typeof tmdbService?.getIdentityDetails !== 'function' || !['layout', 'episodes'].includes(mode) ||
+      (mode === 'episodes' && typeof tmdbService.getIdentitySeasonDetails !== 'function')) throw new TypeError('invalid_preview_dependencies');
   return Object.freeze({
     async replay({ signal: callerSignal } = {}) {
       const deadline = AbortSignal.timeout(LIMITS.timeoutMs);
       const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline;
       const result = { version: 'source_catalog_preview.v1', reference: randomUUID(),
         status: { id: 'failed' }, canApply: false, verification: 'layout_only', orderVerified: false, summary: null };
+      if (mode === 'episodes') Object.assign(result, { version: 'source_episode_preview.v1',
+        verification: 'episode_catalog_membership', crossProviderVerified: false });
+      const budget = { remainingSeasons: CATALOG_EPISODE_LIMITS.seasonsPerRun };
       try {
         signal.throwIfAborted();
         const rows = await readRows(LIMITS);
@@ -79,15 +92,17 @@ export function createSourceCatalogPreview({ readRows, getMediaServerService, tm
         const selected = selectedRows(JSON.parse(before));
         const summary = { selectedObservations: selected.length, inspectedObservations: 0,
           sourceSeasons: 0, sourceEpisodes: 0, catalogCandidates: 0, outcomes: {}, comparisons: {} };
+        if (mode === 'episodes') summary.groupsSpanningCatalogSeries = 0;
         for (const row of selected) {
           signal.throwIfAborted();
-          const finding = await inspect(row, { getMediaServerService, tmdbService, signal });
+          const finding = await inspect(row, { getMediaServerService, tmdbService, signal, mode, budget });
           increment(summary.outcomes, finding.outcome);
           summary.inspectedObservations++;
           if (finding.comparisons) {
             summary.sourceSeasons += finding.seasons;
             summary.sourceEpisodes += finding.episodes;
             summary.catalogCandidates += finding.candidates;
+            if (mode === 'episodes') summary.groupsSpanningCatalogSeries += finding.groupsSpanningCatalogSeries;
             for (const [id, count] of Object.entries(finding.comparisons)) summary.comparisons[id] = (summary.comparisons[id] ?? 0) + count;
           }
         }

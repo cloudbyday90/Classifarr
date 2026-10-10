@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
-import { copyCrossReferenceEvidence } from './sourceIdentityCrossReferenceEvidence.mjs';
+import { copyCrossReferenceEvidence, copyCrossReferenceProviderIds } from './sourceIdentityCrossReferenceEvidence.mjs';
 
 export const SOURCE_LAYOUT_LIMITS = Object.freeze({ pageSize: 100, maximumPages: 20, maximumEpisodes: 2000 });
 const index = value => Number.isSafeInteger(value) && value >= 0 && value <= 10000;
@@ -34,7 +34,10 @@ export async function captureSourceLayout({ readIdentity, readPage, signal }) {
         if (positions.has(position)) reject();
         ids.add(item.id);
         positions.add(position);
-        episodes.push({ id: item.id, season: item.season, episode: item.episode });
+        const providerIds = copyCrossReferenceProviderIds(item.providerIds === undefined
+          ? { tmdb_id: [], imdb_id: [], tvdb_id: [] } : item.providerIds);
+        if (!providerIds) reject();
+        episodes.push({ id: item.id, season: item.season, episode: item.episode, providerIds });
       }
       if (episodes.length === total) break;
     }
@@ -49,6 +52,6 @@ export async function captureSourceLayout({ readIdentity, readPage, signal }) {
     seasons.set(episode.season, entries);
   }
   const digest = createHash('sha256').update(JSON.stringify({ identity, episodes })).digest('hex');
-  return { identity, digest, episodeCount: episodes.length,
+  return { identity, digest, episodeCount: episodes.length, episodes,
     seasons: [...seasons].map(([number, numbers]) => ({ number, episodes: numbers })) };
 }
