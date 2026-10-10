@@ -1,6 +1,9 @@
 # PR 556: server Node type candidate
 
 Date: 2026-10-09. Random selection from the current open PRs 555 and 556: 556.
+The durable-incident follow-up independently selected 556 again from the same
+two open candidates. Repeat its exact local trial; newer registry patch releases
+are separate candidates, not substitutions for this PR's immutable diff.
 Reviewed immutable head `9d74537d7917c248d15926f37b2e40ceba7559a4` through
 the GitHub MCP patch service: [PR 556](https://github.com/cloudbyday90/Classifarr/pull/556).
 

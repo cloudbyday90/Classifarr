@@ -35,6 +35,8 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
   return {
     stop() { stopped = true; active?.abort(); clear(); recoveryScope.clear(); },
     getRecoveryScope: recoveryScope.current,
+    getRecoveryFingerprint: recoveryScope.fingerprint,
+    beginRecoveryObservation: recoveryScope.begin,
     async retrieve(input) {
       const time = clock(), current = entry;
       if (stopped || !Number.isFinite(time) || !current || getRevision() !== current.revision ||

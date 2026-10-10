@@ -31,6 +31,14 @@ update; no dependency changes remain in this commit.
 
 ## Next dependency work
 
+The durable-incident follow-up randomly selected the same still-open PR and
+repeated the exact 26.6.4/8.9.0 trial on October 9. The script-disabled clean
+install succeeded (632 packages); typecheck again reported TS2322 at
+`discordDeliveryWriter.mjs:20`, and the runtime-major gate again gave 39/40.
+Restoring 24.19.1/7.24.6 with the strict reviewed install policy restored a clean
+typecheck and 40/40. These repeat checks are separate from the broader audit and
+dependency-tree checks recorded for the original trial above. Nothing was merged.
+
 The registry check also found a compatible-major declaration update, 24.19.2,
 plus dotenv 18.0.7, Express 5.3.0 and Knip 6.41.0. These are observations, not
 approved compatibility or security claims. Review the Node 24 declaration patch

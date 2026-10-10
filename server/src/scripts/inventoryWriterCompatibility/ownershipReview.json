@@ -13,6 +13,18 @@
   ],
   "reviews": [
     {
+      "id": "comparison_incident_schema",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete comparison incident migration: one empty singleton ledger with bounded UUID membership and opaque fingerprints. It creates no trigger, function, foreign key, cascade, inventory DML or ownership backfill. Runtime ledger writes affect only this table and exact error_log UUIDs, under a dedicated session lock and short transactions on the lock connection.",
+      "followUp": "Keep isolated restart, competing-session, connection termination, cancellation and rollback checks. Do not retrospectively assign old warning ownership or treat this cooperative telemetry lock as ingestion fencing. Fresh schema must match the migration."
+    },
+    {
+      "id": "comparison_scoped_database_query",
+      "classification": "unresolved",
+      "reason": "Reviewed the complete shared database wrapper and its scoped-query addition. The new callback capability uses the same client as the held advisory lock, validates enclosing leases before and after queries, rejects use after callback completion, and preserves release/discard behavior. Existing indirect query targets remain unresolved; this does not authorize arbitrary inventory writes.",
+      "followUp": "Retain lease-loss, nested ownership, escaped callback and real PostgreSQL termination tests. The comparison caller uses only fixed parameterized incident/error-log SQL and commits before releasing the session. Re-review new callers rather than assuming this capability itself grants ingestion ownership."
+    },
+    {
       "id": "read_only_adjudication_provider",
       "classification": "separately_coordinated",
       "reason": "Reviewed the complete adjudicationProviderStatus module, the fixed FRESH_POLICY_CONFIG_SQL SELECT from ai_provider_config, private CLI dispatch and local metadata client. The configuration read runs in an explicit READ ONLY transaction with local timeouts; that transaction completes before bounded /api/tags and /api/show requests. No inventory mutation, ownership claim, budget reservation, model generation/pull or response-cache publication is reachable from this diagnostic. Its fixed report excludes raw configuration, identity and errors.",
@@ -506,6 +518,7 @@
     }
   ],
   "entries": [
+    {"path":"database/migrations/20261009_230000_comparison_incident_ledger.sql","digest":"8dd150919a5f33ebdd17cdf452103729945e475115656856fa899cfa995c14b6","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"comparison_incident_schema"},
     {"path":"server/src/services/evaluationInventoryReadiness.mjs","digest":"932bc5837db49757bcdf75043ddf0efa42ab2923bb3387b8c8f0daadabed0234","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_evaluation_inventory"},
     {"path":"server/src/services/ingestionSafeguardRepair.mjs","digest":"86866e4e911b0e2821905aa8bca7839dc19d04768229252cb10eb3857723a2c5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"confirmed_safeguard_repair"},
     {"path":"database/migrations/20261005_180000_ingestion_compatibility_fence.sql","digest":"7f976b4d94acd4ed4a11ff2a801c33ddd36b4b2f5377b7e35c89a64cc39f1bf5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"ingestion_compatibility_recovery"},
@@ -1103,7 +1116,7 @@
     {"path":"database/migrations/20261004_180000_discord_delivery_verification.sql","digest":"bd556c1b7a2a5f66d19d4faf17ef513199e9a3a9bbe35d8cd75b7744ddd43c4b","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_200000_discord_delivery_deferral.sql","digest":"0c70f7bf7f586897f1f8b6f275d39f8f06a1763e798923bd8fb27bb6b9205e55","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_210000_discord_delivery_outbox.sql","digest":"26513986746281ea46502fb0a3376510d4a5791cd1bc310de67b63b5fbb7024e","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"e679574de76561c7bbced62e84d1a70d1f8376eb1c718be9ba556101568df6e5","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"56e7fea10e4386216160a1ad1c385550459df57dcf78ae7d22402ab6ede2e1cc","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
     {"path":"database/migrations/20261004_230000_queue_routing_replay_guard.sql","digest":"5628b068b6ac11ebd60db771b5eaf0b7c2e343968f35612bcd4a741ccd9f9620","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_140000_provider_credential_recovery.sql","digest":"b42e59bb110f3e478f0ee76be36fd2329b0c5c0c539d23a4d9d85d68c1292eb5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_120000_durable_enrichment_retry_schedule.sql","digest":"02cf32b381cab554229d93ba2a986fde9db56349f1e14aa2f1d4a339f40419e1","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -1113,7 +1126,7 @@
     {"path":"server/src/services/legacyEnrichmentRetryRepository.mjs","digest":"79b2a66324a398fc6e416efb2b96444695ef362844ea7a3f02edf53a1fb8516c","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"legacy_enrichment_retry_review"},
     {"path":"server/src/services/legacyEnrichmentRetryService.mjs","digest":"328c5aabd4f140b7e99d5448adad0081760186cb888faa3167ef160ccdea6ddb","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"legacy_enrichment_retry_review"},
     {"path":"scripts/reset_data.mjs","digest":"e66c88105e96781b08b612bfa293ec94d59537eb1b0f29e2f1fb20f3567480ce","analysisDigest":"1b9637b0e9596c5ee46b9013ca1129172197ad43bfe548a6060f164e53c56965","review":"maintenance_debt"},
-    {"path":"server/src/config/database.mjs","digest":"69b6dafcbdab577315198fb5e7435546eb3cb36f260d7e6f814b537e25dc561a","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/config/database.mjs","digest":"88434f26849a5a46b910ee294e953ff7a20c83c1c28754f61aa005d5904b1822","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"comparison_scoped_database_query"},
     {"path":"server/src/config/migrations.mjs","digest":"e587a5611b3f62e3a8cccb5e394f57b900fbc7d2eee3c18ee15752df10022e1e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/classificationRouteHistory.mjs","digest":"d929b1b7083a290d43eda700e1cfb915e9df8e8577414968b3b69508e88ccf08","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/routes/helpers/providerConfigHelpers.mjs","digest":"8af1d36e1697e37cada260da2454539b8eeff36bd1b6398fc29538a3b79dce85","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

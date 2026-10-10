@@ -35,6 +35,22 @@ test('idle pool errors also avoid raw driver details and recursive database logg
   expect(logger.error).toHaveBeenCalledWith('Unexpected error on idle client', { code: '25P03' }, { skipDbPersist: true });
 });
 
+test('scoped session queries reject connection loss and escaped callbacks', async () => {
+  const { db, client } = setup(); let escaped;
+  await db.withSessionAdvisoryLock(123, async ({ query }) => {
+    escaped = query;
+    await query('SELECT 1');
+  });
+  await expect(escaped('SELECT 2')).rejects.toThrow('session scope ended');
+  expect(client.query).not.toHaveBeenCalledWith('SELECT 2');
+  const error = fault();
+  await expect(db.withSessionAdvisoryLock(123, async ({ query }) => {
+    client.emit('error', error);
+    await query('SELECT 3');
+  })).rejects.toBe(error);
+  expect(client.query).not.toHaveBeenCalledWith('SELECT 3');
+});
+
 test.each([null, { message: 'PRIVATE', code: 'PRIVATE' }, Object.assign(new Error('PRIVATE'), { code: 'ECONNRESET' })])(
   'normalizes malformed errors and only retains an allowlisted code %#', error => {
     const { client, logger } = setup(), lease = createDatabaseClientLease(client, { operation: 'query', logger });

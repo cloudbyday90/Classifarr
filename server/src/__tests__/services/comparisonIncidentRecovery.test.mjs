@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { expect, jest, test } from '@jest/globals';
 import { createComparisonIncidentRecovery } from '../../services/comparisonIncidentRecovery.mjs';
 import { COMPARISON_WARNING, MAX_COMPARISON_INCIDENT_IDS } from '../../services/comparisonIncidentRepository.mjs';
@@ -123,4 +123,20 @@ test('opaque scope changes with configuration or known model identity, not a new
   scope.clear(); expect(scope.current()).toBeNull();
   scope.configure(null); expect(scope.current()).toBeNull();
   scope.configure('private endpoint and credentials'); expect(scope.current()).not.toBe(first);
+});
+
+test('durable fingerprints are stable only for the same database key and currently inspected identity', () => {
+  const first = createComparisonRecoveryScope(), second = createComparisonRecoveryScope(), secret = randomBytes(32);
+  const identity = { provider: 'ollama', model: 'fixture', digest: 'a'.repeat(64), dimensions: 4 };
+  expect(first.fingerprint(secret)).toBeNull();
+  for (const scope of [first, second]) { scope.configure('PRIVATE endpoint'); scope.identify(identity); }
+  const expected = first.fingerprint(secret);
+  expect(second.fingerprint(secret)).toEqual(expected);
+  expect(JSON.stringify(expected)).not.toContain('PRIVATE');
+  expect(second.fingerprint(randomBytes(32))).not.toEqual(expected);
+  second.begin(); expect(second.fingerprint(secret)).toBeNull();
+  second.configure('PRIVATE endpoint');
+  expect(second.fingerprint(secret)).toEqual({ ...expected, representation: null });
+  second.identify({ ...identity, dimensions: 8 });
+  expect(second.fingerprint(secret).representation).not.toBe(expected.representation);
 });

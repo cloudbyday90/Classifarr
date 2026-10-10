@@ -320,14 +320,27 @@ export function createDatabaseModule({
         return false;
       }
       let callbackFailed = false;
+      let callbackActive = true;
       try {
-        await lockScope.run(lease, () => fn({ signal: lease.signal }));
+        // Scoped queries keep ownership-sensitive transactions on the lock connection.
+        const query = async (...args) => {
+          const check = () => {
+            if (!callbackActive) throw new Error('Database session scope ended');
+            lockScope.assertHealthy(); lease.assertHealthy();
+          };
+          check();
+          const result = await client.query(...args);
+          check();
+          return result;
+        };
+        await lockScope.run(lease, () => fn({ signal: lease.signal, query }));
         lease.assertHealthy();
         return true;
       } catch (error) {
         callbackFailed = true;
         throw error;
       } finally {
+        callbackActive = false;
         try {
           lease.assertHealthy();
           await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);

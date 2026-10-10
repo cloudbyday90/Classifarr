@@ -85,7 +85,7 @@ test('a locked warning times out without mutation and a subsequent verified upda
 });
 
 test.each([
-  { status: 'degraded' }, { episodeId: "'; DELETE FROM error_log; --" }, { scopeId: null }, { errorIds: [] },
+  { status: 'degraded' }, { version: 3 }, { episodeId: "'; DELETE FROM error_log; --" }, { scopeId: null }, { errorIds: [] },
   { errorIds: Array.from({ length: 129 }, () => randomUUID()) }, { errorIds: ['not-a-uuid'] },
 ])('invalid recovery input is refused before database access: %j', async invalid => {
   const database = { withTransaction: jest.fn() };

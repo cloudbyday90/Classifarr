@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-05T16:44:44.419Z
--- Latest Migration: 20261005_180000_ingestion_compatibility_fence.sql
+-- Generated: 2026-10-10T00:30:17.557Z
+-- Latest Migration: 20261009_230000_comparison_incident_ledger.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2976,6 +2976,26 @@ CREATE TABLE public.classification_recovery_probe_state (
     last_outcome text,
     CONSTRAINT classification_recovery_probe_state_id_check CHECK (id),
     CONSTRAINT classification_recovery_probe_state_last_outcome_check CHECK ((last_outcome = ANY (ARRAY['ready'::text, 'unavailable'::text, 'configuration_changed'::text])))
+);
+
+
+--
+-- Name: comparison_incident_ledger; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.comparison_incident_ledger (
+    singleton boolean DEFAULT true NOT NULL,
+    secret bytea NOT NULL,
+    configuration text NOT NULL,
+    representation text,
+    scope_id uuid NOT NULL,
+    episode_id uuid NOT NULL,
+    error_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+    CONSTRAINT comparison_incident_ledger_configuration_check CHECK ((configuration ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT comparison_incident_ledger_error_ids_check CHECK (((cardinality(error_ids) <= 128) AND (array_position(error_ids, NULL::uuid) IS NULL))),
+    CONSTRAINT comparison_incident_ledger_representation_check CHECK ((representation ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT comparison_incident_ledger_secret_check CHECK ((octet_length(secret) = 32)),
+    CONSTRAINT comparison_incident_ledger_singleton_check CHECK (singleton)
 );
 
 
@@ -10384,6 +10404,14 @@ ALTER TABLE ONLY public.classification_queue_decision_witnesses
 
 ALTER TABLE ONLY public.classification_recovery_probe_state
     ADD CONSTRAINT classification_recovery_probe_state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: comparison_incident_ledger comparison_incident_ledger_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.comparison_incident_ledger
+    ADD CONSTRAINT comparison_incident_ledger_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -18218,6 +18246,7 @@ FROM unnest(ARRAY[
     '20261004_200000_discord_delivery_deferral.sql',
     '20261004_210000_discord_delivery_outbox.sql',
     '20261004_230000_queue_routing_replay_guard.sql',
-    '20261005_180000_ingestion_compatibility_fence.sql'
+    '20261005_180000_ingestion_compatibility_fence.sql',
+    '20261009_230000_comparison_incident_ledger.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
