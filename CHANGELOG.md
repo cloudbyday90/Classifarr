@@ -30,7 +30,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   details name the detected catalog provider and explain why artwork and descriptions do not establish a
   valid identity. Guidance distinguishes conflicting IDs from title/year checks
   and avoids rematching a correct title merely to clear a warning. Identity
-  disagreements remain unresolved; memory safeguards remain unchanged.
+  disagreements remain unresolved. An opt-in, read-only cross-reference diagnostic
+  separates missing catalog mappings from contradictory matches, with bounded
+  requests and aggregate-only output. Memory safeguards remain unchanged.
 - **Runtime configuration** — Update environment loading so undefined optional
   settings preserve configured defaults and command-line quiet mode honors env
   files, while explicit options retain precedence.

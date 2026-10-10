@@ -1,5 +1,14 @@
 # Twelve unresolved source identities: investigation
 
+## Follow-up — 10 October 2026
+
+The exact-alternative-title fix has now recovered the title/year case locally
+through normal scheduling, including metadata backfill. Eleven local conflicts
+remain; the unchanged Unraid deployment still displays twelve. The new
+[cross-reference diagnostic](source-identity-cross-reference-outcome.md) separates
+missing catalog mappings from contradictory results without selecting an ID.
+The findings below describe the original twelve-item snapshot.
+
 ## Read-only findings — 9 October 2026
 
 The same twelve TV titles were confirmed in the local database and the Unraid
