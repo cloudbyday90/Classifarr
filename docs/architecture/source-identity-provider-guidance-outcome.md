@@ -21,6 +21,12 @@ No probe reset a cooldown, changed a catalog, recovered an item or wrote to eith
 application database. Unraid and the shared Plex/Ollama services were not deployed,
 restarted or reconfigured.
 
+Two further bounded current-source checks explained the waiting category:
+one returned `incomplete_external_evidence` and the other `external_id_not_found`
+from the existing resolver. These are missing catalog cross-references, not
+evidence of missing Plex descriptions. Unraid's read-only report was refreshed
+at 23:30 Eastern and still showed twelve items: ten source review, two retry wait.
+
 ## Implementation
 
 The existing paginated status endpoint now projects a bounded allowlist of stored
@@ -68,10 +74,49 @@ This does not claim broader ingestion compatibility or waive existing review deb
 
 The ownership gate rerun passed all 39 tests. Full frontend coverage passed all
 448 files / 6,530 tests. Lint, both typechecks, backend dependency analysis,
-documentation, copyright and ESM import checks passed. Full backend coverage and
-the requested exact-source no-cache image rebuild are being completed; this
-document will record their results before the final push. No release or version
-change is part of this work.
+documentation, copyright and ESM import checks passed. The production frontend
+build and production-only backend dependency check also passed.
+
+Full backend coverage completed in 985 seconds: 1,762 suites passed and one
+failed, with 54,899 passing tests, the one stale-review assertion above and one
+Linux-only directory-fsync test skipped on Windows. After completion, Jest's
+failed-suite rerun against the corrected review passed all 39 tests. No other
+full-run failure occurred. This records the full run and correction separately,
+not an uninterrupted green run. The skipped filesystem behavior passed inside
+the actual Linux image as described below.
+
+The coverage ratchet passed with both fresh reports: server statements/lines
+89.72%, branches 85.88%, functions 91.13%; client statements 87.00%, branches
+80.51%, functions 86.57%, lines 88.81%. No threshold or assertion was relaxed.
+Staged secret scanning passed. No release or version change is part of this work.
+
+## Local image and schema evaluation
+
+Built without cache from clean committed source
+`9bd482ba721933f9531b4e28647392cb88d68e69`. The inspected local Docker image identity
+is `sha256:04f8236286e9c540f9d374a5e3556bab434c9ca9e4032010e55f25c4d8b1a22d`;
+this is local testing evidence, not a claim of registry publication or a signed
+release. Only the local Compose service was recreated using its existing override.
+
+A 76,672,388-byte database backup was checksum-verified and readable with
+`pg_restore --list`; the exact prior image has a private rollback tag. The new
+container started at `2026-10-10T03:33:15.339421401Z`, became healthy and returned
+HTTP 200. Early checks showed zero restarts, no OOM event, a read-only root,
+UID/GID 1000, `no-new-privileges`, and the unchanged 2 GiB limit. A 372.3 MiB
+sample is startup context, not sustained memory-soak evidence. The startup-window
+error-log query returned no rows at that check.
+
+The rebuilt browser UI rendered all twelve entries, nine detected TVDB providers
+and three TMDb providers, the metadata explanation and alternative-title guidance.
+Keyboard Tab reached the first Open library link with a visible focus outline.
+The count correctly remained twelve: diagnostics do not erase unresolved evidence.
+
+After the rebuild, the existing isolated schema-dump runner regenerated
+`database/schema/current.sql` through migration
+`20261009_230000_comparison_incident_ledger.sql` with no tracked schema difference,
+then removed its disposable container/data. The actual Linux image also passed
+the directory-fsync/exclusive-copy/unchanged-source probe that Windows cannot
+exercise natively. No live application data was used for either fixture.
 
 ## Recommendation
 
