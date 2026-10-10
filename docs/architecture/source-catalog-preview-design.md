@@ -25,6 +25,10 @@ still need independent episode evidence and administrator review.
 - Plex and the shared Jellyfin/Emby adapter expose one normalized layout contract.
   Validate source/library/series membership and typed movie/TV identity, not names
   of libraries, genres, policy destinations or title similarity.
+  Plex grandchildren do not normally repeat `librarySectionID`: verify the
+  parent series belongs to the selected library, then require each episode's
+  `grandparentRatingKey` to equal that exact series. If a child does include a
+  library ID, it must agree. Repeat the parent/layout read after catalog work.
 - Single request concurrency; two-minute run deadline; ten-second HTTP timeout;
   1 MiB decompressed response limit. Each TV capture is at most 20 pages of 100
   items / 2,000 episodes. Refuse missing/changing totals, skipped/repeated pages,

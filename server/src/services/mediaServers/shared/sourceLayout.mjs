@@ -40,8 +40,12 @@ export async function readMediaSourceLayout(kind, url, apiKey, libraryId, extern
     });
     const page = plex ? readPlexSourcePage(response) : readEmbySourcePage(response);
     return { offset: page.offset, total: page.total, items: page.items.map(item => {
+      // Plex grandchildren omit librarySectionID. The verified series supplies
+      // library membership; every child must point back to that exact series.
+      // If the optional child library field exists it must still agree.
       if (plex ? item.type !== 'episode' || String(item.grandparentRatingKey) !== externalId ||
-          String(item.librarySectionID) !== libraryId : item.Type !== 'Episode' || String(item.SeriesId) !== externalId) reject();
+          (item.librarySectionID !== undefined && String(item.librarySectionID) !== libraryId) :
+          item.Type !== 'Episode' || String(item.SeriesId) !== externalId) reject();
       return { id: String(plex ? item.ratingKey : item.Id), season: plex ? item.parentIndex : item.ParentIndexNumber,
         episode: plex ? item.index : item.IndexNumber, end: plex ? item.indexEnd : item.IndexNumberEnd };
     }) };

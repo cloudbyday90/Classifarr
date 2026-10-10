@@ -27,7 +27,14 @@ must not be substituted for production evidence.
 Plex artwork/descriptions do not answer the independent catalog-scope question.
 The new preview reports numbering differences, subsets and equal counts without
 interpreting any of them as identity. It preserves source grouping and all IDs.
-Live rebuilt-image results are recorded below after validation completes.
+The first rebuilt-image preview rejected all eleven layouts. A bounded read-only
+shape probe showed Plex grandchildren include the exact series parent key but
+omit the library ID on both the child and container. Corrected the adapter to
+derive library membership through its already-verified parent series, while
+still rejecting a wrong series key or an explicitly conflicting child library.
+Updated the real HTTP fixture to match this response shape. No identifiers or
+raw response bodies from that probe are retained in this document.
+Final rebuilt-image results are recorded below after validation completes.
 
 ## Independent PR #556
 

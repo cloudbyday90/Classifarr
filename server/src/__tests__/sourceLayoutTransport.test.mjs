@@ -6,7 +6,7 @@ import { createIdentityHttpFixture, withinIdentityTestDeadline } from './helpers
 
 const plexParent = { ratingKey: 'show', librarySectionID: 'library', type: 'show', title: 'Synthetic',
   year: 2020, Guid: [{ id: 'tmdb://10' }] };
-const plexEpisode = { ratingKey: 'episode', librarySectionID: 'library', type: 'episode', grandparentRatingKey: 'show',
+const plexEpisode = { ratingKey: 'episode', type: 'episode', grandparentRatingKey: 'show',
   parentIndex: 1, index: 1 };
 const embyParent = { Id: 'show', ParentId: 'library', Type: 'Series', Name: 'Synthetic',
   ProductionYear: 2020, ProviderIds: { Tmdb: '10' } };
