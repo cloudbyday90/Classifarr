@@ -23,7 +23,7 @@ afterEach(async () => {
   await pool.query('DELETE FROM media_server WHERE id=$1', [serverId]);
 });
 
-function setup({ scopePreview = false, episodePreview = false, onDetails = async () => {} } = {}) {
+function setup({ scopePreview = false, episodePreview = false, episodeReferences = false, onDetails = async () => {} } = {}) {
   let inTransaction = false;
   const reader = createSourceIdentityExternalEvidenceReplayReadService({ withTransaction: async fn => {
     const client = await pool.connect();
@@ -41,12 +41,13 @@ function setup({ scopePreview = false, episodePreview = false, onDetails = async
   }), getLibraryItemLayout: jest.fn(async () => {
     expect(inTransaction).toBe(false);
     return { identity: item.source_identity_evidence, digest: 'a'.repeat(64), episodeCount: 1,
-      episodes: [{ season: 1, episode: 1, providerIds: { tmdb_id: [100] } }],
+      episodes: [{ season: 1, episode: 1, providerIds: episodeReferences
+        ? { tmdb_id: [], imdb_id: ['tt123'], tvdb_id: [] } : { tmdb_id: [100] } }],
       seasons: [{ number: 1, episodes: [1] }] };
   }) };
-  const factory = scopePreview || episodePreview ? createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
+  const factory = scopePreview || episodePreview || episodeReferences ? createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
   return { source, replay: factory({ readRows: limits => reader.read(limits),
-    getMediaServerService: () => source, ...(episodePreview ? { mode: 'episodes' } : {}),
+    getMediaServerService: () => source, ...(episodeReferences ? { mode: 'episode-references' } : episodePreview ? { mode: 'episodes' } : {}),
     tmdbService: { getIdentityDetails: async () => {
       expect(inTransaction).toBe(false); await onDetails();
       return { id: 11, name: 'Synthetic', seasons: [{ id: 12, season_number: 1, episode_count: 1 }] };
@@ -54,7 +55,9 @@ function setup({ scopePreview = false, episodePreview = false, onDetails = async
       expect(inTransaction).toBe(false);
       return { id: 12, season_number: 1, episodes: [{ id: 100, show_id: 11, season_number: 1, episode_number: 1 }] };
     }, findIdentityByExternalId: async id => {
-      expect(inTransaction).toBe(false); return { tv_results: id === 22 ? [] : [{ id: 11 }] };
+      expect(inTransaction).toBe(false);
+      if (episodeReferences) return { tv_episode_results: [{ id: 100, show_id: 11, season_number: 1, episode_number: 1 }] };
+      return { tv_results: id === 22 ? [] : [{ id: 11 }] };
     } } }) };
 }
 
@@ -131,6 +134,24 @@ test.each(['configuration', 'disabled'])('episode preview rejects actual %s drif
   const t = setup({ episodePreview: true, onDetails: async () => {
     if (mode === 'disabled') await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
     else await pool.query("UPDATE media_server SET api_key='changed-fixture' WHERE id=$1", [serverId]);
+  } });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'selection_changed' }, summary: null });
+});
+
+test('episode cross-references preserve retained observations and never hold a transaction over Find HTTP', async () => {
+  await store.finish(context);
+  const before = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
+  const t = setup({ episodeReferences: true });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'complete' }, canApply: false,
+    summary: { gapLookups: 1, gapComparisons: { candidate_agrees: 1 } } });
+  expect(t.source.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect((await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
+  expect((await pool.query('SELECT id FROM media_server_items WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+});
+test('gap checks discard findings after actual configuration drift', async () => {
+  await store.finish(context);
+  const t = setup({ episodeReferences: true, onDetails: async () => {
+    await pool.query("UPDATE media_server SET api_key='changed-fixture' WHERE id=$1", [serverId]);
   } });
   expect(await t.replay.replay()).toMatchObject({ status: { id: 'selection_changed' }, summary: null });
 });

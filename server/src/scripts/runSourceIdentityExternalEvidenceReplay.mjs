@@ -3,11 +3,11 @@ import { resolve } from 'node:path';
 import { reviewSourceCatalogScopePlan } from '../services/sourceCatalogScopePlan.mjs';
 import { loadSourceCatalogScopePlanInput } from './sourceCatalogScopePlanInput.mjs';
 
-async function loadPrivateRuntime({ crossReferences = false, scopePreview = false, episodePreview = false } = {}) {
+async function loadPrivateRuntime({ crossReferences = false, scopePreview = false, episodePreview = false, episodeReferences = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on`.trim();
-  if (crossReferences || scopePreview || episodePreview) process.env.PGOPTIONS += ' -c statement_timeout=10000 -c lock_timeout=1000';
+  if (crossReferences || scopePreview || episodePreview || episodeReferences) process.env.PGOPTIONS += ' -c statement_timeout=10000 -c lock_timeout=1000';
   const db = await import('../config/database.mjs');
   try {
     const [{ createSourceIdentityExternalEvidenceReplay }, { getMediaServerService }, { tmdbService }] = await Promise.all([
@@ -16,15 +16,15 @@ async function loadPrivateRuntime({ crossReferences = false, scopePreview = fals
       import('../services/tmdb.mjs'),
     ]);
     let replay;
-    if (crossReferences || scopePreview || episodePreview) {
+    if (crossReferences || scopePreview || episodePreview || episodeReferences) {
       const [{ createSourceIdentityCrossReferenceDiagnosis }, { createSourceIdentityExternalEvidenceReplayReadService }] = await Promise.all([
         import('../services/sourceIdentityCrossReferenceDiagnosis.mjs'),
         import('../services/sourceIdentityExternalEvidenceReplayReadService.mjs'),
       ]);
       const reader = createSourceIdentityExternalEvidenceReplayReadService();
-      const factory = scopePreview || episodePreview ? (await import('../services/sourceCatalogPreview.mjs')).createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
+      const factory = scopePreview || episodePreview || episodeReferences ? (await import('../services/sourceCatalogPreview.mjs')).createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
       replay = factory({ readRows: limits => reader.read(limits), getMediaServerService, tmdbService,
-        ...(episodePreview ? { mode: 'episodes' } : {}) });
+        ...(episodeReferences ? { mode: 'episode-references' } : episodePreview ? { mode: 'episodes' } : {}) });
     } else {
       replay = createSourceIdentityExternalEvidenceReplay({ query: db.query, getMediaServerService, tmdbService });
     }
@@ -44,11 +44,12 @@ export async function runSourceIdentityExternalEvidenceReplay({
   loadPlan = loadSourceCatalogScopePlanInput,
 } = {}) {
   if (!Array.isArray(argv) || (argv.length !== 0 &&
-      (argv.length !== 1 || !['--cross-references', '--scope-plan', '--scope-preview', '--episode-preview'].includes(argv[0])))) {
+      (argv.length !== 1 || !['--cross-references', '--scope-plan', '--scope-preview', '--episode-preview', '--episode-cross-references'].includes(argv[0])))) {
     throw new Error('source_identity_evidence_replay_invalid_arguments');
   }
   if (argv[0] === '--scope-plan') return reviewSourceCatalogScopePlan(await loadPlan());
-  const runtime = argv[0] === '--episode-preview' ? await loadRuntime({ episodePreview: true }) :
+  const runtime = argv[0] === '--episode-cross-references' ? await loadRuntime({ episodeReferences: true }) :
+    argv[0] === '--episode-preview' ? await loadRuntime({ episodePreview: true }) :
     argv[0] === '--scope-preview' ? await loadRuntime({ scopePreview: true }) :
     argv.length ? await loadRuntime({ crossReferences: true }) : await loadRuntime();
   try {

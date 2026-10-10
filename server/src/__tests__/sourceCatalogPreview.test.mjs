@@ -13,12 +13,17 @@ function setup(rows = [row], mode = 'layout') {
   const adapter = { getLibraryItemLayout: jest.fn().mockResolvedValue(layout) };
   const getMediaServerService = jest.fn().mockReturnValue(adapter);
   const tmdbService = { getIdentityDetails: jest.fn().mockResolvedValue(details),
+    findIdentityByExternalId: jest.fn().mockResolvedValue({ tv_episode_results: [
+      { id: 100, show_id: 10, season_number: 1, episode_number: 1 }] }),
     getIdentitySeasonDetails: jest.fn().mockResolvedValue({ id: 11, season_number: 1, episodes: [
       { id: 100, show_id: 10, season_number: 1, episode_number: 1 },
       { id: 200, show_id: 10, season_number: 1, episode_number: 2 }] }) };
   if (mode === 'episodes') adapter.getLibraryItemLayout.mockResolvedValue({ ...layout, episodes: [
     { season: 1, episode: 1, providerIds: { tmdb_id: [100] } },
     { season: 2, episode: 1, providerIds: { tmdb_id: [200] } }] });
+  if (mode === 'episode-references') adapter.getLibraryItemLayout.mockResolvedValue({ ...layout, episodes: [
+    { season: 1, episode: 1, providerIds: { tmdb_id: [], imdb_id: ['tt123'], tvdb_id: [] } },
+    { season: 1, episode: 2, providerIds: { tmdb_id: [200], imdb_id: [], tvdb_id: [] } }] });
   return { readRows, adapter, getMediaServerService, tmdbService,
     replay: createSourceCatalogPreview({ readRows, getMediaServerService, tmdbService, mode }) };
 }
@@ -170,4 +175,37 @@ test('episode CLI remains explicit and closes runtime even on failure', async ()
   expect(loadRuntime).toHaveBeenCalledWith({ episodePreview: true });
   expect(runtime.close).toHaveBeenCalledTimes(1);
   await expect(runSourceIdentityExternalEvidenceReplay({ argv: ['--episode-preview', '--scope-preview'], loadRuntime })).rejects.toThrow();
+});
+
+test('gap checks remain a distinct explicit mode and never confer mapping authority', async () => {
+  const t = setup([row], 'episode-references');
+  expect(await t.replay.replay()).toMatchObject({ version: 'source_episode_cross_references.v1',
+    verification: 'episode_external_id_cross_references', canApply: false, orderVerified: false, crossProviderVerified: false,
+    status: { id: 'complete' }, summary: { gapLookups: 1, gapComparisons: { candidate_agrees: 1 },
+      outcomes: { episode_references_inspected: 1 }, comparisons: { episode_identity_missing: 1, episode_numbering_agrees: 1 } } });
+  expect(t.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect(t.readRows).toHaveBeenCalledTimes(2);
+  const runtime = { replay: t.replay, close: jest.fn() }, loadRuntime = jest.fn().mockResolvedValue(runtime);
+  await runSourceIdentityExternalEvidenceReplay({ argv: ['--episode-cross-references'], loadRuntime });
+  expect(loadRuntime).toHaveBeenCalledWith({ episodeReferences: true });
+  expect(runtime.close).toHaveBeenCalledTimes(1);
+  await expect(runSourceIdentityExternalEvidenceReplay({ argv: ['--episode-cross-references', '--apply'], loadRuntime })).rejects.toThrow();
+});
+test.each(['source', 'configuration', 'cancelled', 'provider'])('gap findings are discarded on %s failure', async stage => {
+  const t = setup([row], 'episode-references'), controller = new AbortController();
+  t.tmdbService.findIdentityByExternalId.mockImplementation(async () => {
+    if (stage === 'source') t.adapter.getLibraryItemLayout.mockResolvedValue({ ...layout, digest: 'changed' });
+    if (stage === 'configuration') t.readRows.mockResolvedValue([{ ...row, api_key: 'private-changed' }]);
+    if (stage === 'cancelled') controller.abort();
+    if (stage === 'provider') throw new Error('private failure');
+    return { tv_episode_results: [{ id: 100, show_id: 10, season_number: 1, episode_number: 1 }] };
+  });
+  const result = await t.replay.replay({ signal: controller.signal });
+  if (['configuration', 'cancelled'].includes(stage)) expect(result.summary).toBeNull();
+  else expect(result.summary).toMatchObject({ comparisons: {}, gapComparisons: {}, gapLookups: 0 });
+  expect(JSON.stringify(result)).not.toMatch(/private|tt123|show_id/u);
+});
+test('gap mode rejects a missing Find dependency without provider work', () => {
+  const t = setup(); delete t.tmdbService.findIdentityByExternalId;
+  expect(() => createSourceCatalogPreview({ ...t, mode: 'episode-references' })).toThrow('invalid_preview_dependencies');
 });

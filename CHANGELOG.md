@@ -27,7 +27,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   source/configuration drift, and keeps numbering agreement separate from identity.
   Episode-level catalog checks distinguish numbering differences, missing or
   reused IDs, and source groups spanning multiple catalog series without
-  rematching media or activating mappings.
+  rematching media or activating mappings. Optional exact-ID checks explain
+  remaining episode gaps using typed IMDb/TVDB cross-references, with bounded
+  reads and explicit missing, conflicting and out-of-series outcomes.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or

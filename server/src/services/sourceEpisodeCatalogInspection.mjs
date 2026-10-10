@@ -1,9 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { CATALOG_EPISODE_LIMITS, CatalogEpisodeEvidenceError, catalogSeasonPlan,
   appendCatalogSeason, compareCatalogEpisodes } from './catalogEpisodeEvidence.mjs';
+import { inspectEpisodeGapReferences } from './episodeGapCrossReferenceInspection.mjs';
 
 /** Bounded catalog reads between the caller's two source snapshots. Never repairs. */
-export async function inspectSourceCatalogEpisodes(source, tmdb, { signal, budget }) {
+export async function inspectSourceCatalogEpisodes(source, tmdb, { signal, budget, crossReferences = false }) {
   signal.throwIfAborted();
   if (source.identity.mediaType === 'movie') return { outcome: 'episode_preview_not_applicable' };
   if (!source.episodes.length) return { outcome: 'source_layout_empty' };
@@ -33,8 +34,10 @@ export async function inspectSourceCatalogEpisodes(source, tmdb, { signal, budge
       signal.throwIfAborted();
       appendCatalogSeason(catalog, plan, details);
     }
-    return { outcome: 'episodes_inspected', candidates: candidates.length,
-      ...compareCatalogEpisodes(source.episodes, catalog) };
+    const references = crossReferences ? await inspectEpisodeGapReferences(source, catalog, tmdb, { signal, budget }) : {};
+    if (references.outcome) return references;
+    return { outcome: crossReferences ? 'episode_references_inspected' : 'episodes_inspected', candidates: candidates.length,
+      ...compareCatalogEpisodes(source.episodes, catalog), ...references };
   } catch (error) {
     signal.throwIfAborted();
     return { outcome: error instanceof CatalogEpisodeEvidenceError ? error.code : 'catalog_unavailable' };
