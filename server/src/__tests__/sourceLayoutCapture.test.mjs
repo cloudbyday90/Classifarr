@@ -80,10 +80,10 @@ test('invalid identity and cancellation stop admission', async () => {
 });
 
 test.each([
-  [details(), 'same_numbering_counts'],
-  [details([{ id: 11, season_number: 1, episode_count: 2 }]), 'source_subset_numbering'],
-  [details([{ id: 11, season_number: 2, episode_count: 1 }]), 'numbering_differs'],
-  [details([]), 'numbering_differs'],
+  [details(), 'equal_season_count_bounds'],
+  [details([{ id: 11, season_number: 1, episode_count: 2 }]), 'within_season_count_bounds'],
+  [details([{ id: 11, season_number: 2, episode_count: 1 }]), 'outside_season_count_bounds'],
+  [details([]), 'outside_season_count_bounds'],
   [{ ...details(), id: 99 }, 'catalog_invalid'],
   [{ ...details(), name: '' }, 'catalog_invalid'],
   [{ ...details(), seasons: null }, 'catalog_invalid'],

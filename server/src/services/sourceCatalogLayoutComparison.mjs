@@ -20,8 +20,8 @@ export function compareSourceCatalogLayout(layout, candidateId, details) {
   if (!layout.episodeCount) return 'source_layout_empty';
   for (const season of layout.seasons) {
     const maximum = seasons.get(season.number);
-    if (maximum === undefined || season.episodes.some(number => number < 1 || number > maximum)) return 'numbering_differs';
+    if (maximum === undefined || season.episodes.some(number => number < 1 || number > maximum)) return 'outside_season_count_bounds';
   }
   const catalogEpisodes = [...seasons.values()].reduce((sum, size) => sum + size, 0);
-  return layout.episodeCount === catalogEpisodes ? 'same_numbering_counts' : 'source_subset_numbering';
+  return layout.episodeCount === catalogEpisodes ? 'equal_season_count_bounds' : 'within_season_count_bounds';
 }

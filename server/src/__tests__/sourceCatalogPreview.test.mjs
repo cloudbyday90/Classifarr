@@ -23,7 +23,7 @@ test('only aggregate stable evidence escapes the read-only preview', async () =>
   expect(result).toMatchObject({ version: 'source_catalog_preview.v1', status: { id: 'complete' },
     canApply: false, verification: 'layout_only', orderVerified: false, summary: {
       selectedObservations: 1, inspectedObservations: 1, sourceSeasons: 1, sourceEpisodes: 2,
-      catalogCandidates: 1, outcomes: { layout_inspected: 1 }, comparisons: { same_numbering_counts: 1 } } });
+      catalogCandidates: 1, outcomes: { layout_inspected: 1 }, comparisons: { equal_season_count_bounds: 1 } } });
   expect(JSON.stringify(result)).not.toMatch(/private|digest|tmdb_id/u);
   expect(t.readRows).toHaveBeenCalledTimes(2);
   expect(t.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
@@ -117,7 +117,7 @@ test('independent candidate namespaces and multiple libraries are retained witho
   t.tmdbService.getIdentityDetails.mockImplementation(async id => ({ ...details, id }));
   const result = await t.replay.replay();
   expect(result.summary.catalogCandidates).toBe(4);
-  expect(result.summary.comparisons).toEqual({ same_numbering_counts: 4 });
+  expect(result.summary.comparisons).toEqual({ equal_season_count_bounds: 4 });
   expect(result.canApply).toBe(false);
 });
 

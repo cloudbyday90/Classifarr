@@ -86,7 +86,7 @@ test('layout preview rechecks through real read-only transactions and preserves 
   const before = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
   const t = setup({ scopePreview: true });
   expect(await t.replay.replay()).toMatchObject({ status: { id: 'complete' }, canApply: false,
-    summary: { inspectedObservations: 1, comparisons: { same_numbering_counts: 1 } } });
+    summary: { inspectedObservations: 1, comparisons: { equal_season_count_bounds: 1 } } });
   expect(t.source.getLibraryItemLayout).toHaveBeenCalledTimes(2);
   expect((await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
   expect((await pool.query('SELECT id FROM media_server_items WHERE library_id=$1', [libraryId])).rowCount).toBe(0);

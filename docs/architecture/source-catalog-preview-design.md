@@ -39,6 +39,10 @@ still need independent episode evidence and administrator review.
 - Up to four current TMDb candidates per observation. Typed series details supply
   at most 256 season entries and bounded episode counts. This round compares
   season counts/numbering, not individual catalog episode identities or order.
+  Outcomes explicitly say `equal_season_count_bounds`,
+  `within_season_count_bounds` or `outside_season_count_bounds`. They test source
+  indices against seasons' reported counts, not actual TMDb episode numbers.
+  Non-contiguous catalog numbering may require review even when counts fit.
 - Repeat the full source identity/layout after catalog reads. Discard a changed
   item. Re-read the selected configuration/window before returning; discard the
   entire summary if it changed. This detects observed drift, not an atomic
