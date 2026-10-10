@@ -52,7 +52,15 @@ describes correcting a genuinely wrong match. Use it only when the intended matc
 has been established; an already correct visible match may still have conflicting
 catalog links. No bulk refresh or rematch was performed here.
 
-The recommended next item is a bounded, read-only identity diagnostic that shows
+The follow-up [provider guidance design](source-identity-provider-guidance-design.md)
+uses the already stored rejection provider; it needs no new capture or migration.
+A bounded read-only check of the title/year case found the year agrees and the
+source title exactly matches a TMDb alternative title, but not its primary or
+original title. The strict matcher currently reads only primary/original titles.
+This is a Classifarr acceptance limitation, not proof that the source match is wrong.
+No ID was selected, cooldown reset or catalog changed during the check.
+
+The original recommended next item was a bounded, read-only identity diagnostic that shows
 which provider conflicts and distinguishes missing evidence from contradictory
 evidence. Investigate the title/year rejection against verified original or
 alternate catalog titles separately before proposing any change to acceptance.

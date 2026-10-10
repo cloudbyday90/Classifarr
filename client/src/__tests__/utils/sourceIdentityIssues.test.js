@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { describe, it, expect } from 'vitest'
-import { parseSourceIdentityIssues, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
+import { parseSourceIdentityIssues, sourceIssueExplanation, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
 import { sourceIssue, sourceIssuePage } from '../fixtures/sourceIdentityIssues'
 
 describe('source issue contract', () => {
@@ -51,5 +51,33 @@ describe('source issue contract', () => {
     expect(sourceIssueNextStep(sourceIssue(1, { recoveryState: 'retry_due' }))).toContain('not confirmed running')
     expect(sourceIssueNextStep(sourceIssue(1, { issue: 'invalid_media_type' }))).toContain('not music')
     expect(sourceIssueNextStep(sourceIssue())).toContain('Check its match and year')
+  })
+  it.each([undefined, [], ['tmdb_id'], ['tvdb_id', 'imdb_id']])('accepts legacy or bounded provider categories %j', fields => {
+    const report = sourceIssuePage()
+    report.items[0].providerFields = fields
+    expect(parseSourceIdentityIssues(report, 0)).toBe(report)
+  })
+  it.each([null, {}, 'tmdb_id', ['toString'], ['__proto__'], [1], ['tvdb_id', 'tvdb_id'],
+    ['tmdb_id', 'imdb_id', 'tvdb_id', 'tmdb_id']])('rejects malformed supplied provider categories %j', fields => {
+    const report = sourceIssuePage()
+    report.items[0].providerFields = fields
+    expect(parseSourceIdentityIssues(report, 0)).toBeNull()
+  })
+  it('distinguishes invalid IDs, conflicts, and unspecified diagnostic providers', () => {
+    expect(sourceIssueExplanation(sourceIssue(1, { providerFields: ['tvdb_id'] }))).toContain('Conflicting IDs detected for: TVDB')
+    expect(sourceIssueExplanation(sourceIssue(1, { providerFields: ['tmdb_id', 'imdb_id'] }))).toContain('TMDb, IMDb')
+    expect(sourceIssueExplanation(sourceIssue())).toContain('provider was not recorded')
+    expect(sourceIssueExplanation(sourceIssue(1, { providerFields: ['unknown'] }))).toContain('provider was not recorded')
+    expect(sourceIssueExplanation(sourceIssue(1, { issue: 'invalid_provider_ids', providerFields: ['imdb_id'] }))).toContain('Invalid IDs detected for: IMDb')
+    expect(sourceIssueExplanation(sourceIssue(1, { issue: 'invalid_provider_ids' }))).toContain('did not pass validation')
+    expect(sourceIssueExplanation(sourceIssue(1, { issue: 'invalid_media_type' }))).toBe('Unknown content type')
+  })
+  it('does not tell operators to rematch a correct-looking show or ignore disagreements', () => {
+    const conflict = sourceIssue(1, { mediaType: 'tv', providerFields: ['tvdb_id'], lastRecovery: { reason: 'insufficient_evidence' } })
+    expect(sourceIssueNextStep(conflict)).toContain('cannot choose between the conflicting TVDB IDs')
+    expect(sourceIssueNextStep(conflict)).toContain('Correct it only if wrong')
+    expect(sourceIssueNextStep(conflict)).toContain('Classifarr GitHub issue')
+    expect(sourceIssueNextStep({ ...conflict, mediaType: 'movie' })).not.toContain('show-level')
+    expect(sourceIssueNextStep({ ...conflict, lastRecovery: { reason: 'title_year_mismatch' } })).toContain('does not prove your match is wrong')
   })
 })

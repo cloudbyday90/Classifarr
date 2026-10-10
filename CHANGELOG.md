@@ -24,6 +24,11 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Library identity diagnostics** — Unresolved-item details name the detected
+  catalog provider and explain why artwork and descriptions do not establish a
+  valid identity. Guidance distinguishes conflicting IDs from title/year checks
+  and avoids rematching a correct title merely to clear a warning. Identity
+  verification, retries and memory safeguards remain unchanged.
 - **Runtime configuration** — Update environment loading so undefined optional
   settings preserve configured defaults and command-line quiet mode honors env
   files, while explicit options retain precedence.

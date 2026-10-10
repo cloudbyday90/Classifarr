@@ -47,6 +47,7 @@ export function getLibrarySourceObservations() {
   return getDataRequest('/libraries/source-observations')
 }
 
+/** Includes optional, allowlisted providerFields diagnostics; GET never starts verification or recovery. */
 export function getLibrarySourceIdentityIssues(offset = 0) {
   return getDataRequest('/libraries/source-identity-issues', { params: { offset } })
 }

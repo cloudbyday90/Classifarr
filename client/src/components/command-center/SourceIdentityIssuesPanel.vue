@@ -36,6 +36,10 @@
       <p role="status">
         {{ report.total }} items · {{ isStale ? 'Refreshing…' : 'Latest check: ' + formatDate(report.asOf) }}
       </p>
+      <p v-if="report.total">
+        Posters and descriptions can be present even when catalog IDs conflict or are invalid.
+        These are identity checks, not a count of items without metadata.
+      </p>
       <p
         v-if="report.total !== expectedCount"
         class="scope-note"
@@ -90,7 +94,7 @@
           <p class="scope-note">
             {{ item.libraryName || 'Library' }} · {{ item.mediaType === 'movie' ? 'Movie' : item.mediaType === 'tv' ? 'TV' : 'Unknown type' }}
           </p>
-          <p>{{ issueLabels[item.issue] }}</p>
+          <p>{{ sourceIssueExplanation(item) }}</p>
           <p><strong>{{ recoveryOutcomeLabel(item.lastRecovery) }}</strong></p>
           <p
             v-if="item.lastRecovery"
@@ -145,7 +149,7 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue'
 import { useSourceIdentityIssues } from '@/composables/useSourceIdentityIssues'
-import { issueLabels, recoveryLabels, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
+import { recoveryLabels, sourceIssueExplanation, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
 import { recoveryOutcomeLabel } from '@/utils/sourceRecoveryOutcomes'
 defineProps({ expectedCount: { type: Number, required: true } })
 const { report, offset, error, refresh, isStale } = useSourceIdentityIssues()

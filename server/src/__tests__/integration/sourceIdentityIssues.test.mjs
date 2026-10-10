@@ -43,6 +43,19 @@ test('reports recorded retry boundaries, not running or successful recovery', as
         WHERE library_id=$1 AND external_id='key-003'`, [libraryId]);
     expect((await readSourceIdentityIssues(client)).recovery).toEqual({ retry_wait: 1, retry_due: 1, source_review: 1, not_recorded: 1 });
 });
+
+test('reads provider diagnostics from the existing capture without changing observations', async () => {
+    await addItems(3);
+    await client.query(`UPDATE media_source_observations SET provider_fields=ARRAY['tvdb_id']
+        WHERE library_id=$1 AND external_id='key-001'`, [libraryId]);
+    await client.query(`UPDATE media_source_observations SET provider_fields=ARRAY['tmdb_id']
+        WHERE library_id=$1 AND external_id='key-002'`, [libraryId]);
+    const before = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows;
+    const report = await readSourceIdentityIssues(client);
+    expect(report.items.map(item => item.providerFields)).toEqual([['tvdb_id'], ['tmdb_id'], []]);
+    const after = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1 ORDER BY external_id', [libraryId])).rows;
+    expect(after).toEqual(before);
+});
 test('projects latest recovery evidence without attempt tokens and prioritizes identity disagreements', async () => {
     await addItems(3);
     await client.query(`UPDATE media_source_observations SET recovery_attempt_id=$2,

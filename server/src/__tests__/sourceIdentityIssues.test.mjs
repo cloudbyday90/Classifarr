@@ -8,7 +8,7 @@ import { registerSourceObservationRoutes } from '../routes/librariesRouteSourceO
 const row = () => ({ as_of: '2026-09-26T12:00:00Z', total: 1, retry_wait: 1, retry_due: 0,
     source_review: 0, not_recorded: 0, covered_libraries: 1, active_libraries: 2,
     items: [{ libraryId: 1, libraryName: 'Example', mediaServerId: 2, externalId: 'private-key',
-        title: 'A\u0000title', year: 2020, mediaType: 'movie', issue: 'conflicting_provider_ids',
+        title: 'A\u0000title', year: 2020, mediaType: 'movie', issue: 'conflicting_provider_ids', providerFields: ['tvdb_id'],
         recoveryState: 'retry_wait', retryAfter: '2026-09-27T12:00:00Z', lastSeenAt: '2026-09-26T12:00:00Z' }] });
 
 test.each([{}, { offset: '0' }, { offset: '50' }])('accepts bounded page input %j', query => {
@@ -23,11 +23,26 @@ test('returns a bounded, allowlisted page without credentials or source keys', a
     const result = await readSourceIdentityIssues(db, 0);
     expect(db.query).toHaveBeenCalledTimes(1);
     expect(db.query.mock.calls[0][1]).toEqual([50, 0]);
-    expect(result).toMatchObject({ total: 1, recovery: { retry_wait: 1 }, items: [{ title: 'A title' }] });
+    expect(result).toMatchObject({ total: 1, recovery: { retry_wait: 1 }, items: [{ title: 'A title', providerFields: ['tvdb_id'] }] });
     expect(result.items[0].key).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(result)).not.toMatch(/private-key|mediaServerId|externalId/);
     expect(db.query.mock.calls[0][0]).toContain('o.generation=c.generation');
     expect(db.query.mock.calls[0][0]).not.toMatch(/\b(UPDATE|DELETE|INSERT)\b/);
+});
+
+test.each([undefined, null, {}, 'tmdb_id', ['private-value'], ['tmdb_id', 'private-value'],
+    ['tmdb_id', 'tmdb_id'], ['tmdb_id', 'imdb_id', 'tvdb_id', 'private-value']])(
+    'does not project malformed stored provider fields %j', async fields => {
+        const data = row(); data.items[0].providerFields = fields;
+        const result = await readSourceIdentityIssues({ query: jest.fn().mockResolvedValue({ rows: [data] }) });
+        expect(result.items[0].providerFields).toEqual([]);
+        expect(JSON.stringify(result)).not.toContain('private-value');
+    });
+
+test('projects unique categories in canonical order', async () => {
+    const data = row(); data.items[0].providerFields = ['tvdb_id', 'imdb_id', 'tmdb_id'];
+    const result = await readSourceIdentityIssues({ query: jest.fn().mockResolvedValue({ rows: [data] }) });
+    expect(result.items[0].providerFields).toEqual(['tmdb_id', 'imdb_id', 'tvdb_id']);
 });
 test('rejects invalid offsets and contradictory aggregates', async () => {
     const db = { query: jest.fn().mockResolvedValue({ rows: [{ ...row(), total: 2 }] }) };

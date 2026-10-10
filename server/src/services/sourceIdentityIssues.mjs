@@ -15,7 +15,7 @@ export function parseSourceIdentityIssueOffset(query = {}) {
 
 const READ_ISSUES = `WITH ${COMPLETE_SOURCE_CAPTURES_CTE}, issues AS MATERIALIZED (
     SELECT o.library_id, o.media_server_id, o.external_id, o.title, o.year,
-        o.media_type, o.identity_issue, o.recovery_retry_after, o.last_seen_at,
+        o.media_type, o.identity_issue, o.provider_fields, o.recovery_retry_after, o.last_seen_at,
         o.recovery_outcome, o.recovery_attempted_at, o.recovery_completed_at,
         l.name AS library_name,
         CASE WHEN o.identity_issue IN ('invalid_provider_ids','invalid_media_type') THEN 'source_review'
@@ -41,7 +41,7 @@ SELECT statement_timestamp() AS as_of, totals.*,
     (SELECT COUNT(*)::integer FROM libraries WHERE is_active) AS active_libraries,
     COALESCE((SELECT jsonb_agg(jsonb_build_object(
         'libraryId',library_id,'libraryName',library_name,'mediaServerId',media_server_id,'externalId',external_id,
-        'title',title,'year',year,'mediaType',media_type,'issue',identity_issue,
+        'title',title,'year',year,'mediaType',media_type,'issue',identity_issue,'providerFields',provider_fields,
         'recoveryState',recovery_state,'retryAfter',recovery_retry_after,'lastSeenAt',last_seen_at,
         'lastRecovery', CASE WHEN recovery_attempted_at IS NULL AND recovery_completed_at IS NULL THEN NULL
             ELSE jsonb_build_object('reason',recovery_outcome,'attemptedAt',recovery_attempted_at,
@@ -55,6 +55,11 @@ const count = value => {
 };
 const text = value => typeof value === 'string'
     ? value.replace(/[\p{Cc}\p{Cf}]/gu, ' ').trim().slice(0, 500) : null;
+const PROVIDER_FIELDS = Object.freeze(['tmdb_id', 'imdb_id', 'tvdb_id']);
+// Diagnostic categories only, not values or a complete inventory of conflicts.
+const providerFields = value => Array.isArray(value) && value.length <= 3 &&
+    value.every(field => PROVIDER_FIELDS.includes(field)) && new Set(value).size === value.length
+    ? PROVIDER_FIELDS.filter(field => value.includes(field)) : [];
 
 /** Single read-only snapshot: counts and page use the same evidence population. */
 export async function readSourceIdentityIssues(db, offset = 0) {
@@ -76,6 +81,7 @@ export async function readSourceIdentityIssues(db, offset = 0) {
             key: createHash('sha256').update(JSON.stringify([item.libraryId, item.mediaServerId, item.externalId])).digest('hex'),
             libraryId: item.libraryId, libraryName: text(item.libraryName), title: text(item.title),
             year: item.year, mediaType: item.mediaType, issue: item.issue,
+            providerFields: providerFields(item.providerFields),
             recoveryState: item.recoveryState, retryAfter: item.retryAfter, lastSeenAt: item.lastSeenAt,
             lastRecovery: item.lastRecovery ? {
                 reason: item.lastRecovery.reason, attemptedAt: item.lastRecovery.attemptedAt,

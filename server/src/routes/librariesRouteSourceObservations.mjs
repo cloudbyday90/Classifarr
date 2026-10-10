@@ -7,6 +7,7 @@ import { readSourceObservationSummary } from '../services/mediaSourceObservation
 import { parseSourceIdentityIssueOffset, readSourceIdentityIssues } from '../services/sourceIdentityIssues.mjs';
 
 export function registerSourceObservationRoutes(router, { db }) {
+  // Additive providerFields describes stored rejection categories, never raw IDs or live provider reads.
   router.get('/source-identity-issues', (req, res, next) => {
     res.set('Cache-Control', 'no-store'); next();
   }, rateLimit(libraryObservationHealthLimiterConfig), asyncHandler(async (req, res) => {

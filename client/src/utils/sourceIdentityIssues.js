@@ -17,6 +17,9 @@ const isCount = value => Number.isSafeInteger(value) && value >= 0
 const isDate = value => typeof value === 'string' && Number.isFinite(Date.parse(value))
 const isText = value => value === null || (typeof value === 'string' && value.length <= 500)
 const owns = (object, key) => Object.hasOwn(object, key)
+const providerNames = Object.freeze({ tmdb_id: 'TMDb', imdb_id: 'IMDb', tvdb_id: 'TVDB' })
+const validProviderFields = value => value === undefined || (Array.isArray(value) && value.length <= 3 &&
+  value.every(field => typeof field === 'string' && owns(providerNames, field)) && new Set(value).size === value.length)
 
 export function parseSourceIdentityIssues(value, offset) {
   if (value?.version !== 'library.source_identity_issues.v1' || !isDate(value.asOf) ||
@@ -32,7 +35,7 @@ export function parseSourceIdentityIssues(value, offset) {
     if (!item || typeof item.key !== 'string' || !/^[a-f0-9]{64}$/.test(item.key) || keys.has(item.key) ||
         !isCount(item.libraryId) || item.libraryId === 0 || !isText(item.libraryName) || !isText(item.title) ||
         !(item.year === null || (isCount(item.year) && item.year > 0 && item.year <= 9999)) ||
-        ![null, 'movie', 'tv'].includes(item.mediaType) || !owns(issueLabels, item.issue) ||
+        ![null, 'movie', 'tv'].includes(item.mediaType) || !owns(issueLabels, item.issue) || !validProviderFields(item.providerFields) ||
         !owns(recoveryLabels, item.recoveryState) || !isDate(item.lastSeenAt) ||
         !(item.retryAfter === null || isDate(item.retryAfter)) || !validRecoveryOutcome(item.lastRecovery, value.asOf) ||
         (['retry_wait', 'retry_due'].includes(item.recoveryState) && !isDate(item.retryAfter))) return null
@@ -49,6 +52,10 @@ export function parseSourceIdentityIssues(value, offset) {
 
 export function sourceIssueNextStep(item) {
   const reason = item.lastRecovery?.reason
+  if (reason === 'title_year_mismatch') return 'The exact title/year check failed. An alternative title may explain this; it does not prove your match is wrong. If the match and year are correct, open a Classifarr GitHub issue with this reason instead of renaming or rematching. No conflicting ID was selected.'
+  if (reason === 'insufficient_evidence' && item.mediaType === 'tv' && item.providerFields?.includes('tvdb_id')) {
+    return 'Classifarr cannot choose between the conflicting TVDB IDs. Check the show-level match. Correct it only if wrong, then sync the library. If it is correct, open a Classifarr GitHub issue with this provider and reason. No conflicting ID was selected.'
+  }
   if (sourceReviewReasons.includes(reason)) return 'Check this title’s match, year, and external IDs in your media server, then sync again. No conflicting ID was selected.'
   if (reason === 'adapter_unsupported') return 'Automatic verification is unavailable for this source. Check the item’s match in your media server.'
   if (['internal_error', 'persistence_failed'].includes(reason)) return 'Check Classifarr’s service health and logs. A later eligible library sync can retry; the item remains excluded.'
@@ -56,4 +63,17 @@ export function sourceIssueNextStep(item) {
   if (item.recoveryState === 'retry_due') return 'The retry delay has elapsed. Recovery can be attempted on a later library sync; it is not confirmed running.'
   if (item.issue === 'invalid_media_type') return 'Check the item’s content type in your media server. Classifarr supports movies and TV, not music.'
   return 'Find this title in the named library in your media server. Check its match and year, correct it if needed, then sync the library again.'
+}
+
+/** Describe only the stored detection, not all IDs or the correctness of the visible match. */
+export function sourceIssueExplanation(item) {
+  const fields = validProviderFields(item.providerFields) ? item.providerFields ?? [] : []
+  const names = fields.map(field => providerNames[field]).join(', ')
+  if (item.issue === 'conflicting_provider_ids') return names
+    ? `Conflicting IDs detected for: ${names}. The source supplied different IDs for the same provider; this may not be the only conflict.`
+    : 'The source supplied different IDs for the same provider. The affected provider was not recorded.'
+  if (item.issue === 'invalid_provider_ids') return names
+    ? `Invalid IDs detected for: ${names}. The recorded identifier did not pass validation.`
+    : 'A provider identifier did not pass validation. The affected provider was not recorded.'
+  return issueLabels[item.issue]
 }

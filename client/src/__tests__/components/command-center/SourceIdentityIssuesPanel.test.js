@@ -16,6 +16,7 @@ const render = () => {
 it('loads only matching items, escapes source text, and does not persist titles', async () => {
   const report = sourceIssuePage()
   report.items[0].title = '<img src=x onerror=alert(1)>'
+  report.items[0].providerFields = ['tvdb_id']
   vi.mocked(getLibrarySourceIdentityIssues).mockResolvedValue(report)
   render()
   expect(wrapper.text()).toContain('Loading the matching items')
@@ -23,6 +24,9 @@ it('loads only matching items, escapes source text, and does not persist titles'
   expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
   expect(wrapper.find('img').exists()).toBe(false)
   expect(wrapper.text()).toContain('Recovery not confirmed')
+  expect(wrapper.text()).toContain('Conflicting IDs detected for: TVDB')
+  expect(wrapper.text()).toContain('not a count of items without metadata')
+  expect(wrapper.text()).toContain('may not be the only conflict')
   expect(localStorage.getItem('classifarr:v1:swr:command-center:source-identity-issues')).toBeNull()
   expect(getLibrarySourceIdentityIssues).toHaveBeenCalledWith(0)
 })
