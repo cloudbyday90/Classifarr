@@ -24,6 +24,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Runtime configuration** — Update environment loading so undefined optional
+  settings preserve configured defaults and command-line quiet mode honors env
+  files, while explicit options retain precedence.
 - **Comparison incident tracking** — New comparison warnings close automatically
   after verified recovery, including across restarts when database ownership and
   the inspected configuration/model match. A bounded, atomic incident ledger

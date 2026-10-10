@@ -4,12 +4,18 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import dotenv from 'dotenv';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
 
 let directory;
+
+// Deliberately do not inherit host DOTENV_* settings or load the repository .env.
+const runFixture = (args, environment = {}) => promisify(execFile)(process.execPath, args, {
+    cwd: directory, timeout: 5000, maxBuffer: 64 * 1024, windowsHide: true,
+    env: { SystemRoot: process.env.SystemRoot, ...environment },
+});
 afterEach(async () => {
     jest.restoreAllMocks();
     if (directory) await rm(directory, { recursive: true, force: true });
@@ -34,6 +40,56 @@ test('installed dotenv supports ESM parsing without populating the host environm
     expect(dotenv.parse('SYNTHETIC_ONLY="value # literal"\nEMPTY=\n# comment\n')).toEqual({
         SYNTHETIC_ONLY: 'value # literal', EMPTY: '',
     });
+});
+
+test('undefined path, quiet and override options retain the explicit environment settings', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    const file = join(directory, 'selected.env');
+    await writeFile(file, 'SYNTHETIC_ONLY=selected_file\n');
+    await writeFile(join(directory, '.env'), 'SYNTHETIC_ONLY=wrong_file\n');
+    const source = `import dotenv from ${JSON.stringify(import.meta.resolve('dotenv'))};
+        const result = dotenv.config({ path: undefined, quiet: undefined, override: undefined });
+        process.stdout.write(JSON.stringify({ value: process.env.SYNTHETIC_ONLY, parsed: result.parsed }));`;
+    const { stdout, stderr } = await runFixture(['--input-type=module', '--eval', source], {
+        SYNTHETIC_ONLY: 'external', DOTENV_PATH: file, DOTENV_QUIET: 'true', DOTENV_OVERRIDE: 'true',
+    });
+    expect(JSON.parse(stdout)).toEqual({ value: 'selected_file', parsed: { SYNTHETIC_ONLY: 'selected_file' } });
+    expect(stderr).toBe('');
+});
+
+test('explicit false options still override environment settings', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    await writeFile(join(directory, '.env'), 'SYNTHETIC_ONLY=from_file\n');
+    const source = `import dotenv from ${JSON.stringify(import.meta.resolve('dotenv'))};
+        dotenv.config({ quiet: false, override: false });
+        process.stdout.write(JSON.stringify(process.env.SYNTHETIC_ONLY));`;
+    const { stdout, stderr } = await runFixture(['--input-type=module', '--eval', source], {
+        SYNTHETIC_ONLY: 'external', DOTENV_QUIET: 'true', DOTENV_OVERRIDE: 'true',
+    });
+    expect(JSON.parse(stdout)).toBe('external');
+    expect(stderr).toContain('injected env');
+});
+
+test.each(['DOTENV_QUIET', 'DOTENV_CONFIG_QUIET'])('CLI honors %s loaded from a synthetic env file', async setting => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    await writeFile(join(directory, '.env'), `${setting}=true\nSYNTHETIC_ONLY=from_file\n`);
+    const { stdout, stderr } = await runFixture([
+        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--', process.execPath,
+        '--input-type=module', '--eval', 'process.stdout.write(process.env.SYNTHETIC_ONLY)',
+    ]);
+    expect(stdout).toBe('from_file');
+    expect(stderr).toBe('');
+});
+
+test('CLI preserves explicit shell quiet=false even when the file overrides it', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    await writeFile(join(directory, '.env'), 'DOTENV_QUIET=true\nSYNTHETIC_ONLY=from_file\n');
+    const { stdout, stderr } = await runFixture([
+        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--override', '--', process.execPath,
+        '--input-type=module', '--eval', 'process.stdout.write(process.env.SYNTHETIC_ONLY)',
+    ], { DOTENV_QUIET: 'false' });
+    expect(stdout).toBe('from_file');
+    expect(stderr).toContain('injected env');
 });
 
 test.each(['path', 'url'])('quiet configuration accepts a file %s and preserves external precedence', async kind => {
