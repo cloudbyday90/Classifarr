@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import SourceScopeDraft from '@/components/library/SourceScopeDraft.vue'
 import { reviewSourceScope } from '@/api/mediaIdentityReviewApi'
-vi.mock('@/api/mediaIdentityReviewApi', () => ({ reviewSourceScope: vi.fn() }))
+vi.mock('@/api/mediaIdentityReviewApi', () => ({ reviewSourceScope: vi.fn(), inspectSourceScope: vi.fn() }))
 const source = () => ({ key: 'a'.repeat(64), sourceVersion: 'b'.repeat(64), mediaType: 'tv' })
 const response = scope => ({ data: { version: 'source_scope_review.v1', sourceKey: source().key,
   sourceVersion: source().sourceVersion, status: 'valid_draft', canApply: false, persisted: false,

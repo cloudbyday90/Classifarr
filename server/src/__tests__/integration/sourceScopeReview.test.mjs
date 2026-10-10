@@ -1,8 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
+import { jest } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { readSourceIdentityIssues } from '../../services/sourceIdentityIssues.mjs';
 import { reviewSourceScope } from '../../services/sourceScopeReview.mjs';
+import { readScopeEvidenceTarget } from '../../services/sourceScopeEvidenceRepository.mjs';
+import { createSourceScopeEvidenceService } from '../../services/sourceScopeEvidenceService.mjs';
+import { withinIdentityTestDeadline } from '../helpers/identityHttpFixture.mjs';
+
+jest.unstable_unmockModule('../../config/database.mjs');
+const { createDatabaseModule, DB_ADVISORY_LOCKS } = await import('../../config/database.mjs');
 
 let client, serverId, libraryId, actorId;
 beforeEach(async () => {
@@ -46,4 +53,72 @@ test.each([
 test('denies a demoted database actor despite an older administrator session', async () => {
   const item = await read(); await client.query("UPDATE users SET role='user' WHERE id=$1", [actorId]);
   await expect(reviewSourceScope(client, actorId, item.key, inputFor(item))).rejects.toMatchObject({ statusCode: 403 });
+});
+
+test('private target query selects only the matching public-page item', async () => {
+  const item = await read();
+  const target = await readScopeEvidenceTarget(client, item.key, 0);
+  expect(target).toMatchObject({ library_id: libraryId, media_server_id: serverId, external_id: 'private-source',
+    api_key: 'fixture-secret', server_type: 'plex', media_type: 'tv' });
+  expect(await readScopeEvidenceTarget(client, 'f'.repeat(64), 0)).toBeNull();
+  expect(await readScopeEvidenceTarget(client, item.key, 50)).toBeNull();
+});
+
+test('fresh typed evidence retains PostgreSQL observations and rejects credential drift', async () => {
+  const item = await read();
+  const before = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
+  const source = { identity: { mediaType: 'tv' }, digest: 'stable', seasons: [{ number: 1 }],
+    episodes: [{ season: 1, episode: 1, providerIds: { tmdb_id: [101], tvdb_id: [], imdb_id: [] } }] };
+  let changeConfig = false;
+  const inspect = createSourceScopeEvidenceService({ db: client,
+    withLock: async work => { await work({ signal: new AbortController().signal }); return true; },
+    getMediaServerService: () => ({ getLibraryItemLayout: async () => source }),
+    createCatalogProvider: async () => ({ recheck: async () => {},
+      getIdentityDetails: async () => {
+        if (changeConfig) await client.query("UPDATE media_server SET api_key='rotated' WHERE id=$1", [serverId]);
+        return { id: 10, name: 'Fixture', seasons: [{ id: 50, season_number: 1, episode_count: 1 }] };
+      },
+      getIdentitySeasonDetails: async () => ({ id: 50, season_number: 1, episodes: [{ id: 101, show_id: 10, season_number: 1, episode_number: 1 }] }),
+    }),
+  });
+  expect(await inspect(actorId, item.key, inputFor(item))).toMatchObject({ canApply: false, comparison: { matched: 1 } });
+  expect((await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
+  changeConfig = true;
+  await expect(inspect(actorId, item.key, inputFor(item))).rejects.toMatchObject({ statusCode: 409 });
+});
+
+test.each(['complete', 'lost'])('real database session admission: %s', async outcome => {
+  const database = createDatabaseModule({ pgModule: { Pool: class { constructor() { return getPool(); } } },
+    loggerFactory: () => ({ error: jest.fn(), warn: jest.fn() }), environment: { NODE_ENV: 'production' } });
+  const ready = Promise.withResolvers(), release = Promise.withResolvers(), item = await read();
+  const source = { identity: { mediaType: 'tv' }, digest: 'stable-empty', seasons: [], episodes: [] };
+  let reads = 0;
+  const inspect = createSourceScopeEvidenceService({ db: client,
+    withLock: fn => database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, fn),
+    createCatalogProvider: async () => ({ recheck: async () => {} }),
+    getMediaServerService: () => ({ getLibraryItemLayout: async (_url, _key, _library, _item, { signal }) => {
+      reads++; ready.resolve();
+      if (outcome === 'lost') {
+        await new Promise(resolve => { signal.addEventListener('abort', resolve, { once: true }); });
+      } else await release.promise;
+      return source;
+    } }),
+  });
+  const pending = inspect(actorId, item.key, inputFor(item));
+  const result = outcome === 'lost' ? expect(pending).rejects.toMatchObject({ statusCode: 503 })
+    : expect(pending).resolves.toMatchObject({ canApply: false, comparison: { total: 0, matched: 0 } });
+  try {
+    await withinIdentityTestDeadline(ready.promise);
+    await expect(inspect(actorId, item.key, inputFor(item))).rejects.toMatchObject({ statusCode: 503, code: 'scope_evidence_busy' });
+    expect(reads).toBe(1);
+    if (outcome === 'lost') {
+      const { rows } = await getPool().query(`SELECT pid FROM pg_locks WHERE locktype='advisory'
+        AND database=(SELECT oid FROM pg_database WHERE datname=current_database())
+        AND classid=0 AND objid=$1 AND granted`, [DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW]);
+      expect(rows).toHaveLength(1);
+      await getPool().query('SELECT pg_terminate_backend($1)', [rows[0].pid]);
+    } else release.resolve();
+    await withinIdentityTestDeadline(result);
+    expect(await database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, async () => {})).toBe(true);
+  } finally { release.resolve(); }
 });

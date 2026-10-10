@@ -21,4 +21,9 @@ export function reviewSourceScope(key, body) {
   return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/review`, body, { skipAutomaticRetry: true })
 }
 
-export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt, reviewSourceScope }
+export function inspectSourceScope(key, body, signal) {
+  return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/evidence`, body,
+    { skipAutomaticRetry: true, timeout: 105000, signal })
+}
+
+export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt, reviewSourceScope, inspectSourceScope }

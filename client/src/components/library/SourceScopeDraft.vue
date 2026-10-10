@@ -134,12 +134,18 @@
         </p>
       </template>
     </div>
+    <SourceScopeEvidence
+      v-if="result"
+      :draft="result"
+      :offset="offset"
+    />
   </details>
 </template>
 
 <script setup>
 import { nextTick, ref, useId, watch } from 'vue'
 import { useSourceScopeReview } from '@/composables/useSourceScopeReview'
+import SourceScopeEvidence from './SourceScopeEvidence.vue'
 const props = defineProps({ source: { type: Object, required: true }, offset: { type: Number, required: true } })
 const id = useId()
 const kind = ref('whole_work'), target = ref(''), seasons = ref('')

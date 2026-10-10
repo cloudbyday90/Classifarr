@@ -18,6 +18,17 @@ export function createMediaIdentityReviewRouter({ authenticateToken, requireAdmi
   router.get('/', async (req, res) => res.json(await service.list(req.reviewActorId, req.query)));
   router.post('/source-scopes/:key/review', rateLimit(libraryObservationHealthLimiterConfig),
     async (req, res) => res.json(await service.reviewSourceScope(req.reviewActorId, req.params.key, req.body)));
+  router.post('/source-scopes/:key/evidence', rateLimit({ ...libraryObservationHealthLimiterConfig, max: 5,
+    message: { error: 'Too many evidence checks. Wait before trying again.' } }),
+    async (req, res) => {
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      res.once('close', cancel);
+      try {
+        const result = await service.inspectSourceScope(req.reviewActorId, req.params.key, req.body, controller.signal);
+        if (!controller.signal.aborted) res.json(result);
+      } finally { res.removeListener('close', cancel); }
+    });
   router.get('/:itemId/receipts/:previewId', async (req, res) => res.json(await service.getReceipt(req.reviewActorId, req.params.itemId, req.params.previewId)));
   router.post('/:itemId/preview', async (req, res) => res.json(await service.preview(req.reviewActorId, req.params.itemId, req.body)));
   router.post('/:itemId/confirm', async (req, res) => res.json(await service.confirm(req.reviewActorId, req.params.itemId, req.body)));

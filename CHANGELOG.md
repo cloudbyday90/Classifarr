@@ -33,6 +33,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Administrators can now check unsaved whole-work or season-mapping drafts beside
   unresolved items. Reviews detect stored-source changes, retain parent conflicts
   and exclude unverified content from backfill; they do not activate mappings.
+  An on-demand evidence check rereads the source and typed catalog scope, reports
+  excluded episodes with reasons, and rejects observed drift. Checks are bounded,
+  cancellable and serialized per database; catalog membership is not identity
+  approval, and unresolved warnings and backfill eligibility remain unchanged.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or
