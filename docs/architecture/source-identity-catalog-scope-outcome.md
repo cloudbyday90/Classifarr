@@ -91,5 +91,57 @@ coverage or a combined coverage-ratchet claim.
 
 Lint, both workspace typechecks, copyright, ownership inventory, normal and
 production Knip, all 40 restored-toolchain tests, static ESM checks and Markdown
-lint (2,066 documents) passed. The full backend unit run and exact local-image
-checks are recorded separately after completion; no release claim is implied.
+lint (2,066 documents) passed. The full backend unit run passed 1,767 suites and
+55,078 tests in 465.857 seconds, with one Linux-only test skipped on Windows.
+An isolated, network-disabled probe using the rebuilt image verified Linux
+directory fsync, exclusive complete copying, unchanged source contents and
+safe rejection of an existing destination. This is a targeted filesystem probe,
+not a claim that the entire test suite ran on Linux.
+
+## Local image evaluation
+
+The clean implementation commit was
+`e79b97dfa5899cc07f3d05f321fd8c85981c604f`. A provenance-required, no-cache build
+produced local image ID
+`sha256:e91500d66d11f5080dea588f7c3607e9e3116a49468bc98a37a278efb5b1e9e3`.
+The running container's image and OCI revision match these values. This is a
+local image identity, not a published registry digest or release receipt.
+The existing Dockerfile hardcodes OCI version `1.0.0`; application package
+versions remain `0.49.1-beta`. Version-label alignment needs separate release
+review; no version bump, tag or release was created here.
+
+Before replacement, a 76,766,300-byte database dump was checksum-verified and
+readable by `pg_restore --list`. This is not a full restore rehearsal. The previous
+image was retained as
+`classifarr:pre-memory-a1e72185-6ee9-4ec1-9dff-ce089c606115`. Only the local
+Classifarr container was replaced, using the existing Compose files and volumes.
+Unraid, shared Plex/Ollama and unrelated local containers were not changed.
+
+The replacement started at 12:41:26 UTC on 10 October and became healthy;
+`/health` returned HTTP 200, with zero restarts and no OOM flag. Runtime identity
+remains `1000:1000`, with a read-only root, no-new-privileges and a 2 GiB memory
+limit. An early sample used 537.8 MiB; this is startup evidence, not a sustained
+memory soak. The early post-start database error-log query returned no rows.
+
+The actual-image cross-reference command completed read-only with eleven items
+selected and inspected, ten `agreement_with_missing_mappings` and one
+`no_typed_matches`. Counts were:
+
+| Requested provider | Lookups | Matched | No requested-type match | Other-media results | No requested-type match with other-media results |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| IMDb | 11 | 10 | 1 | 0 | 0 |
+| TVDB | 20 | 9 | 11 | 8 | 5 |
+| Total | 31 | 19 | 12 | 8 | 5 |
+
+These are lookup counts, not additional unresolved items. A separate read-only
+database check still found nine `insufficient_evidence` and two
+`external_evidence_inconclusive` observations. The previously recovered item
+retains its external-candidate-agreement receipt and completed metadata backfill.
+
+After replacement, `check-schema-snapshot-container.mjs --dump` ran against the
+exact image in an isolated, uniquely named container. It regenerated
+`database/schema/current.sql` through migration
+`20261009_230000_comparison_incident_ledger.sql`, including 22 data-only seed
+migrations, with no tracked schema diff. The owned container and temporary data
+directory were removed and their absence verified. No live database was used
+as the schema snapshot source.
