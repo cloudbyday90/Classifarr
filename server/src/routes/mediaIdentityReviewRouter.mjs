@@ -31,6 +31,17 @@ export function createMediaIdentityReviewRouter({ authenticateToken, requireAdmi
     });
   router.post('/source-scopes/:key/review', rateLimit(libraryObservationHealthLimiterConfig),
     async (req, res) => res.json(await service.reviewSourceScope(req.reviewActorId, req.params.key, req.body)));
+  router.post('/source-scopes/:key/candidates', rateLimit({ ...libraryObservationHealthLimiterConfig, max: 5,
+    message: { error: 'Too many candidate lookups. Wait before trying again.' } }),
+    async (req, res) => {
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      res.once('close', cancel);
+      try {
+        const result = await service.lookupSourceCandidates(req.reviewActorId, req.params.key, req.body, controller.signal);
+        if (!controller.signal.aborted) res.json(result);
+      } finally { res.removeListener('close', cancel); }
+    });
   router.post('/source-scopes/:key/evidence', rateLimit({ ...libraryObservationHealthLimiterConfig, max: 5,
     message: { error: 'Too many evidence checks. Wait before trying again.' } }),
     async (req, res) => {

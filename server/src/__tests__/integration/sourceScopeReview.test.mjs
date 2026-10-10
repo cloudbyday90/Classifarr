@@ -6,6 +6,7 @@ import { readSourceIdentityIssues } from '../../services/sourceIdentityIssues.mj
 import { reviewSourceScope } from '../../services/sourceScopeReview.mjs';
 import { readScopeEvidenceTarget } from '../../services/sourceScopeEvidenceRepository.mjs';
 import { createSourceScopeEvidenceService } from '../../services/sourceScopeEvidenceService.mjs';
+import { createSourceCandidateLookup } from '../../services/sourceCandidateLookup.mjs';
 import { withinIdentityTestDeadline } from '../helpers/identityHttpFixture.mjs';
 
 jest.unstable_unmockModule('../../config/database.mjs');
@@ -29,6 +30,34 @@ beforeEach(async () => {
 afterEach(async () => { await client.query('ROLLBACK'); client.release(); });
 const inputFor = item => ({ offset: 0, sourceVersion: item.sourceVersion, scope: { kind: 'whole_work', tmdbId: 10 } });
 const read = async () => (await readSourceIdentityIssues(client)).items.find(item => item.libraryId === libraryId);
+
+test('candidate lookup uses the shared database lock and never changes retained evidence', async () => {
+  await client.query('UPDATE media_source_observations SET source_digest=$2 WHERE library_id=$1', [libraryId, 'b'.repeat(64)]);
+  const item = await read(), body = { offset: 0, sourceVersion: item.sourceVersion };
+  const before = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
+  const database = createDatabaseModule({ pgModule: { Pool: class { constructor() { return getPool(); } } },
+    loggerFactory: () => ({ error: jest.fn(), warn: jest.fn() }), environment: { NODE_ENV: 'production' } });
+  const ready = Promise.withResolvers(), release = Promise.withResolvers();
+  let reads = 0;
+  const lookup = createSourceCandidateLookup({ db: client,
+    withLock: work => database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, work),
+    getMediaServerService: () => ({ getLibraryItemIdentityEvidence: async () => {
+      reads++; ready.resolve(); await release.promise;
+      return { mediaType: 'tv', snapshotDigest: 'b'.repeat(64), providerIds: { tmdb_id: [10], imdb_id: [], tvdb_id: [] } };
+    } }),
+    createCatalogProvider: async () => ({ getIdentityDetails: async () => ({ id: 10, name: 'Fixture' }), recheck: async () => {} }),
+  });
+  const pending = lookup(actorId, item.key, body);
+  try {
+    await withinIdentityTestDeadline(ready.promise);
+    await expect(lookup(actorId, item.key, body)).rejects.toMatchObject({ code: 'candidate_busy' });
+    expect(reads).toBe(1);
+    release.resolve();
+    expect(await withinIdentityTestDeadline(pending)).toMatchObject({ canApply: false, persisted: false, candidates: [{ tmdbId: 10 }] });
+    expect((await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
+    expect(await database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, async () => {})).toBe(true);
+  } finally { release.resolve(); }
+});
 test('reviews real retained evidence and preserves every observation field', async () => {
   const item = await read(); expect(item.sourceVersion).toMatch(/^[a-f0-9]{64}$/);
   const before = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;

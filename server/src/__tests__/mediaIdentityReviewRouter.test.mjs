@@ -11,7 +11,7 @@ jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getValue: () 
 const { authenticateToken, requireAdmin } = await import('../middleware/auth.mjs');
 const { csrfProtection } = await import('../middleware/csrf.mjs');
 const service = { list: jest.fn(), preview: jest.fn(), confirm: jest.fn(), getReceipt: jest.fn(), reviewSourceScope: jest.fn(), inspectSourceScope: jest.fn(),
-  approveSourceScope: jest.fn(), listSourceMappings: jest.fn(), revokeSourceMapping: jest.fn() };
+  approveSourceScope: jest.fn(), listSourceMappings: jest.fn(), revokeSourceMapping: jest.fn(), lookupSourceCandidates: jest.fn() };
 const receiptPath = '/api/media-identity-review/1/receipts/2e851bf4-9497-4b99-8b7c-e8117a05c762';
 const app = express();
 app.use(express.json(), cookieParser());
@@ -32,7 +32,7 @@ beforeEach(() => {
 
 describe('identity review HTTP authorization', () => {
   test('requires authentication before reading or writing', async () => {
-    for (const endpoint of ['', '/1/preview', '/1/confirm', '/source-scopes/key/review', '/source-scopes/key/evidence', '/source-scopes/key/approve', '/source-scopes/mappings/id/revoke']) {
+    for (const endpoint of ['', '/1/preview', '/1/confirm', '/source-scopes/key/review', '/source-scopes/key/evidence', '/source-scopes/key/candidates', '/source-scopes/key/approve', '/source-scopes/mappings/id/revoke']) {
       const call = endpoint ? request(app).post(`/api/media-identity-review${endpoint}`) : request(app).get('/api/media-identity-review');
       expect((await call).status).toBe(401);
     }
@@ -65,6 +65,8 @@ describe('identity review HTTP authorization', () => {
     verifyToken.mockResolvedValue(user);
     await request(app).post('/api/media-identity-review/source-scopes/key/review').set('Authorization', 'Bearer test').expect(403);
     await request(app).post('/api/media-identity-review/source-scopes/key/evidence').set('Authorization', 'Bearer test').expect(403);
+    await request(app).post('/api/media-identity-review/source-scopes/key/candidates').set('Authorization', 'Bearer test').expect(403);
+    expect(service.lookupSourceCandidates).not.toHaveBeenCalled();
     expect(service.inspectSourceScope).not.toHaveBeenCalled();
     expect(service.reviewSourceScope).not.toHaveBeenCalled();
     expect((await request(app).get('/api/media-identity-review').set('Authorization', 'Bearer test')).status).toBe(403);
@@ -112,8 +114,8 @@ describe('identity review HTTP authorization', () => {
     expect(service.reviewSourceScope).toHaveBeenCalledWith(7, 'key', body);
     expect(service.confirm).not.toHaveBeenCalled();
   });
-  test('fresh evidence has CSRF/admin guards, no-store and a five-request limit', async () => {
-    const path = '/api/media-identity-review/source-scopes/key/evidence';
+  test.each(['evidence', 'candidates'])('%s has CSRF/admin guards, no-store and a five-request limit', async kind => {
+    const path = `/api/media-identity-review/source-scopes/key/${kind}`;
     await request(app).post(path).set('Cookie', 'access_token=test').expect(403);
     await request(app).post(path).set('Authorization', 'Bearer test').set('x-api-key', 'test').expect(403);
     const body = { offset: 0, sourceVersion: 'revision', scope: {} };
@@ -123,8 +125,9 @@ describe('identity review HTTP authorization', () => {
       expect(result.headers['cache-control']).toBe('no-store');
     }
     await request(app).post(path).set('Authorization', 'Bearer test').send(body).expect(429);
-    expect(service.inspectSourceScope).toHaveBeenCalledTimes(5);
-    expect(service.inspectSourceScope).toHaveBeenCalledWith(7, 'key', body, expect.any(AbortSignal));
+    const method = kind === 'evidence' ? service.inspectSourceScope : service.lookupSourceCandidates;
+    expect(method).toHaveBeenCalledTimes(5);
+    expect(method).toHaveBeenCalledWith(7, 'key', body, expect.any(AbortSignal));
     expect(service.confirm).not.toHaveBeenCalled();
   });
 });

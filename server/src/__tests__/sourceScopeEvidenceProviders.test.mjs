@@ -5,6 +5,8 @@ import { createScopeCatalogProviderFactory } from '../services/sourceScopeEviden
 import { createIdentityHttpFixture, withinIdentityTestDeadline } from './helpers/identityHttpFixture.mjs';
 
 const service = baseUrl => ({ baseUrl, getApiKey: jest.fn(async () => 'synthetic'), executeRateLimited: jest.fn(fn => fn()) });
+const read = (provider, kind, options = {}) => kind === 'details' ? provider.getIdentityDetails(10, 'movie', options)
+  : kind === 'find' ? provider.findIdentityByExternalId('tt123', 'imdb_id', options) : provider.getIdentitySeasonDetails(10, 1, options);
 test.each([null, '', 'changed'])('refuses missing or inconsistent catalog credentials: %s', async key => {
   const tmdb = service('http://fixture.invalid'); tmdb.getApiKey.mockResolvedValue(key);
   await expect(createScopeCatalogProviderFactory(tmdb)({ active: true, key: 'synthetic' })).rejects.toMatchObject({ statusCode: 503 });
@@ -22,38 +24,38 @@ test.each(['key', 'url'])('detects catalog %s changes', async field => {
   else tmdb.baseUrl = 'http://changed.invalid';
   await expect(p.recheck()).rejects.toMatchObject({ statusCode: 409 });
 });
-test.each(['details', 'season'])('real compressed %s read uses the bounded shared transport', async kind => {
+test.each(['details', 'season', 'find'])('real compressed %s read uses the bounded shared transport', async kind => {
   const body = { id: 10, title: 'Fixture', episodes: [] }, f = await createIdentityHttpFixture(body);
   try {
     const p = await createScopeCatalogProviderFactory(service(f.url))({ active: true, key: 'synthetic' });
-    expect(await (kind === 'details' ? p.getIdentityDetails(10, 'movie', {}) : p.getIdentitySeasonDetails(10, 1, {}))).toEqual(body);
+    expect(await read(p, kind)).toEqual(body);
     expect(f.requests).toBe(1);
   } finally { await f.close(); }
 });
-test('real oversized compressed response fails closed', async () => {
+test.each(['details', 'find'])('real oversized compressed %s response fails closed', async kind => {
   const f = await createIdentityHttpFixture({ private: 'x'.repeat(1048577) });
   try {
     const p = await createScopeCatalogProviderFactory(service(f.url))(null);
-    await expect(withinIdentityTestDeadline(p.getIdentityDetails(10, 'movie', {}))).rejects.toThrow();
+    await expect(withinIdentityTestDeadline(read(p, kind))).rejects.toThrow();
   } finally { await f.close(); }
 });
-test('real stalled body disconnects on caller cancellation', async () => {
+test.each(['details', 'find'])('real stalled %s body disconnects on caller cancellation', async kind => {
   const f = await createIdentityHttpFixture(), controller = new AbortController();
   try {
     const p = await createScopeCatalogProviderFactory(service(f.url))(null);
-    const rejected = expect(p.getIdentityDetails(10, 'movie', { signal: controller.signal })).rejects.toThrow();
+    const rejected = expect(read(p, kind, { signal: controller.signal })).rejects.toThrow();
     await withinIdentityTestDeadline(f.received); controller.abort();
     await withinIdentityTestDeadline(rejected); await withinIdentityTestDeadline(f.disconnected);
     expect(f.requests).toBe(1);
   } finally { await f.close(); }
 });
-test('real redirects never forward frozen credentials', async () => {
+test.each(['details', 'find'])('real %s redirects never forward frozen credentials', async kind => {
   let requests = 0;
   const server = createServer((_req, res) => { requests++; res.writeHead(302, { Location: '/not-followed' }); res.end(); });
   await new Promise(resolve => { server.listen(0, '127.0.0.1', resolve); });
   try {
     const p = await createScopeCatalogProviderFactory(service(`http://127.0.0.1:${server.address().port}`))(null);
-    await expect(p.getIdentityDetails(10, 'movie', {})).rejects.toThrow();
+    await expect(read(p, kind)).rejects.toThrow();
     expect(requests).toBe(1);
   } finally { server.closeAllConnections(); await new Promise(resolve => { server.close(resolve); }); }
 });

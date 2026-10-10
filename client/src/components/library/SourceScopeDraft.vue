@@ -10,6 +10,11 @@
       source and catalog evidence. Saving a complete mapping requires a separate confirmation.
     </p>
     <p>Use a TMDb movie or series ID, not a TVDB or episode ID. For a grouped show, map each source season to its own TMDb series and season. Descriptions and posters do not settle conflicting IDs.</p>
+    <SourceCandidateLookup
+      v-if="opened"
+      :source="source"
+      :offset="offset"
+    />
     <form
       :aria-describedby="`${id}-help`"
       @submit.prevent="submit"
@@ -147,8 +152,10 @@
 import { nextTick, ref, useId, watch } from 'vue'
 import { useSourceScopeReview } from '@/composables/useSourceScopeReview'
 import SourceScopeEvidence from './SourceScopeEvidence.vue'
+import SourceCandidateLookup from './SourceCandidateLookup.vue'
 const props = defineProps({ source: { type: Object, required: true }, offset: { type: Number, required: true } })
 const id = useId()
+const opened = ref(false)
 const kind = ref('whole_work'), target = ref(''), seasons = ref('')
 let nextKey = 0
 const newEdge = () => ({ key: nextKey++, sourceSeason: '', tmdbSeriesId: '', tmdbSeason: '' })
@@ -162,7 +169,7 @@ async function remove(index) {
   await nextTick()
   addButton.value?.focus()
 }
-function onToggle(event) { if (!event.target.open) clear() }
+function onToggle(event) { if (event.target !== event.currentTarget) return; opened.value = event.target.open; if (!opened.value) clear() }
 function submit() {
   const sourceSeasonNumbers = seasons.value.split(',').map(value => value.trim() === '' ? NaN : Number(value))
   const mappings = edges.value.map(({ sourceSeason, tmdbSeriesId, tmdbSeason }) => ({

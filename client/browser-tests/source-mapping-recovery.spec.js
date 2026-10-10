@@ -5,7 +5,7 @@ import { sourceIssuePage } from '../src/__tests__/fixtures/sourceIdentityIssues.
 
 test('explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
   const asOf = '2026-10-10T12:00:00Z', id = '2e851bf4-9497-4b99-8b7c-e8117a05c762'
-  let approvals = 0, revocations = 0, draft
+  let approvals = 0, revocations = 0, lookups = 0, draft
   const readiness = { version: 'library.upgrade_readiness.v1', asOf, libraryCount: 1, activeLibraryCount: 1,
     mediaTypes: { movie: 1, tv: 0, other: 0 }, upgradeEnrollmentRecorded: true,
     profile: { current: 1, queued: 0, processing: 0, retryWait: 0, cooldown: 0, waiting: 0, paused: 0, unverified: 0, noInventory: 0, missing: 0 },
@@ -38,6 +38,14 @@ test('explicit mapping approval survives a lost response without clearing the un
         verification: 'structure_only', backfill: { eligible: false, excludedScope: 'all' } }
       data = draft
     }
+    if (path.endsWith('/candidates')) {
+      lookups++
+      expect(route.request().postDataJSON()).toEqual({ offset: 0, sourceVersion: 'b'.repeat(64) })
+      data = { version: 'source_candidates.v1', sourceKey: '1'.padStart(64, '0'), sourceVersion: 'b'.repeat(64),
+        reference: id, asOf, mediaType: 'movie', canApply: false, persisted: false,
+        lookups: [{ provider: 'imdb_id', id: 'tt0000010', tmdbIds: [10], otherScopeMatches: 1, status: 'matched' }],
+        candidates: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01', available: true, lookupIndexes: [0] }] }
+    }
     if (path.endsWith('/evidence')) data = { ...draft, version: 'source_scope_evidence.v1', reference: id,
       evidenceFingerprint: 'd'.repeat(64), verification: 'typed_catalog_membership', crossProviderVerified: false,
       catalogWorks: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01' }],
@@ -58,6 +66,20 @@ test('explicit mapping approval survives a lost response without clearing the un
   const overview = page.getByRole('region', { name: 'Your libraries at a glance' })
   await overview.getByRole('button', { name: 'See items & recovery' }).click()
   await page.getByText('Draft a catalog mapping (admin)', { exact: true }).click()
+  expect(lookups).toBe(0)
+  const candidates = page.getByRole('region', { name: 'Find candidate IDs' })
+  await candidates.getByRole('button', { name: 'Find candidate IDs' }).focus(); await page.keyboard.press('Enter')
+  await expect(candidates.getByRole('status')).toHaveText('1 candidate found. Nothing was saved.')
+  await expect(candidates).toContainText('From: IMDb tt0000010')
+  await expect(page.getByLabel('TMDb movie ID', { exact: true })).toHaveValue('')
+  expect(approvals).toBe(0); expect(lookups).toBe(1)
+  await expect(overview.locator('.issue-number')).toHaveText('1')
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 1200 })
+    await candidates.scrollIntoViewIfNeeded()
+    expect(await candidates.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  }
+  await candidates.screenshot({ path: testInfo.outputPath('source-candidates-mobile.png') })
   await page.getByLabel('TMDb movie ID', { exact: true }).fill('10')
   await page.getByRole('button', { name: 'Check draft structure' }).click()
   await page.getByRole('button', { name: 'Check source and catalog evidence' }).click()

@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
+import { createServer } from 'node:http';
 import { plexService } from '../services/mediaServers/plex.mjs';
 import { jellyfinService } from '../services/mediaServers/jellyfin.mjs';
 import { embyService } from '../services/mediaServers/emby.mjs';
@@ -19,6 +20,16 @@ function readers(url) {
       .map(([name, service]) => [name, signal => service.getLibraryItemIdentityEvidence(url, 'synthetic-only', '1', '22', { signal })])),
   };
 }
+
+test.each(['plex', 'jellyfin', 'emby'])('real %s identity reads reject redirects without forwarding credentials', async name => {
+  let requests = 0;
+  const server = createServer((_req, res) => { requests++; res.writeHead(302, { Location: '/not-followed' }); res.end(); });
+  await new Promise(resolve => { server.listen(0, '127.0.0.1', resolve); });
+  try {
+    await expect(readers(`http://127.0.0.1:${server.address().port}`)[name]()).rejects.toThrow();
+    expect(requests).toBe(1);
+  } finally { server.closeAllConnections(); await new Promise(resolve => { server.close(resolve); }); }
+});
 
 test.each(['find', 'details', 'plex', 'jellyfin', 'emby'])
 ('real %s identity read cancels a stalled body and closes the response', async name => {

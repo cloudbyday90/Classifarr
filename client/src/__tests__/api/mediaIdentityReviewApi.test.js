@@ -4,7 +4,7 @@ const mockGet = vi.fn()
 const mockPost = vi.fn()
 vi.mock('../../api/core', () => ({ getDataRequest: (...args) => mockGet(...args), apiClient: { post: (...args) => mockPost(...args) } }))
 import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt, reviewSourceScope, inspectSourceScope,
-  approveSourceScope, getSourceMappings, revokeSourceMapping } from '../../api/mediaIdentityReviewApi'
+  approveSourceScope, getSourceMappings, revokeSourceMapping, lookupSourceCandidates } from '../../api/mediaIdentityReviewApi'
 import mediaServerApi from '../../api/mediaServer'
 
 beforeEach(() => vi.clearAllMocks())
@@ -34,7 +34,7 @@ describe('media identity API leaf', () => {
   })
   it('wires all named functions through the domain aggregator', () => {
     expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt,
-      reviewSourceScope, inspectSourceScope, approveSourceScope, getSourceMappings, revokeSourceMapping })
+      reviewSourceScope, inspectSourceScope, lookupSourceCandidates, approveSourceScope, getSourceMappings, revokeSourceMapping })
   })
   it('checks scope drafts without automatic replay and preserves the raw response', async () => {
     const response = { data: { canApply: false } }, body = { scope: {} }
@@ -61,5 +61,12 @@ describe('media identity API leaf', () => {
     expect(mockGet).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/mappings', { params: {}, skipAutomaticRetry: true })
     await getSourceMappings({ offset: 50 })
     expect(mockGet).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/mappings', { params: { offset: 50 }, skipAutomaticRetry: true })
+  })
+  it('looks up candidates through the shared transport without retries', async () => {
+    const signal = new AbortController().signal, body = { offset: 0, sourceVersion: 'version' }, response = { data: {} }
+    mockPost.mockResolvedValue(response)
+    expect(await lookupSourceCandidates('key/next', body, signal)).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/media-identity-review/source-scopes/key%2Fnext/candidates', body,
+      { skipAutomaticRetry: true, timeout: 75000, signal })
   })
 })

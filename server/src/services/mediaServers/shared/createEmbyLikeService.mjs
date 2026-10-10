@@ -16,6 +16,7 @@ import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
 import { readVirtualFolderCatalog } from './virtualFolderCatalog.mjs';
 import { unavailableLibraryCatalog } from '../../libraryDiscoveryFailure.mjs';
 import { readMediaSourceLayout } from './sourceLayout.mjs';
+import { sourceIdentityRecoveryEvidence } from '../../sourceIdentityRecoveryEvidence.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -133,6 +134,7 @@ class EmbyLikeService {
     try {
       const response = await httpGet(`${url}/Items/${encodeURIComponent(sourceId)}`, {
         headers: buildHeaders(apiKey),
+        redirect: 'error',
         timeout: 10000,
         maxResponseBytes: 1048576,
         signal,
@@ -145,7 +147,10 @@ class EmbyLikeService {
       if (!item || String(item.Id) !== sourceId || !belongsToLibrary) return null;
       const mediaType = item.Type === 'Series' ? 'tv' : item.Type === 'Movie' ? 'movie' : null;
       const providerIds = collectProviderIdCandidates(item.ProviderIds || {});
-      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds }) : null;
+      const recovery = sourceIdentityRecoveryEvidence({ external_id: sourceId, title: item.Name,
+        year: item.ProductionYear, media_type: mediaType }, sourceLibrary, providerIds);
+      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds,
+        ...(recovery ? { snapshotDigest: recovery.snapshotDigest } : {}) }) : null;
     } catch (error) {
       signal?.throwIfAborted();
       throw new Error(`Failed to fetch ${this.displayName} library item identity evidence: ${error.message}`);

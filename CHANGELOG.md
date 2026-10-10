@@ -26,6 +26,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   approval from completion. Review shows the exact typed catalog works checked,
   actionable episode-level exclusions and durable, sanitized failure reasons;
   interrupted checks remain unconfirmed and cached-source failures retain cooldowns.
+  On-demand candidate lookup explains declared-ID matches, missing records and
+  other-scope results without guessing, selecting a draft or approving a mapping.
   Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not

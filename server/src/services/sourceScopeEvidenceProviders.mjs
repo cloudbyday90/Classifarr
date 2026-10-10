@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { httpGet } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError, ConflictError } from '../utils/appError.mjs';
-import { getTmdbIdentityDetails } from './tmdbIdentitySearch.mjs';
+import { getTmdbIdentityDetails, findTmdbIdentityByExternalId } from './tmdbIdentitySearch.mjs';
 import { getTmdbIdentitySeasonDetails } from './tmdbEpisodeCatalog.mjs';
 
 /** Freeze credentials for one read; never accept a browser-provided destination. */
@@ -16,6 +16,7 @@ export function createScopeCatalogProviderFactory(tmdb) {
       executeRateLimited: (fn, options) => tmdb.executeRateLimited(fn, options) };
     return {
       getIdentityDetails: (id, type, options) => getTmdbIdentityDetails(id, type, deps, options),
+      findIdentityByExternalId: (id, source, options) => findTmdbIdentityByExternalId(id, source, deps, options),
       getIdentitySeasonDetails: (id, season, options) => getTmdbIdentitySeasonDetails(id, season, deps, options),
       async recheck() {
         if (baseUrl !== tmdb.baseUrl || key !== await tmdb.getApiKey()) {

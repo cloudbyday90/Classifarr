@@ -22,6 +22,14 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
 }));const { jellyfinService: service } = await import('../services/mediaServers/jellyfin.mjs');
 
 describe('JellyfinService', () => {
+    it('returns a bounded, source-bound identity projection for candidate lookups', async () => {
+        mockHttpGet.mockResolvedValue({ data: { Id: 'item-1', AncestorIds: ['library-1'], Type: 'Movie',
+            Name: 'Fixture', ProductionYear: 2020, ProviderIds: { Tmdb: '10' } } });
+        const result = await service.getLibraryItemIdentityEvidence('http://jellyfin:8096', 'key', 'library-1', 'item-1');
+        expect(result).toMatchObject({ mediaType: 'movie', providerIds: { tmdb_id: [10], tvdb_id: [], imdb_id: [] },
+            snapshotDigest: expect.stringMatching(/^[a-f0-9]{64}$/) });
+        expect(mockHttpGet.mock.calls[0][1]).toMatchObject({ redirect: 'error', maxResponseBytes: 1048576, timeout: 10000 });
+    });
     beforeEach(() => {
         jest.clearAllMocks();
         mockHttpGet.mockReset();

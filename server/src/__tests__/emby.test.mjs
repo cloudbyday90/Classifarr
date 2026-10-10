@@ -98,6 +98,16 @@ describe('EmbyService', () => {
     });
 
     describe('getLibraryItemIdentityEvidence', () => {
+        it('binds candidate evidence to the same title/year/provider snapshot as ingestion', async () => {
+            const { sourceIdentityRecoveryEvidence } = await import('../services/sourceIdentityRecoveryEvidence.mjs');
+            mockHttpGet.mockResolvedValue({ data: { Id: 'item-1', ParentId: 'library-1', Type: 'Series',
+                Name: 'Fixture', ProductionYear: 2020, ProviderIds: { Tmdb: '10', Imdb: 'tt0000010' } } });
+            const result = await service.getLibraryItemIdentityEvidence('http://emby:8096', 'key', 'library-1', 'item-1');
+            const expected = sourceIdentityRecoveryEvidence({ external_id: 'item-1', title: 'Fixture', year: 2020, media_type: 'tv' },
+                'library-1', result.providerIds);
+            expect(result.snapshotDigest).toBe(expected.snapshotDigest);
+            expect(mockHttpGet.mock.calls[0][1]).toMatchObject({ redirect: 'error', maxResponseBytes: 1048576 });
+        });
         it('returns only provider candidate evidence and verifies library membership', async () => {
             mockHttpGet.mockResolvedValue({
                 data: { Id: 'item-1', ParentId: 'library-1', Type: 'Series',

@@ -164,7 +164,7 @@ class PlexService {
     try {
       const response = await httpGet(
         `${url}/library/metadata/${encodeURIComponent(sourceId)}`,
-        buildRequestConfig(apiKey, { params: { includeGuids: 1 }, timeout: 10000, maxResponseBytes: 1048576, signal }),
+        buildRequestConfig(apiKey, { params: { includeGuids: 1 }, timeout: 10000, maxResponseBytes: 1048576, redirect: 'error', signal }),
       );
       signal?.throwIfAborted();
       const item = response.data?.MediaContainer?.Metadata?.[0];

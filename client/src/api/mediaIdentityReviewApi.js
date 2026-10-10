@@ -26,6 +26,11 @@ export function inspectSourceScope(key, body, signal) {
     { skipAutomaticRetry: true, timeout: 105000, signal })
 }
 
+export function lookupSourceCandidates(key, body, signal) {
+  return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/candidates`, body,
+    { skipAutomaticRetry: true, timeout: 75000, signal })
+}
+
 export function approveSourceScope(key, body, signal) {
   return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/approve`, body,
     { skipAutomaticRetry: true, timeout: 105000, signal })
@@ -41,4 +46,4 @@ export function revokeSourceMapping(id) {
 }
 
 export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt,
-  reviewSourceScope, inspectSourceScope, approveSourceScope, getSourceMappings, revokeSourceMapping }
+  reviewSourceScope, inspectSourceScope, lookupSourceCandidates, approveSourceScope, getSourceMappings, revokeSourceMapping }
