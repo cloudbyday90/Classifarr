@@ -18,6 +18,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Comparison incident tracking** — New comparison warnings close automatically
+  after verified recovery in the same runtime and configuration, retaining their
+  original evidence and a recovery reference. Unrelated, manually resolved and
+  historical warnings remain untouched; memory and completeness safeguards are unchanged.
 - **CI image pulls** — Trusted main-branch tests use a dedicated Docker Hub
   read-only credential with automatic logout, bounded transient-login retries
   and sanitized connectivity diagnostics. Database checks compare Docker CLI

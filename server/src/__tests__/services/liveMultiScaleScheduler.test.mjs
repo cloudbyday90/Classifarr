@@ -4,6 +4,7 @@ import { registerLiveMultiScaleSchedule, createLiveMultiScaleRuntime } from '../
 import { installLiveMultiScaleContext, retrieveLiveMultiScaleExamples } from '../../services/liveMultiScaleRuntime.mjs';
 import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
 import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { randomUUID } from 'node:crypto';
 
 test('production runtime wires shared admission before provider or vector snapshot work', async () => {
   const { state } = liveFixture();
@@ -13,6 +14,49 @@ test('production runtime wires shared admission before provider or vector snapsh
   expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'busy' });
   expect(database.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DISCOVERY_LOCK, expect.any(Function));
   expect(database.withTransaction).toHaveBeenCalledTimes(2); runtime.stop();
+});
+
+test('scheduler awaits warning persistence, coalesces callbacks and resolves only a verified scoped result', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() }, scope = randomUUID(), id = randomUUID();
+  const worker = { stop: jest.fn(), getRecoveryScope: () => scope,
+    run: jest.fn(async () => ({ status: 'unavailable', failure: { stage: 'snapshot_read', code: 'cached_vectors_incomplete' } })) };
+  let release; const written = new Promise(resolve => { release = resolve; });
+  const log = { info: jest.fn(), warn: jest.fn(() => written) };
+  const incidentRepository = { resolve: jest.fn(async () => [id]) };
+  registerLiveMultiScaleSchedule(scheduler, { worker, log, incidentRepository });
+  const run = scheduler.schedule.mock.calls[0][2];
+  try {
+    const initial = run(); expect(run()).toBe(initial);
+    await Promise.resolve(); await Promise.resolve();
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    release(id); await initial;
+    expect(incidentRepository.resolve).not.toHaveBeenCalled();
+    worker.run.mockResolvedValue({ status: 'ready' }); await run();
+    expect(incidentRepository.resolve).toHaveBeenCalledWith(expect.objectContaining({ errorIds: [id], scopeId: scope }));
+    expect(log.info).toHaveBeenCalledWith(expect.stringContaining('recovered'), expect.objectContaining({
+      comparisonRecovery: expect.objectContaining({ resolvedCount: 1 }),
+    }));
+    await run(); expect(incidentRepository.resolve).toHaveBeenCalledTimes(1);
+  } finally { scheduler.liveMultiScaleWorker.stop(); }
+  expect(await run()).toEqual({ status: 'stopped' });
+});
+
+test('readiness failures and disable/re-enable cannot borrow stale worker scopes', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() }, scope = randomUUID();
+  const worker = { stop: jest.fn(), getRecoveryScope: () => scope, run: jest.fn() };
+  const log = { info: jest.fn(), warn: jest.fn(async () => randomUUID()) };
+  const incidentRepository = { resolve: jest.fn(async () => []) };
+  registerLiveMultiScaleSchedule(scheduler, { worker, log, incidentRepository });
+  const run = scheduler.schedule.mock.calls[0][2];
+  try {
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'unavailable', failure: { stage: 'readiness', code: 'database_connection' } });
+    await run(); expect(log.warn.mock.calls[0][1].comparisonIncident).toBeUndefined();
+    worker.run.mockResolvedValue({ status: 'ready' }); await run();
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'memory_pressure' }); await run();
+    worker.run.mockResolvedValue({ status: 'deferred', reason: 'disabled' }); await run();
+    worker.run.mockResolvedValue({ status: 'revalidated' }); await run();
+    expect(incidentRepository.resolve).not.toHaveBeenCalled();
+  } finally { scheduler.liveMultiScaleWorker.stop(); }
 });
 
 test('scheduler owns installation, periodic recovery, replacement and cleanup', async () => {

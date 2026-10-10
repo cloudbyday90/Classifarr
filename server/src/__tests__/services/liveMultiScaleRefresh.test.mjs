@@ -23,6 +23,25 @@ function setup(extra = {}) {
     advance: delta => { time += delta; }, setTime: val => { time = val; }, revise: () => { revision++; } };
 }
 
+test('worker exposes opaque recovery scope only after state observation and rotates on configuration/identity changes', async () => {
+  const v = setup();
+  expect(v.worker.getRecoveryScope()).toBeNull();
+  v.repository.read.mockRejectedValueOnce(new Error('multi_scale_complete_cache_required'));
+  expect((await v.worker.run()).status).toBe('unavailable');
+  const first = v.worker.getRecoveryScope(); expect(first).toMatch(/^[a-f0-9-]{36}$/);
+  v.advance(60000); expect((await v.worker.run()).status).toBe('ready');
+  expect(v.worker.getRecoveryScope()).toBe(first);
+  v.revise(); await v.worker.run(); expect(v.worker.getRecoveryScope()).toBe(first);
+  v.state.ollama_host = '127.0.0.1'; await v.worker.run();
+  const second = v.worker.getRecoveryScope(); expect(second).not.toBe(first);
+  v.advance(300000); v.embedder.inspect.mockResolvedValueOnce({ ...v.identity, digest: 'b'.repeat(64) });
+  await v.worker.run(); expect(v.worker.getRecoveryScope()).not.toBe(second);
+  v.readState.mockRejectedValueOnce(new Error('PRIVATE')); await v.worker.run();
+  expect(v.worker.getRecoveryScope()).toBeNull();
+  v.state.rag_enabled = false; await v.worker.run(); expect(v.worker.getRecoveryScope()).toBeNull();
+  v.worker.stop(); expect(v.worker.getRecoveryScope()).toBeNull();
+});
+
 test('memory deferral precedes snapshot/provider work and retries automatically after cooldown', async () => {
   let available = 0;
   const withAdmission = createInventoryDiscoveryAdmission({

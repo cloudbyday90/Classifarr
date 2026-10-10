@@ -8,6 +8,7 @@ import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './live
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 import { diagnoseLiveMultiScaleFailure } from './liveMultiScaleFailure.mjs';
 import { createComparisonRefreshRetry } from './comparisonRefreshRetry.mjs';
+import { createComparisonRecoveryScope } from './comparisonRecoveryScope.mjs';
 
 const configKey = state => {
   try { return state?.rag_enabled === true ? JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) : null; }
@@ -23,6 +24,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
 }) {
   let active = null, stopped = false, entry = null, nextAt = 0, lastTime = null;
   const retry = createComparisonRefreshRetry({ now, random });
+  const recoveryScope = createComparisonRecoveryScope();
   const clear = () => { entry = null; cache.clear(); };
   const clock = () => {
     const time = now();
@@ -31,7 +33,8 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
   };
   const due = () => { nextAt = 0; retry.fail(); };
   return {
-    stop() { stopped = true; active?.abort(); clear(); },
+    stop() { stopped = true; active?.abort(); clear(); recoveryScope.clear(); },
+    getRecoveryScope: recoveryScope.current,
     async retrieve(input) {
       const time = clock(), current = entry;
       if (stopped || !Number.isFinite(time) || !current || getRevision() !== current.revision ||
@@ -47,6 +50,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
     async run({ signal } = {}) {
       if (stopped || signal?.aborted) return { status: 'cancelled' };
       if (active) return { status: 'already_running' };
+      recoveryScope.begin();
       const controller = new AbortController(); active = controller;
       const deadline = AbortSignal.timeout(360_000);
       const abort = AbortSignal.any([controller.signal, deadline, ...(signal ? [signal] : [])]);
@@ -59,6 +63,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         stage = 'state_read';
         const state = await readState(), expected = configKey(state), revision = getRevision();
         abort.throwIfAborted();
+        recoveryScope.configure(expected);
         if (!expected) { clear(); nextAt = 0; retry.reset(); return { status: 'disabled' }; }
         if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; retry.clearDeadlines(); }
         if (state.busy !== false) { clear(); return { status: 'yielded' }; }
@@ -68,6 +73,7 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         const result = await withAdmission(async (abort, checkpoint) => {
           setStage('provider_inspection');
           const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
+          recoveryScope.identify(identity);
           const candidate = await buildLiveMultiScaleCandidate({ repository, identity, signal: abort, build,
             hasCachedModel: Boolean(entry && cache.get(entry.key)?.cacheable),
             isCurrent: state => configKey(state) === expected && state.busy === false && getRevision() === revision,
