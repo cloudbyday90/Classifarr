@@ -269,6 +269,21 @@ describe('parseOverseerrPayload', () => {
 // enrichWithTMDB
 // ---------------------------------------------------------------------------
 describe('enrichWithTMDB', () => {
+    test.each(['movie', 'tv'])('preserves a typed %s details 404 without private upstream data', async mediaType => {
+        const failure = Object.assign(new Error('secret URL'), { response: { status: 404, data: 'private' } });
+        tmdbService[mediaType === 'movie' ? 'getMovieDetails' : 'getTVDetails'].mockRejectedValueOnce(failure);
+        await expect(classificationMetadataService.enrichWithTMDB(1, mediaType)).rejects.toMatchObject({
+            message: 'Classification metadata lookup failed', reasonCode: 'task_metadata_not_found',
+            observation: { httpStatus: 404, category: 'not_found' },
+        });
+    });
+    test('certification 404 does not mislabel an existing movie as missing', async () => {
+        tmdbService.getMovieDetails.mockResolvedValueOnce(MOVIE_DETAILS_FIXTURE);
+        tmdbService.getCertification.mockRejectedValueOnce({ response: { status: 404 } });
+        await expect(classificationMetadataService.enrichWithTMDB(1, 'movie')).rejects.toMatchObject({
+            reasonCode: 'task_metadata_fetch_failed',
+        });
+    });
     beforeEach(() => {
         jest.clearAllMocks();
     });
@@ -397,7 +412,7 @@ describe('enrichWithTMDB', () => {
 
             await expect(
                 classificationMetadataService.enrichWithTMDB(1, 'movie')
-            ).rejects.toThrow('Failed to enrich metadata: TMDB API 503');
+            ).rejects.toThrow('Classification metadata lookup failed');
         });
     });
 });

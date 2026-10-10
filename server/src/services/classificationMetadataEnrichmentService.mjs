@@ -12,6 +12,7 @@ import * as db from '../config/database.mjs';
 import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { tmdbService } from './tmdb.mjs';
+import { ClassificationMetadataFailure } from './classificationMetadataFailure.mjs';
 import { mightBeAnime } from './classificationMetadataServiceShared.mjs';
 import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import {
@@ -27,6 +28,7 @@ import { webSearchEnrichmentService as defaultWebSearchEnrichmentService } from 
 const logger = createLogger('classificationMetadata');
 
 async function enrichWithTMDBImpl(tmdbId, mediaType) {
+  let detailsRequest = true;
   try {
     let details;
     if (mediaType === 'movie') {
@@ -35,6 +37,7 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
       details = await tmdbService.getTVDetails(tmdbId);
     }
 
+    detailsRequest = false;
     const certification = await tmdbService.getCertification(tmdbId, mediaType);
     const director_name = mediaType === 'movie'
       ? (details.credits?.crew?.find((crewMember) => crewMember.job === 'Director')?.name || null)
@@ -61,7 +64,7 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
       director_name,
     };
   } catch (error) {
-    throw new Error(`Failed to enrich metadata: ${error.message}`);
+    throw new ClassificationMetadataFailure(error, detailsRequest);
   }
 }
 

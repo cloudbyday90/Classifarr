@@ -23,8 +23,20 @@ import { QueueTaskProcessorService } from '../services/queueTaskProcessorService
 import { createMockLogger } from './helpers/mockFactory.mjs';
 import { unitEnrichmentWriteSession } from './helpers/queueEnrichmentWriteSessionFixture.mjs';
 import { QueueClaimWriteError } from '../services/queueClaimWriteGuard.mjs';
+import { ClassificationMetadataFailure } from '../services/classificationMetadataFailure.mjs';
 const ratingNormalizer = { getPriorityRating: jest.fn() };
 const metadataEnrichment = { hasWebSearchEnrichmentMetadata: jest.fn() };
+
+test.each([[404, 'task_metadata_not_found'], [503, 'task_metadata_fetch_failed']])('classification metadata %s keeps its safe queue reason', async (status, reason) => {
+  const error = new ClassificationMetadataFailure({ response: { status }, message: 'private' });
+  const logger = createMockLogger(), failTask = jest.fn(), db = { query: jest.fn() };
+  await QueueTaskProcessorService.prototype.processTask.call({ logger, failTask, db,
+    processClassificationTask: jest.fn().mockRejectedValue(error) },
+  { id: 9, task_type: 'classification', attempts: 0, max_attempts: 5, claim_token: 'owned', webhook_log_id: 2 });
+  expect(failTask).toHaveBeenCalledWith(9, reason, 0, 5, 'owned');
+  expect(db.query).toHaveBeenCalledWith(expect.any(String), [2, reason]);
+  expect(logger.error).toHaveBeenCalledWith('Task processing failed', { taskId: 9, taskType: 'classification', reasonCode: reason });
+});
 
 test.each([['55P03', 'image_index_lock_contention'], ['57014', 'image_index_query_cancelled'],
   [null, 'image_index_definition_mismatch'], ['unknown', null]])('image failure %s reaches the error log without raw database text', async (code, reason) => {

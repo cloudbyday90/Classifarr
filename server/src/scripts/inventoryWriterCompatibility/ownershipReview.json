@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "classification_metadata_failure_context",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete data-only migration: refine a generic error code on already-failed, unclaimed classification tasks at metadata_fetch with no routing link, and matching failed intake receipts. There is no inventory DML, provider call, task replay, identity replacement, budget reset, ownership claim, trigger, function or schema change.",
+      "followUp": "Keep real PostgreSQL idempotence, preserved-column, excluded-state and stale-claim tests. Do not infer a historical 404 from this stage-only backfill. Queue acknowledgement retains exact claim-token ownership; the processor's pre-existing shared writer debt is not resolved by error classification."
+    },
+    {
       "id": "comparison_incident_schema",
       "classification": "separately_coordinated",
       "reason": "Reviewed the complete comparison incident migration: one empty singleton ledger with bounded UUID membership and opaque fingerprints. It creates no trigger, function, foreign key, cascade, inventory DML or ownership backfill. Runtime ledger writes affect only this table and exact error_log UUIDs, under a dedicated session lock and short transactions on the lock connection.",
@@ -518,6 +524,7 @@
     }
   ],
   "entries": [
+    {"path":"database/migrations/20261010_140000_classification_metadata_failure_context.sql","digest":"1c6ca3d6b1e589f8a0cc094ed6b4f9b0d1a9565fa4ac4852202e44fa5ee6d90a","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"classification_metadata_failure_context"},
     {"path":"database/migrations/20261009_230000_comparison_incident_ledger.sql","digest":"8dd150919a5f33ebdd17cdf452103729945e475115656856fa899cfa995c14b6","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"comparison_incident_schema"},
     {"path":"server/src/services/evaluationInventoryReadiness.mjs","digest":"932bc5837db49757bcdf75043ddf0efa42ab2923bb3387b8c8f0daadabed0234","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_evaluation_inventory"},
     {"path":"server/src/services/ingestionSafeguardRepair.mjs","digest":"86866e4e911b0e2821905aa8bca7839dc19d04768229252cb10eb3857723a2c5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"confirmed_safeguard_repair"},
@@ -1332,11 +1339,11 @@
     {"path":"server/src/services/queueClassificationHistoryService.mjs","digest":"0afcb3a684f030c42612a5a4e7059e2716a4baf7de810e3c9efc1e6e8ec77188","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueEnrichmentWriteSession.mjs","digest":"5edcc28ef7c02a8208b450c17cbb97029e3d0e000228c12bc53190173dca1167","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueOmdbEnrichmentService.mjs","digest":"181f47b7a54527eb70c805c548732cd82d668100d133b449f0cab6fe33c2c0dc","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"shared_writer_debt"},
-    {"path":"server/src/services/queueTaskAcknowledgementService.mjs","digest":"393451bd03ed965c8d9ee974ea2720258d96b6b3a97faa7a8f4dcffeeff6c2a4","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
+    {"path":"server/src/services/queueTaskAcknowledgementService.mjs","digest":"a2901fedf14727f1059bdff6da9e08d30e480a2e3bab302c947f4ac4f9c519f7","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueEnrichmentPersistence.mjs","digest":"55f90de3ee195dacf3801c9a52c1f79a1c517cf049827ac61606a157f646b6c6","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/queueTaskProcessorEnrichment.mjs","digest":"32ab8432623ba615467859cf69517c11f870b346525ae30ea40940125c5c55e4","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueTaskProcessorRating.mjs","digest":"5f7805b5ae4a9c3d11b7882bde68ee1c28e1cfe94c0ed1b074dcbc7aaa8117b8","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
-    {"path":"server/src/services/queueTaskProcessorService.mjs","digest":"8d98b5e61275927b354ac910d9c1757b4af19df971945b2fee17b194a22511e9","analysisDigest":"495d2a2d2d4548637e6a7482346b9054d9fa28998517101d0c77e7c376a65b08","review":"shared_writer_debt"},
+    {"path":"server/src/services/queueTaskProcessorService.mjs","digest":"20e46b2234fbfdce0d26b6dd4b00284ee3653293f56b0c8688313984f59b88e1","analysisDigest":"495d2a2d2d4548637e6a7482346b9054d9fa28998517101d0c77e7c376a65b08","review":"shared_writer_debt"},
     {"path":"server/src/services/queueTmdbResolutionService.mjs","digest":"270b897692a8e82479a903b661d9fdfe181a6a41dd390d8921e3d08d7c3841b1","analysisDigest":"3ba800b6feba885a00f2f2fe2571532e73ee464e939738cabd14166f986831dd","review":"shared_writer_debt"},
     {"path":"server/src/services/ragRetrieverSearch.mjs","digest":"888fc096523404ee7dec1fb6bff9dacf06309ad240ef2f1c8856732ad5d9e212","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/routeSafetyMaintenanceHandoffRepository.mjs","digest":"715d21cdf51791d1efff148783fb995375c524a765eb3b508234a000989a15a1","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

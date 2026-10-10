@@ -13,6 +13,7 @@ import { processRatingNormalization as _processRatingNormalization } from './que
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
+import { classificationMetadataFailureReason } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
 import {
@@ -236,15 +237,17 @@ export class QueueTaskProcessorService {
                 });
                 return;
             }
+            const failureReason = (task.task_type === 'classification' && classificationMetadataFailureReason(error))
+                || QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED;
             this.logger.error('Task processing failed', {
                 taskId: task.id,
                 taskType: task.task_type,
-                reasonCode: QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
+                reasonCode: failureReason,
                 ...(task.task_type === 'rebuild_hnsw_index' ? imageIndexFailureLogFields(error) : {}),
             });
             const acknowledged = await this.failTask(
                 task.id,
-                QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
+                failureReason,
                 task.attempts,
                 task.max_attempts,
                 task.claim_token,
@@ -261,7 +264,7 @@ export class QueueTaskProcessorService {
             if (task.webhook_log_id) {
                 await this.db.query(
                     `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
-                    [task.webhook_log_id, QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED]
+                    [task.webhook_log_id, failureReason]
                 );
             }
         }

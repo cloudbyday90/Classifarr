@@ -51,11 +51,11 @@ export class QueueTaskAcknowledgementService {
     try {
       // Attempt budget is authoritative in the row, not in an old worker's copy.
       const update = await this.db.query(`UPDATE task_queue
-        SET status = CASE WHEN attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
+        SET status = CASE WHEN $2 = 'task_metadata_not_found' OR attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
             error_message = $2, attempts = attempts + 1, claim_token = NULL, visible_at = NULL,
-            completed_at = CASE WHEN attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
-            started_at = CASE WHEN attempts + 1 >= max_attempts THEN started_at ELSE NULL END,
-            next_retry_at = CASE WHEN attempts + 1 >= max_attempts THEN next_retry_at
+            completed_at = CASE WHEN $2 = 'task_metadata_not_found' OR attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
+            started_at = CASE WHEN $2 = 'task_metadata_not_found' OR attempts + 1 >= max_attempts THEN started_at ELSE NULL END,
+            next_retry_at = CASE WHEN $2 = 'task_metadata_not_found' OR attempts + 1 >= max_attempts THEN next_retry_at
               ELSE NOW() + ($4::integer[])[LEAST(attempts + 1, 5)] * INTERVAL '1 second' END
         WHERE id = $1 AND status = 'processing' AND claim_token = $3::uuid
         RETURNING task_type, attempts, status`, [taskId, reason, claimToken, RETRY_DELAYS]);

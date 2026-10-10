@@ -17,6 +17,11 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Catalog mapping groundwork** — A library-agnostic, offline mapping-plan
+  validator models whole movies/series and explicit TV season relationships
+  without changing source grouping. It rejects ambiguous or incomplete scope
+  claims and reports structural validity only; activation, routing and unresolved
+  warnings remain unchanged pending verified review and scope-aware consumers.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or
@@ -24,6 +29,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Classification failure recovery** — Preserve safe metadata-failure categories,
+  stop automatic retries for confirmed missing TMDb records, and explain the next
+  check in Command Center. An upgrade backfill restores known failure-stage
+  context on eligible legacy errors without changing identities or replaying work.
 - **Library identity recovery and diagnostics** — Independently verified catalog
   candidates can use exact alternative titles when the year and fresh source
   evidence agree, preserving retry and ownership safeguards. Unresolved-item

@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { resolve } from 'node:path';
+import { reviewSourceCatalogScopePlan } from '../services/sourceCatalogScopePlan.mjs';
+import { loadSourceCatalogScopePlanInput } from './sourceCatalogScopePlanInput.mjs';
 
 async function loadPrivateRuntime({ crossReferences = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
@@ -37,10 +39,13 @@ async function loadPrivateRuntime({ crossReferences = false } = {}) {
 /** Runs a bounded, aggregate-only replay with a read-only database session. */
 export async function runSourceIdentityExternalEvidenceReplay({
   argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime,
+  loadPlan = loadSourceCatalogScopePlanInput,
 } = {}) {
-  if (!Array.isArray(argv) || (argv.length !== 0 && (argv.length !== 1 || argv[0] !== '--cross-references'))) {
+  if (!Array.isArray(argv) || (argv.length !== 0 &&
+      (argv.length !== 1 || !['--cross-references', '--scope-plan'].includes(argv[0])))) {
     throw new Error('source_identity_evidence_replay_invalid_arguments');
   }
+  if (argv[0] === '--scope-plan') return reviewSourceCatalogScopePlan(await loadPlan());
   const runtime = argv.length ? await loadRuntime({ crossReferences: true }) : await loadRuntime();
   try {
     return await runtime.replay.replay();
@@ -52,7 +57,7 @@ export async function runSourceIdentityExternalEvidenceReplay({
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runSourceIdentityExternalEvidenceReplay().then((result) => {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    if (['failed', 'cancelled', 'timed_out'].includes(result.status.id)) process.exitCode = 1;
+    if (['failed', 'cancelled', 'timed_out', 'invalid_draft'].includes(result.status.id)) process.exitCode = 1;
   }).catch(() => {
     process.stderr.write('Source identity external-evidence replay could not run.\n');
     process.exitCode = 1;

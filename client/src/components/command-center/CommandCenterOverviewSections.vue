@@ -55,7 +55,10 @@
               {{ task.task_type }} • {{ formatRelativeTime(task.completed_at || task.created_at) }}
             </p>
             <p class="error-message">
-              {{ truncateError(task.error_message) }}
+              {{ queueTaskFailureMessage(task.error_message) || truncateError(task.error_message) }}
+            </p>
+            <p class="error-meta">
+              Task #{{ task.id }}
             </p>
           </div>
           <div class="error-actions">
@@ -372,6 +375,7 @@
 
 <script setup>
 import { Badge, Button } from '@/components/common'
+import { queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 
 defineProps({

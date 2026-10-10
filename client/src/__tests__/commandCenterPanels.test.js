@@ -30,6 +30,18 @@ const overviewHelpers = {
 }
 
 describe('CommandCenter extracted panels', () => {
+  it('shows metadata recovery guidance instead of internal codes without firing actions', () => {
+    const wrapper = mount(CommandCenterOverviewSections, {
+      props: { ...overviewHelpers, expandedSections: { errors: true }, failedQueueTasks: [
+        { id: 1, task_type: 'classification', error_message: 'task_metadata_not_found' },
+        { id: 2, task_type: 'classification', error_message: 'task_metadata_fetch_failed' },
+      ] }, global: { stubs: { Button: buttonStub } },
+    })
+    expect(wrapper.text()).toContain('Verify the TMDb ID')
+    expect(wrapper.text()).toContain('original cause may no longer')
+    expect(wrapper.text()).not.toContain('task_metadata_')
+    expect(wrapper.emitted('retry-failed-task')).toBeUndefined()
+  })
   it('renders the processing panel as active Plex sync coverage when a sync is running', () => {
     const wrapper = mount(ProcessingPanel, {
       props: {

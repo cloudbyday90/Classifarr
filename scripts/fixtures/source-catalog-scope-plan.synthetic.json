@@ -1,0 +1,20 @@
+{
+  "version": "source_catalog_scope_plan.v1",
+  "intent": "preserve_source_grouping",
+  "source": {
+    "mediaServerId": 1,
+    "externalId": "synthetic-combined-show",
+    "mediaType": "tv",
+    "identityDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "scope": {
+    "kind": "seasons",
+    "coverage": "complete",
+    "sourceSeasonNumbers": [0, 1, 2],
+    "mappings": [
+      { "sourceSeason": 0, "tmdbSeriesId": 10, "tmdbSeason": 0 },
+      { "sourceSeason": 1, "tmdbSeriesId": 10, "tmdbSeason": 1 },
+      { "sourceSeason": 2, "tmdbSeriesId": 20, "tmdbSeason": 1 }
+    ]
+  }
+}
