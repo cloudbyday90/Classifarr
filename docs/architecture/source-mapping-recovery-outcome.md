@@ -61,7 +61,59 @@ passed. Isolated PostgreSQL integration: 2 suites / 36 tests passed, including
 atomic rollback, repeated sync, source/configuration drift, durable cooldown,
 catalog evidence expiry, conflicting approval and ingestion-safe revocation.
 
-Broader suite, browser and exact-image results are recorded below after completion.
+The broad backend run completed 1,782 suites: 1,780 passed, with three assertions
+in the ownership-review/schema-freshness suites failing before their reviewed
+manifest and generated snapshot were updated. Both suites then passed all 60
+tests on rerun. The broad run recorded 55,773 passed tests and one Windows-only
+skip; it is not presented as an initially green run.
+
+Chromium checks passed for the Command Center overview and mapping approval,
+including keyboard confirmation, a lost response without duplicate posting,
+saved-state recovery and revocation. Narrow-width bounds were checked at 390 and
+320 pixels; the complete 320-pixel panel screenshot was visually inspected.
+These browser tests use intercepted fixture APIs, not live identity mutations.
+
+Root typecheck, copyright, dependency-use checks, the reviewed ownership gate,
+four policy gates, ESM gates and Markdown lint passed. Server lint passed; the
+browser test's explicit global reference was corrected and its lint rerun passed.
+No coverage/security baseline was weakened. The final complete client run passed
+453 files / 6,655 tests after correcting an old-copy assertion and a test-file
+closing-line convention. The final full client lint passed. Coverage ratchet
+passed: server lines 89.70%, branches 86.04%; client lines 88.91%, branches 80.68%.
+
+## Exact-image and local evaluation
+
+Both builds used `--no-cache --require-provenance`. The first image generated the
+new snapshot from a disposable, network-isolated database. After committing that
+reviewed snapshot, the final image was rebuilt from runtime revision
+`5c5c4ddb222e4bc3cbcaabb3248dfbb1cba8f256`:
+
+- Local Docker image ID:
+  `sha256:b6a219dd355bac7b0953b8dc9bf73ff4e5cc2aa1c5d5fb7d740f3fba440d9b99`.
+- Previous local image retained for rollback:
+  `sha256:389db35af626e882c8f7e4fe6292a92b1f4fa5ac77d4d83e8922fa8c9add8634`.
+- A private 76,855,317-byte local database archive was checksum-verified and its
+  archive directory was readable before replacement. It is not committed.
+- The final image's isolated schema dump matched `database/schema/current.sql`
+  without changes. Its fresh database had no invented pending work or unresolved
+  identities. Both schema fixtures' containers and data directories were removed
+  and cleanup verified.
+- The Windows-skipped directory-fsync behavior passed inside the final Linux
+  image: exclusive copy, complete matching content and unchanged source. The
+  network-isolated disposable filesystem fixture was removed and verified absent.
+
+Recreated only the local `classifarr` Compose service with `--no-build --pull
+never --no-deps`, preserving its data mount. At 22:03:41 UTC, health was HTTP 200,
+Docker reported healthy, restart count zero and no OOM. The 2 GiB limit, read-only
+root and user `1000:1000` remained unchanged. Aggregate database checks made no
+writes/provider calls: eleven unresolved items (nine source-review, two retry-wait),
+ten current libraries, zero saved mapping approvals and no startup warnings/errors
+in the inspected log window. A bounded retrieval batch contained ten unique
+records and completed in 5 ms; this is a smoke check, not a performance benchmark.
+
+Only test assertions and this evidence document changed after the image revision;
+both are excluded from the Docker build context. This is local development-image
+evidence, not a published-release upgrade rehearsal or an Unraid rollout.
 
 ## Recommendation stack and limits
 

@@ -48,4 +48,6 @@ it.each([
   value => { value.version = 'old' }, value => { value.items[0].status = 'private' },
   value => { value.items[0].scope = { kind: 'seasons', coverage: 'partial', mappings: [] } },
   value => { value.items[0].scope.tmdbId = -1 }, value => { value.items[0].retryAfter = 'invalid' },
-])('fails closed on malformed saved state', change => { const value = report(); change(value); expect(parseSourceMappings(value)).toBeNull() })
+])('fails closed on malformed saved state', change => {
+  const value = report(); change(value); expect(parseSourceMappings(value)).toBeNull()
+})

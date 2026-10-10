@@ -22,7 +22,7 @@ it('labels fields and submits a whole-series draft without an activation control
   expect(reviewSourceScope).toHaveBeenCalledWith(source().key, { offset: 0, sourceVersion: source().sourceVersion, scope: { kind: 'whole_work', tmdbId: 10 } })
   expect(wrapper.get('[role="status"]').text()).toContain('This structure check did not save or approve a mapping')
   expect(wrapper.text()).toContain('Approval and a successful library sync are required')
-  expect(wrapper.text()).toContain('parent identity conflict remains')
+  expect(wrapper.text()).toContain('Draft checks alone do not resolve the identity conflict')
   expect(wrapper.findAll('button').some(button => /apply|confirm|save/i.test(button.text()))).toBe(false)
   await wrapper.get('input').setValue('20')
   expect(wrapper.get('[role="status"]').text()).toBe('')
