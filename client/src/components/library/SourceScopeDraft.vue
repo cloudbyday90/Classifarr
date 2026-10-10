@@ -6,8 +6,8 @@
   >
     <summary>Draft a catalog mapping (admin)</summary>
     <p :id="`${id}-help`">
-      Keep this source item grouped as it is. This checks an unsaved proposal only;
-      it does not verify catalog IDs, fix the conflict, or start backfill.
+      Keep this source item grouped as it is. First check the draft, then verify the
+      source and catalog evidence. Saving a complete mapping requires a separate confirmation.
     </p>
     <form
       :aria-describedby="`${id}-help`"
@@ -124,11 +124,11 @@
       aria-live="polite"
     >
       <template v-if="result">
-        <p>Draft structure is valid. Nothing was saved or approved.</p>
+        <p>Draft structure is valid. This structure check did not save or approve a mapping.</p>
         <p v-if="result.scope.kind === 'seasons'">
           {{ result.scope.mappings.length }} of {{ result.scope.sourceSeasonNumbers.length }} declared source seasons mapped in this proposal.
         </p>
-        <p>The parent identity conflict remains. All proposed content is excluded from mapping-backed backfill until catalog and episode evidence is verified.</p>
+        <p>Draft checks alone do not resolve the identity conflict. Approval and a successful library sync are required before mapping-backed backfill.</p>
         <p class="reference">
           Draft reference: {{ result.draftFingerprint }}
         </p>

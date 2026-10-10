@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 vi.mock('../../api/core', () => ({ getDataRequest: (...args) => mockGet(...args), apiClient: { post: (...args) => mockPost(...args) } }))
-import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt, reviewSourceScope, inspectSourceScope } from '../../api/mediaIdentityReviewApi'
+import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt, reviewSourceScope, inspectSourceScope,
+  approveSourceScope, getSourceMappings, revokeSourceMapping } from '../../api/mediaIdentityReviewApi'
 import mediaServerApi from '../../api/mediaServer'
 
 beforeEach(() => vi.clearAllMocks())
@@ -32,7 +33,8 @@ describe('media identity API leaf', () => {
     expect(mockPost).not.toHaveBeenCalled()
   })
   it('wires all named functions through the domain aggregator', () => {
-    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt, reviewSourceScope, inspectSourceScope })
+    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt,
+      reviewSourceScope, inspectSourceScope, approveSourceScope, getSourceMappings, revokeSourceMapping })
   })
   it('checks scope drafts without automatic replay and preserves the raw response', async () => {
     const response = { data: { canApply: false } }, body = { scope: {} }
@@ -46,5 +48,18 @@ describe('media identity API leaf', () => {
     expect(await inspectSourceScope('key/next', body, signal)).toBe(response)
     expect(mockPost).toHaveBeenCalledWith('/media-identity-review/source-scopes/key%2Fnext/evidence', body,
       { skipAutomaticRetry: true, timeout: 105000, signal })
+  })
+  it('uses named mapping endpoints without automatic mutation retries', async () => {
+    const signal = new AbortController().signal, body = { confirmed: true }, response = { data: {} }
+    mockPost.mockResolvedValue(response)
+    expect(await approveSourceScope('key/next', body, signal)).toBe(response)
+    expect(mockPost).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/key%2Fnext/approve', body,
+      { skipAutomaticRetry: true, timeout: 105000, signal })
+    expect(await revokeSourceMapping('id/next')).toBe(response)
+    expect(mockPost).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/mappings/id%2Fnext/revoke', body, { skipAutomaticRetry: true })
+    await getSourceMappings()
+    expect(mockGet).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/mappings', { params: {}, skipAutomaticRetry: true })
+    await getSourceMappings({ offset: 50 })
+    expect(mockGet).toHaveBeenLastCalledWith('/media-identity-review/source-scopes/mappings', { params: { offset: 50 }, skipAutomaticRetry: true })
   })
 })

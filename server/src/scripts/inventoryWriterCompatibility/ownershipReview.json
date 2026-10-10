@@ -13,6 +13,24 @@
   ],
   "reviews": [
     {
+      "id": "source_mapping_schema",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the empty mapping ledger migration: bounded typed scope/documents, source/configuration fingerprints, approval actor, revocation and durable verification timestamps. Foreign keys cascade only from the source library/server into this new ledger; no inventory DML, ownership claim, provider request or automatic approval occurs on upgrade.",
+      "followUp": "Keep migration replay and isolated fresh-schema checks. Persist no credentials or raw provider responses. This does not grant old writers authority or resolve existing ingestion writer debt."
+    },
+    {
+      "id": "source_mapping_owned_recovery",
+      "classification": "owned",
+      "reason": "Reviewed mapping recovery and persistence with their sole production caller in runOwnedMediaSync. All SQL uses withCurrentCapture on the existing library session owner and matching collecting generation. Provider reads are outside transactions; short completion checks lock current configuration, observation and mapping before atomically writing inventory, receipt and observation removal. Scalar origins are not reused across a changed mapping.",
+      "followUp": "Retain real PostgreSQL stale-generation, disabled/configuration/revocation drift, rollback, durable cooldown, source-layout reuse expiry and full-versus-season corpus tests. Keep bounded admission and current ownership assertions; no runtime pool fallback or externally supplied proof is authorized."
+    },
+    {
+      "id": "source_mapping_admin_revocation",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed administrator-only list/revoke service and router. Revocation rechecks the active database actor, obtains the ingestion namespace transaction advisory lock, locks capture then mapping, and clears only inventory still carrying the exact mapping receipt. Observation restoration, revoked state and audit commit together. Read-only status makes no provider call; there is no remote media mutation.",
+      "followUp": "Retain active-ingestion exclusion, duplicate revocation, receipt mismatch, rollback, permission and CSRF checks. Transaction advisory locking coordinates cooperative current writers; it is not hostile-superuser isolation and does not resolve unrelated shared writer debt."
+    },
+    {
       "id": "atomic_classification_handoff",
       "classification": "separately_coordinated",
       "reason": "Reviewed the complete constant CTE: lock at most 100 awaiting-decision history rows, insert classification tasks with source provenance, and update only inserted rows with a receipt in one transaction. DML targets only classification_history and task_queue; no protected ingestion relation, provider request, ownership claim or identity rewrite is introduced.",
@@ -1246,7 +1264,7 @@
     {"path":"server/src/services/inventoryCredentialWakeupQueries.mjs","digest":"650fa3b34a6722144a4630d64e6b2fb6a968d36d97846f0380198546e475294d","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/inventoryCredentialWakeupRepository.mjs","digest":"48d296bcfb98ac975f49f89ea0a54166d15354ca161b1eb0bd832281e203de50","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryDescriptionBenchmarkRepository.mjs","digest":"bb74582a78fdd0397da093b5d6f3089506a74e63b2cce72a3a11ceda9270ae5e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/inventoryDescriptionCorpus.mjs","digest":"751dceffafb648bc03ebe98328f8c7a82fba30c254445f95cdec18a2c01f44d2","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/inventoryDescriptionCorpus.mjs","digest":"9293c62f025197c111222a7ff51fc97fdcc8bba358f3c97f19db3dec58c2cc98","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryDescriptionRefreshRepository.mjs","digest":"848cf0d0d2aad78526e997f8f6f6368fceebb1d598d26168cd60f6eb4b1d8fb3","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryProviderRecoveryPersistence.mjs","digest":"e93fc888e2e9dff5300e2be52d6d8d5b86c5b793c854ae5b24a1339e63acd647","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/inventoryRecoveryProgressService.mjs","digest":"89655488be7131d1d928b9c8004d76607a56db3353506d5b5d994b4201b53fb9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -1272,7 +1290,7 @@
     {"path":"server/src/services/libraryMappingService.mjs","digest":"bbddc591e91caf0eb26e27b735be8de217df7e92deb025a971b6bd924a99e7a9","analysisDigest":"831b9a541ff8891140b2539ebfcbb9ab645812b364c8a2ddab4323b639ee1ff6","review":"shared_writer_debt"},
     {"path":"server/src/services/libraryUpgradeReadiness.mjs","digest":"4ea7ef74eaa275e582537c0e3e69965f8a6e4435a58aced8a77cf029868e5800","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/liveInventoryDescriptionCorpus.mjs","digest":"d85a60df2522d85f08ce79ac5a071c4a45cfe1b6ce29f8539525cf6c9dc0fcf1","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/liveInventoryDescriptionRepository.mjs","digest":"bdca9cc2b7fe3152e572a773ff2a2e9a2f5240f7537aa3d615a5f93b2b07cf20","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/liveInventoryDescriptionRepository.mjs","digest":"807f86f906bb2b83af38fe62729abae1e3614fbd53c034a1838df50f3ffd1b7c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/mediaIdentityReviewRepository.mjs","digest":"863fc8dee82843587cf98887fa664f56578cf3a25e3ec4386ea8da32d750e187","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/mediaPatternAnalyzer.mjs","digest":"ad4724b736c40f461d634d747d07f8aa939a6d3de229f18a7ee724ceb7389abe","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/mediaResolvedIdentityPersistence.mjs","digest":"2124392421863789a9ca6107499a361109119b6b4e01e29062412749e4b8b512","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
@@ -1290,7 +1308,7 @@
     {"path":"server/src/services/mediaSyncOwnership.mjs","digest":"5b64fe15dc3cca014307338aaae366e54f4ed8716b8dfb11fbbcefedc91c88f0","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaSyncOwnershipRepository.mjs","digest":"b849cea42af56a96350f0f585607ae5a1149d364f3c0e1dcc2751b3a4e544b06","analysisDigest":"5938e110a2103c742a21b2b3d9dd324c8665e11fed170d644605d8de58291f95","review":"ingestion_compatibility_recovery"},
     {"path":"server/src/services/mediaSyncQueries.mjs","digest":"d6889c401d4e878409f34bdc107d5558ae91eda9dd99ae37faf1e15d211aa472","analysisDigest":"155c8a53aece0f4ed4b9e5f68bc982f5d482b4ba158aa0a6c4e631683e014a14","review":"shared_writer_debt"},
-    {"path":"server/src/services/mediaSyncRun.mjs","digest":"6fb47b01b7a168e40f3b526fa6aa2565fb8ccb2f3e4a7e61fdac02f18f27d1e7","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_compatibility_recovery"},
+    {"path":"server/src/services/mediaSyncRun.mjs","digest":"a1b14e4743b227917193878d5797a0e8cc7920105ec986f32815c631564515c6","analysisDigest":"d0edb609bf126c20a71a840e36258d13440abfe51d964c3e1ea78a6b34fb68c8","review":"ingestion_compatibility_recovery"},
     {"path":"server/src/services/mediaServers/plex.mjs","digest":"b27f8093f8c0091ab07e168b30a538bf780b5b6601a084f4eee05e398af7da7e","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/shared/createEmbyLikeService.mjs","digest":"c453477b889798234343b1ce738076e17a01f72b426c13269a6433392f4eece2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
     {"path":"server/src/services/mediaServers/shared/sourcePage.mjs","digest":"3fa802e5403b6e18f90e5390a8275972342c314e4c24b38dca0b2ffc16ffaadd","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"ingestion_session"},
@@ -1368,6 +1386,10 @@
     {"path":"server/src/utils/presetCatalog.mjs","digest":"bbd97d7d2a4a24f18532418051beaafb7f0abe6131566a00b3e5761d759cd2cf","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/utils/queryWithTimeout.mjs","digest":"29abf0811a9ae231a565907d892933b88c74398c43e8752d40b255ff8f5604e5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/utils/ragLogger.mjs","digest":"fd958004adc2a223563442d19a51c4cc54060fd591eb417df2610e856a2326f9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/staleClassificationHandoffRepository.mjs","digest":"122089f02d6fea5d71158606648e4117b0623e4fa94e156f375dde98d1951dc8","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"atomic_classification_handoff"}
+    {"path":"server/src/services/staleClassificationHandoffRepository.mjs","digest":"122089f02d6fea5d71158606648e4117b0623e4fa94e156f375dde98d1951dc8","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"atomic_classification_handoff"},
+    {"path":"database/migrations/20261010_220000_source_catalog_mappings.sql","digest":"25e0da7cf4ef3268bce84143f63f69068333aa291fc58790bf39fd1f3d8f9242","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"source_mapping_schema"},
+    {"path":"server/src/services/sourceMappingManagement.mjs","digest":"cf38d259bd7ab726e9f2f5a202d9b06e4d884ae22ff1e67db0d6a5174e7065a8","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"source_mapping_admin_revocation"},
+    {"path":"server/src/services/sourceMappingPersistence.mjs","digest":"1af04206bb5eb7ce71d48f429da0a92567ce1e2d85673b4f295fca0ac8b8b92e","analysisDigest":"e0e5cae7477ce104ea6fa841923194c0896dd42403f676f7873a61eddab0f6a9","review":"source_mapping_owned_recovery"},
+    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"0b08dd034ba7c27c77cf65145a25c2d8e3c806fb633fe8d1aed534a5e68ec6fd","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
   ]
 }

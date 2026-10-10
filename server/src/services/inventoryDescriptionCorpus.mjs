@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createInventorySemanticSampler } from './inventorySemanticSampler.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
+import { inventoryCatalogScopeKey } from './inventoryCatalogScope.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false, includeReadinessMetadata = false,
@@ -17,8 +18,10 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
   // not be joined into the corpus sort. Latest-row semantics stay unchanged.
   return `
   SELECT msi.media_type, msi.tmdb_id, msi.library_id,
-    ${includeSourceItems ? 'msi.media_server_id, msi.external_id, msi.imdb_id, msi.tvdb_id,' : ''}
-    ${includeCandidateMetadata ? 'msi.genres, msi.studio, msi.content_rating,' : ''}
+    ${includeSourceItems ? "msi.media_server_id, msi.external_id, msi.imdb_id, msi.tvdb_id, scoped_document->'catalogScope' AS catalog_scope," : ''}
+    ${includeCandidateMetadata ? (includeSourceItems
+      ? 'CASE WHEN scoped_mapping.id IS NULL THEN msi.genres END AS genres, CASE WHEN scoped_mapping.id IS NULL THEN msi.studio END AS studio, CASE WHEN scoped_mapping.id IS NULL THEN msi.content_rating END AS content_rating,'
+      : 'msi.genres, msi.studio, msi.content_rating,') : ''}
     ${includeCompanyMetadata ? `NOW() AS company_checked_at,
       CASE WHEN octet_length((msi.metadata->'inventory_tmdb')::text) <= 100000
         THEN jsonb_build_object('version', msi.metadata->'inventory_tmdb'->'version',
@@ -35,18 +38,26 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
       CASE WHEN octet_length((msi.metadata->'inventory_tmdb')::text) <= 100000
         THEN jsonb_build_object('inventory_tmdb', msi.metadata->'inventory_tmdb')
         ELSE '{}'::jsonb END AS evaluation_metadata,` : ''}
-    left(COALESCE(
+    ${includeSourceItems ? "CASE WHEN scoped_mapping.id IS NOT NULL THEN left(scoped_document->>'overview',4000) ELSE " : ''}left(COALESCE(
       CASE WHEN jsonb_typeof(msi.metadata->'overview')='string' THEN NULLIF(btrim(msi.metadata->>'overview'), '') END,
       CASE WHEN jsonb_typeof(msi.metadata->'summary')='string' THEN NULLIF(btrim(msi.metadata->>'summary'), '') END,
       (SELECT CASE WHEN jsonb_typeof(h.metadata->'overview')='string' THEN h.metadata->>'overview' END
         FROM classification_history h
         WHERE h.media_type = msi.media_type AND h.tmdb_id = msi.tmdb_id
-        ORDER BY h.created_at DESC, h.id DESC LIMIT 1), ''), 4000) AS overview
+        ORDER BY h.created_at DESC, h.id DESC LIMIT 1), ''), 4000)${includeSourceItems ? ' END' : ''} AS overview
   FROM media_server_items msi
   JOIN libraries l ON l.id = msi.library_id AND l.is_active = true AND l.media_type = msi.media_type
+  ${includeSourceItems ? `LEFT JOIN source_catalog_mappings scoped_mapping
+    ON scoped_mapping.id::text=msi.metadata->'source_catalog_mapping'->>'id'
+      AND scoped_mapping.library_id=msi.library_id AND scoped_mapping.media_server_id=msi.media_server_id
+      AND scoped_mapping.external_id=msi.external_id AND scoped_mapping.media_type=msi.media_type
+      AND scoped_mapping.revoked_at IS NULL AND scoped_mapping.materialized_at > statement_timestamp()-interval '30 days'
+      AND scoped_mapping.scope->>'kind'='seasons' AND msi.tmdb_id IS NULL
+    LEFT JOIN LATERAL jsonb_array_elements(scoped_mapping.documents) AS scoped_document ON true` : ''}
   WHERE msi.media_type IN ('movie', 'tv') ${scope}AND ${includeSourceItems
     ? "(msi.tmdb_id > 0 OR (msi.tmdb_id IS NULL AND msi.media_server_id > 0 AND btrim(msi.external_id) <> ''))"
     : 'msi.tmdb_id > 0'}
+    ${includeSourceItems ? "AND (msi.metadata->'source_catalog_mapping' IS NULL OR msi.tmdb_id > 0 OR scoped_mapping.id IS NOT NULL)" : ''}
     AND ${sourceConflictAuthorityExclusionForMediaServerItem('$1')}
   ORDER BY msi.media_type, msi.tmdb_id, msi.library_id, msi.id
   LIMIT ${limit}
@@ -56,6 +67,7 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
 export const INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql();
 
 export function inventoryDescriptionIdentity(item) {
+  if (inventoryCatalogScopeKey(item)) throw new Error('inventory_description_whole_work_required');
   const { media_type: type, tmdb_id: id } = item?.metadata ?? item ?? {};
   if (!['movie', 'tv'].includes(type) || !Number.isInteger(id) || id < 1 || id > 2_147_483_647) {
     throw new Error('inventory_description_identity_invalid');

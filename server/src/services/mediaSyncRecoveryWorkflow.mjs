@@ -8,6 +8,8 @@ export function createMediaSyncRecoveryWorkflow({ store, context, recovery, sour
   readPriority = item => readSyncIdentityRecoveryPriority(store, context, item),
   claimAttempt = (item, token) => claimSyncIdentityRecovery(store, context, item, token),
   readReceipt = item => readSyncIdentityRecoveryReceipt(store, context, item),
+  recoverMapping = async (_item) => null,
+  persistMapping = null,
 }) {
   const plan = createMediaSyncRecoveryPlan();
   const recordOutcome = createSyncIdentityOutcomeRecorder(store, context, logger);
@@ -43,6 +45,18 @@ export function createMediaSyncRecoveryWorkflow({ store, context, recovery, sour
       // A later appearance owns the buffered snapshot, including a now-valid item.
       const previous = plan.withdraw(item?.external_id);
       let completed = previous ? await complete(previous) : 0;
+      try {
+        const mapped = await recoverMapping(item);
+        if (mapped?.handled) {
+          if (mapped.proof && persistMapping && await persistMapping(store, context, mapped.proof)) return completed + 1;
+          return completed + await complete(item);
+        }
+      } catch {
+        source.signal?.throwIfAborted();
+        logger.warn('Approved source mapping deferred; unresolved inventory retained', { libraryId: context.libraryId },
+          { dedupeKey: `source-mapping:${context.libraryId}`, dedupeWindowMs: 3600000 });
+        return completed + await complete(item);
+      }
       let admitted = false;
       let evicted = null;
       const proof = await recovery.recover(item, { ...options, claimAttempt: async candidate => {

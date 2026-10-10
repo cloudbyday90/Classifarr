@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { sourceEvidenceAnchor } from './librarySourceEvidenceAdapter.mjs';
 import { normalizeImdbId } from './mediaSourceIdentity.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { inventoryCatalogScopeKey } from './inventoryCatalogScope.mjs';
 
 function sourceKey(row) {
   const anchor = sourceEvidenceAnchor(row, row?.library_id);
@@ -14,6 +15,8 @@ function sourceKey(row) {
 /** Private membership identity, not a global work ID or routing authority. */
 export function inventorySourceDescriptionKey(row) {
   if (!['movie', 'tv'].includes(row?.media_type)) throw new Error('inventory_description_identity_invalid');
+  const scoped = inventoryCatalogScopeKey(row);
+  if (scoped) return scoped;
   if (row.tmdb_id != null) {
     if (!Number.isInteger(row.tmdb_id) || !positiveDatabaseInteger(row.tmdb_id)) {
       throw new Error('inventory_description_identity_invalid');

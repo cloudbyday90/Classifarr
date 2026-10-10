@@ -6,7 +6,7 @@ import { COMPLETE_SOURCE_CAPTURES_CTE, CURRENT_SOURCE_ISSUE_JOIN } from './sourc
 export async function readScopeEvidenceTarget(db, key, offset) {
   const { rows } = await db.query( // sql-interpolation: imported constant SQL fragments only; caller values use parameters.
     `WITH ${COMPLETE_SOURCE_CAPTURES_CTE}
-    SELECT o.library_id, o.media_server_id, o.external_id, o.media_type,
+    SELECT o.library_id, o.media_server_id, o.external_id, o.media_type, o.source_digest, o.provider_fields,
       o.xmin::text AS observation_revision, c.capture_revision, l.xmin::text AS library_revision,
       l.external_id AS library_external_id, s.xmin::text AS server_revision,
       s.type AS server_type, s.url, s.api_key, s.is_active,

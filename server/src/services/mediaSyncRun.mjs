@@ -12,6 +12,10 @@ import { preflightSourceEnumeration } from './sourceEnumerationPreflight.mjs';
 import { SourcePreflightError } from './sourcePreflightDiagnostic.mjs';
 import { createSourceContentAdmission } from './sourceContentAdmission.mjs';
 import { SourceContentDeferredError } from './sourceContentFailure.mjs';
+import { createSourceMappingRecovery } from './sourceMappingRecovery.mjs';
+import { persistSourceMapping } from './sourceMappingPersistence.mjs';
+import { createScopeCatalogProviderFactory } from './sourceScopeEvidenceProviders.mjs';
+import { tmdbService } from './tmdb.mjs';
 const logger = createLogger('mediaSync');
 
 export async function runOwnedMediaSync(sync, libraryId, options, owner) {
@@ -92,6 +96,10 @@ export async function runOwnedMediaSync(sync, libraryId, options, owner) {
         store: sync.sourceObservations, context: sourceCapture, recovery: identityRecovery,
         source: { service, url, apiKey: api_key, libraryKey: String(external_id), signal: owner.signal },
         persistRecovery: (...args) => sync.persistIdentityRecovery(...args), logger,
+        recoverMapping: createSourceMappingRecovery({ store: sync.sourceObservations, context: sourceCapture,
+          source: { service, url, apiKey: api_key, libraryKey: String(external_id), signal: owner.signal },
+          createCatalogProvider: createScopeCatalogProviderFactory(tmdbService) }),
+        persistMapping: persistSourceMapping,
         upsert: item => sync.upsertMediaItem(media_server_id, libraryId, item, {
           onSkippedItem: skippedItem => skippedItems.record(skippedItem),
         }),

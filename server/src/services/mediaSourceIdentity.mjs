@@ -59,6 +59,7 @@ export function sourceMetadata(metadata) {
   delete copy.tmdb_resolution;
   delete copy.inventory_tmdb;
   delete copy.source_identity_recovery;
+  delete copy.source_catalog_mapping;
   return copy;
 }
 
@@ -78,6 +79,7 @@ export function decideSyncedIdentity(current, incoming) {
   const preserve = continuous(before, after) && oldId === tmdbId;
   const merged = { ...(preserve ? metadata : {}), ...sourceMetadata(incoming.metadata) };
   delete merged.tmdb_identity_origin;
+  delete merged.source_catalog_mapping; // Only the owned mapping writer may attach a current receipt.
   if (validOrigin && tmdbId === oldId) {
     const anchor = { ...proof };
     for (const field of ['year', 'imdb_id', 'tvdb_id']) anchor[field] ??= before[field] ?? after[field];

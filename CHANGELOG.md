@@ -17,26 +17,16 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Added
 
-- **Catalog mapping groundwork** — A library-agnostic, offline mapping-plan
-  validator models whole movies/series and explicit TV season relationships
-  without changing source grouping. It rejects ambiguous or incomplete scope
-  claims and reports structural validity only; activation, routing and unresolved
-  warnings remain unchanged pending verified review and scope-aware consumers.
-  A bounded, read-only live preview now compares source episode membership with
-  typed catalog season structure across Plex, Jellyfin and Emby, detects observed
-  source/configuration drift, and keeps numbering agreement separate from identity.
-  Episode-level catalog checks distinguish numbering differences, missing or
-  reused IDs, and source groups spanning multiple catalog series without
-  rematching media or activating mappings. Optional exact-ID checks explain
-  remaining episode gaps using typed IMDb/TVDB cross-references, with bounded
-  reads and explicit missing, conflicting and out-of-series outcomes.
-  Administrators can now check unsaved whole-work or season-mapping drafts beside
-  unresolved items. Reviews detect stored-source changes, retain parent conflicts
-  and exclude unverified content from backfill; they do not activate mappings.
-  An on-demand evidence check rereads the source and typed catalog scope, reports
-  excluded episodes with reasons, and rejects observed drift. Checks are bounded,
-  cancellable and serialized per database; catalog membership is not identity
-  approval, and unresolved warnings and backfill eligibility remain unchanged.
+- **Catalog mapping and recovery** — Library-agnostic source/catalog checks and
+  explicit administrator-approved whole-work or season mappings preserve Plex,
+  Jellyfin and Emby grouping. Fresh, bounded evidence checks identify ambiguous,
+  missing or reused episode IDs and distinguish catalog membership from identity
+  approval. Owned library sync applies only complete verified mappings; partial
+  mappings remain unresolved. Saved status, audit records and revocation separate
+  approval from completion. Season descriptions retain their typed scope for
+  retrieval and optional vector backfill, without becoming arbitrary parent IDs
+  or supplying whole-work-only comparison models. Existing conflicts are not
+  automatically approved on upgrade; ownership and memory safeguards remain.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or

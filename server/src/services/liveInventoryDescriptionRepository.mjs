@@ -10,6 +10,7 @@ import { prepareLiveLibraryMatch, assessPreparedLiveLibraryMatch } from './liveL
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { prepareLiveLibraryNeighbors, assessPreparedLiveLibraryNeighbors } from './liveLibraryNeighborCalibration.mjs';
 import { retrieveLiveMultiScaleExamples } from './liveMultiScaleRuntime.mjs';
+import { isWholeWorkInventoryDescription } from './inventoryCatalogScope.mjs';
 
 export { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from './liveInventoryDescriptionCorpus.mjs';
 
@@ -104,7 +105,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
       if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration && held.size === 1) {
         try {
           // The optional multi-scale model still fits the established TMDB population.
-          const contextRows = rows.filter(row => Number.isInteger(row.tmdb_id) && row.tmdb_id > 0);
+          const contextRows = rows.filter(isWholeWorkInventoryDescription);
           context = await retrieveContext({ request, identity, vector, rows: contextRows,
             corpus: contextRows.length === rows.length ? corpus : prepareInventoryDescriptionCorpus(contextRows), signal });
         }

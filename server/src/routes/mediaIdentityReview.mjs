@@ -7,13 +7,19 @@ import { createMediaIdentityReviewRouter } from './mediaIdentityReviewRouter.mjs
 import { createSourceScopeEvidenceService } from '../services/sourceScopeEvidenceService.mjs';
 import { createScopeCatalogProviderFactory } from '../services/sourceScopeEvidenceProviders.mjs';
 import { getMediaServerService } from '../services/mediaServers/index.mjs';
+import { createSourceMappingApproval } from '../services/sourceMappingApproval.mjs';
+import { createSourceMappingManagement } from '../services/sourceMappingManagement.mjs';
+
+const scopeDependencies = { db, getMediaServerService,
+  withLock: fn => db.withSessionAdvisoryLock(db.DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, fn),
+  createCatalogProvider: createScopeCatalogProviderFactory(tmdbService) };
 
 export const router = createMediaIdentityReviewRouter({
   authenticateToken, requireAdmin,
   service: {
     ...createMediaIdentityReviewService({ db, getIdentityDetails: (id, type) => tmdbService.getIdentityDetails(id, type) }),
-    inspectSourceScope: createSourceScopeEvidenceService({ db, getMediaServerService,
-      withLock: fn => db.withSessionAdvisoryLock(db.DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, fn),
-      createCatalogProvider: createScopeCatalogProviderFactory(tmdbService) }),
+    inspectSourceScope: createSourceScopeEvidenceService(scopeDependencies),
+    approveSourceScope: createSourceMappingApproval(scopeDependencies),
+    ...createSourceMappingManagement(db),
   },
 });

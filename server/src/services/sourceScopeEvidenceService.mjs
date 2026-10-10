@@ -7,9 +7,11 @@ import { compareScopeEvidence, readScopeCatalog, scopeEvidenceDigest, scopeEvide
 import { CatalogEpisodeEvidenceError } from './catalogEpisodeEvidence.mjs';
 
 const changed = () => new ConflictError('The source or catalog changed. Refresh items and review again.', { code: 'scope_evidence_changed' });
-const unavailable = code => new ServiceUnavailableError('Evidence could not be checked. Nothing was saved.', { code });
 
-export function createSourceScopeEvidenceService({ db, withLock, getMediaServerService, createCatalogProvider }) {
+export function createSourceScopeEvidenceService({ db, withLock, getMediaServerService, createCatalogProvider, onVerified = null }) {
+  const unavailable = code => new ServiceUnavailableError(onVerified
+    ? 'Approval could not be confirmed. Check saved mappings before submitting again.'
+    : 'Evidence could not be checked. Nothing was saved.', { code });
   return async function inspect(actorId, key, body, callerSignal) {
     // The structural check validates/copies all browser input before provider I/O.
     const offset = body?.offset;
@@ -52,9 +54,10 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
           evidenceFingerprint: scopeEvidenceDigest([draft.draftFingerprint, source.digest, catalog.digest]),
           backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' },
           comparison };
+        if (onVerified) result = await onVerified({ actorId, key, input, target, source, catalog, result, signal: scopedSignal });
       });
       if (!acquired) throw unavailable('scope_evidence_busy');
-      signal.throwIfAborted();
+      if (!onVerified) signal.throwIfAborted(); // A completed commit remains true after a disconnected response.
       return result;
     } catch (error) {
       if (signal.aborted) throw unavailable(callerSignal?.aborted ? 'scope_evidence_cancelled' : 'scope_evidence_timed_out');

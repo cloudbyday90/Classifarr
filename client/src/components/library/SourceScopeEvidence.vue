@@ -32,14 +32,14 @@
       </template>
       <template v-else-if="result">
         {{ result.matched }} of {{ result.total }} {{ result.unit === 'episode' ? 'episodes have matching catalog membership' : 'movies match the source TMDb declaration' }}.
-        {{ result.exclusions.length }} excluded from this comparison. The parent conflict remains; backfill is still disabled.
+        {{ result.exclusions.length }} excluded from this comparison. This evidence check did not enable backfill or resolve the conflict.
       </template>
       <template v-else>
         {{ notice }}
       </template>
     </p>
     <template v-if="result">
-      <p>Membership is not independent cross-provider identity verification. This result cannot approve a mapping.</p>
+      <p>Membership is not independent cross-provider identity verification. Your explicit approval is still required.</p>
       <details v-if="result.exclusions.length">
         <summary>View excluded {{ result.unit === 'episode' ? 'episodes' : 'movie' }} ({{ result.exclusions.length }})</summary>
         <ul>
@@ -57,6 +57,13 @@
       <p class="reference">
         Evidence reference: {{ result.reference }}
       </p>
+      <SourceMappingApproval
+        v-if="result.evidenceFingerprint && result.total > 0 && result.matched === result.total && !result.exclusions.length && (draft.scope.kind === 'whole_work' || draft.scope.coverage === 'complete')"
+        :key="result.reference"
+        :draft="draft"
+        :evidence="result"
+        :offset="offset"
+      />
     </template>
   </section>
 </template>
@@ -64,6 +71,7 @@
 <script setup>
 import { useSourceScopeEvidence } from '@/composables/useSourceScopeEvidence'
 import { scopeExclusionLabels } from '@/utils/sourceScopeEvidence'
+import SourceMappingApproval from './SourceMappingApproval.vue'
 const props = defineProps({ draft: { type: Object, required: true }, offset: { type: Number, required: true } })
 const { result, error, busy, notice, inspect, cancel } = useSourceScopeEvidence(() => props.draft, () => props.offset)
 </script>

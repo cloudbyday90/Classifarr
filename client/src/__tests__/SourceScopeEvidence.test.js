@@ -22,7 +22,7 @@ it('only reads on request, announces totals and keeps exclusions outside the liv
     { sourceVersion: draft().sourceVersion, scope: draft().scope, offset: 0 }, expect.any(AbortSignal))
   const status = wrapper.get('[role="status"]')
   expect(status.text()).toContain('1 of 2 episodes')
-  expect(status.text()).toContain('backfill is still disabled')
+  expect(status.text()).toContain('did not enable backfill or resolve the conflict')
   expect(status.find('li').exists()).toBe(false)
   expect(wrapper.get('details').text().replace(/\s+/g, ' ')).toContain('Season 1, episode 2: No TMDb episode ID supplied')
   expect(wrapper.text()).toContain('not independent cross-provider identity verification')

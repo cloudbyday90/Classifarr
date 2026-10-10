@@ -38,6 +38,8 @@ export function parseSourceScopeEvidence(data, draft) {
     }
   }
   if (comparison.unit === 'movie' && comparison.total !== 1) return null
-  return { reference: data.reference, unit: comparison.unit, total: comparison.total,
+  // Old servers can still display a preview, but cannot enable approval without a fingerprint.
+  const evidenceFingerprint = /^[a-f0-9]{64}$/.test(data.evidenceFingerprint ?? '') ? data.evidenceFingerprint : null
+  return { reference: data.reference, evidenceFingerprint, unit: comparison.unit, total: comparison.total,
     matched: comparison.matched, exclusions }
 }

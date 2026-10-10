@@ -10,7 +10,8 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({ verifyToken }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getValue: () => true }));
 const { authenticateToken, requireAdmin } = await import('../middleware/auth.mjs');
 const { csrfProtection } = await import('../middleware/csrf.mjs');
-const service = { list: jest.fn(), preview: jest.fn(), confirm: jest.fn(), getReceipt: jest.fn(), reviewSourceScope: jest.fn(), inspectSourceScope: jest.fn() };
+const service = { list: jest.fn(), preview: jest.fn(), confirm: jest.fn(), getReceipt: jest.fn(), reviewSourceScope: jest.fn(), inspectSourceScope: jest.fn(),
+  approveSourceScope: jest.fn(), listSourceMappings: jest.fn(), revokeSourceMapping: jest.fn() };
 const receiptPath = '/api/media-identity-review/1/receipts/2e851bf4-9497-4b99-8b7c-e8117a05c762';
 const app = express();
 app.use(express.json(), cookieParser());
@@ -31,7 +32,7 @@ beforeEach(() => {
 
 describe('identity review HTTP authorization', () => {
   test('requires authentication before reading or writing', async () => {
-    for (const endpoint of ['', '/1/preview', '/1/confirm', '/source-scopes/key/review', '/source-scopes/key/evidence']) {
+    for (const endpoint of ['', '/1/preview', '/1/confirm', '/source-scopes/key/review', '/source-scopes/key/evidence', '/source-scopes/key/approve', '/source-scopes/mappings/id/revoke']) {
       const call = endpoint ? request(app).post(`/api/media-identity-review${endpoint}`) : request(app).get('/api/media-identity-review');
       expect((await call).status).toBe(401);
     }
@@ -39,6 +40,25 @@ describe('identity review HTTP authorization', () => {
     await request(app).get(receiptPath).expect(401);
     expect(service.getReceipt).not.toHaveBeenCalled();
     expect(service.reviewSourceScope).not.toHaveBeenCalled();
+  });
+  test.each(['approve', 'revoke'])('mapping %s uses admin authorization, CSRF and no-store', async action => {
+    const path = action === 'approve' ? '/api/media-identity-review/source-scopes/key/approve'
+      : '/api/media-identity-review/source-scopes/mappings/id/revoke';
+    await request(app).post(path).set('Cookie', 'access_token=test').expect(403);
+    await request(app).post(path).set('Authorization', 'Bearer test').set('x-api-key', 'test').expect(403);
+    verifyToken.mockResolvedValueOnce({ id: 7, type: 'access', role: 'user' });
+    await request(app).post(path).set('Authorization', 'Bearer test').expect(403);
+    const response = await request(app).post(path).set('Cookie', 'access_token=test; classifarr_csrf_token=csrf-test')
+      .set('x-csrf-token', 'csrf-test').send({ confirmed: true }).expect(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    if (action === 'approve') expect(service.approveSourceScope).toHaveBeenCalledWith(7, 'key', { confirmed: true }, expect.any(AbortSignal));
+    else expect(service.revokeSourceMapping).toHaveBeenCalledWith(7, 'id', { confirmed: true });
+  });
+  test('reads mapping status without writes or provider requests', async () => {
+    await request(app).get('/api/media-identity-review/source-scopes/mappings').expect(401);
+    await request(app).get('/api/media-identity-review/source-scopes/mappings?offset=50').set('Authorization', 'Bearer test').expect(200);
+    expect(service.listSourceMappings).toHaveBeenCalledWith(7, { offset: '50' });
+    expect(service.approveSourceScope).not.toHaveBeenCalled();
   });
   test.each([{ id: 7, type: 'access', role: 'user' }, { id: 7, type: 'refresh', role: 'admin' },
     { id: 7, type: 'access', role: 'admin', token_use: 'automation' }])('rejects non-human-admin session %j', async user => {

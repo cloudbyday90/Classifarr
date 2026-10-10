@@ -149,6 +149,7 @@
         </button>
       </nav>
     </template>
+    <SourceMappingsPanel />
   </section>
 </template>
 
@@ -158,6 +159,7 @@ import { useSourceIdentityIssues } from '@/composables/useSourceIdentityIssues'
 import { recoveryLabels, sourceIssueExplanation, sourceIssueNextStep } from '@/utils/sourceIdentityIssues'
 import { recoveryOutcomeLabel } from '@/utils/sourceRecoveryOutcomes'
 import SourceScopeDraft from '@/components/library/SourceScopeDraft.vue'
+import SourceMappingsPanel from '@/components/library/SourceMappingsPanel.vue'
 defineProps({ expectedCount: { type: Number, required: true } })
 const { report, offset, error, refresh, isStale } = useSourceIdentityIssues()
 const heading = ref(null)

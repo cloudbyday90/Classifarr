@@ -34,7 +34,9 @@ test('scoped SQL filters before ordering/limits and leaves all-media consumers u
 });
 
 test('history projects only the latest overview inside the lazy fallback', () => {
-  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).not.toContain('LEFT JOIN LATERAL');
+  // Only the bounded approved-season array expands laterally; history stays lazy.
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain('LEFT JOIN LATERAL jsonb_array_elements(scoped_mapping.documents)');
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).not.toMatch(/JOIN LATERAL\s*\(\s*SELECT/);
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).not.toContain('SELECT h.metadata');
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain("(SELECT CASE WHEN jsonb_typeof(h.metadata->'overview')='string' THEN h.metadata->>'overview' END");
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain('ORDER BY h.created_at DESC, h.id DESC LIMIT 1)');

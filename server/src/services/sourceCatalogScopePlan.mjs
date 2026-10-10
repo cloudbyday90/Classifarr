@@ -75,7 +75,7 @@ function copyPlan(input) {
 export function reviewSourceCatalogScopePlan(input) {
   const plan = copyPlan(input);
   const report = { version: 'source_catalog_scope_plan_review.v1',
-    status: { id: 'invalid_draft', reason: 'invalid_scope_plan' }, canApply: false, verification: 'structure_only',
+    status: /** @type {{ id: string, reason?: string }} */ ({ id: 'invalid_draft', reason: 'invalid_scope_plan' }), canApply: false, verification: 'structure_only',
     planFingerprint: null, summary: null, requirements: REQUIREMENTS };
   if (!plan) return report;
   const whole = plan.scope.kind === 'whole_work';

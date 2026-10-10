@@ -29,7 +29,7 @@ export function scopeEvidencePlan(source, input) {
 
 /** Fresh typed reads; retain only bounded IDs/positions, never provider payloads. */
 export async function readScopeCatalog(plan, provider, signal) {
-  const catalog = new Map(), details = [];
+  const catalog = new Map(), details = [], seasonDescriptions = [];
   let episodeCount = 0;
   for (const id of plan.works) {
     signal.throwIfAborted();
@@ -47,9 +47,12 @@ export async function readScopeCatalog(plan, provider, signal) {
       const payload = await provider.getIdentitySeasonDetails(id, season.number, { signal });
       signal.throwIfAborted();
       appendCatalogSeason(catalog, season, payload);
+      seasonDescriptions.push({ tmdbSeriesId: id, seasonNumber: season.number,
+        overview: typeof payload.overview === 'string' ? payload.overview.slice(0, 4000) : null });
     }
   }
-  return { catalog, digest: scopeEvidenceDigest({ details, episodes: [...catalog].sort(([a], [b]) => a - b) }) };
+  return { catalog, details, seasons: seasonDescriptions,
+    digest: scopeEvidenceDigest({ details, seasons: seasonDescriptions, episodes: [...catalog].sort(([a], [b]) => a - b) }) };
 }
 
 /** Exact source TMDb episode membership, not independent cross-provider approval. */
