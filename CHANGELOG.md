@@ -33,6 +33,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   stop automatic retries for confirmed missing TMDb records, and explain the next
   check in Command Center. An upgrade backfill restores known failure-stage
   context on eligible legacy errors without changing identities or replaying work.
+  Scheduled stale-decision recovery now commits a bounded queue/history handoff
+  atomically, preserving task provenance and preventing partial or repeated
+  admission without changing identities, routing consent or retry budgets.
 - **Library identity recovery and diagnostics** — Independently verified catalog
   candidates can use exact alternative titles when the year and fresh source
   evidence agree, preserving retry and ownership safeguards. Unresolved-item

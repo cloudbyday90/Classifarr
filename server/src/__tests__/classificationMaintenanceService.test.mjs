@@ -1,118 +1,54 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
-
-import { createMockDb, createMockLogger, restoreAllAndResetMocks } from './helpers/mockFactory.mjs';
-import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { jest } from '@jest/globals';
+import { createMockLogger } from './helpers/mockFactory.mjs';
 import { ClassificationMaintenanceService } from '../services/classificationMaintenanceService.mjs';
+import { createStaleClassificationHandoffRepository } from '../services/staleClassificationHandoffRepository.mjs';
+import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 
+test('empty handoff is quiet', async () => {
+  const logger = createMockLogger();
+  const handoff = jest.fn().mockResolvedValue([]);
+  await new ClassificationMaintenanceService({ logger, handoffRepository: { handoff } }).cleanupStaleAwaitingDecisions();
+  expect(handoff).toHaveBeenCalledTimes(1);
+  expect(logger.info).not.toHaveBeenCalled();
+});
 
-describe('ClassificationMaintenanceService', () => {
-    let db;
-    let logger;
-    let service;
+test('logs only the committed count', async () => {
+  const logger = createMockLogger();
+  const handoff = jest.fn().mockResolvedValue([{ classification_id: 1, queue_task_id: 2 }]);
+  await new ClassificationMaintenanceService({ logger, handoffRepository: { handoff } }).cleanupStaleAwaitingDecisions();
+  expect(logger.info).toHaveBeenCalledWith('Stale awaiting_decision cleanup: tasks admitted', { count: 1 });
+});
 
-    beforeEach(() => {
-        restoreAllAndResetMocks();
-        db = createMockDb();
-        logger = createMockLogger();
-        service = new ClassificationMaintenanceService({ db, logger });
-    });
+test('unknown database errors remain visible without leaking SQL or titles; no immediate retries', async () => {
+  const logger = createMockLogger();
+  const handoff = jest.fn().mockRejectedValue(new Error('private title / secret SQL'));
+  await expect(new ClassificationMaintenanceService({ logger, handoffRepository: { handoff } })
+    .cleanupStaleAwaitingDecisions()).resolves.toBeUndefined();
+  expect(handoff).toHaveBeenCalledTimes(1);
+  expect(logger.error).toHaveBeenCalledWith('Stale awaiting_decision cleanup failed', {
+    code: 'stale_classification_handoff_failed',
+    recovery: 'No partial handoff is committed. Check database availability and retry on the next scheduled run.',
+  });
+});
 
-    describe('cleanupStaleAwaitingDecisions', () => {
-        it('skips requeueing when no stale rows are reset', async () => {
-            db.query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+test('repository uses one scoped transaction, fixed limits and parameterized threshold', async () => {
+  const rows = [{ classification_id: 2, queue_task_id: 3 }];
+  const client = { query: jest.fn().mockResolvedValue({ rows }) };
+  const withTransaction = jest.fn(fn => fn(client));
+  const logger = createMockLogger();
+  await new ClassificationMaintenanceService({ db: { withTransaction }, logger }).cleanupStaleAwaitingDecisions();
+  expect(withTransaction).toHaveBeenCalledTimes(1);
+  expect(client.query).toHaveBeenNthCalledWith(1, "SET LOCAL statement_timeout = '10s'");
+  expect(client.query).toHaveBeenNthCalledWith(2, "SET LOCAL lock_timeout = '1s'");
+  expect(client.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FOR UPDATE OF history SKIP LOCKED'),
+    [STALE_AWAITING_DECISION_DAYS, 100]);
+});
 
-            await service.cleanupStaleAwaitingDecisions();
-
-            expect(db.query).toHaveBeenCalledTimes(1);
-            const [, params] = db.query.mock.calls[0];
-            expect(params).toEqual([STALE_AWAITING_DECISION_DAYS]);
-            const insertCall = db.query.mock.calls.find(
-                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCall).toBeUndefined();
-        });
-
-        it('resets stale rows and requeues each item', async () => {
-            const staleRows = [
-                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
-                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
-            ];
-
-            db.query.mockImplementation((sql) => {
-                if (sql && sql.includes('UPDATE classification_history')) {
-                    return Promise.resolve({ rowCount: 2, rows: staleRows });
-                }
-                if (sql && sql.includes('INSERT INTO task_queue')) {
-                    return Promise.resolve({ rowCount: 1, rows: [] });
-                }
-                return Promise.resolve({ rowCount: 0, rows: [] });
-            });
-
-            await service.cleanupStaleAwaitingDecisions();
-
-            const insertCalls = db.query.mock.calls.filter(
-                ([sql]) => sql && sql.includes('INSERT INTO task_queue')
-            );
-            expect(insertCalls).toHaveLength(2);
-            expect(JSON.parse(insertCalls[0][1][0])).toEqual({
-                tmdb_id: 100,
-                media_type: 'movie',
-                title: 'Old Movie',
-                source: 'stale_cleanup'
-            });
-            expect(logger.info).toHaveBeenCalledWith(
-                'Stale awaiting_decision cleanup: reset rows',
-                { count: 2 }
-            );
-        });
-
-        it('logs individual requeue failures without stopping other rows', async () => {
-            const staleRows = [
-                { id: 1, title: 'Old Movie', tmdb_id: 100, media_type: 'movie' },
-                { id: 2, title: 'Old Show', tmdb_id: 200, media_type: 'tv' }
-            ];
-
-            let insertCallCount = 0;
-            db.query.mockImplementation((sql) => {
-                if (sql && sql.includes('UPDATE classification_history')) {
-                    return Promise.resolve({ rowCount: 2, rows: staleRows });
-                }
-                if (sql && sql.includes('INSERT INTO task_queue')) {
-                    insertCallCount += 1;
-                    if (insertCallCount === 1) {
-                        return Promise.reject(new Error('Queue insert failed'));
-                    }
-                    return Promise.resolve({ rowCount: 1, rows: [] });
-                }
-                return Promise.resolve({ rowCount: 0, rows: [] });
-            });
-
-            await expect(service.cleanupStaleAwaitingDecisions()).resolves.toBeUndefined();
-
-            expect(insertCallCount).toBe(2);
-            expect(logger.warn).toHaveBeenCalledWith(
-                'Stale cleanup: failed to re-queue item',
-                { id: 1, error: 'Queue insert failed' }
-            );
-        });
-
-        it('logs update failures without throwing', async () => {
-            db.query.mockRejectedValueOnce(new Error('classification_history unavailable'));
-
-            await expect(service.cleanupStaleAwaitingDecisions()).resolves.toBeUndefined();
-
-            expect(logger.error).toHaveBeenCalledWith(
-                'Stale awaiting_decision cleanup failed',
-                { error: 'classification_history unavailable' }
-            );
-        });
-    });
+test('repository propagates failures so the transaction wrapper can roll back', async () => {
+  const failure = new Error('fixture');
+  const query = jest.fn().mockRejectedValue(failure);
+  const repository = createStaleClassificationHandoffRepository({ withTransaction: fn => fn({ query }) });
+  await expect(repository.handoff()).rejects.toBe(failure);
+  expect(query).toHaveBeenCalledTimes(1);
 });

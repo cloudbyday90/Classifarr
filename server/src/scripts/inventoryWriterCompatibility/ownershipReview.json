@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "atomic_classification_handoff",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete constant CTE: lock at most 100 awaiting-decision history rows, insert classification tasks with source provenance, and update only inserted rows with a receipt in one transaction. DML targets only classification_history and task_queue; no protected ingestion relation, provider request, ownership claim or identity rewrite is introduced.",
+      "followUp": "Retain real PostgreSQL rollback, contention, lost-acknowledgement, receipt preservation and bigint tests. This is per-history scheduler admission, not global task deduplication, routing consent, protection against old schedulers, or resolution of the queue processor's existing shared writer debt."
+    },
+    {
       "id": "classification_metadata_failure_context",
       "classification": "separately_coordinated",
       "reason": "Reviewed the complete data-only migration: refine a generic error code on already-failed, unclaimed classification tasks at metadata_fetch with no routing link, and matching failed intake receipts. There is no inventory DML, provider call, task replay, identity replacement, budget reset, ownership claim, trigger, function or schema change.",
@@ -1361,6 +1367,7 @@
     {"path":"server/src/utils/databaseTransaction.mjs","digest":"c07f4852fbad26d131b96b86162ff147fb5ed4f9aa171ebdc986f02ba45190bb","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/utils/presetCatalog.mjs","digest":"bbd97d7d2a4a24f18532418051beaafb7f0abe6131566a00b3e5761d759cd2cf","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/utils/queryWithTimeout.mjs","digest":"29abf0811a9ae231a565907d892933b88c74398c43e8752d40b255ff8f5604e5","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/utils/ragLogger.mjs","digest":"fd958004adc2a223563442d19a51c4cc54060fd591eb417df2610e856a2326f9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"}
+    {"path":"server/src/utils/ragLogger.mjs","digest":"fd958004adc2a223563442d19a51c4cc54060fd591eb417df2610e856a2326f9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/staleClassificationHandoffRepository.mjs","digest":"122089f02d6fea5d71158606648e4117b0623e4fa94e156f375dde98d1951dc8","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"atomic_classification_handoff"}
   ]
 }

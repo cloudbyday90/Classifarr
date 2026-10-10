@@ -9,52 +9,26 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
-import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
+import { createStaleClassificationHandoffRepository } from './staleClassificationHandoffRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 export class ClassificationMaintenanceService {
     constructor(deps = {}) {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger || createLogger('ClassificationMaintenanceService');
+        this.handoffRepository = deps.handoffRepository || createStaleClassificationHandoffRepository(this.db);
     }
 
     async cleanupStaleAwaitingDecisions() {
         try {
-            const result = await this.db.query(`
-                UPDATE classification_history
-                SET status = 'pending',
-                    pending_reason = 'Re-queued after stale awaiting_decision (>7 days)'
-                WHERE status = 'awaiting_decision'
-                  AND created_at < NOW() - ($1 || ' days')::INTERVAL
-                RETURNING id, title, tmdb_id, media_type
-            `, [STALE_AWAITING_DECISION_DAYS]);
-
-            if (result.rowCount === 0) return;
-
-            this.logger.info('Stale awaiting_decision cleanup: reset rows', { count: result.rowCount });
-
-            for (const row of result.rows) {
-                try {
-                    await this.db.query(
-                        `INSERT INTO task_queue (task_type, priority, payload, status)
-                         VALUES ('classification', 5, $1::jsonb, 'pending')
-                         ON CONFLICT DO NOTHING`,
-                        [JSON.stringify({
-                            tmdb_id: row.tmdb_id,
-                            media_type: row.media_type,
-                            title: row.title,
-                            source: 'stale_cleanup'
-                        })]
-                    );
-                } catch (queueErr) {
-                    this.logger.warn('Stale cleanup: failed to re-queue item', {
-                        id: row.id,
-                        error: queueErr.message
-                    });
-                }
-            }
-        } catch (error) {
-            this.logger.error('Stale awaiting_decision cleanup failed', { error: error.message });
+            const rows = await this.handoffRepository.handoff();
+            if (rows.length === 0) return;
+            this.logger.info('Stale awaiting_decision cleanup: tasks admitted', { count: rows.length });
+        } catch {
+            this.logger.error('Stale awaiting_decision cleanup failed', {
+                code: 'stale_classification_handoff_failed',
+                recovery: 'No partial handoff is committed. Check database availability and retry on the next scheduled run.'
+            });
         }
     }
 }
