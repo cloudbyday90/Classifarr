@@ -43,7 +43,7 @@ declarations on Node 24. The original manifests/lockfile were restored, installe
 and checked again: 40/40 tooling tests and zero audit findings. No PR dependency
 change is retained and neither PR was merged.
 
-## Verification in progress
+## Verification
 
 Focused backend checks passed four suites / 65 tests. Focused client checks passed
 four files / 76 tests after correcting an empty-array parameterized test fixture.
@@ -57,8 +57,62 @@ state remains inside `withCurrentCapture`; management changes only its read
 projection, leaving revocation locking unchanged. Their analysis digests remain
 unchanged. No blanket baseline refresh was performed.
 
-Broader tests, final image identity and local evaluation will be recorded after
-completion; these focused results are not a claim of remote CI or Unraid success.
+Lint, both typechecks, preflight dependency checks, the reviewed ownership gate,
+four policy gates, ESM gates and Markdown validation passed. The initial full
+client run passed 6,672 tests and timed out in its repository-wide CSRF usage scan.
+The second full run had the same result, even without a concurrent backend run.
+That scan passed separately without changing its five-second limit. The full
+backend run finished with 1,782 passing suites, 55,804 passing tests, one skipped
+test and one failing Knip subprocess timeout. All three tests in that fixture
+passed separately with unchanged limits. These timeouts occurred during overlapping
+heavy local checks; resource contention remains a hypothesis, not a proven cause.
+The broad backend run itself was not green.
+
+The final complete client run passed all 453 files / 6,673 tests with a local
+`--maxWorkers=2` override in 590.06 seconds. The CSRF scan passed with its original
+five-second deadline; no assertions or checked files were removed. Coverage was
+generated from that full run, not a targeted substitute. The coverage ratchet
+passed using fresh client and backend reports: client line coverage 88.93%,
+backend line coverage 89.69%. No coverage baseline was changed. Remote CI for
+these commits remains separate evidence, not implied by these local checks.
+
+## Exact-image and local evaluation
+
+The no-cache, provenance-required build used clean runtime revision
+`acebdbdd777442c45bff740967bd45532c4645e4`. Its local Docker image ID is
+`sha256:4a2de5a9c8a46eb2fcc7dc806bfa9046c431b292aaec359d96145fd814c60829`.
+This is a local image identity, not a published registry manifest digest.
+Only this outcome document changed after the image's source commit; it is excluded
+from the Docker build context. No untested runtime changes followed the build.
+
+A private 76,873,663-byte database archive was checksum-verified and readable
+before replacement. The previous image was retained for rollback. The new image's
+network-isolated fresh-database fixture used 1 GiB, two CPUs and 256 PIDs. Its
+schema dump exactly matched `database/schema/current.sql`; it had no invented
+pending work or unresolved identities. Container and temporary data cleanup were
+verified. The live test database was not used to generate the snapshot.
+
+Only the local Classifarr Compose service was recreated, using `--no-build --pull
+never --no-deps`. At 22:34:16 UTC it was healthy with HTTP 200, zero restarts and
+no OOM; its 2 GiB limit, read-only root and user `1000:1000` were unchanged. The
+read-only probe found ten current captures, eleven unresolved items, zero mapping
+approvals and no startup warnings/errors in the inspected window. It made zero
+database writes and zero provider calls. No other application was replaced.
+
+The final Chromium run passed after the copy adjustment; the complete narrow
+panel screenshot was visually inspected. Its other dashboard reads use incomplete
+fixture responses and log unavailable-state messages; no live mapping was posted.
+The Unraid browser tab was found, but two read-only attachment attempts timed out.
+No fresh production count is claimed. This is not a published-upgrade rehearsal.
+
+## Operator path
+
+In Command Center, open **See items & recovery**, then **Draft a catalog mapping
+(admin)** on the affected item. Check the draft structure and source/catalog
+evidence. Review the displayed typed works and each excluded episode's guidance.
+Do not approve until the proposal is complete and its identity is correct. Saved
+mappings shows committed state and retry guidance; refreshing it does not retry a
+provider or post an approval. After a lost response, read that state before acting.
 
 ## Recommendation stack
 
@@ -69,6 +123,8 @@ completion; these focused results are not a claim of remote CI or Unraid success
 3. Next: bounded catalog candidate discovery with visible provider provenance,
    followed by individual review of the eleven remaining items. Do not choose the
    first search hit, discard an extra ID or split a correctly grouped source show.
+4. Before release, investigate timing-sensitive source-scan/Knip checks and require
+   fresh CI for the exact release candidate. Do not extend deadlines to hide failures.
 
 Unraid and shared Plex/Ollama were not modified. The local count is not a fresh
 Unraid measurement. No real mapping was approved and the eleven conflicts have
