@@ -85,5 +85,49 @@ dependency batches. Current supported Node 24 declarations remain in place.
 
 ## Verification
 
-Focused tests, quality gates and the requested local image rebuild are being
-completed for this change. Final receipts will be recorded here before handoff.
+- Focused backend: 7 suites, 150 tests passed, including synthetic real HTTP
+  cancellation, decoded response limits, source drift and unchanged recovery.
+- Isolated PostgreSQL: 2 suites, 17 tests passed, including actual read-only
+  selection, transaction completion before HTTP and unchanged observation rows.
+- Full backend unit run: 1,767 suites, 55,065 tests passed; one Linux filesystem
+  test skipped on Windows. Its directory-fsync/exclusive-copy behavior passed
+  separately in the exact candidate Linux image, with synthetic temporary data,
+  no network and no host data mount.
+- Lint, both workspace typechecks, copyright, ownership gate, backend Knip
+  (normal and production), all 40 restored-toolchain tests, documentation lint
+  (2,064 files), static ESM checks and staged secret scanning passed.
+- No client API, schema, automatic recovery, dependency or memory-policy changes.
+  No fresh combined coverage-ratchet or full integration-suite claim is made.
+
+## Local image and schema receipts
+
+Built without cache from clean source
+`941485851f32a2ee36fc981d42e13d36e94dca0a`, using the existing local Compose
+override. The running Docker image ID is
+`sha256:7b9a1831af3e0f7028f545bd9594b3f61d756c7a8f058db026e439740c9efcf0`.
+This is local image evidence, not a published registry digest or release receipt.
+
+A checksum-verified, readable 76,734,041-byte PostgreSQL backup and exact rollback
+image tag were retained privately before replacement. The prior image ID was
+`sha256:fef5541a782ee8c39fefa6e6c9e614e216dceae85d22e50ba0c2710f393b4b10`.
+No Unraid container, Plex setting or shared Ollama service was changed.
+
+The replacement started at `2026-10-10T12:11:57.869092434Z`: healthy, HTTP 200,
+zero restarts, no OOM, UID/GID `1000:1000`, read-only root filesystem and
+no-new-privileges retained. Early usage was 371.7 MiB of the unchanged 2 GiB
+limit; this is a startup observation, not a sustained memory-soak result.
+The startup-window error-log query returned no rows.
+
+The actual-image diagnostic completed with reference
+`53948497-51e6-4f6c-8b01-78091fb940a7`: all 11 selected items inspected,
+10 `agreement_with_missing_mappings`, one `no_typed_matches`; 31 stable-evidence
+lookups (19 matches, 12 absent mappings, no malformed/ambiguous responses).
+Eight lookups also returned other media types. These results do not establish
+title/year agreement or authorize dropping any ID. Local durable outcomes remain
+nine insufficient-evidence and two inconclusive cases.
+
+After replacement, the isolated schema dump passed against that exact image,
+through migration `20261009_230000_comparison_incident_ledger.sql`, with 22 seed
+migrations. The committed schema was unchanged and the owned fixture container
+and data directory were cleaned up. Final documentation is committed separately
+from the tested runtime revision. No version bump, release or PR merge occurred.
