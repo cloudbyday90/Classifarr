@@ -132,3 +132,7 @@ preserve cancellation and cooldowns, and test ambiguous/malformed aliases and
 changed-source rejection. Do not strip parenthetical suffixes, use fuzzy matching,
 ignore disputed TVDB IDs or infer identity from artwork. This is deferred work,
 not an implemented recovery claim.
+
+Follow-up on 10 October: the [exact-alias outcome](source-identity-alternative-title-outcome.md)
+records implementation and current-source verification of that deferred check.
+It does not claim the other unresolved identities were repaired.

@@ -28,9 +28,51 @@ No production recovery, Plex edit or shared-provider restart was performed.
   Axios-style option; the implementation now uses native `redirect: 'error'` and
   the test confirms exactly one request. No assertion or safeguard was weakened.
 
-The full backend unit run and requested image rebuild are in progress; their
-results will be recorded after completion. Earlier CI for the starting revision
-was green but is not evidence for this patch.
+The full backend unit run passed all 1,765 suites: 54,983 tests passed and one
+Linux-only directory-fsync test was skipped on Windows, in 333 seconds. The
+actual Linux image passed the corresponding exclusive-copy, directory-fsync and
+unchanged-source probe. Production-only backend dependency analysis also passed.
+No thresholds, ownership baselines or assertions were relaxed. This round ran
+full backend unit tests without coverage, not the complete integration matrix or
+fresh frontend coverage; no frontend implementation was changed. The container
+build compiled the production frontend successfully.
+
+Earlier CI for the starting revision was green but is not evidence for this patch.
+
+## Local image, schema and current-source check
+
+The no-cache local Compose image was built from clean source
+`27295acea584591943c676854577a04a6ab17774`; Docker reports image identity
+`sha256:fef5541a782ee8c39fefa6e6c9e614e216dceae85d22e50ba0c2710f393b4b10`.
+This is local testing, not registry publication or signed release evidence.
+Only the existing local service was recreated; its data/media mounts were retained.
+The previous image was tagged privately for rollback, and a 76,678,596-byte
+database archive passed checksum and `pg_restore --list` verification.
+
+The container started at `2026-10-10T04:17:45.064126899Z`, became healthy and
+returned HTTP 200. Early checks showed zero restarts, no OOM, UID/GID 1000,
+read-only root, `no-new-privileges` and the unchanged 2 GiB limit. A 369.3 MiB
+startup sample is not a sustained memory-soak result. The startup-window error
+query returned no rows at 00:18 Eastern.
+
+After rebuilding, the isolated schema-dump runner regenerated the snapshot
+through `20261009_230000_comparison_incident_ledger.sql` with no tracked schema
+change. Its disposable container and data were removed; live appdata was not
+used for the schema fixture or Linux filesystem probe.
+
+A bounded read-only probe using the rebuilt verification module checked the
+confirmed case against current Plex and TMDb data. Independent IDs agreed on a
+declared candidate; exact alias verification passed, current title/year matched
+the captured observation, and a second Plex read confirmed unchanged evidence.
+The probe neither claimed an attempt nor persisted recovery or catalog cache data.
+Private identifiers, credentials and provider bodies are not in this document.
+
+The local count therefore correctly remained twelve: nine `insufficient_evidence`,
+two `external_evidence_inconclusive`, one `title_year_mismatch`. The latter's
+recorded retry deadline was **10 October 2026, 05:43:25 Eastern**; recovery can run
+on a later eligible normal sync, not necessarily at that exact time. Unraid has
+not received this local image. The read-only success is evidence for the fix,
+not a claim that an inventory write already completed.
 
 ## Random open PR trial
 
