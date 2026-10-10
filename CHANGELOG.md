@@ -22,6 +22,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   without changing source grouping. It rejects ambiguous or incomplete scope
   claims and reports structural validity only; activation, routing and unresolved
   warnings remain unchanged pending verified review and scope-aware consumers.
+  A bounded, read-only live preview now compares source episode membership with
+  typed catalog season structure across Plex, Jellyfin and Emby, detects observed
+  source/configuration drift, and keeps numbering agreement separate from identity.
 - **Container shutdown diagnostics** — Database liveness failures now include
   bounded stage timings, timeout and cancellation details, supervisor resource
   context, and a shared reference linking the last healthy check to recovery or

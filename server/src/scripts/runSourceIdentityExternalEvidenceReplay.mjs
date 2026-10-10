@@ -3,11 +3,11 @@ import { resolve } from 'node:path';
 import { reviewSourceCatalogScopePlan } from '../services/sourceCatalogScopePlan.mjs';
 import { loadSourceCatalogScopePlanInput } from './sourceCatalogScopePlanInput.mjs';
 
-async function loadPrivateRuntime({ crossReferences = false } = {}) {
+async function loadPrivateRuntime({ crossReferences = false, scopePreview = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on`.trim();
-  if (crossReferences) process.env.PGOPTIONS += ' -c statement_timeout=10000 -c lock_timeout=1000';
+  if (crossReferences || scopePreview) process.env.PGOPTIONS += ' -c statement_timeout=10000 -c lock_timeout=1000';
   const db = await import('../config/database.mjs');
   try {
     const [{ createSourceIdentityExternalEvidenceReplay }, { getMediaServerService }, { tmdbService }] = await Promise.all([
@@ -16,13 +16,14 @@ async function loadPrivateRuntime({ crossReferences = false } = {}) {
       import('../services/tmdb.mjs'),
     ]);
     let replay;
-    if (crossReferences) {
+    if (crossReferences || scopePreview) {
       const [{ createSourceIdentityCrossReferenceDiagnosis }, { createSourceIdentityExternalEvidenceReplayReadService }] = await Promise.all([
         import('../services/sourceIdentityCrossReferenceDiagnosis.mjs'),
         import('../services/sourceIdentityExternalEvidenceReplayReadService.mjs'),
       ]);
       const reader = createSourceIdentityExternalEvidenceReplayReadService();
-      replay = createSourceIdentityCrossReferenceDiagnosis({ readRows: limits => reader.read(limits), getMediaServerService, tmdbService });
+      const factory = scopePreview ? (await import('../services/sourceCatalogPreview.mjs')).createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
+      replay = factory({ readRows: limits => reader.read(limits), getMediaServerService, tmdbService });
     } else {
       replay = createSourceIdentityExternalEvidenceReplay({ query: db.query, getMediaServerService, tmdbService });
     }
@@ -42,11 +43,12 @@ export async function runSourceIdentityExternalEvidenceReplay({
   loadPlan = loadSourceCatalogScopePlanInput,
 } = {}) {
   if (!Array.isArray(argv) || (argv.length !== 0 &&
-      (argv.length !== 1 || !['--cross-references', '--scope-plan'].includes(argv[0])))) {
+      (argv.length !== 1 || !['--cross-references', '--scope-plan', '--scope-preview'].includes(argv[0])))) {
     throw new Error('source_identity_evidence_replay_invalid_arguments');
   }
   if (argv[0] === '--scope-plan') return reviewSourceCatalogScopePlan(await loadPlan());
-  const runtime = argv.length ? await loadRuntime({ crossReferences: true }) : await loadRuntime();
+  const runtime = argv[0] === '--scope-preview' ? await loadRuntime({ scopePreview: true }) :
+    argv.length ? await loadRuntime({ crossReferences: true }) : await loadRuntime();
   try {
     return await runtime.replay.replay();
   } finally {
@@ -57,7 +59,7 @@ export async function runSourceIdentityExternalEvidenceReplay({
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runSourceIdentityExternalEvidenceReplay().then((result) => {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-    if (['failed', 'cancelled', 'timed_out', 'invalid_draft'].includes(result.status.id)) process.exitCode = 1;
+    if (['failed', 'cancelled', 'timed_out', 'invalid_draft', 'selection_changed'].includes(result.status.id)) process.exitCode = 1;
   }).catch(() => {
     process.stderr.write('Source identity external-evidence replay could not run.\n');
     process.exitCode = 1;

@@ -15,6 +15,7 @@ import { readEmbySourcePage, sourcePageRequest } from './sourcePage.mjs';
 import { SourceEnumerationError } from '../../sourceEnumerationError.mjs';
 import { readVirtualFolderCatalog } from './virtualFolderCatalog.mjs';
 import { unavailableLibraryCatalog } from '../../libraryDiscoveryFailure.mjs';
+import { readMediaSourceLayout } from './sourceLayout.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -23,6 +24,10 @@ function buildHeaders(apiKey) {
 }
 
 class EmbyLikeService {
+  getLibraryItemLayout(url, apiKey, libraryId, externalId, options = {}) {
+    return readMediaSourceLayout('emby', url, apiKey, libraryId, externalId, options);
+  }
+
   constructor(displayName, readCatalog) {
     this.displayName = displayName;
     this.readCatalog = readCatalog;

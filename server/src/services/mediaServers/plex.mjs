@@ -17,6 +17,7 @@ import { readPlexSourcePage, sourcePageRequest } from './shared/sourcePage.mjs';
 import { SourceEnumerationError } from '../sourceEnumerationError.mjs';
 import { LIBRARY_CATALOG_REQUEST, readPlexLibraryCatalog } from './shared/libraryCatalog.mjs';
 import { unavailableLibraryCatalog } from '../libraryDiscoveryFailure.mjs';
+import { readMediaSourceLayout } from './shared/sourceLayout.mjs';
 
 const logger = createLogger('PlexService');
 
@@ -38,6 +39,10 @@ function buildRequestConfig(apiKey, config = {}) {
 }
 
 class PlexService {
+  getLibraryItemLayout(url, apiKey, libraryKey, externalId, options = {}) {
+    return readMediaSourceLayout('plex', url, apiKey, libraryKey, externalId, options);
+  }
+
   buildPosterUrl(baseUrl, apiKey, path) {
     const resourceUrl = buildPathUrl(baseUrl, path);
     if (!resourceUrl) {

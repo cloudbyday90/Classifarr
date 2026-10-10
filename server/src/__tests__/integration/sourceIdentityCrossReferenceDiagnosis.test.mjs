@@ -6,6 +6,7 @@ import { createOwnedCaptureFixture } from '../helpers/ownedCaptureFixture.mjs';
 import { sourceIdentityRecoveryEvidence } from '../../services/sourceIdentityRecoveryEvidence.mjs';
 import { createSourceIdentityExternalEvidenceReplayReadService } from '../../services/sourceIdentityExternalEvidenceReplayReadService.mjs';
 import { createSourceIdentityCrossReferenceDiagnosis } from '../../services/sourceIdentityCrossReferenceDiagnosis.mjs';
+import { createSourceCatalogPreview } from '../../services/sourceCatalogPreview.mjs';
 
 let pool, store, libraryId, serverId, item, context;
 beforeEach(async () => {
@@ -22,7 +23,7 @@ afterEach(async () => {
   await pool.query('DELETE FROM media_server WHERE id=$1', [serverId]);
 });
 
-function setup() {
+function setup({ scopePreview = false, onDetails = async () => {} } = {}) {
   let inTransaction = false;
   const reader = createSourceIdentityExternalEvidenceReplayReadService({ withTransaction: async fn => {
     const client = await pool.connect();
@@ -37,10 +38,18 @@ function setup() {
   } });
   const source = { getLibraryItemIdentityEvidence: jest.fn(async () => {
     expect(inTransaction).toBe(false); return item.source_identity_evidence;
+  }), getLibraryItemLayout: jest.fn(async () => {
+    expect(inTransaction).toBe(false);
+    return { identity: item.source_identity_evidence, digest: 'a'.repeat(64), episodeCount: 1,
+      seasons: [{ number: 1, episodes: [1] }] };
   }) };
-  return { source, replay: createSourceIdentityCrossReferenceDiagnosis({ readRows: limits => reader.read(limits),
+  const factory = scopePreview ? createSourceCatalogPreview : createSourceIdentityCrossReferenceDiagnosis;
+  return { source, replay: factory({ readRows: limits => reader.read(limits),
     getMediaServerService: () => source,
-    tmdbService: { findIdentityByExternalId: async id => {
+    tmdbService: { getIdentityDetails: async () => {
+      expect(inTransaction).toBe(false); await onDetails();
+      return { id: 11, name: 'Synthetic', seasons: [{ id: 12, season_number: 1, episode_count: 1 }] };
+    }, findIdentityByExternalId: async id => {
       expect(inTransaction).toBe(false); return { tv_results: id === 22 ? [] : [{ id: 11 }] };
     } } }) };
 }
@@ -70,4 +79,37 @@ test('disabled libraries perform no provider work', async () => {
   const t = setup();
   expect((await t.replay.replay()).status.id).toBe('no_current_conflicts');
   expect(t.source.getLibraryItemIdentityEvidence).not.toHaveBeenCalled();
+});
+
+test('layout preview rechecks through real read-only transactions and preserves retained conflicts', async () => {
+  await store.finish(context);
+  const before = (await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
+  const t = setup({ scopePreview: true });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'complete' }, canApply: false,
+    summary: { inspectedObservations: 1, comparisons: { same_numbering_counts: 1 } } });
+  expect(t.source.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect((await pool.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
+  expect((await pool.query('SELECT id FROM media_server_items WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+});
+
+test('layout preview discards evidence if the source configuration changes during HTTP', async () => {
+  await store.finish(context);
+  const t = setup({ scopePreview: true, onDetails: async () => {
+    await pool.query("UPDATE media_server SET api_key='changed-fixture-key' WHERE id=$1", [serverId]);
+  } });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'selection_changed' }, summary: null });
+});
+
+test('layout preview discards evidence if its library is disabled during HTTP', async () => {
+  await store.finish(context);
+  const t = setup({ scopePreview: true, onDetails: async () => {
+    await pool.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraryId]);
+  } });
+  expect(await t.replay.replay()).toMatchObject({ status: { id: 'selection_changed' }, summary: null });
+});
+
+test('layout preview does not inspect incomplete source captures', async () => {
+  const t = setup({ scopePreview: true });
+  expect((await t.replay.replay()).status.id).toBe('no_current_conflicts');
+  expect(t.source.getLibraryItemLayout).not.toHaveBeenCalled();
 });
