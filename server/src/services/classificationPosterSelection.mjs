@@ -3,9 +3,8 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclus
 
 // Explicit ranges avoid PostgreSQL locale-dependent \s disagreeing with JS.
 // Exclude controls and Unicode whitespace; URI encoding remains supported.
-const POSTER_SEPARATORS = String.raw`\u0001-\u0020\u007f-\u009f\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff`;
-const POSTER_PATTERN = `^(https?://[^${POSTER_SEPARATORS}]+|/[^/${POSTER_SEPARATORS}][^${POSTER_SEPARATORS}]*)$`;
-const posterPattern = new RegExp(POSTER_PATTERN, 'i');
+const posterPattern = /^(https?:\/\/|\/(?!\/))[^\u0001-\u0020\u007f-\u009f\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+$/i;
+const POSTER_PATTERN = posterPattern.source;
 const trimPoster = value => value.replace(/^[ \t\n\r\f\v]+|[ \t\n\r\f\v]+$/g, '');
 
 export function classificationPosterPath(metadata) {
