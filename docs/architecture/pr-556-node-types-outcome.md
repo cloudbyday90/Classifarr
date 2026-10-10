@@ -31,6 +31,14 @@ update; no dependency changes remain in this commit.
 
 ## Next dependency work
 
+The Node 24 patch review independently selected PR 556 once more on October 9.
+Its exact patch again installed 632 packages with scripts disabled, failed server
+typecheck with the same TS2322 error and failed the major-version check (39/40).
+An exact manifest/lockfile restoration, strict-policy clean install, typecheck
+and 40/40 tooling result confirmed the baseline before testing 24.19.2.
+This repeat trial did not rerun the PR candidate's full audit or dependency tree;
+the accepted patch has its own [outcome](node24-types-patch-outcome.md).
+
 The durable-incident follow-up randomly selected the same still-open PR and
 repeated the exact 26.6.4/8.9.0 trial on October 9. The script-disabled clean
 install succeeded (632 packages); typecheck again reported TS2322 at

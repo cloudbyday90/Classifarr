@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Changed
+
+- **Developer tooling** — Refresh Node 24 type declarations across frontend and
+  backend while preserving runtime versions, install restrictions and compatibility
+  checks.
+
 ### Added
 
 - **Container shutdown diagnostics** — Database liveness failures now include
