@@ -6,6 +6,7 @@ const clientRoot = import.meta.dirname;
 const lintContracts = [
   './src/__tests__/lintToolingContract.test.js',
   './src/__tests__/vueEventLintContract.test.js',
+  './src/__tests__/security/csrfClientUsage.test.js',
 ];
 
 export default defineConfig({
@@ -38,8 +39,8 @@ export default defineConfig({
           include: ['./src/__tests__/**/*.test.js'],
           exclude: lintContracts,
           fileParallelism: true,
-          // Real ESLint config/plugin setup must finish before the UI and
-          // compiler workload starts; keep isolation and default deadlines.
+          // Static source scans and real ESLint setup finish before the UI
+          // and compiler workload; keep isolation and default deadlines.
           sequence: { groupOrder: 2 },
         },
       },

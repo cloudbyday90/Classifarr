@@ -4,6 +4,18 @@ import { describe, expect, test } from 'vitest'
 import { expectVueDiagnostic, typecheck } from './helpers/vueTypecheck.js'
 
 describe('installed Vue typechecker contract', () => {
+  test('checks setup macros without explicit Vue imports', () => {
+    const result = typecheck(`<script setup>
+const props = defineProps({ count: { type: Number, required: true } })
+const emit = defineEmits({ change: (/** @type {number} */ value) => Number.isFinite(value) })
+defineExpose({ reset: () => emit('change', 0) })
+</script>
+<template><button @click="emit('change', props.count + 1)">{{ props.count.toFixed(0) }}</button></template>
+`)
+    expect(result.output).toBe('')
+    expect(result.status).toBe(0)
+  }, 35_000)
+
   test('checks real shared components and workspace aliases', () => {
     const result = typecheck(`<script setup>
 import Badge from '@/components/common/Badge.vue'
@@ -52,6 +64,14 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'setup macro prop without explicit Vue imports', code: '2339',
+      source: `<script setup>
+const props = defineProps({ count: { type: Number, required: true } })
+</script>
+<template><span>{{ props.count.toUpperCase() }}</span></template>
+`,
+    },
     {
       name: 'tab label shape', code: '2322',
       source: `<script setup>

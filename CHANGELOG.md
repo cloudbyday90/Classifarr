@@ -17,6 +17,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached
   analysis without weakening dependency rules.
+  Refresh Vue build and typechecking tools with positive and negative compiler
+  contracts, retaining the supported Vue, TypeScript and Node runtime versions.
+  Run the CSRF source contract before parallel UI tests without relaxing its checks.
 
 ### Added
 

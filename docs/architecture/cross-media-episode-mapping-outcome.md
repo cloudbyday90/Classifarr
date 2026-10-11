@@ -142,3 +142,9 @@ running during local image evaluation; Gitleaks, copyright, OSV, Trivy, CodeQL a
 resource regression passed for that exact SHA. Follow-up documentation does not
 change image contents.
 This document does not certify a release or Unraid deployment.
+
+Follow-up on 2026-10-11: the final documentation commit `8b5eac7e` completed its
+[CI pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/38168239018)
+successfully, together with Gitleaks, OSV, Trivy, CodeQL and resource regression.
+This closes the pending CI observation above, not the incomplete local coverage
+attempts. The [next Vue tooling batch](vue-tooling-patches-design.md) is separate.

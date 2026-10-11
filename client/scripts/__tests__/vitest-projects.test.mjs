@@ -48,6 +48,7 @@ test('resolved projects preserve every suite and isolate lint setup from applica
     assert.deepEqual(specifications.filter(specification => specification.project === lint)
       .map(specification => relativePath(specification.moduleId)).sort(), [
       'src/__tests__/lintToolingContract.test.js',
+      'src/__tests__/security/csrfClientUsage.test.js',
       'src/__tests__/vueEventLintContract.test.js',
     ]);
     assert.ok(actual.every(file => !file.startsWith('browser-tests/')));
