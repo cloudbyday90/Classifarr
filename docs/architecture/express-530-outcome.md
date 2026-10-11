@@ -44,20 +44,65 @@ runtime support or weaken the alignment guard.
 The [separate fresh identity audit](source-scope-audit-20261011.md) explains all
 eleven local unresolved records: seven complete single-series episode proposals,
 two single-episode gaps and two incomplete grouped-source mappings. Catalog
-membership is not identity approval. No real mapping or source metadata was
-changed by this dependency update, and no fresh Unraid count is claimed.
+membership is not identity approval. Following separate explicit user approval,
+the seven complete proposals were freshly revalidated and approved locally through
+the existing service, with seven durable audit records and a fresh verified backup.
+They await normal owned sync; approval is not completed inventory backfill. The
+other four remain unapproved. No source metadata was changed and no fresh Unraid
+count is claimed. See the audit's subsequent-operation section for the boundary.
 
-## Remaining verification
+## Quality and local image checks
 
-Full checks and exact-image local rebuild/schema evidence are still in progress.
-This section will be replaced with observed results, including any failed checks
-and retests, before handoff. No production container or shared provider is changed.
+Lint, both workspace typechecks, development/production Knip checks, all 40
+tooling checks, ownership and ESM gates, copyright and Markdown validation passed.
+The four production naming, language, delivery-boundary and runtime-maintenance
+audits passed. The full frontend coverage run passed 454 files / 6,716 tests:
+87.18% statements, 80.79% branches, 86.78% functions and 88.96% lines. The full
+backend unit coverage run passed all 1,786 suites / 55,906 tests, with one existing
+skipped test: 89.69% lines/statements, 86.07% branches and 91.09% functions. The
+coverage ratchet passed using these current reports, without a baseline change.
+No database-driver/schema change was made; a full PostgreSQL integration matrix
+was not rerun for this HTTP-only batch. The exact-image fresh-schema check below
+is separate from unit coverage.
+
+The no-cache Compose build succeeded from clean source commit
+`e40cd652753d4dd12d7ac0b6c4a6831c83c46457`. The immutable local image ID is
+`sha256:0cca616a90a433f243d5edd5af66a94ba938f8c44160660732f2ab58cad6ef50`, with
+that commit in its OCI revision label. This is a local image identity, not a
+published registry digest or release provenance claim. Later verification notes
+change only Markdown excluded from the image context.
+
+A checksum-verified, readable 76,913,614-byte local database archive and exact
+old-image rollback tag were retained before replacing only the local Classifarr
+service. The replacement runs Node 24.21.0 and Express 5.3.0, is healthy, returns
+HTTP 200 with database connected, and preserves generic JSON 404 and security
+headers. It runs as `1000:1000` with a read-only root filesystem, unchanged 2 GiB
+limit, zero initial restarts and no OOM kill.
+
+Health is not a claim that every optional background task is clean. The post-start
+log check found a comparison-context invalidation warning and an OMDb connection
+timeout, logged as one provider error and one integrity warning
+(`UND_ERR_CONNECT_TIMEOUT`). These remain visible for follow-up; no provider
+credentials, deadlines or safeguards were changed to suppress them.
+
+After building, `dumpSchema()` ran against a fresh network-isolated container of
+the exact new image, bounded to 1 GiB, two CPUs and 256 PIDs. The tracked schema
+is unchanged through `20261010_220000_source_catalog_mappings.sql`. Fresh-install
+checks found no invented pending work or unresolved identities. The owned test
+container and temporary data directory were removed and their absence verified.
+
+A read-only local check at 09:36:03 UTC still found eleven unresolved identities
+(nine source-review, two retry-wait) and ten current library captures. No mapping
+approval had been performed at that point. After the separately authorized seven
+approvals, the count still remained eleven pending materialization. No provider
+write or forced sync was performed. Unraid and shared provider configuration are
+unchanged.
 
 ## Recommendation stack
 
-Keep the bounded Express upgrade only if the remaining gates pass. For identities,
-use explicit approval with fresh complete evidence for the seven eligible proposals,
-then investigate the two episode gaps and grouped-season worksets separately.
+Retain the tested bounded Express upgrade. For identities,
+observe the seven approved mappings through normal owned sync, then investigate
+the two episode gaps and grouped-season worksets separately.
 For tooling, the next small batch is Knip 6.40.0 to 6.41.0; client Playwright,
 Vue tooling/router and the TypeScript major belong in separate compatibility
 reviews. Do not bundle those updates or a release into this change.
