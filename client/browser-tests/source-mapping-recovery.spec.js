@@ -74,7 +74,7 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
     if (reviewed && path.endsWith('/evidence')) {
       delete data.combinedAudit
       data.identityAuthority = 'operator_episode_mapping'
-      data.episodeReviews = draft.scope.episodeMappings.map(edge => ({ ...edge, title: 'Synthetic special' }))
+      data.episodeReviews = draft.scope.episodeMappings.map(edge => ({ ...edge, title: 'Synthetic special', sourceTitle: 'Episode 2 <script>not executable</script>' }))
       data.comparison = { unit: 'episode', total: 2, matched: 2, operatorReviewed: 1, exclusions: [] }
     }
     if (path.endsWith('/approve')) {
@@ -113,6 +113,8 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
     const evidence = page.getByRole('region', { name: 'Draft source and catalog evidence' })
     await expect(evidence.getByRole('status').filter({ hasText: 'episodes are covered' })).toContainText('Human-reviewed episode identities: 1')
     await expect(evidence.getByRole('region', { name: 'Human episode identity decisions' })).toContainText('Synthetic special')
+    await expect(evidence.getByRole('region', { name: 'Human episode identity decisions' })).toContainText('Episode 2 <script>not executable</script>')
+    await expect(evidence.locator('script')).toHaveCount(0)
     const approval = evidence.getByRole('region', { name: 'Approve complete source mapping' })
     await approval.getByRole('checkbox', { name: 'I reviewed the proposed catalog mapping', exact: false }).check()
     await expect(approval.getByRole('button')).toBeDisabled(); expect(approvals).toBe(0)

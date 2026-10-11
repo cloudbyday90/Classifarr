@@ -38,6 +38,21 @@ test('movies do not request episode pages; empty TV captures stay empty', async 
   expect(compareSourceCatalogLayout(await capture([]), 10, details())).toBe('source_layout_empty');
 });
 
+test('source titles are opt-in display context and never change the structural digest', async () => {
+  const items = [{ ...episode(2), title: '  Other\u202e title\n ' }, { ...episode(1), title: 'x'.repeat(600) }];
+  const plain = await capture(items), labeled = await capture(items, { includeEpisodeTitles: true });
+  expect(plain.episodeLabels).toBeUndefined();
+  expect(labeled.digest).toBe(plain.digest);
+  expect(labeled.episodes).toEqual(plain.episodes);
+  expect(labeled.episodeLabels).toEqual([{ season: 1, episode: 1, title: 'x'.repeat(500) },
+    { season: 1, episode: 2, title: 'Other title' }]);
+});
+
+test.each([undefined, null, {}, '', ' \u0000\u202e '])('absent or unusable title stays explicit: %s', async title => {
+  expect((await capture([{ ...episode(1), title }], { includeEpisodeTitles: true })).episodeLabels)
+    .toEqual([{ season: 1, episode: 1, title: null }]);
+});
+
 test('accepts exact page/episode bound, including a short final page', async () => {
   const readPage = jest.fn(async ({ offset, limit }) => ({ offset, total: 2000,
     items: Array.from({ length: limit }, (_, i) => episode(offset + i + 1)) }));

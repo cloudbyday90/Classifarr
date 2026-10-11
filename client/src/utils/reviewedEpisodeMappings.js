@@ -35,7 +35,10 @@ export function parseEpisodeReviews(data, scope, comparison) {
     const key = `${value?.sourceSeason}:${value?.sourceEpisode}`, edge = rows.get(key)
     if (!edge || Object.keys(episodeMappingFields).some(field => value[field] !== edge[field]) ||
         typeof value.title !== 'string' || !value.title.trim() || value.title.length > 500) return null
-    rows.delete(key); result.push({ ...edge, title: value.title })
+    if (value.sourceTitle !== undefined && value.sourceTitle !== null &&
+        (typeof value.sourceTitle !== 'string' || !value.sourceTitle.trim() || value.sourceTitle.length > 500 || /[\p{Cc}\p{Cf}]/u.test(value.sourceTitle))) return null
+    rows.delete(key); result.push({ ...edge, title: value.title,
+      ...(value.sourceTitle !== undefined ? { sourceTitle: value.sourceTitle } : {}) })
   }
   return result
 }

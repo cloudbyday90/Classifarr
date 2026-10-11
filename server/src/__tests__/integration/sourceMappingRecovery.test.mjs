@@ -129,6 +129,19 @@ function humanEpisodeScope(kind = 'seasons') {
     tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 }] };
 }
 
+test('changed review-only title rejects approval without changing structural membership or writing mappings', async () => {
+  const proposal = humanEpisodeScope();
+  layout.episodeLabels = [{ season: 2, episode: 1, title: 'Original source title' }];
+  const input = await approvalInput(proposal);
+  const digest = layout.digest;
+  layout.episodeLabels[0].title = 'Changed source title';
+  await expect(createSourceMappingApproval(deps)(actorId, input.key, { ...input.body, episodesConfirmed: true }))
+    .rejects.toMatchObject({ statusCode: 409, code: 'scope_evidence_changed' });
+  expect(layout.digest).toBe(digest);
+  expect((await pool.query('SELECT id FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+  expect(await count()).toBe(1);
+});
+
 test.each(['whole_work', 'seasons'])('human episode approval, owned completion, repeat and revocation: %s', async kind => {
   const input = await approvalInput(humanEpisodeScope(kind));
   await expect(createSourceMappingApproval(deps)(actorId, input.key, input.body)).rejects.toMatchObject({ statusCode: 400 });

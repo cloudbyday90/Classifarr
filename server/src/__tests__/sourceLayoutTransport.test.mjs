@@ -13,6 +13,17 @@ const embyParent = { Id: 'show', ParentId: 'library', Type: 'Series', Name: 'Syn
 const embyEpisode = { Id: 'episode', Type: 'Episode', SeriesId: 'show', ParentIndexNumber: 1, IndexNumber: 1,
   ProviderIds: { Tmdb: '100', Imdb: 'tt123', Tvdb: '200' } };
 
+test.each(['plex', 'emby'])('review titles use existing bounded provider reads: %s', async kind => {
+  const episode = kind === 'plex' ? { ...plexEpisode, title: 'Source title' } : { ...embyEpisode, Name: 'Source title' };
+  const f = await fixture(kind, { episode });
+  try {
+    const result = await readMediaSourceLayout(kind, f.url, 'synthetic', 'library', 'show', { includeEpisodeTitles: true });
+    expect(result.episodeLabels).toEqual([{ season: 1, episode: 1, title: 'Source title' }]);
+    expect(f.requests).toHaveLength(2);
+    expect(JSON.stringify(result.episodes)).not.toContain('Source title');
+  } finally { await f.close(); }
+});
+
 async function fixture(kind, { parent, episode, page = {}, redirect = false } = {}) {
   const requests = [];
   const server = createServer((request, response) => {

@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { copyCrossReferenceEvidence, copyCrossReferenceProviderIds } from './sourceIdentityCrossReferenceEvidence.mjs';
+import { sourceEpisodeTitle } from './sourceEpisodeReviewContext.mjs';
 
 export const SOURCE_LAYOUT_LIMITS = Object.freeze({ pageSize: 100, maximumPages: 20, maximumEpisodes: 2000 });
 const index = value => Number.isSafeInteger(value) && value >= 0 && value <= 10000;
@@ -9,11 +10,11 @@ const key = value => typeof value === 'string' && value.length > 0 && value.leng
 const reject = () => { throw new Error('source_layout_invalid'); };
 
 /** Transient, adapter-neutral snapshot. No catalog match or possession claim. */
-export async function captureSourceLayout({ readIdentity, readPage, signal }) {
+export async function captureSourceLayout({ readIdentity, readPage, signal, includeEpisodeTitles = false }) {
   signal?.throwIfAborted();
   const identity = copyCrossReferenceEvidence(await readIdentity());
   if (!identity) reject();
-  const episodes = [], ids = new Set(), positions = new Set();
+  const episodes = [], episodeLabels = [], ids = new Set(), positions = new Set();
   if (identity.mediaType === 'tv') {
     let total;
     for (let pageNumber = 0; pageNumber < SOURCE_LAYOUT_LIMITS.maximumPages; pageNumber++) {
@@ -38,6 +39,7 @@ export async function captureSourceLayout({ readIdentity, readPage, signal }) {
           ? { tmdb_id: [], imdb_id: [], tvdb_id: [] } : item.providerIds);
         if (!providerIds) reject();
         episodes.push({ id: item.id, season: item.season, episode: item.episode, providerIds });
+        if (includeEpisodeTitles) episodeLabels.push({ season: item.season, episode: item.episode, title: sourceEpisodeTitle(item.title) });
       }
       if (episodes.length === total) break;
     }
@@ -53,5 +55,6 @@ export async function captureSourceLayout({ readIdentity, readPage, signal }) {
   }
   const digest = createHash('sha256').update(JSON.stringify({ identity, episodes })).digest('hex');
   return { identity, digest, episodeCount: episodes.length, episodes,
+    ...(includeEpisodeTitles ? { episodeLabels: episodeLabels.sort((a, b) => a.season - b.season || a.episode - b.episode) } : {}),
     seasons: [...seasons].map(([number, numbers]) => ({ number, episodes: numbers })) };
 }

@@ -34,6 +34,7 @@ test('rechecks both providers and configuration without writes, leaking secrets 
   expect(result.catalogWorks).toEqual([{ tmdbId: 10, mediaType: 'movie', title: 'Fixture', releaseDate: null }]);
   expect(result.reference).toMatch(/^[a-f0-9-]{36}$/);
   expect(s.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect(s.adapter.getLibraryItemLayout.mock.calls[0][4].includeEpisodeTitles).toBeUndefined();
   expect(s.provider.getIdentityDetails).toHaveBeenCalledTimes(2);
   expect(s.provider.recheck).toHaveBeenCalledTimes(1);
   expect(s.db.query.mock.calls.every(([sql]) => !/\b(UPDATE|INSERT|DELETE)\b/.test(sql))).toBe(true);
@@ -153,31 +154,37 @@ test('the fixed deadline cancels provider work without accepting its late result
   } finally { timer.mockRestore(); }
 });
 
-test.each([false, true])('human episode evidence stays separate from automatic identity and detects target drift: %s', async drift => {
+test.each([false, 'target', 'source'])('human episode evidence stays separate from automatic identity and detects review drift: %s', async drift => {
   const s = setup(true), body = input();
   s.target.media_type = s.item.mediaType = s.source.identity.mediaType = 'tv';
   s.source.seasons = [{ number: 1 }];
   s.source.episodes = [{ season: 1, episode: 2, providerIds: { tmdb_id: [], tvdb_id: [], imdb_id: [] } }];
   const mapping = { sourceSeason: 1, sourceEpisode: 2, tmdbSeriesId: 10, tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 };
+  s.source.episodeLabels = [{ season: 1, episode: 2, title: 'Source special' }];
+  if (drift === 'source') s.adapter.getLibraryItemLayout.mockResolvedValueOnce(structuredClone(s.source))
+    .mockResolvedValue({ ...s.source, episodeLabels: [{ season: 1, episode: 2, title: 'Changed source' }] });
   body.scope.episodeMappings = [mapping];
   s.provider.getIdentityDetails.mockResolvedValue({ id: 10, name: 'Fixture', seasons: [0, 1].map(number =>
     ({ id: 50 + number, season_number: number, episode_count: number === 0 ? 1 : 0 })) });
   let reads = 0;
   s.provider.getIdentitySeasonDetails = jest.fn(async (_id, number) => ({ id: 50 + number, season_number: number,
     episodes: number === 1 ? [] : [{ id: 100, show_id: 10, season_number: 0, episode_number: 1,
-      name: drift && ++reads > 1 ? 'Changed target' : 'Reviewed special' }] }));
+      name: drift === 'target' && ++reads > 1 ? 'Changed target' : 'Reviewed special' }] }));
   if (drift) {
     await expect(s.inspect(7, key, body)).rejects.toMatchObject({ statusCode: 409, code: 'scope_evidence_changed' });
   } else {
     const result = await s.inspect(7, key, body);
     expect(result).toMatchObject({ identityAuthority: 'operator_episode_mapping', canApply: false, persisted: false,
-      crossProviderVerified: false, episodeReviews: [{ ...mapping, title: 'Reviewed special' }],
+      crossProviderVerified: false, episodeReviews: [{ ...mapping, title: 'Reviewed special', sourceTitle: 'Source special' }],
       comparison: { unit: 'episode', total: 1, matched: 1, operatorReviewed: 1, exclusions: [] } });
     expect(result.combinedAudit).toBeUndefined();
     expect(result.backfill.eligible).toBe(false);
+    s.source.episodeLabels[0].title = 'Changed between preview and approval';
+    expect((await s.inspect(7, key, body)).evidenceFingerprint).not.toBe(result.evidenceFingerprint);
   }
   expect(s.provider.findIdentityByExternalId).not.toHaveBeenCalled();
-  expect(s.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
-  expect(s.provider.getIdentitySeasonDetails).toHaveBeenCalledTimes(4);
+  expect(s.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(drift ? 2 : 4);
+  expect(s.adapter.getLibraryItemLayout.mock.calls.every(call => call[4].includeEpisodeTitles === true)).toBe(true);
+  expect(s.provider.getIdentitySeasonDetails).toHaveBeenCalledTimes(drift ? 4 : 8);
   expect(s.db.query.mock.calls.every(([sql]) => !/\b(UPDATE|INSERT|DELETE)\b/.test(sql))).toBe(true);
 });

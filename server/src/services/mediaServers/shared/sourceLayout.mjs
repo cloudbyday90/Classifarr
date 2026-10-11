@@ -10,7 +10,7 @@ const validKey = value => typeof value === 'string' && value.trim().length > 0 &
   !/[\p{Cc}\p{Cf}]/u.test(value) && !['.', '..'].includes(value);
 
 /** Only configured adapter URLs and encoded opaque item IDs; never follow provider links. */
-export async function readMediaSourceLayout(kind, url, apiKey, libraryId, externalId, { signal = null } = {}) {
+export async function readMediaSourceLayout(kind, url, apiKey, libraryId, externalId, { signal = null, includeEpisodeTitles = false } = {}) {
   if (!['plex', 'emby'].includes(kind) || !validKey(libraryId) || !validKey(externalId)) reject();
   const plex = kind === 'plex';
   const headers = plex ? { 'X-Plex-Token': apiKey, Accept: 'application/json' } : { 'X-Emby-Token': apiKey };
@@ -48,11 +48,12 @@ export async function readMediaSourceLayout(kind, url, apiKey, libraryId, extern
           item.Type !== 'Episode' || String(item.SeriesId) !== externalId) reject();
       return { id: String(plex ? item.ratingKey : item.Id), season: plex ? item.parentIndex : item.ParentIndexNumber,
         episode: plex ? item.index : item.IndexNumber, end: plex ? item.indexEnd : item.IndexNumberEnd,
+        ...(includeEpisodeTitles ? { title: plex ? item.title : item.Name } : {}),
         providerIds: plex ? collectPlexGuidCandidates(item.Guid ?? []) : collectProviderIdCandidates(item.ProviderIds ?? {}) };
     }) };
   };
   try {
-    return await captureSourceLayout({ readIdentity, readPage, signal });
+    return await captureSourceLayout({ readIdentity, readPage, signal, includeEpisodeTitles });
   } catch (error) {
     signal?.throwIfAborted();
     if (error?.message === 'source_layout_invalid' || error?.name === 'SourceEnumerationError') reject();

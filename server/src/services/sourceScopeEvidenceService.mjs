@@ -7,6 +7,7 @@ import { compareScopeEvidence, readScopeCatalog, scopeEvidenceDigest, scopeEvide
 import { CatalogEpisodeEvidenceError } from './catalogEpisodeEvidence.mjs';
 import { readCombinedEvidenceAudit } from './sourceCombinedEvidenceAudit.mjs';
 import { SourceCandidateError } from './sourceCandidateProjection.mjs';
+import { sourceEpisodeReviewContext } from './sourceEpisodeReviewContext.mjs';
 
 const changed = () => new ConflictError('The source or catalog changed. Refresh items and review again.', { code: 'scope_evidence_changed' });
 
@@ -37,7 +38,8 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         const adapter = getMediaServerService(target.server_type);
         if (typeof adapter?.getLibraryItemLayout !== 'function') throw unavailable('scope_source_unavailable');
         const readSource = () => adapter.getLibraryItemLayout(target.url, target.api_key,
-          target.library_external_id, target.external_id, { signal: scopedSignal });
+          target.library_external_id, target.external_id, { signal: scopedSignal,
+            ...(draft.scope.episodeMappings ? { includeEpisodeTitles: true } : {}) });
         scopedSignal.throwIfAborted();
         const source = await readSource();
         scopedSignal.throwIfAborted();
@@ -45,11 +47,14 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         if (auditEnabled && source.identity.snapshotDigest !== target.source_digest) throw changed();
         const plan = scopeEvidencePlan(source, draft.scope);
         const catalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
+        const episodeReviews = draft.scope.episodeMappings ? sourceEpisodeReviewContext(source, catalog.episodeReviews) : null;
         const comparison = compareScopeEvidence(source, plan, catalog.catalog);
         const readAudit = source => readCombinedEvidenceAudit({ source, scope: draft.scope, plan, comparison, provider: catalogProvider, signal: scopedSignal });
         const audit = auditEnabled && !draft.scope.episodeMappings ? await readAudit(source) : null;
         const freshCatalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
         const freshSource = await readSource();
+        const reviewDigest = episodeReviews ? scopeEvidenceDigest(episodeReviews) : null;
+        if (episodeReviews && reviewDigest !== scopeEvidenceDigest(sourceEpisodeReviewContext(freshSource, freshCatalog.episodeReviews))) throw changed();
         const freshAudit = auditEnabled && !draft.scope.episodeMappings ? await readAudit(freshSource) : null;
         scopedSignal.throwIfAborted();
         if (source.digest !== freshSource.digest || catalog.digest !== freshCatalog.digest || audit?.digest !== freshAudit?.digest ||
@@ -59,11 +64,12 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         scopedSignal.throwIfAborted();
         result = { ...draft, version: 'source_scope_evidence.v1', reference: randomUUID(),
           asOf: new Date().toISOString(), verification: 'typed_catalog_membership', crossProviderVerified: false,
-          evidenceFingerprint: scopeEvidenceDigest([draft.draftFingerprint, source.digest, catalog.digest]),
+          evidenceFingerprint: scopeEvidenceDigest([draft.draftFingerprint, source.digest, catalog.digest,
+            ...(episodeReviews ? [reviewDigest] : [])]),
           backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' },
           catalogWorks: catalog.details.map(({ tmdbId, mediaType, title, releaseDate }) => ({ tmdbId, mediaType, title, releaseDate })),
           comparison,
-          ...(draft.scope.episodeMappings ? { episodeReviews: catalog.episodeReviews, identityAuthority: 'operator_episode_mapping' } : {}) };
+          ...(episodeReviews ? { episodeReviews, identityAuthority: 'operator_episode_mapping' } : {}) };
         if (audit) result.combinedAudit = { ...audit.report,
           fingerprint: scopeEvidenceDigest([result.evidenceFingerprint, audit.digest]) };
         if (onVerified) result = await onVerified({ actorId, key, input, target, source, catalog, result, signal: scopedSignal });

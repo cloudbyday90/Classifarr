@@ -71,13 +71,33 @@ it('submits explicit rows through the existing API and clears evidence when edit
   expect(form.findAll('input')).toHaveLength(0)
 })
 it('shows escaped target titles and separates human proposals from declared IDs', async () => {
-  inspectSourceScope.mockResolvedValue({ data: response() })
+  const data = response()
+  data.episodeReviews[0].sourceTitle = '<script>Source title</script>'
+  inspectSourceScope.mockResolvedValue({ data })
   wrapper = mount(SourceScopeEvidence, { props: { draft: draft(), offset: 0 } })
   await wrapper.get('button').trigger('click'); await flushPromises()
   expect(wrapper.get('[role="status"]').text()).toContain('Human-reviewed episode identities: 1. Source-declared ID matches: 1.')
   expect(wrapper.get('[aria-label="Human episode identity decisions"]').text()).toContain('<img src=x>')
   expect(wrapper.find('img').exists()).toBe(false)
+  expect(wrapper.find('script').exists()).toBe(false)
+  expect(wrapper.text()).toContain('<script>Source title</script>')
+  expect(wrapper.text()).toContain('Titles are review context, not proof of identity.')
   expect(wrapper.findComponent(SourceMappingApproval).exists()).toBe(true)
+})
+
+it.each(['', {}, 8, 'x'.repeat(501), 'hidden\u202e', 'new\nline'])('rejects malformed source-title context: %s', sourceTitle => {
+  const data = response()
+  data.episodeReviews[0].sourceTitle = sourceTitle
+  expect(parseEpisodeReviews(data, scope(), data.comparison)).toBeNull()
+})
+
+it.each([undefined, null])('shows unavailable source title without inventing identity: %s', async sourceTitle => {
+  const data = response()
+  data.episodeReviews[0].sourceTitle = sourceTitle
+  inspectSourceScope.mockResolvedValue({ data })
+  wrapper = mount(SourceScopeEvidence, { props: { draft: draft(), offset: 0 } })
+  await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('Source title unavailable')
 })
 it('requires both confirmations and clears them when evidence changes', async () => {
   approveSourceScope.mockResolvedValue({ data: { version: 'source_mapping_approval.v1', mappingId: response().reference, status: 'approved', materialized: false } })

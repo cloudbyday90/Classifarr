@@ -41,6 +41,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Explicit, human-confirmed episode mappings support missing IDs and alternate
   orders without changing the media server. Typed target review, separate consent,
   duplicate protection and source-change reapproval keep incomplete groups blocked.
+  Review shows bounded source and catalog titles together, without treating titles
+  as identity proof; changed review context requires a fresh confirmation.
   Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not
