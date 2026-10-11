@@ -88,6 +88,19 @@ database had no invented pending work or unresolved identities. The owned
 disposable container and its temporary data directory were removed; absence was
 verified. No local application data was deleted.
 
+A later probe overlapped the normal two-minute startup sync and failed its
+all-materialized assertion. The next read again showed seven materialized mappings
+without deferred diagnostics, while the last library scan was still running.
+The management query withholds a current receipt while the scan has
+recaptured an unresolved observation, before per-item mapping persistence clears
+it. The timing is consistent with that transient state, not a lost approval;
+the failing probe did not capture the intermediate row. At 10:15:09 UTC all ten
+ingestion states were complete, and the quiescent probe passed with seven
+materialized mappings and four unresolved items. Do not hide the
+observation or weaken the completion condition. A useful follow-up is a distinct
+read-only "rechecking during sync" state that preserves the saved approval and
+last successful materialization, rather than presenting it as first-time waiting.
+
 The preceding commit's remote CI run
 [38129640387](https://github.com/cloudbyday90/Classifarr/actions/runs/38129640387)
 completed successfully, including database and fresh-install/published-upgrade
@@ -98,6 +111,7 @@ substitute for CI on this new batch.
 
 Retain the bounded Knip update: it brings current analysis fixes at the cost of
 native-tooling compatibility checks. Keep Node 24 runtime/types aligned; the
-sampled PR does not justify a runtime major upgrade. Next review the four remaining
+sampled PR does not justify a runtime major upgrade. Next distinguish in-flight
+mapping rechecks from never-applied repairs in saved status, and review the four remaining
 episode-evidence gaps, preserving grouped source shows and requiring consent before
 shared Plex metadata mutations. Review client Playwright and Vue tooling separately.
