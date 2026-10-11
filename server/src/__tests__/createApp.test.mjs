@@ -227,6 +227,33 @@ describe('createApp', () => {
     expect((await request(app).post('/api/unknown').set('Content-Type', 'application/json').send('{')).status).toBe(400);
   });
 
+  it('forwards rejected async handlers to sanitized production JSON errors', async () => {
+    process.env.NODE_ENV = 'production';
+    apiRouter.get('/async-failure', async () => {
+      const error = new Error('synthetic internal failure', {
+        cause: new Error('synthetic private cause'),
+      });
+      error.status = 503;
+      throw error;
+    });
+    const response = await request(await buildTestApp()).get('/api/async-failure').expect(503);
+    expect(response.type).toBe('application/json');
+    expect(response.body).toEqual(expect.objectContaining({
+      error: 'Internal Server Error', message: 'Internal Server Error',
+    }));
+    expect(response.body.stack).toBeUndefined();
+    expect(response.text).not.toMatch(/synthetic|cause|async-failure/);
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('retains the default JSON body limit before reaching an API handler', async () => {
+    const reached = jest.fn((_req, res) => res.sendStatus(204));
+    apiRouter.post('/large-body', reached);
+    await request(await buildTestApp()).post('/api/large-body')
+      .send({ value: 'x'.repeat(101 * 1024) }).expect(413);
+    expect(reached).not.toHaveBeenCalled();
+  });
+
   it('uses the injected database for the health check route', async () => {
     const app = await createApp({
       database,
