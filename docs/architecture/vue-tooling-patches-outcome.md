@@ -73,7 +73,7 @@ Production Vite build passed, followed by all eight production browser checks in
 history, no page/script errors and no backend mutation requests. The browser smoke
 uses synthetic API responses, not Unraid, Plex or local application credentials.
 
-## Local rehearsal preparation
+## Local image and read-only evaluation
 
 Before replacement, retained a checksum-verified, readable 75,506,097-byte local
 database archive and an exact rollback tag for image
@@ -82,6 +82,32 @@ The read-only baseline showed four unresolved identities across ten covered acti
 libraries, 6,832 classifications and 6,810 pending image embeddings. No direct
 database writes or provider calls were used for that probe. The existing container
 was healthy with zero restarts and no OOM kill before replacement.
+
+The no-cache Compose build passed from clean implementation commit
+`700bf66e5b8496c42b5202e38d1fef2426411e98`. Local Docker image ID:
+`sha256:b561031e39a4df95c078865c644ee954b4e018277584ad8a56663a3a46aae5be`.
+The image's OCI revision and actual running container match that source/image.
+This is local image evidence, not published multi-platform or signed provenance.
+
+Replacement used `--no-build --pull never --no-deps --force-recreate --wait`.
+The new container started at 2026-10-11 21:53:53 UTC and became healthy with the
+database connected, zero restarts and no OOM kill. User 1000:1000, read-only root
+and the 2 GiB cap remain unchanged. At 21:54:27 UTC, read-only consumer checks
+still showed four unresolved identities, ten covered libraries and unchanged
+classification/embedding counts. No warning/error ledger entries had appeared
+since that startup at the time of the check. Docker reported 643.8 MiB of 2 GiB;
+this brief startup observation is not a sustained memory or recovery soak.
+
+The schema dump passed against the exact image, with fresh disposable appdata,
+no network, no published ports, 1 GiB memory, two CPUs and 256 PIDs. The tracked
+snapshot remains unchanged through `20261010_220000_source_catalog_mappings.sql`,
+including 22 seed migrations. Fresh consumers reported no invented pending work,
+images or unresolved identities. The runner verified its generated container and
+data directory were absent after cleanup; an independent check confirmed both.
+
+No Unraid deployment, Plex change, shared Ollama change, identity approval, version
+bump, tag or release occurred. The four unresolved identities still need their
+own evidence and consent; this tooling update does not claim to resolve them.
 
 ## Recommendation stack
 
@@ -95,5 +121,5 @@ was healthy with zero restarts and no OOM kill before replacement.
    not resolve the four identity issues or authorize changes to Plex or Unraid.
 
 The dependency-update skill required exact lock review and rejection of the failed
-PR trial. The image-evidence skill will bind local rehearsal claims to the exact
-committed source/image and require isolated schema generation and cleanup.
+PR trial. The image-evidence skill binds local rehearsal claims to the exact
+committed source/image and requires isolated schema generation and cleanup.
