@@ -7,8 +7,24 @@
       :key="index"
     >
       <legend>Episode mapping {{ index + 1 }}</legend>
+      <label :for="`${id}-${index}-type`">Catalog target type</label>
+      <select
+        :id="`${id}-${index}-type`"
+        :value="edge.tmdbMovieId !== undefined ? 'movie' : 'episode'"
+        @change="changeType(index, $event.target.value)"
+      >
+        <option value="episode">
+          TV episode
+        </option>
+        <option
+          v-if="allowMovies"
+          value="movie"
+        >
+          Standalone movie (excluded from TV learning)
+        </option>
+      </select>
       <div
-        v-for="(label, field) in episodeMappingFields"
+        v-for="(label, field) in reviewedEpisodeFields(edge)"
         :key="field"
       >
         <label :for="`${id}-${index}-${field}`">{{ label }}</label>
@@ -40,14 +56,14 @@
       Add reviewed episode mapping
     </button>
     <p v-if="modelValue.length">
-      Every row needs a real TMDb episode ID and its series/season/episode coordinates. Review the returned title before saving. Unmapped or ambiguous episodes keep the entire group unresolved.
+      TV targets need a real TMDb episode ID and its series/season/episode coordinates. Movie targets need a TMDb movie ID and explicit season scope. Review each returned type and title before saving. Unmapped or ambiguous episodes keep the entire group unresolved.
     </p>
   </section>
 </template>
 <script setup>
 import { nextTick, ref, useId } from 'vue'
-import { episodeMappingFields } from '@/utils/reviewedEpisodeMappings'
-const props = defineProps({ modelValue: { type: Array, required: true } })
+import { episodeMappingFields, reviewedEpisodeFields } from '@/utils/reviewedEpisodeMappings'
+const props = defineProps({ modelValue: { type: Array, required: true }, allowMovies: { type: Boolean, default: false } })
 const emit = defineEmits(['update:modelValue'])
 const id = useId(), addButton = ref(null)
 function add() {
@@ -55,6 +71,12 @@ function add() {
 }
 function update(index, field, value) {
   emit('update:modelValue', props.modelValue.map((edge, i) => i === index ? { ...edge, [field]: value === '' ? '' : Number(value) } : edge))
+}
+function changeType(index, type) {
+  if (!['episode', 'movie'].includes(type) || (type === 'movie' && !props.allowMovies)) return
+  const fields = reviewedEpisodeFields(type === 'movie' ? { tmdbMovieId: '' } : {})
+  emit('update:modelValue', props.modelValue.map((edge, i) => i === index
+    ? Object.fromEntries(Object.keys(fields).map(key => [key, key.startsWith('source') ? edge[key] : ''])) : edge))
 }
 async function remove(index) {
   emit('update:modelValue', props.modelValue.filter((_, i) => i !== index))
@@ -65,7 +87,7 @@ async function remove(index) {
 section, fieldset { margin-top: .75rem; padding: .75rem; border: 1px solid #64748b; border-radius: .4rem; min-width: 0; }
 p { margin: .75rem 0; overflow-wrap: anywhere; }
 label { display: block; margin-top: .75rem; }
-input, button { min-height: 2.75rem; max-width: 100%; padding: .5rem; border: 1px solid #64748b; border-radius: .35rem; background: #1e293b; color: #f1f5f9; }
+input, select, button { min-height: 2.75rem; max-width: 100%; padding: .5rem; border: 1px solid #64748b; border-radius: .35rem; background: #1e293b; color: #f1f5f9; }
 button { margin-top: .75rem; } button:disabled { opacity: .5; }
-:is(input, button):focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
+:is(input, select, button):focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
 </style>

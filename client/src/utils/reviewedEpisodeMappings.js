@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 export const episodeMappingFields = Object.freeze({ sourceSeason: 'Source season', sourceEpisode: 'Source episode',
   tmdbSeriesId: 'TMDb series ID', tmdbSeason: 'TMDb season', tmdbEpisode: 'TMDb episode number', tmdbEpisodeId: 'TMDb episode ID' })
+const movieMappingFields = Object.freeze({ sourceSeason: 'Source season', sourceEpisode: 'Source episode', tmdbMovieId: 'TMDb movie ID' })
+export const reviewedEpisodeFields = edge => edge?.tmdbMovieId !== undefined ? movieMappingFields : episodeMappingFields
 const id = value => Number.isSafeInteger(value) && value > 0 && value <= 2147483647
 const number = value => Number.isSafeInteger(value) && value >= 0 && value <= 10000
 
@@ -10,13 +12,17 @@ export function parseReviewedEpisodeMappings(scope) {
   const works = new Set(scope.kind === 'whole_work' ? [scope.tmdbId] : scope.mappings?.map(edge => edge.tmdbSeriesId))
   const sources = new Set(), targets = new Set(), ids = new Set(), result = []
   for (const edge of scope.episodeMappings) {
-    if (!edge || !id(edge.tmdbSeriesId) || !id(edge.tmdbEpisodeId) || !works.has(edge.tmdbSeriesId) ||
-        !['sourceSeason', 'sourceEpisode', 'tmdbSeason', 'tmdbEpisode'].every(key => number(edge[key])) ||
+    const movie = edge?.tmdbMovieId !== undefined, fields = Object.keys(reviewedEpisodeFields(edge))
+    if (!edge || Object.keys(edge).length !== fields.length || !fields.every(key => Object.hasOwn(edge, key)) ||
+        !(movie ? scope.kind === 'seasons' && id(edge.tmdbMovieId)
+          : id(edge.tmdbSeriesId) && id(edge.tmdbEpisodeId) && works.has(edge.tmdbSeriesId) && number(edge.tmdbSeason) && number(edge.tmdbEpisode)) ||
+        !['sourceSeason', 'sourceEpisode'].every(key => number(edge[key])) ||
         (scope.kind === 'seasons' && !scope.mappings.some(value => value.sourceSeason === edge.sourceSeason))) return null
-    const source = `${edge.sourceSeason}:${edge.sourceEpisode}`, target = `${edge.tmdbSeriesId}:${edge.tmdbSeason}:${edge.tmdbEpisode}`
-    if (sources.has(source) || targets.has(target) || ids.has(edge.tmdbEpisodeId)) return null
-    sources.add(source); targets.add(target); ids.add(edge.tmdbEpisodeId)
-    result.push(Object.fromEntries(Object.keys(episodeMappingFields).map(key => [key, edge[key]])))
+    const source = `${edge.sourceSeason}:${edge.sourceEpisode}`, identity = movie ? `movie:${edge.tmdbMovieId}` : edge.tmdbEpisodeId
+    const target = movie ? identity : `${edge.tmdbSeriesId}:${edge.tmdbSeason}:${edge.tmdbEpisode}`
+    if (sources.has(source) || targets.has(target) || ids.has(identity)) return null
+    sources.add(source); targets.add(target); ids.add(identity)
+    result.push(Object.fromEntries(fields.map(key => [key, edge[key]])))
   }
   return result.sort((a, b) => a.sourceSeason - b.sourceSeason || a.sourceEpisode - b.sourceEpisode)
 }
@@ -33,7 +39,9 @@ export function parseEpisodeReviews(data, scope, comparison) {
   const rows = new Map(mappings.map(edge => [`${edge.sourceSeason}:${edge.sourceEpisode}`, edge])), result = []
   for (const value of data.episodeReviews) {
     const key = `${value?.sourceSeason}:${value?.sourceEpisode}`, edge = rows.get(key)
-    if (!edge || Object.keys(episodeMappingFields).some(field => value[field] !== edge[field]) ||
+    if (!edge || Object.keys(reviewedEpisodeFields(edge)).some(field => value[field] !== edge[field]) ||
+        (edge.tmdbMovieId === undefined ? value.tmdbMovieId !== undefined
+          : Object.keys(episodeMappingFields).slice(2).some(field => value[field] !== undefined)) ||
         typeof value.title !== 'string' || !value.title.trim() || value.title.length > 500) return null
     if (value.sourceTitle !== undefined && value.sourceTitle !== null &&
         (typeof value.sourceTitle !== 'string' || !value.sourceTitle.trim() || value.sourceTitle.length > 500 || /[\p{Cc}\p{Cf}]/u.test(value.sourceTitle))) return null

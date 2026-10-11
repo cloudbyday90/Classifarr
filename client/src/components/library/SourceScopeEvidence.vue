@@ -59,7 +59,7 @@
         <ul>
           <li
             v-for="work in result.catalogWorks"
-            :key="work.tmdbId"
+            :key="`${work.mediaType}:${work.tmdbId}`"
           >
             {{ work.title }}{{ work.releaseDate ? ` (${work.releaseDate})` : '' }} —
             TMDb {{ work.mediaType === 'tv' ? 'series' : 'movie' }} {{ work.tmdbId }}

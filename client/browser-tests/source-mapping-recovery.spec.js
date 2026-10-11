@@ -3,9 +3,10 @@ import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { sourceIssuePage } from '../src/__tests__/fixtures/sourceIdentityIssues.js'
 
-for (const mode of ['legacy', 'gaps', 'reviewed']) {
-const episodeGaps = mode !== 'legacy', reviewed = mode === 'reviewed'
-test(reviewed ? 'human episode mappings require separate keyboard confirmation and remain pending until sync'
+for (const mode of ['legacy', 'gaps', 'reviewed', 'movie']) {
+const episodeGaps = mode !== 'legacy', reviewed = ['reviewed', 'movie'].includes(mode), movie = mode === 'movie'
+test(movie ? 'standalone movie exception preserves grouping and explains exclusion from TV learning'
+  : reviewed ? 'human episode mappings require separate keyboard confirmation and remain pending until sync'
   : episodeGaps ? 'episode gaps explain missing IDs and catalog positions without allowing approval'
   : 'explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
   const asOf = '2026-10-10T12:00:00Z', id = '2e851bf4-9497-4b99-8b7c-e8117a05c762'
@@ -75,11 +76,13 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
       delete data.combinedAudit
       data.identityAuthority = 'operator_episode_mapping'
       data.episodeReviews = draft.scope.episodeMappings.map(edge => ({ ...edge, title: 'Synthetic special', sourceTitle: 'Episode 2 <script>not executable</script>' }))
+      if (movie) data.catalogWorks.push({ tmdbId: 100, mediaType: 'movie', title: 'Synthetic special', releaseDate: '2026-01-01' })
       data.comparison = { unit: 'episode', total: 2, matched: 2, operatorReviewed: 1, exclusions: [] }
     }
     if (path.endsWith('/approve')) {
       approvals++
-      expect(route.request().postDataJSON()).toMatchObject({ confirmed: true, evidenceFingerprint: 'd'.repeat(64), scope: { kind: 'whole_work', tmdbId: 10 } })
+      expect(route.request().postDataJSON()).toMatchObject({ confirmed: true, evidenceFingerprint: 'd'.repeat(64),
+        scope: movie ? { kind: 'seasons', episodeMappings: [{ sourceSeason: 1, sourceEpisode: 2, tmdbMovieId: 100 }] } : { kind: 'whole_work', tmdbId: 10 } })
       if (reviewed) {
         expect(route.request().postDataJSON().episodesConfirmed).toBe(true)
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ version: 'source_mapping_approval.v1', mappingId: id, status: 'approved', materialized: false }) }); return
@@ -103,11 +106,19 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
   await overview.getByRole('button', { name: 'See items & recovery' }).click()
   await page.getByText('Draft a catalog mapping (admin)', { exact: true }).click()
   if (reviewed) {
+    if (movie) {
+      await page.getByLabel('Proposed scope').selectOption('seasons')
+      await page.getByLabel('Source seasons in this draft', { exact: false }).fill('1')
+      await page.getByLabel('Source season', { exact: true }).fill('1')
+      await page.getByLabel('TMDb season', { exact: true }).fill('1')
+    }
     await page.getByLabel('TMDb series ID', { exact: true }).fill('10')
     const form = page.getByRole('region', { name: 'Human-reviewed episode mappings' })
     await form.getByRole('button', { name: 'Add reviewed episode mapping' }).focus(); await page.keyboard.press('Enter')
-    for (const [label, value] of [['Source season', '1'], ['Source episode', '2'], ['TMDb series ID', '10'],
-      ['TMDb season', '0'], ['TMDb episode number', '1'], ['TMDb episode ID', '100']]) await form.getByLabel(label, { exact: true }).fill(value)
+    if (movie) await form.getByLabel('Catalog target type').selectOption('movie')
+    const targetFields = movie ? [['TMDb movie ID', '100']] : [['TMDb series ID', '10'],
+      ['TMDb season', '0'], ['TMDb episode number', '1'], ['TMDb episode ID', '100']]
+    for (const [label, value] of [['Source season', '1'], ['Source episode', '2'], ...targetFields]) await form.getByLabel(label, { exact: true }).fill(value)
     await page.getByRole('button', { name: 'Check draft structure' }).click()
     await page.getByRole('button', { name: 'Check source and catalog evidence' }).click()
     const evidence = page.getByRole('region', { name: 'Draft source and catalog evidence' })
@@ -116,6 +127,11 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
     await expect(evidence.getByRole('region', { name: 'Human episode identity decisions' })).toContainText('Episode 2 <script>not executable</script>')
     await expect(evidence.locator('script')).toHaveCount(0)
     const approval = evidence.getByRole('region', { name: 'Approve complete source mapping' })
+    if (movie) {
+      await expect(evidence.getByRole('region', { name: 'Human episode identity decisions' })).toContainText('TMDb movie 100')
+      await expect(approval).toContainText('excluded from TV-learning evidence')
+      await expect(approval).toContainText('does not add a movie-library membership or move any files')
+    }
     await approval.getByRole('checkbox', { name: 'I reviewed the proposed catalog mapping', exact: false }).check()
     await expect(approval.getByRole('button')).toBeDisabled(); expect(approvals).toBe(0)
     await approval.getByRole('checkbox', { name: 'I verified every listed episode identity', exact: false }).focus(); await page.keyboard.press('Space')
@@ -126,7 +142,7 @@ test(reviewed ? 'human episode mappings require separate keyboard confirmation a
       expect(await evidence.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
     }
     await evidence.scrollIntoViewIfNeeded()
-    await evidence.screenshot({ path: testInfo.outputPath('reviewed-episode-mobile.png') })
+    await evidence.screenshot({ path: testInfo.outputPath(movie ? 'reviewed-movie-mobile.png' : 'reviewed-episode-mobile.png') })
     await approval.getByRole('button').focus(); await page.keyboard.press('Enter')
     await expect(approval.getByRole('status')).toContainText('remains unresolved until a scheduled library sync')
     const saved = page.getByRole('region', { name: 'Saved source mappings' })

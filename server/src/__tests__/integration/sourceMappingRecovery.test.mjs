@@ -129,6 +129,70 @@ function humanEpisodeScope(kind = 'seasons') {
     tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 }] };
 }
 
+function movieEpisodeScope() {
+  layout.episodes[1].providerIds.tmdb_id = [];
+  layout.episodeLabels = [{ season: 2, episode: 1, title: 'Source movie special' }];
+  const original = provider.getIdentityDetails.getMockImplementation();
+  provider.getIdentityDetails.mockImplementation(async (id, type) => type === 'movie'
+    ? { id, title: 'Catalog movie special', overview: 'Not TV evidence', media_type: 'movie' } : original(id, type));
+  return { ...scope('seasons'), episodeMappings: [{ sourceSeason: 2, sourceEpisode: 1, tmdbMovieId: 101 }] };
+}
+
+test('movie exception requires human consent, completes owned recovery and never becomes TV evidence', async () => {
+  const proposal = movieEpisodeScope(), input = await approvalInput(proposal);
+  await expect(createSourceMappingApproval(deps)(actorId, input.key, input.body)).rejects.toMatchObject({ statusCode: 400 });
+  const approved = await createSourceMappingApproval(deps)(actorId, input.key, { ...input.body, episodesConfirmed: true });
+  expect(await count()).toBe(1);
+  const context = await capture();
+  const result = await recover(context)(item);
+  expect(result.proof.item).toMatchObject({ media_type: 'tv', tmdb_id: null });
+  expect(result.proof.documents).toEqual([
+    { catalogScope: { kind: 'season', tmdbSeriesId: 10, seasonNumber: 1 }, overview: 'Season 1 description' },
+    { catalogScope: { kind: 'whole_work', mediaType: 'movie', tmdbId: 101 }, evidenceUse: 'review_only' },
+  ]);
+  expect(await persistSourceMapping(store, context, result.proof, { analyze })).toBe(true);
+  await store.finish(context);
+  expect(await count()).toBe(0);
+  const rows = await corpus();
+  expect(rows).toHaveLength(1);
+  expect(prepareInventoryDescriptionCorpus(rows, { includeSourceItems: true }).documents.map(value => value.key)).toEqual(['tv:10:season:1']);
+  expect((await pool.query(buildInventoryDescriptionCorpusSql({ libraryScoped: true }), [30, libraryId])).rows).toEqual([]);
+  const again = await capture();
+  expect(await persistSourceMapping(store, again, (await recover(again)(item)).proof, { analyze })).toBe(true);
+  await store.finish(again);
+  expect((await corpus()).length).toBe(1);
+  await createSourceMappingManagement(db).revokeSourceMapping(actorId, approved.mappingId, { confirmed: true });
+  expect(await count()).toBe(1); expect(await corpus()).toEqual([]);
+});
+
+test.each(['source_title', 'movie_title', 'source_layout', 'catalog_unavailable'])('cross-media approval fails closed for %s', async mode => {
+  const input = await approvalInput(movieEpisodeScope());
+  if (mode === 'source_title') layout.episodeLabels[0].title = 'Changed';
+  if (mode === 'source_layout') layout.digest = 'b'.repeat(64);
+  if (mode === 'catalog_unavailable') provider.getIdentityDetails.mockRejectedValue(new Error('private provider payload'));
+  if (mode === 'movie_title') {
+    const original = provider.getIdentityDetails.getMockImplementation();
+    provider.getIdentityDetails.mockImplementation(async (id, type) => ({ ...await original(id, type), ...(type === 'movie' ? { title: 'Changed movie' } : {}) }));
+  }
+  await expect(createSourceMappingApproval(deps)(actorId, input.key, { ...input.body, episodesConfirmed: true }))
+    .rejects.toMatchObject({ statusCode: mode === 'catalog_unavailable' ? 503 : 409 });
+  expect((await pool.query('SELECT id FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+  expect(await count()).toBe(1);
+});
+
+test('all-movie documents do not fall back to the source TV summary', async () => {
+  const proposal = movieEpisodeScope();
+  layout.episodes[0].providerIds.tmdb_id = [];
+  proposal.episodeMappings.push({ sourceSeason: 1, sourceEpisode: 1, tmdbMovieId: 102 });
+  const input = await approvalInput(proposal);
+  await createSourceMappingApproval(deps)(actorId, input.key, { ...input.body, episodesConfirmed: true });
+  const context = await capture();
+  expect(await persistSourceMapping(store, context, (await recover(context)(item)).proof, { analyze })).toBe(true);
+  await store.finish(context);
+  expect(await count()).toBe(0);
+  expect(await corpus()).toEqual([]);
+});
+
 test('changed review-only title rejects approval without changing structural membership or writing mappings', async () => {
   const proposal = humanEpisodeScope();
   layout.episodeLabels = [{ season: 2, episode: 1, title: 'Original source title' }];

@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 export const sourceMappingGuidance = Object.freeze({
   episode_source_missing: 'A declared source episode is no longer in the captured layout. Refresh and review the complete mapping; do not transfer an old decision to another episode.',
-  episode_target_missing: 'The declared TMDb episode ID does not exist at that series/season/episode position. Check the typed target against the catalog before proposing it again.',
-  reused_episode_target: 'More than one source episode claims the same catalog episode. Correct the episode declarations; duplicate targets cannot approve recovery.',
+  episode_target_missing: 'The declared catalog target could not be verified. Check the TMDb movie ID or the episode ID and its series/season/episode position before proposing it again.',
+  reused_episode_target: 'More than one source episode claims the same typed catalog target. Correct the declarations; duplicate targets cannot approve recovery.',
   source_changed: 'The source identity or episode layout changed. Refresh metadata issues, then review every season against the current source before replacing the saved mapping.',
   configuration_changed: 'The media-server or TMDb configuration changed. Verify those settings, then review a fresh mapping. Existing approval is not transferred to a different configuration.',
   source_seasons_changed: 'The source season list changed. Include every current source season, including specials when present, then check the complete draft again.',
@@ -52,12 +52,14 @@ export function sourceScopeFailureMessage(failure) {
 
 /** Optional for old servers; new responses must describe exactly the proposed typed works. */
 export function parseScopeCatalogWorks(works, draft, unit) {
-  if (works === undefined) return []
+  if (works === undefined) return draft.scope.episodeMappings?.some(edge => edge.tmdbMovieId !== undefined) ? null : []
   if (!Array.isArray(works) || !works.length || works.length > 4) return null
-  const expected = new Set(draft.scope.kind === 'whole_work' ? [draft.scope.tmdbId] : draft.scope.mappings.map(edge => edge.tmdbSeriesId))
+  const type = unit === 'movie' ? 'movie' : 'tv'
+  const expected = new Set((draft.scope.kind === 'whole_work' ? [draft.scope.tmdbId] : draft.scope.mappings.map(edge => edge.tmdbSeriesId)).map(id => `${type}:${id}`))
+  for (const edge of (draft.scope.episodeMappings ?? [])) if (edge.tmdbMovieId !== undefined) expected.add(`movie:${edge.tmdbMovieId}`)
   const result = []
   for (const work of works) {
-    if (!expected.delete(work?.tmdbId) || work.mediaType !== (unit === 'movie' ? 'movie' : 'tv') ||
+    if (!expected.delete(`${work?.mediaType}:${work?.tmdbId}`) ||
         typeof work.title !== 'string' || !work.title.trim() || work.title.length > 500 ||
         (work.releaseDate !== null && (typeof work.releaseDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(work.releaseDate)))) return null
     result.push({ tmdbId: work.tmdbId, mediaType: work.mediaType, title: work.title, releaseDate: work.releaseDate })

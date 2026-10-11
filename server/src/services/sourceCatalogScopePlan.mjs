@@ -94,6 +94,9 @@ export function reviewSourceCatalogScopePlan(input) {
     declaredSourceSeasons: whole ? null : plan.scope.sourceSeasonNumbers.length,
     mappedSourceSeasons: whole ? null : plan.scope.mappings.length,
     unmappedSourceSeasons: whole ? null : plan.scope.sourceSeasonNumbers.length - plan.scope.mappings.length,
-    targetWorks: whole ? 1 : new Set(plan.scope.mappings.map(edge => edge.tmdbSeriesId)).size };
+    targetWorks: whole ? 1 : new Set([
+      ...plan.scope.mappings.map(edge => `tv:${edge.tmdbSeriesId}`),
+      ...(plan.scope.episodeMappings ?? []).filter(edge => edge.tmdbMovieId !== undefined).map(edge => `movie:${edge.tmdbMovieId}`),
+    ]).size };
   return report;
 }

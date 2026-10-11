@@ -5,7 +5,7 @@
     aria-label="Human episode identity decisions"
   >
     <h5>Human episode identity decisions</h5>
-    <p>These declarations are not independent provider-ID proof. Titles are review context, not proof of identity. Confirm each source episode is the intended catalog episode. Source-layout changes will require a new review.</p>
+    <p>These declarations are not independent provider-ID proof. Titles are review context, not proof of identity. Confirm each source episode is the intended catalog target. Source-layout changes will require a new review.</p>
     <ul>
       <li
         v-for="edge in mappings"
@@ -15,8 +15,13 @@
         <template v-if="edge.title">
           — {{ edge.sourceTitle || 'Source title unavailable' }}
         </template>
-        → TMDb series {{ edge.tmdbSeriesId }}, season {{ edge.tmdbSeason }}, episode {{ edge.tmdbEpisode }}
-        (episode ID {{ edge.tmdbEpisodeId }})<template v-if="edge.title">
+        <template v-if="edge.tmdbMovieId !== undefined">
+          → TMDb movie {{ edge.tmdbMovieId }} (standalone movie; excluded from TV learning)
+        </template>
+        <template v-else>
+          → TMDb series {{ edge.tmdbSeriesId }}, season {{ edge.tmdbSeason }}, episode {{ edge.tmdbEpisode }}
+          (episode ID {{ edge.tmdbEpisodeId }})
+        </template><template v-if="edge.title">
           — {{ edge.title }}
         </template>.
       </li>

@@ -7,6 +7,7 @@ import SourceMappingApproval from '@/components/library/SourceMappingApproval.vu
 import ReviewedEpisodeDraft from '@/components/library/ReviewedEpisodeDraft.vue'
 import { parseReviewedEpisodeMappings, parseEpisodeReviews } from '@/utils/reviewedEpisodeMappings'
 import { parseSourceMappings } from '@/utils/sourceMappings'
+import { parseScopeCatalogWorks } from '@/utils/sourceMappingGuidance'
 import { reviewSourceScope, inspectSourceScope, approveSourceScope } from '@/api/mediaIdentityReviewApi'
 vi.mock('@/api/mediaIdentityReviewApi', () => ({ reviewSourceScope: vi.fn(), inspectSourceScope: vi.fn(), approveSourceScope: vi.fn() }))
 const edge = () => ({ sourceSeason: 1, sourceEpisode: 2, tmdbSeriesId: 10, tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 })
@@ -110,6 +111,67 @@ it('requires both confirmations and clears them when evidence changes', async ()
   await wrapper.setProps({ evidence: { evidenceFingerprint: 'e'.repeat(64) } })
   expect(wrapper.findAll('input').every(input => input.element.checked === false)).toBe(true)
 })
+const movieScope = () => ({ kind: 'seasons', coverage: 'complete', sourceSeasonNumbers: [1],
+  mappings: [{ sourceSeason: 1, tmdbSeriesId: 10, tmdbSeason: 1 }],
+  episodeMappings: [{ sourceSeason: 1, sourceEpisode: 2, tmdbMovieId: 100 }] })
+
+it('renders a typed movie exception without inventing episode coordinates', async () => {
+  const proposal = movieScope(), data = { ...response(), scope: proposal,
+    catalogWorks: [{ tmdbId: 10, mediaType: 'tv', title: 'Series', releaseDate: null },
+      { tmdbId: 100, mediaType: 'movie', title: '<img src=x>', releaseDate: null }],
+    episodeReviews: [{ ...proposal.episodeMappings[0], title: '<img src=x>', sourceTitle: 'Reunion' }] }
+  inspectSourceScope.mockResolvedValue({ data })
+  wrapper = mount(SourceScopeEvidence, { props: { draft: { ...draft(), scope: proposal }, offset: 0 } })
+  await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('TMDb movie 100 (standalone movie; excluded from TV learning)')
+  expect(wrapper.find('img').exists()).toBe(false)
+  expect(wrapper.findComponent(SourceMappingApproval).exists()).toBe(true)
+  expect(wrapper.text()).toContain('does not add a movie-library membership or move any files')
+})
+
+it.each(['whole', 'mixed', 'duplicate', 'string', 'zero', 'unknown'])('rejects invalid movie exception %s', mode => {
+  const proposal = movieScope()
+  if (mode === 'whole') Object.assign(proposal, { kind: 'whole_work', tmdbId: 10 })
+  if (mode === 'mixed') proposal.episodeMappings[0].tmdbEpisodeId = 100
+  if (mode === 'duplicate') proposal.episodeMappings.push({ ...proposal.episodeMappings[0], sourceEpisode: 3 })
+  if (mode === 'string') proposal.episodeMappings[0].tmdbMovieId = '100'
+  if (mode === 'zero') proposal.episodeMappings[0].tmdbMovieId = 0
+  if (mode === 'unknown') proposal.episodeMappings[0].allow = true
+  expect(parseReviewedEpisodeMappings(proposal)).toBeNull()
+})
+
+it('clears stale target fields when changing target type and clears movie exceptions for whole-series scope', async () => {
+  wrapper = mount(SourceScopeDraft, { props: { source: { key: draft().sourceKey, sourceVersion: draft().sourceVersion, mediaType: 'tv' }, offset: 0 } })
+  await wrapper.get('select').setValue('seasons')
+  const form = wrapper.getComponent(ReviewedEpisodeDraft)
+  await form.get('button').trigger('click')
+  await form.get('select').setValue('movie')
+  expect(form.findAll('input')).toHaveLength(3)
+  expect(form.text()).toContain('TMDb movie ID')
+  await form.get('select').setValue('episode')
+  expect(form.findAll('input')).toHaveLength(6)
+  await form.get('select').setValue('movie')
+  await wrapper.get('select').setValue('whole_work')
+  expect(form.findAll('input')).toHaveLength(0)
+})
+
+it('rejects a movie review that mixes movie and TV target coordinates', () => {
+  const proposal = movieScope(), data = { ...response(), episodeReviews: [{ ...proposal.episodeMappings[0], title: 'Movie', tmdbEpisodeId: 100 }] }
+  expect(parseEpisodeReviews(data, proposal, data.comparison)).toBeNull()
+})
+
+it('requires complete typed catalog context for movie exceptions, including same-number IDs', () => {
+  const proposal = movieScope()
+  proposal.episodeMappings[0].tmdbMovieId = 10
+  const context = { scope: proposal }
+  const works = [{ tmdbId: 10, mediaType: 'tv', title: 'Series', releaseDate: null },
+    { tmdbId: 10, mediaType: 'movie', title: 'Movie', releaseDate: null }]
+  expect(parseScopeCatalogWorks(works, context, 'episode')).toEqual(works)
+  expect(parseScopeCatalogWorks(undefined, context, 'episode')).toBeNull()
+  expect(parseScopeCatalogWorks([works[0]], context, 'episode')).toBeNull()
+  expect(parseScopeCatalogWorks([works[0], { ...works[1], mediaType: 'tv' }], context, 'episode')).toBeNull()
+})
+
 it('preserves human decisions in the saved-mappings projection', () => {
   const data = { version: 'source_mappings.v1', offset: 0, hasMore: false, items: [{ id: response().reference,
     title: 'Fixture', libraryName: 'Library', status: 'awaiting_sync', scope: scope() }] }

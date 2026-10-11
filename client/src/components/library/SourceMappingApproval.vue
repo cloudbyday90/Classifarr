@@ -2,6 +2,9 @@
 <template>
   <section aria-label="Approve complete source mapping">
     <p>Saving a mapping keeps the source grouping unchanged. No Plex, Emby or Jellyfin data is edited. All source seasons must pass verification; partial mappings cannot clear this issue.</p>
+    <p v-if="draft.scope.episodeMappings?.some(edge => edge.tmdbMovieId !== undefined)">
+      Standalone movies remain in this source group but are excluded from TV-learning evidence. This does not add a movie-library membership or move any files.
+    </p>
     <label v-if="draft.scope.episodeMappings">
       <input
         v-model="episodesConfirmed"

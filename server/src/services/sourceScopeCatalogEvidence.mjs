@@ -4,7 +4,7 @@ import { catalogSeasonPlan, appendCatalogSeason } from './catalogEpisodeEvidence
 import { copySourceCatalogScope } from './sourceCatalogScopePlan.mjs';
 import { projectReviewCandidate } from './mediaIdentityReviewContract.mjs';
 import { createEpisodeGapReader } from './sourceEpisodeGap.mjs';
-import { episodePositionKey, reviewedEpisodeMatches, scopeCatalogSeasons } from './reviewedEpisodeMappings.mjs';
+import { episodePositionKey, reviewedEpisodeMatches, reviewedTargetKey, scopeCatalogSeasons } from './reviewedEpisodeMappings.mjs';
 
 export class ScopeEvidenceError extends Error {
   constructor(code) { super(code); this.code = code; }
@@ -25,10 +25,12 @@ export function scopeEvidencePlan(source, input) {
     sourceSeason: number, tmdbSeriesId: scope.tmdbId, tmdbSeason: number,
   }));
   const works = [...new Set(edges.map(edge => edge.tmdbSeriesId))].sort((a, b) => a - b);
-  if (works.length > 4 || edges.length > 32 || scopeCatalogSeasons(edges, scope.episodeMappings).length > 32) fail('scope_limit');
+  const movieWorks = [...new Set((scope.episodeMappings ?? []).filter(edge => edge.tmdbMovieId !== undefined).map(edge => edge.tmdbMovieId))].sort((a, b) => a - b);
+  if (works.length + movieWorks.length > 4 || edges.length > 32 || scopeCatalogSeasons(edges, scope.episodeMappings).length + movieWorks.length > 32) fail('scope_limit');
   if (scope.episodeMappings?.some(edge => !source.episodes.some(item =>
     item.season === edge.sourceSeason && item.episode === edge.sourceEpisode))) fail('episode_source_missing');
-  return { mediaType: 'tv', works, edges, ...(scope.episodeMappings ? { episodeMappings: scope.episodeMappings } : {}) };
+  return { mediaType: 'tv', works, edges, ...(movieWorks.length ? { movieWorks } : {}),
+    ...(scope.episodeMappings ? { episodeMappings: scope.episodeMappings } : {}) };
 }
 
 /** Fresh typed reads; retain only bounded IDs/positions, never provider payloads. */
@@ -63,8 +65,20 @@ export async function readScopeCatalog(plan, provider, signal) {
         overview: typeof payload.overview === 'string' ? payload.overview.slice(0, 4000) : null });
     }
   }
+  for (const id of (plan.movieWorks ?? [])) {
+    signal.throwIfAborted();
+    const data = await provider.getIdentityDetails(id, 'movie', { signal });
+    signal.throwIfAborted();
+    const candidate = projectReviewCandidate(data, id, 'movie');
+    details.push(candidate);
+    catalog.set(`movie:${id}`, { mediaType: 'movie', tmdbId: id });
+    for (const mapping of plan.episodeMappings.filter(value => value.tmdbMovieId === id)) {
+      episodeReviews.push({ ...mapping, title: candidate.title });
+    }
+  }
   return { catalog, details, seasons: seasonDescriptions, episodeReviews,
-    digest: scopeEvidenceDigest({ details, seasons: seasonDescriptions, episodes: [...catalog].sort(([a], [b]) => a - b),
+    digest: scopeEvidenceDigest({ details, seasons: seasonDescriptions, episodes: [...catalog].sort(([a], [b]) =>
+      typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'en')),
       ...(plan.episodeMappings ? { episodeReviews } : {}) }) };
 }
 
@@ -73,7 +87,7 @@ function episodeExclusion(item, edge, manual, catalog, sourceUses, effectiveUses
   if (Object.values(item.providerIds).some(values => values.length > 1)) return 'ambiguous_episode_ids';
   if (Object.entries(item.providerIds).some(([field, values]) => values.some(id => sourceUses.get(`${field}:${id}`) > 1))) return 'reused_episode_id';
   const ids = item.providerIds.tmdb_id;
-  if (effectiveUses.get(manual?.tmdbEpisodeId ?? ids[0]) > 1) return 'reused_episode_target';
+  if (effectiveUses.get(manual ? reviewedTargetKey(manual) : ids[0]) > 1) return 'reused_episode_target';
   if (manual) return reviewedEpisodeMatches(manual, catalog) ? null : 'episode_target_missing';
   if (!ids.length) return 'missing_tmdb_episode_id';
   const member = catalog.get(ids[0]);
@@ -99,7 +113,7 @@ export function compareScopeEvidence(source, plan, catalog) {
   const reviewed = new Map((plan.episodeMappings ?? []).map(edge => [episodePositionKey(edge.sourceSeason, edge.sourceEpisode), edge]));
   for (const item of source.episodes) {
     const manual = reviewed.get(episodePositionKey(item.season, item.episode));
-    const id = manual?.tmdbEpisodeId ?? (item.providerIds.tmdb_id.length === 1 ? item.providerIds.tmdb_id[0] : null);
+    const id = manual ? reviewedTargetKey(manual) : (item.providerIds.tmdb_id.length === 1 ? item.providerIds.tmdb_id[0] : null);
     if (id) effectiveUses.set(id, (effectiveUses.get(id) ?? 0) + 1);
   }
   let operatorReviewed = 0;

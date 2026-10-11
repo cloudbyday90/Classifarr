@@ -115,6 +115,7 @@
       <ReviewedEpisodeDraft
         v-if="source.mediaType === 'tv'"
         v-model="episodeMappings"
+        :allow-movies="kind === 'seasons'"
         @update:model-value="clear"
       />
       <button
@@ -170,6 +171,7 @@ const edges = ref([newEdge()])
 const addButton = ref(null)
 const { result, error, busy, clear, review } = useSourceScopeReview(() => props.source, () => props.offset)
 watch(() => props.source.key, () => { kind.value = 'whole_work'; target.value = ''; seasons.value = ''; edges.value = [newEdge()]; episodeMappings.value = [] })
+watch(kind, () => { if (kind.value === 'whole_work') episodeMappings.value = episodeMappings.value.filter(edge => edge.tmdbMovieId === undefined); clear() })
 function add() { if (edges.value.length < 32) edges.value.push(newEdge()); clear() }
 async function remove(index) {
   edges.value.splice(index, 1); clear()

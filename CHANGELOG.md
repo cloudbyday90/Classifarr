@@ -43,6 +43,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   duplicate protection and source-change reapproval keep incomplete groups blocked.
   Review shows bounded source and catalog titles together, without treating titles
   as identity proof; changed review context requires a fresh confirmation.
+  Reviewed standalone-movie exceptions preserve TV source grouping while keeping
+  movie identities separate and excluded from TV-learning evidence.
   Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not

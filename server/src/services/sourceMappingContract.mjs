@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { ConflictError } from '../utils/appError.mjs';
 import { copySourceCatalogScope } from './sourceCatalogScopePlan.mjs';
-import { episodePositionKey, scopeCatalogSeasons } from './reviewedEpisodeMappings.mjs';
+import { episodePositionKey, reviewedEpisodeMatches, scopeCatalogSeasons } from './reviewedEpisodeMappings.mjs';
 
 export function sourceMappingConfiguration(target) {
   return createHash('sha256').update(JSON.stringify([target.media_server_id, target.server_type,
@@ -21,20 +21,26 @@ export function approvedScopeDocuments(scope, mediaType, catalog, source = null)
     return [{ catalogScope: { kind: 'whole_work', tmdbId: copied.tmdbId }, overview: work.overview }];
   }
   let edges = copied.mappings;
+  const movieDocuments = [];
   if (copied.episodeMappings) {
     if (!source?.episodes?.length) throw new ConflictError('Source evidence changed.', { code: 'scope_evidence_changed' });
     const manual = new Map(copied.episodeMappings.map(edge => [episodePositionKey(edge.sourceSeason, edge.sourceEpisode), edge]));
     edges = scopeCatalogSeasons(source.episodes.map(item => {
       const override = manual.get(episodePositionKey(item.season, item.episode));
+      if (override?.tmdbMovieId !== undefined) {
+        if (!reviewedEpisodeMatches(override, catalog.catalog)) throw new ConflictError('Catalog movie changed.', { code: 'scope_evidence_changed' });
+        movieDocuments.push({ catalogScope: { kind: 'whole_work', mediaType: 'movie', tmdbId: override.tmdbMovieId }, evidenceUse: 'review_only' });
+        return override;
+      }
       const member = catalog.catalog.get(override?.tmdbEpisodeId ?? item.providerIds.tmdb_id[0]);
       if (!member) throw new ConflictError('Catalog episode changed.', { code: 'scope_evidence_changed' });
       return { tmdbSeriesId: member.seriesId, tmdbSeason: member.season };
     }));
   }
-  return edges.map(edge => {
+  return [...edges.map(edge => {
     const season = catalog.seasons.find(value => value.tmdbSeriesId === edge.tmdbSeriesId && value.seasonNumber === edge.tmdbSeason);
     if (!season) throw new ConflictError('Catalog season changed.', { code: 'scope_evidence_changed' });
     return { ...(edge.sourceSeason === undefined ? {} : { sourceSeason: edge.sourceSeason }), catalogScope: { kind: 'season', tmdbSeriesId: edge.tmdbSeriesId,
       seasonNumber: edge.tmdbSeason }, overview: season.overview };
-  });
+  }), ...movieDocuments];
 }

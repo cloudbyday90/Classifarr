@@ -12,8 +12,8 @@ export const scopeExclusionLabels = Object.freeze({
   episode_outside_mapping: 'Episode belongs to a different series or season',
   episode_numbering_differs: 'Episode numbering differs',
   parent_identity_unresolved: 'Source does not declare this as its single TMDb movie ID',
-  episode_target_missing: 'The declared catalog episode target could not be verified',
-  reused_episode_target: 'Multiple source episodes claim the same catalog episode',
+  episode_target_missing: 'The declared typed catalog target could not be verified',
+  reused_episode_target: 'Multiple source episodes claim the same typed catalog target',
 })
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 10000
 

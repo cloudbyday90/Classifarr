@@ -53,11 +53,14 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
       AND scoped_mapping.external_id=msi.external_id AND scoped_mapping.media_type=msi.media_type
       AND scoped_mapping.revoked_at IS NULL AND scoped_mapping.materialized_at > statement_timestamp()-interval '30 days'
       AND scoped_mapping.scope->>'kind'='seasons' AND msi.tmdb_id IS NULL
-    LEFT JOIN LATERAL jsonb_array_elements(scoped_mapping.documents) AS scoped_document ON true` : ''}
+    LEFT JOIN LATERAL jsonb_array_elements(scoped_mapping.documents) AS scoped_document
+      ON scoped_document->'catalogScope'->>'kind'='season'
+        AND NOT (scoped_document ? 'evidenceUse')` : ''}
   WHERE msi.media_type IN ('movie', 'tv') ${scope}AND ${includeSourceItems
     ? "(msi.tmdb_id > 0 OR (msi.tmdb_id IS NULL AND msi.media_server_id > 0 AND btrim(msi.external_id) <> ''))"
     : 'msi.tmdb_id > 0'}
     ${includeSourceItems ? "AND (msi.metadata->'source_catalog_mapping' IS NULL OR msi.tmdb_id > 0 OR scoped_mapping.id IS NOT NULL)" : ''}
+    ${includeSourceItems ? 'AND (scoped_mapping.id IS NULL OR scoped_document IS NOT NULL)' : ''}
     AND ${sourceConflictAuthorityExclusionForMediaServerItem('$1')}
   ORDER BY msi.media_type, msi.tmdb_id, msi.library_id, msi.id
   LIMIT ${limit}

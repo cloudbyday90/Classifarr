@@ -34,7 +34,7 @@ export function lookupSourceCandidates(key, body, signal) {
 }
 
 export function approveSourceScope(key, body, signal) {
-  // Human episode declarations carry separate episodesConfirmed consent; never retry approval.
+  // TV episode and standalone-movie exceptions carry separate episodesConfirmed consent; never retry approval.
   return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/approve`, body,
     { skipAutomaticRetry: true, timeout: 105000, signal })
 }
