@@ -43,9 +43,11 @@ test('candidate lookup uses the shared database lock and never changes retained 
     withLock: work => database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, work),
     getMediaServerService: () => ({ getLibraryItemIdentityEvidence: async () => {
       reads++; ready.resolve(); await release.promise;
-      return { mediaType: 'tv', snapshotDigest: 'b'.repeat(64), providerIds: { tmdb_id: [10], imdb_id: [], tvdb_id: [] } };
+      return { mediaType: 'tv', snapshotDigest: 'b'.repeat(64), providerIds: { tmdb_id: [10], imdb_id: [], tvdb_id: [20, 30] } };
     } }),
-    createCatalogProvider: async () => ({ getIdentityDetails: async () => ({ id: 10, name: 'Fixture' }), recheck: async () => {} }),
+    createCatalogProvider: async () => ({ getIdentityDetails: async () => ({ id: 10, name: 'Fixture' }), recheck: async () => {},
+      findIdentityByExternalId: async () => ({ movie_results: [], tv_results: [{ id: 10 }],
+        tv_season_results: [], tv_episode_results: [], person_results: [] }) }),
   });
   const pending = lookup(actorId, item.key, body);
   try {
@@ -53,7 +55,9 @@ test('candidate lookup uses the shared database lock and never changes retained 
     await expect(lookup(actorId, item.key, body)).rejects.toMatchObject({ code: 'candidate_busy' });
     expect(reads).toBe(1);
     release.resolve();
-    expect(await withinIdentityTestDeadline(pending)).toMatchObject({ canApply: false, persisted: false, candidates: [{ tmdbId: 10 }] });
+    expect(await withinIdentityTestDeadline(pending)).toMatchObject({ canApply: false, persisted: false, candidates: [{ tmdbId: 10 }],
+      identityAudit: { status: 'catalog_agreement', candidateTmdbId: 10, blockers: [],
+        completeScopeVerified: false, automaticRecoveryEligible: false } });
     expect((await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
     expect(await database.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.SOURCE_SCOPE_EVIDENCE_REVIEW, async () => {})).toBe(true);
   } finally { release.resolve(); }

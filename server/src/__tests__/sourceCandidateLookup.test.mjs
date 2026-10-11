@@ -28,8 +28,25 @@ test('read-only lookup binds fresh source and catalog credentials, not approval'
     candidates: [{ tmdbId: 10, mediaType: 'movie', title: 'Fixture', lookupIndexes: [0] }] });
   expect(s.adapter.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
   expect(s.provider.recheck).toHaveBeenCalledTimes(1);
+  expect(result.identityAudit).toMatchObject({ status: 'review_required', blockers: ['no_external_confirmation'],
+    completeScopeVerified: false, automaticRecoveryEligible: false });
   expect(s.db.query.mock.calls.every(([sql]) => !/\b(UPDATE|INSERT|DELETE)\b/.test(sql))).toBe(true);
   expect(JSON.stringify(result)).not.toMatch(/private-source|private-library|secret|fixture.invalid/);
+});
+
+test('catalog agreement reuses the existing reads and still cannot authorize recovery', async () => {
+  const s = setup(); s.source.providerIds.imdb_id = ['tt123'];
+  s.provider.findIdentityByExternalId = jest.fn(async () => ({ movie_results: [{ id: 10 }], tv_results: [],
+    tv_season_results: [], tv_episode_results: [], person_results: [] }));
+  const result = await s.lookup(7, key, input());
+  expect(result.identityAudit).toMatchObject({ status: 'catalog_agreement', candidateTmdbId: 10, blockers: [],
+    completeScopeVerified: false, automaticRecoveryEligible: false });
+  expect(s.provider.findIdentityByExternalId).toHaveBeenCalledTimes(1);
+  expect(s.provider.getIdentityDetails).toHaveBeenCalledTimes(1);
+  expect(s.adapter.getLibraryItemIdentityEvidence).toHaveBeenCalledTimes(2);
+  expect(s.db.query.mock.calls.every(([sql]) => !/\b(UPDATE|INSERT|DELETE)\b/.test(sql))).toBe(true);
+  s.provider.findIdentityByExternalId.mockRejectedValue(new Error('private-provider-error'));
+  await expect(s.lookup(7, key, input())).rejects.toMatchObject({ statusCode: 503 });
 });
 test.each(['forged', 'stale', 'offset', 'key', 'role'])('rejects %s before HTTP', async mode => {
   const s = setup(), body = input();

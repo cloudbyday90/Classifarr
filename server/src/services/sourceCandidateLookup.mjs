@@ -7,6 +7,7 @@ import { readSourceIdentityIssues } from './sourceIdentityIssues.mjs';
 import { readScopeEvidenceTarget } from './sourceScopeEvidenceRepository.mjs';
 import { scopeEvidenceDigest } from './sourceScopeCatalogEvidence.mjs';
 import { candidateDeclarations, readSourceCandidates, SourceCandidateError } from './sourceCandidateProjection.mjs';
+import { auditSourceIdentityAgreement } from './sourceIdentityAgreementAudit.mjs';
 
 const changed = () => new ConflictError('The source changed. Refresh items and try again.', { code: 'candidate_source_changed' });
 
@@ -59,7 +60,7 @@ export function createSourceCandidateLookup({ db, withLock, getMediaServerServic
         scopedSignal.throwIfAborted();
         result = { version: 'source_candidates.v1', reference: randomUUID(), asOf: new Date().toISOString(),
           sourceKey: key, sourceVersion: input.sourceVersion, mediaType: source.mediaType,
-          canApply: false, persisted: false, ...found };
+          canApply: false, persisted: false, ...found, identityAudit: auditSourceIdentityAgreement(found) };
       });
       if (!acquired) throw new SourceCandidateError('busy');
       signal.throwIfAborted();

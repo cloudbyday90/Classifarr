@@ -5,16 +5,73 @@ import SourceCandidateLookup from '@/components/library/SourceCandidateLookup.vu
 import SourceScopeDraft from '@/components/library/SourceScopeDraft.vue'
 import { lookupSourceCandidates } from '@/api/mediaIdentityReviewApi'
 import { candidateFailureMessage, parseSourceCandidates } from '@/utils/sourceCandidates'
+import { identityAgreementBlockers } from '@/utils/sourceIdentityAgreement'
 vi.mock('@/api/mediaIdentityReviewApi', () => ({ lookupSourceCandidates: vi.fn(), reviewSourceScope: vi.fn(), inspectSourceScope: vi.fn() }))
 const source = () => ({ key: 'a'.repeat(64), sourceVersion: 'b'.repeat(64), mediaType: 'tv' })
 const response = () => ({ version: 'source_candidates.v1', sourceKey: source().key, sourceVersion: source().sourceVersion,
   mediaType: 'tv', reference: '12345678-1234-1234-1234-123456789abc', asOf: '2026-10-10T12:00:00Z', canApply: false, persisted: false,
   lookups: [{ provider: 'tmdb_id', id: 10, tmdbIds: [10], otherScopeMatches: 0, status: 'declared' }],
   candidates: [{ tmdbId: 10, mediaType: 'tv', title: '<script>Fixture</script>', releaseDate: '2020-01-01', available: true, lookupIndexes: [0] }] })
+const agreement = () => {
+  const data = response()
+  data.lookups.push({ provider: 'imdb_id', id: 'tt123', tmdbIds: [10], otherScopeMatches: 0, status: 'matched' })
+  data.candidates[0].lookupIndexes.push(1)
+  data.identityAudit = { version: 'source_identity_agreement.v1', basis: 'tmdb_parent_lookups',
+    status: 'catalog_agreement', candidateTmdbId: 10, blockers: [], completeScopeVerified: false, automaticRecoveryEligible: false }
+  return data
+}
 let wrapper
 const render = () => { wrapper = mount(SourceCandidateLookup, { props: { source: source(), offset: 0 } }); return wrapper }
 beforeEach(() => { vi.clearAllMocks(); lookupSourceCandidates.mockResolvedValue({ data: response() }) })
 afterEach(() => wrapper?.unmount())
+it('announces catalog agreement without claiming complete scope or adding any action', async () => {
+  lookupSourceCandidates.mockResolvedValue({ data: agreement() })
+  render(); await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.get('[role="status"]').text()).toContain('complete scope still needs verification')
+  expect(wrapper.get('[role="status"]').attributes('aria-atomic')).toBe('true')
+  expect(wrapper.text()).toContain('not independent proof')
+  expect(wrapper.text()).toContain('No repair was authorized')
+  expect(wrapper.findAll('input, select, a')).toHaveLength(0)
+  expect(wrapper.findAll('button').map(button => button.text())).toEqual(['Find candidate IDs'])
+  expect(lookupSourceCandidates).toHaveBeenCalledTimes(1)
+})
+it.each(Object.entries(identityAgreementBlockers))('explains %s using fixed text', async (code, label) => {
+  const data = agreement()
+  Object.assign(data.identityAudit, { status: 'review_required', candidateTmdbId: null, blockers: [code] })
+  lookupSourceCandidates.mockResolvedValue({ data })
+  render(); await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain(label)
+  expect(wrapper.get('[role="status"]').text()).toContain('unresolved evidence remains')
+})
+it.each(['null', 'version', 'basis', 'scope', 'authority', 'status', 'unknown', 'duplicate', 'oversize', 'not_array', 'not_string',
+  'positive_blocker', 'wrong_id', 'no_external', 'no_declared', 'other_scope', 'missing', 'multi', 'unavailable', 'empty_review', 'review_id'])('rejects forged audit: %s', mode => {
+  const data = agreement(), audit = data.identityAudit
+  if (mode === 'null') data.identityAudit = null
+  if (mode === 'version') audit.version = 'unknown'
+  if (mode === 'basis') audit.basis = 'independent'
+  if (mode === 'scope') audit.completeScopeVerified = true
+  if (mode === 'authority') audit.automaticRecoveryEligible = true
+  if (mode === 'status') audit.status = 'approved'
+  if (mode === 'unknown') audit.blockers = ['__proto__']
+  if (mode === 'duplicate') audit.blockers = ['missing_catalog_match', 'missing_catalog_match']
+  if (mode === 'oversize') audit.blockers = Array(9).fill('missing_catalog_match')
+  if (mode === 'not_array') audit.blockers = null
+  if (mode === 'not_string') audit.blockers = [42]
+  if (mode === 'positive_blocker') audit.blockers = ['missing_catalog_match']
+  if (mode === 'wrong_id') audit.candidateTmdbId = 11
+  if (mode === 'no_external') { data.lookups.pop(); data.candidates[0].lookupIndexes = [0] }
+  if (mode === 'no_declared') { data.lookups.shift(); data.candidates[0].lookupIndexes = [0] }
+  if (mode === 'other_scope') data.lookups[1].otherScopeMatches = 1
+  if (mode === 'missing') { data.lookups[1].status = 'no_match'; data.lookups[1].tmdbIds = []; data.candidates[0].lookupIndexes = [0] }
+  if (mode === 'multi') {
+    data.lookups[1].tmdbIds.push(11)
+    data.candidates.push({ ...data.candidates[0], tmdbId: 11, lookupIndexes: [1] })
+  }
+  if (mode === 'unavailable') Object.assign(data.candidates[0], { available: false, title: null, releaseDate: null })
+  if (mode === 'empty_review') Object.assign(audit, { status: 'review_required', candidateTmdbId: null })
+  if (mode === 'review_id') Object.assign(audit, { status: 'review_required', blockers: ['missing_catalog_match'] })
+  expect(parseSourceCandidates(data, source())).toBeNull()
+})
 it('only fetches on request and renders typed, escaped suggestions without approval', async () => {
   render(); expect(lookupSourceCandidates).not.toHaveBeenCalled()
   await wrapper.get('button').trigger('click'); await flushPromises()

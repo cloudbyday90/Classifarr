@@ -43,6 +43,9 @@ test('explicit mapping approval survives a lost response without clearing the un
       expect(route.request().postDataJSON()).toEqual({ offset: 0, sourceVersion: 'b'.repeat(64) })
       data = { version: 'source_candidates.v1', sourceKey: '1'.padStart(64, '0'), sourceVersion: 'b'.repeat(64),
         reference: id, asOf, mediaType: 'movie', canApply: false, persisted: false,
+        identityAudit: { version: 'source_identity_agreement.v1', basis: 'tmdb_parent_lookups', status: 'review_required',
+          candidateTmdbId: null, blockers: ['no_declared_candidate', 'other_scope_match'],
+          completeScopeVerified: false, automaticRecoveryEligible: false },
         lookups: [{ provider: 'imdb_id', id: 'tt0000010', tmdbIds: [10], otherScopeMatches: 1, status: 'matched' }],
         candidates: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01', available: true, lookupIndexes: [0] }] }
     }
@@ -71,7 +74,12 @@ test('explicit mapping approval survives a lost response without clearing the un
   expect(lookups).toBe(0)
   const candidates = page.getByRole('region', { name: 'Find candidate IDs' })
   await candidates.getByRole('button', { name: 'Find candidate IDs' }).focus(); await page.keyboard.press('Enter')
-  await expect(candidates.getByRole('status')).toHaveText('1 candidate found. Nothing was saved.')
+  await expect(candidates.getByRole('status')).toContainText('1 candidate found. Nothing was saved.')
+  await expect(candidates.getByRole('status')).toContainText('unresolved evidence remains')
+  const audit = candidates.getByRole('region', { name: 'Identifier agreement audit' })
+  await expect(audit).toContainText('The source does not declare a TMDb candidate')
+  await expect(audit).toContainText('another media type, season, episode or person')
+  await expect(audit).toContainText('No repair was authorized')
   await expect(candidates).toContainText('From: IMDb tt0000010')
   await expect(page.getByLabel('TMDb movie ID', { exact: true })).toHaveValue('')
   expect(approvals).toBe(0); expect(lookups).toBe(1)
@@ -81,6 +89,8 @@ test('explicit mapping approval survives a lost response without clearing the un
     await candidates.scrollIntoViewIfNeeded()
     expect(await candidates.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   }
+  await page.setViewportSize({ width: 320, height: 2400 })
+  await candidates.scrollIntoViewIfNeeded()
   await candidates.screenshot({ path: testInfo.outputPath('source-candidates-mobile.png') })
   await page.getByLabel('TMDb movie ID', { exact: true }).fill('10')
   await page.getByRole('button', { name: 'Check draft structure' }).click()

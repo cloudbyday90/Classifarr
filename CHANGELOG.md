@@ -32,6 +32,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   interrupted checks remain unconfirmed and cached-source failures retain cooldowns.
   On-demand candidate lookup explains declared-ID matches, missing records and
   other-scope results without guessing, selecting a draft or approving a mapping.
+  A read-only identifier audit explains catalog agreement and remaining gaps;
+  parent-ID agreement never substitutes for complete scope verification or consent.
   Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not

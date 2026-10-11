@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { parseIdentityAgreement } from './sourceIdentityAgreement'
 const integer = value => Number.isSafeInteger(value) && value > 0 && value <= 2147483647
 const unique = values => Array.isArray(values) && new Set(values).size === values.length
 export const candidateProviderLabels = Object.freeze({ tmdb_id: 'TMDb', imdb_id: 'IMDb', tvdb_id: 'TVDB' })
@@ -47,7 +48,9 @@ export function parseSourceCandidates(data, source) {
       available: item.available, lookupIndexes: indexes })
   }
   if (lookups.some(item => item.tmdbIds.some(id => !candidateIds.has(id)))) return null
-  return { reference: data.reference, asOf: data.asOf, candidates, lookups }
+  const identityAudit = data.identityAudit === undefined ? null : parseIdentityAgreement(data.identityAudit, { candidates, lookups })
+  if (data.identityAudit !== undefined && !identityAudit) return null
+  return { reference: data.reference, asOf: data.asOf, candidates, lookups, identityAudit }
 }
 
 export function candidateFailureMessage(error) {

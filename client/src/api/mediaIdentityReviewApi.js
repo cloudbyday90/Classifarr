@@ -27,6 +27,7 @@ export function inspectSourceScope(key, body, signal) {
 }
 
 export function lookupSourceCandidates(key, body, signal) {
+  // v1 optionally includes a read-only identityAudit; it never authorizes recovery.
   return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/candidates`, body,
     { skipAutomaticRetry: true, timeout: 75000, signal })
 }

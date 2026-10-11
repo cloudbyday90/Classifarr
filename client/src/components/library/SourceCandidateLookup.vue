@@ -25,8 +25,10 @@
     <p
       role="status"
       aria-live="polite"
+      aria-atomic="true"
     >
       {{ busy ? 'Looking up source identifiers…' : notice || (result ? `${result.candidates.length} ${result.candidates.length === 1 ? 'candidate' : 'candidates'} found. Nothing was saved.` : '') }}
+      <span v-if="!busy && result?.identityAudit">{{ result.identityAudit.status === 'catalog_agreement' ? 'Identifier audit: catalog agreement found; complete scope still needs verification.' : 'Identifier audit: unresolved evidence remains; review the reasons below.' }}</span>
     </p>
     <p
       v-if="error"
@@ -35,6 +37,27 @@
       {{ error }}
     </p>
     <template v-if="result">
+      <section
+        v-if="result.identityAudit"
+        aria-label="Identifier agreement audit"
+      >
+        <h5>Can these identifiers be reconciled automatically?</h5>
+        <p v-if="result.identityAudit.status === 'catalog_agreement'">
+          Every checked identifier points to TMDb {{ result.identityAudit.candidateTmdbId }} in this catalog. This is catalog agreement, not independent proof that the source IDs are aliases.
+        </p>
+        <p v-else>
+          Not established. The lookup found these gaps:
+        </p>
+        <ul v-if="result.identityAudit.blockers.length">
+          <li
+            v-for="code in result.identityAudit.blockers"
+            :key="code"
+          >
+            {{ identityAgreementBlockers[code] }}
+          </li>
+        </ul>
+        <p>Audit only. No repair was authorized. Complete source and catalog scope still needs verification, including every season of a grouped show.</p>
+      </section>
       <p v-if="!result.candidates.length">
         No whole-movie or series candidates were found from these source identifiers. This does not mean the item has no metadata.
       </p>
@@ -73,6 +96,7 @@
 import { useId } from 'vue'
 import { useSourceCandidates } from '@/composables/useSourceCandidates'
 import { candidateLookupLabels, candidateProviderLabels } from '@/utils/sourceCandidates'
+import { identityAgreementBlockers } from '@/utils/sourceIdentityAgreement'
 const props = defineProps({ source: { type: Object, required: true }, offset: { type: Number, required: true } })
 const id = useId()
 const { result, error, busy, notice, lookup, cancel } = useSourceCandidates(() => props.source, () => props.offset)
