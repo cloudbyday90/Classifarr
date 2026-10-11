@@ -59,7 +59,7 @@ preserve unresolved counts. Cancellation/source changes discard the whole result
 
 Test TV/movie agreement and each blocker, mixed outcomes, malformed contracts,
 stale source/configuration/actor, busy/cancel/deadline and no additional reads.
-Extend the real PostgreSQL lock/read-only check and HTTP transport tests; verify
+Extend the real PostgreSQL lock/read-only check and reuse HTTP transport tests; verify
 keyboard use, announced outcome and 320/390 px reflow. Run both coverage suites,
 the ratchet, normal quality gates, no-cache local image evaluation and isolated
 schema dump. Do not mutate Unraid or shared Plex/Ollama.
