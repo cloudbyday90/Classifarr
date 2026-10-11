@@ -89,6 +89,10 @@
               Season {{ item.season }}, episode {{ item.episode }}:
             </template>
             {{ scopeExclusionLabels[item.reason] }}.
+            <SourceEpisodeGap
+              v-if="item.gap"
+              :gap="item.gap"
+            />
           </li>
         </ul>
       </details>
@@ -112,6 +116,7 @@ import { scopeExclusionLabels } from '@/utils/sourceScopeEvidence'
 import { sourceMappingGuidance as guidance } from '@/utils/sourceMappingGuidance'
 import SourceMappingApproval from './SourceMappingApproval.vue'
 import SourceCombinedEvidence from './SourceCombinedEvidence.vue'
+import SourceEpisodeGap from './SourceEpisodeGap.vue'
 const props = defineProps({ draft: { type: Object, required: true }, offset: { type: Number, required: true } })
 const { result, error, busy, notice, inspect, cancel } = useSourceScopeEvidence(() => props.draft, () => props.offset)
 </script>

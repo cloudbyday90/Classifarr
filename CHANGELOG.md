@@ -36,6 +36,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   parent-ID agreement never substitutes for complete scope verification or consent.
   Mapping previews now combine fresh parent-ID and complete-scope findings in one
   rechecked report, exposing disagreement without granting automatic repair authority.
+  Episode review distinguishes missing source identifiers from absent proposed
+  catalog positions, with specific next steps and no guessed identity repairs.
   Season descriptions retain their typed scope for
   retrieval and optional vector backfill, without becoming arbitrary parent IDs
   or supplying whole-work-only comparison models. Existing conflicts are not

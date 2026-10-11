@@ -123,6 +123,25 @@ test('copies caller fields before the first await', async () => {
   expect((await pending).scope.tmdbId).toBe(10);
   expect(s.db.query.mock.calls.filter(([sql]) => sql.includes('AS observation_revision')).every(([, params]) => params[0] === 0)).toBe(true);
 });
+
+test('projects a missing catalog position from repeated validated reads without additional HTTP or authority', async () => {
+  const s = setup();
+  s.target.media_type = s.item.mediaType = s.source.identity.mediaType = 'tv';
+  s.source.seasons = [{ number: 1 }];
+  s.source.episodes = [{ season: 1, episode: 2, providerIds: { tmdb_id: [], tvdb_id: [], imdb_id: [] } }];
+  s.provider.getIdentityDetails.mockResolvedValue({ id: 10, name: 'Fixture', seasons: [{ id: 50, season_number: 1, episode_count: 0 }] });
+  s.provider.getIdentitySeasonDetails = jest.fn(async () => ({ id: 50, season_number: 1, episodes: [] }));
+  const result = await s.inspect(7, key, input());
+  expect(result.comparison).toMatchObject({ total: 1, matched: 0, exclusions: [{ reason: 'missing_tmdb_episode_id',
+    gap: { sourceIds: 'none', catalogPosition: 'absent', target: { tmdbSeriesId: 10, season: 1, episode: 2 } } }] });
+  expect(result.backfill.eligible).toBe(false);
+  expect(result.canApply).toBe(false);
+  expect(s.adapter.getLibraryItemLayout).toHaveBeenCalledTimes(2);
+  expect(s.provider.getIdentityDetails).toHaveBeenCalledTimes(2);
+  expect(s.provider.getIdentitySeasonDetails).toHaveBeenCalledTimes(2);
+  expect(s.provider.findIdentityByExternalId).not.toHaveBeenCalled();
+  expect(s.db.query.mock.calls.every(([sql]) => !/\b(UPDATE|INSERT|DELETE)\b/.test(sql))).toBe(true);
+});
 test('the fixed deadline cancels provider work without accepting its late result', async () => {
   const s = setup(), deadline = new AbortController();
   const timer = jest.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal);

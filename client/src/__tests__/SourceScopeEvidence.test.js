@@ -86,6 +86,20 @@ it('shows exact typed works and actionable exclusion guidance without rendering 
   expect(wrapper.find('img').exists()).toBe(false)
   expect(JSON.stringify(parseSourceScopeEvidence(value, draft()))).not.toContain('private')
 })
+it('renders scoped episode gaps without offering incomplete approval and rejects malformed included evidence', async () => {
+  const value = response(); value.evidenceFingerprint = 'd'.repeat(64)
+  value.comparison.exclusions[0].gap = { sourceIds: 'none', catalogPosition: 'absent',
+    target: { tmdbSeriesId: 10, season: 1, episode: 2 } }
+  inspectSourceScope.mockResolvedValue({ data: value }); render()
+  await wrapper.get('button').trigger('click'); await flushPromises()
+  expect(wrapper.get('details').text()).toContain('no supported external IDs')
+  expect(wrapper.get('[role="status"]').text()).not.toContain('Proposed catalog position')
+  expect(wrapper.find('[aria-label="Approve complete source mapping"]').exists()).toBe(false)
+  value.comparison.exclusions[0].gap.target.tmdbSeriesId = 11
+  expect(parseSourceScopeEvidence(value, draft())).toBeNull()
+  value.comparison = { unit: 'movie', total: 1, matched: 0, exclusions: [{ reason: 'parent_identity_unresolved', gap: {} }] }
+  expect(parseSourceScopeEvidence(value, draft())).toBeNull()
+})
 it.each([
   [], [{ tmdbId: 11, mediaType: 'tv', title: 'Wrong', releaseDate: null }],
   [{ tmdbId: 10, mediaType: 'movie', title: 'Wrong type', releaseDate: null }],

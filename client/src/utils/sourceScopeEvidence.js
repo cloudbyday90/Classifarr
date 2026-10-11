@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { parseScopeCatalogWorks } from './sourceMappingGuidance'
 import { parseCombinedEvidence } from './sourceCombinedEvidence'
+import { parseEpisodeGap } from './sourceEpisodeGap'
 export const scopeExclusionLabels = Object.freeze({
   unmapped_season: 'No season mapping proposed',
   ambiguous_episode_ids: 'Conflicting episode IDs',
@@ -33,9 +34,11 @@ export function parseSourceScopeEvidence(data, draft) {
       const position = `${value.season}:${value.episode}`
       if (positions.has(position)) return null
       positions.add(position)
-      exclusions.push({ season: value.season, episode: value.episode, reason: value.reason })
+      const gap = value.gap === undefined ? null : parseEpisodeGap(value.gap, value, draft.scope)
+      if (value.gap !== undefined && !gap) return null
+      exclusions.push({ season: value.season, episode: value.episode, reason: value.reason, ...(gap ? { gap } : {}) })
     } else {
-      if (comparison.total !== 1 || value.reason !== 'parent_identity_unresolved') return null
+      if (comparison.total !== 1 || value.reason !== 'parent_identity_unresolved' || value.gap !== undefined) return null
       exclusions.push({ reason: value.reason })
     }
   }

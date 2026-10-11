@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { catalogSeasonPlan, appendCatalogSeason } from './catalogEpisodeEvidence.mjs';
 import { copySourceCatalogScope } from './sourceCatalogScopePlan.mjs';
 import { projectReviewCandidate } from './mediaIdentityReviewContract.mjs';
+import { createEpisodeGapReader } from './sourceEpisodeGap.mjs';
 
 export class ScopeEvidenceError extends Error {
   constructor(code) { super(code); this.code = code; }
@@ -69,6 +70,7 @@ export function compareScopeEvidence(source, plan, catalog) {
     for (const id of ids) uses.set(`${field}:${id}`, (uses.get(`${field}:${id}`) ?? 0) + 1);
   }
   const exclusions = [];
+  const readGap = createEpisodeGapReader(plan, catalog);
   for (const item of source.episodes) {
     const edge = plan.edges.find(value => value.sourceSeason === item.season);
     const ids = item.providerIds.tmdb_id;
@@ -80,7 +82,10 @@ export function compareScopeEvidence(source, plan, catalog) {
             : !member ? 'episode_absent_from_scope'
               : member.seriesId !== edge.tmdbSeriesId || member.season !== edge.tmdbSeason ? 'episode_outside_mapping'
                 : member.episode !== item.episode ? 'episode_numbering_differs' : null;
-    if (reason) exclusions.push({ season: item.season, episode: item.episode, reason });
+    if (reason) {
+      const gap = readGap(item, reason);
+      exclusions.push({ season: item.season, episode: item.episode, reason, ...(gap ? { gap } : {}) });
+    }
   }
   return { unit: 'episode', total: source.episodes.length, matched: source.episodes.length - exclusions.length, exclusions };
 }

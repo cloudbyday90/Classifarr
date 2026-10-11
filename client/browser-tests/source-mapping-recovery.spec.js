@@ -3,7 +3,9 @@ import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { sourceIssuePage } from '../src/__tests__/fixtures/sourceIdentityIssues.js'
 
-test('explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
+for (const episodeGaps of [false, true]) {
+test(episodeGaps ? 'episode gaps explain missing IDs and catalog positions without allowing approval'
+  : 'explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
   const asOf = '2026-10-10T12:00:00Z', id = '2e851bf4-9497-4b99-8b7c-e8117a05c762'
   let approvals = 0, revocations = 0, lookups = 0, draft, recheckState = null
   const readiness = { version: 'library.upgrade_readiness.v1', asOf, libraryCount: 1, activeLibraryCount: 1,
@@ -30,6 +32,7 @@ test('explicit mapping approval survives a lost response without clearing the un
     if (path === '/api/libraries/upgrade-readiness') data = readiness
     if (path === '/api/libraries/source-identity-issues') {
       data = sourceIssuePage(); data.items[0].sourceVersion = 'b'.repeat(64); data.items[0].providerFields = ['tvdb_id']
+      if (episodeGaps) data.items[0].mediaType = 'tv'
     }
     if (path.endsWith('/review') && path.includes('/source-scopes/')) {
       const body = route.request().postDataJSON()
@@ -56,6 +59,16 @@ test('explicit mapping approval survives a lost response without clearing the un
       evidenceFingerprint: 'd'.repeat(64), verification: 'typed_catalog_membership', crossProviderVerified: false,
       catalogWorks: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01' }],
       comparison: { unit: 'movie', total: 1, matched: 1, exclusions: [] } }
+    if (episodeGaps && path.endsWith('/evidence')) {
+      data.catalogWorks[0].mediaType = 'tv'
+      data.combinedAudit.scopeComplete = false
+      data.comparison = { unit: 'episode', total: 3, matched: 1, exclusions: [
+        { season: 5, episode: 27, reason: 'missing_tmdb_episode_id', gap: { sourceIds: 'none', catalogPosition: 'absent',
+          target: { tmdbSeriesId: 10, season: 5, episode: 27 } } },
+        { season: 10, episode: 13, reason: 'episode_absent_from_scope', gap: { sourceIds: 'tmdb', catalogPosition: 'absent',
+          target: { tmdbSeriesId: 10, season: 10, episode: 13 } } },
+      ] }
+    }
     if (path.endsWith('/approve')) {
       approvals++
       expect(route.request().postDataJSON()).toMatchObject({ confirmed: true, evidenceFingerprint: 'd'.repeat(64), scope: { kind: 'whole_work', tmdbId: 10 } })
@@ -74,6 +87,32 @@ test('explicit mapping approval survives a lost response without clearing the un
   const overview = page.getByRole('region', { name: 'Your libraries at a glance' })
   await overview.getByRole('button', { name: 'See items & recovery' }).click()
   await page.getByText('Draft a catalog mapping (admin)', { exact: true }).click()
+  if (episodeGaps) {
+    await page.getByLabel('TMDb series ID', { exact: true }).fill('10')
+    await page.getByRole('button', { name: 'Check draft structure' }).click()
+    const check = page.getByRole('button', { name: 'Check source and catalog evidence' })
+    await check.focus(); await page.keyboard.press('Enter')
+    const evidence = page.getByRole('region', { name: 'Draft source and catalog evidence' })
+    await expect(evidence.getByRole('status')).toContainText('1 of 3 episodes')
+    await expect(evidence.getByRole('status')).not.toContainText('Proposed catalog position')
+    const details = evidence.locator('details').filter({ hasText: 'View excluded episodes' })
+    await details.locator('summary').focus(); await page.keyboard.press('Enter')
+    await expect(details).toContainText('no supported external IDs')
+    await expect(details).toContainText('not found in the checked catalog scope')
+    await expect(details).toContainText('TMDb returned no episode at this proposed position')
+    await expect(evidence.getByRole('region', { name: 'Approve complete source mapping' })).toHaveCount(0)
+    await expect(overview.locator('.issue-number')).toHaveText('1')
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 1200 })
+      await details.scrollIntoViewIfNeeded()
+      expect(await details.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    }
+    await page.setViewportSize({ width: 320, height: 2400 })
+    await details.scrollIntoViewIfNeeded()
+    await details.screenshot({ path: testInfo.outputPath('episode-gaps-mobile.png') })
+    expect(approvals).toBe(0); expect(revocations).toBe(0); expect(lookups).toBe(0)
+    return
+  }
   expect(lookups).toBe(0)
   const candidates = page.getByRole('region', { name: 'Find candidate IDs' })
   await candidates.getByRole('button', { name: 'Find candidate IDs' }).focus(); await page.keyboard.press('Enter')
@@ -142,3 +181,4 @@ test('explicit mapping approval survives a lost response without clearing the un
   await expect(saved.getByRole('status')).toContainText('Mapping revoked')
   expect(approvals).toBe(1); expect(revocations).toBe(1)
 })
+}
