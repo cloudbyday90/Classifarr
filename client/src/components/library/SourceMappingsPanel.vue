@@ -29,7 +29,11 @@
         :key="item.id"
       >
         <strong>{{ item.title }}</strong> · {{ item.libraryName }}
-        <p>{{ labels[item.status] }}</p>
+        <p>{{ sourceMappingStatusText(item) }}</p>
+        <p v-if="item.lastAppliedAt">
+          Last successfully applied: <time :datetime="item.lastAppliedAt">{{ new Date(item.lastAppliedAt).toLocaleString() }}</time>.
+          This is historical, not proof of current verification.
+        </p>
         <p v-if="item.guidance">
           {{ item.guidance }}
         </p>
@@ -91,7 +95,7 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
 import { getSourceMappings, revokeSourceMapping } from '@/api/mediaIdentityReviewApi'
-import { parseSourceMappings, sourceMappingStatusLabels as labels } from '@/utils/sourceMappings'
+import { parseSourceMappings, sourceMappingStatusText } from '@/utils/sourceMappings'
 const report = ref(null), selected = ref([]), busy = ref(false), error = ref(''), notice = ref(''), uncertain = ref(false)
 let sequence = 0
 onBeforeUnmount(() => { sequence++ })
@@ -117,7 +121,7 @@ async function revoke(id) {
     const { data } = await revokeSourceMapping(id)
     if (ticket !== sequence) return
     if (data?.version !== 'source_mapping_revocation.v1' || data.mappingId !== id || data.status !== 'revoked') throw new Error('invalid_receipt')
-    report.value.items = report.value.items.map(item => item.id === id ? { ...item, status: 'revoked', guidance: null } : item)
+    report.value.items = report.value.items.map(item => item.id === id ? { ...item, status: 'revoked', guidance: null, recheckState: null } : item)
     selected.value = []; notice.value = 'Mapping revoked. Refresh metadata issues to see the current count.'
   } catch {
     if (ticket === sequence) { uncertain.value = true; error.value = 'Revocation could not be confirmed. Refresh saved mappings before submitting again.' }

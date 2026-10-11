@@ -37,6 +37,7 @@ export function approveSourceScope(key, body, signal) {
 }
 
 export function getSourceMappings(params = {}) {
+  // v1 may include lastAppliedAt/recheckState; the view validates these optional hints.
   return getDataRequest('/media-identity-review/source-scopes/mappings', { params, skipAutomaticRetry: true })
 }
 

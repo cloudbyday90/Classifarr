@@ -3,7 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../utils/appError
 import { MEDIA_SYNC_OWNER_LOCK } from './mediaSyncLockKeys.mjs';
 import { reviewBody, reviewPreviewId, reviewInteger } from './mediaIdentityReviewContract.mjs';
 import { requireReviewActor } from './mediaIdentityReviewRepository.mjs';
-import { sourceMappingDiagnostic } from './sourceMappingDiagnostics.mjs';
+import { sourceMappingStatus, SOURCE_MAPPING_RECHECK_ACTIVE_SQL } from './sourceMappingStatus.mjs';
 
 /** Read committed state after an uncertain response; never retry approval automatically. */
 export function createSourceMappingManagement(db) {
@@ -14,7 +14,7 @@ export function createSourceMappingManagement(db) {
           (query.offset !== undefined && !/^(0|[1-9]\d{0,8})$/.test(String(query.offset)))) throw new ValidationError('Invalid mapping page');
       const offset = Number(query.offset ?? 0);
       const { rows } = await db.query(`SELECT m.id,m.scope,m.approved_at,m.revoked_at,m.materialized_at,
-        m.retry_after,m.last_outcome,l.name AS library_name,
+        m.retry_after,m.last_outcome,l.name AS library_name, ${SOURCE_MAPPING_RECHECK_ACTIVE_SQL} AS recheck_active,
         COALESCE(o.title,i.title) AS title,
         (o.external_id IS NULL AND i.metadata->'source_catalog_mapping'->>'id'=m.id::text
           AND l.is_active AND m.materialized_at>statement_timestamp()-interval '30 days') AS current_receipt
@@ -25,9 +25,7 @@ export function createSourceMappingManagement(db) {
       return { version: 'source_mappings.v1', offset, hasMore: rows.length > 50, items: rows.slice(0, 50).map(row => ({
         id: row.id, title: row.title?.slice(0, 500) ?? 'Source item', libraryName: row.library_name?.slice(0, 500),
         scope: row.scope, approvedAt: row.approved_at, retryAfter: row.retry_after,
-        diagnostic: row.revoked_at ? null : sourceMappingDiagnostic(row.last_outcome),
-        status: row.revoked_at ? 'revoked' : sourceMappingDiagnostic(row.last_outcome) ? 'verification_deferred'
-          : row.materialized_at && row.current_receipt ? 'materialized' : 'awaiting_sync',
+        ...sourceMappingStatus(row),
       })) };
     },
     async revokeSourceMapping(actorId, rawId, body) {

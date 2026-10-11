@@ -48,8 +48,32 @@ it.each([
   value => { value.version = 'old' }, value => { value.items[0].status = 'private' },
   value => { value.items[0].scope = { kind: 'seasons', coverage: 'partial', mappings: [] } },
   value => { value.items[0].scope.tmdbId = -1 }, value => { value.items[0].retryAfter = 'invalid' },
+  value => { value.items[0].lastAppliedAt = 'invalid' }, value => { value.items[0].lastAppliedAt = 12 },
+  value => { value.items[0].recheckState = 'private' }, value => { value.items[0].recheckState = 'active' },
+  value => { Object.assign(value.items[0], { lastAppliedAt: '2026-10-11T10:00:00Z', recheckState: 'active', status: 'revoked' }) },
 ])('fails closed on malformed saved state', change => {
   const value = report(); change(value); expect(parseSourceMappings(value)).toBeNull()
+})
+
+it.each([['active', 'A library sync is active'], ['waiting', 'no active recheck is confirmed']])('distinguishes previously applied %s mappings without issuing recovery writes', async (recheckState, text) => {
+  const value = report(); Object.assign(value.items[0], { lastAppliedAt: '2026-10-11T10:00:00Z', recheckState })
+  getSourceMappings.mockResolvedValue(value); await load()
+  expect(wrapper.text()).toContain(text)
+  expect(wrapper.text()).toContain('This is historical, not proof of current verification')
+  expect(wrapper.get('time').attributes('datetime')).toBe('2026-10-11T10:00:00Z')
+  expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite')
+  expect(revokeSourceMapping).not.toHaveBeenCalled()
+  await wrapper.get('input').setValue(true); await button('Revoke').trigger('click'); await flushPromises()
+  expect(wrapper.text()).toContain('Mapping revoked')
+  expect(wrapper.text()).not.toContain(text)
+})
+
+it('retains failure guidance alongside historical success', async () => {
+  const value = report(); Object.assign(value.items[0], { lastAppliedAt: '2026-10-11T10:00:00Z', recheckState: null,
+    status: 'verification_deferred', diagnostic: { code: 'source_changed' } })
+  getSourceMappings.mockResolvedValue(value); await load()
+  expect(wrapper.text()).toContain('This verification has not completed')
+  expect(wrapper.text()).toContain('Last successfully applied')
 })
 
 it.each([['missing_tmdb_episode_id', 'episode-level metadata'], ['check_unconfirmed', 'interrupted'], ['private-token', 'GitHub issue'], [undefined, 'GitHub issue']])('shows fixed saved guidance for %s without leaking arbitrary diagnostics', async (code, text) => {

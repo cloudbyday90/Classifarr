@@ -5,7 +5,7 @@ import { sourceIssuePage } from '../src/__tests__/fixtures/sourceIdentityIssues.
 
 test('explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
   const asOf = '2026-10-10T12:00:00Z', id = '2e851bf4-9497-4b99-8b7c-e8117a05c762'
-  let approvals = 0, revocations = 0, lookups = 0, draft
+  let approvals = 0, revocations = 0, lookups = 0, draft, recheckState = null
   const readiness = { version: 'library.upgrade_readiness.v1', asOf, libraryCount: 1, activeLibraryCount: 1,
     mediaTypes: { movie: 1, tv: 0, other: 0 }, upgradeEnrollmentRecorded: true,
     profile: { current: 1, queued: 0, processing: 0, retryWait: 0, cooldown: 0, waiting: 0, paused: 0, unverified: 0, noInventory: 0, missing: 0 },
@@ -57,7 +57,9 @@ test('explicit mapping approval survives a lost response without clearing the un
     }
     if (path.endsWith('/source-scopes/mappings')) data = { version: 'source_mappings.v1', offset: 0, hasMore: false,
       items: approvals ? [{ id, title: 'Fixture title 1', libraryName: 'Fixture library', scope: { kind: 'whole_work', tmdbId: 10 },
-        diagnostic: { code: 'catalog_unavailable' }, retryAfter: '2026-10-11T12:00:00Z', status: revocations ? 'revoked' : 'verification_deferred' }] : [] }
+        diagnostic: recheckState ? null : { code: 'catalog_unavailable' }, retryAfter: null,
+        lastAppliedAt: recheckState ? asOf : null, recheckState: revocations ? null : recheckState,
+        status: revocations ? 'revoked' : recheckState ? 'awaiting_sync' : 'verification_deferred' }] : [] }
     if (path.endsWith('/revoke')) { revocations++; data = { version: 'source_mapping_revocation.v1', mappingId: id, status: 'revoked' } }
     if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
@@ -94,6 +96,15 @@ test('explicit mapping approval survives a lost response without clearing the un
   await saved.getByRole('button', { name: 'Refresh saved mappings' }).click()
   await expect(saved).toContainText('Check TMDb configuration and availability')
   await expect(overview.locator('.issue-number')).toHaveText('1')
+  for (const [state, text] of [['active', 'A library sync is active'], ['waiting', 'no active recheck is confirmed']]) {
+    recheckState = state
+    await saved.getByRole('button', { name: 'Refresh saved mappings' }).focus(); await page.keyboard.press('Enter')
+    await expect(saved).toContainText(text)
+    await expect(saved.locator('time')).toHaveAttribute('datetime', asOf)
+    await expect(saved.getByRole('status')).toHaveText('Saved mapping status refreshed.')
+    await expect(overview.locator('.issue-number')).toHaveText('1')
+    expect(approvals).toBe(1); expect(revocations).toBe(0)
+  }
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     await saved.scrollIntoViewIfNeeded()

@@ -11,6 +11,9 @@ import { createSourceMappingManagement } from '../../services/sourceMappingManag
 import { createSourceMappingRecovery } from '../../services/sourceMappingRecovery.mjs';
 import { persistSourceMapping } from '../../services/sourceMappingPersistence.mjs';
 import { MEDIA_SYNC_OWNER_LOCK } from '../../services/mediaSyncLockKeys.mjs';
+import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
+import { requireOwnedMediaSyncDatabase } from '../../services/mediaSyncDatabaseScope.mjs';
+import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
 let pool, db, store, actorId, serverId, libraryId, item, layout, provider, deps;
@@ -47,6 +50,8 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await pool.query('DELETE FROM media_server_items WHERE media_server_id=$1', [serverId]);
+  await pool.query('DELETE FROM library_ingestion_state WHERE library_id=$1', [libraryId]);
+  await pool.query('DELETE FROM media_server_sync_status WHERE library_id=$1', [libraryId]);
   await pool.query('DELETE FROM libraries WHERE media_server_id=$1', [serverId]);
   await pool.query('DELETE FROM media_server WHERE id=$1', [serverId]);
   await pool.query('DELETE FROM audit_log WHERE user_id=$1', [actorId]);
@@ -262,4 +267,55 @@ test('revocation cannot cross an active ingestion owner', async () => {
       .rejects.toMatchObject({ statusCode: 409, code: 'mapping_ingestion_active' });
     expect((await pool.query('SELECT revoked_at FROM source_catalog_mappings WHERE id=$1', [approved.mappingId])).rows[0].revoked_at).toBeNull();
   } finally { await owner.query('SELECT pg_advisory_unlock($1::integer,$2::integer)', [MEDIA_SYNC_OWNER_LOCK,libraryId]); owner.release(); }
+});
+
+test('saved history distinguishes recapture, live owned sync, drift, interruption and completion without provider reads', async () => {
+  const approved = await approve(); let context = await capture();
+  await persistSourceMapping(store, context, (await recover(context)(item)).proof, { analyze });
+  await store.finish(context);
+  const management = createSourceMappingManagement(db);
+  const saved = async () => (await management.listSourceMappings(actorId)).items.find(value => value.id === approved.mappingId);
+  const initial = await saved();
+  expect(initial).toMatchObject({ status: 'materialized', recheckState: null });
+  expect(initial.lastAppliedAt).toBeInstanceOf(Date);
+  const reads = provider.getIdentityDetails.mock.calls.length;
+  const own = createMediaSyncOwnership({ pool });
+  await own(libraryId, async repository => {
+    const ownedDb = requireOwnedMediaSyncDatabase(libraryId);
+    await repository.claim();
+    const sync = (await ownedDb.query(`INSERT INTO media_server_sync_status(media_server_id,library_id,sync_type,status)
+      VALUES ($1,$2,'full','running') RETURNING id`, [serverId,libraryId])).rows[0].id;
+    const capturing = new MediaSourceObservationStore();
+    context = await capturing.start(serverId, libraryId);
+    await capturing.capture(context, [item]);
+    // The lock alone, without the ledger/capture link, does not prove a recheck.
+    expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting', lastAppliedAt: initial.lastAppliedAt });
+    await repository.attach(sync, context);
+    expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'active', lastAppliedAt: initial.lastAppliedAt });
+    for (const [table, field, bad, good, key, id] of [
+      ['library_ingestion_state', 'phase', 'complete', 'running', 'library_id', libraryId],
+      ['library_ingestion_state', 'capture_generation', context.generation + 1, context.generation, 'library_id', libraryId],
+      ['media_source_capture_state', 'source', 'local_capture', 'media_sync', 'library_id', libraryId],
+      ['media_source_observations', 'source_digest', '0'.repeat(64), item.source_identity_evidence.snapshotDigest, 'library_id', libraryId],
+      ['media_server_sync_status', 'status', 'completed', 'running', 'id', sync],
+      ['libraries', 'is_active', false, true, 'id', libraryId],
+      ['media_server', 'is_active', false, true, 'id', serverId],
+    ]) {
+      // Identifiers are fixed fixture values above, never request input.
+      await ownedDb.query(`UPDATE ${table} SET ${field}=$1 WHERE ${key}=$2`, [bad,id]);
+      expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting' });
+      await ownedDb.query(`UPDATE ${table} SET ${field}=$1 WHERE ${key}=$2`, [good,id]);
+    }
+    await ownedDb.query("UPDATE source_catalog_mappings SET last_outcome='checking' WHERE id=$1", [approved.mappingId]);
+    expect(await saved()).toMatchObject({ status: 'verification_deferred', recheckState: null, diagnostic: { code: 'check_unconfirmed' } });
+    await ownedDb.query("UPDATE source_catalog_mappings SET last_outcome='materialized' WHERE id=$1", [approved.mappingId]);
+    expect(await count()).toBe(1);
+    // Deliberately leave markers running when the session releases its lock.
+  });
+  expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting' });
+  expect(provider.getIdentityDetails).toHaveBeenCalledTimes(reads);
+  expect(await persistSourceMapping(store, context, (await recover(context)(item)).proof, { analyze })).toBe(true);
+  await store.finish(context);
+  expect(await saved()).toMatchObject({ status: 'materialized', recheckState: null });
+  expect(await count()).toBe(0);
 });
