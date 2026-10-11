@@ -80,5 +80,65 @@ not inferred vulnerabilities or authorization to combine unrelated upgrades.
 4. Next tooling batch: research and test the Vue plugin/vue-tsc patches separately
    from a Node-major or TypeScript-major migration.
 
-Image rebuild, schema dump and final validation results will be recorded below
-after those checks complete. This document does not certify a release or Unraid.
+## Local image and read-only evaluation
+
+The no-cache Compose build passed from clean implementation commit
+`20e465134d4cd95b60245e15339e0c567d1a7c7c`. Local Docker image ID:
+`sha256:e12dd548c0208b55ea31ec9808985b6f996db38e9084fb7714bf018df5a23801`.
+Its OCI revision matches that commit; this is not a published multi-platform
+registry verification. The build's frontend production compilation passed.
+
+Before replacing local Compose, retained a checksum-verified, readable 75,469,343-byte
+database archive and tagged the exact previous image for rollback. Replacement
+used `--no-build --pull never --no-deps --force-recreate --wait`. The actual running
+image matches the build, health reports database connected, and the container has
+zero restarts and no OOM kill. User 1000:1000, read-only root and 2 GiB cap remain.
+
+Ran the schema dumper against that exact image in a fresh, network-isolated,
+resource-bounded container, not local appdata. Snapshot is unchanged through
+`20261010_220000_source_catalog_mappings.sql`, including 22 seed migrations. Fresh
+consumer checks found zero invented pending work, images or unresolved identities.
+Confirmed the owned temporary container and data directory were removed.
+
+Local read-only consumer checks found four unresolved items across ten active,
+covered libraries, 6,832 classification rows and 6,810 pending image embeddings.
+No metadata issue was hidden to reduce those counts.
+At the subsequent health check, Docker reported 611 MiB of the unchanged 2 GiB
+limit. Since startup, the error ledger contained one optional comparison-context
+warning with status/reason `invalidated`, still unresolved, and no ERROR entries.
+This observation is not a memory soak or proof that optional comparison recovered.
+
+The cross-media hypothesis preview covered all 136 episodes of the reunion's
+source group: 135 source-declared matches plus one proposed movie exception,
+with zero excluded episodes. Source title was “Reunion”; typed catalog title was
+“Love Is Blind: The Reunion”. Reference: `196e8fce-2547-433a-b5ab-f710c889a16c`.
+This checks the complete proposal, **not the actual file's identity**.
+
+The database connection enforced read-only transactions. Before/after ledgers
+remained seven approved/materialized mappings, zero human episode exceptions and
+four unresolved items. No approvals, provider writes, Unraid changes or Plex
+changes. The first private probe stopped at source selection because title case
+differed; correcting that diagnostic selection enabled the preview without
+changing any product identity rules.
+
+## Validation limits and handoff
+
+The two-worker full client coverage attempt also ran slowly and reported an
+existing CSRF source-scan test timeout (13.16 seconds). It was stopped rather than
+weakening the test deadline. Full local coverage and the cross-workspace coverage
+ratchet are therefore not certified by this work; do not reuse older reports.
+Targeted tests and CI results are separate evidence.
+
+Final restored-dependency client check passed all 52 tests across the mapping,
+named API leaf and unchanged CSRF source-scan suites (7.85 seconds). The CSRF
+assertion and deadline were unchanged. Root lint, both workspace typechecks,
+dependency/production knip, copyright, reviewed ownership drift, ESM import/mock
+checks, 40 tooling tests and Markdown lint passed. No security, ownership or
+coverage baseline was lowered.
+
+Implementation was pushed to main. Its
+[CI run](https://github.com/cloudbyday90/Classifarr/actions/runs/38167486136) was still
+running during local image evaluation; Gitleaks, copyright, OSV, Trivy, CodeQL and
+resource regression passed for that exact SHA. Follow-up documentation does not
+change image contents.
+This document does not certify a release or Unraid deployment.
