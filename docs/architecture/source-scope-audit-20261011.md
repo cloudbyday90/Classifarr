@@ -91,3 +91,19 @@ and provider configuration remain unchanged; no provider write was made.
 Next, observe the seven mappings through normal sync and inspect any specific
 deferred diagnostic. Separately repair the missing episode evidence for the four
 remaining items, with consent before any shared-provider metadata mutation.
+
+## Normal sync completion
+
+At 10:01:13 UTC on the same day, a fresh read-only check found **four** unresolved
+items (two source-review, two retry-wait), ten current library captures and all
+seven approved mappings in `materialized` state with no deferred diagnostic.
+The built-in 06:00 Eastern sync had just applied them. Earlier `awaiting_sync`
+was a real pending handoff, not a failed approval. No manual sync, new recovery
+loop, retry reset or additional approval was needed.
+
+This proves local owned materialization, not completion of every optional vector
+job or repair on Unraid. The remaining four are the two individual episode gaps
+and two incomplete grouped-source items described above. They remain unresolved
+by design; no guessed IDs or partial mapping can be presented as a complete repair.
+Next inspect and repair their specific source/catalog episode evidence, preserving
+grouping and obtaining permission before any shared-provider metadata changes.

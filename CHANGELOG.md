@@ -14,8 +14,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 - **HTTP runtime** — Update Express response handling with regression coverage
   for valid response framing, downloads, request limits and sanitized errors.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
-  backend while preserving runtime versions, install restrictions and compatibility
-  checks.
+  backend and update dependency analysis, while preserving runtime versions,
+  install restrictions and compatibility checks. Verify both uncached and cached
+  analysis without weakening dependency rules.
 
 ### Added
 
