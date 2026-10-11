@@ -1,6 +1,7 @@
 # Combined source identity and scope evidence
 
 Decision date: 2026-10-11 (America/New_York). No release or automatic repair.
+Observed results are recorded separately in the [outcome](source-combined-evidence-outcome.md).
 
 ## Problem and decision
 
