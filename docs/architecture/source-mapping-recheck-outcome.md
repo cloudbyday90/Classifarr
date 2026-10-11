@@ -29,6 +29,9 @@ silently enabled here. Incomplete episode/group evidence still requires repair.
   checks, owner release and successful reapplication. Status reads do not call
   providers or clear the unresolved observation. Initial fixture callback and
   cleanup errors were corrected before the successful run.
+  A subsequent negative test reproduced a maintenance lock falsely looking like
+  a sync against stale markers. The final predicate also requires an ingestion
+  slot on the same session. A slot held by a different session cannot satisfy it.
 - Chromium mapping flow: passed, including keyboard refresh, announced status,
   last-success timestamp, unchanged unresolved count, revocation and 320/390 px
   reflow. The mobile capture was visually inspected. Unrelated evaluation/retry

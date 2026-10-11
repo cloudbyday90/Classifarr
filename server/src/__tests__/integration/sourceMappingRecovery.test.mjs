@@ -10,7 +10,7 @@ import { createSourceMappingApproval } from '../../services/sourceMappingApprova
 import { createSourceMappingManagement } from '../../services/sourceMappingManagement.mjs';
 import { createSourceMappingRecovery } from '../../services/sourceMappingRecovery.mjs';
 import { persistSourceMapping } from '../../services/sourceMappingPersistence.mjs';
-import { MEDIA_SYNC_OWNER_LOCK } from '../../services/mediaSyncLockKeys.mjs';
+import { MEDIA_SYNC_OWNER_LOCK, MEDIA_SYNC_SLOT_LOCK } from '../../services/mediaSyncLockKeys.mjs';
 import { createMediaSyncOwnership } from '../../services/mediaSyncOwnership.mjs';
 import { requireOwnedMediaSyncDatabase } from '../../services/mediaSyncDatabaseScope.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
@@ -313,6 +313,23 @@ test('saved history distinguishes recapture, live owned sync, drift, interruptio
     // Deliberately leave markers running when the session releases its lock.
   });
   expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting' });
+  const maintenance = await pool.connect();
+  try {
+    // Revocation shares the library namespace but does not own an ingestion slot.
+    await maintenance.query('SELECT pg_advisory_lock($1::integer,$2::integer)', [MEDIA_SYNC_OWNER_LOCK,libraryId]);
+    expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting' });
+    const other = await pool.connect();
+    try {
+      await other.query('SELECT pg_advisory_lock($1::integer,$2::integer)', [MEDIA_SYNC_SLOT_LOCK,1]);
+      expect(await saved()).toMatchObject({ status: 'awaiting_sync', recheckState: 'waiting' });
+    } finally {
+      await other.query('SELECT pg_advisory_unlock($1::integer,$2::integer)', [MEDIA_SYNC_SLOT_LOCK,1]);
+      other.release();
+    }
+  } finally {
+    await maintenance.query('SELECT pg_advisory_unlock($1::integer,$2::integer)', [MEDIA_SYNC_OWNER_LOCK,libraryId]);
+    maintenance.release();
+  }
   expect(provider.getIdentityDetails).toHaveBeenCalledTimes(reads);
   expect(await persistSourceMapping(store, context, (await recover(context)(item)).proof, { analyze })).toBe(true);
   await store.finish(context);

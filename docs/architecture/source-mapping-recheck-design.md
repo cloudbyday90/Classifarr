@@ -18,7 +18,9 @@ library sync. Fixed failure guidance and revoked state take precedence.
 An active hint requires the library and server enabled, the same server and media
 type, the current observation's source digest and generation, a collecting
 `media_sync` capture, the ingestion ledger and sync-status row referring to that
-capture, and a granted advisory lock for this library in this database. A stale
+capture, and granted exclusive advisory locks for this library and an ingestion
+slot in the same database session. The library lock alone also covers maintenance
+and cannot identify a sync. A stale
 running marker, timestamp or different library lock is insufficient. This is an
 observational hint, never a write-admission check or proof the individual item
 has reached its verification step. Interrupted `checking` stays unconfirmed;
