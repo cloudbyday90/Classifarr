@@ -2,6 +2,7 @@
 import { parseScopeCatalogWorks } from './sourceMappingGuidance'
 import { parseCombinedEvidence } from './sourceCombinedEvidence'
 import { parseEpisodeGap } from './sourceEpisodeGap'
+import { parseEpisodeReviews } from './reviewedEpisodeMappings'
 export const scopeExclusionLabels = Object.freeze({
   unmapped_season: 'No season mapping proposed',
   ambiguous_episode_ids: 'Conflicting episode IDs',
@@ -11,6 +12,8 @@ export const scopeExclusionLabels = Object.freeze({
   episode_outside_mapping: 'Episode belongs to a different series or season',
   episode_numbering_differs: 'Episode numbering differs',
   parent_identity_unresolved: 'Source does not declare this as its single TMDb movie ID',
+  episode_target_missing: 'The declared catalog episode target could not be verified',
+  reused_episode_target: 'Multiple source episodes claim the same catalog episode',
 })
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 10000
 
@@ -43,6 +46,8 @@ export function parseSourceScopeEvidence(data, draft) {
     }
   }
   if (comparison.unit === 'movie' && comparison.total !== 1) return null
+  const episodeReviews = parseEpisodeReviews(data, draft.scope, comparison)
+  if (!episodeReviews) return null
   // Old servers can still display a preview, but cannot enable approval without a fingerprint.
   const evidenceFingerprint = /^[a-f0-9]{64}$/.test(data.evidenceFingerprint ?? '') ? data.evidenceFingerprint : null
   const catalogWorks = parseScopeCatalogWorks(data.catalogWorks, draft, comparison.unit)
@@ -50,5 +55,6 @@ export function parseSourceScopeEvidence(data, draft) {
   const combinedAudit = data.combinedAudit === undefined ? null : parseCombinedEvidence(data.combinedAudit, draft.scope, comparison)
   if (data.combinedAudit !== undefined && !combinedAudit) return null
   return { reference: data.reference, evidenceFingerprint, unit: comparison.unit, total: comparison.total,
-    matched: comparison.matched, exclusions, catalogWorks, combinedAudit }
+    matched: comparison.matched, exclusions, catalogWorks, combinedAudit, episodeReviews,
+    operatorReviewed: comparison.operatorReviewed ?? 0 }
 }

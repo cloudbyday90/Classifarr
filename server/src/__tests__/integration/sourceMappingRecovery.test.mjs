@@ -118,6 +118,62 @@ test('refuses partial mappings even when the mapped season matches', async () =>
   expect(await count()).toBe(1);
 });
 
+function humanEpisodeScope(kind = 'seasons') {
+  layout.episodes[1].providerIds.tmdb_id = [];
+  provider.getIdentityDetails.mockResolvedValue({ id: 10, name: 'Fixture', overview: 'Whole series description',
+    seasons: [0, 1, 2].map(number => ({ id: 50 + number, season_number: number, episode_count: 1 })) });
+  provider.getIdentitySeasonDetails.mockImplementation(async (_id, number) => ({ id: 50 + number, season_number: number,
+    overview: `Season ${number} description`, episodes: [{ id: 100 + number, show_id: 10, season_number: number,
+      episode_number: 1, name: `Episode ${number}` }] }));
+  return { ...scope(kind), episodeMappings: [{ sourceSeason: 2, sourceEpisode: 1, tmdbSeriesId: 10,
+    tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 }] };
+}
+
+test.each(['whole_work', 'seasons'])('human episode approval, owned completion, repeat and revocation: %s', async kind => {
+  const input = await approvalInput(humanEpisodeScope(kind));
+  await expect(createSourceMappingApproval(deps)(actorId, input.key, input.body)).rejects.toMatchObject({ statusCode: 400 });
+  expect((await pool.query('SELECT id FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+  input.body.episodesConfirmed = true;
+  const approved = await createSourceMappingApproval(deps)(actorId, input.key, input.body);
+  expect(await createSourceMappingApproval(deps)(actorId, input.key, input.body)).toEqual(approved);
+  const audits = (await pool.query("SELECT metadata FROM audit_log WHERE user_id=$1 AND action='source_mapping_approved'", [actorId])).rows;
+  expect(audits).toHaveLength(1);
+  expect(audits[0].metadata).toMatchObject({ identityAuthority: 'operator_episode_mapping', episodesConfirmed: true });
+  expect(await count()).toBe(1);
+  const context = await capture(), proof = (await recover(context)(item)).proof;
+  expect(proof).toBeTruthy();
+  expect(await persistSourceMapping(store, context, proof, { analyze })).toBe(true);
+  await store.finish(context);
+  expect(await count()).toBe(0);
+  if (kind === 'seasons') expect((await corpus()).map(row => row.catalog_scope.seasonNumber).sort()).toEqual([0, 1]);
+  const repeated = await capture();
+  expect(await persistSourceMapping(store, repeated, (await recover(repeated)(item)).proof, { analyze })).toBe(true);
+  await store.finish(repeated);
+  await createSourceMappingManagement(db).revokeSourceMapping(actorId, approved.mappingId, { confirmed: true });
+  expect(await count()).toBe(1);
+});
+
+test('human episode consent cannot follow a changed source layout after restart or cached verification', async () => {
+  const input = await approvalInput(humanEpisodeScope()); input.body.episodesConfirmed = true;
+  await createSourceMappingApproval(deps)(actorId, input.key, input.body);
+  const first = await capture();
+  await persistSourceMapping(store, first, (await recover(first)(item)).proof, { analyze });
+  await store.finish(first);
+  layout.digest = 'f'.repeat(64);
+  const restarted = await capture();
+  expect(await recover(restarted)(item)).toEqual({ handled: true, proof: null });
+  const saved = (await pool.query('SELECT last_outcome,retry_after FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rows[0];
+  expect(saved.last_outcome).toBe('deferred:source_changed'); expect(saved.retry_after).toBeTruthy();
+  expect(await count()).toBe(1); await store.finish(restarted);
+});
+
+test('one human declaration cannot approve another unresolved episode', async () => {
+  const proposal = humanEpisodeScope(); layout.episodes[0].providerIds.tmdb_id = [];
+  const input = await approvalInput(proposal); input.body.episodesConfirmed = true;
+  await expect(createSourceMappingApproval(deps)(actorId, input.key, input.body)).rejects.toMatchObject({ code: 'scope_incomplete' });
+  expect((await pool.query('SELECT id FROM source_catalog_mappings WHERE library_id=$1', [libraryId])).rowCount).toBe(0);
+});
+
 test.each(['fingerprint', 'source', 'actor', 'confirmation', 'episode'])('approval refuses changed %s', async mode => {
   const input = await approvalInput();
   if (mode === 'fingerprint') input.body.evidenceFingerprint = '0'.repeat(64);

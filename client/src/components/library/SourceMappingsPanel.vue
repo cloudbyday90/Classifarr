@@ -48,6 +48,7 @@
             Source season {{ edge.sourceSeason }} → TMDb series {{ edge.tmdbSeriesId }}, season {{ edge.tmdbSeason }}
           </li>
         </ul>
+        <ReviewedEpisodeList :mappings="item.episodeMappings" />
         <p v-if="item.retryAfter">
           Next verification eligible after {{ new Date(item.retryAfter).toLocaleString() }}.
         </p>
@@ -96,6 +97,7 @@
 import { onBeforeUnmount, ref } from 'vue'
 import { getSourceMappings, revokeSourceMapping } from '@/api/mediaIdentityReviewApi'
 import { parseSourceMappings, sourceMappingStatusText } from '@/utils/sourceMappings'
+import ReviewedEpisodeList from './ReviewedEpisodeList.vue'
 const report = ref(null), selected = ref([]), busy = ref(false), error = ref(''), notice = ref(''), uncertain = ref(false)
 let sequence = 0
 onBeforeUnmount(() => { sequence++ })

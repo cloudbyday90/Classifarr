@@ -3,6 +3,9 @@
 Observed on 2026-10-11 (America/New_York). This is local development work, not a
 release or an Unraid deployment. See the [design](source-episode-gap-design.md).
 
+Follow-up: [reviewed episode mappings](reviewed-episode-mappings-design.md) adds
+the explicitly requested human-decision path without modifying shared Plex.
+
 ## Findings and implementation
 
 Bounded local reads used PostgreSQL read-only sessions, a 10-second statement

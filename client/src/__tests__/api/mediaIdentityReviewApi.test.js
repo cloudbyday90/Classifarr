@@ -9,6 +9,15 @@ import mediaServerApi from '../../api/mediaServer'
 
 beforeEach(() => vi.clearAllMocks())
 describe('media identity API leaf', () => {
+  it('preserves distinct human-episode consent through the named approval endpoint', async () => {
+    const signal = new AbortController().signal
+    const body = { confirmed: true, episodesConfirmed: true, evidenceFingerprint: 'a'.repeat(64),
+      scope: { kind: 'whole_work', tmdbId: 10, episodeMappings: [{ sourceSeason: 1, sourceEpisode: 2,
+        tmdbSeriesId: 10, tmdbSeason: 0, tmdbEpisode: 1, tmdbEpisodeId: 100 }] } }
+    await approveSourceScope('key', body, signal)
+    expect(mockPost).toHaveBeenCalledWith('/media-identity-review/source-scopes/key/approve', body,
+      { skipAutomaticRetry: true, timeout: 105000, signal })
+  })
   it('unwraps reads through the shared GET helper and passes filters', async () => {
     mockGet.mockResolvedValue({ items: [] })
     expect(await getMediaIdentityReviewItems({ mediaType: 'tv', afterId: 4 })).toEqual({ items: [] })

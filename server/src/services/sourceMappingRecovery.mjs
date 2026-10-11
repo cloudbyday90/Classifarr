@@ -88,6 +88,7 @@ export function createSourceMappingRecovery({ store, context, source, createCata
       const layout = await read();
       stage = 'validation';
       if (layout.identity.snapshotDigest !== mapping.source_digest) throw new SourceMappingCheckError('source_changed');
+      if (mapping.scope.episodeMappings && layout.digest !== mapping.layout_digest) throw new SourceMappingCheckError('source_changed');
       const plan = scopeEvidencePlan(layout, mapping.scope);
       stage = 'catalog';
       const catalog = await readScopeCatalog(plan, provider, signal);
@@ -109,7 +110,7 @@ export function createSourceMappingRecovery({ store, context, source, createCata
       signal.throwIfAborted();
       stage = 'validation';
       return recoveredProof(item, mapping, layout.digest,
-        approvedScopeDocuments(mapping.scope, mapping.media_type, catalog), new Date().toISOString());
+        approvedScopeDocuments(mapping.scope, mapping.media_type, catalog, layout), new Date().toISOString());
     } catch (error) {
       source.signal?.throwIfAborted();
       await recordFailure(sourceMappingFailureCode(error, stage, signal));

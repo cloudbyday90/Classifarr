@@ -14,9 +14,13 @@ const changed = () => new ConflictError('Evidence changed. Check the mapping aga
 /** The browser can express intent, but cannot supply the evidence being stored. */
 export function createSourceMappingApproval(deps) {
   return async (actorId, key, body, signal) => {
-    reviewBody(body, ['offset', 'sourceVersion', 'scope', 'evidenceFingerprint', 'confirmed']);
+    reviewBody(body, ['offset', 'sourceVersion', 'scope', 'evidenceFingerprint', 'confirmed',
+      ...(body?.scope?.episodeMappings ? ['episodesConfirmed'] : [])]);
     if (body.confirmed !== true || !/^[a-f0-9]{64}$/.test(body.evidenceFingerprint ?? '')) {
       throw new ValidationError('Explicit confirmation of current evidence is required');
+    }
+    if (body.scope?.episodeMappings && body.episodesConfirmed !== true) {
+      throw new ValidationError('Explicit confirmation of every human episode mapping is required');
     }
     const expected = body.evidenceFingerprint;
     const inspect = createSourceScopeEvidenceService({ ...deps, onVerified: async verified => {
@@ -26,7 +30,7 @@ export function createSourceMappingApproval(deps) {
       if (!comparison.total || comparison.matched !== comparison.total || comparison.exclusions.length) {
         throw new ConflictError('Every source item must match the approved scope.', { code: 'scope_incomplete' });
       }
-      const documents = approvedScopeDocuments(result.scope, target.media_type, catalog);
+      const documents = approvedScopeDocuments(result.scope, target.media_type, catalog, source);
       return deps.db.withTransaction(async tx => {
         await tx.query("SET LOCAL statement_timeout='5s'");
         await tx.query("SET LOCAL lock_timeout='1s'");
@@ -62,7 +66,8 @@ export function createSourceMappingApproval(deps) {
         [id,target.library_id,target.media_server_id,target.external_id,target.media_type,target.source_digest,
           source.digest,sourceMappingConfiguration(target),expected,JSON.stringify(result.scope),JSON.stringify(documents),actorId,target.provider_fields]);
         await tx.query(`INSERT INTO audit_log(user_id,action,metadata) VALUES ($1,'source_mapping_approved',$2::jsonb)`,
-          [actorId,JSON.stringify({ version: 1, mappingId: id, libraryId: target.library_id, scope: result.scope, evidenceFingerprint: expected })]);
+          [actorId,JSON.stringify({ version: 1, mappingId: id, libraryId: target.library_id, scope: result.scope, evidenceFingerprint: expected,
+            ...(result.scope.episodeMappings ? { identityAuthority: 'operator_episode_mapping', episodesConfirmed: true } : {}) })]);
         verified.signal.throwIfAborted();
         return { version: 'source_mapping_approval.v1', mappingId: id, status: 'approved', materialized: false };
       });

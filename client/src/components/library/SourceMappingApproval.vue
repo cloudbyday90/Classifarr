@@ -2,6 +2,14 @@
 <template>
   <section aria-label="Approve complete source mapping">
     <p>Saving a mapping keeps the source grouping unchanged. No Plex, Emby or Jellyfin data is edited. All source seasons must pass verification; partial mappings cannot clear this issue.</p>
+    <label v-if="draft.scope.episodeMappings">
+      <input
+        v-model="episodesConfirmed"
+        type="checkbox"
+        :disabled="busy || attempted"
+      >
+      I verified every listed episode identity myself, including any missing or different provider IDs. Save these as my explicit episode mappings, not automatic matches.
+    </label>
     <label>
       <input
         v-model="confirmed"
@@ -12,7 +20,7 @@
     </label>
     <button
       type="button"
-      :disabled="!confirmed || busy || attempted"
+      :disabled="!confirmed || (draft.scope.episodeMappings && !episodesConfirmed) || busy || attempted"
       @click="approve"
     >
       Save mapping for recovery
@@ -35,7 +43,7 @@
 <script setup>
 import { useSourceMappingApproval } from '@/composables/useSourceMappingApproval'
 const props = defineProps({ draft: { type: Object, required: true }, evidence: { type: Object, required: true }, offset: { type: Number, required: true } })
-const { confirmed, busy, attempted, error, notice, approve } = useSourceMappingApproval(() => ({ key: props.draft.sourceKey,
+const { confirmed, episodesConfirmed, busy, attempted, error, notice, approve } = useSourceMappingApproval(() => ({ key: props.draft.sourceKey,
   body: { offset: props.offset, sourceVersion: props.draft.sourceVersion,
     scope: props.draft.scope, evidenceFingerprint: props.evidence.evidenceFingerprint } }))
 </script>

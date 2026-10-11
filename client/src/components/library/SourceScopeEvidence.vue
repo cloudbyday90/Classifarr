@@ -31,7 +31,10 @@
         Checking source and catalog evidence…
       </template>
       <template v-else-if="result">
-        {{ result.matched }} of {{ result.total }} {{ result.unit === 'episode' ? 'episodes have matching catalog membership' : 'movies match the source TMDb declaration' }}.
+        {{ result.matched }} of {{ result.total }} {{ result.unit === 'episode' ? 'episodes are covered by the checked proposal' : 'movies match the source TMDb declaration' }}.
+        <template v-if="result.episodeReviews.length">
+          Human-reviewed episode identities: {{ result.operatorReviewed }}. Source-declared ID matches: {{ result.matched - result.operatorReviewed }}.
+        </template>
         {{ result.exclusions.length }} excluded from this comparison. This evidence check did not enable backfill or resolve the conflict.
         <template v-if="result.combinedAudit">
           {{ result.combinedAudit.status === 'catalog_and_scope_agreement' ? 'Combined catalog checks agree; approval is still separate.' : 'Combined identity and scope check needs review.' }}
@@ -43,6 +46,7 @@
     </p>
     <template v-if="result">
       <p>Membership is not independent cross-provider identity verification. Your explicit approval is still required.</p>
+      <ReviewedEpisodeList :mappings="result.episodeReviews" />
       <SourceCombinedEvidence
         v-if="result.combinedAudit"
         :audit="result.combinedAudit"
@@ -117,6 +121,7 @@ import { sourceMappingGuidance as guidance } from '@/utils/sourceMappingGuidance
 import SourceMappingApproval from './SourceMappingApproval.vue'
 import SourceCombinedEvidence from './SourceCombinedEvidence.vue'
 import SourceEpisodeGap from './SourceEpisodeGap.vue'
+import ReviewedEpisodeList from './ReviewedEpisodeList.vue'
 const props = defineProps({ draft: { type: Object, required: true }, offset: { type: Number, required: true } })
 const { result, error, busy, notice, inspect, cancel } = useSourceScopeEvidence(() => props.draft, () => props.offset)
 </script>

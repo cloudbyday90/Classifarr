@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { sourceMappingGuidance } from './sourceMappingGuidance'
+import { parseReviewedEpisodeMappings } from './reviewedEpisodeMappings'
 export const sourceMappingStatusLabels = Object.freeze({
   awaiting_sync: 'Awaiting successful verification by a library sync. This is not a completed repair.',
   verification_deferred: 'This verification has not completed. The item remains unresolved. See the recorded reason below.',
@@ -32,7 +33,9 @@ export function parseSourceMappings(data) {
     } else if (scope?.kind !== 'seasons' || scope.coverage !== 'complete' || !Array.isArray(scope.mappings) ||
         !scope.mappings.length || scope.mappings.length > 32 || scope.mappings.some(edge =>
           !integer(edge?.sourceSeason) || !integer(edge.tmdbSeriesId) || !edge.tmdbSeriesId || !integer(edge.tmdbSeason))) return null
-    items.push({ id: item.id, title: item.title, libraryName: item.libraryName, status: item.status, retryAfter: item.retryAfter,
+    const episodeMappings = parseReviewedEpisodeMappings(scope)
+    if (!episodeMappings) return null
+    items.push({ id: item.id, title: item.title, libraryName: item.libraryName, status: item.status, retryAfter: item.retryAfter, episodeMappings,
       lastAppliedAt: item.lastAppliedAt ?? null, recheckState: item.recheckState ?? null,
       guidance: item.status === 'verification_deferred'
         ? sourceMappingGuidance[Object.hasOwn(sourceMappingGuidance, item.diagnostic?.code ?? '') ? item.diagnostic.code : 'unknown'] : null,

@@ -25,6 +25,7 @@ export function createMediaIdentityReviewRouter({ authenticateToken, requireAdmi
       const cancel = () => controller.abort();
       res.once('close', cancel);
       try {
+        // The service binds episodeMappings to fresh evidence and requires separate episodesConfirmed consent.
         const result = await service.approveSourceScope(req.reviewActorId, req.params.key, req.body, controller.signal);
         if (!controller.signal.aborted) res.json(result);
       } finally { res.removeListener('close', cancel); }

@@ -4,19 +4,22 @@ import { approveSourceScope } from '@/api/mediaIdentityReviewApi'
 
 export function useSourceMappingApproval(intent) {
   const confirmed = ref(false), busy = ref(false), attempted = ref(false), error = ref(''), notice = ref('')
+  const episodesConfirmed = ref(false)
   let controller, sequence = 0
   function clear() {
     sequence++; controller?.abort(); controller = null
-    confirmed.value = false; busy.value = false; attempted.value = false; error.value = ''; notice.value = ''
+    confirmed.value = false; episodesConfirmed.value = false; busy.value = false; attempted.value = false; error.value = ''; notice.value = ''
   }
   watch(() => JSON.stringify(intent()), clear)
   onBeforeUnmount(clear)
   async function approve() {
     if (!confirmed.value || busy.value || attempted.value) return
+    if (intent().body.scope.episodeMappings && !episodesConfirmed.value) return
     const current = JSON.parse(JSON.stringify(intent())), ticket = sequence
     attempted.value = true; busy.value = true; controller = new AbortController()
     try {
-      const { data } = await approveSourceScope(current.key, { ...current.body, confirmed: true }, controller.signal)
+      const { data } = await approveSourceScope(current.key, { ...current.body, confirmed: true,
+        ...(current.body.scope.episodeMappings ? { episodesConfirmed: true } : {}) }, controller.signal)
       if (ticket !== sequence) return
       if (data?.version !== 'source_mapping_approval.v1' || data.status !== 'approved' || data.materialized !== false ||
           !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(data.mappingId)) throw new Error('invalid_receipt')
@@ -28,5 +31,5 @@ export function useSourceMappingApproval(intent) {
         : 'Approval could not be confirmed. Check saved mappings before submitting again; a lost response does not mean nothing was saved.'
     } finally { if (ticket === sequence) { busy.value = false; controller = null } }
   }
-  return { confirmed, busy, attempted, error, notice, approve }
+  return { confirmed, episodesConfirmed, busy, attempted, error, notice, approve }
 }

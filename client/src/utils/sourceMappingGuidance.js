@@ -1,5 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 export const sourceMappingGuidance = Object.freeze({
+  episode_source_missing: 'A declared source episode is no longer in the captured layout. Refresh and review the complete mapping; do not transfer an old decision to another episode.',
+  episode_target_missing: 'The declared TMDb episode ID does not exist at that series/season/episode position. Check the typed target against the catalog before proposing it again.',
+  reused_episode_target: 'More than one source episode claims the same catalog episode. Correct the episode declarations; duplicate targets cannot approve recovery.',
   source_changed: 'The source identity or episode layout changed. Refresh metadata issues, then review every season against the current source before replacing the saved mapping.',
   configuration_changed: 'The media-server or TMDb configuration changed. Verify those settings, then review a fresh mapping. Existing approval is not transferred to a different configuration.',
   source_seasons_changed: 'The source season list changed. Include every current source season, including specials when present, then check the complete draft again.',
@@ -12,10 +15,10 @@ export const sourceMappingGuidance = Object.freeze({
   unmapped_season: 'Add an explicit mapping for every source season. A partial mapping stays unresolved, even when its other seasons match.',
   ambiguous_episode_ids: 'Inspect the listed episode in the media server: it declares conflicting IDs. Verify its match and refresh its metadata if appropriate, then check again. Do not select an ID arbitrarily.',
   reused_episode_id: 'The same provider episode ID appears more than once. Review duplicate or combined episodes in the source. Preserve the grouping and report unsupported layouts instead of deleting an ID.',
-  missing_tmdb_episode_id: 'The source supplied no TMDb ID for the listed episode. Check its match and episode-level metadata in the media server, then check again. A series poster or synopsis does not supply this episode ID.',
+  missing_tmdb_episode_id: 'The source supplied no TMDb ID for the listed episode. Check its match and episode-level metadata in the media server, then check again. A series poster or synopsis does not supply this episode ID. To keep the source unchanged, an administrator can enter and explicitly confirm a reviewed episode mapping in the draft.',
   episode_absent_from_scope: 'The episode ID is not in the proposed catalog scope. Review the series and season assignments against the source episode; do not infer membership from its title.',
   episode_outside_mapping: 'The episode belongs to another series or season within the proposed scope. Correct the explicit season assignment, keeping the source grouped.',
-  episode_numbering_differs: 'The episode ID matches but its numbering differs. Check the source episode-order setting against the TMDb season. If the intended order differs, report the unsupported layout rather than renumbering blindly.',
+  episode_numbering_differs: 'The episode ID matches but its numbering differs. Check the source episode-order setting against the TMDb season. To preserve that order, enter a reviewed episode mapping and explicitly confirm its identity instead of renumbering blindly.',
   parent_identity_unresolved: 'The source does not declare this single TMDb movie ID. Review its movie match and conflicting declarations before proposing a different ID.',
   source_unavailable: 'The source layout could not be read. Check media-server connectivity and access in Settings. Keep the mapping while the existing retry cooldown runs.',
   catalog_unavailable: 'The catalog check could not finish. Check TMDb configuration and availability. Keep the mapping while the existing retry cooldown runs.',
@@ -26,6 +29,7 @@ export const sourceMappingGuidance = Object.freeze({
 
 const evidenceCodes = Object.freeze({
   scope_catalog_season_missing: 'catalog_season_missing', scope_catalog_invalid: 'catalog_invalid',
+  scope_episode_source_missing: 'episode_source_missing', scope_episode_target_missing: 'episode_target_missing',
   scope_catalog_scope_limit: 'scope_limit', scope_scope_limit: 'scope_limit', scope_invalid_scope: 'invalid_scope',
   scope_source_unavailable: 'source_unavailable', scope_evidence_timed_out: 'timed_out',
   scope_parent_lookup_limit: 'Parent identifiers exceed the bounded lookup limit. Review the source IDs; do not remove identifiers just to pass the check.',

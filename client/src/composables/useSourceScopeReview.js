@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { reviewSourceScope } from '@/api/mediaIdentityReviewApi'
+import { parseReviewedEpisodeMappings } from '@/utils/reviewedEpisodeMappings'
 
 export function useSourceScopeReview(source, offset) {
   const result = ref(null), error = ref(''), busy = ref(false)
@@ -23,6 +24,9 @@ export function useSourceScopeReview(source, offset) {
           !['whole_work', 'seasons'].includes(data.scope?.kind) ||
           (data.scope.kind === 'seasons' && (!Array.isArray(data.scope.mappings) || !Array.isArray(data.scope.sourceSeasonNumbers))) ||
           data.backfill?.eligible !== false || data.backfill.excludedScope !== 'all') throw new Error('invalid_response')
+      const proposed = parseReviewedEpisodeMappings(scope), echoed = parseReviewedEpisodeMappings(data.scope)
+      if (!proposed || !echoed || JSON.stringify(proposed) !== JSON.stringify(echoed) ||
+          (item.mediaType !== 'tv' && echoed.length)) throw new Error('invalid_episode_response')
       result.value = data
     } catch (failure) {
       if (ticket !== sequence) return

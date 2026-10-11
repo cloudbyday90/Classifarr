@@ -3,8 +3,10 @@ import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { sourceIssuePage } from '../src/__tests__/fixtures/sourceIdentityIssues.js'
 
-for (const episodeGaps of [false, true]) {
-test(episodeGaps ? 'episode gaps explain missing IDs and catalog positions without allowing approval'
+for (const mode of ['legacy', 'gaps', 'reviewed']) {
+const episodeGaps = mode !== 'legacy', reviewed = mode === 'reviewed'
+test(reviewed ? 'human episode mappings require separate keyboard confirmation and remain pending until sync'
+  : episodeGaps ? 'episode gaps explain missing IDs and catalog positions without allowing approval'
   : 'explicit mapping approval survives a lost response without clearing the unresolved count', async ({ page }, testInfo) => {
   const asOf = '2026-10-10T12:00:00Z', id = '2e851bf4-9497-4b99-8b7c-e8117a05c762'
   let approvals = 0, revocations = 0, lookups = 0, draft, recheckState = null
@@ -69,9 +71,19 @@ test(episodeGaps ? 'episode gaps explain missing IDs and catalog positions witho
           target: { tmdbSeriesId: 10, season: 10, episode: 13 } } },
       ] }
     }
+    if (reviewed && path.endsWith('/evidence')) {
+      delete data.combinedAudit
+      data.identityAuthority = 'operator_episode_mapping'
+      data.episodeReviews = draft.scope.episodeMappings.map(edge => ({ ...edge, title: 'Synthetic special' }))
+      data.comparison = { unit: 'episode', total: 2, matched: 2, operatorReviewed: 1, exclusions: [] }
+    }
     if (path.endsWith('/approve')) {
       approvals++
       expect(route.request().postDataJSON()).toMatchObject({ confirmed: true, evidenceFingerprint: 'd'.repeat(64), scope: { kind: 'whole_work', tmdbId: 10 } })
+      if (reviewed) {
+        expect(route.request().postDataJSON().episodesConfirmed).toBe(true)
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ version: 'source_mapping_approval.v1', mappingId: id, status: 'approved', materialized: false }) }); return
+      }
       await route.abort('failed'); return
     }
     if (path.endsWith('/source-scopes/mappings')) data = { version: 'source_mappings.v1', offset: 0, hasMore: false,
@@ -79,6 +91,9 @@ test(episodeGaps ? 'episode gaps explain missing IDs and catalog positions witho
         diagnostic: recheckState ? null : { code: 'catalog_unavailable' }, retryAfter: null,
         lastAppliedAt: recheckState ? asOf : null, recheckState: revocations ? null : recheckState,
         status: revocations ? 'revoked' : recheckState ? 'awaiting_sync' : 'verification_deferred' }] : [] }
+    if (reviewed && path.endsWith('/source-scopes/mappings') && data.items.length) {
+      Object.assign(data.items[0], { scope: draft.scope, diagnostic: null, status: 'awaiting_sync' })
+    }
     if (path.endsWith('/revoke')) { revocations++; data = { version: 'source_mapping_revocation.v1', mappingId: id, status: 'revoked' } }
     if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
@@ -87,6 +102,39 @@ test(episodeGaps ? 'episode gaps explain missing IDs and catalog positions witho
   const overview = page.getByRole('region', { name: 'Your libraries at a glance' })
   await overview.getByRole('button', { name: 'See items & recovery' }).click()
   await page.getByText('Draft a catalog mapping (admin)', { exact: true }).click()
+  if (reviewed) {
+    await page.getByLabel('TMDb series ID', { exact: true }).fill('10')
+    const form = page.getByRole('region', { name: 'Human-reviewed episode mappings' })
+    await form.getByRole('button', { name: 'Add reviewed episode mapping' }).focus(); await page.keyboard.press('Enter')
+    for (const [label, value] of [['Source season', '1'], ['Source episode', '2'], ['TMDb series ID', '10'],
+      ['TMDb season', '0'], ['TMDb episode number', '1'], ['TMDb episode ID', '100']]) await form.getByLabel(label, { exact: true }).fill(value)
+    await page.getByRole('button', { name: 'Check draft structure' }).click()
+    await page.getByRole('button', { name: 'Check source and catalog evidence' }).click()
+    const evidence = page.getByRole('region', { name: 'Draft source and catalog evidence' })
+    await expect(evidence.getByRole('status').filter({ hasText: 'episodes are covered' })).toContainText('Human-reviewed episode identities: 1')
+    await expect(evidence.getByRole('region', { name: 'Human episode identity decisions' })).toContainText('Synthetic special')
+    const approval = evidence.getByRole('region', { name: 'Approve complete source mapping' })
+    await approval.getByRole('checkbox', { name: 'I reviewed the proposed catalog mapping', exact: false }).check()
+    await expect(approval.getByRole('button')).toBeDisabled(); expect(approvals).toBe(0)
+    await approval.getByRole('checkbox', { name: 'I verified every listed episode identity', exact: false }).focus(); await page.keyboard.press('Space')
+    await expect(approval.getByRole('button')).toBeEnabled()
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 2400 })
+      expect(await form.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+      expect(await evidence.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+    }
+    await evidence.scrollIntoViewIfNeeded()
+    await evidence.screenshot({ path: testInfo.outputPath('reviewed-episode-mobile.png') })
+    await approval.getByRole('button').focus(); await page.keyboard.press('Enter')
+    await expect(approval.getByRole('status')).toContainText('remains unresolved until a scheduled library sync')
+    const saved = page.getByRole('region', { name: 'Saved source mappings' })
+    await saved.getByRole('button', { name: 'Refresh saved mappings' }).click()
+    await expect(saved).toContainText('Human episode identity decisions')
+    await expect(saved).toContainText('Awaiting successful verification')
+    await expect(overview.locator('.issue-number')).toHaveText('1')
+    expect(approvals).toBe(1); expect(revocations).toBe(0); expect(lookups).toBe(0)
+    return
+  }
   if (episodeGaps) {
     await page.getByLabel('TMDb series ID', { exact: true }).fill('10')
     await page.getByRole('button', { name: 'Check draft structure' }).click()

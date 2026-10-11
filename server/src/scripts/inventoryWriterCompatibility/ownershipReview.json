@@ -21,8 +21,8 @@
     {
       "id": "source_mapping_owned_recovery",
       "classification": "owned",
-      "reason": "Reviewed mapping recovery and persistence with their sole production caller in runOwnedMediaSync. All SQL uses withCurrentCapture on the existing library session owner and matching collecting generation. Provider reads are outside transactions; short completion checks lock current configuration, observation and mapping before atomically writing inventory, receipt and observation removal. Scalar origins are not reused across a changed mapping.",
-      "followUp": "Retain real PostgreSQL stale-generation, disabled/configuration/revocation drift, rollback, durable cooldown, source-layout reuse expiry and full-versus-season corpus tests. Keep bounded admission and current ownership assertions; no runtime pool fallback or externally supplied proof is authorized."
+      "reason": "Reviewed mapping recovery and persistence with their sole production caller in runOwnedMediaSync. All SQL uses withCurrentCapture on the existing library session owner and matching collecting generation. Provider reads are outside transactions; short completion checks lock current configuration, observation and mapping before atomically writing inventory, receipt and observation removal. Scalar origins are not reused across a changed mapping. The 2026-10-11 reviewed-episode change adds a strict saved-layout digest check for human declarations and passes the checked layout to represented-season document construction; SQL, capture fencing and retry admission are unchanged.",
+      "followUp": "Retain real PostgreSQL stale-generation, disabled/configuration/revocation drift, rollback, durable cooldown, source-layout reuse expiry and full-versus-season corpus tests. Human episode consent must not transfer to a changed source layout. Keep bounded admission and current ownership assertions; no runtime pool fallback or externally supplied proof is authorized."
     },
     {
       "id": "source_mapping_admin_revocation",
@@ -1390,6 +1390,6 @@
     {"path":"database/migrations/20261010_220000_source_catalog_mappings.sql","digest":"25e0da7cf4ef3268bce84143f63f69068333aa291fc58790bf39fd1f3d8f9242","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"source_mapping_schema"},
     {"path":"server/src/services/sourceMappingManagement.mjs","digest":"1bd7e4730c2bd6d3ed1b41d9dc6ac814a8a31a53e28d9fd37830792ac41c48b4","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"source_mapping_admin_revocation"},
     {"path":"server/src/services/sourceMappingPersistence.mjs","digest":"1af04206bb5eb7ce71d48f429da0a92567ce1e2d85673b4f295fca0ac8b8b92e","analysisDigest":"e0e5cae7477ce104ea6fa841923194c0896dd42403f676f7873a61eddab0f6a9","review":"source_mapping_owned_recovery"},
-    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"cfe21a95298705974ff43a790002a8b6a095ca75761132f3e5164a0557e498c3","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
+    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"2a802cb46df0511d6d30aa91948adb80adf0689103eb33bfb8d464094c046bc4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
   ]
 }

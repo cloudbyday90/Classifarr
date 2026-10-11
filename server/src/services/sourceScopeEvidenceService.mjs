@@ -47,10 +47,10 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         const catalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
         const comparison = compareScopeEvidence(source, plan, catalog.catalog);
         const readAudit = source => readCombinedEvidenceAudit({ source, scope: draft.scope, plan, comparison, provider: catalogProvider, signal: scopedSignal });
-        const audit = auditEnabled ? await readAudit(source) : null;
+        const audit = auditEnabled && !draft.scope.episodeMappings ? await readAudit(source) : null;
         const freshCatalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
         const freshSource = await readSource();
-        const freshAudit = auditEnabled ? await readAudit(freshSource) : null;
+        const freshAudit = auditEnabled && !draft.scope.episodeMappings ? await readAudit(freshSource) : null;
         scopedSignal.throwIfAborted();
         if (source.digest !== freshSource.digest || catalog.digest !== freshCatalog.digest || audit?.digest !== freshAudit?.digest ||
             targetDigest !== scopeEvidenceDigest(await readScopeEvidenceTarget(db, key, input.offset))) throw changed();
@@ -62,7 +62,8 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
           evidenceFingerprint: scopeEvidenceDigest([draft.draftFingerprint, source.digest, catalog.digest]),
           backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' },
           catalogWorks: catalog.details.map(({ tmdbId, mediaType, title, releaseDate }) => ({ tmdbId, mediaType, title, releaseDate })),
-          comparison };
+          comparison,
+          ...(draft.scope.episodeMappings ? { episodeReviews: catalog.episodeReviews, identityAuthority: 'operator_episode_mapping' } : {}) };
         if (audit) result.combinedAudit = { ...audit.report,
           fingerprint: scopeEvidenceDigest([result.evidenceFingerprint, audit.digest]) };
         if (onVerified) result = await onVerified({ actorId, key, input, target, source, catalog, result, signal: scopedSignal });

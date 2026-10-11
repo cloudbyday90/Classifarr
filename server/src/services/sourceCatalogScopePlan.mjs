@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
+import { copyReviewedEpisodeMappings } from './reviewedEpisodeMappings.mjs';
 
 const REQUIREMENTS = Object.freeze(['fresh_source_and_membership', 'typed_catalog_scope_evidence',
   'authenticated_operator_review', 'scope_aware_consumers']);
@@ -56,6 +57,13 @@ function copySeasonScope(scope) {
 /** Canonical structural scope only; declarations are not verified inventory. */
 export function copySourceCatalogScope(mediaType, input) {
   if (!['movie', 'tv'].includes(mediaType)) return null;
+  if (input && Object.hasOwn(input, 'episodeMappings')) {
+    if (mediaType !== 'tv') return null;
+    const { episodeMappings, ...base } = input;
+    const scope = copySourceCatalogScope(mediaType, base);
+    const copied = scope && copyReviewedEpisodeMappings(episodeMappings, scope);
+    return copied ? { ...scope, episodeMappings: copied } : null;
+  }
   if (input?.kind === 'whole_work' && keysAre(input, ['kind', 'tmdbId']) && positiveId(input.tmdbId)) {
     return { kind: 'whole_work', tmdbId: input.tmdbId };
   }

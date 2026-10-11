@@ -7,7 +7,8 @@ const codes = new Set(['source_changed', 'configuration_changed', 'source_season
   'invalid_scope', 'empty_source', 'unmapped_season', 'ambiguous_episode_ids',
   'reused_episode_id', 'missing_tmdb_episode_id', 'episode_absent_from_scope',
   'episode_outside_mapping', 'episode_numbering_differs', 'parent_identity_unresolved',
-  'source_unavailable', 'catalog_unavailable', 'timed_out', 'unknown']);
+  'source_unavailable', 'catalog_unavailable', 'timed_out', 'unknown',
+  'episode_source_missing', 'episode_target_missing', 'reused_episode_target']);
 
 export class SourceMappingCheckError extends Error {
   constructor(code) { super('Source mapping verification deferred'); this.code = codes.has(code) ? code : 'unknown'; }

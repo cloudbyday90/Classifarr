@@ -9,7 +9,7 @@
       Keep this source item grouped as it is. First check the draft, then verify the
       source and catalog evidence. Saving a complete mapping requires a separate confirmation.
     </p>
-    <p>Use a TMDb movie or series ID, not a TVDB or episode ID. For a grouped show, map each source season to its own TMDb series and season. Descriptions and posters do not settle conflicting IDs.</p>
+    <p>For the main scope, use a TMDb movie or series ID, not a TVDB or episode ID. For a grouped show, map each source season to its own TMDb series and season. Episode exceptions have separate fields below. Descriptions and posters do not settle conflicting IDs.</p>
     <SourceCandidateLookup
       v-if="opened"
       :source="source"
@@ -112,6 +112,11 @@
         </button>
         <p>Up to 32 mappings in this form. Listed seasons without a mapping remain outside the proposed scope.</p>
       </template>
+      <ReviewedEpisodeDraft
+        v-if="source.mediaType === 'tv'"
+        v-model="episodeMappings"
+        @update:model-value="clear"
+      />
       <button
         type="submit"
         :disabled="busy"
@@ -153,16 +158,18 @@ import { nextTick, ref, useId, watch } from 'vue'
 import { useSourceScopeReview } from '@/composables/useSourceScopeReview'
 import SourceScopeEvidence from './SourceScopeEvidence.vue'
 import SourceCandidateLookup from './SourceCandidateLookup.vue'
+import ReviewedEpisodeDraft from './ReviewedEpisodeDraft.vue'
 const props = defineProps({ source: { type: Object, required: true }, offset: { type: Number, required: true } })
 const id = useId()
 const opened = ref(false)
 const kind = ref('whole_work'), target = ref(''), seasons = ref('')
+const episodeMappings = ref([])
 let nextKey = 0
 const newEdge = () => ({ key: nextKey++, sourceSeason: '', tmdbSeriesId: '', tmdbSeason: '' })
 const edges = ref([newEdge()])
 const addButton = ref(null)
 const { result, error, busy, clear, review } = useSourceScopeReview(() => props.source, () => props.offset)
-watch(() => props.source.key, () => { kind.value = 'whole_work'; target.value = ''; seasons.value = ''; edges.value = [newEdge()] })
+watch(() => props.source.key, () => { kind.value = 'whole_work'; target.value = ''; seasons.value = ''; edges.value = [newEdge()]; episodeMappings.value = [] })
 function add() { if (edges.value.length < 32) edges.value.push(newEdge()); clear() }
 async function remove(index) {
   edges.value.splice(index, 1); clear()
@@ -176,8 +183,9 @@ function submit() {
     sourceSeason: sourceSeason === '' ? NaN : Number(sourceSeason),
     tmdbSeriesId: Number(tmdbSeriesId), tmdbSeason: tmdbSeason === '' ? NaN : Number(tmdbSeason),
   }))
-  void review(kind.value === 'whole_work' ? { kind: 'whole_work', tmdbId: Number(target.value) }
-    : { kind: 'seasons', coverage: mappings.length === sourceSeasonNumbers.length ? 'complete' : 'partial', sourceSeasonNumbers, mappings })
+  const scope = kind.value === 'whole_work' ? { kind: 'whole_work', tmdbId: Number(target.value) }
+    : { kind: 'seasons', coverage: mappings.length === sourceSeasonNumbers.length ? 'complete' : 'partial', sourceSeasonNumbers, mappings }
+  void review({ ...scope, ...(props.source.mediaType === 'tv' && episodeMappings.value.length ? { episodeMappings: episodeMappings.value } : {}) })
 }
 </script>
 
