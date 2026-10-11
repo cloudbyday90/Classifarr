@@ -60,20 +60,75 @@ migration; its benefit does not justify incompatible build-time API assumptions.
 
 ## Verification
 
-Verification is in progress. Focused checks so far: 91 backend tests in five
+Local verification is complete. Focused checks: 91 backend tests in five
 suites, 76 frontend tests in three files, and 45 isolated PostgreSQL tests in two
 suites passed. Backend/client typechecks, full lint, copyright, ownership,
 dependency analysis, four policy gates, ESM checks and Markdown lint passed.
 All 40 tooling checks passed on rerun; an intermediate offline installer fixture
 hit its unchanged 30-second subprocess timeout while other checks were running.
 
-Both Chromium scenarios passed with one worker (42.9 seconds), including keyboard
+Both Chromium scenarios passed on the final one-worker run (28.8 seconds), including keyboard
 activation, narrow reflow, incomplete approval refusal and unchanged unresolved
 count. A taller 320-pixel screenshot of the new gap panel was visually inspected.
 Other browser runs hit the unchanged 30-second deadline during initial page load
-under concurrent checks; final lower-contention verification is still pending.
-No timeouts or assertions were weakened. Full coverage and the requested
-exact-image no-cache rebuild/schema dump must finish before final handoff.
+under concurrent checks. Fixture-only unavailable dashboard responses remain
+visible in the test log; they are not evidence of a production outage.
+
+An initial full frontend run passed 454 files / 6,793 tests but failed to start two
+workers, so its coverage was not accepted. A one-worker retry then exceeded the
+existing lint-contract setup deadline and was stopped before completion. The
+Windows validation host had approximately 630 MiB free during concurrent runs.
+This is evidence of a constrained validation environment, not proof about the
+application's historical memory warnings. No deadlines or assertions were
+weakened. The final complete frontend run passed after the competing backend/build
+workloads finished.
+
+Full backend coverage subsequently passed: **1,790 suites**, **56,031 tests
+passed**, one existing skip (56,032 total), in 1,936.815 seconds. Statements/lines
+89.70%, branches 86.09%, functions 91.10%. The new backend episode-gap classifier
+has 100% statement, branch and function coverage.
+
+The final one-worker frontend run passed **456 files / 6,818 tests** in 901.37
+seconds. Coverage: statements 87.21%, branches 80.92%, functions 86.80%, lines
+88.99%. The combined backend/client coverage ratchet passed against the unchanged
+baseline. These are local results, not remote CI or release acceptance claims.
+
+## Exact local image and schema
+
+- Clean code commit: `57a9c82039f62462c85b83cd690f724afefdb473`.
+- No-cache rebuilt image:
+  `sha256:44ed828072fb4c25bb99922d0659c37c327d50d30cf934326e5781de9ebd129d`.
+- OCI revision matched the clean commit. This is a local Docker identity, not a
+  published multi-platform artifact or signed release-provenance claim.
+- The subsequent verification handoff is documentation-only; the running image
+  remains bound to the code commit above. No version, release or tag was created.
+- Previous image retained:
+  `sha256:044a85c9123ba948e1408d95e9523ee536b77d29bd7449aef023b44e69132e31`.
+- Pre-replacement local archive: 74,832,679 bytes; checksum and `pg_restore --list`
+  verified. Backup and rollback tag remain locally.
+- Replaced only local Compose using `--no-build --pull never --no-deps`; normal
+  entrypoint, authentication, resource limits and safeguards retained. Healthy,
+  zero restarts; startup `2026-10-11T12:56:05.069107678Z`.
+- After rebuilding, `dumpSchema` ran from that exact image against a disposable,
+  network-isolated database, bounded to 1 GiB / two CPUs / 256 PIDs. Schema stayed
+  unchanged through `20261010_220000_source_catalog_mappings.sql`, with 22 seed
+  migrations. Fresh database had zero invented unresolved or pending work. Its
+  owned temporary container and data directory were removed; absence verified.
+
+At **08:59:34 EDT**, rebuilt-image read-only diagnostics reproduced both gaps and
+their new projections: `none`/`absent` for S5E27, `tmdb`/`absent` for S10E13.
+Transient references: `e8c192ff-aaae-49c4-9735-b8338b733b27` and
+`c50309bb-0c45-4a63-a949-bd7f3de9eb15`. Multiple-candidate conflicts were not
+arbitrarily reduced to one proposal. Before/after: four unresolved items, zero
+probe approvals and zero probe provider writes.
+
+At **08:59:36 EDT**, all seven previously approved mappings remained materialized
+with historical application dates and no pending recheck marker. All ten active
+libraries were covered. Five status reads took 244.92, 8.33, 6.80, 6.44 and 11.12 ms;
+this small observation is not a benchmark. A separate database-only consumer
+check confirmed consistent pending totals and a distinct bounded embedding batch.
+No WARN/ERROR rows were recorded since startup in this short window; that does
+not establish resolution of unrelated long-running comparison/memory problems.
 
 ## Recommendation stack
 

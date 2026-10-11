@@ -4,6 +4,9 @@ Observed on 2026-10-11, America/New_York. This is development verification, not 
 release or an Unraid deployment. See the [design](source-combined-evidence-design.md)
 and preceding [parent-ID audit](source-identity-agreement-audit-outcome.md).
 
+Follow-up: the [episode gap investigation](source-episode-gap-outcome.md) traces
+the two single-candidate exclusions and adds scoped source/catalog guidance.
+
 ## Result
 
 Mapping evidence previews now combine parent-ID agreement, complete source
