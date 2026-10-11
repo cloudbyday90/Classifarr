@@ -98,15 +98,19 @@ test('private target query selects only the matching public-page item', async ()
 });
 
 test('fresh typed evidence retains PostgreSQL observations and rejects credential drift', async () => {
+  await client.query('UPDATE media_source_observations SET source_digest=$2 WHERE library_id=$1', [libraryId, 'b'.repeat(64)]);
   const item = await read();
   const before = (await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows;
-  const source = { identity: { mediaType: 'tv' }, digest: 'stable', seasons: [{ number: 1 }],
+  const source = { identity: { mediaType: 'tv', snapshotDigest: 'b'.repeat(64),
+    providerIds: { tmdb_id: [10], tvdb_id: [20, 30], imdb_id: [] } }, digest: 'stable', seasons: [{ number: 1 }],
     episodes: [{ season: 1, episode: 1, providerIds: { tmdb_id: [101], tvdb_id: [], imdb_id: [] } }] };
   let changeConfig = false;
-  const inspect = createSourceScopeEvidenceService({ db: client,
+  const inspect = createSourceScopeEvidenceService({ db: client, includeIdentityAudit: true,
     withLock: async work => { await work({ signal: new AbortController().signal }); return true; },
     getMediaServerService: () => ({ getLibraryItemLayout: async () => source }),
     createCatalogProvider: async () => ({ recheck: async () => {},
+      findIdentityByExternalId: async () => ({ movie_results: [], tv_results: [{ id: 10 }],
+        tv_season_results: [], tv_episode_results: [], person_results: [] }),
       getIdentityDetails: async () => {
         if (changeConfig) await client.query("UPDATE media_server SET api_key='rotated' WHERE id=$1", [serverId]);
         return { id: 10, name: 'Fixture', seasons: [{ id: 50, season_number: 1, episode_count: 1 }] };
@@ -114,7 +118,8 @@ test('fresh typed evidence retains PostgreSQL observations and rejects credentia
       getIdentitySeasonDetails: async () => ({ id: 50, season_number: 1, episodes: [{ id: 101, show_id: 10, season_number: 1, episode_number: 1 }] }),
     }),
   });
-  expect(await inspect(actorId, item.key, inputFor(item))).toMatchObject({ canApply: false, comparison: { matched: 1 } });
+  expect(await inspect(actorId, item.key, inputFor(item))).toMatchObject({ canApply: false, comparison: { matched: 1 },
+    combinedAudit: { status: 'catalog_and_scope_agreement', scopeComplete: true, automaticRecoveryEligible: false } });
   expect((await client.query('SELECT * FROM media_source_observations WHERE library_id=$1', [libraryId])).rows).toEqual(before);
   changeConfig = true;
   await expect(inspect(actorId, item.key, inputFor(item))).rejects.toMatchObject({ statusCode: 409 });

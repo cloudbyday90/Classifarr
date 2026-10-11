@@ -5,10 +5,14 @@ import { reviewSourceScope } from './sourceScopeReview.mjs';
 import { readScopeEvidenceTarget } from './sourceScopeEvidenceRepository.mjs';
 import { compareScopeEvidence, readScopeCatalog, scopeEvidenceDigest, scopeEvidencePlan, ScopeEvidenceError } from './sourceScopeCatalogEvidence.mjs';
 import { CatalogEpisodeEvidenceError } from './catalogEpisodeEvidence.mjs';
+import { readCombinedEvidenceAudit } from './sourceCombinedEvidenceAudit.mjs';
+import { SourceCandidateError } from './sourceCandidateProjection.mjs';
 
 const changed = () => new ConflictError('The source or catalog changed. Refresh items and review again.', { code: 'scope_evidence_changed' });
 
-export function createSourceScopeEvidenceService({ db, withLock, getMediaServerService, createCatalogProvider, onVerified = null }) {
+export function createSourceScopeEvidenceService({ db, withLock, getMediaServerService, createCatalogProvider, onVerified = null, includeIdentityAudit = false }) {
+  // Approval consumes its existing membership evidence, never this diagnostic.
+  const auditEnabled = includeIdentityAudit && !onVerified;
   const unavailable = code => new ServiceUnavailableError(onVerified
     ? 'Approval could not be confirmed. Check saved mappings before submitting again.'
     : 'Evidence could not be checked. Nothing was saved.', { code });
@@ -38,13 +42,17 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         const source = await readSource();
         scopedSignal.throwIfAborted();
         if (source.identity.mediaType !== target.media_type) throw changed();
+        if (auditEnabled && source.identity.snapshotDigest !== target.source_digest) throw changed();
         const plan = scopeEvidencePlan(source, draft.scope);
         const catalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
         const comparison = compareScopeEvidence(source, plan, catalog.catalog);
+        const readAudit = source => readCombinedEvidenceAudit({ source, scope: draft.scope, plan, comparison, provider: catalogProvider, signal: scopedSignal });
+        const audit = auditEnabled ? await readAudit(source) : null;
         const freshCatalog = await readScopeCatalog(plan, catalogProvider, scopedSignal);
         const freshSource = await readSource();
+        const freshAudit = auditEnabled ? await readAudit(freshSource) : null;
         scopedSignal.throwIfAborted();
-        if (source.digest !== freshSource.digest || catalog.digest !== freshCatalog.digest ||
+        if (source.digest !== freshSource.digest || catalog.digest !== freshCatalog.digest || audit?.digest !== freshAudit?.digest ||
             targetDigest !== scopeEvidenceDigest(await readScopeEvidenceTarget(db, key, input.offset))) throw changed();
         await catalogProvider.recheck();
         await reviewSourceScope(db, actorId, key, input);
@@ -55,6 +63,8 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
           backfill: { eligible: false, excludedScope: 'all', reason: 'mapping_not_approved' },
           catalogWorks: catalog.details.map(({ tmdbId, mediaType, title, releaseDate }) => ({ tmdbId, mediaType, title, releaseDate })),
           comparison };
+        if (audit) result.combinedAudit = { ...audit.report,
+          fingerprint: scopeEvidenceDigest([result.evidenceFingerprint, audit.digest]) };
         if (onVerified) result = await onVerified({ actorId, key, input, target, source, catalog, result, signal: scopedSignal });
       });
       if (!acquired) throw unavailable('scope_evidence_busy');
@@ -68,6 +78,7 @@ export function createSourceScopeEvidenceService({ db, withLock, getMediaServerS
         throw unavailable(`scope_${error.code}`);
       }
       if (error instanceof CatalogEpisodeEvidenceError) throw unavailable('scope_catalog_invalid');
+      if (error instanceof SourceCandidateError) throw unavailable(`scope_parent_${error.code}`);
       if (['scope_evidence_busy', 'scope_source_unavailable'].includes(error?.code)) throw error;
       throw unavailable('scope_evidence_unavailable');
     }

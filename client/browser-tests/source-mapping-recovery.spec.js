@@ -50,6 +50,9 @@ test('explicit mapping approval survives a lost response without clearing the un
         candidates: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01', available: true, lookupIndexes: [0] }] }
     }
     if (path.endsWith('/evidence')) data = { ...draft, version: 'source_scope_evidence.v1', reference: id,
+      combinedAudit: { version: 'source_combined_evidence.v1', fingerprint: 'f'.repeat(64), status: 'review_required',
+        candidateTmdbId: null, parentBlockers: ['other_scope_match'], scopeComplete: true, proposalMatchesIdentity: false,
+        crossProviderVerified: false, automaticRecoveryEligible: false },
       evidenceFingerprint: 'd'.repeat(64), verification: 'typed_catalog_membership', crossProviderVerified: false,
       catalogWorks: [{ tmdbId: 10, mediaType: 'movie', title: 'Catalog fixture', releaseDate: '2001-01-01' }],
       comparison: { unit: 'movie', total: 1, matched: 1, exclusions: [] } }
@@ -96,6 +99,13 @@ test('explicit mapping approval survives a lost response without clearing the un
   await page.getByRole('button', { name: 'Check draft structure' }).click()
   await page.getByRole('button', { name: 'Check source and catalog evidence' }).click()
   await expect(page.getByRole('region', { name: 'Catalog works checked' })).toContainText('Catalog fixture (2001-01-01)')
+  const combined = page.getByRole('region', { name: 'Combined identity and scope check' })
+  await expect(combined).toContainText('No repair or backfill was authorized')
+  await expect(combined).toContainText('Source membership: complete for this proposal')
+  await expect(combined).toContainText('another media type, season, episode or person')
+  expect(approvals).toBe(0)
+  expect(await combined.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await combined.screenshot({ path: testInfo.outputPath('combined-evidence-mobile.png') })
   const approval = page.getByRole('region', { name: 'Approve complete source mapping' })
   await expect(approval.getByRole('button')).toBeDisabled()
   await approval.getByRole('checkbox').check()

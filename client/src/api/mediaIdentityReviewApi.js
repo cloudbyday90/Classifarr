@@ -22,6 +22,7 @@ export function reviewSourceScope(key, body) {
 }
 
 export function inspectSourceScope(key, body, signal) {
+  // v1 may include combinedAudit diagnostics; approval still uses evidenceFingerprint.
   return apiClient.post(`/media-identity-review/source-scopes/${encodeURIComponent(key)}/evidence`, body,
     { skipAutomaticRetry: true, timeout: 105000, signal })
 }

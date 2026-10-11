@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { parseScopeCatalogWorks } from './sourceMappingGuidance'
+import { parseCombinedEvidence } from './sourceCombinedEvidence'
 export const scopeExclusionLabels = Object.freeze({
   unmapped_season: 'No season mapping proposed',
   ambiguous_episode_ids: 'Conflicting episode IDs',
@@ -43,6 +44,8 @@ export function parseSourceScopeEvidence(data, draft) {
   const evidenceFingerprint = /^[a-f0-9]{64}$/.test(data.evidenceFingerprint ?? '') ? data.evidenceFingerprint : null
   const catalogWorks = parseScopeCatalogWorks(data.catalogWorks, draft, comparison.unit)
   if (!catalogWorks) return null
+  const combinedAudit = data.combinedAudit === undefined ? null : parseCombinedEvidence(data.combinedAudit, draft.scope, comparison)
+  if (data.combinedAudit !== undefined && !combinedAudit) return null
   return { reference: data.reference, evidenceFingerprint, unit: comparison.unit, total: comparison.total,
-    matched: comparison.matched, exclusions, catalogWorks }
+    matched: comparison.matched, exclusions, catalogWorks, combinedAudit }
 }

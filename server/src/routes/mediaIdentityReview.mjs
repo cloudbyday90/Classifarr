@@ -19,7 +19,7 @@ export const router = createMediaIdentityReviewRouter({
   authenticateToken, requireAdmin,
   service: {
     ...createMediaIdentityReviewService({ db, getIdentityDetails: (id, type) => tmdbService.getIdentityDetails(id, type) }),
-    inspectSourceScope: createSourceScopeEvidenceService(scopeDependencies),
+    inspectSourceScope: createSourceScopeEvidenceService({ ...scopeDependencies, includeIdentityAudit: true }),
     lookupSourceCandidates: createSourceCandidateLookup(scopeDependencies),
     approveSourceScope: createSourceMappingApproval(scopeDependencies),
     ...createSourceMappingManagement(db),

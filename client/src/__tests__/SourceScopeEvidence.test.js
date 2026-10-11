@@ -98,6 +98,8 @@ it.each([
   ['scope_catalog_season_missing', 'series ID and season number together'],
   ['scope_catalog_invalid', 'inconsistent season data'], ['scope_evidence_timed_out', 'deadline'],
   ['scope_evidence_busy', 'Another evidence check'], ['private-token', 'GitHub issue'],
+  ['scope_parent_lookup_limit', 'bounded lookup limit'], ['scope_parent_source_invalid', 'invalid parent identifier evidence'],
+  ['scope_parent_catalog_invalid', 'inconsistent parent lookup data'],
 ])('gives sanitized repair guidance for %s', async (code, text) => {
   inspectSourceScope.mockRejectedValue({ response: { status: 503, data: { code, message: 'secret' } } })
   render(); await wrapper.get('button').trigger('click'); await flushPromises()

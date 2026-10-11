@@ -28,6 +28,9 @@ const evidenceCodes = Object.freeze({
   scope_catalog_season_missing: 'catalog_season_missing', scope_catalog_invalid: 'catalog_invalid',
   scope_catalog_scope_limit: 'scope_limit', scope_scope_limit: 'scope_limit', scope_invalid_scope: 'invalid_scope',
   scope_source_unavailable: 'source_unavailable', scope_evidence_timed_out: 'timed_out',
+  scope_parent_lookup_limit: 'Parent identifiers exceed the bounded lookup limit. Review the source IDs; do not remove identifiers just to pass the check.',
+  scope_parent_source_invalid: 'The source returned invalid parent identifier evidence. Refresh source metadata issues and check again.',
+  scope_parent_catalog_invalid: 'TMDb returned inconsistent parent lookup data. Retry later; do not infer an identity from the incomplete response.',
   scope_evidence_busy: 'Another evidence check is active. Wait for it to finish, then check this draft again.',
 })
 export function sourceScopeFailureMessage(failure) {
