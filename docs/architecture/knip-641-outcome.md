@@ -48,13 +48,51 @@ by this work. Optional vector completion is not implied by identity completion.
 Uncached development and production-dependency analysis passed on both Knip
 6.40.0 and 6.41.0. Both existing cached 6.41 commands also passed. No rule, ignore
 list or baseline was changed to achieve a pass. Both workspace typechecks and the
-40-test tooling suite passed, as did documentation, copyright, ESM import/mock
+40-test tooling suite passed, as did lint, ownership inventory, documentation,
+copyright, ESM import/mock
 checks and the four production naming/language/delivery/maintenance policy gates.
 
 The full runtime unit, frontend coverage and PostgreSQL integration matrices
 are not rerun for this development-only package change. No runtime/API/schema
 code changed, and no old coverage report is presented as fresh evidence.
-Image evaluation is recorded separately below after the requested no-cache build.
+Image evaluation is recorded separately below.
+
+## Local image and persisted repair
+
+The no-cache Compose build succeeded from clean revision
+`1f6d971e2cb731e3ca075608b0cd9bc9b7b027f0`. Its exact local Docker image ID is
+`sha256:e2fddaf0190a92eb3e956abd69b0c738837c797cc19c996ac5bbc5a88084e1d5`;
+the OCI revision matches that source commit. Later outcome-only Markdown is
+excluded from the image context. This is not a published registry digest,
+multi-platform installation claim or release.
+
+Before replacing only the local Classifarr service, retained a readable,
+checksum-verified 76,934,472-byte database archive and exact old-image rollback
+tag. The archive remains private under ignored `.tmp`. The previous image is
+`sha256:0cca616a90a433f243d5edd5af66a94ba938f8c44160660732f2ab58cad6ef50`.
+No other service or shared provider was restarted.
+
+The replacement started at 10:12:02 UTC. At 10:12:49 UTC it was healthy with zero
+restarts and no OOM; HTTP health returned 200 with database connected. Generic
+JSON API 404 and security headers passed. Node 24.21.0 / Express 5.3.0, the
+`1000:1000` user, read-only root and 2 GiB limit remain unchanged. A read-only,
+provider-free check confirmed all seven specific approved mappings still have
+current materialization receipts, four unresolved identities and ten current
+library captures. These checks neither approve further identities nor prove
+completion of optional AI/vector work.
+
+After the build, `dumpSchema()` ran in a network-isolated fresh container of that
+exact image, limited to 1 GiB, two CPUs and 256 PIDs. It matched the tracked schema
+without changes through `20261010_220000_source_catalog_mappings.sql`. The fresh
+database had no invented pending work or unresolved identities. The owned
+disposable container and its temporary data directory were removed; absence was
+verified. No local application data was deleted.
+
+The preceding commit's remote CI run
+[38129640387](https://github.com/cloudbyday90/Classifarr/actions/runs/38129640387)
+completed successfully, including database and fresh-install/published-upgrade
+jobs. That is evidence for `0bad7144de63c3fe981ed2ba02a13162cc52d73f`, not a
+substitute for CI on this new batch.
 
 ## Recommendation stack
 
