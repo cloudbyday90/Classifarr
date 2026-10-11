@@ -68,8 +68,74 @@ unrelated dashboard panels intentionally lack fixture data and report unavailabl
 
 Full lint, server/frontend typechecks, 40/40 restored dependency-tooling checks,
 all four policy-language gates, preflight copyright/ownership/Knip checks,
-Markdown and ESM gates passed. Full coverage, no-cache local Compose rebuild and
-post-build schema dump remain in progress and will be recorded before handoff.
+Markdown and ESM gates passed. The first full backend run encountered the ownership
+review before its reviewed digest was updated: 56,075 passed, one failed and one
+skipped. Its 39-test recheck passed. A complete clean rerun against the committed
+implementation then passed all 1,791 suites: 56,076 tests passed, one existing skip,
+zero failures (942.089 seconds). Frontend coverage passed all 457 files / 6,860 tests
+(744.05 seconds). No tests or coverage baselines were relaxed.
+
+| Coverage | Statements | Branches | Functions | Lines |
+| --- | --- | --- | --- | --- |
+| Backend | 89.70% | 86.10% | 91.11% | 89.70% |
+| Frontend | 87.24% | 80.97% | 86.84% | 89.01% |
+
+The cross-workspace coverage ratchet passed. Both the new episode-declaration
+module and updated catalog-evidence module have 100% coverage in this clean run.
+
+## Exact local image and schema
+
+Application commit: `f5a6d23fd7d1ceb03345108dedd0c01511590dbc`. Built from a clean
+checkout using `docker-compose.yml` plus the existing local image-tag override,
+`build --no-cache --require-provenance`, Node 24.21.0 and local AVX2 detection.
+
+- Previous local image ID:
+  `sha256:44ed828072fb4c25bb99922d0659c37c327d50d30cf934326e5781de9ebd129d`.
+- Rebuilt local image ID:
+  `sha256:2007e15f7349b09569303ab68321fc11c941a05698387ff3d6bb7efb41714dd0`.
+- The inspected OCI revision matches the application commit; this is local
+  Linux/amd64 evidence, not published-image, signature or multi-platform proof.
+- Before replacement, retained the exact previous image under
+  `classifarr:pre-memory-1511812e-c655-4af7-8751-ec02f9f81567` and a 75,398,169-byte
+  custom-format backup at
+  `.tmp/pre-memory-fingerprint-1511812e-c655-4af7-8751-ec02f9f81567.dump`.
+  SHA-256 copy verification and archive listing passed; no restore was performed.
+- Recreated only local Classifarr using `--no-build --pull never --no-deps`.
+  Started at `2026-10-11T14:30:07.176459905Z`; health reports a connected database,
+  restart count zero and no OOM flag. Existing 2-GiB limit and safeguards remain.
+
+After rebuilding, ran the existing schema-dump helper against this exact image in
+a fresh network-isolated fixture (1 GiB, two CPUs, 256 PIDs). The dump includes
+all migrations through `20261010_220000_source_catalog_mappings.sql` and 22 seed
+migrations. `database/schema/current.sql` is unchanged. The fresh database has
+zero unresolved identities and no invented pending classification/embedding work.
+The disposable container and its exact temporary data directory were removed and
+their absence verified. Local app-data was not used for schema generation.
+
+## Read-only local evaluation
+
+With database writes disabled for the probe session, checked the previously
+observed Miraculous special hypothesis through the rebuilt service. At
+`2026-10-11T14:31:07.798Z`, the preview reported 156 covered episodes: 155 declared-ID
+matches and one explicitly human-proposed identity, with a typed target title.
+This is **not proof that the proposed source/target episodes are identical** and
+is not an approval. The combined automatic-agreement report is absent;
+`canApply`, `persisted` and backfill eligibility remain false.
+Reference: `b7093361-caa9-444e-afc4-55322996ca8c`.
+
+Before and after: seven approved/materialized mappings, zero human episode
+approvals and four unresolved items across ten active, covered libraries.
+Provider writes and mapping approvals: zero. A separate read-only consumer probe
+also preserved four unresolved items, counted 6,832 classifications once, reported
+6,810 pending image embeddings consistently and fetched a ten-item batch in 5 ms.
+No startup WARN/ERROR records were present in that early observation window.
+
+Container memory snapshots were about 895 MiB before replacement and 912 MiB after
+startup under the same 2-GiB limit. These are different-uptime observations, not a
+memory soak or proof of a memory improvement. No production recovery, real-item
+approval, Plex write, Unraid replacement or shared Ollama change was performed.
+The subsequent handoff commit changes documentation only; remote CI must be
+checked against its own final SHA, not inferred from the starting commit's green runs.
 
 ## Recommendation stack
 
