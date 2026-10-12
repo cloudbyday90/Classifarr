@@ -42,7 +42,7 @@ and scheduling add delay. Stopping the heartbeat stops future cycles. See the
 Radarr, Sonarr, TMDb, OMDb, Tavily, AI, media-server and image-embedding checks use explicit reviewed
 configuration projections. Usage counters, quota reset dates and unrelated cache
 timestamps do not invalidate those observations. Credentials, credential lifecycle,
-transport settings, displayed identity and active selection remain covered where
+transport settings, OMDb's configured daily limit, displayed identity and active selection remain covered where
 applicable. Ollama captures the active legacy host/port before the AI-row fallback
 in one query, without using a singleton's cached endpoint. See the
 [dependency contract](../architecture/health-configuration-dependencies-design.md).
@@ -61,7 +61,22 @@ and limits the deadline to ten seconds or a shorter positive saved timeout.
 TMDb validates configuration data with a five-second deadline. OMDb reuses its
 payload classifier with a ten-second deadline and preserves quota/auth reasons.
 Both use fixed HTTPS endpoints, reject redirects and cap decoded bodies at 1 MiB.
-OMDb health reads still consume upstream quota outside the local lookup budget.
+System-page OMDb health requests now reserve one local daily credit and share durable
+pacing with lookups and credential recovery. No provider request is sent when
+admission fails, and skipped checks do not advance last-success history. The
+heartbeat and freshness policy are unchanged. Cached OMDb summary reads and
+configuration reconciliation never reserve credits. Explicit settings tests with
+potentially unsaved credentials and the legacy queue SSL-recovery probe remain
+outside this System-health boundary; separate databases sharing one API key do
+not share the local budget.
+
+`request_admission` diagnostics are unknown, not proof of a provider outage:
+`local_quota_exhausted`, `provider_wait`, `credentials_rejected`,
+`configuration_changed`, `admission_configuration_invalid` and
+`admission_unavailable`. They include fixed, actionable guidance and preserve
+last-success history. Correcting the saved daily limit or credentials retires an
+obsolete admission diagnosis without sending a provider request. See the
+[OMDb admission design](../architecture/omdb-health-admission-design.md).
 
 `connection_configuration` diagnostics include `endpoint_invalid` and
 `provider_unsupported`, plus `configuration_invalid` for incomplete Arr settings.

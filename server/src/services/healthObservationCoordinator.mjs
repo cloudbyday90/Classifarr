@@ -70,7 +70,7 @@ export function createHealthObservationCoordinator() {
                     cache[service] = result;
                     // A provider failure still describes validly read settings. Keep
                     // watching them so a saved correction retires the old diagnosis.
-                    const watchable = !result.failure || ['connection_probe', 'connection_configuration'].includes(result.failure.stage);
+                    const watchable = !result.failure || ['connection_probe', 'connection_configuration', 'request_admission'].includes(result.failure.stage);
                     if (guard.hasCapture() && watchable) watches.set(service, { guard, observation: result });
                     else watches.delete(service);
                     version += 1;

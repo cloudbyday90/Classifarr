@@ -20,9 +20,9 @@ const definitions = [
     { service: 'tmdb', table: 'tmdb_config', changes: { id: 2, api_key: 'new fixture key' },
         insert: "INSERT INTO health_dependencies.tmdb_config (id,api_key) VALUES (1,'fixture key')",
         incidental: "UPDATE health_dependencies.tmdb_config SET updated_at=NOW(),language='fr-FR'" },
-    { service: 'omdb', table: 'omdb_config', changes: credentials,
+    { service: 'omdb', table: 'omdb_config', changes: { ...credentials, daily_limit: 2000 },
         insert: "INSERT INTO health_dependencies.omdb_config (id,api_key) VALUES (1,'fixture key')",
-        incidental: "UPDATE health_dependencies.omdb_config SET updated_at=NOW(),requests_today=123,daily_limit=2000,last_reset_date='2026-10-10'" },
+        incidental: "UPDATE health_dependencies.omdb_config SET updated_at=NOW(),requests_today=123,last_reset_date='2026-10-10'" },
     { service: 'tavily', table: 'tavily_config', changes: credentials,
         insert: "INSERT INTO health_dependencies.tavily_config (id,api_key) VALUES (1,'fixture key')",
         incidental: "UPDATE health_dependencies.tavily_config SET updated_at=NOW(),search_depth='advanced',max_results=7,include_domains=ARRAY['fixture.invalid']" },
@@ -126,7 +126,7 @@ test.each(['tmdb', 'omdb', 'tavily'])('%s still selects newest active configurat
     });
 });
 
-test.each(['connection_probe', 'connection_configuration'])('%s failures are retired after a saved correction', async stage => {
+test.each(['connection_probe', 'connection_configuration', 'request_admission'])('%s failures are retired after a saved correction', async stage => {
     const reader = await getPool().connect(), writer = await getPool().connect();
     const coordinator = createHealthObservationCoordinator();
     let probes = 0;

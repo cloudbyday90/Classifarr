@@ -10,12 +10,15 @@
 import * as db from '../config/database.mjs';
 import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
-import { probeTmdbConnection, probeOmdbConnection } from './healthMetadataProbe.mjs';
+import { probeTmdbConnection } from './healthMetadataProbe.mjs';
+import { createOmdbHealthAdmission } from './healthOmdbAdmission.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import {
     buildConfiguredHealthState,
     buildNotConfiguredHealthState,
 } from './healthCheckServiceShared.mjs';
+
+const checkAdmittedOMDb = createOmdbHealthAdmission({ db });
 
 export async function checkTMDB(previous, guard = undefined) {
     try {
@@ -41,13 +44,11 @@ export async function checkOMDb(previous, guard = undefined) {
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
-        if (!config?.api_key) {
+        if (!config?.api_key?.trim()) {
             return buildNotConfiguredHealthState(previous);
         }
 
-        const probe = await measureConnectionProbe(() => probeOmdbConnection(config.api_key));
-
-        return buildConnectionProbeHealthState(previous, probe);
+        return await checkAdmittedOMDb(previous, config);
     } catch (_error) {
         return buildUnknownHealthState(previous, 'omdb');
     }

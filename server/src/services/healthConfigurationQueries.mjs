@@ -18,7 +18,7 @@ const queries = new Map([
         FROM sonarr_config WHERE is_active = true`],
     ['tmdb', 'SELECT id, api_key FROM tmdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1'],
     // Preserve credential-lifecycle changes even when the key itself is unchanged.
-    ['omdb', `SELECT id, api_key, credential_generation, credential_rejected_at
+    ['omdb', `SELECT id, api_key, daily_limit, credential_generation, credential_rejected_at
         FROM omdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1`],
     ['tavily', `SELECT id, api_key, credential_generation, credential_rejected_at
         FROM tavily_config WHERE is_active = true ORDER BY id DESC LIMIT 1`],

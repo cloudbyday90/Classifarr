@@ -47,6 +47,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Use one bounded Arr health request per instance, validate metadata-provider
   responses, and retain safe authentication/quota failure reasons without exposing
   provider data or changing richer settings-page connection tests.
+  Include System-page OMDb health checks in the shared request budget and pacing,
+  distinguishing skipped checks from provider outages without renewing old success.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

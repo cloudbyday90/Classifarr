@@ -172,7 +172,7 @@ test('failed replacement check retires the previous watch', async () => {
     expect(read).toHaveBeenCalledTimes(2);
 });
 
-test.each(['connection_probe', 'connection_configuration'])('a provider diagnosis with %s still retires after settings change', async stage => {
+test.each(['connection_probe', 'connection_configuration', 'request_admission'])('a provider diagnosis with %s still retires after settings change', async stage => {
     const coordinator = createHealthObservationCoordinator();
     const read = jest.fn().mockResolvedValue({ rows: [{ api_key: 'old synthetic' }] });
     const compute = jest.fn(probe(read, 'omdb', { ...observation, status: 'disconnected',

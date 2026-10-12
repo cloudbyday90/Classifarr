@@ -8,6 +8,12 @@
 
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
+import { availableOmdbQuotaFixture } from './helpers/omdbQuotaFixture.mjs';
+
+const reserveOmdbQuota = jest.fn();
+jest.unstable_mockModule('../services/omdbQuotaStore.mjs', () => ({
+  reserveOmdbQuota, evaluateOmdbQuota: jest.fn(), readOmdbQuota: jest.fn(), readOmdbQuotaReadiness: jest.fn(),
+}));
 
 const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -80,6 +86,7 @@ describe('healthCheckService - all service checks', () => {
     mockOllama.testConnection.mockReset();
     mockTmdb.testConnection.mockReset();
     mockOmdb.testConnection.mockReset();
+    reserveOmdbQuota.mockReset().mockResolvedValue({ status: 'reserved', apiKey: 'omdb-key' });
     mockDiscordBot.client = null;
     mockDiscordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
     mockHttpGet.mockReset();
@@ -93,7 +100,7 @@ describe('healthCheckService - all service checks', () => {
     [svc.checkRadarr, mockRadarr], [svc.checkSonarr, mockSonarr],
     [svc.checkTMDB, mockTmdb], [svc.checkOMDb, mockOmdb],
   ])('explicit helper failures cannot report healthy', async (check, helper) => {
-    db.query.mockResolvedValue({ rows: [{ id: 1, name: 'Fixture', api_key: 'fixture' }] });
+    db.query.mockResolvedValue({ rows: [{ ...availableOmdbQuotaFixture(), name: 'Fixture', api_key: 'fixture' }] });
     helper.testConnection.mockResolvedValueOnce({ success: true });
     const healthy = await check();
     helper.testConnection.mockResolvedValueOnce({ success: false, error: 'private-provider-body' });
@@ -473,7 +480,7 @@ describe('healthCheckService - all service checks', () => {
       { success: false, error: 'OMDb provider request limit reached' },
       null, undefined, {},
     ])('preserves last success when the probe resolves a failure %#', async probeResult => {
-      db.query.mockResolvedValue({ rows: [{ api_key: 'omdb-key' }] });
+      db.query.mockResolvedValue({ rows: [availableOmdbQuotaFixture()] });
       omdbService.testConnection.mockResolvedValueOnce({ success: true });
       const healthy = await svc.checkOMDb();
       omdbService.testConnection.mockResolvedValueOnce(probeResult);
@@ -492,7 +499,7 @@ describe('healthCheckService - all service checks', () => {
     });
 
     test('returns connected on successful testConnection', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ api_key: 'omdb-key' }] });
+      db.query.mockResolvedValueOnce({ rows: [availableOmdbQuotaFixture()] });
       omdbService.testConnection.mockResolvedValueOnce({ success: true });
 
       const result = await svc.checkOMDb();
@@ -500,7 +507,7 @@ describe('healthCheckService - all service checks', () => {
     });
 
     test('returns disconnected when testConnection fails', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ api_key: 'omdb-key' }] });
+      db.query.mockResolvedValueOnce({ rows: [availableOmdbQuotaFixture()] });
       omdbService.testConnection.mockRejectedValueOnce(new Error('Invalid key'));
 
       const result = await svc.checkOMDb();
