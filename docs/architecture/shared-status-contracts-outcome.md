@@ -57,8 +57,10 @@ change. Existing backend reports must not be presented as current evidence.
 Fresh GitHub MCP enumeration returned only [#560](https://github.com/cloudbyday90/Classifarr/pull/560).
 Random selection chose that PR. Its immutable head and complete two-file/four-pin
 diff match the previous review and are already implemented in the starting source.
-There is no unapplied PR change to duplicate. It was not merged or closed.
+There is no unapplied PR change to duplicate. No PR-state write was performed.
 The six local workflow contracts passed against the retained implementation.
+At the final inventory check GitHub returned zero open PRs and reported #560
+closed at 13:48:32 UTC with `merged: false`. Its closure occurred outside this work.
 
 ## Local image evaluation
 
@@ -75,8 +77,35 @@ A unique ten-item consumer batch took 6 ms. The probe made no writes/provider
 calls. One existing memory-pressure warning had occurred since startup; this
 work does not fix that separate condition or weaken its protection.
 
-Rebuild, schema and replacement evidence will be recorded after completion.
-Unraid and shared Plex/Ollama remain outside this change.
+The no-cache Compose build completed from clean implementation commit
+`72c265854b776dbb351faa81c9ba2250dc11f86c`. Exact local artifacts:
+
+- Image/index ID: `sha256:eae9a58a47a4b365097bf5af7a8aa96591cd91a0294b5c1fb528f610c26ac7de`.
+- Exported manifest: `sha256:174af1cc297e2d5e1f82784111994e712de115a2ae967fae64bfcceb86656cb0`.
+- Exported config: `sha256:f5dccfb5dc7f084823dc2e3079d6c9f4860e46184d7eb11333269664545d3127`.
+- OCI revision matched the full implementation commit before fixture execution
+  and after replacement. These are local identities, not published digests or
+  signed registry provenance. This outcome's follow-up commit is documentation only.
+
+`dumpSchema()` ran after the build against that exact image in a fresh disposable
+container, using the ordinary entrypoint, no network or published ports, 1 GiB,
+two CPUs and 256 PIDs. The snapshot remained unchanged through
+`20261010_220000_source_catalog_mappings.sql`, including 22 seed migrations.
+Fresh-database consumer checks passed with no invented pending work or unresolved
+identities. The owned fixture container and data directory were removed and their
+absence verified; the backup and rollback image were retained.
+
+Only local Classifarr was replaced, with `--no-build --pull never --no-deps`.
+It started at 14:07:01 UTC; Docker health and HTTP `/health` passed. Running image
+matched the tested image; restart count zero, OOM false, UID/GID 1000:1000,
+read-only root, 2 GiB limit and no-new-privileges remained set.
+
+The read-only probe at 14:07:43 UTC returned the same counts as the baseline;
+the ten-item batch took 7 ms with zero writes/provider calls. No WARN/ERROR was
+recorded since this startup at that observation point. A quiet 42-second startup
+does not establish that the earlier memory-pressure condition is resolved.
+Unraid and shared Plex/Ollama were not changed by these checks. Other local
+containers were left alone.
 
 ## Recommendation stack
 
