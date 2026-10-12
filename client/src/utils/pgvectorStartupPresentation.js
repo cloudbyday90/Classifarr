@@ -25,6 +25,8 @@ export function getPgvectorStartupPresentation(pgvector) {
   const report = isRecord(selection.report) ? selection.report : {}
   const facts = isRecord(selection.report) ? report : info
   const result = {
+    current: false,
+    cpuMismatch: false,
     label: 'Compatibility unknown',
     detail: 'Current embedded startup evidence is required to compare the selected variant with CPU support.',
     build: knownValue(facts.build, ['multi', 'generic', 'avx', 'avx2']),
@@ -35,6 +37,7 @@ export function getPgvectorStartupPresentation(pgvector) {
   }
   if (selection.status !== 'current_process' || report.schemaVersion !== 1
       || report.databaseScope !== 'embedded_entrypoint') return result
+  result.current = true
 
   if (result.selectedVariant === 'generic') {
     result.label = 'Generic selected at startup'
@@ -47,6 +50,7 @@ export function getPgvectorStartupPresentation(pgvector) {
     result.label = 'CPU match reported at startup'
     result.detail = 'The reported CPU supports the selected optimization. This does not establish database readiness.'
   } else if (support === 'No') {
+    result.cpuMismatch = true
     result.label = 'CPU mismatch reported at startup'
     result.detail = 'The selected optimization lacks reported CPU support. Review startup logs and image compatibility; do not force an optimized binary or relax container protections.'
   } else {

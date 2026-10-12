@@ -8,88 +8,51 @@ const props = defineProps({
   version: { type: String, default: null },
 })
 const presentation = computed(() => getPgvectorStartupPresentation(props.pgvector))
-const report = computed(() => presentation.value.selection)
+const variantLabels = new Map([['multi', 'Multi-variant'], ['generic', 'Generic'], ['avx', 'AVX'], ['avx2', 'AVX2']])
+const facts = computed(() => [
+  { key: 'version', label: 'Version', value: props.version || 'Unknown' },
+  { key: 'build', label: 'Build', value: presentation.value.current ? variantLabels.get(presentation.value.build) || 'Unknown' : 'Unknown' },
+  { key: 'selected-variant', label: 'Selected optimization', value: presentation.value.current ? variantLabels.get(presentation.value.selectedVariant) || 'Unknown' : 'Unknown' },
+  { key: 'cpu-avx', label: 'CPU supports AVX', value: presentation.value.current ? presentation.value.cpuAvx : 'Unknown' },
+  { key: 'cpu-avx2', label: 'CPU supports AVX2', value: presentation.value.current ? presentation.value.cpuAvx2 : 'Unknown' },
+])
 </script>
 
 <template>
   <section
-    class="min-w-0 space-y-3 text-sm break-words"
+    class="min-w-0 space-y-2 text-sm break-words"
     aria-labelledby="pgvector-startup-heading"
     data-testid="pgvector-startup-panel"
   >
     <h3
       id="pgvector-startup-heading"
-      class="font-medium text-gray-200"
+      class="font-medium text-gray-400"
     >
-      pgvector startup compatibility
+      pgvector
     </h3>
-    <p
-      class="font-medium"
-      data-testid="pgvector-compatibility-label"
-    >
-      {{ presentation.label }}
-    </p>
-    <p>{{ presentation.detail }}</p>
-    <p>
-      For operational checks, see Database and RAG in Health Status above.
-      Startup compatibility is not included in service-health totals.
-    </p>
-    <dl class="grid grid-cols-1 md:grid-cols-2 gap-2">
-      <div>
+    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+      <div
+        v-for="fact in facts"
+        :key="fact.key"
+        class="flex justify-between gap-4"
+      >
         <dt class="text-gray-400">
-          Extension version reported
-        </dt><dd>{{ version || 'unknown' }}</dd>
-      </div>
-      <div>
-        <dt class="text-gray-400">
-          Reported build
-        </dt><dd>{{ presentation.build }}</dd>
-      </div>
-      <div>
-        <dt class="text-gray-400">
-          Reported selected variant
-        </dt><dd>{{ presentation.selectedVariant }}</dd>
-      </div>
-      <div>
-        <dt class="text-gray-400">
-          Reported CPU AVX
-        </dt><dd>{{ presentation.cpuAvx }}</dd>
-      </div>
-      <div>
-        <dt class="text-gray-400">
-          Reported CPU AVX2
-        </dt><dd>{{ presentation.cpuAvx2 }}</dd>
+          {{ fact.label }}
+        </dt>
+        <dd
+          :data-testid="`pgvector-${fact.key}`"
+          class="text-right"
+        >
+          {{ fact.value }}
+        </dd>
       </div>
     </dl>
-    <div
-      class="space-y-2"
-      data-testid="pgvector-startup-report"
+    <p
+      v-if="presentation.cpuMismatch"
+      class="text-yellow-300"
+      data-testid="pgvector-cpu-warning"
     >
-      <p>{{ report.summary }}</p>
-      <p>{{ report.advice }}</p>
-      <p>Scope: {{ report.scope }}. This is a startup observation, not a loaded-binary or database-health check.</p>
-      <dl class="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div>
-          <dt class="text-gray-400">
-            Application-run reference
-          </dt><dd>{{ report.reference }}</dd>
-        </div>
-        <div>
-          <dt class="text-gray-400">
-            Recorded (UTC)
-          </dt><dd>{{ report.recordedAt }}</dd>
-        </div>
-        <div>
-          <dt class="text-gray-400">
-            Selected (UTC)
-          </dt><dd>{{ report.selectedAt }}</dd>
-        </div>
-        <div>
-          <dt class="text-gray-400">
-            Database started (UTC)
-          </dt><dd>{{ report.databaseStartedAt }}</dd>
-        </div>
-      </dl>
-    </div>
+      Selected optimization is not supported by this CPU. Check the container image.
+    </p>
   </section>
 </template>

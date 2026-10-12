@@ -119,7 +119,7 @@ describe('System.vue', () => {
     const wrapper = await mountSystem({ pgvector: currentPgvector })
     expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('CPU match reported at startup')
+    expect(wrapper.get('[data-testid="pgvector-selected-variant"]').text()).toBe('AVX2')
     expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain('Degraded')
     expect(wrapper.text()).toContain('of 8 active services reported healthy')
     wrapper.unmount()
@@ -193,24 +193,24 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
-  it.each(['current_process', 'other_process'])('renders scoped %s startup evidence without claiming binary attestation', async status => {
-    const wrapper = await mountSystem({ pgvector: {
-      build: 'multi', selectedVariant: 'generic', cpuAvx: 'true', cpuAvx2: 'true',
+  it.each(['current_process', 'other_process'])('shows concise facts without internal %s report details', async status => {
+    const wrapper = await mountSystem({ pgvectorVersion: '0.8.7', pgvector: {
       selection: { status, report: {
-        reason: 'staging_disabled', databaseScope: 'embedded_entrypoint',
+        ...currentPgvector.selection.report,
         reporterId: '12345678-1234-4567-8123-123456789abc',
         selectedAt: '2026-10-12T14:58:00.000Z', recordedAt: '2026-10-12T15:00:00.000Z',
         databaseStartedAt: '2026-10-12T14:59:00.000Z',
       } },
     } })
-    const report = wrapper.get('[data-testid="pgvector-startup-report"]')
-    expect(report.text()).toContain('12345678-1234-4567-8123-123456789abc')
-    expect(report.text()).toContain('2026-10-12T14:59:00.000Z')
-    if (status === 'current_process') expect(report.text()).toContain('staging was disabled')
-    else {
-      expect(report.text()).toContain('another application process')
-      expect(report.text()).not.toContain('staging was disabled')
+    const panel = wrapper.get('[data-testid="pgvector-startup-panel"]')
+    expect(panel.get('[data-testid="pgvector-version"]').text()).toBe('0.8.7')
+    expect(panel.get('[data-testid="pgvector-selected-variant"]').text()).toBe(status === 'current_process' ? 'AVX2' : 'Unknown')
+    expect(panel.findAll('dt')).toHaveLength(5)
+    for (const internal of ['12345678-1234-4567-8123-123456789abc', '2026-10-12', 'application process', 'database run', 'Scope:', 'startup compatibility']) {
+      expect(panel.text()).not.toContain(internal)
     }
+    expect(panel.find('[data-testid="pgvector-startup-report"]').exists()).toBe(false)
+    expect(panel.find('[data-testid="pgvector-cpu-warning"]').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -222,7 +222,7 @@ describe('System.vue', () => {
         },
       }
     })
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('CPU mismatch reported at startup')
+    expect(wrapper.get('[data-testid="pgvector-cpu-warning"]').text()).toContain('not supported by this CPU')
     expect(wrapper.get('[data-testid="service-card-database"]').text()).toContain('Healthy')
     expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
     wrapper.unmount()
@@ -238,7 +238,7 @@ describe('System.vue', () => {
       { disabled: 'Disabled', unavailable: 'Unhealthy', unknown: 'Unknown' }[rag],
     )
     expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain('pgvector unavailable')
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    expect(wrapper.get('[data-testid="pgvector-selected-variant"]').text()).toBe('AVX2')
     wrapper.unmount()
   })
 
@@ -253,7 +253,7 @@ describe('System.vue', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
     expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    expect(wrapper.get('[data-testid="pgvector-selected-variant"]').text()).toBe('AVX2')
     await vi.advanceTimersByTimeAsync(30000)
     expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
     wrapper.unmount()
@@ -265,7 +265,7 @@ describe('System.vue', () => {
     const wrapper = await mountSystem({ pgvector: currentPgvector })
     expect(wrapper.text()).toContain('Unable to read health status')
     expect(wrapper.text()).not.toContain('Fixture health request failed')
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    expect(wrapper.get('[data-testid="pgvector-selected-variant"]').text()).toBe('AVX2')
     expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
     wrapper.unmount()
     errorLog.mockRestore()
@@ -273,7 +273,7 @@ describe('System.vue', () => {
 
   it('does not infer compatibility from legacy settings or an extension version alone', async () => {
     const wrapper = await mountSystem({ pgvectorVersion: '0.8.1', pgvector: null })
-    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('Compatibility unknown')
+    expect(wrapper.get('[data-testid="pgvector-selected-variant"]').text()).toBe('Unknown')
     expect(wrapper.text()).toContain('0.8.1')
     wrapper.unmount()
   })

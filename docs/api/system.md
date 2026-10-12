@@ -102,12 +102,16 @@ lease, a health result or tamper-proof evidence. Only a current embedded report
 can support specific staging guidance. Older servers may omit it entirely.
 See the [design and reason policy](../architecture/pgvector-startup-report-design.md).
 
-System presents these observations in **pgvector startup compatibility**, outside
-the service-health totals. Only current embedded evidence supports a CPU comparison;
-generic selection is not a health result. Database connectivity and RAG catalog/
-index readiness remain separate checks. Neither the startup report nor catalog
-presence proves which native binary a database session loaded. See the
-[compatibility/health separation design](../architecture/pgvector-health-separation-design.md).
+System Information shows compact pgvector version, build, selected optimization
+and CPU-support facts, outside the service-health totals. Internal report references,
+timestamps and explanatory paragraphs are not rendered in this card. Only current
+embedded evidence supports selection/CPU values; otherwise they show Unknown. A
+confirmed CPU mismatch retains a short warning. Database connectivity and RAG
+catalog/index readiness remain separate checks. Neither these facts nor catalog
+presence proves which native binary a database session loaded. The API diagnostics
+above are unchanged. See the
+[presentation design](../architecture/system-information-simplification-design.md)
+and [compatibility/health separation design](../architecture/pgvector-health-separation-design.md).
 
 ### GET /api/system/health
 

@@ -39,6 +39,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Revalidate completed health caches in the background so committed configuration
   changes from other processes retire outdated results without extra provider probes.
   Keep database readiness and security safeguards unchanged.
+  Simplify System Information to concise version, build and CPU facts, removing
+  internal startup references and explanations while retaining actionable warnings.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached
