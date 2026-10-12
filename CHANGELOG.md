@@ -32,6 +32,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   services, and label retained results after failed checks instead of claiming
   current health. Expire cached health using actual check times and heartbeat
   cadence, showing overdue checks and specific refresh/clock/scheduler guidance.
+  Distinguish failed configuration reads from absent settings, keeping unknown
+  services visible with safe database/schema/access diagnostics and check references.
   Keep database readiness and security safeguards unchanged.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,

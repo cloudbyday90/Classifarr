@@ -20,6 +20,7 @@ import { apiClient, getDataRequest } from './core'
 
 /** Raw readiness/status fields plus per-service freshness/effectiveStatus and freshnessPolicy.
  * Receiving this response does not mean its cached provider observations are fresh.
+ * Unknown configuration reads carry a safe error plus failure { code, stage }.
  */
 export function getSystemHealth() {
   return getDataRequest('/system/health')
@@ -27,6 +28,7 @@ export function getSystemHealth() {
 
 /** Detailed observations with active, inactive and unknown summary counts.
  * Unlike /system/health's database readiness status, overall summarizes returned services.
+ * Includes unknown Arr groups when configuration lookup cannot determine membership.
  */
 export function getSystemServicesHealth() {
   return getDataRequest('/system/health/services')

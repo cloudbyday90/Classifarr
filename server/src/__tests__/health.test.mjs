@@ -151,6 +151,37 @@ describe('Health Endpoints', () => {
   });
 
   describe('GET /api/system/health', () => {
+    test('keeps failed configuration reads unknown while raw database readiness remains healthy', async () => {
+      const lastCheck = new Date().toISOString();
+      const failure = { stage: 'configuration_read', code: 'configuration_schema_unavailable' };
+      healthCheckService.getHealthCache.mockReturnValue({ database: { status: 'connected', lastCheck },
+        radarr: { status: 'unknown', lastCheck, failure, error: 'Review startup and migration logs.' } });
+      const response = await request(app).get('/api/system/health');
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('healthy');
+      expect(response.body.details.radarr).toMatchObject({ status: 'unknown', effectiveStatus: 'unknown',
+        failure, freshness: { state: 'fresh' } });
+      expect(healthCheckService.runAllHealthChecks).not.toHaveBeenCalled();
+    });
+
+    test('detailed health includes unknown Arr membership and excludes stale instances', async () => {
+      const lastCheck = new Date().toISOString();
+      const failure = { stage: 'configuration_read', code: 'configuration_read_unavailable' };
+      const unknown = { status: 'unknown', lastCheck, failure, error: 'Check Database health.' };
+      healthCheckService.getAllServicesHealth.mockResolvedValue({ database: { status: 'connected', lastCheck },
+        radarr: { ...unknown, instances: [{ name: 'stale', status: 'connected', lastCheck }] },
+        sonarr: unknown, aiProvider: unknown, mediaServer: unknown, rag: unknown, timestamp: lastCheck });
+      const response = await request(app).get('/api/system/health/services');
+      expect(response.status).toBe(200);
+      expect(response.body.overall).toBe('unknown');
+      expect(response.body.summary).toMatchObject({ total: 6, unknown: 5, healthy: 1, active: 6 });
+      expect(response.body.services.map(service => service.name)).toEqual(['Radarr', 'Sonarr', 'PostgreSQL', 'Media Server', 'AI Provider', 'RAG']);
+      for (const service of response.body.services.filter(service => service.name !== 'PostgreSQL')) {
+        expect(service).toMatchObject({ status: 'unknown', failure, error: 'Check Database health.', timestamp: lastCheck });
+      }
+      expect(response.body.services.find(service => service.name === 'RAG').details).toBeNull();
+    });
+
     test.each(['connected', 'disconnected'])('keeps raw database readiness %s while expiring old observations without renewing them', async status => {
       const now = Date.parse('2026-10-12T12:00:00.000Z');
       const lastCheck = '2026-10-12T11:44:30.000Z';

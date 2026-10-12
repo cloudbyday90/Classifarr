@@ -138,6 +138,45 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
+  it('shows configuration-read failure context without inventing absent configuration or RAG counts', async () => {
+    const failure = { stage: 'configuration_read', code: 'configuration_schema_unavailable' }
+    const lastCheck = '2026-10-12T12:00:00.000Z'
+    const unknown = { status: 'unknown', lastCheck, failure, freshness: fresh,
+      error: 'Review startup and migration logs; do not re-enter provider credentials.',
+      lastSuccessfulCheck: '2026-10-11T12:00:00.000Z' }
+    const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'unknown', rag: 'unknown', imageEmbeddings: 'unknown',
+      details: { ...baseHealth.details, radarr: unknown, rag: unknown, imageEmbeddings: unknown } })
+    for (const key of ['radarr', 'rag', 'imageEmbeddings']) {
+      const card = wrapper.get(`[data-testid="service-card-${key}"]`)
+      expect(card.text()).toContain('Unknown')
+      expect(card.text()).toContain('do not re-enter provider credentials')
+      expect(card.text()).toContain('Last healthy:')
+      expect(card.get('[data-testid="health-failure-reference"]').text()).toContain(lastCheck)
+      expect(card.text()).toContain(failure.code)
+      expect(card.text()).not.toContain('Not Configured')
+    }
+    expect(wrapper.get('[data-testid="service-card-rag"]').text()).not.toContain('Embeddings: 0')
+    expect(wrapper.get('[data-testid="service-card-imageEmbeddings"]').text()).not.toContain('Mode: disabled')
+    expect(api.refreshSystemHealth).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('renders failure references as text and clears them after normal polling recovery', async () => {
+    const failure = { code: '<script>private()</script>', stage: '<img src=x onerror=private()>' }
+    const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'unknown',
+      details: { ...baseHealth.details, radarr: { failure, freshness: fresh, error: 'Safe failure', lastCheck: fresh.checkedAt } } })
+    const card = wrapper.get('[data-testid="service-card-radarr"]')
+    expect(card.get('[data-testid="health-failure-reference"]').text()).toContain(failure.code)
+    expect(card.find('script').exists()).toBe(false)
+    expect(card.find('img').exists()).toBe(false)
+    api.getSystemHealth.mockResolvedValue(baseHealth)
+    await vi.advanceTimersByTimeAsync(30000)
+    await flushPromises()
+    expect(card.find('[data-testid="health-failure-reference"]').exists()).toBe(false)
+    expect(api.refreshSystemHealth).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it.each(['current_process', 'other_process'])('renders scoped %s startup evidence without claiming binary attestation', async status => {
     const wrapper = await mountSystem({ pgvector: {
       build: 'multi', selectedVariant: 'generic', cpuAvx: 'true', cpuAvx2: 'true',

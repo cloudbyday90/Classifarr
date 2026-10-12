@@ -20,6 +20,23 @@ Monitor all connected services in real-time with comprehensive health endpoints.
 
 ## Overview
 
+Configuration lookup failures are **unknown**, not absent configuration or proof
+that a provider is down. Affected observations include a fixed safe `error` and
+`failure: { stage, code }`, along with the completed attempt's `lastCheck` and
+retained `lastSuccessfulCheck`. `configuration_read` codes distinguish unavailable
+database, missing schema, access refusal, cancellation, invalid result and unknown
+read failure. Unexpected check failures use `health_check` / `health_check_failed`.
+The System page shows the code, stage and UTC check reference. Raw SQL exceptions
+and credentials are not included. Console diagnostics record the same bounded
+context on transitions, without attempting another database write.
+
+Successful empty/disabled configuration reads remain inactive. Normal future
+checks clear failures on recovery; no immediate retry or credential replacement
+is triggered. `/health/services` includes an unknown Radarr/Sonarr group when its
+membership could not be read, rather than silently omitting it. The cached `/health`
+details retain this diagnostic too; raw database readiness and HTTP codes are
+unchanged. These fields are additive and may be absent on older servers.
+
 The System Health API provides:
 
 - **Real-time monitoring** of all connected services

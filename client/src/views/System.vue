@@ -230,6 +230,13 @@
             class="mt-2 p-2 bg-red-900/20 border border-red-800 rounded-sm text-xs text-red-400"
           >
             {{ service.error }}
+            <p
+              v-if="service.failure"
+              class="mt-1"
+              data-testid="health-failure-reference"
+            >
+              Diagnostic: {{ service.failure.code }} · Stage: {{ service.failure.stage }} · Check (UTC): {{ service.lastCheck }}
+            </p>
           </div>
 
           <!-- Circuit Breaker Status (OMDb only) -->
@@ -602,7 +609,7 @@ const loadHealth = async (silent = false) => {
       if (imageEmbedMode) {
         imageEmbedDescriptionParts.push(`Mode: ${imageEmbedMode}`)
       }
-      const imageEmbedDescription = imageEmbedDescriptionParts.length > 0
+      const imageEmbedDescription = healthDetails.value.imageEmbeddings?.failure ? 'Configuration or health check unavailable' : imageEmbedDescriptionParts.length > 0
         ? imageEmbedDescriptionParts.join(' • ')
         : 'Local image embedding service'
       
@@ -636,7 +643,7 @@ const loadHealth = async (silent = false) => {
           lastCheck: healthDetails.value.rag?.lastCheck,
           lastSuccessfulCheck: healthDetails.value.rag?.lastSuccessfulCheck,
           error: healthDetails.value.rag?.error,
-          metadata: healthDetails.value.rag ? {
+          metadata: healthDetails.value.rag && !healthDetails.value.rag.failure ? {
             pgvector: healthDetails.value.rag.pgvector,
             embeddingsTable: healthDetails.value.rag.embeddingsTable,
             prewarm: healthDetails.value.rag.prewarm,
@@ -864,6 +871,7 @@ const loadHealth = async (silent = false) => {
 
       healthServices.value = healthServices.value.map(service => ({
         ...applyHealthObservation(service, healthDetails.value[service.key]),
+        failure: healthDetails.value[service.key]?.failure,
         ...(service.instances ? { instances: service.instances.map(instance => applyHealthObservation(instance, instance)) } : {}),
       }))
       freshnessPolicy.value = statusMap.freshnessPolicy || null

@@ -72,6 +72,14 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
 
     const allServices = [];
 
+    // Failed membership reads must remain visible even when no instances can be listed.
+    for (const [key, name] of [['radarr', 'Radarr'], ['sonarr', 'Sonarr']]) {
+      if (services[key]?.failure) {
+        allServices.push({ name, status: 'unknown', latency: null, timestamp: services[key].lastCheck,
+          error: services[key].error, failure: services[key].failure });
+      }
+    }
+
     if (services.database && services.database.status !== 'not configured') {
       const dbService = {
         name: 'PostgreSQL',
@@ -91,6 +99,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
         status: mapServiceStatus(services.mediaServer.status),
         latency: services.mediaServer.responseTime || 0,
         timestamp: services.mediaServer.lastCheck,
+        failure: services.mediaServer.failure,
       };
       if (services.mediaServer.error !== undefined) {
         mediaService.error = services.mediaServer.error;
@@ -98,7 +107,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
       allServices.push(mediaService);
     }
 
-    if (services.radarr && services.radarr.instances && services.radarr.instances.length > 0) {
+    if (services.radarr && !services.radarr.failure && services.radarr.instances && services.radarr.instances.length > 0) {
       services.radarr.instances.forEach((instance) => {
         const radarrService = {
           name: `Radarr (${instance.name})`,
@@ -113,7 +122,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
       });
     }
 
-    if (services.sonarr && services.sonarr.instances && services.sonarr.instances.length > 0) {
+    if (services.sonarr && !services.sonarr.failure && services.sonarr.instances && services.sonarr.instances.length > 0) {
       services.sonarr.instances.forEach((instance) => {
         const sonarrService = {
           name: `Sonarr (${instance.name})`,
@@ -134,6 +143,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
         status: mapServiceStatus(services.aiProvider.status),
         latency: services.aiProvider.responseTime || 0,
         timestamp: services.aiProvider.lastCheck,
+        failure: services.aiProvider.failure,
       };
       if (services.aiProvider.error !== undefined) {
         aiService.error = services.aiProvider.error;
@@ -147,7 +157,8 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
         status: mapServiceStatus(services.rag.status),
         latency: services.rag.responseTime || 0,
         timestamp: services.rag.lastCheck,
-        details: {
+        failure: services.rag.failure,
+        details: services.rag.failure ? null : {
           pgvector: services.rag.pgvector,
           embeddingsTable: services.rag.embeddingsTable,
           prewarm: services.rag.prewarm,

@@ -111,7 +111,9 @@ export async function checkImageEmbeddings() {
 
     healthCache.imageEmbeddings = await computeImageEmbeddingsHealth(previous);
 
-    maybeSendHealthAlert('imageEmbeddings', previous.status, healthCache.imageEmbeddings.status);
+    if (!healthCache.imageEmbeddings.failure) {
+        maybeSendHealthAlert('imageEmbeddings', previous.status, healthCache.imageEmbeddings.status);
+    }
 
     return healthCache.imageEmbeddings;
 }

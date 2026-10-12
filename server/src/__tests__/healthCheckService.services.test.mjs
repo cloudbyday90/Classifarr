@@ -73,6 +73,65 @@ describe('healthCheckService - all service checks', () => {
     svc.stopHeartbeat();
   });
 
+  describe.each([
+    ['Radarr', svc.checkRadarr], ['Sonarr', svc.checkSonarr], ['Discord', svc.checkDiscordBot],
+    ['AI', svc.checkOllama], ['Media Server', svc.checkMediaServer], ['TMDb', svc.checkTMDB],
+    ['OMDb', svc.checkOMDb], ['Tavily', svc.checkTavily], ['RAG', svc.checkRAG], ['Image', svc.checkImageEmbeddings],
+  ])('%s configuration admission', (_name, check) => {
+    test.each(['ECONNRESET', '42P01', '42501', '57014', undefined])('failed %s read is unknown without provider traffic', async code => {
+      mockDiscordBot.client = { isReady: jest.fn(() => true) };
+      db.query.mockRejectedValueOnce(Object.assign(new Error('private database message'), { code }));
+      const result = await check();
+      expect(result.status).toBe('unknown');
+      expect(result.failure.stage).toBe('configuration_read');
+      expect(result.lastSuccessfulCheck).toBeNull();
+      expect(db.query).toHaveBeenCalledTimes(1);
+      for (const probe of [mockHttpGet, mockHttpPost, mockHttpPut, mockRadarr.testConnection, mockSonarr.testConnection,
+        mockOllama.testConnection, mockTmdb.testConnection, mockOmdb.testConnection, mockDiscordBot.client.isReady,
+        mockDiscordBot.sendSystemAlert]) expect(probe).not.toHaveBeenCalled();
+      expect(JSON.stringify(result)).not.toContain('private database message');
+    });
+
+    test.each([undefined, { rows: null }, { rows: [null] }])('malformed %j result cannot become inactive', async value => {
+      db.query.mockResolvedValueOnce(value);
+      const result = await check();
+      expect(result.failure.code).toBe('configuration_read_invalid');
+      expect(result.status).toBe('unknown');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('successful empty read clears the prior failure and restores genuine inactivity', async () => {
+      db.query.mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows: [] });
+      expect((await check()).status).toBe('unknown');
+      const result = await check();
+      expect(['not configured', 'disabled']).toContain(result.status);
+      expect(result.failure).toBeUndefined();
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  test('preserves last success across a failed membership read and clears failure after recovery', async () => {
+    const rows = [{ id: 1, name: 'Movies' }];
+    db.query.mockResolvedValueOnce({ rows }).mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows });
+    mockRadarr.testConnection.mockResolvedValue(undefined);
+    const healthy = await svc.checkRadarr();
+    const unknown = await svc.checkRadarr();
+    expect(unknown.lastSuccessfulCheck).toBe(healthy.lastSuccessfulCheck);
+    expect(unknown.previousStatus).toBe('connected');
+    expect(unknown.instances).toBeUndefined();
+    expect(mockRadarr.testConnection).toHaveBeenCalledTimes(1);
+    const recovered = await svc.checkRadarr();
+    expect(recovered.status).toBe('connected');
+    expect(recovered.failure).toBeUndefined();
+    expect(mockRadarr.testConnection).toHaveBeenCalledTimes(2);
+  });
+
+  test('an unexpected Discord client failure is not absent configuration', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ bot_token: 'test' }] });
+    mockDiscordBot.client = { isReady: () => { throw new Error('private'); } };
+    expect(await svc.checkDiscordBot()).toMatchObject({ status: 'unknown', failure: { code: 'health_check_failed' } });
+  });
+
   // -------------------------------------------------------------------------
   // checkDatabase
   // -------------------------------------------------------------------------
@@ -121,12 +180,12 @@ describe('healthCheckService - all service checks', () => {
       expect(result.status).toBe('connected');
     });
 
-    test('falls back to not configured on db error', async () => {
+    test('returns unknown on db error', async () => {
       discordBotService.client = null;
       db.query.mockRejectedValueOnce(new Error('table not found'));
 
       const result = await svc.checkDiscordBot();
-      expect(result.status).toBe('not configured');
+      expect(result.status).toBe('unknown');
     });
   });
 
@@ -134,10 +193,10 @@ describe('healthCheckService - all service checks', () => {
   // checkOllama
   // -------------------------------------------------------------------------
   describe('checkOllama', () => {
-    test('returns not configured when ai_provider_config table missing', async () => {
+    test('returns unknown when ai_provider_config table missing', async () => {
       db.query.mockRejectedValueOnce(new Error('relation does not exist'));
       const result = await svc.checkOllama();
-      expect(result.status).toBe('not configured');
+      expect(result.status).toBe('unknown');
     });
 
     test('returns not configured when no ai config row exists', async () => {
@@ -198,10 +257,10 @@ describe('healthCheckService - all service checks', () => {
   // checkRadarr
   // -------------------------------------------------------------------------
   describe('checkRadarr', () => {
-    test('returns not configured when table missing', async () => {
+    test('returns unknown when table missing', async () => {
       db.query.mockRejectedValueOnce(new Error('relation does not exist'));
       const result = await svc.checkRadarr();
-      expect(result.status).toBe('not configured');
+      expect(result.status).toBe('unknown');
     });
 
     test('returns not configured when no active instances', async () => {
@@ -362,10 +421,10 @@ describe('healthCheckService - all service checks', () => {
       expect(result.status).toBe('configured');
     });
 
-    test('returns error on db exception', async () => {
+    test('returns unknown on db exception', async () => {
       db.query.mockRejectedValueOnce(new Error('table not found'));
       const result = await svc.checkTavily();
-      expect(result.status).toBe('error');
+      expect(result.status).toBe('unknown');
     });
   });
 

@@ -70,21 +70,15 @@ export function createDefaultHealthCache() {
 }
 
 export function buildHealthState(previous = {}, overrides = {}) {
-  const state = {
+  return {
     lastCheck: new Date().toISOString(),
     lastSuccessfulCheck: previous.lastSuccessfulCheck ?? null,
     previousStatus: previous.status ?? null,
     ...overrides,
+    ...(Object.prototype.hasOwnProperty.call(previous, 'responseTime')
+      || Object.prototype.hasOwnProperty.call(overrides, 'previousResponseTime')
+      ? { previousResponseTime: previous.responseTime ?? null } : {}),
   };
-
-  if (
-    Object.prototype.hasOwnProperty.call(previous, 'responseTime')
-    || Object.prototype.hasOwnProperty.call(overrides, 'previousResponseTime')
-  ) {
-    state.previousResponseTime = previous.responseTime ?? null;
-  }
-
-  return state;
 }
 
 export function buildStatusHealthState(previous = {}, status, overrides = {}) {
@@ -165,13 +159,6 @@ export function buildImageEmbeddingsHealthState(previous = {}, status, overrides
     mode: 'disabled',
     readiness: 'unknown',
     ready: null,
-    ...overrides,
-  });
-}
-
-export function buildErrorHealthState(previous = {}, error, overrides = {}) {
-  return buildStatusHealthState(previous, 'error', {
-    error: error?.message ?? error ?? null,
     ...overrides,
   });
 }

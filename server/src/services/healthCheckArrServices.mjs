@@ -10,6 +10,7 @@
 import * as db from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
+import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import {
     buildAggregateInstancesHealthState,
     buildNotConfiguredHealthState,
@@ -19,12 +20,8 @@ import {
 
 export async function checkRadarr(previous) {
     try {
-        let configs;
-        try {
-            configs = await db.query('SELECT * FROM radarr_config WHERE is_active = true');
-        } catch (_dbError) {
-            return buildNotConfiguredHealthState(previous, { instances: [] });
-        }
+        const configs = await readHealthConfiguration(previous, 'radarr', () => db.query('SELECT * FROM radarr_config WHERE is_active = true'));
+        if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {
             return buildNotConfiguredHealthState(previous, { instances: [] });
@@ -46,18 +43,14 @@ export async function checkRadarr(previous) {
 
         return buildAggregateInstancesHealthState(previous, instances);
     } catch (_error) {
-        return buildNotConfiguredHealthState(previous, { instances: [] });
+        return buildUnknownHealthState(previous, 'radarr');
     }
 }
 
 export async function checkSonarr(previous) {
     try {
-        let configs;
-        try {
-            configs = await db.query('SELECT * FROM sonarr_config WHERE is_active = true');
-        } catch (_dbError) {
-            return buildNotConfiguredHealthState(previous, { instances: [] });
-        }
+        const configs = await readHealthConfiguration(previous, 'sonarr', () => db.query('SELECT * FROM sonarr_config WHERE is_active = true'));
+        if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {
             return buildNotConfiguredHealthState(previous, { instances: [] });
@@ -79,6 +72,6 @@ export async function checkSonarr(previous) {
 
         return buildAggregateInstancesHealthState(previous, instances);
     } catch (_error) {
-        return buildNotConfiguredHealthState(previous, { instances: [] });
+        return buildUnknownHealthState(previous, 'sonarr');
     }
 }

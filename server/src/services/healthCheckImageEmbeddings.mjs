@@ -7,6 +7,7 @@
  */
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
+import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import {
     AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
     buildEmbeddingRuntimeDedupeKey,
@@ -20,7 +21,7 @@ const logger = createLogger('healthCheckImageEmbeddings');
 
 export async function checkImageEmbeddings(previous) {
     try {
-        const result = await db.query(`
+        const result = await readHealthConfiguration(previous, 'imageEmbeddings', () => db.query(`
             SELECT
                 rag_image_weight,
                 image_embedding_provider_mode,
@@ -31,7 +32,8 @@ export async function checkImageEmbeddings(previous) {
                 image_embedding_models_cache_updated_at
             FROM ai_provider_config
             WHERE id = 1
-        `);
+        `));
+        if (!result.ok) return result.health;
 
         if (result.rows.length === 0) {
             return buildImageEmbeddingsHealthState(previous, 'not configured', {
@@ -169,13 +171,7 @@ export async function checkImageEmbeddings(previous) {
             ready,
             error,
         });
-    } catch (error) {
-        logger.error('[HEALTH] Unexpected error in checkImageEmbeddings', { error: error.message });
-        return buildImageEmbeddingsHealthState(previous, 'error', {
-            error: error.message,
-            provider: 'unknown',
-            readiness: 'unknown',
-            ready: null,
-        });
+    } catch (_error) {
+        return buildUnknownHealthState(previous, 'imageEmbeddings');
     }
 }

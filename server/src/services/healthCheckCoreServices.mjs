@@ -11,8 +11,8 @@ import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import { discordBotService } from './discordBot.mjs';
+import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import {
-    buildErrorHealthState,
     buildNotConfiguredHealthState,
     buildStatusHealthState,
     buildTimedResultHealthState,
@@ -29,15 +29,10 @@ export async function checkDatabase(previous) {
 
 export async function checkDiscordBot(previous) {
     try {
+        const config = await readHealthConfiguration(previous, 'discordBot', () => db.query("SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1"));
+        if (!config.ok) return config.health;
+        const isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
         const isConnected = discordBotService.client && discordBotService.client.isReady();
-
-        let isConfigured = false;
-        try {
-            const config = await db.query("SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1");
-            isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
-        } catch (_dbError) {
-            isConfigured = false;
-        }
 
         const status = isConnected ? 'connected' : (isConfigured ? 'disconnected' : 'not configured');
 
@@ -46,18 +41,14 @@ export async function checkDiscordBot(previous) {
             responseTime: null,
         });
     } catch (_error) {
-        return buildNotConfiguredHealthState(previous, { responseTime: null });
+        return buildUnknownHealthState(previous, 'discordBot');
     }
 }
 
 export async function checkOllama(previous) {
     try {
-        let aiConfig;
-        try {
-            aiConfig = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
-        } catch (_dbError) {
-            return buildNotConfiguredHealthState(previous, { provider: 'none' });
-        }
+        const aiConfig = await readHealthConfiguration(previous, 'ollama', () => db.query('SELECT * FROM ai_provider_config WHERE id = 1'));
+        if (!aiConfig.ok) return aiConfig.health;
 
         if (aiConfig.rows.length === 0 || !aiConfig.rows[0].primary_provider || aiConfig.rows[0].primary_provider === 'none') {
             return buildNotConfiguredHealthState(previous, { provider: 'none' });
@@ -85,13 +76,14 @@ export async function checkOllama(previous) {
             provider,
         });
     } catch (_error) {
-        return buildNotConfiguredHealthState(previous, { provider: 'none' });
+        return buildUnknownHealthState(previous, 'ollama');
     }
 }
 
 export async function checkMediaServer(previous) {
     try {
-        const config = await db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1');
+        const config = await readHealthConfiguration(previous, 'mediaServer', () => db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1'));
+        if (!config.ok) return config.health;
 
         if (config.rows.length === 0) {
             return buildNotConfiguredHealthState(previous, { type: null });
@@ -120,7 +112,7 @@ export async function checkMediaServer(previous) {
             type: serverType,
             name: server.name,
         });
-    } catch (error) {
-        return buildErrorHealthState(previous, error, { type: null });
+    } catch (_error) {
+        return buildUnknownHealthState(previous, 'mediaServer');
     }
 }

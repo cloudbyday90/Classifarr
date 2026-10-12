@@ -311,28 +311,44 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
         mockLogger.debug.mockReset();
     });
 
-    it('produces a [HEALTH] error log when db.query throws unexpectedly (Gap 3.23)', async () => {
+    it('produces a safe configuration diagnostic when db.query throws', async () => {
         db.query.mockRejectedValueOnce(new Error('DB connection pool exhausted'));
 
         const result = await checkImageEmbeddings();
 
-        expect(result.status).toBe('error');
-        expect(mockLogger.error).toHaveBeenCalledWith(
-            '[HEALTH] Unexpected error in checkImageEmbeddings',
-            expect.objectContaining({ error: 'DB connection pool exhausted' })
+        expect(result.status).toBe('unknown');
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+            'Health observation could not be completed',
+            expect.objectContaining({ service: 'imageEmbeddings', code: 'configuration_read_failed' }),
+            { skipDbPersist: true }
         );
+        expect(mockLogger.error).not.toHaveBeenCalled();
+        expect(JSON.stringify(result)).not.toContain('DB connection pool exhausted');
     });
 
-    it('data arg to [HEALTH] logger.error is a plain object, not a bare string (Gap 3.24)', async () => {
+    it('logs structured safe context rather than a raw exception', async () => {
         db.query.mockRejectedValueOnce(new Error('unexpected db failure'));
 
         await checkImageEmbeddings();
 
-        const [, dataArg] = mockLogger.error.mock.calls.find(
-            ([msg]) => msg === '[HEALTH] Unexpected error in checkImageEmbeddings'
+        const [, dataArg] = mockLogger.warn.mock.calls.find(
+            ([msg]) => msg === 'Health observation could not be completed'
         ) || [];
         expect(typeof dataArg).toBe('object');
         expect(dataArg).not.toBeNull();
         expect(Array.isArray(dataArg)).toBe(false);
+        expect(JSON.stringify(dataArg)).not.toContain('unexpected db failure');
+    });
+
+    it('does not send a recovery or failure alert when a prior fault cannot be rechecked', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ image_embedding_provider_mode: 'separate_local',
+            image_embedding_local_host: 'fixture', rag_image_weight: 1 }] });
+        mockHttpGet.mockRejectedValueOnce(new Error('provider unavailable'));
+        db.query.mockResolvedValueOnce({ rows: [{ has_image_embeddings: true }] });
+        expect((await checkImageEmbeddings()).status).toBe('disconnected');
+        discordBot.sendSystemAlert.mockClear();
+        db.query.mockRejectedValueOnce(new Error('database unavailable'));
+        expect((await checkImageEmbeddings()).status).toBe('unknown');
+        expect(discordBot.sendSystemAlert).not.toHaveBeenCalled();
     });
 });

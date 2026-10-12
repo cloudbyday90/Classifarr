@@ -46,6 +46,15 @@ describe('systemHealthApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/system/health/services')
     expect(mockPost).not.toHaveBeenCalled()
   })
+  it('preserves safe configuration failure context from both health readers', async () => {
+    const failure = { code: 'configuration_read_unavailable', stage: 'configuration_read' }
+    const result = { details: { radarr: { status: 'unknown', failure } },
+      services: [{ name: 'Radarr', status: 'unknown', failure }] }
+    mockGetDataRequest.mockResolvedValue(result)
+    expect(await getSystemHealth()).toBe(result)
+    expect(await getSystemServicesHealth()).toBe(result)
+    expect(mockPost).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
