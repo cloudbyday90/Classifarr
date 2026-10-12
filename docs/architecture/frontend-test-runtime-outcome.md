@@ -83,9 +83,40 @@ This is **not a fresh backend test run** for this tooling batch.
 
 ## Local image verification
 
-Host validation is complete. The requested no-cache build, local replacement and
-isolated schema dump will use the clean implementation commit and be recorded in
-a follow-up documentation commit before push. No production deployment is planned.
+The requested no-cache Compose build completed from clean implementation commit
+`934b0049750f61b5f82e70a4018eb38133f73166`. The resulting local image is
+`sha256:53a2bb21246b0f0ff644f339d794667df9712d44cbf817cb1a20bb6594c144d0`;
+its OCI revision matches that commit. This is a local image ID, not a published
+registry digest or release attestation. A follow-up documentation commit records
+the evidence without changing the tested implementation.
+
+Before replacement, a 75,863,823-byte database backup passed checksum and archive
+readability checks. The exact previous image remains available under rollback tag
+`classifarr:pre-memory-05eabd33-a87a-43d5-96e0-bd3e0edcf070`, image ID
+`sha256:0190448fcc82ab7ba2bc55df9bede368bb608455051d616071bc82b2c41f7d64`.
+Private backup artifacts remain ignored; no backup or credential was committed.
+
+Only local Classifarr was replaced, using the built image without pulling.
+The running container image matches the tested image ID, reports healthy,
+returns HTTP 200 from `/health`, and has zero restarts and no recorded OOM kill.
+UID/GID 1000:1000, read-only root filesystem, `no-new-privileges` and the 2 GiB
+container limit remain intact. Unraid and shared Plex/Ollama were not changed.
+
+The read-only local probe at 11:04:23 UTC reported 6,836 classifications,
+10 of 10 active libraries covered and four unresolved identities (two needing
+source review, two waiting to retry). It made zero writes and zero provider
+calls; no startup warnings appeared in its bounded query. Text embedding pending
+work was zero; image pending work remained 6,814. A ten-item image batch read
+returned ten unique items in 5 ms. These are observations, not proof that all
+background work is complete, and no identity approval was performed.
+
+After rebuilding, the schema dump ran against a fresh, network-isolated database
+using the exact new image. Migrations through
+`20261010_220000_source_catalog_mappings.sql` and 22 data-only seed migrations
+produced an unchanged `database/schema/current.sql`. Fresh-database checks found
+no invented pending work, image records or unresolved identities. The fixture
+container and its owned data directory were confirmed absent after cleanup;
+the local app database was not used as the schema snapshot source.
 
 ## Next bounded item
 
