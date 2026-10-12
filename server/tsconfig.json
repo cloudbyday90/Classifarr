@@ -20,6 +20,7 @@
     "src/services/healthConfigurationRead.mjs",
     "src/services/healthConfigurationGuard.mjs",
     "src/services/healthObservationCoordinator.mjs",
+    "src/services/healthReconciliationScheduler.mjs",
     "src/services/healthObservationFreshness.mjs",
     "src/services/serviceHealthSummary.mjs",
     "src/services/pgvectorSelectionReport.mjs",

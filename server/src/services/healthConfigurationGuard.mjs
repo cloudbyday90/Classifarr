@@ -20,20 +20,25 @@ function fingerprint(rows) {
 export function createHealthConfigurationGuard(previous, service) {
     let captured = null;
     return {
+        hasCapture: () => captured !== null,
         capture(read, rows) {
             if (captured) throw new Error('Health configuration already captured');
             captured = { read, digest: fingerprint(rows) };
         },
-        async validate(observation) {
+        async validate(observation, { reconcile = false } = {}) {
             if (!captured) return observation;
-            const result = await readHealthConfiguration(previous, service, captured.read);
-            if (!result.ok) return result.health;
+            const reference = reconcile ? observation : previous;
+            const result = await readHealthConfiguration(reference, service, captured.read);
+            if (!result.ok) return reconcile ? { ...result.health, lastCheck: observation.lastCheck } : result.health;
             if (fingerprint(result.rows) === captured.digest) return observation;
             return {
-                ...buildStatusHealthState(previous, 'unknown'),
+                ...buildStatusHealthState(reference, 'unknown'),
+                ...(reconcile ? { lastCheck: observation.lastCheck } : {}),
                 responseTime: null,
-                error: 'Settings changed while this health check was running. Refresh health to check the current settings, or wait for the next heartbeat.',
-                failure: { stage: 'configuration_validation', code: 'configuration_changed' },
+                error: reconcile
+                    ? 'Settings changed since this health check. Refresh health to check the current settings, or wait for the next heartbeat.'
+                    : 'Settings changed while this health check was running. Refresh health to check the current settings, or wait for the next heartbeat.',
+                failure: { stage: reconcile ? 'configuration_reconciliation' : 'configuration_validation', code: 'configuration_changed' },
             };
         },
     };

@@ -7,6 +7,9 @@ import { buildUnknownHealthState } from './healthConfigurationRead.mjs';
 export function createHealthObservationCoordinator() {
     let cache = createDefaultHealthCache();
     let flights = new Map();
+    let watches = new Map();
+    let epochs = new Map();
+    let reconciliation = null;
     let version = 0;
     return {
         snapshot: () => ({ ...cache }),
@@ -14,24 +17,59 @@ export function createHealthObservationCoordinator() {
         reset() {
             cache = createDefaultHealthCache();
             flights = new Map();
+            watches = new Map();
+            epochs = new Map();
             version += 1;
+        },
+        reconcile() {
+            if (reconciliation) return reconciliation;
+            const generation = watches;
+            const entries = [...watches];
+            let next = 0;
+            const worker = async () => {
+                while (next < entries.length && generation === watches) {
+                    const [service, watch] = entries[next++];
+                    if (watches.get(service) !== watch) continue;
+                    let result;
+                    try {
+                        result = await watch.guard.validate(watch.observation, { reconcile: true });
+                    } catch (_error) {
+                        result = { ...buildUnknownHealthState(watch.observation, service), lastCheck: watch.observation.lastCheck };
+                    }
+                    if (generation !== watches || watches.get(service) !== watch || result === watch.observation) continue;
+                    cache[service] = result;
+                    watches.delete(service);
+                    epochs.set(service, (epochs.get(service) ?? 0) + 1);
+                    version += 1;
+                }
+            };
+            // Keep admission occupied across reset until existing reads settle.
+            const pending = Promise.all([worker(), worker()]).finally(() => {
+                reconciliation = null;
+            });
+            reconciliation = pending;
+            return pending;
         },
         run(service, compute, onAccepted = (_previous, _result) => {}) {
             if (!Object.hasOwn(cache, service)) throw new RangeError('Unknown health service');
             if (flights.has(service)) return flights.get(service);
             const generation = flights;
+            const epoch = epochs.get(service) ?? 0;
+            const isCurrent = () => generation === flights && epoch === (epochs.get(service) ?? 0);
             const previous = { ...cache[service] };
             const guard = createHealthConfigurationGuard(previous, service);
             const pending = Promise.resolve().then(async () => {
                 let result;
                 try {
                     result = await compute(previous, guard);
-                    if (generation === flights) result = await guard.validate(result);
+                    if (isCurrent()) result = await guard.validate(result);
                 } catch (_error) {
                     result = buildUnknownHealthState(previous, service);
                 }
-                if (generation === flights) {
+                if (isCurrent()) {
                     cache[service] = result;
+                    if (guard.hasCapture() && !result.failure) watches.set(service, { guard, observation: result });
+                    else watches.delete(service);
                     version += 1;
                     onAccepted(previous, result);
                 }

@@ -26,9 +26,16 @@ Before a configuration-dependent result is accepted, its saved configuration is
 re-read once. Changed content yields unknown with `configuration_validation` /
 `configuration_changed` and Refresh guidance, without stale instance details or
 image-service alerts. No immediate retry or transport cancellation is implied.
-Already completed observations remain point-in-time results; settings saves do
-not instantly invalidate caches across processes. See the
-[completion design](../architecture/health-completion-fencing-design.md).
+While the heartbeat is running, completed configuration-dependent observations
+are revalidated in the background, with two concurrent database reads at most and
+30 seconds between completed cycles. Changed content yields unknown with
+`configuration_reconciliation` / `configuration_changed`; the original check and
+last-success times remain historical. Failed reads also invalidate the result.
+No provider probe or retry is triggered by reconciliation. This is eventual
+cross-process detection, not instantaneous post-save notification; read latency
+and scheduling add delay. Stopping the heartbeat stops future cycles. See the
+[completion design](../architecture/health-completion-fencing-design.md) and
+[cache reconciliation design](../architecture/health-cache-reconciliation-design.md).
 
 Configuration lookup failures are **unknown**, not absent configuration or proof
 that a provider is down. Affected observations include a fixed safe `error` and

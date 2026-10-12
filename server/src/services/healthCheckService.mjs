@@ -20,12 +20,14 @@ import { checkProcessMemory as computeProcessMemory, checkQueueWorker as compute
 import { createLogger } from '../utils/logger.mjs';
 import { DEFAULT_HEARTBEAT_MS, createHealthFreshnessPolicy, isValidHeartbeatInterval } from './healthObservationFreshness.mjs';
 import { createHealthObservationCoordinator } from './healthObservationCoordinator.mjs';
+import { createHealthReconciliationScheduler } from './healthReconciliationScheduler.mjs';
 
 const logger = createLogger('healthCheck');
 
 
 // Cache for health status
 const observations = createHealthObservationCoordinator();
+const reconciliationScheduler = createHealthReconciliationScheduler(() => observations.reconcile());
 
 // Heartbeat interval (default: 15 minutes)
 let heartbeatInterval = null;
@@ -137,6 +139,7 @@ export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
     }
 
     heartbeatIntervalMs = intervalMs;
+    reconciliationScheduler.start();
 
     logger.info(`[HealthCheck] Starting heartbeat scheduler (interval: ${intervalMs / 1000}s)`);
     runAllHealthChecks();
@@ -146,6 +149,7 @@ export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
 }
 
 export function stopHeartbeat() {
+    reconciliationScheduler.stop();
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
         heartbeatInterval = null;

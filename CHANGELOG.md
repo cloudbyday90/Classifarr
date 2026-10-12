@@ -36,6 +36,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   services visible with safe database/schema/access diagnostics and check references.
   Share overlapping health checks and reject results whose configuration changed
   during the check, preventing obsolete completions and stale aggregate results.
+  Revalidate completed health caches in the background so committed configuration
+  changes from other processes retire outdated results without extra provider probes.
   Keep database readiness and security safeguards unchanged.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,

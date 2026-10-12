@@ -161,10 +161,12 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
-  it('explains changed configuration without automatically retrying', async () => {
-    const failure = { stage: 'configuration_validation', code: 'configuration_changed' }
+  it.each(['configuration_validation', 'configuration_reconciliation'])('explains %s without automatically retrying', async stage => {
+    const failure = { stage, code: 'configuration_changed' }
     const observation = { status: 'unknown', lastCheck: fresh.checkedAt, failure, freshness: fresh,
-      error: 'Settings changed while this health check was running. Refresh health to check the current settings, or wait for the next heartbeat.' }
+      error: stage === 'configuration_reconciliation'
+        ? 'Settings changed since this health check. Refresh health to check the current settings, or wait for the next heartbeat.'
+        : 'Settings changed while this health check was running. Refresh health to check the current settings, or wait for the next heartbeat.' }
     const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'unknown',
       details: { ...baseHealth.details, radarr: observation } })
     const card = wrapper.get('[data-testid="service-card-radarr"]')

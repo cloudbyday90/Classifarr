@@ -698,6 +698,34 @@ describe('healthCheckService - all service checks', () => {
   // getHealthCache / getUptime / isHeartbeatRunning
   // -------------------------------------------------------------------------
   describe('cache and heartbeat helpers', () => {
+    test('background reconciliation retires committed settings without probing or changing check time', async () => {
+      jest.useFakeTimers();
+      let changed = false;
+      db.query.mockImplementation(sql => Promise.resolve({ rows:
+        changed && sql.includes('FROM radarr_config') ? [{ id: 1, name: 'new fixture' }] : []
+      }));
+      try {
+        svc.startHeartbeat();
+        await jest.advanceTimersByTimeAsync(0);
+        const before = svc.getHealthCache();
+        changed = true;
+        await jest.advanceTimersByTimeAsync(30000);
+        expect(svc.getHealthCache().radarr).toMatchObject({
+          status: 'unknown', lastCheck: before.radarr.lastCheck,
+          failure: { stage: 'configuration_reconciliation', code: 'configuration_changed' },
+        });
+        expect(svc.getHealthCache().database).toBe(before.database);
+        expect(mockRadarr.testConnection).not.toHaveBeenCalled();
+        expect(mockHttpGet).not.toHaveBeenCalled();
+        const count = db.query.mock.calls.length;
+        svc.getHealthCache();
+        expect(db.query).toHaveBeenCalledTimes(count);
+      } finally {
+        svc.resetHealthState();
+        jest.useRealTimers();
+      }
+    });
+
     test.each([null, 0, -1, 999, 1000.1, NaN, Infinity, '60000', 86400001])('invalid interval %j cannot start checks', interval => {
       expect(() => svc.startHeartbeat(interval)).toThrow(RangeError);
       expect(svc.isHeartbeatRunning()).toBe(false);
@@ -713,10 +741,10 @@ describe('healthCheckService - all service checks', () => {
         expect(svc.getHealthFreshnessPolicy()).toMatchObject({ intervalMs: 60000, maxAgeMs: 90000, heartbeatActive: true });
         expect(() => svc.startHeartbeat(Infinity)).toThrow(RangeError);
         expect(svc.getHealthFreshnessPolicy().intervalMs).toBe(60000);
-        expect(jest.getTimerCount()).toBe(1);
+        expect(jest.getTimerCount()).toBe(2); // heartbeat and read-only reconciliation
         svc.startHeartbeat(120000);
         await jest.advanceTimersByTimeAsync(0);
-        expect(jest.getTimerCount()).toBe(1);
+        expect(jest.getTimerCount()).toBe(2);
         svc.stopHeartbeat();
         expect(svc.getHealthFreshnessPolicy()).toMatchObject({ intervalMs: 120000, heartbeatActive: false });
         const count = db.query.mock.calls.length;
