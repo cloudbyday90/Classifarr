@@ -3,6 +3,7 @@
 import { beforeAll, expect, it } from 'vitest'
 import { resolve } from 'node:path'
 import { ESLint } from 'eslint'
+import { createTestPhaseDiagnostics } from '../../scripts/lib/testPhaseDiagnostics.mjs'
 
 const linter = new ESLint({ cwd: resolve(import.meta.dirname, '../..') })
 const vueFile = 'src/components/LintContractFixture.vue'
@@ -10,7 +11,9 @@ const lint = async (code, filePath = vueFile) => (await linter.lintText(code, { 
 
 beforeAll(async () => {
   // Plugin/config initialization belongs to suite setup, not the first case.
-  await linter.calculateConfigForFile(vueFile)
+  const diagnostics = createTestPhaseDiagnostics('lint-tooling')
+  await diagnostics.runAsync(() => diagnostics.measureAsync('eslint-config',
+    () => linter.calculateConfigForFile(vueFile)))
 })
 
 it('keeps browser globals separate from Node tooling globals', async () => {

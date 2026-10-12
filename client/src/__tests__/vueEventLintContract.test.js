@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { ESLint } from 'eslint'
 import { beforeAll, describe, expect, test } from 'vitest'
 import checkedComponents from '../../tsconfig.components.json' with { type: 'json' }
+import { createTestPhaseDiagnostics } from '../../scripts/lib/testPhaseDiagnostics.mjs'
 
 const eslint = new ESLint({ cwd: fileURLToPath(new URL('../../', import.meta.url)) })
 const ruleId = 'vue/no-restricted-syntax'
@@ -18,7 +19,9 @@ describe('strict component event lint scope', () => {
   beforeAll(async () => {
     // Load config/plugins in suite setup, not in the first case's 5s budget.
     // The normal bounded hook timeout and all real lint assertions remain.
-    await eslint.calculateConfigForFile('src/components/common/Input.vue')
+    const diagnostics = createTestPhaseDiagnostics('vue-event-lint')
+    await diagnostics.runAsync(() => diagnostics.measureAsync('eslint-config',
+      () => eslint.calculateConfigForFile('src/components/common/Input.vue')))
   })
 
   test.each(checkedComponents.include)('protects the enrolled path %s', async file => {

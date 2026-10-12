@@ -158,6 +158,9 @@ jobs:
           npm run test:ci
 
       - name: Run client tests
+        env:
+          # Bounded test-only phase records survive in failed-test console output.
+          CLASSIFARR_TEST_PHASE_DIAGNOSTICS: '1'
         run: |
           cd client
           npm run test:ci

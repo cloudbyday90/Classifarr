@@ -10,6 +10,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { createTestPhaseDiagnostics } from '../../../scripts/lib/testPhaseDiagnostics.mjs'
 
 const testDir = import.meta.dirname
 const srcRoot = path.resolve(testDir, '../..')
@@ -54,40 +55,45 @@ function toPosixRelative(filePath) {
 
 describe('CSRF-safe client API usage', () => {
   it('prevents direct axios mutating calls outside shared API client', () => {
-    const violations = []
-    const sourceFiles = collectSourceFiles(srcRoot)
-    const axiosImportRegex = /import\s+axios\s+from\s+['"]axios['"]/
-    const axiosMutationRegex = /\baxios\.(post|put|patch|delete)\s*\(/
-    const fetchMutationRegex = /fetch\s*\([\s\S]*?,\s*\{[\s\S]*?\bmethod\s*:\s*['"](POST|PUT|PATCH|DELETE)['"][\s\S]*?\}\s*\)/i
+    const diagnostics = createTestPhaseDiagnostics('csrf-usage')
+    return diagnostics.runSync(() => {
+      const violations = []
+      const sourceFiles = diagnostics.measureSync('collect', () => collectSourceFiles(srcRoot))
+      const axiosImportRegex = /import\s+axios\s+from\s+['"]axios['"]/
+      const axiosMutationRegex = /\baxios\.(post|put|patch|delete)\s*\(/
+      const fetchMutationRegex = /fetch\s*\([\s\S]*?,\s*\{[\s\S]*?\bmethod\s*:\s*['"](POST|PUT|PATCH|DELETE)['"][\s\S]*?\}\s*\)/i
 
-    for (const filePath of sourceFiles) {
-      const relativePath = toPosixRelative(filePath)
-      const source = fs.readFileSync(filePath, 'utf8')
-      const isAllowlisted = allowedDirectAxiosFiles.has(relativePath)
+      for (const filePath of sourceFiles) {
+        const relativePath = toPosixRelative(filePath)
+        const source = diagnostics.measureSync('read', () => fs.readFileSync(filePath, 'utf8'))
+        const isAllowlisted = allowedDirectAxiosFiles.has(relativePath)
 
-      if (isAllowlisted) {
-        continue
+        if (isAllowlisted) {
+          continue
+        }
+
+        diagnostics.measureSync('match', () => {
+          if (axiosImportRegex.test(source)) {
+            violations.push(
+              `${relativePath}: imports axios directly (use @/api shared client)`
+            )
+          }
+
+          if (axiosMutationRegex.test(source)) {
+            violations.push(
+              `${relativePath}: uses axios mutating call outside shared API client`
+            )
+          }
+
+          if (fetchMutationRegex.test(source)) {
+            violations.push(
+              `${relativePath}: uses fetch mutating call outside shared API client`
+            )
+          }
+        })
       }
 
-      if (axiosImportRegex.test(source)) {
-        violations.push(
-          `${relativePath}: imports axios directly (use @/api shared client)`
-        )
-      }
-
-      if (axiosMutationRegex.test(source)) {
-        violations.push(
-          `${relativePath}: uses axios mutating call outside shared API client`
-        )
-      }
-
-      if (fetchMutationRegex.test(source)) {
-        violations.push(
-          `${relativePath}: uses fetch mutating call outside shared API client`
-        )
-      }
-    }
-
-    expect(violations, violations.join('\n')).toEqual([])
+      diagnostics.measureSync('assert', () => expect(violations, violations.join('\n')).toEqual([]))
+    })
   })
 })

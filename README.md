@@ -1132,6 +1132,12 @@ disposable local fixtures, not application data. See the
 [test-runtime design](docs/architecture/frontend-test-runtime-design.md) and
 [observed outcome](docs/architecture/frontend-test-runtime-outcome.md).
 
+For intermittent lint-setup or CSRF scan timeouts, opt-in wall/CPU phase diagnostics
+run inside the real tests. They record bounded aggregates without source contents
+or file paths and do not relax deadlines. See the
+[phase diagnostic design and invocation](docs/architecture/frontend-test-phase-diagnostics-design.md)
+and [observed outcome](docs/architecture/frontend-test-phase-diagnostics-outcome.md).
+
 Server integration tests:
 
 ```bash

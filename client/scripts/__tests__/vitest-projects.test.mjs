@@ -8,6 +8,15 @@ import { createVitest } from 'vitest/node';
 const clientRoot = resolve(import.meta.dirname, '../..');
 const relativePath = file => relative(clientRoot, file).replaceAll('\\', '/');
 
+test('CI opts into bounded phase diagnostics without changing the client test command', () => {
+  const workflow = readFileSync(resolve(clientRoot, '../.github/workflows/ci.yml'), 'utf8');
+  const step = workflow.split(/ {6}- name: Run client tests\r?\n/)[1]?.split(/\r?\n {6}- name:/)[0];
+  assert.ok(step, 'client test step must exist');
+  assert.match(step, /CLASSIFARR_TEST_PHASE_DIAGNOSTICS: '1'/);
+  assert.match(step, /cd client\s+npm run test:ci/);
+  assert.doesNotMatch(step, /continue-on-error|--retry|--testTimeout|--hookTimeout|\|\|\s*true/);
+});
+
 test('installed test runner and coverage provider match their exact manifest pins', () => {
   const read = path => JSON.parse(readFileSync(resolve(clientRoot, path), 'utf8'));
   const manifest = read('package.json');

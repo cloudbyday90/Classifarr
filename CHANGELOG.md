@@ -24,6 +24,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   against dependency-chain drift while retaining runtime-aligned Node declarations.
   Keep frontend test and coverage tooling aligned and reject invalid test filters
   that previously could report success without running the intended checks.
+  Add opt-in phase diagnostics for intermittent frontend test timeouts, retaining
+  the original assertions, coverage, isolation and deadlines.
 
 ### Added
 

@@ -2,11 +2,48 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { withVitestCliFixture } from '../lib/vitestCliFixture.mjs';
 
 const passing = `import { test, expect } from 'vitest';
 import { used } from './subject.mjs';
 test('synthetic success', () => expect(used(1)).toBe(2));`;
+
+const diagnosticsImport = `import { createTestPhaseDiagnostics } from ${JSON.stringify(
+  fileURLToPath(new URL('../lib/testPhaseDiagnostics.mjs', import.meta.url)).replaceAll('\\', '/'),
+)};`;
+
+test('real CLI keeps a profiled assertion failure nonzero', () => {
+  withVitestCliFixture(`${diagnosticsImport}
+import { test, expect } from 'vitest';
+test('profiled failure', () => {
+  const d = createTestPhaseDiagnostics('csrf-usage', { enabled: true });
+  d.runSync(() => d.measureSync('assert', () => expect(1).toBe(2)));
+});`, ({ run, readReport }) => {
+    const result = run(['--reporter=default', '--silent=passed-only']);
+    assert.equal(result.status, 1, result.output);
+    assert.equal(readReport().numFailedTests, 1);
+    assert.match(result.output, /"outcome":"threw"/);
+    assert.match(result.output, /"failedCalls":1/);
+  });
+});
+
+test('real CLI timeout leaves an incomplete diagnostic operation, never a false completion', () => {
+  withVitestCliFixture(`${diagnosticsImport}
+import { beforeAll, test } from 'vitest';
+beforeAll(() => {
+  const d = createTestPhaseDiagnostics('lint-tooling', { enabled: true });
+  return d.runAsync(() => d.measureAsync('eslint-config', () => new Promise(() => {})));
+}, 50);
+test('must not execute', () => { throw new Error('unexpected_fixture_execution'); });`, ({ run, readReport }) => {
+    const result = run(['--reporter=default', '--silent=passed-only']);
+    assert.equal(result.status, 1, result.output);
+    assert.match(result.output, /"type":"start"/);
+    assert.doesNotMatch(result.output, /"type":"end"/);
+    assert.match(JSON.stringify(readReport()), /Hook timed out in 50ms/);
+    assert.equal(readReport().numPassedTests, 0);
+  });
+});
 
 test('real CLI runs an assertion and retains both covered and uncovered functions', () => {
   withVitestCliFixture(passing, ({ run, readReport, readCoverage }) => {
