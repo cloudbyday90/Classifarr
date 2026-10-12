@@ -21,7 +21,7 @@
     <ArrConfigWarning :load-status="api.getArrConfigStatus" />
 
     <!-- pgvector Variant Banner -->
-    <PgvectorVariantBanner />
+    <PgvectorVariantBanner :load-status="api.getRagStatus" />
 
     <!-- Main content with ID for skip link -->
     <main

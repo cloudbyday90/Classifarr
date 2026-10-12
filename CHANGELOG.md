@@ -22,6 +22,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   notification dismiss buttons for keyboard and assistive-technology users.
   Validate incomplete Arr configuration warnings, link only to the matching
   provider's settings, and discard responses that arrive after leaving the page.
+  Make pgvector compatibility notices resilient to blocked browser storage and
+  explain reported CPU/build constraints without promising a restart will fix them.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached

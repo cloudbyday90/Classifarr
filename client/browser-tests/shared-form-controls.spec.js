@@ -1,6 +1,44 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 
+for (const storageFailure of ['none', 'access', 'getItem', 'setItem']) {
+  test(`pgvector notice remains dismissible with storage failure: ${storageFailure}`, async ({ page }, testInfo) => {
+    const errors = [], apiRequests = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.route(url => url.pathname.startsWith('/api/'), async route => {
+      apiRequests.push(route.request().method())
+      await route.abort()
+    })
+    await page.addInitScript(failure => {
+      const fail = () => { throw new globalThis.DOMException('Fixture storage blocked', 'SecurityError') }
+      if (failure === 'access') Object.defineProperty(globalThis, 'sessionStorage', { get: fail })
+      else if (failure !== 'none') globalThis.Storage.prototype[failure] = fail
+    }, storageFailure)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/browser-tests/fixtures/pgvector-notice.html')
+    await expect(page.getByText('pgvector generic mode reported', { exact: true })).toBeVisible()
+    await expect(page.getByText(/restarting alone does not guarantee an optimized binary/)).toBeVisible()
+    const dismiss = page.getByRole('button', { name: 'Dismiss pgvector notice', exact: true })
+    await expect(dismiss).toHaveAttribute('type', 'button')
+    await page.keyboard.press('Tab')
+    await expect(dismiss).toBeFocused()
+    expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
+    if (storageFailure === 'none') await page.screenshot({ path: testInfo.outputPath('pgvector-notice-mobile.png'), fullPage: true })
+    await page.keyboard.press(storageFailure === 'none' ? 'Enter' : 'Space')
+    await expect(dismiss).toHaveCount(0)
+    await expect(page.getByLabel('Notice form submissions')).toHaveText('0')
+    await expect(page.getByLabel('Status loads')).toHaveText('1')
+    if (storageFailure === 'none') {
+      await page.getByRole('button', { name: 'Remount sample notice' }).click()
+      await expect(dismiss).toHaveCount(0)
+      await expect(page.getByLabel('Status loads')).toHaveText('1')
+      expect(await page.evaluate(() => globalThis.sessionStorage.getItem('pgvectorVariantBannerDismissed'))).toBe('true')
+    }
+    expect(apiRequests).toEqual([])
+    expect(errors).toEqual([])
+  })
+}
+
 test('Arr configuration links navigate explicitly and dismissal never submits or refetches', async ({ page }) => {
   const errors = [], apiRequests = []
   page.on('pageerror', error => errors.push(error.message))

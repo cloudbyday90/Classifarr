@@ -10,6 +10,7 @@ import Dashboard from '@/views/Dashboard.vue'
 import { CACHE_KEYS } from '@/constants/cacheKeys'
 import api from '@/api'
 import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
+import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -83,7 +84,7 @@ vi.mock('@/components/settings/ArrConfigWarning.vue', () => ({
 }))
 
 vi.mock('@/components/PgvectorVariantBanner.vue', () => ({
-  default: { template: '<div data-testid="pgvector-banner"></div>' },
+  default: { props: ['loadStatus'], template: '<div data-testid="pgvector-banner"></div>' },
 }))
 
 describe('Dashboard enrichment summary', () => {
@@ -109,6 +110,7 @@ describe('Dashboard enrichment summary', () => {
     expect(wrapper.text()).toContain('Failed')
     expect(wrapper.text()).toContain('OMDb: 40 • Basic Enriched: 0 • Web Search: 5')
     expect(wrapper.findComponent(ArrConfigWarning).props('loadStatus')).toBe(api.getArrConfigStatus)
+    expect(wrapper.findComponent(PgvectorVariantBanner).props('loadStatus')).toBe(api.getRagStatus)
     wrapper.unmount()
   })
 })

@@ -8,54 +8,59 @@
 
 <template>
   <div
-    v-if="show"
+    v-if="notice"
     class="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg"
   >
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h3 class="font-semibold text-warning mb-1">
-          pgvector running in generic mode
+          pgvector generic mode reported
         </h3>
         <p class="text-sm text-gray-300">
-          RAG is enabled, but pgvector is using the generic (non-AVX) binary for CPU compatibility.
-          This is normal on older CPUs. If your CPU supports AVX, restart to enable the AVX-optimized
-          binary for faster similarity search.
+          {{ notice }} Keep compatibility and container security safeguards enabled.
         </p>
       </div>
       <Button
         size="sm"
         variant="warning"
-        @click="dismiss"
+        type="button"
+        :on-click.camel="dismiss"
       >
-        Dismiss
+        Dismiss pgvector notice
       </Button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import api from '@/api'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Button from '@/components/common/Button.vue'
+import { getPgvectorVariantNotice } from '@/utils/pgvectorVariantNotice'
+import { dismissForSession, isSessionDismissed } from '@/utils/sessionDismissal'
 
-const show = ref(false)
+const props = defineProps({
+  loadStatus: {
+    type: /** @type {import('vue').PropType<() => Promise<unknown>>} */ (Function),
+    required: true,
+  },
+})
+/** @type {import('vue').Ref<string | null>} */
+const notice = ref(null)
 const dismissedKey = 'pgvectorVariantBannerDismissed'
+let unmounted = false
+onUnmounted(() => { unmounted = true })
 
 const dismiss = () => {
-  show.value = false
-  sessionStorage.setItem(dismissedKey, 'true')
+  notice.value = null
+  dismissForSession(dismissedKey)
 }
 
 onMounted(async () => {
-  if (sessionStorage.getItem(dismissedKey) === 'true') {
-    return
-  }
+  if (isSessionDismissed(dismissedKey)) return
 
   try {
-    const response = await api.getRagStatus()
-    if (response?.pgvectorVariant === 'generic') {
-      show.value = true
-    }
+    const response = await props.loadStatus()
+    if (!unmounted) notice.value = getPgvectorVariantNotice(response)
   } catch {
     // Ignore banner if status call fails
   }

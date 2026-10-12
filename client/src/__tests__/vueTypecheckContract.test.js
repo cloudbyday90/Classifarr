@@ -49,6 +49,7 @@ import Slider from '@/components/common/Slider.vue'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 import Toast from '@/components/common/Toast.vue'
 import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
+import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
 import { useToastStore } from '@/stores/toast'
 const toast = useToastStore()
 toast.success('Saved')
@@ -79,6 +80,7 @@ function acceptNumber(value) { return value.toFixed(0) }
   <ConnectionStatus :details="null" :error="null" />
   <Toast />
   <ArrConfigWarning :load-status="async () => ({ incompleteConfigs: [] })" />
+  <PgvectorVariantBanner :load-status="async () => ({ enabled: true, pgvectorVariant: 'generic' })" />
 </template>
 `)
     expect(result.output).toBe('')
@@ -98,6 +100,20 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'pgvector banner required loader', code: '2345',
+      source: `<script setup>
+import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
+</script><template><PgvectorVariantBanner /></template>
+`,
+    },
+    {
+      name: 'pgvector banner async loader', code: '2739',
+      source: `<script setup>
+import PgvectorVariantBanner from '@/components/PgvectorVariantBanner.vue'
+</script><template><PgvectorVariantBanner :load-status="() => ({})" /></template>
+`,
+    },
     {
       name: 'Arr warning async loader', code: '2739',
       source: `<script setup>

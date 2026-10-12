@@ -19,6 +19,7 @@
     "src/components/common/Slider.vue",
     "src/components/common/Spinner.vue",
     "src/components/common/Toast.vue",
-    "src/components/settings/ArrConfigWarning.vue"
+    "src/components/settings/ArrConfigWarning.vue",
+    "src/components/PgvectorVariantBanner.vue"
   ]
 }
