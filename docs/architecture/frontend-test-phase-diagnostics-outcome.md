@@ -94,10 +94,38 @@ the complete 12-case runner/config acceptance rerun.
 
 ## Local image verification
 
-The no-cache build, local replacement and isolated schema dump will use the clean
-implementation commit. Their exact source/image and results will be recorded in
-a follow-up documentation commit before push. No intermittent timeout fix is
-claimed, and these checks do not constitute a production deployment or release.
+The no-cache Compose build completed from clean implementation commit
+`b9b8bff2c2fcf5cd51938d5da5f4dd49075d6485`, producing local image ID
+`sha256:6d0a373e62d91859646506b51bf362be03ad1c3a2527e0e47b21cf5d48b90c82`.
+Its OCI revision and the running container image both match. This is local image
+evidence, not a published registry digest or signed release claim. The subsequent
+documentation-only commit records results without changing the implementation.
+
+Before replacement, a 75,880,585-byte database backup passed checksum and archive
+readability checks. The previous image
+`sha256:53a2bb21246b0f0ff644f339d794667df9712d44cbf817cb1a20bb6594c144d0`
+remains tagged `classifarr:pre-memory-de3db8bd-2ed5-4a7f-8655-e544aec3db38` for
+exact rollback. Private backup artifacts remain ignored and were not committed.
+
+Only local Classifarr was recreated, with no pull or dependency recreation.
+It reports healthy, returns HTTP 200 from `/health`, and has zero restarts and
+no recorded OOM kill. UID/GID 1000:1000, read-only root filesystem,
+`no-new-privileges` and the 2 GiB memory limit are unchanged. No Unraid deployment,
+shared Plex/Ollama configuration change or mapping approval was performed.
+
+The read-only probe at 11:37:10 UTC reported 6,836 classifications, coverage for
+10 of 10 active libraries, and four unresolved identities (two needing source
+review, two waiting to retry). Text embedding pending work was zero; image work
+remained 6,814. The ten-item image batch contained ten unique items and read in
+6 ms. No startup warnings appeared in the bounded query. The probe performed
+zero writes/provider calls; this does not claim that all background work is done.
+
+After rebuilding, the schema dump ran against a fresh, network-isolated database
+from the exact new image. Migrations through
+`20261010_220000_source_catalog_mappings.sql` and 22 seed migrations produced an
+unchanged `database/schema/current.sql`. Fresh-database checks found no invented
+pending work, images or unresolved identities. The owned fixture container and
+data directory were confirmed removed. No live database supplied snapshot data.
 
 ## Next decision
 
@@ -105,3 +133,13 @@ Use a captured slow phase, not a passing rerun, to choose the next fix. If wall
 time rises without corresponding CPU, inspect host/process scheduling and I/O;
 if CPU rises, profile the relevant worker stack. Neither pattern alone proves
 a particular external cause. Keep production memory safeguards unchanged.
+
+The next bounded implementation review is runtime-aligned Dependabot policy for
+`@types/node` in both workspaces. Current configuration has no Node-type major
+restriction; the repeated Node 26 proposals conflict with the deployed Node 24
+contract. [GitHub's dependency update controls](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated)
+support dependency-scoped version/update-type rules. Review a narrow rule that
+retains compatible patch/minor updates and security monitoring, with explicit
+reconsideration during a planned runtime upgrade. Benefit: fewer incompatible
+proposals; cost: a future runtime upgrade needs a deliberate policy review.
+No Dependabot configuration or remote PR state was changed in this batch.
