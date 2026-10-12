@@ -83,8 +83,37 @@ The private 75,615,824-byte PostgreSQL archive
 comparison and `pg_restore --list`. This is archive-readability evidence, not a
 completed restore drill. Neither it nor application data is committed.
 
-The no-cache exact-source image, startup and schema-dump results will be appended
-after the implementation commit is built. No release or tag is being created.
+The requested no-cache build passed from clean implementation commit
+`6d9c400bea2f8df0b2fd59ecfa1a31ef10781d60`. Local image identity:
+
+- Manifest-list/image ID:
+  `sha256:6c5725c043ea70923cc88bb158626e85910c317133f92a2f7829152e317b6417`.
+- Image configuration digest:
+  `sha256:bc6e5925d088b4fc782c061458bf02145344389ec411527325da19484a4bf33e`.
+- OCI revision matched the implementation commit before recreation. These are
+  local artifact identities, not claims about a published registry artifact.
+
+Recreated only the local Compose service with `--no-build --pull never`. It started
+at `2026-10-12T00:50:32.248386748Z`, became healthy and retained UID/GID 1000,
+read-only root, `no-new-privileges` and the 2 GiB memory limit. At 00:51:01 UTC its
+normal scheduler reported `up_to_date`: 6,521 cache hits, zero newly embedded and
+zero remaining descriptions. The 00:51:33 read-only probe found unchanged library,
+classification, pending-embedding and identity counts, with no startup WARN/ERROR
+rows. This is a short startup observation, not a sustained-load or memory profile.
+
+After rebuilding, ran `dumpSchema()` using the same immutable image in a disposable,
+network-disabled, 1 GiB / two-CPU / 256-PID fresh database. The PostgreSQL 18 dump
+included migrations through `20261010_220000_source_catalog_mappings.sql` and all
+22 seed migrations. `database/schema/current.sql` remained unchanged. Fresh consumer
+checks found no invented classifications, pending work, images or unresolved IDs.
+The runner removed only its own temporary container/data directory; independent
+checks confirmed both absent. No application data, backup or rollback image was
+deleted. No integration-test PostgreSQL container remained.
+
+The follow-up evidence commit changes only this document; the running image remains
+the implementation commit above. No release, tag, version bump, Unraid deployment,
+manual identity approval or historical error-log backfill occurred. Old generic
+errors cannot gain missing context retroactively without retained supporting logs.
 
 ## Read-only pre-build reference
 
