@@ -68,7 +68,7 @@ YAML contracts do not execute the hosted CodeQL analysis or upload to GitHub.
   again on the final file in 36.82 seconds. This was a focused rerun, not a second
   full coverage run after the import-only correction.
 
-## Local baseline and remaining verification
+## Local baseline and image verification
 
 At 13:25:52 UTC the read-only local consumer probe found ten covered active
 libraries, 6,837 classifications, four unresolved identities (two requiring source
@@ -79,8 +79,37 @@ since startup. No database writes or provider calls were made by the probe.
 Retained a checksum-verified, readable 75,905,416-byte local database archive and
 an exact rollback image tag for
 `sha256:feb100764ff2990d220075425bad84a92d0a0fa80f328815d6bfc46ebb97e6e1`.
-Private backup paths and data remain ignored. Image build, schema dump, replacement
-and health outcomes will be appended after testing the clean implementation commit.
+Private backup paths and data remain ignored.
+
+The requested no-cache Compose build passed from clean implementation commit
+`e584c9f401987edb9a4ecc02f470a0a10c3105ba`. Local Docker image ID:
+`sha256:a774eb830ca03a7b09b2626b51b50bb3fc12a06ee51e6e505b605c1d961ae72b`.
+The inspected OCI revision matches that commit. This identifies the locally tested
+image, not a published registry digest or signed multi-platform provenance.
+
+After the build, the exact image passed schema generation using disposable appdata,
+no network or published ports, 1 GiB memory, two CPUs and 256 PIDs. The tracked schema
+is unchanged through `20261010_220000_source_catalog_mappings.sql`, including 22
+seed migrations. Fresh consumers reported no invented pending work, images or
+unresolved identities. The runner and an independent check confirmed that owned
+fixture `classifarr-schema-check-4907255c-482e-4f90-bf5d-bb284903347d` and its data
+directory were removed. No production database was used for schema generation.
+
+Replaced only the local test container with `--no-build --pull never --no-deps
+--force-recreate --wait`. It started at 13:39:13 UTC and became healthy; the actual
+running image and OCI revision match the tested artifact. HTTP `/health` returned
+200, with zero restarts, no OOM kill, user 1000:1000, read-only root, the existing
+2 GiB memory cap and `no-new-privileges` retained. The unrelated Harmoniarr container
+remained running. These are short startup observations, not a sustained memory soak.
+
+At 13:39:50 UTC, the read-only consumer probe retained the baseline library,
+classification, identity and embedding counts. Its ten-item batch was unique and
+took 6 ms. It made zero writes/provider calls and found no warning/error entries
+since the new startup. A short quiet startup does not prove the baseline incomplete
+vector warning is permanently resolved; this change adds no vector recovery.
+
+Unraid, Plex, shared Ollama and identity approvals were not changed. Version
+0.49.1-beta remains unchanged; no tag, release or PR merge was created.
 
 ## Recommendation stack
 
