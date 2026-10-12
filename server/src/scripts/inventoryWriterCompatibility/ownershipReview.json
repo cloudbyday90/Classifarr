@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "description_refresh_diagnostic_wrapper",
+      "classification": "unresolved",
+      "reason": "Reviewed the 2026-10-11 repository wrapper and its observation helper. The only change wraps the existing transaction in failure-only WeakMap metadata collection with fixed SQLSTATE categories and bounded monotonic durations, then rethrows the same object exception. SQL, parameters, transaction ownership, 15-second statement and two-second lock limits are unchanged. Indirect query targets remain explicit analysis debt; diagnostics do not authorize inventory writes.",
+      "followUp": "Retain real PostgreSQL timeout and explicit-cancellation tests through scheduler persistence, plus provider-code spoofing and sensitive-payload exclusion. Re-review callers if the query capability changes; no ownership claim, live recovery, import reset or resolution of unrelated shared writer debt is granted."
+    },
+    {
       "id": "source_mapping_schema",
       "classification": "separately_coordinated",
       "reason": "Reviewed the empty mapping ledger migration: bounded typed scope/documents, source/configuration fingerprints, approval actor, revocation and durable verification timestamps. Foreign keys cascade only from the source library/server into this new ledger; no inventory DML, ownership claim, provider request or automatic approval occurs on upgrade.",
@@ -1265,7 +1271,7 @@
     {"path":"server/src/services/inventoryCredentialWakeupRepository.mjs","digest":"48d296bcfb98ac975f49f89ea0a54166d15354ca161b1eb0bd832281e203de50","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryDescriptionBenchmarkRepository.mjs","digest":"bb74582a78fdd0397da093b5d6f3089506a74e63b2cce72a3a11ceda9270ae5e","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryDescriptionCorpus.mjs","digest":"f15ec6b91700bb9feeb0f159cf5f3911605909d6d2c9f72daaa20297b7d5e24c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/inventoryDescriptionRefreshRepository.mjs","digest":"848cf0d0d2aad78526e997f8f6f6368fceebb1d598d26168cd60f6eb4b1d8fb3","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/inventoryDescriptionRefreshRepository.mjs","digest":"3e13c3b9b9837898b85deb92a78a9e229b6d0fb750acf0c11b3b15e244deb6d4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"description_refresh_diagnostic_wrapper"},
     {"path":"server/src/services/inventoryProviderRecoveryPersistence.mjs","digest":"e93fc888e2e9dff5300e2be52d6d8d5b86c5b793c854ae5b24a1339e63acd647","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/inventoryRecoveryProgressService.mjs","digest":"89655488be7131d1d928b9c8004d76607a56db3353506d5b5d994b4201b53fb9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/inventoryRecoveryReadService.mjs","digest":"b198b16247c1ec12e658818da9fda3cc81e6ae1dc878105978d343d15df83283","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

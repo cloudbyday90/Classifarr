@@ -186,7 +186,8 @@ test('failure backoff is exponential and capped; new sync hints cannot bypass it
   repository.readState.mockRejectedValue(new Error('PRIVATE database and credentials'));
   for (const delay of [60_000, 120_000, 240_000, 480_000, 960_000, 1_920_000, 3_600_000, 3_600_000]) {
     expect(await worker.run()).toEqual({ version: 'inventory_description_refresh.v1', mode: 'cache_only', status: 'failed',
-      failureCode: 'unknown', retryAfterSeconds: delay / 1000 });
+      failureCode: 'unknown', retryAfterSeconds: delay / 1000,
+      failure: { category: 'unknown', stage: 'state_read', incidentId: expect.any(String), operationDurationMs: expect.any(Number) } });
     sync();
     advance(delay - 1);
     expect(await worker.run()).toMatchObject({ status: 'cooldown' });

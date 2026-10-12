@@ -4,6 +4,7 @@ import { INVENTORY_DESCRIPTION_CACHE_LOCK, inspectDescriptionRepresentation } fr
 import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
 import { createInventoryDescriptionIsolationRepository } from './inventoryDescriptionIsolationRepository.mjs';
 import { backfillInventoryDescriptions } from './inventoryDescriptionBackfill.mjs';
+import { observeDescriptionRefreshStage as observe, readDescriptionRefreshObservation } from './inventoryDescriptionRefreshObservation.mjs';
 
 const QUIET_INTERVAL_MS = 300_000;
 
@@ -28,31 +29,31 @@ export function createInventoryDescriptionRefreshWorker({
 
   async function refresh(signal, revision) {
     signal.throwIfAborted();
-    const expiredRowsPruned = await cache.pruneExpired();
-    await isolation.pruneExpired();
-    const state = await repository.readState();
+    const expiredRowsPruned = await observe('cache_prune', () => cache.pruneExpired());
+    await observe('isolation_prune', () => isolation.pruneExpired());
+    const state = await observe('state_read', () => repository.readState());
     signal.throwIfAborted();
     if (state?.rag_enabled !== true) return result('disabled', { expiredRowsPruned });
     const configKey = eligibleConfig(state);
     if (!configKey) return result('unsupported_provider', { expiredRowsPruned });
     if (state.busy !== false) return result('yielded', { expiredRowsPruned });
-    const corpus = await repository.readCorpus();
+    const corpus = await observe('corpus_read', () => repository.readCorpus());
     const counts = { expiredRowsPruned, eligibleDescriptions: corpus.texts.size, cacheHits: 0,
       embeddedDescriptions: 0, remainingDescriptions: corpus.texts.size };
     const admit = async () => {
       signal.throwIfAborted();
-      const current = await repository.readState();
+      const current = await observe('admission_check', () => repository.readState());
       signal.throwIfAborted();
       return current?.busy === false && eligibleConfig(current) === configKey && getRevision() === revision;
     };
     if (!await admit()) return result('yielded', counts);
     if (!corpus.texts.size) return result('empty_corpus', counts);
-    const embedder = createEmbedder(state);
-    const identity = await inspectDescriptionRepresentation(embedder, signal);
+    const embedder = await observe('provider_creation', () => createEmbedder(state));
+    const identity = await observe('representation_inspection', () => inspectDescriptionRepresentation(embedder, signal));
     if (!await admit()) return result('yielded', counts);
-    await recordVerifiedRepresentation(identity, configKey);
-    const status = await backfillInventoryDescriptions({ embedder, identity, cache, isolation, signal, admit,
-      hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random, neighborhoodRecovery, corpus, configKey });
+    await observe('representation_checkpoint', () => recordVerifiedRepresentation(identity, configKey));
+    const status = await observe('backfill', () => backfillInventoryDescriptions({ embedder, identity, cache, isolation, signal, admit,
+      hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random, neighborhoodRecovery, corpus, configKey }));
     return result(status, counts);
   }
 
@@ -69,10 +70,10 @@ export function createInventoryDescriptionRefreshWorker({
       const runSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000), ...(signal ? [signal] : [])]);
       try {
         let report;
-        const acquired = await withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async ({ signal: lockSignal } = {}) => {
+        const acquired = await observe('advisory_lock', () => withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async ({ signal: lockSignal } = {}) => {
           const ownedSignal = lockSignal ? AbortSignal.any([runSignal, lockSignal]) : runSignal;
           report = await refresh(ownedSignal, revision);
-        });
+        }));
         if (!acquired) return result('already_running');
         // Yielding, disabling RAG, or lock contention is not evidence of recovery.
         if (report.status === 'up_to_date') recovery.completed();
@@ -82,7 +83,10 @@ export function createInventoryDescriptionRefreshWorker({
         }
         return report;
       } catch (error) {
-        if (controller.signal.aborted || signal?.aborted) return result('cancelled');
+        if (controller.signal.aborted || signal?.aborted) {
+          readDescriptionRefreshObservation(error, { consume: true });
+          return result('cancelled');
+        }
         return result('failed', recovery.failed(error));
       } finally {
         activeController = null;

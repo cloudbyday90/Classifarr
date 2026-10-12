@@ -9,6 +9,7 @@ import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRe
 import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
 import { recordDescriptionRepresentation } from './inventoryDescriptionRepresentationCheckpoint.mjs';
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
+import { createDescriptionRefreshTaskError } from './inventoryDescriptionRefreshFailure.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
@@ -33,8 +34,8 @@ export function registerInventoryDescriptionRefreshSchedule(scheduler, {
   const run = async () => {
     const report = await worker.run();
     if (report.status === 'failed') {
-      // The recovery service owns deduplicated, redacted failure diagnostics.
-      throw new Error('inventory_description_refresh_unavailable');
+      // Preserve only the recovery service's bounded diagnostic fields.
+      throw createDescriptionRefreshTaskError(report);
     }
     if (['up_to_date', 'warming_cache', 'empty_corpus'].includes(report.status)) {
       log.info('Inventory description refresh completed', report);

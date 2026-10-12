@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
+import { observeDescriptionDatabaseOperation } from './inventoryDescriptionRefreshObservation.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeSourceItems: true });
 
@@ -21,11 +22,11 @@ export const INVENTORY_DESCRIPTION_REFRESH_STATE_SQL = `
 
 export function createInventoryDescriptionRefreshRepository({ withTransaction }) {
   // SET LOCAL never changes settings for other pooled connections or request paths.
-  const query = (sql, parameters = []) => withTransaction(async client => {
+  const query = (sql, parameters = []) => observeDescriptionDatabaseOperation(() => withTransaction(async client => {
     await client.query("SET LOCAL statement_timeout = '15s'");
     await client.query("SET LOCAL lock_timeout = '2s'");
     return client.query(sql, parameters);
-  });
+  }));
   return {
     query,
     async readState() {

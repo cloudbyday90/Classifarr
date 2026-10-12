@@ -61,6 +61,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Description refresh diagnostics** — Preserve bounded failure stages, database
+  error categories, timings and shared incident references from background recovery
+  through scheduler reports. Distinguish database cancellations from provider
+  failures without exposing query contents or changing retry and memory safeguards.
 - **Embedding inventory consistency** — Count each classification once across
   overlapping libraries and use one shared, deterministic artwork selection rule
   for statistics and backfill. Inactive or identity-conflicted inventory cannot

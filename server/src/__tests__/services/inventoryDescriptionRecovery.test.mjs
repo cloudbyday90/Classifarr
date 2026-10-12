@@ -22,7 +22,8 @@ test('diagnostics redact arbitrary errors and reject hostile codes/accessors', (
 
 test.each(['http_auth', 'http_missing', 'http_rejected', 'representation', 'body_limit'])('persistent %s failures get hourly rechecks', issue => {
   const recovery = createInventoryDescriptionRecovery({ now: () => 0, random: () => 1 });
-  expect(recovery.failed(providerResponseError(issue))).toEqual({ failureCode: issue, retryAfterSeconds: 3600 });
+  expect(recovery.failed(providerResponseError(issue))).toMatchObject({ failureCode: issue, retryAfterSeconds: 3600,
+    failure: { category: issue, stage: 'refresh', incidentId: expect.any(String) } });
   expect(recovery.isCoolingDown()).toBe(true);
 });
 
