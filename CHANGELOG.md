@@ -41,6 +41,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Ignore unrelated usage counters and cache timestamps when validating reviewed
   connection settings; retain credential, endpoint and active selection checks.
   Keep hover status current as health cards refresh.
+  Correct AI/media-server probes to use current saved settings and authenticated,
+  bounded reads. Failed connection-test results no longer appear healthy; cloud
+  AI configuration is distinguished from a verified connection.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

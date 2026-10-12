@@ -12,11 +12,10 @@ import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { omdbService } from './omdb.mjs';
+import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import {
     buildConfiguredHealthState,
     buildNotConfiguredHealthState,
-    buildTimedResultHealthState,
-    measureTime,
 } from './healthCheckServiceShared.mjs';
 
 export async function checkTMDB(previous, guard = undefined) {
@@ -29,11 +28,9 @@ export async function checkTMDB(previous, guard = undefined) {
             return buildNotConfiguredHealthState(previous);
         }
 
-        const probe = await measureTime(async () => {
-            await tmdbService.testConnection(config.api_key);
-        });
+        const probe = await measureConnectionProbe(() => tmdbService.testConnection(config.api_key));
 
-        return buildTimedResultHealthState(previous, probe);
+        return buildConnectionProbeHealthState(previous, probe);
     } catch (_error) {
         return buildUnknownHealthState(previous, 'tmdb');
     }
@@ -49,14 +46,9 @@ export async function checkOMDb(previous, guard = undefined) {
             return buildNotConfiguredHealthState(previous);
         }
 
-        const probe = await measureTime(async () => {
-            const connection = await omdbService.testConnection(config.api_key);
-            if (connection?.success !== true) {
-                throw new Error(connection?.error || 'OMDb connection test failed');
-            }
-        });
+        const probe = await measureConnectionProbe(() => omdbService.testConnection(config.api_key));
 
-        return buildTimedResultHealthState(previous, probe);
+        return buildConnectionProbeHealthState(previous, probe);
     } catch (_error) {
         return buildUnknownHealthState(previous, 'omdb');
     }

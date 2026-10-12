@@ -47,7 +47,6 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
 const db = mockDb;
 const radarrService = mockRadarr;
 const sonarrService = mockSonarr;
-const ollamaService = mockOllama;
 const tmdbService = mockTmdb;
 const omdbService = mockOmdb;
 const discordBotService = mockDiscordBot;
@@ -83,6 +82,21 @@ describe('healthCheckService - all service checks', () => {
 
   afterEach(() => {
     svc.stopHeartbeat();
+  });
+
+  test.each([
+    [svc.checkRadarr, mockRadarr], [svc.checkSonarr, mockSonarr],
+    [svc.checkTMDB, mockTmdb], [svc.checkOMDb, mockOmdb],
+  ])('explicit helper failures cannot report healthy', async (check, helper) => {
+    db.query.mockResolvedValue({ rows: [{ id: 1, name: 'Fixture', api_key: 'fixture' }] });
+    helper.testConnection.mockResolvedValueOnce({ success: true });
+    const healthy = await check();
+    helper.testConnection.mockResolvedValueOnce({ success: false, error: 'private-provider-body' });
+    const failed = await check();
+    expect(healthy.status).toBe('connected');
+    expect(failed.status).toBe('disconnected');
+    expect(failed.lastSuccessfulCheck).toBe(healthy.lastSuccessfulCheck);
+    expect(JSON.stringify(failed)).not.toContain('private-provider-body');
   });
 
   describe.each([
@@ -135,7 +149,7 @@ describe('healthCheckService - all service checks', () => {
     const rows = [{ id: 1, name: 'Movies' }];
     db.query.mockResolvedValueOnce({ rows }).mockResolvedValueOnce({ rows })
       .mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows });
-    mockRadarr.testConnection.mockResolvedValue(undefined);
+    mockRadarr.testConnection.mockResolvedValue({ success: true });
     const healthy = await svc.checkRadarr();
     const unknown = await svc.checkRadarr();
     expect(unknown.lastSuccessfulCheck).toBe(healthy.lastSuccessfulCheck);
@@ -219,7 +233,7 @@ describe('healthCheckService - all service checks', () => {
     await started.promise;
     await svc.checkSonarr();
     sonarrRows = [{ id: 2, name: 'Current instance' }];
-    mockSonarr.testConnection.mockResolvedValue(undefined);
+    mockSonarr.testConnection.mockResolvedValue({ success: true });
     await svc.checkSonarr();
     gate.resolve();
     expect((await aggregate).sonarr.instances[0].name).toBe('Current instance');
@@ -300,8 +314,8 @@ describe('healthCheckService - all service checks', () => {
     });
 
     test('tests ollama connection and returns connected', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'ollama', ollama_url: 'http://localhost:11434' }] });
-      ollamaService.testConnection.mockResolvedValueOnce(true);
+      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'ollama', ollama_host: 'localhost', ollama_port: 11434 }] });
+      mockHttpGet.mockResolvedValueOnce({ status: 200, data: { models: [] } });
 
       const result = await svc.checkOllama();
       expect(result.status).toBe('connected');
@@ -309,35 +323,30 @@ describe('healthCheckService - all service checks', () => {
     });
 
     test('returns disconnected when ollama testConnection fails', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'ollama', ollama_url: 'http://localhost:11434' }] });
-      ollamaService.testConnection.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'ollama', ollama_host: 'localhost', ollama_port: 11434 }] });
+      mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       const result = await svc.checkOllama();
       expect(result.status).toBe('disconnected');
     });
 
-    test('returns connected for openai when key is present', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'openai', openai_api_key: 'sk-test123' }] });
+    test.each(['openai', 'openrouter', 'gemini', 'litellm', 'custom'])('reports %s configuration without claiming a connection', async provider => {
+      db.query.mockResolvedValue({ rows: [{ primary_provider: provider, api_key: 'fixture', model: 'fixture', api_endpoint: 'http://fixture/v1' }] });
       const result = await svc.checkOllama();
-      expect(result.status).toBe('connected');
+      expect(result.status).toBe('configured');
+      expect(result.lastSuccessfulCheck).toBeNull();
+      expect(mockHttpGet).not.toHaveBeenCalled();
     });
 
-    test('returns disconnected for openai when key is missing', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'openai', openai_api_key: null }] });
-      const result = await svc.checkOllama();
-      expect(result.status).toBe('disconnected');
+    test('missing required cloud settings are not configured', async () => {
+      db.query.mockResolvedValue({ rows: [{ primary_provider: 'openai', api_key: null, model: 'fixture' }] });
+      expect((await svc.checkOllama()).status).toBe('not configured');
     });
 
-    test('returns connected for anthropic when key is present', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'anthropic', anthropic_api_key: 'ant-test' }] });
-      const result = await svc.checkOllama();
-      expect(result.status).toBe('connected');
-    });
-
-    test('returns disconnected for anthropic when key is missing', async () => {
-      db.query.mockResolvedValueOnce({ rows: [{ primary_provider: 'anthropic', anthropic_api_key: null }] });
-      const result = await svc.checkOllama();
-      expect(result.status).toBe('disconnected');
+    test('unsupported providers never silently become healthy', async () => {
+      db.query.mockResolvedValue({ rows: [{ primary_provider: 'unsupported' }] });
+      expect((await svc.checkOllama()).status).toBe('unknown');
+      expect(mockHttpGet).not.toHaveBeenCalled();
     });
   });
 
@@ -359,7 +368,7 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected when all instances are up', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Radarr 4K' }] });
-      radarrService.testConnection.mockResolvedValueOnce(true);
+      radarrService.testConnection.mockResolvedValueOnce({ success: true });
 
       const result = await svc.checkRadarr();
       expect(result.status).toBe('connected');
@@ -378,7 +387,7 @@ describe('healthCheckService - all service checks', () => {
     test('returns partial when some instances are down', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'R1' }, { id: 2, name: 'R2' }] });
       radarrService.testConnection
-        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce({ success: true })
         .mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       const result = await svc.checkRadarr();
@@ -398,7 +407,7 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected when instance responds', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Sonarr' }] });
-      sonarrService.testConnection.mockResolvedValueOnce(true);
+      sonarrService.testConnection.mockResolvedValueOnce({ success: true });
 
       const result = await svc.checkSonarr();
       expect(result.status).toBe('connected');
@@ -415,7 +424,7 @@ describe('healthCheckService - all service checks', () => {
     test('returns partial when some instances are down', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'S1' }, { id: 2, name: 'S2' }] });
       sonarrService.testConnection
-        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce({ success: true })
         .mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
       const result = await svc.checkSonarr();
@@ -435,7 +444,7 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected on successful testConnection', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ api_key: 'test-key-123' }] });
-      tmdbService.testConnection.mockResolvedValueOnce(true);
+      tmdbService.testConnection.mockResolvedValueOnce({ success: true });
 
       const result = await svc.checkTMDB();
       expect(result.status).toBe('connected');
@@ -464,10 +473,11 @@ describe('healthCheckService - all service checks', () => {
       const healthy = await svc.checkOMDb();
       omdbService.testConnection.mockResolvedValueOnce(probeResult);
       const failed = await svc.checkOMDb();
-      expect(failed.status).toBe('disconnected');
+      expect(failed.status).toBe(probeResult?.success === false ? 'disconnected' : 'unknown');
       expect(failed.lastSuccessfulCheck).toBe(healthy.lastSuccessfulCheck);
       expect(failed.previousStatus).toBe('connected');
-      expect(failed.error).toBe(probeResult?.error || 'OMDb connection test failed');
+      expect(failed.error).toBeTruthy();
+      expect(failed.error).not.toBe(probeResult?.error);
     });
 
     test('returns not configured when no api key', async () => {
@@ -789,9 +799,9 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected for Plex on successful http call', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ type: 'plex', selected_connection: 'http://plex:32400', token: 'plex-token', name: 'My Plex' }]
+        rows: [{ type: 'plex', url: 'http://plex:32400', api_key: 'plex-token', name: 'My Plex' }]
       });
-      mockHttpGet.mockResolvedValueOnce({ status: 200, data: {} });
+      mockHttpGet.mockResolvedValueOnce({ status: 200, data: { MediaContainer: { machineIdentifier: 'fixture', version: '1' }, Id: 'fixture', Version: '1' } });
 
       const result = await svc.checkMediaServer();
       expect(result.status).toBe('connected');
@@ -800,7 +810,7 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns disconnected when plex request fails', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ type: 'plex', selected_connection: 'http://plex:32400', token: 'plex-token', name: 'My Plex' }]
+        rows: [{ type: 'plex', url: 'http://plex:32400', api_key: 'plex-token', name: 'My Plex' }]
       });
       mockHttpGet.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
@@ -810,9 +820,9 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected for Jellyfin on successful http call', async () => {
       db.query.mockResolvedValueOnce({
-        rows: [{ type: 'jellyfin', url: 'http://jellyfin:8096', token: 'jf-token', name: 'Jellyfin' }]
+        rows: [{ type: 'jellyfin', url: 'http://jellyfin:8096', api_key: 'jf-token', name: 'Jellyfin' }]
       });
-      mockHttpGet.mockResolvedValueOnce({ status: 200, data: {} });
+      mockHttpGet.mockResolvedValueOnce({ status: 200, data: { MediaContainer: { machineIdentifier: 'fixture', version: '1' }, Id: 'fixture', Version: '1' } });
 
       const result = await svc.checkMediaServer();
       expect(result.status).toBe('connected');

@@ -37,12 +37,29 @@ and scheduling add delay. Stopping the heartbeat stops future cycles. See the
 [completion design](../architecture/health-completion-fencing-design.md) and
 [cache reconciliation design](../architecture/health-cache-reconciliation-design.md).
 
-Radarr, Sonarr, TMDb, OMDb, Tavily and image-embedding checks use explicit reviewed
+Radarr, Sonarr, TMDb, OMDb, Tavily, AI, media-server and image-embedding checks use explicit reviewed
 configuration projections. Usage counters, quota reset dates and unrelated cache
 timestamps do not invalidate those observations. Credentials, credential lifecycle,
 transport settings, displayed identity and active selection remain covered where
-applicable. AI/Ollama and media-server comparisons remain conservative pending an
-adapter audit. See the [dependency contract](../architecture/health-configuration-dependencies-design.md).
+applicable. Ollama captures the active legacy host/port before the AI-row fallback
+in one query, without using a singleton's cached endpoint. See the
+[dependency contract](../architecture/health-configuration-dependencies-design.md).
+
+Connection-test helpers must explicitly return `success: true`; a resolved false
+result is disconnected, and a malformed result is unknown. Last success is not
+advanced on either failure. AI cloud settings report `configured`, not `connected`,
+without generating content or claiming authentication was tested. Ollama lists
+models only; this does not prove generation readiness. Media-server checks send
+the current saved API key to the authenticated information endpoint and validate
+the response shape. New AI/media reads reject redirects, retain TLS verification,
+cap decoded responses at 1 MiB and have a 10-second deadline.
+
+`connection_configuration` diagnostics include `endpoint_invalid` and
+`provider_unsupported`. `connection_probe` includes `response_invalid`,
+`response_too_large` and `check_cancelled`; each is unknown rather than a confirmed
+outage. Other connection failures use fixed safe guidance. Raw provider errors,
+bodies and credentials are not returned. Existing helper transports are unchanged.
+See the [adapter design](../architecture/health-provider-adapters-design.md).
 
 Configuration lookup failures are **unknown**, not absent configuration or proof
 that a provider is down. Affected observations include a fixed safe `error` and

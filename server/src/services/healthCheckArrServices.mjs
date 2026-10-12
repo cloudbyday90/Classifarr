@@ -12,11 +12,10 @@ import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
+import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import {
     buildAggregateInstancesHealthState,
     buildNotConfiguredHealthState,
-    buildTimedInstanceHealthState,
-    measureTime,
 } from './healthCheckServiceShared.mjs';
 
 export async function checkRadarr(previous, guard = undefined) {
@@ -32,11 +31,9 @@ export async function checkRadarr(previous, guard = undefined) {
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureTime(async () => {
-                await radarrService.testConnection(config);
-            });
+            const result = await measureConnectionProbe(() => radarrService.testConnection(config));
 
-            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
+            instances.push(buildConnectionProbeHealthState(prevInstance, result, {
                 id: config.id,
                 name: config.name,
             }));
@@ -61,11 +58,9 @@ export async function checkSonarr(previous, guard = undefined) {
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureTime(async () => {
-                await sonarrService.testConnection(config);
-            });
+            const result = await measureConnectionProbe(() => sonarrService.testConnection(config));
 
-            instances.push(buildTimedInstanceHealthState(prevInstance, result, {
+            instances.push(buildConnectionProbeHealthState(prevInstance, result, {
                 id: config.id,
                 name: config.name,
             }));

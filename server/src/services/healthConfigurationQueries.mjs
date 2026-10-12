@@ -3,6 +3,15 @@
 // Fixed projections shared by the probe and its captured re-read callback.
 // Include display identity and all helper transport inputs, not usage counters.
 const queries = new Map([
+    ['ollama', `SELECT a.primary_provider, a.api_endpoint, a.api_key, a.model,
+        CASE WHEN o.id IS NOT NULL THEN o.host ELSE a.ollama_host END AS ollama_host,
+        CASE WHEN o.id IS NOT NULL THEN o.port ELSE a.ollama_port END AS ollama_port,
+        o.id AS ollama_config_id
+        FROM ai_provider_config a LEFT JOIN LATERAL
+        (SELECT id, host, port FROM ollama_config WHERE is_active = true LIMIT 1) o ON true
+        WHERE a.id = 1`],
+    ['mediaServer', `SELECT id, type, name, url, api_key, client_identifier
+        FROM media_server WHERE is_active = true LIMIT 1`],
     ['radarr', `SELECT id, name, url, protocol, host, port, base_path, api_key, verify_ssl, timeout
         FROM radarr_config WHERE is_active = true`],
     ['sonarr', `SELECT id, name, url, protocol, host, port, base_path, api_key, verify_ssl, timeout

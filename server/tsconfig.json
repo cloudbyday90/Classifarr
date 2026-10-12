@@ -17,6 +17,10 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/services/healthConnectionProbe.mjs",
+    "src/services/healthProbeRequest.mjs",
+    "src/services/healthCheckAiProvider.mjs",
+    "src/services/healthCheckMediaServer.mjs",
     "src/services/healthConfigurationRead.mjs",
     "src/services/healthConfigurationGuard.mjs",
     "src/services/healthConfigurationQueries.mjs",

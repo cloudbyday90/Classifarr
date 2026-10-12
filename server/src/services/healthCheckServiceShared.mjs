@@ -103,14 +103,11 @@ export function buildTimedResultHealthState(previous = {}, result = {}, override
   });
 }
 
-export function buildTimedInstanceHealthState(previous = {}, result = {}, overrides = {}) {
-  return buildTimedResultHealthState(previous, result, overrides);
-}
-
 export function buildAggregateInstancesHealthState(previous = {}, instances = [], overrides = {}) {
   const allConnected = instances.length > 0 && instances.every((instance) => instance.status === 'connected');
   const anyConnected = instances.some((instance) => instance.status === 'connected');
-  const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : 'disconnected');
+  const anyUnknown = instances.some((instance) => instance.status === 'unknown');
+  const overallStatus = allConnected ? 'connected' : (anyConnected ? 'partial' : (anyUnknown ? 'unknown' : 'disconnected'));
   const responseTimes = instances
     .map((instance) => instance.responseTime)
     .filter((responseTime) => Number.isFinite(responseTime));
