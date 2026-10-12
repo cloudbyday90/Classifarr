@@ -13,7 +13,7 @@ vi.mock('../api', () => ({
     getAIConfig: vi.fn(),
     getSystemHealth: vi.fn(),
     getSystemStatus: vi.fn(),
-    post: vi.fn()
+    refreshSystemHealth: vi.fn()
   }
 }))
 
@@ -62,6 +62,16 @@ const baseStatus = {
   pgvector: null
 }
 
+const currentPgvector = {
+  selection: {
+    status: 'current_process',
+    report: {
+      schemaVersion: 1, databaseScope: 'embedded_entrypoint', build: 'multi',
+      selectedVariant: 'avx2', cpuAvx: 'true', cpuAvx2: 'true',
+    },
+  },
+}
+
 describe('System.vue', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -72,9 +82,9 @@ describe('System.vue', () => {
     vi.useRealTimers()
   })
 
-  const mountSystem = async (statusOverrides = {}) => {
+  const mountSystem = async (statusOverrides = {}, health = baseHealth) => {
     api.getAIConfig.mockResolvedValue({})
-    api.getSystemHealth.mockResolvedValue(baseHealth)
+    api.getSystemHealth.mockResolvedValue(health)
     api.getSystemStatus.mockResolvedValue({ ...baseStatus, ...statusOverrides })
 
     const wrapper = mount(SystemView, {
@@ -99,23 +109,13 @@ describe('System.vue', () => {
     return wrapper
   }
 
-  it('renders pgvector card as healthy when AVX2 matches CPU flags', async () => {
-    const wrapper = await mountSystem({
-      pgvector: {
-        build: 'multi',
-        selectedVariant: 'avx2',
-        cpuAvx: 'true',
-        cpuAvx2: 'true',
-        lastChecked: '2026-01-30T12:00:00Z'
-      }
-    })
-
-    const card = wrapper.find('[data-testid="service-card-pgvector"]')
-    expect(card.exists()).toBe(true)
-    expect(card.text()).toContain('pgvector')
-    expect(card.text()).toContain('Healthy')
-    expect(card.text()).toContain('Variant: avx2')
-
+  it('separates a reported CPU match from operational service counts', async () => {
+    const wrapper = await mountSystem({ pgvector: currentPgvector })
+    expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('CPU match reported at startup')
+    expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain('Degraded')
+    expect(wrapper.text()).toContain('of 12 services operational')
     wrapper.unmount()
   })
 
@@ -153,22 +153,66 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
-  it('marks pgvector unhealthy when AVX2 variant lacks CPU support', async () => {
+  it('reports a CPU mismatch without inventing an unhealthy database', async () => {
     const wrapper = await mountSystem({
       pgvector: {
-        build: 'multi',
-        selectedVariant: 'avx2',
-        cpuAvx: 'true',
-        cpuAvx2: 'false',
-        lastChecked: '2026-01-30T12:00:00Z'
+        selection: { ...currentPgvector.selection,
+          report: { ...currentPgvector.selection.report, cpuAvx2: 'false' },
+        },
       }
     })
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('CPU mismatch reported at startup')
+    expect(wrapper.get('[data-testid="service-card-database"]').text()).toContain('Healthy')
+    expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
 
-    const card = wrapper.find('[data-testid="service-card-pgvector"]')
-    expect(card.exists()).toBe(true)
-    expect(card.text()).toContain('Unhealthy')
-    expect(card.text()).toContain('AVX2')
+  it.each(['disabled', 'unavailable', 'unknown'])('retains RAG %s independently of CPU compatibility', async rag => {
+    const wrapper = await mountSystem({ pgvector: currentPgvector }, {
+      ...baseHealth, database: 'disconnected', rag,
+      details: { ...baseHealth.details, rag: { pgvector: false, embeddingsTable: false } },
+    })
+    expect(wrapper.get('[data-testid="service-card-database"]').text()).toContain('Unhealthy')
+    expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain(
+      { disabled: 'Disabled', unavailable: 'Unhealthy', unknown: 'Unknown' }[rag],
+    )
+    expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain('pgvector unavailable')
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    wrapper.unmount()
+  })
 
+  it.each(['health', 'status'])('never inserts a synthetic service when %s resolves last', async delayed => {
+    let resolve
+    const pending = new Promise(done => { resolve = done })
+    const mock = delayed === 'health' ? api.getSystemHealth : api.getSystemStatus
+    mock.mockReturnValueOnce(pending)
+    const wrapper = await mountSystem({ pgvector: currentPgvector })
+    expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
+    resolve(delayed === 'health' ? baseHealth : { ...baseStatus, pgvector: currentPgvector })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
+    wrapper.unmount()
+  })
+
+  it('keeps a health request failure visible even when startup reports a CPU match', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    api.getSystemHealth.mockRejectedValueOnce(new Error('Fixture health request failed'))
+    const wrapper = await mountSystem({ pgvector: currentPgvector })
+    expect(wrapper.text()).toContain('Fixture health request failed')
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
+    expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
+    wrapper.unmount()
+    errorLog.mockRestore()
+  })
+
+  it('does not infer compatibility from legacy settings or an extension version alone', async () => {
+    const wrapper = await mountSystem({ pgvectorVersion: '0.8.1', pgvector: null })
+    expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('Compatibility unknown')
+    expect(wrapper.text()).toContain('0.8.1')
     wrapper.unmount()
   })
 })

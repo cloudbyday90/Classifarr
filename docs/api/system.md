@@ -68,6 +68,13 @@ lease, a health result or tamper-proof evidence. Only a current embedded report
 can support specific staging guidance. Older servers may omit it entirely.
 See the [design and reason policy](../architecture/pgvector-startup-report-design.md).
 
+System presents these observations in **pgvector startup compatibility**, outside
+the service-health totals. Only current embedded evidence supports a CPU comparison;
+generic selection is not a health result. Database connectivity and RAG catalog/
+index readiness remain separate checks. Neither the startup report nor catalog
+presence proves which native binary a database session loaded. See the
+[compatibility/health separation design](../architecture/pgvector-health-separation-design.md).
+
 ### GET /api/system/health
 
 Get overall system health with service breakdown.

@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "vueCompilerOptions": {
     "strictTemplates": true,
-    "dataAttributes": ["data-lpignore", "data-1pass-no-save"]
+    "dataAttributes": ["data-lpignore", "data-1pass-no-save", "data-testid"]
   },
   "include": [
     "src/components/common/Badge.vue",
@@ -20,6 +20,7 @@
     "src/components/common/Spinner.vue",
     "src/components/common/Toast.vue",
     "src/components/settings/ArrConfigWarning.vue",
-    "src/components/PgvectorVariantBanner.vue"
+    "src/components/PgvectorVariantBanner.vue",
+    "src/components/system/PgvectorStartupPanel.vue"
   ]
 }
