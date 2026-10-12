@@ -137,6 +137,39 @@ and mock-shape gates, copyright and Markdown checks passed. Restored dependency
 tooling passed 41/41. Staged secret scanning found no leaks. These local results
 are not a claim that remote CI or a published multi-platform image has passed.
 
+## Local image and schema verification
+
+No-cache Compose build from clean implementation commit
+`3da379102da042af1adf4a5e4644dd174cd53bba` passed with required revision metadata.
+The local Linux/amd64 image ID is
+`sha256:8f5a33192f73d9579ed48afc2d88005de321d7d10dea82833043e092e3c6fbbb`;
+its OCI revision matches that commit. This is local image identity, not a claim
+about a published registry digest, signed provenance or ARM64 validation.
+
+Before replacement, the 75,628,571-byte local database archive passed checksum
+and `pg_restore --list` readability checks; no full backup-restore exercise was
+performed. The exact prior image was retained under a private rollback tag.
+Only the local `classifarr` service was recreated, using `--no-build --pull never`.
+It became healthy, with zero restarts and no OOM flag. The two-GiB memory limit,
+UID/GID 1000, read-only root filesystem and no-new-privileges setting are unchanged.
+
+Read-only checks at 01:12:49 and 01:30:29 UTC on October 12 (October 11 local)
+agreed: ten active/covered libraries; four unresolved identities (two source
+reviews, two retry-wait); 6,835 classification rows; zero pending text embeddings
+and 6,813 pending image embeddings. The ten-row embedding batch remained unique.
+No startup warning/error rows were returned in the checked window. These probes
+made zero writes and provider calls; normal application background services were
+not disabled. This is a startup check, not a sustained memory soak or proof that
+the historical refresh timeout is fixed. Unraid, Plex and Ollama were untouched.
+
+After rebuilding, the exact image initialized a separate fresh database with
+network disabled, one GiB, two CPUs and 256 PIDs. The schema-dump runner completed
+through `20261010_220000_source_catalog_mappings.sql`, including 22 data-only seed
+migrations; `database/schema/current.sql` has no diff. Fresh-state checks found
+no invented classification, embedding or identity-recovery work. The owned
+container and its exact temporary data directory were independently confirmed
+absent. No existing application data, backup or rollback image was removed.
+
 ## Next recommendation
 
 First correct and verify resource-quota units in the two older diagnostic paths:
