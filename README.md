@@ -1120,6 +1120,18 @@ Coverage:
 npm run test:coverage
 ```
 
+Frontend runner acceptance (also required by `npm --prefix client run test:ci`):
+
+```bash
+npm --prefix client run test:config
+```
+
+This checks the exact runner/coverage pair, complete project inventory, real CLI
+failure exits, hook deadlines, coverage and module-cache invalidation. It uses
+disposable local fixtures, not application data. See the
+[test-runtime design](docs/architecture/frontend-test-runtime-design.md) and
+[observed outcome](docs/architecture/frontend-test-runtime-outcome.md).
+
 Server integration tests:
 
 ```bash

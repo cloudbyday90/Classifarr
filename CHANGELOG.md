@@ -22,6 +22,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Run the CSRF source contract before parallel UI tests without relaxing its checks.
   Refresh browser testing with matched Playwright and Chromium versions, and guard
   against dependency-chain drift while retaining runtime-aligned Node declarations.
+  Keep frontend test and coverage tooling aligned and reject invalid test filters
+  that previously could report success without running the intended checks.
 
 ### Added
 

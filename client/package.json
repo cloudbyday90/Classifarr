@@ -27,7 +27,7 @@
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",
     "test:ui": "node ./scripts/run-vitest.mjs --ui",
     "test:watch": "node ./scripts/run-vitest.mjs",
-    "test:config": "node --test scripts/__tests__/vitest-projects.test.mjs",
+    "test:config": "node --test --test-concurrency=1 scripts/__tests__/vitest-projects.test.mjs scripts/__tests__/vitest-runtime.test.mjs",
     "test:ci": "node ../scripts/run-workspace-tests.mjs test:config test:unit:ci"
   },
   "dependencies": {
@@ -44,7 +44,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.19.2",
     "@vitejs/plugin-vue": "6.0.10",
-    "@vitest/coverage-v8": "^5.0.3",
+    "@vitest/coverage-v8": "5.0.4",
     "@vue/test-utils": "^2.5.1",
     "eslint": "^10.12.0",
     "eslint-plugin-vue": "^10.11.1",
@@ -54,7 +54,7 @@
     "tailwindcss": "^4.3.1",
     "typescript": "6.0.3",
     "vite": "8.3.4",
-    "vitest": "^5.0.3",
+    "vitest": "5.0.4",
     "vue-tsc": "3.3.13"
   },
   "allowScripts": {

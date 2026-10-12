@@ -1,12 +1,27 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { createVitest } from 'vitest/node';
 
 const clientRoot = resolve(import.meta.dirname, '../..');
 const relativePath = file => relative(clientRoot, file).replaceAll('\\', '/');
+
+test('installed test runner and coverage provider match their exact manifest pins', () => {
+  const read = path => JSON.parse(readFileSync(resolve(clientRoot, path), 'utf8'));
+  const manifest = read('package.json');
+  const lock = read('package-lock.json');
+  const version = manifest.devDependencies.vitest;
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  for (const name of ['vitest', '@vitest/coverage-v8']) {
+    assert.equal(manifest.devDependencies[name], version);
+    assert.equal(lock.packages[''].devDependencies[name], version);
+    assert.equal(lock.packages[`node_modules/${name}`].version, version);
+    assert.equal(read(`node_modules/${name}/package.json`).version, version);
+  }
+  assert.equal(read('node_modules/@vitest/coverage-v8/package.json').peerDependencies.vitest, version);
+});
 
 test('resolved projects preserve every suite and isolate lint setup from application work', { timeout: 10_000 }, async () => {
   // Run outside Vitest so this inspects the real resolved configuration without
@@ -38,6 +53,7 @@ test('resolved projects preserve every suite and isolate lint setup from applica
       assert.equal(relativePath(alias.replacement), 'src');
     }
     assert.equal(runner.config.coverage.provider, 'v8');
+    assert.equal(runner.config.fsModuleCache, true);
 
     const specifications = await runner.globTestSpecifications();
     const actual = specifications.map(specification => relativePath(specification.moduleId)).sort();
