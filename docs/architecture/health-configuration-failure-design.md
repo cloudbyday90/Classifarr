@@ -92,3 +92,14 @@ dump; record evidence separately. No Unraid, Plex or shared Ollama mutation.
 
 GitHub MCP returned zero open PRs at the start of this work. None can be randomly
 selected unless that changes. No PR merge, release, tag or version bump is planned.
+
+## Explicit ownership-review change
+
+The static ownership gate found three new indirect-query sites in
+`healthCheckExternalApis.mjs`. Reviewed all three literal provider selections,
+the configuration-read boundary and the unchanged SQL factory/store. Each selects
+the provider's fixed active-row SELECT (ordered ID, limit one); no inventory DML,
+caller-controlled identifier or configuration persistence is introduced. Added
+only this file's exact digest/analysis entry under `read_only_health_configuration`.
+No existing digest, unresolved classification, parser, baseline revision or gate
+rule is changed. The failed initial coverage run will not be counted as a pass.

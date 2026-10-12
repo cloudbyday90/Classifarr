@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "read_only_health_configuration",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed healthCheckExternalApis, readHealthConfiguration, metadataProviderConfigQuery and metadataProviderConfigSql. Each of the three indirect query sites uses a literal provider (tmdb, omdb or tavily) and activeOnly true. The allowlisted factory returns a fixed SELECT with deterministic id ordering and LIMIT 1. No caller-controlled SQL, configuration persistence, inventory DML, ownership claim or recovery call is reachable through this query boundary. Failed configuration reads return unknown before provider probes, and diagnostic logging skips database persistence.",
+      "followUp": "Retain configuration failure/no-provider-admission and normal provider-result tests. Re-review if query selection or this module changes. This static read-only review is not permission for production repair and does not change any existing unresolved writer classifications."
+    },
+    {
       "id": "offline_description_corpus_profile",
       "classification": "unresolved",
       "reason": "Reviewed the 2026-10-11 synthetic fixture, measurement and runner with their standalone CLI. The CLI creates a disposable database with generated credentials, accepts no connection override, pins its local image and verifies Docker resource limits. Fixed schema-derived tables are installed in a new description_corpus_profile namespace only after a disposable-database guard. Only synthetic setup writes and a deliberate held-lock control use write transactions; measured production corpus SELECTs use read-only transactions with unchanged 15-second statement and two-second lock deadlines. Indirect SQL analysis gaps remain unresolved; this is not production write authority.",
@@ -1405,6 +1411,7 @@
     {"path":"database/migrations/20261010_220000_source_catalog_mappings.sql","digest":"25e0da7cf4ef3268bce84143f63f69068333aa291fc58790bf39fd1f3d8f9242","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"source_mapping_schema"},
     {"path":"server/src/services/sourceMappingManagement.mjs","digest":"1bd7e4730c2bd6d3ed1b41d9dc6ac814a8a31a53e28d9fd37830792ac41c48b4","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"source_mapping_admin_revocation"},
     {"path":"server/src/services/sourceMappingPersistence.mjs","digest":"1af04206bb5eb7ce71d48f429da0a92567ce1e2d85673b4f295fca0ac8b8b92e","analysisDigest":"e0e5cae7477ce104ea6fa841923194c0896dd42403f676f7873a61eddab0f6a9","review":"source_mapping_owned_recovery"},
-    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"2a802cb46df0511d6d30aa91948adb80adf0689103eb33bfb8d464094c046bc4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"}
+    {"path":"server/src/services/sourceMappingRecovery.mjs","digest":"2a802cb46df0511d6d30aa91948adb80adf0689103eb33bfb8d464094c046bc4","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"source_mapping_owned_recovery"},
+    {"path":"server/src/services/healthCheckExternalApis.mjs","digest":"38cbacbb77cdbd5695979eca4282008d6f31671559628c27faa3c1668c7c806b","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_health_configuration"}
   ]
 }
