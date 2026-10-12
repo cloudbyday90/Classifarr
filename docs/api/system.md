@@ -57,8 +57,8 @@ its existing flat pgvector fields. No new mutation endpoint is introduced.
 | `invalid` | Unsupported, malformed, oversized or inconsistent report |
 
 A validated version-1 `report` contains `reporterId` (opaque application-run UUID),
-`recordedAt`, `selectedAt`, `databaseStartedAt` (UTC timestamps, nullable when
-unknown), `databaseScope` (`embedded_entrypoint` or `unverified`), `reason`,
+`recordedAt`, `selectedAt`, `databaseStartedAt` (UTC timestamps; the latter two
+are nullable when unknown), `databaseScope` (`embedded_entrypoint` or `unverified`), `reason`,
 `selectedVariant`, `build`, `cpuAvx` and `cpuAvx2`. Missing/invalid reports are
 `null`. No hostnames, paths, connection strings or credentials are included.
 Database lookup failure still returns `pgvector: null` from system status.

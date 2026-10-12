@@ -55,8 +55,11 @@ when the settings table is absent.
 | Load the extension to prove the binary | Stronger session-specific evidence | Can execute unsafe native code and is not read-only observation; defer |
 
 Recommendation stack: record the actual branch; publish validated scoped evidence;
-show reason-specific safe actions; only then consider passive loaded-module
-evidence for supported PostgreSQL versions as a separate design.
+show reason-specific safe actions; separate CPU compatibility from the System
+health badge's readiness claim; only then consider passive loaded-module evidence
+for supported PostgreSQL versions as a separate design. `buildPgvectorService`
+currently derives that badge from the selected variant and CPU flags, not a
+database readiness check. This batch does not change health aggregation.
 
 ## Official research
 
