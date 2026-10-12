@@ -50,6 +50,10 @@ updates:
     ignore:
       - dependency-name: "typescript"
         versions: ["7.x"]
+      # Match the deployed Node major; review alongside .nvmrc on runtime upgrades.
+      # Use update-types, not versions, so security-only updates remain eligible.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       client-runtime:
         dependency-type: "production"
@@ -72,6 +76,11 @@ updates:
       - "npm"
       - "server"
     open-pull-requests-limit: 10
+    ignore:
+      # Match the deployed Node major; review alongside .nvmrc on runtime upgrades.
+      # Use update-types, not versions, so security-only updates remain eligible.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       server-runtime:
         dependency-type: "production"

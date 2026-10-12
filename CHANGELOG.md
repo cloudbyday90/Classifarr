@@ -26,6 +26,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   that previously could report success without running the intended checks.
   Add opt-in phase diagnostics for intermittent frontend test timeouts, retaining
   the original assertions, coverage, isolation and deadlines.
+  Align routine Node declaration update proposals with the deployed runtime major,
+  retaining compatible updates, security-only eligibility and compatibility gates.
 
 ### Added
 

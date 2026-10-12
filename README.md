@@ -1138,6 +1138,12 @@ or file paths and do not relax deadlines. See the
 [phase diagnostic design and invocation](docs/architecture/frontend-test-phase-diagnostics-design.md)
 and [observed outcome](docs/architecture/frontend-test-phase-diagnostics-outcome.md).
 
+Dependabot keeps Node declaration updates on the deployed runtime major while
+leaving compatible updates and security-only proposals eligible. Runtime upgrades
+must review both workspaces and `.nvmrc` together. See the
+[dependency policy design](docs/architecture/dependabot-node-runtime-policy-design.md)
+and [validation outcome](docs/architecture/dependabot-node-runtime-policy-outcome.md).
+
 Server integration tests:
 
 ```bash
