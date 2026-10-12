@@ -48,11 +48,19 @@ export function describeHealthObservation(observation, policy) {
 }
 
 export function projectHealthDetails(details, policy) {
-  return Object.fromEntries(Object.entries(details).map(([key, observation]) => [key, {
-    ...observation,
-    ...describeHealthObservation(observation, policy),
-    ...(Array.isArray(observation?.instances) ? {
-      instances: observation.instances.map(instance => ({ ...instance, ...describeHealthObservation(instance, policy) })),
-    } : {}),
-  }]));
+  return Object.fromEntries(Object.entries(details).map(([key, observation]) => {
+    const projected = { ...observation, ...describeHealthObservation(observation, policy) };
+    if (Array.isArray(observation?.instances)) {
+      projected.instances = observation.instances.map(instance => ({ ...instance, ...describeHealthObservation(instance, policy) }));
+      const incomplete = projected.instances.some(instance => instance.effectiveStatus === 'unknown');
+      const currentFault = projected.instances.some(instance => ['unhealthy', 'degraded'].includes(instance.effectiveStatus));
+      // A current fault still proves a problem. Without one, incomplete instance
+      // observations cannot support a current healthy/degraded group claim.
+      if (projected.freshness.state === 'fresh' && incomplete && !currentFault) {
+        projected.effectiveStatus = 'unknown';
+        projected.freshness = { ...projected.freshness, state: 'unknown', reason: 'instance_checks_incomplete' };
+      }
+    }
+    return [key, projected];
+  }));
 }

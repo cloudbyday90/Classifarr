@@ -275,10 +275,11 @@ describe('System.vue', () => {
 
   it('does not show a stale instance as current when its group is fresh', async () => {
     const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'connected', details: {
-      ...baseHealth.details, radarr: { freshness: fresh, instances: [{ id: 7, name: 'Fixture instance', status: 'connected',
+      ...baseHealth.details, radarr: { freshness: { ...fresh, state: 'unknown', reason: 'instance_checks_incomplete' }, instances: [{ id: 7, name: 'Fixture instance', status: 'connected',
         freshness: { ...fresh, state: 'stale', reason: 'check_overdue', ageMs: 930000 } }] },
     } })
     const card = wrapper.get('[data-testid="service-card-radarr"]')
+    expect(card.text()).toContain('Some instance checks are overdue or unverified')
     await card.get('button').trigger('click')
     expect(card.text()).toContain('Fixture instance')
     expect(card.text()).toContain('Unknown')

@@ -31,6 +31,9 @@ describe('health observation presentation', () => {
     expect(wrapper.find('[data-testid="health-freshness-note"]').exists()).toBe(false)
     wrapper.unmount()
   })
+  it('explains an incomplete group without calling its recent group timestamp invalid', () => {
+    expect(healthFreshnessGuidance('unknown', 'instance_checks_incomplete')).toContain('Expand the instances')
+  })
   it('escapes unknown check metadata and keeps it outside a live status region', () => {
     const wrapper = mount(HealthFreshnessNote, { props: { checkedAt: '<img src=x onerror=alert(1)>', observedStatus: 'healthy' } })
     expect(wrapper.find('img').exists()).toBe(false)

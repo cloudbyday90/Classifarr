@@ -22,6 +22,8 @@ Heartbeat stop retains cached results, and the selected interval is not exposed.
 1. Add a small pure ESM freshness projector. Use the service's completed-check time,
    never `lastSuccessfulCheck`, cache-read time or response receipt time. For *arr
    instances use each instance's own time, not the group's later completion.
+   An otherwise fresh group is unknown when instance observations are incomplete
+   and no current fault proves a problem. Current instance faults remain visible.
 2. The freshness budget is the last configured heartbeat interval plus 30 seconds
    of scheduling grace. Equality with the deadline is expired. This is an
    application policy, not proof a failed or delayed scheduler will recover.

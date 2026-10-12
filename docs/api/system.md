@@ -277,7 +277,10 @@ remain unhealthy; expired failures retain their observed result but become unkno
 Explicit disabled/not-configured rows stay inactive. States are `fresh`, `stale`,
 `unknown` and `inactive`; reasons include `within_budget`, `check_overdue`,
 `check_time_missing`, `check_time_invalid`, `check_time_future` and
-`inactive_configuration`. Time values are UTC; unknown age/time is null.
+`inactive_configuration`. A recent group with incomplete instance observations
+and no current fault is unknown with reason `instance_checks_incomplete`; its
+group timestamp alone cannot make old instance results current. Time values are
+UTC; unknown age/time is null.
 
 `GET /api/system/heartbeat` also returns `freshnessPolicy` alongside `active`.
 Stopping the heartbeat preserves its interval and cached observations; they expire

@@ -26,6 +26,9 @@ export function applyHealthObservation(service, detail) {
 export function healthFreshnessGuidance(state, reason) {
   if (state === 'stale') return 'Check overdue. Use Refresh to request a new check. If it stays overdue, review the heartbeat and server logs.'
   if (state !== 'unknown') return ''
+  if (reason === 'instance_checks_incomplete') {
+    return 'Some instance checks are overdue or unverified. Expand the instances to review them, then use Refresh.'
+  }
   if (reason === 'check_time_future' || reason === 'check_time_invalid') {
     return 'Check time cannot be verified. Review the server clock and logs, then use Refresh.'
   }

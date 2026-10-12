@@ -46,12 +46,23 @@ describe('health observation freshness', () => {
     const instance = Object.freeze({ status: 'connected', lastCheck: checked(930000) });
     const group = Object.freeze({ status: 'connected', lastCheck: checked(0), instances: Object.freeze([instance]) });
     const result = projectHealthDetails({ radarr: group, queueWorker: { status: 'connected', timestamp: checked(0) }, absent: undefined }, policy);
-    expect(result.radarr.effectiveStatus).toBe('healthy');
+    expect(result.radarr).toMatchObject({ effectiveStatus: 'unknown', freshness: { reason: 'instance_checks_incomplete' } });
     expect(result.radarr.instances[0]).toMatchObject({ status: 'connected', effectiveStatus: 'unknown' });
     expect(result.queueWorker.effectiveStatus).toBe('healthy');
     expect(result.absent.effectiveStatus).toBe('unknown');
     expect(result.radarr).not.toBe(group);
     expect(result.radarr.instances[0]).not.toBe(instance);
+  });
+
+  test.each([
+    ['partial', 'connected', 'unknown'], ['disconnected', 'disconnected', 'unhealthy'],
+    ['partial', 'disconnected', 'degraded'],
+  ])('keeps a current fault visible but never a historical group claim: %s / %s', (status, current, expected) => {
+    const result = projectHealthDetails({ radarr: { status, lastCheck: checked(0), instances: [
+      { status: 'disconnected', lastCheck: checked(930000) },
+      { status: current, lastCheck: checked(0) },
+    ] } }, policy);
+    expect(result.radarr.effectiveStatus).toBe(expected);
   });
 
   test('uses the configured interval and retains recency even if the heartbeat is paused', () => {
