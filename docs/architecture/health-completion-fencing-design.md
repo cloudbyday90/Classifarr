@@ -9,7 +9,7 @@ refresh, heartbeat and detailed health can overlap; a slower old observation can
 replace a newer one, including after reset. The aggregate cache can independently
 retain outdated service objects. Configuration reads precede asynchronous probes.
 
-Use a small ESM coordinator with one in-flight check per service. Overlapping
+Use a small ESM coordinator with one in-flight check per cached service. Overlapping
 callers share that work rather than starting competing probes. Reset replaces the
 generation; old completions cannot publish, alert, or clear newer work. Different
 services remain independent. Only accepted results update the authoritative cache.
@@ -32,12 +32,15 @@ no immediate retry is admitted for any outcome.
 
 ## Bounds and limitations
 
-One in-flight check per service per process generation; one captured configuration
+One in-flight check per cached service per process generation; one captured configuration
 read and at most one validation read per check. Existing provider timeouts, response
 bounds, heartbeat cadence, memory safeguards and authentication are unchanged.
 No new timer, durable queue, cooldown or attempt budget is needed for read-only
 observations. Reset is internal lifecycle/test control, not a public retry endpoint.
 It fences completion but does not cancel already admitted transport work.
+The eleven cached services are coordinated; request-time queue and process-memory
+projections remain unchanged. Validation uses the existing pool connection and
+statement timeouts (defaults five seconds and thirty seconds, respectively).
 
 No database transaction or lock is held across provider I/O. Validation is a
 point-in-time content comparison, not a transactional lease or durable revision.
@@ -80,6 +83,11 @@ then, not a claim about all later October changes.
   not a proposal to use Vue watchers in the backend.
 - [Node AbortController](https://nodejs.org/docs/latest/api/globals.html): cancellation
   signals notify supporting APIs. Fencing is not evidence of transport cancellation.
+- [Node cryptography](https://github.com/nodejs/node/blob/main/doc/api/crypto.md?plain=1):
+  documents keyed HMAC and cryptographic random bytes. The implementation uses a
+  private 32-byte process key and SHA-256; no fingerprint is a public cache key,
+  credential substitute or persisted authentication token. These APIs are also
+  available in the pinned Node 24 runtime tested here; no runtime upgrade is implied.
 - [PostgreSQL consistency checks](https://www.postgresql.org/docs/17/applevel-consistency.html):
   successive reads can observe different committed states. We intentionally use
   that for conservative drift detection, not a claim of serializable consistency.
