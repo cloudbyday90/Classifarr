@@ -5,6 +5,7 @@ import { formatImageIndexMixedSummary } from './imageIndexMixedSummary.mjs';
 import { assertComparisonConcurrentReceipt } from '../../server/src/scripts/comparisonMemoryStudy/contract.mjs';
 import { assertComparisonRecoveryReceipt, comparisonRecoveryEvidence } from '../../server/src/scripts/comparisonMemoryStudy/recoveryContract.mjs';
 import { assertComparisonCatalogReceipt } from '../../server/src/scripts/comparisonMemoryStudy/catalogContract.mjs';
+import { formatComparisonCycleSummary } from './comparisonCycleSummary.mjs';
 
 /** Only validated aggregates enter Markdown; no payloads or arbitrary text. */
 export function formatResourceStudySummary(result) {
@@ -20,7 +21,8 @@ export function formatResourceStudySummary(result) {
       (result.study.postStopResidency ? 'Post-GC quiet window: five mapping-category observations over two minutes; mapping categories do not establish allocator ownership. See JSON for availability and counters.\n' : '') +
       (result.gcTrace ? 'Opt-in major-GC tracing enabled: attribution only, not an uninstrumented timing comparison. See sanitized comparison-gc-trace.json.\n' : '') +
       (result.gcResidency ? 'GC/residency correlation uses output-order brackets, not aligned clocks or proof of causation. See JSON for interval deltas or explicit unavailability.\n' : '') +
-      'No forced GC, restart, altered clocks or reduced safeguards. See JSON for peaks and admission decisions.\n';
+      'No forced GC, restart, altered clocks or reduced safeguards. See JSON for peaks and admission decisions.\n' +
+      formatComparisonCycleSummary(result.study);
   }
   if (result?.mode === 'comparison-recovery') {
     if (result.cleanup !== 'passed') throw new Error('resource_study_summary_invalid');

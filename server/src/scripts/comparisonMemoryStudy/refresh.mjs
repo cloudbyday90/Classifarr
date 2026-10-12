@@ -43,6 +43,7 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
     withAdmission: createInventoryDiscoveryAdmission({ ...fixture.database,
       resourceAdmission }) };
   const cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 256 * 1024 ** 2, ttlMs: 600_000, now });
+  const representativeCache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 ** 2, ttlMs: 1_800_000, now });
   const comparison = createLiveMultiScaleRefresh({ ...shared, cache,
     build: async (source, options) => {
       builds++; metrics.track('ownedSource', source);
@@ -58,11 +59,13 @@ export function createComparisonStudyRefreshers({ fixture, metrics, now = Date.n
       return model;
     } });
   const representative = createInventoryRepresentativeProfileRefresh({ ...shared,
+    cache: representativeCache,
     observer: consumers?.observer, neighborhoodRecovery: consumers?.neighborhoodRecovery, fit: async (...args) => {
     await metrics.mark(`${phase()}_representative_fit`);
     return fitInventoryRepresentativeProfile(...args);
   } });
-  return { comparison, representative, counts: () => ({ reads, builds }) };
+  return { comparison, representative, counts: () => ({ reads, builds }),
+    inspectCaches: () => ({ comparison: cache.inspect(), representative: representativeCache.inspect() }) };
 }
 
 export async function measureRefreshCycles({ fixture, metrics, elapsed = false, cycles = 5,

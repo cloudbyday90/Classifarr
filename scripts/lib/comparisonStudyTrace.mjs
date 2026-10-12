@@ -4,6 +4,7 @@ import { projectComparisonMappings } from '../../server/src/scripts/comparisonMe
 
 const HEAP_NUMBERS = ['mainHeapPhysicalBytes', 'mainV8MallocBytes', 'workerHeapPhysicalBytes'];
 const NUMBERS = ['elapsedMs', 'rss', 'heapUsed', 'heapTotal', 'external', 'arrayBuffers',
+  'comparisonCacheEntries', 'comparisonCacheBytes', 'representativeCacheEntries', 'representativeCacheBytes',
   'containerBytes', 'kernelPeakBytes', 'pids', 'activeWorkers', 'workerHeapUsed',
   'memoryLimitHits', 'oomKill', 'createdWorkers', 'exitedWorkers', 'estimatedCacheBytes', 'reads', 'builds',
   'attempt', 'availableBytes', 'reserveBytes', 'reservedBytes', 'workBytes', 'hysteresisBytes', 'requiredBytes',

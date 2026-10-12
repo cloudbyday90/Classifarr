@@ -10,6 +10,7 @@ import { collectComparisonStudyTrace } from '../../../../scripts/lib/comparisonS
 import { emptyVectorReadObservation } from '../../scripts/comparisonMemoryStudy/vectorReadObservation.mjs';
 import { projectPostStopSample } from '../../scripts/comparisonMemoryStudy/postStopGcContract.mjs';
 import { runResourceStudy } from '../../scripts/runResourceStudy.mjs';
+import { createRefreshCycleRetention } from '../../scripts/comparisonMemoryStudy/cycleRetention.mjs';
 
 const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; });
@@ -78,7 +79,15 @@ function receipt() {
     { worker: 'representative', attempt: 2, status: 'up_to_date', elapsedMs: 981_000 }];
   const beforeStop = { shadowPrepared: 2, shadowCommitted: 2, neighborhoodPrepared: 2, neighborhoodCommitted: 2,
     processed: 4, pending: 0, groups: 10, errors: 0, invalidInputs: 0, routingAffected: false, stopped: false };
-  return { version: 'comparison_catalog.v2', profile: 'comparison-catalog', budget: 'bounded', status: 'measured',
+  const retention = createRefreshCycleRetention();
+  const sample = elapsedMs => ({ elapsedMs, heapUsed: 10, heapTotal: 20, rss: 30, external: 4,
+    arrayBuffers: 2, containerBytes: 40, createdWorkers: 2, exitedWorkers: 2, activeWorkers: 0,
+    diagnosticGc: false, alive: {} });
+  const caches = entries => ({ comparison: { entries, estimatedBytes: entries * 100 },
+    representative: { entries, estimatedBytes: entries * 100 } });
+  for (const row of attempts) retention.record(row, sample(row.elapsedMs), caches(1));
+  return { version: 'comparison_catalog.v3', profile: 'comparison-catalog', budget: 'bounded', status: 'measured',
+    cycleRetention: retention.finish(sample(990_000), caches(0)),
     durationMs: 990_000, drainedAtMs: 610_000, initial, final: { ...initial }, attempts,
     decisions: attempts.map(row => ({ ...row, elapsedMs: row.elapsedMs - 1, kind: 'discovery', allowed: true,
       availableBytes: 1500 * 1024 ** 2, requiredBytes: 1024 * 1024 ** 2, reserveBytes: 256 * 1024 ** 2,
@@ -186,6 +195,7 @@ test.each([
   s => { s.attempts[1].status = 'yielded'; }, s => { s.decisions[0].allowed = false; },
   s => { s.decisions[0].requiredBytes--; },
   s => { s.version = 'comparison_catalog.v1'; }, s => { s.consumers.beforeStop.processed = 0; },
+  s => { s.version = 'comparison_catalog.v2'; }, s => { delete s.cycleRetention; },
   s => { s.consumers.beforeStop.groups = 0; }, s => { s.consumers.afterStop.pending = 1; },
   s => { s.consumers.beforeStop.errors = 1; }, s => { s.consumers.beforeStop.invalidInputs = 1; },
   s => { s.consumers.beforeStop.shadowCommitted = 0; }, s => { s.attempts[3].status = 'not_due'; },

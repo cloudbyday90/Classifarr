@@ -7,6 +7,7 @@ import { assertComparisonAllocationReceipt } from './allocationContract.mjs';
 import { assertPostStopGcReceipt } from './postStopGcContract.mjs';
 import { POST_STOP_GC_WAIT_MS } from './naturalMajorGc.mjs';
 import { assertQuiescentResidency, QUIESCENT_RESIDENCY_MS } from './quiescentResidency.mjs';
+import { assertRefreshCycleRetention } from './cycleRetention.mjs';
 
 export function comparisonCatalogCompletion(attempts, drainedAtMs) {
   if (!Number.isSafeInteger(drainedAtMs) || drainedAtMs <= 0) return false;
@@ -24,7 +25,7 @@ export function comparisonCatalogCompletion(attempts, drainedAtMs) {
 /** Workload completion is distinct from proof of naturally occurring pressure recovery. */
 export function assertComparisonCatalogReceipt(study, budget) {
   assert.equal(budget, 'bounded'); assert.equal(study?.budget, budget);
-  assert.equal(study.version, 'comparison_catalog.v2'); assert.equal(study.profile, 'comparison-catalog');
+  assert.equal(study.version, 'comparison_catalog.v3'); assert.equal(study.profile, 'comparison-catalog');
   assert.equal(study.status, 'measured');
   const workloadDuration = study.postStopGc === undefined ? study.durationMs : study.workloadDurationMs;
   assert.ok(Number.isSafeInteger(workloadDuration) && workloadDuration >= 900_000 && workloadDuration <= 1_800_000);
@@ -101,4 +102,5 @@ export function assertComparisonCatalogReceipt(study, budget) {
   for (const kind of ['ingestion', 'queue', 'discovery']) assert.equal(study.admission[kind].active, 0);
   for (const kind of ['ingestion', 'queue']) assert.ok(Number.isSafeInteger(study.overlap[kind]) && study.overlap[kind] >= 0);
   if (study.allocations !== undefined) assertComparisonAllocationReceipt(study.allocations, study);
+  assertRefreshCycleRetention(study.cycleRetention, study);
 }

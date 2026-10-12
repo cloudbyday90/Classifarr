@@ -31,6 +31,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Reports retain only aggregates; production queries and safeguards are unchanged.
   Correct memory units in retry/profiling diagnostic containers and verify Docker
   plus kernel limits before fixture work, with cleanup checks after failures.
+  Completed refresh-cycle reports now correlate cache occupancy, worker shutdown
+  and memory reference points without changing application memory safeguards.
 - **Catalog mapping and recovery** — Library-agnostic source/catalog checks and
   explicit administrator-approved whole-work or season mappings preserve Plex,
   Jellyfin and Emby grouping. Fresh, bounded evidence checks identify ambiguous,

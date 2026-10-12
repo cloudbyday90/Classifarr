@@ -20,6 +20,7 @@ import { createComparisonStudySchedule } from './schedule.mjs';
 import { COMPARISON_RECOVERY_PROFILE, comparisonRecoveryEvidence } from './recoveryContract.mjs';
 import { comparisonCatalogCompletion, assertComparisonCatalogReceipt } from './catalogContract.mjs';
 import { createComparisonAllocationWindows } from './allocationWindows.mjs';
+import { createRefreshCycleRetention } from './cycleRetention.mjs';
 
 export async function runComparisonCatalogStudy(database, budget, emit, { profileAllocations = false, observePostStopGc = false } = {}) {
   assertStudyProviderEnvironment(); assert.equal(budget, 'bounded');
@@ -27,6 +28,8 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
   const started = performance.now(), initial = await readStudyCgroup(), scope = new AsyncLocalStorage();
   assertStudyBudget(initial, budget);
   const attempts = [], decisions = [], elapsed = () => Math.round(performance.now() - started);
+  const retention = createRefreshCycleRetention();
+  let cycleRetention;
   const allocations = createComparisonAllocationWindows({ enabled: profileAllocations, context: () => scope.getStore(), now: elapsed });
   let observerFailed = false;
   const admission = observeComparisonStudyAdmission(createBackgroundResourceAdmission({ onDecision: decision => {
@@ -60,8 +63,12 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
       attempts.push(row);
       const consumerState = consumers.read();
       assert.equal(consumerState.errors, 0, 'comparison_consumer_observer_failed');
-      await metrics.settled(`recovery_${worker}`, { ...row, ...refreshers.counts(),
+      const caches = refreshers.inspectCaches();
+      const sample = await metrics.settled(`recovery_${worker}`, { ...row, ...refreshers.counts(),
+        comparisonCacheEntries: caches.comparison.entries, comparisonCacheBytes: caches.comparison.estimatedBytes,
+        representativeCacheEntries: caches.representative.entries, representativeCacheBytes: caches.representative.estimatedBytes,
         shadowProcessed: consumerState.processed, readinessGroups: consumerState.groups });
+      retention.record(row, { ...sample, elapsedMs: elapsed() }, caches);
     }) });
     const log = { info() {}, warn() {} };
     const wrap = worker => withInventoryBackgroundReadiness({ stop: () => worker.stop(),
@@ -88,7 +95,10 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
     catch (error) { failure ??= error; }
     try { await load?.close(); } catch (error) { failure ??= error; }
     await drain;
-    try { await metrics.settled('stopped'); }
+    try {
+      const stopped = await metrics.settled('stopped');
+      if (refreshers) cycleRetention = retention.finish({ ...stopped, elapsedMs: elapsed() }, refreshers.inspectCaches());
+    }
     catch (error) { failure ??= error; }
     workloadDurationMs = elapsed();
     try {
@@ -109,7 +119,7 @@ export async function runComparisonCatalogStudy(database, budget, emit, { profil
     scope.disable();
   }
   if (failure) throw failure;
-  const result = { version: 'comparison_catalog.v2', status: 'measured', profile: 'comparison-catalog', budget,
+  const result = { version: 'comparison_catalog.v3', status: 'measured', profile: 'comparison-catalog', budget, cycleRetention,
     durationMs: elapsed(), initial, final: await readStudyCgroup(), drainedAtMs, work, coverage, attempts, decisions,
     ...(observePostStopGc ? { postStopGc, workloadDurationMs } : {}),
     ...(postStopResidency ? { postStopResidency } : {}),
