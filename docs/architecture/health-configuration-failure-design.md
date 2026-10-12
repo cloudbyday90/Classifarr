@@ -37,7 +37,8 @@ would hide a failed configuration read even after correcting its status.
    URLs, stacks or provider payloads through this new boundary.
 4. Log bounded service/stage/code/check-time context on a failure transition,
    using the existing health cache to suppress repeated identical failures.
-   Console-only logging avoids querying an already failing database; synchronous
+   Skipping database log persistence avoids querying an already failing database;
+   normal console and configured file logging remain available. Synchronous
    or asynchronous logging failure must not change health. Unknown image health
    must not send a recovery notification.
    Keep the safe reason visible in System, preserve last-success history and
