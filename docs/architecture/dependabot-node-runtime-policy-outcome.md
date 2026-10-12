@@ -2,7 +2,7 @@
 
 Date: 2026-10-12. Baseline: main
 `ef2b35615982745cf879ce6f98b41be107a56a35`.
-No release, version bump, production deployment or remote PR mutation.
+No release, version bump, production deployment or manual PR state change.
 
 ## Change
 
@@ -39,7 +39,10 @@ runtime compatibility. No guard was weakened to accept the PR.
 The exact trial patch was reversed, followed by a clean reinstall. Final client
 manifest and lockfile have no diff from baseline. The restored tree, full audit,
 all 41 tooling checks and both Vue typecheck scopes passed. The PR remains
-unmerged; no dependency changes from it are retained.
+unmerged; no dependency changes from it are retained. After the policy push,
+GitHub recorded `dependabot[bot]` automatically closing #558 at 12:05:49 UTC.
+No merge or manual close action was performed. New policy-triggered Dependabot
+jobs started; their eventual update proposals require their own review.
 
 ## Validation
 
