@@ -5,15 +5,17 @@ import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { runDatabaseProfilingMaintenance } from '../../services/databaseProfilingMaintenance.mjs';
 import { readDatabaseProfilingStatus } from '../../services/databaseProfilingStatus.mjs';
 import { RUNTIME_MAINTENANCE_LOCK_KEY } from '../../utils/backupRestoreSessionContract.mjs';
+import { verifyDiagnosticContainerResources, assertDiagnosticContainerRemoved } from '../../scripts/diagnosticContainerResources.mjs';
 
 describe('real optional profiling maintenance, isolated preloaded PostgreSQL', () => {
-  let container, pool, restricted;
+  let container, pool, restricted, resources;
   const maintain = () => runDatabaseProfilingMaintenance({ database: { pool } });
   const exists = async () => (await pool.query("SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements') AS installed")).rows[0].installed;
   beforeAll(async () => {
     container = await new PostgreSqlContainer('pgvector/pgvector:0.8.7-pg18')
-      .withPassword(randomUUID()).withResourcesQuota({ memory: 512 * 1024 * 1024, cpu: 1 })
+      .withPassword(randomUUID()).withResourcesQuota({ memory: 0.5, cpu: 1 })
       .withCommand(['postgres', '-c', 'shared_preload_libraries=pg_stat_statements']).start();
+    resources = await verifyDiagnosticContainerResources(container.getId(), { memoryGiB: 0.5, cpuCount: 1 });
     pool = new pg.Pool({ connectionString: container.getConnectionUri(), max: 3, statement_timeout: 5000 });
     const password = randomUUID();
     await pool.query(`CREATE ROLE profiling_reader LOGIN PASSWORD '${password}'`);
@@ -26,8 +28,15 @@ describe('real optional profiling maintenance, isolated preloaded PostgreSQL', (
     await pool.query('DROP TABLE IF EXISTS public.policy_native_intent_reconciliation_restore_gates');
   });
   afterAll(async () => {
-    try { await restricted?.end(); await pool?.end(); }
-    finally { await container?.stop(); }
+    try { try { await restricted?.end(); } finally { await pool?.end(); } }
+    finally {
+      try { await container?.stop(); }
+      finally { if (container) await assertDiagnosticContainerRemoved(container.getId()); }
+    }
+  });
+  test('Docker and kernel enforce the intended 512 MiB / one CPU fixture limits', () => {
+    expect(resources).toMatchObject({ memoryBytes: 512 * 1024 * 1024, cpuCount: 1 });
+    expect([1, 2]).toContain(resources.cgroupVersion);
   });
   test('fresh DB installs once, survives a new session, and only observes thereafter', async () => {
     expect(await maintain()).toEqual({ status: 'installed' });

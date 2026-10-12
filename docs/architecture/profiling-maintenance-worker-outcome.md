@@ -25,6 +25,11 @@ next startup. Installed extension metadata is the durable completion record.
 
 ## Verification before image build
 
+October 11 follow-up: the isolated Testcontainers maintenance fixture had a
+GiB/byte mistake in its intended 512 MiB cap. The [diagnostic limit correction](diagnostic-resource-limits-outcome.md)
+fixes and verifies that fixture. Its earlier behavior tests were not proof of
+512 MiB capacity; the separately specified image-run limits below are unaffected.
+
 - Focused unit tests: 266 passed in 9 suites. Isolated PostgreSQL tests: 24 passed
   in 2 suites, including 8 new profiling scenarios. No skips.
 - An additional startup/admission/maintenance regression selection passed 99

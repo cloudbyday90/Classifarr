@@ -54,7 +54,7 @@ The rejected split-query prototype improved waiting scans but regressed rotation
 head from about 1.5 to 551 ms. It was not shipped.
 
 Scheduler probe report: `.tmp/retry-dispatch-benchmark.json`, the same PostgreSQL
-image, row count and resource limits. All 66 unordered availability comparisons
+image, row count and requested resource limits. All 66 unordered availability comparisons
 passed, with three warmed repetitions each and verified schema rollback. OMDb
 all-waiting discovery fell from 39.109 to 0.323 ms and stopped filtering 33,333
 rows; changed deadlines fell from 18.364 to 0.235 ms. Mass rotation remained
@@ -62,6 +62,11 @@ rows; changed deadlines fell from 18.364 to 0.235 ms. Mass rotation remained
 47.878/50.611 ms: the extra existence check is overhead when work is present.
 Dense unchanged provenance still scanned 33,333 rows (460.406 ms); this remains
 the next measured optimization target, not a claimed fix in this patch.
+
+October 11 correction: this earlier benchmark shared the GiB/byte mistake in
+`runRetryQueryBenchmark.mjs`. Its requested memory cap was not correctly applied;
+do not cite these timings as verified one-GiB capacity evidence. The separate
+[resource-limit correction](diagnostic-resource-limits-outcome.md) records new checks.
 
 ### Index cost
 

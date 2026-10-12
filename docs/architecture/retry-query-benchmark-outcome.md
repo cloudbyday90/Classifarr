@@ -17,10 +17,15 @@ experimental indexes, and rolls back every claim and scenario.
 
 ## Measured evidence
 
-100,000 rows per populated scenario; 2-CPU / 1 GiB container; three warmed
+100,000 rows per populated scenario; requested 2-CPU / 1 GiB container; three warmed
 repetitions; 240 scenario/type/query/strategy comparisons and 720 EXPLAIN runs.
 Both strategies returned exactly the expected IDs. No provider calls or
 production-data changes occurred. All claims and benchmark schemas rolled back.
+
+October 11 correction: the original Testcontainers memory argument used bytes
+where GiB were required. The historical run did not establish a one-GiB bound.
+Its timings remain observations of that run, not validated one-GiB capacity
+evidence. See the [corrected limits and new verification](diagnostic-resource-limits-outcome.md).
 
 Selected OMDb median execution times in milliseconds (not production SLAs):
 

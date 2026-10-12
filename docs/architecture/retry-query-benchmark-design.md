@@ -51,6 +51,10 @@ container has a 2-CPU quota and 1 GiB memory limit. Credentials are generated fo
 that container; there are no database URL, image or credential CLI overrides.
 Application configuration, provider clients and workers are not loaded.
 
+October 11 follow-up: [verified diagnostic limits](diagnostic-resource-limits-design.md)
+corrects the original memory-unit implementation and checks Docker plus kernel
+limits before SQL. Earlier runs must not be treated as verified one-GiB evidence.
+
 Small modules separate snapshot installation, fixtures/oracles, production-query
 capture, measurement and orchestration. Production services are unchanged.
 

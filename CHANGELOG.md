@@ -29,6 +29,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   profiler that separates client reads, preparation and database plans, samples
   owned-session waits, and verifies bounded concurrent reads and lock recovery.
   Reports retain only aggregates; production queries and safeguards are unchanged.
+  Correct memory units in retry/profiling diagnostic containers and verify Docker
+  plus kernel limits before fixture work, with cleanup checks after failures.
 - **Catalog mapping and recovery** — Library-agnostic source/catalog checks and
   explicit administrator-approved whole-work or season mappings preserve Plex,
   Jellyfin and Emby grouping. Fresh, bounded evidence checks identify ambiguous,

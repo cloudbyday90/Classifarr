@@ -4,15 +4,28 @@ import { resolve } from 'node:path';
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import { runLibraryScanRecoveryBenchmark } from './runLibraryScanRecoveryBenchmark.mjs';
 import { runRetryQueryMeasurements } from './retryQueryBenchmark/runner.mjs';
+import { verifyDiagnosticContainerResources, assertDiagnosticContainerRemoved } from './diagnosticContainerResources.mjs';
 
 // Reuse the existing disposable-container lifecycle; no CLI connection/credential overrides.
-export function runRetryQueryBenchmark(options = {}) {
-  return runLibraryScanRecoveryBenchmark({
-    start: password => new PostgreSqlContainer('postgres:18.6-alpine')
-      .withDatabase('scan_recovery_benchmark').withUsername('benchmark').withPassword(password)
-      .withResourcesQuota({ memory: 1024*1024*1024, cpu: 2 }).start(),
-    ...options, measure: runRetryQueryMeasurements,
-  });
+export async function runRetryQueryBenchmark(options = {}) {
+  let ownedId, resources;
+  try {
+    const report = await runLibraryScanRecoveryBenchmark({
+      start: async password => {
+        const container = await new PostgreSqlContainer('postgres:18.6-alpine')
+          .withDatabase('scan_recovery_benchmark').withUsername('benchmark').withPassword(password)
+          // Testcontainers memory is GiB, not bytes. Verify Docker and kernel before SQL.
+          .withResourcesQuota({ memory: 1, cpu: 2 }).start();
+        ownedId = container.getId();
+        try {
+          resources = await verifyDiagnosticContainerResources(ownedId, { memoryGiB: 1, cpuCount: 2 });
+          return container;
+        } catch (error) { await container.stop(); throw error; }
+      },
+      ...options, measure: runRetryQueryMeasurements,
+    });
+    return { ...report, ...(resources ? { resources } : {}) };
+  } finally { if (ownedId) await assertDiagnosticContainerRemoved(ownedId); }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {

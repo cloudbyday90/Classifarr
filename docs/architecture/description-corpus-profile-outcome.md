@@ -183,3 +183,7 @@ Then extend the controlled profile with representative season mappings and
 application refresh-worker/cache lifecycles, followed by an isolated retained-
 memory soak. Current synthetic reads are healthy; do not call the historic
 slowdown fixed or loosen safeguards without reproducing the limiting resource.
+
+Follow-up: [verified diagnostic limits](diagnostic-resource-limits-outcome.md)
+addresses the two older unit mistakes separately; the corpus profiler and
+application safeguards are unchanged.

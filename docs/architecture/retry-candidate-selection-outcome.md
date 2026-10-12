@@ -24,10 +24,15 @@ ordinary recovery path.
 
 ## Measured outcome
 
-PostgreSQL 18.6; 100,000 synthetic rows per populated scenario; 2-CPU / 1 GiB
+PostgreSQL 18.6; 100,000 synthetic rows per populated scenario; requested 2-CPU / 1 GiB
 container; three warmed repetitions. Version 2 verifies 432 combinations and
 1,296 EXPLAIN runs. Every combination matched its independent expected IDs/order;
 all claims and schemas rolled back. Zero provider requests or production writes.
+
+October 11 correction: the shared benchmark used bytes in Testcontainers' GiB
+option. These earlier timings do not establish one-GiB capacity. See the
+[diagnostic resource-limit correction](diagnostic-resource-limits-outcome.md);
+query correctness observations above are not retroactively changed.
 
 Selected OMDb median execution times, milliseconds, using existing indexes:
 
