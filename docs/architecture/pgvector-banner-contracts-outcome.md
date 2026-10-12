@@ -64,8 +64,39 @@ was unique and took 7 ms. It recorded zero writes/provider calls and no stored
 startup warnings in its bounded projection. These counts do not establish that
 all historical memory or vector-coverage issues are solved.
 
-The no-cache image, isolated schema dump, cleanup and post-replacement checks
-are pending; no image or deployment pass is claimed yet.
+The no-cache Compose build passed from clean implementation revision
+`2d6e19eeb71c80c2008a387705c8c43aa8f92d4f`, verified against its OCI revision label.
+The follow-up outcome commit changes documentation only. Local build identities:
+
+- Docker image ID / local index:
+  `sha256:7d7e36e02d5cc28bc245f441182ebf190608a8718bacd8397ac391369bfcc996`
+- Platform manifest:
+  `sha256:4e7b99ca89cd501bffd8a3dc03f03da06d6856f6f6471ee7d2e14a372325e09a`
+- Image configuration:
+  `sha256:931843a27cb672cf5d77e41feb832aed62c733c323bc874abb07f6b3d450098d`
+
+These are local build identities, not published-registry or multi-platform
+release evidence. The isolated schema container used this exact image, the
+ordinary entrypoint, synthetic fresh data, no network or published ports, and
+limits of 1 GiB, two CPUs and 256 PIDs. The schema dump completed through
+`20261010_220000_source_catalog_mappings.sql`, including 22 seed migrations,
+with no change to `database/schema/current.sql`. The fresh database had zero
+invented pending work or unresolved identities. Cleanup checked the container's
+ownership label before removal; its container and owned data directory are absent.
+
+Only local Classifarr was recreated, without pulling or rebuilding during `up`.
+It runs the exact image above, is Docker-healthy, returns HTTP 200 from `/health`,
+has zero restarts and reports no OOM kill. UID/GID 1000:1000, read-only root,
+2 GiB limit, no-new-privileges and the existing mount protections are preserved.
+
+At 15:37:30 UTC, the same read-only probe returned the baseline counts unchanged;
+its ten unique results took 8 ms. No startup warnings appeared in the bounded
+stored-log projection. Selected/build values remained AVX2 and both CPU flags
+remained true, so this local instance should not display the generic-mode notice.
+Generic-mode interaction evidence comes from synthetic browser fixtures, not an
+AVX-disabled production experiment. Probe writes/provider calls were zero;
+ordinary application background activity was not disabled or represented as zero.
+This is a startup check, not a long-running memory or load test.
 
 ## PR, publication and next item
 
