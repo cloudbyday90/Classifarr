@@ -81,6 +81,11 @@ Get database-focused readiness with a service breakdown. Its top-level `status`
 and HTTP result are not an aggregate of optional services. Use the detailed
 services endpoint below for that summary; liveness/readiness semantics are unchanged.
 
+Raw top-level service values and `details.*.status` are retained for compatibility.
+For current operational health, consume `details.*.effectiveStatus` and `freshness`:
+`observedStatus` is the normalized last reported result, not necessarily current.
+The same metadata is included on individual Radarr/Sonarr instances.
+
 **Authentication:** Required (API Key or JWT)
 
 **Query Parameters:**
@@ -109,7 +114,17 @@ services endpoint below for that summary; liveness/readiness semantics are uncha
     "database": {
       "status": "connected",
       "responseTime": 5,
-      "lastCheck": "2026-02-01T12:00:00Z"
+      "lastCheck": "2026-02-01T12:00:00Z",
+      "observedStatus": "healthy",
+      "effectiveStatus": "healthy",
+      "freshness": {
+        "state": "fresh",
+        "reason": "within_budget",
+        "checkedAt": "2026-02-01T12:00:00.000Z",
+        "ageMs": 0,
+        "maxAgeMs": 930000,
+        "expiresAt": "2026-02-01T12:15:30.000Z"
+      }
     },
     "mediaServer": {
       "status": "connected",
@@ -117,6 +132,13 @@ services endpoint below for that summary; liveness/readiness semantics are uncha
       "responseTime": 120,
       "lastCheck": "2026-02-01T12:00:00Z"
     }
+  },
+  "freshnessPolicy": {
+    "evaluatedAt": "2026-02-01T12:00:00.000Z",
+    "intervalMs": 900000,
+    "graceMs": 30000,
+    "maxAgeMs": 930000,
+    "heartbeatActive": true
   },
   "timestamp": "2026-02-01T12:00:00Z"
 }
@@ -146,7 +168,9 @@ curl -X GET "http://localhost:21324/api/system/health?refresh=true" \
 
 ### GET /api/system/health/services
 
-Get detailed health status of all services with trends and latency tracking.
+Get detailed effective service health with latency and observation freshness.
+The example below abbreviates repeated per-service freshness metadata after the
+first row; every row includes it in the actual response.
 
 **Authentication:** Required (API Key or JWT)
 
@@ -159,45 +183,34 @@ Get detailed health status of all services with trends and latency tracking.
       "name": "PostgreSQL",
       "status": "healthy",
       "latency": 5,
-      "lastSuccessfulCheck": "2026-02-01T12:00:00Z",
-      "previousStatus": "healthy",
-      "previousResponseTime": 6,
-      "trend": "improving",
+      "observedStatus": "healthy",
+      "effectiveStatus": "healthy",
+      "freshness": {
+        "state": "fresh",
+        "reason": "within_budget",
+        "checkedAt": "2026-02-01T12:00:00.000Z",
+        "ageMs": 0,
+        "maxAgeMs": 930000,
+        "expiresAt": "2026-02-01T12:15:30.000Z"
+      },
       "timestamp": "2026-02-01T12:00:00Z"
     },
     {
       "name": "Plex",
       "status": "healthy",
       "latency": 120,
-      "lastSuccessfulCheck": "2026-02-01T11:59:00Z",
-      "previousStatus": "degraded",
-      "previousResponseTime": 250,
-      "trend": "improving",
       "timestamp": "2026-02-01T12:00:00Z"
     },
     {
       "name": "Radarr (4K Movies)",
       "status": "healthy",
       "latency": 85,
-      "lastSuccessfulCheck": "2026-02-01T12:00:00Z",
-      "previousStatus": "healthy",
-      "previousResponseTime": 80,
-      "trend": "stable",
-      "timestamp": "2026-02-01T12:00:00Z",
-      "instance": {
-        "id": 1,
-        "name": "4K Movies",
-        "url": "http://radarr-4k:7878"
-      }
+      "timestamp": "2026-02-01T12:00:00Z"
     },
     {
       "name": "Sonarr (TV Shows)",
       "status": "degraded",
       "latency": 450,
-      "lastSuccessfulCheck": "2026-02-01T11:55:00Z",
-      "previousStatus": "healthy",
-      "previousResponseTime": 100,
-      "trend": "degrading",
       "error": "High latency detected",
       "timestamp": "2026-02-01T12:00:00Z"
     }
@@ -213,6 +226,13 @@ Get detailed health status of all services with trends and latency tracking.
     "notConfigured": 0,
     "unhealthy": 1
   },
+  "freshnessPolicy": {
+    "evaluatedAt": "2026-02-01T12:00:00.000Z",
+    "intervalMs": 900000,
+    "graceMs": 30000,
+    "maxAgeMs": 930000,
+    "heartbeatActive": true
+  },
   "timestamp": "2026-02-01T12:00:00Z"
 }
 ```
@@ -224,15 +244,14 @@ Get detailed health status of all services with trends and latency tracking.
 | `overall` | string | Returned service observations: `healthy`, `degraded`, `unhealthy`, `unknown` |
 | `services[]` | array | Array of service health objects |
 | `services[].name` | string | Service display name (e.g., "Plex", "Radarr (4K Movies)") |
-| `services[].status` | string | Current health status (see [Service Status Values](#service-status-values)) |
+| `services[].status` | string | Effective health; unknown for expired/unverifiable active observations |
+| `services[].observedStatus` | string | Normalized last reported result, retained even when expired |
+| `services[].effectiveStatus` | string | Same value as `status` on this endpoint |
+| `services[].freshness` | object | Server-evaluated observation state, time, age and deadline |
+| `freshnessPolicy` | object | Evaluation time, actual interval, grace, budget and heartbeat-active flag |
 | `services[].latency` | integer | Response time in milliseconds |
-| `services[].lastSuccessfulCheck` | string | ISO timestamp of last successful health check |
-| `services[].previousStatus` | string | Previous health status for trend calculation |
-| `services[].previousResponseTime` | integer | Previous latency for trend detection |
-| `services[].trend` | string | Health trend: `improving`, `degrading`, `stable` |
 | `services[].timestamp` | string | ISO timestamp of this health check |
-| `services[].error` | string | Error message (only present if status is unhealthy/degraded) |
-| `services[].instance` | object | Instance details for multi-instance services (Radarr/Sonarr) |
+| `services[].error` | string | Last reported error, if any; can be historical when effective status is unknown |
 | `summary.total` | integer | Total number of services |
 | `summary.healthy` | integer | Number of healthy services |
 | `summary.unhealthy` | integer | Number of unhealthy/degraded services |
@@ -249,6 +268,26 @@ and inactive-only lists are unknown, not healthy. `summary.unhealthy` now counts
 `failed + degraded`; previously it counted every non-healthy row, including
 unknown/inactive states. Consumers that need unresolved observations must also
 check `summary.unknown` or `overall`, not just `summary.unhealthy`.
+
+Freshness is computed from each completed `lastCheck` (queue: `timestamp`), never
+the last success, group completion, response receipt or HTTP cache TTL. The budget
+is the configured heartbeat interval plus 30 seconds; equality with its deadline
+is stale. Missing, invalid or future check times produce unknown. Fresh failures
+remain unhealthy; expired failures retain their observed result but become unknown.
+Explicit disabled/not-configured rows stay inactive. States are `fresh`, `stale`,
+`unknown` and `inactive`; reasons include `within_budget`, `check_overdue`,
+`check_time_missing`, `check_time_invalid`, `check_time_future` and
+`inactive_configuration`. Time values are UTC; unknown age/time is null.
+
+`GET /api/system/heartbeat` also returns `freshnessPolicy` alongside `active`.
+Stopping the heartbeat preserves its interval and cached observations; they expire
+normally. `POST /api/system/heartbeat/start` accepts whole-number `intervalMinutes`
+from 1 through 1,440, defaults an omitted value to 15 and rejects malformed values
+with HTTP 400 before starting any checks. The System page uses its existing poll
+to display the server's assessment; an older backend without metadata is unknown.
+Freshness projection adds no network calls or recovery jobs. Existing forced
+refresh and detailed-endpoint cache-miss behavior is unchanged. See the
+[freshness design](../architecture/health-observation-freshness-design.md).
 
 Counts describe the returned rows, not a complete installation inventory. The
 existing endpoint filters out some unconfigured services and disabled RAG and

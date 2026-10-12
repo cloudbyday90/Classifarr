@@ -9,6 +9,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
   available: { type: Boolean, default: false },
   receivedAt: { type: String, default: '' },
+  heartbeatActive: { type: Boolean, default: null },
+  intervalMs: { type: Number, default: null },
 })
 const summary = computed(() => getOverallHealth(props.services, { observationAvailable: props.available }))
 const style = computed(() => getStatusConfig(props.loading ? 'unknown' : summary.value.status))
@@ -29,6 +31,12 @@ const style = computed(() => getStatusConfig(props.loading ? 'unknown' : summary
       </p>
       <template v-if="!loading">
         <p
+          v-if="heartbeatActive === false"
+          class="mt-1 text-sm"
+        >
+          Automatic health checks are paused. Use Refresh for a new check; review heartbeat settings if this was unexpected.
+        </p>
+        <p
           v-if="!available"
           class="mt-1"
         >
@@ -43,6 +51,12 @@ const style = computed(() => getStatusConfig(props.loading ? 'unknown' : summary
         </p>
       </template>
     </div>
+    <p
+      v-if="intervalMs"
+      class="mt-2 text-xs opacity-90"
+    >
+      Check cadence: {{ intervalMs / 60000 }} minutes, with 30 seconds of scheduling grace.
+    </p>
     <p
       v-if="receivedAt"
       class="mt-2 text-xs opacity-90"

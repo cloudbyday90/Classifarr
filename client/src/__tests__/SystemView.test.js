@@ -21,6 +21,8 @@ vi.mock('@heroicons/vue/24/outline', () => ({
   ArrowPathIcon: { template: '<span />' }
 }))
 
+const fresh = { state: 'fresh', reason: 'within_budget', ageMs: 0, maxAgeMs: 930000,
+  checkedAt: '2026-10-12T12:00:00.000Z', expiresAt: '2026-10-12T12:15:30.000Z' }
 const baseHealth = {
   database: 'connected',
   rag: 'degraded',
@@ -50,6 +52,10 @@ const baseHealth = {
     mediaServer: { responseTime: 10, lastCheck: '2026-01-30T12:00:00Z', type: 'Plex' },
     queueWorker: { latency: 0, timestamp: '2026-01-30T12:00:00Z' }
   }
+}
+baseHealth.freshnessPolicy = { intervalMs: 900000, graceMs: 30000, heartbeatActive: true }
+for (const key of ['database', 'rag', 'mediaServer', 'ollama', 'tmdb', 'omdb', 'queueWorker']) {
+  baseHealth.details[key] = { ...baseHealth.details[key], freshness: fresh }
 }
 
 const baseStatus = {
@@ -170,7 +176,7 @@ describe('System.vue', () => {
   it.each(['disabled', 'unavailable', 'unknown'])('retains RAG %s independently of CPU compatibility', async rag => {
     const wrapper = await mountSystem({ pgvector: currentPgvector }, {
       ...baseHealth, database: 'disconnected', rag,
-      details: { ...baseHealth.details, rag: { pgvector: false, embeddingsTable: false } },
+      details: { ...baseHealth.details, rag: { pgvector: false, embeddingsTable: false, freshness: fresh } },
     })
     expect(wrapper.get('[data-testid="service-card-database"]').text()).toContain('Unhealthy')
     expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain(
@@ -230,6 +236,53 @@ describe('System.vue', () => {
     expect(summary.text()).toContain('No active services to assess')
     expect(summary.text()).toContain('0 of 0 active services')
     expect(summary.text()).toContain('11 disabled; 1 not configured')
+    wrapper.unmount()
+  })
+
+  it('marks a legacy response without freshness unknown rather than claiming current health', async () => {
+    const wrapper = await mountSystem({}, { ...baseHealth, rag: 'healthy', details: {}, freshnessPolicy: undefined })
+    expect(wrapper.get('[data-testid="system-health-summary"]').text()).toContain('Health status incomplete')
+    const card = wrapper.get('[data-testid="service-card-database"]')
+    expect(card.text()).toContain('Check time unavailable')
+    expect(card.text()).toContain('Last reported status: Healthy. This is not a current result.')
+    expect(wrapper.get('[data-testid="service-card-radarr"]').text()).not.toContain('Check time unavailable')
+    wrapper.unmount()
+  })
+
+  it('shows paused cadence and overdue historical failures, then accepts a fresh poll without extra probes', async () => {
+    const stale = { ...fresh, state: 'stale', reason: 'check_overdue', ageMs: 930000 }
+    const wrapper = await mountSystem({}, { ...baseHealth, database: 'disconnected',
+      freshnessPolicy: { ...baseHealth.freshnessPolicy, heartbeatActive: false },
+      details: { ...baseHealth.details, database: { freshness: stale } },
+    })
+    const card = wrapper.get('[data-testid="service-card-database"]')
+    expect(card.text()).toContain('Unknown')
+    expect(card.text()).toContain('Check overdue')
+    expect(card.text()).toContain('Last reported status: Unhealthy')
+    expect(card.text()).toContain(fresh.checkedAt)
+    expect(card.text()).toContain(fresh.expiresAt)
+    const summary = wrapper.get('[data-testid="system-health-summary"]')
+    expect(summary.text()).toContain('Automatic health checks are paused')
+    expect(summary.text()).toContain('Check cadence: 15 minutes')
+    expect(summary.get('[role="status"]').text()).not.toContain(fresh.checkedAt)
+    api.getSystemHealth.mockResolvedValue(baseHealth)
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(card.text()).not.toContain('Check overdue')
+    expect(summary.text()).not.toContain('Automatic health checks are paused')
+    expect(api.refreshSystemHealth).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('does not show a stale instance as current when its group is fresh', async () => {
+    const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'connected', details: {
+      ...baseHealth.details, radarr: { freshness: fresh, instances: [{ id: 7, name: 'Fixture instance', status: 'connected',
+        freshness: { ...fresh, state: 'stale', reason: 'check_overdue', ageMs: 930000 } }] },
+    } })
+    const card = wrapper.get('[data-testid="service-card-radarr"]')
+    await card.get('button').trigger('click')
+    expect(card.text()).toContain('Fixture instance')
+    expect(card.text()).toContain('Unknown')
+    expect(card.text()).toContain('Check overdue')
     wrapper.unmount()
   })
 

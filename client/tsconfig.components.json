@@ -5,6 +5,7 @@
     "dataAttributes": ["data-lpignore", "data-1pass-no-save", "data-testid"]
   },
   "include": [
+    "src/components/system/HealthFreshnessNote.vue",
     "src/components/common/Badge.vue",
     "src/components/common/Button.vue",
     "src/components/common/Card.vue",

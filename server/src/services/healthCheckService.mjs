@@ -19,6 +19,7 @@ import { checkTMDB as computeTMDBHealth, checkOMDb as computeOMDbHealth, checkTa
 import { checkDatabase as computeDatabaseHealth, checkDiscordBot as computeDiscordBotHealth, checkOllama as computeOllamaHealth, checkMediaServer as computeMediaServerHealth } from './healthCheckCoreServices.mjs';
 import { checkProcessMemory as computeProcessMemory, checkQueueWorker as computeQueueWorker } from './healthCheckInfrastructure.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { DEFAULT_HEARTBEAT_MS, createHealthFreshnessPolicy, isValidHeartbeatInterval } from './healthObservationFreshness.mjs';
 
 const logger = createLogger('healthCheck');
 
@@ -28,7 +29,7 @@ let healthCache = createDefaultHealthCache();
 
 // Heartbeat interval (default: 15 minutes)
 let heartbeatInterval = null;
-const DEFAULT_HEARTBEAT_MS = 15 * 60 * 1000;
+let heartbeatIntervalMs = DEFAULT_HEARTBEAT_MS;
 
 // Track start time for uptime calculation
 const startTime = Date.now();
@@ -141,18 +142,26 @@ export function getHealthCache() {
     return { ...healthCache };
 }
 
+export function getHealthFreshnessPolicy() {
+    return createHealthFreshnessPolicy({ intervalMs: heartbeatIntervalMs, heartbeatActive: isHeartbeatRunning() });
+}
+
 /** @internal */
 export function resetHealthState() {
     stopHeartbeat();
+    heartbeatIntervalMs = DEFAULT_HEARTBEAT_MS;
     healthCache = createDefaultHealthCache();
     servicesHealthCache = null;
     servicesHealthCacheTime = null;
 }
 
 export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
+    if (!isValidHeartbeatInterval(intervalMs)) throw new RangeError('Invalid heartbeat interval');
     if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
     }
+
+    heartbeatIntervalMs = intervalMs;
 
     logger.info(`[HealthCheck] Starting heartbeat scheduler (interval: ${intervalMs / 1000}s)`);
     runAllHealthChecks();

@@ -551,6 +551,41 @@ describe('healthCheckService - all service checks', () => {
   // getHealthCache / getUptime / isHeartbeatRunning
   // -------------------------------------------------------------------------
   describe('cache and heartbeat helpers', () => {
+    test.each([null, 0, -1, 999, 1000.1, NaN, Infinity, '60000', 86400001])('invalid interval %j cannot start checks', interval => {
+      expect(() => svc.startHeartbeat(interval)).toThrow(RangeError);
+      expect(svc.isHeartbeatRunning()).toBe(false);
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test('reports actual cadence across replacement, invalid input, stop and reset without refreshing reads', async () => {
+      jest.useFakeTimers();
+      db.query.mockResolvedValue({ rows: [] });
+      try {
+        svc.startHeartbeat(60000);
+        await jest.advanceTimersByTimeAsync(0);
+        expect(svc.getHealthFreshnessPolicy()).toMatchObject({ intervalMs: 60000, maxAgeMs: 90000, heartbeatActive: true });
+        expect(() => svc.startHeartbeat(Infinity)).toThrow(RangeError);
+        expect(svc.getHealthFreshnessPolicy().intervalMs).toBe(60000);
+        expect(jest.getTimerCount()).toBe(1);
+        svc.startHeartbeat(120000);
+        await jest.advanceTimersByTimeAsync(0);
+        expect(jest.getTimerCount()).toBe(1);
+        svc.stopHeartbeat();
+        expect(svc.getHealthFreshnessPolicy()).toMatchObject({ intervalMs: 120000, heartbeatActive: false });
+        const count = db.query.mock.calls.length;
+        const lastCheck = svc.getHealthCache().database.lastCheck;
+        await jest.advanceTimersByTimeAsync(180000);
+        svc.getHealthFreshnessPolicy();
+        expect(db.query).toHaveBeenCalledTimes(count);
+        expect(svc.getHealthCache().database.lastCheck).toBe(lastCheck);
+        svc.resetHealthState();
+        expect(svc.getHealthFreshnessPolicy()).toMatchObject({ intervalMs: 900000, heartbeatActive: false });
+      } finally {
+        svc.stopHeartbeat();
+        jest.useRealTimers();
+      }
+    });
+
     test('getHealthCache returns an object with default unknown statuses', () => {
       const cache = svc.getHealthCache();
       expect(cache).toBeDefined();

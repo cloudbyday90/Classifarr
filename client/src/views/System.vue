@@ -71,6 +71,8 @@
         :loading="loadingHealth"
         :available="!error && !!lastUpdated"
         :received-at="lastUpdated?.toISOString() || ''"
+        :heartbeat-active="freshnessPolicy?.heartbeatActive ?? null"
+        :interval-ms="freshnessPolicy?.intervalMs ?? null"
       />
 
       <!-- Filter/Search Section -->
@@ -103,6 +105,9 @@
           </option>
           <option value="disabled">
             Disabled
+          </option>
+          <option value="unknown">
+            Unknown or Overdue
           </option>
         </select>
       </div>
@@ -178,6 +183,14 @@
           </div>
 
           <!-- Show last successful check if service is not healthy -->
+          <HealthFreshnessNote
+            v-if="!loadingHealth"
+            :state="service.freshness?.state || 'unknown'"
+            :reason="service.freshness?.reason || ''"
+            :observed-status="service.observedStatus || 'unknown'"
+            :checked-at="service.freshness?.checkedAt || ''"
+            :expires-at="service.freshness?.expiresAt || ''"
+          />
           <div
             v-if="service.lastSuccessfulCheck && service.status !== 'healthy'"
             class="mt-2 text-xs text-gray-500"
@@ -298,7 +311,7 @@
                   <span class="font-medium">{{ instance.name }}</span>
                   <div class="flex items-center gap-2">
                     <Badge :variant="getHealthBadgeVariant(instance.status)">
-                      {{ instance.status }}
+                      {{ getStatusConfig(instance.status).label }}
                     </Badge>
                     <span
                       v-if="instance.trend && instance.trend !== 'stable'" 
@@ -316,7 +329,7 @@
                   {{ instance.responseTime }}ms
                 </div>
                 <div
-                  v-if="instance.lastSuccessfulCheck && instance.status !== 'connected'"
+                  v-if="instance.lastSuccessfulCheck && instance.status !== 'healthy'"
                   class="text-gray-400 mt-1"
                 >
                   Last healthy: {{ formatLastCheck(instance.lastSuccessfulCheck) }}
@@ -327,6 +340,13 @@
                 >
                   {{ instance.error }}
                 </div>
+                <HealthFreshnessNote
+                  :state="instance.freshness?.state || 'unknown'"
+                  :reason="instance.freshness?.reason || ''"
+                  :observed-status="instance.observedStatus || 'unknown'"
+                  :checked-at="instance.freshness?.checkedAt || ''"
+                  :expires-at="instance.freshness?.expiresAt || ''"
+                />
               </div>
             </div>
           </div>
@@ -462,6 +482,8 @@ import Spinner from '@/components/common/Spinner.vue'
 import ImageIndexProgressCard from '@/components/system/ImageIndexProgressCard.vue'
 import PgvectorStartupPanel from '@/components/system/PgvectorStartupPanel.vue'
 import SystemHealthSummary from '@/components/system/SystemHealthSummary.vue'
+import HealthFreshnessNote from '@/components/system/HealthFreshnessNote.vue'
+import { applyHealthObservation } from '@/utils/healthObservationFreshness'
 import api from '@/api'
 import { getServiceIcon } from '@/utils/serviceIcons'
 import { getStatusConfig, getLatencyClass, calculateTrend, getTrendArrow, getTrendTooltip } from '@/utils/healthStatus'
@@ -477,6 +499,7 @@ const healthDetails = ref(null)
 const error = ref(null)
 const lastUpdated = ref(null)
 const searchQuery = ref('')
+const freshnessPolicy = ref(null)
 const statusFilter = ref('')
 const expandedServices = ref(new Set())
 let autoRefreshInterval = null
@@ -839,6 +862,11 @@ const loadHealth = async (silent = false) => {
         },
       ]
 
+      healthServices.value = healthServices.value.map(service => ({
+        ...applyHealthObservation(service, healthDetails.value[service.key]),
+        ...(service.instances ? { instances: service.instances.map(instance => applyHealthObservation(instance, instance)) } : {}),
+      }))
+      freshnessPolicy.value = statusMap.freshnessPolicy || null
       lastUpdated.value = new Date()
       error.value = null
     }

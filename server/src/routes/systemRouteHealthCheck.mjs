@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
 import { normalizeServiceHealthStatus, summarizeServiceHealth } from '../services/serviceHealthSummary.mjs';
+import { describeHealthObservation, projectHealthDetails } from '../services/healthObservationFreshness.mjs';
 
 export function mapServiceStatus(status) {
   return normalizeServiceHealthStatus(status);
@@ -24,6 +25,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
     const dbHealth = health.database;
     const isHealthy = dbHealth.status === 'connected';
     const uptime = healthCheckService.getUptime();
+    const freshnessPolicy = healthCheckService.getHealthFreshnessPolicy();
 
     return sendData(res, {
       status: isHealthy ? 'healthy' : 'unhealthy',
@@ -41,7 +43,8 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
       tavily: health.tavily?.status || 'unknown',
       imageEmbeddings: health.imageEmbeddings?.status || 'unknown',
       queueWorker: queueWorker.status,
-      details: {
+      freshnessPolicy,
+      details: projectHealthDetails({
         database: dbHealth,
         mediaServer: health.mediaServer,
         radarr: health.radarr,
@@ -54,7 +57,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
         discordBot: health.discordBot,
         tavily: health.tavily,
         queueWorker,
-      },
+      }, freshnessPolicy),
       timestamp: new Date().toISOString(),
     }, isHealthy ? 200 : 503);
   }));
@@ -101,7 +104,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
           name: `Radarr (${instance.name})`,
           status: mapServiceStatus(instance.status),
           latency: instance.responseTime || 0,
-          timestamp: services.radarr.lastCheck,
+          timestamp: instance.lastCheck,
         };
         if (instance.error !== undefined) {
           radarrService.error = instance.error;
@@ -116,7 +119,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
           name: `Sonarr (${instance.name})`,
           status: mapServiceStatus(instance.status),
           latency: instance.responseTime || 0,
-          timestamp: services.sonarr.lastCheck,
+          timestamp: instance.lastCheck,
         };
         if (instance.error !== undefined) {
           sonarrService.error = instance.error;
@@ -174,11 +177,17 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
       allServices.push(queueWorkerService);
     }
 
-    const aggregate = summarizeServiceHealth(allServices);
+    const freshnessPolicy = healthCheckService.getHealthFreshnessPolicy();
+    const observations = allServices.map(service => {
+      const observation = describeHealthObservation(service, freshnessPolicy);
+      return { ...service, ...observation, status: observation.effectiveStatus };
+    });
+    const aggregate = summarizeServiceHealth(observations);
 
     return sendData(res, {
       overall: aggregate.overall,
-      services: allServices,
+      services: observations,
+      freshnessPolicy,
       summary: aggregate.summary,
       timestamp: services.timestamp,
     });
@@ -190,11 +199,14 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
   }));
 
   router.get('/heartbeat', (_req, res) => {
-    sendData(res, { active: healthCheckService.isHeartbeatRunning() });
+    sendData(res, { active: healthCheckService.isHeartbeatRunning(), freshnessPolicy: healthCheckService.getHealthFreshnessPolicy() });
   });
 
   router.post('/heartbeat/start', (req, res) => {
-    const intervalMinutes = Number.parseInt(req.body.intervalMinutes, 10) || 15;
+    const intervalMinutes = req.body?.intervalMinutes === undefined ? 15 : req.body.intervalMinutes;
+    if (!Number.isSafeInteger(intervalMinutes) || intervalMinutes < 1 || intervalMinutes > 1440) {
+      return sendError(res, 'intervalMinutes must be a whole number between 1 and 1440', 400);
+    }
     healthCheckService.startHeartbeat(intervalMinutes * 60 * 1000);
     sendSuccess(res, { intervalMinutes });
   });

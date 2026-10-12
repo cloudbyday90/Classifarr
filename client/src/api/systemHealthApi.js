@@ -18,6 +18,9 @@
 
 import { apiClient, getDataRequest } from './core'
 
+/** Raw readiness/status fields plus per-service freshness/effectiveStatus and freshnessPolicy.
+ * Receiving this response does not mean its cached provider observations are fresh.
+ */
 export function getSystemHealth() {
   return getDataRequest('/system/health')
 }

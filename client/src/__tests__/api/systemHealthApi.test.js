@@ -59,11 +59,12 @@ describe('systemHealthApi', () => {
   })
 
   it('getSystemHealth calls getDataRequest with /system/health', async () => {
-    const health = { status: 'ok' }
+    const health = { status: 'healthy', database: 'connected', freshnessPolicy: { intervalMs: 900000 },
+      details: { database: { effectiveStatus: 'unknown', observedStatus: 'healthy', freshness: { state: 'stale' } } } }
     mockGetDataRequest.mockResolvedValueOnce(health)
     const result = await getSystemHealth()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/system/health')
-    expect(result).toEqual(health)
+    expect(result).toBe(health)
   })
 
   it('getSystemStatus calls getDataRequest with /system/status', async () => {

@@ -36,6 +36,7 @@ const healthCheckService = {
   checkProcessMemory: jest.fn(),
   getAllServicesHealth: jest.fn(),
   getHealthCache: jest.fn(),
+  getHealthFreshnessPolicy: jest.fn(),
   runAllHealthChecks: jest.fn(),
   checkQueueWorker: jest.fn(),
   isHeartbeatRunning: jest.fn(),
