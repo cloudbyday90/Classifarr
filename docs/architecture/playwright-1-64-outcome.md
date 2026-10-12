@@ -69,9 +69,42 @@ and archive-readability verification. The rollback image is
 `sha256:b561031e39a4df95c078865c644ee954b4e018277584ad8a56663a3a46aae5be`;
 the private backup and rollback tag are retained locally, not committed.
 
-Pending clean-source no-cache build, local-only replacement, health checks and
-isolated schema dump. These checks must complete before the final handoff; no
-production or shared-provider change is authorized by this document.
+The requested build completed with `build --no-cache --require-provenance`, from
+clean source `a05a157d8c17a59d1fa8e33efb8d780679a9cebe`. Docker Desktop reported
+image ID `sha256:4284bf2291088d4d8932b209b962fdc4318b5763c07988e20fd75e04e5886e6c`,
+matching its local manifest-list identity; the build's config digest is
+`sha256:404ed4933840b42a30f82f478a201c0612b82f5f7e7f177a12614290f77b2f73`.
+These are local build identities, not published registry or signed-release evidence.
+The OCI source revision matched the expected commit before replacement.
+
+Only the local Compose service was recreated, with `--no-build --pull never
+--no-deps --force-recreate --wait`. Its image identity matched and health passed.
+UID 1000:1000, read-only root, no-new-privileges and the 2 GiB memory limit remained
+in effect. Read-only probes before and after replacement found the same 6,835
+classification records, ten active/covered libraries, four unresolved identities,
+zero pending text embeddings and 6,813 pending image embeddings. The first
+post-start check had no persisted warnings/errors. These are bounded observations,
+not a sustained-load or all-jobs health claim. Probe writes and provider calls: zero.
+
+The normal scheduler subsequently completed description refresh at
+**2026-10-12T00:09:01.252Z** (20:09 Eastern on October 11): 6,514 eligible/cache hits,
+zero new embeddings and zero remaining descriptions. No manual refresh or identity
+approval was triggered. This confirms another successful cycle, not a fix for the
+earlier timeout's underlying performance cause.
+
+Ran the matching PostgreSQL 18 `dumpSchema` against this exact image in a fresh
+disposable database, with production entrypoint, no published ports, no network,
+1 GiB memory, two CPUs and 256 PIDs. It included migrations through
+`20261010_220000_source_catalog_mappings.sql` and 22 seed migrations. The generated
+`database/schema/current.sql` was unchanged. Fresh-database consumer checks found
+zero invented classifications, pending work, images or identity issues. The runner
+and an independent check verified the exact fixture container and directory were
+absent after cleanup. Only those disposable resources were removed; the local
+app-data, verified backup and rollback image remain.
+
+Unraid, Plex and shared Ollama were not changed. No published-image upgrade,
+multi-platform matrix, full backend rerun or release acceptance is claimed. The
+following evidence-only commit changes documentation, not the tested image inputs.
 
 ## Next item
 
