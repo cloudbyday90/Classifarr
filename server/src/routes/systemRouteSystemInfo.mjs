@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { readPgvectorStatus } from '../services/pgvectorStatus.mjs';
 
 export function registerSystemInfoRoutes(router, { healthCheckService, db, appVersion, fsPromises, pathModule }) {
   router.get('/status', asyncHandler(async (_req, res) => {
@@ -11,27 +12,14 @@ export function registerSystemInfoRoutes(router, { healthCheckService, db, appVe
     let pgvectorVersion = null;
 
     try {
-      const settingsResult = await db.query(
-        `SELECT key, value FROM settings WHERE key IN (
-          'avx_guard_pgvector_selected',
-          'avx_guard_pgvector_build',
-          'avx_guard_cpu_avx',
-          'avx_guard_cpu_avx2',
-          'avx_guard_last_run'
-        )`,
-      );
-
-      const entries = {};
-      for (const row of settingsResult.rows) {
-        entries[row.key] = row.value;
-      }
-
+      const status = await readPgvectorStatus(db);
       pgvector = {
-        build: entries.avx_guard_pgvector_build || null,
-        selectedVariant: entries.avx_guard_pgvector_selected || null,
-        cpuAvx: entries.avx_guard_cpu_avx || null,
-        cpuAvx2: entries.avx_guard_cpu_avx2 || null,
-        lastChecked: entries.avx_guard_last_run || null,
+        build: status.pgvectorBuild,
+        selectedVariant: status.pgvectorVariant,
+        cpuAvx: status.cpuAvx,
+        cpuAvx2: status.cpuAvx2,
+        lastChecked: status.lastChecked,
+        selection: status.pgvectorSelection,
       };
     } catch (_e) { /* pgvector remains null */ }
 

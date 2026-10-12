@@ -132,6 +132,27 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
+  it.each(['current_process', 'other_process'])('renders scoped %s startup evidence without claiming binary attestation', async status => {
+    const wrapper = await mountSystem({ pgvector: {
+      build: 'multi', selectedVariant: 'generic', cpuAvx: 'true', cpuAvx2: 'true',
+      selection: { status, report: {
+        reason: 'staging_disabled', databaseScope: 'embedded_entrypoint',
+        reporterId: '12345678-1234-4567-8123-123456789abc',
+        selectedAt: '2026-10-12T14:58:00.000Z', recordedAt: '2026-10-12T15:00:00.000Z',
+        databaseStartedAt: '2026-10-12T14:59:00.000Z',
+      } },
+    } })
+    const report = wrapper.get('[data-testid="pgvector-startup-report"]')
+    expect(report.text()).toContain('12345678-1234-4567-8123-123456789abc')
+    expect(report.text()).toContain('2026-10-12T14:59:00.000Z')
+    if (status === 'current_process') expect(report.text()).toContain('staging was disabled')
+    else {
+      expect(report.text()).toContain('another application process')
+      expect(report.text()).not.toContain('staging was disabled')
+    }
+    wrapper.unmount()
+  })
+
   it('marks pgvector unhealthy when AVX2 variant lacks CPU support', async () => {
     const wrapper = await mountSystem({
       pgvector: {

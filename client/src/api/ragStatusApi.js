@@ -18,6 +18,7 @@
 
 import { getDataRequest } from './core'
 
+/** Unwrapped status, including optional pgvectorSelection { status, report } startup evidence. */
 export function getRagStatus() {
   return getDataRequest('/rag/status')
 }

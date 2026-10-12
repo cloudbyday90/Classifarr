@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { getPgvectorSelectionAdvice } from './pgvectorSelectionPresentation'
 
 /**
  * Interpret saved startup reports, not live database health or CPU eligibility.
@@ -9,6 +10,11 @@ export function getPgvectorVariantNotice(status) {
   if (typeof status !== 'object' || status === null || Array.isArray(status)
     || !('enabled' in status) || status.enabled !== true
     || !('pgvectorVariant' in status) || status.pgvectorVariant !== 'generic') return null
+
+  if ('pgvectorSelection' in status) {
+    const advice = getPgvectorSelectionAdvice(status.pgvectorSelection)
+    if (advice) return advice
+  }
 
   if ('pgvectorBuild' in status && status.pgvectorBuild === 'generic') {
     return 'The image reports a generic-only pgvector build. Restarting the same image will not add an optimized binary.'

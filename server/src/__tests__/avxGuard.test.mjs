@@ -22,6 +22,11 @@ import { createLoggerModuleMock, createMockModule } from './helpers/mockFactory.
 
 const originalReadFileSync = fs.readFileSync;
 
+function settingCalls() {
+  const call = db.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO settings'));
+  return call[1][0].map((key, index) => [call[0], [key, call[1][1][index]]]);
+}
+
 const db = {
   query: jest.fn(),
 };
@@ -54,8 +59,8 @@ describe('avxGuard.run - CPU detection', () => {
 
     expect(result.action).toBe('recorded');
 
-    const setterCalls = db.query.mock.calls;
-    expect(setterCalls.length).toBe(5);
+    const setterCalls = settingCalls();
+    expect(setterCalls.length).toBe(6);
 
     const cpuAvxCall = setterCalls.find(c => c[1][0] === 'avx_guard_cpu_avx');
     expect(cpuAvxCall[1][1]).toBe('true');
@@ -69,7 +74,7 @@ describe('avxGuard.run - CPU detection', () => {
 
     await avxGuard.run();
 
-    const calls = db.query.mock.calls;
+    const calls = settingCalls();
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx')[1][1]).toBe('true');
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx2')[1][1]).toBe('false');
   });
@@ -79,7 +84,7 @@ describe('avxGuard.run - CPU detection', () => {
 
     await avxGuard.run();
 
-    const calls = db.query.mock.calls;
+    const calls = settingCalls();
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx')[1][1]).toBe('false');
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx2')[1][1]).toBe('false');
   });
@@ -92,7 +97,7 @@ describe('avxGuard.run - CPU detection', () => {
 
     await avxGuard.run();
 
-    const calls = db.query.mock.calls;
+    const calls = settingCalls();
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx')[1][1]).toBe('unknown');
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx2')[1][1]).toBe('unknown');
   });
@@ -102,7 +107,7 @@ describe('avxGuard.run - CPU detection', () => {
 
     await avxGuard.run();
 
-    const calls = db.query.mock.calls;
+    const calls = settingCalls();
     expect(calls.find(c => c[1][0] === 'avx_guard_cpu_avx')[1][1]).toBe('false');
   });
 });
@@ -112,15 +117,15 @@ describe('avxGuard.run - pgvector env vars', () => {
     mockCpuInfo('flags : fpu\n');
   });
 
-  test('records default build=multi and selected=generic when env vars absent', async () => {
+  test('records unknown build and selection when env vars are absent', async () => {
     const result = await avxGuard.run();
 
-    expect(result.build).toBe('multi');
-    expect(result.selected).toBe('generic');
+    expect(result.build).toBe('unknown');
+    expect(result.selected).toBe('unknown');
 
-    const calls = db.query.mock.calls;
-    expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_build')[1][1]).toBe('multi');
-    expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_selected')[1][1]).toBe('generic');
+    const calls = settingCalls();
+    expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_build')[1][1]).toBe('unknown');
+    expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_selected')[1][1]).toBe('unknown');
   });
 
   test('records custom build and selected from env vars', async () => {
@@ -132,7 +137,7 @@ describe('avxGuard.run - pgvector env vars', () => {
     expect(result.build).toBe('avx2');
     expect(result.selected).toBe('avx2');
 
-    const calls = db.query.mock.calls;
+    const calls = settingCalls();
     expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_build')[1][1]).toBe('avx2');
     expect(calls.find(c => c[1][0] === 'avx_guard_pgvector_selected')[1][1]).toBe('avx2');
   });
@@ -146,7 +151,7 @@ describe('avxGuard.run - setSetting DB behaviour', () => {
   test('uses UPSERT SQL (INSERT ... ON CONFLICT DO UPDATE)', async () => {
     await avxGuard.run();
 
-    for (const call of db.query.mock.calls) {
+    for (const call of settingCalls()) {
       expect(call[0]).toMatch(/ON CONFLICT/i);
     }
   });
@@ -154,7 +159,7 @@ describe('avxGuard.run - setSetting DB behaviour', () => {
   test('records avx_guard_last_run with an ISO timestamp string', async () => {
     await avxGuard.run();
 
-    const lastRunCall = db.query.mock.calls.find(c => c[1][0] === 'avx_guard_last_run');
+    const lastRunCall = settingCalls().find(c => c[1][0] === 'avx_guard_last_run');
     expect(lastRunCall).toBeDefined();
     const ts = lastRunCall[1][1];
     expect(() => new Date(ts)).not.toThrow();
@@ -165,7 +170,7 @@ describe('avxGuard.run - setSetting DB behaviour', () => {
     const tableError = Object.assign(new Error('relation "settings" does not exist'), { code: '42P01' });
     db.query.mockRejectedValue(tableError);
 
-    await expect(avxGuard.run()).resolves.toBeDefined();
+    await expect(avxGuard.run()).resolves.toEqual({ action: 'unavailable', selected: null, build: null });
   });
 
   test('propagates unexpected DB errors', async () => {

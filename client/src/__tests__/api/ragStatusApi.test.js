@@ -37,7 +37,8 @@ describe('ragStatusApi', () => {
   })
 
   it('getRagStatus calls getDataRequest with /rag/status', async () => {
-    const status = { enabled: true, pgvectorVariant: 'generic', pgvectorBuild: 'multi', cpuAvx: 'false', cpuAvx2: 'false' }
+    const status = { enabled: true, pgvectorVariant: 'generic', pgvectorBuild: 'multi', cpuAvx: 'false', cpuAvx2: 'false',
+      pgvectorSelection: { status: 'legacy', report: null } }
     mockGetDataRequest.mockResolvedValueOnce(status)
     const result = await getRagStatus()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/rag/status')

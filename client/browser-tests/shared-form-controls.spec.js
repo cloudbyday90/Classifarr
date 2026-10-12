@@ -1,6 +1,26 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 
+for (const report of ['current', 'stale']) {
+  test(`pgvector ${report} startup evidence gives scoped guidance`, async ({ page }) => {
+    const requests = [], errors = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.route(url => url.pathname.startsWith('/api/'), async route => {
+      requests.push(route.request().method())
+      await route.abort()
+    })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(`/browser-tests/fixtures/pgvector-notice.html?report=${report}`)
+    await expect(page.getByText(report === 'current' ? /Runtime staging was disabled/ : /Saved by another application process/)).toBeVisible()
+    if (report === 'stale') await expect(page.getByText(/Runtime staging was disabled/)).toHaveCount(0)
+    expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
+    await page.getByRole('button', { name: 'Dismiss pgvector notice', exact: true }).click()
+    await expect(page.getByLabel('Notice form submissions')).toHaveText('0')
+    expect(requests).toEqual([])
+    expect(errors).toEqual([])
+  })
+}
+
 for (const storageFailure of ['none', 'access', 'getItem', 'setItem']) {
   test(`pgvector notice remains dismissible with storage failure: ${storageFailure}`, async ({ page }, testInfo) => {
     const errors = [], apiRequests = []

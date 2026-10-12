@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 import { createRagStatusHelpers } from '../routes/helpers/ragStatusHelpers.mjs';
+import { createPgvectorSelectionReport, PGVECTOR_REPORT_KEY } from '../services/pgvectorSelectionReport.mjs';
 
 describe('ragStatusHelpers', () => {
     const buildHelpers = (overrides = {}) => createRagStatusHelpers({
@@ -59,11 +60,14 @@ describe('ragStatusHelpers', () => {
     });
 
     test('getStatusPayload reports not_configured image embeddings when provider is set up but zero image rows exist', async () => {
+        const report = createPgvectorSelectionReport({ environment: {}, cpu: { hasAvx: null, hasAvx2: null },
+            reporterId: '12345678-1234-4567-8123-123456789abc', databaseStartedAt: null });
         const db = {
             query: jest.fn()
                 .mockResolvedValueOnce({
                     rows: [
-                        { key: 'avx_guard_pgvector_selected', value: 'pgvector-cpu' }
+                        { key: 'avx_guard_pgvector_selected', value: 'pgvector-cpu' },
+                        { key: PGVECTOR_REPORT_KEY, value: JSON.stringify({ ...report, token: 'private' }) }
                     ]
                 })
                 .mockResolvedValueOnce({
@@ -119,6 +123,7 @@ describe('ragStatusHelpers', () => {
             stats: { total: 0, failedCount: 0 }
         });
         expect(payload.pgvectorVariant).toBe('pgvector-cpu');
+        expect(payload.pgvectorSelection).toEqual({ status: 'other_process', report });
         expect(payload.minimumRequired).toBe(75);
         expect(payload.stats.failedCount).toBe(0);
         expect(payload.stats.totalFailedCount).toBe(0);

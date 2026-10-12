@@ -11,6 +11,7 @@ import {
     resolveProviderOnline
 } from './ragStatusPresentation.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
+import { readPgvectorStatus } from '../../services/pgvectorStatus.mjs';
 
 export function createRagStatusHelpers({
     db,
@@ -24,35 +25,19 @@ export function createRagStatusHelpers({
     isEmbeddingProviderConfigured
 }) {
     const getPgvectorSettings = async () => {
-        let pgvectorVariant = null;
-        let pgvectorBuild = null;
-        let cpuAvx = null;
-        let cpuAvx2 = null;
-
         try {
-            const settingsResult = await db.query(
-                `SELECT key, value FROM settings WHERE key IN (
-                    'avx_guard_pgvector_selected',
-                    'avx_guard_pgvector_build',
-                    'avx_guard_cpu_avx',
-                    'avx_guard_cpu_avx2'
-                )`
-            );
-            for (const row of settingsResult.rows) {
-                if (row.key === 'avx_guard_pgvector_selected') pgvectorVariant = row.value;
-                if (row.key === 'avx_guard_pgvector_build') pgvectorBuild = row.value;
-                if (row.key === 'avx_guard_cpu_avx') cpuAvx = row.value;
-                if (row.key === 'avx_guard_cpu_avx2') cpuAvx2 = row.value;
-            }
+            const { lastChecked: _lastChecked, ...status } = await readPgvectorStatus(db);
+            return status;
         } catch (_settingsError) {
             // settings table might not exist yet
         }
 
         return {
-            pgvectorVariant,
-            pgvectorBuild,
-            cpuAvx,
-            cpuAvx2
+            pgvectorVariant: null,
+            pgvectorBuild: null,
+            cpuAvx: null,
+            cpuAvx2: null,
+            pgvectorSelection: { status: 'unavailable', report: null }
         };
     };
 

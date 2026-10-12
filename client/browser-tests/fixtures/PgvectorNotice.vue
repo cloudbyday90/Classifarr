@@ -8,7 +8,12 @@ const submissions = ref(0)
 const revision = ref(0)
 async function loadStatus() {
   loads.value++
-  return { enabled: true, pgvectorVariant: 'generic', pgvectorBuild: 'multi', cpuAvx: 'true', cpuAvx2: 'true' }
+  const mode = new globalThis.URLSearchParams(globalThis.location.search).get('report')
+  const pgvectorSelection = ['current', 'stale'].includes(mode) ? {
+    status: mode === 'current' ? 'current_process' : 'other_process',
+    report: { databaseScope: 'embedded_entrypoint', selectedVariant: 'generic', reason: 'staging_disabled' },
+  } : undefined
+  return { enabled: true, pgvectorVariant: 'generic', pgvectorBuild: 'multi', cpuAvx: 'true', cpuAvx2: 'true', pgvectorSelection }
 }
 </script>
 <template>

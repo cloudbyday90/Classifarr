@@ -291,6 +291,7 @@ fi
 PGVECTOR_STAGING="/run/postgresql/pgvector"
 PGVECTOR_DYNAMIC_LIBRARY_PATH=""
 PGVECTOR_RUNTIME_STAGING_MODE="$(printf '%s' "${PGVECTOR_RUNTIME_STAGING:-auto}" | tr '[:upper:]' '[:lower:]')"
+CLASSIFARR_PGVECTOR_SELECTION_REASON="unknown"
 
 case "$PGVECTOR_RUNTIME_STAGING_MODE" in
     auto|disabled|false|off|0|no)
@@ -298,6 +299,7 @@ case "$PGVECTOR_RUNTIME_STAGING_MODE" in
     *)
         echo "WARN: Invalid PGVECTOR_RUNTIME_STAGING='$PGVECTOR_RUNTIME_STAGING'; using disabled"
         PGVECTOR_RUNTIME_STAGING_MODE="disabled"
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="staging_invalid"
         ;;
 esac
 
@@ -316,10 +318,22 @@ fi
 
 ACTIVE_VARIANT="$DESIRED_VARIANT"
 if [ "$PGVECTOR_RUNTIME_STAGING_MODE" != "auto" ]; then
+    if [ "$CLASSIFARR_PGVECTOR_SELECTION_REASON" != "staging_invalid" ]; then
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="staging_disabled"
+    fi
     export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
     ACTIVE_VARIANT="generic"
     echo "pgvector runtime staging disabled; using image-layer generic vector.so"
 elif [ "$DESIRED_VARIANT" = "generic" ]; then
+    if [ "${CLASSIFARR_PGVECTOR_BUILD:-unknown}" = "generic" ]; then
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="generic_build"
+    elif [ ! -r /proc/cpuinfo ]; then
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="cpu_unknown"
+    elif [ "$HAS_AVX" = "false" ] && [ "$HAS_AVX2" = "false" ]; then
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="cpu_no_avx"
+    else
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="optimized_binary_unavailable"
+    fi
     export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
     ACTIVE_VARIANT="generic"
     echo "pgvector selected: generic (image-layer)"
@@ -329,25 +343,33 @@ elif [ -f "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ]; then
     if ln -s "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" "$PGVECTOR_STAGING/vector.so" 2>/dev/null; then
         PGVECTOR_RESOLVED_TARGET="$(readlink -f "$PGVECTOR_STAGING/vector.so" 2>/dev/null || true)"
         if [ "$PGVECTOR_RESOLVED_TARGET" != "$PKGLIBDIR/vector_${DESIRED_VARIANT}.so" ] || path_is_on_noexec_mount "$PGVECTOR_RESOLVED_TARGET"; then
+            CLASSIFARR_PGVECTOR_SELECTION_REASON="staging_target_unsafe"
             rm -f "$PGVECTOR_STAGING/vector.so" 2>/dev/null || true
             export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
             ACTIVE_VARIANT="generic"
             echo "WARN: pgvector $DESIRED_VARIANT symlink target is not safe to load; using image-layer generic vector.so"
         else
+            CLASSIFARR_PGVECTOR_SELECTION_REASON="optimized_staged"
             PGVECTOR_DYNAMIC_LIBRARY_PATH="$PGVECTOR_STAGING"
             export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="$DESIRED_VARIANT"
             echo "pgvector selected: $DESIRED_VARIANT (symlink staged to $PGVECTOR_STAGING)"
         fi
     else
+        CLASSIFARR_PGVECTOR_SELECTION_REASON="staging_failed"
         export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
         ACTIVE_VARIANT="generic"
         echo "WARN: Unable to stage pgvector $DESIRED_VARIANT symlink; falling back to generic"
     fi
 else
+    CLASSIFARR_PGVECTOR_SELECTION_REASON="variant_binaries_missing"
     export CLASSIFARR_PGVECTOR_VARIANT_SELECTED="generic"
     ACTIVE_VARIANT="generic"
     echo "WARN: pgvector variant binaries not found in $PKGLIBDIR"
 fi
+
+CLASSIFARR_PGVECTOR_SELECTION_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+CLASSIFARR_PGVECTOR_SELECTION_SOURCE="embedded_entrypoint"
+export CLASSIFARR_PGVECTOR_SELECTION_REASON CLASSIFARR_PGVECTOR_SELECTION_AT CLASSIFARR_PGVECTOR_SELECTION_SOURCE
 
 if [ "$ACTIVE_VARIANT" = "avx2" ] && [ "$HAS_AVX2" != "true" ]; then
     echo "WARN: AVX2 not detected but AVX2 pgvector binary is selected. RAG queries may crash PostgreSQL."

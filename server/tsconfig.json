@@ -17,6 +17,9 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/services/pgvectorSelectionReport.mjs",
+    "src/services/pgvectorSelectionRecorder.mjs",
+    "src/services/pgvectorStatus.mjs",
     "src/bootstrap/embeddedDatabaseStartup.mjs",
     "src/bootstrap/embeddedDatabaseStartupProcess.mjs",
     "src/bootstrap/embeddedDatabaseStartupPreflight.mjs",

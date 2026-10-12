@@ -21,6 +21,7 @@ import request from 'supertest';
 import express from 'express';
 import { createNamedMockModule, createPassThroughAuthMock} from './helpers/mockFactory.mjs';
 import { errorHandler } from '../middleware/errorHandler.mjs';
+import { createPgvectorSelectionReport, PGVECTOR_REPORT_KEY } from '../services/pgvectorSelectionReport.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -87,7 +88,8 @@ describe('System Status Endpoint', () => {
       selectedVariant: 'avx2',
       cpuAvx: 'true',
       cpuAvx2: 'true',
-      lastChecked: '2026-01-30T12:00:00Z'
+      lastChecked: '2026-01-30T12:00:00Z',
+      selection: { status: 'legacy', report: null }
     });
     expect(response.body.postgresVersion).toBe('18.4');
     expect(response.body.pgvectorVersion).toBe('0.8.6');
@@ -107,5 +109,24 @@ describe('System Status Endpoint', () => {
     expect(response.body.pgvector).toBeNull();
     expect(response.body.postgresVersion).toBeNull();
     expect(response.body.pgvectorVersion).toBeNull();
+  });
+
+  test('projects current startup evidence without leaking unknown persisted fields', async () => {
+    const report = createPgvectorSelectionReport({ environment: {
+      CLASSIFARR_PGVECTOR_BUILD: 'multi', CLASSIFARR_PGVECTOR_VARIANT_SELECTED: 'generic',
+      CLASSIFARR_PGVECTOR_SELECTION_SOURCE: 'embedded_entrypoint', CLASSIFARR_PGVECTOR_SELECTION_REASON: 'staging_disabled',
+      CLASSIFARR_PGVECTOR_SELECTION_AT: '2026-01-30T12:00:00Z',
+    }, cpu: { hasAvx: true, hasAvx2: true }, databaseStartedAt: '2026-01-30T12:01:00Z' });
+    const values = {
+      avx_guard_pgvector_build: report.build, avx_guard_pgvector_selected: report.selectedVariant,
+      avx_guard_cpu_avx: report.cpuAvx, avx_guard_cpu_avx2: report.cpuAvx2, avx_guard_last_run: report.recordedAt,
+      [PGVECTOR_REPORT_KEY]: JSON.stringify({ ...report, privateHost: 'do-not-return' }),
+    };
+    db.query.mockResolvedValueOnce({ rows: Object.entries(values).map(([key, value]) => ({ key, value,
+      database_started_at: new Date(report.databaseStartedAt) })) }).mockResolvedValue({ rows: [] });
+    const response = await request(app).get('/api/system/status');
+    expect(response.status).toBe(200);
+    expect(response.body.pgvector.selection).toEqual({ status: 'current_process', report });
+    expect(JSON.stringify(response.body)).not.toContain('do-not-return');
   });
 });

@@ -22,6 +22,7 @@ export function getSystemHealth() {
   return getDataRequest('/system/health')
 }
 
+/** Unwrapped status; pgvector.selection carries validated, scoped startup evidence. */
 export function getSystemStatus() {
   return getDataRequest('/system/status')
 }

@@ -450,6 +450,36 @@
               <span>{{ systemStatus.pgvector?.lastChecked ? formatLastCheck(systemStatus.pgvector.lastChecked) : 'unknown' }}</span>
             </div>
           </div>
+          <div
+            class="mt-4 space-y-2 text-sm break-words"
+            data-testid="pgvector-startup-report"
+          >
+            <p>{{ pgvectorSelectionDetails.summary }}</p>
+            <p>{{ pgvectorSelectionDetails.advice }}</p>
+            <p>Scope: {{ pgvectorSelectionDetails.scope }}. This is a startup observation, not a loaded-binary or database-health check.</p>
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <dt class="text-gray-400">
+                  Application-run reference
+                </dt><dd>{{ pgvectorSelectionDetails.reference }}</dd>
+              </div>
+              <div>
+                <dt class="text-gray-400">
+                  Recorded (UTC)
+                </dt><dd>{{ pgvectorSelectionDetails.recordedAt }}</dd>
+              </div>
+              <div>
+                <dt class="text-gray-400">
+                  Selected (UTC)
+                </dt><dd>{{ pgvectorSelectionDetails.selectedAt }}</dd>
+              </div>
+              <div>
+                <dt class="text-gray-400">
+                  Database started (UTC)
+                </dt><dd>{{ pgvectorSelectionDetails.databaseStartedAt }}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
       </div>
     </Card>
@@ -499,6 +529,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { getPgvectorSelectionDetails } from '@/utils/pgvectorSelectionPresentation'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import Card from '@/components/common/Card.vue'
 import Badge from '@/components/common/Badge.vue'
@@ -548,6 +579,8 @@ const systemStatus = ref({
   memoryUsage: { heapUsed: 0 },
   pgvector: null
 })
+
+const pgvectorSelectionDetails = computed(() => getPgvectorSelectionDetails(systemStatus.value.pgvector?.selection))
 
 const overallHealth = computed(() => {
   return getOverallHealth(healthServices.value)

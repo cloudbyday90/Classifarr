@@ -59,8 +59,9 @@ describe('systemHealthApi', () => {
   })
 
   it('getSystemStatus calls getDataRequest with /system/status', async () => {
-    mockGetDataRequest.mockResolvedValueOnce({ uptime: 3600 })
-    await getSystemStatus()
+    const status = { uptime: 3600, pgvector: { selection: { status: 'legacy', report: null } } }
+    mockGetDataRequest.mockResolvedValueOnce(status)
+    expect(await getSystemStatus()).toEqual(status)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/system/status')
   })
 

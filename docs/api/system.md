@@ -38,6 +38,36 @@ The System Health API provides:
 
 ## Endpoints
 
+### GET /api/system/status
+
+Authenticated application/database version and startup observations. The existing
+`pgvector` fields (`build`, `selectedVariant`, `cpuAvx`, `cpuAvx2`, `lastChecked`)
+remain available. Its additive `selection` object contains `status` and `report`.
+`GET /api/rag/status` exposes the same object as `pgvectorSelection`, alongside
+its existing flat pgvector fields. No new mutation endpoint is introduced.
+
+| Selection status | Meaning |
+| --- | --- |
+| `current_process` | Reporter and database-start time match this reader; legacy settings agree |
+| `other_process` | Another application process or an earlier run saved the report |
+| `database_changed` | Database-start time differs from the saved report |
+| `settings_changed` | Legacy selection settings no longer agree with the report |
+| `unavailable` | Database context or settings could not be read |
+| `legacy` | No detailed report was saved |
+| `invalid` | Unsupported, malformed, oversized or inconsistent report |
+
+A validated version-1 `report` contains `reporterId` (opaque application-run UUID),
+`recordedAt`, `selectedAt`, `databaseStartedAt` (UTC timestamps, nullable when
+unknown), `databaseScope` (`embedded_entrypoint` or `unverified`), `reason`,
+`selectedVariant`, `build`, `cpuAvx` and `cpuAvx2`. Missing/invalid reports are
+`null`. No hostnames, paths, connection strings or credentials are included.
+Database lookup failure still returns `pgvector: null` from system status.
+
+This is a bounded latest observation, not loaded-binary verification, an ownership
+lease, a health result or tamper-proof evidence. Only a current embedded report
+can support specific staging guidance. Older servers may omit it entirely.
+See the [design and reason policy](../architecture/pgvector-startup-report-design.md).
+
 ### GET /api/system/health
 
 Get overall system health with service breakdown.
