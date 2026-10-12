@@ -64,8 +64,9 @@ The database integration project is separate and was not run for this dependency
 batch; the exact-image fresh database/schema check remains required below.
 The production client build and all eight loopback Chromium browser checks passed,
 including lazy navigation, browser history, chunk budgets and blocked mutations.
-The combined coverage ratchet passed with both newly generated reports. Image
-evaluation remains pending until the clean implementation commit is built.
+The combined coverage ratchet passed with both newly generated reports. The
+image evidence below is tied to the clean implementation commit, not a dirty
+checkout or an earlier successful build.
 The first frontend coverage run passed 6,891 tests and failed only the unchanged
 CSRF source check: 7.064 seconds against its five-second deadline. It ran alongside
 backend coverage and other host checks; the earlier tooling design already advised
@@ -107,6 +108,47 @@ for retry), zero pending text embeddings and 6,814 pending image embeddings.
 The bounded pending batch contained ten unique rows. The probe made zero writes
 or provider calls and found no startup WARN/ERROR records for that container run.
 These counts are observations, not permission to approve or clear identity issues.
+
+## Exact-image evaluation
+
+The no-cache provenance-required Compose build passed from clean implementation
+commit `497186ba91547ab5aa39ab238a1a61fd0cb6e977`.
+
+| Identity | Value |
+| --- | --- |
+| Local Docker image/index ID | `sha256:feb100764ff2990d220075425bad84a92d0a0fa80f328815d6bfc46ebb97e6e1` |
+| Exported image manifest | `sha256:85cb06d664d373d83b56022eaf35860ec9c50751d06beeaea918ab34de9a38ca` |
+| Exported image configuration | `sha256:4797cd0041d577a79bf5f5c30bbb65d946de5c2ea52c21fdcfa65b3a4f905294` |
+
+These are local build identities, not published registry or signed release claims.
+The OCI revision matched the implementation commit. A documentation-only followup
+records this outcome; no runtime code changed after the tested image was built.
+
+Ran `dumpSchema` from `scripts/dump-schema.mjs` after the no-cache build using that
+exact image, normal entrypoint and a disposable network-isolated database limited
+to 1 GiB, two CPUs and 256 PIDs. The dump covers migrations through
+`20261010_220000_source_catalog_mappings.sql` and 22 seed migrations.
+`database/schema/current.sql` is unchanged. The fresh database consumer probe
+confirmed zero classifications, pending embeddings and unresolved identities.
+The owned fixture container and its generated data directory were confirmed absent
+after cleanup.
+
+Recreated only local Classifarr with `--no-build --pull never --no-deps`; its running
+image ID matched the evaluated image. Docker health and HTTP `/health` passed
+(200), with zero restarts and no OOM flag. UID/GID 1000:1000, read-only root,
+no-new-privileges and the 2,147,483,648-byte memory limit remain intact. An in-image
+ESM check confirmed Node 24.21.0, Zod 4.6.6 and zero item parses when an array
+exceeded its bound.
+
+At 12:58:16 UTC the read-only post-rebuild probe matched the baseline: ten
+active/covered libraries, 6,836 classifications, four unresolved identities with
+the same recovery split, zero pending text and 6,814 pending image embeddings.
+The ten-row pending batch remained unique (7 ms); no startup WARN/ERROR records
+were present at that observation. The probe made zero writes/provider calls.
+This short observation is not a long-duration memory or recovery soak.
+
+Unraid, shared Plex/Ollama, unrelated Docker containers and identity approvals
+were unchanged. No release, tag, registry publication or PR merge was performed.
 
 ## Next bounded item
 
