@@ -83,3 +83,6 @@ quality gates, exact no-cache local image, isolated schema dump and read-only lo
 checks. Record outcome separately. No release, Unraid/Plex/shared Ollama change.
 
 GitHub MCP currently reports zero open PRs; none is available for random selection.
+
+Final checks, exact image and remaining limits are recorded in the separate
+[outcome](health-observation-freshness-outcome.md).

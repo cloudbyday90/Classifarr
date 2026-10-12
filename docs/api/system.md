@@ -85,6 +85,7 @@ Raw top-level service values and `details.*.status` are retained for compatibili
 For current operational health, consume `details.*.effectiveStatus` and `freshness`:
 `observedStatus` is the normalized last reported result, not necessarily current.
 The same metadata is included on individual Radarr/Sonarr instances.
+The example abbreviates service rows and repeated freshness metadata.
 
 **Authentication:** Required (API Key or JWT)
 
