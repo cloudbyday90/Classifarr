@@ -75,9 +75,44 @@ ownership gate passed, with `productionCompatible: false` and zero database
 connections, writes or provider requests.
 
 Full server lint, server typecheck, both dependency-boundary checks, static-import
-and mock-shape gates, copyright and all 2,121 Markdown files passed. Final full-
-suite and image results are recorded below after completion. No threshold,
-assertion or application safeguard was relaxed to obtain these results.
+and mock-shape gates, copyright and all 2,121 Markdown files passed. Full backend
+coverage passed 1,799 suites and 56,290 tests in 801.776 seconds. The existing
+Linux-only directory-fsync test is skipped on this Windows host. The coverage
+ratchet passed: server statements/lines 89.71%, branches
+86.14%, functions 91.14%. Its client input was the same-day 20:47 local-time
+coverage report for unchanged client source and dependencies, not a new client
+test run. No threshold, assertion or application safeguard was relaxed.
+
+## Local image and schema evaluation
+
+Built Compose with `--no-cache --require-provenance` from clean source
+`59072071220bbdf0759511f489f8b1e95c91934c`. Docker reports local image ID
+`sha256:36c5a9fb5913efee9db7d859039a61ccf7fdcdbf2ea39352cc6804eda30e75e1`;
+the OCI revision matches that source. This is local image evidence, not a
+published registry or multi-platform release receipt.
+
+Before replacement, a 75,650,100-byte local database archive passed checksum and
+archive-list readability checks. The archive and exact previous-image rollback
+tag remain available; this was not a full restore exercise. Recreated only the
+existing local Compose service with no build or pull during replacement. It is
+healthy, reports no OOM kill, and retains its two-GiB limit, UID/GID 1000,
+read-only root filesystem and no-new-privileges setting.
+
+At 2026-10-12 02:05:44 UTC, the read-only post-start probe matched the pre-build
+counts: ten covered/active libraries, 6,835 classified rows, four unresolved
+identities (two source-review and two retry-wait), zero pending text embeddings
+and 6,813 pending image embeddings. Ten requested batch rows were distinct.
+The probe made no writes or provider requests. No startup warnings appeared in
+that brief post-start window; the pre-existing cached-vector warning is not
+claimed fixed by this diagnostic-tooling change.
+
+After rebuilding, ran the schema dump against the exact candidate image in a
+fresh, network-disabled fixture with one GiB, two CPUs and 256 PIDs. The snapshot
+has no diff. Fresh-install consumer checks found no invented pending work or
+unresolved identities. Its exact disposable container and data directory were
+verified absent afterward; only those temporary fixture resources were removed.
+Unraid, Plex and the shared Ollama service were not changed. The final outcome
+documentation is a separate follow-up commit, not additional image source work.
 
 ## Next recommendation
 
