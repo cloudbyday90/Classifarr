@@ -58,6 +58,8 @@ test('CodeQL and SARIF upload use one immutable action revision and unchanged le
     expect(config.on.pull_request_target).toBeUndefined();
     for (const job of Object.values(config.jobs)) {
       expect(job.permissions).toEqual({ actions: 'read', contents: 'read', 'security-events': 'write' });
+      expect(job['continue-on-error']).toBeUndefined();
+      for (const step of job.steps) expect(step['continue-on-error']).toBeUndefined();
       for (const step of job.steps) if (step.uses?.startsWith('github/codeql-action/')) {
         expect(step.uses).toMatch(/^github\/codeql-action\/(init|analyze|upload-sarif)@[a-f0-9]{40}$/);
         references.push(step.uses.split('@')[1]);
@@ -66,8 +68,15 @@ test('CodeQL and SARIF upload use one immutable action revision and unchanged le
   }
   expect(references).toHaveLength(4);
   expect(new Set(references).size).toBe(1);
-  expect(references[0]).toBe('2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2'); // PR #547; upstream v4.38.2.
+  expect(references[0]).toBe('24c54180a607b1449ed407dd24f251e4e9147c8d'); // PR #560; upstream v4.38.3.
   expect(codeql.jobs.analyze.strategy.matrix.language).toEqual(['javascript-typescript', 'actions']);
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/init@')).with.queries).toBe('security-extended');
+  expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/analyze@')).with.category)
+    .toBe('/language:${{ matrix.language }}');
+  for (const [jobName, category] of [['trivy-fs', 'trivy-fs'], ['trivy-config', 'trivy-config']]) {
+    const upload = trivy.jobs[jobName].steps.find(step => step.uses?.includes('/upload-sarif@'));
+    expect(upload.if).toBe('always()');
+    expect(upload.with).toEqual({ sarif_file: `${category}-results.sarif`, category });
+  }
   expect(trivy.jobs['trivy-fs'].steps.find(step => step.name === 'Run Trivy (PR gate)').with['exit-code']).toBe('1');
 });

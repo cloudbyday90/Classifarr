@@ -1,9 +1,27 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 // @vitest-environment node
 import { describe, expect, test } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import compiler from 'typescript'
 import { expectVueDiagnostic, typecheck } from './helpers/vueTypecheck.js'
 
 describe('installed Vue typechecker contract', () => {
+  test('uses the client compiler API, not the native root compiler', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+    const compilerManifestUrl = import.meta.resolve('typescript/package.json')
+    expect(fileURLToPath(compilerManifestUrl)).toBe(fileURLToPath(
+      new URL('../../node_modules/typescript/package.json', import.meta.url),
+    ))
+    const installed = JSON.parse(readFileSync(new URL(compilerManifestUrl), 'utf8'))
+    expect(installed.version).toBe(manifest.devDependencies.typescript)
+    // vue-tsc consumes the legacy API/entrypoint; a broad peer range is not proof.
+    expect(compiler.createProgram).toBeTypeOf('function')
+    expect(compiler.parseJsonConfigFileContent).toBeTypeOf('function')
+    expect(compiler.ScriptTarget.ESNext).toBeTypeOf('number')
+    expect(readFileSync(new URL(import.meta.resolve('typescript/lib/tsc.js')), 'utf8').length).toBeGreaterThan(0)
+  })
+
   test('checks setup macros without explicit Vue imports', () => {
     const result = typecheck(`<script setup>
 const props = defineProps({ count: { type: Number, required: true } })

@@ -23,6 +23,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   analysis without weakening dependency rules.
   Refresh Vue build and typechecking tools with positive and negative compiler
   contracts, retaining the supported Vue, TypeScript and Node runtime versions.
+  Verify the installed Vue compiler API and exact lockfile alignment; retain the
+  client TypeScript compatibility pin after reproducing the native-major blocker.
   Run the CSRF source contract before parallel UI tests without relaxing its checks.
   Refresh browser testing with matched Playwright and Chromium versions, and guard
   against dependency-chain drift while retaining runtime-aligned Node declarations.
@@ -34,6 +36,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   blocking file I/O; preserve every scanned file and fail on unreadable sources.
   Align routine Node declaration update proposals with the deployed runtime major,
   retaining compatible updates, security-only eligibility and compatibility gates.
+- **Security automation** — Refresh the shared CodeQL analysis and SARIF-upload
+  action pins, preserving least-privilege permissions, scan coverage and failure
+  gates with workflow regression checks.
 
 ### Added
 

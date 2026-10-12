@@ -51,6 +51,18 @@ test('Playwright uses one exact reviewed version across its manifest and locked 
   assert.equal(packages['node_modules/playwright'].dependencies['playwright-core'], version);
 });
 
+test('Vue compiler dependencies retain exact reviewed manifest and lock versions', () => {
+  const manifest = json('client/package.json');
+  const { packages } = json('client/package-lock.json');
+  for (const name of ['typescript', 'vue-tsc']) {
+    const version = manifest.devDependencies[name];
+    assert.match(version, /^\d+\.\d+\.\d+$/);
+    assert.equal(packages[''].devDependencies[name], version);
+    assert.equal(packages[`node_modules/${name}`].version, version);
+  }
+  // Version changes still require the real positive/negative Vue compiler suite.
+});
+
 test('Docker and CI use the same npm release and carry the install policy into builds', () => {
   const dockerfile = read('Dockerfile');
   assert.match(dockerfile, new RegExp(`^ARG NPM_VERSION=${npmVersion.replaceAll('.', '\\.')}$`, 'm'));
