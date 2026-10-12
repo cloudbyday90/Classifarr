@@ -161,6 +161,20 @@ describe('System.vue', () => {
     wrapper.unmount()
   })
 
+  it('explains changed configuration without automatically retrying', async () => {
+    const failure = { stage: 'configuration_validation', code: 'configuration_changed' }
+    const observation = { status: 'unknown', lastCheck: fresh.checkedAt, failure, freshness: fresh,
+      error: 'Settings changed while this health check was running. Refresh health to check the current settings, or wait for the next heartbeat.' }
+    const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'unknown',
+      details: { ...baseHealth.details, radarr: observation } })
+    const card = wrapper.get('[data-testid="service-card-radarr"]')
+    expect(card.text()).toContain('Unknown')
+    expect(card.text()).toContain('Refresh health to check the current settings')
+    expect(card.get('[data-testid="health-failure-reference"]').text()).toContain(failure.code)
+    expect(api.refreshSystemHealth).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('renders failure references as text and clears them after normal polling recovery', async () => {
     const failure = { code: '<script>private()</script>', stage: '<img src=x onerror=private()>' }
     const wrapper = await mountSystem({}, { ...baseHealth, radarr: 'unknown',

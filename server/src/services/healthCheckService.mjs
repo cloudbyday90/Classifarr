@@ -8,7 +8,6 @@
 
 import { discordBotService } from './discordBot.mjs';
 import {
-    createDefaultHealthCache,
     getAlertPreviousStatus,
     shouldSendHealthAlert,
 } from './healthCheckServiceShared.mjs';
@@ -20,12 +19,13 @@ import { checkDatabase as computeDatabaseHealth, checkDiscordBot as computeDisco
 import { checkProcessMemory as computeProcessMemory, checkQueueWorker as computeQueueWorker } from './healthCheckInfrastructure.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { DEFAULT_HEARTBEAT_MS, createHealthFreshnessPolicy, isValidHeartbeatInterval } from './healthObservationFreshness.mjs';
+import { createHealthObservationCoordinator } from './healthObservationCoordinator.mjs';
 
 const logger = createLogger('healthCheck');
 
 
 // Cache for health status
-let healthCache = createDefaultHealthCache();
+const observations = createHealthObservationCoordinator();
 
 // Heartbeat interval (default: 15 minutes)
 let heartbeatInterval = null;
@@ -45,77 +45,49 @@ function maybeSendHealthAlert(serviceKey, previousStatus, newStatus) {
 }
 
 export async function checkDatabase() {
-    const previous = { ...healthCache.database };
-    healthCache.database = await computeDatabaseHealth(previous);
-    return healthCache.database;
+    return observations.run('database', computeDatabaseHealth);
 }
 
 export async function checkDiscordBot() {
-    const previous = { ...healthCache.discordBot };
-    healthCache.discordBot = await computeDiscordBotHealth(previous);
-    return healthCache.discordBot;
+    return observations.run('discordBot', computeDiscordBotHealth);
 }
 
 export async function checkOllama() {
-    const previous = { ...healthCache.ollama };
-    healthCache.ollama = await computeOllamaHealth(previous);
-    return healthCache.ollama;
+    return observations.run('ollama', computeOllamaHealth);
 }
 
 export async function checkRadarr() {
-    const previous = { ...healthCache.radarr };
-    healthCache.radarr = await computeRadarrHealth(previous);
-    return healthCache.radarr;
+    return observations.run('radarr', computeRadarrHealth);
 }
 
 export async function checkSonarr() {
-    const previous = { ...healthCache.sonarr };
-    healthCache.sonarr = await computeSonarrHealth(previous);
-    return healthCache.sonarr;
+    return observations.run('sonarr', computeSonarrHealth);
 }
 
 export async function checkMediaServer() {
-    const previous = { ...healthCache.mediaServer };
-    healthCache.mediaServer = await computeMediaServerHealth(previous);
-    return healthCache.mediaServer;
+    return observations.run('mediaServer', computeMediaServerHealth);
 }
 
 export async function checkTMDB() {
-    const previous = { ...healthCache.tmdb };
-    healthCache.tmdb = await computeTMDBHealth(previous);
-    return healthCache.tmdb;
+    return observations.run('tmdb', computeTMDBHealth);
 }
 
 export async function checkOMDb() {
-    const previous = { ...healthCache.omdb };
-    healthCache.omdb = await computeOMDbHealth(previous);
-    return healthCache.omdb;
+    return observations.run('omdb', computeOMDbHealth);
 }
 
 export async function checkTavily() {
-    const previous = { ...healthCache.tavily };
-    healthCache.tavily = await computeTavilyHealth(previous);
-    return healthCache.tavily;
+    return observations.run('tavily', computeTavilyHealth);
 }
 
 export async function checkRAG() {
-    const previous = { ...healthCache.rag };
-
-    healthCache.rag = await computeRAGHealth(previous);
-
-    return healthCache.rag;
+    return observations.run('rag', computeRAGHealth);
 }
 
 export async function checkImageEmbeddings() {
-    const previous = { ...healthCache.imageEmbeddings };
-
-    healthCache.imageEmbeddings = await computeImageEmbeddingsHealth(previous);
-
-    if (!healthCache.imageEmbeddings.failure) {
-        maybeSendHealthAlert('imageEmbeddings', previous.status, healthCache.imageEmbeddings.status);
-    }
-
-    return healthCache.imageEmbeddings;
+    return observations.run('imageEmbeddings', computeImageEmbeddingsHealth, (previous, result) => {
+        if (!result.failure) maybeSendHealthAlert('imageEmbeddings', previous.status, result.status);
+    });
 }
 
 export async function runAllHealthChecks() {
@@ -141,7 +113,7 @@ export async function runAllHealthChecks() {
 }
 
 export function getHealthCache() {
-    return { ...healthCache };
+    return observations.snapshot();
 }
 
 export function getHealthFreshnessPolicy() {
@@ -152,9 +124,10 @@ export function getHealthFreshnessPolicy() {
 export function resetHealthState() {
     stopHeartbeat();
     heartbeatIntervalMs = DEFAULT_HEARTBEAT_MS;
-    healthCache = createDefaultHealthCache();
+    observations.reset();
     servicesHealthCache = null;
     servicesHealthCacheTime = null;
+    servicesHealthFlight = null;
 }
 
 export function startHeartbeat(intervalMs = DEFAULT_HEARTBEAT_MS) {
@@ -199,16 +172,36 @@ export function getUptime() {
 
 let servicesHealthCache = null;
 let servicesHealthCacheTime = null;
+let servicesHealthCacheVersion = null;
+let servicesHealthFlight = null;
 const SERVICES_CACHE_TTL = 30000;
 
 export async function getAllServicesHealth() {
     const now = Date.now();
 
-    if (servicesHealthCache && servicesHealthCacheTime && (now - servicesHealthCacheTime) < SERVICES_CACHE_TTL) {
+    if (servicesHealthCache && servicesHealthCacheVersion === observations.version()
+        && servicesHealthCacheTime !== null && (now - servicesHealthCacheTime) < SERVICES_CACHE_TTL) {
         return servicesHealthCache;
     }
+    if (servicesHealthFlight) return servicesHealthFlight;
 
-    const [database, mediaServer, radarr, sonarr, aiProvider, rag, queueWorker, imageEmbeddings] = await Promise.all([
+    const pending = refreshServicesHealth().then(queueWorker => {
+        const result = projectServicesHealth(queueWorker);
+        if (servicesHealthFlight === pending) {
+            servicesHealthCache = result;
+            servicesHealthCacheTime = Date.now();
+            servicesHealthCacheVersion = observations.version();
+        }
+        return result;
+    }).finally(() => {
+        if (servicesHealthFlight === pending) servicesHealthFlight = null;
+    });
+    servicesHealthFlight = pending;
+    return pending;
+}
+
+async function refreshServicesHealth() {
+    const results = await Promise.all([
         checkDatabase(),
         checkMediaServer(),
         checkRadarr(),
@@ -219,7 +212,13 @@ export async function getAllServicesHealth() {
         checkImageEmbeddings()
     ]);
 
-    const result = {
+    return results[6];
+}
+
+function projectServicesHealth(queueWorker) {
+    // Do not retain early service results while waiting for slower peers.
+    const { database, mediaServer, radarr, sonarr, ollama: aiProvider, rag, imageEmbeddings } = observations.snapshot();
+    return {
         database,
         mediaServer,
         radarr,
@@ -232,8 +231,4 @@ export async function getAllServicesHealth() {
         timestamp: new Date().toISOString()
     };
 
-    servicesHealthCache = result;
-    servicesHealthCacheTime = now;
-
-    return result;
 }

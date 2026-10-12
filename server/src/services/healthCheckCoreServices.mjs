@@ -27,9 +27,9 @@ export async function checkDatabase(previous) {
     return buildTimedResultHealthState(previous, result);
 }
 
-export async function checkDiscordBot(previous) {
+export async function checkDiscordBot(previous, guard = undefined) {
     try {
-        const config = await readHealthConfiguration(previous, 'discordBot', () => db.query("SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1"));
+        const config = await readHealthConfiguration(previous, 'discordBot', () => db.query("SELECT bot_token FROM notification_config WHERE type = 'discord' LIMIT 1"), guard);
         if (!config.ok) return config.health;
         const isConfigured = config.rows.length > 0 && config.rows[0].bot_token;
         const isConnected = discordBotService.client && discordBotService.client.isReady();
@@ -45,9 +45,9 @@ export async function checkDiscordBot(previous) {
     }
 }
 
-export async function checkOllama(previous) {
+export async function checkOllama(previous, guard = undefined) {
     try {
-        const aiConfig = await readHealthConfiguration(previous, 'ollama', () => db.query('SELECT * FROM ai_provider_config WHERE id = 1'));
+        const aiConfig = await readHealthConfiguration(previous, 'ollama', () => db.query('SELECT * FROM ai_provider_config WHERE id = 1'), guard);
         if (!aiConfig.ok) return aiConfig.health;
 
         if (aiConfig.rows.length === 0 || !aiConfig.rows[0].primary_provider || aiConfig.rows[0].primary_provider === 'none') {
@@ -80,9 +80,9 @@ export async function checkOllama(previous) {
     }
 }
 
-export async function checkMediaServer(previous) {
+export async function checkMediaServer(previous, guard = undefined) {
     try {
-        const config = await readHealthConfiguration(previous, 'mediaServer', () => db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1'));
+        const config = await readHealthConfiguration(previous, 'mediaServer', () => db.query('SELECT * FROM media_server WHERE is_active = true LIMIT 1'), guard);
         if (!config.ok) return config.health;
 
         if (config.rows.length === 0) {

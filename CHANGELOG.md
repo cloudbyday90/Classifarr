@@ -34,6 +34,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   cadence, showing overdue checks and specific refresh/clock/scheduler guidance.
   Distinguish failed configuration reads from absent settings, keeping unknown
   services visible with safe database/schema/access diagnostics and check references.
+  Share overlapping health checks and reject results whose configuration changed
+  during the check, preventing obsolete completions and stale aggregate results.
   Keep database readiness and security safeguards unchanged.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,

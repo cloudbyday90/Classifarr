@@ -53,12 +53,24 @@ const omdbService = mockOmdb;
 const discordBotService = mockDiscordBot;
 const svc = await import('../services/healthCheckService.mjs');
 
+function deferred() {
+  let resolve;
+  const promise = new Promise(yes => { resolve = yes; });
+  return { promise, resolve };
+}
+
 describe('healthCheckService - all service checks', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     svc.resetHealthState();
 
     mockDb.query.mockReset();
+    // Stable fixture configuration can be re-read at completion. Explicit queued
+    // responses below still take precedence for failure/change scenarios.
+    mockDb.query.mockImplementation(sql => {
+      const first = mockDb.query.mock.calls.findIndex(([query]) => query === sql);
+      return mockDb.query.mock.results[first]?.value;
+    });
     mockRadarr.testConnection.mockReset();
     mockSonarr.testConnection.mockReset();
     mockOllama.testConnection.mockReset();
@@ -78,6 +90,15 @@ describe('healthCheckService - all service checks', () => {
     ['AI', svc.checkOllama], ['Media Server', svc.checkMediaServer], ['TMDb', svc.checkTMDB],
     ['OMDb', svc.checkOMDb], ['Tavily', svc.checkTavily], ['RAG', svc.checkRAG], ['Image', svc.checkImageEmbeddings],
   ])('%s configuration admission', (_name, check) => {
+    test('changed configuration discards the observed result; next normal check recovers', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ changed: true }] });
+      expect(await check()).toMatchObject({ status: 'unknown', failure: { code: 'configuration_changed' } });
+      expect(mockDiscordBot.sendSystemAlert).not.toHaveBeenCalled();
+      expect(db.query).toHaveBeenCalledTimes(2);
+      db.query.mockResolvedValue({ rows: [] });
+      expect(['not configured', 'disabled']).toContain((await check()).status);
+    });
+
     test.each(['ECONNRESET', '42P01', '42501', '57014', undefined])('failed %s read is unknown without provider traffic', async code => {
       mockDiscordBot.client = { isReady: jest.fn(() => true) };
       db.query.mockRejectedValueOnce(Object.assign(new Error('private database message'), { code }));
@@ -101,7 +122,7 @@ describe('healthCheckService - all service checks', () => {
     });
 
     test('successful empty read clears the prior failure and restores genuine inactivity', async () => {
-      db.query.mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows: [] });
+      db.query.mockRejectedValueOnce(new Error('private')).mockResolvedValue({ rows: [] });
       expect((await check()).status).toBe('unknown');
       const result = await check();
       expect(['not configured', 'disabled']).toContain(result.status);
@@ -112,7 +133,8 @@ describe('healthCheckService - all service checks', () => {
 
   test('preserves last success across a failed membership read and clears failure after recovery', async () => {
     const rows = [{ id: 1, name: 'Movies' }];
-    db.query.mockResolvedValueOnce({ rows }).mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows });
+    db.query.mockResolvedValueOnce({ rows }).mockResolvedValueOnce({ rows })
+      .mockRejectedValueOnce(new Error('private')).mockResolvedValueOnce({ rows });
     mockRadarr.testConnection.mockResolvedValue(undefined);
     const healthy = await svc.checkRadarr();
     const unknown = await svc.checkRadarr();
@@ -150,6 +172,72 @@ describe('healthCheckService - all service checks', () => {
       expect(result.status).toBe('disconnected');
       expect(result.error).toBe('Connection refused');
     });
+  });
+
+  test('simultaneous refreshes share a real service probe, then reject disabled-during-flight results', async () => {
+    const started = deferred();
+    const gate = deferred();
+    let rows = [{ id: 1, name: 'Old instance', url: 'http://fixture', api_key: 'private' }];
+    db.query.mockImplementation(async () => ({ rows }));
+    mockRadarr.testConnection.mockImplementation(() => { started.resolve(); return gate.promise; });
+    const first = svc.checkRadarr();
+    const second = svc.checkRadarr();
+    await started.promise;
+    rows = [];
+    gate.resolve();
+    const [a, b] = await Promise.all([first, second]);
+    expect(a).toBe(b);
+    expect(a.failure.code).toBe('configuration_changed');
+    expect(a.instances).toBeUndefined();
+    expect(mockRadarr.testConnection).toHaveBeenCalledTimes(1);
+    expect(db.query).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(a)).not.toMatch(/Old instance|private/);
+  });
+
+  test('aggregate waiters share work and an accepted service change invalidates cached aggregates', async () => {
+    db.query.mockResolvedValue({ rows: [] });
+    const [a, b] = await Promise.all([svc.getAllServicesHealth(), svc.getAllServicesHealth()]);
+    expect(a).toBe(b);
+    const reads = db.query.mock.calls.length;
+    expect(await svc.getAllServicesHealth()).toBe(a);
+    expect(db.query).toHaveBeenCalledTimes(reads);
+    await svc.checkDatabase();
+    expect(await svc.getAllServicesHealth()).not.toBe(a);
+  });
+
+  test('aggregate projects latest service values after a slow peer, not its early captured result', async () => {
+    const started = deferred();
+    const gate = deferred();
+    let sonarrRows = [];
+    db.query.mockImplementation(async sql => {
+      if (sql.includes('radarr_config')) return { rows: [{ id: 1 }] };
+      if (sql.includes('sonarr_config')) return { rows: sonarrRows };
+      return { rows: [] };
+    });
+    mockRadarr.testConnection.mockImplementation(() => { started.resolve(); return gate.promise; });
+    const aggregate = svc.getAllServicesHealth();
+    await started.promise;
+    await svc.checkSonarr();
+    sonarrRows = [{ id: 2, name: 'Current instance' }];
+    mockSonarr.testConnection.mockResolvedValue(undefined);
+    await svc.checkSonarr();
+    gate.resolve();
+    expect((await aggregate).sonarr.instances[0].name).toBe('Current instance');
+  });
+
+  test('reset prevents an old aggregate from replacing a new cache entry', async () => {
+    const started = deferred();
+    const gate = deferred();
+    db.query.mockImplementation(async sql => ({ rows: sql.includes('radarr_config') ? [{ id: 1 }] : [] }));
+    mockRadarr.testConnection.mockImplementation(() => { started.resolve(); return gate.promise; });
+    const old = svc.getAllServicesHealth();
+    await started.promise;
+    svc.resetHealthState();
+    db.query.mockResolvedValue({ rows: [] });
+    const current = await svc.getAllServicesHealth();
+    gate.resolve();
+    expect((await old).radarr.status).toBe('not configured');
+    expect(await svc.getAllServicesHealth()).toBe(current);
   });
 
   // -------------------------------------------------------------------------

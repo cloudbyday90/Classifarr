@@ -19,7 +19,7 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('healthCheckImageEmbeddings');
 
-export async function checkImageEmbeddings(previous) {
+export async function checkImageEmbeddings(previous, guard = undefined) {
     try {
         const result = await readHealthConfiguration(previous, 'imageEmbeddings', () => db.query(`
             SELECT
@@ -32,7 +32,7 @@ export async function checkImageEmbeddings(previous) {
                 image_embedding_models_cache_updated_at
             FROM ai_provider_config
             WHERE id = 1
-        `));
+        `), guard);
         if (!result.ok) return result.health;
 
         if (result.rows.length === 0) {

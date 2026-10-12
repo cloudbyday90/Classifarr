@@ -20,6 +20,16 @@ Monitor all connected services in real-time with comprehensive health endpoints.
 
 ## Overview
 
+Overlapping checks share one in-flight observation per service. A reset fences
+older completions, and accepted changes invalidate the detailed-health cache.
+Before a configuration-dependent result is accepted, its saved configuration is
+re-read once. Changed content yields unknown with `configuration_validation` /
+`configuration_changed` and Refresh guidance, without stale instance details or
+image-service alerts. No immediate retry or transport cancellation is implied.
+Already completed observations remain point-in-time results; settings saves do
+not instantly invalidate caches across processes. See the
+[completion design](../architecture/health-completion-fencing-design.md).
+
 Configuration lookup failures are **unknown**, not absent configuration or proof
 that a provider is down. Affected observations include a fixed safe `error` and
 `failure: { stage, code }`, along with the completed attempt's `lastCheck` and

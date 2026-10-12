@@ -18,9 +18,9 @@ import {
     measureTime,
 } from './healthCheckServiceShared.mjs';
 
-export async function checkRadarr(previous) {
+export async function checkRadarr(previous, guard = undefined) {
     try {
-        const configs = await readHealthConfiguration(previous, 'radarr', () => db.query('SELECT * FROM radarr_config WHERE is_active = true'));
+        const configs = await readHealthConfiguration(previous, 'radarr', () => db.query('SELECT * FROM radarr_config WHERE is_active = true'), guard);
         if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {
@@ -47,9 +47,9 @@ export async function checkRadarr(previous) {
     }
 }
 
-export async function checkSonarr(previous) {
+export async function checkSonarr(previous, guard = undefined) {
     try {
-        const configs = await readHealthConfiguration(previous, 'sonarr', () => db.query('SELECT * FROM sonarr_config WHERE is_active = true'));
+        const configs = await readHealthConfiguration(previous, 'sonarr', () => db.query('SELECT * FROM sonarr_config WHERE is_active = true'), guard);
         if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {

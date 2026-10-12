@@ -47,12 +47,13 @@ export function buildUnknownHealthState(previous, service, stage = 'health_check
 }
 
 /** One existing read, no retries; a successful empty row set is different from failure. */
-export async function readHealthConfiguration(previous, service, read) {
+export async function readHealthConfiguration(previous, service, read, guard = undefined) {
     try {
         const result = await read();
         if (!Array.isArray(result?.rows) || result.rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) {
             return { ok: false, health: buildUnknownHealthState(previous, service, 'configuration_read', { code: 'HEALTH_CONFIG_INVALID' }) };
         }
+        guard?.capture(read, result.rows);
         return { ok: true, rows: result.rows };
     } catch (error) {
         return { ok: false, health: buildUnknownHealthState(previous, service, 'configuration_read', error) };

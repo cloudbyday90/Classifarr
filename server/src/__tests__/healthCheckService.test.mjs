@@ -43,11 +43,19 @@ const db = mockDb;
 const discordBot = mockDiscordBot;
 const { checkImageEmbeddings, resetHealthState } = await import('../services/healthCheckService.mjs');
 
+function resetStableDatabaseFixture() {
+    db.query.mockReset();
+    db.query.mockImplementation(sql => {
+        const first = db.query.mock.calls.findIndex(([query]) => query === sql);
+        return db.query.mock.results[first]?.value;
+    });
+}
+
 describe('healthCheckService.checkImageEmbeddings', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         resetHealthState();
-        db.query.mockReset();
+        resetStableDatabaseFixture();
         mockHttpGet.mockReset();
         discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
         mockLogger.info.mockReset();
@@ -213,7 +221,7 @@ describe('checkImageEmbeddings — Discord transition alerts (Issue #330)', () =
     beforeEach(() => {
         jest.clearAllMocks();
         resetHealthState();
-        db.query.mockReset();
+        resetStableDatabaseFixture();
         mockHttpGet.mockReset();
         discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
         mockLogger.info.mockReset();
@@ -303,7 +311,7 @@ describe('checkImageEmbeddings — unexpected outer error (Gap 3.23)', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         resetHealthState();
-        db.query.mockReset();
+        resetStableDatabaseFixture();
         discordBot.sendSystemAlert.mockReset().mockResolvedValue(undefined);
         mockLogger.info.mockReset();
         mockLogger.warn.mockReset();

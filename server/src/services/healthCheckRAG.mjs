@@ -9,7 +9,7 @@ import * as db from '../config/database.mjs';
 import { buildRagHealthState } from './healthCheckServiceShared.mjs';
 import { readHealthConfiguration } from './healthConfigurationRead.mjs';
 
-export async function checkRAG(previous) {
+export async function checkRAG(previous, guard = undefined) {
     try {
         const config = await readHealthConfiguration(previous, 'rag', () => db.query(
             `SELECT
@@ -19,7 +19,7 @@ export async function checkRAG(previous) {
                 rag_image_weight
              FROM ai_provider_config
              WHERE id = 1`
-        ));
+        ), guard);
         if (!config.ok) return config.health;
 
         if (config.rows.length === 0 || !config.rows[0].rag_enabled) {

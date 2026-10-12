@@ -19,9 +19,9 @@ import {
     measureTime,
 } from './healthCheckServiceShared.mjs';
 
-export async function checkTMDB(previous) {
+export async function checkTMDB(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'tmdb', () => db.query(metadataProviderConfigQuery('tmdb', { activeOnly: true })));
+        const result = await readHealthConfiguration(previous, 'tmdb', () => db.query(metadataProviderConfigQuery('tmdb', { activeOnly: true })), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
@@ -39,9 +39,9 @@ export async function checkTMDB(previous) {
     }
 }
 
-export async function checkOMDb(previous) {
+export async function checkOMDb(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'omdb', () => db.query(metadataProviderConfigQuery('omdb', { activeOnly: true })));
+        const result = await readHealthConfiguration(previous, 'omdb', () => db.query(metadataProviderConfigQuery('omdb', { activeOnly: true })), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
@@ -62,9 +62,9 @@ export async function checkOMDb(previous) {
     }
 }
 
-export async function checkTavily(previous) {
+export async function checkTavily(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'tavily', () => db.query(metadataProviderConfigQuery('tavily', { activeOnly: true })));
+        const result = await readHealthConfiguration(previous, 'tavily', () => db.query(metadataProviderConfigQuery('tavily', { activeOnly: true })), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
