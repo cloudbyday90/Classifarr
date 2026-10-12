@@ -97,6 +97,54 @@ function validDraft(overrides = {}) {
 }
 
 describe('policyIntentRequestValidator', () => {
+  test('rejects oversized preset lists before reading any preset fields', () => {
+    let reads = 0;
+    const preset = Object.defineProperty({}, 'preset_id', {
+      enumerable: true,
+      get() { reads += 1; return 14; },
+    });
+    const result = safeValidatePolicyIntentDraftRequest(validDraft({
+      presets: Array(101).fill(preset),
+    }));
+
+    expect(result.valid).toBe(false);
+    expect(result.draft).toBeNull();
+    expect(reads).toBe(0);
+    expect(result.errors).toEqual([
+      expect.objectContaining({ path: 'presets', code: 'too_big' }),
+    ]);
+  });
+
+  test('reports one bounded issue for an oversized nested signal list', () => {
+    const draft = validDraft();
+    draft.presets[0].buckets[POLICY_INTENT_DRAFT_BUCKETS.IDENTITY][0].values.require_any = Array(51).fill(null);
+
+    const result = safeValidatePolicyIntentDraftRequest(draft);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        path: 'presets.0.buckets.identity_signals.0.values.require_any',
+        code: 'too_big',
+      }),
+    ]);
+  });
+
+  test('accepts the signal-list limit and retains element validation within it', () => {
+    const draft = validDraft();
+    const entry = draft.presets[0].buckets[POLICY_INTENT_DRAFT_BUCKETS.IDENTITY][0];
+    entry.values.require_any = Array(50).fill('Family');
+    expect(safeValidatePolicyIntentDraftRequest(draft).valid).toBe(true);
+
+    entry.values.require_any[49] = null;
+    expect(safeValidatePolicyIntentDraftRequest(draft).errors).toEqual([
+      expect.objectContaining({
+        path: 'presets.0.buckets.identity_signals.0.values.require_any.49',
+        code: 'invalid_type',
+      }),
+    ]);
+  });
+
   test('validates and normalizes a bounded legacy-compatible intent draft', () => {
     const draft = validatePolicyIntentDraftRequest(validDraft());
 

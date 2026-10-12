@@ -191,6 +191,29 @@ describe('router auth/setup guard', () => {
     expect(router.currentRoute.value.query.legacyRoute).toBe('dashboard')
   })
 
+  it('retains classic scalar, repeated, bare and empty queries through legacy redirects', async () => {
+    const router = await loadRouter()
+    await router.push('/queue?scope=pending&tag=one&tag=two&flag&empty=&q=a%2Bb')
+
+    expect(router.currentRoute.value.query).toEqual({
+      scope: 'pending', tag: ['one', 'two'], flag: null, empty: '',
+      q: 'a+b', legacyRoute: 'queue',
+    })
+    expect(router.currentRoute.value.hash).toBe('#processing')
+    expect(apiMock.getMe).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves the full encoded target when authentication redirects to login', async () => {
+    const router = await loadRouter()
+    apiMock.getMe.mockRejectedValueOnce(new Error('expired'))
+    const target = '/statistics?tag=one&tag=two&q=a%2Bb&flag#details'
+    await router.push(target)
+
+    expect(router.currentRoute.value.name).toBe('Login')
+    expect(router.currentRoute.value.query.redirect).toBe(target)
+    expect(router.resolve(router.currentRoute.value.fullPath).query.redirect).toBe(target)
+  })
+
   it('redirects queue and activity routes to the processing hash', async () => {
     const router = await loadRouter()
 

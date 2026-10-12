@@ -1346,6 +1346,19 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).not.toHaveBeenCalled();
     });
 
+    test('rejects oversized intent lists with a bounded 400 before database work', async () => {
+      const res = await request(app)
+        .put('/api/policies/8')
+        .send({ policy_intent_draft: validPolicyIntentDraft({ presets: Array(101).fill(null) }) })
+        .expect(400);
+
+      expect(res.body.code).toBe('POLICY_INTENT_REQUEST_INVALID');
+      expect(res.body.error).toBe('Invalid policy intent draft: presets: Too big: expected array to have <=100 items');
+      expect(res.body).not.toHaveProperty('issues');
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
     test('rejects partial updates that break merged weight totals', async () => {
       db.query.mockResolvedValueOnce({
         rows: [{ id: 8, preset_weight: 0.35, profile_weight: 0.25, pattern_weight: 0.15, rag_weight: 0.15, history_weight: 0.1, auto_classify_threshold: 85, prompt_threshold: 60 }],

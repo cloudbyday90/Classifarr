@@ -13,6 +13,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 - **HTTP runtime** — Update Express response handling with regression coverage
   for valid response framing, downloads, request limits and sanitized errors.
+  Refresh request validation to reject oversized collections before parsing their
+  contents, retaining strict policy contracts and bounded client errors.
+- **Web navigation** — Refresh Vue Router with regression coverage for protected
+  navigation, encoded return links and legacy query/hash redirects.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached
@@ -26,6 +30,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   that previously could report success without running the intended checks.
   Add opt-in phase diagnostics for intermittent frontend test timeouts, retaining
   the original assertions, coverage, isolation and deadlines.
+  Bound asynchronous source reads in the CSRF contract after diagnostics isolated
+  blocking file I/O; preserve every scanned file and fail on unreadable sources.
   Align routine Node declaration update proposals with the deployed runtime major,
   retaining compatible updates, security-only eligibility and compatibility gates.
 
