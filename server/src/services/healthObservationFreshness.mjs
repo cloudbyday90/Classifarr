@@ -15,10 +15,11 @@ export function createHealthFreshnessPolicy({ intervalMs = DEFAULT_HEARTBEAT_MS,
 }
 
 function parseCheckTime(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) return null;
+  if (typeof value !== 'string' || (value.length !== 20 && value.length !== 24)) return null;
   const time = Date.parse(value);
-  if (!Number.isFinite(time) || new Date(time).toISOString().slice(0, 19) !== value.slice(0, 19)) return null;
-  return time;
+  if (!Number.isFinite(time)) return null;
+  const canonical = new Date(time).toISOString();
+  return value === canonical || value === canonical.replace('.000Z', 'Z') ? time : null;
 }
 
 /** Pure, read-only projection. A response timestamp cannot renew a check. */

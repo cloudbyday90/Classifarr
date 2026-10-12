@@ -17,10 +17,14 @@ describe('health observation freshness', () => {
     });
   });
 
-  test.each([undefined, null, '', 123, {}, 'yesterday', '2026-02-30T00:00:00.000Z', '2026-10-12T12:00:00+00:00'])('rejects missing or malformed check time %j', lastCheck => {
+  test.each([undefined, null, '', 123, {}, 'yesterday', 'x'.repeat(24), '2026-02-30T00:00:00.000Z', '2026-10-12T12:00:00+00:00'])('rejects missing or malformed check time %j', lastCheck => {
     expect(describeHealthObservation({ status: 'healthy', lastCheck, lastSuccessfulCheck: checked(0) }, policy)).toMatchObject({
       effectiveStatus: 'unknown', freshness: { state: 'unknown', ageMs: null, checkedAt: null, expiresAt: null },
     });
+  });
+
+  test('accepts canonical UTC seconds without milliseconds', () => {
+    expect(describeHealthObservation({ status: 'connected', lastCheck: '2026-10-12T12:00:00Z' }, policy).effectiveStatus).toBe('healthy');
   });
 
   test('marks future time unknown and does not replace a bad check time with another timestamp', () => {
