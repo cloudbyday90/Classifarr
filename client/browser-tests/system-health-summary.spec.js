@@ -41,6 +41,18 @@ for (const width of [390, 1280]) {
     await expect(information).not.toContainText('application process')
     await expect(information).not.toContainText('12345678-1234-4567-8123-123456789abc')
     await expect(information).not.toContainText('2026-10-12')
+    const card = page.getByTestId('live-health-card')
+    for (const [mode, label] of [['healthy', 'Healthy'], ['inactive', 'Not Configured'], ['unknown', 'Unknown']]) {
+      await page.getByRole('button', { name: mode, exact: true }).click()
+      await expect(card).toContainText(label)
+      await card.hover()
+      await expect(page.getByRole('tooltip')).toHaveText(`Fixture service\nStatus: ${label}`)
+      await page.getByRole('heading', { name: 'System Information', exact: true }).hover()
+      await expect(page.getByRole('tooltip')).toHaveCount(0)
+      await card.hover()
+      await expect(page.getByRole('tooltip')).toHaveText(`Fixture service\nStatus: ${label}`)
+    }
+    await expect(page.getByRole('tooltip')).toHaveCSS('opacity', '1')
     await page.screenshot({ path: testInfo.outputPath('health-summary.png'), fullPage: true })
     expect(requests).toEqual([])
     expect(errors).toEqual([])

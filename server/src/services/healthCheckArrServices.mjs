@@ -11,6 +11,7 @@ import * as db from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
+import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import {
     buildAggregateInstancesHealthState,
     buildNotConfiguredHealthState,
@@ -20,7 +21,7 @@ import {
 
 export async function checkRadarr(previous, guard = undefined) {
     try {
-        const configs = await readHealthConfiguration(previous, 'radarr', () => db.query('SELECT * FROM radarr_config WHERE is_active = true'), guard);
+        const configs = await readHealthConfiguration(previous, 'radarr', () => db.query(healthConfigurationQuery('radarr')), guard);
         if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {
@@ -49,7 +50,7 @@ export async function checkRadarr(previous, guard = undefined) {
 
 export async function checkSonarr(previous, guard = undefined) {
     try {
-        const configs = await readHealthConfiguration(previous, 'sonarr', () => db.query('SELECT * FROM sonarr_config WHERE is_active = true'), guard);
+        const configs = await readHealthConfiguration(previous, 'sonarr', () => db.query(healthConfigurationQuery('sonarr')), guard);
         if (!configs.ok) return configs.health;
 
         if (configs.rows.length === 0) {

@@ -8,6 +8,7 @@
 import { httpGet } from '../utils/httpClient.mjs';
 import * as db from '../config/database.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
+import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import {
     AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
     buildEmbeddingRuntimeDedupeKey,
@@ -21,18 +22,7 @@ const logger = createLogger('healthCheckImageEmbeddings');
 
 export async function checkImageEmbeddings(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'imageEmbeddings', () => db.query(`
-            SELECT
-                rag_image_weight,
-                image_embedding_provider_mode,
-                image_embedding_local_host,
-                image_embedding_local_port,
-                image_embedding_cloud_provider,
-                image_embedding_cloud_api_key,
-                image_embedding_models_cache_updated_at
-            FROM ai_provider_config
-            WHERE id = 1
-        `), guard);
+        const result = await readHealthConfiguration(previous, 'imageEmbeddings', () => db.query(healthConfigurationQuery('imageEmbeddings')), guard);
         if (!result.ok) return result.health;
 
         if (result.rows.length === 0) {

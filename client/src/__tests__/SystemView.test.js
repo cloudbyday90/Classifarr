@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import SystemView from '../views/System.vue'
 import api from '../api'
+import tooltip from '../directives/tooltip'
 
 vi.mock('../api', () => ({
   default: {
@@ -103,10 +104,7 @@ describe('System.vue', () => {
           Spinner: { template: '<div />' }
         },
         directives: {
-          tooltip: {
-            mounted() {},
-            updated() {}
-          }
+          tooltip
         }
       }
     })
@@ -114,6 +112,20 @@ describe('System.vue', () => {
     await flushPromises()
     return wrapper
   }
+
+  it.each([['tmdb', 'Healthy'], ['sonarr', 'Not Configured']])('keeps the %s hover label current after polling', async (key, label) => {
+    const wrapper = await mountSystem({}, { ...baseHealth, [key]: 'unknown' })
+    const card = wrapper.get(`[data-testid="service-card-${key}"]`)
+    expect(card.text()).toContain('Unknown')
+    api.getSystemHealth.mockResolvedValue(baseHealth)
+    await vi.advanceTimersByTimeAsync(30000)
+    await flushPromises()
+    expect(card.text()).toContain(label)
+    await card.trigger('mouseenter')
+    expect(document.querySelector('[role="tooltip"]').textContent).toContain(`Status: ${label}`)
+    wrapper.unmount()
+    expect(document.querySelector('[role="tooltip"]')).toBeNull()
+  })
 
   it('separates a reported CPU match from operational service counts', async () => {
     const wrapper = await mountSystem({ pgvector: currentPgvector })

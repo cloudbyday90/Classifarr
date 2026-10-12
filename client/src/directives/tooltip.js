@@ -15,9 +15,12 @@
 const TOOLTIP_MARGIN = 8;
 
 let tooltipElement = null
+let activeTarget = null
+const states = new WeakMap()
 
 function createTooltip(text) {
   const tooltip = document.createElement('div')
+  tooltip.setAttribute('role', 'tooltip')
   tooltip.className = 'fixed z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg pointer-events-none transition-opacity duration-200 whitespace-pre-line'
   tooltip.style.opacity = '0'
   tooltip.textContent = text
@@ -42,15 +45,14 @@ function positionTooltip(tooltip, targetEl) {
   })
 }
 
-function showTooltip(el, binding) {
-  const text = binding.value
-  if (!text) return
-  
-  // Remove existing tooltip
+function showTooltip(el) {
+  const text = states.get(el)?.value
   hideTooltip()
+  if (!text) return
   
   // Create and position new tooltip
   tooltipElement = createTooltip(text)
+  activeTarget = el
   positionTooltip(tooltipElement, el)
 }
 
@@ -59,38 +61,35 @@ function hideTooltip() {
     tooltipElement.remove()
     tooltipElement = null
   }
+  activeTarget = null
 }
 
 export default {
   mounted(el, binding) {
-    el._tooltipHandlers = {
-      mouseenter: () => showTooltip(el, binding),
-      mouseleave: hideTooltip,
-      click: hideTooltip
+    const dismiss = () => { if (activeTarget === el) hideTooltip() }
+    const handlers = {
+      mouseenter: () => showTooltip(el),
+      mouseleave: dismiss,
+      click: dismiss
     }
     
-    el.addEventListener('mouseenter', el._tooltipHandlers.mouseenter)
-    el.addEventListener('mouseleave', el._tooltipHandlers.mouseleave)
-    el.addEventListener('click', el._tooltipHandlers.click)
+    states.set(el, { value: binding.value, handlers })
+    for (const [event, handler] of Object.entries(handlers)) el.addEventListener(event, handler)
   },
   
   updated(el, binding) {
-    // Update tooltip text if it changed while showing
-    if (tooltipElement && binding.value !== binding.oldValue) {
-      hideTooltip()
-      if (el.matches(':hover')) {
-        showTooltip(el, binding)
-      }
-    }
+    const state = states.get(el)
+    if (!state) return
+    state.value = binding.value
+    if (activeTarget === el && binding.value !== binding.oldValue) showTooltip(el)
   },
   
   unmounted(el) {
-    if (el._tooltipHandlers) {
-      el.removeEventListener('mouseenter', el._tooltipHandlers.mouseenter)
-      el.removeEventListener('mouseleave', el._tooltipHandlers.mouseleave)
-      el.removeEventListener('click', el._tooltipHandlers.click)
-      delete el._tooltipHandlers
+    const state = states.get(el)
+    if (state) {
+      for (const [event, handler] of Object.entries(state.handlers)) el.removeEventListener(event, handler)
+      states.delete(el)
     }
-    hideTooltip()
+    if (activeTarget === el) hideTooltip()
   }
 }

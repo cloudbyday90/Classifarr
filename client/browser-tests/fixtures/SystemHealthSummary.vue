@@ -4,12 +4,15 @@ import { ref, computed } from 'vue'
 import SystemHealthSummary from '../../src/components/system/SystemHealthSummary.vue'
 import HealthFreshnessNote from '../../src/components/system/HealthFreshnessNote.vue'
 import PgvectorStartupPanel from '../../src/components/system/PgvectorStartupPanel.vue'
+import vTooltip from '../../src/directives/tooltip'
+import { getStatusConfig } from '../../src/utils/healthStatus'
 const pgvector = { selection: { status: 'current_process', report: {
   schemaVersion: 1, databaseScope: 'embedded_entrypoint', build: 'multi',
   selectedVariant: 'avx2', cpuAvx: true, cpuAvx2: true,
   reporterId: '12345678-1234-4567-8123-123456789abc', recordedAt: '2026-10-12T15:00:00.000Z',
 } } }
 const mode = ref('unknown')
+const cardLabel = computed(() => getStatusConfig(mode.value === 'inactive' ? 'not_configured' : mode.value === 'healthy' ? 'healthy' : 'unknown').label)
 const services = computed(() => (['unknown', 'overdue'].includes(mode.value) ? ['healthy', 'unknown']
   : mode.value === 'inactive' ? ['disabled', 'not_configured'] : ['healthy', 'disabled']).map(status => ({ status })))
 </script>
@@ -42,6 +45,13 @@ const services = computed(() => (['unknown', 'overdue'].includes(mode.value) ? [
       >
         {{ option }}
       </button>
+    </div>
+    <div
+      v-tooltip="`Fixture service\nStatus: ${cardLabel}`"
+      data-testid="live-health-card"
+      class="mt-6 p-4 border border-gray-700 rounded-lg"
+    >
+      Fixture service: {{ cardLabel }}
     </div>
     <section class="mt-6 p-6 rounded-lg bg-background-light border border-gray-700">
       <h2 class="text-xl font-semibold mb-4">

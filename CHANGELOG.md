@@ -38,6 +38,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   during the check, preventing obsolete completions and stale aggregate results.
   Revalidate completed health caches in the background so committed configuration
   changes from other processes retire outdated results without extra provider probes.
+  Ignore unrelated usage counters and cache timestamps when validating reviewed
+  connection settings; retain credential, endpoint and active selection checks.
+  Keep hover status current as health cards refresh.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

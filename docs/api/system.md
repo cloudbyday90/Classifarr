@@ -37,6 +37,13 @@ and scheduling add delay. Stopping the heartbeat stops future cycles. See the
 [completion design](../architecture/health-completion-fencing-design.md) and
 [cache reconciliation design](../architecture/health-cache-reconciliation-design.md).
 
+Radarr, Sonarr, TMDb, OMDb, Tavily and image-embedding checks use explicit reviewed
+configuration projections. Usage counters, quota reset dates and unrelated cache
+timestamps do not invalidate those observations. Credentials, credential lifecycle,
+transport settings, displayed identity and active selection remain covered where
+applicable. AI/Ollama and media-server comparisons remain conservative pending an
+adapter audit. See the [dependency contract](../architecture/health-configuration-dependencies-design.md).
+
 Configuration lookup failures are **unknown**, not absent configuration or proof
 that a provider is down. Affected observations include a fixed safe `error` and
 `failure: { stage, code }`, along with the completed attempt's `lastCheck` and

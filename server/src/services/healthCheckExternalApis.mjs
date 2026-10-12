@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import { metadataProviderConfigQuery } from './metadataProviderConfigStore.mjs';
+import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { omdbService } from './omdb.mjs';
@@ -21,7 +21,7 @@ import {
 
 export async function checkTMDB(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'tmdb', () => db.query(metadataProviderConfigQuery('tmdb', { activeOnly: true })), guard);
+        const result = await readHealthConfiguration(previous, 'tmdb', () => db.query(healthConfigurationQuery('tmdb')), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
@@ -41,7 +41,7 @@ export async function checkTMDB(previous, guard = undefined) {
 
 export async function checkOMDb(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'omdb', () => db.query(metadataProviderConfigQuery('omdb', { activeOnly: true })), guard);
+        const result = await readHealthConfiguration(previous, 'omdb', () => db.query(healthConfigurationQuery('omdb')), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
@@ -64,7 +64,7 @@ export async function checkOMDb(previous, guard = undefined) {
 
 export async function checkTavily(previous, guard = undefined) {
     try {
-        const result = await readHealthConfiguration(previous, 'tavily', () => db.query(metadataProviderConfigQuery('tavily', { activeOnly: true })), guard);
+        const result = await readHealthConfiguration(previous, 'tavily', () => db.query(healthConfigurationQuery('tavily')), guard);
         if (!result.ok) return result.health;
         const config = result.rows[0];
 
