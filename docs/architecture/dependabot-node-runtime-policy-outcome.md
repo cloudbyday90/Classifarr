@@ -68,9 +68,6 @@ report (SHA-256
 Only the focused backend suites ran afresh in this batch; no fresh complete
 backend coverage run is claimed.
 
-Local image checks are pending at this stage; their observed results will be
-recorded before the final handoff.
-
 ## Local baseline
 
 The pre-rebuild read-only probe at 11:56:10 UTC reported 6,836 classifications,
@@ -86,6 +83,41 @@ checks. The current image
 `sha256:6d0a373e62d91859646506b51bf362be03ad1c3a2527e0e47b21cf5d48b90c82`
 is retained as `classifarr:pre-memory-0f03df21-011a-4052-8a24-68a85597f39f`
 for exact rollback. The backup remains private under ignored `.tmp/`.
+
+## Local image and schema verification
+
+The no-cache Compose build succeeded from clean implementation commit
+`c1a44eb8850def07349d3aa62981f685096d565b`, producing local image ID
+`sha256:4292b08b40d5c42f40468892baa58e579fb7ba03f78fcf3c75f5e3aec2ccf1b2`.
+The OCI revision and running container image were verified against those exact
+values. This is local image evidence, not a published multi-platform digest or
+signed provenance claim. A documentation-only follow-up records these results.
+
+Only local Classifarr was recreated, with no pull or dependency recreation.
+It is healthy, returns HTTP 200 from `/health`, has zero restarts and no recorded
+OOM kill. UID/GID 1000:1000, read-only root filesystem, `no-new-privileges` and
+the 2 GiB limit are unchanged. The unrelated local container was not modified.
+Unraid and shared Plex/Ollama configuration were untouched.
+
+At 12:03:49 UTC, the post-rebuild read-only probe returned the same classification,
+library coverage, unresolved-identity and embedding counts as the baseline.
+The ten-item batch was unique and read in 6 ms. The bounded startup-warning query
+was empty at that time; this does not prove the earlier cached-vector condition
+is repaired. The probe again made zero writes or provider calls.
+
+After rebuilding, the schema dump ran against a fresh, network-isolated database
+from the exact new image (1 GiB, two CPUs, 256 PIDs, ordinary entrypoint).
+Migrations through `20261010_220000_source_catalog_mappings.sql` and 22 seed
+migrations produced an unchanged `database/schema/current.sql`. Fresh-database
+checks found no invented classifications, pending work, images or unresolved
+identities. The owned fixture container and its data directory were confirmed
+removed; retained backups and application data were not deleted.
+
+The baseline commit's [CI run](https://github.com/cloudbyday90/Classifarr/actions/runs/38244074139)
+completed successfully, including database tests, fresh-install/published-upgrade
+checks and the acceptance readout. Release/publishing jobs were skipped as
+expected on main. That run is for the preceding commit, not this new policy;
+the new push requires its own CI result. No release is authorized or created.
 
 ## Available updates and next item
 
