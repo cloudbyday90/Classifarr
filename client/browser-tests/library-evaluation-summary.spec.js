@@ -35,6 +35,13 @@ test('library evidence uses SWR, supports keyboard pause, and stays compact on m
     await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Cache-Control': 'no-store' }, body: JSON.stringify(data) })
   })
   await page.goto('/')
+  const advanced = page.locator('details').filter({
+    has: page.locator('summary').filter({ hasText: /^Advanced policy and evaluation diagnostics$/ }),
+  })
+  await expect(advanced).not.toHaveAttribute('open')
+  await advanced.locator(':scope > summary').focus()
+  await page.keyboard.press('Enter')
+  await expect(advanced).toHaveAttribute('open', '')
   const panel = page.getByRole('region', { name: 'Library learning' })
   await expect(panel).toContainText('9 checks passed')
   await expect(panel).toContainText('5 passing checks were held')

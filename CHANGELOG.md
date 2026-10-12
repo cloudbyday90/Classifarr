@@ -20,6 +20,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Refresh Vue build and typechecking tools with positive and negative compiler
   contracts, retaining the supported Vue, TypeScript and Node runtime versions.
   Run the CSRF source contract before parallel UI tests without relaxing its checks.
+  Refresh browser testing with matched Playwright and Chromium versions, and guard
+  against dependency-chain drift while retaining runtime-aligned Node declarations.
 
 ### Added
 

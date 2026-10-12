@@ -35,6 +35,22 @@ for (const workspace of ['', 'client/', 'server/']) {
   });
 }
 
+test('Playwright uses one exact reviewed version across its manifest and locked package chain', () => {
+  const manifest = json('client/package.json');
+  const { packages } = json('client/package-lock.json');
+  const version = manifest.devDependencies['@playwright/test'];
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  assert.equal(packages[''].devDependencies['@playwright/test'], version);
+  for (const name of ['@playwright/test', 'playwright', 'playwright-core']) {
+    const entry = packages[`node_modules/${name}`];
+    assert.equal(entry.version, version, name);
+    assert.equal(entry.dev, true, `${name} must remain test-only`);
+    assert.ok(!entry.hasInstallScript, `${name} must not install browsers implicitly`);
+  }
+  assert.equal(packages['node_modules/@playwright/test'].dependencies.playwright, version);
+  assert.equal(packages['node_modules/playwright'].dependencies['playwright-core'], version);
+});
+
 test('Docker and CI use the same npm release and carry the install policy into builds', () => {
   const dockerfile = read('Dockerfile');
   assert.match(dockerfile, new RegExp(`^ARG NPM_VERSION=${npmVersion.replaceAll('.', '\\.')}$`, 'm'));

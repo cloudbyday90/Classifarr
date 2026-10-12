@@ -44,7 +44,7 @@ test('finds a lost recovery response after reload when the warning is gone, with
   await page.reload()
   await expect(review).toHaveCount(0)
   expect(historyReads).toBe(0)
-  const summary = page.locator('summary').filter({ hasText: 'Your recovery history' })
+  const summary = page.locator('summary').and(page.getByText('Recovery history', { exact: true }))
   await summary.focus(); await page.keyboard.press('Enter')
   const history = page.locator('details').filter({ has: summary })
   await expect(history.getByRole('status')).toContainText('Recorded recoveries: 1')
