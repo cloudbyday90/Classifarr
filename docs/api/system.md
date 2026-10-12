@@ -31,8 +31,10 @@ are revalidated in the background, with two concurrent database reads at most an
 30 seconds between completed cycles. Changed content yields unknown with
 `configuration_reconciliation` / `configuration_changed`; the original check and
 last-success times remain historical. Failed reads also invalidate the result.
-No provider probe or retry is triggered by reconciliation. This is eventual
-cross-process detection, not instantaneous post-save notification; read latency
+No provider probe or retry is triggered by reconciliation. Successful and failed
+provider observations are both covered; saving corrected credentials retires an
+earlier authentication failure. This is eventual cross-process detection, not
+instantaneous post-save notification; read latency
 and scheduling add delay. Stopping the heartbeat stops future cycles. See the
 [completion design](../architecture/health-completion-fencing-design.md) and
 [cache reconciliation design](../architecture/health-cache-reconciliation-design.md).
@@ -52,14 +54,25 @@ without generating content or claiming authentication was tested. Ollama lists
 models only; this does not prove generation readiness. Media-server checks send
 the current saved API key to the authenticated information endpoint and validate
 the response shape. New AI/media reads reject redirects, retain TLS verification,
-cap decoded responses at 1 MiB and have a 10-second deadline.
+cap decoded responses at 1 MiB and have a 10-second deadline. Arr health uses a
+single v3 system-status read, not the richer settings connection test. It validates
+version/application identity, preserves base paths and explicit saved TLS settings,
+and limits the deadline to ten seconds or a shorter positive saved timeout.
+TMDb validates configuration data with a five-second deadline. OMDb reuses its
+payload classifier with a ten-second deadline and preserves quota/auth reasons.
+Both use fixed HTTPS endpoints, reject redirects and cap decoded bodies at 1 MiB.
+OMDb health reads still consume upstream quota outside the local lookup budget.
 
 `connection_configuration` diagnostics include `endpoint_invalid` and
-`provider_unsupported`. `connection_probe` includes `response_invalid`,
+`provider_unsupported`, plus `configuration_invalid` for incomplete Arr settings.
+`connection_probe` includes `response_invalid`,
 `response_too_large` and `check_cancelled`; each is unknown rather than a confirmed
-outage. Other connection failures use fixed safe guidance. Raw provider errors,
-bodies and credentials are not returned. Existing helper transports are unchanged.
-See the [adapter design](../architecture/health-provider-adapters-design.md).
+outage. Disconnected probes expose `connection_failed`, `authentication_failed`,
+`connection_timeout`, `rate_limited` or `quota_exhausted` with fixed safe guidance.
+Raw provider errors, bodies and credentials are not returned. Rich settings-test
+helpers remain separate and unchanged. See the
+[adapter design](../architecture/health-provider-adapters-design.md) and
+[bounded metadata health design](../architecture/bounded-metadata-health-design.md).
 
 Configuration lookup failures are **unknown**, not absent configuration or proof
 that a provider is down. Affected observations include a fixed safe `error` and

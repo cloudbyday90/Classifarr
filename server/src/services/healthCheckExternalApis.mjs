@@ -10,8 +10,7 @@
 import * as db from '../config/database.mjs';
 import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
-import { tmdbService } from './tmdb.mjs';
-import { omdbService } from './omdb.mjs';
+import { probeTmdbConnection, probeOmdbConnection } from './healthMetadataProbe.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import {
     buildConfiguredHealthState,
@@ -28,7 +27,7 @@ export async function checkTMDB(previous, guard = undefined) {
             return buildNotConfiguredHealthState(previous);
         }
 
-        const probe = await measureConnectionProbe(() => tmdbService.testConnection(config.api_key));
+        const probe = await measureConnectionProbe(() => probeTmdbConnection(config.api_key));
 
         return buildConnectionProbeHealthState(previous, probe);
     } catch (_error) {
@@ -46,7 +45,7 @@ export async function checkOMDb(previous, guard = undefined) {
             return buildNotConfiguredHealthState(previous);
         }
 
-        const probe = await measureConnectionProbe(() => omdbService.testConnection(config.api_key));
+        const probe = await measureConnectionProbe(() => probeOmdbConnection(config.api_key));
 
         return buildConnectionProbeHealthState(previous, probe);
     } catch (_error) {

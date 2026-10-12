@@ -8,8 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import { radarrService } from './radarr.mjs';
-import { sonarrService } from './sonarr.mjs';
+import { probeRadarrConnection, probeSonarrConnection } from './healthArrProbe.mjs';
 import { readHealthConfiguration, buildUnknownHealthState } from './healthConfigurationRead.mjs';
 import { healthConfigurationQuery } from './healthConfigurationQueries.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
@@ -31,7 +30,7 @@ export async function checkRadarr(previous, guard = undefined) {
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureConnectionProbe(() => radarrService.testConnection(config));
+            const result = await measureConnectionProbe(() => probeRadarrConnection(config));
 
             instances.push(buildConnectionProbeHealthState(prevInstance, result, {
                 id: config.id,
@@ -58,7 +57,7 @@ export async function checkSonarr(previous, guard = undefined) {
 
         for (const config of configs.rows) {
             const prevInstance = previous.instances?.find(i => i.id === config.id);
-            const result = await measureConnectionProbe(() => sonarrService.testConnection(config));
+            const result = await measureConnectionProbe(() => probeSonarrConnection(config));
 
             instances.push(buildConnectionProbeHealthState(prevInstance, result, {
                 id: config.id,

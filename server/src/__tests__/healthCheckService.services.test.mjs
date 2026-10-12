@@ -13,19 +13,24 @@ const mockDb = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockRadarr = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarr));
 
 const mockSonarr = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarr));
+jest.unstable_mockModule('../services/healthArrProbe.mjs', () => ({
+  probeRadarrConnection: mockRadarr.testConnection,
+  probeSonarrConnection: mockSonarr.testConnection,
+}));
 
 const mockOllama = { testConnection: jest.fn() };
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
 
 const mockTmdb = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdb));
 
 const mockOmdb = { testConnection: jest.fn() };
-jest.unstable_mockModule('../services/omdb.mjs', () => createNamedMockModule('omdbService', mockOmdb));
+jest.unstable_mockModule('../services/healthMetadataProbe.mjs', () => ({
+  probeTmdbConnection: mockTmdb.testConnection,
+  probeOmdbConnection: mockOmdb.testConnection,
+  createMetadataHealthProbes: jest.fn(),
+}));
 
 const mockDiscordBot = { client: null, sendSystemAlert: jest.fn().mockResolvedValue(undefined) };
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));

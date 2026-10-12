@@ -44,6 +44,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   Correct AI/media-server probes to use current saved settings and authenticated,
   bounded reads. Failed connection-test results no longer appear healthy; cloud
   AI configuration is distinguished from a verified connection.
+  Use one bounded Arr health request per instance, validate metadata-provider
+  responses, and retain safe authentication/quota failure reasons without exposing
+  provider data or changing richer settings-page connection tests.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

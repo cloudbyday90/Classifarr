@@ -9,6 +9,8 @@ const messages = {
     check_cancelled: 'The connection check was cancelled. Refresh health when the application is stable.',
     response_invalid: 'The service returned an unexpected response. Check the saved endpoint. If this persists, open a Classifarr issue.',
     response_too_large: 'The service response exceeded the health-check limit. Check the endpoint; report this if it persists.',
+    configuration_invalid: 'Saved connection settings are incomplete or invalid. Review the URL, API key and connection options.',
+    quota_exhausted: 'The provider request quota is exhausted. Wait for it to reset or review your provider plan; repeated refreshes will not restore quota.',
 };
 
 /** Strict helper contract. Never publish untrusted helper/transport error text. */
@@ -18,7 +20,8 @@ export async function measureConnectionProbe(probe) {
     try {
         const result = await probe();
         if (result?.success === true) return { success: true, time: Date.now() - start };
-        code = result?.success === false ? 'connection_failed' : 'response_invalid';
+        code = result?.success === false
+            ? (Object.hasOwn(messages, result.code) ? result.code : 'connection_failed') : 'response_invalid';
     } catch (error) {
         if (error?.name === 'AbortError' || error?.code === 'ABORT_ERR') code = 'check_cancelled';
         else if (error?.code === 'ETIMEDOUT' || error?.name === 'TimeoutError') code = 'connection_timeout';
@@ -31,9 +34,11 @@ export async function measureConnectionProbe(probe) {
 }
 
 export function buildConnectionProbeHealthState(previous, result, overrides = {}) {
-    const unknown = ['response_invalid', 'check_cancelled', 'response_too_large'].includes(result.code);
+    const unknown = ['response_invalid', 'check_cancelled', 'response_too_large', 'configuration_invalid'].includes(result.code);
     return buildTimedResultHealthState(previous, result, {
-        ...(unknown ? { status: 'unknown', failure: { stage: 'connection_probe', code: result.code } } : {}),
+        ...(unknown ? { status: 'unknown' } : {}),
+        ...(!result.success ? { failure: { stage: result.code === 'configuration_invalid'
+            ? 'connection_configuration' : 'connection_probe', code: result.code } } : {}),
         ...overrides,
     });
 }

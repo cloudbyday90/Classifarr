@@ -114,7 +114,7 @@ test.each([['unsupported', 'synthetic-key', 'unknown'], ['plex', null, 'not conf
     expect(calls).toHaveLength(0);
 });
 
-test.each([checkRadarr, checkSonarr])('real Arr helper returned failure remains disconnected', async check => {
+test.each([checkRadarr, checkSonarr])('real Arr HTTP refusal remains disconnected', async check => {
     configure({ id: 1, name: 'Fixture', url: base, api_key: 'synthetic-key', timeout: 1 });
     handler = (_request, response) => { response.writeHead(401); response.end('{"message":"private-token"}'); };
     const result = await check(previous);

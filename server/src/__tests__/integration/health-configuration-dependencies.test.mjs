@@ -125,3 +125,30 @@ test.each(['tmdb', 'omdb', 'tavily'])('%s still selects newest active configurat
         expect(coordinator.snapshot()[service].failure.code).toBe('configuration_changed');
     });
 });
+
+test.each(['connection_probe', 'connection_configuration'])('%s failures are retired after a saved correction', async stage => {
+    const reader = await getPool().connect(), writer = await getPool().connect();
+    const coordinator = createHealthObservationCoordinator();
+    let probes = 0;
+    try {
+        await reader.query('SET search_path TO health_dependencies, public');
+        const accepted = await coordinator.run('omdb', async (previous, guard) => {
+            const config = await readHealthConfiguration(previous, 'omdb',
+                () => reader.query(healthConfigurationQuery('omdb')), guard);
+            expect(config.ok).toBe(true);
+            probes++;
+            return { status: 'disconnected', failure: { stage, code: 'authentication_failed' } };
+        });
+        await writer.query('UPDATE health_dependencies.omdb_config SET requests_today=123');
+        await coordinator.reconcile();
+        expect(coordinator.snapshot().omdb).toBe(accepted);
+        await writer.query("UPDATE health_dependencies.omdb_config SET api_key='corrected fixture key'");
+        await coordinator.reconcile();
+        expect(coordinator.snapshot().omdb).toMatchObject({ status: 'unknown',
+            failure: { code: 'configuration_changed', stage: 'configuration_reconciliation' } });
+        expect(probes).toBe(1);
+    } finally {
+        await reader.query('RESET search_path');
+        reader.release(); writer.release();
+    }
+});

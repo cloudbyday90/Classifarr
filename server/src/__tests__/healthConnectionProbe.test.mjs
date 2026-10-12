@@ -46,6 +46,14 @@ test('only explicit success advances last success', async () => {
     expect(result.responseTime).toBeGreaterThanOrEqual(0);
 });
 
+test.each(['quota_exhausted', 'rate_limited', 'authentication_failed', 'configuration_invalid', 'private-unrecognized-code', '__proto__'])('only allowlisted failure codes are exposed: %s', async code => {
+    const result = buildConnectionProbeHealthState(previous, await measureConnectionProbe(async () =>
+        ({ success: false, code, error: 'private-provider-message' })));
+    expect(result.failure.code).toBe(['private-unrecognized-code', '__proto__'].includes(code) ? 'connection_failed' : code);
+    expect(result.lastSuccessfulCheck).toBe(previous.lastSuccessfulCheck);
+    expect(JSON.stringify(result)).not.toContain('private-provider-message');
+});
+
 test.each([
     [['unknown'], 'unknown'], [['unknown', 'disconnected'], 'unknown'],
     [['unknown', 'connected'], 'partial'], [['disconnected'], 'disconnected'],

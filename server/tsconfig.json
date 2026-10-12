@@ -19,6 +19,8 @@
   "include": [
     "src/services/healthConnectionProbe.mjs",
     "src/services/healthProbeRequest.mjs",
+    "src/services/healthArrProbe.mjs",
+    "src/services/healthMetadataProbe.mjs",
     "src/services/healthCheckAiProvider.mjs",
     "src/services/healthCheckMediaServer.mjs",
     "src/services/healthConfigurationRead.mjs",

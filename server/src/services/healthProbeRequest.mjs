@@ -11,10 +11,15 @@ export function healthProbeUrl(base, path) {
     return url.href;
 }
 
-export async function readHealthProbeJson(url, headers = {}) {
+/** @param {{ params?: Record<string, unknown>, timeout?: number, rejectUnauthorized?: boolean }} options */
+export async function readHealthProbeJson(url, headers = {}, options = {}) {
+    const timeout = Number.isFinite(options.timeout) && options.timeout > 0
+        ? Math.min(options.timeout, 10_000) : 10_000;
     const response = await httpGet(url, {
         headers: { Accept: 'application/json', ...headers },
-        timeout: 10_000,
+        params: options.params,
+        timeout,
+        rejectUnauthorized: options.rejectUnauthorized !== false,
         maxResponseBytes: 1_048_576,
         redirect: 'error',
     });
