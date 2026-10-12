@@ -25,6 +25,10 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Performance diagnostics** — Add an isolated, synthetic description-corpus
+  profiler that separates client reads, preparation and database plans, samples
+  owned-session waits, and verifies bounded concurrent reads and lock recovery.
+  Reports retain only aggregates; production queries and safeguards are unchanged.
 - **Catalog mapping and recovery** — Library-agnostic source/catalog checks and
   explicit administrator-approved whole-work or season mappings preserve Plex,
   Jellyfin and Emby grouping. Fresh, bounded evidence checks identify ambiguous,

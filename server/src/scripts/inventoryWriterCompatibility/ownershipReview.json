@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "offline_description_corpus_profile",
+      "classification": "unresolved",
+      "reason": "Reviewed the 2026-10-11 synthetic fixture, measurement and runner with their standalone CLI. The CLI creates a disposable database with generated credentials, accepts no connection override, pins its local image and verifies Docker resource limits. Fixed schema-derived tables are installed in a new description_corpus_profile namespace only after a disposable-database guard. Only synthetic setup writes and a deliberate held-lock control use write transactions; measured production corpus SELECTs use read-only transactions with unchanged 15-second statement and two-second lock deadlines. Indirect SQL analysis gaps remain unresolved; this is not production write authority.",
+      "followUp": "Retain actual PostgreSQL result-fingerprint, source-conflict exclusion, concurrent-read, lock-timeout, rollback and public-table preservation tests, plus CLI image/resource/cleanup refusal checks. No live data, provider requests or application workers are admitted. Re-review these modules and the CLI if connection, fixture DDL, bounds or cleanup capabilities change; the name guard alone is not a security boundary against a caller who controls code. Do not represent synthetic query measurements as production ownership or retained-memory evidence."
+    },
+    {
       "id": "description_refresh_diagnostic_wrapper",
       "classification": "unresolved",
       "reason": "Reviewed the 2026-10-11 repository wrapper and its observation helper. The only change wraps the existing transaction in failure-only WeakMap metadata collection with fixed SQLSTATE categories and bounded monotonic durations, then rethrows the same object exception. SQL, parameters, transaction ownership, 15-second statement and two-second lock limits are unchanged. Indirect query targets remain explicit analysis debt; diagnostics do not authorize inventory writes.",
@@ -554,6 +560,9 @@
     }
   ],
   "entries": [
+    {"path":"server/src/scripts/descriptionCorpusProfile/fixture.mjs","digest":"52c4712b38f799c45d7bdcb1a39985c16e5793e9d375314f5bf636592ff64f53","analysisDigest":"4dbfb9478cfae21a84ac2e6eb30961d21072f32425adfa8f68e89157a1e1db4a","review":"offline_description_corpus_profile"},
+    {"path":"server/src/scripts/descriptionCorpusProfile/measurement.mjs","digest":"0b3383c7588fc0d5616d6ee12524d5a302ab9742a1a3f89ca73e3c3cdf32cfce","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"offline_description_corpus_profile"},
+    {"path":"server/src/scripts/descriptionCorpusProfile/runner.mjs","digest":"1e52d6f5893a342fdced0ffa25545e484500d17750e9b8a05a861c11cac53559","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"offline_description_corpus_profile"},
     {"path":"database/migrations/20261010_140000_classification_metadata_failure_context.sql","digest":"1c6ca3d6b1e589f8a0cc094ed6b4f9b0d1a9565fa4ac4852202e44fa5ee6d90a","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"classification_metadata_failure_context"},
     {"path":"database/migrations/20261009_230000_comparison_incident_ledger.sql","digest":"8dd150919a5f33ebdd17cdf452103729945e475115656856fa899cfa995c14b6","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"comparison_incident_schema"},
     {"path":"server/src/services/evaluationInventoryReadiness.mjs","digest":"932bc5837db49757bcdf75043ddf0efa42ab2923bb3387b8c8f0daadabed0234","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_evaluation_inventory"},

@@ -135,3 +135,8 @@ Profile the corpus read on a disposable restored fixture under controlled load,
 including database waits and concurrent worker/cache activity, before selecting a
 query or memory fix. Keep all safeguards unchanged. The new stage, duration and
 incident reference provide a useful comparison point, not proof of contention.
+
+Follow-up: the [controlled corpus profile](description-corpus-profile-outcome.md)
+now supplies a synthetic read/concurrency baseline without importing application
+data. It does not reproduce the historic timeout or complete the worker/cache
+retained-memory investigation.
