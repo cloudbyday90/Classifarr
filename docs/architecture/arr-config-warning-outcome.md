@@ -51,7 +51,7 @@ the actual single source-mapped diagnostic. Strict component checking passed.
 The browser runners emitted the existing NO_COLOR/FORCE_COLOR environment
 warning. No full backend coverage run or combined coverage ratchet is claimed;
 existing backend reports must not be presented as current evidence. Exact image
-verification follows the clean implementation commit and is recorded separately.
+verification is recorded separately below.
 
 ## Open PR inventory
 
@@ -73,6 +73,38 @@ wait), zero pending text embeddings and 6,815 pending image embeddings. A unique
 ten-item consumer batch took 8 ms, with zero writes/provider calls. One
 `cached_vectors_incomplete` warning occurred since startup; this UI change does
 not resolve optional vector coverage or existing identity reviews.
+
+## Rebuilt image evaluation
+
+The no-cache Compose build completed from clean implementation commit
+`f75ea398aa3c08a807c283c79ea2fb8ffea101b2`. Local artifact identities:
+
+- Image/index ID: `sha256:caa1cf08879b548cbd82776665781894dc81b6295d33a2e2104e8fb9fe7f86f7`.
+- Exported manifest: `sha256:68a517e4ccf738a9e3dfd580439166db8a3c2828ca7bbc4d6de4a8c749d6d80a`.
+- Exported config: `sha256:86b956e259af39a3a95b99dfa98d6cc74ddcb4b4409c0d904a9a2c1efdad750f`.
+- OCI revision matched the implementation commit before fixture execution and
+  after replacement. These are local artifact identities, not published digests
+  or signed registry provenance. The image-evidence follow-up commit is docs only.
+
+`dumpSchema()` ran after the build against the exact image in a fresh disposable
+container: ordinary entrypoint, no network or ports, 1 GiB, two CPUs and 256 PIDs.
+The generated schema remained unchanged through
+`20261010_220000_source_catalog_mappings.sql`, including 22 seed migrations.
+Fresh-database consumer checks passed with no invented pending work, images or
+unresolved identities. The owned fixture container and data directory were
+removed and their absence verified. The private backup and rollback image remain.
+
+Only local Classifarr was replaced, with `--no-build --pull never --no-deps`.
+It started at 14:44:53 UTC and passed Docker health and HTTP `/health` (200).
+Running image and source revision matched the tested artifact: zero restarts,
+OOM false, UID/GID 1000:1000, read-only root, 2 GiB and no-new-privileges retained.
+
+At 14:45:23 UTC the read-only consumer probe returned unchanged baseline counts;
+its unique ten-item batch took 5 ms with zero writes/provider calls. No WARN/ERROR
+was recorded since startup at that observation point. This short startup check
+does not establish sustained memory behavior or completed optional-vector work.
+Unraid, shared Plex/Ollama and other local containers were not changed by these
+checks. No release, tag or version bump was created.
 
 ## Next recommendation
 
