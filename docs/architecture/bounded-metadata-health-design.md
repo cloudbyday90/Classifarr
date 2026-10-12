@@ -83,6 +83,10 @@ do not alter Unraid, Plex or the shared Ollama service. Record outcomes separate
 Discovered through search/GitHub MCP and reviewed on 2026-10-12. The bounds and
 minimal validators above are Classifarr design choices, not provider guarantees.
 
+- [OWASP API4 resource consumption](https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption/):
+  enforce execution, memory, payload and interaction limits; account for external
+  provider costs. Supports the bounded-probe approach and separate cadence review,
+  not these specific numeric thresholds.
 - [Radarr API](https://radarr.video/docs/api/) and its linked
   [OpenAPI document](https://github.com/Radarr/Radarr/blob/develop/src/Radarr.Api.V3/openapi.json):
   status GET, SystemResource fields and header API-key authentication.
