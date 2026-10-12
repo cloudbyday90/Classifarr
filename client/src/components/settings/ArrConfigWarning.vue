@@ -12,7 +12,10 @@
     class="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-4 mb-6"
   >
     <div class="flex items-start gap-3">
-      <span class="text-2xl">⚠️</span>
+      <span
+        class="text-2xl"
+        aria-hidden="true"
+      >⚠️</span>
       <div class="flex-1">
         <h3 class="font-semibold text-yellow-400 mb-2">
           Incomplete Configuration Detected
@@ -26,18 +29,20 @@
             Your <strong>{{ config.name }}</strong> configuration is missing a Quality Profile. 
             Content won't be added to {{ config.type }} until you select one.
           </p>
-          <button
-            class="mt-2 text-sm px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-md transition-colors font-medium"
-            @click="navigateToConfig(config.type)"
+          <RouterLink
+            class="inline-block mt-2 text-sm px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 rounded-md transition-colors font-medium"
+            :to="config.route"
           >
             Configure {{ config.type }} Now
-          </button>
+          </RouterLink>
         </div>
       </div>
       <button
         class="text-gray-400 hover:text-white transition-colors"
         title="Dismiss"
-        @click="dismiss"
+        type="button"
+        aria-label="Dismiss incomplete configuration warning"
+        :onClick="dismiss"
       >
         ✕
       </button>
@@ -46,41 +51,35 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import api from '@/api'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
+import { parseArrConfigWarnings } from '@/utils/arrConfigWarning'
 
-const router = useRouter()
-const hasIncompleteConfigs = ref(false)
+const props = defineProps({
+  loadStatus: {
+    type: /** @type {import('vue').PropType<() => Promise<unknown>>} */ (Function),
+    required: true,
+  },
+})
+/** @type {import('vue').Ref<import('@/utils/arrConfigWarning').ArrConfigWarning[]>} */
 const incompleteConfigs = ref([])
 const dismissed = ref(false)
+const hasIncompleteConfigs = computed(() => !dismissed.value && incompleteConfigs.value.length > 0)
+let unmounted = false
+
+onUnmounted(() => { unmounted = true })
 
 onMounted(async () => {
-  await checkIncompleteConfigs()
-})
-
-const checkIncompleteConfigs = async () => {
-  if (dismissed.value) return
-  
   try {
-    const response = await api.getArrConfigStatus()
-    if (response?.incompleteConfigs) {
-      incompleteConfigs.value = response.incompleteConfigs
-      hasIncompleteConfigs.value = incompleteConfigs.value.length > 0
-    }
-  } catch (error) {
-    console.error('Failed to check arr config status:', error)
-    // Silently fail - this is a non-critical feature
+    const response = await props.loadStatus()
+    if (!unmounted) incompleteConfigs.value = parseArrConfigWarnings(response)
+  } catch {
+    // This optional warning must not expose raw transport errors or credentials.
+    if (!unmounted) console.error('Failed to check arr config status')
   }
-}
-
-const navigateToConfig = (arrType) => {
-  const route = arrType === 'Radarr' ? '/settings/radarr' : '/settings/sonarr'
-  router.push(route)
-}
+})
 
 const dismiss = () => {
   dismissed.value = true
-  hasIncompleteConfigs.value = false
 }
 </script>

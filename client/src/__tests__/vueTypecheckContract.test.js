@@ -48,6 +48,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
 import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
 import Toast from '@/components/common/Toast.vue'
+import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
 import { useToastStore } from '@/stores/toast'
 const toast = useToastStore()
 toast.success('Saved')
@@ -77,6 +78,7 @@ function acceptNumber(value) { return value.toFixed(0) }
   <ConnectionStatus status="error" :error="{ code: 'REFUSED', message: 'Unavailable', troubleshooting: ['Check the port'] }" />
   <ConnectionStatus :details="null" :error="null" />
   <Toast />
+  <ArrConfigWarning :load-status="async () => ({ incompleteConfigs: [] })" />
 </template>
 `)
     expect(result.output).toBe('')
@@ -96,6 +98,22 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'Arr warning async loader', code: '2739',
+      source: `<script setup>
+import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
+</script>
+<template><ArrConfigWarning :load-status="() => ({ incompleteConfigs: [] })" /></template>
+`,
+    },
+    {
+      name: 'Arr warning required loader', code: '2345',
+      source: `<script setup>
+import ArrConfigWarning from '@/components/settings/ArrConfigWarning.vue'
+</script>
+<template><ArrConfigWarning /></template>
+`,
+    },
     {
       name: 'connection troubleshooting shape', code: '2322',
       source: `<script setup>

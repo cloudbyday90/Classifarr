@@ -1,6 +1,40 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 
+test('Arr configuration links navigate explicitly and dismissal never submits or refetches', async ({ page }) => {
+  const errors = [], apiRequests = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    apiRequests.push(route.request().method())
+    await route.abort()
+  })
+  await page.goto('/browser-tests/fixtures/arr-config-warning.html')
+  const radarr = page.getByRole('link', { name: 'Configure Radarr Now', exact: true })
+  const sonarr = page.getByRole('link', { name: 'Configure Sonarr Now', exact: true })
+  await expect(radarr).toHaveAttribute('href', '/settings/radarr')
+  await expect(sonarr).toHaveAttribute('href', '/settings/sonarr')
+  await expect(page.getByRole('link')).toHaveCount(2)
+  await page.keyboard.press('Tab')
+  await expect(radarr).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByLabel('Current route')).toHaveText('/settings/radarr')
+  await page.keyboard.press('Tab')
+  await expect(sonarr).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByLabel('Current route')).toHaveText('/settings/sonarr')
+  await page.keyboard.press('Tab')
+  const dismiss = page.getByRole('button', { name: 'Dismiss incomplete configuration warning' })
+  await expect(dismiss).toBeFocused()
+  await expect(dismiss).toHaveAttribute('type', 'button')
+  await page.keyboard.press('Space')
+  await expect(dismiss).toHaveCount(0)
+  await expect(page.getByRole('link')).toHaveCount(0)
+  await expect(page.getByLabel('Warning form submissions')).toHaveText('0')
+  await expect(page.getByLabel('Status loads')).toHaveText('1')
+  expect(apiRequests).toEqual([])
+  expect(errors).toEqual([])
+})
+
 test('status messages stay text and teleported notifications dismiss by keyboard', async ({ page }) => {
   const errors = [], apiRequests = []
   page.on('pageerror', error => errors.push(error.message))

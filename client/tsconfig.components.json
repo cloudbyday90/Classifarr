@@ -18,6 +18,7 @@
     "src/components/common/Toggle.vue",
     "src/components/common/Slider.vue",
     "src/components/common/Spinner.vue",
-    "src/components/common/Toast.vue"
+    "src/components/common/Toast.vue",
+    "src/components/settings/ArrConfigWarning.vue"
   ]
 }

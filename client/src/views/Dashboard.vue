@@ -18,7 +18,7 @@
     <!-- <SetupBanner /> -->
     
     <!-- Arr Config Warning -->
-    <ArrConfigWarning />
+    <ArrConfigWarning :load-status="api.getArrConfigStatus" />
 
     <!-- pgvector Variant Banner -->
     <PgvectorVariantBanner />

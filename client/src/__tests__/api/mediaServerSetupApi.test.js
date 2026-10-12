@@ -68,7 +68,7 @@ describe('mediaServerSetupApi', () => {
   })
 
   it('getArrConfigStatus calls getDataRequest with correct URL', async () => {
-    const status = { radarr: true, sonarr: false }
+    const status = { incompleteConfigs: [{ id: 1, type: 'Radarr', name: 'Movies', missingField: 'quality_profile_id' }] }
     mockGetDataRequest.mockResolvedValueOnce(status)
     const result = await getArrConfigStatus()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/arr-config-status')
