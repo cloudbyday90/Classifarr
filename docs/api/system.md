@@ -77,7 +77,9 @@ presence proves which native binary a database session loaded. See the
 
 ### GET /api/system/health
 
-Get overall system health with service breakdown.
+Get database-focused readiness with a service breakdown. Its top-level `status`
+and HTTP result are not an aggregate of optional services. Use the detailed
+services endpoint below for that summary; liveness/readiness semantics are unchanged.
 
 **Authentication:** Required (API Key or JWT)
 
@@ -151,7 +153,7 @@ Get detailed health status of all services with trends and latency tracking.
 **Success Response (200):**
 ```json
 {
-  "overall": "healthy",
+  "overall": "degraded",
   "services": [
     {
       "name": "PostgreSQL",
@@ -201,9 +203,15 @@ Get detailed health status of all services with trends and latency tracking.
     }
   ],
   "summary": {
-    "total": 8,
-    "healthy": 6,
-    "unhealthy": 2
+    "total": 4,
+    "active": 4,
+    "healthy": 3,
+    "failed": 0,
+    "degraded": 1,
+    "unknown": 0,
+    "disabled": 0,
+    "notConfigured": 0,
+    "unhealthy": 1
   },
   "timestamp": "2026-02-01T12:00:00Z"
 }
@@ -213,7 +221,7 @@ Get detailed health status of all services with trends and latency tracking.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `overall` | string | Overall system health: `healthy`, `degraded`, `unhealthy` |
+| `overall` | string | Returned service observations: `healthy`, `degraded`, `unhealthy`, `unknown` |
 | `services[]` | array | Array of service health objects |
 | `services[].name` | string | Service display name (e.g., "Plex", "Radarr (4K Movies)") |
 | `services[].status` | string | Current health status (see [Service Status Values](#service-status-values)) |
@@ -228,6 +236,30 @@ Get detailed health status of all services with trends and latency tracking.
 | `summary.total` | integer | Total number of services |
 | `summary.healthy` | integer | Number of healthy services |
 | `summary.unhealthy` | integer | Number of unhealthy/degraded services |
+| `summary.active` | integer | Total excluding explicitly disabled/not-configured rows; includes unknown rows |
+| `summary.failed` | integer | Unhealthy rows, excluding degraded rows |
+| `summary.degraded` | integer | Degraded rows |
+| `summary.unknown` | integer | Unknown, missing or unsupported statuses |
+| `summary.disabled` | integer | Explicitly disabled rows |
+| `summary.notConfigured` | integer | Explicitly not-configured rows |
+
+Aggregation precedence is unhealthy, degraded, unknown, then healthy. Healthy
+requires at least one active row and every active row to report healthy. Empty
+and inactive-only lists are unknown, not healthy. `summary.unhealthy` now counts
+`failed + degraded`; previously it counted every non-healthy row, including
+unknown/inactive states. Consumers that need unresolved observations must also
+check `summary.unknown` or `overall`, not just `summary.unhealthy`.
+
+Counts describe the returned rows, not a complete installation inventory. The
+existing endpoint filters out some unconfigured services and disabled RAG and
+expands Radarr/Sonarr instances. The System page instead presents fixed service
+categories, so its denominator may differ while following the same status policy.
+
+The System page labels its response receipt time separately from individual
+probe times. Failed polling or forced refresh makes its summary unavailable
+and labels retained cards as last received results. Receipt time is not proof
+of a new check: responses may contain cached service observations. This change
+does not impose a new cache-age threshold or change probe cadence.
 
 **Example:**
 ```bash
@@ -375,7 +407,8 @@ All services report one of these status values:
 | `healthy` | Service is fully operational | Green | ✅ |
 | `degraded` | Service is functioning but with issues (high latency, partial failures) | Yellow | ⚠️ |
 | `unhealthy` | Service is not functioning | Red | ❌ |
-| `not_configured` | Service is not set up or disabled | Gray | ⚙️ |
+| `not_configured` | Service is not set up | Gray | ⚙️ |
+| `disabled` | Service is explicitly disabled | Gray | ⏸️ |
 | `unknown` | Status cannot be determined | Gray | ❓ |
 
 ### Status Mapping
@@ -384,10 +417,12 @@ The system maps internal service states to these standard statuses:
 
 ```javascript
 // From service check results:
-'connected' | 'configured' → 'healthy'
-'partial' | 'degraded'     → 'degraded'
-'error' | 'disconnected'  → 'unhealthy'
-'not configured'           → 'not_configured'
+'healthy' | 'connected' | 'available' → 'healthy'
+'partial' | 'degraded' | 'configured' | 'circuit_open' → 'degraded'
+'unhealthy' | 'error' | 'disconnected' | 'unavailable' → 'unhealthy'
+'not configured' | 'not_configured' → 'not_configured'
+'disabled' → 'disabled'
+// Any missing, malformed or unsupported value becomes 'unknown'.
 ```
 
 ---

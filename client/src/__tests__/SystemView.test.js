@@ -115,7 +115,7 @@ describe('System.vue', () => {
     expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
     expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('CPU match reported at startup')
     expect(wrapper.get('[data-testid="service-card-rag"]').text()).toContain('Degraded')
-    expect(wrapper.text()).toContain('of 12 services operational')
+    expect(wrapper.text()).toContain('of 8 active services reported healthy')
     wrapper.unmount()
   })
 
@@ -202,7 +202,8 @@ describe('System.vue', () => {
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
     api.getSystemHealth.mockRejectedValueOnce(new Error('Fixture health request failed'))
     const wrapper = await mountSystem({ pgvector: currentPgvector })
-    expect(wrapper.text()).toContain('Fixture health request failed')
+    expect(wrapper.text()).toContain('Unable to read health status')
+    expect(wrapper.text()).not.toContain('Fixture health request failed')
     expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toContain('CPU match')
     expect(wrapper.find('[data-testid="service-card-pgvector"]').exists()).toBe(false)
     wrapper.unmount()
@@ -214,5 +215,95 @@ describe('System.vue', () => {
     expect(wrapper.get('[data-testid="pgvector-compatibility-label"]').text()).toBe('Compatibility unknown')
     expect(wrapper.text()).toContain('0.8.1')
     wrapper.unmount()
+  })
+
+  it.each([{}, { ...baseHealth, rag: 'healthy', imageEmbeddings: 'unknown' }])('does not report unknown observations as operational', async health => {
+    const wrapper = await mountSystem({}, health)
+    expect(wrapper.get('[data-testid="system-health-summary"]').text()).toContain('Health status incomplete')
+    wrapper.unmount()
+  })
+
+  it('excludes inactive services and never reports an inactive-only list as healthy', async () => {
+    const health = Object.fromEntries(Object.keys(baseHealth).filter(key => key !== 'details').map(key => [key, 'disabled']))
+    const wrapper = await mountSystem({}, { ...health, imageEmbeddings: 'not configured' })
+    const summary = wrapper.get('[data-testid="system-health-summary"]')
+    expect(summary.text()).toContain('No active services to assess')
+    expect(summary.text()).toContain('0 of 0 active services')
+    expect(summary.text()).toContain('11 disabled; 1 not configured')
+    wrapper.unmount()
+  })
+
+  it('marks retained results unavailable after a poll fails and clears that state only on success', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = await mountSystem()
+    api.getSystemHealth.mockRejectedValueOnce(new Error('Private failure detail'))
+    await vi.advanceTimersByTimeAsync(30000)
+    const summary = wrapper.get('[data-testid="system-health-summary"]')
+    expect(summary.text()).toContain('Health summary unavailable')
+    expect(summary.text()).toContain('Showing last received results')
+    expect(wrapper.findAll('[data-testid^="service-card-"]')).toHaveLength(12)
+    expect(wrapper.text()).not.toContain('Private failure detail')
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(summary.text()).not.toContain('Health summary unavailable')
+    wrapper.unmount()
+    errorLog.mockRestore()
+  })
+
+  it('does not silently fall back to cached health after a forced refresh fails', async () => {
+    const wrapper = await mountSystem()
+    api.refreshSystemHealth.mockRejectedValueOnce(new Error('Private failure'))
+    await wrapper.findAll('button').find(button => button.text().includes('Refresh')).trigger('click')
+    await flushPromises()
+    expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Fresh health checks could not be completed')
+    expect(wrapper.get('[data-testid="system-health-summary"]').text()).toContain('Health summary unavailable')
+    wrapper.unmount()
+  })
+
+  it.each([null, [], 'invalid'])('rejects malformed response %j without claiming healthy', async health => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = await mountSystem({}, health)
+    expect(wrapper.get('[data-testid="system-health-summary"]').text()).toContain('No successful health response received yet')
+    expect(wrapper.text()).toContain('Unable to read health status')
+    wrapper.unmount()
+    errorLog.mockRestore()
+  })
+
+  it('waits for forced refresh before reading results and suppresses periodic reads meanwhile', async () => {
+    let resolve
+    const wrapper = await mountSystem()
+    api.refreshSystemHealth.mockReturnValueOnce(new Promise(done => { resolve = done }))
+    await wrapper.findAll('button').find(button => button.text().includes('Refresh')).trigger('click')
+    await vi.advanceTimersByTimeAsync(30000)
+    expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
+    resolve({ success: true })
+    await flushPromises()
+    expect(api.getSystemHealth).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).not.toContain('Unable to read health status')
+    wrapper.unmount()
+  })
+
+  it.each(['resolve', 'reject'])('ignores an older request that finishes via %s after the latest poll', async finish => {
+    let resolve, reject
+    api.getSystemHealth.mockReturnValueOnce(new Promise((done, fail) => { resolve = done; reject = fail }))
+    const wrapper = await mountSystem()
+    await vi.advanceTimersByTimeAsync(30000)
+    const before = wrapper.get('[data-testid="system-health-summary"]').text()
+    if (finish === 'resolve') resolve({ ...baseHealth, database: 'disconnected' })
+    else reject(new Error('Obsolete failure'))
+    await flushPromises()
+    expect(wrapper.get('[data-testid="system-health-summary"]').text()).toBe(before)
+    wrapper.unmount()
+  })
+
+  it('does not accept a response or keep polling after unmount', async () => {
+    let resolve
+    api.getSystemHealth.mockReturnValueOnce(new Promise(done => { resolve = done }))
+    const wrapper = await mountSystem()
+    wrapper.unmount()
+    resolve(baseHealth)
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(60000)
+    expect(api.getSystemHealth).toHaveBeenCalledTimes(1)
   })
 })

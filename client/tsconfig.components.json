@@ -21,6 +21,7 @@
     "src/components/common/Toast.vue",
     "src/components/settings/ArrConfigWarning.vue",
     "src/components/PgvectorVariantBanner.vue",
-    "src/components/system/PgvectorStartupPanel.vue"
+    "src/components/system/PgvectorStartupPanel.vue",
+    "src/components/system/SystemHealthSummary.vue"
   ]
 }

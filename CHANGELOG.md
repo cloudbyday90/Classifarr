@@ -28,6 +28,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   current versus stale or mismatched evidence with specific, safe operator guidance.
   Separate pgvector startup compatibility from Database/RAG health and service
   totals; unknown or stale CPU evidence no longer becomes a healthy service.
+  Make overall service-health summaries explicit about unknown and inactive
+  services, and label retained results after failed checks instead of claiming
+  current health. Keep database readiness and security safeguards unchanged.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached

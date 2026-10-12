@@ -30,6 +30,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   getSystemHealth,
+  getSystemServicesHealth,
   getSystemStatus,
   getImageIndexProgress,
   refreshSystemHealth,
@@ -38,6 +39,13 @@ import {
 } from '../../api/systemHealthApi'
 
 describe('systemHealthApi', () => {
+  it('returns explicit detailed aggregate counts without mutation', async () => {
+    const result = { overall: 'unknown', summary: { active: 1, unknown: 1, healthy: 0, disabled: 2 } }
+    mockGetDataRequest.mockResolvedValueOnce(result)
+    expect(await getSystemServicesHealth()).toBe(result)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/system/health/services')
+    expect(mockPost).not.toHaveBeenCalled()
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

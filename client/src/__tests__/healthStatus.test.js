@@ -108,7 +108,7 @@ describe('healthStatus.js', () => {
       expect(result.status).toBe('healthy')
       expect(result.healthy).toBe(3)
       expect(result.total).toBe(3)
-      expect(result.message).toBe('All systems operational')
+      expect(result.message).toBe('All active services reported healthy')
     })
 
     it('returns degraded when some services are degraded', () => {

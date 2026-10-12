@@ -66,29 +66,12 @@
       </div>
 
       <!-- Overall Status Banner -->
-      <div
-        v-if="overallHealth && !loadingHealth"
-        class="p-4 rounded-lg border transition-all mb-4"
-        :class="[getStatusConfig(overallHealth.status).bgClass, getStatusConfig(overallHealth.status).borderClass]"
-      >
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <span class="text-4xl">{{ getStatusConfig(overallHealth.status).icon }}</span>
-            <div>
-              <div class="text-xl font-semibold">
-                {{ overallHealth.message }}
-              </div>
-              <div class="text-sm opacity-90 mt-1">
-                {{ overallHealth.healthy }} of {{ overallHealth.total }} services operational
-                <span
-                  v-if="lastUpdated"
-                  class="text-xs ml-2"
-                >• {{ formatLastUpdated(lastUpdated) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SystemHealthSummary
+        :services="healthServices"
+        :loading="loadingHealth"
+        :available="!error && !!lastUpdated"
+        :received-at="lastUpdated?.toISOString() || ''"
+      />
 
       <!-- Filter/Search Section -->
       <div class="flex gap-3 mb-4">
@@ -478,9 +461,11 @@ import Button from '@/components/common/Button.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import ImageIndexProgressCard from '@/components/system/ImageIndexProgressCard.vue'
 import PgvectorStartupPanel from '@/components/system/PgvectorStartupPanel.vue'
+import SystemHealthSummary from '@/components/system/SystemHealthSummary.vue'
 import api from '@/api'
 import { getServiceIcon } from '@/utils/serviceIcons'
-import { getStatusConfig, getLatencyClass, getOverallHealth, calculateTrend, getTrendArrow, getTrendTooltip } from '@/utils/healthStatus'
+import { getStatusConfig, getLatencyClass, calculateTrend, getTrendArrow, getTrendTooltip } from '@/utils/healthStatus'
+import { normalizeServiceHealthStatus as normalizeStatus } from '@/utils/serviceHealthSummary'
 
 // Auto-refresh interval (30 seconds)
 const AUTO_REFRESH_INTERVAL_MS = 30000
@@ -495,6 +480,7 @@ const searchQuery = ref('')
 const statusFilter = ref('')
 const expandedServices = ref(new Set())
 let autoRefreshInterval = null
+let healthRequestGeneration = 0
 
 const healthServices = ref([
   { name: 'Database', key: 'database', status: 'unknown', description: 'PostgreSQL connection', responseTime: null, lastCheck: null },
@@ -521,10 +507,6 @@ const systemStatus = ref({
   pgvector: null
 })
 
-const overallHealth = computed(() => {
-  return getOverallHealth(healthServices.value)
-})
-
 const filteredServices = computed(() => {
   let services = healthServices.value
   
@@ -544,23 +526,6 @@ const filteredServices = computed(() => {
   
   return services
 })
-
-const normalizeStatus = (status) => {
-  if (!status) return 'unknown'
-  const statusLower = status.toLowerCase()
-  
-  // Map old status values to new canonical values
-  if (statusLower === 'connected') return 'healthy'
-  if (statusLower === 'available') return 'healthy'
-  if (statusLower === 'partial') return 'degraded'
-  if (statusLower === 'configured') return 'degraded'
-  if (statusLower === 'unavailable') return 'unhealthy'
-  if (statusLower === 'disconnected' || statusLower === 'error') return 'unhealthy'
-  if (statusLower === 'not configured') return 'not_configured'
-  if (statusLower === 'disabled') return 'disabled'
-  
-  return status
-}
 
 const buildRagDescription = (rag) => {
   if (!rag) return 'Retrieval-augmented classification readiness'
@@ -582,10 +547,10 @@ const buildRagDescription = (rag) => {
 }
 
 const loadHealth = async (silent = false) => {
+  const generation = ++healthRequestGeneration
   if (!silent) {
     loadingHealth.value = true
   }
-  error.value = null
   
   try {
     const [response, aiConfigResponse] = await Promise.all([
@@ -593,6 +558,10 @@ const loadHealth = async (silent = false) => {
       api.getAIConfig().catch(() => ({}))
     ])
     
+    if (generation !== healthRequestGeneration) return
+    if (!response || typeof response !== 'object' || Array.isArray(response)) {
+      throw new Error('Invalid health response')
+    }
     if (response) {
       const statusMap = response
       healthDetails.value = statusMap.details || {}
@@ -871,13 +840,17 @@ const loadHealth = async (silent = false) => {
       ]
 
       lastUpdated.value = new Date()
+      error.value = null
     }
   } catch (err) {
+    if (generation !== healthRequestGeneration) return
     console.error('Failed to load health status:', err)
-    error.value = err.message || 'Failed to load health status'
+    error.value = 'Unable to read health status. Retry to check again.'
   } finally {
-    loadingHealth.value = false
-    refreshing.value = false
+    if (generation === healthRequestGeneration) {
+      loadingHealth.value = false
+      refreshing.value = false
+    }
   }
 }
 
@@ -897,12 +870,19 @@ const loadStatus = async () => {
 
 const refreshHealth = async () => {
   refreshing.value = true
+  const generation = ++healthRequestGeneration
   // Force refresh from backend
   try {
     await api.refreshSystemHealth()
   } catch {
-    // Fallback to regular load
+    if (generation === healthRequestGeneration) {
+      error.value = 'Fresh health checks could not be completed. Retry to check again.'
+      loadingHealth.value = false
+      refreshing.value = false
+    }
+    return
   }
+  if (generation !== healthRequestGeneration) return
   await loadHealth()
 }
 
@@ -960,19 +940,6 @@ const getServiceTooltip = (service) => {
     tooltip += `\nStale embeddings: ${service.metadata.staleCount || 0}`
   }
   return tooltip
-}
-
-const formatLastUpdated = (date) => {
-  if (!date) return ''
-  const now = new Date()
-  const diffMs = now - date
-  const diffSecs = Math.floor(diffMs / 1000)
-  
-  if (diffSecs < 10) return 'just now'
-  if (diffSecs < 60) return `${diffSecs}s ago`
-  const diffMins = Math.floor(diffSecs / 60)
-  if (diffMins < 60) return `${diffMins}m ago`
-  return formatLastCheck(date.toISOString())
 }
 
 const getHealthBadgeVariant = (status) => {
@@ -1049,11 +1016,12 @@ onMounted(() => {
   
   // Setup auto-refresh every 30 seconds
   autoRefreshInterval = setInterval(() => {
-    loadHealth(true)
+    if (!refreshing.value) loadHealth(true)
   }, AUTO_REFRESH_INTERVAL_MS)
 })
 
 onUnmounted(() => {
+  healthRequestGeneration++
   // Cleanup interval
   if (autoRefreshInterval) {
     clearInterval(autoRefreshInterval)

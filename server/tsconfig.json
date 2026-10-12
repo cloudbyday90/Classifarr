@@ -17,6 +17,7 @@
     "esModuleInterop": true
   },
   "include": [
+    "src/services/serviceHealthSummary.mjs",
     "src/services/pgvectorSelectionReport.mjs",
     "src/services/pgvectorSelectionRecorder.mjs",
     "src/services/pgvectorStatus.mjs",

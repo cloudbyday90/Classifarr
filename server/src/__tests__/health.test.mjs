@@ -297,7 +297,7 @@ describe('Health Endpoints', () => {
       expect(response.body.timestamp).toBeDefined();
     });
 
-    test('should return degraded status when some services are unhealthy', async () => {
+    test('should return unhealthy status when some services are unhealthy', async () => {
       healthCheckService.getAllServicesHealth.mockResolvedValue({
         database: { status: 'connected', lastCheck: new Date().toISOString(), responseTime: 5 },
         rag: { status: 'unavailable', lastCheck: new Date().toISOString(), pgvector: false, embeddingsTable: false, prewarm: false, indexes: { text: false, image: false, imageRequired: false, missing: [] }, embeddingCount: 0, staleCount: 0 },
@@ -314,8 +314,22 @@ describe('Health Endpoints', () => {
         .set('Authorization', `Bearer ${mockToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.overall).toBe('degraded');
+      expect(response.body.overall).toBe('unhealthy');
       expect(response.body.summary.unhealthy).toBeGreaterThan(0);
+    });
+
+    test.each([
+      [{}, 'unknown', { total: 0, active: 0, healthy: 0 }],
+      [{ queueWorker: { status: 'disabled' } }, 'unknown', { total: 1, active: 0, disabled: 1 }],
+      [{ database: { status: 'connected' }, queueWorker: { status: 'unexpected' } }, 'unknown', { total: 2, active: 2, healthy: 1, unknown: 1 }],
+      [{ aiProvider: { status: 'configured' } }, 'degraded', { total: 1, healthy: 0, degraded: 1, unhealthy: 1 }],
+    ])('summarizes incomplete/inactive observations conservatively: %j', async (health, overall, summary) => {
+      healthCheckService.getAllServicesHealth.mockResolvedValue(health);
+      const response = await request(app).get('/api/system/health/services').set('Authorization', `Bearer ${mockToken}`);
+      expect(response.status).toBe(200);
+      expect(response.body.overall).toBe(overall);
+      expect(response.body.summary).toMatchObject(summary);
+      expect(response.body.services.every(service => ['healthy', 'degraded', 'unhealthy', 'disabled', 'not_configured', 'unknown'].includes(service.status))).toBe(true);
     });
 
     test('should handle errors gracefully', async () => {

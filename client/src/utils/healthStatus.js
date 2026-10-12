@@ -76,10 +76,10 @@ export const HEALTH_STATUS = {
  * Get status configuration for a given status
  * 
  * @param {string} status - Health status value
- * @returns {object} Status configuration object
+ * @returns {typeof HEALTH_STATUS.unknown} Status configuration object
  */
 export function getStatusConfig(status) {
-  return HEALTH_STATUS[status] || HEALTH_STATUS.unknown
+  return HEALTH_STATUS[/** @type {keyof typeof HEALTH_STATUS} */ (status)] || HEALTH_STATUS.unknown
 }
 
 /**
@@ -96,53 +96,13 @@ export function getLatencyClass(latency) {
   return 'text-red-500'
 }
 
-/**
- * Calculate overall health from services
- * Returns aggregate health status and statistics
- * 
- * @param {Array} services - Array of service health objects
- * @returns {object} Overall health summary
- */
-export function getOverallHealth(services) {
-  if (!services || services.length === 0) {
-    return {
-      status: 'unknown',
-      message: 'No services configured',
-      healthy: 0,
-      total: 0
-    }
-  }
-  
-  const total = services.length
-  const healthy = services.filter(s => s.status === 'healthy').length
-  const unhealthy = services.filter(s => s.status === 'unhealthy').length
-  const degraded = services.filter(s => s.status === 'degraded').length
-  
-  let status = 'healthy'
-  let message = 'All systems operational'
-  
-  if (unhealthy > 0) {
-    status = 'unhealthy'
-    message = `${unhealthy} service${unhealthy > 1 ? 's' : ''} down`
-  } else if (degraded > 0) {
-    status = 'degraded'
-    message = `${degraded} service${degraded > 1 ? 's' : ''} degraded`
-  }
-  
-  return {
-    status,
-    message,
-    healthy,
-    total,
-    unhealthy,
-    degraded
-  }
-}
+// Aggregate policy is separate from presentation and latency/trend helpers.
+export { getOverallHealth } from './serviceHealthSummary'
 
 /**
  * Calculate trend based on status and latency changes
- * @param {object} current - Current service state
- * @param {object} previous - Previous service state
+ * @param {{ status?: string, responseTime?: number | null } | null} current - Current service state
+ * @param {{ status?: string, responseTime?: number | null } | null} previous - Previous service state
  * @returns {'improving'|'degrading'|'stable'|null}
  */
 export function calculateTrend(current, previous) {
@@ -151,6 +111,7 @@ export function calculateTrend(current, previous) {
   }
   
   // Status score for comparison
+  /** @type {Record<string, number>} */
   const statusScore = {
     'healthy': 3,
     'connected': 3,
@@ -167,7 +128,7 @@ export function calculateTrend(current, previous) {
     'unknown': 0
   };
   
-  const currentScore = statusScore[current.status] || 0;
+  const currentScore = statusScore[current.status ?? 'unknown'] || 0;
   const previousScore = statusScore[previous.status] || 0;
   
   // Status improved
@@ -209,7 +170,7 @@ export function getTrendArrow(trend) {
 
 /**
  * Get tooltip text for trend
- * @param {object} service - Service with trend data
+ * @param {{ trend?: string | null }} service - Service with trend data
  * @returns {string} Tooltip text
  */
 export function getTrendTooltip(service) {

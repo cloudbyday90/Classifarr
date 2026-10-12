@@ -1,27 +1,9 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
+import { normalizeServiceHealthStatus, summarizeServiceHealth } from '../services/serviceHealthSummary.mjs';
 
 export function mapServiceStatus(status) {
-  switch (status) {
-    case 'connected':
-    case 'configured':
-    case 'available':
-      return 'healthy';
-    case 'partial':
-    case 'degraded':
-    case 'circuit_open':
-      return 'degraded';
-    case 'error':
-    case 'disconnected':
-    case 'unavailable':
-    case 'not configured':
-    case 'not_configured':
-      return 'unhealthy';
-    case 'disabled':
-      return 'unknown';
-    default:
-      return 'unknown';
-  }
+  return normalizeServiceHealthStatus(status);
 }
 
 export function registerHealthCheckRoutes(router, { healthCheckService, appVersion }) {
@@ -182,7 +164,7 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
     if (services.queueWorker) {
       const queueWorkerService = {
         name: services.queueWorker.name,
-        status: services.queueWorker.status,
+        status: mapServiceStatus(services.queueWorker.status),
         latency: services.queueWorker.latency || 0,
         timestamp: services.queueWorker.timestamp,
       };
@@ -192,18 +174,12 @@ export function registerHealthCheckRoutes(router, { healthCheckService, appVersi
       allServices.push(queueWorkerService);
     }
 
-    const healthyCount = allServices.filter((service) => service.status === 'healthy').length;
-    const totalCount = allServices.length;
-    const overallStatus = healthyCount === totalCount ? 'healthy' : 'degraded';
+    const aggregate = summarizeServiceHealth(allServices);
 
     return sendData(res, {
-      overall: overallStatus,
+      overall: aggregate.overall,
       services: allServices,
-      summary: {
-        total: totalCount,
-        healthy: healthyCount,
-        unhealthy: totalCount - healthyCount,
-      },
+      summary: aggregate.summary,
       timestamp: services.timestamp,
     });
   }));

@@ -22,6 +22,13 @@ export function getSystemHealth() {
   return getDataRequest('/system/health')
 }
 
+/** Detailed observations with active, inactive and unknown summary counts.
+ * Unlike /system/health's database readiness status, overall summarizes returned services.
+ */
+export function getSystemServicesHealth() {
+  return getDataRequest('/system/health/services')
+}
+
 /** Unwrapped status; pgvector.selection carries validated, scoped startup evidence. */
 export function getSystemStatus() {
   return getDataRequest('/system/status')
@@ -44,6 +51,7 @@ export function browseFolders(path) {
 }
 
 const systemHealthApi = {
+  getSystemServicesHealth,
   getSystemHealth,
   getSystemStatus,
   getImageIndexProgress,
