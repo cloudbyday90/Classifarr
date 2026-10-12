@@ -17,6 +17,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   contents, retaining strict policy contracts and bounded client errors.
 - **Web navigation** — Refresh Vue Router with regression coverage for protected
   navigation, encoded return links and legacy query/hash redirects.
+- **Settings and notifications** — Preserve plain-text connection results alongside
+  structured diagnostics, strengthen shared status/toast contracts, and name
+  notification dismiss buttons for keyboard and assistive-technology users.
 - **Developer tooling** — Refresh Node 24 type declarations across frontend and
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached

@@ -61,7 +61,13 @@
         </div>
       </div>
       <div
-        v-if="details"
+        v-if="typeof details === 'string'"
+        class="text-sm border-t border-gray-700 pt-3"
+      >
+        {{ details }}
+      </div>
+      <div
+        v-else-if="details"
         class="space-y-2 text-sm border-t border-gray-700 pt-3"
       >
         <div
@@ -104,14 +110,14 @@
         </div>
       </div>
       <div
-        v-if="error"
+        v-if="errorDetails"
         class="space-y-3 text-sm border-t border-gray-700 pt-3"
       >
         <div class="text-red-300">
-          {{ error.code ? `${error.code}: ` : '' }}{{ error.message }}
+          {{ errorDetails.code ? `${errorDetails.code}: ` : '' }}{{ errorDetails.message }}
         </div>
         <div
-          v-if="error.troubleshooting?.length"
+          v-if="errorDetails.troubleshooting?.length"
           class="space-y-1"
         >
           <div class="text-gray-400 flex items-center gap-2">
@@ -119,7 +125,7 @@
           </div>
           <ul class="list-disc list-inside text-gray-300 space-y-1 ml-6">
             <li
-              v-for="tip in error.troubleshooting"
+              v-for="tip in errorDetails.troubleshooting"
               :key="tip"
             >
               {{ tip }}
@@ -154,11 +160,11 @@
         </div>
       </div>
       <div
-        v-if="error"
+        v-if="errorDetails"
         class="space-y-3 text-sm border-t border-gray-700 pt-3"
       >
         <div class="text-yellow-300">
-          {{ error }}
+          {{ errorDetails.code ? `${errorDetails.code}: ` : '' }}{{ errorDetails.message }}
         </div>
       </div>
     </div>
@@ -169,13 +175,29 @@
 import { computed } from 'vue'
 import Spinner from './Spinner.vue'
 
+/**
+ * @typedef {object} ConnectionDetails
+ * @property {string} [serverName]
+ * @property {string} [version]
+ * @property {Record<string, unknown>} [additionalInfo]
+ *
+ * @typedef {object} ConnectionError
+ * @property {string} [code]
+ * @property {string} [message]
+ * @property {string[]} [troubleshooting]
+ */
+
 const props = defineProps({
-  status: { type: String, default: 'idle' }, // idle, testing, success, error
+  status: { type: String, default: 'idle' }, // idle, testing, success, error, unknown, warning
   serviceName: { type: String, default: 'service' },
-  details: { type: Object, default: null },
-  error: { type: Object, default: null },
+  details: { type: /** @type {import('vue').PropType<string | ConnectionDetails | null>} */ ([String, Object]), default: null },
+  error: { type: /** @type {import('vue').PropType<string | ConnectionError | null>} */ ([String, Object]), default: null },
   lastChecked: { type: Date, default: null }
 })
+
+const errorDetails = computed(() => typeof props.error === 'string'
+  ? { message: props.error }
+  : props.error)
 
 const statusClasses = computed(() => ({
   'idle': 'border-gray-700 bg-gray-800/50',
@@ -186,6 +208,7 @@ const statusClasses = computed(() => ({
   'warning': 'border-yellow-700 bg-yellow-900/20'
 }[props.status]))
 
+/** @param {Date | null} date */
 const formatTime = (date) => {
   if (!date) return ''
   const diff = Date.now() - date.getTime()

@@ -46,6 +46,14 @@ import TagInput from '@/components/common/TagInput.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Slider from '@/components/common/Slider.vue'
+import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+import Toast from '@/components/common/Toast.vue'
+import { useToastStore } from '@/stores/toast'
+const toast = useToastStore()
+toast.success('Saved')
+toast.warning('Check the host', 'Connection')
+const id = toast.addToast({ type: 'info', message: 'Ready', duration: 0 })
+toast.removeToast(id)
 /** @param {string} value */
 function acceptText(value) { return value.toUpperCase() }
 /** @param {boolean} value */
@@ -63,6 +71,12 @@ function acceptNumber(value) { return value.toFixed(0) }
   <Select :options="[{ value: 1, label: 'One' }]" :on-update:model-value.camel="acceptText" />
   <Toggle :model-value="true" :on-update:model-value.camel="acceptBoolean" />
   <Slider :model-value="50" :on-update:model-value.camel="acceptNumber" />
+  <ConnectionStatus status="success" details="Connected!" :last-checked="new Date()" />
+  <ConnectionStatus status="success" :details="{ serverName: 'Example', version: '1', additionalInfo: { Libraries: 10 } }" />
+  <ConnectionStatus status="warning" error="Check the host" />
+  <ConnectionStatus status="error" :error="{ code: 'REFUSED', message: 'Unavailable', troubleshooting: ['Check the port'] }" />
+  <ConnectionStatus :details="null" :error="null" />
+  <Toast />
 </template>
 `)
     expect(result.output).toBe('')
@@ -82,6 +96,54 @@ const count = ref(3)
   }, 35_000)
 
   test.each([
+    {
+      name: 'connection troubleshooting shape', code: '2322',
+      source: `<script setup>
+import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+</script>
+<template><ConnectionStatus status="error" :error="{ troubleshooting: [42] }" /></template>
+`,
+    },
+    {
+      name: 'connection server name shape', code: '2322',
+      source: `<script setup>
+import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+</script>
+<template><ConnectionStatus :details="{ serverName: 42 }" /></template>
+`,
+    },
+    {
+      name: 'connection timestamp', code: '2322',
+      source: `<script setup>
+import ConnectionStatus from '@/components/common/ConnectionStatus.vue'
+</script>
+<template><ConnectionStatus last-checked="2026-10-12" /></template>
+`,
+    },
+    {
+      name: 'toast kind', code: '2322',
+      source: `<script setup>
+import { useToastStore } from '@/stores/toast'
+useToastStore().addToast({ type: 'danger' })
+</script><template><span>Toast</span></template>
+`,
+    },
+    {
+      name: 'toast removal ID', code: '2345',
+      source: `<script setup>
+import { useToastStore } from '@/stores/toast'
+useToastStore().removeToast('1')
+</script><template><span>Toast</span></template>
+`,
+    },
+    {
+      name: 'toast convenience message', code: '2345',
+      source: `<script setup>
+import { useToast } from '@/stores/toast'
+useToast().error({ message: 'No raw error objects' })
+</script><template><span>Toast</span></template>
+`,
+    },
     {
       name: 'setup macro prop without explicit Vue imports', code: '2339',
       source: `<script setup>

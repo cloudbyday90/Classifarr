@@ -1,6 +1,37 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 
+test('status messages stay text and teleported notifications dismiss by keyboard', async ({ page }) => {
+  const errors = [], apiRequests = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    apiRequests.push(route.request().method())
+    await route.abort()
+  })
+  await page.goto('/browser-tests/fixtures/status-feedback.html')
+  await expect(page.getByText('Connection failed: <img src=x onerror="alert(1)">', { exact: true })).toBeVisible()
+  await expect(page.getByText('Connection successful!', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Show sample notifications' }).click()
+  const saved = page.getByRole('button', { name: 'Dismiss notification: Saved sample', exact: true })
+  await expect(saved).toHaveAttribute('type', 'button')
+  // The production Toast Teleport is active, not a test stub.
+  expect(await saved.evaluate(button => button.closest('#app'))).toBeNull()
+  await page.keyboard.press('Tab')
+  await expect(saved).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(saved).toHaveCount(0)
+  await expect(page.getByLabel('Remaining notifications')).toHaveText('1')
+  const remaining = page.getByRole('button', { name: 'Dismiss notification: Check sample connection', exact: true })
+  await remaining.focus()
+  await page.keyboard.press('Space')
+  await expect(remaining).toHaveCount(0)
+  await expect(page.getByLabel('Remaining notifications')).toHaveText('0')
+  await expect(page.getByLabel('Status form submissions')).toHaveText('0')
+  await expect(page.locator('img')).toHaveCount(0)
+  expect(apiRequests).toEqual([])
+  expect(errors).toEqual([])
+})
+
 test('tag commands preserve drafts and focus without submitting a form', async ({ page }, testInfo) => {
   const errors = [], apiRequests = []
   page.on('pageerror', error => errors.push(error.message))

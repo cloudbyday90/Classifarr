@@ -92,4 +92,13 @@ describe('useToastStore', () => {
 
     expect(store.toasts).toHaveLength(1)
   })
+
+  it('late expiry of an already dismissed toast cannot remove a newer toast', () => {
+    const store = useToastStore()
+    const old = store.addToast({ message: 'old', duration: 1000 })
+    store.removeToast(old)
+    const current = store.addToast({ message: 'current', duration: 0 })
+    vi.advanceTimersByTime(1000)
+    expect(store.toasts.map(toast => toast.id)).toEqual([current])
+  })
 })

@@ -30,7 +30,9 @@
           </div>
           <button
             class="opacity-60 hover:opacity-100"
-            @click="removeToast(toast.id)"
+            type="button"
+            :aria-label="`Dismiss notification: ${toast.title || toast.message || toast.type}`"
+            :onClick="() => removeToast(toast.id)"
           >
             ×
           </button>
@@ -48,6 +50,7 @@ const toastStore = useToastStore()
 const { toasts } = storeToRefs(toastStore)
 const { removeToast } = toastStore
 
+/** @param {import('@/stores/toast').ToastType} type */
 const toastClasses = (type) => ({
   'success': 'bg-green-900/90 border-green-700 text-green-100',
   'error': 'bg-red-900/90 border-red-700 text-red-100',
@@ -55,6 +58,7 @@ const toastClasses = (type) => ({
   'info': 'bg-blue-900/90 border-blue-700 text-blue-100'
 }[type])
 
+/** @param {import('@/stores/toast').ToastType} type */
 const toastIcon = (type) => ({
   'success': '✅',
   'error': '❌',

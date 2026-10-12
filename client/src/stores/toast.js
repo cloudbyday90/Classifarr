@@ -19,10 +19,19 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+/**
+ * @typedef {'success' | 'error' | 'warning' | 'info'} ToastType
+ * @typedef {{ id: number, type: ToastType, title: string, message: string }} ToastEntry
+ * @typedef {{ type?: ToastType, title?: string, message?: string, duration?: number }} ToastOptions
+ * @typedef {(message: string, title?: string) => number} ToastAction
+ */
+
 export const useToastStore = defineStore('toast', () => {
+  /** @type {import('vue').Ref<ToastEntry[]>} */
   const toasts = ref([])
   let idCounter = 0
 
+  /** @param {ToastOptions} options */
   const addToast = ({ type = 'info', title = '', message = '', duration = 5000 }) => {
     const id = ++idCounter
     toasts.value.push({ id, type, title, message })
@@ -34,15 +43,20 @@ export const useToastStore = defineStore('toast', () => {
     return id
   }
 
+  /** @param {number} id */
   const removeToast = (id) => {
     const index = toasts.value.findIndex(t => t.id === id)
     if (index > -1) toasts.value.splice(index, 1)
   }
 
   // Convenience methods
+  /** @type {ToastAction} */
   const success = (message, title) => addToast({ type: 'success', title, message })
+  /** @type {ToastAction} */
   const error = (message, title) => addToast({ type: 'error', title, message })
+  /** @type {ToastAction} */
   const warning = (message, title) => addToast({ type: 'warning', title, message })
+  /** @type {ToastAction} */
   const info = (message, title) => addToast({ type: 'info', title, message })
 
   return { toasts, addToast, removeToast, success, error, warning, info }

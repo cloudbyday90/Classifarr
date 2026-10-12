@@ -158,6 +158,31 @@ describe('Toast.vue', () => {
   })
 
   describe('removal', () => {
+    it('names each non-submit dismiss button and removes only the selected toast', async () => {
+      mountToast()
+      toastStore.addToast({ title: 'Saved', message: 'First', duration: 0 })
+      toastStore.addToast({ message: 'Second', duration: 0 })
+      toastStore.addToast({ duration: 0 })
+      await flushPromises()
+      const buttons = wrapper.findAll('button')
+      expect(buttons.map(button => button.attributes('aria-label'))).toEqual([
+        'Dismiss notification: Saved', 'Dismiss notification: Second', 'Dismiss notification: info',
+      ])
+      expect(buttons.every(button => button.attributes('type') === 'button')).toBe(true)
+      await buttons[1].trigger('click')
+      expect(toastStore.toasts.map(toast => toast.message)).toEqual(['First', ''])
+    })
+
+    it('escapes titles and messages rather than interpreting markup', async () => {
+      mountToast()
+      const text = '<img src=x onerror="alert(1)">'
+      toastStore.addToast({ title: text, message: text, duration: 0 })
+      await flushPromises()
+      expect(getBodyText()).toContain(text)
+      expect(wrapper.find('img').exists()).toBe(false)
+      expect(wrapper.get('button').attributes('aria-label')).toBe(`Dismiss notification: ${text}`)
+    })
+
     it('removes toast when close button is clicked', async () => {
       mountToast()
       toastStore.addToast({ type: 'success', message: 'Temporary', duration: 0 })
