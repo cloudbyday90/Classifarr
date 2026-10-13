@@ -21,7 +21,7 @@ Sources discovered through search MCP and opened on 2026-10-13:
 - [OMDb key plans](https://www.omdbapi.com/apikey.aspx) specify a 1,000-request
   daily free allowance; [OMDb API documentation](https://www.omdbapi.com/) describes
   ordinary title/ID/search requests. No separate free health endpoint was found.
-- [RFC 9111, freshness](https://www.rfc-editor.org/rfc/rfc9111.html#section-4.2)
+- [RFC 9111, freshness](https://www.rfc-editor.org/rfc/rfc9111.html)
   distinguishes age from freshness lifetime; reuse must not reset the observation
   time. This informs our application policy, not a claim of HTTP-cache compliance
   or permission to reuse metadata contrary to provider cache directives.
