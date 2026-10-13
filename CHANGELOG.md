@@ -5,191 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md) | [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
+Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md) | [October 2026 through v0.49.0](docs/changelog/CHANGELOG-2026-10-releases-through-0.49.0.md) | [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md) | [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
 
 ## [Unreleased]
 
-### Changed
+## [v0.49.2-beta] - 2026-10-13
 
-- **HTTP runtime** — Update Express response handling with regression coverage
-  for valid response framing, downloads, request limits and sanitized errors.
-  Refresh request validation to reject oversized collections before parsing their
-  contents, retaining strict policy contracts and bounded client errors.
-- **Web navigation** — Refresh Vue Router with regression coverage for protected
-  navigation, encoded return links and legacy query/hash redirects.
-- **Settings and notifications** — Preserve plain-text connection results alongside
-  structured diagnostics, strengthen shared status/toast contracts, and name
-  notification dismiss buttons for keyboard and assistive-technology users.
-  Validate incomplete Arr configuration warnings, link only to the matching
-  provider's settings, and discard responses that arrive after leaving the page.
-  Make pgvector compatibility notices resilient to blocked browser storage and
-  explain reported CPU/build constraints without promising a restart will fix them.
-  Record pgvector startup reasons and scoped timestamps atomically, exposing
-  current versus stale or mismatched evidence with specific, safe operator guidance.
-  Separate pgvector startup compatibility from Database/RAG health and service
-  totals; unknown or stale CPU evidence no longer becomes a healthy service.
-  Make overall service-health summaries explicit about unknown and inactive
-  services, and label retained results after failed checks instead of claiming
-  current health. Expire cached health using actual check times and heartbeat
-  cadence, showing overdue checks and specific refresh/clock/scheduler guidance.
-  Distinguish failed configuration reads from absent settings, keeping unknown
-  services visible with safe database/schema/access diagnostics and check references.
-  Share overlapping health checks and reject results whose configuration changed
-  during the check, preventing obsolete completions and stale aggregate results.
-  Revalidate completed health caches in the background so committed configuration
-  changes from other processes retire outdated results without extra provider probes.
-  Ignore unrelated usage counters and cache timestamps when validating reviewed
-  connection settings; retain credential, endpoint and active selection checks.
-  Keep hover status current as health cards refresh.
-  Correct AI/media-server probes to use current saved settings and authenticated,
-  bounded reads. Failed connection-test results no longer appear healthy; cloud
-  AI configuration is distinguished from a verified connection.
-  Use one bounded Arr health request per instance, validate metadata-provider
-  responses, and retain safe authentication/quota failure reasons without exposing
-  provider data or changing richer settings-page connection tests.
-  Include System-page OMDb health checks in the shared request budget and pacing,
-  distinguishing skipped checks from provider outages without renewing old success.
-  Apply the same budget and pacing to automatic OMDb SSL-recovery checks, rejecting
-  stale credential results and retaining unfinished enrichment for retry.
-  Share provider-requested waits from both OMDb probe paths with ordinary lookups,
-  preserving cooldowns across restarts without applying old-key responses to new settings.
-  Reuse briefly retained, verified OMDb lookups to avoid redundant health and SSL
-  probes, preserving check times and discarding evidence after newer failures,
-  overlapping requests or SSL pauses; current settings and request limits still apply.
-  Keep database readiness and security safeguards unchanged.
-  Simplify System Information to concise version, build and CPU facts, removing
-  internal startup references and explanations while retaining actionable warnings.
-- **Developer tooling** — Refresh Node 24 type declarations across frontend and
-  backend and update dependency analysis, while preserving runtime versions,
-  install restrictions and compatibility checks. Verify both uncached and cached
-  analysis without weakening dependency rules.
-  Preserve and verify exact rollback images before local Docker rebuilds and
-  container replacement; failed builds leave the existing container in place.
-  Keep database backups separate and reject missing or conflicting rollback evidence.
-  Refresh Vue build and typechecking tools with positive and negative compiler
-  contracts, retaining the supported Vue, TypeScript and Node runtime versions.
-  Verify the installed Vue compiler API and exact lockfile alignment; retain the
-  client TypeScript compatibility pin after reproducing the native-major blocker.
-  Run the CSRF source contract before parallel UI tests without relaxing its checks.
-  Refresh browser testing with matched Playwright and Chromium versions, and guard
-  against dependency-chain drift while retaining runtime-aligned Node declarations.
-  Keep frontend test and coverage tooling aligned and reject invalid test filters
-  that previously could report success without running the intended checks.
-  Add opt-in phase diagnostics for intermittent frontend test timeouts, retaining
-  the original assertions, coverage, isolation and deadlines.
-  Bound asynchronous source reads in the CSRF contract after diagnostics isolated
-  blocking file I/O; preserve every scanned file and fail on unreadable sources.
-  Align routine Node declaration update proposals with the deployed runtime major,
-  retaining compatible updates, security-only eligibility and compatibility gates.
-- **Security automation** — Refresh the shared CodeQL analysis and SARIF-upload
-  action pins, preserving least-privilege permissions, scan coverage and failure
-  gates with workflow regression checks.
+**TL;DR:** Review and recover unresolved media identities without rearranging your
+libraries, understand why evaluation or background work is waiting, and see
+health results that reflect the current settings. Database diagnostics,
+bounded recovery, and safer local rebuilds improve operation without relaxing
+ownership, memory, quota or routing safeguards.
+
+The [complete development record](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md)
+preserves the original Unreleased entries, consolidated on 2026-10-13.
 
 ### Added
 
-- **Performance diagnostics** — Add an isolated, synthetic description-corpus
-  profiler that separates client reads, preparation and database plans, samples
-  owned-session waits, and verifies bounded concurrent reads and lock recovery.
-  Reports retain only aggregates; production queries and safeguards are unchanged.
-  Correct memory units in retry/profiling diagnostic containers and verify Docker
-  plus kernel limits before fixture work, with cleanup checks after failures.
-  Completed refresh-cycle reports now correlate cache occupancy, worker shutdown
-  and memory reference points without changing application memory safeguards.
-- **Catalog mapping and recovery** — Library-agnostic source/catalog checks and
-  explicit administrator-approved whole-work or season mappings preserve Plex,
-  Jellyfin and Emby grouping. Fresh, bounded evidence checks identify ambiguous,
-  missing or reused episode IDs and distinguish catalog membership from identity
-  approval. Owned library sync applies only complete verified mappings; partial
-  mappings remain unresolved. Saved status, audit records and revocation separate
-  approval from completion, and distinguish previously applied mappings being
-  rechecked from repairs awaiting their first verification. Review shows the exact typed catalog works checked,
-  actionable episode-level exclusions and durable, sanitized failure reasons;
-  interrupted checks remain unconfirmed and cached-source failures retain cooldowns.
-  On-demand candidate lookup explains declared-ID matches, missing records and
-  other-scope results without guessing, selecting a draft or approving a mapping.
-  A read-only identifier audit explains catalog agreement and remaining gaps;
-  parent-ID agreement never substitutes for complete scope verification or consent.
-  Mapping previews now combine fresh parent-ID and complete-scope findings in one
-  rechecked report, exposing disagreement without granting automatic repair authority.
-  Episode review distinguishes missing source identifiers from absent proposed
-  catalog positions, with specific next steps and no guessed identity repairs.
-  Explicit, human-confirmed episode mappings support missing IDs and alternate
-  orders without changing the media server. Typed target review, separate consent,
-  duplicate protection and source-change reapproval keep incomplete groups blocked.
-  Review shows bounded source and catalog titles together, without treating titles
-  as identity proof; changed review context requires a fresh confirmation.
-  Reviewed standalone-movie exceptions preserve TV source grouping while keeping
-  movie identities separate and excluded from TV-learning evidence.
-  Season descriptions retain their typed scope for
-  retrieval and optional vector backfill, without becoming arbitrary parent IDs
-  or supplying whole-work-only comparison models. Existing conflicts are not
-  automatically approved on upgrade; ownership and memory safeguards remain.
-- **Container shutdown diagnostics** — Database liveness failures now include
-  bounded stage timings, timeout and cancellation details, supervisor resource
-  context, and a shared reference linking the last healthy check to recovery or
-  shutdown. Ownership checks, deadlines and memory safeguards are unchanged.
+- **Media identity recovery** — Library-agnostic, administrator-reviewed mappings
+  preserve Plex, Jellyfin and Emby grouping across whole works, seasons and
+  individual episodes. Fresh provider checks, typed candidate lookup and
+  read-only identity audits explain conflicting or missing IDs; metadata alone
+  is not identity proof. Incomplete groups remain unresolved, and changed or
+  revoked approvals are rechecked before owned sync/backfill can use them.
+- **Mixed-media and scoped evidence** — Reviewed movie exceptions preserve TV
+  placement without teaching that movies belong in TV libraries. Season-scoped
+  descriptions support typed retrieval and optional vectors without inventing
+  a parent identity or whole-work comparison. Upgrades never approve mappings
+  or modify source media automatically.
+- **Database and resource diagnostics** — Bounded startup, shutdown and runtime
+  records correlate database readiness, timeouts, cancellation and supervisor
+  events. Synthetic profiling follows description preparation/query plans,
+  concurrent locks, workers, snapshots and caches across complete refresh cycles;
+  measurements distinguish process, container and kernel accounting. This is
+  investigation tooling, not a production heap dump or a leak-free guarantee.
+
+### Changed
+
+- **System health and information** — Concise system information separates
+  pgvector startup compatibility from live database readiness. Health cards and
+  tooltips share current status, check times and cadence; inactive, unconfigured,
+  unknown and overdue states are distinct. Saved-settings changes invalidate old
+  results, while unrelated usage counters do not.
+- **Provider checks and recovery** — AI, media-server, Radarr/Sonarr, TMDb and
+  OMDb checks validate current configuration and bounded responses instead of
+  equating configuration with health. Concurrent probes are shared and stale
+  completions rejected. OMDb health and TLS recovery share credential-specific
+  quotas/pacing; persisted waits survive restart, and verified recent lookups
+  retain their original timestamp instead of manufacturing fresh health.
+- **Settings and web navigation** — Connection messages, configuration warnings
+  and accessible dismissible notifications use clearer wording. Protected Vue
+  navigation retains encoded return paths and legacy query/hash behavior;
+  pgvector notices tolerate unavailable browser storage without claiming that
+  startup compatibility establishes database health.
+- **Local deployment and tooling** — Smart rebuilds retain and verify the exact
+  running image before replacing a mutable tag, without taking the service down
+  first. Image retention does not replace an app-data/database backup or prove
+  downgrade compatibility. Build, test, dependency-analysis and Node 24 type
+  tooling are refreshed with aligned browser/coverage versions; TypeScript major
+  pins remain deliberate and Dependabot can propose eligible updates.
 
 ### Fixed
 
-- **Description refresh diagnostics** — Preserve bounded failure stages, database
-  error categories, timings and shared incident references from background recovery
-  through scheduler reports. Distinguish database cancellations from provider
-  failures without exposing query contents or changing retry and memory safeguards.
-- **Embedding inventory consistency** — Count each classification once across
-  overlapping libraries and use one shared, deterministic artwork selection rule
-  for statistics and backfill. Inactive or identity-conflicted inventory cannot
-  supply fallback artwork; source grouping and unresolved identity safeguards
-  remain unchanged.
-- **Classification failure recovery** — Preserve safe metadata-failure categories,
-  stop automatic retries for confirmed missing TMDb records, and explain the next
-  check in Command Center. An upgrade backfill restores known failure-stage
-  context on eligible legacy errors without changing identities or replaying work.
-  Scheduled stale-decision recovery now commits a bounded queue/history handoff
-  atomically, preserving task provenance and preventing partial or repeated
-  admission without changing identities, routing consent or retry budgets.
-- **Library identity recovery and diagnostics** — Independently verified catalog
-  candidates can use exact alternative titles when the year and fresh source
-  evidence agree, preserving retry and ownership safeguards. Unresolved-item
-  details name the detected catalog provider and explain why artwork and descriptions do not establish a
-  valid identity. Guidance distinguishes conflicting IDs from title/year checks
-  and avoids rematching a correct title merely to clear a warning. Identity
-  disagreements remain unresolved. An opt-in, read-only cross-reference diagnostic
-  separates missing catalog mappings from contradictory matches, with bounded
-  requests and aggregate-only IMDb/TVDB breakdowns. Missing series mappings and
-  results for other media types do not authorize dropping an ID or rematching
-  a correctly grouped series. Memory safeguards remain unchanged.
-- **Runtime configuration** — Update environment loading so undefined optional
-  settings preserve configured defaults and command-line quiet mode honors env
-  files, while explicit options retain precedence.
-- **Comparison incident tracking** — New comparison warnings close automatically
-  after verified recovery, including across restarts when database ownership and
-  the inspected configuration/model match. A bounded, atomic incident ledger
-  retains original evidence and a recovery reference. Unrelated, manually resolved and
-  historical warnings remain untouched; memory and completeness safeguards are unchanged.
-- **CI image pulls** — Trusted main-branch tests use a dedicated Docker Hub
-  read-only credential with automatic logout, bounded transient-login retries
-  and sanitized connectivity diagnostics. Database checks compare Docker CLI
-  and Testcontainers pulls without sharing publishing credentials or exposing
-  secrets to PRs; quota and authentication failures remain blocking.
-- **Evaluation visibility** — Command Center separates completed policy replay
-  from saved comparison coverage and AI-capture configuration. Unsupported
-  selections, missing responses, disabled capture and stale results now have
-  distinct explanations. Current-run backfill scan progress, queued work and a
-  saved checkpoint reference explain inventory waits; viewing the summary does
-  not start AI work or change routing, quotas or memory safeguards. Collapsed
-  console guidance explains how to inspect and deliberately configure optional
-  AI-response capture without changing deployment templates. A read-only provider
-  diagnostic distinguishes ambiguous model identities and other inspection failures
-  before enabling capture, with specific guidance for Ollama's converted-model
-  listing issue, retaining model verification and quota safeguards. Operator
-  guidance separates reserved calls, published responses and saved comparisons,
-  with explicit trial cleanup and unchanged resource admission during replay.
-- **Independent policy evaluation** — Offline replay rebuilds supported
-  inferred-only library purposes from held-out training folds, preserving
-  declared constraints and excluding tested items. Versioned results distinguish
-  the new experiment from older coverage; live policies and AI budgets are unchanged.
-- **Evaluation test isolation** — Database fixtures include current inventory
-  readiness relations, restoring integration coverage without weakening runtime checks.
+- **Classification recovery** — Metadata failures distinguish confirmed missing
+  TMDb records from retryable conditions, with actionable Command Center context.
+  Upgrade backfill repairs known legacy failure context without guessing an
+  identity or replaying routing. Stale-work recovery atomically hands off queue
+  and history state with bounded provenance instead of admitting duplicate work.
+- **Library comparisons and description refresh** — Scheduler failures retain
+  the failing database stage, error and incident timing. Matching comparison
+  incidents close only after verified recovery under the same database ownership,
+  model and configuration, including across restarts; historical/manual records
+  stay untouched. Incomplete description vectors and memory pressure still defer
+  optional comparisons rather than weakening admission checks.
+- **Embeddings and inventory** — Coverage counts distinct classifications across
+  overlapping libraries, applies deterministic artwork eligibility, and excludes
+  inactive/conflicting evidence. Unresolved-ID diagnostics explain why provider
+  metadata may exist while safe identity recovery remains blocked.
+- **Evaluation visibility and independence** — Command Center distinguishes policy
+  replay, saved comparison coverage, optional AI capture, current backfill progress
+  and checkpoint references. Missing responses, stale results and ambiguous
+  Ollama model identities have specific guidance; viewing diagnostics starts no
+  AI work. Offline inferred-purpose replay uses held-out training folds and
+  versioned results without altering live policies or AI budgets.
+- **HTTP and configuration runtime** — Express response framing, downloads,
+  request limits and sanitized errors retain regression coverage; oversized
+  validation collections are rejected before parsing. Undefined optional
+  environment-loader settings preserve defaults, quiet mode and precedence.
+
+### Security
+
+- **CI registry access and supply chain** — Trusted main-branch database checks use
+  a dedicated read-only Docker Hub pull token, bounded retries, logout and
+  sanitized diagnostics. PR jobs remain secret-free; authentication and quota
+  failures block validation. CodeQL action pins and least-privilege permissions
+  are updated without sharing publication credentials with verification jobs.
+- **Recovery boundaries** — Mapping approval remains explicit, complete and
+  scoped; source metadata, library placement and training authority stay separate.
+  Existing database ownership, memory, quota, credential and no-route safeguards
+  remain enforced. No recovery warning authorizes deleting storage or keys.
 
 ## [v0.49.1-beta] - 2026-10-08
 
@@ -254,255 +168,3 @@ preserves the original Unreleased entries, consolidated on 2026-10-08.
   while preserving IPv4/IPv6 rate-limit behavior. Memory limits, recovery
   ownership checks and the separate database privilege-hardening boundary
   are not relaxed.
-
-## [v0.49.0-beta] - 2026-10-05
-
-**TL;DR:** Safer movie/TV imports and recovery, richer library learning and
-classification review, and more reliable routing, notifications and restores.
-The runtime, user interface, security controls and release checks have also
-been modernized.
-
-This is a system-level summary of the changes since v0.48.4-beta. The
-[complete development record](docs/changelog/CHANGELOG-2026-10-pre-release.md)
-preserves every original entry, including intermediate designs and PR references.
-The development record was consolidated on 2026-10-05 without rewriting it.
-
-### Added
-
-- **Command Center and operational health** — Clear library recovery actions,
-  metadata/profile progress, AI readiness and evaluation status, with optional
-  details and bounded, read-only refreshes. Migration failures include sanitized
-  diagnostic trails and GitHub reporting guidance for unknown cases.
-- **Policy authoring and maintenance** — Revision-checked library-purpose
-  declarations, grouped draft review, overlap/cohort previews and evidence
-  digests. Inferred library traits remain suggestions, not declared policy;
-  policy-change follow-up and calibration reports cannot automatically tune rules.
-- **Quality evaluation and independent review** — Private, reproducible movie/TV
-  studies compare policy, retrieval, library profiles and AI on frozen, held-out
-  evidence. Independent-review packets, consensus, correction reports and bounded
-  recurring evaluation retain missing evidence; AI capture is opt-in and budgeted.
-  Experimental results do not grant routing authority or prove overall accuracy.
-- **On-demand maintenance and database health** — Bounded background workers
-  assess queue vacuum needs and repair eligible image-vector indexes when idle
-  and within resource budgets. Read-only health summaries and durable attempt
-  limits distinguish waiting, recovery and operator action without template changes.
-
-### Changed
-
-- **Plex, Jellyfin and Emby discovery/imports** — Shared outage recovery,
-  validated pagination and resumable full scans preserve partial inventory.
-  Pruning requires complete enumeration; missing libraries are retained and
-  can be archived reversibly after review, not deleted by discovery.
-- **Legacy import recovery and ownership** — Existing movie/TV libraries can
-  recover automatically once database safeguards reject unmodified older writers.
-  Recovery preserves inventory and resumes full import plus metadata backfill;
-  optional embedding/AI work does not hold completion open. Missing safeguards
-  produce specific repair guidance instead of unsafe takeover.
-- **Metadata enrichment and source identity** — TMDb, OMDb and web-search work
-  share durable cooldowns, quota accounting and credential-aware recovery.
-  Fair, bounded backfill preserves valid metadata, rejects conflicting or
-  cross-media identities, and provides reviewed ID repair with audit receipts.
-- **Library observations and learned profiles** — Automatic metadata,
-  description and production-company backfill feed revision-checked profiles,
-  including eligible source-only items without TMDb IDs. Coverage, freshness,
-  common traits and overlap reports distinguish missing data from measured absence.
-- **Description, semantic and image retrieval** — Reuse bounded, current vector
-  caches and learned context while excluding self-matches and stale evidence.
-  Cancellable preparation recovers in the background with specific failure
-  reasons; ordinary retrieval remains available when optional context is deferred.
-- **Classification and AI readiness** — Learned library fit and description
-  evidence improve bounded candidate comparisons. Structured proposals may abstain;
-  automatic decisions still require fresh qualifying evidence, policy thresholds
-  and existing confirmation rules. Saved Ollama readiness backfills on older
-  installs, and provider outages pause AI retries without blocking deterministic work.
-- **Queues, scheduling and resource control** — Durable scan-to-backfill handoff,
-  per-claim write guards and atomic completion survive crashes and reject stale
-  workers. Shared memory admission, non-overlapping tasks, enqueue wakeups and
-  restart-safe retry timing bound work without dropping queued items.
-- **Radarr/Sonarr routing** — Save destination decisions before provider calls,
-  verify identity and destination before success, and reconcile uncertain outcomes
-  through bounded read-only checks. Interrupted or ambiguous adds are not blindly
-  replayed; optional background verification retains durable cooldowns.
-- **Reclassification and file moves** — Restart-safe batches retain progress,
-  pause/cancel intent and journaled movie/TV moves. Recovery reconciles exact move
-  receipts rather than repeating file copies or deletions.
-- **Discord notifications and interactions** — Durable send intent, delivery
-  receipts and shared rate-limit recovery prevent unsafe retries. Administrators
-  can review uncertain delivery; cancellation, transfer limits and cleanup bound
-  requests while interaction replies remain independent.
-- **Configuration backups and restores** — Consistent snapshots preserve
-  destination mappings, preferences and optional learned evidence across changed
-  IDs. Dedicated restore mode excludes normal workers, serializes attempts and
-  blocks normal startup after incomplete verification until explicit recovery.
-- **Docker, Unraid and Synology deployment** — Updated Compose/CA examples,
-  optional media mounts, shutdown guidance and modern Synology compatibility
-  preserve existing app-data, keys and legacy settings. Compatible maintenance
-  works without a template change; full privilege separation and automatic
-  protected-identity conversion remain gated, not generally activated.
-- **Frontend and accessibility** — Calmer review summaries and progressive
-  disclosure replace dense diagnostics. Shared dialogs, tabs, forms, tag editors
-  and credential controls improve labels, keyboard/focus behavior, nested-modal
-  handling, narrow layouts and stale-request cleanup.
-- **Runtime and dependency tooling** — Refresh the Node 24.21.0 / Alpine 3.24.2
-  image, npm/npx 12.2.0, Vue ecosystem, server libraries and test/build tools.
-  Replace the affected Markdown/watch dependency chain with a bounded ESM lint
-  runner and native Node watching; retain reviewed installers and lockfiles.
-- **Architecture and developer workflows** — Continue modular ESM services,
-  centralized client APIs and stricter Vue/API contracts. Dependency, recovery
-  and release-evidence skills/runbooks document validation and authority boundaries;
-  tests use bounded workers, isolated lint-contract scheduling and cross-platform
-  process handling without relaxing assertions or coverage gates.
-- **CI, upgrades and release assurance** — Verify fresh installs, pinned-release
-  schema replay, crash/restore/routing recovery and resource limits on isolated
-  images. Release evidence is bound to source and image digest, with native
-  architecture checks; GHCR/Docker Hub `latest` promotion waits for verified
-  publication. Published notes include the reviewed release narrative alongside
-  verification evidence. Local tests and synthetic studies are not release approval.
-
-### Removed
-
-- **Unsupported music intake** — Remove unreleased music discovery and skip
-  unsupported sync/webhook classification work; supported ingestion and recovery
-  remain scoped to movies and TV.
-
-### Fixed
-
-- **History, feedback and learning** — Preserve original decisions, candidate
-  evidence, typed media identities and recording times through retries and cleanup.
-  Feedback and suggestions commit atomically, reject duplicate/conflicting
-  submissions and stale application, and avoid treating unknown outcomes as accuracy.
-- **Statistics and coverage reporting** — Correct denominators, percentage-point
-  comparisons, UTC windows and incomplete-sample handling. Fair, incremental
-  library sampling and focused queries improve large-library coverage without
-  hiding gaps or conflating imported observations with evaluated outcomes.
-- **Settings and preset mutations** — Recover lost creation/confirmation responses
-  through saved receipts instead of automatic resubmission; preserve drafts and
-  reject stale responses. Provider saves/restores consolidate equivalent legacy
-  duplicates while retaining credentials, quotas and active configuration.
-- **PostgreSQL startup, migrations and shutdown** — Bound readiness probes,
-  validate process identity, coordinate clean shutdown and keep fresh/upgrade
-  schemas consistent. Disabled import safeguards have a reviewed repair path
-  requiring a verified private backup; changed definitions or insufficient
-  privileges remain blocked rather than replaying an applied migration.
-- **Transport and runtime reliability** — Repair custom TLS dispatch, broken
-  database-client disposal, log delivery, retry timestamp precision and container
-  heap-limit detection. Cancelled or incomplete transfers remain failures, not
-  empty successful provider responses.
-
-### Security
-
-- **Administrative access and data minimization** — Restrict detailed Error Logs,
-  exports and recovery actions to current administrators. Bound diagnostics,
-  retention and aggregate reports; sensitive library evidence stays limited to
-  trusted local AI endpoints, with aggregate-only context for other providers.
-  Unexpected production server errors hide internal messages, and unknown API
-  paths return a generic JSON 404 instead of falling through to the UI.
-  Access logs, request diagnostics and API-key audit endpoints omit URL query
-  values; legacy webhook query-key authentication remains compatible.
-- **Network and supply-chain hardening** — Enforce response-size/deadline limits,
-  cancellation and vector validation; retain TLS verification by default.
-  Update vulnerable runtime/tooling dependencies and pgvector to 0.8.7
-  (CVE-2026-103484), with portable builds, integrity checks and pinned CI actions.
-  Patch proxy-address trust, indexed source-map bounds and CSS selector parsing
-  with targeted compatibility and resource-work regressions.
-  Update Markdown math and TOML tooling against inherited-option trust bypass
-  and repeated parser scans, preserving lint and dependency diagnostics.
-- **Recovery security boundary** — Compatibility safeguards contain unmodified
-  legacy writers, not a database superuser deliberately bypassing them. Stronger
-  OS/database privilege isolation remains separate work; recovery never silently
-  regenerates keys, bypasses migration checks or authorizes media routing.
-
-## [v0.48.4-beta] - 2026-08-29
-
-### Added
-
-- **Saved-model matrix coverage** — The Ollama compatibility matrix now explicitly states whether the saved primary model was among eligible locally installed models, with safe next-step guidance that does not expose provider configuration or change strict-verification authority.
-- **Ollama compatibility matrix** — AI Settings can now run a bounded, serial, media-free strict-output check across up to six server-discovered local Ollama model builds, returning only advisory allow-listed results for the current response.
-- **Ollama verification test history** — AI Settings now presents a fixed 30-day aggregate of saved Ollama verification-test outcomes, distinguishing intermittent results from recurring strict-output or availability failures without retaining configuration or test content.
-- **Tested local Ollama verification** — AI Settings can now run a bounded, media-free JSON-Schema capability test for the saved primary Ollama configuration, present its current state, and admit only current successful results to candidate-bound verification.
-- **Ollama runtime mismatch monitoring** — Classifarr now counts bounded strict-verification model-digest mismatches and records their last-observed time without storing provider text, media data, prompts, responses, or digests.
-- **Ollama runtime operations panel** — AI Settings now provides an administrator-only, cached aggregate view of strict-Ollama digest mismatch count and last-observed time, without exposing model identity, endpoint details, errors, or event history.
-- **Model-change remediation guidance** — When strict Ollama verification is invalidated by a model change, AI Settings now presents a contextual, administrator-initiated re-test of the saved configuration with aggregate-only runtime context.
-- **Queue admission diagnostics** — The Command Center now separately explains unavailable classification-worker capacity and a saved Ollama model change that blocks only strict candidate verification, with an explicit path to AI Settings.
-- **Queue decision-path telemetry** — When classification work is waiting, the Command Center now shows a cached, aggregate-only 24-hour summary of deterministic policy routes, AI attempts, AI-unavailable retries, and strict-verification abstentions.
-- **Queue telemetry operational acceptance** — The integration suite now verifies the real queue telemetry path with transaction-scoped synthetic decision records that are always rolled back.
-- **Queue telemetry HTTP acceptance** — The live-stats route now has transaction-scoped acceptance coverage that rejects unauthenticated requests before the queue service runs and confirms the authenticated response remains aggregate-only.
-
-### Fixed
-
-- **One-step Ollama verification** — Saving a changed primary Ollama target now automatically runs its bounded strict-verification test, visibly separates an unsaved selection from saved capability, and removes the redundant second save confirmation.
-- **Qwen strict verification** — Fixed the documented top-level Ollama `think: false` control for bounded strict JSON-schema probes, allowing reasoning-model verification results to be validated from the response channel without changing normal classification behavior.
-- **Ollama matrix type safety** — The server typecheck now validates the compatibility matrix's saved-configuration, probe, selection, and report contracts before CI can publish a release candidate.
-- **Ollama matrix capacity selection** — Compatibility checks now keep the explicitly saved model but skip oversized, unknown-size, and clearly embedding-only alternative models before they can consume local inference resources; AI Settings shows only an aggregate skipped count.
-- **Ollama verification fidelity** — Ollama generation now sends decoding controls in the documented runtime-options object, and AI Settings preserves and clearly reports completed-but-ineligible strict-verification results instead of showing them as untested or generically successful.
-- **Ollama strict-output delivery** — Streamed Ollama generation now forwards strict response schemas and verifies the tested model digest before candidate-bound verification runs.
-- **Ollama verification recovery** — A model digest mismatch now revokes only the matching saved strict-verification capability, explains the required re-test in AI Settings, and recognizes a current tested primary Ollama path in remediation readiness.
-- **CI validation** — Removed an unused runtime-summary singleton that caused the server Knip quality gate and its dependent release-acceptance readout to fail.
-- **Schema snapshot validation** — Regenerated the authoritative PostgreSQL 18 schema snapshot so container validation remains stable after the PostgreSQL 18.6 image update.
-
-### Security
-
-- **Ollama matrix capacity boundary** — Alternative probes now require a server-discovered, bounded artifact size and reject clear embedding indicators; no model-size, family, target, or provider output is returned to the browser.
-- **Saved-model coverage privacy** — Matrix configuration coverage is an independently allow-listed boolean with no returned host, configured model name, prompt, raw provider output, or automatic configuration change.
-- **Ollama matrix resource boundary** — The manual compatibility matrix accepts no browser-selected provider target or model list, excludes cloud-tagged models, caps and serializes probes, requests model unload, rate-limits administrator actions, rejects concurrent runs, and neither persists output nor changes strict-verification authority.
-- **Ollama history privacy boundary** — Saved-test trend data is limited to three fixed daily counters and timestamps, pruned after 30 days, served through a parameter-free administrator-only rate-limited endpoint, and never affects capability authority or routing.
-- **Local verification fail-closed controls** — Strict Ollama authority is bound to an explicit administrator test, current configuration fingerprint/revision, model digest, timeout-bounded preflight, and existing server-side candidate confirmation rules; fallbacks remain advisory.
-- **Runtime re-tag containment** — A stale worker cannot invalidate a newer save or verification test, and a mismatch remains blocked even if runtime telemetry persistence is unavailable.
-- **Runtime-observability access boundary** — The mismatch panel uses server-side administrator authorization, a dedicated post-authentication limiter, a parameterized fixed-dimension query, and an allow-listed response with no client-selected dimensions.
-- **Ollama verification action boundary** — An administrator save of a changed primary target runs exactly one existing saved-target test; out-of-band runtime drift remains manually re-testable, and no path re-admits strict verification before a successful test.
-- **Queue diagnostic privacy boundary** — Queue status exposes only fixed worker and strict-verification state IDs; it does not reveal provider configuration, model identity, digests, raw errors, media, or policy data.
-- **Decision-path telemetry boundary** — Queue telemetry reads four fixed aggregate counters from existing history, is skipped without queued classifications, and never returns item, library, policy, provider, model, prompt, response, error, or decision identifiers.
-
-### Changed
-
-- **Ollama remediation guidance** — Added a safe, manual runbook for resolving compatibility-matrix outcomes through local inspection and explicit re-testing, without automatic pulls, deletions, provider targeting, or settings changes.
-- **Client tooling** — Applied the locally tested dependency changes from open PR #520 (`@types/node`, ESLint, and `vue-tsc`); the pull request was not merged and no release was created.
-- **Security automation** — Applied the locally tested pinned CodeQL Action update from open PR #518; the pull request was not merged and no release was created.
-
-## [v0.48.3-beta] - 2026-08-28
-
-### Changed
-
-- **Second-pass candidate verification** — An adopted policy-recheck confirmation candidate now enters the same strict, candidate-bound AI verification admission path as a first-pass confirmation, while the policy engine remains the routing authority.
-- **Client tooling** — Applied the Vite 8.2.2 development-dependency update from open PR #519 locally; no pull request was merged and no release was created.
-- **Compatibility-policy maintenance** — Existing compatibility policies now provide a direct maintenance review action, and administrators can explicitly add a bounded library-profile purpose suggestion to an unsaved policy draft before normal review and save.
-- **Release hygiene** — The product-language audit now recognizes the required fresh, empty `Unreleased` changelog section after a release is cut.
-
-### Fixed
-
-- **Policy recheck review safety** — AI-call budgets, resilience gates, and provider failures now retain the deterministic confirmation candidate for operator review rather than replacing it with an unrelated baseline result.
-
-### Security
-
-- **Verification boundary consistency** — Rechecked confirmation candidates use server-owned candidate binding, provider admission before generation, and bounded status-only outcomes.
-
-## [v0.48.2-beta] - 2026-08-22
-
-Detailed engineering history is retained in the [August 2026 release archive](docs/changelog/CHANGELOG-2026-08-releases.md).
-
-### Added
-
-- **Release evidence and provider-fault gates** — Tag publication now verifies bounded evidence provenance and a disposable provider-fault recovery receipt before publishing images or a GitHub release.
-- **Local AI evaluation contract** — Reviewed fixtures, policy-context fingerprints, decision witnesses, and aggregate trend comparison make local classification evaluation reproducible without exposing raw local data.
-- **Bounded policy maintenance** — Administrators can review purpose coverage, remediate unresolved policies, and safely resume an interrupted native-purpose change through narrow, receipt-backed controls.
-- **Release and image assurance** — Added immutable image consumer smoke, release-attestation verification, installation-evidence assembly, and manifest-aware retention assessment.
-
-### Changed
-
-- **Policy-route delivery** — Split authoring, maintenance, and insight pages into independent production bundles and added a Chromium cold-load budget gate for every policy route.
-- **Release metadata contract** — Package and lockfile versions, the UI label, README marker and badge, and top release-note heading now share a deterministic pre-tag validation.
-- **AI evaluation access** — Local sweeps exchange narrowly scoped, short-lived tokens and preserve policy authority through direct and queued decision evaluation.
-- **Toolchain maintenance** — Applied reviewed client/server dependency and pinned-workflow updates while retaining ESM, lint, test, coverage, and security gates.
-
-### Fixed
-
-- **Provider recovery safety** — Transient provider failures persist as retryable, no-route work rather than an unsafe destination decision.
-- **Evaluation correctness** — Fixed scoped-route matching, API-key authentication, queued non-final grading, and temporary AI-settings ETag handling.
-- **Policy and restore reliability** — Corrected native-purpose audit persistence, pending-decision replacement, backup/restore history protection, and schema-snapshot comparison noise.
-- **Client test stability** — Isolated router initialization and bounded Vitest workers for reliable constrained-host test execution.
-
-### Security
-
-- **Policy and provider boundaries** — Preserved server-owned route authority, capability-gated AI verification, bounded recovery data, and explicit no-route behavior under provider failure.
-- **Supply-chain verification** — Enforced provenance checks for release evidence and multi-architecture images before release publication.
-- **Dependency remediation** — Updated audited client, server, and workflow dependencies, including current OSV and CodeQL action pins.

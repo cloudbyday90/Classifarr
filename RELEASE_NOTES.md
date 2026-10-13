@@ -1,6 +1,166 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.49.1-beta`. Package files use semver-safe versions such as `0.49.1-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.2-beta`. Package files use semver-safe versions such as `0.49.2-beta`.
+
+## v0.49.2-beta
+
+**Recover identities without rearranging your libraries. Understand what the system is waiting for.**
+
+This release connects media-identity recovery, evaluation visibility and service
+health with clearer operator actions. It adds a reviewed path for media that
+your server groups differently from TMDb, explains background waits without
+turning them into false successes, and improves database and resource diagnostics.
+The goal is useful recovery while preserving your library layout and the
+security, memory and quota boundaries that protect it.
+
+Classifarr has reached **20,872 Docker Hub image pulls** as of October 13, 2026
+([Docker Hub statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
+Thank you for testing and reporting issues. This counts image pulls, not users
+or unique installations, and excludes GHCR.
+
+### Before you upgrade
+
+- Back up the database and persistent app-data, including encryption keys.
+  Keep existing mounts, ownership and credentials. Do not reset imports, remove
+  migration records or regenerate keys to silence a warning.
+- This release adds database migrations for comparison incident tracking,
+  classification failure context and reviewed source-to-catalog mappings.
+  Normal startup applies them. Stop older Classifarr writers sharing this
+  database before upgrading; retaining an old image is not a database downgrade
+  plan. Restore a matching backup if rollback requires the earlier schema.
+- No new Compose or Unraid template edit is required by these changes. Existing
+  deployment requirements still apply; consult the
+  [v0.49.0-beta upgrade guidance](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.49.0-beta)
+  when upgrading from older versions. Application release publication does not
+  automatically upgrade an independently managed Ollama server.
+- Source installations continue to require Node 24.21.0 and npm/npx 12.2.0;
+  container images include the runtime. This remains a beta release.
+
+### Media identity: keep your grouping, review the evidence
+
+A title can have posters, descriptions and episode names in Plex while still
+lacking a trustworthy catalog identity. Classifarr now distinguishes those cases
+from missing metadata and gives administrators a library-agnostic recovery path
+for Plex, Jellyfin and Emby.
+
+Reviewed mappings can describe whole works, seasons and individual episodes.
+Read-only audits and fresh provider checks explain conflicting IDs, incomplete
+episode membership, missing catalog positions and ambiguous candidates. Candidate
+lookup helps prepare a mapping; a lookup or matching title is not approval.
+
+Approval is explicit and scoped to the verified source content. Partial groups
+stay unresolved until every required season and episode is verified. Changed
+source content or revoked consent is rechecked before normal owned sync/backfill
+can use the mapping. An upgrade does not automatically approve a mapping or
+modify your media server. Existing unresolved counts therefore need not drop
+to zero immediately after updating.
+
+For a standalone movie stored inside a TV show, a reviewed exception can preserve
+that placement without using the movie as evidence that other movies belong in
+a TV library. Season-level description evidence likewise remains typed and scoped:
+it can support retrieval and optional vectors without inventing a single parent
+identity or claiming whole-work comparison coverage.
+
+### Classification and background recovery: specific failures, safer retries
+
+Classification failures now distinguish confirmed missing TMDb records from
+conditions that can be retried. Command Center offers the appropriate context
+and next step. A bounded upgrade backfill repairs known legacy failure context;
+it does not guess replacements or replay a routing decision.
+
+Stale classification recovery moves queue and history state together, avoiding
+duplicate admission after interruption. Description-refresh failures retain the
+database stage and incident timing through the scheduler instead of losing the
+cause behind a generic task error.
+
+Comparison incidents can close after verified recovery, including across a
+restart, only when database ownership, model and configuration still match.
+Historical and manually managed log records remain untouched. Missing description
+vectors and memory pressure still pause optional comparison work; ordinary
+retrieval can remain available, and memory safeguards are unchanged.
+
+### Evaluation and embeddings: show progress without overstating it
+
+Command Center separates completed policy replay, saved comparison coverage,
+optional AI-response capture and inventory backfill. Current-run scan progress,
+queued work and a saved checkpoint reference help explain a wait. Disabled capture,
+missing responses, unsupported selections and stale results have distinct messages.
+Viewing these diagnostics never starts AI calls or changes routing or quotas.
+
+Read-only provider inspection identifies ambiguous Ollama model listings and
+offers guidance before capture is enabled. Reserved calls, published responses
+and saved comparisons are reported separately so they are not mistaken for the
+same work. Optional capture remains a deliberate configuration choice.
+
+Offline evaluation now rebuilds supported inferred library purposes from held-out
+training folds, excluding the items being tested. Results are versioned; this
+experiment does not change live policies or claim new measured accuracy.
+Embedding coverage also counts distinct classifications across overlapping
+libraries and consistently excludes inactive, conflicting or ineligible evidence.
+
+### Health reporting: current settings, consistent status
+
+Health cards and hover text use the same status. Unknown, not configured,
+inactive and overdue checks are no longer confused with healthy services.
+System Information is concise; pgvector startup compatibility is kept separate
+from live database readiness.
+
+AI providers, media servers, Radarr/Sonarr, TMDb and OMDb are checked against the
+current saved configuration using bounded requests and response validation.
+Saving relevant connection settings invalidates an older result, but unrelated
+usage counters do not. Shared probes avoid duplicate requests and late responses
+cannot overwrite a newer configuration's health.
+
+OMDb health checks and TLS recovery respect the same credential-specific budget
+and pacing as other OMDb work. Persisted waits survive restart. When a recent
+verified normal lookup can supply health evidence, its original timestamp stays
+visible; failures and overlapping configuration changes invalidate it.
+
+Settings connection messages, configuration warnings and dismissible notifications
+are clearer and accessible. Protected navigation preserves return paths, and
+pgvector notices remain usable when browser storage is unavailable.
+
+### Database diagnostics, resource studies and safer local rebuilds
+
+Bounded diagnostics connect database startup, readiness probes, cancellation,
+timeouts and shutdown/supervisor events through useful references. They help
+separate application failures from an external stop or a slow database without
+claiming to identify the sender of every stop signal.
+
+Synthetic studies follow complete description and comparison refresh cycles,
+including query plans, concurrent locks, workers, snapshots, caches and settled
+memory. Process measurements are distinguished from container/kernel accounting.
+These are investigation tools, not automatic production heap dumps or proof that
+every memory-pressure cause is fixed.
+
+Local smart rebuilds now protect the exact running image before its mutable tag
+is rebuilt, verify that rollback reference before replacement, and avoid taking
+the service down before a successful build. Keep a separate consistent backup:
+an image alone cannot restore changed data or guarantee schema compatibility.
+
+### Runtime, tooling and security boundaries
+
+Express response handling and bounded input validation are updated with coverage
+for downloads, framing, request limits and sanitized errors. Environment-loader
+defaults, quiet mode and precedence are preserved. Vue routing, aligned browser
+and coverage tooling, dependency analysis and Node 24 type tooling are refreshed;
+deliberate major-version compatibility pins remain in place.
+
+Trusted main-branch database CI uses a dedicated read-only Docker Hub pull token
+with bounded retries and sanitized diagnostics. PR jobs remain secret-free, and
+verification jobs do not receive image-publishing credentials. CodeQL action pins
+retain least-privilege permissions. Registry quota/authentication failures still
+block checks; they are not converted into a pass.
+
+Mapping consent, database ownership, memory limits, provider quotas and safe
+no-route behavior remain enforced throughout. No warning is a reason to remove
+those protections. Published-image provenance, installation/routing checks and
+release verification remain prerequisites for publication.
+
+### Full change record
+
+See the [system-level changelog](https://github.com/cloudbyday90/Classifarr/blob/v0.49.2-beta/CHANGELOG.md)
+and the [preserved development record](https://github.com/cloudbyday90/Classifarr/blob/v0.49.2-beta/docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md).
 
 ## v0.49.1-beta
 
