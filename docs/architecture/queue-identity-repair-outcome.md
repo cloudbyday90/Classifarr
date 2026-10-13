@@ -47,6 +47,13 @@ immutable local image, with a new empty data directory, network disabled and bou
 CPU/memory/PIDs. The new migration was applied transactionally there before dumping.
 No production or local application database was used to generate the snapshot.
 
+The first candidate-image check caught a fresh-install schema round-trip mismatch:
+PostgreSQL flattened the new attempt-budget constraint's nested `BETWEEN` expression
+on reload. The migration now uses equivalent explicit comparisons joined by `AND`,
+and the snapshot was regenerated in another owned, isolated database. Only these
+two reviewed schema digests changed; their ownership classifications and retry
+limits did not. The rejected candidate was not deployed.
+
 ## Scope and next recommendation
 
 No open PR existed at the initial CLI and GitHub MCP checks, so no random open PR

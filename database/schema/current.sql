@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-13T20:45:39.998Z
+-- Generated: 2026-10-13T21:00:46.622Z
 -- Latest Migration: 20261013_210000_queue_identity_repair.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -7999,7 +7999,7 @@ CREATE TABLE public.queue_identity_repair_receipts (
     CONSTRAINT queue_identity_repair_receipts_attempts_check CHECK (((attempts >= 1) AND (attempts <= 4))),
     CONSTRAINT queue_identity_repair_receipts_candidate_check CHECK (((jsonb_typeof(candidate) = 'object'::text) AND (octet_length((candidate)::text) <= 16000))),
     CONSTRAINT queue_identity_repair_receipts_check CHECK (((new_tmdb_id > 0) AND (new_tmdb_id <> old_tmdb_id))),
-    CONSTRAINT queue_identity_repair_receipts_check1 CHECK ((((max_attempts >= 2) AND (max_attempts <= 5)) AND (max_attempts > attempts))),
+    CONSTRAINT queue_identity_repair_receipts_check1 CHECK (((max_attempts >= 2) AND (max_attempts <= 5) AND (max_attempts > attempts))),
     CONSTRAINT queue_identity_repair_receipts_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
     CONSTRAINT queue_identity_repair_receipts_old_tmdb_id_check CHECK ((old_tmdb_id > 0)),
     CONSTRAINT queue_identity_repair_receipts_provider_revision_check CHECK ((provider_revision ~ '^[a-f0-9]{64}$'::text)),

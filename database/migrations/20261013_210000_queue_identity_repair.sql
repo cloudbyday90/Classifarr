@@ -27,7 +27,7 @@ CREATE TABLE queue_identity_repair_receipts (
     candidate jsonb NOT NULL CHECK (jsonb_typeof(candidate) = 'object' AND octet_length(candidate::text) <= 16000),
     sources jsonb NOT NULL CHECK (jsonb_typeof(sources) = 'array'),
     attempts smallint NOT NULL CHECK (attempts BETWEEN 1 AND 4),
-    max_attempts smallint NOT NULL CHECK (max_attempts BETWEEN 2 AND 5 AND max_attempts > attempts),
+    max_attempts smallint NOT NULL CHECK (max_attempts >= 2 AND max_attempts <= 5 AND max_attempts > attempts),
     confirmed_at timestamptz NOT NULL DEFAULT clock_timestamp(),
     retried_at timestamptz,
     retry_actor_id integer,
