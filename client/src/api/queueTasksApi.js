@@ -66,6 +66,18 @@ export function retryQueueIdentityRepair(taskId, data, { signal } = {}) {
   return apiClient.post(`/queue/task/${taskId}/identity-repair/retry`, data, { skipAutomaticRetry: true, signal })
 }
 
+/** @param {{ afterId?: string, signal?: AbortSignal }} options */
+export function getQueueRepairBackfill({ afterId, signal } = {}) {
+  return getDataRequest('/queue/identity-repair/backfill', {
+    params: afterId ? { afterId } : {}, skipAutomaticRetry: true, signal,
+  })
+}
+
+/** @param {object} data @param {{ signal?: AbortSignal }} options */
+export function retryQueueRepairBackfill(data, { signal } = {}) {
+  return apiClient.post('/queue/identity-repair/backfill', data, { skipAutomaticRetry: true, signal })
+}
+
 export function dismissQueueTask(taskId) {
   return apiClient.post(`/queue/task/${taskId}/dismiss`)
 }
@@ -103,6 +115,8 @@ const queueTasksApi = {
   previewQueueIdentityRepair,
   confirmQueueIdentityRepair,
   retryQueueIdentityRepair,
+  getQueueRepairBackfill,
+  retryQueueRepairBackfill,
   dismissQueueTask,
   cancelQueueTask,
   classifyQueueTask,

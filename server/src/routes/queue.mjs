@@ -23,6 +23,7 @@ import { createQueueMetadataCheckService } from '../services/queueMetadataCheckS
 import { registerQueueMetadataCheckRoute } from './queueRouteMetadataCheck.mjs';
 import { registerQueueIdentityRepairRoutes } from './queueRouteIdentityRepair.mjs';
 import { createQueueIdentityRepairService } from '../services/queueIdentityRepairService.mjs';
+import { createQueueIdentityRepairBackfill } from '../services/queueIdentityRepairBackfill.mjs';
 import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
@@ -58,6 +59,7 @@ registerQueueIdentityRepairRoutes(router, {
   limiter: metadataReviewLimiter,
   readLimiter: rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }),
   service: createQueueIdentityRepairService({ db, readProvider: readMetadataProvider }),
+  backfill: createQueueIdentityRepairBackfill({ db, readProvider: readMetadataProvider }),
 });
 
 registerRetryReadinessRoute(router, {

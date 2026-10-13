@@ -118,6 +118,6 @@ budgets, client tests, current coverage gates and an evaluated no-cache local im
 Generate the fresh schema only from an explicitly isolated database. Keep separate
 [outcome evidence](queue-identity-repair-outcome.md), including limitations.
 
-Next: evaluate opt-in, bounded backfill of already-reviewed repairs using these
-receipts, not automatic replacement approval. First observe the manual path and
-real unresolved evidence; no production mappings or blanket retries are authorized.
+Follow-up: [selected reviewed-repair backfill](queue-reviewed-backfill-design.md)
+uses these receipts for explicitly selected, bounded retry batches, not automatic
+replacement approval. No production mappings or blanket retries are authorized.

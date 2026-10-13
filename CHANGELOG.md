@@ -23,7 +23,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   a supported replacement with fresh evidence, retain a durable repair receipt,
   then separately retry the task without resetting its budget. Supported legacy
   and nested TMDb declarations are repaired together without losing request
-  context. Repaired tasks are excluded from automatic recovery and bulk retry;
+  context. Administrators can also explicitly select up to five reviewed repairs
+  for an atomic, restart-safe retry without extending approval to other requests.
+  Repaired tasks remain excluded from automatic recovery and generic Retry All;
   original webhook evidence stays intact.
 
 ### Fixed

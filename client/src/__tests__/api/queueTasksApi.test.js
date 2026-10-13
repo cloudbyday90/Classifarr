@@ -35,6 +35,8 @@ import {
   previewQueueIdentityRepair,
   confirmQueueIdentityRepair,
   retryQueueIdentityRepair,
+  getQueueRepairBackfill,
+  retryQueueRepairBackfill,
   getManualRoutingBackground,
   setManualRoutingBackground,
   getRetryReadiness,
@@ -48,6 +50,19 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('uses bounded discovery parameters and never automatically repeats selected backfill', async () => {
+    const signal = new AbortController().signal
+    mockGetDataRequest.mockResolvedValue({ items: [] })
+    expect(await getQueueRepairBackfill()).toEqual({ items: [] })
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/queue/identity-repair/backfill', { params: {}, skipAutomaticRetry: true, signal: undefined })
+    await getQueueRepairBackfill({ afterId: '23', signal })
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/queue/identity-repair/backfill', { params: { afterId: '23' }, skipAutomaticRetry: true, signal })
+    const body = { items: [{ taskId: '23', receiptId: 'fixture' }], confirmRetry: true }
+    const response = { data: { receipts: [] } }
+    mockPost.mockResolvedValue(response)
+    expect(await retryQueueRepairBackfill(body, { signal })).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/queue/identity-repair/backfill', body, { skipAutomaticRetry: true, signal })
+  })
   it('reads durable repair state through the unwrapped GET helper', async () => {
     mockGetDataRequest.mockResolvedValueOnce({ receipt: null })
     expect(await getQueueIdentityRepair(12)).toEqual({ receipt: null })

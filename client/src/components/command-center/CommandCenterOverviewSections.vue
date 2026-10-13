@@ -38,6 +38,7 @@
       v-if="expandedSections.errors"
       class="secondary-section-content"
     >
+      <QueueRepairBackfill />
       <div
         v-if="failedQueueTasks.length"
         class="errors-list"
@@ -388,6 +389,7 @@ import { queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 import QueueMetadataCheck from './QueueMetadataCheck.vue'
 import QueueIdentityRepair from './QueueIdentityRepair.vue'
+import QueueRepairBackfill from './QueueRepairBackfill.vue'
 
 defineProps({
   activeLibrariesSummary: { type: Array, default: () => [] },

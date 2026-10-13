@@ -13,19 +13,49 @@ jest.unstable_mockModule('../services/apiKeyService.mjs', () => ({ validateApiKe
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getValue: () => true }));
 const { authenticateTokenOrApiKey, requireAdmin } = await import('../middleware/apiKeyAuth.mjs');
 const { csrfProtection } = await import('../middleware/csrf.mjs');
-let app, service;
+let app, service, backfill;
 const path = '/api/queue/task/23/identity-repair';
 beforeEach(() => {
   verifyToken.mockReset().mockResolvedValue({ id: 7, role: 'admin', type: 'access' });
   validateApiKey.mockReset();
   service = Object.fromEntries(['preview', 'confirm', 'retry', 'receipt'].map(key => [key, jest.fn().mockResolvedValue({ receipt: null })]));
+  backfill = { list: jest.fn().mockResolvedValue({ items: [], nextCursor: null }), run: jest.fn().mockResolvedValue({ receipts: [] }) };
   app = express(); app.use(express.json(), cookieParser(), csrfProtection);
   const router = express.Router(); router.use(authenticateTokenOrApiKey);
-  registerQueueIdentityRepairRoutes(router, { requireAdmin, service,
+  registerQueueIdentityRepairRoutes(router, { requireAdmin, service, backfill,
     limiter: rateLimit({ windowMs: 60000, limit: 5, standardHeaders: true, legacyHeaders: false }),
     readLimiter: rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false }) });
   app.use('/api/queue', router);
   app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: 'request failed' }));
+});
+
+const batchPath = '/api/queue/identity-repair/backfill';
+test('batch discovery is a no-store read; enqueue requires cookie CSRF and passes cancellation', async () => {
+  await request(app).get(batchPath).expect(401);
+  const response = await request(app).get(`${batchPath}?afterId=23`).set('Authorization', 'Bearer test').expect(200);
+  expect(backfill.list).toHaveBeenCalledWith(7, { afterId: '23' });
+  expect(response.headers['cache-control']).toBe('no-store');
+  expect(backfill.run).not.toHaveBeenCalled();
+  await request(app).post(batchPath).set('Cookie', 'access_token=test').send({}).expect(403);
+  await request(app).post(batchPath).set('Cookie', 'access_token=test; classifarr_csrf_token=csrf-test')
+    .set('x-csrf-token', 'csrf-test').send({ confirmRetry: true }).expect(200);
+  expect(backfill.run).toHaveBeenCalledWith(7, { confirmRetry: true }, expect.any(AbortSignal));
+});
+test.each([{ role: 'user', type: 'access' }, { role: 'admin', type: 'refresh' },
+  { role: 'admin', type: 'access', token_use: 'diagnostic' }])('batch rejects principal %j', async principal => {
+  verifyToken.mockResolvedValue({ id: 7, ...principal });
+  await request(app).get(batchPath).set('Authorization', 'Bearer test').expect(403);
+  await request(app).post(batchPath).set('Authorization', 'Bearer test').send({}).expect(403);
+  expect(backfill.list).not.toHaveBeenCalled(); expect(backfill.run).not.toHaveBeenCalled();
+});
+test('batch rejects API keys and shares the manual mutation limit', async () => {
+  validateApiKey.mockResolvedValue({ id: 3, permissions: 'admin' });
+  await request(app).get(batchPath).set('x-api-key', 'test').expect(403);
+  await request(app).post(batchPath).set('x-api-key', 'test').send({}).expect(403);
+  for (let i = 0; i < 5; i++) await request(app).post(`${path}/retry`).set('Authorization', 'Bearer test').send({}).expect(200);
+  await request(app).post(batchPath).set('Authorization', 'Bearer test').send({}).expect(429);
+  await request(app).get(batchPath).set('Authorization', 'Bearer test').expect(200);
+  expect(backfill.run).not.toHaveBeenCalled();
 });
 
 test.each(['preview', 'confirm', 'retry'])('%s requires authentication and matching cookie CSRF', async action => {

@@ -93,6 +93,7 @@ the alternatives and recommendation stack. Shape-preserving atomic repair keeps
 evidence and consumers consistent; its tradeoff is a deliberately narrow write
 allowlist and continued administrator review for each replacement.
 
-Next: assess bounded, opt-in processing of already-approved repair receipts, with
+Follow-up: [selected reviewed-repair backfill](queue-reviewed-backfill-design.md)
+implements bounded, opt-in processing of already-approved repair receipts, with
 explicit retry consent, persisted limits and restart-safe outcomes. An approval
 for one task must not silently authorize other requests with the same old ID.
