@@ -30,6 +30,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   checkManualRouting,
+  checkQueueTaskMetadata,
   getManualRoutingBackground,
   setManualRoutingBackground,
   getRetryReadiness,
@@ -43,6 +44,13 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('checks a saved ID without automatic retry or caller-supplied replacement', async () => {
+    const signal = new AbortController().signal
+    const response = { data: { taskId: '12' } }
+    mockPost.mockResolvedValueOnce(response)
+    expect(await checkQueueTaskMetadata(12, { signal })).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith('/queue/task/12/metadata-check', {}, { skipAutomaticRetry: true, signal })
+  })
   it('reads background settings locally and writes only explicit enablement without retry', async () => {
     mockGetDataRequest.mockResolvedValueOnce({ enabled: false })
     expect(await getManualRoutingBackground(12)).toEqual({ enabled: false })

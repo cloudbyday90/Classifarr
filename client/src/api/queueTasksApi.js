@@ -38,6 +38,11 @@ export function retryQueueTask(taskId) {
   return apiClient.post(`/queue/task/${taskId}/retry`)
 }
 
+/** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
+export function checkQueueTaskMetadata(taskId, { signal } = {}) {
+  return apiClient.post(`/queue/task/${taskId}/metadata-check`, {}, { skipAutomaticRetry: true, signal })
+}
+
 export function dismissQueueTask(taskId) {
   return apiClient.post(`/queue/task/${taskId}/dismiss`)
 }
@@ -70,6 +75,7 @@ const queueTasksApi = {
   getQueuePending,
   getQueueFailed,
   retryQueueTask,
+  checkQueueTaskMetadata,
   dismissQueueTask,
   cancelQueueTask,
   classifyQueueTask,

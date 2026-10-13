@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-10T21:50:12.368Z
--- Latest Migration: 20261010_220000_source_catalog_mappings.sql
+-- Generated: 2026-10-13T17:48:11.516Z
+-- Latest Migration: 20261013_180000_queue_metadata_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7954,6 +7954,22 @@ COMMENT ON TABLE public.quality_evidence_study IS 'Explicitly started singleton 
 
 
 --
+-- Name: queue_metadata_recovery; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.queue_metadata_recovery (
+    task_id bigint NOT NULL,
+    probe_count smallint DEFAULT 0 NOT NULL,
+    next_probe_at timestamp with time zone DEFAULT (clock_timestamp() + '01:00:00'::interval) NOT NULL,
+    lease_token uuid,
+    last_outcome text,
+    checked_at timestamp with time zone,
+    recovered_at timestamp with time zone,
+    CONSTRAINT queue_metadata_recovery_probe_count_check CHECK (((probe_count >= 0) AND (probe_count <= 6)))
+);
+
+
+--
 -- Name: queue_startup_performance_receipts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11877,6 +11893,14 @@ ALTER TABLE ONLY public.quality_evidence_study
 
 
 --
+-- Name: queue_metadata_recovery queue_metadata_recovery_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_metadata_recovery
+    ADD CONSTRAINT queue_metadata_recovery_pkey PRIMARY KEY (task_id);
+
+
+--
 -- Name: queue_startup_performance_receipts queue_startup_performance_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13980,6 +14004,13 @@ CREATE INDEX idx_profile_refresh_inventory_latest ON public.policy_profile_refre
 
 
 --
+-- Name: idx_queue_metadata_recovery_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_queue_metadata_recovery_due ON public.queue_metadata_recovery USING btree (next_probe_at, task_id) WHERE ((recovered_at IS NULL) AND (probe_count < 6));
+
+
+--
 -- Name: idx_rag_logs_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -16059,6 +16090,14 @@ ALTER TABLE ONLY public.policy_tuning_suggestions
 
 ALTER TABLE ONLY public.policy_tuning_suggestions
     ADD CONSTRAINT policy_tuning_suggestions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id);
+
+
+--
+-- Name: queue_metadata_recovery queue_metadata_recovery_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_metadata_recovery
+    ADD CONSTRAINT queue_metadata_recovery_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.task_queue(id) ON DELETE CASCADE;
 
 
 --
@@ -18327,6 +18366,7 @@ FROM unnest(ARRAY[
     '20261005_180000_ingestion_compatibility_fence.sql',
     '20261009_230000_comparison_incident_ledger.sql',
     '20261010_140000_classification_metadata_failure_context.sql',
-    '20261010_220000_source_catalog_mappings.sql'
+    '20261010_220000_source_catalog_mappings.sql',
+    '20261013_180000_queue_metadata_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

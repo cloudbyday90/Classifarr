@@ -183,12 +183,15 @@ export class QueueReadModel {
     async getFailedTasks(limit = 20) {
         return this._withReadModelCatch('get failed tasks', async () => {
             const result = await this.db.query(
-                `SELECT id, task_type, status, priority, attempts, max_attempts,
-                error_message, source, created_at, completed_at,
-                payload
-         FROM task_queue
-         WHERE status = 'failed'
-         ORDER BY completed_at DESC
+                `SELECT t.id, t.task_type, t.status, t.priority, t.attempts, t.max_attempts,
+                t.error_message, t.current_stage, t.source, t.created_at, t.completed_at, t.payload,
+                CASE WHEN r.task_id IS NULL THEN NULL ELSE jsonb_build_object(
+                  'checks', r.probe_count, 'nextCheckAt', r.next_probe_at,
+                  'lastOutcome', r.last_outcome, 'checkedAt', r.checked_at,
+                  'recoveredAt', r.recovered_at) END AS metadata_recovery
+         FROM task_queue t LEFT JOIN queue_metadata_recovery r ON r.task_id=t.id
+         WHERE t.status = 'failed'
+         ORDER BY t.completed_at DESC
          LIMIT $1`,
                 [limit]
             );

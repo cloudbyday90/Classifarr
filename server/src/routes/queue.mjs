@@ -15,6 +15,12 @@ import { registerManualRoutingCheckRoute } from './queueRouteManualRoutingCheck.
 import { createManualRoutingCheckCoordinator } from '../services/manualRoutingCheckCoordinator.mjs';
 import { registerRetryReadinessRoute } from './queueRouteRetryReadiness.mjs';
 import { createRetryReadinessService } from '../services/retryReadinessService.mjs';
+import * as db from '../config/database.mjs';
+import { httpGet } from '../utils/httpClient.mjs';
+import { rateLimiters } from '../utils/rateLimiter.mjs';
+import { createQueueMetadataCheckProvider } from '../services/queueMetadataCheckProvider.mjs';
+import { createQueueMetadataCheckService } from '../services/queueMetadataCheckService.mjs';
+import { registerQueueMetadataCheckRoute } from './queueRouteMetadataCheck.mjs';
 import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
@@ -34,6 +40,14 @@ export const router = createQueueRouter({
   requireReadWrite,
   decisionWitnessReadService: classificationQueueDecisionWitnessReadService,
   readLibraryEvaluationStatus: () => classificationPolicyPathService.readLibraryEvaluationStatus(),
+});
+
+registerQueueMetadataCheckRoute(router, {
+  requireAdmin,
+  limiter: rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: true, legacyHeaders: false }),
+  service: createQueueMetadataCheckService({ db, readProvider: createQueueMetadataCheckProvider({
+    db, httpGet, executeRateLimited: (fn, options) => rateLimiters.tmdb.execute(fn, options),
+  }) }),
 });
 
 registerRetryReadinessRoute(router, {

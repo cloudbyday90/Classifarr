@@ -60,6 +60,10 @@
             <p class="error-meta">
               Task #{{ task.id }}
             </p>
+            <QueueMetadataCheck
+              v-if="task.task_type === 'classification' && task.current_stage === 'metadata_fetch' && ['task_metadata_not_found', 'task_metadata_fetch_failed', 'task_processing_failed'].includes(task.error_message)"
+              :task="task"
+            />
           </div>
           <div class="error-actions">
             <Button
@@ -377,6 +381,7 @@
 import { Badge, Button } from '@/components/common'
 import { queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
+import QueueMetadataCheck from './QueueMetadataCheck.vue'
 
 defineProps({
   activeLibrariesSummary: { type: Array, default: () => [] },

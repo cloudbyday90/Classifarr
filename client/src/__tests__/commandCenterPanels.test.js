@@ -33,14 +33,26 @@ describe('CommandCenter extracted panels', () => {
   it('shows metadata recovery guidance instead of internal codes without firing actions', () => {
     const wrapper = mount(CommandCenterOverviewSections, {
       props: { ...overviewHelpers, expandedSections: { errors: true }, failedQueueTasks: [
-        { id: 1, task_type: 'classification', error_message: 'task_metadata_not_found' },
-        { id: 2, task_type: 'classification', error_message: 'task_metadata_fetch_failed' },
+        { id: 1, task_type: 'classification', current_stage: 'metadata_fetch', error_message: 'task_metadata_not_found' },
+        { id: 2, task_type: 'classification', current_stage: 'metadata_fetch', error_message: 'task_metadata_fetch_failed' },
       ] }, global: { stubs: { Button: buttonStub } },
     })
-    expect(wrapper.text()).toContain('Verify the TMDb ID')
+    expect(wrapper.text()).toContain('Check saved TMDb ID')
+    expect(wrapper.text()).toContain('Eligible tasks are rechecked automatically')
     expect(wrapper.text()).toContain('original cause may no longer')
     expect(wrapper.text()).not.toContain('task_metadata_')
     expect(wrapper.emitted('retry-failed-task')).toBeUndefined()
+    expect(wrapper.findAllComponents({ name: 'QueueMetadataCheck' })).toHaveLength(2)
+    wrapper.unmount()
+  })
+  it('does not offer an ID check for unrelated classification failures', () => {
+    const wrapper = mount(CommandCenterOverviewSections, {
+      props: { ...overviewHelpers, expandedSections: { errors: true }, failedQueueTasks: [
+        { id: 1, task_type: 'classification', current_stage: 'routing', error_message: 'task_processing_failed' },
+      ] }, global: { stubs: { Button: buttonStub } },
+    })
+    expect(wrapper.findAllComponents({ name: 'QueueMetadataCheck' })).toHaveLength(0)
+    wrapper.unmount()
   })
   it('renders the processing panel as active Plex sync coverage when a sync is running', () => {
     const wrapper = mount(ProcessingPanel, {

@@ -81,6 +81,7 @@ import { registerAutomaticSourcePairSchedule } from './automaticSourcePairSchedu
 import { registerOllamaReadinessBackfillSchedule } from './ollamaReadinessBackfillScheduler.mjs';
 import { registerDiscordDeliveryDispatchSchedule } from './discordDeliveryDispatchScheduler.mjs';
 import { registerManualRoutingCheckSchedule } from './manualRoutingCheckScheduler.mjs';
+import { registerQueueMetadataRecoverySchedule } from './queueMetadataRecoveryScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -100,6 +101,7 @@ class SchedulerService {
 
     resetState() {
         this.manualRoutingCheckWorker?.stop();
+        this.queueMetadataRecoveryWorker?.stop();
         this.ollamaReadinessBackfillWorker?.stop();
         this.discordDeliveryDispatchWorker?.stop();
         this.automaticDestinationEvaluationWorker?.stop();
@@ -141,6 +143,7 @@ class SchedulerService {
         registerOllamaReadinessBackfillSchedule(this);
         registerDiscordDeliveryDispatchSchedule(this);
         registerManualRoutingCheckSchedule(this);
+        registerQueueMetadataRecoverySchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerQueueVacuumRecoverySchedule(this);
