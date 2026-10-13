@@ -108,6 +108,7 @@ These checks do not claim unrelated identity, vector or memory issues resolved.
 3. Next, evaluate reusing recent, credential-attributed lookup results for health
    and SSL recovery. Benefit: fewer synthetic requests. Cost: explicit freshness,
    failure invalidation and recovery-latency rules are required before adoption.
+   Follow-up: [recent lookup design](omdb-recent-lookup-design.md).
 
 Already admitted requests cannot be recalled. A crash or failed save can lose new
 wait advice; committed quota/base pacing remain. Incomplete, cancelled or oversized

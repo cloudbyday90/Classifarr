@@ -16,6 +16,7 @@ import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 import { createOmdbSslRecovery } from './omdbSslRecovery.mjs';
+import { omdbRecentLookup } from './omdbRecentLookup.mjs';
 import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
 import {
     buildClassificationDestinationSummary,
@@ -57,7 +58,10 @@ export class QueueTaskProcessorService {
         this.lastOmdbSslProbeAt = 0;
         this.omdbSslRecoveryEpoch = 0;
         this.omdbSslRecoveryInFlight = false;
-        this.probeOmdbSslRecovery = deps.probeOmdbSslRecovery || createOmdbSslRecovery({ db: this.db });
+        this.omdbRecentLookup = deps.omdbRecentLookup || omdbRecentLookup;
+        this.probeOmdbSslRecovery = deps.probeOmdbSslRecovery || createOmdbSslRecovery({
+            db: this.db, recentLookup: this.omdbRecentLookup,
+        });
         this.omdbCircuitWarnThrottleMs = deps.omdbCircuitWarnThrottleMs || 60_000;
         this.omdbSslWarnThrottleMs = deps.omdbSslWarnThrottleMs || parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_MS, 15 * 60 * 1000);
         this.omdbSslBlockMs = deps.omdbSslBlockMs || parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
@@ -85,6 +89,7 @@ export class QueueTaskProcessorService {
                     this.lastOmdbSslWarnAt = patch.lastOmdbSslWarnAt;
                 }
                 if (Object.prototype.hasOwnProperty.call(patch, 'omdbSslBlockedUntil')) {
+                    this.omdbRecentLookup.invalidate();
                     this.omdbSslRecoveryEpoch += 1;
                     this.omdbSslBlockedUntil = patch.omdbSslBlockedUntil;
                 }
@@ -303,6 +308,7 @@ export class QueueTaskProcessorService {
             }
 
             if (result.status === 'ssl_error') {
+                this.omdbRecentLookup.invalidate();
                 this.omdbSslBlockedUntil = now + this.omdbSslBlockMs;
                 if ((now - this.lastOmdbSslWarnAt) >= this.omdbSslWarnThrottleMs) {
                     this.lastOmdbSslWarnAt = now;
@@ -325,6 +331,7 @@ export class QueueTaskProcessorService {
     }
 
     resetOmdbState() {
+        this.omdbRecentLookup.invalidate();
         this.omdbSslRecoveryEpoch += 1;
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;

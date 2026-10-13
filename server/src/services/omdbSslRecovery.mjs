@@ -5,6 +5,8 @@ import { readHealthProbeJson } from './healthProbeRequest.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { isCertificateError } from './omdbHealth.mjs';
 import { createOmdbPacingObserver } from './omdbPacingObservation.mjs';
+import { omdbRecentLookup } from './omdbRecentLookup.mjs';
+import { readRecentOmdbLookup } from './omdbRecentLookupRead.mjs';
 
 const admissionCodes = new Set(['not_configured', 'credentials_rejected', 'invalid_configuration',
     'limit_reached', 'lookup_restart', 'paced']);
@@ -34,12 +36,16 @@ export function createOmdbSslProbe({ readJson = readHealthProbeJson } = {}) {
 
 /** Saved automatic recovery joins the same credit and pacing boundary as lookups. */
 export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = createOmdbSslProbe(),
-    observe = createOmdbPacingObserver({ database: db }) }) {
+    observe = createOmdbPacingObserver({ database: db }), recentLookup = omdbRecentLookup }) {
     return async config => {
         const expectedContext = providerCredentialContext('omdb', config);
         if (!expectedContext) return deferred('invalid_configuration');
         let admission;
         try {
+            if (recentLookup.read(expectedContext) &&
+                await readRecentOmdbLookup(db, recentLookup, expectedContext, { allowNotFound: true })) {
+                return { status: 'recovered', code: 'transport_verified' };
+            }
             admission = await reserve(db, { pacing: true, expectedContext });
         } catch (_error) {
             return deferred('admission_unavailable');
@@ -47,6 +53,7 @@ export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = 
         if (admission?.status !== 'reserved') {
             return deferred(admissionCodes.has(admission?.status) ? admission.status : 'admission_unavailable');
         }
+        const finishObservation = recentLookup.begin(admission.credentialContext);
         try {
             const result = await probe(admission.apiKey, {
                 observeResponse: response => observe(response, admission.credentialContext),
@@ -62,6 +69,8 @@ export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = 
         } catch (_error) {
             // No raw provider/database error can become a log or recovery decision.
             return deferred('probe_unavailable');
+        } finally {
+            finishObservation();
         }
     };
 }

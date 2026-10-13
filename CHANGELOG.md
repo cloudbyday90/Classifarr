@@ -53,6 +53,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   stale credential results and retaining unfinished enrichment for retry.
   Share provider-requested waits from both OMDb probe paths with ordinary lookups,
   preserving cooldowns across restarts without applying old-key responses to new settings.
+  Reuse briefly retained, verified OMDb lookups to avoid redundant health and SSL
+  probes, preserving check times and discarding evidence after newer failures,
+  overlapping requests or SSL pauses; current settings and request limits still apply.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

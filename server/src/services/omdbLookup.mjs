@@ -21,6 +21,7 @@ import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.
 import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
 import { observeOmdbPacing } from './omdbPacingObservation.mjs';
 import { rememberProviderRequest } from './providerRequestEvidence.mjs';
+import { omdbRecentLookup } from './omdbRecentLookup.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -45,12 +46,13 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 		const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
 		// Admission failures never enter provider retry handling. No DB lock spans HTTP.
 		const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
+		const finishObservation = (deps.recentLookup ?? omdbRecentLookup).begin(credentialContext, baseUrl);
 		try {
 			const params = buildParams(validApiKey);
 
 			logger.debug(`OMDb lookup by ${logLabel}`, { [logLabel]: lookupValue, attempt: attempt + 1 });
 
-			const response = await httpGet(baseUrl, {
+			const response = await (deps.httpGet ?? httpGet)(baseUrl, {
 				params,
 				timeout: requestTimeoutMs,
 				maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
@@ -60,11 +62,14 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 
 			const outcome = classifyOmdbResponse(response.data, response.status);
 			if (outcome.kind === 'success') {
-				return formatResponse(response.data);
+				const result = formatResponse(response.data);
+				finishObservation('success');
+				return result;
 			}
 			if (outcome.kind !== 'not_found') throw createOmdbProviderError(outcome);
 			logger.debug('OMDb not found', { [logLabel]: lookupValue });
 			deps.onNotFound?.(credentialContext);
+			finishObservation('not_found');
 			return null;
 		} catch (error) {
 			const status = error.response?.status;
@@ -166,6 +171,8 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 
 			logger.error('OMDb API error', { [logLabel]: lookupValue, error: error.message }, { error });
 			throw error;
+		} finally {
+			finishObservation();
 		}
 	}
 }
@@ -210,8 +217,9 @@ export async function getByIMDBId(imdbId, _apiKey, deps) {
 export async function search(query, type, _apiKey, deps) {
 	const { checkAndIncrementUsage, baseUrl } = deps;
 	const { apiKey: validApiKey, credentialContext } = await checkAndIncrementUsage();
+	const finishObservation = (deps.recentLookup ?? omdbRecentLookup).begin(credentialContext, baseUrl);
 	try {
-		const response = await httpGet(baseUrl, {
+		const response = await (deps.httpGet ?? httpGet)(baseUrl, {
 			maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
 			redirect: 'error',
 			timeout: runtimeSettings.getOmdbRuntimeConfig().requestTimeoutMs,
@@ -225,16 +233,21 @@ export async function search(query, type, _apiKey, deps) {
 		await observeOmdbPacing(response, credentialContext);
 		const outcome = classifyOmdbResponse(response.data, response.status, 'search');
 		if (outcome.kind === 'success') {
-			return response.data.Search.map(item => ({
+			const result = response.data.Search.map(item => ({
 				title: item.Title,
 				year: item.Year,
 				imdbId: item.imdbID,
 				type: item.Type,
 				poster: item.Poster !== 'N/A' ? item.Poster : null
 			}));
+			finishObservation('success');
+			return result;
 		}
 
-		if (outcome.kind === 'not_found') return [];
+		if (outcome.kind === 'not_found') {
+			finishObservation('not_found');
+			return [];
+		}
 		throw createOmdbProviderError(outcome);
 	} catch (error) {
 		const retryAfterSeconds = await observeOmdbPacing(error.response, credentialContext);
@@ -247,5 +260,7 @@ export async function search(query, type, _apiKey, deps) {
 			catch { logger.warn('OMDb credential pause could not be persisted; retry work remains deferred'); }
 		}
 		throw error;
+	} finally {
+		finishObservation();
 	}
 }

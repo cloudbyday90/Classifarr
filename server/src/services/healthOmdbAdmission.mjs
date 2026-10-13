@@ -5,6 +5,8 @@ import { probeOmdbConnection } from './healthMetadataProbe.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import { buildStatusHealthState } from './healthCheckServiceShared.mjs';
 import { createOmdbPacingObserver } from './omdbPacingObservation.mjs';
+import { omdbRecentLookup } from './omdbRecentLookup.mjs';
+import { readRecentOmdbLookup } from './omdbRecentLookupRead.mjs';
 
 const outcomes = new Map([
     ['limit_reached', ['local_quota_exhausted', 'Health check skipped: the local OMDb daily request budget is used up. Wait for the next budget period, or review the limit in OMDb settings.']],
@@ -25,21 +27,32 @@ function deferred(previous, status) {
 
 /** Saved health attempts share lookup admission. No HTTP before confirmed commit. */
 export function createOmdbHealthAdmission({ db, reserve = reserveOmdbQuota, probe = probeOmdbConnection,
-    observe = createOmdbPacingObserver({ database: db }) }) {
+    observe = createOmdbPacingObserver({ database: db }), recentLookup = omdbRecentLookup }) {
     return async (previous, config) => {
         const expectedContext = providerCredentialContext('omdb', config);
         if (!expectedContext) return deferred(previous, 'invalid_configuration');
         let admission;
         try {
+            if (recentLookup.read(expectedContext)?.kind === 'success') {
+                const recent = await readRecentOmdbLookup(db, recentLookup, expectedContext);
+                if (recent) return buildConnectionProbeHealthState(previous, { success: true, time: recent.responseTime }, {
+                    lastCheck: recent.lastCheck, lastSuccessfulCheck: recent.lastCheck,
+                });
+            }
             admission = await reserve(db, { pacing: true, expectedContext });
         } catch (_error) {
             // Uncertain commit/timeout is not permission to send or refund a request.
             return deferred(previous, 'unavailable');
         }
         if (admission?.status !== 'reserved') return deferred(previous, admission?.status);
-        const result = await measureConnectionProbe(() => probe(admission.apiKey, {
-            observeResponse: response => observe(response, admission.credentialContext),
-        }));
-        return buildConnectionProbeHealthState(previous, result);
+        const finishObservation = recentLookup.begin(admission.credentialContext);
+        try {
+            const result = await measureConnectionProbe(() => probe(admission.apiKey, {
+                observeResponse: response => observe(response, admission.credentialContext),
+            }));
+            return buildConnectionProbeHealthState(previous, result);
+        } finally {
+            finishObservation();
+        }
     };
 }
