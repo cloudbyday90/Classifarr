@@ -237,16 +237,22 @@ describe('QueueReadModel', () => {
         );
     });
 
-    it('returns failed tasks newest first', async () => {
-        db.query.mockResolvedValueOnce({ rows: [{ id: 9 }] });
+    it('returns failed tasks with their saved recovery status newest first', async () => {
+        const row = { id: 9, current_stage: 'metadata_fetch', metadata_recovery: { checks: 2 } };
+        db.query.mockResolvedValueOnce({ rows: [row] });
 
         const rows = await readModel.getFailedTasks(7);
 
-        expect(rows).toEqual([{ id: 9 }]);
+        expect(rows).toEqual([row]);
         expect(db.query).toHaveBeenCalledWith(
-            expect.stringContaining("WHERE status = 'failed'"),
+            expect.stringContaining("WHERE t.status = 'failed'"),
             [7]
         );
+        const sql = db.query.mock.calls[0][0];
+        expect(sql).toContain('LEFT JOIN queue_metadata_recovery r ON r.task_id=t.id');
+        expect(sql).toContain('t.current_stage');
+        expect(sql).toContain('ORDER BY t.completed_at DESC');
+        expect(db.query).toHaveBeenCalledTimes(1);
     });
 
     it('rethrows stats query failures after logging', async () => {

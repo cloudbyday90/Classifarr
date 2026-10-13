@@ -11,15 +11,13 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
-- **Classification recovery diagnostics** — Administrators can check a failed
-  task's exact movie or TV TMDb record from Command Center without retrying,
-  remapping or routing it. Bounded, cancellable checks distinguish missing IDs
-  from provider failures, reject stale results and retain task references for
-  support. Catalog replacement still requires verified identity evidence.
-- **Bounded metadata self-healing** — Existing and new eligible missing-record
-  failures receive durable, spaced same-ID checks. A returned record can resume
-  its original unrouted task once using the remaining attempt budget; no ID
-  substitution, exhausted-budget reset or source-library change is performed.
+- **Classification recovery** — Command Center can check a failed movie or TV
+  task's saved TMDb ID without retrying or remapping it, distinguish missing
+  records from provider failures, and retain current check details for support.
+  Eligible existing and new missing-record failures receive durable, spaced
+  checks and can resume their original unrouted task once if that same record
+  returns. Checks are bounded and cancellable, and reject stale results; no ID
+  guessing, exhausted-budget reset or source-library change is performed.
 
 ## [v0.49.2-beta] - 2026-10-13
 
