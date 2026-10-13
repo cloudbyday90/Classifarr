@@ -95,6 +95,10 @@ claimed resolved.
 
 ## Recommendation stack and remaining boundaries
 
+Follow-up: the response-wait increment below is now implemented and evaluated in
+the separate [probe response wait outcome](omdb-probe-response-wait-outcome.md).
+The numbered list records the recommendation at this admission increment's completion.
+
 1. Keep shared PostgreSQL admission and the modular recovery service. Benefit:
    durable accounting without new infrastructure. Cost: recovery consumes a credit
    and can wait behind other OMDb traffic.
