@@ -21,8 +21,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   checks also compare saved external IDs when the record is missing, showing a
   candidate for review or the evidence gap. Administrators can preview and confirm
   a supported replacement with fresh evidence, retain a durable repair receipt,
-  then separately retry the task without resetting its budget. Repaired tasks are
-  excluded from automatic recovery and bulk retry; original requests stay intact.
+  then separately retry the task without resetting its budget. Supported legacy
+  and nested TMDb declarations are repaired together without losing request
+  context. Repaired tasks are excluded from automatic recovery and bulk retry;
+  original webhook evidence stays intact.
 
 ### Fixed
 

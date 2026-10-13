@@ -58,6 +58,9 @@ saved failure, no claim/routing result, remaining attempts within the existing
 five-attempt ceiling and no previous repair. Only simple movie/series request
 payloads are supported: alternate nested identities, pre-enriched metadata,
 inventory/reprocess context and unknown fields are rejected rather than discarded.
+The subsequent [alias repair extension](queue-identity-alias-repair-design.md)
+admits specifically allowlisted nested/legacy identities and atomically changes
+their declarations; pre-enriched and unknown contexts remain excluded.
 The direct saved source must still agree. No library/server name is special-cased.
 Any decision witness, linked classification, or competing task/history for either
 typed identity prevents repair. Fresh installs create empty tables and do no work.

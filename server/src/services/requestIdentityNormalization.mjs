@@ -9,6 +9,11 @@ const imdb = value => typeof value === 'string' && /^tt[0-9]{1,12}$/u.test(value
 const EXTRA_PROVIDERS = new Map(['tmdb', 'imdb', 'tvdb'].flatMap(provider =>
   [provider, `${provider}id`, `${provider} id`, `${provider}_id`, `${provider}-id`].map(label => [label, provider])));
 
+/** Shared exact-label vocabulary for reading and repairing legacy declarations. */
+export function requestExtraIdentityProvider(name) {
+  return typeof name === 'string' && name.length <= 64 ? EXTRA_PROVIDERS.get(name.trim().toLowerCase()) : undefined;
+}
+
 function agree(values, parse) {
   const parsed = values.filter(value => value != null).map(parse);
   if (parsed.some(value => value === null)) return { value: null, reason: 'invalid' };
@@ -40,7 +45,7 @@ export function normalizeRequestIdentity(payload) {
       if (!Object.hasOwn(entry, 'name')) continue;
       if (typeof entry.name !== 'string' || entry.name.length > 64) return invalid();
       const name = entry.name.trim().toLowerCase();
-      const provider = EXTRA_PROVIDERS.get(name);
+      const provider = requestExtraIdentityProvider(name);
       // Older readers matched any label containing tmdb; never reinterpret it as absence.
       if (!provider && name.includes('tmdb')) return invalid();
       if (provider && !Object.hasOwn(entry, 'value')) return invalid();

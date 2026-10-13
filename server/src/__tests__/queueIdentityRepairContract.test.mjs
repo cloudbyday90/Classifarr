@@ -13,7 +13,7 @@ test('version captures the task and linked source, not just the media ID', () =>
   expect(repairSourceVersion(row)).toMatch(/^[a-f0-9]{64}$/);
   for (const field of Object.keys(row)) expect(repairSourceVersion({ ...row, [field]: 'changed' })).not.toBe(repairSourceVersion(row));
 });
-test('allows only supported flat requests with an unspent budget', () => {
+test('allows supported unenriched requests with an unspent budget', () => {
   const row = { payload: { tmdb_id: 1, media_type: 'tv' }, source: 'manual', attempts: 1, max_attempts: 5, classification_recovery_attempts: 0 };
   expect(() => assertRepairPayload(row)).not.toThrow();
   expect(() => assertRepairPayload({ ...row, payload: null })).toThrow();

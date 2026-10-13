@@ -1,12 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { ConflictError, ValidationError } from '../utils/appError.mjs';
-
-// Only flat, unenriched intake requests. Never retain an alternate ID/metadata path.
-const REQUEST_KEYS = new Set(['tmdb_id', 'media_type', 'imdb_id', 'tvdb_id', 'title', 'year',
-  'notification_type', 'event_name', 'request_id', 'poster_path', 'is_4k',
-  'requested_by_username', 'requested_by_email', 'requested_by_avatar',
-  'requested_seasons', 'requested_at', 'media_status', 'media_status_4k', 'include_specials']);
+import { assertRepairRequest } from './queueIdentityRepairPayload.mjs';
 
 export function repairTaskId(value) {
   if (!['string', 'number'].includes(typeof value) || !/^[1-9]\d{0,15}$/.test(String(value)) ||
@@ -26,10 +21,8 @@ export function repairSourceVersion(task) {
 }
 
 export function assertRepairPayload(task, repaired = false) {
-  const payload = task.payload;
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload) ||
-      Object.keys(payload).some(key => !REQUEST_KEYS.has(key) && !(repaired && key === 'identity_repair')) ||
-      !['webhook', 'manual'].includes(task.source)) {
+  assertRepairRequest(task.payload, repaired);
+  if (!['webhook', 'manual'].includes(task.source)) {
     throw new ConflictError('This request format needs a separately reviewed repair.', { code: 'queue_identity_repair_unsupported' });
   }
   if (!Number.isInteger(task.attempts) || task.attempts < 1 ||

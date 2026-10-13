@@ -5,9 +5,12 @@ import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createQueueIdentityRepairService } from '../../services/queueIdentityRepairService.mjs';
 import { createQueueMetadataRecoveryRepository } from '../../services/queueMetadataRecoveryRepository.mjs';
 import { QueueMutationService } from '../../services/queueMutationService.mjs';
+import { parseOverseerrPayload } from '../../services/classificationMetadataServiceShared.mjs';
 
 let db, actorId, otherActorId, taskId, sourceId, provider, service, extraTasks;
 const payload = { tmdb_id: 42, media_type: 'movie', title: 'Original edition', imdb_id: 'tt123' };
+const nestedPayload = { media: { tmdbId: '00042', mediaType: 'movie', imdbId: 'tt123' },
+  extra: [{ name: 'TMDB ID', value: 42 }] };
 beforeEach(async () => {
   db = createIntegrationDatabaseModuleMock(); extraTasks = [];
   const actor = async () => (await db.query("INSERT INTO users(username,password_hash,role) VALUES ($1,'fixture','admin') RETURNING id", [randomUUID()])).rows[0].id;
@@ -34,12 +37,92 @@ const preview = () => service.preview(actorId, taskId, {});
 const confirm = p => service.confirm(actorId, taskId, { previewId: p.previewId, sameWorkAndEdition: true });
 const retry = r => service.retry(actorId, taskId, { receiptId: r.id });
 
-test('normalizing nested diagnostic identities does not admit nested repair', async () => {
+test('nested repair changes every declared ID atomically and retains the original source', async () => {
   await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId,
-    { media: { tmdbId: 42, mediaType: 'movie', imdbId: 'tt123' } }]);
+    { tmdb_id: 42, tmdbId: '00042', media: { tmdbId: 42, tmdb_id: '42', mediaType: 'movie', imdbId: 'tt123' },
+      extra: [{ name: 'TMDB ID', value: '42' }, { name: 'tmdb', value: 42 }, { seasonNumber: 1, episodeNumber: 2 }] }]);
   const before = await readTask();
-  await expect(preview()).rejects.toMatchObject({ code: 'queue_identity_repair_unsupported' });
+  const source = (await db.query('SELECT * FROM webhook_log WHERE id=$1', [sourceId])).rows[0];
+  const p = await preview();
   expect(await readTask()).toEqual(before);
+  const { receipt } = await confirm(p);
+  expect(await readTask()).toEqual({ ...before, payload: { ...before.payload,
+    tmdb_id: 99, tmdbId: '99', identity_repair: receipt.id,
+    media: { ...before.payload.media, tmdbId: 99, tmdb_id: '99' },
+    extra: [{ name: 'TMDB ID', value: '99' }, { name: 'tmdb', value: 99 }, before.payload.extra[2]] } });
+  expect((await db.query('SELECT * FROM webhook_log WHERE id=$1', [sourceId])).rows[0]).toEqual(source);
+  const restarted = createQueueIdentityRepairService({ db, readProvider: async () => { throw new Error('Unexpected provider read'); } });
+  expect(await restarted.confirm(actorId, taskId, { previewId: p.previewId, sameWorkAndEdition: true })).toEqual({ receipt });
+  await restarted.retry(actorId, taskId, { receiptId: receipt.id });
+  expect(await readTask()).toMatchObject({ status: 'pending', attempts: 1, max_attempts: 5 });
+  expect(parseOverseerrPayload((await readTask()).payload)).toMatchObject({ tmdbId: 99, media_type: 'movie' });
+});
+
+test('targeted atomic patches preserve exact unrelated JSON numbers', async () => {
+  await db.query(`UPDATE task_queue SET payload=$2::jsonb||'{"request_id":9007199254740993,"year":2026.0000000000000000001}'::jsonb WHERE id=$1`,
+    [taskId, nestedPayload]);
+  const original = (await db.query("SELECT payload->>'request_id' AS request_id,payload->>'year' AS year FROM task_queue WHERE id=$1", [taskId])).rows[0];
+  await confirm(await preview());
+  expect((await db.query("SELECT payload->>'request_id' AS request_id,payload->>'year' AS year FROM task_queue WHERE id=$1", [taskId])).rows[0]).toEqual(original);
+  expect(original.request_id).toBe('9007199254740993');
+});
+
+test('all 68 supported ID locations change in a single bounded write', async () => {
+  const request = { ...payload, tmdbId: '42', media: { tmdbId: 42, tmdb_id: '42' },
+    extra: Array.from({ length: 64 }, () => ({ name: 'TMDB', value: '42' })) };
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, request]);
+  const { receipt } = await confirm(await preview());
+  const result = (await readTask()).payload;
+  expect(result.extra.every(entry => entry.value === '99')).toBe(true);
+  expect(result).toMatchObject({ tmdb_id: 99, tmdbId: '99', media: { tmdbId: 99, tmdb_id: '99' } });
+  await retry(receipt);
+});
+
+test('database-sized result exceeding the diagnostic ceiling rolls back all patches', async () => {
+  await db.query(`UPDATE task_queue SET payload=$2::jsonb||jsonb_build_object('title','') WHERE id=$1`, [taskId, nestedPayload]);
+  const size = (await db.query('SELECT octet_length(payload::text) AS bytes FROM task_queue WHERE id=$1', [taskId])).rows[0].bytes;
+  await db.query(`UPDATE task_queue SET payload=jsonb_set(payload,'{title}',to_jsonb(repeat('x',$2::integer))) WHERE id=$1`, [taskId, 65520 - size]);
+  const before = await readTask();
+  const p = await preview();
+  await expect(confirm(p)).rejects.toMatchObject({ statusCode: 409 });
+  expect(await readTask()).toEqual(before);
+  expect((await service.receipt(actorId, taskId)).receipt).toBeNull();
+});
+
+test.each([
+  { media: { tmdb_id: 42, media_type: 'movie', imdb_id: 'tt123' } },
+  { mediaType: 'movie', extra: [{ name: 'TMDB-ID', value: '42' }, { name: 'imdb', value: 'tt123' }] },
+])('repair and separate retry work without creating a root TMDb ID %#', async request => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, request]);
+  const { receipt } = await confirm(await preview());
+  const repaired = (await readTask()).payload;
+  expect(repaired).not.toHaveProperty('tmdb_id');
+  expect(parseOverseerrPayload(repaired)).toMatchObject({ tmdbId: 99, media_type: 'movie' });
+  await retry(receipt);
+  expect(await readTask()).toMatchObject({ status: 'pending', attempts: 1 });
+});
+
+test.each(['preview', 'retry'])('new contradictory alias after %s blocks the write', async stage => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, nestedPayload]);
+  const p = await preview();
+  const receipt = stage === 'retry' ? (await confirm(p)).receipt : null;
+  await db.query(`UPDATE task_queue SET payload=payload||'{"tmdbId":123}'::jsonb WHERE id=$1`, [taskId]);
+  const before = await readTask();
+  await expect(receipt ? retry(receipt) : confirm(p)).rejects.toMatchObject({ code: 'request_identity_conflict' });
+  expect(await readTask()).toEqual(before);
+  expect((await service.receipt(actorId, taskId)).receipt?.retriedAt ?? null).toBeNull();
+});
+
+test('same-ID recovery and bulk retry still exclude an approved nested repair', async () => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, nestedPayload]);
+  await db.query(`INSERT INTO queue_metadata_recovery(task_id,probe_count,last_outcome) VALUES ($1,4,'not_found')`, [taskId]);
+  const ledger = (await db.query('SELECT * FROM queue_metadata_recovery WHERE task_id=$1', [taskId])).rows[0];
+  await confirm(await preview());
+  const mutation = new QueueMutationService({ db, logger: { info: jest.fn(), error: jest.fn() } });
+  expect(await mutation.retryAllFailedTasks()).toMatchObject({ count: 0 });
+  expect(await createQueueMetadataRecoveryRepository(db).claim()).toBeNull();
+  expect((await db.query('SELECT * FROM queue_metadata_recovery WHERE task_id=$1', [taskId])).rows[0]).toEqual(ledger);
+  expect(await readTask()).toMatchObject({ status: 'failed', attempts: 1 });
 });
 
 test.each(['movie', '\tMovie\n', '\uFEFFMovie\u00A0'])('camel-case competing request blocks approved repair: %j', async mediaType => {
@@ -191,7 +274,8 @@ test.each([
   await expect(preview()).rejects.toMatchObject({ statusCode: 409 });
 });
 
-test.each([{ result: {} }, { media: { tmdbId: 42 } }, { itemId: 3 }, { overview: 'cached' }, { extra: [] }])('unsupported payload %j fails before provider reads', async extra => {
+test.each([{ result: {} }, { media: { tmdbId: 42, overview: 'cached' } }, { itemId: 3 }, { overview: 'cached' },
+  { extra: [{ name: 'unreviewed', value: 42 }] }])('unsupported payload %j fails before provider reads', async extra => {
   await db.query('UPDATE task_queue SET payload=payload||$2::jsonb WHERE id=$1', [taskId, extra]);
   await expect(preview()).rejects.toMatchObject({ statusCode: 409 });
   expect(provider.getDetails).not.toHaveBeenCalled();
@@ -214,7 +298,8 @@ test('two processes confirming different previews produce one repair, not two', 
   expect(await readTask()).toMatchObject({ status: 'failed', attempts: 1 });
 });
 
-test('receipt insertion failure rolls back task change and preview consumption', async () => {
+test.each([payload, nestedPayload])('receipt insertion failure rolls back the complete payload and preview %#', async request => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, request]);
   const p = await preview();
   const failingDb = { ...db, withTransaction: fn => db.withTransaction(tx => fn({ query: async (sql, args) => {
     if (sql.includes('INSERT INTO queue_identity_repair_receipts')) throw new Error('synthetic receipt unavailable');
@@ -222,11 +307,12 @@ test('receipt insertion failure rolls back task change and preview consumption',
   } })) };
   const failing = createQueueIdentityRepairService({ db: failingDb, readProvider: async () => provider });
   await expect(failing.confirm(actorId, taskId, { previewId: p.previewId, sameWorkAndEdition: true })).rejects.toThrow('synthetic');
-  expect((await readTask()).payload).toEqual(payload);
+  expect((await readTask()).payload).toEqual(request);
   expect((await db.query('SELECT id FROM queue_identity_repair_previews WHERE actor_id=$1', [actorId])).rows[0].id).toBe(p.previewId);
 });
 
-test('cancellation immediately before commit rolls the real transaction back', async () => {
+test.each([payload, nestedPayload])('cancellation immediately before commit rolls the complete payload back %#', async request => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, request]);
   const p = await preview();
   const controller = new AbortController();
   const cancellingDb = { ...db, withTransaction: fn => db.withTransaction(tx => fn({ query: async (sql, args) => {
@@ -236,7 +322,7 @@ test('cancellation immediately before commit rolls the real transaction back', a
   } })) };
   const cancelling = createQueueIdentityRepairService({ db: cancellingDb, readProvider: async () => provider });
   await expect(cancelling.confirm(actorId, taskId, { previewId: p.previewId, sameWorkAndEdition: true }, controller.signal)).rejects.toThrow();
-  expect((await readTask()).payload).toEqual(payload);
+  expect((await readTask()).payload).toEqual(request);
   expect((await service.receipt(actorId, taskId)).receipt).toBeNull();
 });
 

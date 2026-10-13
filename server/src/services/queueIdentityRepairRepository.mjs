@@ -3,6 +3,7 @@ import { readQueueMetadataCheckTask } from './queueMetadataCheckRepository.mjs';
 import { ConflictError } from '../utils/appError.mjs';
 import { assertRepairPayload, repairConflict, repairSourceVersion } from './queueIdentityRepairContract.mjs';
 import { REQUEST_IDENTITY_WHITESPACE_SQL as WHITESPACE } from './requestIdentitySqlWhitespace.mjs';
+import { planRequestIdentityRepair } from './queueIdentityRepairPayload.mjs';
 
 /** Rare administrative final gate. No provider I/O while these locks are held. */
 export async function lockRepairWrites(tx) {
@@ -20,7 +21,8 @@ export async function readRepairReceipt(db, taskId) {
 
 export async function readRepairTask(db, taskId, repaired = false) {
   const identity = await readQueueMetadataCheckTask(db, taskId);
-  const { rows } = await db.query(`SELECT payload, source, attempts, max_attempts,
+  const { rows } = await db.query(`SELECT CASE WHEN octet_length(payload::text)<=65536 THEN payload END AS payload,
+    source, attempts, max_attempts,
     classification_recovery_attempts, xmin::text AS revision FROM task_queue WHERE id=$1`, [taskId]);
   if (!rows[0] || rows[0].revision !== identity.revision) throw repairConflict();
   const task = { ...identity, ...rows[0] };
@@ -69,9 +71,20 @@ export async function readRepairPreview(db, actorId, taskId, id) {
 }
 
 export async function persistRepair(tx, actorId, task, preview) {
-  const { rows } = await tx.query(`UPDATE task_queue SET payload=jsonb_set(payload,'{tmdb_id}',$2::jsonb)
-    || jsonb_build_object('identity_repair',$3::text) WHERE id=$1 RETURNING xmin::text AS revision`,
-  [task.id, JSON.stringify(preview.candidate.tmdbId), preview.id]);
+  const { patches } = planRequestIdentityRepair(task.payload, Number(task.tmdb_id), preview.candidate, preview.id);
+  const parameters = [task.id, task.revision, preview.id];
+  let expression = 'payload';
+  for (const patch of patches) {
+    parameters.push(patch.path, JSON.stringify(patch.value));
+    expression = `jsonb_set(${expression},$${parameters.length - 1}::text[],$${parameters.length}::jsonb,false)`;
+  }
+  // sql-interpolation: expression contains only fixed jsonb_set syntax and generated placeholder indices.
+  // Paths/values are parameters. Patch only known paths so unrelated JSON numbers retain full precision.
+  const { rows } = await tx.query(`UPDATE task_queue SET payload=${expression}
+    || jsonb_build_object('identity_repair',$3::text)
+    WHERE id=$1 AND xmin::text=$2 RETURNING xmin::text AS revision,
+      octet_length(payload::text) AS payload_bytes`, parameters);
+  if (!rows[0] || rows[0].payload_bytes > 65536) throw repairConflict();
   await tx.query(`INSERT INTO queue_identity_repair_receipts
     (task_id,id,actor_id,source_id,source_version,provider_revision,old_tmdb_id,new_tmdb_id,
       media_type,candidate,sources,attempts,max_attempts,repaired_version)

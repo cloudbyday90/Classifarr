@@ -51,7 +51,7 @@
       <p v-if="preview.candidate.overview">
         {{ preview.candidate.overview }}
       </p>
-      <p>The original request and attempt count will stay unchanged. Classification will not run yet.</p>
+      <p>All supported TMDb IDs in this task will change together. The original webhook and attempt count stay unchanged. Classification will not run yet.</p>
       <label>
         <input
           v-model="confirmed"

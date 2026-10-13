@@ -38,6 +38,8 @@ test('render does no I/O; preview, checked consent, save and retry are separate 
   expect(getQueueIdentityRepair).not.toHaveBeenCalled()
   await click(w, 'Review replacement ID')
   expect(w.text()).toContain('Replace TMDb movie ID 42 with 99?')
+  expect(w.text()).toContain('All supported TMDb IDs in this task will change together.')
+  expect(w.text()).toContain('The original webhook and attempt count stay unchanged.')
   expect(w.find('script').exists()).toBe(false)
   expect(w.findAll('button').find(b => b.text() === 'Save reviewed replacement').attributes('disabled')).toBeDefined()
   await w.get('form').trigger('submit'); await flushPromises()
