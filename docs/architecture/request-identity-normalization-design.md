@@ -30,10 +30,15 @@ reports; it does not infer a replacement identity from a title.
   returns at most 64 KiB per saved payload, strips raw payloads before returning the
   internal task view, and never exposes credentials, titles or provider bodies in
   the new diagnostic fields. Oversized/invalid records fail closed.
+- Unnamed episode/season objects in `extra` remain supported; they are not ID
+  declarations. Missing provider IDs consistently normalize to `null`.
 - Original payloads, webhook records, approvals and retry budgets stay intact.
   Approved repair remains restricted to its existing flat allowlist. Automatic
   same-ID recovery stays flat-only and excludes alternate identity containers;
   competitor checks conservatively recognize aliases even when they disagree.
+  Their SQL trims the same outer whitespace as JavaScript, with locale-stable
+  casing for the ASCII media-type vocabulary. Tabs, newlines, non-breaking spaces
+  and byte-order marks cannot hide a competing request.
   An existing recovery ledger on an excluded legacy format is displayed as paused,
   not as a promised automatic check; its history and budget remain intact.
 - Safe metadata failures retain provider, typed ID, details-versus-enrichment
@@ -82,6 +87,11 @@ Official pages were discovered and opened with MCP web search on 13 October 2026
 - [TMDb errors](https://developer.themoviedb.org/docs/errors) distinguish missing
   resources from authentication, quota and service failures. A 404 alone does not
   establish a deleted/merged record or a replacement identity.
+- [PostgreSQL string functions](https://www.postgresql.org/docs/18/functions-string.html)
+  specify that default `btrim` removes spaces, not the full JavaScript set.
+  The [ECMAScript whitespace grammar](https://tc39.es/ecma262/2022/multipage/ecmascript-language-lexical-grammar.html)
+  explains the broader set. Regression tests verify the pinned Node runtime's
+  complete whitespace set and actual PostgreSQL behavior.
 
 ## Acceptance
 

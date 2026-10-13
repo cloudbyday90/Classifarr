@@ -3,6 +3,16 @@ import { afterEach, expect, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { persistToDb, setDb } from '../../utils/logging/loggerShim.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../../services/classificationMetadataFailure.mjs';
+import { REQUEST_IDENTITY_WHITESPACE_SQL } from '../../services/requestIdentitySqlWhitespace.mjs';
+
+test('PostgreSQL competitor trimming agrees with JavaScript, including Unicode whitespace', async () => {
+  const padding = Array.from({ length: 65536 }, (_, codePoint) => String.fromCodePoint(codePoint))
+    .filter(value => value.trim() === '').join('');
+  for (const value of [`${padding}00042${padding}`, `${padding}Movie${padding}`, '4 2', '\u200B42']) {
+    expect((await getPool().query(`SELECT btrim($1,${REQUEST_IDENTITY_WHITESPACE_SQL}) AS value`, [value])).rows[0].value)
+      .toBe(value.trim());
+  }
+});
 
 const ids = [];
 afterEach(async () => {

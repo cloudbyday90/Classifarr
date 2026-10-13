@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { REQUEST_IDENTITY_WHITESPACE_SQL as WHITESPACE } from './requestIdentitySqlWhitespace.mjs';
 import { randomUUID } from 'node:crypto';
 
 // Fixed SQL shared by enrollment, claim and completion; never supplied by callers.
@@ -16,16 +17,16 @@ const ELIGIBLE = `t.task_type='classification' AND t.status='failed'
     WHERE r.queue_task_id=t.id AND r.classification_id IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM task_queue newer
     WHERE newer.task_type='classification' AND newer.id>t.id
-      AND t.payload->>'media_type' IN (lower(btrim(newer.payload->>'media_type')),
-        lower(btrim(newer.payload->>'mediaType')), lower(btrim(newer.payload#>>'{media,media_type}')),
-        lower(btrim(newer.payload#>>'{media,mediaType}')))
+      AND t.payload->>'media_type' IN (lower(btrim(newer.payload->>'media_type',${WHITESPACE}) COLLATE "C"),
+        lower(btrim(newer.payload->>'mediaType',${WHITESPACE}) COLLATE "C"), lower(btrim(newer.payload#>>'{media,media_type}',${WHITESPACE}) COLLATE "C"),
+        lower(btrim(newer.payload#>>'{media,mediaType}',${WHITESPACE}) COLLATE "C"))
       AND EXISTS (SELECT 1 FROM (
         SELECT value FROM (VALUES (newer.payload->>'tmdb_id'),(newer.payload->>'tmdbId'),
           (newer.payload#>>'{media,tmdbId}'),(newer.payload#>>'{media,tmdb_id}')) AS declared(value)
         UNION ALL SELECT entry->>'value' FROM jsonb_array_elements(
           CASE WHEN jsonb_typeof(newer.payload->'extra')='array' THEN newer.payload->'extra' ELSE '[]'::jsonb END) entry
           WHERE lower(entry->>'name') LIKE '%tmdb%'
-      ) AS ids WHERE regexp_replace(btrim(value),'^0+','')=t.payload->>'tmdb_id'))
+      ) AS ids WHERE regexp_replace(btrim(value,${WHITESPACE}),'^0+','')=t.payload->>'tmdb_id'))
   AND NOT EXISTS (SELECT 1 FROM classification_history h
     WHERE h.tmdb_id::text=t.payload->>'tmdb_id' AND h.media_type=t.payload->>'media_type'
       AND h.created_at >= t.created_at)`;

@@ -2,6 +2,19 @@
 import { normalizeRequestIdentity, requireRequestIdentity } from '../services/requestIdentityNormalization.mjs';
 import { parseOverseerrPayload } from '../services/classificationMetadataServiceShared.mjs';
 import { parsePayload } from '../services/webhookServiceShared.mjs';
+import { REQUEST_IDENTITY_WHITESPACE_SQL } from '../services/requestIdentitySqlWhitespace.mjs';
+
+test('SQL whitespace is a trusted constant matching ECMAScript outer trimming', () => {
+  const whitespace = Array.from({ length: 65536 }, (_, codePoint) => codePoint)
+    .filter(codePoint => String.fromCodePoint(codePoint).trim() === '');
+  expect(REQUEST_IDENTITY_WHITESPACE_SQL).toBe(whitespace.map(codePoint => `chr(${codePoint})`).join('||'));
+  for (const codePoint of whitespace) {
+    const padding = String.fromCodePoint(codePoint);
+    expect(requireRequestIdentity({ tmdb_id: `${padding}00042${padding}`, media_type: `${padding}TV${padding}` })).toMatchObject({
+      tmdbId: 42, mediaType: 'tv',
+    });
+  }
+});
 
 test.each([
   { tmdb_id: 42, media_type: 'tv', imdb_id: 'tt123', tvdb_id: 7 },

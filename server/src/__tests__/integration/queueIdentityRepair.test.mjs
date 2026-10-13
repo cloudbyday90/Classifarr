@@ -42,9 +42,9 @@ test('normalizing nested diagnostic identities does not admit nested repair', as
   expect(await readTask()).toEqual(before);
 });
 
-test('camel-case competing request blocks approved repair', async () => {
+test.each(['movie', '\tMovie\n', '\uFEFFMovie\u00A0'])('camel-case competing request blocks approved repair: %j', async mediaType => {
   extraTasks.push((await db.query(`INSERT INTO task_queue(task_type,payload,status)
-    VALUES ('classification','{"mediaType":"movie","tmdbId":"00099"}','pending') RETURNING id`)).rows[0].id);
+    VALUES ('classification',$1,'pending') RETURNING id`, [{ mediaType, tmdbId: '\t00099\u00A0' }])).rows[0].id);
   await expect(preview()).rejects.toMatchObject({ code: 'queue_identity_repair_prior_work' });
 });
 

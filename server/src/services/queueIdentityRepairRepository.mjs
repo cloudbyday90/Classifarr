@@ -2,6 +2,7 @@
 import { readQueueMetadataCheckTask } from './queueMetadataCheckRepository.mjs';
 import { ConflictError } from '../utils/appError.mjs';
 import { assertRepairPayload, repairConflict, repairSourceVersion } from './queueIdentityRepairContract.mjs';
+import { REQUEST_IDENTITY_WHITESPACE_SQL as WHITESPACE } from './requestIdentitySqlWhitespace.mjs';
 
 /** Rare administrative final gate. No provider I/O while these locks are held. */
 export async function lockRepairWrites(tx) {
@@ -35,8 +36,8 @@ export async function requireNoRepairEffects(db, taskId, mediaType, oldId, newId
     EXISTS (SELECT 1 FROM classification_history WHERE media_type=$2 AND tmdb_id IN ($3,$4)) OR
     EXISTS (SELECT 1 FROM task_queue WHERE id<>$1 AND task_type='classification'
       AND status IS DISTINCT FROM 'cancelled'
-      AND $2 IN (lower(btrim(payload->>'media_type')),lower(btrim(payload->>'mediaType')),
-        lower(btrim(payload#>>'{media,media_type}')),lower(btrim(payload#>>'{media,mediaType}')))
+      AND $2 IN (lower(btrim(payload->>'media_type',${WHITESPACE}) COLLATE "C"),lower(btrim(payload->>'mediaType',${WHITESPACE}) COLLATE "C"),
+        lower(btrim(payload#>>'{media,media_type}',${WHITESPACE}) COLLATE "C"),lower(btrim(payload#>>'{media,mediaType}',${WHITESPACE}) COLLATE "C"))
       AND EXISTS (SELECT 1 FROM (
         SELECT value FROM (VALUES (payload->>'tmdb_id'),(payload->>'tmdbId'),(payload#>>'{media,tmdbId}'),
           (payload#>>'{media,tmdb_id}')) AS declared(value)
@@ -44,7 +45,7 @@ export async function requireNoRepairEffects(db, taskId, mediaType, oldId, newId
         SELECT entry->>'value' FROM jsonb_array_elements(CASE WHEN jsonb_typeof(payload->'extra')='array'
           THEN payload->'extra' ELSE '[]'::jsonb END) AS entry
           WHERE lower(entry->>'name') LIKE '%tmdb%'
-      ) AS ids WHERE regexp_replace(btrim(value),'^0+','') IN ($3::text,$4::text))) AS blocked`, [taskId, mediaType, oldId, newId]);
+      ) AS ids WHERE regexp_replace(btrim(value,${WHITESPACE}),'^0+','') IN ($3::text,$4::text))) AS blocked`, [taskId, mediaType, oldId, newId]);
   if (rows[0].blocked) throw new ConflictError('Other work or a prior decision is recorded for this request.', { code: 'queue_identity_repair_prior_work' });
 }
 

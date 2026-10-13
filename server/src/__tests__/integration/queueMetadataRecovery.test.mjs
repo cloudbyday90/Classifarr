@@ -42,6 +42,8 @@ test.each(['media', 'extra', 'tmdbId', 'mediaType'])('normalization does not exp
 test.each([
   { media: { tmdbId: '000424242', mediaType: ' Movie ' } },
   { tmdbId: 424242, mediaType: 'movie' },
+  { tmdbId: '\t000424242\n', mediaType: '\tMovie\n' },
+  { tmdbId: '\uFEFF000424242\u00A0', mediaType: '\uFEFFMovie\u00A0' },
   { media_type: 'movie', extra: [{ name: 'TMDB ID', value: 424242 }] },
 ])('nested newer requests block enrollment of an older flat task', async payload => {
   const id = await seed();
