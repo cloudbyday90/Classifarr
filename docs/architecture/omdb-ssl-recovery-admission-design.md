@@ -62,12 +62,19 @@ Discovered and opened with MCP search on 2026-10-12:
   recommends authenticating provider certificates. A probe must not bypass TLS
   validation to claim recovery. The admission and fencing design is our inference
   from these sources and the existing application contracts.
+- Follow-up review: [HTTP Semantics, RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html)
+  defines `Retry-After` as a wait before a follow-up request. The shared lookup
+  response observer already records this, but System-health and SSL probes only
+  consume existing cooldowns; they do not persist new response wait evidence.
+  Add bounded, credential-fenced response observation next, before changing probe
+  cadence. Do not describe this admission increment as closing that separate gap.
 
 | Option | Benefit | Cost or risk | Decision |
 | --- | --- | --- | --- |
 | Shared admission plus bounded recovery probe | Accounts for automatic traffic; preserves recovery behavior | Recovery consumes credits and may wait | Adopt |
 | Disable the SSL recovery probe | Saves synthetic requests | Changes recovery latency and existing behavior | Defer |
-| Reuse recent lookup evidence | Can avoid synthetic requests | Needs credential/time attribution and recovery policy | Next investigation |
+| Shared response-wait observation | Applies new provider wait advice across callers | Requires bounded header handling and credential-fenced writes | Next increment |
+| Reuse recent lookup evidence | Can avoid synthetic requests | Needs credential/time attribution and recovery policy | After response-wait handling |
 | Process-local budget or TLS bypass | Small patch | Restart bypass or false security guarantee | Reject |
 
 Recommended stack: existing PostgreSQL quota/pacing, a dedicated ESM recovery
