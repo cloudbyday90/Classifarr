@@ -44,5 +44,8 @@ Pros: failures become actionable and cleanup cannot silently pass. Cost: another
 small diagnostic contract and fault-injection tests. A blind rerun may pass but
 would not explain this failure; swallowing cleanup errors hides leaked resources.
 
-This investigation made no workflow changes and did not rerun or alter the
-referenced GitHub run. Diagnostic improvements remain the next CI task.
+The original investigation made no workflow changes and did not rerun or alter
+the referenced GitHub run. The subsequent
+[diagnostic design](shutdown-drill-diagnostics-design.md) and
+[validation outcome](shutdown-drill-diagnostics-outcome.md) track the implementation;
+new evidence cannot reconstruct this run's lost child errors.

@@ -64,11 +64,13 @@ export async function checkLoadedShutdown(context, scenario) {
 }
 
 export async function runLoadedShutdownDrill({ container = withShutdownContainer,
-  report = value => process.stdout.write(`${JSON.stringify(value)}\n`) } = {}) {
+  report = value => process.stdout.write(`${JSON.stringify(value)}\n`), diagnostics } = {}) {
   const results = [];
   let pinnedImage;
   for (const scenario of SHUTDOWN_CASES) {
-    const result = await container(context => checkLoadedShutdown(context, scenario), pinnedImage ? { imageName: pinnedImage } : undefined);
+    const result = await container(context => checkLoadedShutdown(context, scenario),
+      { scenario: `${scenario.mode}-${scenario.seconds}`, ...(pinnedImage ? { imageName: pinnedImage } : {}),
+        ...(diagnostics ? { diagnostics } : {}) });
     if (pinnedImage) assert.equal(result.image, pinnedImage, 'shutdown_drill_image_changed');
     pinnedImage = result.image;
     results.push(result);

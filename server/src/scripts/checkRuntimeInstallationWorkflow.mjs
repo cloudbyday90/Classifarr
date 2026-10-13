@@ -5,9 +5,36 @@ import { loadWorkflow } from './checkReleaseCandidatePublicationWorkflow.mjs';
 import { validateDockerHubPullJob, validateDockerHubPullWorkflows } from './dockerHubPullWorkflowContract.mjs';
 const expression = value => '$' + `{{ ${value} }}`;
 
+function validateShutdownDiagnostics(job) {
+  assert.equal(job['continue-on-error'], undefined);
+  const names = ['Loaded container shutdown and recovery (10s and 60s host deadlines)',
+    'Queue claim recovery across graceful stop and forced host kill', 'Upload bounded shutdown drill diagnostics'];
+  const steps = names.map(name => {
+    const matches = job.steps.filter(step => step.name === name);
+    assert.equal(matches.length, 1);
+    return matches[0];
+  });
+  const [http, queue, upload] = steps;
+  assert.equal(http.run.trim(), 'IMAGE_NAME=classifarr:test npm run test:local:embedded-shutdown-drill');
+  assert.equal(queue.run.trim(), 'IMAGE_NAME=classifarr:test npm run test:local:queue-recovery-drill');
+  assert.equal(http['timeout-minutes'], 15);
+  assert.equal(queue['timeout-minutes'], 10);
+  for (const step of [http, queue]) { assert.equal(step.if, undefined); assert.equal(step.uses, undefined); }
+  for (const step of steps) assert.equal(step['continue-on-error'], undefined);
+  assert.ok(job.steps.indexOf(http) < job.steps.indexOf(queue) && job.steps.indexOf(queue) < job.steps.indexOf(upload));
+  assert.equal(upload.if, 'always()');
+  assert.equal(upload['timeout-minutes'], 2);
+  assert.equal(upload.run, undefined);
+  assert.equal(upload.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
+  assert.deepEqual(upload.with, { name: 'shutdown-drill-diagnostics',
+    path: '.tmp/ci/embedded-shutdown-diagnostics.json\n.tmp/ci/queue-recovery-diagnostics.json\n',
+    'include-hidden-files': true, 'if-no-files-found': 'warn', 'retention-days': 7 });
+}
+
 /** Keep the installation gate in the same run and out of publishing privileges. */
 export function validateRuntimeInstallationWorkflow(workflow) {
   const jobs = workflow.jobs;
+  validateShutdownDiagnostics(jobs['build-and-test']);
   const job = jobs['runtime-installation-acceptance'];
   const mode = workflow.on.workflow_dispatch.inputs.mode;
   assert.equal(mode.type, 'choice');

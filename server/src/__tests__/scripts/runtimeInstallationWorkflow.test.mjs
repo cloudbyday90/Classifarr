@@ -9,6 +9,34 @@ test('checked-in CI requires isolated installation acceptance before publication
   expect(validateRuntimeInstallationWorkflow(loadWorkflow())).toBe(true);
 });
 
+test.each([
+  ['skip drill', steps => { steps[0].if = 'false'; }],
+  ['mask drill failure', steps => { steps[1]['continue-on-error'] = true; }],
+  ['replace drill', steps => { steps[1].run = 'echo passed'; }],
+  ['upload only on success', steps => { delete steps[2].if; }],
+  ['upload raw files', steps => { steps[2].with.path = '.tmp/**'; }],
+  ['lose hidden reports', steps => { delete steps[2].with['include-hidden-files']; }],
+  ['long retention', steps => { steps[2].with['retention-days'] = 90; }],
+  ['mutable action', steps => { steps[2].uses = 'actions/upload-artifact@main'; }],
+  ['unbounded upload', steps => { delete steps[2]['timeout-minutes']; }],
+  ['mask upload failure', steps => { steps[2]['continue-on-error'] = true; }],
+])('rejects shutdown diagnostic workflow regression: %s', (_label, mutate) => {
+  const workflow = loadWorkflow();
+  const steps = workflow.jobs['build-and-test'].steps.slice(-3);
+  mutate(steps);
+  expect(() => validateRuntimeInstallationWorkflow(workflow)).toThrow();
+});
+
+test('rejects missing or reordered shutdown evidence steps', () => {
+  const workflow = loadWorkflow();
+  workflow.jobs['build-and-test'].steps.pop();
+  expect(() => validateRuntimeInstallationWorkflow(workflow)).toThrow();
+  const reordered = loadWorkflow();
+  const steps = reordered.jobs['build-and-test'].steps;
+  steps.splice(-3, 3, ...steps.slice(-3).reverse());
+  expect(() => validateRuntimeInstallationWorkflow(reordered)).toThrow();
+});
+
 test('manual retention requires an explicit cleanup dispatch from a v-prefixed tag', () => {
   const job = loadWorkflow().jobs['cleanup-old-releases-manual'];
   // Check the actual credential-bearing job, not a separate imitation of its gate.

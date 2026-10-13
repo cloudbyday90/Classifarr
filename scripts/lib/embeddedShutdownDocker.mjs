@@ -5,29 +5,65 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { projectShutdownError, recordShutdownCommandFailure, shutdownOperation } from './embeddedShutdownDiagnostics.mjs';
 
 const fixture = resolve(import.meta.dirname, '../fixtures/embeddedShutdown');
 
 export async function withShutdownContainer(check, { imageName = process.env.IMAGE_NAME || 'classifarr:test',
-  execute = promisify(execFile), random = randomBytes, fixtureMode = 'http' } = {}) {
+  execute = promisify(execFile), random = randomBytes, fixtureMode = 'http', scenario = 'unspecified', diagnostics = () => {} } = {}) {
   assert(['http', 'queue'].includes(fixtureMode), 'unsupported_shutdown_fixture');
+  assert(['unspecified', 'drain-10', 'drain-60', 'frozen-10', 'frozen-60', 'graceful', 'killed'].includes(scenario), 'unsupported_shutdown_scenario');
   assert.match(imageName, /^[a-zA-Z0-9][a-zA-Z0-9_./:@-]{0,254}$/);
   const suffix = random(16).toString('hex');
   assert.match(suffix, /^[a-f0-9]{32}$/);
   const name = `classifarr-stop-drill-${suffix}`, volume = `${name}-data`, offline = `${name}-offline`;
   const label = `classifarr.shutdown-drill=${suffix}`;
+  const diagnostic = { fixtureMode, scenario, image: null, phase: 'preflight', failurePhase: null, status: 'running',
+    resources: { container: name, offline, volume }, operations: [], failure: null,
+    cleanup: { status: 'not_started', errors: [], verification: [] } };
+  let diagnosticFailure;
+  const emit = () => {
+    try { diagnostics(structuredClone(diagnostic)); }
+    catch { diagnosticFailure = new Error('shutdown_diagnostics_write_failed'); }
+  };
+  const phase = value => { diagnostic.phase = value; emit(); };
   const docker = async (args, timeout = 30_000) => {
-    const { stdout } = await execute('docker', args, { encoding: 'utf8', shell: false,
-      windowsHide: true, timeout, maxBuffer: 2 * 1024 * 1024 });
-    return stdout.trim();
+    const started = performance.now();
+    const command = { phase: diagnostic.phase, operation: shutdownOperation(args), timeoutMs: timeout,
+      resource: [name, offline, volume].find(resource => args.includes(resource)
+        || args.includes(`name=^/${resource}$`) || args.includes(`name=^${resource}$`)) ?? null };
+    let outcome;
+    try {
+      const { stdout } = await execute('docker', args, { encoding: 'utf8', shell: false,
+        windowsHide: true, timeout, maxBuffer: 2 * 1024 * 1024 });
+      outcome = { ...command, status: 'passed', elapsedMs: Math.round(performance.now() - started) };
+      return stdout.trim();
+    } catch (error) {
+      outcome = { status: 'failed', ...recordShutdownCommandFailure(error,
+        { ...command, elapsedMs: Math.round(performance.now() - started) }) };
+      throw error;
+    } finally {
+      diagnostic.operations.push(outcome);
+      if (diagnostic.operations.length > 20) diagnostic.operations.shift();
+    }
   };
   // An existing tag is resolved once; all startup and offline checks use this ID.
-  const image = await docker(['image', 'inspect', '--format', '{{.Id}}', imageName]);
-  assert.match(image, /^sha256:[a-f0-9]{64}$/);
-  for (const container of [name, offline]) {
-    assert.equal(await docker(['ps', '-aq', '--filter', `name=^/${container}$`]), '', 'shutdown_drill_collision');
+  let image;
+  try {
+    phase('preflight');
+    if (diagnosticFailure) throw diagnosticFailure;
+    image = await docker(['image', 'inspect', '--format', '{{.Id}}', imageName]);
+    assert.match(image, /^sha256:[a-f0-9]{64}$/);
+    diagnostic.image = image;
+    for (const container of [name, offline]) {
+      assert.equal(await docker(['ps', '-aq', '--filter', `name=^/${container}$`]), '', 'shutdown_drill_collision');
+    }
+    assert.equal(await docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]), '', 'shutdown_drill_collision');
+  } catch (error) {
+    diagnostic.status = 'failed'; diagnostic.failurePhase = diagnostic.phase;
+    diagnostic.failure = projectShutdownError(error); emit();
+    throw error; // No resource creation: never delete a preflight collision.
   }
-  assert.equal(await docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]), '', 'shutdown_drill_collision');
   const inspect = async () => JSON.parse(await docker(['inspect', '--format', '{{json .State}}', name]));
   const query = text => docker(['exec', name, 'psql', '-X', '-U', 'classifarr', '-d', 'classifarr', '-At', '-v', 'ON_ERROR_STOP=1', '-c', text]);
   const readReceipt = kind => {
@@ -56,6 +92,8 @@ catch (error) { if (error.code !== 'ENOENT') throw error;
   });
   let result, failure;
   try {
+    phase('setup');
+    if (diagnosticFailure) throw diagnosticFailure;
     await docker(['volume', 'create', '--label', label, volume]);
     await docker(['create', '--name', name, '--label', label, '--network', 'none', '--restart', 'no',
       '--user', '1000:1000', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
@@ -69,6 +107,8 @@ catch (error) { if (error.code !== 'ENOENT') throw error;
       '--health-interval', '1s', '--health-timeout', '3s', '--health-start-period', '120s', image]);
     await docker(['start', name]);
     await healthy();
+    phase('scenario');
+    if (diagnosticFailure) throw diagnosticFailure;
     result = await check({ docker, name, image, inspect, query, healthy, readReceipt, waitFor,
       offline: () => docker(['run', '--rm', '--name', offline, '--label', label, '--network', 'none',
         '--user', '1000:1000', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
@@ -76,20 +116,42 @@ catch (error) { if (error.code !== 'ENOENT') throw error;
         '--mount', `type=volume,source=${volume},target=/app/data,readonly`,
         '--entrypoint', '/usr/libexec/postgresql18/pg_controldata', image, '/app/data/postgres']),
     });
-  } catch (error) { failure = error; }
+  } catch (error) {
+    failure = error; diagnostic.failurePhase = diagnostic.phase; diagnostic.failure = projectShutdownError(error);
+  }
   // Labels AND exact generated names are required for deletion, including after
   // ambiguous create/run timeouts. No broad prune or installation project.
   const cleanupErrors = [];
-  for (const container of [offline, name]) {
+  diagnostic.cleanup.status = 'running';
+  phase('cleanup');
+  for (const resource of [offline, name, volume]) {
+    const list = resource === volume ? ['volume', 'ls', '-q', '--filter', `name=^${volume}$`]
+      : ['ps', '-aq', '--filter', `name=^/${resource}$`];
+    const record = (error, operation) => {
+      cleanupErrors.push(error);
+      diagnostic.cleanup.errors.push({ resource, operation, error: projectShutdownError(error) });
+    };
     try {
-      const owned = await docker(['ps', '-aq', '--filter', `name=^/${container}$`, '--filter', `label=${label}`]);
-      if (owned) await docker(['rm', '--force', container]);
-    } catch (error) { cleanupErrors.push(error); }
+      const owned = await docker([...list, '--filter', `label=${label}`]);
+      if (owned) {
+        if (resource === volume) assert.equal(owned, volume);
+        await docker(resource === volume ? ['volume', 'rm', volume] : ['rm', '--force', resource]);
+      }
+    } catch (error) { record(error, 'remove'); }
+    // Verify even after an ambiguous timeout. An unowned replacement is never deleted.
+    try {
+      const absent = await docker(list) === '';
+      diagnostic.cleanup.verification.push({ resource, status: absent ? 'absent' : 'present' });
+      if (!absent) record(new Error('shutdown_resource_remains'), 'verify');
+    } catch (error) {
+      diagnostic.cleanup.verification.push({ resource, status: 'unknown' });
+      record(error, 'verify');
+    }
   }
-  try {
-    const owned = await docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`, '--filter', `label=${label}`]);
-    if (owned) { assert.equal(owned, volume); await docker(['volume', 'rm', volume]); }
-  } catch (error) { cleanupErrors.push(error); }
+  diagnostic.cleanup.status = cleanupErrors.length ? 'failed' : 'passed';
+  diagnostic.status = failure || cleanupErrors.length || diagnosticFailure ? 'failed' : 'passed';
+  emit();
+  if (diagnosticFailure) cleanupErrors.push(diagnosticFailure);
   if (cleanupErrors.length) throw new AggregateError([...(failure ? [failure] : []), ...cleanupErrors], `shutdown_drill_cleanup_failed:${name}`);
   if (failure) throw failure;
   return result;

@@ -7,7 +7,7 @@ const workflow = name => load(readFileSync(new URL(`../../../../.github/workflow
 
 test.each([
   ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 13],
-  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 13],
+  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 14],
   ['download-artifact', '9000827ccba6bdab643e8b6fd33ac0654aef8333', 6],
 ])('all %s steps use the reviewed immutable release', (action, revision, count) => {
   const files = readdirSync(new URL('../../../../.github/workflows/', import.meta.url)).filter(file => file.endsWith('.yml'));

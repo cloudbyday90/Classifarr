@@ -74,7 +74,7 @@ test('runs sequentially and reports only after container verification and cleanu
   const container = jest.fn(check => check(context(SHUTDOWN_CASES[index++])));
   expect(await runLoadedShutdownDrill({ container, report })).toHaveLength(4);
   expect(report).toHaveBeenCalledTimes(4);
-  expect(container.mock.calls[1][1]).toEqual({ imageName: 'sha256:fixture' });
+  expect(container.mock.calls[1][1]).toEqual({ scenario: 'drain-60', imageName: 'sha256:fixture' });
   await expect(runLoadedShutdownDrill({ container: async () => { throw new Error('cleanup_failed'); }, report })).rejects.toThrow('cleanup_failed');
   expect(report).toHaveBeenCalledTimes(4);
 });
@@ -90,14 +90,17 @@ test('refuses evidence from different images within a rehearsal', async () => {
 
 function dockerFixture({ collision = false, cleanupFailure = false } = {}) {
   const suffix = '09'.repeat(16), name = `classifarr-stop-drill-${suffix}`;
-  let created = false;
+  let created = false, volumeCreated = false;
   const execute = jest.fn(async (_command, args) => {
     if (args[0] === 'image') return { stdout: `sha256:${'a'.repeat(64)}` };
     if (args[0] === 'inspect') return { stdout: '{"Running":true,"Health":{"Status":"healthy"}}' };
     if (args[0] === 'create') created = true;
+    if (args[0] === 'volume' && args[1] === 'create') volumeCreated = true;
     if (args[0] === 'ps') return { stdout: collision ? 'occupied' : created && !args.some(arg => arg.includes('-offline')) ? 'owned' : '' };
-    if (args[0] === 'volume' && args[1] === 'ls') return { stdout: created ? `${name}-data` : '' };
+    if (args[0] === 'volume' && args[1] === 'ls') return { stdout: volumeCreated ? `${name}-data` : '' };
     if (cleanupFailure && args[0] === 'rm') throw new Error('cleanup refused');
+    if (args[0] === 'rm') created = false;
+    if (args[0] === 'volume' && args[1] === 'rm') volumeCreated = false;
     return { stdout: '' };
   });
   return { execute, random: size => Buffer.alloc(size, 9), imageName: 'classifarr:test', name };
@@ -115,7 +118,7 @@ test('pins the image, isolates resources, preserves entrypoint and bounds every 
   expect(create.join(' ')).not.toContain('docker.sock');
   expect(calls.every(([, , options]) => options.shell === false && options.timeout > 0 && options.maxBuffer > 0)).toBe(true);
   expect(calls.some(([, args]) => args[0] === 'rm' && args.at(-1) === f.name)).toBe(true);
-  expect(calls.at(-1)[1]).toEqual(['volume', 'rm', `${f.name}-data`]);
+  expect(calls.at(-1)[1]).toEqual(['volume', 'ls', '-q', '--filter', `name=^${f.name}-data$`]);
 });
 
 test.each(['http', 'queue'])('selects only the fixed %s fixture preload', async fixtureMode => {
@@ -134,7 +137,7 @@ test('rejects unsupported fixture input before Docker', async () => {
 test('cleans after verification failure but never touches a name collision', async () => {
   const f = dockerFixture();
   await expect(withShutdownContainer(() => { throw new Error('verification'); }, f)).rejects.toThrow('verification');
-  expect(f.execute.mock.calls.at(-1)[1][1]).toBe('rm');
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'volume' && args[1] === 'rm')).toBe(true);
   const occupied = dockerFixture({ collision: true });
   await expect(withShutdownContainer(jest.fn(), occupied)).rejects.toThrow('collision');
   expect(occupied.execute.mock.calls.some(([, args]) => ['rm', 'create'].includes(args[0]))).toBe(false);
@@ -153,4 +156,77 @@ test.each(['--invalid', '', 'image;command'])('rejects invalid image input %s be
   const f = dockerFixture();
   await expect(withShutdownContainer(jest.fn(), { ...f, imageName })).rejects.toThrow();
   expect(f.execute).not.toHaveBeenCalled();
+});
+
+test('retains original failure, cleanup command failure and absence verification separately', async () => {
+  const f = dockerFixture({ cleanupFailure: true }), diagnostics = jest.fn();
+  await expect(withShutdownContainer(() => { throw new Error('queue_claim_wait_failed:private'); }, { ...f, diagnostics }))
+    .rejects.toThrow('shutdown_drill_cleanup_failed');
+  const receipt = diagnostics.mock.calls.at(-1)[0];
+  expect(receipt).toMatchObject({ status: 'failed', failurePhase: 'scenario', failure: { code: 'queue_claim_wait_failed' },
+    cleanup: { status: 'failed', verification: expect.arrayContaining([{ resource: f.name, status: 'present' }]) } });
+  expect(receipt.cleanup.errors[0]).toMatchObject({ resource: f.name, operation: 'remove',
+    error: { command: { operation: 'rm', category: 'command_failed', timeoutMs: 30_000 } } });
+  expect(JSON.stringify(receipt)).not.toMatch(/private|cleanup refused|NODE_OPTIONS|INSERT INTO/);
+});
+
+test('ambiguous removal timeout stays blocking even when absence is confirmed', async () => {
+  const f = dockerFixture(), original = f.execute.getMockImplementation(), diagnostics = jest.fn();
+  f.execute.mockImplementation(async (...args) => {
+    const result = await original(...args);
+    if (args[1][0] === 'rm') throw Object.assign(new Error('secret command'), { code: 'ETIMEDOUT', killed: true, signal: 'SIGTERM' });
+    return result;
+  });
+  await expect(withShutdownContainer(async () => 'passed', { ...f, diagnostics })).rejects.toThrow('cleanup_failed');
+  const receipt = diagnostics.mock.calls.at(-1)[0];
+  expect(receipt.failure).toBeNull();
+  expect(receipt.cleanup.verification.every(item => item.status === 'absent')).toBe(true);
+  expect(receipt.cleanup.errors[0].error.command).toMatchObject({ category: 'command_timeout', systemCode: 'ETIMEDOUT', signal: 'SIGTERM' });
+});
+
+test.each(['present', 'verification-failed', 'unowned'])('does not pass cleanup after %s', async fault => {
+  const f = dockerFixture(), original = f.execute.getMockImplementation(), diagnostics = jest.fn();
+  let scenario = false;
+  f.execute.mockImplementation(async (...args) => {
+    const command = args[1];
+    if (scenario && command[0] === 'ps' && command.includes(`name=^/${f.name}$`)) {
+      if (command.some(arg => arg.startsWith('label='))) return { stdout: fault === 'unowned' ? '' : 'owned' };
+      if (fault === 'verification-failed') throw new Error('daemon error private');
+      return { stdout: 'still present' };
+    }
+    return original(...args);
+  });
+  await expect(withShutdownContainer(async () => { scenario = true; }, { ...f, diagnostics })).rejects.toThrow('cleanup_failed');
+  const receipt = diagnostics.mock.calls.at(-1)[0];
+  expect(receipt.cleanup.status).toBe('failed');
+  expect(receipt.cleanup.verification).toContainEqual({ resource: f.name, status: fault === 'verification-failed' ? 'unknown' : 'present' });
+  if (fault === 'unowned') expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm' && args.at(-1) === f.name)).toBe(false);
+});
+
+test('cleans a volume after container creation fails and reports setup as the failure phase', async () => {
+  const f = dockerFixture(), original = f.execute.getMockImplementation(), diagnostics = jest.fn();
+  f.execute.mockImplementation(async (...args) => {
+    if (args[1][0] === 'create') throw new Error('create failed private');
+    return original(...args);
+  });
+  await expect(withShutdownContainer(jest.fn(), { ...f, diagnostics })).rejects.toThrow('create failed');
+  expect(diagnostics.mock.calls.at(-1)[0]).toMatchObject({ failurePhase: 'setup', cleanup: { status: 'passed' } });
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'volume' && args[1] === 'rm')).toBe(true);
+});
+
+test('diagnostic persistence failure cannot prevent cleanup or result in success', async () => {
+  const f = dockerFixture();
+  const diagnostics = jest.fn(receipt => { if (receipt.phase === 'scenario') throw new Error('disk full private'); });
+  await expect(withShutdownContainer(jest.fn(), { ...f, diagnostics })).rejects.toThrow('cleanup_failed');
+  expect(diagnostics.mock.calls.at(-1)[0]).toMatchObject({ status: 'failed', cleanup: { status: 'passed' } });
+  expect(f.execute.mock.calls.some(([, args]) => args[0] === 'rm')).toBe(true);
+});
+
+test('bounds the operation tail and reports preflight collisions without cleanup', async () => {
+  const f = dockerFixture(), diagnostics = jest.fn();
+  await withShutdownContainer(async ({ docker, name }) => { for (let i = 0; i < 30; i++) await docker(['inspect', name]); }, { ...f, diagnostics });
+  expect(diagnostics.mock.calls.at(-1)[0].operations).toHaveLength(20);
+  diagnostics.mockClear();
+  await expect(withShutdownContainer(jest.fn(), { ...dockerFixture({ collision: true }), diagnostics })).rejects.toThrow('collision');
+  expect(diagnostics.mock.calls.at(-1)[0]).toMatchObject({ failurePhase: 'preflight', cleanup: { status: 'not_started' } });
 });

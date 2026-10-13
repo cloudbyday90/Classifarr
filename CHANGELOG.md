@@ -19,6 +19,12 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   returns. Checks are bounded and cancellable, and reject stale results; no ID
   guessing, exhausted-budget reset or source-library change is performed.
 
+### Fixed
+
+- **Recovery testing** — Shutdown and queue-recovery drills retain safe failure
+  diagnostics in CI, distinguish scenario failures from cleanup failures, and
+  verify temporary resources are gone without weakening ownership checks.
+
 ## [v0.49.2-beta] - 2026-10-13
 
 **TL;DR:** Review and recover unresolved media identities without rearranging your

@@ -95,12 +95,13 @@ export async function checkQueueRecovery(context, mode) {
 }
 
 export async function runQueueRecoveryDrill({ container = withShutdownContainer,
-  report = value => process.stdout.write(`${JSON.stringify(value)}\n`) } = {}) {
+  report = value => process.stdout.write(`${JSON.stringify(value)}\n`), diagnostics } = {}) {
   const results = [];
   let pinnedImage;
   for (const mode of ['graceful', 'killed']) {
     const result = await container(context => checkQueueRecovery(context, mode),
-      { fixtureMode: 'queue', ...(pinnedImage ? { imageName: pinnedImage } : {}) });
+      { fixtureMode: 'queue', scenario: mode, ...(pinnedImage ? { imageName: pinnedImage } : {}),
+        ...(diagnostics ? { diagnostics } : {}) });
     if (pinnedImage) assert.equal(result.image, pinnedImage, 'queue_drill_image_changed');
     pinnedImage = result.image;
     results.push(result); report({ status: 'passed', ...result, cleanup: 'passed' });

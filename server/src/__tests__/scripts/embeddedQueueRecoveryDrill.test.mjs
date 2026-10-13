@@ -74,7 +74,7 @@ test('pins one image and reports success only after cleanup', async () => {
   const container = jest.fn(check => check(fixture(modes[index++])));
   expect(await runQueueRecoveryDrill({ container, report })).toHaveLength(2);
   expect(container.mock.calls.map(([, options]) => options)).toEqual([
-    { fixtureMode: 'queue' }, { fixtureMode: 'queue', imageName: 'sha256:fixture' },
+    { fixtureMode: 'queue', scenario: 'graceful' }, { fixtureMode: 'queue', scenario: 'killed', imageName: 'sha256:fixture' },
   ]);
   expect(report).toHaveBeenCalledTimes(2);
   await expect(runQueueRecoveryDrill({ report, container: async () => { throw new Error('cleanup_failed'); } }))
