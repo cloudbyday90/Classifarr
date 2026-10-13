@@ -111,3 +111,6 @@ Next: design alias-preserving approved repair. Require every recognized ID path 
 be updated atomically under the existing preview/confirmation fences, prove that
 all consumers see the same approved identity, then assess bounded backfill. Do
 not widen automatic admission merely because diagnostics can now read a format.
+
+Follow-on implementation: [alias-consistent reviewed repairs](queue-identity-alias-repair-outcome.md)
+now covers that manual write boundary; automatic backfill remains deferred.

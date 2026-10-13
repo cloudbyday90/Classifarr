@@ -55,12 +55,12 @@ returns the saved receipt (or null), including after task retention.
 
 Eligible tasks are failed classification tasks at metadata fetch with an allowed
 saved failure, no claim/routing result, remaining attempts within the existing
-five-attempt ceiling and no previous repair. Only simple movie/series request
-payloads are supported: alternate nested identities, pre-enriched metadata,
-inventory/reprocess context and unknown fields are rejected rather than discarded.
-The subsequent [alias repair extension](queue-identity-alias-repair-design.md)
-admits specifically allowlisted nested/legacy identities and atomically changes
-their declarations; pre-enriched and unknown contexts remain excluded.
+five-attempt ceiling and no previous repair. Only unenriched movie/series requests
+with reviewed shapes are supported. The subsequent
+[alias repair extension](queue-identity-alias-repair-design.md) admits specifically
+allowlisted nested/legacy identities and atomically changes their declarations.
+Pre-enriched metadata, inventory/reprocess context and unknown fields remain
+excluded rather than being discarded.
 The direct saved source must still agree. No library/server name is special-cased.
 Any decision witness, linked classification, or competing task/history for either
 typed identity prevents repair. Fresh installs create empty tables and do no work.
