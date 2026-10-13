@@ -23,6 +23,10 @@ Only a requested or scheduled OMDb provider check reserves a credit.
 - Missing configuration produces no work. Invalid credential context fails closed.
 - Admission is one bounded transaction; HTTP begins only after successful commit.
   Competing lookups, recovery and health checks cannot spend the same credit.
+  The coordinator shares one in-flight OMDb check per process. Across processes,
+  the existing one-second admission floor is rate control, not a global in-flight
+  request limit. Keep the existing one-second lock, five-second statement,
+  ten-second idle-transaction and fifteen-second total-transaction bounds.
 - Busy pacing, depleted local quota, rejected credentials, configuration drift
   and unavailable admission produce a safe, specific unknown health observation.
   No provider request, item attempt or last-success timestamp is fabricated.
@@ -62,8 +66,9 @@ Sources discovered and opened using MCP search on 2026-10-12:
   daily free tier. [OMDb API documentation](https://www.omdbapi.com/) documents
   title/year requests and HTTPS support; no free health endpoint is established.
 - [PostgreSQL 18 locking](https://www.postgresql.org/docs/18/explicit-locking.html)
-  documents transaction-scoped advisory locks and consistent acquisition order.
-  Keep the existing lock and short transactions; do not hold one across HTTP.
+  documents conflicting table-lock modes and consistent acquisition order.
+  Keep the existing `SHARE ROW EXCLUSIVE` configuration-table lock and short
+  transactions; do not hold one across HTTP.
 - [OWASP resource consumption guidance](https://api-security.owasp.org/editions/2023/en/0xa4-unrestricted-resource-consumption/)
   calls for bounded execution and third-party resource/spending controls. Applying
   the existing credit gate to health is our design inference from that guidance.

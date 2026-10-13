@@ -40,8 +40,10 @@ credentials need replacement.
   Reuse the existing response classifier; success still requires a valid lookup.
   Authentication, quota and rate-limit failures get allowlisted safe reasons.
   Not-found or malformed probe results do not claim a verified connection.
-  Ordinary health requests still consume upstream quota outside the application's
-  lookup budget, as before; this change does not claim quota isolation.
+  In this original increment, ordinary health requests consumed upstream quota
+  outside the lookup budget. The subsequent
+  [OMDb admission change](omdb-health-admission-design.md) brings System-health
+  attempts into the shared local budget; it does not claim account-wide isolation.
 - Configuration-invalid, malformed, oversized and cancelled checks are unknown.
   Refusal, timeout, authentication and quota/rate-limit responses are disconnected.
   Preserve last-success history on all non-success outcomes. Expose fixed messages

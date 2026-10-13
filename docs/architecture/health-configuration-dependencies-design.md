@@ -16,7 +16,7 @@ Audit the probe and its helpers, not just the top-level health function:
 | --- | --- | --- |
 | Radarr/Sonarr | ID/name, URL, protocol/host/port/base path, API key, TLS verification, timeout; active membership | Creation/update timestamps, library/profile/monitoring preferences |
 | TMDb | Selected ID/API key; active membership and newest-ID ordering | Language, timestamps |
-| OMDb | Selected ID/API key, credential generation/rejection; active membership/order | Request count, reset date, daily quota, timestamps |
+| OMDb | Selected ID/API key, credential generation/rejection, configured daily limit; active membership/order | Request count, reset date, timestamps |
 | Tavily | Selected ID/API key, credential generation/rejection; active membership/order | Search options, domain filters, timestamps |
 | Image embeddings | Weight, mode, local host/port, cloud provider/key | Model-cache refresh timestamp |
 | RAG | Existing four selected fields affect status or displayed provider/model | Already explicit; unchanged |
@@ -25,10 +25,12 @@ Audit the probe and its helpers, not just the top-level health function:
 | Media server | Keep conservative existing comparison | Defer narrowing: health reader expects legacy token/connection fields unlike the current schema's API-key contract |
 
 Arr helpers consume fallback addressing, TLS and timeout fields, so retaining only
-URL/key would be incomplete. Keep credential generation/rejection conservatively
-even though current metadata health probes do not inspect those fields directly.
-No claim is made that quota changes cannot affect later lookup availability: this
-check is connection/configuration health, not a quota readiness assessment.
+URL/key would be incomplete. Retain credential generation/rejection; OMDb admission
+now uses those fields before dispatching its connection probe.
+The later [OMDb health admission change](omdb-health-admission-design.md) adds the
+configured daily limit to this projection because it controls whether a provider
+check can run. Changing usage counters still does not invalidate an observation.
+This is not a continuously updated account-wide quota readiness assessment.
 
 ## Implementation contract
 
