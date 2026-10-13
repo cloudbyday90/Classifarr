@@ -50,7 +50,10 @@ describe.each([
   let app, queueService, mediaSyncService, syncStatus, decisionWitnessReadService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    authService.verifyToken.mockReset();
+    apiKeyService.validateApiKey.mockReset();
+    apiKeyService.updateLastUsed.mockReset();
+    apiKeyService.logAudit.mockReset();
     // Authentication is stubbed, not authorization: these are the claims of a
     // valid signed sweep token. The real mounted routers and guards run below.
     authService.verifyToken.mockResolvedValue(sweepClaims());
@@ -167,7 +170,10 @@ describe('combined authentication preserves independent API-key authority', () =
   let app, mutation;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    authService.verifyToken.mockReset();
+    apiKeyService.validateApiKey.mockReset();
+    apiKeyService.updateLastUsed.mockReset();
+    apiKeyService.logAudit.mockReset();
     mutation = jest.fn().mockResolvedValue({ success: true });
     app = express();
     app.use('/api/queue', createQueueRouter({

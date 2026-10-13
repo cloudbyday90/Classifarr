@@ -143,6 +143,13 @@ copyright, documentation lint, archive fidelity and version checks also passed.
 Complete final-source release checks are pending at this checkpoint. The
 checklist now includes this cross-path regression gate.
 
+The first full-suite attempt also caught a test-fixture convention violation:
+the new suite cleared calls without resetting mock implementations. The fixture
+now resets each credential-service mock explicitly. Its regression suites plus
+the repository code-health gate pass (eight suites, 34,796 generated checks).
+This test-only correction does not change the authentication patch; the full
+suite and image rehearsals will restart on its committed source.
+
 Rehearsals for the preceding source were stopped when the issue was found.
 Their owned synthetic containers, volumes, networks and generated candidate
 images were removed and cleanup verified. Those interrupted runs are not release
