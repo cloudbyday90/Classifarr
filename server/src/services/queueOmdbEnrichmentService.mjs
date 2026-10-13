@@ -235,9 +235,9 @@ export class QueueOmdbEnrichmentService {
 
             this.logger.info('OMDb lookup', { title: payload.title, type: mediaType });
 
-            const sslBlocked = await this.isOmdbSslBlocked(omdbApiKey, payload.title);
+            const sslBlocked = await this.isOmdbSslBlocked(omdbConfig);
             if (sslBlocked) {
-                await this.queueRetry(payload.itemId, 'omdb', 'OMDb SSL certificate issue', 6);
+                await this.queueRetry(payload.itemId, 'omdb', 'OMDb SSL recovery pending', 6);
                 return enrichmentData;
             }
 

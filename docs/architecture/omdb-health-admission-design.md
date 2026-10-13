@@ -51,8 +51,9 @@ Only a requested or scheduled OMDb provider check reserves a credit.
 Existing explicit settings tests can use unsaved credentials and remain outside
 this local-budget boundary. Call-site review also found a legacy SSL-recovery
 probe in `QueueTaskProcessorService.isOmdbSslBlocked` calling `omdbService.checkHealth`.
-It has process-local timing and remains outside this System-health increment;
-review that recovery contract next before claiming complete automatic accounting.
+It remained outside this System-health increment. The subsequent
+[SSL recovery admission design](omdb-ssl-recovery-admission-design.md) brings that
+automatic probe under the same accounting while preserving its recovery contract.
 Separate databases sharing one key, other applications
 and old binaries are not coordinated. Historical health traffic cannot be safely
 reconstructed: no guessed retroactive debit or backfill. Local UTC rollover remains

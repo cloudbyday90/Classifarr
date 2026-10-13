@@ -49,6 +49,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   provider data or changing richer settings-page connection tests.
   Include System-page OMDb health checks in the shared request budget and pacing,
   distinguishing skipped checks from provider outages without renewing old success.
+  Apply the same budget and pacing to automatic OMDb SSL-recovery checks, rejecting
+  stale credential results and retaining unfinished enrichment for retry.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

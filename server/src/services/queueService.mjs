@@ -266,8 +266,8 @@ export class QueueService {
     }
   }
 
-  async isOmdbSslBlocked(omdbApiKey, title) {
-    return this.queueTaskProcessorService.isOmdbSslBlocked(omdbApiKey, title);
+  async isOmdbSslBlocked(config) {
+    return this.queueTaskProcessorService.isOmdbSslBlocked(config);
   }
 
   async enqueue(taskType, payload, options = {}) {

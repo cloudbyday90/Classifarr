@@ -15,6 +15,7 @@ import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcesso
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
+import { createOmdbSslRecovery } from './omdbSslRecovery.mjs';
 import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
 import {
     buildClassificationDestinationSummary,
@@ -54,6 +55,9 @@ export class QueueTaskProcessorService {
         this.lastOmdbSslWarnAt = 0;
         this.omdbSslBlockedUntil = 0;
         this.lastOmdbSslProbeAt = 0;
+        this.omdbSslRecoveryEpoch = 0;
+        this.omdbSslRecoveryInFlight = false;
+        this.probeOmdbSslRecovery = deps.probeOmdbSslRecovery || createOmdbSslRecovery({ db: this.db });
         this.omdbCircuitWarnThrottleMs = deps.omdbCircuitWarnThrottleMs || 60_000;
         this.omdbSslWarnThrottleMs = deps.omdbSslWarnThrottleMs || parseEnvMs(process.env.OMDB_SSL_WARN_THROTTLE_MS, 15 * 60 * 1000);
         this.omdbSslBlockMs = deps.omdbSslBlockMs || parseEnvMs(process.env.OMDB_SSL_BLOCK_MS, 15 * 60 * 1000);
@@ -81,6 +85,7 @@ export class QueueTaskProcessorService {
                     this.lastOmdbSslWarnAt = patch.lastOmdbSslWarnAt;
                 }
                 if (Object.prototype.hasOwnProperty.call(patch, 'omdbSslBlockedUntil')) {
+                    this.omdbSslRecoveryEpoch += 1;
                     this.omdbSslBlockedUntil = patch.omdbSslBlockedUntil;
                 }
             },
@@ -271,52 +276,56 @@ export class QueueTaskProcessorService {
         }
     }
 
-    async isOmdbSslBlocked(omdbApiKey, title) {
+    async isOmdbSslBlocked(config) {
         const now = Date.now();
 
         if (this.omdbSslBlockedUntil === 0 || now >= this.omdbSslBlockedUntil) {
             return false;
         }
 
-        if ((now - this.lastOmdbSslProbeAt) < this.omdbSslRecoveryProbeMs) {
+        if (this.omdbSslRecoveryInFlight || (now - this.lastOmdbSslProbeAt) < this.omdbSslRecoveryProbeMs) {
             return true;
         }
 
         this.lastOmdbSslProbeAt = now;
+        this.omdbSslRecoveryInFlight = true;
+        const epoch = this.omdbSslRecoveryEpoch;
+        const blockedUntil = this.omdbSslBlockedUntil;
 
         try {
-            const health = await this.omdbService.checkHealth(omdbApiKey);
-            if (health?.healthy) {
+            const result = await this.probeOmdbSslRecovery(config);
+            if (epoch !== this.omdbSslRecoveryEpoch || blockedUntil !== this.omdbSslBlockedUntil) return true;
+            if (result.status === 'recovered') {
                 this.omdbSslBlockedUntil = 0;
                 this.lastOmdbSslWarnAt = 0;
-                this.logger.info('OMDb SSL recovery detected; resuming OMDb enrichment', { title });
+                this.logger.info('OMDb SSL recovery detected; resuming OMDb enrichment');
                 return false;
             }
 
-            if (health?.ssl_error) {
+            if (result.status === 'ssl_error') {
                 this.omdbSslBlockedUntil = now + this.omdbSslBlockMs;
                 if ((now - this.lastOmdbSslWarnAt) >= this.omdbSslWarnThrottleMs) {
                     this.lastOmdbSslWarnAt = now;
                     this.logger.warn('OMDb SSL certificate issue persists; OMDb enrichment remains temporarily paused', {
-                        title,
-                        message: health.message
+                        reasonCode: 'certificate_validation_failed',
                     });
                 } else {
-                    this.logger.debug('OMDb SSL persistent warning suppressed', { title });
+                    this.logger.debug('OMDb SSL persistent warning suppressed');
                 }
                 return true;
             }
-        } catch (healthError) {
-            this.logger.debug('OMDb SSL recovery probe failed', {
-                title,
-                error: healthError.message
-            });
+            this.logger.debug('OMDb SSL recovery remains pending', { reasonCode: result.code });
+        } catch (_error) {
+            this.logger.debug('OMDb SSL recovery remains pending', { reasonCode: 'probe_unavailable' });
+        } finally {
+            this.omdbSslRecoveryInFlight = false;
         }
 
         return true;
     }
 
     resetOmdbState() {
+        this.omdbSslRecoveryEpoch += 1;
         this.omdbLimitHit = false;
         this.lastOmdbCircuitWarnAt = 0;
         this.lastOmdbSslWarnAt = 0;

@@ -237,7 +237,9 @@ describe('enrich — guards', () => {
     const svc = makeSvc({ db, isOmdbSslBlocked });
     const data = {};
     expect(await svc.enrich({ title: 'X', itemId: 1, media_type: 'movie' }, data)).toBe(data);
-    expect(queueForRetry).toHaveBeenCalled();
+    expect(isOmdbSslBlocked).toHaveBeenCalledWith({ api_key: 'key123' });
+    expect(queueForRetry).toHaveBeenCalledWith(1, 'omdb', 'OMDb SSL recovery pending', 6);
+    expect(svc.omdbService.getByTitle).not.toHaveBeenCalled();
   });
 });
 

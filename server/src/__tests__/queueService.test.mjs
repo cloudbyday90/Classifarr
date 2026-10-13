@@ -115,6 +115,7 @@ describe('QueueService', () => {
         queueService.queueTaskProcessorService.lastOmdbSslWarnAt = 0;
         queueService.queueTaskProcessorService.omdbSslBlockedUntil = 0;
         queueService.queueTaskProcessorService.lastOmdbSslProbeAt = 0;
+        queueService.queueTaskProcessorService.probeOmdbSslRecovery = jest.fn();
         queueService.queueTaskProcessorService.createEnrichmentWriteSession = options => unitEnrichmentWriteSession({
             queryWithTimeout: (...args) => queueService.queueTaskProcessorService.queryWithTimeout(...args),
             completeTask: (...args) => queueService.completeTask(...args),
@@ -531,11 +532,7 @@ describe('QueueService', () => {
             sslError.code = 'CERT_HAS_EXPIRED';
             sslError.isOmdbSslCertError = true;
             omdbService.getByTitle.mockRejectedValue(sslError);
-            omdbService.checkHealth.mockResolvedValue({
-                healthy: false,
-                ssl_error: true,
-                message: 'certificate has expired',
-            });
+            queueService.queueTaskProcessorService.probeOmdbSslRecovery.mockResolvedValue({ status: 'ssl_error', code: 'certificate_validation_failed' });
 
             db.query.mockImplementation((query) => {
                 if (query.includes('SELECT * FROM omdb_config')) {
@@ -563,7 +560,7 @@ describe('QueueService', () => {
             expect(suppressedCalls).toHaveLength(1);
 
             const omdbRetryCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
-                ([, enrichmentType, reason]) => enrichmentType === 'omdb' && reason === 'OMDb SSL certificate issue',
+                ([, enrichmentType, reason]) => enrichmentType === 'omdb' && ['OMDb SSL certificate issue', 'OMDb SSL recovery pending'].includes(reason),
             );
             expect(omdbRetryCalls).toHaveLength(2);
 
@@ -595,11 +592,7 @@ describe('QueueService', () => {
             queueService.queueTaskProcessorService.omdbSslBlockedUntil = Date.now() + 60_000;
             queueService.queueTaskProcessorService.lastOmdbSslProbeAt = 0;
 
-            omdbService.checkHealth.mockResolvedValue({
-                healthy: true,
-                ssl_error: false,
-                message: 'OMDb API is healthy',
-            });
+            queueService.queueTaskProcessorService.probeOmdbSslRecovery.mockResolvedValue({ status: 'recovered', code: 'transport_verified' });
             omdbService.getByTitle.mockResolvedValue({
                 rated: 'N/A',
                 genre: 'Action',
@@ -618,7 +611,8 @@ describe('QueueService', () => {
 
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
-            expect(omdbService.checkHealth).toHaveBeenCalled();
+            expect(queueService.queueTaskProcessorService.probeOmdbSslRecovery).toHaveBeenCalledWith({ api_key: 'test_key', is_active: true });
+            expect(omdbService.checkHealth).not.toHaveBeenCalled();
             expect(omdbService.getByTitle).toHaveBeenCalledTimes(1);
 
             const omdbRetryCalls = enrichmentRetryService.queueForRetry.mock.calls.filter(
