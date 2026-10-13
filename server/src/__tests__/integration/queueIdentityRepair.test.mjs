@@ -34,6 +34,20 @@ const preview = () => service.preview(actorId, taskId, {});
 const confirm = p => service.confirm(actorId, taskId, { previewId: p.previewId, sameWorkAndEdition: true });
 const retry = r => service.retry(actorId, taskId, { receiptId: r.id });
 
+test('normalizing nested diagnostic identities does not admit nested repair', async () => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId,
+    { media: { tmdbId: 42, mediaType: 'movie', imdbId: 'tt123' } }]);
+  const before = await readTask();
+  await expect(preview()).rejects.toMatchObject({ code: 'queue_identity_repair_unsupported' });
+  expect(await readTask()).toEqual(before);
+});
+
+test('camel-case competing request blocks approved repair', async () => {
+  extraTasks.push((await db.query(`INSERT INTO task_queue(task_type,payload,status)
+    VALUES ('classification','{"mediaType":"movie","tmdbId":"00099"}','pending') RETURNING id`)).rows[0].id);
+  await expect(preview()).rejects.toMatchObject({ code: 'queue_identity_repair_prior_work' });
+});
+
 test('atomic repair preserves source, budgets and failure; retry is a separate one-time command', async () => {
   await db.query(`INSERT INTO queue_metadata_recovery(task_id,probe_count,last_outcome) VALUES ($1,4,'not_found')`, [taskId]);
   await db.query(`INSERT INTO classification_intake_receipts(queue_task_id,source_class,status_id,queued_at,attempt_count)

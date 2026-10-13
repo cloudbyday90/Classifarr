@@ -80,3 +80,37 @@ test('disagreeing source identity never triggers candidate lookup', async () => 
   expect((await service.check(actorId, taskId, {})).identityEvidence.reason).toBe('source_conflict');
   expect(provider.findByExternalId).not.toHaveBeenCalled();
 });
+
+test.each([
+  { media: { tmdbId: '00042', mediaType: ' Movie ' } },
+  { tmdbId: 42, mediaType: 'movie' },
+  { media_type: 'movie', extra: [{ name: 'TMDB ID', value: 42 }] },
+])('legacy diagnostic normalizes without rewriting %j', async payload => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, payload]);
+  const before = await read();
+  expect(await service.check(actorId, taskId, {})).toMatchObject({ tmdbId: 42, mediaType: 'movie', observation: { category: 'available' } });
+  expect(await read()).toEqual(before);
+});
+
+test.each([
+  { tmdb_id: 42, media_type: 'movie', media: { tmdbId: 99 } },
+  { tmdb_id: 42, media_type: 'movie', tmdbId: true },
+  { tmdb_id: 42, media_type: 'movie', private: 'x'.repeat(65536) },
+])('invalid saved identities fail before HTTP', async payload => {
+  await db.query('UPDATE task_queue SET payload=$2 WHERE id=$1', [taskId, payload]);
+  const before = await read();
+  await expect(service.check(actorId, taskId, {})).rejects.toMatchObject({ statusCode: 409 });
+  expect(provider.getDetails).not.toHaveBeenCalled();
+  expect(await read()).toEqual(before);
+});
+
+test.each([
+  { media: { tmdbId: 99, imdbId: 'tt123' } },
+  { tmdb_id: 42, media: { tmdbId: 99, imdbId: 'tt123' } },
+  { media_type: null, media: { imdbId: 'tt123' } },
+])('source raw identity cannot contradict its normalized columns', async payload => {
+  await linkedSource();
+  await db.query('UPDATE webhook_log SET payload=$2 WHERE id=$1', [sourceId, payload]);
+  expect((await service.check(actorId, taskId, {})).identityEvidence.reason).toBe('source_conflict');
+  expect(provider.findByExternalId).not.toHaveBeenCalled();
+});

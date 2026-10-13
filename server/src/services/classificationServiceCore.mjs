@@ -7,6 +7,7 @@
  */
 
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import {
   buildClassificationDestinationSummary,
@@ -127,11 +128,13 @@ export class ClassificationService {
       new ClassificationRoutingMetadataPersistenceService({ db });
   }
 
-  async _withCatch(label, fn) {
+  async _withCatch(label, fn, taskId = null) {
     try {
       return await fn();
     } catch (error) {
-      this.logger.error(label, { error: error.message });
+      if (error instanceof ClassificationMetadataFailure) {
+        this.logger.error(label, { error: error.message, ...classificationMetadataFailureLogFields(error, taskId) }, { error });
+      } else this.logger.error(label, { error: error.message });
       throw error;
     }
   }
@@ -547,7 +550,7 @@ export class ClassificationService {
         retry_reason_code: result.retry_reason_code || null,
         bestMatch: metadata.contentAnalysis?.bestMatch,
       };
-    });
+    }, runtimeContext?.queueTask?.id ?? overseerrPayload?.taskId);
   }
 
   parseOverseerrPayload(payload) {

@@ -10,7 +10,11 @@ beforeEach(() => {
   actor = { role: 'admin', is_active: true };
   provider = { revision: 'config-one', configured: true,
     getDetails: jest.fn().mockResolvedValue({ id: 42, title: 'Verified record', private: 'not returned' }) };
-  db = { query: jest.fn(async sql => ({ rows: sql.includes('FROM users') ? [actor] : task ? [{ ...task }] : [] })) };
+  db = { query: jest.fn(async sql => ({ rows: sql.includes('FROM users') ? [actor] : task ? [{ ...task,
+    request_payload: { tmdb_id: task.tmdb_id, media_type: task.media_type, imdb_id: task.task_imdb_id, tvdb_id: task.task_tvdb_id },
+    source_payload: { media: { imdbId: task.source_imdb_id, imdb_id: task.source_imdb_legacy_id,
+      tvdbId: task.source_payload_tvdb_id, tvdb_id: task.source_payload_tvdb_legacy_id } },
+  }] : [] })) };
   readProvider = jest.fn(async () => ({ ...provider }));
   service = createQueueMetadataCheckService({ db, readProvider, now: () => new Date('2026-10-13T12:00:00Z') });
 });
@@ -94,7 +98,7 @@ describe('failed task metadata check', () => {
   });
   test.each([null, '0', '-1', '42x', '2147483648'])('rejects invalid provider ID %j', async id => {
     task.tmdb_id = id;
-    await expect(check()).rejects.toMatchObject({ statusCode: 400 });
+    await expect(check()).rejects.toMatchObject({ statusCode: 409 });
     expect(provider.getDetails).not.toHaveBeenCalled();
   });
   test('missing task has no side effects', async () => {

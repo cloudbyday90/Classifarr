@@ -64,7 +64,7 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
       director_name,
     };
   } catch (error) {
-    throw new ClassificationMetadataFailure(error, detailsRequest);
+    throw new ClassificationMetadataFailure(error, detailsRequest, { tmdbId, mediaType });
   }
 }
 

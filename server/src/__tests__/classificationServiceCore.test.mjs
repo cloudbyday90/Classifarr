@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 import { parseOverseerrPayload } from '../services/classificationMetadataServiceShared.mjs';
+import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
 import { projectLiveInventoryQueryMetadata } from '../services/liveInventoryLearnedProfile.mjs';
 import { buildRetryPayload } from '../utils/classificationRetryPayloads.mjs';
 import {
@@ -220,6 +221,33 @@ describe('supported classification content', () => {
 });
 
 describe('organization metadata arrival and retry parity', () => {
+  test('conflicting IDs stop before provider reads, title search or routing', async () => {
+    const service = createService();
+    service.classificationMetadataService.parseOverseerrPayload = parseOverseerrPayload;
+    service.tmdbService.search = jest.fn();
+    service.classificationMetadataService.enrichWithTMDB = jest.fn();
+    await expect(service.classify({ title: 'Do not search', media_type: 'movie', tmdb_id: 42, media: { tmdbId: 99 } }))
+      .rejects.toMatchObject({ code: 'request_identity_conflict' });
+    expect(service.classificationMetadataService.enrichWithTMDB).not.toHaveBeenCalled();
+    expect(service.tmdbService.search).not.toHaveBeenCalled();
+    expect(service.runDecisionTree).not.toHaveBeenCalled();
+  });
+
+  test('classification report keeps the actual lookup context and safe boundary stack', async () => {
+    const service = createService();
+    const error = new ClassificationMetadataFailure({ response: { status: 404, data: 'private' } }, true,
+      { tmdbId: 42, mediaType: 'movie', token: 'private' });
+    service.classificationMetadataService.parseOverseerrPayload = parseOverseerrPayload;
+    service.classificationMetadataService.enrichWithTMDB = jest.fn().mockRejectedValue(error);
+    await expect(service.classifyQueueTask({ id: 99, claim_token: 'private' }, { media_type: 'movie', tmdb_id: 42 })).rejects.toBe(error);
+    expect(service.logger.error).toHaveBeenCalledWith('Classification error', {
+      error: 'Classification metadata lookup failed', ...classificationMetadataFailureLogFields(error, 99),
+    }, { error });
+    expect(JSON.stringify(service.logger.error.mock.calls)).not.toContain('private');
+    expect(error.stack).toContain('ClassificationMetadataFailure');
+    expect(error.stack).not.toContain('persistToDb');
+  });
+
   test.each(['movie', 'tv'].flatMap(type => ['existing', 'id', 'search', 'basic'].map(path => [type, path])))
   ('preserves %s organizations through %s and retry without routing', async (mediaType, path) => {
     const service = createService();

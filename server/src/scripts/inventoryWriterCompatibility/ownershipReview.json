@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "request_identity_diagnostics",
+      "classification": "unresolved",
+      "reason": "Reviewed exact queue processor and acknowledgement diffs: classification uses bounded shared identity validation before provider work, and safe metadata failure context passes to acknowledgement logging. The acknowledgement UPDATE only adds max_attempts to RETURNING; claim-token/status predicates, attempt increments and receipt writes are unchanged. Existing enrichment ownership and post-completion inventory write debt is not resolved by diagnostics.",
+      "followUp": "Retain stale-worker PostgreSQL tests, conflict-before-lookup tests and sanitized persisted-log tests. Review the existing post-completion inventory write separately before making a broader ownership claim; this source review does not authorize live recovery or expansion of approved-repair backfill."
+    },
+    {
       "id": "queue_identity_repair_schema",
       "classification": "separately_coordinated",
       "reason": "Reviewed the additive failed-task identity preview and receipt migration and its isolated-database generated snapshot. New tables start empty; only expiring previews cascade from users/tasks, while receipts intentionally retain typed identity, actor and budget evidence after queue retention. Constraints bound identities, budgets and candidate size. The diff adds no inventory DML, ownership claim, automatic approval, provider request or task retry, and leaves all protected ingestion relations and triggers unchanged.",
@@ -1416,11 +1422,11 @@
     {"path":"server/src/services/queueClassificationHistoryService.mjs","digest":"0afcb3a684f030c42612a5a4e7059e2716a4baf7de810e3c9efc1e6e8ec77188","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueEnrichmentWriteSession.mjs","digest":"5edcc28ef7c02a8208b450c17cbb97029e3d0e000228c12bc53190173dca1167","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueOmdbEnrichmentService.mjs","digest":"c001a7422c9dd8cf71389b97495217ffebd0f9c80684a50692df4b3d578665a2","analysisDigest":"5799051f8d991139aed2d8b834bee5608c020d387a814631b69e5b95580c4ffc","review":"omdb_ssl_recovery_admission"},
-    {"path":"server/src/services/queueTaskAcknowledgementService.mjs","digest":"a2901fedf14727f1059bdff6da9e08d30e480a2e3bab302c947f4ac4f9c519f7","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
+    {"path":"server/src/services/queueTaskAcknowledgementService.mjs","digest":"2e60a4eb8ed280a981372794a8625c8d9f1c94685d1989c193e2c3a67282110c","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"request_identity_diagnostics"},
     {"path":"server/src/services/queueEnrichmentPersistence.mjs","digest":"55f90de3ee195dacf3801c9a52c1f79a1c517cf049827ac61606a157f646b6c6","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
     {"path":"server/src/services/queueTaskProcessorEnrichment.mjs","digest":"32ab8432623ba615467859cf69517c11f870b346525ae30ea40940125c5c55e4","analysisDigest":"b586b70a8a2b4fcad86959f3eadeb00bc124606dd6cc2e24ec722e174f3d0d64","review":"queue_enrichment_claim"},
     {"path":"server/src/services/queueTaskProcessorRating.mjs","digest":"5f7805b5ae4a9c3d11b7882bde68ee1c28e1cfe94c0ed1b074dcbc7aaa8117b8","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"shared_writer_debt"},
-    {"path":"server/src/services/queueTaskProcessorService.mjs","digest":"32ca48365a552150d16b018010e9b90688f77d35ec40f81b1aec18f9b046a9d7","analysisDigest":"495d2a2d2d4548637e6a7482346b9054d9fa28998517101d0c77e7c376a65b08","review":"omdb_recent_lookup_reuse"},
+    {"path":"server/src/services/queueTaskProcessorService.mjs","digest":"cb4361ad590c2f6ce6b4263651b96092573ed91639898e0b6cd8d4efedbf9532","analysisDigest":"495d2a2d2d4548637e6a7482346b9054d9fa28998517101d0c77e7c376a65b08","review":"request_identity_diagnostics"},
     {"path":"server/src/services/queueTmdbResolutionService.mjs","digest":"270b897692a8e82479a903b661d9fdfe181a6a41dd390d8921e3d08d7c3841b1","analysisDigest":"3ba800b6feba885a00f2f2fe2571532e73ee464e939738cabd14166f986831dd","review":"shared_writer_debt"},
     {"path":"server/src/services/ragRetrieverSearch.mjs","digest":"888fc096523404ee7dec1fb6bff9dacf06309ad240ef2f1c8856732ad5d9e212","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/routeSafetyMaintenanceHandoffRepository.mjs","digest":"715d21cdf51791d1efff148783fb995375c524a765eb3b508234a000989a15a1","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},

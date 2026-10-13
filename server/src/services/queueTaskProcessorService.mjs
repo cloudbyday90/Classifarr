@@ -7,13 +7,13 @@ import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
-import { payloadMediaType } from './mediaIdentityValues.mjs';
+import { requireRequestIdentity } from './requestIdentityNormalization.mjs';
 import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';
 import { processRatingNormalization as _processRatingNormalization } from './queueTaskProcessorRating.mjs';
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
-import { classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
+import { ClassificationMetadataFailure, classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
 import { createOmdbSslRecovery } from './omdbSslRecovery.mjs';
 import { omdbRecentLookup } from './omdbRecentLookup.mjs';
@@ -131,7 +131,7 @@ export class QueueTaskProcessorService {
 
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
-        if (!payloadMediaType(payload)) {
+        if (!requireRequestIdentity(payload).mediaType) {
             if (await this.completeTask(task.id, { success: true, skipped: true, reason: 'unsupported_media_type' }, task.claim_token) === false) return;
             if (task.webhook_log_id) await this.db.query(
                 "UPDATE webhook_log SET processing_status = 'skipped' WHERE id = $1",
@@ -262,6 +262,7 @@ export class QueueTaskProcessorService {
                 task.attempts,
                 task.max_attempts,
                 task.claim_token,
+                ...(error instanceof ClassificationMetadataFailure ? [error] : []),
             );
             if (acknowledged === false) return;
 

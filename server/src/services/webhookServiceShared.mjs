@@ -10,7 +10,7 @@
 import { createLogger } from '../utils/logger.mjs';
 import { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, generateRandomKey, maskKey, constantTimeCompare } from '../utils/encryption.mjs';
 import { maskToken } from '../utils/tokenMasking.mjs';
-import { payloadMediaType } from './mediaIdentityValues.mjs';
+import { requireRequestIdentity } from './requestIdentityNormalization.mjs';
 
 const logger = createLogger('WebhookService');
 
@@ -191,14 +191,15 @@ export function parsePayload(body) {
   const request = normalizedBody.request || {};
   const requestedBy = request.requestedBy || normalizedBody.requestedBy || {};
 
-  const media_type = payloadMediaType(normalizedBody);
+  const { mediaType: media_type, tmdbId, tvdbId, imdbId } = requireRequestIdentity(normalizedBody);
 
   const parsed = {
     notification_type,
     event_name: normalizedBody.event || notification_type,
     media_type,
-    tmdb_id: media.tmdbId || media.tmdb_id,
-    tvdb_id: media.tvdbId || media.tvdb_id,
+    tmdb_id: tmdbId,
+    tvdb_id: tvdbId,
+    imdb_id: imdbId,
     request_id: request.request_id || request.id || normalizedBody.request_id,
     title: subject || media.title || media.name,
     year: media.releaseDate ? new Date(media.releaseDate).getFullYear() : null,

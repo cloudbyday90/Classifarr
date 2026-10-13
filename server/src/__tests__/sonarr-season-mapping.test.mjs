@@ -142,6 +142,7 @@ describe('Sonarr Season Mapping Integration', () => {
                 subject: 'Breaking Bad',
                 message: 'New request',
                 media: {
+                    media_type: 'tv',
                     tvdbId: 81189,
                     seasons: '1,2,3',
                     extra: [{
@@ -167,6 +168,7 @@ describe('Sonarr Season Mapping Integration', () => {
             const overseerrPayload = {
                 subject: 'Breaking Bad',
                 media: {
+                    media_type: 'tv',
                     tvdbId: 81189,
                     title: 'Breaking Bad'
                 },

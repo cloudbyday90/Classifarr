@@ -7,6 +7,7 @@ const ELIGIBLE = `t.task_type='classification' AND t.status='failed'
   AND t.claim_token IS NULL AND t.routing_classification_id IS NULL
   AND t.attempts >= 1 AND t.attempts < t.max_attempts AND t.max_attempts <= 5
   AND t.payload->>'media_type' IN ('movie','tv')
+  AND NOT (t.payload ?| ARRAY['media','extra','tmdbId','mediaType'])
   AND CASE WHEN t.payload->>'tmdb_id' ~ '^[1-9][0-9]{0,9}$'
     THEN (t.payload->>'tmdb_id')::bigint <= 2147483647 ELSE false END
   AND NOT (t.payload ? 'result')
@@ -15,8 +16,16 @@ const ELIGIBLE = `t.task_type='classification' AND t.status='failed'
     WHERE r.queue_task_id=t.id AND r.classification_id IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM task_queue newer
     WHERE newer.task_type='classification' AND newer.id>t.id
-      AND newer.payload->>'media_type'=t.payload->>'media_type'
-      AND newer.payload->>'tmdb_id'=t.payload->>'tmdb_id')
+      AND t.payload->>'media_type' IN (lower(btrim(newer.payload->>'media_type')),
+        lower(btrim(newer.payload->>'mediaType')), lower(btrim(newer.payload#>>'{media,media_type}')),
+        lower(btrim(newer.payload#>>'{media,mediaType}')))
+      AND EXISTS (SELECT 1 FROM (
+        SELECT value FROM (VALUES (newer.payload->>'tmdb_id'),(newer.payload->>'tmdbId'),
+          (newer.payload#>>'{media,tmdbId}'),(newer.payload#>>'{media,tmdb_id}')) AS declared(value)
+        UNION ALL SELECT entry->>'value' FROM jsonb_array_elements(
+          CASE WHEN jsonb_typeof(newer.payload->'extra')='array' THEN newer.payload->'extra' ELSE '[]'::jsonb END) entry
+          WHERE lower(entry->>'name') LIKE '%tmdb%'
+      ) AS ids WHERE regexp_replace(btrim(value),'^0+','')=t.payload->>'tmdb_id'))
   AND NOT EXISTS (SELECT 1 FROM classification_history h
     WHERE h.tmdb_id::text=t.payload->>'tmdb_id' AND h.media_type=t.payload->>'media_type'
       AND h.created_at >= t.created_at)`;

@@ -20,8 +20,11 @@ export function queueMetadataCheckMessage(category) {
     : 'The check could not establish why TMDb is unavailable. Open a GitHub issue with the task reference and check details.'
 }
 
-export function queueMetadataCheckError(status) {
+export function queueMetadataCheckError(status, code) {
   if (status === 401 || status === 403) return 'Sign in with an active administrator account to check this record.'
+  if (status === 409 && ['request_identity_invalid', 'request_identity_conflict'].includes(code)) {
+    return 'This saved request has missing, invalid or conflicting IDs. Open a GitHub issue with the task reference so its identity can be reviewed. No lookup, replacement or retry was performed.'
+  }
   if (status === 409) return 'The task or settings changed, or another check is running. Refresh and try again.'
   if (status === 404) return 'This task no longer exists. Refresh the Command Center.'
   if (status === 429) return 'Too many checks. Wait a minute before trying again.'

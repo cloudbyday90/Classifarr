@@ -4,6 +4,10 @@
     <p v-if="!task.payload?.identity_repair && task.metadata_recovery?.recoveredAt">
       Automatic recovery was already used for this task. Further retries need review.
     </p>
+    <p v-else-if="!task.payload?.identity_repair && task.metadata_recovery && legacyIdentity">
+      Automatic checks are paused for this legacy request format. Use Check saved TMDb ID
+      to inspect it; repairing this format needs a separate review. Nothing has been remapped.
+    </p>
     <p v-else-if="!task.payload?.identity_repair && task.metadata_recovery?.checks >= 6">
       Automatic record checks are exhausted. Review the saved ID; it has not been replaced.
     </p>
@@ -72,7 +76,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Button } from '@/components/common'
 import QueueIdentityEvidence from './QueueIdentityEvidence.vue'
 import QueueIdentityRepair from './QueueIdentityRepair.vue'
@@ -80,6 +84,8 @@ import { checkQueueTaskMetadata } from '@/api/queueTasksApi'
 import { queueMetadataCheckError, queueMetadataCheckMessage } from '@/utils/queueMetadataCheckPresentation'
 
 const props = defineProps({ task: { type: Object, required: true } })
+const legacyIdentity = computed(() => ['media', 'extra', 'tmdbId', 'mediaType']
+  .some(key => Object.hasOwn(props.task.payload ?? {}, key)))
 const busy = ref(false)
 const report = ref(null)
 const error = ref('')
@@ -114,7 +120,7 @@ async function check() {
     const response = await checkQueueTaskMetadata(props.task.id, { signal: controller.signal })
     if (ticket === generation) report.value = response.data
   } catch (failure) {
-    if (ticket === generation) error.value = queueMetadataCheckError(failure.response?.status)
+    if (ticket === generation) error.value = queueMetadataCheckError(failure.response?.status, failure.response?.data?.code)
   } finally {
     if (ticket === generation) { busy.value = false; controller = null }
   }

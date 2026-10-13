@@ -1,22 +1,9 @@
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { captureOrganizationMetadata, mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
-import { payloadMediaType } from './mediaIdentityValues.mjs';
+import { requireRequestIdentity } from './requestIdentityNormalization.mjs';
 
 export function parseOverseerrPayload(payload) {
-	const media_type = payloadMediaType(payload);
-
-	let extraTmdbId = null;
-	if (Array.isArray(payload.extra)) {
-		const tmdbExtra = payload.extra.find(
-			(item) => item && item.name && typeof item.name === 'string' && item.name.toLowerCase().includes('tmdb')
-		);
-		if (tmdbExtra) {
-			extraTmdbId = tmdbExtra.value;
-		}
-	}
-
-	const tmdbId = payload.media?.tmdbId || payload.tmdb_id || extraTmdbId;
-	const tvdbId = payload.media?.tvdbId || payload.tvdb_id;
+	const { mediaType: media_type, tmdbId, tvdbId } = requireRequestIdentity(payload);
 	let requestedSeasons = payload.request?.seasons || payload.requested_seasons;
 	if (typeof requestedSeasons === 'string') {
 		try {

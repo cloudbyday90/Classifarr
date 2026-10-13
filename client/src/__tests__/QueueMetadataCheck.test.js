@@ -15,6 +15,15 @@ const render = () => mount(QueueMetadataCheck, { props: { task } })
 beforeEach(() => { vi.resetAllMocks(); checkQueueTaskMetadata.mockResolvedValue({ data: report }) })
 
 describe('saved task metadata check', () => {
+  test.each(['media', 'extra', 'tmdbId', 'mediaType'])('an older recovery ledger does not promise automatic work for %s aliases', key => {
+    const wrapper = mount(QueueMetadataCheck, { props: { task: { ...task,
+      payload: { ...task.payload, [key]: null }, metadata_recovery: { checks: 1, nextCheckAt: '2026-10-14T12:00:00Z' },
+    } } })
+    expect(wrapper.text()).toContain('Automatic checks are paused for this legacy request format')
+    expect(wrapper.text()).not.toContain('Automatic record check:')
+    expect(checkQueueTaskMetadata).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
   test.each([
     [{ checks: 1, nextCheckAt: '2026-10-14T12:00:00Z' }, 'Automatic record check:'],
     [{ checks: 6, nextCheckAt: '2026-10-14T12:00:00Z' }, 'checks are exhausted'],
@@ -102,6 +111,15 @@ describe('saved task metadata check', () => {
     const wrapper = render()
     await wrapper.find('button').trigger('click'); await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain(text)
+    expect(wrapper.text()).not.toContain('private-secret')
+    wrapper.unmount()
+  })
+  test.each(['request_identity_invalid', 'request_identity_conflict'])('explains saved identity conflict %s without asking for blind retries', async code => {
+    checkQueueTaskMetadata.mockRejectedValue({ response: { status: 409, data: { code, error: 'private-secret' } } })
+    const wrapper = render()
+    await wrapper.find('button').trigger('click'); await flushPromises()
+    expect(wrapper.get('[role="alert"]').text()).toContain('Open a GitHub issue with the task reference')
+    expect(wrapper.text()).toContain('No lookup, replacement or retry was performed')
     expect(wrapper.text()).not.toContain('private-secret')
     wrapper.unmount()
   })

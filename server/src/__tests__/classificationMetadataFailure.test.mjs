@@ -13,7 +13,9 @@ test.each([
   expect(error.message).toBe('Classification metadata lookup failed');
   expect(error.cause).toBeUndefined();
   expect(JSON.stringify(error)).not.toMatch(/private|secret/);
-  expect(classificationMetadataFailureLogFields(error)).toEqual({ metadataFailure: error.observation });
+  expect(classificationMetadataFailureLogFields(error)).toMatchObject({ metadataFailure: error.observation,
+    reasonCode: reason, provider: 'tmdb', operation: 'details', tmdbId: null, mediaType: null,
+    failureReference: expect.stringMatching(/^[a-f0-9-]{36}$/) });
   expect(classificationMetadataFailureLogFields(error).metadataFailure.httpStatus).toBe(status ?? null);
 });
 
@@ -24,4 +26,19 @@ test('non-details 404 is not a missing identity and arbitrary errors cannot clai
     expect(classificationMetadataFailureReason(error)).toBeNull();
     expect(classificationMetadataFailureLogFields(error)).toEqual({});
   }
+});
+
+test('lookup identity and reference are bounded, repeatable and independent of task credentials', () => {
+  const error = new ClassificationMetadataFailure({ code: 'ERR_CANCELED', message: 'private' }, false,
+    { tmdbId: '00042', mediaType: ' TV ', authorization: 'private' });
+  const fields = classificationMetadataFailureLogFields(error, '123');
+  expect(fields).toMatchObject({ taskId: 123, tmdbId: 42, mediaType: 'tv', operation: 'enrichment',
+    reasonCode: 'task_metadata_fetch_failed', metadataFailure: { category: 'cancelled' } });
+  expect(classificationMetadataFailureLogFields(error).failureReference).toBe(fields.failureReference);
+  for (const taskId of [null, true, {}, -1, 1.5, 'secret', '9'.repeat(50)]) {
+    expect(classificationMetadataFailureLogFields(error, taskId)).not.toHaveProperty('taskId');
+  }
+  expect(JSON.stringify(fields)).not.toContain('private');
+  expect(classificationMetadataFailureLogFields(new ClassificationMetadataFailure({}, true,
+    { tmdbId: 'secret', mediaType: 'secret' }))).toMatchObject({ tmdbId: null, mediaType: null });
 });

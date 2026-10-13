@@ -30,6 +30,25 @@ async function seed(patch = {}) {
 }
 const read = async id => (await db.query('SELECT * FROM task_queue WHERE id=$1', [id])).rows[0];
 const ledger = async id => (await db.query('SELECT * FROM queue_metadata_recovery WHERE task_id=$1', [id])).rows[0];
+
+test.each(['media', 'extra', 'tmdbId', 'mediaType'])('normalization does not expand automatic admission: %s', async key => {
+  const id = await seed({ payload: { tmdb_id: 424242, media_type: 'movie', [key]: null } });
+  const before = await read(id);
+  expect(await repository.claim()).toBeNull();
+  expect(await ledger(id)).toBeUndefined();
+  expect(await read(id)).toEqual(before);
+});
+
+test.each([
+  { media: { tmdbId: '000424242', mediaType: ' Movie ' } },
+  { tmdbId: 424242, mediaType: 'movie' },
+  { media_type: 'movie', extra: [{ name: 'TMDB ID', value: 424242 }] },
+])('nested newer requests block enrollment of an older flat task', async payload => {
+  const id = await seed();
+  await seed({ payload });
+  expect(await repository.claim()).toBeNull();
+  expect(await ledger(id)).toBeUndefined();
+});
 async function due(id) {
   await repository.claim(); // enrollment starts a durable one-hour delay
   await db.query("UPDATE queue_metadata_recovery SET next_probe_at=clock_timestamp()-interval '1 second' WHERE task_id=$1", [id]);

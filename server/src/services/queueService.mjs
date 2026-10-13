@@ -399,8 +399,8 @@ export class QueueService {
     return this.queueTaskAcknowledgementService.complete(taskId, result, claimToken);
   }
 
-  async failTask(taskId, failureReasonId, _currentAttempts, _maxAttempts, claimToken) {
-    return this.queueTaskAcknowledgementService.fail(taskId, failureReasonId, claimToken);
+  async failTask(taskId, failureReasonId, _currentAttempts, _maxAttempts, claimToken, metadataFailure) {
+    return this.queueTaskAcknowledgementService.fail(taskId, failureReasonId, claimToken, metadataFailure);
   }
 
   async checkAIAvailability() {

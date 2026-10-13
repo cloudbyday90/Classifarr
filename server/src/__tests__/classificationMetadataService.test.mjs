@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
+import { classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
 
 const mockDatabase = { query: jest.fn() };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDatabase));
@@ -198,14 +199,14 @@ describe('parseOverseerrPayload', () => {
         });
 
         test('requires an explicit supported media_type instead of defaulting to movie', () => {
-            const payload = { subject: 'New TV Request', extra: [{ value: '99' }] };
+            const payload = { subject: 'New TV Request', extra: [{ name: 'TMDB', value: '99' }] };
             expect(classificationMetadataService.parseOverseerrPayload(payload).media_type).toBeNull();
         });
 
         test('uses extra field value as tmdbId fallback when named with tmdb', () => {
             const payload = { extra: [{ name: 'TMDB ID', value: '777' }], media_type: 'movie' };
             const result = classificationMetadataService.parseOverseerrPayload(payload);
-            expect(result.tmdbId).toBe('777');
+            expect(result.tmdbId).toBe(777);
         });
 
         test('ignores extra fields not named with tmdb', () => {
@@ -275,6 +276,11 @@ describe('enrichWithTMDB', () => {
         await expect(classificationMetadataService.enrichWithTMDB(1, mediaType)).rejects.toMatchObject({
             message: 'Classification metadata lookup failed', reasonCode: 'task_metadata_not_found',
             observation: { httpStatus: 404, category: 'not_found' },
+        });
+        tmdbService[mediaType === 'movie' ? 'getMovieDetails' : 'getTVDetails'].mockRejectedValueOnce(failure);
+        const wrapped = await classificationMetadataService.enrichWithTMDB(42, mediaType).catch(error => error);
+        expect(classificationMetadataFailureLogFields(wrapped)).toMatchObject({
+            tmdbId: 42, mediaType, operation: 'details', provider: 'tmdb', failureReference: expect.any(String),
         });
     });
     test('certification 404 does not mislabel an existing movie as missing', async () => {

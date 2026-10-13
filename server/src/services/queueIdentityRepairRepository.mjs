@@ -38,7 +38,7 @@ export async function requireNoRepairEffects(db, taskId, mediaType, oldId, newId
       AND $2 IN (lower(btrim(payload->>'media_type')),lower(btrim(payload->>'mediaType')),
         lower(btrim(payload#>>'{media,media_type}')),lower(btrim(payload#>>'{media,mediaType}')))
       AND EXISTS (SELECT 1 FROM (
-        SELECT value FROM (VALUES (payload->>'tmdb_id'),(payload#>>'{media,tmdbId}'),
+        SELECT value FROM (VALUES (payload->>'tmdb_id'),(payload->>'tmdbId'),(payload#>>'{media,tmdbId}'),
           (payload#>>'{media,tmdb_id}')) AS declared(value)
         UNION ALL
         SELECT entry->>'value' FROM jsonb_array_elements(CASE WHEN jsonb_typeof(payload->'extra')='array'

@@ -102,7 +102,8 @@ test('complete TV evidence uses exactly five real HTTP reads and one shared sign
   });
   const task = { revision: '1', task_type: 'classification', status: 'failed', current_stage: 'metadata_fetch',
     error_message: 'task_metadata_not_found', claim_token: null, routing_classification_id: null,
-    tmdb_id: '42', media_type: 'tv', task_imdb_id: 'tt123', task_tvdb_id: 7 };
+    tmdb_id: '42', media_type: 'tv', task_imdb_id: 'tt123', task_tvdb_id: 7,
+    request_payload: { media: { tmdbId: '42', mediaType: 'tv', imdbId: 'tt123', tvdbId: 7 } } };
   const db = { query: async sql => ({ rows: [sql.includes('FROM users') ? { role: 'admin', is_active: true } : task] }) };
   const service = createQueueMetadataCheckService({ db, readProvider: async () => provider });
   expect(await service.check(1, '23', {})).toMatchObject({ observation: { category: 'not_found' },

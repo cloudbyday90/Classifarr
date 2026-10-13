@@ -27,18 +27,28 @@ import { ClassificationMetadataFailure } from '../services/classificationMetadat
 const ratingNormalizer = { getPriorityRating: jest.fn() };
 const metadataEnrichment = { hasWebSearchEnrichmentMetadata: jest.fn() };
 
+test('conflicting queue identities are rejected rather than marked successfully skipped', async () => {
+  const completeTask = jest.fn(), classifyQueueTask = jest.fn();
+  await expect(QueueTaskProcessorService.prototype.processClassificationTask.call({
+    completeTask, classificationService: { classifyQueueTask },
+  }, { id: 9, payload: { media_type: 'movie', media: { mediaType: 'tv', tmdbId: 42 } } }))
+    .rejects.toMatchObject({ code: 'request_identity_conflict' });
+  expect(completeTask).not.toHaveBeenCalled();
+  expect(classifyQueueTask).not.toHaveBeenCalled();
+});
+
 test.each([[404, 'task_metadata_not_found'], [503, 'task_metadata_fetch_failed']])('classification metadata %s keeps its safe queue reason', async (status, reason) => {
   const error = new ClassificationMetadataFailure({ response: { status }, message: 'private' });
   const logger = createMockLogger(), failTask = jest.fn(), db = { query: jest.fn() };
   await QueueTaskProcessorService.prototype.processTask.call({ logger, failTask, db,
     processClassificationTask: jest.fn().mockRejectedValue(error) },
   { id: 9, task_type: 'classification', attempts: 0, max_attempts: 5, claim_token: 'owned', webhook_log_id: 2 });
-  expect(failTask).toHaveBeenCalledWith(9, reason, 0, 5, 'owned');
+  expect(failTask).toHaveBeenCalledWith(9, reason, 0, 5, 'owned', error);
   expect(db.query).toHaveBeenCalledWith(expect.any(String), [2, reason]);
-  expect(logger.error).toHaveBeenCalledWith('Task processing failed', {
+  expect(logger.error).toHaveBeenCalledWith('Task processing failed', expect.objectContaining({
     taskId: 9, taskType: 'classification', reasonCode: reason,
     metadataFailure: { category: status === 404 ? 'not_found' : 'upstream_error', httpStatus: status, transportCode: null },
-  });
+  }));
   expect(JSON.stringify(logger.error.mock.calls)).not.toContain('private');
 });
 

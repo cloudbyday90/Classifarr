@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { normalizeQueueTaskFailureReasonId, QUEUE_TASK_LOG_REASON_IDS } from './queueTaskFailureReason.mjs';
+import { classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 
 const RETRY_DELAYS = [30, 60, 120, 300, 600];
 const CLAIM_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -45,7 +46,7 @@ export class QueueTaskAcknowledgementService {
     }
   }
 
-  async fail(taskId, failureReasonId, claimToken) {
+  async fail(taskId, failureReasonId, claimToken, metadataFailure) {
     if (!isQueueClaimToken(claimToken)) return this.rejected(taskId);
     const reason = normalizeQueueTaskFailureReasonId(failureReasonId);
     try {
@@ -58,14 +59,17 @@ export class QueueTaskAcknowledgementService {
             next_retry_at = CASE WHEN $2 = 'task_metadata_not_found' OR attempts + 1 >= max_attempts THEN next_retry_at
               ELSE NOW() + ($4::integer[])[LEAST(attempts + 1, 5)] * INTERVAL '1 second' END
         WHERE id = $1 AND status = 'processing' AND claim_token = $3::uuid
-        RETURNING task_type, attempts, status`, [taskId, reason, claimToken, RETRY_DELAYS]);
+        RETURNING task_type, attempts, max_attempts, status`, [taskId, reason, claimToken, RETRY_DELAYS]);
       const row = update.rows?.[0];
       if (!row) return this.rejected(taskId);
       const terminal = row.status === 'failed';
       if (row.task_type === 'classification') await this.receiptService.recordTerminal(
         taskId, terminal ? 'failed' : 'retry_scheduled', row.attempts, reason);
-      this.logger[terminal ? 'error' : 'warn'](terminal ? 'Task permanently failed' : 'Task scheduled for retry', {
-        taskId, attempts: row.attempts,
+      this.logger[terminal ? 'error' : 'warn'](terminal ? 'Task stopped; automatic queue retries ended' : 'Task scheduled for retry', {
+        ...(row.task_type === 'classification' ? classificationMetadataFailureLogFields(metadataFailure) : {}),
+        taskId, attempts: row.attempts, maxAttempts: row.max_attempts, reasonCode: reason,
+        retryOutcome: terminal ? 'stopped' : 'scheduled',
+        retryStopReason: !terminal ? null : reason === 'task_metadata_not_found' ? 'metadata_not_found' : 'attempt_budget_exhausted',
       });
       return true;
     } catch {

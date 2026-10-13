@@ -155,8 +155,6 @@ describe('Webhook Routes - authentication enforcement', () => {
         { media: { media_type: 'music' } },
         { media: { mediaType: 'Audio' } },
         { media_type: 'album' },
-        { media: { media_type: 'tv', mediaType: 'music' } },
-        { media: { media_type: 'movie' }, media_type: 'music' },
         {},
     ])('acknowledges unsupported content without storing, queuing, or updating requests: %j', async payload => {
         webhookService.getConfig.mockResolvedValue({ enabled: true, secret_key: 'configured', process_approved: true });
@@ -172,6 +170,26 @@ describe('Webhook Routes - authentication enforcement', () => {
         expect(webhookService.logReceived).not.toHaveBeenCalled();
         expect(webhookService.updateRequestStatus).not.toHaveBeenCalled();
         expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        { media: { media_type: 'tv', mediaType: 'music' } },
+        { media: { media_type: 'movie' }, media_type: 'music' },
+        { media: { mediaType: 'tv' }, media_type: 'movie' },
+        { media: { mediaType: 'movie', tmdbId: 42 }, tmdb_id: 43 },
+    ])('rejects contradictory identities before any request writes: %j', async payload => {
+        webhookService.getConfig.mockResolvedValue({ enabled: true, secret_key: 'configured', process_approved: true });
+        webhookService.validateAuth.mockResolvedValue(true);
+        webhookService.parsePayload.mockImplementation(parseRealPayload);
+        for (const notification_type of ['MEDIA_APPROVED', 'MEDIA_AVAILABLE']) {
+            const res = await request(app).post('/api/webhook/request').set('x-webhook-key', 'configured')
+                .send({ notification_type, ...payload });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toBe('Request identity is invalid or conflicting; review its saved IDs.');
+        }
+        expect(queueService.enqueue).not.toHaveBeenCalled();
+        expect(webhookService.logReceived).not.toHaveBeenCalled();
+        expect(webhookService.updateRequestStatus).not.toHaveBeenCalled();
     });
 
     test('normalizes a supported alias before queuing and permits music-related movie titles', async () => {

@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
 import { QueueTaskAcknowledgementService, releaseQueueClaim } from '../services/queueTaskAcknowledgementService.mjs';
+import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
 
 const token = '11111111-1111-4111-8111-111111111111';
 const task = { id: 1, claim_token: token };
@@ -54,6 +55,17 @@ test('query errors fail closed without logging private details', async () => {
   expect(JSON.stringify(logger.error.mock.calls)).not.toContain('secret');
   expect(receiptService.recordTerminal).not.toHaveBeenCalled();
   await expect(releaseQueueClaim(db, task)).rejects.toThrow('secret database connection');
+});
+
+test('missing metadata stops immediate retries without claiming deletion or budget exhaustion', async () => {
+  const error = new ClassificationMetadataFailure({ response: { status: 404 } }, true, { tmdbId: 42, mediaType: 'movie' });
+  db.query.mockResolvedValue({ rows: [{ task_type: 'classification', status: 'failed', attempts: 1, max_attempts: 5 }] });
+  await service.fail(1, 'task_metadata_not_found', token, error);
+  expect(logger.error).toHaveBeenCalledWith('Task stopped; automatic queue retries ended', {
+    ...classificationMetadataFailureLogFields(error), taskId: 1, attempts: 1, maxAttempts: 5,
+    reasonCode: 'task_metadata_not_found', retryOutcome: 'stopped', retryStopReason: 'metadata_not_found',
+  });
+  expect(JSON.stringify(logger.error.mock.calls)).not.toContain(token);
 });
 
 test('release reports accepted/stale separately and requires the exact claim', async () => {

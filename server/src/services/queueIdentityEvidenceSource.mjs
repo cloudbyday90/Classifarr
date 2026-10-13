@@ -11,10 +11,17 @@ export function planQueueIdentityEvidence(task) {
   }
   if (linked && (positiveDatabaseInteger(task.source_tmdb_id) !== Number(task.tmdb_id) ||
       task.source_media_type !== task.media_type)) return stop('source_conflict');
+  const identity = linked ? task.source_identity : null;
+  if (identity && (identity.reason || (identity.mediaTypeDeclared && !identity.mediaType) ||
+      (identity.tmdbId != null && identity.tmdbId !== Number(task.tmdb_id)) ||
+      (identity.mediaType != null && identity.mediaType !== task.media_type))) return stop('source_conflict');
+  if (task.identity_external_reason || identity?.externalReason) {
+    return stop(task.identity_external_reason || identity.externalReason);
+  }
 
   const declarations = [
-    ['imdb_id', [task.task_imdb_id, ...(linked ? [task.source_imdb_id, task.source_imdb_legacy_id] : [])]],
-    ...(task.media_type === 'tv' ? [['tvdb_id', [task.task_tvdb_id,
+    ['imdb_id', [task.task_imdb_id, identity?.imdbId, ...(linked ? [task.source_imdb_id, task.source_imdb_legacy_id] : [])]],
+    ...(task.media_type === 'tv' ? [['tvdb_id', [task.task_tvdb_id, identity?.tvdbId,
       ...(linked ? [task.source_tvdb_id, task.source_payload_tvdb_id, task.source_payload_tvdb_legacy_id] : [])]]] : []),
   ];
   const requests = [];
