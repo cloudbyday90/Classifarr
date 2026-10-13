@@ -114,8 +114,12 @@ For maintenance evidence, use the strict, noninteractive path:
 npm run docker:smart:provenance-rebuild
 ```
 
-It first validates Git provenance, builds `classifarr` with `--no-cache`, then
-runs `docker compose up -d --no-build --force-recreate --wait`. It does not
+It first validates Git provenance and preserves the existing container's exact
+image, builds `classifarr` with `--no-cache`, then verifies rollback availability
+and runs `docker compose up -d --no-build --no-deps --pull never --force-recreate --wait classifarr`.
+Both steps use `--protect-running-image`; see the separate
+[rollback design](local-docker-rollback-design.md) for limits and backup requirements.
+It does not
 publish an image, alter source, approve evidence, or perform compatibility
 removal. A dirty or unverifiable checkout exits before Docker is asked to
 build or recreate the service.

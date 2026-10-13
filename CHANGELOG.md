@@ -63,6 +63,9 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   backend and update dependency analysis, while preserving runtime versions,
   install restrictions and compatibility checks. Verify both uncached and cached
   analysis without weakening dependency rules.
+  Preserve and verify exact rollback images before local Docker rebuilds and
+  container replacement; failed builds leave the existing container in place.
+  Keep database backups separate and reject missing or conflicting rollback evidence.
   Refresh Vue build and typechecking tools with positive and negative compiler
   contracts, retaining the supported Vue, TypeScript and Node runtime versions.
   Verify the installed Vue compiler API and exact lockfile alignment; retain the

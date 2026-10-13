@@ -20,6 +20,8 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { resolve } from 'node:path';
+import { runWithLocalDockerRollback } from './lib/localDockerRollback.mjs';
+import { findComposeCommandIndex, resolveLocalDockerRollbackPlan } from './lib/localDockerRollbackArgs.mjs';
 
 import {
   LOCAL_DOCKER_BUILD_PROVENANCE_STATUS_IDS,
@@ -194,10 +196,6 @@ function resolvePgvectorBuild(cpu, override) {
   };
 }
 
-function findComposeCommandIndex(args) {
-  return args.findIndex(argument => COMPOSE_COMMANDS.has(argument));
-}
-
 function injectBuildFlagForUp(args, commandIndex) {
   if (commandIndex === -1 || args[commandIndex] !== 'up') {
     return args;
@@ -243,7 +241,10 @@ function parseCliArgs(rawArgs) {
     args.splice(requireProvenanceIndex, 1);
   }
 
-  return { args, dryRun, requireProvenance };
+  const protectIndex = args.indexOf('--protect-running-image');
+  const protectRunningImage = protectIndex !== -1;
+  if (protectRunningImage) args.splice(protectIndex, 1);
+  return { args, dryRun, requireProvenance, protectRunningImage };
 }
 
 function resolveBuildProvenance({ commandBuilds, requireProvenance }) {
@@ -270,10 +271,13 @@ function main() {
     args: rawComposeArgs,
     dryRun,
     requireProvenance,
+    protectRunningImage,
   } = parseCliArgs(process.argv.slice(2));
   const composeArgs = rawComposeArgs.length > 0 ? rawComposeArgs : ['up', '-d'];
-  const commandIndex = findComposeCommandIndex(composeArgs);
+  const commandIndex = findComposeCommandIndex(composeArgs, COMPOSE_COMMANDS);
   const adjustedComposeArgs = injectBuildFlagForUp(composeArgs, commandIndex);
+  const rollbackPlan = protectRunningImage
+    ? resolveLocalDockerRollbackPlan(adjustedComposeArgs, commandIndex) : null;
 
   const cpu = detectCpuCapabilities();
   const buildOverride = resolveBuildOverride();
@@ -307,14 +311,20 @@ function main() {
     return;
   }
 
-  const result = spawnSync('docker', ['compose', ...adjustedComposeArgs], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      PGVECTOR_BUILD: resolution.build,
-      ...(provenance ? { VCS_REF: provenance.revision || 'unknown' } : {}),
-    }
+  const env = {
+    ...process.env,
+    PGVECTOR_BUILD: resolution.build,
+    ...(provenance ? { VCS_REF: provenance.revision || 'unknown' } : {}),
+  };
+  const runCompose = () => spawnSync('docker', ['compose', ...adjustedComposeArgs], {
+    stdio: 'inherit', env, shell: false, windowsHide: true,
   });
+  const result = rollbackPlan ? runWithLocalDockerRollback({
+    plan: rollbackPlan, env, runCompose,
+    report: evidence => console.log(evidence.reference
+      ? `[smart-compose] Verified rollback: ${evidence.reference} -> ${evidence.imageId}`
+      : '[smart-compose] No existing service container; no rollback image to preserve.'),
+  }) : runCompose();
 
   if (result.error) {
     console.error(`[smart-compose] Failed to run docker compose: ${result.error.message}`);
@@ -325,5 +335,12 @@ function main() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
-  main();
+  try { main(); }
+  catch (error) {
+    console.error(`[smart-compose] ${error.message}`);
+    if (error.message.startsWith('rollback_')) {
+      console.error('[smart-compose] Rollback protection stopped this operation. Keep the existing container and images; see docs/architecture/local-docker-rollback-design.md.');
+    }
+    process.exitCode = 1;
+  }
 }

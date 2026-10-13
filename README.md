@@ -363,11 +363,20 @@ npm run docker:smart:up
 
 When a clean local checkout must produce a provenance-verified image for
 maintenance evidence, use the noninteractive no-cache rebuild instead. It
-derives the image revision from Git, recreates Classifarr, and waits for health:
+derives the image revision from Git, preserves the current container's exact image
+before building, verifies that rollback reference before recreating Classifarr,
+and waits for health. Keep a separate consistent appdata/database backup:
 
 ```bash
 npm run docker:smart:provenance-rebuild
 ```
+
+Both rebuild commands leave the old container running during the build. For custom
+Compose files, use the same files/project on a protected `build` and a protected
+`up --no-build --no-deps --pull never`, selecting only `classifarr`. Do not run
+`down` between them. Retained images are not database backups or permission to
+downgrade an upgraded database. See the
+[rollback protection guide](docs/architecture/local-docker-rollback-design.md).
 
 Open:
 
