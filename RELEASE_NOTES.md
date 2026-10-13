@@ -152,6 +152,11 @@ verification jobs do not receive image-publishing credentials. CodeQL action pin
 retain least-privilege permissions. Registry quota/authentication failures still
 block checks; they are not converted into a pass.
 
+Manual Docker Hub retention cleanup must now be explicitly dispatched from a
+v-prefixed release tag containing this guard. Branch dispatches cannot reach its
+publishing-token steps. Retention behavior is unchanged; old tagged workflow
+copies are not rewritten by this change.
+
 Mapping consent, database ownership, memory limits, provider quotas and safe
 no-route behavior remain enforced throughout. No warning is a reason to remove
 those protections. Published-image provenance, installation/routing checks and

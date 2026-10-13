@@ -200,6 +200,11 @@ Before creating a tag, verify repository controls in GitHub:
 These are repository settings, not guarantees made by YAML. Record what was
 actually inspected. Green tests do not grant permission to tag or publish.
 
+Manual Docker Hub retention cleanup is a separate operation: select `mode=cleanup`
+and dispatch from a `v*` release tag containing the tag-only guard, never from
+`main`. Do not run cleanup as a release verification test. The guard does not
+retroactively alter historical tagged workflows or replace secret-access controls.
+
 ## 4. Publish only the approved tag
 
 Only after explicit approval, all pre-tag gates pass and the chosen version is

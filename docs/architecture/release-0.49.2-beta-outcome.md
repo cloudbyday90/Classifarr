@@ -25,7 +25,8 @@ The original Unreleased block is preserved verbatim in the
 Published v0.49.0-beta and older blocks were moved unchanged into the
 [release archive](../changelog/CHANGELOG-2026-10-releases-through-0.49.0.md).
 v0.49.1-beta remains unchanged in the root. Exact block comparisons passed;
-the root is 171 lines with unique ordered categories and working archive links.
+the root is 172 lines after the release-control fix, with unique ordered categories
+and working archive links.
 Original root-relative links within historical blocks remain verbatim, with
 working companion links supplied outside those blocks.
 
@@ -54,8 +55,18 @@ not representing users or unique installations.
 - Exact Node 24.21.0/npm 12.2.0; all three committed lockfiles installed with npm ci.
 - Root, server and client npm audits: exit 0, zero vulnerabilities in each.
 - Version contract, archive fidelity, category order, root links and diff whitespace: passed.
-- Full lint/tests/coverage, schema, image startup/upgrade, frozen soak and routing,
-  browser and provider-fault checks: pending for the committed candidate.
+- Full lint: passed on the prepared candidate. Fresh schema dump and independent
+  check passed on image `sha256:a36d919d50153073753b41994e36c3df7363b856704474d8134e4a10ecccb5fb`,
+  built from `cef63ace08618cb7e24d3e3147f85a84ba49c571` as
+  `classifarr:release-0492-schema-cef63ace0`. The snapshot is unchanged, including
+  migrations through `20261010_220000_source_catalog_mappings.sql` and 22 seed
+  migrations. Both disposable containers/data directories were verified removed.
+  The existing schema-container producer ran through a local wrapper adding
+  1 GiB/2 CPU/256 PID limits, no network and ownership-checked cleanup; no live
+  database was read. This predates the tag-dispatch guard and is not evidence
+  for a later rebuilt image.
+- Full tests/coverage, image startup/upgrade, frozen soak and routing, browser and
+  provider-fault checks: pending for the final committed candidate.
 - Security checklist manual sign-off and exact-SHA CI scans: pending.
 - Tag workflow, native AMD64/ARM64 published consumers, release/asset attestations
   and both latest aliases: pending. Local image IDs cannot establish these claims.
@@ -70,10 +81,35 @@ is no independent reviewer separation, and none is claimed.
 The publishing and promotion jobs are tag-gated; published-image consumer jobs
 have read-only permissions and do not receive registry publication credentials.
 Repository secret names for the publishing token, dedicated pull token and
-username exist; secret values were neither retrieved nor printed. The older
-manual Docker Hub retention job also references the publishing secret and needs
-separate scrutiny against the runbook's tag-only credential requirement before
-publication can be marked ready.
+username exist; secret values were neither retrieved nor printed.
+
+## Approved manual-cleanup restriction
+
+The existing manual Docker Hub retention job accepted a cleanup dispatch from
+any branch and then used the publishing token. The maintainer approved narrowing
+that admission condition to `workflow_dispatch`, explicit `mode=cleanup` and
+`github.ref` beginning with `refs/tags/v`. It uses the full ref so a branch named
+like a release cannot qualify. The automatic tag-cleanup dependencies, manual
+cleanup body and latest-plus-five retention behavior are unchanged. No cleanup
+job or registry deletion was executed for verification.
+
+The first regression run failed on the missing tag guard and acceptance of the
+old condition (2 failures, 64 passes). After the patch, syntax checks, both
+runtime-installation and release-publication workflow validators, and all 67
+focused tests passed. Mutation coverage rejects removing the tag, event or mode
+guard, using a v-prefixed branch path, or using ambiguous `github.ref_name`.
+The legitimate checked-in tag-dispatch contract still passes. These are local
+workflow-contract checks, not a destructive GitHub cleanup rehearsal.
+
+The security-fix skill required independent read-only boundary investigation
+and candidate review; both completed with no surviving bypass or compatibility
+regression identified within this patch. Focused lint also passed. The preliminary
+full suite was stopped after the approved change so it can be rerun against the
+final candidate rather than treated as current-source evidence.
+This is a checked-in workflow restriction, not a claim
+that repository-level secrets are environment-scoped: historical tagged
+workflows and a maintainer able to edit workflows are not retroactively
+constrained. Broader secret migration is outside the approved patch.
 
 ## Remaining gates
 

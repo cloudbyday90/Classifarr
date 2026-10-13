@@ -100,6 +100,8 @@ preserves the original Unreleased entries, consolidated on 2026-10-13.
   sanitized diagnostics. PR jobs remain secret-free; authentication and quota
   failures block validation. CodeQL action pins and least-privilege permissions
   are updated without sharing publication credentials with verification jobs.
+  Manual Docker Hub retention cleanup now requires an explicit cleanup dispatch
+  from a v-prefixed tag; branches, including v-prefixed branch names, cannot run it.
 - **Recovery boundaries** — Mapping approval remains explicit, complete and
   scoped; source metadata, library placement and training authority stay separate.
   Existing database ownership, memory, quota, credential and no-route safeguards

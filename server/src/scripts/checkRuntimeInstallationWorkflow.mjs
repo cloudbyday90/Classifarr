@@ -82,7 +82,7 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   for (const id of ['docker-release', 'published-digest-consumer-smoke', 'published-routing-acceptance', 'release-candidate-publication', 'release-candidate-provider-fault-receipt', 'promote-published-latest']) {
     assert.equal(jobs[id].if, "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')");
   }
-  assert.equal(jobs['cleanup-old-releases-manual'].if, "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup'");
+  assert.equal(jobs['cleanup-old-releases-manual'].if, "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/tags/v')");
   assert.deepEqual(jobs['cleanup-old-releases'].needs, ['docker-release', 'release-candidate-publication', 'promote-published-latest']);
   assert.equal(jobs['cleanup-old-releases'].if, "startsWith(github.ref, 'refs/tags/v')");
   return true;

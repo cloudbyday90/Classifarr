@@ -9,6 +9,13 @@ test('checked-in CI requires isolated installation acceptance before publication
   expect(validateRuntimeInstallationWorkflow(loadWorkflow())).toBe(true);
 });
 
+test('manual retention requires an explicit cleanup dispatch from a v-prefixed tag', () => {
+  const job = loadWorkflow().jobs['cleanup-old-releases-manual'];
+  // Check the actual credential-bearing job, not a separate imitation of its gate.
+  expect(job.if).toBe("github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/tags/v')");
+  expect(job.permissions).toEqual({});
+});
+
 test.each([
   ['runtime-installation-acceptance', 1, 'setup-node', '820762786026740c76f36085b0efc47a31fe5020', 'v7'],
   ['runtime-installation-acceptance', 4, 'upload-artifact', '043fb46d1a93c77aae656e7c1c64a875d1fc6a0a', 'v7'],
@@ -62,6 +69,11 @@ test.each([
   ['dispatch image publication', w => { w.jobs['docker-release'].if = 'always()'; }],
   ['dispatch release creation', w => { w.jobs['release-candidate-publication'].if = 'always()'; }],
   ['dispatch tag cleanup', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch'"; }],
+  ['cleanup from a branch', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup'"; }],
+  ['cleanup from a v-prefixed branch', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/heads/v')"; }],
+  ['cleanup using an ambiguous ref name', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup' && startsWith(github.ref_name, 'v')"; }],
+  ['cleanup without explicit selection', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')"; }],
+  ['cleanup without manual dispatch', w => { w.jobs['cleanup-old-releases-manual'].if = "inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/tags/v')"; }],
   ['bypass automatic cleanup dependencies', w => { w.jobs['cleanup-old-releases'].needs = []; }],
   ['run full build on budget dispatch', w => { w.jobs['build-and-test'].if = 'always()'; }],
   ['run database gate on budget dispatch', w => { w.jobs['database-tests'].if = 'always()'; }],

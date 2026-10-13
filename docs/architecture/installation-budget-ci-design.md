@@ -27,7 +27,7 @@ has not yet been separately exercised by a hosted budget dispatch.
 | Normal PR, main push or release-tag push | Existing `--ci` | Existing CI and release gates remain |
 | Manual `mode=ci` | Existing `--ci` | Existing full validation; no tag publication |
 | Manual `mode=installation-budget` | `--ci --resource-budget` | Only installation job runs; no publishing or cleanup jobs |
-| Manual `mode=cleanup` | None | Existing explicitly selected tag cleanup remains |
+| Manual `mode=cleanup` on a `v*` tag | None | Explicit retention cleanup; branch dispatches are rejected before credential use |
 
 The two installation steps have mutually exclusive fixed conditions. Dispatch
 values never become shell code. A 60-minute job deadline bounds the run; no
