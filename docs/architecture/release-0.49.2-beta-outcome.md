@@ -25,7 +25,7 @@ The original Unreleased block is preserved verbatim in the
 Published v0.49.0-beta and older blocks were moved unchanged into the
 [release archive](../changelog/CHANGELOG-2026-10-releases-through-0.49.0.md).
 v0.49.1-beta remains unchanged in the root. Exact block comparisons passed;
-the root is 172 lines after the release-control fix, with unique ordered categories
+the root remains below 300 lines after the release security fixes, with unique ordered categories
 and working archive links.
 Original root-relative links within historical blocks remain verbatim, with
 working companion links supplied outside those blocks.
@@ -110,6 +110,44 @@ This is a checked-in workflow restriction, not a claim
 that repository-level secrets are environment-scoped: historical tagged
 workflows and a maintainer able to edit workflows are not retroactively
 constrained. Broader secret migration is outside the approved patch.
+
+## Approved diagnostic-token restriction
+
+The security checklist found inconsistent enforcement of short-lived local
+evaluation-token grants. Signature verification alone did not apply their
+method-and-endpoint restrictions on the alternate JWT authentication path.
+The maintainer approved fixing this before publication.
+
+The combined authentication middleware now delegates its JWT branch to the
+existing token middleware. This keeps one request-aware authorization policy
+instead of copying checks into each router. Grant generation, matching rules,
+ordinary session behavior, credential precedence and API-key permissions/auditing
+are unchanged. No client contract, database migration or credential rotation is
+required. Live deployments were not modified.
+
+The isolated mounted-router reproduction confirmed the missing restriction before
+the patch. New regression tests first produced 23 failures and 37 passes; the
+patched regression and six adjacent authentication/queue suites then passed all
+227 tests. They cover bearer and cookie tokens, mounted public paths, allowed
+exact/prefix/template grants, denied mutations with no service calls, malformed
+grants, audience checks, method/path variants, ordinary JWT access and API-key
+precedence, permission checks and auditing. Credential verification is stubbed
+in the new boundary tests; existing authentication-service tests cover token
+generation and verification separately. No real queue or provider was used.
+
+The security-fix skill required fresh independent boundary investigation and
+candidate review. Investigation agreed with reuse of the existing middleware;
+review found no concrete surviving bypass or regression and independently ran
+nine focused suites (180 tests), all passing. Syntax, backend types/lint,
+copyright, documentation lint, archive fidelity and version checks also passed.
+Complete final-source release checks are pending at this checkpoint. The
+checklist now includes this cross-path regression gate.
+
+Rehearsals for the preceding source were stopped when the issue was found.
+Their owned synthetic containers, volumes, networks and generated candidate
+images were removed and cleanup verified. Those interrupted runs are not release
+passes; the complete frozen and installation rehearsals must run again against
+the committed fix. The running local container and its data remain untouched.
 
 ## Remaining gates
 

@@ -193,6 +193,19 @@ rg -n "csrf|X-CSRF-Token|classifarr_csrf" server/src/middleware server/src/route
 ```
 **Pass:** `classifarr_csrf_token` cookie and `X-CSRF-Token` header verified on mutating (POST/PUT/PATCH/DELETE) cookie-authenticated requests.
 
+### E4. Scoped diagnostic tokens keep their grants on every authentication path
+
+```bash
+cd server
+node scripts/run-jest.mjs --runInBand --no-coverage --runTestsByPath src/__tests__/apiKeyAuth.sweepScope.test.mjs src/__tests__/apiKeyAuth.test.mjs src/__tests__/apiKeyAuth.permissions.test.mjs src/__tests__/authSweepAccess.test.mjs
+```
+
+**Pass:** token-only and token-or-API-key routes enforce the same method/path grants
+for bearer and cookie JWTs before calling application handlers. Missing or malformed
+grants fail closed; allowed reads, ordinary sessions, API-key precedence, permission
+checks and usage auditing remain intact. Tests must exercise actual authentication
+middleware, not only a route matcher or a pass-through authentication mock.
+
 ---
 
 ## F. Credential Handling (Finding #13, Post-review 2026-03-05)
@@ -419,6 +432,7 @@ Notes / exceptions:
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 1.3.0 | 2026-10-13 | — | Added scoped diagnostic-token checks across both JWT authentication paths, including mounted routes, cookies, credential precedence and API-key compatibility. |
 | 1.2.0 | 2026-05-16 | — | Updated checklist commands to follow the native ESM `.mjs` layout and added `/evidence` to the Tier 1 admin-route audit, increasing the required admin-auth route count from 14 to 15. |
 | 1.1.0 | 2026-03-22 | — | Added finding #32: `/classification/progress` route was mounted unauthenticated in `index.js` outside `apiRouter`; fixed by moving into `api.js` Tier 1 block with `authenticateToken + requireAdmin`. Added `/classification/progress` row to B1 table (14 Tier 1 routes). Updated pass criterion count from 13 to 14. |
 | 1.0.0 | 2026-03-05 | — | Initial checklist created from 31 baseline findings in `SECURITY_REVIEW.md` plus 3 post-review findings (2026-03-05). Covers all CIS Docker, OWASP API Top 10, SANS CWE Top 25, Node.js, and NIST CSF 2.0 mappings from `SECURITY_BENCHMARKS.md`. |

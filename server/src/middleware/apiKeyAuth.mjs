@@ -8,8 +8,7 @@
  * (at your option) any later version.
  */
 import * as apiKeyService from '../services/apiKeyService.mjs';
-import { verifyToken } from '../services/auth.mjs';
-import { extractToken } from './auth.mjs';
+import { authenticateToken } from './auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('apiKeyAuth');
@@ -103,22 +102,8 @@ export async function authenticateTokenOrApiKey(req, res, next) {
     return authenticateApiKey(req, res, next);
   }
 
-  try {
-    const token = extractToken(req);
-
-    if (!token) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const user = await verifyToken(token);
-    req.user = user;
-    next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    return res.status(403).json({ error: 'Invalid or expired token' });
-  }
+  // JWTs must retain the same endpoint restrictions on both authentication paths.
+  return authenticateToken(req, res, next);
 }
 
 export function requireReadWrite(req, res, next) {

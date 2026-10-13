@@ -146,6 +146,10 @@ defaults, quiet mode and precedence are preserved. Vue routing, aligned browser
 and coverage tooling, dependency analysis and Node 24 type tooling are refreshed;
 deliberate major-version compatibility pins remain in place.
 
+Short-lived local evaluation tokens now keep the same endpoint restrictions
+across token-only and token-or-API-key routes. Ordinary user sessions and
+independently authorized API keys retain their existing access and auditing.
+
 Trusted main-branch database CI uses a dedicated read-only Docker Hub pull token
 with bounded retries and sanitized diagnostics. PR jobs remain secret-free, and
 verification jobs do not receive image-publishing credentials. CodeQL action pins

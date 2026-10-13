@@ -95,6 +95,9 @@ preserves the original Unreleased entries, consolidated on 2026-10-13.
 
 ### Security
 
+- **Scoped diagnostic access** — Short-lived local evaluation tokens now retain
+  their endpoint restrictions on APIs that also support API keys. Normal user
+  sessions and independently authorized API keys keep their existing behavior.
 - **CI registry access and supply chain** — Trusted main-branch database checks use
   a dedicated read-only Docker Hub pull token, bounded retries, logout and
   sanitized diagnostics. PR jobs remain secret-free; authentication and quota
