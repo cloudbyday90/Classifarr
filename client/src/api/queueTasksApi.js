@@ -46,6 +46,26 @@ export function checkQueueTaskMetadata(taskId, { signal } = {}) {
   return apiClient.post(`/queue/task/${taskId}/metadata-check`, {}, { skipAutomaticRetry: true, signal })
 }
 
+/** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
+export function getQueueIdentityRepair(taskId, { signal } = {}) {
+  return getDataRequest(`/queue/task/${taskId}/identity-repair`, { skipAutomaticRetry: true, signal })
+}
+
+/** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
+export function previewQueueIdentityRepair(taskId, { signal } = {}) {
+  return apiClient.post(`/queue/task/${taskId}/identity-repair/preview`, {}, { skipAutomaticRetry: true, signal })
+}
+
+/** @param {number|string} taskId @param {object} data @param {{ signal?: AbortSignal }} options */
+export function confirmQueueIdentityRepair(taskId, data, { signal } = {}) {
+  return apiClient.post(`/queue/task/${taskId}/identity-repair/confirm`, data, { skipAutomaticRetry: true, signal })
+}
+
+/** @param {number|string} taskId @param {object} data @param {{ signal?: AbortSignal }} options */
+export function retryQueueIdentityRepair(taskId, data, { signal } = {}) {
+  return apiClient.post(`/queue/task/${taskId}/identity-repair/retry`, data, { skipAutomaticRetry: true, signal })
+}
+
 export function dismissQueueTask(taskId) {
   return apiClient.post(`/queue/task/${taskId}/dismiss`)
 }
@@ -79,6 +99,10 @@ const queueTasksApi = {
   getQueueFailed,
   retryQueueTask,
   checkQueueTaskMetadata,
+  getQueueIdentityRepair,
+  previewQueueIdentityRepair,
+  confirmQueueIdentityRepair,
+  retryQueueIdentityRepair,
   dismissQueueTask,
   cancelQueueTask,
   classifyQueueTask,

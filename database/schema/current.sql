@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-13T17:48:11.516Z
--- Latest Migration: 20261013_180000_queue_metadata_recovery.sql
+-- Generated: 2026-10-13T20:45:39.998Z
+-- Latest Migration: 20261013_210000_queue_identity_repair.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7954,6 +7954,64 @@ COMMENT ON TABLE public.quality_evidence_study IS 'Explicitly started singleton 
 
 
 --
+-- Name: queue_identity_repair_previews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.queue_identity_repair_previews (
+    actor_id integer NOT NULL,
+    id uuid NOT NULL,
+    task_id bigint NOT NULL,
+    source_version text NOT NULL,
+    provider_revision text NOT NULL,
+    candidate jsonb NOT NULL,
+    sources jsonb NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    CONSTRAINT queue_identity_repair_previews_candidate_check CHECK (((jsonb_typeof(candidate) = 'object'::text) AND (octet_length((candidate)::text) <= 16000))),
+    CONSTRAINT queue_identity_repair_previews_provider_revision_check CHECK ((provider_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT queue_identity_repair_previews_source_version_check CHECK ((source_version ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT queue_identity_repair_previews_sources_check CHECK ((jsonb_typeof(sources) = 'array'::text))
+);
+
+
+--
+-- Name: queue_identity_repair_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.queue_identity_repair_receipts (
+    task_id bigint NOT NULL,
+    id uuid NOT NULL,
+    actor_id integer NOT NULL,
+    source_id bigint,
+    source_version text NOT NULL,
+    provider_revision text NOT NULL,
+    old_tmdb_id integer NOT NULL,
+    repaired_version text NOT NULL,
+    new_tmdb_id integer NOT NULL,
+    media_type text NOT NULL,
+    candidate jsonb NOT NULL,
+    sources jsonb NOT NULL,
+    attempts smallint NOT NULL,
+    max_attempts smallint NOT NULL,
+    confirmed_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    retried_at timestamp with time zone,
+    retry_actor_id integer,
+    CONSTRAINT queue_identity_repair_receipts_actor_id_check CHECK ((actor_id > 0)),
+    CONSTRAINT queue_identity_repair_receipts_attempts_check CHECK (((attempts >= 1) AND (attempts <= 4))),
+    CONSTRAINT queue_identity_repair_receipts_candidate_check CHECK (((jsonb_typeof(candidate) = 'object'::text) AND (octet_length((candidate)::text) <= 16000))),
+    CONSTRAINT queue_identity_repair_receipts_check CHECK (((new_tmdb_id > 0) AND (new_tmdb_id <> old_tmdb_id))),
+    CONSTRAINT queue_identity_repair_receipts_check1 CHECK ((((max_attempts >= 2) AND (max_attempts <= 5)) AND (max_attempts > attempts))),
+    CONSTRAINT queue_identity_repair_receipts_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT queue_identity_repair_receipts_old_tmdb_id_check CHECK ((old_tmdb_id > 0)),
+    CONSTRAINT queue_identity_repair_receipts_provider_revision_check CHECK ((provider_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT queue_identity_repair_receipts_repaired_version_check CHECK ((repaired_version ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT queue_identity_repair_receipts_source_version_check CHECK ((source_version ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT queue_identity_repair_receipts_sources_check CHECK ((jsonb_typeof(sources) = 'array'::text)),
+    CONSTRAINT queue_identity_repair_receipts_task_id_check CHECK ((task_id > 0)),
+    CONSTRAINT queue_identity_repair_retry_check CHECK (((retried_at IS NULL) = (retry_actor_id IS NULL)))
+);
+
+
+--
 -- Name: queue_metadata_recovery; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11893,6 +11951,38 @@ ALTER TABLE ONLY public.quality_evidence_study
 
 
 --
+-- Name: queue_identity_repair_previews queue_identity_repair_previews_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_previews
+    ADD CONSTRAINT queue_identity_repair_previews_id_key UNIQUE (id);
+
+
+--
+-- Name: queue_identity_repair_previews queue_identity_repair_previews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_previews
+    ADD CONSTRAINT queue_identity_repair_previews_pkey PRIMARY KEY (actor_id);
+
+
+--
+-- Name: queue_identity_repair_receipts queue_identity_repair_receipts_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_receipts
+    ADD CONSTRAINT queue_identity_repair_receipts_id_key UNIQUE (id);
+
+
+--
+-- Name: queue_identity_repair_receipts queue_identity_repair_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_receipts
+    ADD CONSTRAINT queue_identity_repair_receipts_pkey PRIMARY KEY (task_id);
+
+
+--
 -- Name: queue_metadata_recovery queue_metadata_recovery_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14004,6 +14094,13 @@ CREATE INDEX idx_profile_refresh_inventory_latest ON public.policy_profile_refre
 
 
 --
+-- Name: idx_queue_identity_repair_preview_task; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_queue_identity_repair_preview_task ON public.queue_identity_repair_previews USING btree (task_id);
+
+
+--
 -- Name: idx_queue_metadata_recovery_due; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -16090,6 +16187,22 @@ ALTER TABLE ONLY public.policy_tuning_suggestions
 
 ALTER TABLE ONLY public.policy_tuning_suggestions
     ADD CONSTRAINT policy_tuning_suggestions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id);
+
+
+--
+-- Name: queue_identity_repair_previews queue_identity_repair_previews_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_previews
+    ADD CONSTRAINT queue_identity_repair_previews_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: queue_identity_repair_previews queue_identity_repair_previews_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.queue_identity_repair_previews
+    ADD CONSTRAINT queue_identity_repair_previews_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.task_queue(id) ON DELETE CASCADE;
 
 
 --
@@ -18367,6 +18480,7 @@ FROM unnest(ARRAY[
     '20261009_230000_comparison_incident_ledger.sql',
     '20261010_140000_classification_metadata_failure_context.sql',
     '20261010_220000_source_catalog_mappings.sql',
-    '20261013_180000_queue_metadata_recovery.sql'
+    '20261013_180000_queue_metadata_recovery.sql',
+    '20261013_210000_queue_identity_repair.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

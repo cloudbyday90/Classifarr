@@ -1,0 +1,72 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { beforeEach, expect, jest, test } from '@jest/globals';
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import request from 'supertest';
+import { registerQueueIdentityRepairRoutes } from '../routes/queueRouteIdentityRepair.mjs';
+
+const verifyToken = jest.fn();
+const validateApiKey = jest.fn();
+jest.unstable_mockModule('../services/auth.mjs', () => ({ verifyToken }));
+jest.unstable_mockModule('../services/apiKeyService.mjs', () => ({ validateApiKey, updateLastUsed: jest.fn(), logAudit: jest.fn() }));
+jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getValue: () => true }));
+const { authenticateTokenOrApiKey, requireAdmin } = await import('../middleware/apiKeyAuth.mjs');
+const { csrfProtection } = await import('../middleware/csrf.mjs');
+let app, service;
+const path = '/api/queue/task/23/identity-repair';
+beforeEach(() => {
+  verifyToken.mockReset().mockResolvedValue({ id: 7, role: 'admin', type: 'access' });
+  validateApiKey.mockReset();
+  service = Object.fromEntries(['preview', 'confirm', 'retry', 'receipt'].map(key => [key, jest.fn().mockResolvedValue({ receipt: null })]));
+  app = express(); app.use(express.json(), cookieParser(), csrfProtection);
+  const router = express.Router(); router.use(authenticateTokenOrApiKey);
+  registerQueueIdentityRepairRoutes(router, { requireAdmin, service,
+    limiter: rateLimit({ windowMs: 60000, limit: 5, standardHeaders: true, legacyHeaders: false }),
+    readLimiter: rateLimit({ windowMs: 60000, limit: 20, standardHeaders: true, legacyHeaders: false }) });
+  app.use('/api/queue', router);
+  app.use((error, _req, res, _next) => res.status(error.statusCode || 500).json({ error: 'request failed' }));
+});
+
+test.each(['preview', 'confirm', 'retry'])('%s requires authentication and matching cookie CSRF', async action => {
+  await request(app).post(`${path}/${action}`).send({}).expect(401);
+  await request(app).post(`${path}/${action}`).set('Cookie', 'access_token=test').send({}).expect(403);
+  const response = await request(app).post(`${path}/${action}`).set('Cookie', 'access_token=test; classifarr_csrf_token=csrf-test')
+    .set('x-csrf-token', 'csrf-test').send({}).expect(200);
+  expect(response.headers['cache-control']).toBe('no-store');
+  expect(response.headers.vary).toContain('Cookie');
+  expect(service[action]).toHaveBeenCalledWith(7, '23', {}, expect.any(AbortSignal));
+  expect(service[action]).toHaveBeenCalledTimes(1);
+});
+
+test.each([{ role: 'user', type: 'access' }, { role: 'admin', type: 'refresh' },
+  { role: 'admin', type: 'access', token_use: 'diagnostic' }])('all endpoints reject principal %j', async principal => {
+  verifyToken.mockResolvedValue({ id: 7, ...principal });
+  for (const action of ['preview', 'confirm', 'retry']) await request(app).post(`${path}/${action}`).set('Authorization', 'Bearer test').send({}).expect(403);
+  await request(app).get(path).set('Authorization', 'Bearer test').expect(403);
+  for (const fn of Object.values(service)) expect(fn).not.toHaveBeenCalled();
+});
+
+test('administrator API keys are not repair or receipt authority', async () => {
+  validateApiKey.mockResolvedValue({ id: 3, permissions: 'admin' });
+  for (const action of ['preview', 'confirm', 'retry']) await request(app).post(`${path}/${action}`).set('x-api-key', 'test').send({}).expect(403);
+  await request(app).get(path).set('x-api-key', 'test').expect(403);
+  expect(service.preview).not.toHaveBeenCalled();
+});
+
+test('GET reads only the receipt and mutation routes do not allow GET', async () => {
+  const response = await request(app).get(path).set('Authorization', 'Bearer test').expect(200);
+  expect(response.body).toEqual({ receipt: null });
+  expect(service.receipt).toHaveBeenCalledWith(7, '23');
+  expect(response.headers['cache-control']).toBe('no-store');
+  for (const action of ['preview', 'confirm', 'retry']) {
+    await request(app).get(`${path}/${action}`).set('Authorization', 'Bearer test').expect(404);
+    expect(service[action]).not.toHaveBeenCalled();
+  }
+});
+
+test('review and retry share a bounded mutation rate; receipt remains readable', async () => {
+  for (const action of ['preview', 'confirm', 'retry', 'preview', 'confirm']) await request(app).post(`${path}/${action}`).set('Authorization', 'Bearer test').send({}).expect(200);
+  await request(app).post(`${path}/retry`).set('Authorization', 'Bearer test').send({}).expect(429);
+  await request(app).get(path).set('Authorization', 'Bearer test').expect(200);
+});

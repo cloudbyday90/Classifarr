@@ -13,6 +13,12 @@
   ],
   "reviews": [
     {
+      "id": "queue_identity_repair_schema",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the additive failed-task identity preview and receipt migration and its isolated-database generated snapshot. New tables start empty; only expiring previews cascade from users/tasks, while receipts intentionally retain typed identity, actor and budget evidence after queue retention. Constraints bound identities, budgets and candidate size. The diff adds no inventory DML, ownership claim, automatic approval, provider request or task retry, and leaves all protected ingestion relations and triggers unchanged.",
+      "followUp": "Retain isolated PostgreSQL tests for atomic task/receipt writes, lost-response idempotency, stale revisions, actor revocation, competing work, explicit bounded retry and receipt survival. This review covers exact schema drift only; it does not authorize live repair, old application writers, or resolve historical privilege-isolation debt."
+    },
+    {
       "id": "queue_metadata_recovery_schema",
       "classification": "separately_coordinated",
       "reason": "Reviewed the additive queue metadata recovery ledger, task foreign key with cascading cleanup, bounded probe-count constraint and partial due index. The migration performs no enrollment, provider I/O, task retry, inventory DML or ownership change. Runtime enrollment and recovery use task-first locking, durable budgets and same-ID validation; existing inventory ownership debt remains unchanged.",
@@ -1192,7 +1198,8 @@
     {"path":"database/migrations/20261004_180000_discord_delivery_verification.sql","digest":"bd556c1b7a2a5f66d19d4faf17ef513199e9a3a9bbe35d8cd75b7744ddd43c4b","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_200000_discord_delivery_deferral.sql","digest":"0c70f7bf7f586897f1f8b6f275d39f8f06a1763e798923bd8fb27bb6b9205e55","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_210000_discord_delivery_outbox.sql","digest":"26513986746281ea46502fb0a3376510d4a5791cd1bc310de67b63b5fbb7024e","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"76ffd63f76a6e717566b6370857db7c0743d8894971ce6c3954d4b28f8cd6bda","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/schema/current.sql","digest":"3b765ca2b3adb55ba4a722525626ad38085876c094b939dd7eb8aefa82b69e64","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/migrations/20261013_210000_queue_identity_repair.sql","digest":"686521559bf729d6ac2f6ffd4b35d47a1575260447ce3ca6007b3632fbdeefc6","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"queue_identity_repair_schema"},
     {"path":"database/migrations/20261013_180000_queue_metadata_recovery.sql","digest":"633f284f2cbdfa4e7d462b624c016d0a9c7e6cfeae36f35e6c851897fe7c40b9","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"queue_metadata_recovery_schema"},
     {"path":"database/migrations/20261004_230000_queue_routing_replay_guard.sql","digest":"5628b068b6ac11ebd60db771b5eaf0b7c2e343968f35612bcd4a741ccd9f9620","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20260929_140000_provider_credential_recovery.sql","digest":"b42e59bb110f3e478f0ee76be36fd2329b0c5c0c539d23a4d9d85d68c1292eb5","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},

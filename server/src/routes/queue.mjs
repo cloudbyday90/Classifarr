@@ -21,6 +21,8 @@ import { rateLimiters } from '../utils/rateLimiter.mjs';
 import { createQueueMetadataCheckProvider } from '../services/queueMetadataCheckProvider.mjs';
 import { createQueueMetadataCheckService } from '../services/queueMetadataCheckService.mjs';
 import { registerQueueMetadataCheckRoute } from './queueRouteMetadataCheck.mjs';
+import { registerQueueIdentityRepairRoutes } from './queueRouteIdentityRepair.mjs';
+import { createQueueIdentityRepairService } from '../services/queueIdentityRepairService.mjs';
 import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
@@ -42,12 +44,20 @@ export const router = createQueueRouter({
   readLibraryEvaluationStatus: () => classificationPolicyPathService.readLibraryEvaluationStatus(),
 });
 
+const readMetadataProvider = createQueueMetadataCheckProvider({
+  db, httpGet, executeRateLimited: (fn, options) => rateLimiters.tmdb.execute(fn, options),
+});
+const metadataReviewLimiter = rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: true, legacyHeaders: false });
 registerQueueMetadataCheckRoute(router, {
   requireAdmin,
-  limiter: rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: true, legacyHeaders: false }),
-  service: createQueueMetadataCheckService({ db, readProvider: createQueueMetadataCheckProvider({
-    db, httpGet, executeRateLimited: (fn, options) => rateLimiters.tmdb.execute(fn, options),
-  }) }),
+  limiter: metadataReviewLimiter,
+  service: createQueueMetadataCheckService({ db, readProvider: readMetadataProvider }),
+});
+registerQueueIdentityRepairRoutes(router, {
+  requireAdmin,
+  limiter: metadataReviewLimiter,
+  readLimiter: rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true, legacyHeaders: false }),
+  service: createQueueIdentityRepairService({ db, readProvider: readMetadataProvider }),
 });
 
 registerRetryReadinessRoute(router, {

@@ -31,6 +31,10 @@ vi.mock('../../api/core', () => ({
 import {
   checkManualRouting,
   checkQueueTaskMetadata,
+  getQueueIdentityRepair,
+  previewQueueIdentityRepair,
+  confirmQueueIdentityRepair,
+  retryQueueIdentityRepair,
   getManualRoutingBackground,
   setManualRoutingBackground,
   getRetryReadiness,
@@ -44,6 +48,23 @@ import {
 } from '../../api/queueTasksApi'
 
 describe('queueTasksApi', () => {
+  it('reads durable repair state through the unwrapped GET helper', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ receipt: null })
+    expect(await getQueueIdentityRepair(12)).toEqual({ receipt: null })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/task/12/identity-repair', { skipAutomaticRetry: true, signal: undefined })
+  })
+  it.each([
+    ['preview', previewQueueIdentityRepair, {}],
+    ['confirm', confirmQueueIdentityRepair, { previewId: 'fixture', sameWorkAndEdition: true }],
+    ['retry', retryQueueIdentityRepair, { receiptId: 'fixture' }],
+  ])('explicit %s repair command preserves Axios response and never retries automatically', async (action, method, body) => {
+    const signal = new AbortController().signal
+    const response = { data: { receipt: null } }
+    mockPost.mockResolvedValueOnce(response)
+    const result = action === 'preview' ? await method(12, { signal }) : await method(12, body, { signal })
+    expect(result).toBe(response)
+    expect(mockPost).toHaveBeenCalledWith(`/queue/task/12/identity-repair/${action}`, body, { skipAutomaticRetry: true, signal })
+  })
   it('checks a saved ID without automatic retry or caller-supplied replacement', async () => {
     const signal = new AbortController().signal
     const response = { data: { taskId: '12' } }

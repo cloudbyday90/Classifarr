@@ -1,17 +1,18 @@
 <!-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 -->
 <template>
   <div class="metadata-check">
-    <p v-if="task.metadata_recovery?.recoveredAt">
+    <p v-if="!task.payload?.identity_repair && task.metadata_recovery?.recoveredAt">
       Automatic recovery was already used for this task. Further retries need review.
     </p>
-    <p v-else-if="task.metadata_recovery?.checks >= 6">
+    <p v-else-if="!task.payload?.identity_repair && task.metadata_recovery?.checks >= 6">
       Automatic record checks are exhausted. Review the saved ID; it has not been replaced.
     </p>
-    <p v-else-if="task.metadata_recovery?.nextCheckAt">
+    <p v-else-if="!task.payload?.identity_repair && task.metadata_recovery?.nextCheckAt">
       Automatic record check: {{ formatCheckTime(task.metadata_recovery.nextCheckAt) }}.
       If the same ID returns, Classifarr can resume this task once without resetting its attempts.
     </p>
     <Button
+      v-if="!task.payload?.identity_repair"
       variant="secondary"
       size="sm"
       :disabled="busy"
@@ -63,6 +64,10 @@
         <p>This check does not establish why a record disappeared or approve a replacement.</p>
       </details>
     </div>
+    <QueueIdentityRepair
+      :task="task"
+      :can-preview="report?.identityEvidence?.reason === 'candidate_for_review'"
+    />
   </div>
 </template>
 
@@ -70,6 +75,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { Button } from '@/components/common'
 import QueueIdentityEvidence from './QueueIdentityEvidence.vue'
+import QueueIdentityRepair from './QueueIdentityRepair.vue'
 import { checkQueueTaskMetadata } from '@/api/queueTasksApi'
 import { queueMetadataCheckError, queueMetadataCheckMessage } from '@/utils/queueMetadataCheckPresentation'
 

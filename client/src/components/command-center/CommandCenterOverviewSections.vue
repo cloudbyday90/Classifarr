@@ -60,13 +60,18 @@
             <p class="error-meta">
               Task #{{ task.id }}
             </p>
+            <QueueIdentityRepair
+              v-if="task.payload?.identity_repair"
+              :task="task"
+            />
             <QueueMetadataCheck
-              v-if="task.task_type === 'classification' && task.current_stage === 'metadata_fetch' && ['task_metadata_not_found', 'task_metadata_fetch_failed', 'task_processing_failed'].includes(task.error_message)"
+              v-else-if="task.task_type === 'classification' && task.current_stage === 'metadata_fetch' && ['task_metadata_not_found', 'task_metadata_fetch_failed', 'task_processing_failed'].includes(task.error_message)"
               :task="task"
             />
           </div>
           <div class="error-actions">
             <Button
+              v-if="!task.payload?.identity_repair"
               variant="warning"
               size="sm"
               @click="$emit('retry-failed-task', task.id)"
@@ -382,6 +387,7 @@ import { Badge, Button } from '@/components/common'
 import { queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 import QueueMetadataCheck from './QueueMetadataCheck.vue'
+import QueueIdentityRepair from './QueueIdentityRepair.vue'
 
 defineProps({
   activeLibrariesSummary: { type: Array, default: () => [] },

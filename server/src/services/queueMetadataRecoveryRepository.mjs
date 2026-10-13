@@ -10,6 +10,7 @@ const ELIGIBLE = `t.task_type='classification' AND t.status='failed'
   AND CASE WHEN t.payload->>'tmdb_id' ~ '^[1-9][0-9]{0,9}$'
     THEN (t.payload->>'tmdb_id')::bigint <= 2147483647 ELSE false END
   AND NOT (t.payload ? 'result')
+  AND NOT EXISTS (SELECT 1 FROM queue_identity_repair_receipts repair WHERE repair.task_id=t.id)
   AND NOT EXISTS (SELECT 1 FROM classification_intake_receipts r
     WHERE r.queue_task_id=t.id AND r.classification_id IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM task_queue newer

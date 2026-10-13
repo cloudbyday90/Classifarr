@@ -19,7 +19,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   returns. Checks are bounded and cancellable, and reject stale results; no ID
   guessing, exhausted-budget reset or source-library change is performed. Explicit
   checks also compare saved external IDs when the record is missing, showing a
-  candidate for review or the evidence gap without approving or applying a replacement.
+  candidate for review or the evidence gap. Administrators can preview and confirm
+  a supported replacement with fresh evidence, retain a durable repair receipt,
+  then separately retry the task without resetting its budget. Repaired tasks are
+  excluded from automatic recovery and bulk retry; original requests stay intact.
 
 ### Fixed
 
