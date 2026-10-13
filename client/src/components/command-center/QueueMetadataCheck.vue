@@ -41,6 +41,10 @@
       <p v-if="report.candidate">
         Current record: {{ report.candidate.title }}<span v-if="report.candidate.releaseDate"> ({{ report.candidate.releaseDate }})</span>
       </p>
+      <QueueIdentityEvidence
+        v-if="report.identityEvidence"
+        :evidence="report.identityEvidence"
+      />
       <details>
         <summary>Check details for support</summary>
         <p>Task #{{ report.taskId }} · Checked {{ report.checkedAt }}</p>
@@ -49,7 +53,14 @@
         <p v-if="report.observation?.transportCode">
           Connection code: {{ report.observation.transportCode }}
         </p>
-        <p>This check does not establish why a record disappeared or identify a replacement.</p>
+        <template v-if="report.identityEvidence">
+          <p>External-ID check: {{ report.identityEvidence.reason }}</p>
+          <p v-if="report.identityEvidence.observation">
+            Provider: {{ report.identityEvidence.observation.category }} · HTTP {{ report.identityEvidence.observation.httpStatus ?? 'unavailable' }}
+            <span v-if="report.identityEvidence.observation.transportCode"> · {{ report.identityEvidence.observation.transportCode }}</span>
+          </p>
+        </template>
+        <p>This check does not establish why a record disappeared or approve a replacement.</p>
       </details>
     </div>
   </div>
@@ -58,6 +69,7 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { Button } from '@/components/common'
+import QueueIdentityEvidence from './QueueIdentityEvidence.vue'
 import { checkQueueTaskMetadata } from '@/api/queueTasksApi'
 import { queueMetadataCheckError, queueMetadataCheckMessage } from '@/utils/queueMetadataCheckPresentation'
 

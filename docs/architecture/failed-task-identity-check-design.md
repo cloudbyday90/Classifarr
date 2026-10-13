@@ -31,6 +31,10 @@ small ESM service/provider modules, parameterized PostgreSQL reads and the share
 bounded HTTP transport. The manual check needs no dependencies or schema changes.
 The separate [self-healing design](queue-metadata-self-healing-design.md) adds
 durable background rechecks and conservative same-ID recovery.
+The [external-ID evidence extension](queue-identity-evidence-design.md) now adds
+bounded candidate reads after a current 404. It supersedes the original one-read
+limit below with a maximum of five reads under the same ten-second deadline,
+adds linked-source revision checks and does not authorize replacement writes.
 
 ## Contract
 

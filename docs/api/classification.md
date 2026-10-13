@@ -467,6 +467,35 @@ def monitor_queue(interval=5):
 
 ---
 
+## Failed-task metadata check
+
+`POST /api/queue/task/:id/metadata-check` takes exactly `{}` and requires an
+ordinary, active administrator session with the application's CSRF protections.
+API keys and scoped tokens cannot use this endpoint. It is a diagnostic read,
+not a retry, remapping or classification command. Do not call it from polling.
+
+The response includes `taskId`, `tmdbId`, `mediaType`, `savedFailure`, `checkedAt`,
+`observation` and `candidate` for the original saved record. A current 404 also
+returns `identityEvidence`; other original outcomes return that field as `null`.
+
+- `identityEvidence.reason` explains missing/conflicting source IDs, unavailable
+  provider evidence, or `candidate_for_review`.
+- `identityEvidence.candidate` is populated only when every saved supported
+  external ID finds the same typed record and its reverse IDs agree. It is not
+  approval, proof of edition equivalence, or authority for any later write.
+- `identityEvidence.sources` contains the checked ID systems (`imdb_id` and/or
+  `tvdb_id`), not credentials or the original webhook. `observation` contains a
+  bounded failure category, HTTP status and allowlisted transport code when a
+  follow-up provider read fails. No partial candidate is returned.
+
+Checks share one ten-second provider deadline and perform at most five reads.
+Task, linked request, provider configuration and administrator changes invalidate
+the result. HTTP 409 requires refreshing; it does not imply anything was repaired.
+All task fields, attempts and recovery budgets remain unchanged.
+
+See the [design and evidence rules](../architecture/queue-identity-evidence-design.md)
+for exact admission, response bounds and deferred repair requirements.
+
 ## Related Documentation
 
 - [Policies API](./policies.md) - Configure classification policies

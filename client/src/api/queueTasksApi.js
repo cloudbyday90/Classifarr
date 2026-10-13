@@ -38,7 +38,10 @@ export function retryQueueTask(taskId) {
   return apiClient.post(`/queue/task/${taskId}/retry`)
 }
 
-/** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
+/**
+ * Read-only report; optional identityEvidence is diagnostic, never replacement authority.
+ * @param {number|string} taskId @param {{ signal?: AbortSignal }} options
+ */
 export function checkQueueTaskMetadata(taskId, { signal } = {}) {
   return apiClient.post(`/queue/task/${taskId}/metadata-check`, {}, { skipAutomaticRetry: true, signal })
 }

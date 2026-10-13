@@ -1,27 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { ConflictError, NotFoundError, ValidationError } from '../utils/appError.mjs';
-import { projectReviewCandidate, reviewInteger } from './mediaIdentityReviewContract.mjs';
+import { ConflictError, ValidationError } from '../utils/appError.mjs';
+import { projectReviewCandidate } from './mediaIdentityReviewContract.mjs';
 import { requireReviewActor } from './mediaIdentityReviewRepository.mjs';
 import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
-
-const FAILURES = new Set(['task_metadata_not_found', 'task_metadata_fetch_failed', 'task_processing_failed']);
-
-async function readTask(db, id) {
-  const { rows } = await db.query(`SELECT id, xmin::text AS revision, task_type, status,
-    current_stage, error_message, claim_token, routing_classification_id,
-    payload->>'tmdb_id' AS tmdb_id, payload->>'media_type' AS media_type
-    FROM task_queue WHERE id = $1`, [id]);
-  const task = rows[0];
-  if (!task) throw new NotFoundError('Task no longer exists');
-  if (task.task_type !== 'classification' || task.status !== 'failed' ||
-      task.current_stage !== 'metadata_fetch' || !FAILURES.has(task.error_message) ||
-      task.claim_token !== null || task.routing_classification_id !== null ||
-      !['movie', 'tv'].includes(task.media_type)) {
-    throw new ConflictError('This task is no longer eligible for a metadata check');
-  }
-  reviewInteger(task.tmdb_id);
-  return task;
-}
+import { readQueueMetadataCheckTask } from './queueMetadataCheckRepository.mjs';
+import { readQueueIdentityEvidence } from './queueIdentityEvidenceService.mjs';
 
 export function createQueueMetadataCheckService({ db, readProvider, now = () => new Date(), deadlineMs = 10000 }) {
   let busy = false;
@@ -39,7 +22,7 @@ export function createQueueMetadataCheckService({ db, readProvider, now = () => 
       busy = true;
       try {
         callerSignal?.throwIfAborted();
-        const task = await readTask(db, taskId);
+        const task = await readQueueMetadataCheckTask(db, taskId);
         const provider = await readProvider();
         const deadline = AbortSignal.timeout(deadlineMs);
         const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline;
@@ -61,18 +44,21 @@ export function createQueueMetadataCheckService({ db, readProvider, now = () => 
                 : tmdbObservationFailure(error);
           }
         }
+        const identityEvidence = observation.category === 'not_found'
+          ? await readQueueIdentityEvidence(task, provider, { signal, deadline, callerSignal }) : null;
         callerSignal?.throwIfAborted();
         // No provider result is current authority if the task, settings or actor changed.
         await requireReviewActor(db, actorId);
-        const current = await readTask(db, taskId);
+        const current = await readQueueMetadataCheckTask(db, taskId);
         const currentProvider = await readProvider();
-        if (current.revision !== task.revision || currentProvider.revision !== provider.revision) {
-          throw new ConflictError('The task or TMDb settings changed. Check the record again.');
+        if (current.revision !== task.revision || current.source_revision !== task.source_revision ||
+            current.source_id !== task.source_id || currentProvider.revision !== provider.revision) {
+          throw new ConflictError('The task, saved source or TMDb settings changed. Check the record again.');
         }
         callerSignal?.throwIfAborted();
         return {
           taskId, tmdbId: Number(task.tmdb_id), mediaType: task.media_type,
-          savedFailure: task.error_message, checkedAt: now().toISOString(), observation, candidate,
+          savedFailure: task.error_message, checkedAt: now().toISOString(), observation, candidate, identityEvidence,
         };
       } finally { busy = false; }
     },

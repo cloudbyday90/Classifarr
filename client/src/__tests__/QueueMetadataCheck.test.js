@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import QueueMetadataCheck from '../components/command-center/QueueMetadataCheck.vue'
 import { checkQueueTaskMetadata } from '../api/queueTasksApi'
 import { queueMetadataCheckMessage } from '../utils/queueMetadataCheckPresentation'
+import { queueIdentityEvidenceMessage, queueIdentityEvidenceSources } from '../utils/queueIdentityEvidencePresentation'
 
 vi.mock('../api/queueTasksApi', () => ({ checkQueueTaskMetadata: vi.fn() }))
 const task = { id: 23, status: 'failed', completed_at: '2026-10-13', attempts: 1,
@@ -44,6 +45,55 @@ describe('saved task metadata check', () => {
     expect(wrapper.text()).toContain('TV series ID: 42')
     expect(wrapper.text()).toContain('Nothing has been retried or changed')
     expect(wrapper.find('script').exists()).toBe(false)
+    wrapper.unmount()
+  })
+  test('shows an external-ID candidate as unapproved evidence, never a repair action', async () => {
+    checkQueueTaskMetadata.mockResolvedValue({ data: { ...report, identityEvidence: {
+      reason: 'candidate_for_review', sources: ['imdb_id', 'tvdb_id', 'private'],
+      candidate: { tmdbId: 99, mediaType: 'tv', title: '<script>unsafe</script>', releaseDate: '2026-01-01' },
+    } } })
+    const wrapper = render()
+    await wrapper.find('button').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain('not an approved replacement')
+    expect(wrapper.text()).toContain('same work and edition')
+    expect(wrapper.text()).toContain('TV series ID 99')
+    expect(wrapper.text()).toContain('IMDb, TVDB')
+    expect(wrapper.text()).not.toContain('private')
+    expect(wrapper.find('script').exists()).toBe(false)
+    expect(wrapper.findAll('button')).toHaveLength(1)
+    expect(checkQueueTaskMetadata).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+  test.each([
+    ['external_ids_missing', 'no saved IMDb'], ['source_unavailable', 'no longer available'],
+    ['source_conflict', 'disagree'], ['conflicting_external_ids', 'disagree'],
+    ['invalid_external_id', 'invalid'], ['external_id_not_found', 'no matching'],
+    ['original_id_only', 'original record'], ['reverse_id_conflict', 'do not confirm'],
+    ['ambiguous_external_id', 'more than one'], ['invalid_response', 'could not be verified'],
+  ])('explains evidence outcome %s', (reason, text) => {
+    expect(queueIdentityEvidenceMessage({ reason })).toContain(text)
+  })
+  test.each(['unknown', 'constructor', '__proto__', '<script>secret</script>'])('evidence reason %s never becomes raw guidance', reason => {
+    expect(queueIdentityEvidenceMessage({ reason })).toContain('Open a GitHub issue')
+    expect(queueIdentityEvidenceMessage({ reason })).not.toContain(reason)
+  })
+  test.each([['not_found', 'record needed'], ['invalid_response', 'candidate details'], ['rate_limited', 'limiting requests'], ['unknown', 'GitHub issue']])('explains follow-up provider %s separately', (category, text) => {
+    expect(queueIdentityEvidenceMessage({ reason: 'provider_unavailable', observation: { category } })).toContain(text)
+  })
+  test('source labels are bounded and deduplicated', () => {
+    expect(queueIdentityEvidenceSources(['imdb_id', 'imdb_id', '<script>'])).toBe('IMDb')
+    expect(queueIdentityEvidenceSources(null)).toBe('')
+    expect(queueIdentityEvidenceMessage(null)).toContain('GitHub issue')
+  })
+  test('support details distinguish original 404 from follow-up timeout', async () => {
+    checkQueueTaskMetadata.mockResolvedValue({ data: { ...report, identityEvidence: {
+      reason: 'provider_unavailable', observation: { category: 'timeout', httpStatus: null, transportCode: 'ETIMEDOUT' },
+    } } })
+    const wrapper = render()
+    await wrapper.find('button').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain('Current check: not_found · HTTP 404')
+    expect(wrapper.text()).toContain('Provider: timeout · HTTP unavailable')
+    expect(wrapper.text()).toContain('ETIMEDOUT')
     wrapper.unmount()
   })
   test.each([[403, 'administrator'], [409, 'changed'], [404, 'no longer exists'], [429, 'Wait a minute'], [500, 'unavailable']])('handles HTTP %s without raw error reflection', async (status, text) => {

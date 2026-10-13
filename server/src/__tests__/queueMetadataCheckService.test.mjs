@@ -65,6 +65,26 @@ describe('failed task metadata check', () => {
     expect((await check()).observation.category).toBe('not_configured');
     expect(provider.getDetails).not.toHaveBeenCalled();
   });
+  test.each([200, 401, 429, 503])('only original 404 admits external-ID lookup, not %s', async status => {
+    task.task_imdb_id = 'tt123';
+    provider.findByExternalId = jest.fn();
+    if (status !== 200) provider.getDetails.mockRejectedValue({ response: { status } });
+    expect((await check()).identityEvidence).toBeNull();
+    expect(provider.findByExternalId).not.toHaveBeenCalled();
+  });
+  test.each(['source_revision', 'source_id', 'revision', 'config', 'actor'])('rejects %s changes during candidate reads', async kind => {
+    Object.assign(task, { task_imdb_id: 'tt123', webhook_log_id: 9, source_id: 9,
+      source_revision: '1', source_tmdb_id: 42, source_media_type: 'movie' });
+    provider.getDetails.mockRejectedValueOnce({ response: { status: 404 } }).mockResolvedValue({ id: 99, title: 'Candidate' });
+    provider.findByExternalId = jest.fn().mockResolvedValue({ movie_results: [{ id: 99 }] });
+    provider.getExternalIds = jest.fn(async () => {
+      if (kind === 'config') provider.revision = 'changed';
+      else if (kind === 'actor') actor.is_active = false;
+      else task[kind] = kind === 'source_id' ? null : 'changed';
+      return { id: 99, imdb_id: 'tt123' };
+    });
+    await expect(check()).rejects.toMatchObject({ statusCode: kind === 'actor' ? 403 : 409 });
+  });
   test.each([{ status: 'processing' }, { status: 'completed' }, { current_stage: 'decision' },
     { claim_token: 'owned' }, { routing_classification_id: 9 }, { error_message: 'another_failure' },
     { task_type: 'enrichment' }, { media_type: 'person' }])('rejects ineligible source %j before I/O', async patch => {
