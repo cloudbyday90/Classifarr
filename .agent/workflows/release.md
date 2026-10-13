@@ -291,15 +291,23 @@ This is operator evidence, not an automatic inspection of every NAS or permissio
 to retire compatibility code.
 
 If a local no-cache rebuild is explicitly requested, first inspect the active
-Compose project, overrides, mounts, backups and working-tree provenance. Use:
+Compose project, overrides, mounts, backups and working-tree provenance. Use the
+same Compose files/project on both steps and retain the current exact image before
+its mutable tag is rebuilt (local rebuild procedure updated 2026-10-13):
 
 ```bash
-node scripts/docker-compose-smart.mjs build --no-cache --require-provenance
-node scripts/docker-compose-smart.mjs up -d --no-build --force-recreate --wait
+node scripts/docker-compose-smart.mjs build --no-cache --require-provenance --protect-running-image classifarr
+node scripts/docker-compose-smart.mjs up -d --no-build --no-deps --pull never --force-recreate --wait --protect-running-image classifarr
 ```
 
 Run the second command only if the build succeeded and the selected project is
-the intended deployment. Do not run `down` first, delete volumes, or reset
+the intended deployment. Protection verifies the retained image after building
+and before replacement; record its exact ID/tag with the separate consistent
+appdata/database backup. Stop on missing or conflicting rollback evidence; do not
+silently substitute an older image. A retained image is not a database restore or
+proof of downgrade compatibility. See the
+[rollback protection guide](../../docs/architecture/local-docker-rollback-design.md).
+Do not run `down` first, delete volumes, or reset
 ownership to silence warnings. Recheck health/readiness, startup logs, resource
 limits and relevant recovery behavior afterward. A local build is not the
 published release digest and must be reported as such.

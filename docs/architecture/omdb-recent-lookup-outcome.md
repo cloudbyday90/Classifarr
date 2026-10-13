@@ -107,6 +107,10 @@ Next from the rebuild finding: automate rollback-image preservation before the
 build step, with an exact-image check before replacement. Then measure eligible
 reuse and fallback reasons with bounded, credential-free aggregate diagnostics
 before considering a longer lifetime or distributed cache.
+The rollback follow-up is documented in the
+[local rebuild design](local-docker-rollback-design.md) and
+[verification outcome](local-docker-rollback-outcome.md). Further reuse diagnostics
+are deferred until after release preparation, per the maintainer's direction.
 Synthetic tests prove behavior, not savings under production workload. Unraid,
 Plex and shared Ollama are outside this local deployment. No release or merge.
 
