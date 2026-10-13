@@ -34,14 +34,19 @@ earlier failure observations do not claim a retry was admitted.
 - Final full frontend run passed: 471 suites, 7,286 tests, including legacy-pause
   presentation. Coverage: statements 87.69%, branches 81.64%, functions 87.37%,
   lines 89.39%.
-- A full backend coverage run passed all 1,830 suites: 57,829 passed, one existing
-  skip. Earlier failures in ownership review and old webhook/type fixtures were
-  corrected. A final review then reproduced five PostgreSQL failures from
-  inconsistent outer-whitespace trimming; the corrected SQL now passes the 100
-  database checks above. Its final full coverage/image rerun is in progress.
+- Final backend coverage run passed all 1,830 suites: 57,840 tests passed, one
+  existing Linux-only directory-fsync test skipped on Windows. Coverage:
+  statements/lines 89.72%, branches 86.31%, functions 91.08%. Earlier ownership
+  review and webhook/type fixture failures were corrected. Final review also
+  reproduced five PostgreSQL failures from inconsistent outer-whitespace
+  trimming; the corrected SQL passes the full suite, the 100 database checks
+  above and the final packaged-image rehearsal.
 - Final type checking, ESLint, dependency/unused-code preflight, copyright,
   migration naming and schema integrity passed. Markdown validation passed for
   2,188 files; ESM static-import and mock-shape checks passed.
+- The coverage ratchet passed with fresh backend JSON and frontend HTML reports;
+  no coverage baseline was changed. An initial run omitted the required frontend
+  HTML artifact, so the complete frontend suite was rerun with that reporter.
 
 The ownership review covers exactly two queue files. No claim predicate, retry
 increment or protected-inventory write was relaxed. Existing post-completion
@@ -50,16 +55,18 @@ inventory ownership debt is explicitly retained as unresolved, not waived.
 ## Packaged and local evaluation
 
 The no-cache Compose build used clean source
-`14c1afd1c873f4ab5c9cd0e895e8da637cf1610b` (no version bump):
+`ca77320e96dfedfb4a64ed418140b91028d0a877` (no version bump):
 
-- Local image: `sha256:5d1296b35655fc99c388fa22ad42c18a983a6fd49aef77206098aeb33fd484c8`.
-- Platform manifest: `sha256:9eec2b6451fb45d0b1143c7d84e7961a315afdfe6ce0f39da146a4d3ccc576a6`.
-- Config: `sha256:c174043bf9b5099c304f7f95d25a73da7049c7254daca8f3b70f56b69f780590`.
+- Local image: `sha256:8694a5d16a179fab039a20c1396bcb32a9b364cc3d8730904d5c5c8cf401b190`.
+- Platform manifest: `sha256:dea0a01f7282b7ca3f79e42d290a57b6d6bfd00bf5b61d32cf4319b5dcd5dda7`.
+- Config: `sha256:0641233ddc3462bff5eef1695a33a84e0f34d724cfe05034801d6ecefcd6dc20`.
 
 An isolated fresh container, with no network or published ports and bounded
 CPU/memory/PIDs, ran the packaged services. Nested diagnostics passed without
 changing the saved row, nested repair stayed blocked before provider access,
 conflicting aliases were rejected and sanitized failure context was verified.
+The packaged repair gate also rejected a competing request padded with Unicode
+whitespace, including uppercase `MOVIE`.
 The existing flat repair rehearsal made eight synthetic provider reads; it did
 not retry the task or reset its attempt count. After a same-image restart,
 duplicate confirmation required no provider access and its receipt survived
@@ -74,9 +81,11 @@ The previous local image remains tagged for rollback. A backup restore was not
 part of this exercise.
 
 The rebuilt local container became healthy with a connected database and HTTP
-200 UI response. Read-only checks found 1,994 completed tasks, no failed tasks and
-no new error-log entries in the initial observation window. Initial usage was
-380.8 MiB of 2 GiB. Non-root UID/GID 1000, read-only root and no-new-privileges
+200 UI response. Read-only checks found 1,977 completed tasks, no failed tasks and
+no new error-log entries since the final container's 22:24:24 UTC startup (checked
+using the database's America/New_York timezone). Usage sampled at 834.1 MiB during
+startup and later 625.8 MiB of 2 GiB. Non-root UID/GID 1000, read-only root and
+no-new-privileges
 remain enabled; no OOM or restart was observed. These short startup observations
 are not a memory-leak or complete classification-workload test. No real failed
 local task was available, so failure/repair behavior used synthetic fixtures.

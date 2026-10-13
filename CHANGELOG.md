@@ -30,7 +30,7 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   and failed-task checks consistently interpret supported legacy and nested IDs,
   reject conflicting declarations, and preserve original requests. Broader repair
   backfill remains gated. Metadata failure reports retain the typed lookup,
-  safe provider response and shared reference; queue outcomes distinguish stopped
+  safe provider outcome and shared reference; queue outcomes distinguish stopped
   retries from exhausted budgets without claiming a record is permanently gone.
 - **Recovery testing** — Shutdown and queue-recovery drills retain safe failure
   diagnostics in CI, distinguish scenario failures from cleanup failures, and
