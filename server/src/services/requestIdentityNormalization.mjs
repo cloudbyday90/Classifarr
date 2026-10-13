@@ -35,7 +35,10 @@ export function normalizeRequestIdentity(payload) {
   if (payload.extra != null) {
     if (!Array.isArray(payload.extra) || payload.extra.length > 64) return invalid();
     for (const entry of payload.extra) {
-      if (!object(entry) || typeof entry.name !== 'string' || entry.name.length > 64) return invalid();
+      if (!object(entry)) return invalid();
+      // Episode/season entries are also stored here; they do not declare an ID.
+      if (!Object.hasOwn(entry, 'name')) continue;
+      if (typeof entry.name !== 'string' || entry.name.length > 64) return invalid();
       const name = entry.name.trim().toLowerCase();
       const provider = EXTRA_PROVIDERS.get(name);
       // Older readers matched any label containing tmdb; never reinterpret it as absence.

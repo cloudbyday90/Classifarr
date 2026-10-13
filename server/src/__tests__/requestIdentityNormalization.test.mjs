@@ -38,6 +38,11 @@ test('null IDs are absent; supported duplicate values agree without rewriting in
   expect(normalizeRequestIdentity({ title: 'Only a title' })).toMatchObject({ tmdbId: null, reason: null });
 });
 
+test('unrelated episode entries do not become provider declarations', () => {
+  const payload = { media_type: 'tv', extra: [{ seasonNumber: 1, episodeNumber: 2 }, { name: 'TMDB', value: 42 }] };
+  expect(requireRequestIdentity(payload)).toMatchObject({ tmdbId: 42, mediaType: 'tv', reason: null });
+});
+
 test.each([null, [], 'private', { media: [] }, { extra: {} }, { extra: Array(65).fill({ name: 'TMDB', value: 42 }) },
   { extra: [{ name: 'x'.repeat(65), value: 'private' }] }, { extra: [{ name: 'TMDB URL', value: 'private' }] },
   { extra: [null] }, { extra: [{ name: 'TMDB ID' }] }])('invalid structure is bounded and does not expose values', payload => {

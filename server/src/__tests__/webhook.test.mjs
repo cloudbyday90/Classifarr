@@ -162,7 +162,7 @@ describe('WebhookService - parsePayload', () => {
 
       expect(result.title).toBe('New Movie Request');
       expect(result.media_type).toBeNull();
-      expect(result.tmdb_id).toBeUndefined();
+      expect(result.tmdb_id).toBeNull();
       expect(result.request_id).toBeUndefined();
       expect(result.year).toBeNull();
       expect(result.is_4k).toBe(false);
@@ -178,7 +178,7 @@ describe('WebhookService - parsePayload', () => {
 
       expect(result.notification_type).toBe('MEDIA_PENDING');
       expect(result.title).toBe('Test Request');
-      expect(result.tmdb_id).toBeUndefined();
+      expect(result.tmdb_id).toBeNull();
     });
 
     test('should handle missing request object', () => {
