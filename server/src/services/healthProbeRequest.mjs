@@ -11,17 +11,28 @@ export function healthProbeUrl(base, path) {
     return url.href;
 }
 
-/** @param {{ params?: Record<string, unknown>, timeout?: number, rejectUnauthorized?: boolean }} options */
+/** @param {{ params?: Record<string, unknown>, timeout?: number, rejectUnauthorized?: boolean,
+ * observeResponse?: (metadata: { status: number, headers?: Record<string, string> }) => Promise<unknown> }} options */
 export async function readHealthProbeJson(url, headers = {}, options = {}) {
     const timeout = Number.isFinite(options.timeout) && options.timeout > 0
         ? Math.min(options.timeout, 10_000) : 10_000;
-    const response = await httpGet(url, {
-        headers: { Accept: 'application/json', ...headers },
-        params: options.params,
-        timeout,
-        rejectUnauthorized: options.rejectUnauthorized !== false,
-        maxResponseBytes: 1_048_576,
-        redirect: 'error',
-    });
+    let response;
+    try {
+        response = await httpGet(url, {
+            headers: { Accept: 'application/json', ...headers },
+            params: options.params,
+            timeout,
+            rejectUnauthorized: options.rejectUnauthorized !== false,
+            maxResponseBytes: 1_048_576,
+            redirect: 'error',
+        });
+    } catch (error) {
+        if (error?.response) await options.observeResponse?.({
+            status: error.response.status, headers: error.response.headers,
+        });
+        throw error;
+    }
+    // Outside the transport catch: an observer failure must never be observed twice.
+    await options.observeResponse?.({ status: response.status, headers: response.headers });
     return response.status === 200 ? response.data : null;
 }

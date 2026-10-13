@@ -24,12 +24,15 @@ export function createMetadataHealthProbes({ readJson = readHealthProbeJson } = 
         return valid ? { success: true } : null;
     }
 
-    async function probeOmdbConnection(apiKey) {
+    /** @param {Parameters<typeof readHealthProbeJson>[2]} options */
+    async function probeOmdbConnection(apiKey, options = {}) {
+        const { observeResponse } = options;
         if (!nonempty(apiKey)) return { success: false, code: 'configuration_invalid' };
         let outcome;
         try {
             const data = await readJson('https://www.omdbapi.com/', {}, {
                 params: { apikey: apiKey, t: 'The Matrix', y: 1999 },
+                ...(observeResponse ? { observeResponse } : {}),
             });
             outcome = classifyOmdbResponse(data, 200);
         } catch (error) {

@@ -7,14 +7,20 @@ import { createLogger } from '../utils/logger.mjs';
 const logger = createLogger('OmdbPacing');
 
 /** A response observation never retries HTTP, rejects successful evidence or logs raw headers. */
+export function createOmdbPacingObserver({ database = db, persist = deferOmdbPacing } = {}) {
+  return async (response, context) => {
+    const delay = omdbPacingDelay(response);
+    if (!delay) return 0;
+    try { await persist(database, context, delay); }
+    catch {
+      logger.warn('OMDb shared wait could not be saved; base request pacing remains active', {}, {
+        dedupeKey: 'omdb_pacing_observation_unavailable', dedupeWindowMs: 30 * 60 * 1000,
+      });
+    }
+    return delay;
+  };
+}
+
 export async function observeOmdbPacing(response, context, persist = deferOmdbPacing) {
-  const delay = omdbPacingDelay(response);
-  if (!delay) return 0;
-  try { await persist(db, context, delay); }
-  catch {
-    logger.warn('OMDb shared wait could not be saved; base request pacing remains active', {}, {
-      dedupeKey: 'omdb_pacing_observation_unavailable', dedupeWindowMs: 30 * 60 * 1000,
-    });
-  }
-  return delay;
+  return createOmdbPacingObserver({ persist })(response, context);
 }

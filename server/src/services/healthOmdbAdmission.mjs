@@ -4,6 +4,7 @@ import { providerCredentialContext } from './providerCredentialRejection.mjs';
 import { probeOmdbConnection } from './healthMetadataProbe.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState } from './healthConnectionProbe.mjs';
 import { buildStatusHealthState } from './healthCheckServiceShared.mjs';
+import { createOmdbPacingObserver } from './omdbPacingObservation.mjs';
 
 const outcomes = new Map([
     ['limit_reached', ['local_quota_exhausted', 'Health check skipped: the local OMDb daily request budget is used up. Wait for the next budget period, or review the limit in OMDb settings.']],
@@ -23,7 +24,8 @@ function deferred(previous, status) {
 }
 
 /** Saved health attempts share lookup admission. No HTTP before confirmed commit. */
-export function createOmdbHealthAdmission({ db, reserve = reserveOmdbQuota, probe = probeOmdbConnection }) {
+export function createOmdbHealthAdmission({ db, reserve = reserveOmdbQuota, probe = probeOmdbConnection,
+    observe = createOmdbPacingObserver({ database: db }) }) {
     return async (previous, config) => {
         const expectedContext = providerCredentialContext('omdb', config);
         if (!expectedContext) return deferred(previous, 'invalid_configuration');
@@ -35,7 +37,9 @@ export function createOmdbHealthAdmission({ db, reserve = reserveOmdbQuota, prob
             return deferred(previous, 'unavailable');
         }
         if (admission?.status !== 'reserved') return deferred(previous, admission?.status);
-        const result = await measureConnectionProbe(() => probe(admission.apiKey));
+        const result = await measureConnectionProbe(() => probe(admission.apiKey, {
+            observeResponse: response => observe(response, admission.credentialContext),
+        }));
         return buildConnectionProbeHealthState(previous, result);
     };
 }

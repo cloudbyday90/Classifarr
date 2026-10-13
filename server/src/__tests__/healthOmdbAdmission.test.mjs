@@ -19,7 +19,7 @@ test('uses committed credentials with shared pacing and captured generation', as
     expect(reserve).toHaveBeenCalledWith(db, { pacing: true,
         expectedContext: { source: 'omdb', id: config.id, generation: config.credential_generation } });
     expect(probe).toHaveBeenCalledTimes(1);
-    expect(probe).toHaveBeenCalledWith('reserved-fixture-key');
+    expect(probe).toHaveBeenCalledWith('reserved-fixture-key', { observeResponse: expect.any(Function) });
     expect(result.status).toBe('connected');
     expect(result.lastSuccessfulCheck).not.toBe(previous.lastSuccessfulCheck);
     expect(JSON.stringify(result)).not.toMatch(/reserved-fixture-key|synthetic|credential/);
@@ -81,4 +81,25 @@ test('HTTP exceptions are sanitized without retry', async () => {
     expect(result.failure.code).toBe('connection_failed');
     expect(JSON.stringify(result)).not.toContain('private upstream body');
     expect(probe).toHaveBeenCalledTimes(1);
+});
+
+test('observes using committed context and awaits saving before publishing health', async () => {
+    const context = { source: 'omdb', id: 3, generation: 'committed-generation' };
+    reserve.mockResolvedValue({ status: 'reserved', apiKey: 'reserved-fixture-key', credentialContext: context });
+    let finish;
+    const observe = jest.fn(() => new Promise(resolve => { finish = resolve; }));
+    const response = { status: 429, headers: { 'retry-after': '120' } };
+    probe.mockImplementation(async (_key, { observeResponse }) => {
+        await observeResponse(response);
+        return { success: false, code: 'rate_limited' };
+    });
+    const run = createOmdbHealthAdmission({ db, reserve, probe, observe });
+    let complete = false;
+    const pending = run(previous, availableOmdbQuotaFixture()).then(result => { complete = true; return result; });
+    await Promise.resolve();
+    expect(observe).toHaveBeenCalledWith(response, context);
+    expect(complete).toBe(false);
+    finish();
+    expect((await pending).failure.code).toBe('rate_limited');
+    expect(observe).toHaveBeenCalledTimes(1);
 });

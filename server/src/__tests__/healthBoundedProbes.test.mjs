@@ -35,3 +35,32 @@ test('shared transport preserves existing AI/media defaults', async () => {
     await readHealthProbeJson('https://fixture', { 'X-Fixture': 'synthetic' });
     expect(httpGet.mock.calls[0][1]).toMatchObject({ timeout: 10000, maxResponseBytes: 1048576, redirect: 'error', rejectUnauthorized: true });
 });
+
+test.each([200, 204, 401, 429, 503])('observes HTTP %s exactly once without passing the body', async status => {
+    const response = { status, headers: { 'retry-after': '120' }, data: 'private-body' };
+    const error = { response };
+    if (status >= 400) httpGet.mockRejectedValue(error);
+    else httpGet.mockResolvedValue(response);
+    const observeResponse = jest.fn().mockResolvedValue(undefined);
+    const pending = readHealthProbeJson('https://fixture', {}, { observeResponse });
+    if (status >= 400) await expect(pending).rejects.toBe(error);
+    else expect(await pending).toBe(status === 200 ? 'private-body' : null);
+    expect(observeResponse).toHaveBeenCalledTimes(1);
+    expect(observeResponse).toHaveBeenCalledWith({ status, headers: response.headers });
+    expect(httpGet.mock.calls[0][1]).not.toHaveProperty('observeResponse');
+});
+
+test.each(['CERT_HAS_EXPIRED', 'ABORT_ERR', 'ETIMEDOUT', 'HTTP_RESPONSE_TOO_LARGE'])('no observation from incomplete response %s', async code => {
+    httpGet.mockRejectedValue({ code });
+    const observeResponse = jest.fn();
+    await expect(readHealthProbeJson('https://fixture', {}, { observeResponse })).rejects.toEqual({ code });
+    expect(observeResponse).not.toHaveBeenCalled();
+});
+
+test('a rejected observer cannot be observed a second time', async () => {
+    const error = { response: { status: 503 } };
+    const observeResponse = jest.fn().mockRejectedValue(error);
+    await expect(readHealthProbeJson('https://fixture', {}, { observeResponse })).rejects.toBe(error);
+    expect(observeResponse).toHaveBeenCalledTimes(1);
+    expect(httpGet).toHaveBeenCalledTimes(1);
+});

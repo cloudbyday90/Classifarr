@@ -17,7 +17,7 @@ test('reserves with the saved generation and uses only the committed key', async
     expect(await recover(config)).toEqual({ status: 'recovered', code: 'transport_verified' });
     expect(reserve).toHaveBeenCalledWith(db, { pacing: true, expectedContext: providerCredentialContext('omdb', config) });
     expect(probe).toHaveBeenCalledTimes(1);
-    expect(probe).toHaveBeenCalledWith('committed-key');
+    expect(probe).toHaveBeenCalledWith('committed-key', { observeResponse: expect.any(Function) });
     expect(db.query).toHaveBeenCalledTimes(1);
 });
 
@@ -25,6 +25,26 @@ test.each([null, {}, { ...config, credential_generation: 'bad' }, { ...config, i
     const { recover, reserve, probe } = setup();
     expect(await recover(value)).toEqual({ status: 'deferred', code: 'invalid_configuration' });
     expect(reserve).not.toHaveBeenCalled(); expect(probe).not.toHaveBeenCalled();
+});
+
+test('observes with committed context before the completion fence', async () => {
+    const { db, reserve } = setup();
+    const context = providerCredentialContext('omdb', config);
+    reserve.mockResolvedValue({ status: 'reserved', apiKey: 'committed-key', credentialContext: context });
+    let finish;
+    const observe = jest.fn(() => new Promise(resolve => { finish = resolve; }));
+    const response = { status: 200, headers: { 'retry-after': '120' } };
+    const probe = jest.fn(async (_key, { observeResponse }) => {
+        await observeResponse(response);
+        return { status: 'recovered' };
+    });
+    const pending = createOmdbSslRecovery({ db, reserve, probe, observe })(config);
+    await Promise.resolve();
+    expect(observe).toHaveBeenCalledWith(response, context);
+    expect(db.query).not.toHaveBeenCalled();
+    finish();
+    expect((await pending).status).toBe('recovered');
+    expect(observe).toHaveBeenCalledTimes(1);
 });
 
 test.each(['not_configured', 'credentials_rejected', 'invalid_configuration', 'limit_reached', 'lookup_restart', 'paced', 'private-provider-body', undefined])('denied %s never probes', async status => {

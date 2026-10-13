@@ -4,6 +4,7 @@ import { providerCredentialContext } from './providerCredentialRejection.mjs';
 import { readHealthProbeJson } from './healthProbeRequest.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { isCertificateError } from './omdbHealth.mjs';
+import { createOmdbPacingObserver } from './omdbPacingObservation.mjs';
 
 const admissionCodes = new Set(['not_configured', 'credentials_rejected', 'invalid_configuration',
     'limit_reached', 'lookup_restart', 'paced']);
@@ -13,9 +14,13 @@ const deferred = code => ({ status: 'deferred', code });
 
 /** A confirmed miss also proves TLS recovery; it is not enrichment evidence. */
 export function createOmdbSslProbe({ readJson = readHealthProbeJson } = {}) {
-    return async apiKey => {
+    /** @param {Parameters<typeof readHealthProbeJson>[2]} options */
+    return async (apiKey, options = {}) => {
+        const { observeResponse } = options;
         try {
-            const data = await readJson('https://www.omdbapi.com/', {}, { params: { apikey: apiKey, t: 'Test' } });
+            const data = await readJson('https://www.omdbapi.com/', {}, {
+                params: { apikey: apiKey, t: 'Test' }, ...(observeResponse ? { observeResponse } : {}),
+            });
             const outcome = classifyOmdbResponse(data, 200);
             return ['success', 'not_found'].includes(outcome.kind)
                 ? { status: 'recovered', code: 'transport_verified' } : deferred(outcome.kind);
@@ -28,7 +33,8 @@ export function createOmdbSslProbe({ readJson = readHealthProbeJson } = {}) {
 }
 
 /** Saved automatic recovery joins the same credit and pacing boundary as lookups. */
-export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = createOmdbSslProbe() }) {
+export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = createOmdbSslProbe(),
+    observe = createOmdbPacingObserver({ database: db }) }) {
     return async config => {
         const expectedContext = providerCredentialContext('omdb', config);
         if (!expectedContext) return deferred('invalid_configuration');
@@ -42,7 +48,9 @@ export function createOmdbSslRecovery({ db, reserve = reserveOmdbQuota, probe = 
             return deferred(admissionCodes.has(admission?.status) ? admission.status : 'admission_unavailable');
         }
         try {
-            const result = await probe(admission.apiKey);
+            const result = await probe(admission.apiKey, {
+                observeResponse: response => observe(response, admission.credentialContext),
+            });
             // No lock spans HTTP. Never publish old-key recovery after a saved edit.
             const { rows: [current] } = await db.query(`SELECT id, credential_generation, credential_rejected_at
                 FROM omdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1`);

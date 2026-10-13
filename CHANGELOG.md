@@ -51,6 +51,8 @@ Archived changelogs: [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG
   distinguishing skipped checks from provider outages without renewing old success.
   Apply the same budget and pacing to automatic OMDb SSL-recovery checks, rejecting
   stale credential results and retaining unfinished enrichment for retry.
+  Share provider-requested waits from both OMDb probe paths with ordinary lookups,
+  preserving cooldowns across restarts without applying old-key responses to new settings.
   Keep database readiness and security safeguards unchanged.
   Simplify System Information to concise version, build and CPU facts, removing
   internal startup references and explanations while retaining actionable warnings.

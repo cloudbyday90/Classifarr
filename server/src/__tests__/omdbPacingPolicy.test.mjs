@@ -3,7 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 import { omdbPacingDelay, OmdbAdmissionWaitError, OMDB_MAX_WAIT_SECONDS } from '../services/omdbPacingPolicy.mjs';
 const warn = jest.fn();
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ createLogger: () => ({ warn }) }));
-const { observeOmdbPacing } = await import('../services/omdbPacingObservation.mjs');
+const { observeOmdbPacing, createOmdbPacingObserver } = await import('../services/omdbPacingObservation.mjs');
 
 test.each([undefined, null, '', '-1', '1.5', '1e3', [], {}, 'tomorrow', 'x'.repeat(257), '99999999999'])
   ('rejects malformed Retry-After %j', value => {
@@ -35,4 +35,14 @@ test('observations persist only timing; failures cannot replay HTTP or discard e
   expect(await observeOmdbPacing({ status: 429 }, context, persist)).toBe(60);
   expect(persist).toHaveBeenCalledTimes(2);
   expect(JSON.stringify(warn.mock.calls)).not.toContain('secret');
+});
+
+test('factory writes only timing through the caller database and contains failures', async () => {
+  const database = {}, persist = jest.fn().mockRejectedValue(new Error('private-database-error'));
+  const context = { source: 'omdb', id: 7, generation: 'fixture' };
+  const observe = createOmdbPacingObserver({ database, persist });
+  expect(await observe({ status: 503, headers: { 'retry-after': '90' }, data: 'private-body' }, context)).toBe(90);
+  expect(persist).toHaveBeenCalledTimes(1);
+  expect(persist).toHaveBeenCalledWith(database, context, 90);
+  expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private-database-error|private-body/);
 });
