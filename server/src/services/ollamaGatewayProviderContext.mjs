@@ -48,8 +48,26 @@ export function createOllamaGatewayProviderContext({ configuration, gateway }) {
     const vector = readEmbeddingResponse(data, 'ollama');
     return { embedding: vector, dims: vector.length };
   };
-  return Object.freeze({
+  const context = Object.freeze({
     ...generation,
+    async preflightConnection(options = {}) {
+      assertGatewayEndpoint(config.baseUrl, options.host, options.port);
+      const selected = canonicalGatewayModel(options.model ?? model);
+      if (selected === model) return generation.preflightConnection(options);
+      assertModel(selected, embeddingModel);
+      if (options.probeGeneration === true) throw gatewayError('gateway_model_mismatch', 409);
+      return embedding.preflightConnection(options);
+    },
+    /** Specialized study schemas still pass through the same owned transport. */
+    request(path, body, options = {}) {
+      assertOpen();
+      if (body === undefined && ['/api/tags', '/api/ps', '/api/version'].includes(path)) return inspect(path, body, options);
+      if (path === '/api/generate') assertModel(body?.model);
+      else if (path === '/api/embed') assertModel(body?.model, embeddingModel);
+      else if (path === '/api/show' && models.includes(canonicalGatewayModel(body?.model))) { /* read-only inspection */ }
+      else throw gatewayError('gateway_operation_unsupported', 400);
+      return client.request(path, body, options);
+    },
     assertEndpoint(host, port) { assertOpen(); assertGatewayEndpoint(config.baseUrl, host, port); },
     async getVersion(options = {}) {
       const data = await inspect('/api/version', undefined, options);
@@ -65,16 +83,23 @@ export function createOllamaGatewayProviderContext({ configuration, gateway }) {
     },
     embed,
     async warmModel(options = {}) {
-      assertOpen();
+      assertModel(options.model ?? model);
       await verify(generation, { signal: options.signal, expectedModelDigest: options.expectedModelDigest });
       await client.request('/api/generate', { model, prompt: '', stream: false, keep_alive: '5m' },
         { signal: options.signal, timeoutMs: gatewayDeadline(options.timeoutMs, 60000) });
       return { success: true, model };
     },
     async warmEmbeddingModel(options = {}) {
+      assertModel(options.model ?? embeddingModel, embeddingModel);
       await embed('warmup', embeddingModel, '5m', options.signal, options);
       return { success: true, model: embeddingModel };
     },
+    async warmAllModels() {
+      const ai = await context.warmModel();
+      const embeddingResult = embeddingModel && embeddingModel !== model ? await context.warmEmbeddingModel() : null;
+      return { ai, embedding: embeddingResult };
+    },
     close() { if (!closed) { closed = true; client.close(); } },
   });
+  return context;
 }

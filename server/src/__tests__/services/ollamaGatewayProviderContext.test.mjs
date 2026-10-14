@@ -103,3 +103,14 @@ test('only bounded buffered warming is admitted', () => {
   const body = { model, prompt: '', stream: false, keep_alive: '5m' };
   expect(validateGatewayBody('/api/generate', body, { models: [model] })).toBe(body);
 });
+
+test('embedding preflight cannot generate; specialized request view enforces operation and model roles', async () => {
+  const context = create();
+  expect((await context.preflightConnection({ model: embeddingModel })).success).toBe(true);
+  await expect(context.preflightConnection({ model: embeddingModel, probeGeneration: true })).rejects.toThrow('gateway_model_mismatch');
+  expect(() => context.request('/api/generate', { model: embeddingModel })).toThrow('gateway_model_mismatch');
+  expect(() => context.request('/api/embed', { model })).toThrow('gateway_model_mismatch');
+  expect(() => context.request('/api/pull', { model })).toThrow('gateway_operation_unsupported');
+  expect(() => context.request('/gateway/status')).toThrow('gateway_operation_unsupported');
+  expect(request).toHaveBeenCalledTimes(1); context.close();
+});

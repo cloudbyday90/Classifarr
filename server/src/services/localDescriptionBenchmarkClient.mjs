@@ -9,6 +9,7 @@ import { buildIndependentFitSchema } from './inventoryIndependentFitContract.mjs
 import { buildSemanticComparisonSchema, SEMANTIC_COMPARISON_OUTPUT_TOKENS } from './inventorySemanticComparisonContract.mjs';
 import { buildGroundedComparisonSchema, groundedComparisonOutputTokens } from './inventoryGroundedComparisonContract.mjs';
 import { createGatewayClient } from '../ollamaGateway/client.mjs';
+import { createOllamaApplicationLease } from './ollamaApplicationScope.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
 export const ADJUDICATION_REPLAY_OUTPUT_TOKENS = 256;
@@ -18,8 +19,11 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   if (config?.primary_provider !== 'ollama') throw new Error('description_benchmark_local_provider_required');
   const { baseUrl, model } = resolveLocalStudyEmbeddingConfig({ ...config, rag_enabled: true,
     embedding_provider_mode: 'same', embedding_model: config.ollama_model });
+  const lease = createOllamaApplicationLease({ baseUrl }, gateway);
   const gatewayClient = gateway === null ? null : createGatewayClient(gateway,{ expectedUpstream: baseUrl });
   async function request(path, body, signal) {
+    const scoped = lease.resolve();
+    if (scoped) return scoped.request(path, body, { signal, timeoutMs: 180000, maxResponseBytes: 1024 * 1024 });
     if (gatewayClient) return gatewayClient.request(path,body,{ signal,timeoutMs: 180000,maxResponseBytes: 1024 * 1024 });
     const response = await fetchRequest(`${baseUrl}${path}`, {
       method: body === undefined ? 'GET' : 'POST', redirect: 'error',
@@ -53,7 +57,7 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
     return { model, digest: entry.digest.replace(/^sha256:/, ''), contextLength };
   }
   return {
-    close() { gatewayClient?.close(); },
+    close() { lease.close(); gatewayClient?.close(); },
     inspect,
     async generate({ prompt, count, context, identity, signal, responseContract = 'candidate', onGenerationCall = () => {} }) {
       if (!['candidate', 'adjudication', 'pair_relevance', 'group_relevance', 'independent_fit', 'library_comparison', 'grounded_comparison'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');

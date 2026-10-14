@@ -6,6 +6,7 @@ import { readHealthConfiguration, buildUnknownHealthState } from './healthConfig
 import { buildNotConfiguredHealthState, buildStatusHealthState } from './healthCheckServiceShared.mjs';
 import { measureConnectionProbe, buildConnectionProbeHealthState, buildInvalidConnectionHealthState } from './healthConnectionProbe.mjs';
 import { healthProbeUrl, readHealthProbeJson } from './healthProbeRequest.mjs';
+import { resolveOllamaApplicationClient } from './ollamaApplicationScope.mjs';
 
 const cloudProviders = new Set(['openai', 'openrouter', 'gemini', 'litellm', 'custom']);
 const keyRequired = new Set(['openai', 'openrouter', 'gemini']);
@@ -44,6 +45,8 @@ export async function checkOllama(previous, guard = undefined) {
             url = healthProbeUrl(base.href, '/api/tags');
         } catch { return buildInvalidConnectionHealthState(previous); }
         const probe = await measureConnectionProbe(async () => {
+            const scoped = resolveOllamaApplicationClient({ baseUrl: new URL(url).origin, host, port });
+            if (scoped) return { success: Array.isArray(await scoped.getModels()) };
             const data = await readHealthProbeJson(url);
             return Array.isArray(data?.models) ? { success: true } : null;
         });

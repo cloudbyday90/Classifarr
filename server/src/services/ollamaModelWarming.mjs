@@ -12,9 +12,20 @@ import { httpPost } from '../utils/httpClient.mjs';
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
+import { resolveOllamaApplicationClient, gatewayKeepAlive } from './ollamaApplicationScope.mjs';
+
+async function warmScoped(client, method, model, keepAlive, config) {
+  const retention = gatewayKeepAlive(keepAlive);
+  const started = Date.now();
+  const result = await client[method]({ model });
+  return { ...result, host: config.host, port: config.port, keep_alive: retention,
+    latency_ms: Date.now() - started, message: `Model '${result.model}' loaded with ${retention} retention` };
+}
 
 export async function warmModel(getConfig, model, keepAlive = '24h', host = null, port = null) {
   const config = await getConfig();
+  const scoped = resolveOllamaApplicationClient(config, { host, port });
+  if (scoped) return warmScoped(scoped, 'warmModel', model, keepAlive, config);
   const warmHost = host || config.host;
   const warmPort = port || config.port;
   const warmUrl = `http://${warmHost}:${warmPort}`;
@@ -62,6 +73,8 @@ export async function warmModel(getConfig, model, keepAlive = '24h', host = null
 
 export async function warmEmbeddingModel(getConfig, model, keepAlive = '24h', host = null, port = null) {
   const config = await getConfig();
+  const scoped = resolveOllamaApplicationClient(config, { host, port });
+  if (scoped) return warmScoped(scoped, 'warmEmbeddingModel', model, keepAlive, config);
   const warmHost = host || config.host;
   const warmPort = port || config.port;
   const warmUrl = `http://${warmHost}:${warmPort}`;
@@ -113,6 +126,12 @@ export async function warmEmbeddingModel(getConfig, model, keepAlive = '24h', ho
 
 export async function warmAllModels(getConfig, keepAlive = '24h') {
   const config = await getConfig();
+  const scoped = resolveOllamaApplicationClient(config);
+  if (scoped) {
+    gatewayKeepAlive(keepAlive);
+    const results = await scoped.warmAllModels();
+    return { ai: { ...results.ai, keep_alive: '5m' }, embedding: results.embedding && { ...results.embedding, keep_alive: '5m' } };
+  }
   const results = {
     ai: null,
     embedding: null,

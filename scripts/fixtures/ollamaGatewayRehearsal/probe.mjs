@@ -12,6 +12,7 @@ import { createOllamaGatewayGenerationClient } from '/app/src/services/ollamaGat
 import { createOllamaGatewayProviderContext } from '/app/src/services/ollamaGatewayProviderContext.mjs';
 import { createOllamaVerificationSavedConfigurationClient } from '/app/src/services/ollamaVerificationSavedConfigurationClient.mjs';
 import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerificationCapabilityProbe.mjs';
+import { rehearseApplicationRouting } from './application.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -24,7 +25,9 @@ const provider = createServer(async (req,res) => {
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
   const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
   forbiddenHeader ||= Boolean(req.headers.authorization);
-  if (req.url === '/api/tags') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ models: [{ name: model,digest: 'a'.repeat(64) }] })); return; }
+  if (['/api/tags', '/api/ps'].includes(req.url)) { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ models: [{ name: model,digest: 'a'.repeat(64) }] })); return; }
+  if (req.url === '/api/show') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ capabilities: ['completion', 'embedding'],
+    model_info: { 'general.architecture': 'test', 'test.context_length': 8192, 'test.embedding_length': 2 } })); return; }
   if (req.url === '/api/version') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ version: 'synthetic' })); return; }
   if (req.url === '/api/embed') {
     calls++; assert.equal(body.truncate,false); assert.equal(body.keep_alive,'5m');
@@ -35,7 +38,7 @@ const provider = createServer(async (req,res) => {
   const finish = () => {
     if (!body.stream) res.setHeader('Content-Type','application/json');
     const response = body.prompt === '' ? '' : body.format ? '{"status":"ready","contract":"candidate-bound-verification"}' : 'synthetic';
-    res.end(`${JSON.stringify({ model,done: true,response })}${body.stream ? '\n' : ''}`);
+    res.end(`${JSON.stringify({ model,done: true,response,done_reason: body.prompt ? 'stop' : 'load',prompt_eval_count: 1,eval_count: 1 })}${body.stream ? '\n' : ''}`);
   };
   if (hold) release = finish; else finish();
 });
@@ -119,11 +122,13 @@ try {
     assert.throws(() => context.assertEndpoint('127.0.0.1',9),/gateway_provider_mismatch/);
   } finally { context.close(); }
   assert.equal((await status()).attempts,'8');
-  hold = true; const active = call(2); await until(() => calls === 9);
+  await rehearseApplicationRouting({ gateway, backgroundToken: credentials[2].token, model });
+  assert.equal((await status()).attempts,'16');
+  hold = true; const active = call(2); await until(() => calls === 17);
   const queued = call(1); await until(async () => (await status()).waiting === 1);
   assert.equal((await call(2)).status,429); hold = false; release();
   assert.equal((await active).status,200); assert.equal((await queued).status,200);
-  assert.equal((await status()).attempts,'10');
+  assert.equal((await status()).attempts,'18');
   const owner = (await database.query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id;
   const oldToken = credentials[1].token, rotated = { ...credentials[1],token: randomBytes(32).toString('base64url') };
   configuration.gateway.credentials = [...credentials,rotated]; await saveConfiguration(configuration); await reload(child);
@@ -134,22 +139,22 @@ try {
   assert.equal((await checkToken(oldToken)).status,401); assert.equal((await checkToken(rotated.token)).status,200);
   credentials[1] = rotated;
   assert.equal((await database.query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id,owner);
-  assert.equal((await status()).attempts,'10'); assert.equal(calls,10);
+  assert.equal((await status()).attempts,'18'); assert.equal(calls,18);
   // Actual Linux file/signal checks, not mocked Windows signal behavior.
   await chmod(configFile,0o644); await failedReload(child); await chmod(configFile,0o600); child = await launch();
-  assert.equal((await checkToken(oldToken)).status,401); assert.equal((await status()).attempts,'10');
+  assert.equal((await checkToken(oldToken)).status,401); assert.equal((await status()).attempts,'18');
   await writeFile(configFile,'{ PRIVATE invalid configuration'); await failedReload(child);
-  await saveConfiguration(configuration); child = await launch(); assert.equal((await status()).attempts,'10');
+  await saveConfiguration(configuration); child = await launch(); assert.equal((await status()).attempts,'18');
   await rename(configFile,`${configFile}.target`); await symlink(`${configFile}.target`,configFile); await failedReload(child);
   await unlink(configFile); await rename(`${configFile}.target`,configFile); child = await launch();
-  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'10');
+  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'18');
   hold = true; let interruptedPartial = false;
   const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
-  await until(() => calls === 11 && interruptedPartial);
+  await until(() => calls === 19 && interruptedPartial);
   const before = await status(); assert.match(before.requestId,/^[a-f0-9-]{14}7[a-f0-9-]{21}$/);
   await kill(child); assert.equal(await interrupted,'gateway_transport_failed'); await launch(); client.close();
-  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'11');
-  assert.equal((await call(1)).status,503); assert.equal(calls,11); assert.equal(forbiddenHeader,false);
+  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'19');
+  assert.equal((await call(1)).status,503); assert.equal(calls,19); assert.equal(forbiddenHeader,false);
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version
     FROM ollama_gateway.admission`)).rows[0];
@@ -158,7 +163,7 @@ try {
   for (const output of outputs.values()) for (const token of [oldToken,...credentials.map(entry => entry.token)]) {
     assert.equal(`${output.stdout}${output.stderr}`.includes(token),false);
   }
-  process.stdout.write('gateway_packaged_rehearsal_passed: shared provider context, embeddings, warming, credential overlap/removal, Linux SIGHUP, owner/attempt continuity, private-file/JSON/symlink failure shutdown, restart revocation, primary generation, saved verification, streaming, UUIDv7, abrupt death and preserved uncertainty; 11 synthetic calls\n');
+  process.stdout.write('gateway_packaged_rehearsal_passed: scoped application routing, HTTP/timer inheritance, replacement/close fencing, studies, shared provider context, embeddings, warming, credential overlap/removal, Linux SIGHUP, owner/attempt continuity, private-file/JSON/symlink failure shutdown, restart revocation, primary generation, saved verification, streaming, UUIDv7, abrupt death and preserved uncertainty; 19 synthetic calls\n');
 } finally {
   release?.(); for (const child of children) await kill(child);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });

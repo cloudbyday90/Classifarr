@@ -9,6 +9,7 @@ import {
 } from './ollamaConnection.mjs';
 import { generate } from './ollamaGeneration.mjs';
 import { createOllamaGatewayGenerationClient } from './ollamaGatewayGenerationClient.mjs';
+import { createOllamaApplicationLease } from './ollamaApplicationScope.mjs';
 
 /**
  * @typedef {{
@@ -106,12 +107,15 @@ function buildSavedConfiguration(configuration = {}) {
 /** @param {{ configuration?: SavedOllamaVerificationConfiguration, gateway?: object | null }} options */
 export function createOllamaVerificationSavedConfigurationClient({ configuration, gateway = null } = {}) {
   const savedConfiguration = buildSavedConfiguration(configuration);
-  if (gateway !== null) return createOllamaGatewayGenerationClient({ configuration: savedConfiguration, gateway });
+  const lease = createOllamaApplicationLease(savedConfiguration, gateway);
+  const privateClient = gateway === null ? null : createOllamaGatewayGenerationClient({ configuration: savedConfiguration, gateway });
   const preflightCache = new Map();
   const getConfig = async () => savedConfiguration;
 
   return Object.freeze({
     preflightConnection(options = {}) {
+      const scoped = lease.resolve() ?? privateClient;
+      if (scoped) return scoped.preflightConnection({ ...options, model: options.model ?? savedConfiguration.model });
       return preflightConnection(getConfig, preflightCache, {
         ...options,
         host: savedConfiguration.host,
@@ -119,10 +123,15 @@ export function createOllamaVerificationSavedConfigurationClient({ configuration
       });
     },
     getVersion(options = {}) {
+      const scoped = lease.resolve() ?? privateClient;
+      if (scoped) return scoped.getVersion(options);
       return getVersion(getConfig, options);
     },
     generate(prompt, model, temperature, options = {}) {
+      const scoped = lease.resolve() ?? privateClient;
+      if (scoped) return scoped.generate(prompt, model ?? savedConfiguration.model, temperature, options);
       return generate(getConfig, prompt, model, temperature, options);
     },
+    close() { lease.close(); privateClient?.close(); },
   });
 }

@@ -22,6 +22,8 @@ import { ollamaService } from './ollama.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { PROVIDER_DEFAULTS } from './embeddingProviderConfig.mjs';
 import { executeCloudEmbedding } from './embeddingCloudAdapterHelper.mjs';
+import { resolveOllamaApplicationClient } from './ollamaApplicationScope.mjs';
+import { gatewayError } from '../ollamaGateway/contract.mjs';
 
 const logger = createLogger('EmbeddingProvider');
 
@@ -29,6 +31,12 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
     const cloudDeps = { getAdaptiveTimeout, createRetriedOperation, recordRetry };
 
     async function getOllamaEmbedding(text, host, port, model, config, signal = null) {
+        const scoped = resolveOllamaApplicationClient(undefined, { host, port });
+        if (scoped) {
+            if (ollamaProviderContext !== null) throw gatewayError('gateway_scope_conflict', 409);
+            const result = validateEmbeddingResult(await scoped.embed(text, model, '5m', signal));
+            return { embedding: result.embedding, dims: result.dims, provider: 'ollama', model, cost: 0 };
+        }
         if (ollamaProviderContext !== null) {
             ollamaProviderContext.assertEndpoint(host, port);
             const result = validateEmbeddingResult(await ollamaProviderContext.embed(text, model, '5m', signal));

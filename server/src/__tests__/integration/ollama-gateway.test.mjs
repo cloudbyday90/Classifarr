@@ -477,7 +477,7 @@ test('actual generation leaves and saved verification probe use the bound gatewa
 test('gateway preflight has no stale success, tag-prefix match, override or direct fallback', async () => {
   const gate = await start(), client = generationClient(gate);
   generationProvider(() => { throw new Error('unexpected_compute'); });
-  expect((await client.preflightConnection({ host: 'forbidden.invalid',port: 1,expectedModelDigest: digest })).success).toBe(true);
+  await expect(client.preflightConnection({ host: 'forbidden.invalid',port: 1,expectedModelDigest: digest })).rejects.toMatchObject({ code: 'gateway_provider_mismatch' });
   for (const models of [[{ name: 'synthetic:other',digest }],[{ name: model,digest: 'b'.repeat(64) }],
     [{ name: model,digest },{ name: model,digest }]]) {
     handler = (_req,res) => res.end(JSON.stringify({ models }));

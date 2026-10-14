@@ -4,6 +4,7 @@ import { readBoundedResponseBody } from '../utils/httpResponseBody.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { providerResponseError } from './providerResponseDiagnosis.mjs';
 import { createGatewayClient } from '../ollamaGateway/client.mjs';
+import { createOllamaApplicationLease } from './ollamaApplicationScope.mjs';
 
 export function canonicalStudyModel(model) {
   if (typeof model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_./:-]{0,199}$/.test(model) || /cloud/i.test(model)) {
@@ -34,8 +35,11 @@ export function resolveLocalStudyEmbeddingConfig(config = {}) {
 /** Local-only study transport. No fallback, model pulls, retries or DB writes. */
 export function createLocalStudyEmbeddingClient(config, { fetchRequest = fetch, gateway = null } = {}) {
   const { baseUrl, model } = resolveLocalStudyEmbeddingConfig(config);
+  const lease = createOllamaApplicationLease({ baseUrl }, gateway);
   const gatewayClient = gateway === null ? null : createGatewayClient(gateway,{ expectedUpstream: baseUrl });
   async function request(path, body, signal) {
+    const scoped = lease.resolve();
+    if (scoped) return scoped.request(path, body, { signal, timeoutMs: 60000 });
     if (gatewayClient) return gatewayClient.request(path,body,{ signal,timeoutMs: 60000 });
     const phase = path === '/api/embed' ? 'embedding' : 'inspection';
     const requestSignal = AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]);
@@ -73,7 +77,7 @@ export function createLocalStudyEmbeddingClient(config, { fetchRequest = fetch, 
     catch { throw providerResponseError('json', phase); }
   }
   return {
-    close() { gatewayClient?.close(); },
+    close() { lease.close(); gatewayClient?.close(); },
     provider: 'ollama', model,
     async inspect({ signal } = {}) {
       const tags = await request('/api/tags', undefined, signal);

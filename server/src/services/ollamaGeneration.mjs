@@ -4,6 +4,8 @@ import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { OperationController } from '../utils/operationController.mjs';
 import { buildOllamaGenerateRequest } from './ollamaGenerateRequest.mjs';
+import { gatewayError } from '../ollamaGateway/contract.mjs';
+import { getOllamaApplicationBinding, resolveOllamaApplicationClient, gatewayKeepAlive } from './ollamaApplicationScope.mjs';
 
 const logger = createLogger('OllamaGeneration');
 
@@ -51,6 +53,8 @@ function createPreflightError(preflight = {}) {
 export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}, transport = null) {
   try {
     const config = await getConfig();
+    const scoped = !transport && resolveOllamaApplicationClient(config, { workClass: 'foreground' });
+    if (scoped) return scoped.generate(prompt, model, temperature, options);
     const body = buildOllamaGenerateRequest({
       model,
       prompt,
@@ -76,6 +80,10 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
 }
 
 export async function embed(getConfig, getModelsFn, pullModelFn, text, model = 'nomic-embed-text-v2-moe', keepAlive = '5m', signal = null) {
+  if (getOllamaApplicationBinding()) {
+    const scoped = resolveOllamaApplicationClient(await getConfig());
+    return scoped.embed(text, model, gatewayKeepAlive(keepAlive), signal);
+  }
   try {
     const config = await getConfig();
 
@@ -111,6 +119,7 @@ export async function embed(getConfig, getModelsFn, pullModelFn, text, model = '
 }
 
 export async function pullModel(getConfig, model, signal = null) {
+  if (getOllamaApplicationBinding()) throw gatewayError('gateway_operation_unsupported', 400);
   try {
     const config = await getConfig();
     logger.info(`[Ollama] Pulling model: ${model}`);
@@ -146,6 +155,8 @@ export async function generateWithProgress(
   transport = null,
 ) {
   const config = await getConfig();
+  const scoped = !transport && resolveOllamaApplicationClient(config, { workClass: 'foreground' });
+  if (scoped) return scoped.generateWithProgress(prompt, model, temperature, onProgress, externalController, options);
   const generateOptions = {
     allowPartialOnStall: options.allowPartialOnStall !== false && !(transport && options.requireDoneSignal),
     allowPartialOnAbort: options.allowPartialOnAbort !== false && !(transport && options.requireDoneSignal),
@@ -182,6 +193,8 @@ export async function generateWithProgress(
 }
 
 export async function streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, controller, options = {}, transport = null) {
+  const scoped = !transport && resolveOllamaApplicationClient(config, { workClass: 'foreground' });
+  if (scoped) return scoped.generateWithProgress(prompt, model, temperature, onProgress, controller, options);
   const signal = transport && options.signal
     ? AbortSignal.any([controller.signal, options.signal]) : controller.signal;
   const preflight = await preflightConnectionFn({

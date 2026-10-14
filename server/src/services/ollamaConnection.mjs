@@ -16,12 +16,16 @@ import {
   parseCacheMs,
 } from './ollamaPreflightUtils.mjs';
 import { normalizeOllamaModelDigest } from './ollamaVerificationCapabilityIdentity.mjs';
+import { getOllamaApplicationBinding, resolveOllamaApplicationClient } from './ollamaApplicationScope.mjs';
+import { canonicalGatewayModel } from './ollamaGatewayProviderIdentity.mjs';
 
 const logger = createLogger('OllamaConnection');
 
 export async function testConnection(getConfig, host = null, port = null, options = {}) {
   try {
     const config = await getConfig();
+    const scoped = resolveOllamaApplicationClient(config, { host, port });
+    if (scoped) return { success: true, models: await scoped.getModels(options), message: 'Connection successful' };
     const testHost = host || config.host;
     const testPort = port || config.port;
     const testUrl = `http://${testHost}:${testPort}`;
@@ -61,6 +65,14 @@ export async function testConnection(getConfig, host = null, port = null, option
 }
 
 export async function probeGeneration(host, port, model, options = {}) {
+  const scoped = resolveOllamaApplicationClient(undefined, { host, port });
+  if (scoped) {
+    const started = Date.now();
+    const result = await scoped.preflightConnection({ model, probeGeneration: true,
+      probeTimeoutMs: options.timeoutMs, signal: options.signal });
+    if (!result.success) throw Object.assign(new Error(result.error), { code: result.errorCode });
+    return { ok: true, latency_ms: Date.now() - started };
+  }
   const testUrl = `http://${host}:${port}`;
   const startedAt = Date.now();
   const contextLength = getProbeContextLength(options?.contextLength);
@@ -109,6 +121,8 @@ export async function preflightConnection(getConfig, preflightCache, options = {
   } = options || {};
 
   const config = await getConfig();
+  const scoped = resolveOllamaApplicationClient(config, { host, port });
+  if (scoped) return scoped.preflightConnection(options);
   const testHost = host || config.host;
   const testPort = Number(port || config.port || 11434);
   const modelName = normalizeModelName(model);
@@ -264,6 +278,9 @@ export async function preflightConnection(getConfig, preflightCache, options = {
 }
 
 export async function getModels(getConfig, host = null, port = null) {
+  if (getOllamaApplicationBinding()) {
+    return resolveOllamaApplicationClient(await getConfig(), { host, port }).getModels();
+  }
   try {
     const config = await getConfig();
     const testHost = host || config.host;
@@ -279,12 +296,17 @@ export async function getModels(getConfig, host = null, port = null) {
 
 export async function getVersion(getConfig, options = {}) {
   const config = await getConfig();
+  const scoped = resolveOllamaApplicationClient(config);
+  if (scoped) return scoped.getVersion(options);
   const timeout = getConnectivityTimeoutMs(options?.timeoutMs);
   const response = await httpGet(`${config.baseUrl}/api/version`, { timeout });
   return response.data?.version ?? null;
 }
 
 export async function getLoadedModels(getConfig, host = null, port = null) {
+  if (getOllamaApplicationBinding()) {
+    return resolveOllamaApplicationClient(await getConfig(), { host, port }).getLoadedModels();
+  }
   try {
     const config = await getConfig();
     const testHost = host || config.host;
@@ -309,6 +331,7 @@ export async function getLoadedModels(getConfig, host = null, port = null) {
 
 export async function isModelLoaded(getConfig, modelName, host = null, port = null) {
   const loadedModels = await getLoadedModels(getConfig, host, port);
+  if (getOllamaApplicationBinding()) return loadedModels.some(model => model.name === canonicalGatewayModel(modelName));
   return loadedModels.some(m =>
     m.name === modelName
     || m.name.startsWith(modelName + ':')

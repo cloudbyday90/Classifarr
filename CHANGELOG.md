@@ -17,10 +17,15 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Scoped gateway application routing** — Ollama generation, embeddings, health
+  checks, verification, studies and warming can use one explicitly bound gateway
+  owner. Closing or replacing it cancels work without direct fallback or resetting
+  attempts. Local-only testing; existing installations remain unconfigured.
+
 - **Shared gateway provider context** — Generation, verification, embeddings,
   inspection and warming can share one bound client and cancellation lifetime.
   Warming uses normal admission and attempt accounting; invalid vectors cannot
-  clear uncertain work. Direct routing remains unchanged pending full integration.
+  clear uncertain work. Direct routing remains unchanged pending activation.
 
 - **Gateway credential rotation** — The optional local gateway can reload scoped
   credentials without restarting unaffected callers. Revocation cancels affected
