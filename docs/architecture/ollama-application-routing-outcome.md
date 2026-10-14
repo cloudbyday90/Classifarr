@@ -32,16 +32,23 @@ The main application, Unraid and shared Ollama retain their current routing.
   source inventory. That inventory is a review tripwire, not a network firewall or
   proof about dynamically constructed paths outside these tested entry points.
 - Backend type checking, normal/production dependency checks, ESLint, static import
-  and mock-shape checks passed. Markdown: **2,212 files**, zero errors before this
-  outcome document; copyright: **1,640 files**. Migration/schema integrity passed.
+  and mock-shape checks passed. Markdown: **2,213 files**, zero errors;
+  copyright: **1,640 files**. Migration/schema integrity passed.
 - The first full backend run found a changed-source ownership review for
   `healthCheckAiProvider.mjs`. Its fixed settings SELECT and sanitized read-only
   model-list check were reviewed with the scope/context transport. Only that
   reviewed digest and its written rationale were updated; ownership classification
-  and analysis digest are unchanged. Focused ownership tests then passed.
+  and analysis digest are unchanged. Focused ownership tests and the standalone
+  gate then passed. The initial full run had 58,437 passing tests, one failure
+  (this review), one skip, and no other failing suite.
 
-Full-suite rerun, immutable-image rehearsal and post-rebuild results will be added
-after those checks finish. No pending check is represented as passed here.
+The final full backend unit rerun passed: **1,843 suites, 58,438 tests**, one
+pre-existing skip, in 431.576 seconds. No coverage baseline was regenerated.
+
+The recovery-change skill guided explicit uncertainty/cancellation contracts,
+real HTTP/PostgreSQL checks and the isolated packaged-image rehearsal. No security
+or ownership baseline was silently refreshed. Gitleaks scanned the implementation
+commit with redacted output and found no leaks.
 
 ## Local protection
 
@@ -55,6 +62,43 @@ Baseline image:
 Local evaluation consent before replacement remained `when_idle`, zero daily
 calls/tokens/reserved calls, revision 2, unchanged next-check time. No gateway
 schema or gateway environment configuration was present in the application.
+
+## Image and local evaluation
+
+The no-cache Compose build used clean implementation commit
+`e6aaa2800c24c4b5b0d244d3fde706b76ca3473f`. Immutable image:
+`sha256:0a0a72ae4b98b5e8e17b1626a6baa0847510aae75160e1b7717a85e9fd02232a`.
+Its OCI revision label matches that commit. Later outcome-only edits do not
+change packaged code; Markdown is excluded from this build context.
+
+The packaged Linux rehearsal passed with **19 synthetic compute calls** against
+that image. It exercised application scope, foreground/background clients,
+borrowed study/verification factories, HTTP listener/timer inheritance, replacement
+and closure, both warming paths, streaming and embeddings. Existing credential
+rotation, private-file/JSON/symlink rejection, least-privilege database access and
+restart checks passed too. Abrupt death during call 19 retained the same UUIDv7
+request and 19 attempts, with no twentieth dispatch. No shared provider or real
+model was contacted; no source/dependency overlay was used.
+
+The isolated fixture used network `none`, 2 CPUs, 2 GiB memory, 512 PIDs and no
+published ports. Cleanup verified removal of the exact owned container
+`classifarr-schema-check-8bf8166c-d682-4fea-acbc-62900c5243bb` and its data directory.
+This proves same-image restart behavior, not published-release upgrade safety,
+real-model quality, remote GPU cancellation or a network-wide bypass firewall.
+
+Local Compose replacement uses that exact image and returned healthy. `/health`
+returned HTTP 200, with zero restarts and no OOM kill. The 2 GiB memory cap,
+1,536 MiB V8 heap, read-only root, user `1000:1000` and `no-new-privileges` remain.
+An initial memory sample was 463.4 MiB, not a load/performance benchmark.
+Consent and next-check values above were unchanged. The application still has no
+gateway schema, gateway environment variables or running gateway CLI.
+
+Rollback is preserved under
+`classifarr-local-rollback:d1a71bd233af7b34d2a7d603acc95bf3c211230f46880c345d895744eb3d423e`,
+pointing to the baseline image above. No images were pruned, user data deleted,
+or Unraid/shared Ollama settings changed. The unrelated Harmoniarr container was
+not replaced. Frontend compilation passed during the build; frontend unit/coverage
+and the full unrelated database integration matrix were not rerun.
 
 ## PR and recommendation
 
