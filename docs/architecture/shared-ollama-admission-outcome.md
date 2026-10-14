@@ -30,7 +30,7 @@ A separate singleton constraint prevents duplicate control rows. No existing
 application table or identifier is changed. The migration is also the dedicated
 database's fresh schema; it is intentionally outside automatic app migrations.
 
-## Verification so far
+## Verification
 
 - Gateway unit and repository code-health checks: two suites, 35,044 tests passed.
 - Isolated PostgreSQL and actual HTTP gateway/workload checks: two suites, 25
@@ -41,11 +41,44 @@ database's fresh schema; it is intentionally outside automatic app migrations.
   standalone-process death/recreation. UUIDv7 versions/timestamps are checked.
 - Type checking includes all new gateway modules and its CLI. Backend lint and
   normal/production dependency reachability checks passed.
+- Static import, migration naming, application schema snapshot, copyright,
+  Markdown and whitespace checks passed. The inventory ownership gate passed
+  after reviewing the new ledger's dedicated-database SQL; no existing ownership
+  debt was waived. Gitleaks found no leaks in the implementation commit.
 
-The packaged-image rehearsal and no-cache local Compose evaluation will be
-recorded after they finish. Earlier workload-control image results are not
-gateway verification. Synthetic tests do not measure real-model quality, GPU
-memory, cross-host TLS or published-release upgrade behavior.
+The focused checks above are not a full backend/frontend coverage run. No client
+code changed. Synthetic tests do not measure real-model quality, GPU memory,
+cross-host TLS or published-release upgrade behavior.
+
+## Packaged image and local Compose outcome
+
+The clean-source, no-cache build passed at implementation revision
+`a4a53bb456f559b896eeb3addd5081c1280342eb`. The tested local image is
+`sha256:d196409b60f16b95135a675de268003fc998a1bd260a894050bfbf5521ddbc58`;
+its source label matches that revision. This outcome document is a subsequent
+documentation-only commit, not a claim that the image contains that later commit.
+
+The packaged-service rehearsal passed with five synthetic compute calls, two
+installation credentials and a least-privilege database role. It checked
+authentication, foreground precedence, UUIDv7, graceful restart, actual abrupt
+process death and preservation of the uncertain marker and attempt count after
+restart. No second compute request was dispatched while the outcome was unknown.
+The fixture used no external network or published ports and retained the normal
+application entrypoint. Cleanup of its exact owned container and data directory
+was verified. This is same-image process-restart evidence, not a release upgrade.
+
+Before replacing local Classifarr, a database archive was created and its table
+of contents read successfully (1,933 lines). The archive is local-only and was
+not restore-tested. The prior image remains available under a rollback tag:
+`sha256:adabd220d5ab1b14b3ed0799951b1114cf8bb833f1e34da661ef2318feb2084c`.
+
+Local Compose now runs the exact tested candidate image. The health endpoint
+returned HTTP 200, Docker reported healthy, zero restarts and no OOM kill. The
+2 GiB container limit, read-only root, user `1000:1000` and `no-new-privileges`
+setting remain intact. The evaluation budget retained `when_idle`, zero daily
+calls/tokens, zero reserved calls and revision 2. The application database still
+has no gateway schema, and no gateway CLI process is running. Building and
+replacing the application did not activate the optional gateway.
 
 ## Preserved boundaries and next item
 
