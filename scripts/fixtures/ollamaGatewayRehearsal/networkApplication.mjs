@@ -18,7 +18,8 @@ const listener = await startApplication({ database: {}, environment: { CLASSIFAR
   acquireAdmission: async () => ({ assertHealthy() {}, release() {} }),
   loadNormal: async () => {
     owner = getOllamaApplicationBinding(); assert.ok(owner);
-    timer = new Promise(resolve => { setTimeout(() => resolve(getOllamaApplicationBinding()), 5); });
+    const imported = await import('./networkImport.mjs');
+    assert.equal(imported.importedOwner, owner); timer = imported.importedTimer;
     assert.equal((await getModels(async () => document.configuration)).length, 1);
     return { registerServerProcessHandlers() {}, async startServer() {
       const server = createServer(async (_req, res) => {

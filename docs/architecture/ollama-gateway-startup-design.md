@@ -22,8 +22,8 @@ restart; credential-only reload remains supported.
 No new scheduler, consent, retries or schema. Admission keeps UUIDv7 identities,
 one compute slot, bounded foreground waiting, no background backlog, persisted
 attempts and cooldowns. Cancellation or death after dispatch remains uncertain.
-Neither startup nor configuration reading performs inference. Existing jobs still
-need their existing consent and admission. Configuration is fixed for the process;
+The new configuration/ownership step performs no inference. Existing startup and
+background jobs retain their existing consent and admission. Configuration is fixed for the process;
 changing it requires restart, not editing provider settings to bypass routing.
 
 ## Network boundary

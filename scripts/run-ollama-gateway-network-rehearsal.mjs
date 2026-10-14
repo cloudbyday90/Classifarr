@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from './check-schema-snapshot-container.mjs';
@@ -19,6 +19,9 @@ const front = `cf-gateway-front-${id}`, back = `cf-gateway-back-${id}`;
 const provider = `cf-gateway-provider-${id}`, application = `cf-gateway-application-${id}`;
 const runSpec = createSchemaCheckRunSpec(), containers = [], networks = [];
 const fixture = name => resolve('scripts/fixtures/ollamaGatewayRehearsal', name);
+const copyFixture = async (name, source, file) => execFileSync('docker', ['exec', '-i', '--user', '1000:1000', name,
+  'node', '--input-type=module', '-e', 'import {writeFile} from "node:fs/promises";const chunks=[];for await(const chunk of process.stdin)chunks.push(chunk);await writeFile(process.argv[1],Buffer.concat(chunks),{mode:0o600});',
+  `/tmp/${file}`], { input: await readFile(source), windowsHide: true, timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] });
 const address = (name, network) => JSON.parse(docker(['inspect', name]))[0].NetworkSettings.Networks[network].IPAddress;
 let tls;
 function remove(kind, name) {
@@ -40,7 +43,8 @@ try {
       containers.push(name);
       docker(['run', '-d', '--name', name, '--label', label, '--network', network, '--user', '1000:1000', '--read-only', '--tmpfs', '/tmp:rw,noexec,nosuid,size=16m',
         '--memory', '256m', '--cpus', '1', '--pids-limit', '64', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-        '--entrypoint', 'node', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', image, '-e', 'setInterval(()=>{},1000)']);
+        '--entrypoint', 'node', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '-e', 'LOG_DIR=/tmp/logs',
+        image, '-e', 'setInterval(()=>{},1000)']);
       const inspect = JSON.parse(docker(['inspect', name]))[0];
       assert.equal(Object.keys(inspect.HostConfig.PortBindings || {}).length, 0);
       assert.equal(inspect.Image, image); assert.deepEqual(Object.keys(inspect.NetworkSettings.Networks), [network]);
@@ -54,11 +58,11 @@ try {
     await writeFile(join(tls.directory, 'routing.json'), JSON.stringify({ revision: 1, configuration: { baseUrl: upstream, model: 'synthetic:latest' },
       foreground: { ...common, token: credentials[0].token }, background: { ...common, token: credentials[1].token } }), { mode: 0o600 });
     for (const [name, file] of [[gateway, 'gateway.json'], [application, 'routing.json']]) {
-      docker(['cp', join(tls.directory, file), `${name}:/tmp/${file}`]);
-      docker(['exec', '--user', '0', name, 'chown', '1000:1000', `/tmp/${file}`]);
+      await copyFixture(name, join(tls.directory, file), file);
     }
-    for (const [name, file] of [[provider, 'networkProvider.mjs'], [gateway, 'networkGateway.mjs'], [application, 'networkApplication.mjs']]) {
-      docker(['cp', fixture(file), `${name}:/tmp/${file}`]);
+    for (const [name, file] of [[provider, 'networkProvider.mjs'], [gateway, 'networkGateway.mjs'],
+      [application, 'networkApplication.mjs'], [application, 'networkImport.mjs']]) {
+      await copyFixture(name, fixture(file), file);
     }
     docker(['exec', '-d', provider, 'node', '/tmp/networkProvider.mjs']);
     docker(['exec', '-d', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', gateway, 'node', '/tmp/networkGateway.mjs']);
