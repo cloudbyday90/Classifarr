@@ -33,7 +33,7 @@ export function createOllamaReadinessBackfill({ database = db, admission = backg
   function log(level, message, details, options) {
     try {
       const result = options ? logger[level]?.(message, details, options) : logger[level]?.(message, details);
-      Promise.resolve(result).catch(() => {});
+      Promise.resolve(result).catch(() => {}); // swallow-error: optional logger failure must not fail work or recursively log itself.
     }
     catch { /* Optional diagnostics must never change worker admission or completion. */ }
   }

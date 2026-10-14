@@ -30,7 +30,9 @@ Diagnostic storage or logging failure cannot change the capability result.
   waits, repeat-write throttling, stale settings, concurrent/manual winners,
   settings/shutdown races, saved failed verdicts and read-only status responses.
   This handler fixture does not claim new authentication middleware coverage.
-- Focused frontend: 2 suites, 35 tests passed.
+- Focused frontend: 2 suites, 35 tests passed. Full frontend rerun: 473 suites,
+  7,327 tests passed; statement/branch/function/line coverage was
+  87.73% / 81.73% / 87.46% / 89.43%.
 - Schema generated from an isolated, network-disabled PostgreSQL 18 container
   with the new migration; its temporary container and data were cleaned up.
 - Type checking, dependency preflight, migration/schema integrity and ESM gates
@@ -38,11 +40,22 @@ Diagnostic storage or logging failure cannot change the capability result.
   modules and empty migration/schema addition; existing unresolved ownership
   debt remains unresolved. No safety baseline was relaxed.
 
-Full coverage, immutable-image rehearsal, local replacement and final source
-references will be recorded after those checks complete. Initial parallel test
-runs hit Knip startup and client ESLint-hook timeouts; no assertion or timeout
-limit was weakened. The ownership gate also correctly rejected unreviewed source
-drift before the explicit review recorded above.
+Full backend coverage, final immutable-image rehearsal, local replacement and
+source references will be recorded after those checks complete. Initial parallel
+test runs hit Knip startup and client ESLint-hook timeouts; no assertion or timeout
+limit was weakened. The ownership gate correctly rejected unreviewed source drift
+before the explicit review. The code-health gate required an explicit explanation
+for ignoring a logger's own rejected promise; the comment documents that recursion
+and diagnostic isolation boundary without changing behavior.
+
+The first image rehearsal rejected synthetic inventory writes lacking the normal
+ingestion protocol declaration. The fixture was corrected to use the supported
+connection protocol; no trigger or safeguard was disabled. The subsequent
+network-disabled rehearsal passed schema checks, persisted waiting across restart,
+one normal-scheduler structured-output generation over real loopback HTTP, and
+saved-verdict preservation after a second restart. It seeded synthetic inventory
+directly and does not claim real media-ingestion ownership or a published-release
+upgrade. Both successful and failed fixture resources were cleaned up.
 
 ## Scope and next item
 
