@@ -9,7 +9,7 @@ await database.query('CREATE DATABASE classifarr_gateway_network');
 await database.end();
 const ledger = new pg.Client({ host: '/var/run/postgresql', user: 'classifarr', database: 'classifarr_gateway_network' });
 await ledger.connect();
-await ledger.query(await readFile('/app/database/ollama-gateway/20261014_121441_admission.sql', 'utf8'));
+await ledger.query(await readFile('/app/database/ollama-gateway/current.sql', 'utf8'));
 await ledger.end();
 await chmod('/tmp/gateway.json', 0o600);
 process.env.CLASSIFARR_GATEWAY_CONFIG_FILE = '/tmp/gateway.json';

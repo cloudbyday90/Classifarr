@@ -34,12 +34,15 @@ Classifarr's existing model/digest validation remains required for integration.
 
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
-`database/ollama-gateway/20261014_121441_admission.sql` using `psql -v ON_ERROR_STOP=1`.
-This initial migration is also the fresh standalone schema. It deliberately fails
+`database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
+This is the version-2 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table
-SELECT/UPDATE only. It needs neither schema creation nor application-table access.
+SELECT and column-scoped UPDATE only, as listed in the
+[offline recovery procedure](ollama-gateway-offline-recovery.md). It needs neither
+schema creation nor application-table access. Existing version-1 test databases
+require the explicit timestamped upgrade in that procedure, never `current.sql`.
 Use a local PostgreSQL socket or verified TLS for a remote database. Do not disable
 certificate verification. Keep the database and its ledger durable across restarts.
 
@@ -121,7 +124,7 @@ and [outcome](../architecture/ollama-gateway-credential-lifecycle-outcome.md).
 
 Every route requires `Authorization: Bearer <token>`. Status is
 `GET /gateway/status`; it reads only the control database. It returns `ready`,
-`cooldown`, or `uncertain_or_active`, plus attempt count, current request reference,
+`cooldown`, `maintenance`, or `uncertain_or_active`, plus attempt count, current request reference,
 timestamps and waiting count. It does not imply GPU-wide idleness.
 
 Supported upstream routes: GET `/api/tags`, `/api/ps`, `/api/version`; POST
@@ -153,9 +156,11 @@ cannot start. Do not use multiple databases to coordinate the same provider.
 
 There is intentionally **no clear-lock endpoint**. A gateway restart, expired
 timeout or loaded-model listing does not prove an upstream request stopped. An
-uncertain request requires a separately designed, verified recovery procedure;
+uncertain request requires the separate
+[offline administrator-reviewed recovery procedure](ollama-gateway-offline-recovery.md);
 never delete the ledger or restart shared Ollama as an automatic workaround.
-This availability limitation is why this prototype is not ready for live cutover.
+The procedure records human attestation, not machine-verified provider termination.
+This prototype remains local-test-only, not ready for live cutover.
 
 The current invocation can safely finish a claim when cancellation occurs before
 transport is invoked, or after a fully validated provider response. It still

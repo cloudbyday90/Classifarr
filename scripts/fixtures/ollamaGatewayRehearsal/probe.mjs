@@ -87,7 +87,7 @@ try {
   await admin.query('CREATE ROLE gateway_fixture_runtime LOGIN');
   await rehearseCompletionRecovery(admin);
   await database.connect();
-  await database.query(await readFile('/app/database/ollama-gateway/20261014_121441_admission.sql','utf8'));
+  await database.query(await readFile('/app/database/ollama-gateway/current.sql','utf8'));
   await database.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');
   await database.query('GRANT SELECT, UPDATE ON ollama_gateway.admission TO gateway_fixture_runtime');
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });

@@ -8,6 +8,7 @@ import pg from '/app/node_modules/pg/lib/index.js';
 import { gatewayConfig } from '/app/src/ollamaGateway/contract.mjs';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
 import { createGatewayServer } from '/app/src/ollamaGateway/server.mjs';
+import { rehearseOfflineRecovery } from './offlineRecovery.mjs';
 
 /** Fresh database, packaged code, real HTTP; hooks place revocation at exact boundaries. */
 export async function rehearseCompletionRecovery(admin) {
@@ -31,7 +32,7 @@ export async function rehearseCompletionRecovery(admin) {
   });
   try {
     await owner.connect();
-    await owner.query(await readFile('/app/database/ollama-gateway/20261014_121441_admission.sql','utf8'));
+    await owner.query(await readFile('/app/database/ollama-gateway/current.sql','utf8'));
     await owner.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');
     await owner.query('GRANT SELECT, UPDATE ON ollama_gateway.admission TO gateway_fixture_runtime');
     await client.connect();
@@ -69,6 +70,10 @@ export async function rehearseCompletionRecovery(admin) {
     const restarted = await openGatewayLedger(replacement,config.providerHash);
     assert.deepEqual(await restarted.status(),uncertain);
     await assert.rejects(restarted.claim('third'),/gateway_admission_deferred/);
+    assert.equal(calls,4);
+    // This server is the entire synthetic provider, has no runners/restart manager, and is fully stopped.
+    await replacement.end(); provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
+    await rehearseOfflineRecovery(owner,options,config.providerHash);
     assert.equal(calls,4);
     process.stdout.write('gateway_completion_recovery_passed: pre-dispatch cancellation, verified completion revocation, retained attempts, real elapsed cooldown, unknown restart fencing; 5 attempts, 4 synthetic calls\n');
   } finally {

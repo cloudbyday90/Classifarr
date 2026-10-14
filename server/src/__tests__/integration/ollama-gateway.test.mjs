@@ -11,6 +11,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { getPool } from './setup.mjs';
 import { gatewayConfig } from '../../ollamaGateway/contract.mjs';
 import { openGatewayLedger } from '../../ollamaGateway/ledger.mjs';
+import { runGatewayRecovery } from '../../ollamaGateway/recoveryRepository.mjs';
 import { createGatewayServer } from '../../ollamaGateway/server.mjs';
 import { createGatewayClient } from '../../ollamaGateway/client.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
@@ -26,7 +27,7 @@ const model = 'synthetic:latest', uuid7 = /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}
 const credentials = [ ['local','foreground'],['unraid','foreground'],['local','background'] ].map(([installation,workClass]) =>
   ({ installation,workClass,token: randomBytes(32).toString('base64url') }));
 let clients, gateways, provider, config, calls, upstreamHeaders, handler, releaseHeld;
-const migration = await readFile(new URL('../../../../database/ollama-gateway/20261014_121441_admission.sql',import.meta.url),'utf8');
+const migration = await readFile(new URL('../../../../database/ollama-gateway/current.sql',import.meta.url),'utf8');
 const until = async predicate => { const end = Date.now()+3000; while (!await predicate()) { if (Date.now()>end) throw new Error('fixture_deadline'); await delay(10); } };
 const rotatedConfig = entries => gatewayConfig({ upstream: config.upstream,models: [model],credentials: entries,timeoutMs: 1000,queueMs: 300 });
 async function connect() { const client = await getPool().connect(); client.on('error',() => {}); clients.push(client); return client; }
@@ -61,6 +62,22 @@ afterEach(async () => {
   for (const client of clients) client.release(true);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
 });
+test('offline maintenance survives startup and refuses compute and provider reads without HTTP side effects', async () => {
+  const old = await connect(), ledger = await openGatewayLedger(old,config.providerHash);
+  await ledger.claim('local'); await old.query('SELECT pg_advisory_unlock(11435,1)');
+  const recovery = await connect(), options = { providerHash: config.providerHash };
+  const { expected } = await runGatewayRecovery(recovery,{ ...options,action: 'inspect' }); await delay(2);
+  await runGatewayRecovery(recovery,{ ...options,action: 'acknowledge-stop',review: {
+    version: 1,action: 'acknowledge-stop',expected,operatorRef: 'fixture',evidenceRef: 'synthetic-only',
+    observedAt: new Date().toISOString(),assertions: { ingressIsolated: true,allProviderRunnersStopped: true,
+      automaticRestartDisabled: true,administratorVerified: true } } });
+  const gate = await start();
+  expect((await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json())).toMatchObject({ state: 'maintenance',attempts: '1' });
+  expect((await call(gate)).status).toBe(503);
+  expect((await call(gate,0,{ path: '/api/ps',method: 'GET' })).status).toBe(503);
+  expect(calls).toHaveLength(0);
+});
+
 test('credential rotation cancels only the removed installation waiter without an additional claim', async () => {
   const gate = await start();
   handler = (_req,res) => { releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'done' })); };
@@ -217,7 +234,7 @@ test('UUIDv7 schema, safe status reads and two installations share one durable a
   expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
   expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
   await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
-  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(1)')).rejects.toMatchObject({ code: '23505' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(2)')).rejects.toMatchObject({ code: '23505' });
 });
 test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
   const gate = await start();

@@ -10,7 +10,7 @@ import { createOllamaApplicationRouting } from '../../../services/ollamaApplicat
 export async function createOllamaApplicationFixture(pool, tls = null) {
   // Caller is the repository's per-suite disposable PostgreSQL database.
   await pool.query('DROP SCHEMA IF EXISTS ollama_gateway CASCADE');
-  await pool.query(await readFile(new URL('../../../../../database/ollama-gateway/20261014_121441_admission.sql', import.meta.url), 'utf8'));
+  await pool.query(await readFile(new URL('../../../../../database/ollama-gateway/current.sql', import.meta.url), 'utf8'));
   const model = 'synthetic:latest', vectorModel = 'vectors:latest', digest = 'a'.repeat(64), calls = [], classes = [];
   let hold = false, failure = false, disconnected = false;
   const provider = createServer(async (req, res) => {

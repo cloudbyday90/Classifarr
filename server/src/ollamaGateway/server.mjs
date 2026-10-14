@@ -92,7 +92,8 @@ export function createGatewayServer({ config, ledger }) {
           result = await executeGatewayCompute({ ledger,installation: principal.installation,
             config,path: req.url,body,signal,onRecord });
         } else {
-          await ledger.status(); signal.throwIfAborted();
+          if ((await ledger.status()).state === 'maintenance') throw gatewayError('gateway_admission_deferred');
+          signal.throwIfAborted();
           result = await gatewayUpstream(config,req.url,body,signal,onRecord);
         }
         signal.throwIfAborted();

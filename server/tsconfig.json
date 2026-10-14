@@ -21,6 +21,7 @@
     "src/bootstrap/ollamaRoutingStartup.mjs",
     "src/services/ollamaApplicationRouting.mjs",
     "src/scripts/runOllamaGateway.mjs",
+    "src/scripts/recoverOllamaGateway.mjs",
     "src/services/healthConnectionProbe.mjs",
     "src/services/healthProbeRequest.mjs",
     "src/services/healthArrProbe.mjs",

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add offline administrator-reviewed gateway recovery with time-based UUIDv7
+  audit receipts, a durable maintenance hold and explicit resume; preserve
+  uncertain request history, attempts and cooldowns without replaying work.
+
 - Recover gateway slots cancelled before dispatch or after verified completion,
   preserving attempts, cooldowns and genuinely uncertain requests.
 
