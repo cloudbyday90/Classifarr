@@ -1,0 +1,197 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { test, expect, beforeEach, afterEach } from '@jest/globals';
+import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
+import { randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import { getPool } from './setup.mjs';
+import { gatewayConfig } from '../../ollamaGateway/contract.mjs';
+import { openGatewayLedger } from '../../ollamaGateway/ledger.mjs';
+import { createGatewayServer } from '../../ollamaGateway/server.mjs';
+
+const model = 'synthetic:latest', uuid7 = /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+const credentials = [ ['local','foreground'],['unraid','foreground'],['local','background'] ].map(([installation,workClass]) =>
+  ({ installation,workClass,token: randomBytes(32).toString('base64url') }));
+let clients, gateways, provider, config, calls, upstreamHeaders, handler, releaseHeld;
+const migration = await readFile(new URL('../../../../database/ollama-gateway/20261014_121441_admission.sql',import.meta.url),'utf8');
+const until = async predicate => { const end = Date.now()+3000; while (!await predicate()) { if (Date.now()>end) throw new Error('fixture_deadline'); await delay(10); } };
+async function connect() { const client = await getPool().connect(); client.on('error',() => {}); clients.push(client); return client; }
+async function start(override = {}) {
+  const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash);
+  const gateway = createGatewayServer({ config,ledger: { ...ledger,...override } }); gateways.push(gateway);
+  await new Promise(resolve => { gateway.server.listen(0,'127.0.0.1',resolve); });
+  return { client,ledger,gateway,url: `http://127.0.0.1:${gateway.server.address().port}` };
+}
+function call(gate, index = 0, options = {}) {
+  return fetch(`${gate.url}${options.path ?? '/api/generate'}`, { method: options.method ?? 'POST',
+    headers: { Authorization: `Bearer ${credentials[index].token}`,'Content-Type': 'application/json',...options.headers },
+    ...(options.method === 'GET' ? {} : { body: JSON.stringify(options.body ?? { model,prompt: 'Synthetic only',stream: false }) }),
+    ...(options.signal ? { signal: options.signal } : {}) });
+}
+beforeEach(async () => {
+  clients = []; gateways = []; calls = []; upstreamHeaders = []; releaseHeld = null;
+  await getPool().query('DROP SCHEMA IF EXISTS ollama_gateway CASCADE'); // This suite owns its disposable database.
+  await getPool().query(migration);
+  handler = (_req,res,body) => res.end(JSON.stringify({ model,done: true,response: body.prompt ?? 'ok' }));
+  provider = createServer(async (req,res) => {
+    const chunks = []; for await (const chunk of req) chunks.push(chunk);
+    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
+    calls.push(req.url); upstreamHeaders.push(req.headers); res.setHeader('Content-Type','application/json'); handler(req,res,body);
+  });
+  await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
+  config = gatewayConfig({ upstream: `http://127.0.0.1:${provider.address().port}`,models: [model],credentials,timeoutMs: 1000,queueMs: 300 });
+});
+afterEach(async () => {
+  releaseHeld?.();
+  for (const gateway of gateways) await gateway.stop();
+  for (const client of clients) client.release(true);
+  provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
+});
+test('UUIDv7 schema, safe status reads and two installations share one durable attempt ledger', async () => {
+  const gate = await start();
+  expect((await call(gate,0,{ path: '/gateway/status',method: 'GET' })).status).toBe(200); expect(calls).toEqual([]);
+  expect((await call(gate)).status).toBe(200); expect((await call(gate,1)).status).toBe(200);
+  expect((await gate.ledger.status()).attempts).toBe('2');
+  const row = (await getPool().query('SELECT *, uuid_extract_timestamp(id) > now()-interval \'1 minute\' AS recent FROM ollama_gateway.admission')).rows[0];
+  expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
+  expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
+  await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(1)')).rejects.toMatchObject({ code: '23505' });
+});
+test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
+  const gate = await start();
+  expect((await call(gate,0,{ headers: { Authorization: 'Bearer invalid' } })).status).toBe(401);
+  expect((await call(gate,0,{ path: '/api/generate?target=elsewhere' })).status).toBe(404);
+  expect((await call(gate,0,{ path: '/api/pull' })).status).toBe(404);
+  expect((await call(gate,0,{ body: { model,prompt: 'x',stream: true } })).status).toBe(400);
+  expect((await call(gate,0,{ body: { model,prompt: 'x'.repeat(270000),stream: false } })).status).toBe(413);
+  expect((await gate.ledger.status()).attempts).toBe('0'); expect(calls).toHaveLength(0);
+});
+test('queued foreground precedes new background; queue rejects repeated installation', async () => {
+  const gate = await start(); let entered = 0;
+  handler = (_req,res) => { entered++; if (entered === 1) releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'first' }));
+    else res.end(JSON.stringify({ model,done: true,response: 'second' })); };
+  const active = call(gate,2); await until(() => calls.length === 1);
+  const waiting = call(gate,1); await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 1);
+  expect((await call(gate,1)).status).toBe(429); expect((await call(gate,2)).status).toBe(429);
+  releaseHeld(); expect((await active).status).toBe(200); expect((await waiting).status).toBe(200);
+  expect(calls).toHaveLength(2); expect((await gate.ledger.status()).attempts).toBe('2');
+});
+test('queued disconnect has no upstream effect and active cancellation remains uncertain across gateway recreation', async () => {
+  let disconnected = false;
+  handler = (_req,res) => { res.on('close',() => { disconnected = true; }); };
+  const gate = await start(), activeAbort = new AbortController(), queueAbort = new AbortController();
+  const active = call(gate,0,{ signal: activeAbort.signal }).catch(() => null); await until(() => calls.length === 1);
+  const pending = call(gate,1,{ signal: queueAbort.signal }).catch(() => null);
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 1);
+  queueAbort.abort(); await pending;
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 0);
+  activeAbort.abort(); await active; await until(() => disconnected);
+  const status = await gate.ledger.status(); expect(status.requestId).toMatch(uuid7); expect(status.attempts).toBe('1');
+  await gate.gateway.stop(); gate.client.release(true); clients.splice(clients.indexOf(gate.client),1);
+  const replacement = await start();
+  expect(await replacement.ledger.status()).toMatchObject(status);
+  expect((await call(replacement)).status).toBe(503); expect(calls).toHaveLength(1);
+});
+test.each(['malformed','truncated','redirect','oversized','timeout'])('unknown %s outcome is never retried or expired', async kind => {
+  handler = (_req,res) => {
+    if (kind === 'timeout') return;
+    if (kind === 'redirect') { res.writeHead(302,{ Location: 'http://127.0.0.1:1/private' }); res.end(); }
+    else if (kind === 'oversized') res.end('x'.repeat(1024*1024+1));
+    else if (kind === 'truncated') { res.writeHead(200,{ 'Content-Length': '9999' }); res.end('{}'); }
+    else res.end(JSON.stringify({ model,done: false,response: 'incomplete' }));
+  };
+  const gate = await start(); expect((await call(gate)).status).toBe(503);
+  const status = await gate.ledger.status(); expect(status.state).toBe('uncertain_or_active'); expect(status.attempts).toBe('1');
+  expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1);
+});
+test('completed overload persists cooldown and sanitizes errors without holding an uncertain request', async () => {
+  handler = (_req,res) => { res.writeHead(503); res.end(JSON.stringify({ error: 'PRIVATE provider message' })); };
+  const gate = await start(), response = await call(gate);
+  expect(response.status).toBe(503); expect(response.headers.get('retry-after')).toBe('5'); expect(await response.text()).not.toContain('PRIVATE');
+  const status = await gate.ledger.status(); expect(status).toMatchObject({ state: 'cooldown',requestId: null,attempts: '1' });
+  await gate.gateway.stop(); gate.client.release(true); clients.splice(clients.indexOf(gate.client),1);
+  const replacement = await start(); expect((await replacement.ledger.status()).cooldownUntil).toEqual(status.cooldownUntil);
+  expect((await call(replacement)).status).toBe(503); expect(calls).toHaveLength(1);
+});
+test('lost completion write leaves durable uncertainty even after a terminal provider response', async () => {
+  const gate = await start({ complete: async () => { throw new Error('PRIVATE database failure'); } });
+  expect((await call(gate)).status).toBe(503); expect((await gate.ledger.status()).state).toBe('uncertain_or_active');
+  expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1);
+});
+test('single active gateway, changed provider and missing ledger fail closed', async () => {
+  const gate = await start(), competitor = await connect();
+  await expect(openGatewayLedger(competitor,config.providerHash)).rejects.toThrow('gateway_already_running');
+  await gate.gateway.stop(); gate.client.release(true); clients.splice(clients.indexOf(gate.client),1);
+  await until(async () => (await competitor.query('SELECT pg_try_advisory_lock(11435,1) AS ok')).rows[0].ok);
+  await expect(openGatewayLedger(competitor,'f'.repeat(64))).rejects.toThrow('gateway_ledger_unavailable');
+  await getPool().query('DELETE FROM ollama_gateway.admission');
+  await expect(openGatewayLedger(competitor,config.providerHash)).rejects.toThrow('gateway_ledger_unavailable');
+  expect(calls).toHaveLength(0);
+});
+test('ledger refuses concurrent claims; UUIDv7 request and attempts survive owner replacement', async () => {
+  const gate = await start();
+  const results = await Promise.allSettled([gate.ledger.claim('local'),gate.ledger.claim('unraid')]);
+  expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+  expect(results.find(result => result.status === 'fulfilled').value).toMatch(uuid7);
+  expect((await gate.ledger.status()).attempts).toBe('1'); expect(calls).toHaveLength(0);
+});
+test('inspection is bounded and embeds validate their terminal batch', async () => {
+  handler = (req,res) => res.end(JSON.stringify(req.url === '/api/embed' ? { model,embeddings: [[0,1]] } : { models: [] }));
+  const gate = await start();
+  expect((await call(gate,0,{ path: '/api/tags',method: 'GET' })).status).toBe(200);
+  expect((await gate.ledger.status()).attempts).toBe('0');
+  expect((await call(gate,0,{ path: '/api/embed',body: { model,input: ['synthetic'] } })).status).toBe(200);
+  expect((await gate.ledger.status()).attempts).toBe('1');
+});
+
+test('loss of the dedicated database session never grants another compute request', async () => {
+  const gate = await start();
+  handler = (_req,res) => { releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'done' })); };
+  const active = call(gate); await until(() => calls.length === 1);
+  await getPool().query('SELECT pg_terminate_backend($1)',[gate.client.processID]);
+  await until(async () => { try { await gate.ledger.status(); return false; } catch { return true; } });
+  releaseHeld(); expect((await active).status).toBe(503);
+  expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1);
+  expect((await getPool().query('SELECT active_request FROM ollama_gateway.admission')).rows[0].active_request).toMatch(uuid7);
+});
+
+test('standalone CLI survives abrupt process death without clearing an admitted request', async () => {
+  const directory = await mkdtemp(join(tmpdir(),'classifarr-gateway-test-'));
+  const children = [];
+  const portProbe = createServer(); await new Promise(resolve => { portProbe.listen(0,'127.0.0.1',resolve); });
+  const port = portProbe.address().port; await new Promise(resolve => { portProbe.close(resolve); });
+  const options = getPool().options;
+  // Only the integration runner's randomly named disposable database is eligible.
+  expect(options.database).toMatch(/^classifarr_suite_[a-f0-9]+$/);
+  const configFile = join(directory,'config.json');
+  await writeFile(configFile,JSON.stringify({ gateway: { upstream: config.upstream,models: [model],credentials,port,
+    timeoutMs: 10000,queueMs: 100 },database: { host: options.host,port: options.port,database: options.database,
+    user: options.user,password: options.password } }),{ mode: 0o600 });
+  async function launch() {
+    const child = spawn(process.execPath,[fileURLToPath(new URL('../../scripts/runOllamaGateway.mjs',import.meta.url))],{
+      windowsHide: true,env: { ...process.env,CLASSIFARR_GATEWAY_CONFIG_FILE: configFile },stdio: ['ignore','pipe','pipe'] });
+    children.push(child);
+    let output = ''; child.stdout.on('data',data => { output += data.toString(); }); child.stderr.resume();
+    await until(() => output.includes('ollama_gateway_ready'));
+    return child;
+  }
+  async function kill(child) {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    const done = new Promise(resolve => { child.once('exit',resolve); }); child.kill('SIGKILL'); await done;
+  }
+  try {
+    handler = () => {}; const child = await launch(), gate = { url: `http://127.0.0.1:${port}` };
+    const active = call(gate).catch(() => null); await until(() => calls.length === 1);
+    const before = (await getPool().query('SELECT active_request,attempts FROM ollama_gateway.admission')).rows[0];
+    expect(before.active_request).toMatch(uuid7);
+    await kill(child); await active; await launch();
+    expect((await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).requestId).toBe(before.active_request);
+    expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1);
+    expect((await getPool().query('SELECT active_request,attempts FROM ollama_gateway.admission')).rows[0]).toEqual(before);
+  } finally { for (const child of children) await kill(child); await rm(directory,{ recursive: true,force: true }); }
+});

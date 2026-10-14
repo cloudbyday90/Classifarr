@@ -12,6 +12,7 @@
   "main": "src/index.mjs",
   "scripts": {
     "start": "node src/index.mjs",
+    "gateway:ollama": "node src/scripts/runOllamaGateway.mjs",
     "dev": "node --watch --watch-preserve-output src/index.mjs",
     "study:capture:held-out": "node src/scripts/runHeldOutSemanticStudyCapture.mjs",
     "study:capture:held-out-cohort": "node src/scripts/runHeldOutSemanticStudyCohortCapture.mjs",

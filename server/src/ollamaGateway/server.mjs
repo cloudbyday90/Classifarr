@@ -1,0 +1,98 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { createServer } from 'node:http';
+import { authenticateGateway, gatewayError, gatewayRoute, validateGatewayBody } from './contract.mjs';
+import { createGatewayAdmission } from './admission.mjs';
+import { gatewayUpstream } from './transport.mjs';
+
+function readBody(req, signal) {
+  return new Promise((resolve,reject) => {
+    const chunks = []; let length = 0;
+    const cleanup = () => {
+      req.removeListener('data',data); req.removeListener('end',end); req.removeListener('error',abort);
+      signal.removeEventListener('abort',abort);
+    };
+    const abort = () => { cleanup(); req.pause(); reject(gatewayError('gateway_cancelled')); };
+    const data = chunk => {
+      length += chunk.length;
+      if (length > 256 * 1024) { cleanup(); req.pause(); reject(gatewayError('gateway_body_limit',413)); }
+      else chunks.push(chunk);
+    };
+    const end = () => {
+      cleanup();
+      try { resolve(JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(Buffer.concat(chunks)))); }
+      catch { reject(gatewayError('gateway_body_invalid',400)); }
+    };
+    req.on('data',data); req.once('end',end); req.once('error',abort);
+    signal.addEventListener('abort',abort,{ once: true });
+    if (signal.aborted) abort();
+  });
+}
+
+/** Authentication is server-to-server only. No app sessions, cookies or CORS. */
+export function createGatewayServer({ config, ledger }) {
+  const admission = createGatewayAdmission(config), shutdown = new AbortController();
+  let handling = 0, credits = 120, windowStart = Date.now();
+  const server = createServer({ maxHeaderSize: 8192, requestTimeout: 10000, headersTimeout: 5000 }, (req,res) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(),config.timeoutMs); timer.unref();
+    const signal = AbortSignal.any([controller.signal,shutdown.signal]);
+    req.on('error', () => controller.abort());
+    res.on('close', () => controller.abort());
+    res.setHeader('Cache-Control','no-store'); res.setHeader('Content-Type','application/json');
+    res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('Connection','close');
+    const send = (status,data) => {
+      if (!res.destroyed && !res.writableEnded) { res.statusCode = status; res.end(JSON.stringify(data)); }
+    };
+    if (Date.now() - windowStart >= 60000) { credits = 120; windowStart = Date.now(); }
+    if (--credits < 0 || handling >= 32) { clearTimeout(timer); send(429,{ error: 'gateway_busy' }); return; }
+    handling++;
+    void (async () => {
+      let release;
+      try {
+        const authCount = req.rawHeaders.filter((_,index) => index % 2 === 0 && req.rawHeaders[index].toLowerCase() === 'authorization').length;
+        const principal = authCount === 1 ? authenticateGateway(config,req.headers.authorization) : null;
+        if (!principal) throw gatewayError('gateway_unauthorized',401);
+        const route = gatewayRoute(req.method,req.url);
+        if (req.headers['content-encoding'] || req.headers['content-length'] && Number(req.headers['content-length']) > 256 * 1024) {
+          throw gatewayError('gateway_body_limit',413);
+        }
+        if (req.method === 'GET' && (req.headers['transfer-encoding'] || Number(req.headers['content-length'] || 0) !== 0)) {
+          throw gatewayError('gateway_body_invalid',400);
+        }
+        if (req.url === '/gateway/status') { send(200,{ ...await ledger.status(),waiting: admission.pending }); return; }
+        let body;
+        if (req.method === 'POST') {
+          const contentType = (req.headers['content-type'] || '').toLowerCase().replaceAll(' ','');
+          if (!['application/json','application/json;charset=utf-8'].includes(contentType)) throw gatewayError('gateway_body_invalid',400);
+          body = validateGatewayBody(req.url,await readBody(req,signal),config);
+        }
+        let requestId;
+        if (route.compute) {
+          release = await admission.acquire(principal,signal); signal.throwIfAborted();
+          requestId = await ledger.claim(principal.installation);
+        } else await ledger.status();
+        signal.throwIfAborted();
+        const result = await gatewayUpstream(config,req.url,body,signal);
+        // Unknown outcome intentionally leaves the durable marker set, including shutdown.
+        signal.throwIfAborted();
+        if (requestId) await ledger.complete(requestId,[429,503].includes(result.status));
+        if (result.rejected) {
+          if ([429,503].includes(result.status)) res.setHeader('Retry-After','5');
+          send(result.status,{ error: 'gateway_upstream_rejected' });
+        } else send(200,result.data);
+      } catch (error) {
+        const known = typeof error?.code === 'string' && /^gateway_[a-z_]+$/.test(error.code);
+        send(known ? error.status : 503,{ error: known ? error.code : 'gateway_unavailable' });
+      } finally { release?.(); handling--; clearTimeout(timer); }
+    })();
+  });
+  server.maxConnections = 64; server.keepAliveTimeout = 1000; server.maxRequestsPerSocket = 1;
+  server.on('clientError', (_error,socket) => { socket.destroy(); });
+  server.on('checkContinue', (_req,res) => { res.writeHead(417,{ Connection: 'close' }); res.end(); });
+  server.on('connect', (_req,socket) => { socket.destroy(); });
+  return { server, async stop() {
+    admission.stop(); shutdown.abort();
+    const closing = new Promise(resolve => { server.close(resolve); });
+    server.closeAllConnections(); await closing;
+  } };
+}

@@ -1,45 +1,62 @@
-# Shared Ollama admission: investigation outcome
+# Shared Ollama admission: implementation outcome
 
-Status: design only, 2026-10-14. See [proposal and official sources](shared-ollama-admission-design.md).
+Status: Unreleased standalone prototype, 2026-10-14. See the separate
+[design/research](shared-ollama-admission-design.md) and
+[operator guide](../operations/ollama-gateway.md).
 
-## Established findings
+## Implemented slice
 
-The current evaluation controls coordinate one Classifarr database. Local and
-Unraid do not acquire a common provider permit. Source inspection also found
-separate paths for generation, streaming, embeddings, readiness tests, study
-clients and model warming. Coordinating only the evaluation worker would not
-establish provider-wide priority.
+The administrator approved building an optional gateway, tested locally only.
+Its ESM modules separate configuration/authentication, admission, PostgreSQL
+ownership, fixed-target HTTP transport and the server. A dedicated CLI starts
+it explicitly; the normal application does not import or start it.
 
-A shared expiring lock is not sufficient evidence of exclusive remote execution.
-The proposed gateway would own dispatch and retain uncertain in-flight state
-across restarts. Its corresponding cost is availability: unknown upstream work
-can block further inference until safely reconciled. This is a material service
-architecture choice, not a routine change to a local daily allowance.
+Installation/work-class credentials control foreground precedence. One compute
+request can run, with bounded foreground waiting and no background prompt queue.
+Fixed route/model allowlists, byte/time/connection/intake bounds, sanitized error
+codes and a loopback-only listener limit the initial surface. No gateway retries,
+redirects, cloud fallback or arbitrary upstream targets are introduced.
 
-## Decision still needed
+A dedicated PostgreSQL session owns the gateway lock. A durable marker is written
+before dispatch and cleared only after a known terminal response and successful
+completion write. Lost sessions, cancellation, abrupt termination and unknown
+outcomes cannot clear that marker or reset attempts. Complete overload responses
+persist a five-second cooldown. No clear-lock/reset operation is provided.
 
-Choose between an optional shared gateway, initially built and tested locally
-only, and retaining separate installations with non-overlapping evaluation
-schedules. The gateway is the recommended long-term option for coordinated
-dispatch; existing controls are the immediate low-complexity option. No answer
-to that architecture question was available when this investigation was written.
+The independent migration is timestamp-named
+`20261014_121441_admission.sql`. Its table primary key, gateway owner and request
+references use PostgreSQL 18 native time-based UUIDv7 with database constraints.
+A separate singleton constraint prevents duplicate control rows. No existing
+application table or identifier is changed. The migration is also the dedicated
+database's fresh schema; it is intentionally outside automatic app migrations.
 
-No gateway, schema, runtime setting, inference request, database recovery,
-Unraid change, provider restart, release or PR merge was performed. The current
-local workload consent and memory safeguards were not edited.
+## Verification so far
 
-GitHub MCP enumeration found no open Classifarr PRs on 2026-10-14; there was no
-eligible PR to randomly select or implement.
+- Gateway unit and repository code-health checks: two suites, 35,044 tests passed.
+- Isolated PostgreSQL and actual HTTP gateway/workload checks: two suites, 25
+  tests passed. Gateway-specific coverage includes two installation credentials,
+  authentication, allowlists, request/response bounds, priority, cancellation,
+  truncated/malformed replies, overload cooldown, missing state, competing owners,
+  concurrent claims, lost completion writes, lost database sessions and actual
+  standalone-process death/recreation. UUIDv7 versions/timestamps are checked.
+- Type checking includes all new gateway modules and its CLI. Backend lint and
+  normal/production dependency reachability checks passed.
 
-## Verification and limits
+The packaged-image rehearsal and no-cache local Compose evaluation will be
+recorded after they finish. Earlier workload-control image results are not
+gateway verification. Synthetic tests do not measure real-model quality, GPU
+memory, cross-host TLS or published-release upgrade behavior.
 
-This change contains documentation only. The evidence is source inspection and
-official documentation, not a new runtime test. Implementation, automated gateway
-tests and the requested no-cache Compose rebuild remain pending the architecture
-selection. Earlier workload-control test results are not gateway validation.
-Repository Markdown validation passed: 2,202 files, zero errors. The whitespace
-check also passed. No application or dependency files changed.
+## Preserved boundaries and next item
 
-Next: select the shared-service approach, then implement the first bounded
-transport/admission slice and its two-installation synthetic failure tests. Do
-not expand live background inference or remove memory protections in the meantime.
+Existing Classifarr clients are not rerouted. Their budgets, consent, memory
+safeguards, model validation and checkpoints are unchanged. No live inference,
+Unraid setting, shared Ollama configuration, provider restart, release or PR merge
+is included. GitHub MCP enumeration again returned no open Classifarr PRs.
+
+Next: integrate a common authenticated transport into the real clients, retaining
+streaming and embedding behavior, and prove cancellation/uncertainty handling
+end to end before planning cross-host deployment. The restricted first gateway
+is not a drop-in replacement for every current Ollama operation. Production
+cutover also requires a reviewed uncertainty-recovery procedure and prevention
+of direct-client bypass; independent databases still do not coordinate today.

@@ -17,6 +17,12 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Optional Ollama gateway prototype** — Added a separately started, authenticated
+  gateway for local-only testing of shared-provider admission, foreground priority
+  and restart-safe uncertainty handling. Its dedicated ledger uses time-based
+  UUIDv7 identifiers. It does not reroute existing clients, enable inference,
+  change memory safeguards or deploy anything to Unraid.
+
 - **Background AI evaluation** — Administrators can choose Off, When idle, or a
   daily UTC window in Command Center, with a request safety limit instead of
   token-budget calculations. Settings survive restarts; foreground work and

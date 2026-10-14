@@ -1,7 +1,46 @@
 # Shared Ollama admission: proposed design
 
-Status: proposed, 2026-10-14. This is a design decision, not an implemented or
-enabled service. It follows [installation-local evaluation controls](evaluation-workload-controls-design.md).
+Status: standalone prototype implemented, 2026-10-14; not enabled on either
+installation. Broader client integration remains proposed. This follows
+[installation-local evaluation controls](evaluation-workload-controls-design.md).
+
+## Approved first implementation slice
+
+The administrator selected an optional gateway, tested locally only. Implement
+the standalone dispatch boundary first; do not change existing Classifarr client
+routing in this slice. Bind only to IPv4 loopback, with bearer credentials mapped
+to installation and foreground/background permission in a private configuration
+file. Cross-host TLS deployment and application-client integration remain later
+work, not implicitly enabled by building the gateway.
+
+Support non-streaming `/api/generate`, `/api/embed`, and bounded inspection
+(`/api/tags`, `/api/show`, `/api/ps`, `/api/version`). Reject streaming, chat,
+model administration and all other routes explicitly. Use a configured model
+allowlist and a fixed private/loopback IPv4 upstream, without DNS or redirects.
+Limits: 256 KiB request, 1 MiB generation/inspection response, 4 MiB embedding
+response, 32 concurrent HTTP handlers, 64 connections, eight waiting foreground
+requests, one waiting request per installation, 30-second maximum queue wait and
+180-second default total request deadline (configurable up to 300 seconds).
+No automatic retries. Completed upstream 429/503 responses impose a persisted
+five-second admission cooldown; caller budgets remain authoritative and unchanged.
+
+Use a separate, explicitly initialized gateway database. Its initial migration
+and fresh schema are the same SQL artifact under `database/ollama-gateway/`,
+outside the application's automatic migration runner. One dedicated PostgreSQL
+session holds the gateway singleton advisory lock; durable row ownership and an
+in-flight request marker fence dispatch and completion. Losing that session stops
+the gateway. A replacement gateway never clears an outstanding marker. There is
+no reset endpoint or automatic uncertainty expiry. Only safe status reads remain
+available while uncertain. A corrupt/missing row or changed upstream fails closed.
+The new table primary key, request references and gateway owner references use
+PostgreSQL 18's native time-ordered `uuidv7()`, with version checks in the schema.
+The singleton constraint is separate from its UUID primary key. Existing
+application identifiers are unchanged; UUID timestamps are not authorization.
+
+Completion of this slice means real HTTP/PostgreSQL tests, a packaged-image local
+rehearsal, documented limits and no activation of real inference. It does not mean
+that local and Unraid are already coordinated or that streaming clients can be
+pointed at this restricted gateway unchanged.
 
 ## Problem and evidence
 
@@ -156,6 +195,9 @@ type; those exact discovered URLs were read with a read-only HTTP request.
 - [PostgreSQL 18 advisory locks](https://www.postgresql.org/docs/18/functions-admin.html):
   session locks end with their session. Our inference is that this cannot fence
   a previously dispatched request at a separate inference server.
+- [PostgreSQL 18 UUID support](https://www.postgresql.org/docs/18/datatype-uuid.html):
+  native UUIDv7 avoids a custom time-based identifier generator. The gateway
+  requires PostgreSQL 18 and verifies UUID version 7 in its schema and tests.
 - [OWASP SSRF prevention](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html):
   allowlist trusted destinations and disable redirects. Apply this to a fixed
   upstream rather than exposing a general-purpose proxy.
