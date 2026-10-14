@@ -157,6 +157,13 @@ uncertain request requires a separately designed, verified recovery procedure;
 never delete the ledger or restart shared Ollama as an automatic workaround.
 This availability limitation is why this prototype is not ready for live cutover.
 
+The current invocation can safely finish a claim when cancellation occurs before
+transport is invoked, or after a fully validated provider response. It still
+counts the attempt and preserves cooldowns; no cancelled caller receives the
+answer. This is bookkeeping, not a retry or proof of remote cancellation. Lost
+evidence, uncertain dispatch and failed completion writes still block recovery.
+See the [completion-recovery design](../architecture/ollama-gateway-completion-recovery-design.md).
+
 ## Explicit client integration for local fixtures
 
 `server/src/ollamaGateway/client.mjs` exports `createGatewayClient`, accepting

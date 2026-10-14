@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Recover gateway slots cancelled before dispatch or after verified completion,
+  preserving attempts, cooldowns and genuinely uncertain requests.
+
 - Add opt-in application-wide Ollama gateway startup, verified TLS transport,
   and fail-closed shutdown without changing default routing or saved AI consent.
 

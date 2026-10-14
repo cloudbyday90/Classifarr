@@ -22,6 +22,7 @@ await withSchemaCheckContainer({ imageName,runSpec,command,action: async () => {
   assert.equal(Object.keys(container.HostConfig.PortBindings || {}).length,0);
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/probe.mjs'),`${name}:/tmp/gateway-probe.mjs`]);
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/application.mjs'),`${name}:/tmp/application.mjs`]);
+  docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/recovery.mjs'),`${name}:/tmp/recovery.mjs`]);
   const result = docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',name,'node','/tmp/gateway-probe.mjs']);
   process.stdout.write(result);
 } });

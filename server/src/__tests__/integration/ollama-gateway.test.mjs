@@ -89,13 +89,58 @@ test.each([false,true])('active credential revocation cancels transport and pres
   expect((await call(gate,1)).status).toBe(503); expect(calls).toHaveLength(1); client.close();
 });
 
-test('revocation during claim preserves its marker but never dispatches upstream', async () => {
+test('revocation during claim safely releases the undispatched marker without refunding its attempt', async () => {
   let gate;
   gate = await start({ claim: async installation => {
     const id = await gate.ledger.claim(installation); gate.gateway.replaceCredentials(rotatedConfig([credentials[1]])); return id;
   } });
   expect((await call(gate)).status).toBe(401); expect(calls).toHaveLength(0);
+  expect(await gate.ledger.status()).toMatchObject({ state: 'ready',requestId: null,attempts: '1' });
+  expect((await call(gate,1)).status).toBe(200); expect(calls).toHaveLength(1);
+  expect((await gate.ledger.status()).attempts).toBe('2');
+});
+
+test('failed cleanup of a cancelled undispatched claim remains uncertain', async () => {
+  let gate;
+  gate = await start({ claim: async installation => {
+    const id = await gate.ledger.claim(installation); gate.gateway.replaceCredentials(rotatedConfig([credentials[1]])); return id;
+  },complete: async () => { throw new Error('PRIVATE database failure'); } });
+  const response = await call(gate); expect(response.status).toBe(503);
+  expect(await response.text()).not.toContain('PRIVATE'); expect(calls).toHaveLength(0);
   expect(await gate.ledger.status()).toMatchObject({ state: 'uncertain_or_active',attempts: '1' });
+  expect((await call(gate,1)).status).toBe(503); expect(calls).toHaveLength(0);
+});
+
+test.each(['buffered','stream','embed','warm','overload'])('revocation while persisting verified %s completion retains attempts without delivering success', async kind => {
+  let gate;
+  gate = await start({ complete: async (id,busy) => {
+    gate.gateway.replaceCredentials(rotatedConfig([credentials[1]]));
+    await gate.ledger.complete(id,busy);
+  } });
+  handler = (_req,res) => {
+    if (kind === 'overload') { res.writeHead(503); res.end('PRIVATE rejected'); }
+    else if (kind === 'stream') {
+      res.setHeader('Content-Type','application/x-ndjson'); res.end(`${JSON.stringify({ model,done: true,response: 'PRIVATE final' })}\n`);
+    } else res.end(JSON.stringify(kind === 'embed' ? { model,embeddings: [[0,1]] }
+      : { model,done: true,response: kind === 'warm' ? '' : 'PRIVATE final' }));
+  };
+  const response = await call(gate,0,{ path: kind === 'embed' ? '/api/embed' : '/api/generate',
+    body: kind === 'embed' ? { model,input: ['synthetic'],truncate: false }
+      : { model,prompt: kind === 'warm' ? '' : 'synthetic',stream: kind === 'stream',keep_alive: '5m' } });
+  expect(response.status).toBe(401); expect(await response.text()).not.toContain('PRIVATE'); expect(calls).toHaveLength(1);
+  expect(await gate.ledger.status()).toMatchObject({ state: kind === 'overload' ? 'cooldown' : 'ready',requestId: null,attempts: '1' });
+  if (kind === 'overload') { expect((await call(gate,1)).status).toBe(503); expect(calls).toHaveLength(1); }
+});
+
+test.each(['request','owner','provider'])('completion cannot clear a different %s identity', async kind => {
+  const gate = await start(), original = await gate.ledger.claim('local');
+  if (kind === 'request') { await gate.ledger.complete(original); await gate.ledger.claim('local'); }
+  else if (kind === 'owner') await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE singleton');
+  else await getPool().query('UPDATE ollama_gateway.admission SET provider_hash=$1 WHERE singleton',['f'.repeat(64)]);
+  const before = (await getPool().query('SELECT active_request,attempts,completed_at,cooldown_until FROM ollama_gateway.admission')).rows[0];
+  await expect(gate.ledger.complete(original)).rejects.toThrow('gateway_ledger_unavailable');
+  expect((await getPool().query('SELECT active_request,attempts,completed_at,cooldown_until FROM ollama_gateway.admission')).rows[0]).toEqual(before);
+  expect(calls).toHaveLength(0);
 });
 
 test('revocation during proven completion withholds response without undoing the valid ledger write', async () => {

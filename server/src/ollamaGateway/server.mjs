@@ -5,6 +5,7 @@ import { gatewayError, gatewayRoute, validateGatewayBody } from './contract.mjs'
 import { createGatewayCredentials } from './credentials.mjs';
 import { createGatewayAdmission } from './admission.mjs';
 import { gatewayUpstream } from './transport.mjs';
+import { executeGatewayCompute } from './execution.mjs';
 import { writeGatewayRecord } from './stream.mjs';
 
 function readBody(req, signal) {
@@ -81,19 +82,19 @@ export function createGatewayServer({ config, ledger }) {
           if (!['application/json','application/json;charset=utf-8'].includes(contentType)) throw gatewayError('gateway_body_invalid',400);
           body = validateGatewayBody(req.url,await readBody(req,signal),config);
         }
-        let requestId;
-        if (route.compute) {
-          release = await admission.acquire(principal,signal); signal.throwIfAborted();
-          requestId = await ledger.claim(principal.installation);
-        } else await ledger.status();
-        signal.throwIfAborted();
-        const result = await gatewayUpstream(config,req.url,body,signal,async data => {
+        const onRecord = async data => {
           if (!res.headersSent) res.setHeader('Content-Type','application/x-ndjson');
           await writeGatewayRecord(res,data,signal);
-        });
-        // Unknown outcome intentionally leaves the durable marker set, including shutdown.
-        signal.throwIfAborted();
-        if (requestId) await ledger.complete(requestId,[429,503].includes(result.status));
+        };
+        let result;
+        if (route.compute) {
+          release = await admission.acquire(principal,signal); signal.throwIfAborted();
+          result = await executeGatewayCompute({ ledger,installation: principal.installation,
+            config,path: req.url,body,signal,onRecord });
+        } else {
+          await ledger.status(); signal.throwIfAborted();
+          result = await gatewayUpstream(config,req.url,body,signal,onRecord);
+        }
         signal.throwIfAborted();
         if (result.streamed) {
           if (!res.headersSent) res.setHeader('Content-Type','application/x-ndjson');

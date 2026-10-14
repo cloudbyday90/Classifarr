@@ -39,7 +39,8 @@ export async function openGatewayLedger(client, providerHash) {
       const result = await query(`UPDATE ollama_gateway.admission SET active_request=NULL, installation=NULL,
         started_at=NULL, completed_at=clock_timestamp(),
         cooldown_until=CASE WHEN $2 THEN clock_timestamp()+interval '5 seconds' ELSE cooldown_until END
-        WHERE singleton AND version=1 AND owner_id=$3 AND active_request=$1 RETURNING id`, [requestId,busy,owner]);
+        WHERE singleton AND version=1 AND owner_id=$3 AND active_request=$1 AND provider_hash=$4
+        RETURNING id`, [requestId,busy,owner,providerHash]);
       if (result.rowCount !== 1) throw gatewayError('gateway_ledger_unavailable');
     },
   };

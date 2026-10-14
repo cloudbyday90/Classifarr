@@ -17,6 +17,7 @@ export function gatewayUpstream(config, path, body, signal, onRecord = async (_d
           req.destroy(); reject(gatewayError('gateway_response_invalid')); return;
         }
         void readGatewayStream(res,body.model,onRecord,signal).then(data => {
+          if (!res.complete) { reject(gatewayError('gateway_upstream_unknown')); return; }
           resolve({ status: 200,data,streamed: true });
         }, () => { req.destroy(); reject(gatewayError('gateway_upstream_unknown')); });
         return;
@@ -30,6 +31,7 @@ export function gatewayUpstream(config, path, body, signal, onRecord = async (_d
       });
       res.on('error', () => reject(gatewayError('gateway_upstream_unknown')));
       res.on('end', () => {
+        if (!res.complete) { reject(gatewayError('gateway_upstream_unknown')); return; }
         const status = res.statusCode;
         // Only these complete responses establish a known rejection. Never relay error text.
         if ([400,401,403,404,429,503].includes(status)) { resolve({ status, rejected: true }); return; }
