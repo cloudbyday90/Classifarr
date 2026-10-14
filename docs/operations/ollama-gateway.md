@@ -3,7 +3,8 @@
 Status: Unreleased, 2026-10-14. **Not enabled by the Classifarr application.**
 This first slice supports isolated testing, not production cutover. Existing
 Classifarr clients still connect directly by default. The bounded study adapters
-now accept an explicitly injected gateway dependency for local testing; no saved
+and saved-verification factory accept an explicitly injected gateway dependency
+for local testing; no saved
 setting activates it. Do not change the application's saved Ollama host to this
 restricted gateway.
 
@@ -140,7 +141,27 @@ hook and their 180/60-second deadlines. Embedding replies retain the 4 MiB limit
 gateway inspection replies use its stricter 1 MiB limit. Their `close()` methods
 close their owned gateway clients. Omitting the dependency preserves direct mode.
 
-The main classifier, warming, model administration and verification transports
+`createOllamaGatewayGenerationClient({ configuration, gateway })` binds the shared
+primary generation leaves to one immutable `{ baseUrl, model }` configuration.
+It provides `generate`, `generateWithProgress`, `preflightConnection`, `getVersion`
+and `close`. The saved-verification factory accepts `gateway` in its private
+factory argument and uses the same adapter. Neither is a full Ollama service:
+there is no warming, embedding or model-administration fallback. Untagged models
+mean `:latest`; all other model overrides are rejected. Preflight reads the exact
+current model and digest rather than reusing cached success. Close and recreate
+the factory when configuration or credentials change.
+
+Strict streams reject partial output even if permissive options were also passed.
+External controllers must disable partial-on-stall; use the adapter-owned
+controller when partial stalls are allowed, so it can cancel its own transport.
+Ordinary streams retain permitted abort/stall partials, cancel their transport,
+and do not report complete progress. Unknown dispatch stays blocked in the ledger.
+Streaming hard time is capped at five minutes, including preflight; a gateway
+configured with a shorter timeout can stop it sooner. Reasoning requests that
+normally allow ten minutes do not extend this gateway cap. Buffered generation
+defaults to two minutes after preflight. This is an explicit test-mode limitation.
+
+The running main classifier, warming, model administration and verification paths
 have not been rerouted. Cross-host TLS and installation-wide credential lifecycle
 are not provided by this local-only client. These remain prerequisites to live
 coordination. See the [streaming design](../architecture/ollama-gateway-streaming-design.md)
@@ -163,8 +184,10 @@ attempts, graceful restart and abrupt process death. Only its randomly named
 container/data directory are removed, with cleanup verified. It never calls real
 Ollama and is not proof of a published-release upgrade or real model quality.
 
-Next: integrate the main classification/verification transports without changing
-their existing cancellation or partial-result policy, then design authenticated
-cross-host deployment and evidence-based uncertainty recovery before any cutover.
+Next: design a coherent all-path installation cutover, authenticated cross-host
+deployment and evidence-based uncertainty recovery before any activation. See the
+[generation design](../architecture/ollama-gateway-generation-design.md) for
+tradeoffs and the [generation outcome](../architecture/ollama-gateway-generation-outcome.md)
+for verification and remaining limits.
 See [design](../architecture/shared-ollama-admission-design.md) and
 [outcome](../architecture/shared-ollama-admission-outcome.md).

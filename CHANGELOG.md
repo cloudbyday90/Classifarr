@@ -17,6 +17,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Gateway generation integration** — Added explicit gateway support to the
+  shared generation and saved-verification clients, with bound model checks,
+  cancellation and strict completion rules. Live routing remains unchanged;
+  this integration is for local testing, not production activation.
+
 - **Gateway streaming and study clients** — Added bounded, authenticated streaming
   with durable completion before the final response, plus explicit gateway support
   for local study clients. Existing installations keep direct routing; uncertain

@@ -48,7 +48,7 @@ function createPreflightError(preflight = {}) {
   return error;
 }
 
-export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
+export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}, transport = null) {
   try {
     const config = await getConfig();
     const body = buildOllamaGenerateRequest({
@@ -60,11 +60,15 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
       keepAlive: options.keepAlive,
       think: options.think,
     });
-    const response = await httpPost(`${config.baseUrl}/api/generate`, body, {
+    const requestOptions = {
       timeout: Number.isSafeInteger(options.timeoutMs) && options.timeoutMs >= 1000
         ? options.timeoutMs
         : 120000,
-    });
+      signal: options.signal,
+    };
+    const response = transport
+      ? await transport.generate(body, requestOptions)
+      : await httpPost(`${config.baseUrl}/api/generate`, body, requestOptions);
     return response.data.response;
   } catch (error) {
     throw wrapGenerationError('Failed to generate response', error);
@@ -139,19 +143,25 @@ export async function generateWithProgress(
   onProgress = null,
   externalController = null,
   options = {},
+  transport = null,
 ) {
   const config = await getConfig();
   const generateOptions = {
-    allowPartialOnStall: options.allowPartialOnStall !== false,
-    allowPartialOnAbort: options.allowPartialOnAbort !== false,
+    allowPartialOnStall: options.allowPartialOnStall !== false && !(transport && options.requireDoneSignal),
+    allowPartialOnAbort: options.allowPartialOnAbort !== false && !(transport && options.requireDoneSignal),
     requireDoneSignal: options.requireDoneSignal === true,
     format: options.format,
     think: options.think,
     expectedModelDigest: options.expectedModelDigest,
+    hardTimeout: options.hardTimeout,
+    signal: options.signal,
   };
 
   if (externalController) {
-    return streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, externalController, generateOptions);
+    if (transport && externalController.allowPartialOnStall !== false) {
+      throw new TypeError('Gateway generation requires an external controller that rejects partial stalls');
+    }
+    return streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, externalController, generateOptions, transport);
   }
 
   const controller = new OperationController({
@@ -162,13 +172,18 @@ export async function generateWithProgress(
     allowPartialOnStall: generateOptions.allowPartialOnStall,
   });
 
+  const lifetime = transport ? new AbortController() : null;
   return controller.runStreaming(
-    (signal, ctrl) => streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, ctrl, generateOptions),
+    (signal, ctrl) => streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, ctrl,
+      lifetime ? { ...generateOptions, signal: AbortSignal.any([lifetime.signal, ...(options.signal ? [options.signal] : [])]) } : generateOptions,
+      transport),
     'ollama_generate',
-  );
+  ).finally(() => lifetime?.abort());
 }
 
-export async function streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, controller, options = {}) {
+export async function streamGenerate(getConfig, preflightConnectionFn, config, prompt, model, temperature, onProgress, controller, options = {}, transport = null) {
+  const signal = transport && options.signal
+    ? AbortSignal.any([controller.signal, options.signal]) : controller.signal;
   const preflight = await preflightConnectionFn({
     host: config.host,
     port: config.port,
@@ -176,6 +191,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
     probeGeneration: false,
     cacheMs: 60000,
     expectedModelDigest: options.expectedModelDigest,
+    ...(transport ? { signal } : {}),
   });
 
   if (!preflight.success) {
@@ -186,6 +202,24 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
   let tokenCount = 0;
   let sawDoneSignal = false;
   let lineBuffer = '';
+
+  const checkGatewayCancellation = () => {
+    if (transport && signal.aborted) {
+      throw Object.assign(new Error('Generation aborted'), { name: 'AbortError', code: 'ABORT_ERR' });
+    }
+  };
+
+  const processRecord = (json) => {
+    checkGatewayCancellation();
+    if (transport) controller.recordActivity();
+    if (json.response) {
+      fullResponse += json.response;
+      tokenCount++;
+      controller.recordActivity(fullResponse);
+      if (onProgress) onProgress(tokenCount, false);
+    }
+    if (json.done) sawDoneSignal = true;
+  };
 
   const processStreamBuffer = (chunkText = '', flush = false) => {
     lineBuffer += chunkText;
@@ -210,18 +244,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
         continue;
       }
 
-      if (json.response) {
-        fullResponse += json.response;
-        tokenCount++;
-        controller.recordActivity(fullResponse);
-        if (onProgress) {
-          onProgress(tokenCount, false);
-        }
-      }
-
-      if (json.done) {
-        sawDoneSignal = true;
-      }
+      processRecord(json);
     }
   };
 
@@ -234,20 +257,22 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
       format: options.format,
       think: options.think,
     });
-    const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, body, {
-      signal: controller.signal,
-    });
-
-    const decoder = new TextDecoder();
-    for await (const chunk of streamResponse.body) {
-      controller.recordActivity();
-      processStreamBuffer(decoder.decode(chunk, { stream: true }), false);
-      if (sawDoneSignal) {
-        break;
+    if (transport) {
+      const finalRecord = await transport.stream(body, { signal, timeout: options.hardTimeout, onRecord: processRecord });
+      processRecord(finalRecord);
+      checkGatewayCancellation();
+    } else {
+      const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, body, {
+        signal: controller.signal,
+      });
+      const decoder = new TextDecoder();
+      for await (const chunk of streamResponse.body) {
+        controller.recordActivity();
+        processStreamBuffer(decoder.decode(chunk, { stream: true }), false);
+        if (sawDoneSignal) break;
       }
+      processStreamBuffer(decoder.decode(), true);
     }
-
-    processStreamBuffer(decoder.decode(), true);
 
     if (fullResponse && (!options.requireDoneSignal || sawDoneSignal)) {
       if (onProgress) {
@@ -267,7 +292,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
     }
   } catch (err) {
     if (err.name === 'AbortError' || err.code === 'ERR_CANCELED' || err.code === 'ABORT_ERR') {
-      if (controller.partialResult && options.allowPartialOnAbort) {
+      if (controller.partialResult && options.allowPartialOnAbort && (!transport || signal.aborted)) {
         return controller.partialResult;
       } else {
         const abortError = /** @type {OllamaGenerationError} */ (

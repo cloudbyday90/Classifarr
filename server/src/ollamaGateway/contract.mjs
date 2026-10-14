@@ -65,7 +65,9 @@ export function validateGatewayBody(path, body, config) {
     throw gatewayError('gateway_body_invalid', 400);
   }
   if (body.keep_alive !== undefined && ![0,'0','5m',300].includes(body.keep_alive)) throw gatewayError('gateway_body_invalid', 400);
-  if (body.think !== undefined && typeof body.think !== 'boolean') throw gatewayError('gateway_body_invalid', 400);
+  if (body.think !== undefined && typeof body.think !== 'boolean' && !['low','medium','high','max'].includes(body.think)) {
+    throw gatewayError('gateway_body_invalid', 400);
+  }
   if (body.format !== undefined && body.format !== 'json' && !record(body.format)) throw gatewayError('gateway_body_invalid', 400);
   if (body.options !== undefined) {
     const limits = { temperature: [0,2], seed: [0,2147483647], num_ctx: [1,65536], num_predict: [1,4096] };

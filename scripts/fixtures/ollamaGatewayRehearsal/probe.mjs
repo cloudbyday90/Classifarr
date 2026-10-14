@@ -8,6 +8,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 // This fixture is copied to /tmp, never over packaged source/dependencies.
 import pg from '/app/node_modules/pg/lib/index.js';
 import { createGatewayClient } from '/app/src/ollamaGateway/client.mjs';
+import { createOllamaGatewayGenerationClient } from '/app/src/services/ollamaGatewayGenerationClient.mjs';
+import { createOllamaVerificationSavedConfigurationClient } from '/app/src/services/ollamaVerificationSavedConfigurationClient.mjs';
+import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerificationCapabilityProbe.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -18,11 +21,16 @@ const credentials = [['local','foreground'],['unraid','foreground'],['local','ba
 let hold = false, calls = 0, forbiddenHeader = false, release;
 const provider = createServer(async (req,res) => {
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
-  const body = JSON.parse(Buffer.concat(chunks).toString()); calls++; forbiddenHeader ||= Boolean(req.headers.authorization);
+  const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
+  forbiddenHeader ||= Boolean(req.headers.authorization);
+  if (req.url === '/api/tags') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ models: [{ name: model,digest: 'a'.repeat(64) }] })); return; }
+  if (req.url === '/api/version') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ version: 'synthetic' })); return; }
+  assert.equal(req.url,'/api/generate'); calls++;
   if (body.stream) { res.setHeader('Content-Type','application/x-ndjson'); res.write(`${JSON.stringify({ model,done: false,response: 'partial' })}\n`); }
   const finish = () => {
     if (!body.stream) res.setHeader('Content-Type','application/json');
-    res.end(`${JSON.stringify({ model,done: true,response: 'synthetic' })}${body.stream ? '\n' : ''}`);
+    const response = body.format ? '{"status":"ready","contract":"candidate-bound-verification"}' : 'synthetic';
+    res.end(`${JSON.stringify({ model,done: true,response })}${body.stream ? '\n' : ''}`);
   };
   if (hold) release = finish; else finish();
 });
@@ -70,25 +78,36 @@ try {
   const partials = [];
   assert.equal((await client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async value => { partials.push(value); } })).done,true);
   assert.equal(partials.length,1); assert.equal(partials[0].done,false); assert.equal((await status()).state,'ready');
-  hold = true; const active = call(2); await until(() => calls === 4);
+  const gateway = { url: base,upstream,models: [model],token: credentials[0].token };
+  const generation = createOllamaGatewayGenerationClient({ configuration: { baseUrl: upstream,model: 'synthetic' },gateway });
+  const verification = createOllamaVerificationSavedConfigurationClient({ configuration: {
+    ollama_host: upstream,ollama_model: 'synthetic' },gateway });
+  try {
+    assert.equal(await generation.generateWithProgress('Synthetic only','synthetic',0,null,null,{ requireDoneSignal: true,expectedModelDigest: 'a'.repeat(64) }),'partialsynthetic');
+    assert.equal(await verification.getVersion(),'synthetic');
+    const result = await probeOllamaVerificationCapability({ identity: { applicable: true,model: 'synthetic',configurationRevision: 1,fingerprint: 'fixture' },ollamaClient: verification });
+    assert.equal(result.statusId,'verification_ready'); assert.equal(result.modelDigest,'a'.repeat(64));
+  } finally { generation.close(); verification.close(); }
+  assert.equal((await status()).attempts,'5');
+  hold = true; const active = call(2); await until(() => calls === 6);
   const queued = call(1); await until(async () => (await status()).waiting === 1);
   assert.equal((await call(2)).status,429); hold = false; release();
   assert.equal((await active).status,200); assert.equal((await queued).status,200);
-  assert.equal((await status()).attempts,'5');
-  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'5');
+  assert.equal((await status()).attempts,'7');
+  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'7');
   hold = true; let interruptedPartial = false;
   const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
-  await until(() => calls === 6 && interruptedPartial);
+  await until(() => calls === 8 && interruptedPartial);
   const before = await status(); assert.match(before.requestId,/^[a-f0-9-]{14}7[a-f0-9-]{21}$/);
   await kill(child); assert.equal(await interrupted,'gateway_transport_failed'); await launch(); client.close();
-  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'6');
-  assert.equal((await call(1)).status,503); assert.equal(calls,6); assert.equal(forbiddenHeader,false);
+  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'8');
+  assert.equal((await call(1)).status,503); assert.equal(calls,8); assert.equal(forbiddenHeader,false);
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version
     FROM ollama_gateway.admission`)).rows[0];
   assert.deepEqual(ids,{ id_version: 7,owner_version: 7,request_version: 7 });
   assert.equal((await admin.query("SELECT count(*)::int AS n FROM task_queue WHERE task_type='classification'")).rows[0].n,0);
-  process.stdout.write('gateway_packaged_rehearsal_passed: authenticated client, streaming completion, two installations, priority, UUIDv7, least-privilege database role, graceful restart, abrupt streaming death, preserved uncertainty; 6 synthetic calls\n');
+  process.stdout.write('gateway_packaged_rehearsal_passed: primary generation, saved verification probe, authenticated client, streaming completion, two installations, priority, UUIDv7, least-privilege database role, graceful restart, abrupt streaming death, preserved uncertainty; 8 synthetic calls\n');
 } finally {
   release?.(); for (const child of children) await kill(child);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });

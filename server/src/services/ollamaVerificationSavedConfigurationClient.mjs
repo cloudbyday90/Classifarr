@@ -8,6 +8,7 @@ import {
   preflightConnection,
 } from './ollamaConnection.mjs';
 import { generate } from './ollamaGeneration.mjs';
+import { createOllamaGatewayGenerationClient } from './ollamaGatewayGenerationClient.mjs';
 
 /**
  * @typedef {{
@@ -102,9 +103,10 @@ function buildSavedConfiguration(configuration = {}) {
  * Binds transport only to the existing saved AI configuration. It deliberately
  * has no browser-controlled target parameters and exposes no endpoint fields.
  */
-/** @param {{ configuration?: SavedOllamaVerificationConfiguration }} options */
-export function createOllamaVerificationSavedConfigurationClient({ configuration } = {}) {
+/** @param {{ configuration?: SavedOllamaVerificationConfiguration, gateway?: object | null }} options */
+export function createOllamaVerificationSavedConfigurationClient({ configuration, gateway = null } = {}) {
   const savedConfiguration = buildSavedConfiguration(configuration);
+  if (gateway !== null) return createOllamaGatewayGenerationClient({ configuration: savedConfiguration, gateway });
   const preflightCache = new Map();
   const getConfig = async () => savedConfiguration;
 

@@ -15,6 +15,10 @@ import { createGatewayServer } from '../../ollamaGateway/server.mjs';
 import { createGatewayClient } from '../../ollamaGateway/client.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { createLocalStudyEmbeddingClient } from '../../services/localStudyEmbeddingClient.mjs';
+import { createOllamaGatewayGenerationClient } from '../../services/ollamaGatewayGenerationClient.mjs';
+import { createOllamaVerificationSavedConfigurationClient } from '../../services/ollamaVerificationSavedConfigurationClient.mjs';
+import { probeOllamaVerificationCapability } from '../../services/ollamaVerificationCapabilityProbe.mjs';
+import { OperationController } from '../../utils/operationController.mjs';
 
 const model = 'synthetic:latest', uuid7 = /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const credentials = [ ['local','foreground'],['unraid','foreground'],['local','background'] ].map(([installation,workClass]) =>
@@ -205,6 +209,130 @@ function gatewayClient(gate, index = 0) {
 function streamPart(res, extra = {}) {
   res.write(`${JSON.stringify({ model,response: '',done: false,...extra })}\n`);
 }
+
+function generationClient(gate, saved = false, overrides = {}) {
+  const gateway = { url: gate.url, upstream: config.upstream, models: [model], token: credentials[0].token, ...overrides };
+  const port = Number(new URL(config.upstream).port);
+  return saved ? createOllamaVerificationSavedConfigurationClient({
+    configuration: { ollama_host: '127.0.0.1', ollama_port: port, ollama_model: 'synthetic' }, gateway,
+  }) : createOllamaGatewayGenerationClient({ configuration: { host: '127.0.0.1', port, baseUrl: config.upstream, model: 'synthetic' }, gateway });
+}
+const digest = 'a'.repeat(64);
+function generationProvider(generateHandler) {
+  handler = (req,res,body) => {
+    if (req.url === '/api/tags') return res.end(JSON.stringify({ models: [{ name: model, digest }] }));
+    if (req.url === '/api/version') return res.end(JSON.stringify({ version: 'synthetic' }));
+    return generateHandler(req,res,body);
+  };
+}
+
+test('actual generation leaves and saved verification probe use the bound gateway with exact model and schema', async () => {
+  const gate = await start(), client = generationClient(gate), saved = generationClient(gate,true), bodies = [];
+  generationProvider((_req,res,body) => {
+    bodies.push(body);
+    if (body.stream) {
+      res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'part' });
+      streamPart(res,{ done: true,response: 'final' }); res.end();
+    } else res.end(JSON.stringify({ model,done: true,response: '{"status":"ready","contract":"candidate-bound-verification"}' }));
+  });
+  try {
+    const progress = [];
+    expect(await client.generateWithProgress('synthetic','synthetic',0.3,(count,done) => progress.push([count,done]),null,
+      { requireDoneSignal: true,expectedModelDigest: digest,think: 'low' })).toBe('partfinal');
+    expect(progress).toEqual([[1,false],[2,false],[2,true]]);
+    expect(await saved.getVersion()).toBe('synthetic');
+    const outcome = await probeOllamaVerificationCapability({ identity: { applicable: true,model: 'synthetic',configurationRevision: 1,fingerprint: 'fixture' },ollamaClient: saved });
+    expect(outcome.statusId).toBe('verification_ready'); expect(outcome.modelDigest).toBe(digest);
+    expect(bodies).toHaveLength(2); expect(bodies[0].think).toBe('low'); expect(bodies[1]).toMatchObject({ model,think: false,format: { type: 'object' },options: { temperature: 0 } });
+    expect((await gate.ledger.status()).attempts).toBe('2'); expect((await gate.ledger.status()).state).toBe('ready');
+    expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
+  } finally { client.close(); saved.close(); }
+});
+
+test('gateway preflight has no stale success, tag-prefix match, override or direct fallback', async () => {
+  const gate = await start(), client = generationClient(gate);
+  generationProvider(() => { throw new Error('unexpected_compute'); });
+  expect((await client.preflightConnection({ host: 'forbidden.invalid',port: 1,expectedModelDigest: digest })).success).toBe(true);
+  for (const models of [[{ name: 'synthetic:other',digest }],[{ name: model,digest: 'b'.repeat(64) }],
+    [{ name: model,digest },{ name: model,digest }]]) {
+    handler = (_req,res) => res.end(JSON.stringify({ models }));
+    await expect(client.generate('test','synthetic',0,{ expectedModelDigest: digest })).rejects.toThrow('Gateway model identity');
+  }
+  await expect(client.generate('test','other:latest')).rejects.toMatchObject({ code: 'gateway_model_mismatch' });
+  expect(calls.every(path => path === '/api/tags')).toBe(true); expect((await gate.ledger.status()).attempts).toBe('0');
+  client.close(); const before = calls.length;
+  await expect(client.preflightConnection()).rejects.toMatchObject({ code: 'gateway_client_closed' });
+  const invalid = generationClient(gate,false,{ token: randomBytes(32).toString('base64url') });
+  await expect(invalid.generate('test')).rejects.toMatchObject({ status: 401 }); invalid.close();
+  expect(calls).toHaveLength(before);
+});
+
+test.each([false,true])('caller cancellation with strict=%s preserves unknown ownership and never emits completion', async strict => {
+  const gate = await start(), client = generationClient(gate), abort = new AbortController(), progress = [];
+  generationProvider((_req,res) => { res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'partial' }); });
+  const pending = client.generateWithProgress('test',model,0,(count,done) => { progress.push(done); abort.abort(); },null,
+    { requireDoneSignal: strict,allowPartialOnAbort: true,signal: abort.signal });
+  if (strict) await expect(pending).rejects.toMatchObject({ name: 'AbortError' }); else expect(await pending).toBe('partial');
+  expect(progress).toEqual([false]); expect((await gate.ledger.status()).attempts).toBe('1');
+  expect((await gate.ledger.status()).state).toBe('uncertain_or_active'); client.close();
+});
+
+test.each([false,true])('stall with strict=%s cancels transport; no early partial can bypass strict completion', async strict => {
+  const gate = await start(), client = generationClient(gate); let disconnected = false;
+  generationProvider((_req,res) => {
+    res.on('close',() => { disconnected = true; });
+    res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'partial' });
+  });
+  const pending = client.generateWithProgress('test',model,0,null,null,
+    { requireDoneSignal: strict,allowPartialOnStall: true,heartbeatTimeout: 20,initialTimeout: 500,hardTimeout: 800 });
+  if (strict) await expect(pending).rejects.toMatchObject({ code: 'ESTALL' }); else expect(await pending).toBe('partial');
+  await until(() => disconnected); expect((await gate.ledger.status()).state).toBe('uncertain_or_active');
+  expect((await gate.ledger.status()).attempts).toBe('1'); client.close();
+});
+
+test.each(['broken','lost_write','close','hard_timeout'])('generation %s cannot masquerade as permitted partial success', async failure => {
+  const gate = await start(failure === 'lost_write' ? { complete: async () => { throw new Error('PRIVATE'); } } : {});
+  const client = generationClient(gate);
+  generationProvider((_req,res) => {
+    res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'partial' });
+    if (failure === 'broken') res.end();
+    if (failure === 'lost_write') { streamPart(res,{ done: true }); res.end(); }
+  });
+  const progress = [];
+  await expect(client.generateWithProgress('test',model,0,(_count,done) => {
+    progress.push(done); if (failure === 'close') client.close();
+  },null,{ hardTimeout: 200 })).rejects.toThrow();
+  expect(progress).not.toContain(true); expect((await gate.ledger.status()).state).toBe('uncertain_or_active');
+  expect((await gate.ledger.status()).attempts).toBe('1'); client.close();
+});
+
+test('preflight cancellation and strict external-controller refusal perform no compute', async () => {
+  const gate = await start(), client = generationClient(gate), abort = new AbortController(); abort.abort();
+  await expect(client.generate('test',model,0,{ signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  await expect(client.generateWithProgress('test',model,0,null,new OperationController(),{ requireDoneSignal: true }))
+    .rejects.toThrow('Gateway generation requires an external controller that rejects partial stalls');
+  expect(calls).toHaveLength(0); expect((await gate.ledger.status()).attempts).toBe('0'); client.close();
+});
+
+test('cancellation during preflight stops inspection without reserving compute', async () => {
+  const gate = await start(), client = generationClient(gate), abort = new AbortController(); let disconnected = false;
+  handler = (_req,res) => { res.on('close',() => { disconnected = true; }); };
+  const pending = expect(client.generateWithProgress('test',model,0,null,null,{ signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  await until(() => calls.length === 1); abort.abort(); await pending; await until(() => disconnected);
+  expect(calls).toEqual(['/api/tags']); expect((await gate.ledger.status()).attempts).toBe('0'); client.close();
+});
+
+test('queued primary generation cancellation leaves only the already-dispatched background attempt', async () => {
+  const gate = await start(), client = generationClient(gate), abort = new AbortController();
+  generationProvider((_req,res) => { releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'done' })); });
+  const active = call(gate,2); await until(() => calls.length === 1);
+  const pending = expect(client.generateWithProgress('test',model,0,null,null,{ signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 1);
+  abort.abort(); await pending;
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 0);
+  releaseHeld(); expect((await active).status).toBe(200); expect(calls.filter(path => path === '/api/generate')).toHaveLength(1);
+  expect((await gate.ledger.status()).attempts).toBe('1'); expect((await gate.ledger.status()).state).toBe('ready'); client.close();
+});
 test('streaming client sees partial progress, but final follows clean EOF and persisted completion', async () => {
   let releaseCompletion, receivedPartial = false;
   const realClient = await connect(), realLedger = await openGatewayLedger(realClient,config.providerHash);
