@@ -128,3 +128,10 @@ test('missing daemon is unavailable, never stopped', async () => {
   const { config } = boundaryFixtureData();
   expect(await observeDockerProviderBoundary(config)).toMatchObject({ observation: 'unavailable',recoveryAuthorized: false });
 });
+
+test.each(['socketPath','daemonIdHash','containerId','imageId','startedAt'])('refuses trailing line breaks in %s', key => {
+  const { config } = boundaryFixtureData();
+  for (const ending of ['\n','\r','\r\n']) {
+    expect(() => dockerBoundaryConfiguration({ ...config,[key]: config[key] + ending })).toThrow('gateway_boundary_config_invalid');
+  }
+});

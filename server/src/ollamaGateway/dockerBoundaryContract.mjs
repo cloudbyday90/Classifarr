@@ -15,6 +15,7 @@ export function dockerBoundaryConfiguration(input) {
   const fields = ['socketPath','daemonIdHash','containerId','imageId','startedAt'];
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
       Object.keys(input).length !== fields.length || fields.some(key => !Object.hasOwn(input,key)) ||
+      fields.some(key => typeof input[key] !== 'string' || input[key].includes('\n') || input[key].includes('\r')) ||
       typeof input.daemonIdHash !== 'string' || !hex.test(input.daemonIdHash) ||
       typeof input.containerId !== 'string' || !hex.test(input.containerId) ||
       typeof input.imageId !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(input.imageId) ||
