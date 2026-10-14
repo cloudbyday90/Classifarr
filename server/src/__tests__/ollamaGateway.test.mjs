@@ -34,7 +34,7 @@ test('compute versus read-only routes are explicit', () => {
   expect(gatewayRoute('POST','/api/show').compute).toBe(false);
   expect(gatewayRoute('GET','/gateway/status').compute).toBe(false);
 });
-test.each([{ stream: true },{ model: 'other:latest' },{ prompt: '' },{ images: [] },{ options: { num_ctx: 9999999 } },
+test.each([{ stream: 'true' },{ model: 'other:latest' },{ prompt: '' },{ images: [] },{ options: { num_ctx: 9999999 } },
   { options: { num_predict: -1 } },{ options: { num_gpu: 999 } },{ options: [] },{ keep_alive: -1 },
   { think: 'anything' },{ format: [] }])('rejects unsafe or unsupported generation %#', extra => {
   expect(() => validateGatewayBody('/api/generate',{ model: 'synthetic:latest',prompt: 'test',stream: false,...extra },gatewayConfig(raw())))

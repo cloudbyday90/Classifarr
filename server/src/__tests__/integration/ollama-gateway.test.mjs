@@ -12,6 +12,9 @@ import { getPool } from './setup.mjs';
 import { gatewayConfig } from '../../ollamaGateway/contract.mjs';
 import { openGatewayLedger } from '../../ollamaGateway/ledger.mjs';
 import { createGatewayServer } from '../../ollamaGateway/server.mjs';
+import { createGatewayClient } from '../../ollamaGateway/client.mjs';
+import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
+import { createLocalStudyEmbeddingClient } from '../../services/localStudyEmbeddingClient.mjs';
 
 const model = 'synthetic:latest', uuid7 = /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const credentials = [ ['local','foreground'],['unraid','foreground'],['local','background'] ].map(([installation,workClass]) =>
@@ -67,7 +70,7 @@ test('authentication and strict paths/bodies reject work before upstream or rese
   expect((await call(gate,0,{ headers: { Authorization: 'Bearer invalid' } })).status).toBe(401);
   expect((await call(gate,0,{ path: '/api/generate?target=elsewhere' })).status).toBe(404);
   expect((await call(gate,0,{ path: '/api/pull' })).status).toBe(404);
-  expect((await call(gate,0,{ body: { model,prompt: 'x',stream: true } })).status).toBe(400);
+  expect((await call(gate,0,{ body: { model,prompt: 'x',stream: 'true' } })).status).toBe(400);
   expect((await call(gate,0,{ body: { model,prompt: 'x'.repeat(270000),stream: false } })).status).toBe(413);
   expect((await gate.ledger.status()).attempts).toBe('0'); expect(calls).toHaveLength(0);
 });
@@ -194,4 +197,115 @@ test('standalone CLI survives abrupt process death without clearing an admitted 
     expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1);
     expect((await getPool().query('SELECT active_request,attempts FROM ollama_gateway.admission')).rows[0]).toEqual(before);
   } finally { for (const child of children) await kill(child); await rm(directory,{ recursive: true,force: true }); }
+});
+
+function gatewayClient(gate, index = 0) {
+  return createGatewayClient({ url: gate.url,upstream: config.upstream,models: [model],token: credentials[index].token },{ expectedUpstream: config.upstream });
+}
+function streamPart(res, extra = {}) {
+  res.write(`${JSON.stringify({ model,response: '',done: false,...extra })}\n`);
+}
+test('streaming client sees partial progress, but final follows clean EOF and persisted completion', async () => {
+  let releaseCompletion, receivedPartial = false;
+  const realClient = await connect(), realLedger = await openGatewayLedger(realClient,config.providerHash);
+  // Use the real owned ledger while deliberately holding only its completion call.
+  const gateway = createGatewayServer({ config,ledger: { ...realLedger,complete: async (...args) => {
+    await new Promise(resolve => { releaseCompletion = resolve; }); await realLedger.complete(...args);
+  } } }); gateways.push(gateway);
+  await new Promise(resolve => { gateway.server.listen(0,'127.0.0.1',resolve); });
+  const gate = { url: `http://127.0.0.1:${gateway.server.address().port}` }, client = gatewayClient(gate);
+  handler = (_req,res) => {
+    res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'partial' });
+    streamPart(res,{ done: true,eval_count: 1 }); releaseHeld = () => res.end();
+  };
+  let completed = false;
+  const result = client.request('/api/generate',{ model,prompt: 'test',stream: true },{ onRecord: async () => { receivedPartial = true; } })
+    .then(data => { completed = true; return data; });
+  await until(() => receivedPartial); expect(completed).toBe(false);
+  expect((await realLedger.status()).state).toBe('uncertain_or_active');
+  releaseHeld(); await until(() => Boolean(releaseCompletion)); expect(completed).toBe(false);
+  releaseCompletion(); expect(await result).toMatchObject({ done: true,eval_count: 1 });
+  expect((await realLedger.status()).state).toBe('ready'); expect(calls).toHaveLength(1); client.close();
+});
+test.each(['missing_final','after_final','malformed','oversized','truncated','timeout','lost_write'])('stream %s never forwards successful completion or retries', async failure => {
+  const gate = await start(failure === 'lost_write' ? { complete: async () => { throw new Error('PRIVATE'); } } : {}), client = gatewayClient(gate);
+  handler = (_req,res) => {
+    res.setHeader('Content-Type','application/x-ndjson');
+    if (failure === 'truncated') res.setHeader('Content-Length','999999');
+    streamPart(res,{ response: 'partial' });
+    if (failure === 'timeout') return;
+    if (failure === 'malformed') res.write('PRIVATE invalid JSON\n');
+    else if (failure === 'oversized') streamPart(res,{ response: 'x'.repeat(65537) });
+    else if (failure !== 'missing_final') streamPart(res,{ done: true });
+    if (failure === 'after_final') streamPart(res);
+    res.end();
+  };
+  const seen = [];
+  await expect(client.request('/api/generate',{ model,prompt: 'test',stream: true },{ onRecord: async value => { seen.push(value); } })).rejects.toThrow('gateway_transport_failed');
+  expect(seen.some(value => value.done)).toBe(false); expect((await gate.ledger.status()).state).toBe('uncertain_or_active');
+  expect((await call(gate)).status).toBe(503); expect(calls).toHaveLength(1); client.close();
+});
+test('client close cancels streaming and restart preserves the unknown request', async () => {
+  const gate = await start(), client = gatewayClient(gate); let partial = false;
+  handler = (_req,res) => { res.setHeader('Content-Type','application/x-ndjson'); streamPart(res,{ response: 'partial' }); };
+  const pending = client.request('/api/generate',{ model,prompt: 'test',stream: true },{ onRecord: async () => { partial = true; } });
+  const checked = expect(pending).rejects.toMatchObject({ name: 'AbortError',message: 'gateway_cancelled' });
+  await until(() => partial); client.close(); await checked;
+  const before = await gate.ledger.status();
+  await gate.gateway.stop(); gate.client.release(true); clients.splice(clients.indexOf(gate.client),1);
+  const replacement = await start(); expect(await replacement.ledger.status()).toMatchObject(before);
+  expect((await call(replacement)).status).toBe(503); expect(calls).toHaveLength(1);
+});
+test('client provider binding and credential checks fail before dispatch; rejection does not leak secrets', async () => {
+  const gate = await start();
+  for (const overrides of [{ upstream: 'http://127.0.0.1:9' },{ token: randomBytes(32).toString('base64url') }]) {
+    const raw = { url: gate.url,upstream: config.upstream,models: [model],token: credentials[0].token,...overrides };
+    const client = createGatewayClient(raw,{ expectedUpstream: raw.upstream });
+    await expect(client.request('/api/tags')).rejects.toMatchObject({ message: 'gateway_request_rejected',status: overrides.upstream ? 409 : 401 });
+    client.close();
+  }
+  expect(calls).toHaveLength(0); expect((await gate.ledger.status()).attempts).toBe('0');
+});
+test('real description and embedding study adapters preserve model checks and route only through authenticated gateway', async () => {
+  const gate = await start(), digest = 'a'.repeat(64), upstream = new URL(config.upstream);
+  const settings = { primary_provider: 'ollama',ollama_host: upstream.hostname,ollama_port: Number(upstream.port),ollama_model: model,
+    rag_enabled: true,embedding_provider_mode: 'same',embedding_model: model };
+  const gateway = { url: gate.url,upstream: config.upstream,models: [model],token: credentials[2].token };
+  const directForbidden = async () => { throw new Error('direct_fallback_forbidden'); };
+  handler = (req,res) => res.end(JSON.stringify(req.url === '/api/tags' ? { models: [{ name: model,digest }] }
+    : req.url === '/api/show' ? { capabilities: ['embedding','completion'],model_info: { 'general.architecture': 'fixture','fixture.context_length': 8192,'fixture.embedding_length': 2 } }
+      : req.url === '/api/embed' ? { model,embeddings: [[0,1]] }
+        : { model,done: true,response: '{"candidate":1}',done_reason: 'stop',prompt_eval_count: 2,eval_count: 3 }));
+  const descriptions = createLocalDescriptionBenchmarkClient(settings,{ gateway,fetchRequest: directForbidden });
+  const embeddings = createLocalStudyEmbeddingClient(settings,{ gateway,fetchRequest: directForbidden });
+  const identity = await descriptions.inspect(); expect(identity.digest).toBe(digest);
+  let reserved = 0;
+  expect(await descriptions.generate({ prompt: 'synthetic',count: 2,context: 8192,identity,onGenerationCall: () => { reserved++; } }))
+    .toMatchObject({ response: '{"candidate":1}',promptTokens: 2,outputTokens: 3 });
+  expect(reserved).toBe(1); expect((await embeddings.inspect()).digest).toBe(digest);
+  expect(await embeddings.embedBatch(['synthetic'],{ dimensions: 2 })).toEqual([[0,1]]);
+  expect((await gate.ledger.status()).attempts).toBe('2'); expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
+  descriptions.close(); embeddings.close();
+});
+
+test('client deadlines cancel before admission and during a streaming response without retries', async () => {
+  const gate = await start(), client = gatewayClient(gate), cancelled = new AbortController(); cancelled.abort();
+  await expect(client.request('/api/generate',{ model,prompt: 'test',stream: false },{ signal: cancelled.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  expect(calls).toHaveLength(0);
+  handler = (_req,res) => { res.setHeader('Content-Type','application/x-ndjson'); streamPart(res); };
+  await expect(client.request('/api/generate',{ model,prompt: 'test',stream: true },{ timeoutMs: 100,onRecord: async () => {} })).rejects.toMatchObject({ name: 'AbortError' });
+  expect(calls).toHaveLength(1); expect((await gate.ledger.status()).state).toBe('uncertain_or_active'); client.close();
+});
+test('authenticated client rejects redirect destinations without forwarding credentials or falling back', async () => {
+  let redirected = 0;
+  const gate = await start(), redirect = createServer((_req,res) => { redirected++; res.end('PRIVATE'); });
+  await new Promise(resolve => { redirect.listen(0,'127.0.0.1',resolve); });
+  const destination = `http://127.0.0.1:${redirect.address().port}`;
+  const fakeGateway = createServer((_req,res) => { res.writeHead(307,{ Location: destination }); res.end('PRIVATE'); });
+  await new Promise(resolve => { fakeGateway.listen(0,'127.0.0.1',resolve); });
+  const client = createGatewayClient({ url: `http://127.0.0.1:${fakeGateway.address().port}`,upstream: config.upstream,models: [model],token: credentials[0].token },{ expectedUpstream: config.upstream });
+  try {
+    await expect(client.request('/api/tags')).rejects.toMatchObject({ message: 'gateway_request_rejected',status: 307 });
+    expect(redirected).toBe(0); expect(calls).toHaveLength(0); expect((await gate.ledger.status()).attempts).toBe('0');
+  } finally { client.close(); await Promise.all([redirect,fakeGateway].map(server => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }))); }
 });

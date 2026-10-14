@@ -3,6 +3,8 @@
 Status: standalone prototype implemented, 2026-10-14; not enabled on either
 installation. Broader client integration remains proposed. This follows
 [installation-local evaluation controls](evaluation-workload-controls-design.md).
+The subsequent [streaming/client slice](ollama-gateway-streaming-design.md)
+extends the first implementation below without enabling production routing.
 
 ## Approved first implementation slice
 

@@ -2,8 +2,10 @@
 
 Status: Unreleased, 2026-10-14. **Not enabled by the Classifarr application.**
 This first slice supports isolated testing, not production cutover. Existing
-Classifarr clients still connect directly and do not yet supply gateway credentials.
-Do not change their saved Ollama host to this restricted gateway.
+Classifarr clients still connect directly by default. The bounded study adapters
+now accept an explicitly injected gateway dependency for local testing; no saved
+setting activates it. Do not change the application's saved Ollama host to this
+restricted gateway.
 
 ## What it does
 
@@ -82,14 +84,18 @@ Every route requires `Authorization: Bearer <token>`. Status is
 timestamps and waiting count. It does not imply GPU-wide idleness.
 
 Supported upstream routes: GET `/api/tags`, `/api/ps`, `/api/version`; POST
-`/api/show`, `/api/generate` with `stream: false`, and `/api/embed` with at most
-eight input strings. Query strings, streaming, chat, images, arbitrary decoding
+`/api/show`, `/api/generate` with an explicit boolean `stream`, and `/api/embed` with
+at most eight input strings. Query strings, chat, images, arbitrary decoding
 options and model administration are rejected. Generation options are limited to
 temperature (0–2), seed (0–2,147,483,647), context (1–65,536), and output tokens
 (1–4,096). These gateway ceilings are not permission to raise caller limits.
 
 Requests are capped at 256 KiB; generation/inspection replies at 1 MiB, embedding
-replies at 4 MiB. At most 32 handlers and 64 connections are accepted, with a
+replies at 4 MiB. Streaming uses validated NDJSON, at most 64 KiB per record and
+8,192 records within the same 1 MiB total. Partial records are forwarded with
+backpressure; the final `done` record follows clean upstream EOF and the durable
+completion write. An interrupted stream closes without a fabricated final record.
+At most 32 handlers and 64 connections are accepted, with a
 global 120 requests/minute intake limit including authentication failures. One
 installation can have one waiting foreground request; at most eight wait globally.
 Default queue wait is five seconds (maximum thirty); default total request time
@@ -110,6 +116,36 @@ uncertain request requires a separately designed, verified recovery procedure;
 never delete the ledger or restart shared Ollama as an automatic workaround.
 This availability limitation is why this prototype is not ready for live cutover.
 
+## Explicit client integration for local fixtures
+
+`server/src/ollamaGateway/client.mjs` exports `createGatewayClient`, accepting
+`{ url, upstream, models, token }` and `{ expectedUpstream }`. The gateway URL must
+be an HTTP `127.0.0.1` origin. The expected provider must match the declared
+upstream; its hash is checked by the gateway before dispatch. There is no redirect,
+ambient proxy, caller-supplied header passthrough or direct-provider fallback.
+Credentials remain in the client's closure, not returned diagnostics.
+
+Use `request(path, body, { signal, timeoutMs, maxResponseBytes, onRecord })`.
+For streaming generation supply `stream: true` and an async `onRecord` callback;
+the request promise returns the final record only after clean completion. A
+callback cannot turn partial text into a verified result. The same total deadline
+bounds backpressure and callbacks. `close()` cancels outstanding requests and
+rejects future requests. At most 32 client requests may be in flight.
+
+`createLocalDescriptionBenchmarkClient` and `createLocalStudyEmbeddingClient`
+accept the same private gateway configuration via their second argument's
+`gateway` property. This dependency is never taken from the normal AI settings
+response. They retain the saved provider identity, model/digest checks, attempt
+hook and their 180/60-second deadlines. Embedding replies retain the 4 MiB limit;
+gateway inspection replies use its stricter 1 MiB limit. Their `close()` methods
+close their owned gateway clients. Omitting the dependency preserves direct mode.
+
+The main classifier, warming, model administration and verification transports
+have not been rerouted. Cross-host TLS and installation-wide credential lifecycle
+are not provided by this local-only client. These remain prerequisites to live
+coordination. See the [streaming design](../architecture/ollama-gateway-streaming-design.md)
+and [outcome](../architecture/ollama-gateway-streaming-outcome.md).
+
 ## Local image rehearsal
 
 After a clean-source no-cache Classifarr image build, run:
@@ -127,7 +163,8 @@ attempts, graceful restart and abrupt process death. Only its randomly named
 container/data directory are removed, with cleanup verified. It never calls real
 Ollama and is not proof of a published-release upgrade or real model quality.
 
-Next: complete client integration and streaming coverage, then design authenticated
+Next: integrate the main classification/verification transports without changing
+their existing cancellation or partial-result policy, then design authenticated
 cross-host deployment and evidence-based uncertainty recovery before any cutover.
 See [design](../architecture/shared-ollama-admission-design.md) and
 [outcome](../architecture/shared-ollama-admission-outcome.md).

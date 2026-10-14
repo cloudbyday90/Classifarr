@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { authenticateGateway, gatewayError, gatewayRoute, validateGatewayBody } from './contract.mjs';
 import { createGatewayAdmission } from './admission.mjs';
 import { gatewayUpstream } from './transport.mjs';
+import { writeGatewayRecord } from './stream.mjs';
 
 function readBody(req, signal) {
   return new Promise((resolve,reject) => {
@@ -37,6 +38,7 @@ export function createGatewayServer({ config, ledger }) {
     const timer = setTimeout(() => controller.abort(),config.timeoutMs); timer.unref();
     const signal = AbortSignal.any([controller.signal,shutdown.signal]);
     req.on('error', () => controller.abort());
+    res.on('error', () => controller.abort());
     res.on('close', () => controller.abort());
     res.setHeader('Cache-Control','no-store'); res.setHeader('Content-Type','application/json');
     res.setHeader('X-Content-Type-Options','nosniff'); res.setHeader('Connection','close');
@@ -52,6 +54,9 @@ export function createGatewayServer({ config, ledger }) {
         const authCount = req.rawHeaders.filter((_,index) => index % 2 === 0 && req.rawHeaders[index].toLowerCase() === 'authorization').length;
         const principal = authCount === 1 ? authenticateGateway(config,req.headers.authorization) : null;
         if (!principal) throw gatewayError('gateway_unauthorized',401);
+        if (req.headers['x-classifarr-provider'] !== undefined && req.headers['x-classifarr-provider'] !== config.providerHash) {
+          throw gatewayError('gateway_provider_mismatch',409);
+        }
         const route = gatewayRoute(req.method,req.url);
         if (req.headers['content-encoding'] || req.headers['content-length'] && Number(req.headers['content-length']) > 256 * 1024) {
           throw gatewayError('gateway_body_limit',413);
@@ -72,17 +77,24 @@ export function createGatewayServer({ config, ledger }) {
           requestId = await ledger.claim(principal.installation);
         } else await ledger.status();
         signal.throwIfAborted();
-        const result = await gatewayUpstream(config,req.url,body,signal);
+        const result = await gatewayUpstream(config,req.url,body,signal,async data => {
+          if (!res.headersSent) res.setHeader('Content-Type','application/x-ndjson');
+          await writeGatewayRecord(res,data,signal);
+        });
         // Unknown outcome intentionally leaves the durable marker set, including shutdown.
         signal.throwIfAborted();
         if (requestId) await ledger.complete(requestId,[429,503].includes(result.status));
-        if (result.rejected) {
+        if (result.streamed) {
+          if (!res.headersSent) res.setHeader('Content-Type','application/x-ndjson');
+          await writeGatewayRecord(res,result.data,signal); res.end();
+        } else if (result.rejected) {
           if ([429,503].includes(result.status)) res.setHeader('Retry-After','5');
           send(result.status,{ error: 'gateway_upstream_rejected' });
         } else send(200,result.data);
       } catch (error) {
         const known = typeof error?.code === 'string' && /^gateway_[a-z_]+$/.test(error.code);
-        send(known ? error.status : 503,{ error: known ? error.code : 'gateway_unavailable' });
+        if (res.headersSent) res.destroy();
+        else send(known ? error.status : 503,{ error: known ? error.code : 'gateway_unavailable' });
       } finally { release?.(); handling--; clearTimeout(timer); }
     })();
   });

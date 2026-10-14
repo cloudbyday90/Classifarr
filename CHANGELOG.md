@@ -17,6 +17,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Gateway streaming and study clients** — Added bounded, authenticated streaming
+  with durable completion before the final response, plus explicit gateway support
+  for local study clients. Existing installations keep direct routing; uncertain
+  requests remain blocked and memory safeguards are unchanged.
+
 - **Optional Ollama gateway prototype** — Added a separately started, authenticated
   gateway for local-only testing of shared-provider admission, foreground priority
   and restart-safe uncertainty handling. Its dedicated ledger uses time-based

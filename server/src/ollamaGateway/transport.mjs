@@ -1,14 +1,25 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { request } from 'node:http';
 import { gatewayError } from './contract.mjs';
+import { readGatewayStream } from './stream.mjs';
 
 /** No redirects, ambient proxy, forwarded headers, retries or arbitrary destination. */
-export function gatewayUpstream(config, path, body, signal) {
+export function gatewayUpstream(config, path, body, signal, onRecord = async (_data) => {}) {
   return new Promise((resolve,reject) => {
     const bytes = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
     const req = request(`${config.upstream}${path}`, { method: bytes ? 'POST' : 'GET', signal, agent: false,
       maxHeaderSize: 8192, headers: bytes ? { 'Content-Type': 'application/json', 'Content-Length': bytes.length,
         'Accept-Encoding': 'identity' } : { 'Accept-Encoding': 'identity' } }, res => {
+      if (path === '/api/generate' && body?.stream === true && res.statusCode === 200) {
+        if (res.headers['content-type']?.split(';')[0].trim() !== 'application/x-ndjson' ||
+            res.headers['content-encoding'] && res.headers['content-encoding'] !== 'identity') {
+          req.destroy(); reject(gatewayError('gateway_response_invalid')); return;
+        }
+        void readGatewayStream(res,body.model,onRecord,signal).then(data => {
+          resolve({ status: 200,data,streamed: true });
+        }, () => { req.destroy(); reject(gatewayError('gateway_upstream_unknown')); });
+        return;
+      }
       const chunks = []; let length = 0;
       const maxBytes = path === '/api/embed' ? 4 * 1024 * 1024 : 1024 * 1024;
       res.on('data', chunk => {

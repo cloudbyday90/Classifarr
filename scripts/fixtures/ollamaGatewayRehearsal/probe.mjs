@@ -7,6 +7,7 @@ import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 // This fixture is copied to /tmp, never over packaged source/dependencies.
 import pg from '/app/node_modules/pg/lib/index.js';
+import { createGatewayClient } from '/app/src/ollamaGateway/client.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -16,8 +17,13 @@ const credentials = [['local','foreground'],['unraid','foreground'],['local','ba
   ({ installation,workClass,token: randomBytes(32).toString('base64url') }));
 let hold = false, calls = 0, forbiddenHeader = false, release;
 const provider = createServer(async (req,res) => {
-  req.resume(); calls++; forbiddenHeader ||= Boolean(req.headers.authorization);
-  const finish = () => { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ model,done: true,response: 'synthetic' })); };
+  const chunks = []; for await (const chunk of req) chunks.push(chunk);
+  const body = JSON.parse(Buffer.concat(chunks).toString()); calls++; forbiddenHeader ||= Boolean(req.headers.authorization);
+  if (body.stream) { res.setHeader('Content-Type','application/x-ndjson'); res.write(`${JSON.stringify({ model,done: false,response: 'partial' })}\n`); }
+  const finish = () => {
+    if (!body.stream) res.setHeader('Content-Type','application/json');
+    res.end(`${JSON.stringify({ model,done: true,response: 'synthetic' })}${body.stream ? '\n' : ''}`);
+  };
   if (hold) release = finish; else finish();
 });
 const until = async predicate => { const deadline = Date.now()+10000; while (!await predicate()) {
@@ -52,30 +58,37 @@ try {
   await database.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');
   await database.query('GRANT SELECT, UPDATE ON ollama_gateway.admission TO gateway_fixture_runtime');
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
-  await writeFile(configFile,JSON.stringify({ gateway: { upstream: `http://127.0.0.1:${provider.address().port}`,
+  const upstream = `http://127.0.0.1:${provider.address().port}`;
+  const client = createGatewayClient({ url: base,upstream,models: [model],token: credentials[0].token },{ expectedUpstream: upstream });
+  await writeFile(configFile,JSON.stringify({ gateway: { upstream,
     port: 11435,models: [model],credentials,timeoutMs: 10000,queueMs: 3000 },
   database: { host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' } }),{ mode: 0o600 });
   let child = await launch(); assert.equal((await status()).attempts,'0'); assert.equal(calls,0);
   assert.equal((await fetch(`${base}/gateway/status`)).status,401);
   assert.equal((await call(0)).status,200); assert.equal((await call(1)).status,200);
   assert.equal((await status()).attempts,'2');
-  hold = true; const active = call(2); await until(() => calls === 3);
+  const partials = [];
+  assert.equal((await client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async value => { partials.push(value); } })).done,true);
+  assert.equal(partials.length,1); assert.equal(partials[0].done,false); assert.equal((await status()).state,'ready');
+  hold = true; const active = call(2); await until(() => calls === 4);
   const queued = call(1); await until(async () => (await status()).waiting === 1);
   assert.equal((await call(2)).status,429); hold = false; release();
   assert.equal((await active).status,200); assert.equal((await queued).status,200);
-  assert.equal((await status()).attempts,'4');
-  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'4');
-  hold = true; const interrupted = call(0).catch(() => null); await until(() => calls === 5);
+  assert.equal((await status()).attempts,'5');
+  await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'5');
+  hold = true; let interruptedPartial = false;
+  const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
+  await until(() => calls === 6 && interruptedPartial);
   const before = await status(); assert.match(before.requestId,/^[a-f0-9-]{14}7[a-f0-9-]{21}$/);
-  await kill(child); await interrupted; await launch();
-  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'5');
-  assert.equal((await call(1)).status,503); assert.equal(calls,5); assert.equal(forbiddenHeader,false);
+  await kill(child); assert.equal(await interrupted,'gateway_transport_failed'); await launch(); client.close();
+  assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'6');
+  assert.equal((await call(1)).status,503); assert.equal(calls,6); assert.equal(forbiddenHeader,false);
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version
     FROM ollama_gateway.admission`)).rows[0];
   assert.deepEqual(ids,{ id_version: 7,owner_version: 7,request_version: 7 });
   assert.equal((await admin.query("SELECT count(*)::int AS n FROM task_queue WHERE task_type='classification'")).rows[0].n,0);
-  process.stdout.write('gateway_packaged_rehearsal_passed: authentication, two installations, priority, UUIDv7, least-privilege database role, graceful restart, abrupt death, preserved uncertainty; 5 synthetic calls\n');
+  process.stdout.write('gateway_packaged_rehearsal_passed: authenticated client, streaming completion, two installations, priority, UUIDv7, least-privilege database role, graceful restart, abrupt streaming death, preserved uncertainty; 6 synthetic calls\n');
 } finally {
   release?.(); for (const child of children) await kill(child);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });

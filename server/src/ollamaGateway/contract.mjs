@@ -7,18 +7,23 @@ const hash = value => createHash('sha256').update(value).digest();
 const record = value => value && typeof value === 'object' && !Array.isArray(value);
 const modelPattern = /^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,199}$/;
 
-export function gatewayConfig(raw) {
-  if (!record(raw) || Object.keys(raw).some(key => !['upstream','port','models','credentials','timeoutMs','queueMs'].includes(key))) {
-    throw gatewayError('gateway_config_invalid');
-  }
+export function gatewayProviderIdentity(value) {
   let upstream;
-  try { upstream = new URL(raw.upstream); } catch { throw gatewayError('gateway_config_invalid'); }
+  try { upstream = new URL(value); } catch { throw gatewayError('gateway_config_invalid'); }
   const octets = upstream.hostname.split('.').map(Number);
   const privateIp = isIP(upstream.hostname) === 4 && (octets[0] === 127 || octets[0] === 10 ||
     (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31));
   if (!privateIp || upstream.protocol !== 'http:' || upstream.username || upstream.password ||
-      upstream.pathname !== '/' || upstream.search || upstream.hash ||
-      !Array.isArray(raw.models) || raw.models.length < 1 || raw.models.length > 16 ||
+      upstream.pathname !== '/' || upstream.search || upstream.hash) throw gatewayError('gateway_config_invalid');
+  return { upstream: upstream.origin,providerHash: hash(upstream.origin).toString('hex') };
+}
+
+export function gatewayConfig(raw) {
+  if (!record(raw) || Object.keys(raw).some(key => !['upstream','port','models','credentials','timeoutMs','queueMs'].includes(key))) {
+    throw gatewayError('gateway_config_invalid');
+  }
+  const identity = gatewayProviderIdentity(raw.upstream);
+  if (!Array.isArray(raw.models) || raw.models.length < 1 || raw.models.length > 16 ||
       raw.models.some(model => typeof model !== 'string' || !modelPattern.test(model) || !model.includes(':') || /cloud/i.test(model)) ||
       new Set(raw.models).size !== raw.models.length) throw gatewayError('gateway_config_invalid');
   const credentials = raw.credentials;
@@ -31,7 +36,7 @@ export function gatewayConfig(raw) {
   const port = raw.port ?? 11435, timeoutMs = raw.timeoutMs ?? 180000, queueMs = raw.queueMs ?? 5000;
   if (!Number.isInteger(port) || port < 1 || port > 65535 || !Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 300000 ||
       !Number.isInteger(queueMs) || queueMs < 1 || queueMs > 30000 || queueMs >= timeoutMs) throw gatewayError('gateway_config_invalid');
-  return Object.freeze({ upstream: upstream.origin, providerHash: hash(upstream.origin).toString('hex'), port, timeoutMs, queueMs,
+  return Object.freeze({ ...identity, port, timeoutMs, queueMs,
     models: Object.freeze([...raw.models]), credentials: Object.freeze(credentials.map(entry => Object.freeze({
       installation: entry.installation, workClass: entry.workClass, digest: hash(entry.token),
     }))) });
@@ -56,7 +61,7 @@ export function validateGatewayBody(path, body, config) {
   const allowed = path === '/api/generate' ? ['model','prompt','stream','format','options','think','keep_alive']
     : path === '/api/embed' ? ['model','input','truncate','keep_alive'] : ['model','verbose'];
   if (Object.keys(body).some(key => !allowed.includes(key))) throw gatewayError('gateway_body_invalid', 400);
-  if (path === '/api/generate' && (body.stream !== false || typeof body.prompt !== 'string' || !body.prompt.length)) {
+  if (path === '/api/generate' && (typeof body.stream !== 'boolean' || typeof body.prompt !== 'string' || !body.prompt.length)) {
     throw gatewayError('gateway_body_invalid', 400);
   }
   if (body.keep_alive !== undefined && ![0,'0','5m',300].includes(body.keep_alive)) throw gatewayError('gateway_body_invalid', 400);
