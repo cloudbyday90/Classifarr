@@ -71,6 +71,7 @@ test('documents every example setting without forwarding deployment or privilege
     CLASSIFARR_MEDIA_PATH: 'Compose host mount', CLASSIFARR_APPDATA_PATH: 'Compose host mount',
     CLASSIFARR_MEDIA_READ_ONLY: 'Compose mount permission', CLASSIFARR_RUNTIME_MODE: 'supervisor mode',
     CLASSIFARR_SCHEMA_MAINTENANCE: 'supervisor schema authority', DATABASE_URL: 'database identity',
+    CLASSIFARR_GATEWAY_CONFIG_FILE: 'standalone gateway secret file; never application authority',
     POSTGRES_HOST: 'database identity', POSTGRES_PORT: 'database identity', POSTGRES_DB: 'database identity',
     POSTGRES_USER: 'database identity', POSTGRES_PASSWORD: 'database identity',
     PGVECTOR_RUNTIME_STAGING: 'image startup policy', CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: 'supervisor deadline',

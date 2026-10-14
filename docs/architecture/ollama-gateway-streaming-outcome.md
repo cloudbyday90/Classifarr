@@ -31,13 +31,53 @@ and production dependency reachability, static imports, copyright, Markdown,
 migration naming and snapshot integrity checks passed. The inventory ownership
 gate passed without changing its review manifest or waiving existing debt.
 
-The full backend unit run and packaged-image checks will be recorded after
-completion. A legacy live-schema helper ignored `--help` and regenerated the
+The full backend unit run (1,838 suites) reported 58,244 passing tests, one skipped
+test and one failure. It exposed an omitted standalone variable in the existing
+environment-coverage test. Its explicit deferred list now includes
+`CLASSIFARR_GATEWAY_CONFIG_FILE` and verifies that application configuration
+continues to reject it. No application environment allowlist was expanded.
+The corrected configuration suite and both gateway unit suites passed together
+on rerun: three suites, 131 tests. The entire six-minute unit run was not repeated
+after this test-only correction. No frontend tests or coverage ratchet were run;
+no frontend code changed, and the no-cache image build compiled the frontend.
+
+A legacy live-schema helper ignored `--help` and regenerated the
 tracked schema snapshot; that generated file was restored byte-for-byte to its
 unchanged Git version. No database schema change or snapshot update is included.
 
 GitHub MCP enumeration returned no open Classifarr pull requests, so no PR was
 selected, implemented or merged. All provider activity in these tests is synthetic.
+
+## Image and local runtime
+
+The no-cache image build passed from clean implementation source
+`bb08874ec2c18c4a34db6a977cc4290712349a73`. Its immutable ID is
+`sha256:15d6c2c61c9f9aeb67d5b666f6ac921e11bc58c9af89e6801a847ee192749b4f`.
+The later outcome and test-only corrections are excluded by `.dockerignore` and
+do not change packaged application code; the image source label remains the
+implementation revision above, not the later commit.
+
+The network-isolated packaged CLI/client rehearsal passed with six synthetic
+compute calls. It verified streaming completion, authentication, two installations,
+foreground precedence, UUIDv7, a least-privilege database role, graceful restart
+and abrupt death during an observed partial stream. Restart retained the same
+request and six attempts, and another request caused no seventh dispatch. Cleanup
+of its exact owned container and data directory was verified. This is same-image
+restart evidence, not published-release upgrade or shared-GPU evidence.
+
+Before local replacement, `data/backups/gateway-stream-before-20261014.dump` was
+created and its 1,933-line archive index read successfully. SHA-256:
+`F83A29748221AC30035B696AE22B1D7C8339FF81FC7762CE545BAA29BFF9F0E8`.
+It remains local and was not restore-tested. The previous image is preserved under
+a rollback tag: `sha256:d196409b60f16b95135a675de268003fc998a1bd260a894050bfbf5521ddbc58`.
+
+Local Compose runs the exact candidate ID above and returned HTTP 200 at `/health`.
+Docker reported healthy, zero restarts and no OOM kill. The 2 GiB container limit,
+1,536 MiB V8 heap ceiling, read-only root, user `1000:1000` and
+`no-new-privileges` remain unchanged. Evaluation retained `when_idle`, zero daily
+calls/tokens, zero reserved calls and revision 2. The application database has no
+gateway schema and no gateway CLI process is running. No live inference was
+requested for validation. The implementation commit passed Gitleaks with no leaks.
 
 ## Limits and next recommendation
 
