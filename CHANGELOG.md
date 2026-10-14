@@ -11,6 +11,13 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Background AI evaluation** — Administrators can choose Off, When idle, or a
+  daily UTC window in Command Center, with a request safety limit instead of
+  token-budget calculations. Settings survive restarts; foreground work and
+  configuration changes cancel local capture waits without resetting attempts
+  or cooldowns. Memory safeguards remain unchanged. Controls apply to one
+  installation, not every application using a shared Ollama server.
+
 - **Classification recovery** — Command Center can check a failed movie or TV
   task's saved TMDb ID without retrying or remapping it, distinguish missing
   records from provider failures, and retain current check details for support.

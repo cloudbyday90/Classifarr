@@ -1,6 +1,6 @@
 # Check and configure evaluation AI-response capture
 
-Reviewed 2026-10-09. This applies to the current development image; an older image
+Reviewed 2026-10-14. This applies to the current development image; an older image
 may not include these commands. It does not require a new Compose service, Unraid
 template variable or data mount. Run commands against the installation you mean
 to change: local testing and Unraid can have independent databases.
@@ -40,6 +40,39 @@ verify the running image/version and inspect sanitized logs; do not edit budget
 rows or migration records manually. Unknown status must not be treated as ready.
 
 ## Optional activation — administrator decision
+
+In Command Center, expand **Background AI settings**. Choose:
+
+- **Off:** no new recurring generation requests.
+- **When idle:** automatically resume missing eligible responses when this
+  installation has no foreground/import/backfill work and memory admission allows.
+- **Scheduled:** the same idle rules, restricted to a daily UTC start/end window.
+  The start is included, the end excluded; overnight windows are supported.
+
+Set a **daily request safety limit** from 1 to 200, then save. This is not a
+currency budget. A comparison can need two responses; failed, cancelled or
+uncertain attempts still consume a reservation. Saving settings never makes a
+provider request, resets same-day counts, or clears a cooldown. Restart preserves
+the choice. No browser needs to remain open. A fresh install remains Off, and
+existing positive legacy allowances retain their tighter effective ceiling.
+
+The window uses UTC, not the browser or Unraid timezone. It does not shift for
+daylight saving. Settings are administrator-only and reject stale concurrent
+edits; refresh after an uncertain save rather than automatically submitting it
+again. Status reads do not change counters, including after UTC rollover.
+
+During a capture, local readiness and configuration are rechecked before every
+generation and about every two seconds while waiting. Disable, changed settings,
+window closure or new foreground work aborts the client wait and fences further
+work. Database checks have timeouts, so cancellation is not instantaneous. Ollama
+may finish work already dispatched; it is not refunded. Memory checks continue
+at their existing cadence. Saved exact responses retain their original expiry.
+
+**Shared Ollama:** these controls coordinate only this Classifarr database.
+They cannot detect every request from another installation or enforce GPU-wide
+priority. Until shared admission is available, enable optional evaluation on one
+installation or choose non-overlapping windows deliberately. No shared-server
+configuration change is required or performed automatically.
 
 Only continue if you deliberately want this installation to perform additional
 local AI generation. Check the configured Ollama provider and model, inventory
@@ -95,6 +128,13 @@ downloaded. Confirm the server version afterward. Coordinate with other clients
 first: separate Classifarr databases can still share one inference server.
 
 ### Enable a bounded allowance
+
+The UI is preferred. The following legacy console command remains supported;
+it changes both safety ceilings, keeps any saved schedule, and now preserves
+cooldowns as well as reservations. Inspect `workload` in its status output for
+the current mode, UTC window and installation scope. To remove or change a saved
+window, use Background AI settings. Do not treat a positive allowance as proof
+that the current window is open.
 
 Missing/remote models, invalid identity metadata and unsupported capabilities have
 separate actions. Unknown inspection failures request a sanitized GitHub issue.

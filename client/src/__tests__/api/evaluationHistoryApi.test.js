@@ -1,9 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, it, vi } from 'vitest'
-const getDataRequest = vi.hoisted(() => vi.fn())
-vi.mock('@/api/core', () => ({ getDataRequest, apiClient: {} }))
+const { getDataRequest, put } = vi.hoisted(() => ({ getDataRequest: vi.fn(), put: vi.fn() }))
+vi.mock('@/api/core', () => ({ getDataRequest, apiClient: { put } }))
 import api from '@/api'
-import leaf, { getEvaluationHistory } from '@/api/evaluationHistoryApi'
+import leaf, { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload } from '@/api/evaluationHistoryApi'
 
 it('wires the named read through the stats aggregator and barrel', async () => {
   const response = { version: 'evaluation_history_summary.v4', groups: [],
@@ -13,4 +13,16 @@ it('wires the named read through the stats aggregator and barrel', async () => {
   expect(leaf.getEvaluationHistory).toBe(getEvaluationHistory)
   expect(await api.getEvaluationHistory()).toBe(response)
   expect(getDataRequest).toHaveBeenCalledWith('/stats/evaluation-history')
+})
+
+it('centralizes workload reads and preserves raw mutation responses', async () => {
+  const configuration = { revision: 0, mode: 'off', dailyRequests: 0, startMinute: null, endMinute: null }
+  getDataRequest.mockResolvedValue(configuration)
+  put.mockResolvedValue({ data: configuration })
+  expect(api.getEvaluationWorkload).toBe(getEvaluationWorkload)
+  expect(api.updateEvaluationWorkload).toBe(updateEvaluationWorkload)
+  expect(await getEvaluationWorkload()).toBe(configuration)
+  expect(getDataRequest).toHaveBeenLastCalledWith('/stats/evaluation-workload')
+  expect(await updateEvaluationWorkload(configuration)).toEqual({ data: configuration })
+  expect(put).toHaveBeenLastCalledWith('/stats/evaluation-workload', configuration)
 })

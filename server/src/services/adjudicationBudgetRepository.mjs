@@ -23,7 +23,7 @@ export function createAdjudicationBudgetRepository(database) {
       const { dailyCalls, dailyTokens } = validateAdjudicationBudget(options);
       return transaction(async client => {
         requireWrite(await client.query(`UPDATE adjudication_capture_budget SET daily_calls=$1,daily_tokens=$2,
-          revision=revision+1,next_check_at=statement_timestamp(),status=CASE WHEN $1=0 THEN 'disabled' ELSE 'ready' END
+          revision=revision+1,status=CASE WHEN $1=0 THEN 'disabled' ELSE 'ready' END
           WHERE singleton=true`, [dailyCalls,dailyTokens]));
         return (await client.query(READ_ADJUDICATION_BUDGET_SQL)).rows[0];
       });

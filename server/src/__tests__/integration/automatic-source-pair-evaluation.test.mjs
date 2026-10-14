@@ -191,6 +191,8 @@ test('recurring capture resumes after a provider interruption, charges unknown a
       outputLimitReached: false,contextLimitSuspected: false,inputTruncation: 'unknown' };
   });
   const makeCapture = () => createAdjudicationBudgetWorker({ budget,repository,
+    // This isolated checkpoint test controls readiness; HTTP cancellation is covered by evaluation-workload.
+    withWorkload: (callback,{ signal }) => callback(signal,async () => {}),
     withAdmission: createInventoryDiscoveryAdmission({ ...database,readMemory: () => ({ available: 4e9,constrained: 8e9,total: 8e9 }) }),
     readConfig: async () => (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0],
     createClient: () => ({ inspect: async () => ({ model: 'test:latest',digest: 'a'.repeat(64),contextLength: 8192 }),generate }) });

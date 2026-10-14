@@ -1,9 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { getDataRequest } from './core'
+import { getDataRequest, apiClient } from './core'
 
 /** v4 activity may include inventory readiness; this GET never starts capture or replay. */
 export function getEvaluationHistory() {
   return getDataRequest('/stats/evaluation-history')
 }
 
-export default { getEvaluationHistory }
+export function getEvaluationWorkload() {
+  return getDataRequest('/stats/evaluation-workload')
+}
+
+export function updateEvaluationWorkload(configuration) {
+  return apiClient.put('/stats/evaluation-workload', configuration)
+}
+
+export default { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload }

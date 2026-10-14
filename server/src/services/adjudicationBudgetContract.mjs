@@ -20,6 +20,8 @@ export function projectAdjudicationBudget(state) {
     captureStatus: state.status, dailyCalls: state.daily_calls, dailyTokens: state.daily_tokens,
     quotaDay: state.quota_day, callsReserved: state.calls_reserved, tokensReserved: state.tokens_reserved,
     nextCheckAt: state.next_check_at, selectionOffset: state.selection_offset,
+    workload: { mode: state.daily_calls === 0 ? 'off' : state.workload_mode,
+      startMinute: state.window_start_minute ?? null,endMinute: state.window_end_minute ?? null,timezone: 'UTC',scope: 'installation' },
     limits: { maximumCallsPerTick: ADJUDICATION_TICK_CALLS, tokensReservedPerCall: ADJUDICATION_RESERVED_TOKENS,
       usageIsReservation: true, routingWrites: 0, promotionAllowed: false } };
 }

@@ -13,6 +13,18 @@
   ],
   "reviews": [
     {
+      "id": "evaluation_workload_controls",
+      "classification": "separately_coordinated",
+      "reason": "Reviewed the complete workload contract, UTC SQL predicate, repository, guard and protected GET/PUT route. Fixed SELECT projections run in bounded read-only transactions; configuration only updates adjudication_capture_budget with expected-revision fencing and parameterized values. No transaction spans inference. The monitor and pre-request checks cancel local waits on configuration/window/foreground changes or uncertainty; no inventory DML, ownership claim, routing, provider reconfiguration or quota refund is introduced. The migration adds only bounded scheduling columns; the isolated snapshot diff leaves protected relations and triggers unchanged.",
+      "followUp": "Retain real PostgreSQL/HTTP tests for no-write status, concurrent edits, preserved cooldowns/reservations, UTC boundaries and cancellation. Shared Ollama across independent databases remains uncoordinated; this review does not authorize live activation or resolve historical writer debt."
+    },
+    {
+      "id": "evaluation_workload_existing_composition",
+      "classification": "unresolved",
+      "reason": "Reviewed the existing budget repository and automatic source-pair worker composition diffs. Legacy configuration no longer resets next_check_at, and the production capture now receives the bounded workload guard. Existing evaluator/checkpoint SQL, inventory ownership boundaries and shared database admission remain unchanged. Existing indirect-query analysis debt is retained rather than cleared by this change.",
+      "followUp": "Keep the current ownership debt visible. Test scheduling and cancellation with real database/HTTP boundaries; do not infer production writer authorization or cross-installation provider coordination from these changes."
+    },
+    {
       "id": "request_identity_diagnostics",
       "classification": "unresolved",
       "reason": "Reviewed exact queue processor and acknowledgement diffs: classification uses bounded shared identity validation before provider work, and safe metadata failure context passes to acknowledgement logging. The acknowledgement UPDATE only adds max_attempts to RETURNING; claim-token/status predicates, attempt increments and receipt writes are unchanged. Existing enrichment ownership and post-completion inventory write debt is not resolved by diagnostics.",
@@ -1207,7 +1219,8 @@
     {"path":"database/migrations/20261004_180000_discord_delivery_verification.sql","digest":"bd556c1b7a2a5f66d19d4faf17ef513199e9a3a9bbe35d8cd75b7744ddd43c4b","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_200000_discord_delivery_deferral.sql","digest":"0c70f7bf7f586897f1f8b6f275d39f8f06a1763e798923bd8fb27bb6b9205e55","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
     {"path":"database/migrations/20261004_210000_discord_delivery_outbox.sql","digest":"26513986746281ea46502fb0a3376510d4a5791cd1bc310de67b63b5fbb7024e","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
-    {"path":"database/schema/current.sql","digest":"769acf30576e8e6cc0b089bf83d1d6efc034a3d9d2383c88d1071441b4a64c60","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"sql_history"},
+    {"path":"database/migrations/20261014_120000_evaluation_workload_controls.sql","digest":"c06adf8ff97e5c56f0123ea4689218f75cb4f69f8911b641bd7398de9ac2a119","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"evaluation_workload_controls"},
+    {"path":"database/schema/current.sql","digest":"2d3825194c2dffd0f011deb66c345e182e4cc231a4f271712362552f73c0dcf4","analysisDigest":"e14bc799845cf5ec03091bed46a2f2f7c09c9ddbeec783b8945e099024fdfed9","review":"evaluation_workload_controls"},
     {"path":"database/migrations/20261013_210000_queue_identity_repair.sql","digest":"c6694a77de0e3cb30c4ad52b8cdd25e91e0fd16f006bf21b522ed02ee2e88e8e","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"queue_identity_repair_schema"},
     {"path":"database/migrations/20261013_180000_queue_metadata_recovery.sql","digest":"633f284f2cbdfa4e7d462b624c016d0a9c7e6cfeae36f35e6c851897fe7c40b9","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"queue_metadata_recovery_schema"},
     {"path":"database/migrations/20261004_230000_queue_routing_replay_guard.sql","digest":"5628b068b6ac11ebd60db771b5eaf0b7c2e343968f35612bcd4a741ccd9f9620","analysisDigest":"04e04a0c54b20c36518d69b0d54759ec8dd0520bc3dd2fff18b1311ecf8241fe","review":"sql_history"},
@@ -1268,7 +1281,9 @@
     {"path":"server/src/scripts/schemaReleaseReplay.mjs","digest":"2f9b9766c930566141df7611ac72c23fae7e672ebdb27fa1c4e401e36e4191e0","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"maintenance_debt"},
     {"path":"server/src/services/adjudicationBudgetCommand.mjs","digest":"fc6ddcf143a0e1bda5d41cfa440cf359bf9fcfa1aafaea388920b1e925f07387","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/adjudicationProviderStatus.mjs","digest":"2e929d6c106018dd1616ac4fd155133d36797d4e7f9c441ba138554b52752134","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"read_only_adjudication_provider"},
-    {"path":"server/src/services/adjudicationBudgetRepository.mjs","digest":"cca3426006e512513cbf556f66a349641797e84c43331cd543bcdd34cbf9d73c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/adjudicationBudgetRepository.mjs","digest":"7faaf205d316c0eec41c77d25b45930e4216a9b7fb4fe71262e2689c373d4fb2","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_existing_composition"},
+    {"path":"server/src/services/evaluationWorkloadGuard.mjs","digest":"2d6ff8cb62a88e845241d4e9ed6b92971c5f8e7a27377b1ce05aae71db423392","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_controls"},
+    {"path":"server/src/services/evaluationWorkloadRepository.mjs","digest":"3f45d718975541a3088595d60a59ab2821fc7465f361996aa0f633bc8093eab2","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_controls"},
     {"path":"server/src/services/aiProviderCapabilityMetricsFailureBreakdownRepository.mjs","digest":"cb84266f996824955fe401917cf1bf5f2c8c0b51daa082c6a523446fefc9efcf","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/aiProviderCapabilityMetricsFailureCategoryCoverageRepository.mjs","digest":"43c5b40756625f9b4aa9db4f05a1bcd68cfc5100d34f8117e04428a183462c50","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/aiProviderCapabilityMetricsFailureRecencyRepository.mjs","digest":"48b1d004ab46617f6bb49ac3d3eb56516267366aa6c2ec17116c2dc9ec47b213","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
@@ -1279,7 +1294,7 @@
     {"path":"server/src/services/automaticClassificationRecoveryRepository.mjs","digest":"1000fe5d6eb47db2e209fb112395a3a74dda4e78441d307b53dc238c2d221131","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/automaticDestinationEvaluationRepository.mjs","digest":"b16c84f1e6907e69d8b323bf4ac58fa4b4794b3c97a91e7de00850799875d04d","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/automaticSourcePairRepository.mjs","digest":"44b6f4707039e26b13a926bf6403a09989e5ab06431ec7c6ee745600b30d1025","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
-    {"path":"server/src/services/automaticSourcePairWorkers.mjs","digest":"e930109521a390352538edf3f82caa120e2270bdc8c7d70de2d3e692c8bd1b2c","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
+    {"path":"server/src/services/automaticSourcePairWorkers.mjs","digest":"027333cfa1ab0a00b5b96719534c0b75a8818901ec7db41993aaddf34887b670","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_existing_composition"},
     {"path":"server/src/services/backupExportCatalog.mjs","digest":"e7c064909f89fcd4398696d0d8f08dbcf91f652393e2ff91fe54a4925500b968","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"analysis_debt"},
     {"path":"server/src/services/backupRestore.mjs","digest":"cb9d057667802a5be53dcb77ed24c30b30f205d96eeb7144cf2ae06e85f04c2e","analysisDigest":"ee19da18f5f9861b19746e507b4ea932a78aa76be487bdb2660d28589c8a6e7d","review":"shared_writer_debt"},
     {"path":"server/src/services/backupRestoreDestinations.mjs","digest":"7792308bebf66a0cc2faee65af220646c4bd21c0fc2b1ac47783cd430d0c5a90","analysisDigest":"eb933cc75f0e6548ac24d2b88a2051417aa3f9b14be1ec8aaec1f139e057959e","review":"shared_writer_debt"},

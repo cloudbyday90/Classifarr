@@ -2,9 +2,20 @@
 import { expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import EvaluationActivitySummary from '@/components/command-center/EvaluationActivitySummary.vue'
+import EvaluationWorkloadControls from '@/components/command-center/EvaluationWorkloadControls.vue'
 import { normalizeEvaluationActivity, evaluationPolicyStatus } from '@/utils/evaluationActivity'
 
 import { evaluationActivityFixture as fixture } from '../fixtures/evaluationActivity'
+
+it('does not keep presenting the old capture settings after a confirmed save', async () => {
+  const wrapper = mount(EvaluationActivitySummary, { props: { activity: normalizeEvaluationActivity(fixture()) } })
+  wrapper.findComponent(EvaluationWorkloadControls).vm.$emit('saved')
+  await wrapper.vm.$nextTick()
+  expect(wrapper.text()).not.toContain('Disabled — no AI calls')
+  expect(wrapper.text()).toContain('waiting for its next refresh')
+  await wrapper.setProps({ activity: normalizeEvaluationActivity(fixture()) })
+  expect(wrapper.text()).toContain('Disabled — no AI calls')
+})
 
 it('shows policy work without implying AI calls, routing or accuracy', () => {
   const wrapper = mount(EvaluationActivitySummary, { props: { activity: normalizeEvaluationActivity(fixture()) } })
@@ -14,8 +25,7 @@ it('shows policy work without implying AI calls, routing or accuracy', () => {
   expect(wrapper.text()).toContain('not media moved or an accuracy score')
   expect(wrapper.text()).toContain('Disabled — no AI calls are scheduled')
   expect(wrapper.text()).toContain('does not repair unsupported comparison paths')
-  expect(wrapper.findAll('button')).toHaveLength(0)
-  expect(wrapper.find('[aria-live]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('Background AI settings')
 })
 
 it.each(Object.keys(evaluationPolicyStatus))('shows explicit non-success policy state %s', status => {
@@ -29,9 +39,9 @@ it('distinguishes configured capture, old reservations and unknown or legacy con
   const value = fixture()
   value.capture = { enabled: true, dailyCalls: 5, dailyTokens: 42240, quotaDay: '2026-10-08', callsReserved: 5, tokensReserved: 42240, lastOutcome: 'budget_exhausted' }
   const wrapper = mount(EvaluationActivitySummary, { props: { activity: normalizeEvaluationActivity(value) } })
-  expect(wrapper.text()).toContain('Budget configured: 5 calls and 42240 tokens')
+  expect(wrapper.text()).toContain('Safety limit: 5 requests per UTC day')
   expect(wrapper.text()).toContain('Reservations for 2026-10-08')
-  expect(wrapper.text()).toContain('Reservations are not measured usage')
+  expect(wrapper.text()).toContain('work limit, not a charge')
   expect(wrapper.text()).toContain('quota exhausted')
   expect(wrapper.text()).not.toContain('Disabled —')
   value.capture = { enabled: null, dailyCalls: null, dailyTokens: null, quotaDay: null, callsReserved: null, tokensReserved: null, lastOutcome: 'unknown' }

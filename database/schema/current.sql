@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-14T09:49:43.797Z
--- Latest Migration: 20261014_060000_ollama_readiness_backfill_state.sql
+-- Generated: 2026-10-14T10:58:23.719Z
+-- Latest Migration: 20261014_120000_evaluation_workload_controls.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -923,6 +923,9 @@ CREATE TABLE public.adjudication_capture_budget (
     progress jsonb,
     captured_at timestamp with time zone,
     expires_at timestamp with time zone,
+    workload_mode text DEFAULT 'when_idle'::text NOT NULL,
+    window_start_minute integer,
+    window_end_minute integer,
     CONSTRAINT adjudication_capture_budget_calls_reserved_check CHECK (((calls_reserved >= 0) AND (calls_reserved <= 200))),
     CONSTRAINT adjudication_capture_budget_captured_at_check CHECK (isfinite(captured_at)),
     CONSTRAINT adjudication_capture_budget_check CHECK ((tokens_reserved = (calls_reserved * 8448))),
@@ -939,7 +942,8 @@ CREATE TABLE public.adjudication_capture_budget (
     CONSTRAINT adjudication_capture_budget_revision_check CHECK ((revision >= 0)),
     CONSTRAINT adjudication_capture_budget_selection_offset_check CHECK (((selection_offset >= 0) AND (selection_offset <= 299))),
     CONSTRAINT adjudication_capture_budget_singleton_check CHECK (singleton),
-    CONSTRAINT adjudication_capture_budget_status_check CHECK ((status = ANY (ARRAY['disabled'::text, 'ready'::text, 'captured'::text, 'waiting_for_replay'::text, 'budget_exhausted'::text, 'deferred'::text, 'unavailable'::text])))
+    CONSTRAINT adjudication_capture_budget_status_check CHECK ((status = ANY (ARRAY['disabled'::text, 'ready'::text, 'captured'::text, 'waiting_for_replay'::text, 'budget_exhausted'::text, 'deferred'::text, 'unavailable'::text]))),
+    CONSTRAINT adjudication_workload_window CHECK ((((workload_mode = 'when_idle'::text) AND (window_start_minute IS NULL) AND (window_end_minute IS NULL)) OR ((workload_mode = 'scheduled'::text) AND (window_start_minute IS NOT NULL) AND (window_end_minute IS NOT NULL) AND ((window_start_minute >= 0) AND (window_start_minute <= 1439)) AND ((window_end_minute >= 0) AND (window_end_minute <= 1439)) AND (window_start_minute <> window_end_minute))))
 );
 
 
@@ -18524,6 +18528,7 @@ FROM unnest(ARRAY[
     '20261010_220000_source_catalog_mappings.sql',
     '20261013_180000_queue_metadata_recovery.sql',
     '20261013_210000_queue_identity_repair.sql',
-    '20261014_060000_ollama_readiness_backfill_state.sql'
+    '20261014_060000_ollama_readiness_backfill_state.sql',
+    '20261014_120000_evaluation_workload_controls.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

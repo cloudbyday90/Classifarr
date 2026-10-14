@@ -28,22 +28,26 @@
         Policy snapshot: <time :datetime="activity.policy.observedAt">{{ new Date(activity.policy.observedAt).toLocaleString() }}</time>.
       </p>
       <h3>AI-response capture</h3>
-      <p v-if="activity.capture.enabled === false">
+      <p v-if="settingsChanged">
+        Background settings saved. Capture summary is waiting for its next refresh; saved settings are shown below.
+      </p>
+      <p v-else-if="activity.capture.enabled === false">
         <strong>Disabled — no AI calls are scheduled for evaluation capture.</strong>
-        An administrator must explicitly configure a capture budget to fill supported response-cache gaps.
+        An administrator can enable background evaluation below to fill supported response-cache gaps.
         Enabling capture does not repair unsupported comparison paths.
       </p>
       <p v-else-if="activity.capture.enabled === true">
-        <strong>Budget configured:</strong> {{ activity.capture.dailyCalls }} calls and {{ activity.capture.dailyTokens }} tokens per UTC day.
+        <strong>Background evaluation enabled.</strong> Safety limit: {{ Math.min(activity.capture.dailyCalls, Math.floor(activity.capture.dailyTokens / 8448)) }} requests per UTC day.
         This does not guarantee capture can run; worker admission and safeguards still apply.
         Last saved capture outcome: {{ evaluationCaptureOutcome[activity.capture.lastOutcome] }}.
-        Reservations for {{ activity.capture.quotaDay }} (UTC): {{ activity.capture.callsReserved }} calls,
-        {{ activity.capture.tokensReserved }} tokens. Reservations are not measured usage.
+        Reservations for {{ activity.capture.quotaDay }} (UTC): {{ activity.capture.callsReserved }} requests,
+        including failed or cancelled attempts. This is a work limit, not a charge.
       </p>
       <p v-else>
         Capture configuration is unknown. No disabled or ready state is assumed.
       </p>
       <EvaluationCaptureHelp />
+      <EvaluationWorkloadControls @saved="settingsChanged = true" />
       <p>
         Status checked: <time :datetime="activity.checkedAt">{{ new Date(activity.checkedAt).toLocaleString() }}</time>.
         Policy work and comparison history are separate snapshots; do not add their counts.
@@ -53,10 +57,14 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
 import { evaluationPolicyStatus, evaluationCaptureOutcome } from '@/utils/evaluationActivity'
 import EvaluationInventoryReadiness from './EvaluationInventoryReadiness.vue'
 import EvaluationCaptureHelp from './EvaluationCaptureHelp.vue'
-defineProps({ activity: { type: Object, default: null } })
+import EvaluationWorkloadControls from './EvaluationWorkloadControls.vue'
+const props = defineProps({ activity: { type: Object, default: null } })
+const settingsChanged = ref(false)
+watch(() => props.activity, () => { settingsChanged.value = false })
 </script>
 
 <style scoped>

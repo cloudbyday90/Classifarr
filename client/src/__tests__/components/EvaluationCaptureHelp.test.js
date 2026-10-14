@@ -9,7 +9,7 @@ it('offers collapsed static instructions and only a read-only command', () => {
   expect(wrapper.get('summary').text()).toBe('How to check AI-response capture')
   expect(wrapper.get('code').text()).toBe('node /app/src/scripts/runOperatorCorrectionPolicyEvaluation.mjs --source-pair-ai-budget-status')
   expect(wrapper.text()).toContain('does not enable capture')
-  expect(wrapper.text()).toContain('requires an administrator to opt in')
+  expect(wrapper.text()).toContain('requires an administrator to enable Background AI settings')
   expect(wrapper.text()).not.toMatch(/--configure|--capture-source-pair-ai/)
   expect(wrapper.find('button, input, [aria-live], [autofocus]').exists()).toBe(false)
   expect(wrapper.get('a').attributes()).toMatchObject({

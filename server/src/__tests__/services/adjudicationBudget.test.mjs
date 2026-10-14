@@ -58,18 +58,33 @@ async function fixture() {
     return { calls: 5,reused: 0,stored: 5 };
   });
   const repository = { readState: jest.fn(async () => evaluation),readSnapshot: jest.fn(async () => snapshot) };
-  const dependencies = { budget,repository,capture,withAdmission: (callback,{ signal }) => callback(signal) };
+  const dependencies = { budget,repository,capture,withAdmission: (callback,{ signal }) => callback(signal),
+    withWorkload: (callback,{ signal }) => callback(signal,async () => {}) };
   return { state,budget,capture,repository,evaluation,snapshot,prepared,dependencies,worker: createAdjudicationBudgetWorker(dependencies) };
 }
 
-test.each(['disabled','cooldown','budget_exhausted','not_ready'])('worker %s does not generate', async mode => {
+test.each(['disabled','cooldown','budget_exhausted','not_ready','outside_window'])('worker %s does not generate', async mode => {
   const { state,worker,capture,repository } = await fixture();
   if (mode === 'disabled') state.daily_calls = 0;
   if (mode === 'cooldown') state.cooling_down = true;
   if (mode === 'budget_exhausted') state.tokens_reserved = state.daily_tokens;
   if (mode === 'not_ready') repository.readState.mockResolvedValue(null);
+  if (mode === 'outside_window') state.window_open = false;
   expect((await worker.run()).status).toBe(mode === 'not_ready' ? 'deferred' : mode);
   expect(capture).not.toHaveBeenCalled();
+});
+
+test('runtime guard is passed the current revision and must pass before reserving', async () => {
+  const f = await fixture();
+  expect(() => createAdjudicationBudgetWorker({ ...f.dependencies,withWorkload: undefined })).toThrow('admission is required');
+  const check = jest.fn(async () => { throw new Error('evaluation_workload_deferred'); });
+  const withWorkload = jest.fn((callback,{ signal }) => callback(signal,check));
+  f.capture.mockImplementation(async (_options,{ checkpoint,signal }) => { await checkpoint.reserve(signal); });
+  const worker = createAdjudicationBudgetWorker({ ...f.dependencies,withWorkload });
+  expect(await worker.run()).toEqual({ status: 'deferred' });
+  expect(withWorkload).toHaveBeenCalledWith(expect.any(Function),{ revision: 1,signal: expect.any(AbortSignal) });
+  expect(check).toHaveBeenCalledTimes(1); expect(f.budget.reserve).not.toHaveBeenCalled();
+  worker.stop();
 });
 
 test('capture is single-flight, limited per tick, and pins publication for rotation only after replay', async () => {

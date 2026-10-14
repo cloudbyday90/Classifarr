@@ -4,7 +4,8 @@
     <summary>How to check AI-response capture</summary>
     <p>
       Policy replay can run without AI calls. Supported AI comparisons need cached responses;
-      creating them requires an administrator to opt in with daily limits.
+      creating them requires an administrator to enable Background AI settings below.
+      The daily request limit protects local capacity; it is not a charge.
     </p>
     <p>
       Open the Classifarr container console (Unraid: Docker → Classifarr → Console), then run
