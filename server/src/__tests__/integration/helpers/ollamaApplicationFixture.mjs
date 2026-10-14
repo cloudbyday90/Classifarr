@@ -7,7 +7,7 @@ import { openGatewayLedger } from '../../../ollamaGateway/ledger.mjs';
 import { createGatewayServer } from '../../../ollamaGateway/server.mjs';
 import { createOllamaApplicationRouting } from '../../../services/ollamaApplicationRouting.mjs';
 
-export async function createOllamaApplicationFixture(pool) {
+export async function createOllamaApplicationFixture(pool, tls = null) {
   // Caller is the repository's per-suite disposable PostgreSQL database.
   await pool.query('DROP SCHEMA IF EXISTS ollama_gateway CASCADE');
   await pool.query(await readFile(new URL('../../../../../database/ollama-gateway/20261014_121441_admission.sql', import.meta.url), 'utf8'));
@@ -38,14 +38,16 @@ export async function createOllamaApplicationFixture(pool) {
     await new Promise(resolve => { provider.listen(0, '127.0.0.1', resolve); });
     const upstream = `http://127.0.0.1:${provider.address().port}`;
     const credentials = ['foreground', 'background'].map(workClass => ({ installation: 'local', workClass, token: randomBytes(32).toString('base64url') }));
-    const config = gatewayConfig({ upstream, models: [model, vectorModel], credentials, timeoutMs: 1000, queueMs: 300 });
+    const config = gatewayConfig({ upstream, models: [model, vectorModel], credentials, timeoutMs: 1000, queueMs: 300,
+      ...(tls ? { tls: { cert: tls.cert, key: tls.key } } : {}) });
     client = await pool.connect(); client.on('error', () => {});
     const ledger = await openGatewayLedger(client, config.providerHash);
     gateway = createGatewayServer({ config, ledger });
     // Observe only class labels, never copy tokens into test output or persisted state.
     gateway.server.on('request', req => { classes.push(credentials.find(entry => `Bearer ${entry.token}` === req.headers.authorization)?.workClass); });
     await new Promise(resolve => { gateway.server.listen(0, '127.0.0.1', resolve); });
-    const common = { url: `http://127.0.0.1:${gateway.server.address().port}`, upstream, models: [model, vectorModel] };
+    const common = { url: `${tls ? 'https' : 'http'}://127.0.0.1:${gateway.server.address().port}`, upstream, models: [model, vectorModel],
+      ...(tls ? { ca: tls.cert } : {}) };
     const configuration = { baseUrl: upstream, host: '127.0.0.1', port: provider.address().port, model, embeddingModel: vectorModel };
     const options = revision => ({ revision, configuration, foreground: { ...common, token: credentials[0].token }, background: { ...common, token: credentials[1].token } });
     owner = createOllamaApplicationRouting(options(1));

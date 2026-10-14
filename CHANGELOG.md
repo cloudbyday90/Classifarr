@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add opt-in application-wide Ollama gateway startup, verified TLS transport,
+  and fail-closed shutdown without changing default routing or saved AI consent.
+
 ### Documentation
 
 - **Shared Ollama planning** — Documented coordination options, transport coverage

@@ -9,8 +9,10 @@ test('new literal Ollama HTTP call sites require explicit boundary review', asyn
   const files = (await readdir(root, { recursive: true })).map(path => path.replaceAll('\\', '/'))
     .filter(path => path.endsWith('.mjs') && !path.startsWith('__tests__/'));
   const matches = [];
-  for (const file of files) {
-    if (/\/api\/(?:generate|chat|embed(?:dings)?|tags|ps|show|version|pull|push|copy|delete)\b/.test(await readFile(join(root, file), 'utf8'))) matches.push(file);
+  for (let index = 0; index < files.length; index += 32) {
+    await Promise.all(files.slice(index, index + 32).map(async file => {
+      if (/\/api\/(?:generate|chat|embed(?:dings)?|tags|ps|show|version|pull|push|copy|delete)\b/.test(await readFile(join(root, file), 'utf8'))) matches.push(file);
+    }));
   }
   expect(matches.sort()).toEqual([
     'ollamaGateway/client.mjs', 'ollamaGateway/contract.mjs', 'ollamaGateway/transport.mjs',

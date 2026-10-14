@@ -17,6 +17,15 @@ test('preserves reviewed application values while fixing executable and database
     { users: [{ name: 'classifarr', uid: 1000, gid: 1000 }, { name: 'postgres', uid: 70, gid: 70 }] })).not.toThrow();
 });
 
+test('gateway file is absent by default and explicit paths retain strict selected-child validation', () => {
+  expect(configuration()).not.toHaveProperty('CLASSIFARR_OLLAMA_ROUTING_FILE');
+  const key = 'CLASSIFARR_OLLAMA_ROUTING_FILE', path = '/app/data/secrets/ollama-routing.json';
+  expect(selectedApplicationEnvironment({ [key]: path })[key]).toBe(path);
+  for (const value of ['', 'relative', '/proc/self/environ', '/app/src/index.mjs', '/config/../key']) {
+    expect(() => configuration({ [key]: value })).toThrow('selected_application_configuration_invalid');
+  }
+});
+
 test.each(['NODE_OPTIONS', 'NODE_PATH', 'LD_PRELOAD', 'DATABASE_URL', 'POSTGRES_USER', 'PATH', 'HOME',
   'CLASSIFARR_RUNTIME_MODE', 'CLASSIFARR_SCHEMA_MAINTENANCE', 'MIGRATIONS_DIR', 'UNKNOWN'])('rejects unreviewed option %s', key => {
   expect(() => configuration({ [key]: 'untrusted' })).toThrow('configuration_invalid');

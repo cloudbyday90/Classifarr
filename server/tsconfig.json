@@ -18,6 +18,7 @@
   },
   "include": [
     "src/ollamaGateway/**/*.mjs",
+    "src/bootstrap/ollamaRoutingStartup.mjs",
     "src/services/ollamaApplicationRouting.mjs",
     "src/scripts/runOllamaGateway.mjs",
     "src/services/healthConnectionProbe.mjs",

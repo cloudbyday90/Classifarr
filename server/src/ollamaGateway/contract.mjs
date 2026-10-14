@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
+import { gatewayServerTls, privateGatewayAddress } from './tls.mjs';
 
 export const gatewayError = (code, status = 503) => Object.assign(new Error(code), { code, status });
 const hash = value => createHash('sha256').update(value).digest();
@@ -19,7 +20,7 @@ export function gatewayProviderIdentity(value) {
 }
 
 export function gatewayConfig(raw) {
-  if (!record(raw) || Object.keys(raw).some(key => !['upstream','port','models','credentials','timeoutMs','queueMs'].includes(key))) {
+  if (!record(raw) || Object.keys(raw).some(key => !['upstream','host','tls','port','models','credentials','timeoutMs','queueMs'].includes(key))) {
     throw gatewayError('gateway_config_invalid');
   }
   const identity = gatewayProviderIdentity(raw.upstream);
@@ -36,7 +37,10 @@ export function gatewayConfig(raw) {
   const port = raw.port ?? 11435, timeoutMs = raw.timeoutMs ?? 180000, queueMs = raw.queueMs ?? 5000;
   if (!Number.isInteger(port) || port < 1 || port > 65535 || !Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 300000 ||
       !Number.isInteger(queueMs) || queueMs < 1 || queueMs > 30000 || queueMs >= timeoutMs) throw gatewayError('gateway_config_invalid');
-  return Object.freeze({ ...identity, port, timeoutMs, queueMs,
+  const host = raw.host ?? '127.0.0.1';
+  if (!privateGatewayAddress(host) || (!raw.tls && host !== '127.0.0.1')) throw gatewayError('gateway_config_invalid');
+  const tls = raw.tls === undefined ? undefined : gatewayServerTls(raw.tls, host);
+  return Object.freeze({ ...identity, host, tls, port, timeoutMs, queueMs,
     models: Object.freeze([...raw.models]), credentials: Object.freeze(credentials.map(entry => Object.freeze({
       installation: entry.installation, workClass: entry.workClass, digest: hash(entry.token),
     }))) });

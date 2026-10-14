@@ -34,7 +34,7 @@ try {
   const ledger = await openGatewayLedger(client,config.providerHash);
   gateway = createGatewayServer({ config,ledger });
   await new Promise((resolve,reject) => {
-    gateway.server.once('error',reject); gateway.server.listen(config.port,'127.0.0.1',resolve);
+    gateway.server.once('error',reject); gateway.server.listen(config.port,config.host,resolve);
   });
   reload = createGatewayConfigurationReload({ initial,load: () => readGatewayConfiguration(path),
     apply: next => gateway.replaceCredentials(next),

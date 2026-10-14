@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { createServer } from 'node:http';
+import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
 import { gatewayError, gatewayRoute, validateGatewayBody } from './contract.mjs';
 import { createGatewayCredentials } from './credentials.mjs';
 import { createGatewayAdmission } from './admission.mjs';
@@ -35,7 +36,9 @@ export function createGatewayServer({ config, ledger }) {
   const admission = createGatewayAdmission(config), shutdown = new AbortController();
   const credentials = createGatewayCredentials(config);
   let handling = 0, credits = 120, windowStart = Date.now();
-  const server = createServer({ maxHeaderSize: 8192, requestTimeout: 10000, headersTimeout: 5000 }, (req,res) => {
+  const options = { maxHeaderSize: 8192, requestTimeout: 10000, headersTimeout: 5000 };
+  const server = config.tls ? createHttpsServer({ ...config.tls, ...options }) : createHttpServer(options);
+  server.on('request', (req,res) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(),config.timeoutMs); timer.unref();
     let signal = AbortSignal.any([controller.signal,shutdown.signal]);

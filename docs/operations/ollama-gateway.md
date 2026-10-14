@@ -1,6 +1,6 @@
 # Optional Ollama gateway: local prototype
 
-Status: Unreleased, 2026-10-14. **Not enabled by the Classifarr application.**
+Status: Unreleased, 2026-10-14. **Not enabled by default.**
 This first slice supports isolated testing, not production cutover. Existing
 Classifarr clients still connect directly by default. The bounded study adapters
 and saved-verification factory accept an explicitly injected gateway dependency
@@ -22,7 +22,8 @@ a UTC timestamp. These references are not secrets or authorization tokens.
 The control ledger stores only the current request reference, installation name,
 timestamps, attempt count and cooldown. It never stores prompts or answers.
 
-The gateway only binds `127.0.0.1`. The upstream must be a fixed private/loopback
+Without TLS the gateway only binds `127.0.0.1`. Verified TLS supports an explicit
+private IPv4 listener (see startup configuration below). The upstream must be a fixed private/loopback
 IPv4 HTTP origin. There is no DNS resolution, redirect following, arbitrary proxy
 target, cloud fallback, generation retry, or model installation endpoint. The
 operator's model allowlist must use fully qualified names such as `example:latest`.
@@ -159,8 +160,9 @@ This availability limitation is why this prototype is not ready for live cutover
 ## Explicit client integration for local fixtures
 
 `server/src/ollamaGateway/client.mjs` exports `createGatewayClient`, accepting
-`{ url, upstream, models, token }` and `{ expectedUpstream }`. The gateway URL must
-be an HTTP `127.0.0.1` origin. The expected provider must match the declared
+`{ url, upstream, models, token, ca? }` and `{ expectedUpstream }`. The gateway URL
+must be a fixture HTTP `127.0.0.1` origin or HTTPS private IPv4 origin with an
+explicit PEM CA. Startup activation requires HTTPS. The expected provider must match the declared
 upstream; its hash is checked by the gateway before dispatch. There is no redirect,
 ambient proxy, caller-supplied header passthrough or direct-provider fallback.
 Credentials remain in the client's closure, not returned diagnostics.
@@ -200,10 +202,10 @@ configured with a shorter timeout can stop it sooner. Reasoning requests that
 normally allow ten minutes do not extend this gateway cap. Buffered generation
 defaults to two minutes after preflight. This is an explicit test-mode limitation.
 
-The running main classifier, warming, model administration and verification paths
-have not been rerouted. Cross-host TLS and installation-wide credential lifecycle
-are not provided by this local-only client. These remain prerequisites to live
-coordination. See the [streaming design](../architecture/ollama-gateway-streaming-design.md)
+The default running installation has not been rerouted. Explicit startup can bind
+the main classifier, warming, inspection and verification together; model admin
+operations are refused. Network ACLs and verified uncertainty recovery remain
+prerequisites to live coordination. See the [streaming design](../architecture/ollama-gateway-streaming-design.md)
 and [outcome](../architecture/ollama-gateway-streaming-outcome.md).
 
 ### Shared provider context (explicit dependency only)
@@ -223,12 +225,12 @@ model-administration, multimodal or direct-HTTP fallback.
 The embedding adapter factory accepts optional `ollamaProviderContext`. If
 provided, matching explicit host/port values confirm the binding; conflicting or
 partial overrides fail before dispatch. That branch bypasses the direct retry
-wrapper. Normal application constructors do not supply this dependency yet.
+wrapper. Opt-in startup supplies the scoped owner before normal constructors load.
 
 Close and replace the whole context on configuration/credential changes. Close
 aborts inspection and compute together without clearing uncertain gateway work.
-Do not enable partial routing: health probes, the embedding router, settings
-tests and application warming still require coordinated composition. See the
+Do not enable partial routing: use coordinated startup for health probes, the
+embedding router, settings tests and application warming. See the
 [provider-context design](../architecture/ollama-gateway-provider-context-design.md)
 and [verification outcome](../architecture/ollama-gateway-provider-context-outcome.md).
 
@@ -250,10 +252,89 @@ restart and abrupt process death. Only its randomly named
 container/data directory are removed, with cleanup verified. It never calls real
 Ollama and is not proof of a published-release upgrade or real model quality.
 
-Next: design a coherent all-path installation cutover, authenticated cross-host
-deployment and evidence-based uncertainty recovery before any activation. See the
+Next: evidence-based uncertainty recovery and an operator-approved deployment
+cutover before live activation. See the
 [generation design](../architecture/ollama-gateway-generation-design.md) for
 tradeoffs and the [generation outcome](../architecture/ollama-gateway-generation-outcome.md)
 for verification and remaining limits.
 See [design](../architecture/shared-ollama-admission-design.md) and
 [outcome](../architecture/shared-ollama-admission-outcome.md).
+
+## Opt-in application startup with TLS
+
+See the separate [startup design](../architecture/ollama-gateway-startup-design.md)
+and [outcome](../architecture/ollama-gateway-startup-outcome.md). This is not an
+instruction to enable the shared Unraid provider during development.
+
+Provision a certificate with the gateway listener's exact IP in its Subject
+Alternative Name and a private CA trusted by each application. In the gateway
+file above, add `gateway.host` and `gateway.tls` containing PEM `cert` and `key`
+strings. TLS 1.2 is the minimum; clients retain CA and identity verification even
+if an ambient Node setting disables global certificate checks. No insecure option
+is accepted. Listener, key/certificate, CA, endpoint and application configuration
+changes require restart; SIGHUP remains credential-only on the standalone gateway.
+
+Create a second private JSON file for the application, with this shape (replace
+all placeholders; no real credentials belong in this document):
+
+```json
+{
+  "revision": 1,
+  "configuration": {
+    "baseUrl": "http://10.20.0.2:11434",
+    "model": "example:latest",
+    "embeddingModel": "vectors:latest"
+  },
+  "foreground": {
+    "url": "https://10.10.0.2:11435",
+    "upstream": "http://10.20.0.2:11434",
+    "models": ["example:latest", "vectors:latest"],
+    "ca": "REPLACE_WITH_PEM_CA",
+    "token": "REPLACE_WITH_FOREGROUND_TOKEN"
+  },
+  "background": {
+    "url": "https://10.10.0.2:11435",
+    "upstream": "http://10.20.0.2:11434",
+    "models": ["example:latest", "vectors:latest"],
+    "ca": "REPLACE_WITH_SAME_PEM_CA",
+    "token": "REPLACE_WITH_DISTINCT_BACKGROUND_TOKEN"
+  }
+}
+```
+
+Set `CLASSIFARR_OLLAMA_ROUTING_FILE` to that file in the **container environment**
+and mount it read-only with mode 0600 owned/readable by the application identity.
+The selected-identity launcher also accepts this validated path. Keep its parent
+directory private. Maximum JSON size is 64 KiB. Linux rejects final symlinks;
+Windows requires operator-managed private ACLs. Absent means direct mode;
+present-but-empty, missing or invalid fails startup. Restore mode ignores it.
+Do not change saved Ollama settings to the gateway address: those continue to
+identify the true upstream and must agree with this binding. Model changes need a
+matching file and restart; mismatch refuses work rather than bypassing admission.
+
+This file is process-fixed; deleting it while running does not disable routing.
+To disable, explicitly stop work and the application, preserve the ledger, remove
+the setting and restart only after reviewing network policy and outstanding
+uncertainty. Do not temporarily allow direct access to escape a blocked ledger.
+
+TLS covers application-to-gateway traffic. Gateway-to-Ollama remains HTTP and must
+stay on a trusted isolated backend network or loopback, not an untrusted LAN.
+Applications must not share that backend network; do not publish Ollama's port.
+For a LAN deployment, firewall rules must permit only the gateway to reach Ollama
+and must cover IPv4/IPv6 and alternative addresses. This is deployment-specific;
+the application does not inspect or mutate host firewall rules. TLS configuration
+alone is not evidence that bypass is blocked.
+
+For a synthetic packaged test with two internal Docker networks and three
+containers (no published ports or external provider):
+
+```text
+node scripts/run-ollama-gateway-network-rehearsal.mjs <sha256:image-id> <40-character-source-sha>
+```
+
+The runner needs OpenSSL to generate disposable test certificates (`OPENSSL_BIN`
+can select a native executable). It checks a positive gateway call and a blocked
+direct provider connection from the application network. It uses the packaged
+startup function with injected no-op database admission/runtime, not a second
+full production worker deployment. Temporary keys, labeled networks and exact
+owned containers are removed, and cleanup is verified.

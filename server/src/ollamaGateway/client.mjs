@@ -1,15 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { request } from 'node:http';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { gatewayConfig, gatewayError, gatewayProviderIdentity, gatewayRoute, validateGatewayBody } from './contract.mjs';
 import { readGatewayStream } from './stream.mjs';
+import { gatewayClientTls, privateGatewayAddress } from './tls.mjs';
 
 /** Explicit server-side dependency, never loaded from user-facing settings. */
 export function createGatewayClient(raw, { expectedUpstream }) {
-  if (!raw || Object.keys(raw).some(key => !['url','upstream','models','token'].includes(key))) throw gatewayError('gateway_client_config_invalid');
+  if (!raw || Object.keys(raw).some(key => !['url','upstream','models','token','ca'].includes(key))) throw gatewayError('gateway_client_config_invalid');
   let url;
   try { url = new URL(raw.url); } catch { throw gatewayError('gateway_client_config_invalid'); }
-  if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.username || url.password ||
+  const secure = url.protocol === 'https:';
+  if (!(secure ? privateGatewayAddress(url.hostname) : url.protocol === 'http:' && url.hostname === '127.0.0.1' && raw.ca === undefined) || url.username || url.password ||
       url.pathname !== '/' || url.search || url.hash) throw gatewayError('gateway_client_config_invalid');
+  const tls = secure ? gatewayClientTls(raw.ca) : {};
+  const request = secure ? httpsRequest : httpRequest;
   const config = gatewayConfig({ upstream: raw.upstream,models: raw.models,
     credentials: [{ installation: 'client',workClass: 'background',token: raw.token }] });
   if (config.providerHash !== gatewayProviderIdentity(expectedUpstream).providerHash) throw gatewayError('gateway_provider_mismatch',409);
@@ -39,7 +44,7 @@ export function createGatewayClient(raw, { expectedUpstream }) {
       try {
         combined.throwIfAborted();
         return await new Promise((resolve,reject) => {
-          const req = request(`${base}${path}`,{ method: bytes ? 'POST' : 'GET',signal: combined,agent: false,maxHeaderSize: 8192,
+          const req = request(`${base}${path}`,{ ...tls, method: bytes ? 'POST' : 'GET',signal: combined,agent: false,maxHeaderSize: 8192,
             headers: { Authorization: authorization,'X-Classifarr-Provider': config.providerHash,'Accept-Encoding': 'identity',
               ...(bytes ? { 'Content-Type': 'application/json','Content-Length': bytes.length } : {}) } }, res => {
             void (async () => {
