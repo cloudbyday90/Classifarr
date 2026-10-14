@@ -17,6 +17,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Gateway credential rotation** — The optional local gateway can reload scoped
+  credentials without restarting unaffected callers. Revocation cancels affected
+  requests while preserving uncertain work and attempt history. Invalid reloads
+  stop safely; production routing and shared Ollama remain unchanged.
+
 - **Gateway generation integration** — Added explicit gateway support to the
   shared generation and saved-verification clients, with bound model checks,
   cancellation and strict completion rules. Live routing remains unchanged;

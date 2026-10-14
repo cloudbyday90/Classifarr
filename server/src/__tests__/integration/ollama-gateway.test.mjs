@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:http';
+import { createServer, request } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getPool } from './setup.mjs';
@@ -26,6 +26,7 @@ const credentials = [ ['local','foreground'],['unraid','foreground'],['local','b
 let clients, gateways, provider, config, calls, upstreamHeaders, handler, releaseHeld;
 const migration = await readFile(new URL('../../../../database/ollama-gateway/20261014_121441_admission.sql',import.meta.url),'utf8');
 const until = async predicate => { const end = Date.now()+3000; while (!await predicate()) { if (Date.now()>end) throw new Error('fixture_deadline'); await delay(10); } };
+const rotatedConfig = entries => gatewayConfig({ upstream: config.upstream,models: [model],credentials: entries,timeoutMs: 1000,queueMs: 300 });
 async function connect() { const client = await getPool().connect(); client.on('error',() => {}); clients.push(client); return client; }
 async function start(override = {}) {
   const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash);
@@ -58,6 +59,108 @@ afterEach(async () => {
   for (const client of clients) client.release(true);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
 });
+test('credential rotation cancels only the removed installation waiter without an additional claim', async () => {
+  const gate = await start();
+  handler = (_req,res) => { releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'done' })); };
+  const active = call(gate,2); await until(() => calls.length === 1);
+  const waiting = call(gate,1);
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 1);
+  gate.gateway.replaceCredentials(rotatedConfig([credentials[0],credentials[2]]));
+  expect((await waiting).status).toBe(503); expect((await call(gate,1)).status).toBe(401);
+  releaseHeld(); expect((await active).status).toBe(200);
+  expect((await gate.ledger.status()).attempts).toBe('1'); expect(calls).toHaveLength(1);
+});
+
+test.each([false,true])('active credential revocation cancels transport and preserves uncertainty (stream=%s)', async stream => {
+  const gate = await start(); let disconnected = false, partial = false;
+  handler = (_req,res) => {
+    res.on('close',() => { disconnected = true; });
+    if (stream) { res.setHeader('Content-Type','application/x-ndjson'); res.write(`${JSON.stringify({ model,done: false,response: 'partial' })}\n`); }
+  };
+  const client = gatewayClient(gate);
+  const active = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream },
+    { ...(stream ? { onRecord: async () => { partial = true; } } : {}) }).catch(error => error.code);
+  await until(() => calls.length === 1 && (!stream || partial));
+  const before = await gate.ledger.status(); gate.gateway.replaceCredentials(rotatedConfig([credentials[1],credentials[2]]));
+  expect(await active).toMatch(/^gateway_(request_rejected|transport_failed)$/); await until(() => disconnected);
+  expect(await gate.ledger.status()).toEqual(before); expect((await call(gate)).status).toBe(401);
+  expect((await call(gate,1)).status).toBe(503); expect(calls).toHaveLength(1); client.close();
+});
+
+test('revocation during claim preserves its marker but never dispatches upstream', async () => {
+  let gate;
+  gate = await start({ claim: async installation => {
+    const id = await gate.ledger.claim(installation); gate.gateway.replaceCredentials(rotatedConfig([credentials[1]])); return id;
+  } });
+  expect((await call(gate)).status).toBe(401); expect(calls).toHaveLength(0);
+  expect(await gate.ledger.status()).toMatchObject({ state: 'uncertain_or_active',attempts: '1' });
+});
+
+test('revocation during proven completion withholds response without undoing the valid ledger write', async () => {
+  let gate;
+  gate = await start({ complete: async (id,cooldown) => {
+    await gate.ledger.complete(id,cooldown); gate.gateway.replaceCredentials(rotatedConfig([credentials[1]]));
+  } });
+  const response = await call(gate); expect(response.status).toBe(401); expect(await response.text()).not.toContain('Synthetic');
+  expect(await gate.ledger.status()).toMatchObject({ state: 'ready',attempts: '1',requestId: null });
+});
+
+test('rotation preserves owner, cooldown and successful inspection; old token is denied after removal', async () => {
+  const gate = await start(); handler = (_req,res) => { res.writeHead(503); res.end('{}'); };
+  expect((await call(gate)).status).toBe(503); const before = await gate.ledger.status();
+  const owner = (await getPool().query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id;
+  const fresh = { ...credentials[0],token: randomBytes(32).toString('base64url') };
+  gate.gateway.replaceCredentials(rotatedConfig([...credentials,fresh]));
+  const options = { path: '/gateway/status',method: 'GET',headers: { Authorization: `Bearer ${fresh.token}` } };
+  expect((await call(gate,0,options)).status).toBe(200);
+  gate.gateway.replaceCredentials(rotatedConfig([fresh,credentials[1]]));
+  expect((await call(gate,0,{ path: '/gateway/status',method: 'GET' })).status).toBe(401);
+  expect((await call(gate,0,options)).status).toBe(200); expect(await gate.ledger.status()).toEqual(before);
+  expect((await getPool().query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id).toBe(owner);
+  expect(calls).toHaveLength(1);
+});
+
+test('revoked inspection disconnects without claiming compute', async () => {
+  let disconnected = false; handler = (_req,res) => { res.on('close',() => { disconnected = true; }); };
+  const gate = await start(), active = call(gate,0,{ path: '/api/tags',method: 'GET' }); await until(() => calls.length === 1);
+  gate.gateway.replaceCredentials(rotatedConfig([credentials[1]]));
+  expect((await active).status).toBe(503); await until(() => disconnected);
+  expect(await gate.ledger.status()).toMatchObject({ state: 'ready',attempts: '0',requestId: null });
+});
+
+test('revocation interrupts incomplete body intake before admission', async () => {
+  const gate = await start();
+  const received = new Promise(resolve => { gate.gateway.server.once('request',resolve); });
+  let req;
+  const response = new Promise((resolve,reject) => {
+    req = request(`${gate.url}/api/generate`,{ method: 'POST',headers: { Authorization: `Bearer ${credentials[0].token}`,
+      'Content-Type': 'application/json','Content-Length': 100 } },res => {
+      res.resume(); res.on('end',() => resolve(res.statusCode)); res.on('error',reject);
+    });
+    req.on('error',reject); req.flushHeaders();
+  });
+  try {
+    await received; gate.gateway.replaceCredentials(rotatedConfig([credentials[1]]));
+    expect(await response).toBe(503); expect(calls).toHaveLength(0);
+    expect((await gate.ledger.status()).attempts).toBe('0');
+  } finally { req.destroy(); }
+});
+
+test('overlapping tokens retain one queue slot per installation and completed scopes are released', async () => {
+  const gate = await start();
+  for (let i = 0; i < 36; i++) expect((await call(gate,0,{ path: '/gateway/status',method: 'GET' })).status).toBe(200);
+  const fresh = { ...credentials[1],token: randomBytes(32).toString('base64url') };
+  gate.gateway.replaceCredentials(rotatedConfig([...credentials,fresh]));
+  handler = (_req,res) => { releaseHeld = () => res.end(JSON.stringify({ model,done: true,response: 'done' })); };
+  const active = call(gate,2); await until(() => calls.length === 1);
+  const waiting = call(gate,1);
+  await until(async () => (await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json()).waiting === 1);
+  expect((await call(gate,1,{ headers: { Authorization: `Bearer ${fresh.token}` } })).status).toBe(429);
+  gate.gateway.replaceCredentials(rotatedConfig([credentials[0],credentials[2],fresh]));
+  expect((await waiting).status).toBe(503); releaseHeld(); expect((await active).status).toBe(200);
+  expect((await gate.ledger.status()).attempts).toBe('1'); expect(calls).toHaveLength(1);
+});
+
 test('UUIDv7 schema, safe status reads and two installations share one durable attempt ledger', async () => {
   const gate = await start();
   expect((await call(gate,0,{ path: '/gateway/status',method: 'GET' })).status).toBe(200); expect(calls).toEqual([]);

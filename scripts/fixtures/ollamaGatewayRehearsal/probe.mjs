@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, unlink } from 'node:fs/promises';
+import { readFile, writeFile, unlink, rename, chmod, symlink } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 // This fixture is copied to /tmp, never over packaged source/dependencies.
@@ -15,7 +15,7 @@ import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerif
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
 const database = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr_gateway_fixture' });
-const configFile = '/tmp/isolated-gateway-secret.json', model = 'synthetic:latest', children = [];
+const configFile = '/tmp/isolated-gateway-secret.json', model = 'synthetic:latest', children = [], outputs = new Map();
 const credentials = [['local','foreground'],['unraid','foreground'],['local','background']].map(([installation,workClass]) =>
   ({ installation,workClass,token: randomBytes(32).toString('base64url') }));
 let hold = false, calls = 0, forbiddenHeader = false, release;
@@ -49,12 +49,27 @@ async function launch() {
   const child = spawn(process.execPath,['/app/src/scripts/runOllamaGateway.mjs'],{ env: {
     PATH: process.env.PATH,CLASSIFARR_GATEWAY_CONFIG_FILE: configFile },stdio: ['ignore','pipe','pipe'] });
   children.push(child); let output = '';
-  child.stdout.on('data',data => { output += data.toString(); }); child.stderr.resume();
+  outputs.set(child,{ stdout: '',stderr: '' });
+  child.stdout.on('data',data => { output += data.toString(); outputs.get(child).stdout += data.toString(); });
+  child.stderr.on('data',data => { outputs.get(child).stderr += data.toString(); });
   await until(() => output.includes('ollama_gateway_ready')); return child;
 }
 async function kill(child, signal = 'SIGKILL') {
   if (child.exitCode !== null || child.signalCode !== null) return;
   const stopped = new Promise(resolve => { child.once('exit',resolve); }); child.kill(signal); await stopped;
+}
+async function saveConfiguration(document) {
+  await writeFile(`${configFile}.next`,JSON.stringify(document),{ mode: 0o600 });
+  await rename(`${configFile}.next`,configFile);
+}
+async function reload(child) {
+  const before = outputs.get(child).stdout;
+  child.kill('SIGHUP'); await until(() => outputs.get(child).stdout !== before);
+  assert.equal(outputs.get(child).stdout.slice(before.length),'ollama_gateway_credentials_reloaded\n');
+}
+async function failedReload(child) {
+  child.kill('SIGHUP'); await until(() => child.exitCode !== null);
+  assert.equal(child.exitCode,1); assert.equal(outputs.get(child).stderr,'ollama_gateway_reload_failed\n');
 }
 try {
   await admin.connect();
@@ -68,9 +83,10 @@ try {
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
   const upstream = `http://127.0.0.1:${provider.address().port}`;
   const client = createGatewayClient({ url: base,upstream,models: [model],token: credentials[0].token },{ expectedUpstream: upstream });
-  await writeFile(configFile,JSON.stringify({ gateway: { upstream,
+  const configuration = { gateway: { upstream,
     port: 11435,models: [model],credentials,timeoutMs: 10000,queueMs: 3000 },
-  database: { host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' } }),{ mode: 0o600 });
+  database: { host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' } };
+  await saveConfiguration(configuration);
   let child = await launch(); assert.equal((await status()).attempts,'0'); assert.equal(calls,0);
   assert.equal((await fetch(`${base}/gateway/status`)).status,401);
   assert.equal((await call(0)).status,200); assert.equal((await call(1)).status,200);
@@ -94,6 +110,24 @@ try {
   assert.equal((await call(2)).status,429); hold = false; release();
   assert.equal((await active).status,200); assert.equal((await queued).status,200);
   assert.equal((await status()).attempts,'7');
+  const owner = (await database.query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id;
+  const oldToken = credentials[1].token, rotated = { ...credentials[1],token: randomBytes(32).toString('base64url') };
+  configuration.gateway.credentials = [...credentials,rotated]; await saveConfiguration(configuration); await reload(child);
+  const checkToken = token => fetch(`${base}/gateway/status`,{ headers: { Authorization: `Bearer ${token}` } });
+  assert.equal((await checkToken(oldToken)).status,200); assert.equal((await checkToken(rotated.token)).status,200);
+  configuration.gateway.credentials = [credentials[0],rotated,credentials[2]];
+  await saveConfiguration(configuration); await reload(child);
+  assert.equal((await checkToken(oldToken)).status,401); assert.equal((await checkToken(rotated.token)).status,200);
+  credentials[1] = rotated;
+  assert.equal((await database.query('SELECT owner_id FROM ollama_gateway.admission')).rows[0].owner_id,owner);
+  assert.equal((await status()).attempts,'7'); assert.equal(calls,7);
+  // Actual Linux file/signal checks, not mocked Windows signal behavior.
+  await chmod(configFile,0o644); await failedReload(child); await chmod(configFile,0o600); child = await launch();
+  assert.equal((await checkToken(oldToken)).status,401); assert.equal((await status()).attempts,'7');
+  await writeFile(configFile,'{ PRIVATE invalid configuration'); await failedReload(child);
+  await saveConfiguration(configuration); child = await launch(); assert.equal((await status()).attempts,'7');
+  await rename(configFile,`${configFile}.target`); await symlink(`${configFile}.target`,configFile); await failedReload(child);
+  await unlink(configFile); await rename(`${configFile}.target`,configFile); child = await launch();
   await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'7');
   hold = true; let interruptedPartial = false;
   const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
@@ -107,10 +141,15 @@ try {
     FROM ollama_gateway.admission`)).rows[0];
   assert.deepEqual(ids,{ id_version: 7,owner_version: 7,request_version: 7 });
   assert.equal((await admin.query("SELECT count(*)::int AS n FROM task_queue WHERE task_type='classification'")).rows[0].n,0);
-  process.stdout.write('gateway_packaged_rehearsal_passed: primary generation, saved verification probe, authenticated client, streaming completion, two installations, priority, UUIDv7, least-privilege database role, graceful restart, abrupt streaming death, preserved uncertainty; 8 synthetic calls\n');
+  for (const output of outputs.values()) for (const token of [oldToken,...credentials.map(entry => entry.token)]) {
+    assert.equal(`${output.stdout}${output.stderr}`.includes(token),false);
+  }
+  process.stdout.write('gateway_packaged_rehearsal_passed: credential overlap/removal, Linux SIGHUP, owner/attempt continuity, private-file/JSON/symlink failure shutdown, restart revocation, primary generation, saved verification, streaming, UUIDv7, abrupt death and preserved uncertainty; 8 synthetic calls\n');
 } finally {
   release?.(); for (const child of children) await kill(child);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
   await database.end(); await admin.end();
-  await unlink(configFile).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  for (const path of [configFile,`${configFile}.next`,`${configFile}.target`]) {
+    await unlink(path).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  }
 }

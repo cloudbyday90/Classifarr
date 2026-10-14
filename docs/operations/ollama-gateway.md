@@ -74,8 +74,47 @@ placeholder is not a usable secret. Set `CLASSIFARR_GATEWAY_CONFIG_FILE` to that
 file, then explicitly run `npm --prefix server run gateway:ollama`. Do not paste
 credentials into command-line arguments, logs, browser code or support reports.
 The normal application entrypoint never reads this configuration or starts the
-gateway. To rotate credentials, stop the gateway and replace its private file;
-restart retains any uncertain in-flight marker and attempt count.
+gateway. Keep the containing directory private too. Linux rejects a symlink at
+the configuration filename. Do not edit the active file in place.
+
+## Credential rotation and revocation (local prototype)
+
+On Linux, the standalone process supports explicit SIGHUP reload. Replace the
+private file atomically from the same private directory, with mode 0600, and send
+SIGHUP to the **gateway process**, not the Classifarr application or shared Ollama.
+Only credentials may change live. Provider, models, port, deadlines and database
+configuration must remain identical. There is no HTTP administration endpoint.
+
+For a routine rotation:
+
+1. Add a newly generated token with the same installation/work class, keeping the
+   old token temporarily. The list remains limited to 32 credentials.
+2. Replace the file, signal the gateway, and confirm the fixed
+   `ollama_gateway_credentials_reloaded` message. Confirm the new token with the
+   database-only `/gateway/status` endpoint; never put it in logs or a URL.
+3. Close/recreate the affected test client with the new credential.
+4. Remove the old token, replace the file and reload again. Confirm the reload and
+   that the old token now receives 401. Merely editing a file does not revoke it.
+
+For suspected compromise, remove the token immediately instead of keeping overlap.
+Removed tokens or changed installation/work-class bindings cancel their body reads,
+inspection, queued and active requests. Unchanged credentials continue. Work that
+was already dispatched may still be running upstream; its durable uncertainty is
+not cleared. Revocation cannot retract partial output already delivered.
+
+A missing, invalid, non-private or incompatible file, or a five-second reload
+deadline, emits `ollama_gateway_reload_failed` and stops the gateway with exit code
+1. Current credentials remain valid until replacement succeeds or failure stops
+the process. Do not interpret a signal alone as successful revocation. Correct the
+file before restarting; retained attempts, cooldowns and uncertain markers survive.
+To revoke everyone, stop the gateway. Empty credential lists are not accepted.
+Windows uses explicit stop/replace/restart instead of SIGHUP.
+
+Reloads are serialized with at most one queued follow-up. The startup path is fixed;
+environment edits cannot redirect reloads. No token expiry or secret-manager client
+is implemented yet. Never restore revoked credentials from an old file backup.
+See the [lifecycle design](../architecture/ollama-gateway-credential-lifecycle-design.md)
+and [outcome](../architecture/ollama-gateway-credential-lifecycle-outcome.md).
 
 ## API and fixed bounds
 
@@ -180,7 +219,8 @@ network, no published ports, two CPUs, 2 GiB memory and 512 PIDs. The normal
 application entrypoint stays intact. A separate fixture starts the packaged
 gateway CLI against a loopback stub and a dedicated least-privilege database
 role. It checks two installation credentials, queue priority, UUIDv7, preserved
-attempts, graceful restart and abrupt process death. Only its randomly named
+attempts, Linux credential reload/revocation, invalid-file shutdown, graceful
+restart and abrupt process death. Only its randomly named
 container/data directory are removed, with cleanup verified. It never calls real
 Ollama and is not proof of a published-release upgrade or real model quality.
 
