@@ -229,7 +229,8 @@ Close and replace the whole context on configuration/credential changes. Close
 aborts inspection and compute together without clearing uncertain gateway work.
 Do not enable partial routing: health probes, the embedding router, settings
 tests and application warming still require coordinated composition. See the
-[provider-context design](../architecture/ollama-gateway-provider-context-design.md).
+[provider-context design](../architecture/ollama-gateway-provider-context-design.md)
+and [verification outcome](../architecture/ollama-gateway-provider-context-outcome.md).
 
 ## Local image rehearsal
 
