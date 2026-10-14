@@ -4,6 +4,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { readReadinessBackfill } from './ollamaReadinessBackfillObservation.mjs';
 import {
   buildCandidateBoundVerificationProviderPreflight,
 } from './classificationCandidateBoundVerificationProviderPreflight.mjs';
@@ -48,7 +49,10 @@ export function createCandidateBoundVerificationProviderPreflightService(options
       if (presentationContext) {
         options.presentationContext = presentationContext;
       }
-      return buildPreflight(options);
+      const report = buildPreflight(options);
+      if (presentationContext !== 'saved_configuration' || proposedConfiguration ||
+          existingConfiguration?.primary_provider !== 'ollama') return report;
+      return { ...report, automaticVerification: await readReadinessBackfill(database, existingConfiguration) };
     },
   });
 }

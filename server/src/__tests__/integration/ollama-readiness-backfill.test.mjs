@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
+import express from 'express';
+import request from 'supertest';
 import { beforeEach, afterEach, test, expect, jest } from '@jest/globals';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createOllamaReadinessBackfill } from '../../services/ollamaReadinessBackfill.mjs';
@@ -7,6 +9,8 @@ import { readInventoryBackgroundReadiness } from '../../services/inventoryBackgr
 import { loadOllamaVerificationCapabilityConfiguration, persistOllamaVerificationCapabilityProbe } from '../../services/ollamaVerificationCapabilityRepository.mjs';
 import { resolveOllamaVerificationCapabilityIdentity } from '../../services/ollamaVerificationCapabilityIdentity.mjs';
 import { METADATA_REFILL_OWNER_LOCK } from '../../services/queueRefillCoordination.mjs';
+import { recordReadinessBackfill, readReadinessBackfill } from '../../services/ollamaReadinessBackfillObservation.mjs';
+import { createAiSettingsHandlers } from '../../routes/helpers/aiSettingsHandlers.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 // Match the production helper's boolean acquisition contract, using real PG locks.
@@ -20,6 +24,7 @@ db.withSessionAdvisoryLock = async (key, work) => {
 };
 let libraryId;
 beforeEach(async () => {
+  await db.query('DELETE FROM ollama_readiness_backfill_state');
   await db.query(`UPDATE ai_provider_config SET primary_provider='ollama',ollama_host='fixture-only',
     ollama_model='fixture-model',rag_enabled=false,configuration_revision=configuration_revision+1,
     ollama_verification_capability_checked_at=NULL,ollama_verification_capability_status='not_checked',
@@ -36,7 +41,7 @@ function make(extra = {}) {
     models: [{ name: 'fixture-model', digest: 'a'.repeat(64) }] })),
   generate: jest.fn(async () => '{"status":"ready","contract":"candidate-bound-verification"}') };
   const options = { database: db, admission: { tryAcquire: () => ({ allowed: true, release() {} }) },
-    createClient: () => client, history: jest.fn(), ...extra };
+    createClient: () => client, history: jest.fn(), logger: { info: jest.fn(), warn: jest.fn() }, ...extra };
   return { worker: createOllamaReadinessBackfill(options), client, options };
 }
 
@@ -87,6 +92,7 @@ test('two automatic workers cannot infer concurrently; a manual verdict during I
   const running = f.worker.run(); await started;
   try {
     expect((await make().worker.run()).reason).toBe('busy');
+    expect((await db.query('SELECT status FROM ollama_readiness_backfill_state')).rows[0].status).toBe('checking');
     const identity = resolveOllamaVerificationCapabilityIdentity(await loadOllamaVerificationCapabilityConfiguration(db));
     await db.withTransaction(client => persistOllamaVerificationCapabilityProbe({ client, identity, outcome: {
       statusId: 'classification_only', configurationFingerprint: identity.fingerprint,
@@ -97,6 +103,60 @@ test('two automatic workers cannot infer concurrently; a manual verdict during I
   expect((await running).reason).toBe('already_checked');
   expect((await loadOllamaVerificationCapabilityConfiguration(db)).ollama_verification_capability_status).toBe('classification_only');
   expect(f.options.history).not.toHaveBeenCalled();
+});
+
+test('waiting survives worker recreation, is throttled, and GET cannot trigger inference or change it', async () => {
+  const config = await loadOllamaVerificationCapabilityConfiguration(db);
+  const f = make({ admission: { tryAcquire: () => ({ allowed: false, reason: 'memory_pressure' }) } });
+  expect((await f.worker.run()).reason).toBe('memory_pressure');
+  const saved = (await db.query('SELECT * FROM ollama_readiness_backfill_state')).rows[0];
+  expect((await createOllamaReadinessBackfill(f.options).run()).reason).toBe('memory_pressure');
+  expect((await db.query('SELECT * FROM ollama_readiness_backfill_state')).rows[0]).toEqual(saved);
+  const model = { generate: jest.fn(), preflightConnection: jest.fn() };
+  const handlers = createAiSettingsHandlers({ db, logger: { error: jest.fn(), warn: jest.fn() }, ollamaService: model });
+  const app = express();
+  // Handler/service/SQL contract; existing route authentication is not replaced in production.
+  app.get('/api/settings/ai/verification-capability', handlers.getVerificationCapability);
+  const response = await request(app).get('/api/settings/ai/verification-capability').expect(200);
+  expect(response.headers['cache-control']).toBe('no-store');
+  expect(response.body.automaticVerification).toMatchObject({ status: 'pending', reason: 'memory_pressure' });
+  expect(JSON.stringify(response.body.automaticVerification)).not.toContain('fixture-only');
+  expect(model.generate).not.toHaveBeenCalled();
+  expect(model.preflightConnection).not.toHaveBeenCalled();
+  expect((await db.query('SELECT * FROM ollama_readiness_backfill_state')).rows[0]).toEqual(saved);
+  expect((await readReadinessBackfill(db, config)).reason).toBe('memory_pressure');
+  expect((await make().worker.run()).status).toBe('completed');
+  expect(await readReadinessBackfill(db, await loadOllamaVerificationCapabilityConfiguration(db))).toBeNull();
+});
+
+test('stale observations cannot overwrite a changed configuration; unknown text is never stored', async () => {
+  const old = await loadOllamaVerificationCapabilityConfiguration(db);
+  await recordReadinessBackfill(db, old, { status: 'deferred', reason: 'busy' });
+  await db.query('UPDATE ai_provider_config SET configuration_revision=configuration_revision+1 WHERE id=1');
+  const current = await loadOllamaVerificationCapabilityConfiguration(db);
+  expect((await readReadinessBackfill(db, current)).reason).toBe('pending');
+  await recordReadinessBackfill(db, current, { status: 'deferred', reason: 'secret endpoint' });
+  const saved = (await db.query('SELECT * FROM ollama_readiness_backfill_state')).rows[0];
+  expect(saved.reason).toBe('unavailable');
+  await recordReadinessBackfill(db, old, { status: 'completed' });
+  expect((await db.query('SELECT * FROM ollama_readiness_backfill_state')).rows[0]).toEqual(saved);
+  expect(JSON.stringify(saved)).not.toContain('secret');
+});
+
+test('only changed reasons or elapsed diagnostic heartbeat update the singleton', async () => {
+  const config = await loadOllamaVerificationCapabilityConfiguration(db);
+  await recordReadinessBackfill(db, config, { status: 'deferred', reason: 'busy' });
+  await db.query("UPDATE ollama_readiness_backfill_state SET observed_at=clock_timestamp()-interval '6 minutes'");
+  await recordReadinessBackfill(db, config, { status: 'deferred', reason: 'busy' });
+  expect((await readReadinessBackfill(db, config)).reason).toBe('busy');
+  expect((await db.query("SELECT observed_at>clock_timestamp()-interval '1 minute' AS fresh FROM ollama_readiness_backfill_state")).rows[0].fresh).toBe(true);
+  await recordReadinessBackfill(db, config, { status: 'checking' });
+  await recordReadinessBackfill(db, config, { status: 'deferred', reason: 'busy' });
+  expect((await readReadinessBackfill(db, config)).status).toBe('checking');
+  await db.query("UPDATE ollama_readiness_backfill_state SET observed_at=clock_timestamp()-interval '3 minutes'");
+  await recordReadinessBackfill(db, config, { status: 'deferred', reason: 'busy' });
+  expect((await readReadinessBackfill(db, config)).reason).toBe('busy');
+  expect((await db.query('SELECT count(*)::integer AS count FROM ollama_readiness_backfill_state')).rows[0].count).toBe(1);
 });
 
 test('settings replacement while probing rejects stale evidence and leaves missing work discoverable', async () => {

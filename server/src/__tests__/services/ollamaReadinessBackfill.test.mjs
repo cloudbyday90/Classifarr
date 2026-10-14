@@ -20,7 +20,7 @@ function fixture(extra = {}) {
     createClient: jest.fn(() => client), persist: jest.fn(async ({ outcome }) => {
       configuration.ollama_verification_capability_checked_at = outcome.checkedAt;
       return configuration;
-    }), history: jest.fn(), logger: { warn: jest.fn() }, ...extra,
+    }), history: jest.fn(), observe: jest.fn(), logger: { warn: jest.fn(), info: jest.fn() }, ...extra,
   };
   const worker = createOllamaReadinessBackfill(options);
   return { worker, configuration, controller, release, client, events, options };
@@ -138,12 +138,52 @@ test('scheduler owns delay, non-overlap, replacement and fixed failure reporting
   registerOllamaReadinessBackfillSchedule(scheduler, { worker });
   expect(old.stop).toHaveBeenCalledTimes(1); expect(scheduler.ollamaReadinessBackfillWorker).toBe(worker);
   const run = scheduler.schedule.mock.calls[0][2];
-  expect(scheduler.schedule).toHaveBeenCalledWith('ollama-readiness-backfill', '*/5 * * * *', run, null, { noOverlap: true });
+  expect(scheduler.schedule).toHaveBeenCalledWith('ollama-readiness-backfill', '17 * * * * *', run, null,
+    { noOverlap: true, maxRandomDelay: 10000, quiet: true });
   expect(scheduler.scheduleInitial).toHaveBeenCalledWith('ollama-readiness-backfill', 120000, run);
   expect(buildSchedulerExecutionReceipt({ taskName: 'ollama-readiness-backfill', outcomeId: 'completed' }).taskClass).toBe('observation');
   expect((await run()).status).toBe('deferred');
   worker.run.mockResolvedValue({ status: 'failed', reason: 'private' });
   await expect(run()).rejects.toThrow('ollama_readiness_backfill_unavailable');
+});
+
+test('waiting remains pending, reports its reason and completes on a later admission without a page', async () => {
+  const f = fixture();
+  f.options.admission.tryAcquire.mockReturnValueOnce({ allowed: false, reason: 'busy' });
+  expect(await f.worker.run()).toEqual({ status: 'deferred', reason: 'busy' });
+  expect(f.configuration.ollama_verification_capability_checked_at).toBeNull();
+  expect(f.options.observe).toHaveBeenLastCalledWith(f.options.database, f.configuration, { status: 'deferred', reason: 'busy' });
+  expect(f.options.logger.info).toHaveBeenLastCalledWith('Automatic AI verification status',
+    { status: 'waiting', reason: 'busy' });
+  expect(f.client.generate).not.toHaveBeenCalled();
+  expect((await f.worker.run()).status).toBe('completed');
+  expect(f.options.observe.mock.calls.some(call => call[2].status === 'checking')).toBe(true);
+  expect(f.client.generate).toHaveBeenCalledTimes(1);
+});
+
+test('observation failure is sanitized and never prevents a valid first test', async () => {
+  const f = fixture({ observe: jest.fn(async () => { throw new Error('secret'); }) });
+  expect((await f.worker.run()).status).toBe('completed');
+  expect(JSON.stringify(f.options.logger.warn.mock.calls)).not.toContain('secret');
+  expect(f.options.persist).toHaveBeenCalledTimes(1);
+});
+
+test.each(['sync', 'async'])('unavailable diagnostics and %s logger cannot change completion', async mode => {
+  const fail = () => { if (mode === 'async') return Promise.reject(new Error('private')); throw new Error('private'); };
+  const f = fixture({ observe: fail, history: fail, logger: { warn: fail, info: fail } });
+  expect((await f.worker.run()).status).toBe('completed');
+});
+
+test('repeated waiting logs are bounded without suppressing a changed outcome', async () => {
+  const f = fixture({ admission: { tryAcquire: () => ({ allowed: false, reason: 'busy' }) } });
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+  try {
+    await f.worker.run(); await f.worker.run();
+    expect(f.options.logger.info).toHaveBeenCalledTimes(1);
+    clock.mockReturnValue(301001);
+    await f.worker.run();
+    expect(f.options.logger.info).toHaveBeenCalledTimes(2);
+  } finally { clock.mockRestore(); }
 });
 
 test('RAG-independent readiness keeps the same ingestion/backfill safety conditions', async () => {

@@ -8,6 +8,8 @@ import { probeOllamaVerificationCapability } from './ollamaVerificationCapabilit
 import { createOllamaVerificationSavedConfigurationClient } from './ollamaVerificationSavedConfigurationClient.mjs';
 import { recordOllamaVerificationCapabilityOutcomeHistory } from './ollamaVerificationCapabilityOutcomeHistoryRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { recordReadinessBackfill } from './ollamaReadinessBackfillObservation.mjs';
+import { normalizeReadinessObservation } from './ollamaReadinessBackfillStatus.mjs';
 
 function eligibility(configuration) {
   if (configuration?.primary_provider !== 'ollama') return 'not_applicable';
@@ -22,12 +24,41 @@ export function createOllamaReadinessBackfill({ database = db, admission = backg
   load = loadOllamaVerificationCapabilityConfiguration, readiness = readInventoryBackgroundReadiness,
   createClient = createOllamaVerificationSavedConfigurationClient, probe = probeOllamaVerificationCapability,
   persist = persistOllamaVerificationCapabilityProbe, history = recordOllamaVerificationCapabilityOutcomeHistory,
+  observe = recordReadinessBackfill,
   logger = createLogger('OllamaReadinessBackfill') } = {}) {
   let stopped = false, active = null;
+  // Keys come only from normalizeReadinessObservation's fixed reason vocabulary.
+  const lastLogged = new Map();
   const deferred = reason => ({ status: 'deferred', reason });
-  async function runOnce() {
+  function log(level, message, details, options) {
     try {
-      let reason = eligibility(await load(database));
+      const result = options ? logger[level]?.(message, details, options) : logger[level]?.(message, details);
+      Promise.resolve(result).catch(() => {});
+    }
+    catch { /* Optional diagnostics must never change worker admission or completion. */ }
+  }
+  async function record(configuration, result) {
+    if (!configuration || ['already_checked', 'not_applicable'].includes(result?.reason)) return;
+    try { await observe(database, configuration, result); }
+    catch { log('warn', 'Automatic AI verification observation unavailable', { reason: 'observation_unavailable' },
+      { dedupeKey: 'ollama-readiness-observation', dedupeWindowMs: 300000 }); }
+    const observation = normalizeReadinessObservation(result);
+    const now = Date.now();
+    if (now - (lastLogged.get(observation.reason) ?? -Infinity) >= 300000) {
+      lastLogged.set(observation.reason, now);
+      log('info', 'Automatic AI verification status', observation);
+    }
+  }
+  async function runOnce() {
+    const context = { configuration: null };
+    const result = await executeOnce(context);
+    await record(context.configuration, result);
+    return result;
+  }
+  async function executeOnce(context) {
+    try {
+      const configuration = context.configuration = await load(database);
+      let reason = eligibility(configuration);
       if (stopped) return { status: 'stopped' };
       if (reason) return deferred(reason);
       if (database.pool?.options?.max === 1) return deferred('database_capacity');
@@ -41,13 +72,15 @@ export function createOllamaReadinessBackfill({ database = db, admission = backg
         const execute = async ({ signal }) => {
           const cancelled = () => stopped || signal.aborted;
           if (cancelled()) return { status: 'stopped' };
-          const configuration = await load(database);
+          const configuration = context.configuration = await load(database);
           const skip = eligibility(configuration);
           if (skip) return deferred(skip);
           const state = await readiness(database, { requireRag: false });
           if (cancelled()) return { status: 'stopped' };
           if (state !== 'ready') return deferred(state);
           const identity = resolveOllamaVerificationCapabilityIdentity(configuration);
+          await record(configuration, { status: 'checking' });
+          if (cancelled()) return { status: 'stopped' };
           const client = createClient({ configuration });
           const assertActive = () => { if (cancelled()) throw new Error('readiness_backfill_stopped'); };
           const ollamaClient = {
@@ -67,7 +100,7 @@ export function createOllamaReadinessBackfill({ database = db, admission = backg
           });
           if (!saved) return deferred('already_checked');
           try { await history(database, outcome.statusId); }
-          catch { logger.warn('AI readiness history unavailable', { reason: 'history_unavailable' }); }
+          catch { log('warn', 'AI readiness history unavailable', { reason: 'history_unavailable' }); }
           return { status: 'completed', readiness: outcome.statusId };
         };
         const acquired = await database.withSessionAdvisoryLock(db.DB_ADVISORY_LOCKS.OLLAMA_READINESS_BACKFILL,

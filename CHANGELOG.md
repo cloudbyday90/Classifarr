@@ -32,6 +32,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **AI readiness** — Missing first-time Ollama verification stays pending through
+  busy periods and gets staggered background opportunities without an open page.
+  Configuration-specific waiting reasons survive restart; status refresh and
+  actual test times are distinct. Existing results are not automatically retested,
+  and inventory, memory and ownership safeguards remain unchanged.
 - **Classification identity and diagnostics** — Classification, webhook intake
   and failed-task checks consistently interpret supported legacy and nested IDs,
   reject conflicting declarations, and preserve original source evidence. Broader

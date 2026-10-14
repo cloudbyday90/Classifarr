@@ -10,6 +10,8 @@ export function registerOllamaReadinessBackfillSchedule(scheduler, { worker = cr
     if (result.status === 'failed') throw new Error('ollama_readiness_backfill_unavailable');
     return result;
   };
-  scheduler.schedule(OLLAMA_READINESS_BACKFILL_TASK, '*/5 * * * *', run, null, { noOverlap: true });
+  // Avoid the usual second 0/30/45 discovery starts without bypassing admission.
+  scheduler.schedule(OLLAMA_READINESS_BACKFILL_TASK, '17 * * * * *', run, null,
+    { noOverlap: true, maxRandomDelay: 10000, quiet: true });
   scheduler.scheduleInitial(OLLAMA_READINESS_BACKFILL_TASK, 120000, run);
 }

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-13T21:00:46.622Z
--- Latest Migration: 20261013_210000_queue_identity_repair.sql
+-- Generated: 2026-10-14T09:49:43.797Z
+-- Latest Migration: 20261014_060000_ollama_readiness_backfill_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -5654,6 +5654,32 @@ ALTER SEQUENCE public.ollama_config_id_seq OWNED BY public.ollama_config.id;
 
 
 --
+-- Name: ollama_readiness_backfill_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ollama_readiness_backfill_state (
+    id integer NOT NULL,
+    configuration_revision bigint NOT NULL,
+    configuration_fingerprint text CONSTRAINT ollama_readiness_backfill_st_configuration_fingerprint_not_null NOT NULL,
+    status text NOT NULL,
+    reason text NOT NULL,
+    observed_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT ollama_readiness_backfill_state_configuration_fingerprint_check CHECK ((configuration_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT ollama_readiness_backfill_state_configuration_revision_check CHECK ((configuration_revision >= 0)),
+    CONSTRAINT ollama_readiness_backfill_state_id_check CHECK ((id = 1)),
+    CONSTRAINT ollama_readiness_backfill_state_reason_check CHECK ((reason = ANY (ARRAY['waiting_for_configuration'::text, 'waiting_for_libraries'::text, 'waiting_for_inventory'::text, 'ingesting'::text, 'backfilling'::text, 'busy'::text, 'database_capacity'::text, 'memory_pressure'::text, 'memory_unknown'::text, 'unavailable'::text, 'readiness_backfill_unavailable'::text, 'checking'::text, 'completed'::text, 'stopped'::text, 'configuration_changed'::text]))),
+    CONSTRAINT ollama_readiness_backfill_state_status_check CHECK ((status = ANY (ARRAY['waiting'::text, 'checking'::text, 'failed'::text, 'completed'::text])))
+);
+
+
+--
+-- Name: TABLE ollama_readiness_backfill_state; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.ollama_readiness_backfill_state IS 'Single configuration-bound automatic capability observation; diagnostic only, never readiness or retry authority.';
+
+
+--
 -- Name: ollama_verification_capability_test_outcomes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -11287,6 +11313,14 @@ ALTER TABLE ONLY public.ollama_config
 
 
 --
+-- Name: ollama_readiness_backfill_state ollama_readiness_backfill_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ollama_readiness_backfill_state
+    ADD CONSTRAINT ollama_readiness_backfill_state_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ollama_verification_capability_test_outcomes ollama_verification_capability_test_outcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15678,6 +15712,14 @@ ALTER TABLE ONLY public.media_sync_warning_state
 
 
 --
+-- Name: ollama_readiness_backfill_state ollama_readiness_backfill_state_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ollama_readiness_backfill_state
+    ADD CONSTRAINT ollama_readiness_backfill_state_id_fkey FOREIGN KEY (id) REFERENCES public.ai_provider_config(id) ON DELETE CASCADE;
+
+
+--
 -- Name: pattern_match_log pattern_match_log_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -18481,6 +18523,7 @@ FROM unnest(ARRAY[
     '20261010_140000_classification_metadata_failure_context.sql',
     '20261010_220000_source_catalog_mappings.sql',
     '20261013_180000_queue_metadata_recovery.sql',
-    '20261013_210000_queue_identity_repair.sql'
+    '20261013_210000_queue_identity_repair.sql',
+    '20261014_060000_ollama_readiness_backfill_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

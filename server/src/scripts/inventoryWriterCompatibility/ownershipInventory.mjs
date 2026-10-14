@@ -186,6 +186,8 @@ export const INGESTION_GUARDS = Object.freeze([
     'server/src/services/queueMetadataRefillPolicy.mjs',
     'server/src/services/queueEnrichmentPayload.mjs',
     'server/src/services/ollamaReadinessBackfill.mjs',
+    'server/src/services/ollamaReadinessBackfillObservation.mjs',
+    'server/src/services/ollamaReadinessBackfillStatus.mjs',
     'server/src/services/ollamaReadinessBackfillScheduler.mjs',
     'server/src/services/ollamaVerificationCapabilityRepository.mjs',
     'server/src/scripts/resourceStudyRetryFixture.mjs',

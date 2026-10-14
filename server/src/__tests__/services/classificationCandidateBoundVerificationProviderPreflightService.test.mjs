@@ -4,6 +4,20 @@ import {
 } from '../../services/classificationCandidateBoundVerificationProviderPreflightService.mjs';
 
 describe('candidate-bound verification provider preflight service', () => {
+  test('saved Ollama status adds pending diagnostics without changing the capability verdict', async () => {
+    const database = { query: jest.fn(async () => ({ rows: [] })) };
+    const service = createCandidateBoundVerificationProviderPreflightService({ database,
+      loadConfiguration: async () => ({ primary_provider: 'ollama' }),
+      buildPreflight: () => ({ statusId: 'not_checked' }),
+    });
+    expect(await service.getPreflight({ presentationContext: 'saved_configuration' })).toMatchObject({
+      statusId: 'not_checked', automaticVerification: { status: 'pending', reason: 'pending' },
+    });
+    expect(database.query).toHaveBeenCalledTimes(1);
+    expect(await service.getPreflight({ presentationContext: 'saved_configuration', proposedConfiguration: {} }))
+      .toEqual({ statusId: 'not_checked' });
+    expect(database.query).toHaveBeenCalledTimes(1);
+  });
   test('loads only the stored projection and never invokes a provider', async () => {
     const database = { query: jest.fn() };
     const loadConfiguration = jest.fn().mockResolvedValue({

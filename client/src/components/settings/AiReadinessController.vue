@@ -58,8 +58,28 @@
       <p class="text-xs text-gray-400">
         <span v-if="testing">Testing the saved configuration. No media will be routed.</span>
         <span v-else-if="refreshing">Checking saved AI readiness…</span>
-        <span v-else-if="lastUpdatedAt">Last checked {{ formattedLastUpdatedAt }}. {{ automaticUpdateMessage }}</span>
+        <span v-else-if="lastUpdatedAt">Status refreshed {{ formattedLastUpdatedAt }}. {{ automaticUpdateMessage }}</span>
         <span v-else>{{ automaticUpdateMessage }}</span>
+      </p>
+
+      <p
+        v-if="automaticVerification"
+        class="text-sm text-gray-200"
+        data-testid="automatic-verification"
+      >
+        {{ automaticVerification.message }}
+        <span
+          v-if="automaticVerification.observedAt"
+          class="block text-xs text-gray-400"
+        >
+          Background status recorded {{ automaticVerification.observedAt }}.
+        </span>
+      </p>
+      <p
+        v-if="testedAt"
+        class="text-xs text-gray-400"
+      >
+        Saved verification test: {{ testedAt }}.
       </p>
 
       <Button
@@ -263,10 +283,21 @@ const verificationActionLabel = computed(() => (
     : 'Test saved Ollama verification'
 ))
 
+function displayTimestamp(value) {
+  const timestamp = typeof value === 'string' ? Date.parse(value) : NaN
+  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString() : ''
+}
+const testedAt = computed(() => displayTimestamp(props.capability?.ollamaVerificationCapability?.checkedAt))
+const automaticVerification = computed(() => {
+  const status = props.capability?.automaticVerification
+  if (!['pending', 'checking'].includes(status?.status) || typeof status.message !== 'string') return null
+  return { message: status.message, observedAt: displayTimestamp(status.observedAt) }
+})
+
 const automaticUpdateMessage = computed(() => (
   props.autoRefreshEnabled
-    ? 'Updates automatically while this page is visible.'
-    : 'Automatic updates are paused.'
+    ? 'Only this display refreshes while the page is visible; background verification does not require it.'
+    : 'Display updates are paused; background verification is not paused.'
 ))
 
 const formattedLastUpdatedAt = computed(() => {

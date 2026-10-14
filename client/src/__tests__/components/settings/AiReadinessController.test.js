@@ -44,7 +44,7 @@ describe('AiReadinessController', () => {
 
     expect(wrapper.text()).toContain('Ollama verification is ready')
     expect(wrapper.text()).toContain('Ready')
-    expect(wrapper.text()).toContain('Updates automatically while this page is visible.')
+    expect(wrapper.text()).toContain('background verification does not require it')
     expect(wrapper.text()).not.toContain('Test saved Ollama verification')
     expect(wrapper.text()).not.toContain('private-ollama.internal')
     expect(wrapper.text()).not.toContain('private-model')
@@ -101,5 +101,27 @@ describe('AiReadinessController', () => {
 
     await pauseButton.trigger('click')
     expect(wrapper.emitted('toggle-auto-refresh')).toHaveLength(1)
+  })
+
+  it('separates waiting background work, display refresh and actual test time without starting a test', () => {
+    const wrapper = mountController({ capability: {
+      ollamaVerificationCapability: { statusId: 'not_checked', testable: true, checkedAt: null },
+      automaticVerification: { status: 'pending', message: 'Waiting for other background work.', observedAt: '2026-10-14T09:00:00Z' },
+    }, lastUpdatedAt: '2026-10-14T09:01:00Z' })
+    expect(wrapper.get('[data-testid="automatic-verification"]').text()).toContain('Waiting for other background work.')
+    expect(wrapper.text()).toContain('Background status recorded')
+    expect(wrapper.text()).toContain('Status refreshed')
+    expect(wrapper.text()).not.toContain('Last checked')
+    expect(wrapper.text()).not.toContain('Saved verification test:')
+    expect(wrapper.emitted('test')).toBeUndefined()
+  })
+
+  it('shows actual saved test time and keeps pause limited to display updates', () => {
+    const wrapper = mountController({ capability: {
+      ollamaVerificationCapability: { statusId: 'verification_ready', checkedAt: '2026-10-14T09:33:20Z' },
+    }, autoRefreshEnabled: false })
+    expect(wrapper.text()).toContain('Saved verification test:')
+    expect(wrapper.text()).toContain('background verification is not paused')
+    expect(wrapper.find('[data-testid="automatic-verification"]').exists()).toBe(false)
   })
 })

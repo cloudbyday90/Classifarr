@@ -1,5 +1,9 @@
 # AI readiness upgrade backfill — design
 
+Scheduling and waiting-status behavior is superseded by the
+[14 October pending-backfill design](ai-readiness-pending-backfill-design.md).
+The missing-result scope and safety gates below remain unchanged.
+
 Date: 2026-09-30. Scope: a saved primary Ollama configuration that has never
 recorded a verification-capability check, including installations upgraded from
 before that check existed. This is not library ownership or media backfill.

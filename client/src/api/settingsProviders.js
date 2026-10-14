@@ -138,6 +138,7 @@ export function preflightAIVerificationConfig(data) {
 }
 
 export function getAIVerificationCapability() {
+  // Saved verdict plus optional automaticVerification observation; GET never runs a model.
   return getDataRequest('/settings/ai/verification-capability')
 }
 
