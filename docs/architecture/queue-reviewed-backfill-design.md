@@ -91,6 +91,8 @@ Test accessible selection/status and named client API methods. Run coverage and
 quality gates, no-cache build, isolated packaged checks and local health evaluation.
 Record results separately in an outcome document.
 
-Next: assess durable opt-in unattended scheduling only after observing this
-selected path. That extension needs explicit persisted consent/cancellation,
-cooldowns and admission limits; it must not auto-enroll existing approvals.
+Next: expose bounded, read-only per-item readiness reasons so an administrator can
+identify a stale selection before submitting a batch. Then assess durable opt-in
+unattended scheduling after observing this selected path. Scheduling needs explicit
+persisted consent/cancellation, cooldowns and admission limits; it must not
+auto-enroll existing approvals.
