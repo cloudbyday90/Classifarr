@@ -4,6 +4,8 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import request from 'supertest';
+import { get } from 'node:http';
+import { once } from 'node:events';
 import { registerQueueIdentityRepairRoutes } from '../routes/queueRouteIdentityRepair.mjs';
 
 const verifyToken = jest.fn();
@@ -33,13 +35,52 @@ const batchPath = '/api/queue/identity-repair/backfill';
 test('batch discovery is a no-store read; enqueue requires cookie CSRF and passes cancellation', async () => {
   await request(app).get(batchPath).expect(401);
   const response = await request(app).get(`${batchPath}?afterId=23`).set('Authorization', 'Bearer test').expect(200);
-  expect(backfill.list).toHaveBeenCalledWith(7, { afterId: '23' });
+  expect(backfill.list).toHaveBeenCalledWith(7, { afterId: '23' }, expect.any(AbortSignal));
   expect(response.headers['cache-control']).toBe('no-store');
   expect(backfill.run).not.toHaveBeenCalled();
   await request(app).post(batchPath).set('Cookie', 'access_token=test').send({}).expect(403);
   await request(app).post(batchPath).set('Cookie', 'access_token=test; classifarr_csrf_token=csrf-test')
     .set('x-csrf-token', 'csrf-test').send({ confirmRetry: true }).expect(200);
   expect(backfill.run).toHaveBeenCalledWith(7, { confirmRetry: true }, expect.any(AbortSignal));
+});
+
+test('readiness projection passes through HTTP without raw errors and shares the read limiter', async () => {
+  const data = { items: [{ taskId: '23', readiness: { status: 'blocked', reason: 'provider_changed' } }],
+    nextCursor: null, checkedAt: '2026-10-13T23:00:00Z' };
+  backfill.list.mockResolvedValueOnce(data);
+  const response = await request(app).get(batchPath).set('Authorization', 'Bearer test').expect(200);
+  expect(response.body).toEqual(data);
+  backfill.list.mockRejectedValueOnce(new Error('private provider value'));
+  const failure = await request(app).get(batchPath).set('Authorization', 'Bearer test').expect(500);
+  expect(JSON.stringify(failure.body)).not.toContain('private');
+  for (let i = 0; i < 18; i++) await request(app).get(path).set('Authorization', 'Bearer test').expect(200);
+  await request(app).get(batchPath).set('Authorization', 'Bearer test').expect(429);
+  expect(backfill.list).toHaveBeenCalledTimes(2);
+});
+
+test('disconnecting a real HTTP readiness request cancels the service read', async () => {
+  const started = Promise.withResolvers();
+  backfill.list.mockImplementationOnce(async (_actor, _query, signal) => {
+    started.resolve(signal);
+    await once(signal, 'abort', { signal: AbortSignal.timeout(3000) });
+    return { items: [], nextCursor: null };
+  });
+  const server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const client = get({ host: '127.0.0.1', port: server.address().port, path: batchPath,
+    headers: { Authorization: 'Bearer test' } });
+  client.on('error', () => {});
+  try {
+    const signal = await started.promise;
+    const aborted = once(signal, 'abort', { signal: AbortSignal.timeout(3000) });
+    client.destroy();
+    await aborted;
+    expect(signal.aborted).toBe(true);
+    expect(backfill.run).not.toHaveBeenCalled();
+  } finally {
+    client.destroy(); server.closeAllConnections();
+    await new Promise(resolve => { server.close(resolve); });
+  }
 });
 test.each([{ role: 'user', type: 'access' }, { role: 'admin', type: 'refresh' },
   { role: 'admin', type: 'access', token_use: 'diagnostic' }])('batch rejects principal %j', async principal => {

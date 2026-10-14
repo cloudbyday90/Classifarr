@@ -29,6 +29,9 @@
     >
       {{ error }}
     </p>
+    <p v-if="checkedAt">
+      Checked {{ checkedAt }}. This checks saved task state, not TMDb availability.
+    </p>
     <form
       v-if="items.length"
       @submit.prevent="submit"
@@ -43,10 +46,17 @@
             v-model="selected"
             type="checkbox"
             :value="item.receiptId"
-            :disabled="selected.length >= 5 && !selected.includes(item.receiptId)"
+            :disabled="!isRepairReady(item.readiness) || (selected.length >= 5 && !selected.includes(item.receiptId))"
+            :aria-describedby="`${readinessId}-${item.receiptId}`"
           >
           Task #{{ item.taskId }} · {{ item.title }} · {{ item.mediaType }}
           TMDb {{ item.oldTmdbId }} → {{ item.newTmdbId }}
+          <span
+            :id="`${readinessId}-${item.receiptId}`"
+            class="readiness-reason"
+          >
+            {{ repairReadinessLabel(item.readiness) }}
+          </span>
         </label>
         <label>
           <input
@@ -86,9 +96,10 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, ref, useId, watch } from 'vue'
 import { Button } from '@/components/common'
 import { getQueueRepairBackfill, retryQueueRepairBackfill, getQueueIdentityRepair } from '@/api/queueTasksApi'
+import { isRepairReady, repairReadinessLabel } from '@/utils/queueRepairReadiness'
 
 const items = ref([])
 const selected = ref([])
@@ -98,6 +109,8 @@ const busy = ref(false)
 const uncertain = ref(false)
 const message = ref('')
 const error = ref('')
+const checkedAt = ref('')
+const readinessId = useId()
 let submitted = []
 let generation = 0
 let controller
@@ -125,16 +138,20 @@ async function perform(action, operation, accept) {
 }
 function load(afterId) {
   if (busy.value || uncertain.value) return
-  selected.value = []; confirmed.value = false; items.value = []; nextCursor.value = null
+  selected.value = []; confirmed.value = false; items.value = []; nextCursor.value = null; checkedAt.value = ''
   return perform('load', options => getQueueRepairBackfill({ ...options, afterId }), data => {
     items.value = data.items; nextCursor.value = data.nextCursor
-    message.value = data.items.length ? 'Safety checks run again when you retry. One changed item blocks the whole selection.' : 'No reviewed repairs awaiting retry on this page.'
+    checkedAt.value = typeof data.checkedAt === 'string' && Number.isFinite(Date.parse(data.checkedAt))
+      ? new Date(data.checkedAt).toLocaleString() : ''
+    const ready = data.items.filter(item => isRepairReady(item.readiness)).length
+    message.value = data.items.length ? `${ready} of ${data.items.length} repairs ready at this check. One changed item can still block the whole selection.` : 'No reviewed repairs awaiting retry on this page.'
   })
 }
 function submit() {
   if (busy.value || uncertain.value || !confirmed.value || !selected.value.length || selected.value.length > 5) return
-  submitted = items.value.filter(item => selected.value.includes(item.receiptId))
-    .map(({ taskId, receiptId }) => ({ taskId, receiptId }))
+  const chosen = items.value.filter(item => selected.value.includes(item.receiptId))
+  if (chosen.length !== selected.value.length || !chosen.every(item => isRepairReady(item.readiness))) return
+  submitted = chosen.map(({ taskId, receiptId }) => ({ taskId, receiptId }))
   return perform('retry', options => retryQueueRepairBackfill({ items: submitted, confirmRetry: true }, options), response => {
     message.value = `${response.data.receipts.length} saved retry outcomes. Queued does not mean classification finished.`
     items.value = []; selected.value = []; confirmed.value = false; nextCursor.value = null
@@ -159,5 +176,6 @@ function check() {
 .repair-backfill { margin: 0.75rem 0; }
 summary { cursor: pointer; }
 p, label { display: block; margin: 0.5rem 0; overflow-wrap: anywhere; }
+.readiness-reason { display: block; margin-left: 1.25rem; }
 button { margin: 0.5rem 0.5rem 0 0; }
 </style>

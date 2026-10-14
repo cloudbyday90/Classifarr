@@ -13,8 +13,15 @@ export function registerQueueIdentityRepairRoutes(router, { requireAdmin, limite
   };
   if (backfill) {
     const batchPath = '/identity-repair/backfill';
-    router.get(batchPath, requireAdmin, session, readLimiter, asyncHandler(async (req, res) =>
-      sendData(res, await backfill.list(req.user.id, req.query))));
+    router.get(batchPath, requireAdmin, session, readLimiter, asyncHandler(async (req, res) => {
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      res.once('close', cancel);
+      try {
+        const result = await backfill.list(req.user.id, req.query, controller.signal);
+        if (!controller.signal.aborted) return sendData(res, result);
+      } finally { res.removeListener('close', cancel); }
+    }));
     router.post(batchPath, requireAdmin, session, limiter, asyncHandler(async (req, res) => {
       const controller = new AbortController();
       const cancel = () => controller.abort();

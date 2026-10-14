@@ -52,8 +52,10 @@ import {
 describe('queueTasksApi', () => {
   it('uses bounded discovery parameters and never automatically repeats selected backfill', async () => {
     const signal = new AbortController().signal
-    mockGetDataRequest.mockResolvedValue({ items: [] })
-    expect(await getQueueRepairBackfill()).toEqual({ items: [] })
+    const snapshot = { items: [{ taskId: '23', readiness: { status: 'blocked', reason: 'provider_changed' } }],
+      nextCursor: null, checkedAt: '2026-10-13T23:00:00Z' }
+    mockGetDataRequest.mockResolvedValue(snapshot)
+    expect(await getQueueRepairBackfill()).toBe(snapshot)
     expect(mockGetDataRequest).toHaveBeenLastCalledWith('/queue/identity-repair/backfill', { params: {}, skipAutomaticRetry: true, signal: undefined })
     await getQueueRepairBackfill({ afterId: '23', signal })
     expect(mockGetDataRequest).toHaveBeenLastCalledWith('/queue/identity-repair/backfill', { params: { afterId: '23' }, skipAutomaticRetry: true, signal })

@@ -36,7 +36,7 @@ const pending = { status: 'pending', attempts: 1, max_attempts: 5 };
 const failed = { ...pending, status: 'failed' };
 
 test('fresh discovery performs no provider I/O or writes', async () => {
-  expect(await backfill.list(actorId)).toEqual({ items: [], nextCursor: null });
+  expect(await backfill.list(actorId)).toEqual({ items: [], nextCursor: null, checkedAt: expect.any(Date) });
   expect(provider.getDetails).not.toHaveBeenCalled();
 });
 test('selected nested repairs enqueue atomically once and retain outcomes across service restart/retention', async () => {
@@ -44,12 +44,12 @@ test('selected nested repairs enqueue atomically once and retain outcomes across
   provider.getDetails.mockClear(); provider.findByExternalId.mockClear(); provider.getExternalIds.mockClear();
   const listing = await backfill.list(actorId);
   expect(listing.items).toHaveLength(2);
-  expect(listing.items[0]).toMatchObject({ ...items[0], oldTmdbId: 10, newTmdbId: 1010 });
+  expect(listing.items[0]).toMatchObject({ ...items[0], oldTmdbId: 10, newTmdbId: 1010, readiness: { status: 'ready', reason: 'ready' } });
   expect(JSON.stringify(listing)).not.toMatch(/payload|provider_revision|api_key/);
   const result = await backfill.run(actorId, body(items));
   expect(result.receipts.every(r => r.retriedAt)).toBe(true);
   expect(await states()).toEqual([pending, pending]);
-  expect(await backfill.list(actorId)).toEqual({ items: [], nextCursor: null });
+  expect(await backfill.list(actorId)).toEqual({ items: [], nextCursor: null, checkedAt: expect.any(Date) });
   await db.query('DELETE FROM task_queue WHERE id=ANY($1::bigint[])', [tasks]);
   provider.configured = false;
   const restarted = createQueueIdentityRepairBackfill({ db, readProvider: async () => provider });
@@ -137,4 +137,90 @@ test('cancellation after the last item write prevents every newly queued task fr
   await expect(createQueueIdentityRepairBackfill({ db: wrapped, readProvider: async () => provider })
     .run(actorId, body(items), controller.signal)).rejects.toThrow();
   expect(writes).toBe(2); expect(await states()).toEqual([failed, failed]);
+});
+
+test.each([
+  ['task', 'request_changed'], ['budget', 'retry_budget_exhausted'],
+  ['attempt', 'retry_budget_changed'], ['provider', 'provider_changed'],
+  ['disabled', 'provider_unconfigured'], ['unsupported', 'request_unsupported'],
+  ['identity', 'identity_conflict'], ['invalid', 'identity_invalid'],
+  ['stage', 'task_ineligible'], ['competing', 'prior_work'],
+])('readiness explains %s without writes or provider requests and agrees with final refusal', async (change, reason) => {
+  const item = await approved(10);
+  if (change === 'task') await db.query('UPDATE task_queue SET priority=1 WHERE id=$1', [item.taskId]);
+  if (change === 'budget') await db.query('UPDATE task_queue SET attempts=5 WHERE id=$1', [item.taskId]);
+  if (change === 'attempt') await db.query('UPDATE task_queue SET attempts=2 WHERE id=$1', [item.taskId]);
+  if (change === 'provider') provider.revision = 'b'.repeat(64);
+  if (change === 'disabled') provider.configured = false;
+  if (change === 'unsupported') await db.query(`UPDATE task_queue SET payload=payload||'{"private_context":"secret"}' WHERE id=$1`, [item.taskId]);
+  if (change === 'identity') await db.query(`UPDATE task_queue SET payload=payload||'{"tmdb_id":999}' WHERE id=$1`, [item.taskId]);
+  if (change === 'invalid') await db.query(`UPDATE task_queue SET payload=payload||'{"tmdb_id":false}' WHERE id=$1`, [item.taskId]);
+  if (change === 'stage') await db.query("UPDATE task_queue SET current_stage='classification' WHERE id=$1", [item.taskId]);
+  if (change === 'competing') tasks.push((await db.query(`INSERT INTO task_queue(task_type,source,payload,status)
+    VALUES ('classification','manual','{"media_type":"movie","tmdbId":1010}','pending') RETURNING id`)).rows[0].id);
+  const before = (await db.query('SELECT to_jsonb(t) AS row FROM task_queue t WHERE id=ANY($1::bigint[]) ORDER BY id', [tasks])).rows;
+  provider.getDetails.mockClear(); provider.findByExternalId.mockClear(); provider.getExternalIds.mockClear();
+  const result = await backfill.list(actorId);
+  expect(result.items[0].readiness).toEqual({ status: 'blocked', reason });
+  expect(result.checkedAt).toBeInstanceOf(Date);
+  expect(JSON.stringify(result)).not.toMatch(/secret|private_context|provider_revision|repaired_version|api_key/);
+  await expect(backfill.run(actorId, body([item]))).rejects.toMatchObject({ statusCode: 409 });
+  expect((await db.query('SELECT to_jsonb(t) AS row FROM task_queue t WHERE id=ANY($1::bigint[]) ORDER BY id', [tasks])).rows).toEqual(before);
+  expect((await manual.receipt(actorId, item.taskId)).receipt.retriedAt).toBeNull();
+  expect(provider.getDetails).not.toHaveBeenCalled();
+  expect(provider.findByExternalId).not.toHaveBeenCalled();
+  expect(provider.getExternalIds).not.toHaveBeenCalled();
+});
+
+test('read-only snapshot stays consistent across a concurrent writer but cannot authorize a stale retry', async () => {
+  const item = await approved(10);
+  let modes;
+  const snapshot = createQueueIdentityRepairBackfill({ db, readProvider: async tx => {
+    modes = (await tx.query("SELECT current_setting('transaction_read_only') AS readonly, current_setting('transaction_isolation') AS isolation")).rows[0];
+    // A separate connection commits while the advisory read is active; no reader row locks.
+    await db.query('UPDATE task_queue SET attempts=5 WHERE id=$1', [item.taskId]);
+    return provider;
+  } });
+  expect((await snapshot.list(actorId)).items[0].readiness).toEqual({ status: 'ready', reason: 'ready' });
+  expect(modes).toEqual({ readonly: 'on', isolation: 'repeatable read' });
+  await expect(backfill.run(actorId, body([item]))).rejects.toMatchObject({ code: 'queue_identity_repair_budget' });
+  expect((await backfill.list(actorId)).items[0].readiness.reason).toBe('retry_budget_exhausted');
+});
+
+test('unknown database failure aborts the read and read-only mode prevents accidental writes', async () => {
+  const item = await approved(10);
+  const accidentalWrite = createQueueIdentityRepairBackfill({ db, readProvider: async tx => {
+    await tx.query('UPDATE task_queue SET attempts=5 WHERE id=$1', [item.taskId]);
+    return provider;
+  } });
+  await expect(accidentalWrite.list(actorId)).rejects.toMatchObject({ code: '25006' });
+  expect(await states()).toEqual([failed]);
+  expect((await backfill.list(actorId)).items[0].readiness.reason).toBe('ready');
+});
+
+test('readiness cancellation after item assessment returns no partial page and no writes', async () => {
+  await approved(10); await approved(20);
+  const controller = new AbortController(); let assessments = 0;
+  const wrapped = { ...db, withTransaction: fn => db.withTransaction(tx => fn({ query: async (sql, args) => {
+    const result = await tx.query(sql, args);
+    if (sql.includes('AS blocked')) { assessments++; controller.abort(); }
+    return result;
+  } })) };
+  const service = createQueueIdentityRepairBackfill({ db: wrapped, readProvider: async () => provider });
+  await expect(service.list(actorId, {}, controller.signal)).rejects.toThrow();
+  expect(assessments).toBe(1); expect(await states()).toEqual([failed, failed]);
+});
+
+test('missing configuration blocks readiness; revoked actors and table-lock timeouts fail the read', async () => {
+  await approved(10);
+  const noProvider = createQueueIdentityRepairBackfill({ db, readProvider: async () => null });
+  expect((await noProvider.list(actorId)).items[0].readiness.reason).toBe('provider_unconfigured');
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN'); await client.query('LOCK TABLE task_queue IN ACCESS EXCLUSIVE MODE');
+    await expect(backfill.list(actorId)).rejects.toMatchObject({ code: '55P03' });
+  } finally { await client.query('ROLLBACK'); client.release(); }
+  expect((await backfill.list(actorId)).items[0].readiness.reason).toBe('ready');
+  await db.query('UPDATE users SET is_active=false WHERE id=$1', [actorId]);
+  await expect(backfill.list(actorId)).rejects.toMatchObject({ statusCode: 403 });
 });

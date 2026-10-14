@@ -33,3 +33,18 @@ test('single-flight admission is released after failure; cancelled commands neve
   await expect(service.run(1, body, AbortSignal.abort())).rejects.toThrow();
   expect(db.withTransaction).toHaveBeenCalledTimes(2);
 });
+
+test('readiness admission is single-flight and releases after unknown failure or cancellation', async () => {
+  let reject;
+  const db = { withTransaction: jest.fn(() => new Promise((_, fail) => { reject = fail; })) };
+  const service = createQueueIdentityRepairBackfill({ db });
+  await expect(service.list(1, {}, AbortSignal.abort())).rejects.toThrow();
+  expect(db.withTransaction).not.toHaveBeenCalled();
+  const pending = service.list(1);
+  await expect(service.list(1)).rejects.toMatchObject({ statusCode: 503, code: 'queue_identity_repair_readiness_busy' });
+  reject(new Error('synthetic unknown database failure'));
+  await expect(pending).rejects.toThrow('synthetic unknown database failure');
+  db.withTransaction.mockRejectedValueOnce({ code: '57014' });
+  await expect(service.list(1)).rejects.toEqual({ code: '57014' });
+  expect(db.withTransaction).toHaveBeenCalledTimes(2);
+});

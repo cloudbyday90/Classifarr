@@ -25,6 +25,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   and nested TMDb declarations are repaired together without losing request
   context. Administrators can also explicitly select up to five reviewed repairs
   for an atomic, restart-safe retry without extending approval to other requests.
+  Read-only per-item readiness explains blocked repairs before selection, with
+  current safety checks still enforced when submitting a retry.
   Repaired tasks remain excluded from automatic recovery and generic Retry All;
   original webhook evidence stays intact.
 

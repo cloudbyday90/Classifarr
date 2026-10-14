@@ -66,7 +66,10 @@ export function retryQueueIdentityRepair(taskId, data, { signal } = {}) {
   return apiClient.post(`/queue/task/${taskId}/identity-repair/retry`, data, { skipAutomaticRetry: true, signal })
 }
 
-/** @param {{ afterId?: string, signal?: AbortSignal }} options */
+/**
+ * Local snapshot with checkedAt and per-item readiness; never enqueue authority.
+ * @param {{ afterId?: string, signal?: AbortSignal }} options
+ */
 export function getQueueRepairBackfill({ afterId, signal } = {}) {
   return getDataRequest('/queue/identity-repair/backfill', {
     params: afterId ? { afterId } : {}, skipAutomaticRetry: true, signal,
