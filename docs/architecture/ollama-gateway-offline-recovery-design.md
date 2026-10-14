@@ -88,6 +88,8 @@ UUIDv7. Exercise packaged code with synthetic HTTP and an isolated database;
 no live recovery or inference. A passing rehearsal is not evidence of a shared
 provider being stopped. Record results separately in the outcome document.
 
+See the [implementation outcome](ollama-gateway-offline-recovery-outcome.md).
+
 ## Official research
 
 Retrieved through MCP search/open on 2026-10-14; recommendations are our design
