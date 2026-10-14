@@ -17,6 +17,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Shared gateway provider context** — Generation, verification, embeddings,
+  inspection and warming can share one bound client and cancellation lifetime.
+  Warming uses normal admission and attempt accounting; invalid vectors cannot
+  clear uncertain work. Direct routing remains unchanged pending full integration.
+
 - **Gateway credential rotation** — The optional local gateway can reload scoped
   credentials without restarting unaffected callers. Revocation cancels affected
   requests while preserving uncertain work and attempt history. Invalid reloads

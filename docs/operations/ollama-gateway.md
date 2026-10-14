@@ -206,6 +206,31 @@ are not provided by this local-only client. These remain prerequisites to live
 coordination. See the [streaming design](../architecture/ollama-gateway-streaming-design.md)
 and [outcome](../architecture/ollama-gateway-streaming-outcome.md).
 
+### Shared provider context (explicit dependency only)
+
+`createOllamaGatewayProviderContext({ configuration, gateway })` owns one common
+transport. Configuration binds `{ baseUrl, model, embeddingModel? }`; optional
+`host` and `port` must agree with the origin. The generation-only factory above
+is a compatible restricted view of this context.
+
+Alongside generation and verification preflight, the context provides
+`getModels`, `getLoadedModels`, `getModelInfo`, `embed`, `warmModel` and
+`warmEmbeddingModel`. Inspection only returns bound models. Warming and text
+embeddings spend durable attempts and use five-minute keep-alive. Embedding
+truncation is disabled. Missing models are refused, not downloaded. There is no
+model-administration, multimodal or direct-HTTP fallback.
+
+The embedding adapter factory accepts optional `ollamaProviderContext`. If
+provided, matching explicit host/port values confirm the binding; conflicting or
+partial overrides fail before dispatch. That branch bypasses the direct retry
+wrapper. Normal application constructors do not supply this dependency yet.
+
+Close and replace the whole context on configuration/credential changes. Close
+aborts inspection and compute together without clearing uncertain gateway work.
+Do not enable partial routing: health probes, the embedding router, settings
+tests and application warming still require coordinated composition. See the
+[provider-context design](../architecture/ollama-gateway-provider-context-design.md).
+
 ## Local image rehearsal
 
 After a clean-source no-cache Classifarr image build, run:

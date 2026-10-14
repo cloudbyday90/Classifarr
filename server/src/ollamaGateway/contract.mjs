@@ -61,7 +61,9 @@ export function validateGatewayBody(path, body, config) {
   const allowed = path === '/api/generate' ? ['model','prompt','stream','format','options','think','keep_alive']
     : path === '/api/embed' ? ['model','input','truncate','keep_alive'] : ['model','verbose'];
   if (Object.keys(body).some(key => !allowed.includes(key))) throw gatewayError('gateway_body_invalid', 400);
-  if (path === '/api/generate' && (typeof body.stream !== 'boolean' || typeof body.prompt !== 'string' || !body.prompt.length)) {
+  const warming = path === '/api/generate' && body.prompt === '' && body.stream === false && body.keep_alive === '5m' &&
+    Object.keys(body).every(key => ['model','prompt','stream','keep_alive'].includes(key));
+  if (path === '/api/generate' && (typeof body.stream !== 'boolean' || typeof body.prompt !== 'string' || (!body.prompt.length && !warming))) {
     throw gatewayError('gateway_body_invalid', 400);
   }
   if (body.keep_alive !== undefined && ![0,'0','5m',300].includes(body.keep_alive)) throw gatewayError('gateway_body_invalid', 400);

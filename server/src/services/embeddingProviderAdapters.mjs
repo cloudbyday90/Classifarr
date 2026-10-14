@@ -25,10 +25,15 @@ import { executeCloudEmbedding } from './embeddingCloudAdapterHelper.mjs';
 
 const logger = createLogger('EmbeddingProvider');
 
-export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperation, recordRetry }) {
+export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperation, recordRetry, ollamaProviderContext = null }) {
     const cloudDeps = { getAdaptiveTimeout, createRetriedOperation, recordRetry };
 
     async function getOllamaEmbedding(text, host, port, model, config, signal = null) {
+        if (ollamaProviderContext !== null) {
+            ollamaProviderContext.assertEndpoint(host, port);
+            const result = validateEmbeddingResult(await ollamaProviderContext.embed(text, model, '5m', signal));
+            return { embedding: result.embedding, dims: result.dims, provider: 'ollama', model, cost: 0 };
+        }
         if (!host || !port) {
             const result = validateEmbeddingResult(await ollamaService.embed(text, model, '15m', signal));
             return {

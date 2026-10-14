@@ -16,6 +16,8 @@ import { createGatewayClient } from '../../ollamaGateway/client.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { createLocalStudyEmbeddingClient } from '../../services/localStudyEmbeddingClient.mjs';
 import { createOllamaGatewayGenerationClient } from '../../services/ollamaGatewayGenerationClient.mjs';
+import { createOllamaGatewayProviderContext } from '../../services/ollamaGatewayProviderContext.mjs';
+import { createAdapterMethods } from '../../services/embeddingProviderAdapters.mjs';
 import { createOllamaVerificationSavedConfigurationClient } from '../../services/ollamaVerificationSavedConfigurationClient.mjs';
 import { probeOllamaVerificationCapability } from '../../services/ollamaVerificationCapabilityProbe.mjs';
 import { OperationController } from '../../utils/operationController.mjs';
@@ -328,6 +330,126 @@ function generationProvider(generateHandler) {
     return generateHandler(req,res,body);
   };
 }
+
+function providerContext(gate) {
+  return createOllamaGatewayProviderContext({ configuration: { baseUrl: config.upstream, model, embeddingModel: model },
+    gateway: { url: gate.url, upstream: config.upstream, models: [model], token: credentials[0].token } });
+}
+
+test('one provider context coordinates generation, adapter embeddings, inspection and both warming operations', async () => {
+  const bodies = [];
+  generationProvider((req,res,body) => {
+    bodies.push(body);
+    const data = req.url === '/api/ps' ? { models: [{ name: model }] }
+      : req.url === '/api/show' ? { capabilities: ['embedding', 'completion'] }
+        : req.url === '/api/embed' ? { model, embeddings: [[0, 1]] } : { model, done: true, response: body.prompt === '' ? '' : 'ok' };
+    res.end(JSON.stringify(data));
+  });
+  const gate = await start(), context = providerContext(gate);
+  const directForbidden = () => { throw new Error('direct_or_retry_path_forbidden'); };
+  const adapter = createAdapterMethods({ getAdaptiveTimeout: directForbidden, createRetriedOperation: directForbidden,
+    recordRetry: directForbidden, ollamaProviderContext: context });
+  try {
+    expect(await context.getVersion()).toBe('synthetic');
+    expect(await context.getModels()).toEqual([{ name: model, digest }]);
+    expect(await context.getLoadedModels()).toEqual([{ name: model }]);
+    expect(await context.getModelInfo()).toEqual({ capabilities: ['embedding', 'completion'] });
+    expect((await gate.ledger.status()).attempts).toBe('0');
+    expect(await context.generate('synthetic')).toBe('ok');
+    expect(await adapter.getOllamaEmbedding('synthetic', '127.0.0.1', Number(new URL(config.upstream).port), model, {}))
+      .toEqual({ embedding: [0, 1], dims: 2, provider: 'ollama', model, cost: 0 });
+    expect(await context.warmModel()).toEqual({ success: true, model });
+    expect(await context.warmEmbeddingModel()).toEqual({ success: true, model });
+    expect(await gate.ledger.status()).toMatchObject({ attempts: '4', state: 'ready', requestId: null });
+    expect(bodies.filter(body => body.input).every(body => body.truncate === false && body.keep_alive === '5m')).toBe(true);
+    expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
+    const before = calls.length;
+    await expect(adapter.getOllamaEmbedding('synthetic', '127.0.0.1', 9, model, {})).rejects.toMatchObject({ code: 'gateway_provider_mismatch' });
+    expect(calls).toHaveLength(before);
+  } finally { context.close(); }
+});
+
+test.each(['embed', 'warmModel', 'warmEmbeddingModel'])('missing model refuses %s before admission without pull or retry', async method => {
+  handler = (_req,res) => res.end(JSON.stringify({ models: [] }));
+  const gate = await start(), context = providerContext(gate);
+  try {
+    await expect(context[method](...(method === 'embed' ? ['synthetic'] : []))).rejects.toMatchObject({ code: 'MODEL_NOT_FOUND' });
+    expect(calls).toEqual(['/api/tags']); expect((await gate.ledger.status()).attempts).toBe('0');
+  } finally { context.close(); }
+});
+
+test.each([{ response: 'unexpected' }, { done_reason: 'unload' }, { done: false }, { thinking: 'unexpected' }])('malformed warm completion retains uncertainty (%j)', async invalid => {
+  generationProvider((_req,res) => res.end(JSON.stringify({ model, done: true, response: '', ...invalid })));
+  const gate = await start(), context = providerContext(gate);
+  try {
+    await expect(context.warmModel()).rejects.toMatchObject({ code: 'gateway_request_rejected' });
+    expect(await gate.ledger.status()).toMatchObject({ state: 'uncertain_or_active', attempts: '1' });
+    expect((await call(gate,1)).status).toBe(503);
+    expect(calls).toEqual(['/api/tags', '/api/generate']);
+  } finally { context.close(); }
+});
+
+test.each([[[0, 0]], [[1e100]], [[1e-100]], [[1, 2], [1]]].map(value => [value]))('invalid float32 or mixed-dimension embedding cannot clear admission (%j)', async embeddings => {
+  handler = (_req,res) => res.end(JSON.stringify({ model, embeddings }));
+  const gate = await start();
+  expect((await call(gate,0,{ path: '/api/embed', body: { model, input: embeddings.map(() => 'synthetic') } })).status).toBe(503);
+  expect(await gate.ledger.status()).toMatchObject({ state: 'uncertain_or_active', attempts: '1' });
+});
+
+test('context close cancels active embedding and inspection together without admitting queued warming', async () => {
+  let disconnected = 0;
+  generationProvider((_req,res) => { res.on('close', () => { disconnected++; }); });
+  const gate = await start(), context = providerContext(gate);
+  const active = context.embed('synthetic').catch(error => error.code);
+  await until(() => calls.includes('/api/embed'));
+  const before = await gate.ledger.status();
+  const inspection = context.getLoadedModels().catch(error => error.code);
+  const warm = context.warmModel().catch(error => error.code);
+  await until(async () => calls.includes('/api/ps') && (await (await call(gate,0,{ path: '/gateway/status', method: 'GET' })).json()).waiting === 1);
+  context.close();
+  expect(await active).toBe('gateway_cancelled'); expect(await inspection).toBe('gateway_cancelled'); expect(await warm).toBe('gateway_cancelled');
+  await until(() => disconnected === 2);
+  expect(await gate.ledger.status()).toEqual(before);
+  expect(calls.filter(path => path === '/api/generate')).toHaveLength(0);
+  await expect(context.embed('later')).rejects.toMatchObject({ code: 'gateway_client_closed' });
+});
+
+test('all context inspections share the 32-request client bound', async () => {
+  handler = () => {};
+  const gate = await start(), context = providerContext(gate);
+  const pending = Array.from({ length: 32 }, (_, index) => (index % 2 ? context.getModels() : context.getLoadedModels()).catch(error => error.code));
+  await expect(context.getVersion()).rejects.toMatchObject({ code: 'gateway_busy' });
+  context.close(); expect(await Promise.all(pending)).toEqual(Array(32).fill('gateway_cancelled'));
+  expect((await gate.ledger.status()).attempts).toBe('0');
+});
+
+test('generation and embedding model roles remain distinct through the same gateway', async () => {
+  const vectorModel = 'synthetic-vectors:latest';
+  config = gatewayConfig({ upstream: config.upstream, models: [model, vectorModel], credentials, timeoutMs: 1000, queueMs: 300 });
+  handler = (req,res,body) => res.end(JSON.stringify(req.url === '/api/tags' ? { models: [{ name: model, digest }, { name: vectorModel, digest }] }
+    : req.url === '/api/embed' ? { model: body.model, embeddings: [[0, 1]] } : { model: body.model, done: true, response: '' }));
+  const gate = await start(), context = createOllamaGatewayProviderContext({ configuration: { baseUrl: config.upstream, model, embeddingModel: vectorModel },
+    gateway: { url: gate.url, upstream: config.upstream, models: [model, vectorModel], token: credentials[0].token } });
+  try {
+    expect(await context.embed('synthetic')).toEqual({ embedding: [0, 1], dims: 2 });
+    expect(await context.warmModel()).toEqual({ success: true, model });
+    await expect(context.generate('synthetic', vectorModel)).rejects.toMatchObject({ code: 'gateway_model_mismatch' });
+    await expect(context.embed('synthetic', model)).rejects.toMatchObject({ code: 'gateway_model_mismatch' });
+    expect(await gate.ledger.status()).toMatchObject({ state: 'ready', attempts: '2' });
+  } finally { context.close(); }
+});
+
+test('gateway embedding refusal is not retried by the existing direct-provider adapter', async () => {
+  generationProvider((_req,res) => { res.writeHead(503); res.end('{}'); });
+  const gate = await start(), context = providerContext(gate);
+  const forbidden = () => { throw new Error('direct_retry_forbidden'); };
+  const adapter = createAdapterMethods({ getAdaptiveTimeout: forbidden, createRetriedOperation: forbidden, recordRetry: forbidden, ollamaProviderContext: context });
+  try {
+    await expect(adapter.getOllamaEmbedding('synthetic', null, null, model, { max_retries: 3 })).rejects.toMatchObject({ code: 'gateway_request_rejected', status: 503 });
+    expect(calls).toEqual(['/api/tags', '/api/embed']);
+    expect(await gate.ledger.status()).toMatchObject({ attempts: '1', state: 'cooldown' });
+  } finally { context.close(); }
+});
 
 test('actual generation leaves and saved verification probe use the bound gateway with exact model and schema', async () => {
   const gate = await start(), client = generationClient(gate), saved = generationClient(gate,true), bodies = [];

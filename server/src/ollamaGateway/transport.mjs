@@ -2,6 +2,7 @@
 import { request } from 'node:http';
 import { gatewayError } from './contract.mjs';
 import { readGatewayStream } from './stream.mjs';
+import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 
 /** No redirects, ambient proxy, forwarded headers, retries or arbitrary destination. */
 export function gatewayUpstream(config, path, body, signal, onRecord = async (_data) => {}) {
@@ -39,10 +40,16 @@ export function gatewayUpstream(config, path, body, signal, onRecord = async (_d
           const data = JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(Buffer.concat(chunks)));
           if (!data || typeof data !== 'object' || Array.isArray(data) || data.error || data.remote_host || data.remote_model ||
               (path === '/api/generate' && (data.done !== true || data.model !== body.model || typeof data.response !== 'string')) ||
+              (path === '/api/generate' && body.prompt === '' && (data.response !== '' ||
+                (data.thinking !== undefined && data.thinking !== '') ||
+                (data.done_reason !== undefined && data.done_reason !== 'load'))) ||
               (path === '/api/embed' && (data.model !== body.model || !Array.isArray(data.embeddings) ||
                 data.embeddings.length !== (Array.isArray(body.input) ? body.input.length : 1) ||
                 data.embeddings.some(vector => !Array.isArray(vector) || !vector.length || vector.length > 16000 ||
                   vector.some(value => !Number.isFinite(value)))))) throw gatewayError('gateway_response_invalid');
+          if (path === '/api/embed') {
+            for (const vector of data.embeddings) validateEmbedding(vector, data.embeddings[0].length);
+          }
           resolve({ status, data });
         } catch { reject(gatewayError('gateway_response_invalid')); }
       });
