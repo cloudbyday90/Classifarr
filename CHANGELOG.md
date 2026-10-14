@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Documentation
+
+- **Shared Ollama planning** — Documented coordination options, transport coverage
+  and restart-safety requirements for multiple Classifarr installations. This is
+  a proposal only; no shared gateway or runtime behavior is enabled.
+
 ### Added
 
 - **Background AI evaluation** — Administrators can choose Off, When idle, or a
