@@ -39,10 +39,17 @@ Diagnostic storage or logging failure cannot change the capability result.
   passed. Ownership review covers only the changed worker, scheduler, diagnostic
   modules and empty migration/schema addition; existing unresolved ownership
   debt remains unresolved. No safety baseline was relaxed.
+- Full backend coverage run: 1,834 suites passed, one failed; 58,029 tests passed,
+  one failed and one skipped. The sole failure was the code-health explanation
+  described below. The corrected suite subsequently passed all 34,889 tests;
+  the broader corrected gate/readiness rerun passed 5 suites and 34,984 tests.
+  This is a full run plus targeted correction, not a claim that the full command
+  exited successfully. No runtime code changed after that coverage run.
+- Coverage ratchet passed with unchanged baselines. Backend statement/branch/
+  function/line coverage: 89.71% / 86.34% / 91.06% / 89.71%.
+  Lint and Markdown checks also passed.
 
-Full backend coverage, final immutable-image rehearsal, local replacement and
-source references will be recorded after those checks complete. Initial parallel
-test runs hit Knip startup and client ESLint-hook timeouts; no assertion or timeout
+Initial parallel test runs hit Knip startup and client ESLint-hook timeouts; no assertion or timeout
 limit was weakened. The ownership gate correctly rejected unreviewed source drift
 before the explicit review. The code-health gate required an explicit explanation
 for ignoring a logger's own rejected promise; the comment documents that recursion
@@ -56,6 +63,36 @@ one normal-scheduler structured-output generation over real loopback HTTP, and
 saved-verdict preservation after a second restart. It seeded synthetic inventory
 directly and does not claim real media-ingestion ownership or a published-release
 upgrade. Both successful and failed fixture resources were cleaned up.
+
+## Final image and local evaluation
+
+The no-cache Compose build and final isolated rehearsal used clean source
+`f4dae169b2aa0ef8427c2991a0a87c26b1c1cc60`, containing implementation commit
+`c15e9cbe85c8899b1dd8e0de17e44fb3973df6af`. Later evidence-only documentation
+does not change packaged runtime behavior.
+
+- Image/index: `sha256:afba6acb9c5e7bb4cde3c2b32485abcbc0727598314e5437267f4c7a8e9385b0`.
+- Platform manifest: `sha256:6fb9efcf3fed3cf3b844fa4b2bad88eceb33a189547edaa844d44431c15f4d54`.
+- Image config: `sha256:cd5c192fef807f4dd7f4b6fb510cb209e1163909010a866a49b16f7ea7ac6162`.
+- Isolated final-image schema and normal-scheduler HTTP rehearsal passed, including
+  persisted waiting after restart, exactly one generation with no browser, and
+  saved-verdict preservation on another restart. Normal entrypoint, migrations,
+  scheduler and safeguards remained enabled. Network was disabled except loopback;
+  resources were bounded to 2 GiB, two CPUs and 512 PIDs. Cleanup passed.
+- A pre-replacement custom PostgreSQL backup was created at
+  `data/backups/readiness-before-20261014-0605.dump` (76,312,633 bytes; SHA-256
+  `4cadae74815f0d38cfd5e56b7873129c24b17e3fd638c1a239689be96dc1cf1f`).
+  Its 1,917-entry archive listing was readable; this is not a restore-test claim.
+  The old local image remains protected by the smart Compose rollback tag.
+- Only local `classifarr` was replaced, using the exact image above, without
+  pulling or rebuilding during replacement. At 10:21 UTC, health and UI returned
+  HTTP 200, PostgreSQL was connected, and the new migration was present.
+- Read-only database checks preserved revision 13 and its ready verification
+  timestamp `2026-09-30T10:48:08.064Z`. No diagnostic row or automatic retest was
+  needed for that already-tested configuration.
+- UID/GID 1000, read-only root, no-new-privileges and the 2 GiB memory cap remained
+  intact. There were zero restarts and no OOM kill. A startup sample used 348.5 MiB;
+  this is not a sustained-load or memory-retention study.
 
 ## Scope and next item
 
