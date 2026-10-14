@@ -30,7 +30,7 @@ Closing cancels active calls; closed factories never fall back to direct HTTP.
   independently configured timeout may be shorter. Preflight is inside streaming
   initial/hard budgets and receives cancellation. All inspection requests are
   capped at 300 seconds; existing 256 KiB request / 1 MiB response bounds apply.
-- Strict completion disables both partial-on-abort and partial-on-stall. A strict
+- Strict completion disables both partial-on-abort and partial-on-stall. Any
   external controller must reject partial stalls, because the adapter cannot own
   its early-resolution cleanup. Ordinary requests with adapter-owned controllers
   may retain their explicitly permitted partial output
@@ -76,6 +76,9 @@ Official sources discovered/opened through MCP on 2026-10-14:
   distinguishes a timeout event from actual cancellation with an AbortSignal.
   Retaining uncertain provider ownership after cancellation is our safety design,
   not a claim that HTTP proves inference has stopped.
+- [OWASP REST security](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html)
+  recommends encrypted authenticated endpoints and keeping credentials out of
+  URLs. The loopback-only test adapter is not a substitute for cross-host TLS.
 
 Acceptance: direct-path regression tests; real HTTP/PostgreSQL tests of the actual
 generation and saved-verification factories, current digest checks, cancellation,
