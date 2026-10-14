@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an optional read-only Docker provider assessment with pinned container
+  identity and bounded diagnostics; automatic recovery remains disabled.
+
 - Add offline administrator-reviewed gateway recovery with time-based UUIDv7
   audit receipts, a durable maintenance hold and explicit resume; preserve
   uncertain request history, attempts and cooldowns without replaying work.

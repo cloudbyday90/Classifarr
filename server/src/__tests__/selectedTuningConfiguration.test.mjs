@@ -74,6 +74,7 @@ test('documents every example setting without forwarding deployment or privilege
     CLASSIFARR_GATEWAY_CONFIG_FILE: 'standalone gateway secret file; never application authority',
     CLASSIFARR_GATEWAY_RECOVERY_CONFIG_FILE: 'offline recovery database authority; never application configuration',
     CLASSIFARR_GATEWAY_RECOVERY_REVIEW_FILE: 'offline administrator review; never application configuration',
+    CLASSIFARR_GATEWAY_BOUNDARY_CONFIG_FILE: 'offline Docker observer authority; never application configuration',
     POSTGRES_HOST: 'database identity', POSTGRES_PORT: 'database identity', POSTGRES_DB: 'database identity',
     POSTGRES_USER: 'database identity', POSTGRES_PASSWORD: 'database identity',
     PGVECTOR_RUNTIME_STAGING: 'image startup policy', CLASSIFARR_POSTGRES_STARTUP_TIMEOUT_SECONDS: 'supervisor deadline',

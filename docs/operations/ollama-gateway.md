@@ -350,3 +350,8 @@ direct provider connection from the application network. It uses the packaged
 startup function with injected no-op database admission/runtime, not a second
 full production worker deployment. Temporary keys, labeled networks and exact
 owned containers are removed, and cleanup is verified.
+
+For dedicated Docker provider planning, the optional
+[boundary observer](ollama-docker-boundary.md) reports pinned container facts
+without granting recovery authority. It runs outside Classifarr and is not a
+replacement for the offline administrator-reviewed recovery procedure.
