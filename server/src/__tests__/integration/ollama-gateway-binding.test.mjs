@@ -129,7 +129,7 @@ test('runtime can insert bindings but cannot mutate them or recovery holds', asy
     GRANT SELECT ON ollama_gateway.admission TO gateway_binding_runtime;
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_binding_runtime;
-    GRANT SELECT,INSERT ON ollama_gateway.request_binding TO gateway_binding_runtime`);
+    GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt TO gateway_binding_runtime`);
   const client = await connect(); await client.query('SET ROLE gateway_binding_runtime');
   const ledger = await openGatewayLedger(client,config.providerHash,pins); await compute(ledger);
   for (const query of ['DELETE FROM ollama_gateway.request_binding','TRUNCATE ollama_gateway.request_binding',
@@ -150,8 +150,9 @@ test('v2 upgrade preserves legacy unknown work with no invented binding and reje
   await getPool().query(await sql('20261015_095721_provider_stop.sql'));
   await getPool().query(await sql('20261015_104932_upstream_peer.sql'));
   await getPool().query(await sql('20261015_113726_task_source.sql'));
+  await getPool().query(await sql('20261015_220007_work_history.sql'));
   expect(await rows()).toHaveLength(0);
-  expect(await admission()).toMatchObject({ version: 6,attempts: 19,binding_count: 0,active_request: before.active_request,cooldown_until: before.cooldown_until });
+  expect(await admission()).toMatchObject({ version: 7,attempts: 19,binding_count: 0,active_request: before.active_request,cooldown_until: before.cooldown_until });
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=2')).rowCount).toBe(0);
   const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash,pins);
   expect(await ledger.status()).toMatchObject({ state: 'uncertain_or_active',requestBinding: { id: null,evidenceKind: 'legacy_unbound' } });

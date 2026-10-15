@@ -72,6 +72,26 @@ test('identical queue IDs from different installations remain credential-scoped 
   expect(rows.map(row => [row.installation,row.source_task_id])).toEqual([['local','42'],['unraid','42']]);
   expect(new Set(rows.map(row => row.request_id)).size).toBe(2);
   expect(upstreamHeaders.every(value => value['x-classifarr-task-source'] === undefined)).toBe(true);
+  for (const [index,installation] of [[0,'local'],[1,'unraid']]) {
+    const history = await (await call(gate,index,{ path: '/gateway/history?taskId=42',method: 'GET' })).json();
+    expect(history.installation).toBe(installation); expect(history.items).toHaveLength(1);
+    expect(history.items[0].requestId).toBe(rows[index].request_id);
+  }
+  expect(calls).toHaveLength(2);
+});
+
+test('revoked history readers receive no rows and cannot start provider work',async () => {
+  let gate;
+  gate = await start({ history: async (...args) => {
+    const result = await gate.ledger.history(...args);
+    gate.gateway.replaceCredentials(rotatedConfig([credentials[1]]));
+    return result;
+  } });
+  await call(gate);
+  const before = await gate.ledger.status(),response = await call(gate,0,{ path: '/gateway/history',method: 'GET' });
+  expect(response.status).toBe(401); expect((await response.json()).items).toBeUndefined();
+  expect((await call(gate,0,{ path: '/gateway/history',method: 'GET' })).status).toBe(401);
+  expect(await gate.ledger.status()).toEqual(before); expect(calls).toHaveLength(1);
 });
 
 test('offline maintenance survives startup and refuses compute and provider reads without HTTP side effects', async () => {
@@ -87,6 +107,7 @@ test('offline maintenance survives startup and refuses compute and provider read
   expect((await (await call(gate,0,{ path: '/gateway/status',method: 'GET' })).json())).toMatchObject({ state: 'maintenance',attempts: '1' });
   expect((await call(gate)).status).toBe(503);
   expect((await call(gate,0,{ path: '/api/ps',method: 'GET' })).status).toBe(503);
+  expect((await (await call(gate,0,{ path: '/gateway/history',method: 'GET' })).json()).items[0].outcome.state).toBe('abandoned_after_review');
   expect(calls).toHaveLength(0);
 });
 
@@ -246,7 +267,7 @@ test('UUIDv7 schema, safe status reads and two installations share one durable a
   expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
   expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
   await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
-  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(6)')).rejects.toMatchObject({ code: '23505' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(7)')).rejects.toMatchObject({ code: '23505' });
 });
 test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
   const gate = await start();

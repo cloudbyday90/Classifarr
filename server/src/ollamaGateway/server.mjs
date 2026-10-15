@@ -74,6 +74,10 @@ export function createGatewayServer({ config, ledger }) {
         if (req.method === 'GET' && (req.headers['transfer-encoding'] || Number(req.headers['content-length'] || 0) !== 0)) {
           throw gatewayError('gateway_body_invalid',400);
         }
+        if (route.history) {
+          const history = await ledger.history(principal.installation,route.history); signal.throwIfAborted();
+          send(200,history); return;
+        }
         if (req.url === '/gateway/status') {
           const status = await ledger.status(); signal.throwIfAborted();
           send(200,{ ...status,waiting: admission.pending }); return;

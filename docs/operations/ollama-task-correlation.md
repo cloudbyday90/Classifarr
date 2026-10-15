@@ -26,8 +26,8 @@ not verified queue ownership, consent, completion, retry or stop permission.
 ## Upgrade and inspect
 
 Follow [standalone migration and role setup](ollama-gateway-offline-recovery.md).
-Stop/back up the dedicated gateway database and apply the timestamped v5-to-v6
-migration; do not apply it to the Classifarr application database. Existing
+Stop/back up the dedicated gateway database and apply the timestamped upgrades
+through v7; do not apply them to the Classifarr application database. Existing
 bindings, cooldowns, attempts and unknown requests are preserved. Historical
 source columns remain null. The application update does not run this migration.
 
@@ -46,8 +46,9 @@ LIMIT 50;
 ```
 
 These are SQL bind parameters, not shell substitutions or literal psql arguments.
-The existing 100,000-binding cap bounds this first diagnostic query; no public
-history endpoint or additional index is introduced. Always include installation:
+The existing 100,000-binding cap bounds this diagnostic query. The v7
+[work history view](ollama-work-history.md) adds indexed, installation-scoped
+pagination and future completion outcomes. Always include installation:
 local and Unraid databases may have identical numeric task IDs. A gateway shared
 across databases must give each installation distinct credentials/identity.
 

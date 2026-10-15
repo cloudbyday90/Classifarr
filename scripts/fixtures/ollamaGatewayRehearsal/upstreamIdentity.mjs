@@ -48,7 +48,7 @@ export async function rehearseUpstreamIdentity(admin) {
         GRANT SELECT ON ollama_gateway.admission TO gateway_fixture_runtime;
         GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
           ON ollama_gateway.admission TO gateway_fixture_runtime;
-        GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.upstream_peer_observation TO gateway_fixture_runtime`);
+        GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt,ollama_gateway.upstream_peer_observation TO gateway_fixture_runtime`);
       provider = createServer({ cert: tls.cert,key: tls.key },async (req,res) => {
         calls++; assert.equal(req.headers.authorization,undefined);
         const observation = (await owner.query('SELECT * FROM ollama_gateway.upstream_peer_observation ORDER BY id DESC LIMIT 1')).rows[0];

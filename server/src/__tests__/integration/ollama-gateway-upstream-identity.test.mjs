@@ -216,7 +216,7 @@ test('runtime evidence is insert-only, bounded to one per request and not recove
     GRANT SELECT ON ollama_gateway.admission TO gateway_peer_runtime;
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_peer_runtime;
-    GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.upstream_peer_observation TO gateway_peer_runtime`);
+    GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt,ollama_gateway.upstream_peer_observation TO gateway_peer_runtime`);
   const c = await connect(); await c.query('SET ROLE gateway_peer_runtime'); const held = await openGatewayLedger(c,config.providerHash);
   mode = 'unknown'; await expect(compute(held)).rejects.toThrow();
   await expect(held.recordPeer((await admission()).active_request,gatewayPeerIdentity(tls.cert))).rejects.toThrow();
@@ -255,5 +255,6 @@ test('v5 upgrade refuses active ownership, preserves v4 unknown state and create
     work_version: null,operation: null,model: null,work_fingerprint: null,fingerprint_key_id: null })));
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=4')).rowCount).toBe(0);
   await upgrader.query(await sql('20261015_113726_task_source.sql'));
+  await upgrader.query(await sql('20261015_220007_work_history.sql'));
   await expect(compute(await ledger())).rejects.toThrow('gateway_admission_deferred'); expect(calls).toBe(0);
 });

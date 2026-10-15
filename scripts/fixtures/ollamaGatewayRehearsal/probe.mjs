@@ -97,7 +97,8 @@ try {
   await database.query(`GRANT SELECT ON ollama_gateway.admission TO gateway_fixture_runtime;
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_fixture_runtime`);
-  await database.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_fixture_runtime');
+  await database.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt TO gateway_fixture_runtime');
+  await database.query('GRANT SELECT ON ollama_gateway.recovery_receipt TO gateway_fixture_runtime');
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
   const upstream = `http://127.0.0.1:${provider.address().port}`;
   const client = createGatewayClient({ url: base,upstream,models: [model],token: credentials[0].token },{ expectedUpstream: upstream });
@@ -173,6 +174,16 @@ try {
   assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'19');
   assert.equal((await call(1)).status,503); assert.equal(calls,19); assert.equal(forbiddenHeader,false);
   assert.deepEqual((await database.query('SELECT * FROM ollama_gateway.request_binding WHERE request_id=$1',[before.requestId])).rows[0],bindingBefore);
+  const historyBefore = await status();
+  const historyResponse = await fetch(`${base}/gateway/history?taskId=7001`,{ headers: { Authorization: `Bearer ${credentials[0].token}` } });
+  assert.equal(historyResponse.status,200); const history = await historyResponse.json();
+  assert.equal(history.items.length,8); assert.equal(history.installation,'local');
+  assert.ok(history.items.every(item => item.source.taskId === '7001' && item.outcome.state === 'response_completed'));
+  const uncertain = await (await fetch(`${base}/gateway/history?taskId=7002`,{ headers: { Authorization: `Bearer ${credentials[0].token}` } })).json();
+  assert.equal(uncertain.items[0].outcome.state,'active_or_uncertain');
+  const foreign = await (await fetch(`${base}/gateway/history?taskId=7001`,{ headers: { Authorization: `Bearer ${credentials[1].token}` } })).json();
+  assert.equal(foreign.items.length,0); assert.equal(calls,19); assert.deepEqual(await status(),historyBefore);
+  process.stdout.write('gateway_work_history_passed: restricted runtime, scoped outcomes, foreign task exclusion, restart uncertainty, zero history provider calls or writes\n');
   process.stdout.write('gateway_task_correlation_passed: 8 actual queue-scoped calls, no source forwarded upstream, interrupted source retained without replay\n');
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version

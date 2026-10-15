@@ -4,6 +4,7 @@ import { gatewayError } from '../ollamaGateway/contract.mjs';
 import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { createOllamaGatewayGenerationMethods } from './ollamaGatewayGenerationMethods.mjs';
 import { assertGatewayEndpoint, canonicalGatewayModel, gatewayDeadline } from './ollamaGatewayProviderIdentity.mjs';
+import { gatewayHistoryPath,gatewayHistoryResponse } from '../ollamaGateway/historyContract.mjs';
 
 /** Explicit local-only dependency; never reads settings or enables routing itself. */
 export function createOllamaGatewayProviderContext({ configuration, gateway }) {
@@ -50,6 +51,11 @@ export function createOllamaGatewayProviderContext({ configuration, gateway }) {
   };
   const context = Object.freeze({
     ...generation,
+    async getWorkHistory(query,signal) {
+      assertOpen();
+      return gatewayHistoryResponse(await client.request(gatewayHistoryPath(query),undefined,
+        { signal,timeoutMs: 5000,maxResponseBytes: 65536 }));
+    },
     async preflightConnection(options = {}) {
       assertGatewayEndpoint(config.baseUrl, options.host, options.port);
       const selected = canonicalGatewayModel(options.model ?? model);

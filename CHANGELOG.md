@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an administrator-only Ollama gateway history view with task filtering,
+  installation-scoped records and durable UUIDv7 completion receipts; retain
+  unknown outcomes without replaying work or changing shared Ollama routing.
+
 - Link optional gateway work to its originating Classifarr queue task and attempt
   using bounded diagnostic references, preserving concurrent-task isolation and
   interrupted records without changing retry authority or shared Ollama routing.

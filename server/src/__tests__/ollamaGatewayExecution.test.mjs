@@ -20,7 +20,7 @@ test('already cancelled work never claims or dispatches', async () => {
 test('cancellation during claim completes only that undispatched attempt', async () => {
   ledger.claim.mockImplementation(async () => { controller.abort(); return 'request-1'; });
   await expect(executeGatewayCompute(input)).rejects.toThrow();
-  expect(ledger.complete).toHaveBeenCalledTimes(1); expect(ledger.complete).toHaveBeenCalledWith('request-1');
+  expect(ledger.complete).toHaveBeenCalledTimes(1); expect(ledger.complete).toHaveBeenCalledWith('request-1',false,{ state: 'not_dispatched',httpStatus: null });
   expect(upstream).not.toHaveBeenCalled();
 });
 
@@ -31,9 +31,10 @@ test('a failed claim may have committed and is not cleaned up or retried', async
 });
 
 test.each([200,400,401,403,404,429,503])('late cancellation preserves known completion and cooldown policy for %s', async status => {
-  upstream.mockImplementation(async () => { controller.abort(); return { status,data: { done: true } }; });
+  upstream.mockImplementation(async () => { controller.abort(); return { status,rejected: status !== 200,data: { done: true } }; });
   await expect(executeGatewayCompute(input)).rejects.toThrow();
-  expect(ledger.complete).toHaveBeenCalledTimes(1); expect(ledger.complete).toHaveBeenCalledWith('request-1',[429,503].includes(status));
+  expect(ledger.complete).toHaveBeenCalledTimes(1); expect(ledger.complete).toHaveBeenCalledWith('request-1',[429,503].includes(status),
+    { state: status === 200 ? 'response_completed' : 'provider_rejected',httpStatus: status });
   expect(upstream).toHaveBeenCalledTimes(1); expect(ledger.claim).toHaveBeenCalledTimes(1);
 });
 

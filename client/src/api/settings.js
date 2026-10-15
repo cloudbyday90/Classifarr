@@ -23,6 +23,7 @@ import settingsNotificationsApi from './settingsNotificationsApi'
 import settingsPathMappingApi from './settingsPathMappingApi'
 import settingsProvidersApi from './settingsProviders'
 import settingsWebhookApi from './settingsWebhook'
+import ollamaWorkHistoryApi from './ollamaWorkHistoryApi'
 
 const settingsApi = {
   ...settingsGeneralApi,
@@ -32,6 +33,7 @@ const settingsApi = {
   ...settingsPathMappingApi,
   ...settingsProvidersApi,
   ...settingsWebhookApi,
+  ...ollamaWorkHistoryApi,
 }
 
 export default settingsApi

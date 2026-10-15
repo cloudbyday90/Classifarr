@@ -6,6 +6,7 @@ import { gatewayProviderInstance } from './providerInstance.mjs';
 import { gatewayError } from './errors.mjs';
 import { gatewayUpstreamTls } from './upstreamIdentity.mjs';
 import { gatewayWorkKey } from './workIdentity.mjs';
+import { readGatewayHistoryPath } from './historyContract.mjs';
 
 export { gatewayError };
 const hash = value => createHash('sha256').update(value).digest();
@@ -67,6 +68,9 @@ export function authenticateGateway(config, authorization) {
 }
 
 export function gatewayRoute(method, path) {
+  if (method === 'GET' && (path === '/gateway/history' || path?.startsWith('/gateway/history?'))) {
+    return { compute: false,history: readGatewayHistoryPath(path) };
+  }
   if (method === 'GET' && ['/api/tags','/api/ps','/api/version','/gateway/status'].includes(path)) return { compute: false };
   if (method === 'POST' && ['/api/generate','/api/embed','/api/show'].includes(path)) return { compute: path !== '/api/show' };
   throw gatewayError('gateway_route_rejected', 404);

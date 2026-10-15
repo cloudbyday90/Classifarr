@@ -106,6 +106,7 @@ test('v6 migration preserves uncertain v5 work without inventing a source or all
     expect(await bindings()).toEqual(previous.map(row => ({ ...row,source_kind: null,source_task_id: null,source_task_type: null,source_attempt: null })));
     expect((await getPool().query('SELECT * FROM ollama_gateway.admission')).rows[0]).toEqual({ ...before,version: 6 });
     expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=5')).rowCount).toBe(0);
+    await upgrader.query(await sql('20261015_220007_work_history.sql'));
     const ledger = await openGatewayLedger(holder,providerHash);
     await expect(ledger.claim('legacy')).rejects.toThrow('gateway_admission_deferred');
   } finally { holder.release(true); upgrader.release(true); }

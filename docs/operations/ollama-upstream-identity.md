@@ -5,7 +5,7 @@ No change to shared Ollama, Unraid, default application routing or AI consent.
 
 ## Configure a dedicated test endpoint
 
-Use a separate PostgreSQL 18 gateway database with schema v6 and the restricted
+Use a separate PostgreSQL 18 gateway database with schema v7 and the restricted
 roles in [offline recovery](ollama-gateway-offline-recovery.md). Back up and stop
 existing gateways before upgrading. No application database migration is needed.
 

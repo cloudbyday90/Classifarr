@@ -42,13 +42,13 @@ Classifarr's existing model/digest validation remains required for integration.
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
 `database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
-This is the version-6 fresh standalone schema. It deliberately fails
+This is the version-7 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table
 SELECT, column-scoped admission UPDATE and binding INSERT, as listed in the
 [offline recovery procedure](ollama-gateway-offline-recovery.md). It needs neither
-schema creation nor application-table access. Existing version-1/2/3/4 test databases
+schema creation nor application-table access. Existing version-1 through version-6 test databases
 require the explicit timestamped upgrades in that procedure, never `current.sql`.
 Use a local PostgreSQL socket or verified TLS for a remote database. Do not disable
 certificate verification. Keep the database and its ledger durable across restarts.
@@ -158,7 +158,10 @@ this remains a bounded prototype rather than an unattended production rollout.
 Supported upstream routes: GET `/api/tags`, `/api/ps`, `/api/version`; POST
 `/api/show`, `/api/generate` with an explicit boolean `stream`, and `/api/embed` with
 at most eight input strings. Query strings, chat, images, arbitrary decoding
-options and model administration are rejected. Generation options are limited to
+options and model administration are rejected. The database-only
+`GET /gateway/history` exception accepts only bounded `taskId`/`before` filters;
+see [work history](ollama-work-history.md) for installation scope and outcomes.
+Generation options are limited to
 temperature (0–2), seed (0–2,147,483,647), context (1–65,536), and output tokens
 (1–4,096). These gateway ceilings are not permission to raise caller limits.
 

@@ -59,10 +59,16 @@ For an existing version-5 database (including after those steps), apply once:
 psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_113726_task_source.sql
 ```
 
+For an existing version-6 database (including after those steps), apply once:
+
+```text
+psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_220007_work_history.sql
+```
+
 The upgrades refuse a competing gateway session. They preserve its request,
 attempts, cooldown and ownership. They create no application tables and make no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
-instead. Use version-6 gateway/recovery binaries with schema version 6; older
+instead. Use version-7 gateway/recovery binaries with schema version 7; older
 binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an
 old ledger to bypass a hold: retain the backup and investigate offline.
 
@@ -82,6 +88,8 @@ GRANT UPDATE(owner_id, provider_hash, active_request, installation, started_at,
 GRANT UPDATE(active_request, installation, started_at, maintenance_receipt, last_recovery_receipt)
   ON ollama_gateway.admission TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery;
+GRANT SELECT ON ollama_gateway.recovery_receipt TO gateway_runtime;
+GRANT SELECT, INSERT ON ollama_gateway.completion_receipt TO gateway_runtime;
 GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.upstream_peer_observation TO gateway_runtime;

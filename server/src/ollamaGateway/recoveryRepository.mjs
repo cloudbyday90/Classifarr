@@ -47,7 +47,7 @@ export async function runGatewayRecovery(client, { providerHash, action, review,
     await client.query("SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='4s'; SET LOCAL idle_in_transaction_session_timeout='5s'; SET LOCAL synchronous_commit=on");
     const result = await client.query(`SELECT id, provider_hash, owner_id, active_request, installation,
       started_at::text, attempts::text, cooldown_until::text, maintenance_receipt, last_recovery_receipt
-      FROM ollama_gateway.admission WHERE singleton AND version=6 AND provider_hash=$1 FOR UPDATE`,[providerHash]);
+      FROM ollama_gateway.admission WHERE singleton AND version=7 AND provider_hash=$1 FOR UPDATE`,[providerHash]);
     if (result.rowCount !== 1) throw gatewayError('gateway_recovery_ledger_unavailable');
     const row = result.rows[0], expected = gatewayRecoverySnapshot(row);
     let output;

@@ -692,6 +692,8 @@
       />
     </Card>
 
+    <OllamaWorkHistory />
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button
@@ -720,6 +722,7 @@ import RouteSafetyMaintenanceHandoff from '@/components/settings/RouteSafetyMain
 import RouteSafetyReadinessSummary from '@/components/settings/RouteSafetyReadinessSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import OllamaVerificationCapabilityOutcomeHistory from '@/components/settings/OllamaVerificationCapabilityOutcomeHistory.vue'
+import OllamaWorkHistory from '@/components/settings/OllamaWorkHistory.vue'
 import OllamaVerificationCompatibilityMatrix from '@/components/settings/OllamaVerificationCompatibilityMatrix.vue'
 import OllamaVerificationRuntimeMismatchSummary from '@/components/settings/OllamaVerificationRuntimeMismatchSummary.vue'
 import OllamaScheduledPreflightSummary from '@/components/settings/OllamaScheduledPreflightSummary.vue'

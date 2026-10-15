@@ -1,5 +1,5 @@
 -- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
--- Fresh standalone gateway schema, version 6. Never apply to an existing database.
+-- Fresh standalone gateway schema, version 7. Never apply to an existing database.
 -- Explicit initialization, never an automatic application migration.
 -- Deliberately not repeatable: an existing or uncertain ledger must not be reset.
 BEGIN;
@@ -8,7 +8,7 @@ REVOKE ALL ON SCHEMA ollama_gateway FROM PUBLIC;
 CREATE TABLE ollama_gateway.admission (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
   singleton boolean NOT NULL DEFAULT true UNIQUE CHECK (singleton),
-  version integer NOT NULL CHECK (version = 6),
+  version integer NOT NULL CHECK (version = 7),
   provider_hash text CHECK (provider_hash ~ '^[a-f0-9]{64}$'),
   owner_id uuid CHECK (uuid_extract_version(owner_id) = 7),
   active_request uuid CHECK (uuid_extract_version(active_request) = 7),
@@ -20,7 +20,7 @@ CREATE TABLE ollama_gateway.admission (
   CHECK ((active_request IS NULL AND installation IS NULL AND started_at IS NULL)
     OR (active_request IS NOT NULL AND installation IS NOT NULL AND started_at IS NOT NULL))
 );
-INSERT INTO ollama_gateway.admission(version) VALUES (6);
+INSERT INTO ollama_gateway.admission(version) VALUES (7);
 REVOKE ALL ON ollama_gateway.admission FROM PUBLIC;
 CREATE TABLE ollama_gateway.recovery_receipt (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
@@ -152,4 +152,19 @@ ALTER TABLE ollama_gateway.request_binding
       AND (length(source_task_id)<19 OR source_task_id COLLATE "C" <= '9223372036854775807')
       AND source_task_type IN ('classification','metadata_enrichment','rating_normalization','rebuild_hnsw_index')
       AND source_attempt>=0));
+CREATE TABLE ollama_gateway.completion_receipt (
+  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK ((uuid_extract_version(id)=7) IS TRUE),
+  request_id uuid NOT NULL UNIQUE REFERENCES ollama_gateway.request_binding(request_id),
+  outcome text NOT NULL,
+  http_status integer,
+  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  CHECK ((outcome='response_completed' AND http_status IS NOT NULL AND http_status=200)
+    OR (outcome='provider_rejected' AND http_status IS NOT NULL AND http_status IN (400,401,403,404,429,503))
+    OR (outcome IN ('not_dispatched','completion_observed') AND http_status IS NULL))
+);
+CREATE TRIGGER completion_receipt_append_only BEFORE UPDATE OR DELETE OR TRUNCATE
+  ON ollama_gateway.completion_receipt FOR EACH STATEMENT EXECUTE FUNCTION ollama_gateway.reject_receipt_mutation();
+REVOKE ALL ON ollama_gateway.completion_receipt FROM PUBLIC;
+CREATE INDEX request_binding_history ON ollama_gateway.request_binding (installation,attempt DESC);
+CREATE INDEX request_binding_task_history ON ollama_gateway.request_binding (installation,source_task_id,attempt DESC);
 COMMIT;

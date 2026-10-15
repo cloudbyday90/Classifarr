@@ -22,6 +22,7 @@ import { registerNotificationRoutes } from './settingsRouteDiscord.mjs';
 import { registerWebhookRoutes } from './settingsRouteWebhook.mjs';
 import { registerInfrastructureRoutes } from './settingsRouteInfrastructure.mjs';
 import { registerConfidenceRoutes } from './settingsRouteConfidence.mjs';
+import { registerGatewayHistoryRoutes } from './settingsRouteGatewayHistory.mjs';
 
 export function createSettingsRouter({
   express,
@@ -64,6 +65,7 @@ registerProviderRoutes(router, {
   webSearchProviderHandlers,
 });
 registerNotificationRoutes(router, { discordHandlers, requireAdmin });
+registerGatewayHistoryRoutes(router, { authenticateToken, requireAdmin });
 registerWebhookRoutes(router, { webhookHandlers });
 registerInfrastructureRoutes(router, { sslHandlers, sslTestLimiter, pathTestingHandlers, providerLockHandlers });
 registerConfidenceRoutes(router, { authenticateToken, requireAdmin, confidenceSettingsHandlers });

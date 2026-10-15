@@ -15,7 +15,8 @@ test('new literal Ollama HTTP call sites require explicit boundary review', asyn
     }));
   }
   expect(matches.sort()).toEqual([
-    'ollamaGateway/client.mjs', 'ollamaGateway/contract.mjs', 'ollamaGateway/transport.mjs',
+    // historyContract validates operation labels only; it performs no provider transport.
+    'ollamaGateway/client.mjs', 'ollamaGateway/contract.mjs', 'ollamaGateway/historyContract.mjs', 'ollamaGateway/transport.mjs',
     'services/embeddingProviderAdapters.mjs', 'services/healthCheckAiProvider.mjs',
     'services/localDescriptionBenchmarkClient.mjs', 'services/localStudyEmbeddingClient.mjs',
     'services/ollamaConnection.mjs', 'services/ollamaGatewayGenerationMethods.mjs',

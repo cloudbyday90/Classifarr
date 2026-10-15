@@ -9,7 +9,7 @@ export async function executeGatewayCompute({ ledger, installation, config, path
   const requestId = await ledger.claim(installation,work.identity);
   if (signal.aborted) {
     // No transport has been invoked. Preserve the counted attempt, not a false unknown.
-    await ledger.complete(requestId);
+    await ledger.complete(requestId,false,{ state: 'not_dispatched',httpStatus: null });
     signal.throwIfAborted();
   }
   // No await between the cancellation check and dispatch. Any transport failure
@@ -19,7 +19,9 @@ export async function executeGatewayCompute({ ledger, installation, config, path
   });
   // A validated terminal response is evidence even if the caller has since left.
   // Never return it before the fenced write, or retry a failed completion write.
-  await ledger.complete(requestId,[429,503].includes(result.status));
+  await ledger.complete(requestId,[429,503].includes(result.status),{
+    state: result.rejected ? 'provider_rejected' : 'response_completed',httpStatus: result.status,
+  });
   signal.throwIfAborted();
   return result;
 }
