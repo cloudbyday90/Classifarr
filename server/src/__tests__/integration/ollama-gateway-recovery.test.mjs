@@ -137,9 +137,10 @@ test('version-1 upgrade preserves the active request; old version cannot claim a
   for (const client of clients) client.release(true); clients = [];
   await getPool().query(await sql('20261014_224242_offline_recovery.sql'));
   await getPool().query(await sql('20261015_091627_request_binding.sql'));
+  await getPool().query(await sql('20261015_095721_provider_stop.sql'));
   expect(await shape()).toEqual(freshShape);
   expect(await constraints()).toEqual(freshConstraints);
-  expect(await row()).toMatchObject({ version: 3,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
+  expect(await row()).toMatchObject({ version: 4,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=1')).rowCount).toBe(0);
   expect((await run('acknowledge-stop',await review())).state).toBe('maintenance');
 });
@@ -159,6 +160,7 @@ test('least-privilege runtime cannot clear holds; recovery cannot reset attempts
     GRANT UPDATE(active_request,installation,started_at,maintenance_receipt,last_recovery_receipt) ON ollama_gateway.admission TO gateway_recovery_test;
     GRANT SELECT,INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery_test;
     GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery_test;
+    GRANT SELECT ON ollama_gateway.provider_stop_intent,ollama_gateway.provider_stop_observation TO gateway_recovery_test;
     GRANT SELECT,INSERT ON ollama_gateway.request_binding TO gateway_runtime_test;
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_runtime_test`);

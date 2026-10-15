@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { observeDockerProviderBoundary } from '../server/src/ollamaGateway/dockerBoundaryObserver.mjs';
 import { dockerBoundaryConfiguration } from '../server/src/ollamaGateway/dockerBoundaryContract.mjs';
+import { rehearseDockerStop } from './fixtures/ollamaGatewayRehearsal/dockerStop.mjs';
 
 const [image,revision,endpoint,...extra] = process.argv.slice(2);
 assert.equal(extra.length,0); assert.match(image || '',/^sha256:[a-f0-9]{64}$/); assert.match(revision || '',/^[a-f0-9]{40}$/);
@@ -57,3 +58,4 @@ try {
 }
 assert.equal(docker(['ps','-aq','--filter',`label=${label}`]).trim(),'');
 process.stdout.write(`docker_boundary_cleanup_verified ${name}\n`);
+await rehearseDockerStop({ docker,image,socketPath });

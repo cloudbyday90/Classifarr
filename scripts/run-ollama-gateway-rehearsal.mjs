@@ -24,6 +24,10 @@ await withSchemaCheckContainer({ imageName,runSpec,command,action: async () => {
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/application.mjs'),`${name}:/tmp/application.mjs`]);
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/recovery.mjs'),`${name}:/tmp/recovery.mjs`]);
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/offlineRecovery.mjs'),`${name}:/tmp/offlineRecovery.mjs`]);
+  for (const source of ['scripts/fixtures/ollamaGatewayRehearsal/providerStop.mjs',
+    'server/src/__tests__/helpers/dockerStopFixture.mjs','server/src/__tests__/helpers/dockerBoundaryFixture.mjs']) {
+    docker(['cp',resolve(source),`${name}:/tmp/${source.split('/').at(-1)}`]);
+  }
   const result = docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',name,'node','/tmp/gateway-probe.mjs']);
   process.stdout.write(result);
 } });

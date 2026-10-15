@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a reviewed, one-shot Docker provider stop with time-based UUIDv7 audit
+  records; preserve interrupted work and attempts without automatic recovery
+  or changes to shared Ollama.
+
 - Preserve an optional gateway's configured provider container and start reference
   with each admitted request using time-based UUIDv7 records; retain uncertain
   work and legacy history without claiming automatic recovery is safe.

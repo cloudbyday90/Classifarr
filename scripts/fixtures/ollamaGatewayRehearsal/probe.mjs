@@ -14,6 +14,7 @@ import { createOllamaVerificationSavedConfigurationClient } from '/app/src/servi
 import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerificationCapabilityProbe.mjs';
 import { rehearseApplicationRouting } from './application.mjs';
 import { rehearseCompletionRecovery } from './recovery.mjs';
+import { rehearseProviderStop } from './providerStop.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -86,6 +87,7 @@ try {
   await admin.query('CREATE DATABASE classifarr_gateway_fixture'); // Owned, fresh, network-none fixture only.
   await admin.query('CREATE ROLE gateway_fixture_runtime LOGIN');
   await rehearseCompletionRecovery(admin);
+  await rehearseProviderStop(admin);
   await database.connect();
   await database.query(await readFile('/app/database/ollama-gateway/current.sql','utf8'));
   await database.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');

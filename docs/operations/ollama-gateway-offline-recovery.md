@@ -41,10 +41,16 @@ For an existing version-2 database (including after the step above), apply once:
 psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_091627_request_binding.sql
 ```
 
+For an existing version-3 database (including after those steps), apply once:
+
+```text
+psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_095721_provider_stop.sql
+```
+
 The upgrades refuse a competing gateway session. They preserve its request,
 attempts, cooldown and ownership. It creates no application tables and makes no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
-instead. Use version-3 gateway/recovery binaries with schema version 3; older
+instead. Use version-4 gateway/recovery binaries with schema version 4; older
 binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an
 old ledger to bypass a hold: retain the backup and investigate offline.
 
@@ -66,6 +72,8 @@ GRANT UPDATE(active_request, installation, started_at, maintenance_receipt, last
 GRANT SELECT, INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;
+GRANT SELECT ON ollama_gateway.provider_stop_intent,
+  ollama_gateway.provider_stop_observation TO gateway_recovery;
 ```
 
 Do not grant receipt/binding UPDATE/DELETE/TRUNCATE or schema ownership. Their triggers
@@ -100,7 +108,7 @@ node server/src/scripts/recoverOllamaGateway.mjs inspect
 
 In a packaged container the entry point is `/app/src/scripts/recoverOllamaGateway.mjs`.
 Inspection changes no durable state, obtains the gateway's exclusive database
-lock, and prints `expected`, `latestReceipt` and `requestBinding`. It never contacts Ollama.
+lock, and prints `expected`, `latestReceipt`, `requestBinding` and `providerStop`. It never contacts Ollama.
 `gateway_recovery_gateway_running` means stop and verify the intended gateway;
 do not terminate arbitrary database sessions to bypass the check.
 
@@ -110,6 +118,12 @@ not a stop attestation. `unbound` means no pins were configured; `legacy_unbound
 means the old request has no binding record. None authorizes recovery. Do not
 substitute a newer provider snapshot or infer missing evidence from a current
 container. Review the entire provider boundary independently in every case.
+
+`providerStop` is the optional [reviewed stop controller](ollama-provider-stop.md)
+journal, not recovery authority. An intent without an observation means the stop
+outcome is unknown. Establish that any pending Docker operation has settled before
+acknowledgement or restart. A historical observation does not prove the provider
+is still stopped; independently verify the entire boundary again.
 
 ## Acknowledge verified stop
 

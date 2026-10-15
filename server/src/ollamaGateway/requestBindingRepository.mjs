@@ -5,7 +5,7 @@ export async function claimGatewayRequest(query,{ installation,owner,providerHas
   const result = await query(`WITH claimed AS (
     UPDATE ollama_gateway.admission SET active_request=uuidv7(), installation=$1,
       started_at=clock_timestamp(), attempts=attempts+1, binding_count=binding_count+1
-    WHERE singleton AND version=3 AND owner_id=$2 AND provider_hash=$3
+    WHERE singleton AND version=4 AND owner_id=$2 AND provider_hash=$3
       AND active_request IS NULL AND maintenance_receipt IS NULL AND binding_count<100000
       AND (cooldown_until IS NULL OR cooldown_until <= clock_timestamp())
     RETURNING id,active_request,started_at,attempts)

@@ -16,6 +16,7 @@ export async function rehearseOfflineRecovery(owner, database, providerHash) {
     GRANT UPDATE(active_request,installation,started_at,maintenance_receipt,last_recovery_receipt) ON ollama_gateway.admission TO gateway_fixture_recovery;
     GRANT SELECT,INSERT ON ollama_gateway.recovery_receipt TO gateway_fixture_recovery;
     GRANT SELECT ON ollama_gateway.request_binding TO gateway_fixture_recovery;
+    GRANT SELECT ON ollama_gateway.provider_stop_intent,ollama_gateway.provider_stop_observation TO gateway_fixture_recovery;
     REVOKE UPDATE ON ollama_gateway.admission FROM gateway_fixture_runtime;
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_fixture_runtime`);

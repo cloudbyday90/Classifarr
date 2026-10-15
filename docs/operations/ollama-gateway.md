@@ -37,13 +37,13 @@ Classifarr's existing model/digest validation remains required for integration.
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
 `database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
-This is the version-3 fresh standalone schema. It deliberately fails
+This is the version-4 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table
 SELECT, column-scoped admission UPDATE and binding INSERT, as listed in the
 [offline recovery procedure](ollama-gateway-offline-recovery.md). It needs neither
-schema creation nor application-table access. Existing version-1/2 test databases
+schema creation nor application-table access. Existing version-1/2/3 test databases
 require the explicit timestamped upgrades in that procedure, never `current.sql`.
 Use a local PostgreSQL socket or verified TLS for a remote database. Do not disable
 certificate verification. Keep the database and its ledger durable across restarts.
@@ -382,3 +382,7 @@ For dedicated Docker provider planning, the optional
 [boundary observer](ollama-docker-boundary.md) reports pinned container facts
 without granting recovery authority. It runs outside Classifarr and is not a
 replacement for the offline administrator-reviewed recovery procedure.
+
+The separate [reviewed offline stop controller](ollama-provider-stop.md) can
+record a one-shot stop intent for a narrowly supported dedicated provider. It
+does not clear uncertain work, restart providers or enable automatic recovery.
