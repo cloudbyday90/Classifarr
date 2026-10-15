@@ -9,6 +9,7 @@ import { createLocalDescriptionBenchmarkClient } from '/app/src/services/localDe
 import { createLocalStudyEmbeddingClient } from '/app/src/services/localStudyEmbeddingClient.mjs';
 import { createOllamaVerificationSavedConfigurationClient } from '/app/src/services/ollamaVerificationSavedConfigurationClient.mjs';
 import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerificationCapabilityProbe.mjs';
+import { QueueTaskProcessorService } from '/app/src/services/queueTaskProcessorService.mjs';
 
 export async function rehearseApplicationRouting({ gateway, backgroundToken, model }) {
   const configuration = { baseUrl: gateway.upstream, host: '127.0.0.1', port: Number(new URL(gateway.upstream).port), model, embeddingModel: model };
@@ -21,7 +22,7 @@ export async function rehearseApplicationRouting({ gateway, backgroundToken, mod
   const saved = createOllamaVerificationSavedConfigurationClient({ configuration: settings });
   let listener;
   try {
-    await owner.run(async () => {
+    const workflow = async () => {
       assert.equal(await generation.generate(getConfig, 'Synthetic only', model), 'synthetic');
       assert.equal(await generation.generateWithProgress(getConfig, forbidden, 'Synthetic only', model, 0, null, null, { requireDoneSignal: true }), 'partialsynthetic');
       assert.equal((await generation.embed(getConfig, forbidden, forbidden, 'Synthetic only', model, '15m')).dims, 2);
@@ -41,7 +42,11 @@ export async function rehearseApplicationRouting({ gateway, backgroundToken, mod
         void connection.getVersion(getConfig).then(value => res.end(value), error => res.end(error.code));
       }, 1); });
       await new Promise(resolve => { listener.listen(0, '127.0.0.1', resolve); });
-    });
+    };
+    await owner.run(() => QueueTaskProcessorService.prototype.processTask.call({
+      logger: { info() {},error() {} },failTask() { throw new Error('packaged_queue_source_failed'); },
+      processClassificationTask: workflow,
+    },{ id: 7001,task_type: 'classification',attempts: 2,claim_token: 'PRIVATE',payload: { taskId: 999 } }));
     const url = `http://127.0.0.1:${listener.address().port}`;
     assert.equal(await (await fetch(url)).text(), 'synthetic');
     owner.replace(options(2));

@@ -4,6 +4,7 @@ import { request as httpsRequest } from 'node:https';
 import { gatewayModels, gatewayError, gatewayProviderIdentity, gatewayRoute, validateGatewayBody } from './contract.mjs';
 import { readGatewayStream } from './stream.mjs';
 import { gatewayClientTls, privateGatewayAddress } from './tls.mjs';
+import { gatewayTaskSourceHeaders } from './taskSource.mjs';
 
 /** Explicit server-side dependency, never loaded from user-facing settings. */
 export function createGatewayClient(raw, { expectedUpstream }) {
@@ -21,10 +22,11 @@ export function createGatewayClient(raw, { expectedUpstream }) {
   const authorization = `Bearer ${raw.token}`, base = url.origin, active = new Set();
   let closed = false;
   return Object.freeze({
-    async request(path, body, { signal = undefined, timeoutMs = 180000, maxResponseBytes = undefined, onRecord = undefined } = {}) {
+    async request(path, body, { signal = undefined, timeoutMs = 180000, maxResponseBytes = undefined, onRecord = undefined, source = undefined } = {}) {
       if (closed) throw gatewayError('gateway_client_closed');
       if (active.size >= 32) throw gatewayError('gateway_busy',429);
-      gatewayRoute(body === undefined ? 'GET' : 'POST',path);
+      const route = gatewayRoute(body === undefined ? 'GET' : 'POST',path);
+      const sourceHeaders = gatewayTaskSourceHeaders(source,route.compute);
       if (body !== undefined) validateGatewayBody(path,body,config);
       const streaming = path === '/api/generate' && body?.stream === true;
       if (streaming !== (typeof onRecord === 'function') || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000) {
@@ -45,7 +47,7 @@ export function createGatewayClient(raw, { expectedUpstream }) {
         combined.throwIfAborted();
         return await new Promise((resolve,reject) => {
           const req = request(`${base}${path}`,{ ...tls, method: bytes ? 'POST' : 'GET',signal: combined,agent: false,maxHeaderSize: 8192,
-            headers: { Authorization: authorization,'X-Classifarr-Provider': config.providerHash,'Accept-Encoding': 'identity',
+            headers: { ...sourceHeaders,Authorization: authorization,'X-Classifarr-Provider': config.providerHash,'Accept-Encoding': 'identity',
               ...(bytes ? { 'Content-Type': 'application/json','Content-Length': bytes.length } : {}) } }, res => {
             void (async () => {
               if (res.statusCode !== 200) throw gatewayError('gateway_request_rejected',res.statusCode);

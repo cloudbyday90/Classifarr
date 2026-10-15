@@ -25,7 +25,7 @@ profiles and enforced provisioning remain future work.
 ## Schema and privileges
 
 Back up the **standalone gateway database**, stop the gateway, and follow the
-[schema upgrade sequence](ollama-gateway-offline-recovery.md). Version 5 is
+[schema upgrade sequence](ollama-gateway-offline-recovery.md). Version 6 is
 required; never apply this schema to the Classifarr application database.
 Use a dedicated non-owner, non-superuser role with CONNECT and no inherited
 broader grants. Its only schema/table grants are:

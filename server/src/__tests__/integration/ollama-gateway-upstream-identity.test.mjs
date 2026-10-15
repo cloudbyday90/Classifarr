@@ -254,5 +254,6 @@ test('v5 upgrade refuses active ownership, preserves v4 unknown state and create
   expect((await getPool().query('SELECT * FROM ollama_gateway.request_binding')).rows).toEqual(bindings.map(row => ({ ...row,
     work_version: null,operation: null,model: null,work_fingerprint: null,fingerprint_key_id: null })));
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=4')).rowCount).toBe(0);
+  await upgrader.query(await sql('20261015_113726_task_source.sql'));
   await expect(compute(await ledger())).rejects.toThrow('gateway_admission_deferred'); expect(calls).toBe(0);
 });

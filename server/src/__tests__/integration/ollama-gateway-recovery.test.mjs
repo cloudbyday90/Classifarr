@@ -139,9 +139,10 @@ test('version-1 upgrade preserves the active request; old version cannot claim a
   await getPool().query(await sql('20261015_091627_request_binding.sql'));
   await getPool().query(await sql('20261015_095721_provider_stop.sql'));
   await getPool().query(await sql('20261015_104932_upstream_peer.sql'));
+  await getPool().query(await sql('20261015_113726_task_source.sql'));
   expect(await shape()).toEqual(freshShape);
   expect(await constraints()).toEqual(freshConstraints);
-  expect(await row()).toMatchObject({ version: 5,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
+  expect(await row()).toMatchObject({ version: 6,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=1')).rowCount).toBe(0);
   expect((await run('acknowledge-stop',await review())).state).toBe('maintenance');
 });

@@ -15,6 +15,7 @@ import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcesso
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
+import { runOllamaTaskScope } from './ollamaTaskScope.mjs';
 import { createOmdbSslRecovery } from './omdbSslRecovery.mjs';
 import { omdbRecentLookup } from './omdbRecentLookup.mjs';
 import { imageIndexFailureLogFields } from '../utils/imageIndexResultProtocol.mjs';
@@ -210,76 +211,78 @@ export class QueueTaskProcessorService {
     }
 
     async processTask(task) {
-        this.logger.info('Processing task', { taskId: task.id, taskType: task.task_type });
+        return runOllamaTaskScope(task, async () => {
+            this.logger.info('Processing task', { taskId: task.id, taskType: task.task_type });
 
-        try {
-            switch (task.task_type) {
-                case 'classification':
-                    await this.processClassificationTask(task);
-                    break;
+            try {
+                switch (task.task_type) {
+                    case 'classification':
+                        await this.processClassificationTask(task);
+                        break;
 
-                case 'metadata_enrichment':
-                    await this.processMetadataEnrichmentTask(task);
-                    break;
+                    case 'metadata_enrichment':
+                        await this.processMetadataEnrichmentTask(task);
+                        break;
 
-                case 'rating_normalization':
-                    await this.processRatingNormalization(task);
-                    break;
+                    case 'rating_normalization':
+                        await this.processRatingNormalization(task);
+                        break;
 
-                case 'rebuild_hnsw_index':
-                    await this.rebuildImageIndexes(task);
-                    break;
+                    case 'rebuild_hnsw_index':
+                        await this.rebuildImageIndexes(task);
+                        break;
 
-                default:
-                    this.logger.warn('Unknown task type', { taskType: task.task_type });
-                    await this.failTask(
-                        task.id,
-                        QUEUE_TASK_FAILURE_REASON_IDS.UNKNOWN_TASK_TYPE,
-                        task.attempts,
-                        task.max_attempts,
-                        task.claim_token,
-                    );
-            }
-        } catch (error) {
-            if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') {
-                this.logger.debug('Stale enrichment result discarded; queue claim is no longer owned', {
-                    taskId: task.id, reasonCode: error.reason,
+                    default:
+                        this.logger.warn('Unknown task type', { taskType: task.task_type });
+                        await this.failTask(
+                            task.id,
+                            QUEUE_TASK_FAILURE_REASON_IDS.UNKNOWN_TASK_TYPE,
+                            task.attempts,
+                            task.max_attempts,
+                            task.claim_token,
+                        );
+                }
+            } catch (error) {
+                if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') {
+                    this.logger.debug('Stale enrichment result discarded; queue claim is no longer owned', {
+                        taskId: task.id, reasonCode: error.reason,
+                    });
+                    return;
+                }
+                const failureReason = (task.task_type === 'classification' && classificationMetadataFailureReason(error))
+                    || QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED;
+                this.logger.error('Task processing failed', {
+                    taskId: task.id,
+                    taskType: task.task_type,
+                    reasonCode: failureReason,
+                    ...(task.task_type === 'classification' ? classificationMetadataFailureLogFields(error) : {}),
+                    ...(task.task_type === 'rebuild_hnsw_index' ? imageIndexFailureLogFields(error) : {}),
                 });
-                return;
-            }
-            const failureReason = (task.task_type === 'classification' && classificationMetadataFailureReason(error))
-                || QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED;
-            this.logger.error('Task processing failed', {
-                taskId: task.id,
-                taskType: task.task_type,
-                reasonCode: failureReason,
-                ...(task.task_type === 'classification' ? classificationMetadataFailureLogFields(error) : {}),
-                ...(task.task_type === 'rebuild_hnsw_index' ? imageIndexFailureLogFields(error) : {}),
-            });
-            const acknowledged = await this.failTask(
-                task.id,
-                failureReason,
-                task.attempts,
-                task.max_attempts,
-                task.claim_token,
-                ...(error instanceof ClassificationMetadataFailure ? [error] : []),
-            );
-            if (acknowledged === false) return;
+                const acknowledged = await this.failTask(
+                    task.id,
+                    failureReason,
+                    task.attempts,
+                    task.max_attempts,
+                    task.claim_token,
+                    ...(error instanceof ClassificationMetadataFailure ? [error] : []),
+                );
+                if (acknowledged === false) return;
 
-            if (task.task_type === 'metadata_enrichment') {
-                const payload = parsePayload(task.payload);
-                if (payload?.itemId) {
-                    await this.enrichmentItemStateService.syncItemState(payload.itemId);
+                if (task.task_type === 'metadata_enrichment') {
+                    const payload = parsePayload(task.payload);
+                    if (payload?.itemId) {
+                        await this.enrichmentItemStateService.syncItemState(payload.itemId);
+                    }
+                }
+
+                if (task.webhook_log_id) {
+                    await this.db.query(
+                        `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
+                        [task.webhook_log_id, failureReason]
+                    );
                 }
             }
-
-            if (task.webhook_log_id) {
-                await this.db.query(
-                    `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
-                    [task.webhook_log_id, failureReason]
-                );
-            }
-        }
+        });
     }
 
     async isOmdbSslBlocked(config) {

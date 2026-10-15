@@ -1,5 +1,5 @@
 -- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
--- Fresh standalone gateway schema, version 5. Never apply to an existing database.
+-- Fresh standalone gateway schema, version 6. Never apply to an existing database.
 -- Explicit initialization, never an automatic application migration.
 -- Deliberately not repeatable: an existing or uncertain ledger must not be reset.
 BEGIN;
@@ -8,7 +8,7 @@ REVOKE ALL ON SCHEMA ollama_gateway FROM PUBLIC;
 CREATE TABLE ollama_gateway.admission (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
   singleton boolean NOT NULL DEFAULT true UNIQUE CHECK (singleton),
-  version integer NOT NULL CHECK (version = 5),
+  version integer NOT NULL CHECK (version = 6),
   provider_hash text CHECK (provider_hash ~ '^[a-f0-9]{64}$'),
   owner_id uuid CHECK (uuid_extract_version(owner_id) = 7),
   active_request uuid CHECK (uuid_extract_version(active_request) = 7),
@@ -20,7 +20,7 @@ CREATE TABLE ollama_gateway.admission (
   CHECK ((active_request IS NULL AND installation IS NULL AND started_at IS NULL)
     OR (active_request IS NOT NULL AND installation IS NOT NULL AND started_at IS NOT NULL))
 );
-INSERT INTO ollama_gateway.admission(version) VALUES (5);
+INSERT INTO ollama_gateway.admission(version) VALUES (6);
 REVOKE ALL ON ollama_gateway.admission FROM PUBLIC;
 CREATE TABLE ollama_gateway.recovery_receipt (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
@@ -139,4 +139,17 @@ ALTER TABLE ollama_gateway.request_binding
       AND model ~ '^[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$'
       AND ((work_fingerprint IS NULL AND fingerprint_key_id IS NULL)
         OR (work_fingerprint IS NOT NULL AND fingerprint_key_id IS NOT NULL))));
+ALTER TABLE ollama_gateway.request_binding
+  ADD COLUMN source_kind text,
+  ADD COLUMN source_task_id text,
+  ADD COLUMN source_task_type text,
+  ADD COLUMN source_attempt integer,
+  ADD CONSTRAINT request_binding_task_source CHECK (
+    num_nonnulls(source_kind,source_task_id,source_task_type,source_attempt)=0
+    OR (num_nonnulls(source_kind,source_task_id,source_task_type,source_attempt)=4
+      AND work_version IS NOT NULL AND work_version=1 AND source_kind='queue_task'
+      AND source_task_id ~ '^[1-9][0-9]{0,18}$'
+      AND (length(source_task_id)<19 OR source_task_id COLLATE "C" <= '9223372036854775807')
+      AND source_task_type IN ('classification','metadata_enrichment','rating_normalization','rebuild_hnsw_index')
+      AND source_attempt>=0));
 COMMIT;

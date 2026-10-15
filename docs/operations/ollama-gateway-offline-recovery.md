@@ -53,10 +53,16 @@ For an existing version-4 database (including after those steps), apply once:
 psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_104932_upstream_peer.sql
 ```
 
+For an existing version-5 database (including after those steps), apply once:
+
+```text
+psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_113726_task_source.sql
+```
+
 The upgrades refuse a competing gateway session. They preserve its request,
 attempts, cooldown and ownership. They create no application tables and make no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
-instead. Use version-5 gateway/recovery binaries with schema version 5; older
+instead. Use version-6 gateway/recovery binaries with schema version 6; older
 binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an
 old ledger to bypass a hold: retain the backup and investigate offline.
 

@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { createGatewayClient } from '../ollamaGateway/client.mjs';
+import { createTaskCorrelatedGatewayClient } from './ollamaTaskGatewayClient.mjs';
 import { gatewayError } from '../ollamaGateway/contract.mjs';
 import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { createOllamaGatewayGenerationMethods } from './ollamaGatewayGenerationMethods.mjs';
@@ -12,7 +12,7 @@ export function createOllamaGatewayProviderContext({ configuration, gateway }) {
   const models = [...new Set([model, embeddingModel].filter(Boolean))];
   const config = Object.freeze({ ...configuration, model, embeddingModel });
   assertGatewayEndpoint(config.baseUrl, config.host, config.port);
-  const client = createGatewayClient(gateway, { expectedUpstream: config.baseUrl });
+  const client = createTaskCorrelatedGatewayClient(gateway, { expectedUpstream: config.baseUrl });
   if (models.some(name => !gateway.models.includes(name))) { client.close(); throw gatewayError('gateway_model_invalid', 400); }
   let closed = false;
   const assertOpen = () => { if (closed) throw gatewayError('gateway_client_closed'); };

@@ -7,6 +7,7 @@ import { createGatewayAdmission } from './admission.mjs';
 import { gatewayUpstream } from './transport.mjs';
 import { executeGatewayCompute } from './execution.mjs';
 import { writeGatewayRecord } from './stream.mjs';
+import { readGatewayTaskSource } from './taskSource.mjs';
 
 function readBody(req, signal) {
   return new Promise((resolve,reject) => {
@@ -66,6 +67,7 @@ export function createGatewayServer({ config, ledger }) {
           throw gatewayError('gateway_provider_mismatch',409);
         }
         const route = gatewayRoute(req.method,req.url);
+        const source = readGatewayTaskSource(req,route.compute);
         if (req.headers['content-encoding'] || req.headers['content-length'] && Number(req.headers['content-length']) > 256 * 1024) {
           throw gatewayError('gateway_body_limit',413);
         }
@@ -90,7 +92,7 @@ export function createGatewayServer({ config, ledger }) {
         if (route.compute) {
           release = await admission.acquire(principal,signal); signal.throwIfAborted();
           result = await executeGatewayCompute({ ledger,installation: principal.installation,
-            config,path: req.url,body,signal,onRecord });
+            config,path: req.url,body,signal,onRecord,source });
         } else {
           if ((await ledger.status()).state === 'maintenance') throw gatewayError('gateway_admission_deferred');
           signal.throwIfAborted();

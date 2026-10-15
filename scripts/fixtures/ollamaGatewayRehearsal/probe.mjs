@@ -28,6 +28,7 @@ const provider = createServer(async (req,res) => {
   const chunks = []; for await (const chunk of req) chunks.push(chunk);
   const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {};
   forbiddenHeader ||= Boolean(req.headers.authorization);
+  assert.equal(req.headers['x-classifarr-task-source'],undefined);
   if (['/api/tags', '/api/ps'].includes(req.url)) { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ models: [{ name: model,digest: 'a'.repeat(64) }] })); return; }
   if (req.url === '/api/show') { res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({ capabilities: ['completion', 'embedding'],
     model_info: { 'general.architecture': 'test', 'test.context_length': 8192, 'test.embedding_length': 2 } })); return; }
@@ -133,6 +134,9 @@ try {
   assert.equal((await status()).attempts,'8');
   await rehearseApplicationRouting({ gateway, backgroundToken: credentials[2].token, model });
   assert.equal((await status()).attempts,'16');
+  const correlated = (await database.query("SELECT source_kind,source_task_type,source_attempt FROM ollama_gateway.request_binding WHERE source_task_id='7001'")).rows;
+  assert.equal(correlated.length,8);
+  for (const row of correlated) assert.deepEqual(row,{ source_kind: 'queue_task',source_task_type: 'classification',source_attempt: 2 });
   hold = true; const active = call(2); await until(() => calls === 17);
   const queued = call(1); await until(async () => (await status()).waiting === 1);
   assert.equal((await call(2)).status,429); hold = false; release();
@@ -158,12 +162,18 @@ try {
   await unlink(configFile); await rename(`${configFile}.target`,configFile); child = await launch();
   await kill(child,'SIGTERM'); child = await launch(); assert.equal((await status()).attempts,'18');
   hold = true; let interruptedPartial = false;
-  const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{ onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
+  const interrupted = client.request('/api/generate',{ model,prompt: 'Synthetic only',stream: true },{
+    source: { version: 1,kind: 'queue_task',taskId: '7002',taskType: 'classification',attempt: 3 },
+    onRecord: async () => { interruptedPartial = true; } }).catch(error => error.code);
   await until(() => calls === 19 && interruptedPartial);
   const before = await status(); assert.match(before.requestId,/^[a-f0-9-]{14}7[a-f0-9-]{21}$/);
+  const bindingBefore = (await database.query('SELECT * FROM ollama_gateway.request_binding WHERE request_id=$1',[before.requestId])).rows[0];
+  assert.equal(bindingBefore.source_task_id,'7002'); assert.equal(bindingBefore.source_attempt,3);
   await kill(child); assert.equal(await interrupted,'gateway_transport_failed'); await launch(); client.close();
   assert.equal((await status()).requestId,before.requestId); assert.equal((await status()).attempts,'19');
   assert.equal((await call(1)).status,503); assert.equal(calls,19); assert.equal(forbiddenHeader,false);
+  assert.deepEqual((await database.query('SELECT * FROM ollama_gateway.request_binding WHERE request_id=$1',[before.requestId])).rows[0],bindingBefore);
+  process.stdout.write('gateway_task_correlation_passed: 8 actual queue-scoped calls, no source forwarded upstream, interrupted source retained without replay\n');
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version
     FROM ollama_gateway.admission`)).rows[0];

@@ -3,9 +3,9 @@ import { gatewayUpstream } from './transport.mjs';
 import { prepareGatewayWork } from './workIdentity.mjs';
 
 /** Only this invocation can prove non-dispatch or observe validated completion. */
-export async function executeGatewayCompute({ ledger, installation, config, path, body, signal, onRecord }) {
+export async function executeGatewayCompute({ ledger, installation, config, path, body, signal, onRecord, source = null }) {
   signal.throwIfAborted();
-  const work = prepareGatewayWork(config,installation,path,body);
+  const work = prepareGatewayWork(config,installation,path,body,source);
   const requestId = await ledger.claim(installation,work.identity);
   if (signal.aborted) {
     // No transport has been invoked. Preserve the counted attempt, not a false unknown.

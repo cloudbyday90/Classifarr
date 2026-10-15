@@ -16,7 +16,7 @@ export async function createOllamaApplicationFixture(pool, tls = null) {
   const provider = createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null;
-    calls.push({ path: req.url, body, authorization: req.headers.authorization });
+    calls.push({ path: req.url, body, authorization: req.headers.authorization,taskSource: req.headers['x-classifarr-task-source'] });
     res.setHeader('Content-Type', 'application/json');
     if (['/api/tags', '/api/ps'].includes(req.url)) return res.end(JSON.stringify({ models: [model, vectorModel].map(name => ({ name, digest })) }));
     if (req.url === '/api/version') return res.end(JSON.stringify({ version: 'synthetic' }));

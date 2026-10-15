@@ -20,6 +20,8 @@ test('new literal Ollama HTTP call sites require explicit boundary review', asyn
     'services/localDescriptionBenchmarkClient.mjs', 'services/localStudyEmbeddingClient.mjs',
     'services/ollamaConnection.mjs', 'services/ollamaGatewayGenerationMethods.mjs',
     'services/ollamaGatewayProviderContext.mjs', 'services/ollamaGenerateRequest.mjs',
-    'services/ollamaGeneration.mjs', 'services/ollamaModelWarming.mjs', 'utils/httpClient.mjs',
+    'services/ollamaGeneration.mjs', 'services/ollamaModelWarming.mjs',
+    // Diagnostic wrapper delegates to the owned gateway client; no direct provider/fallback transport.
+    'services/ollamaTaskGatewayClient.mjs', 'utils/httpClient.mjs',
   ].sort());
 });

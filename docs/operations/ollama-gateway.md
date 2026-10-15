@@ -42,7 +42,7 @@ Classifarr's existing model/digest validation remains required for integration.
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
 `database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
-This is the version-5 fresh standalone schema. It deliberately fails
+This is the version-6 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table

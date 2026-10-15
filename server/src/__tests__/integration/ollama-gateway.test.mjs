@@ -14,6 +14,7 @@ import { openGatewayLedger } from '../../ollamaGateway/ledger.mjs';
 import { runGatewayRecovery } from '../../ollamaGateway/recoveryRepository.mjs';
 import { createGatewayServer } from '../../ollamaGateway/server.mjs';
 import { createGatewayClient } from '../../ollamaGateway/client.mjs';
+import { gatewayTaskSourceHeaders } from '../../ollamaGateway/taskSource.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { createLocalStudyEmbeddingClient } from '../../services/localStudyEmbeddingClient.mjs';
 import { createOllamaGatewayGenerationClient } from '../../services/ollamaGatewayGenerationClient.mjs';
@@ -62,6 +63,17 @@ afterEach(async () => {
   for (const client of clients) client.release(true);
   provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); });
 });
+test('identical queue IDs from different installations remain credential-scoped diagnostic references',async () => {
+  const gate = await start();
+  const headers = gatewayTaskSourceHeaders({ version: 1,kind: 'queue_task',taskId: '42',taskType: 'classification',attempt: 2 },true);
+  expect((await call(gate,0,{ headers })).status).toBe(200);
+  expect((await call(gate,1,{ headers })).status).toBe(200);
+  const rows = (await getPool().query('SELECT installation,source_task_id,request_id FROM ollama_gateway.request_binding ORDER BY attempt')).rows;
+  expect(rows.map(row => [row.installation,row.source_task_id])).toEqual([['local','42'],['unraid','42']]);
+  expect(new Set(rows.map(row => row.request_id)).size).toBe(2);
+  expect(upstreamHeaders.every(value => value['x-classifarr-task-source'] === undefined)).toBe(true);
+});
+
 test('offline maintenance survives startup and refuses compute and provider reads without HTTP side effects', async () => {
   const old = await connect(), ledger = await openGatewayLedger(old,config.providerHash);
   await ledger.claim('local'); await old.query('SELECT pg_advisory_unlock(11435,1)');
@@ -234,7 +246,7 @@ test('UUIDv7 schema, safe status reads and two installations share one durable a
   expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
   expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
   await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
-  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(5)')).rejects.toMatchObject({ code: '23505' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(6)')).rejects.toMatchObject({ code: '23505' });
 });
 test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
   const gate = await start();

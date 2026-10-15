@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Link optional gateway work to its originating Classifarr queue task and attempt
+  using bounded diagnostic references, preserving concurrent-task isolation and
+  interrupted records without changing retry authority or shared Ollama routing.
+
 - Authenticate optional gateway HTTPS upstreams with pinned TLS identity and
   time-based UUIDv7 evidence recorded before dispatch; preserve uncertain work
   without enabling automatic provider recovery.
