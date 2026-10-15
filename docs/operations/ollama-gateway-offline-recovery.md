@@ -54,7 +54,7 @@ psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gatew
 ```
 
 The upgrades refuse a competing gateway session. They preserve its request,
-attempts, cooldown and ownership. It creates no application tables and makes no
+attempts, cooldown and ownership. They create no application tables and make no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
 instead. Use version-5 gateway/recovery binaries with schema version 5; older
 binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an

@@ -76,13 +76,13 @@ export async function rehearseUpstreamIdentity(admin) {
         await kill(child); await pending;
       }
       const before = (await owner.query('SELECT * FROM ollama_gateway.admission')).rows[0];
-      assert.equal(before.attempts,mismatch ? '1' : '2'); assert.ok(before.active_request);
+      assert.equal(Number(before.attempts),mismatch ? 1 : 2); assert.ok(before.active_request);
       const observations = (await owner.query('SELECT *,uuid_extract_version(id) AS v FROM ollama_gateway.upstream_peer_observation ORDER BY id')).rows;
       assert.equal(observations.length,mismatch ? 0 : 2);
       for (const observation of observations) assert.equal(observation.v,7);
       await kill(child); child = await launch();
       assert.equal((await call()).status,503); assert.equal((await status()).requestId,before.active_request);
-      assert.equal((await status()).attempts,before.attempts); assert.equal(calls,mismatch ? 0 : 2);
+      assert.equal((await status()).attempts,String(before.attempts)); assert.equal(calls,mismatch ? 0 : 2);
       assert.deepEqual((await owner.query('SELECT *,uuid_extract_version(id) AS v FROM ollama_gateway.upstream_peer_observation ORDER BY id')).rows,observations);
       assert.equal(JSON.stringify(observations).includes('PRIVATE'),false);
       await kill(child); provider.closeAllConnections(); await new Promise(resolve => { provider.close(resolve); }); provider = null;
