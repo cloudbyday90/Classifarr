@@ -14,6 +14,8 @@ Each row contains the gateway request reference, admission time, model/operation
 and originating task ID/type/attempt when recorded. Queue and gateway attempts
 are separate counters. Source references are diagnostic claims, not authorization.
 Unrelated Ollama clients and other gateway installations are excluded.
+Only admitted compute requests have durable bindings. Pre-admission refusals,
+read-only inspection calls and direct-provider traffic are not listed.
 
 | Display | Meaning |
 | --- | --- |
@@ -39,7 +41,8 @@ history queries. Existing requests, attempts, cooldowns and unknown outcomes sta
 intact. Older writers are refused. No historical outcome is fabricated.
 
 The restricted gateway runtime needs SELECT/INSERT on the new completion table
-and SELECT on recovery receipts. Do not grant receipt mutation or schema ownership.
+and SELECT only on the five recovery-receipt columns listed in that procedure.
+Do not grant receipt mutation, recovery evidence reads or schema ownership.
 Classifarr startup does not install or upgrade this separate schema. Updating the
 application alone does not enable the gateway or reroute any provider traffic.
 

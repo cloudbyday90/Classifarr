@@ -88,7 +88,8 @@ GRANT UPDATE(owner_id, provider_hash, active_request, installation, started_at,
 GRANT UPDATE(active_request, installation, started_at, maintenance_receipt, last_recovery_receipt)
   ON ollama_gateway.admission TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery;
-GRANT SELECT ON ollama_gateway.recovery_receipt TO gateway_runtime;
+GRANT SELECT(request_id, action, provider_hash, installation, recorded_at)
+  ON ollama_gateway.recovery_receipt TO gateway_runtime;
 GRANT SELECT, INSERT ON ollama_gateway.completion_receipt TO gateway_runtime;
 GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;

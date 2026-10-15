@@ -98,7 +98,12 @@ try {
     GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_fixture_runtime`);
   await database.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt TO gateway_fixture_runtime');
-  await database.query('GRANT SELECT ON ollama_gateway.recovery_receipt TO gateway_fixture_runtime');
+  await database.query('GRANT SELECT(request_id,action,provider_hash,installation,recorded_at) ON ollama_gateway.recovery_receipt TO gateway_fixture_runtime');
+  const restricted = new pg.Client({ host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' });
+  try {
+    await restricted.connect();
+    await assert.rejects(restricted.query('SELECT operator_ref,evidence_ref FROM ollama_gateway.recovery_receipt'),{ code: '42501' });
+  } finally { await restricted.end(); }
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
   const upstream = `http://127.0.0.1:${provider.address().port}`;
   const client = createGatewayClient({ url: base,upstream,models: [model],token: credentials[0].token },{ expectedUpstream: upstream });
