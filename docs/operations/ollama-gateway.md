@@ -380,11 +380,13 @@ exact declared container/start reference and a UUIDv7 binding. This is a control
 fixture assertion, not a general transport-attestation mechanism.
 
 The runner needs OpenSSL to generate disposable test certificates (`OPENSSL_BIN`
-can select a native executable). It checks a positive gateway call and a blocked
-direct provider connection from the application network. It uses the packaged
-startup function with injected no-op database admission/runtime, not a second
-full production worker deployment. Temporary keys, labeled networks and exact
-owned containers are removed, and cleanup is verified.
+can select a native executable). It retains the focused startup-composition check
+and additionally runs a fresh full application with its normal entrypoint,
+migrations, admission, scheduler and authentication. The separate
+[local pilot guide](ollama-local-pilot.md) describes its bounded warming, history,
+outage and same-image replacement checks. Temporary keys, labeled networks and
+exact owned containers are removed, and cleanup is verified. This does not enable
+routing in an existing installation or use a real model.
 
 For dedicated Docker provider planning, the optional
 [boundary observer](ollama-docker-boundary.md) reports pinned container facts

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Exercise optional Ollama gateway routing through a real isolated application,
+  including authenticated history, bounded outages and preserved records across
+  container replacement, without enabling routing on existing installations.
+
 - Add an administrator-only Ollama gateway history view with task filtering,
   installation-scoped records and durable UUIDv7 completion receipts; retain
   unknown outcomes without replaying work or changing shared Ollama routing.

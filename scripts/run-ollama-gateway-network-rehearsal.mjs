@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from './check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { gatewayTlsFixture } from '../server/src/__tests__/helpers/gatewayTlsFixture.mjs';
+import { rehearseFullApplication } from './lib/ollamaGatewayApplicationPilot.mjs';
 
 const [image, revision] = process.argv.slice(2);
 assert.match(image || '', /^sha256:[a-f0-9]{64}$/); assert.match(revision || '', /^[a-f0-9]{40}$/);
@@ -57,7 +58,7 @@ try {
     const credentials = ['foreground', 'background'].map(workClass => ({ installation: 'synthetic', workClass, token: randomBytes(32).toString('base64url') }));
     const common = { url: `https://${host}:11435`, upstream, models: ['synthetic:latest'], ca: tls.cert };
     await writeFile(join(tls.directory, 'gateway.json'), JSON.stringify({ gateway: { host, upstream, providerInstance, models: common.models, credentials,
-      tls: { cert: tls.cert, key: tls.key } }, database: { host: '/var/run/postgresql', user: 'classifarr', database: 'classifarr_gateway_network' } }), { mode: 0o600 });
+      tls: { cert: tls.cert, key: tls.key } }, database: { host: '/var/run/postgresql', user: 'gateway_network_runtime', database: 'classifarr_gateway_network' } }), { mode: 0o600 });
     await writeFile(join(tls.directory, 'routing.json'), JSON.stringify({ revision: 1, configuration: { baseUrl: upstream, model: 'synthetic:latest' },
       foreground: { ...common, token: credentials[0].token }, background: { ...common, token: credentials[1].token } }), { mode: 0o600 });
     for (const [name, file] of [[gateway, 'gateway.json'], [application, 'routing.json']]) {
@@ -83,6 +84,11 @@ try {
     assert.deepEqual(binding,[{ evidence_kind: 'administrator_configured',daemon_id_hash: providerInstance.daemonIdHash,
       container_id: providerInstance.containerId,image_id: providerInstance.imageId,provider_started_at: providerInstance.startedAt,version: 7 }]);
     process.stdout.write('gateway_packaged_request_binding_passed exact_declared_container_start uuidv7 no_attestation_claim\n');
+    await rehearseFullApplication({ image, front, gateway, routing: join(tls.directory, 'routing.json'), docker });
+    const finalCount = docker(['exec', provider, 'node', '--input-type=module', '-e',
+      'console.log((await (await fetch("http://127.0.0.1:11434/stats")).json()).attempts)']).trim();
+    assert.equal(finalCount, '2', 'pilot_unexpected_provider_work');
+    process.stdout.write('gateway_full_application_provider_attempts=2\n');
   } });
 } finally {
   // Exact generated names plus ownership labels; no pruning or caller-supplied targets.
