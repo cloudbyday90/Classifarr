@@ -22,8 +22,8 @@ async function review(action = 'acknowledge-stop') {
     assertions: action === 'acknowledge-stop' ? { ingressIsolated: true,allProviderRunnersStopped: true,automaticRestartDisabled: true,administratorVerified: true } :
       { providerIsolationMaintained: true,controlledRestartReviewed: true,noRequestReplay: true,administratorVerified: true } };
 }
-async function pending() {
-  const client = await connect(), ledger = await openGatewayLedger(client,providerHash);
+async function pending(instance = null) {
+  const client = await connect(), ledger = await openGatewayLedger(client,providerHash,instance);
   await ledger.claim('fixture'); await client.query('SELECT pg_advisory_unlock(11435,1)');
 }
 beforeEach(async () => {
@@ -39,16 +39,19 @@ test('fresh schema never schedules recovery and an unbound provider fails closed
   expect((await getPool().query('SELECT count(*) FROM ollama_gateway.recovery_receipt')).rows[0].count).toBe(0);
 });
 test('offline stop, restart hold and explicit resume preserve attempts, cooldown and original precision', async () => {
-  await pending();
+  const pins = { daemonIdHash: 'a'.repeat(64),containerId: 'b'.repeat(64),imageId: `sha256:${'c'.repeat(64)}`,startedAt: '2026-10-14T09:00:00.123456789Z' };
+  await pending(pins);
+  const originalBinding = (await run()).requestBinding;
   await getPool().query("UPDATE ollama_gateway.admission SET cooldown_until=clock_timestamp()+interval '1 hour'");
   const before = await row(), stop = await run('acknowledge-stop',await review());
   expect(stop).toMatchObject({ state: 'maintenance',attempts: '1',replayed: false,evidenceKind: 'administrator_attested' });
   expect(stop.receiptId).toMatch(uuid7);
   const held = await row(); expect(held.completed_at).toBeNull(); expect(held.exact_cooldown).toBe(before.exact_cooldown);
+  expect((await run()).requestBinding).toEqual(originalBinding);
   const receipt = (await getPool().query('SELECT *, started_at::text AS exact_started FROM ollama_gateway.recovery_receipt')).rows[0];
   expect(receipt.request_id).toBe(before.active_request); expect(receipt.exact_started).toBe(before.exact_started);
   const resumeBeforeRestart = await review('resume');
-  const client = await connect(), restarted = await openGatewayLedger(client,providerHash);
+  const client = await connect(), restarted = await openGatewayLedger(client,providerHash,{ ...pins,startedAt: '2026-10-15T09:00:00Z' });
   expect(await restarted.status()).toMatchObject({ state: 'maintenance',attempts: '1',recoveryReceipt: stop.receiptId });
   await expect(restarted.claim('fixture')).rejects.toThrow('gateway_admission_deferred');
   await expect(run()).rejects.toThrow('gateway_recovery_gateway_running');
@@ -59,6 +62,9 @@ test('offline stop, restart hold and explicit resume preserve attempts, cooldown
   const after = await row(); expect(after.attempts).toBe(1); expect(after.completed_at).toBeNull();
   expect(after.maintenance_receipt).toBeNull(); expect(after.exact_cooldown).toBe(before.exact_cooldown);
   expect((await run()).latestReceipt.id).toBe(resumed.receiptId);
+  expect((await run()).requestBinding).toEqual(originalBinding);
+  expect(originalBinding).toMatchObject({ providerInstance: pins,evidenceKind: 'administrator_configured',recoveryAuthorized: false });
+  expect(after.binding_count).toBe(1);
   const final = await openGatewayLedger(await connect(),providerHash);
   expect((await final.status()).state).toBe('cooldown'); await expect(final.claim('fixture')).rejects.toThrow();
 });
@@ -117,6 +123,10 @@ test('version-1 upgrade preserves the active request; old version cannot claim a
     a.attnotnull FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='ollama_gateway' AND c.relkind='r' AND a.attnum>0 AND NOT a.attisdropped ORDER BY c.relname,a.attnum`)).rows;
   const freshShape = await shape();
+  const constraints = async () => (await getPool().query(`SELECT c.relname, k.conname, pg_get_constraintdef(k.oid) AS definition
+    FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='ollama_gateway' ORDER BY c.relname,k.conname`)).rows;
+  const freshConstraints = await constraints();
   await getPool().query('DROP SCHEMA ollama_gateway CASCADE');
   await getPool().query(await sql('20261014_121441_admission.sql'));
   await getPool().query(`UPDATE ollama_gateway.admission SET provider_hash=$1,owner_id=uuidv7(),
@@ -126,8 +136,10 @@ test('version-1 upgrade preserves the active request; old version cannot claim a
   // The failed startup retains its session lock until its connection is closed.
   for (const client of clients) client.release(true); clients = [];
   await getPool().query(await sql('20261014_224242_offline_recovery.sql'));
+  await getPool().query(await sql('20261015_091627_request_binding.sql'));
   expect(await shape()).toEqual(freshShape);
-  expect(await row()).toMatchObject({ version: 2,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
+  expect(await constraints()).toEqual(freshConstraints);
+  expect(await row()).toMatchObject({ version: 3,active_request: before.active_request,attempts: 3,owner_id: before.owner_id });
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=1')).rowCount).toBe(0);
   expect((await run('acknowledge-stop',await review())).state).toBe('maintenance');
 });
@@ -146,7 +158,9 @@ test('least-privilege runtime cannot clear holds; recovery cannot reset attempts
     GRANT SELECT ON ollama_gateway.admission TO gateway_recovery_test,gateway_runtime_test;
     GRANT UPDATE(active_request,installation,started_at,maintenance_receipt,last_recovery_receipt) ON ollama_gateway.admission TO gateway_recovery_test;
     GRANT SELECT,INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery_test;
-    GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until)
+    GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery_test;
+    GRANT SELECT,INSERT ON ollama_gateway.request_binding TO gateway_runtime_test;
+    GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_runtime_test`);
   const recovery = await connect(); await recovery.query('SET ROLE gateway_recovery_test');
   const doc = await review(); await runGatewayRecovery(recovery,{ providerHash,action: 'acknowledge-stop',review: doc });

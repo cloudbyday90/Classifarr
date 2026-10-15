@@ -15,8 +15,9 @@ export async function rehearseOfflineRecovery(owner, database, providerHash) {
     GRANT SELECT ON ollama_gateway.admission TO gateway_fixture_recovery;
     GRANT UPDATE(active_request,installation,started_at,maintenance_receipt,last_recovery_receipt) ON ollama_gateway.admission TO gateway_fixture_recovery;
     GRANT SELECT,INSERT ON ollama_gateway.recovery_receipt TO gateway_fixture_recovery;
+    GRANT SELECT ON ollama_gateway.request_binding TO gateway_fixture_recovery;
     REVOKE UPDATE ON ollama_gateway.admission FROM gateway_fixture_runtime;
-    GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until)
+    GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
       ON ollama_gateway.admission TO gateway_fixture_runtime`);
   const configPath = '/tmp/gateway-recovery-private.json', reviewPath = '/tmp/gateway-recovery-review.json';
   const client = new pg.Client(database);
@@ -33,6 +34,8 @@ export async function rehearseOfflineRecovery(owner, database, providerHash) {
   };
   try {
     await writeFile(configPath,JSON.stringify({ providerHash,database: { host: database.host,database: database.database,user: 'gateway_fixture_recovery' } }),{ mode: 0o600 });
+    const originalBinding = (await run('inspect')).requestBinding;
+    assert.equal(originalBinding.evidenceKind,'unbound'); assert.equal(originalBinding.recoveryAuthorized,false);
     const original = await prepare('acknowledge-stop'); assert.equal(original.attempts,'5');
     const stopped = await run('acknowledge-stop'); assert.equal(stopped.state,'maintenance');
     assert.equal(stopped.evidenceKind,'administrator_attested'); assert.equal(stopped.replayed,false);
@@ -44,13 +47,14 @@ export async function rehearseOfflineRecovery(owner, database, providerHash) {
     await client.end(); await prepare('resume');
     const resumed = await run('resume'); assert.equal(resumed.state,'resumed'); assert.equal(resumed.attempts,'5');
     const after = await run('inspect'); assert.equal(after.expected.maintenanceReceipt,null);
+    assert.deepEqual(after.requestBinding,originalBinding);
     assert.equal(after.expected.requestId,null); assert.equal(after.expected.attempts,'5');
     const receipts = (await owner.query('SELECT action,request_id,evidence_kind,uuid_extract_version(id) AS version FROM ollama_gateway.recovery_receipt ORDER BY id')).rows;
     assert.equal(receipts.length,2);
     for (const receipt of receipts) {
       assert.equal(receipt.request_id,original.requestId); assert.equal(receipt.evidence_kind,'administrator_attested'); assert.equal(receipt.version,7);
     }
-    process.stdout.write('gateway_offline_recovery_passed: packaged private CLI, restricted roles, UUIDv7 receipts, restart hold, stale replay refusal, separate resume; 5 attempts preserved, zero recovery provider calls\n');
+    process.stdout.write('gateway_offline_recovery_passed: packaged private CLI, restricted roles, UUIDv7 receipts, restart hold, stale replay refusal, separate resume, original binding retained; 5 attempts preserved, zero recovery provider calls\n');
   } finally {
     await client.end();
     for (const path of [configPath,reviewPath]) await unlink(path).catch(error => { if (error.code !== 'ENOENT') throw error; });

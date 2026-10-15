@@ -2,8 +2,10 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 import { gatewayServerTls, privateGatewayAddress } from './tls.mjs';
+import { gatewayProviderInstance } from './providerInstance.mjs';
+import { gatewayError } from './errors.mjs';
 
-export const gatewayError = (code, status = 503) => Object.assign(new Error(code), { code, status });
+export { gatewayError };
 const hash = value => createHash('sha256').update(value).digest();
 const record = value => value && typeof value === 'object' && !Array.isArray(value);
 const modelPattern = /^[a-zA-Z0-9][a-zA-Z0-9_.:/-]{0,199}$/;
@@ -20,10 +22,11 @@ export function gatewayProviderIdentity(value) {
 }
 
 export function gatewayConfig(raw) {
-  if (!record(raw) || Object.keys(raw).some(key => !['upstream','host','tls','port','models','credentials','timeoutMs','queueMs'].includes(key))) {
+  if (!record(raw) || Object.keys(raw).some(key => !['upstream','host','tls','port','models','credentials','timeoutMs','queueMs','providerInstance'].includes(key))) {
     throw gatewayError('gateway_config_invalid');
   }
   const identity = gatewayProviderIdentity(raw.upstream);
+  const providerInstance = raw.providerInstance === undefined ? null : gatewayProviderInstance(raw.providerInstance);
   if (!Array.isArray(raw.models) || raw.models.length < 1 || raw.models.length > 16 ||
       raw.models.some(model => typeof model !== 'string' || !modelPattern.test(model) || !model.includes(':') || /cloud/i.test(model)) ||
       new Set(raw.models).size !== raw.models.length) throw gatewayError('gateway_config_invalid');
@@ -40,7 +43,7 @@ export function gatewayConfig(raw) {
   const host = raw.host ?? '127.0.0.1';
   if (!privateGatewayAddress(host) || (!raw.tls && host !== '127.0.0.1')) throw gatewayError('gateway_config_invalid');
   const tls = raw.tls === undefined ? undefined : gatewayServerTls(raw.tls, host);
-  return Object.freeze({ ...identity, host, tls, port, timeoutMs, queueMs,
+  return Object.freeze({ ...identity, host, tls, port, timeoutMs, queueMs, providerInstance,
     models: Object.freeze([...raw.models]), credentials: Object.freeze(credentials.map(entry => Object.freeze({
       installation: entry.installation, workClass: entry.workClass, digest: hash(entry.token),
     }))) });

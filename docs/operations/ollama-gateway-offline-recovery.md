@@ -1,6 +1,6 @@
 # Offline gateway recovery procedure
 
-Unreleased, 2026-10-14. Optional standalone gateway only. Do not apply these steps
+Unreleased, 2026-10-15. Optional standalone gateway only. Do not apply these steps
 to the Classifarr application database. The feature is not enabled on Unraid or
 shared Ollama. This document does not establish that any real provider stopped.
 
@@ -35,10 +35,17 @@ For an existing version-1 database, stop the gateway and apply once as schema ow
 psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261014_224242_offline_recovery.sql
 ```
 
-The upgrade refuses a competing gateway session. It preserves its request,
+For an existing version-2 database (including after the step above), apply once:
+
+```text
+psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_091627_request_binding.sql
+```
+
+The upgrades refuse a competing gateway session. They preserve its request,
 attempts, cooldown and ownership. It creates no application tables and makes no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
-instead. Version-1 binaries cannot use version 2. Do not downgrade or restore an
+instead. Use version-3 gateway/recovery binaries with schema version 3; older
+binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an
 old ledger to bypass a hold: retain the backup and investigate offline.
 
 Use separate non-owner, non-superuser, non-inheriting runtime/recovery roles, with
@@ -52,14 +59,16 @@ GRANT USAGE ON SCHEMA ollama_gateway TO gateway_runtime, gateway_recovery;
 GRANT SELECT ON ollama_gateway.admission TO gateway_runtime, gateway_recovery;
 REVOKE UPDATE ON ollama_gateway.admission FROM gateway_runtime;
 GRANT UPDATE(owner_id, provider_hash, active_request, installation, started_at,
-  attempts, completed_at, cooldown_until)
+  attempts, completed_at, cooldown_until, binding_count)
   ON ollama_gateway.admission TO gateway_runtime;
 GRANT UPDATE(active_request, installation, started_at, maintenance_receipt, last_recovery_receipt)
   ON ollama_gateway.admission TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery;
+GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
+GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;
 ```
 
-Do not grant receipt UPDATE/DELETE/TRUNCATE or schema ownership. Receipt triggers
+Do not grant receipt/binding UPDATE/DELETE/TRUNCATE or schema ownership. Their triggers
 also reject modification/deletion by ordinary users; privileged DBAs can override
 database controls, so retain the external incident record. Recovery does not need
 provider tokens, gateway bearer tokens, Docker access or application DB access.
@@ -91,9 +100,16 @@ node server/src/scripts/recoverOllamaGateway.mjs inspect
 
 In a packaged container the entry point is `/app/src/scripts/recoverOllamaGateway.mjs`.
 Inspection changes no durable state, obtains the gateway's exclusive database
-lock, and prints `expected` plus `latestReceipt`. It never contacts Ollama.
+lock, and prints `expected`, `latestReceipt` and `requestBinding`. It never contacts Ollama.
 `gateway_recovery_gateway_running` means stop and verify the intended gateway;
 do not terminate arbitrary database sessions to bypass the check.
+
+`requestBinding` preserves the admitted request's original configured provider
+instance, including after acknowledgement/resume. `administrator_configured` is
+not a stop attestation. `unbound` means no pins were configured; `legacy_unbound`
+means the old request has no binding record. None authorizes recovery. Do not
+substitute a newer provider snapshot or infer missing evidence from a current
+container. Review the entire provider boundary independently in every case.
 
 ## Acknowledge verified stop
 

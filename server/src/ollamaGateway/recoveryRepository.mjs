@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './contract.mjs';
 import { gatewayRecoveryReview, gatewayRecoverySnapshot } from './recoveryContract.mjs';
+import { readGatewayRequestBinding } from './requestBindingRepository.mjs';
 
 async function recordRecovery(client, row, review) {
   const stop = review.action === 'acknowledge-stop';
@@ -45,14 +46,15 @@ export async function runGatewayRecovery(client, { providerHash, action, review,
     await client.query("SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='4s'; SET LOCAL idle_in_transaction_session_timeout='5s'; SET LOCAL synchronous_commit=on");
     const result = await client.query(`SELECT id, provider_hash, owner_id, active_request, installation,
       started_at::text, attempts::text, cooldown_until::text, maintenance_receipt, last_recovery_receipt
-      FROM ollama_gateway.admission WHERE singleton AND version=2 AND provider_hash=$1 FOR UPDATE`,[providerHash]);
+      FROM ollama_gateway.admission WHERE singleton AND version=3 AND provider_hash=$1 FOR UPDATE`,[providerHash]);
     if (result.rowCount !== 1) throw gatewayError('gateway_recovery_ledger_unavailable');
     const row = result.rows[0], expected = gatewayRecoverySnapshot(row);
     let output;
     if (action === 'inspect') {
-      const latest = await client.query(`SELECT id, action, evidence_kind, recorded_at FROM ollama_gateway.recovery_receipt
+      const latest = await client.query(`SELECT id, action, evidence_kind, recorded_at, request_id FROM ollama_gateway.recovery_receipt
         WHERE id=$1 AND ledger_id=$2`,[row.last_recovery_receipt,row.id]);
-      output = { expected,latestReceipt: latest.rows[0] ?? null };
+      output = { expected,latestReceipt: latest.rows[0] ?? null,
+        requestBinding: await readGatewayRequestBinding(client,row.active_request ?? latest.rows[0]?.request_id) };
     } else {
       if (Object.keys(expected).some(key => expected[key] !== review.expected[key])) throw gatewayError('gateway_recovery_state_changed');
       signal?.throwIfAborted(); output = await recordRecovery(client,row,review);

@@ -89,7 +89,10 @@ try {
   await database.connect();
   await database.query(await readFile('/app/database/ollama-gateway/current.sql','utf8'));
   await database.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');
-  await database.query('GRANT SELECT, UPDATE ON ollama_gateway.admission TO gateway_fixture_runtime');
+  await database.query(`GRANT SELECT ON ollama_gateway.admission TO gateway_fixture_runtime;
+    GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
+      ON ollama_gateway.admission TO gateway_fixture_runtime`);
+  await database.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_fixture_runtime');
   await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
   const upstream = `http://127.0.0.1:${provider.address().port}`;
   const client = createGatewayClient({ url: base,upstream,models: [model],token: credentials[0].token },{ expectedUpstream: upstream });

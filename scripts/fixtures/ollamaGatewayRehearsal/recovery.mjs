@@ -34,7 +34,10 @@ export async function rehearseCompletionRecovery(admin) {
     await owner.connect();
     await owner.query(await readFile('/app/database/ollama-gateway/current.sql','utf8'));
     await owner.query('GRANT USAGE ON SCHEMA ollama_gateway TO gateway_fixture_runtime');
-    await owner.query('GRANT SELECT, UPDATE ON ollama_gateway.admission TO gateway_fixture_runtime');
+    await owner.query(`GRANT SELECT ON ollama_gateway.admission TO gateway_fixture_runtime;
+      GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
+        ON ollama_gateway.admission TO gateway_fixture_runtime`);
+    await owner.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_fixture_runtime');
     await client.connect();
     await new Promise(resolve => { provider.listen(0,'127.0.0.1',resolve); });
     const raw = { upstream: `http://127.0.0.1:${provider.address().port}`,models: [model],credentials,timeoutMs: 1000,queueMs: 100 };

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Preserve an optional gateway's configured provider container and start reference
+  with each admitted request using time-based UUIDv7 records; retain uncertain
+  work and legacy history without claiming automatic recovery is safe.
+
 - Add an optional read-only Docker provider assessment with pinned container
   identity and bounded diagnostics; automatic recovery remains disabled.
 

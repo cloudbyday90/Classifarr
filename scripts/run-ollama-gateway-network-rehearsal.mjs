@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { randomUUID, randomBytes } from 'node:crypto';
+import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { writeFile, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -50,10 +50,13 @@ try {
       assert.equal(inspect.Image, image); assert.deepEqual(Object.keys(inspect.NetworkSettings.Networks), [network]);
     }
     const host = address(gateway, front), upstream = `http://${address(provider, back)}:11434`;
+    const providerContainer = JSON.parse(docker(['inspect',provider]))[0];
+    const providerInstance = { daemonIdHash: createHash('sha256').update(docker(['info','--format','{{.ID}}']).trim()).digest('hex'),
+      containerId: providerContainer.Id,imageId: providerContainer.Image,startedAt: providerContainer.State.StartedAt };
     tls = await gatewayTlsFixture(host);
     const credentials = ['foreground', 'background'].map(workClass => ({ installation: 'synthetic', workClass, token: randomBytes(32).toString('base64url') }));
     const common = { url: `https://${host}:11435`, upstream, models: ['synthetic:latest'], ca: tls.cert };
-    await writeFile(join(tls.directory, 'gateway.json'), JSON.stringify({ gateway: { host, upstream, models: common.models, credentials,
+    await writeFile(join(tls.directory, 'gateway.json'), JSON.stringify({ gateway: { host, upstream, providerInstance, models: common.models, credentials,
       tls: { cert: tls.cert, key: tls.key } }, database: { host: '/var/run/postgresql', user: 'classifarr', database: 'classifarr_gateway_network' } }), { mode: 0o600 });
     await writeFile(join(tls.directory, 'routing.json'), JSON.stringify({ revision: 1, configuration: { baseUrl: upstream, model: 'synthetic:latest' },
       foreground: { ...common, token: credentials[0].token }, background: { ...common, token: credentials[1].token } }), { mode: 0o600 });
@@ -75,6 +78,11 @@ try {
     process.stdout.write(docker(['exec', application, 'node', '/tmp/networkApplication.mjs']));
     const count = docker(['exec', provider, 'node', '--input-type=module', '-e', 'console.log((await (await fetch("http://127.0.0.1:11434/stats")).json()).attempts)']).trim();
     assert.equal(count, '1');
+    const binding = JSON.parse(docker(['exec',gateway,'node','--input-type=module','-e',
+      'import pg from "/app/node_modules/pg/lib/index.js";const c=new pg.Client({host:"/var/run/postgresql",user:"classifarr",database:"classifarr_gateway_network"});await c.connect();console.log(JSON.stringify((await c.query("SELECT evidence_kind,daemon_id_hash,container_id,image_id,provider_started_at,uuid_extract_version(id) AS version FROM ollama_gateway.request_binding")).rows));await c.end();']));
+    assert.deepEqual(binding,[{ evidence_kind: 'administrator_configured',daemon_id_hash: providerInstance.daemonIdHash,
+      container_id: providerInstance.containerId,image_id: providerInstance.imageId,provider_started_at: providerInstance.startedAt,version: 7 }]);
+    process.stdout.write('gateway_packaged_request_binding_passed exact_declared_container_start uuidv7 no_attestation_claim\n');
   } });
 } finally {
   // Exact generated names plus ownership labels; no pruning or caller-supplied targets.

@@ -31,7 +31,7 @@ try {
     statement_timeout: 4000, application_name: 'classifarr-ollama-gateway' });
   client.on('error', () => { void stop(true); });
   await client.connect();
-  const ledger = await openGatewayLedger(client,config.providerHash);
+  const ledger = await openGatewayLedger(client,config.providerHash,config.providerInstance);
   gateway = createGatewayServer({ config,ledger });
   await new Promise((resolve,reject) => {
     gateway.server.once('error',reject); gateway.server.listen(config.port,config.host,resolve);

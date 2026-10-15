@@ -32,7 +32,7 @@ const until = async predicate => { const end = Date.now()+3000; while (!await pr
 const rotatedConfig = entries => gatewayConfig({ upstream: config.upstream,models: [model],credentials: entries,timeoutMs: 1000,queueMs: 300 });
 async function connect() { const client = await getPool().connect(); client.on('error',() => {}); clients.push(client); return client; }
 async function start(override = {}) {
-  const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash);
+  const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash,config.providerInstance);
   const gateway = createGatewayServer({ config,ledger: { ...ledger,...override } }); gateways.push(gateway);
   await new Promise(resolve => { gateway.server.listen(0,'127.0.0.1',resolve); });
   return { client,ledger,gateway,url: `http://127.0.0.1:${gateway.server.address().port}` };
@@ -234,7 +234,7 @@ test('UUIDv7 schema, safe status reads and two installations share one durable a
   expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
   expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
   await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
-  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(2)')).rejects.toMatchObject({ code: '23505' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(3)')).rejects.toMatchObject({ code: '23505' });
 });
 test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
   const gate = await start();

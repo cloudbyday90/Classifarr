@@ -1,6 +1,6 @@
 # Optional Ollama gateway: local prototype
 
-Status: Unreleased, 2026-10-14. **Not enabled by default.**
+Status: Unreleased, 2026-10-15. **Not enabled by default.**
 This first slice supports isolated testing, not production cutover. Existing
 Classifarr clients still connect directly by default. The bounded study adapters
 and saved-verification factory accept an explicitly injected gateway dependency
@@ -19,8 +19,10 @@ credential. Use separate tokens for each installation/work class.
 It requires a **separate PostgreSQL 18 database**. The table primary key, owner
 and request references use native time-based UUIDv7; the migration filename uses
 a UTC timestamp. These references are not secrets or authorization tokens.
-The control ledger stores only the current request reference, installation name,
-timestamps, attempt count and cooldown. It never stores prompts or answers.
+The control ledger stores the current request reference, installation name,
+timestamps, attempt count and cooldown. An append-only binding history records
+each admitted request and its optional configured provider instance. Neither
+stores prompts or answers.
 
 Without TLS the gateway only binds `127.0.0.1`. Verified TLS supports an explicit
 private IPv4 listener (see startup configuration below). The upstream must be a fixed private/loopback
@@ -35,14 +37,14 @@ Classifarr's existing model/digest validation remains required for integration.
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
 `database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
-This is the version-2 fresh standalone schema. It deliberately fails
+This is the version-3 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table
-SELECT and column-scoped UPDATE only, as listed in the
+SELECT, column-scoped admission UPDATE and binding INSERT, as listed in the
 [offline recovery procedure](ollama-gateway-offline-recovery.md). It needs neither
-schema creation nor application-table access. Existing version-1 test databases
-require the explicit timestamped upgrade in that procedure, never `current.sql`.
+schema creation nor application-table access. Existing version-1/2 test databases
+require the explicit timestamped upgrades in that procedure, never `current.sql`.
 Use a local PostgreSQL socket or verified TLS for a remote database. Do not disable
 certificate verification. Keep the database and its ledger durable across restarts.
 
@@ -81,12 +83,26 @@ The normal application entrypoint never reads this configuration or starts the
 gateway. Keep the containing directory private too. Linux rejects a symlink at
 the configuration filename. Do not edit the active file in place.
 
+For a dedicated Docker provider, optionally add `gateway.providerInstance` with
+exactly `daemonIdHash` (SHA-256 of daemon ID), `containerId` (full 64-character ID),
+`imageId` (immutable `sha256:` ID) and `startedAt` (exact Docker UTC start string,
+including nanoseconds). Use the reviewed provider's facts, never a container name
+or mutable image tag. Leave the whole object absent if these are not established;
+partial objects and `null` are rejected. No Docker socket is needed or accepted.
+
+These pins are administrator-declared intent, **not proof of the actual responder**.
+They are saved atomically with each claim before HTTP dispatch. They cannot change
+on credential reload. A controlled gateway restart can accept new pins but cannot
+rewrite old bindings or clear uncertain work. See the
+[binding design](../architecture/ollama-request-binding-design.md) for the evidence
+boundary; automatic provider recovery is still disabled.
+
 ## Credential rotation and revocation (local prototype)
 
 On Linux, the standalone process supports explicit SIGHUP reload. Replace the
 private file atomically from the same private directory, with mode 0600, and send
 SIGHUP to the **gateway process**, not the Classifarr application or shared Ollama.
-Only credentials may change live. Provider, models, port, deadlines and database
+Only credentials may change live. Provider (including instance pins), models, port, deadlines and database
 configuration must remain identical. There is no HTTP administration endpoint.
 
 For a routine rotation:
@@ -124,8 +140,15 @@ and [outcome](../architecture/ollama-gateway-credential-lifecycle-outcome.md).
 
 Every route requires `Authorization: Bearer <token>`. Status is
 `GET /gateway/status`; it reads only the control database. It returns `ready`,
-`cooldown`, `maintenance`, or `uncertain_or_active`, plus attempt count, current request reference,
-timestamps and waiting count. It does not imply GPU-wide idleness.
+`cooldown`, `maintenance`, `uncertain_or_active`, or `history_full`, plus attempt
+count, current request reference, timestamps and waiting count. Binding count/limit
+and the active binding's ID/evidence kind are included; full container pins are
+available only through offline database inspection. It does not imply GPU-wide idleness.
+
+Binding history is capped at 100,000 records. At capacity new compute is refused;
+completion, recovery and status still work. Do not reset the counter or delete
+history to bypass the cap. A reviewed retention/archiving policy is deferred, so
+this remains a bounded prototype rather than an unattended production rollout.
 
 Supported upstream routes: GET `/api/tags`, `/api/ps`, `/api/version`; POST
 `/api/show`, `/api/generate` with an explicit boolean `stream`, and `/api/embed` with
@@ -343,6 +366,10 @@ containers (no published ports or external provider):
 ```text
 node scripts/run-ollama-gateway-network-rehearsal.mjs <sha256:image-id> <40-character-source-sha>
 ```
+
+The runner also verifies that the packaged gateway saved the synthetic provider's
+exact declared container/start reference and a UUIDv7 binding. This is a controlled
+fixture assertion, not a general transport-attestation mechanism.
 
 The runner needs OpenSSL to generate disposable test certificates (`OPENSSL_BIN`
 can select a native executable). It checks a positive gateway call and a blocked
