@@ -36,7 +36,50 @@ See the separate [design and research](ollama-request-binding-design.md),
 - The first focused run rejected the warm fixture's nonempty response; correcting
   the fake provider to return an empty warm response made the test pass without
   relaxing production validation.
-- Full tests, quality gates and image/Compose evaluation are pending below.
+- Server type checking, test/security lint, both dependency-usage checks, static
+  ESM imports, ESM mock shapes, migration/snapshot integrity, Markdown, copyright,
+  reviewed inventory ownership and secret scanning passed.
+- The first full unit run started before the reviewed ownership digest was saved:
+  58,746 passed, one ownership-gate failure, one existing skip. The corrected gate
+  passed independently. The final full rerun passed all 1,848 suites and 58,747
+  tests, with one existing skip (524.23 seconds).
+
+## Image and local evaluation
+
+Clean runtime source: `7d9a907ba10b7a07ca1c01a1aa3d37f93455d394`.
+No-cache build completed with source provenance and no version/tag release.
+Image: `sha256:2b163ae65240da990e4534ad37e6079190db713e50c84d2a03e99322ae6d2954`.
+Later outcome-only documentation does not change that runtime source.
+
+- Packaged gateway rehearsal passed: credential reload/revocation, shared provider
+  context, streaming, embeddings/warming, abrupt death, restart fencing and
+  preserved uncertainty. Nineteen synthetic calls in the main fixture.
+- Completion/offline recovery fixture passed: five attempts, four synthetic
+  provider calls, real elapsed cooldown, original binding retained through hold
+  and resume, UUIDv7 receipts and no provider calls from recovery.
+- Docker-boundary rehearsal passed: running/stopped observations and restart pin
+  refusal, packaged read-only CLI, no recovery authority. Exact owned resources
+  were removed and cleanup verified for both runners.
+- TLS/network rehearsal passed: one synthetic compute call saved the exact
+  declared Docker container/start reference and UUIDv7; the application network
+  could not reach the provider directly. Owned containers/networks/private test
+  keys were removed and cleanup verified.
+- Local Compose replacement passed: exact image/source above, healthy container,
+  HTTP `/health` 200, zero restarts, no OOM, UID/GID 1000, read-only filesystem,
+  no-new-privileges and unchanged 2 GiB limit. Initial sample: 308 MiB, 0.73% CPU;
+  a later sample was 879.4 MiB, 71.88% CPU while still healthy with zero restarts.
+  These are point-in-time observations, not a sustained-load benchmark.
+- Gateway/routing environment settings remain absent; no Docker socket mount and
+  no `ollama_gateway` schema in the application database. Workload settings before
+  and after remain `when_idle`, zero daily call/token limits and reservations,
+  revision 2, unchanged next-check timestamp. No shared-provider cutover occurred.
+
+Pre-replacement local backup: `data/backups/gateway-binding-before-20261015.dump`.
+SHA-256: `F824BA34557848950F99863C0DEA9BE3C38EDA2E9088B5B5423AC1B178675F2A`.
+`pg_restore --list` read 1,933 lines; this is archive readability, not a restore drill.
+Previous image retained as
+`classifarr-local-rollback:ab2d95c96632a742fdcd6252ad66b741f37ce86509da6d710fc270dc5e5569f0`
+(`sha256:401dc1b733e81361b4905eda86baa5cc9271a3cb77a1e26930a5e6a71fdeefe6`).
 
 ## Boundaries and next item
 
@@ -52,3 +95,10 @@ No release, Unraid change, shared Ollama call or live recovery is authorized by
 these results. Next: design an exclusive dedicated-provider lifecycle and ingress
 authority that binds actual dispatch to an exact start instance, before enabling
 machine-authorized stop recovery. Retain offline administrator review meanwhile.
+
+Real PG upgrade tests apply historical v1/v2 SQL, not a published old image. The
+packaged rehearsals are fresh isolated databases and same-image process restarts,
+not proof of a published-release upgrade. No frontend files changed; the no-cache
+image rebuilt the UI, but the frontend test suite was not rerun for this backend
+change. The recovery-change skill drove explicit unknown-outcome tests, separated
+design/outcome records and image/cleanup verification without authorizing recovery.
