@@ -62,7 +62,8 @@ uncertain write by resetting a marker.
 ## Limits and schema
 
 One explicit invocation, one stop maximum, 3-second reads, 8-second stop request,
-40-second combined operation deadline and 55-second CLI hard deadline. API 1.51,
+40-second cancellation deadline and 55-second CLI hard deadline (database query
+draining/cleanup has separate bounded waits). API 1.51,
 8 KiB headers, 256 KiB bodies, fixed sanitized codes. Two bounded snapshots before
 and after stop; no provider inference. DB connect/query/statement deadlines remain
 5/5/4 seconds. Advisory session ownership is not a Docker lifecycle lock.
