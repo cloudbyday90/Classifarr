@@ -234,7 +234,7 @@ test('UUIDv7 schema, safe status reads and two installations share one durable a
   expect(row.id).toMatch(uuid7); expect(row.owner_id).toMatch(uuid7); expect(row.recent).toBe(true); expect(row.active_request).toBeNull();
   expect(upstreamHeaders.every(headers => !headers.authorization)).toBe(true);
   await expect(getPool().query('UPDATE ollama_gateway.admission SET id=uuidv4()')).rejects.toMatchObject({ code: '23514' });
-  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(4)')).rejects.toMatchObject({ code: '23505' });
+  await expect(getPool().query('INSERT INTO ollama_gateway.admission(version) VALUES(5)')).rejects.toMatchObject({ code: '23505' });
 });
 test('authentication and strict paths/bodies reject work before upstream or reservation', async () => {
   const gate = await start();

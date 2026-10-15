@@ -9,6 +9,14 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Authenticate optional gateway HTTPS upstreams with pinned TLS identity and
+  time-based UUIDv7 evidence recorded before dispatch; preserve uncertain work
+  without enabling automatic provider recovery.
+
+- Identify gateway-managed Classifarr work with unique request references and
+  optional private fingerprints; keep unrelated shared Ollama activity outside
+  Classifarr's task and recovery records.
+
 - Add a reviewed, one-shot Docker provider stop with time-based UUIDv7 audit
   records; preserve interrupted work and attempts without automatic recovery
   or changes to shared Ollama.

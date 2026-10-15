@@ -14,7 +14,7 @@ export async function readProviderStopState(client,config) {
   const { rows } = await client.query(`SELECT a.id AS ledger_id,a.owner_id,a.active_request,a.attempts::text,a.maintenance_receipt,
     b.id AS binding_id,b.evidence_kind,b.daemon_id_hash,b.container_id,b.image_id,b.provider_started_at
     FROM ollama_gateway.admission a JOIN ollama_gateway.request_binding b ON b.ledger_id=a.id
-    WHERE a.singleton AND a.version=4 AND a.provider_hash=$1 AND b.provider_hash=$1 AND b.request_id=$2`,[config.providerHash,config.requestId]);
+    WHERE a.singleton AND a.version=5 AND a.provider_hash=$1 AND b.provider_hash=$1 AND b.request_id=$2`,[config.providerHash,config.requestId]);
   const row = rows[0],pins = config.boundary;
   if (!row || row.evidence_kind !== 'administrator_configured' || row.daemon_id_hash !== pins.daemonIdHash ||
       row.container_id !== pins.containerId || row.image_id !== pins.imageId || row.provider_started_at !== pins.startedAt) {
@@ -28,7 +28,7 @@ export async function recordProviderStopIntent(client,config,row,review) {
   const { rows } = await client.query(`INSERT INTO ollama_gateway.provider_stop_intent
     (binding_id,owner_id,attempts,network_id,configuration_hash,network_hash,operator_ref,evidence_ref,reviewed_at)
     SELECT $1,a.owner_id,a.attempts,$2,$3,$4,$5,$6,$7 FROM ollama_gateway.admission a
-    WHERE a.id=$8 AND a.version=4 AND a.owner_id=$9 AND a.active_request=$10 AND a.attempts=$11
+    WHERE a.id=$8 AND a.version=5 AND a.owner_id=$9 AND a.active_request=$10 AND a.attempts=$11
       AND a.provider_hash=$12 AND a.maintenance_receipt IS NULL
       AND $7::timestamptz<=clock_timestamp() AND $7::timestamptz>=clock_timestamp()-interval '15 minutes'
       AND $7::timestamptz>=a.started_at RETURNING id`,

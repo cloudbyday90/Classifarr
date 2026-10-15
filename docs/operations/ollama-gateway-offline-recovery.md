@@ -47,10 +47,16 @@ For an existing version-3 database (including after those steps), apply once:
 psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_095721_provider_stop.sql
 ```
 
+For an existing version-4 database (including after those steps), apply once:
+
+```text
+psql -v ON_ERROR_STOP=1 -d <dedicated-gateway-database> -f database/ollama-gateway/20261015_104932_upstream_peer.sql
+```
+
 The upgrades refuse a competing gateway session. They preserve its request,
 attempts, cooldown and ownership. It creates no application tables and makes no
 provider calls. New empty standalone databases use `database/ollama-gateway/current.sql`
-instead. Use version-4 gateway/recovery binaries with schema version 4; older
+instead. Use version-5 gateway/recovery binaries with schema version 5; older
 binaries fail closed. No binding is fabricated for pre-upgrade work. Do not downgrade or restore an
 old ledger to bypass a hold: retain the backup and investigate offline.
 
@@ -72,6 +78,8 @@ GRANT UPDATE(active_request, installation, started_at, maintenance_receipt, last
 GRANT SELECT, INSERT ON ollama_gateway.recovery_receipt TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;
+GRANT SELECT, INSERT ON ollama_gateway.upstream_peer_observation TO gateway_runtime;
+GRANT SELECT ON ollama_gateway.upstream_peer_observation TO gateway_recovery;
 GRANT SELECT ON ollama_gateway.provider_stop_intent,
   ollama_gateway.provider_stop_observation TO gateway_recovery;
 ```
@@ -118,6 +126,11 @@ not a stop attestation. `unbound` means no pins were configured; `legacy_unbound
 means the old request has no binding record. None authorizes recovery. Do not
 substitute a newer provider snapshot or infer missing evidence from a current
 container. Review the entire provider boundary independently in every case.
+
+`requestBinding.transportEvidence` is null for historical/HTTP work, or records
+the authenticated TLS peer's certificate/key hashes and observation time. It is
+not proof of HTTP dispatch, completion, Docker ownership or a stopped provider.
+It never authorizes recovery. See [upstream identity](ollama-upstream-identity.md).
 
 `providerStop` is the optional [reviewed stop controller](ollama-provider-stop.md)
 journal, not recovery authority. An intent without an observation means the stop

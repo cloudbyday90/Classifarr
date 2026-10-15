@@ -15,6 +15,7 @@ import { probeOllamaVerificationCapability } from '/app/src/services/ollamaVerif
 import { rehearseApplicationRouting } from './application.mjs';
 import { rehearseCompletionRecovery } from './recovery.mjs';
 import { rehearseProviderStop } from './providerStop.mjs';
+import { rehearseUpstreamIdentity } from './upstreamIdentity.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -86,6 +87,7 @@ try {
   assert.equal((await admin.query('SELECT count(*)::int AS n FROM libraries')).rows[0].n,0);
   await admin.query('CREATE DATABASE classifarr_gateway_fixture'); // Owned, fresh, network-none fixture only.
   await admin.query('CREATE ROLE gateway_fixture_runtime LOGIN');
+  await rehearseUpstreamIdentity(admin);
   await rehearseCompletionRecovery(admin);
   await rehearseProviderStop(admin);
   await database.connect();

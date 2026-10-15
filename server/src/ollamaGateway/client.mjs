@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { gatewayConfig, gatewayError, gatewayProviderIdentity, gatewayRoute, validateGatewayBody } from './contract.mjs';
+import { gatewayModels, gatewayError, gatewayProviderIdentity, gatewayRoute, validateGatewayBody } from './contract.mjs';
 import { readGatewayStream } from './stream.mjs';
 import { gatewayClientTls, privateGatewayAddress } from './tls.mjs';
 
@@ -15,8 +15,8 @@ export function createGatewayClient(raw, { expectedUpstream }) {
       url.pathname !== '/' || url.search || url.hash) throw gatewayError('gateway_client_config_invalid');
   const tls = secure ? gatewayClientTls(raw.ca) : {};
   const request = secure ? httpsRequest : httpRequest;
-  const config = gatewayConfig({ upstream: raw.upstream,models: raw.models,
-    credentials: [{ installation: 'client',workClass: 'background',token: raw.token }] });
+  if (typeof raw.token !== 'string' || !/^[a-zA-Z0-9_-]{43,128}$/.test(raw.token)) throw gatewayError('gateway_client_config_invalid');
+  const config = { ...gatewayProviderIdentity(raw.upstream),models: gatewayModels(raw.models) };
   if (config.providerHash !== gatewayProviderIdentity(expectedUpstream).providerHash) throw gatewayError('gateway_provider_mismatch',409);
   const authorization = `Bearer ${raw.token}`, base = url.origin, active = new Set();
   let closed = false;

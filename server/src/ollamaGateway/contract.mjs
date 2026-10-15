@@ -4,6 +4,8 @@ import { isIP } from 'node:net';
 import { gatewayServerTls, privateGatewayAddress } from './tls.mjs';
 import { gatewayProviderInstance } from './providerInstance.mjs';
 import { gatewayError } from './errors.mjs';
+import { gatewayUpstreamTls } from './upstreamIdentity.mjs';
+import { gatewayWorkKey } from './workIdentity.mjs';
 
 export { gatewayError };
 const hash = value => createHash('sha256').update(value).digest();
@@ -16,20 +18,20 @@ export function gatewayProviderIdentity(value) {
   const octets = upstream.hostname.split('.').map(Number);
   const privateIp = isIP(upstream.hostname) === 4 && (octets[0] === 127 || octets[0] === 10 ||
     (octets[0] === 192 && octets[1] === 168) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31));
-  if (!privateIp || upstream.protocol !== 'http:' || upstream.username || upstream.password ||
+  if (!privateIp || !['http:','https:'].includes(upstream.protocol) || upstream.username || upstream.password ||
       upstream.pathname !== '/' || upstream.search || upstream.hash) throw gatewayError('gateway_config_invalid');
   return { upstream: upstream.origin,providerHash: hash(upstream.origin).toString('hex') };
 }
 
 export function gatewayConfig(raw) {
-  if (!record(raw) || Object.keys(raw).some(key => !['upstream','host','tls','port','models','credentials','timeoutMs','queueMs','providerInstance'].includes(key))) {
+  if (!record(raw) || Object.keys(raw).some(key => !['upstream','upstreamTls','workIdentityKey','host','tls','port','models','credentials','timeoutMs','queueMs','providerInstance'].includes(key))) {
     throw gatewayError('gateway_config_invalid');
   }
   const identity = gatewayProviderIdentity(raw.upstream);
+  const upstreamTls = gatewayUpstreamTls(identity.upstream,raw.upstreamTls);
+  const workIdentity = gatewayWorkKey(raw.workIdentityKey);
   const providerInstance = raw.providerInstance === undefined ? null : gatewayProviderInstance(raw.providerInstance);
-  if (!Array.isArray(raw.models) || raw.models.length < 1 || raw.models.length > 16 ||
-      raw.models.some(model => typeof model !== 'string' || !modelPattern.test(model) || !model.includes(':') || /cloud/i.test(model)) ||
-      new Set(raw.models).size !== raw.models.length) throw gatewayError('gateway_config_invalid');
+  const models = gatewayModels(raw.models);
   const credentials = raw.credentials;
   if (!Array.isArray(credentials) || credentials.length < 1 || credentials.length > 32 || credentials.some(entry =>
     !record(entry) || Object.keys(entry).some(key => !['installation','workClass','token'].includes(key)) ||
@@ -43,10 +45,17 @@ export function gatewayConfig(raw) {
   const host = raw.host ?? '127.0.0.1';
   if (!privateGatewayAddress(host) || (!raw.tls && host !== '127.0.0.1')) throw gatewayError('gateway_config_invalid');
   const tls = raw.tls === undefined ? undefined : gatewayServerTls(raw.tls, host);
-  return Object.freeze({ ...identity, host, tls, port, timeoutMs, queueMs, providerInstance,
-    models: Object.freeze([...raw.models]), credentials: Object.freeze(credentials.map(entry => Object.freeze({
+  return Object.freeze({ ...identity, host, tls, upstreamTls, workIdentity, port, timeoutMs, queueMs, providerInstance,
+    models, credentials: Object.freeze(credentials.map(entry => Object.freeze({
       installation: entry.installation, workClass: entry.workClass, digest: hash(entry.token),
     }))) });
+}
+
+export function gatewayModels(models) {
+  if (!Array.isArray(models) || models.length < 1 || models.length > 16 ||
+      models.some(model => typeof model !== 'string' || !modelPattern.test(model) || !model.includes(':') || /cloud/i.test(model)) ||
+      new Set(models).size !== models.length) throw gatewayError('gateway_config_invalid');
+  return Object.freeze([...models]);
 }
 
 export function authenticateGateway(config, authorization) {

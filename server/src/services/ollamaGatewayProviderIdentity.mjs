@@ -16,7 +16,7 @@ export function assertGatewayEndpoint(baseUrl, host, port) {
     throw gatewayError('gateway_provider_mismatch', 409);
   }
   let target;
-  try { target = gatewayProviderIdentity(`http://${host}:${port}`).upstream; }
+  try { target = gatewayProviderIdentity(`${new URL(baseUrl).protocol}//${host}:${port}`).upstream; }
   catch { throw gatewayError('gateway_provider_mismatch', 409); }
   if (target !== gatewayProviderIdentity(baseUrl).upstream) throw gatewayError('gateway_provider_mismatch', 409);
 }

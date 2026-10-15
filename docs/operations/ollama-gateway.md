@@ -24,9 +24,14 @@ timestamps, attempt count and cooldown. An append-only binding history records
 each admitted request and its optional configured provider instance. Neither
 stores prompts or answers.
 
+Compute bindings also record operation/model and unique Classifarr request
+references. Optional keyed fingerprints distinguish repeat serialized inputs
+without storing prompts. See [work identity](ollama-upstream-identity.md).
+
 Without TLS the gateway only binds `127.0.0.1`. Verified TLS supports an explicit
 private IPv4 listener (see startup configuration below). The upstream must be a fixed private/loopback
-IPv4 HTTP origin. There is no DNS resolution, redirect following, arbitrary proxy
+IPv4 HTTP origin, or an explicitly pinned HTTPS origin as described in
+[upstream identity](ollama-upstream-identity.md). There is no DNS resolution, redirect following, arbitrary proxy
 target, cloud fallback, generation retry, or model installation endpoint. The
 operator's model allowlist must use fully qualified names such as `example:latest`.
 The gateway does not independently attest that an upstream model is local;
@@ -37,13 +42,13 @@ Classifarr's existing model/digest validation remains required for integration.
 Do not initialize this schema in a Classifarr application or production database.
 With a dedicated, empty test database and schema-owner connection, apply
 `database/ollama-gateway/current.sql` using `psql -v ON_ERROR_STOP=1`.
-This is the version-4 fresh standalone schema. It deliberately fails
+This is the version-5 fresh standalone schema. It deliberately fails
 if run again rather than recreating a missing/uncertain ledger.
 
 Create a separate runtime role with database CONNECT, schema USAGE and table
 SELECT, column-scoped admission UPDATE and binding INSERT, as listed in the
 [offline recovery procedure](ollama-gateway-offline-recovery.md). It needs neither
-schema creation nor application-table access. Existing version-1/2/3 test databases
+schema creation nor application-table access. Existing version-1/2/3/4 test databases
 require the explicit timestamped upgrades in that procedure, never `current.sql`.
 Use a local PostgreSQL socket or verified TLS for a remote database. Do not disable
 certificate verification. Keep the database and its ledger durable across restarts.

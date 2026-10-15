@@ -148,8 +148,9 @@ test('v2 upgrade preserves legacy unknown work with no invented binding and reje
   const before = await admission();
   await getPool().query(await sql('20261015_091627_request_binding.sql'));
   await getPool().query(await sql('20261015_095721_provider_stop.sql'));
+  await getPool().query(await sql('20261015_104932_upstream_peer.sql'));
   expect(await rows()).toHaveLength(0);
-  expect(await admission()).toMatchObject({ version: 4,attempts: 19,binding_count: 0,active_request: before.active_request,cooldown_until: before.cooldown_until });
+  expect(await admission()).toMatchObject({ version: 5,attempts: 19,binding_count: 0,active_request: before.active_request,cooldown_until: before.cooldown_until });
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=2')).rowCount).toBe(0);
   const client = await connect(), ledger = await openGatewayLedger(client,config.providerHash,pins);
   expect(await ledger.status()).toMatchObject({ state: 'uncertain_or_active',requestBinding: { id: null,evidenceKind: 'legacy_unbound' } });

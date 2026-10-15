@@ -1,5 +1,5 @@
 -- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
--- Fresh standalone gateway schema, version 4. Never apply to an existing database.
+-- Fresh standalone gateway schema, version 5. Never apply to an existing database.
 -- Explicit initialization, never an automatic application migration.
 -- Deliberately not repeatable: an existing or uncertain ledger must not be reset.
 BEGIN;
@@ -8,7 +8,7 @@ REVOKE ALL ON SCHEMA ollama_gateway FROM PUBLIC;
 CREATE TABLE ollama_gateway.admission (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
   singleton boolean NOT NULL DEFAULT true UNIQUE CHECK (singleton),
-  version integer NOT NULL CHECK (version = 4),
+  version integer NOT NULL CHECK (version = 5),
   provider_hash text CHECK (provider_hash ~ '^[a-f0-9]{64}$'),
   owner_id uuid CHECK (uuid_extract_version(owner_id) = 7),
   active_request uuid CHECK (uuid_extract_version(active_request) = 7),
@@ -20,7 +20,7 @@ CREATE TABLE ollama_gateway.admission (
   CHECK ((active_request IS NULL AND installation IS NULL AND started_at IS NULL)
     OR (active_request IS NOT NULL AND installation IS NOT NULL AND started_at IS NOT NULL))
 );
-INSERT INTO ollama_gateway.admission(version) VALUES (4);
+INSERT INTO ollama_gateway.admission(version) VALUES (5);
 REVOKE ALL ON ollama_gateway.admission FROM PUBLIC;
 CREATE TABLE ollama_gateway.recovery_receipt (
   id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id) = 7),
@@ -116,4 +116,27 @@ CREATE TRIGGER provider_stop_intent_append_only BEFORE UPDATE OR DELETE OR TRUNC
 CREATE TRIGGER provider_stop_observation_append_only BEFORE UPDATE OR DELETE OR TRUNCATE
   ON ollama_gateway.provider_stop_observation FOR EACH STATEMENT EXECUTE FUNCTION ollama_gateway.reject_receipt_mutation();
 REVOKE ALL ON ollama_gateway.provider_stop_intent,ollama_gateway.provider_stop_observation FROM PUBLIC;
+CREATE TABLE ollama_gateway.upstream_peer_observation (
+  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK ((uuid_extract_version(id)=7) IS TRUE),
+  binding_id uuid NOT NULL UNIQUE REFERENCES ollama_gateway.request_binding(id),
+  public_key_sha256 text NOT NULL CHECK (length(public_key_sha256)=64 AND public_key_sha256 ~ '^[a-f0-9]{64}$'),
+  certificate_sha256 text NOT NULL CHECK (length(certificate_sha256)=64 AND certificate_sha256 ~ '^[a-f0-9]{64}$'),
+  recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+CREATE TRIGGER upstream_peer_observation_append_only BEFORE UPDATE OR DELETE OR TRUNCATE
+  ON ollama_gateway.upstream_peer_observation FOR EACH STATEMENT EXECUTE FUNCTION ollama_gateway.reject_receipt_mutation();
+REVOKE ALL ON ollama_gateway.upstream_peer_observation FROM PUBLIC;
+ALTER TABLE ollama_gateway.request_binding
+  ADD COLUMN work_version integer,
+  ADD COLUMN operation text,
+  ADD COLUMN model text,
+  ADD COLUMN work_fingerprint text CHECK (length(work_fingerprint)=64 AND work_fingerprint ~ '^[a-f0-9]{64}$'),
+  ADD COLUMN fingerprint_key_id text CHECK (length(fingerprint_key_id)=64 AND fingerprint_key_id ~ '^[a-f0-9]{64}$'),
+  ADD CONSTRAINT request_binding_work_context CHECK (
+    (work_version IS NULL AND num_nonnulls(operation,model,work_fingerprint,fingerprint_key_id)=0)
+    OR (work_version IS NOT NULL AND work_version=1 AND operation IS NOT NULL AND model IS NOT NULL
+      AND operation IN ('/api/generate','/api/embed') AND length(model) BETWEEN 1 AND 200
+      AND model ~ '^[a-zA-Z0-9][a-zA-Z0-9_.:/-]*$'
+      AND ((work_fingerprint IS NULL AND fingerprint_key_id IS NULL)
+        OR (work_fingerprint IS NOT NULL AND fingerprint_key_id IS NOT NULL))));
 COMMIT;
