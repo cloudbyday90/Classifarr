@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an offline, read-only Ollama gateway archive and retention report with
+  time-based UUIDv7 references, private integrity-checked backups and isolated
+  restore verification; preserve uncertain work, attempt limits and all history.
+
 - Exercise optional Ollama gateway routing through a real isolated application,
   including authenticated history, bounded outages and preserved records across
   container replacement, without enabling routing on existing installations.

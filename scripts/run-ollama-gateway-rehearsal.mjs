@@ -33,6 +33,7 @@ await withSchemaCheckContainer({ imageName,runSpec,command,action: async () => {
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/recovery.mjs'),`${name}:/tmp/recovery.mjs`]);
   docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/offlineRecovery.mjs'),`${name}:/tmp/offlineRecovery.mjs`]);
   for (const source of ['scripts/fixtures/ollamaGatewayRehearsal/providerStop.mjs',
+    'scripts/fixtures/ollamaGatewayRehearsal/archive.mjs',
     'scripts/fixtures/ollamaGatewayRehearsal/upstreamIdentity.mjs',
     'server/src/__tests__/helpers/dockerStopFixture.mjs','server/src/__tests__/helpers/dockerBoundaryFixture.mjs']) {
     docker(['cp',resolve(source),`${name}:/tmp/${source.split('/').at(-1)}`]);

@@ -16,6 +16,7 @@ import { rehearseApplicationRouting } from './application.mjs';
 import { rehearseCompletionRecovery } from './recovery.mjs';
 import { rehearseProviderStop } from './providerStop.mjs';
 import { rehearseUpstreamIdentity } from './upstreamIdentity.mjs';
+import { rehearseGatewayArchive } from './archive.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
@@ -190,6 +191,9 @@ try {
   assert.equal(foreign.items.length,0); assert.equal(calls,19); assert.deepEqual(await status(),historyBefore);
   process.stdout.write('gateway_work_history_passed: restricted runtime, scoped outcomes, foreign task exclusion, restart uncertainty, zero history provider calls or writes\n');
   process.stdout.write('gateway_task_correlation_passed: 8 actual queue-scoped calls, no source forwarded upstream, interrupted source retained without replay\n');
+  for (const running of children) await kill(running);
+  await rehearseGatewayArchive(admin, database);
+  assert.equal(calls, 19);
   const ids = (await database.query(`SELECT uuid_extract_version(id) AS id_version,
     uuid_extract_version(owner_id) AS owner_version, uuid_extract_version(active_request) AS request_version
     FROM ollama_gateway.admission`)).rows[0];

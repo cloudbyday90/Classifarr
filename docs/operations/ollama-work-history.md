@@ -66,3 +66,7 @@ history is not an alternative path around an unavailable control database.
 For architecture, alternatives and official references, see the
 [design](../architecture/ollama-work-history-design.md). Verification and remaining
 limits are recorded separately in the [outcome](../architecture/ollama-work-history-outcome.md).
+
+For an offline copy and advisory retention assessment, use the
+[history archive runbook](ollama-history-archive.md). Archiving does not purge
+history, reclaim admission capacity or authorize recovery.
