@@ -118,3 +118,6 @@ inferences, not vendor endorsements.
 - [PostgreSQL advisory locks](https://www.postgresql.org/docs/18/functions-admin.html)
   and [transactions](https://www.postgresql.org/docs/18/tutorial-transactions.html):
   serialize cooperative database users and persist intent before external effects.
+- [PostgreSQL UUID functions](https://www.postgresql.org/docs/18/functions-uuid.html):
+  native time-ordered UUIDv7; version extraction can return NULL for other variants,
+  so new audit constraints require the version comparison to be explicitly true.

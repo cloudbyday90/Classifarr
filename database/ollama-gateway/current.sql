@@ -90,9 +90,9 @@ CREATE TRIGGER request_binding_append_only BEFORE UPDATE OR DELETE OR TRUNCATE
   EXECUTE FUNCTION ollama_gateway.reject_receipt_mutation();
 REVOKE ALL ON ollama_gateway.request_binding FROM PUBLIC;
 CREATE TABLE ollama_gateway.provider_stop_intent (
-  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id)=7),
+  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK ((uuid_extract_version(id)=7) IS TRUE),
   binding_id uuid NOT NULL UNIQUE REFERENCES ollama_gateway.request_binding(id),
-  owner_id uuid NOT NULL CHECK (uuid_extract_version(owner_id)=7),
+  owner_id uuid NOT NULL CHECK ((uuid_extract_version(owner_id)=7) IS TRUE),
   attempts bigint NOT NULL CHECK (attempts>0),
   network_id text NOT NULL CHECK (length(network_id)=64 AND network_id ~ '^[a-f0-9]{64}$'),
   configuration_hash text NOT NULL CHECK (length(configuration_hash)=64 AND configuration_hash ~ '^[a-f0-9]{64}$'),
@@ -103,7 +103,7 @@ CREATE TABLE ollama_gateway.provider_stop_intent (
   recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE TABLE ollama_gateway.provider_stop_observation (
-  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK (uuid_extract_version(id)=7),
+  id uuid PRIMARY KEY DEFAULT uuidv7() CHECK ((uuid_extract_version(id)=7) IS TRUE),
   intent_id uuid NOT NULL UNIQUE REFERENCES ollama_gateway.provider_stop_intent(id),
   finished_at text NOT NULL CHECK (length(finished_at) BETWEEN 20 AND 30
     AND finished_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,9})?Z$'

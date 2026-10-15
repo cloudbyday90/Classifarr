@@ -152,3 +152,18 @@ test('v4 migration preserves pending v3 state, refuses a running gateway and fen
   expect((await getPool().query('UPDATE ollama_gateway.admission SET owner_id=uuidv7() WHERE version=3')).rowCount).toBe(0);
   expect(data.requests).toHaveLength(0);
 }));
+
+test.each(['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','00000000-0000-7000-0000-000000000000'])('new audit tables reject non-v7/RFC identity %s',async invalid => withDockerStopFixture(async data => {
+  await fixture(data); const before = await row();
+  const insert = (id,ownerId) => getPool().query(`INSERT INTO ollama_gateway.provider_stop_intent
+    (id,binding_id,owner_id,attempts,network_id,configuration_hash,network_hash,operator_ref,evidence_ref,reviewed_at)
+    SELECT $1,b.id,$2,1,$3,$3,$3,'synthetic','synthetic',clock_timestamp() FROM ollama_gateway.request_binding b RETURNING id`,
+  [id,ownerId,'a'.repeat(64)]);
+  const valid = (await getPool().query('SELECT uuidv7() AS id')).rows[0].id;
+  await expect(insert(invalid,valid)).rejects.toMatchObject({ code: '23514' });
+  await expect(insert(valid,invalid)).rejects.toMatchObject({ code: '23514' });
+  const intent = (await insert(valid,valid)).rows[0].id;
+  await expect(getPool().query(`INSERT INTO ollama_gateway.provider_stop_observation(id,intent_id,finished_at,exit_code)
+    VALUES($1,$2,'2026-10-15T00:00:00Z',0)`,[invalid,intent])).rejects.toMatchObject({ code: '23514' });
+  expect(await observations()).toHaveLength(0); expect(await row()).toEqual(before); expect(data.requests).toHaveLength(0);
+}));
