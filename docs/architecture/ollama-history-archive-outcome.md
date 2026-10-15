@@ -29,9 +29,45 @@ action. The archive suite then passed all twelve tests, and the full focused
 integration rerun passed all 194. The reset's underlying infrastructure cause is
 not established; no retries or suppression were added to hide it.
 
-Container/archive restore evidence will be recorded after building the clean
-source commit. Source tests alone do not prove Linux filesystem or native dump
-restoration behavior.
+The two archive contract/dump suites passed 40 tests with scoped coverage of
+100% statements/functions/lines and 94.73% branches. This is not coverage of the
+filesystem, SQL or CLI modules. Three existing host pilot tests also passed.
+Backend type checks (including the new CLI), test/security lint, dependency
+checks, ownership check, static imports/mock shapes, npm CLI flags, copyright,
+syntax, Markdown and staged secret scans passed. No quality baseline changed.
+The full backend/frontend suites and global coverage ratchet were not rerun;
+there are no UI/API changes. The frontend production build passed in Docker.
+
+## Local image and rollback evidence
+
+Clean-source no-cache Compose build passed for source
+`456bd2f28aab180ade8cc418b22cc2292d84b24f`, immutable image
+`sha256:c8510ad05103ee9db4c36a0978fb2012e151c858a15375817ef0875d861238ed`.
+The initial packaged run stopped before archiving because the fixture expected a
+string counter but application imports install a numeric PostgreSQL bigint
+parser. The fixture now compares its bounded synthetic count as a string; no
+runtime parser or archive contract changed. Rehearsals passed after that fix.
+A final clean-source build and local replacement will follow the fixture commit.
+
+Before local replacement, created
+`data/backups/gateway-archive-before-20261015.dump`, SHA-256
+`CBA5AD5A32FE02B74D0351B3048ED929A9B0C4BEBA2AAD11DD416B98B3914445`.
+Its `pg_restore --list` completed with 1,933 lines; this application backup has
+not been restored. Protected prior local image:
+`sha256:3e5ef70ba84d906d2e2e8af4894ec5784749a147009093482667d74a3acd60fc`,
+source `2d5141407d606eb6d8d2959b9ca0ef3cacad85b2`.
+
+The first image's corrected-fixture rehearsal passed native SELECT-only archive
+creation and exact restoration of all seven tables into a fresh disposable
+database. All immutable triggers still refused deletion. Active uncertainty,
+attempts, cooldown and references survived; a restored ledger refused new work.
+The fixture explicitly seeded recovery/stop/TLS records and a one-hour future
+cooldown to exercise every table, not to simulate elapsed time or real stop proof.
+Private modes, symlinks, hard links, corruption, oversized/incomplete output,
+exclusive creation, invalid exported snapshots and cancellation were rejected.
+The archive checks made no provider calls or source database changes after that
+synthetic setup. Full application routing/outage/replacement also passed with
+two synthetic calls. Both runners removed their owned disposable resources.
 
 ## Remaining scope
 

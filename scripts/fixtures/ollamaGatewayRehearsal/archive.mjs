@@ -49,7 +49,7 @@ export async function rehearseGatewayArchive(admin, database) {
   if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
   await seedEvidence(database);
   const before = await rows(database), admission = before.admission[0];
-  assert.equal(admission.attempts, '19'); assert.ok(admission.active_request);
+  assert.equal(String(admission.attempts), '19'); assert.ok(admission.active_request);
   await admin.query('CREATE ROLE gateway_archive_fixture_reader LOGIN');
   await database.query(`GRANT USAGE ON SCHEMA ollama_gateway TO gateway_archive_fixture_reader;
     GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO gateway_archive_fixture_reader`);
