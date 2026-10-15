@@ -21,7 +21,7 @@ Focused backend tests passed 13 suites / 300 tests. Gateway PostgreSQL integrati
 passed eight suites / 194 tests, including twelve archive cases. These cover busy
 owners, dedicated sessions, explicit provider identity, native UUIDv7, read-only
 transactions, legacy unknown records, protected lifecycle references, age checks,
-counter mismatches and cancellation without mutation. Dump tests additionally
+counter mismatches and cancellation without mutation. Mocked dump tests additionally
 cover size/time limits, child cancellation and sanitized failures.
 
 One repeated run encountered `ECONNRESET` in fixture setup, before the archive
@@ -40,14 +40,18 @@ there are no UI/API changes. The frontend production build passed in Docker.
 
 ## Local image and rollback evidence
 
-Clean-source no-cache Compose build passed for source
-`456bd2f28aab180ade8cc418b22cc2292d84b24f`, immutable image
+The final clean-source no-cache Compose build passed for source
+`cd1db6cf4df476b1348647174e20fe4765e79b0f`, immutable image
+`sha256:82447c4ae2a308702fd022f99aca87cad66b6c1c45b676d778745288f5eee2d0`.
+The subsequent outcome-document commit changes no runtime or test code.
+
+The first build used source `456bd2f28aab180ade8cc418b22cc2292d84b24f`, image
 `sha256:c8510ad05103ee9db4c36a0978fb2012e151c858a15375817ef0875d861238ed`.
-The initial packaged run stopped before archiving because the fixture expected a
+Its initial packaged run stopped before archiving because the fixture expected a
 string counter but application imports install a numeric PostgreSQL bigint
 parser. The fixture now compares its bounded synthetic count as a string; no
-runtime parser or archive contract changed. Rehearsals passed after that fix.
-A final clean-source build and local replacement will follow the fixture commit.
+runtime parser or archive contract changed. Rehearsals passed after that fix,
+then the source was committed and rebuilt without cache as recorded above.
 
 Before local replacement, created
 `data/backups/gateway-archive-before-20261015.dump`, SHA-256
@@ -68,6 +72,31 @@ exclusive creation, invalid exported snapshots and cancellation were rejected.
 The archive checks made no provider calls or source database changes after that
 synthetic setup. Full application routing/outage/replacement also passed with
 two synthetic calls. Both runners removed their owned disposable resources.
+
+Both rehearsals passed again against the final image and corrected clean fixture
+revision above. The main packaged scenario made 19 synthetic calls, the separate
+completion scenario four, and TLS scenario two. Archive/history/recovery checks
+made no additional compute calls. The network/application scenario retained its
+two-call total across an outage and same-image container replacement. These are
+synthetic checks, not GPU benchmarks or a published-version upgrade rehearsal.
+Both final runners verified removal of their exact containers, directories and
+networks. File-verification cancellation was exercised natively; the child-kill
+deadline tests used mocks, not a real 60-second stalled filesystem experiment.
+
+Local Compose replacement passed without building, pulling or replacing other
+services. The running image and source matched the final candidate; health was
+good, restart count zero and OOM false. Health/UI returned 200 and unauthenticated
+history returned 401. UID/GID 1000:1000, read-only root, no-new-privileges, 2 GiB
+limit and data/media mounts were preserved. There is no Docker socket, gateway
+routing environment or gateway schema in the normal application database.
+Evaluation remained `when_idle`, with zero daily calls/tokens/reservations,
+revision 2 and unchanged next-check timestamp. The application backup and
+protected rollback image remain available. Unraid and shared Ollama configuration
+were not changed; unrelated local containers were not managed.
+
+A short startup sample was 777.3 MiB / 2 GiB and 102.26% CPU; the subsequent
+settled sample was 340.8 MiB / 2 GiB and 1.53% CPU. These snapshots are not a
+peak-load or production-capacity guarantee.
 
 ## Remaining scope
 
