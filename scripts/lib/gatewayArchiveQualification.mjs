@@ -116,7 +116,20 @@ async function qualifyCase(image, shape) {
       };
       try {
         report({ scenario: shape, stage: 'setup' }); fixture('setup');
-        if (shape === 'cancel') {
+        if (shape === 'protection') {
+          const before = fixture('fingerprint');
+          hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
+          hasState(await run('archiver'),'awaiting_verification');
+          const copies = fixture('inspect'); assert.deepEqual(copies.jobs.map(job => job.attempt),[1,2]);
+          assert.equal(copies.jobs[0].revision,copies.jobs[1].revision);
+          hasState(await run('verifier'),'verified'); hasState(await run('archiver'),'unchanged');
+          const held = fixture('inspect'); assert.equal(held.protections.length,1); assert.ok(held.protections[0].ready_at);
+          assert.ok(held.jobs.every(job => job.recovery_protection_id === held.protections[0].id));
+          assert.equal(held.protections[0].minimum_recovery_days,30);
+          hasState(await run('archiver'),'unchanged'); assert.equal(fixture('inspect').jobs.length,2);
+          assert.deepEqual(fixture('fingerprint'),before);
+          report({ scenario: shape,state: 'two_copies_protected',attempts: [1,2],historyUnchanged: true });
+        } else if (shape === 'cancel') {
           const before = fixture('fingerprint');
           hasState(await run('archiver', 'cancel'), 'cancelled');
           const cancelled = fixture('inspect'); assert.equal(cancelled.jobs.length, 1);
@@ -158,15 +171,16 @@ async function qualifyCase(image, shape) {
           hasState(await run('verifier', 'cancel'), 'verification_blocked');
           assert.equal(fixture('inspect').receipts.length, 1);
           assert.equal(fixture('inspect').jobs[1].attempt, 1);
-          hasState(await run('verifier'), 'verified'); hasState(await run('archiver'), 'unchanged');
+          hasState(await run('verifier'), 'verified'); fixture('accept-old'); hasState(await run('archiver'), 'unchanged');
           assert.equal(fixture('admit').attempts, '100000'); fixture('due');
           hasState(await run('archiver'), 'awaiting_verification');
-          hasState(await run('verifier'), 'verified'); fixture('retirement-cut');
+          hasState(await run('verifier'), 'verified');
           hasState(await run('archiver'), 'unchanged');
-          const rotated = fixture('inspect'); assert.equal(rotated.jobs[0].status, 'retired');
-          assert.equal(rotated.archives.length, 2); assert.equal(rotated.jobs.filter(job => job.status === 'verified').length, 2);
+          const rotated = fixture('inspect'); assert.equal(rotated.jobs[0].status, 'verified');
+          assert.equal(rotated.archives.length, 3); assert.equal(rotated.jobs.filter(job => job.status === 'verified').length, 3);
+          assert.equal(rotated.protections.length,1); assert.ok(rotated.protections[0].ready_at);
           assert.ok(rotated.jobs.every(job => job.attempt === 1 && job.version === 7 && job.receipt.purgeAuthorized === false));
-          report({ scenario: shape, stage: 'restored_and_rotated', dumps: rotated.jobs.map(job => job.bytes),
+          report({ scenario: shape, stage: 'restored_and_protected', dumps: rotated.jobs.map(job => job.bytes),
             content: rotated.jobs[2].content, attempts: rotated.admission.attempts });
           report({ scenario: shape, ...fixture('size') });
           assert.equal(fixture('full').state, 'history_full'); fixture('changed'); fixture('due');
@@ -204,6 +218,6 @@ async function qualifyCase(image, shape) {
 export async function runGatewayArchiveQualification(image, revision) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  for (const shape of ['capacity', 'oversize', 'cancel']) await qualifyCase(image, shape);
+  for (const shape of ['capacity', 'oversize', 'cancel','protection']) await qualifyCase(image, shape);
   report({ qualification: 'passed', image, revision });
 }

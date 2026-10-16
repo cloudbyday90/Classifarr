@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { readFile, writeFile, readdir, stat, unlink, mkdir, truncate } from 'node:fs/promises';
+import { readFile, writeFile, readdir, stat, mkdir, truncate } from 'node:fs/promises';
 import pg from '/app/node_modules/pg/lib/index.js';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
 import { archiveStorageAvailable } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
@@ -11,7 +11,7 @@ import { captureRetentionInventory } from '/app/src/ollamaGateway/archiveRetenti
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape = 'capacity'] = process.argv.slice(2);
-assert.ok(['capacity', 'oversize', 'cancel'].includes(shape));
+assert.ok(['capacity', 'oversize', 'cancel','protection'].includes(shape));
 const database = 'gateway_archive_qualification';
 const admin = new pg.Client({ host: '/var/run/postgresql', user: 'classifarr', database: 'classifarr' });
 let client;
@@ -58,6 +58,8 @@ try {
       GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO qualification_reader;
       GRANT USAGE ON SCHEMA gateway_archive TO qualification_writer;
       GRANT SELECT,INSERT,UPDATE ON gateway_archive.job TO qualification_writer;
+      GRANT SELECT,INSERT ON gateway_archive.protection TO qualification_writer;
+      GRANT UPDATE(ready_at) ON gateway_archive.protection TO qualification_writer;
       UPDATE ollama_gateway.admission SET provider_hash=repeat('e',64),owner_id=uuidv7()`);
     await writeFile('/configuration/worker.json', JSON.stringify({ source: { database: {
       host: '/source-socket', database, user: 'qualification_reader' }, providerHash: 'e'.repeat(64), retentionDays: 90 },
@@ -79,29 +81,28 @@ try {
     result = before;
   } else if (action === 'due') {
     // Fixture clock advancement only; no inference counters or attempt budgets reset.
-    await client.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified'");
+    await client.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified' AND recovery_protection_id IS NULL");
   } else if (action === 'changed') {
     await client.query(`INSERT INTO ollama_gateway.upstream_peer_observation(binding_id,public_key_sha256,certificate_sha256)
       SELECT id,repeat('a',64),repeat('b',64) FROM ollama_gateway.request_binding WHERE attempt=2`);
-  } else if (action === 'retirement-cut') {
+  } else if (action === 'accept-old') {
     const jobs = (await client.query('SELECT * FROM gateway_archive.job ORDER BY created_at,id')).rows;
-    assert.equal(jobs.length, 3); assert.equal(jobs[0].status, 'verified'); assert.equal(jobs[1].status, 'verified');
-    const latest = jobs[2], receipt = JSON.parse(await readFile(`/receipts/${latest.id}.json`, 'utf8'));
+    assert.equal(jobs.length, 2); assert.equal(jobs[0].status, 'verified'); assert.equal(jobs[1].status, 'awaiting_verification');
+    const latest = jobs[1], receipt = JSON.parse(await readFile(`/receipts/${latest.id}.json`, 'utf8'));
     assert.equal(receipt.verified, true); assert.ok(receipt.preserves.includes(jobs[0].id));
     assert.equal(receipt.manifestSha256, latest.manifest_sha256);
-    // Precisely reproduced durable marker plus one missing fixed file, not an actual killed instruction.
-    await client.query("UPDATE gateway_archive.job SET status='verified',receipt=$2,completed_at=clock_timestamp() WHERE id=$1", [latest.id, receipt]);
-    await client.query("UPDATE gateway_archive.job SET status='retiring' WHERE id=$1", [jobs[0].id]);
-    await unlink(`/archives/gateway-archive-${jobs[0].id}/manifest.json`);
+    // Advance scheduling only before immutable protection. This does not prove a day elapsed.
+    await client.query("UPDATE gateway_archive.job SET status='verified',receipt=$2,completed_at=clock_timestamp()-interval '25 hours' WHERE id=$1", [latest.id, receipt]);
   } else if (action === 'inspect') {
     const admission = (await client.query('SELECT attempts::text,binding_count FROM ollama_gateway.admission')).rows[0];
-    const jobs = (await client.query(`SELECT id,status,attempt,reason,retry_after,completed_at,manifest_sha256,
+    const jobs = (await client.query(`SELECT id,status,attempt,reason,retry_after,completed_at,manifest_sha256,recovery_protection_id,revision,
       manifest->'dump'->'bytes' AS bytes,manifest->'content' AS content,receipt,uuid_extract_version(id) AS version
       FROM gateway_archive.job ORDER BY created_at,id`)).rows;
     const counts = (await client.query(`SELECT (SELECT count(*)::int FROM ollama_gateway.request_binding) AS bindings,
       (SELECT count(*)::int FROM ollama_gateway.completion_receipt) AS completions,
       (SELECT count(*)::int FROM pg_stat_activity WHERE datname=current_database() AND application_name='pg_dump') AS dumps`)).rows[0];
-    result = { admission, jobs, counts, archives: await readdir('/archives'), receipts: await readdir('/receipts') };
+    const protections = (await client.query('SELECT * FROM gateway_archive.protection ORDER BY created_at,id')).rows;
+    result = { admission, jobs, counts,protections,archives: await readdir('/archives'), receipts: await readdir('/receipts') };
   } else if (action === 'diagnose') {
     let stage = 'snapshot'; const started = Date.now();
     try {

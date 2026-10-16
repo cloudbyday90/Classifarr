@@ -3,6 +3,7 @@ import { ARCHIVE_TABLES, validateArchiveManifest } from '../ollamaGateway/archiv
 import { retentionInventorySha256 } from '../ollamaGateway/archiveRetentionContract.mjs';
 import { validateArchiveReceipt } from '../ollamaGateway/onlineArchiveContract.mjs';
 import { validateReceiptForArchive } from '../ollamaGateway/archiveReceiptBinding.mjs';
+import { archiveProtectionPlan,candidateBatchSha256,rollingArchives } from '../ollamaGateway/archiveProtectionPolicy.mjs';
 
 const id = n => `019a0000-0000-7000-8000-${String(n).padStart(12, '0')}`, hash = 'a'.repeat(64);
 function manifest(total = 0) {
@@ -73,4 +74,32 @@ test('failed v2 receipts carry neither a candidate digest nor preservation claim
   expect(() => validateArchiveReceipt({ ...failed, preserves: [id(9)] })).toThrow();
   const { retentionSha256: _digest, ...missing } = failed;
   expect(() => validateArchiveReceipt(missing)).toThrow();
+});
+
+test('pressure readiness requires two independently verified exact candidate pages, not ledger digest equality',() => {
+  const first = manifest(80000), second = structuredClone(first); second.archiveId = id(3);
+  second.retention.ledgerSha256 = 'b'.repeat(64);
+  const job = m => ({ id: m.archiveId,status: 'verified',ledger_id: m.report.ledgerId,provider_hash: hash,
+    revision: hash,manifest_sha256: hash,manifest: m,receipt: receipt(m) });
+  const jobs = [job(first),job(second)], input = { report: first.report,inventory: first.retention,revision: hash,jobs };
+  expect(candidateBatchSha256(first.retention)).toBe(candidateBatchSha256(second.retention));
+  expect(archiveProtectionPlan(input).pair).toEqual(jobs);
+  expect(archiveProtectionPlan({ ...input,jobs: jobs.slice(0,1) })).toEqual({ needsRecoveryCopy: true });
+  expect(archiveProtectionPlan({ ...input,revision: 'changed',jobs: jobs.slice(0,1) })).toEqual({ needsRecoveryCopy: false });
+  jobs[1].manifest.retention.entries[0].rowSha256 = 'c'.repeat(64); jobs[1].receipt = receipt(jobs[1].manifest);
+  expect(archiveProtectionPlan(input)).toEqual({ needsRecoveryCopy: true });
+});
+
+test('no protection on empty/nonpressure, legacy, or already-protected history',() => {
+  const m = manifest(80000), j = { id: m.archiveId,status: 'verified',ledger_id: m.report.ledgerId,provider_hash: hash,
+    revision: hash,manifest_sha256: hash,manifest: m,receipt: receipt(m) };
+  const input = { report: m.report,inventory: m.retention,revision: hash,jobs: [j] };
+  expect(archiveProtectionPlan({ ...input,report: { ...m.report,bindingCount: 79999 } }).needsRecoveryCopy).toBe(false);
+  expect(archiveProtectionPlan({ ...input,inventory: manifest().retention }).needsRecoveryCopy).toBe(false);
+  expect(archiveProtectionPlan({ ...input,jobs: [{ ...j,manifest: { ...m,version: 3 } }] }).needsRecoveryCopy).toBe(false);
+  expect(archiveProtectionPlan({ ...input,jobs: [{ ...j,protection: { candidates_sha256: candidateBatchSha256(m.retention) } }] })
+    .needsRecoveryCopy).toBe(false);
+  expect(() => archiveProtectionPlan({ ...input,jobs: [{ ...j,receipt: { ...j.receipt,retentionSha256: hash } }] })).toThrow();
+  expect(rollingArchives([{ ...j,recovery_protection_id: id(8) },{ ...j,id: id(6) },{ ...j,id: id(7) }]).map(x => x.id))
+    .toEqual([id(6),id(7)]);
 });

@@ -10,6 +10,7 @@ import { ARCHIVE_POLICY } from './archiveSchedule.mjs';
 import { validateArchiveReceipt } from './onlineArchiveContract.mjs';
 import { validateReceiptForArchive } from './archiveReceiptBinding.mjs';
 import { gatewayError } from './errors.mjs';
+import { PROTECTION_FILES } from './archiveProtectionFiles.mjs';
 
 export function managedArchivePath(parent, id) {
   if (!archiveUuid(id)) throw gatewayError('gateway_archive_file_invalid');
@@ -33,7 +34,10 @@ export async function archiveStorageAvailable(parent, receipts, jobs) {
     if (!known.has(name)) throw gatewayError('gateway_archive_unmanaged_files');
     const directory = await archiveDirectory(join(parent,name));
     const files = await readdir(directory);
-    if (files.some(file => !['gateway.dump','manifest.json'].includes(file))) throw gatewayError('gateway_archive_unmanaged_files');
+    const job = jobs.find(item => `gateway-archive-${item.id}` === name);
+    if (files.some(file => !['gateway.dump','manifest.json',...(job.recovery_protection_id ? PROTECTION_FILES : [])].includes(file))) {
+      throw gatewayError('gateway_archive_unmanaged_files');
+    }
     for (const file of files) {
       const stat = await lstat(join(directory,file));
       if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.geteuid() || (stat.mode & 0o077) || !Number.isSafeInteger(stat.size)) throw gatewayError('gateway_archive_file_invalid');

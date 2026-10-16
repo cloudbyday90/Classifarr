@@ -40,7 +40,9 @@ try {
     await database.query(`GRANT USAGE ON SCHEMA ollama_gateway TO archive_fixture_reader;
       GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO archive_fixture_reader;
       GRANT USAGE ON SCHEMA gateway_archive TO archive_fixture_writer;
-      GRANT SELECT,INSERT,UPDATE ON gateway_archive.job TO archive_fixture_writer`);
+      GRANT SELECT,INSERT,UPDATE ON gateway_archive.job TO archive_fixture_writer;
+      GRANT SELECT,INSERT ON gateway_archive.protection TO archive_fixture_writer;
+      GRANT UPDATE(ready_at) ON gateway_archive.protection TO archive_fixture_writer`);
     await writeFile('/tmp/archive-worker-fixture.json',JSON.stringify({ source: { database: {
       host: '/var/run/postgresql',database: databaseName,user: 'archive_fixture_reader' },providerHash: 'e'.repeat(64),retentionDays: 90 },
     maintenance: { host: '/var/run/postgresql',database: databaseName,user: 'archive_fixture_writer' },archives: '/archives',receipts: '/receipts' }),
@@ -112,7 +114,7 @@ try {
         SELECT id,repeat('d',64),repeat('e',64) FROM ollama_gateway.request_binding WHERE attempt=104`);
     }
     // Explicit fixture clock advance, not evidence that a real day elapsed; no inference counter is reset.
-    await database.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified'");
+    await database.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified' AND recovery_protection_id IS NULL");
     assert.equal((await worker()).state,'awaiting_verification');
   } else if (action === 'receipt-downgrade') {
     const job = (await database.query("SELECT * FROM gateway_archive.job WHERE status='awaiting_verification'")).rows[0];
@@ -140,7 +142,12 @@ try {
     assert.equal((await worker()).state,'unchanged');
     const jobs = (await database.query('SELECT *,uuid_extract_version(id) AS uuid_version FROM gateway_archive.job ORDER BY created_at')).rows;
     const kept = jobs.filter(job => job.status === 'verified');
-    assert.equal(kept.length,Math.min(2,jobs.length));
+    const protectedJobs = jobs.filter(job => job.recovery_protection_id);
+    if (!protectedJobs.length) assert.equal(kept.length,Math.min(2,jobs.length));
+    else {
+      assert.equal(protectedJobs.length,2); assert.ok(protectedJobs.every(job => job.status === 'verified'));
+      assert.equal(kept.length,new Set([...protectedJobs,...kept.slice(-2)].map(job => job.id)).size);
+    }
     assert.ok(jobs.every(job => job.uuid_version === 7 && job.attempt === 1));
     for (const job of kept) {
       assert.equal(job.receipt.verified,true); assert.equal(job.receipt.purgeAuthorized,false);

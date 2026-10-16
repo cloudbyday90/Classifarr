@@ -23,6 +23,10 @@ export async function checkArchiveRole(client, source = false) {
     has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE,TRIGGER')) AS allowed`)).rows[0].allowed;
   if (Object.values(role).some(Boolean) || write) throw gatewayError('gateway_archive_role_unsafe');
   const elevated = (await client.query(`SELECT has_schema_privilege(current_user,'ollama_gateway','CREATE')
+    OR has_schema_privilege(current_user,'gateway_archive','CREATE')
+    OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='gateway_archive' AND c.relkind='r' AND
+      has_table_privilege(current_user,c.oid,'DELETE,TRUNCATE,TRIGGER'))
     OR has_database_privilege(current_user,current_database(),'CREATE')
     OR pg_has_role(current_user,'pg_execute_server_program','USAGE')
     OR pg_has_role(current_user,'pg_read_server_files','USAGE')

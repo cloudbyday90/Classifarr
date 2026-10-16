@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
+import { archiveProtectionRepository } from './archiveProtectionRepository.mjs';
 
 /** This dedicated maintenance session must never share the inference session. */
 export async function lockArchiveCoordinator(client) {
@@ -12,12 +13,14 @@ export async function lockArchiveCoordinator(client) {
 
 export function archiveJobRepository(client) {
   return {
+    ...archiveProtectionRepository(client),
     async list() {
-      const result = await client.query(`SELECT id,ledger_id,provider_hash,policy_hash,revision,attempt,status,
-        created_at,completed_at,retry_after,manifest_sha256,reason,
-        CASE WHEN status IN ('verified','awaiting_verification','retiring') THEN manifest END AS manifest,
-        CASE WHEN status IN ('verified','retiring') THEN receipt END AS receipt
-        FROM gateway_archive.job ORDER BY created_at,id LIMIT 10001`);
+      const result = await client.query(`SELECT j.id,j.ledger_id,j.provider_hash,j.policy_hash,j.revision,j.attempt,j.status,
+        j.created_at,j.completed_at,j.retry_after,j.manifest_sha256,j.reason,j.recovery_protection_id,
+        CASE WHEN j.status IN ('verified','awaiting_verification','retiring') THEN j.manifest END AS manifest,
+        CASE WHEN j.status IN ('verified','retiring') THEN j.receipt END AS receipt,to_jsonb(p) AS protection
+        FROM gateway_archive.job j LEFT JOIN gateway_archive.protection p ON p.id=j.recovery_protection_id
+        ORDER BY j.created_at,j.id LIMIT 10001`);
       if (result.rowCount > 10000) throw gatewayError('gateway_archive_job_capacity');
       return result.rows;
     },

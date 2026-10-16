@@ -22,7 +22,7 @@ try {
   for (const client of [source,maintenance]) { client.on('error',() => controller.abort()); await client.connect(); }
   await checkArchiveRole(source,true); await checkArchiveRole(maintenance);
   await lockArchiveCoordinator(maintenance);
-  const repository = archiveJobRepository(maintenance); await repository.interrupted();
+  const repository = archiveJobRepository(maintenance); await repository.assertSchema(); await repository.interrupted();
   while (!controller.signal.aborted) {
     const deadline = AbortSignal.timeout(120000), signal = AbortSignal.any([controller.signal,deadline]);
     let result;
@@ -31,7 +31,8 @@ try {
     catch (error) {
       const safe = ['gateway_archive_receipt_invalid','gateway_archive_job_fence','gateway_archive_rotation_blocked',
         'gateway_archive_file_invalid','gateway_archive_verification_failed','gateway_archive_unmanaged_files',
-        'gateway_archive_storage_blocked','gateway_archive_job_capacity','gateway_archive_source_inconsistent'];
+        'gateway_archive_storage_blocked','gateway_archive_job_capacity','gateway_archive_source_inconsistent',
+        'gateway_archive_protection_fence'];
       result = { state: 'archive_blocked',reason: safe.includes(error.code) ? error.code : 'gateway_archive_unavailable',purgeAuthorized: false };
     }
     const text = JSON.stringify(result);

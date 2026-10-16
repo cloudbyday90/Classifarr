@@ -53,6 +53,15 @@ test('native Date cooldowns retain millisecond precision',() => {
   expect(due({ jobs: [failed],now: now+899 })).toBe('cooldown');
   expect(due({ jobs: [failed],now: now+900 })).toBe('due');
 });
+test('a needed second recovery copy consumes the same lifetime attempt budget and cooldown',() => {
+  const verified = { ...job,revision: hash,attempt: 1 };
+  const retry = { ...verified,status: 'failed',attempt: 2,retry_after: new Date(now+900) };
+  expect(due({ jobs: [verified],needsRecoveryCopy: true })).toBe('due');
+  expect(due({ jobs: [verified,retry],needsRecoveryCopy: true })).toBe('cooldown');
+  expect(due({ jobs: [verified,retry],needsRecoveryCopy: true,now: now+900 })).toBe('due');
+  expect(due({ jobs: [verified,retry,{ ...retry,attempt: 3 }],needsRecoveryCopy: true,now: now+900 })).toBe('attempts_exhausted');
+  expect(due({ jobs: [verified,{ ...verified,attempt: 2 }],needsRecoveryCopy: false })).toBe('unchanged');
+});
 const content = () => Object.fromEntries(ARCHIVE_TABLES.map(name => [name,{ count: 0,maxId: null,sha256: hash }]));
 test('full table proof rejects omissions, invalid IDs, counts and foreign keys',() => {
   expect(validateArchiveContent(content())).toEqual(content());

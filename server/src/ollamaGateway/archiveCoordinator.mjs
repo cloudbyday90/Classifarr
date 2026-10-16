@@ -1,15 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { archiveDue, archivePolicyHash } from './archiveSchedule.mjs';
+import { archiveDue, archivePolicyHash,ARCHIVE_POLICY } from './archiveSchedule.mjs';
 import { withOnlineArchiveSnapshot, createOnlineArchive } from './onlineArchive.mjs';
 import { archiveStorageAvailable, readArchiveReceipt, checkManagedArchive, retireManagedArchive } from './archiveManagedFiles.mjs';
 import { gatewayError } from './errors.mjs';
 import { validateReceiptForArchive } from './archiveReceiptBinding.mjs';
+import { captureRetentionInventory } from './archiveRetentionQueries.mjs';
+import { archiveProtectionPlan,rollingArchives } from './archiveProtectionPolicy.mjs';
+import { reconcileArchiveProtection } from './archiveProtectionService.mjs';
 
 async function rotate(repository, parent, jobs, signal) {
   const verified = jobs.filter(job => job.status === 'verified');
   const retiring = jobs.find(job => job.status === 'retiring');
-  if (!retiring && verified.length <= 2) return;
-  const prior = retiring ?? verified[0], remaining = verified.filter(job => job.id !== prior.id);
+  const rolling = rollingArchives(jobs);
+  const prior = retiring ?? verified.find(job => !job.recovery_protection_id && !rolling.includes(job));
+  if (!prior) return;
+  const remaining = rolling.filter(job => job.id !== prior.id);
   if (remaining.length < 2) throw gatewayError('gateway_archive_rotation_blocked');
   for (const kept of remaining) await checkManagedArchive(parent,kept,signal);
   if (!remaining.some(job => job.receipt?.verified && job.receipt.preserves.includes(prior.id) &&
@@ -28,8 +33,10 @@ export async function runArchiveAssessment({ source, repository, configuration, 
   const policyHash = archivePolicyHash(configuration.retentionDays);
   let jobs = await repository.list();
   if (jobs.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
-  const { report, revision, compatibleRevisions, now } = await withOnlineArchiveSnapshot(source,configuration,async value => ({ ...value,
+  const snapshot = await withOnlineArchiveSnapshot(source,configuration,async value => ({ ...value,
+    inventory: value.report.bindingCount >= ARCHIVE_POLICY.pressureCount ? await captureRetentionInventory(source,value.report) : null,
     now: Date.parse(value.report.capturedAt) }),signal,jobs.map(job => job.revision));
+  const { report,revision,compatibleRevisions,now } = snapshot;
   if (jobs.some(job => job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash)) {
     return { state: 'identity_changed',purgeAuthorized: false };
   }
@@ -43,11 +50,19 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     else await repository.verified(pending.id,receipt);
     jobs = await repository.list();
   }
-  await rotate(repository,parent,jobs,signal); jobs = await repository.list();
-  const state = archiveDue({ report,revision,compatibleRevisions,jobs,now });
+  await reconcileArchiveProtection(repository,parent,jobs,signal);
+  const protection = archiveProtectionPlan({ ...snapshot,jobs });
+  if (protection.pair) {
+    if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full',purgeAuthorized: false };
+    for (const job of protection.pair) await checkManagedArchive(parent,job,signal);
+    signal?.throwIfAborted(); await repository.protect(protection.pair,protection.candidatesSha256);
+    jobs = await repository.list(); await reconcileArchiveProtection(repository,parent,jobs,signal);
+  }
+  await rotate(repository,parent,await repository.list(),signal); jobs = await repository.list();
+  const state = archiveDue({ report,revision,compatibleRevisions,jobs,now,needsRecoveryCopy: protection.needsRecoveryCopy });
   if (state !== 'due') return { state, purgeAuthorized: false };
   if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full', purgeAuthorized: false };
-  const prior = jobs.filter(job => job.status === 'verified');
+  const prior = rollingArchives(jobs);
   const predecessors = [];
   for (const job of prior) {
     await checkManagedArchive(parent,job,signal);

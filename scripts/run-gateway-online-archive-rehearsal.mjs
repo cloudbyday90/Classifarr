@@ -63,6 +63,17 @@ try {
       fixture('accept');
     }
     fixture('corrupt');
+    docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/archiveProtection.mjs'),`${source}:/tmp/archive-protection.mjs`]);
+    const protection = action => process.stdout.write(docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
+      'node','/tmp/archive-protection.mjs',action]));
+    for (let cycle=4;cycle<=7;cycle++) {
+      fixture('next');
+      assert.ok(docker(['start','-a',verifier]).includes('"state":"verified"'));
+      if (cycle === 7) protection('retirement-cut');
+      fixture('accept');
+      if (cycle === 4) { protection('stage'); fixture('accept'); protection('check'); }
+    }
+    protection('rotated');
     process.stdout.write('online_archive_rehearsal_passed: online SELECT-only exports; isolated restricted restore; full candidate-page proof; inventory tamper and legacy receipt refusal; UUIDv7 jobs; restarted services; mixed v3/v4 rotation to 2; corruption refusal; live history unchanged; zero provider calls\n');
   } });
 } finally {

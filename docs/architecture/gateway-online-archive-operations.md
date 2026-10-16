@@ -7,9 +7,11 @@ application backups with this feature. No live history is deleted.
 ## One-time installation boundary
 
 Use PostgreSQL 18 and the existing standalone version-7 gateway schema. Apply
-`database/ollama-gateway-archive/20261016_120000_archive_jobs.sql` once to that
-database as its schema owner. `current.sql` is the equivalent fresh schema;
-do not apply both. This separate optional schema deliberately does not enter the
+`database/ollama-gateway-archive/current.sql` once to that database as schema owner.
+For an existing v1 archive installation, stop its coordinator, finish any existing
+retirement, then apply `20261016_170000_archive_protection.sql` once and add the
+protection grants below. Do not apply the fresh schema to an existing installation.
+The upgrade preserves job attempts and evidence. This optional schema does not enter the
 normal application's migration stream or the archived inference schema.
 
 Provision separate non-superuser, non-creator roles. Supply credentials privately;
@@ -23,6 +25,8 @@ GRANT USAGE ON SCHEMA ollama_gateway TO gateway_archive_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO gateway_archive_reader;
 GRANT USAGE ON SCHEMA gateway_archive TO gateway_archive_writer;
 GRANT SELECT, INSERT, UPDATE ON gateway_archive.job TO gateway_archive_writer;
+GRANT SELECT, INSERT ON gateway_archive.protection TO gateway_archive_writer;
+GRANT UPDATE(ready_at) ON gateway_archive.protection TO gateway_archive_writer;
 ```
 
 Use private, dedicated Linux directories owned by UID/GID 1000 (mode 0700) for
@@ -94,7 +98,17 @@ rotation only, not candidate-level cleanup evidence. Upgrade coordinator and
 verifier together; old verifiers safely refuse new manifests. Unchanged legacy
 history is not forcibly re-exported and retry limits are not reset. See the
 [cleanup-evidence design](gateway-cleanup-evidence-design.md) for compatibility
-and the separate, still-deferred automatic deletion and recovery-window work.
+and the [recovery protection design](gateway-archive-protection-design.md).
+
+At capacity pressure, two exact-candidate archives receive durable SQL protection
+and private file markers. They may coexist with two newer rolling copies inside
+the same 1 GiB budget. One extra unchanged export can establish the second copy,
+but still consumes the same three-attempt revision budget and cooldowns. Do not
+remove protection markers or edit holds to make space. An unready hold resumes
+publication after restart; a missing marker on a ready hold blocks maintenance.
+Protection does not expire from archive age: the required 30-day recovery window
+must start from confirmed deletion, which is not implemented. No live history is
+deleted by these services. The new worker refuses a missing protection schema.
 
 An interrupted export is intentionally not retried from a timeout alone. Preserve
 its directory and job record and investigate the stopped worker before a future
@@ -111,7 +125,8 @@ implemented. Resource limits are safety caps, not a guarantee that every
 256 MiB dump can restore within 1 GiB scratch. A bounded failure is preferable to
 removing recovery evidence. An archive is only a local recovery copy, not an
 off-host disaster-recovery backup. Next work is fresh, transactional live-history
-eligibility and durable archive pins before any automatic purge can be enabled.
+eligibility plus atomic deletion-completion evidence before automatic purge or
+protection expiry can be enabled.
 
 ## Local capacity and interruption qualification
 

@@ -6,14 +6,14 @@ export const ARCHIVE_POLICY = Object.freeze({ version: 1, budgetBytes: 107374182
   assessmentMs: 300000, dailyMs: 86400000, pressureMs: 3600000, pressureCount: 80000, maxAttempts: 3 });
 export const archivePolicyHash = retentionDays => createHash('sha256').update(JSON.stringify({ ...ARCHIVE_POLICY, retentionDays })).digest('hex');
 
-export function archiveDue({ report, revision, jobs, now, compatibleRevisions = [revision] }) {
+export function archiveDue({ report, revision, jobs, now, compatibleRevisions = [revision], needsRecoveryCopy = false }) {
   if (!report.counterMatches || report.legacyActiveWithoutBinding) return 'source_inconsistent';
   if (!report.counts.request_binding) return 'empty';
   if (jobs.some(job => ['exporting','awaiting_verification','interrupted','retiring'].includes(job.status))) return 'pending';
   if (jobs.some(job => job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash)) return 'identity_changed';
   const identities = new Set([revision, ...compatibleRevisions]);
   const attempts = jobs.filter(job => identities.has(job.revision));
-  if (attempts.some(job => ['verified','retired'].includes(job.status))) return 'unchanged';
+  if (!needsRecoveryCopy && attempts.some(job => ['verified','retired'].includes(job.status))) return 'unchanged';
   if (archiveAttemptsUsed(attempts) >= ARCHIVE_POLICY.maxAttempts) return 'attempts_exhausted';
   if (attempts.some(job => job.retry_after && new Date(job.retry_after).getTime() > now)) return 'cooldown';
   const last = jobs.filter(job => ['verified','retired'].includes(job.status)).at(-1);
