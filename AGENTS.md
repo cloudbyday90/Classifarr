@@ -82,6 +82,26 @@ You operate within a 3-layer architecture that separates concerns to maximize re
 - Use `.env.example` as the reference for configuration; never commit real secrets.
 - Keep changes scoped and document behavior changes in `README.md` or `docs/` when needed.
 
+## Feature and Change Planning
+
+For future features, behavior changes, refactors, and enhancements, use the
+repository's `grill-me` workflow before implementation unless the user explicitly
+asks to skip it. Read `.agents/skills/grill-me/SKILL.md` and its dependency,
+`.agents/skills/grilling/SKILL.md`, completely. The upstream `grill-me` entry point
+is explicit-only; this standing repository request selects its `grilling`
+workflow for change planning. If no Skill tool exists, load those files directly.
+
+Investigate facts in the repository first. Ask the user about unresolved design
+decisions in dependency-ordered rounds, with recommendations. Reuse decisions
+already settled in the conversation; do not manufacture questions for a fully
+specified change. Summarize the agreed scope, safeguards, and verification, then
+wait for confirmation of shared understanding before implementing. This is a
+planning agreement, not permission to deploy, purge data, or affect production.
+Continue to use any applicable recovery, dependency, or release skills afterward.
+
+See [the workflow design](docs/architecture/grill-me-workflow-design.md) for source,
+scope, and update guidance.
+
 ## Operating Principles
 
 **1. Check for tools first**
