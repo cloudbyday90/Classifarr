@@ -126,7 +126,7 @@ exhaust that budget.
 The runner prints bounded measurements and verifies owned-resource cleanup.
 It fails if a required interruption boundary is missed. Database fixtures advance
 archive scheduling timestamps explicitly; they never refund inference attempts.
-See the [qualification design](gateway-archive-qualification-design.md) and its
-separate outcome record for tested shapes and limitations. Passing a synthetic
-100,000-binding history is not a promise that every shape of that history fits
+See the [qualification design](gateway-archive-qualification-design.md) and
+[outcome record](gateway-archive-qualification-outcome.md) for tested shapes and
+limitations. Passing a synthetic 100,000-binding history is not a promise that every shape of that history fits
 the independent byte, restore-scratch or timeout limits.
