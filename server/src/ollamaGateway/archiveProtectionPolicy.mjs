@@ -11,7 +11,7 @@ export function candidateBatchSha256(inventory) {
 }
 
 /** This is archive readiness, never deletion authority. Live rows must be revalidated by any future cleanup. */
-export function archiveProtectionPlan({ report,inventory,jobs,revision,compatibleRevisions = [revision] }) {
+export function archiveProtectionPlan({ report,inventory,jobs,revision,compatibleRevisions = [revision],cleanupOperations = null }) {
   if (report.bindingCount < ARCHIVE_POLICY.pressureCount || !inventory?.entries.length) return { needsRecoveryCopy: false };
   const candidatesSha256 = candidateBatchSha256(inventory);
   const matching = jobs.filter(job => {
@@ -20,7 +20,10 @@ export function archiveProtectionPlan({ report,inventory,jobs,revision,compatibl
     validateReceiptForArchive(job.receipt,job.manifest,job.manifest_sha256);
     return candidateBatchSha256(job.manifest.retention) === candidatesSha256;
   });
-  if (matching.some(job => job.protection?.candidates_sha256 === candidatesSha256)) return { needsRecoveryCopy: false };
+  const held = matching.some(job => job.protection?.candidates_sha256 === candidatesSha256);
+  if (held && !cleanupOperations) return { needsRecoveryCopy: false };
+  if (cleanupOperations?.some(op => op.candidates_sha256 === candidatesSha256 &&
+      (op.status === 'completed' || op.attempt >= 3))) return { needsRecoveryCopy: false };
   const available = matching.filter(job => !job.recovery_protection_id);
   if (available.length >= 2) return { needsRecoveryCopy: false,pair: available.slice(-2),candidatesSha256 };
   const revisions = new Set([revision,...compatibleRevisions]);

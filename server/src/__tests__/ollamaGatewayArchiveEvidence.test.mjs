@@ -103,3 +103,18 @@ test('no protection on empty/nonpressure, legacy, or already-protected history',
   expect(rollingArchives([{ ...j,recovery_protection_id: id(8) },{ ...j,id: id(6) },{ ...j,id: id(7) }]).map(x => x.id))
     .toEqual([id(6),id(7)]);
 });
+
+test('optional cleanup can protect newer copies without refreshing an exhausted batch budget',() => {
+  const m = manifest(80000), digest = candidateBatchSha256(m.retention);
+  const job = n => {
+    const copy = { ...m,archiveId: id(n) };
+    return { id: id(n),status: 'verified',ledger_id: m.report.ledgerId,provider_hash: hash,revision: hash,
+      manifest_sha256: hash,manifest: copy,receipt: receipt(copy) };
+  };
+  const held = { ...job(1),recovery_protection_id: id(9),protection: { candidates_sha256: digest } };
+  const jobs = [held,job(3),job(4)], input = { report: m.report,inventory: m.retention,revision: hash,jobs };
+  expect(archiveProtectionPlan(input).pair).toBeUndefined();
+  expect(archiveProtectionPlan({ ...input,cleanupOperations: [] }).pair).toEqual(jobs.slice(-2));
+  expect(archiveProtectionPlan({ ...input,cleanupOperations: [{ candidates_sha256: digest,status: 'failed',attempt: 3 }] }).pair).toBeUndefined();
+  expect(archiveProtectionPlan({ ...input,cleanupOperations: [{ candidates_sha256: digest,status: 'completed',attempt: 1 }] }).pair).toBeUndefined();
+});

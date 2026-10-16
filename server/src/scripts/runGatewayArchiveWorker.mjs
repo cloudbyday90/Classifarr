@@ -6,6 +6,7 @@ import { archiveWorkerConfiguration,checkArchiveRole } from '../ollamaGateway/ar
 import { lockArchiveCoordinator,archiveJobRepository } from '../ollamaGateway/archiveJobRepository.mjs';
 import { runArchiveAssessment } from '../ollamaGateway/archiveCoordinator.mjs';
 import { ARCHIVE_POLICY } from '../ollamaGateway/archiveSchedule.mjs';
+import { withArchiveMaintenance } from '../ollamaGateway/archiveMaintenanceLock.mjs';
 
 const controller = new AbortController();
 process.once('SIGINT',() => controller.abort()); process.once('SIGTERM',() => controller.abort());
@@ -22,12 +23,15 @@ try {
   for (const client of [source,maintenance]) { client.on('error',() => controller.abort()); await client.connect(); }
   await checkArchiveRole(source,true); await checkArchiveRole(maintenance);
   await lockArchiveCoordinator(maintenance);
-  const repository = archiveJobRepository(maintenance); await repository.assertSchema(); await repository.interrupted();
+  const repository = archiveJobRepository(maintenance); await repository.assertSchema(); let initialized = false;
   while (!controller.signal.aborted) {
     const deadline = AbortSignal.timeout(120000), signal = AbortSignal.any([controller.signal,deadline]);
     let result;
-    try { result = await runArchiveAssessment({ source,repository,configuration: configuration.source,
-      parent: configuration.archives,receipts: configuration.receipts,signal }); }
+    try { result = await withArchiveMaintenance(maintenance,async () => {
+      if (!initialized) { await repository.interrupted(); initialized = true; }
+      return runArchiveAssessment({ source,repository,configuration: configuration.source,
+        parent: configuration.archives,receipts: configuration.receipts,signal });
+    }); }
     catch (error) {
       const safe = ['gateway_archive_receipt_invalid','gateway_archive_job_fence','gateway_archive_rotation_blocked',
         'gateway_archive_file_invalid','gateway_archive_verification_failed','gateway_archive_unmanaged_files',

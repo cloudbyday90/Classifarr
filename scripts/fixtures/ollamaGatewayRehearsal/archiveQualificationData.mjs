@@ -8,10 +8,11 @@ import { captureArchiveContent } from '/app/src/ollamaGateway/archiveContent.mjs
 import { ARCHIVE_TABLES } from '/app/src/ollamaGateway/archiveContract.mjs';
 import { withOnlineArchiveSnapshot } from '/app/src/ollamaGateway/onlineArchive.mjs';
 import { captureRetentionInventory } from '/app/src/ollamaGateway/archiveRetentionQueries.mjs';
+import { setupCleanupQualification,cleanupQualificationAction } from './cleanupQualification.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape = 'capacity'] = process.argv.slice(2);
-assert.ok(['capacity', 'oversize', 'cancel','protection'].includes(shape));
+assert.ok(['capacity', 'oversize', 'cancel','protection','cleanup'].includes(shape));
 const database = 'gateway_archive_qualification';
 const admin = new pg.Client({ host: '/var/run/postgresql', user: 'classifarr', database: 'classifarr' });
 let client;
@@ -51,6 +52,7 @@ try {
   }
   client = new pg.Client({ host: '/var/run/postgresql', user: 'classifarr', database, statement_timeout: 60000 });
   await client.connect();
+  if (shape === 'cleanup' && action !== 'setup') await client.query('SELECT pg_advisory_lock(11435,4)');
   let result = {};
   if (action === 'setup') {
     for (const schema of ['ollama-gateway', 'ollama-gateway-archive']) await client.query(await readFile(`/app/database/${schema}/current.sql`, 'utf8'));
@@ -65,7 +67,10 @@ try {
       host: '/source-socket', database, user: 'qualification_reader' }, providerHash: 'e'.repeat(64), retentionDays: 90 },
     maintenance: { host: '/source-socket', database, user: 'qualification_writer' }, archives: '/archives', receipts: '/receipts' }),
     { mode: 0o600, flag: 'wx' });
-    await seed(shape === 'oversize' ? 1 : 99998);
+    await seed(shape === 'oversize' ? 1 : shape === 'cleanup' ? 80000 : 99998);
+    if (shape === 'cleanup') await setupCleanupQualification(client,database);
+  } else if (action.startsWith('cleanup-')) {
+    result = await cleanupQualificationAction(client,action,database);
   } else if (action === 'wide') {
     assert.equal(shape, 'oversize'); await seed(100000, true);
     await client.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified'");

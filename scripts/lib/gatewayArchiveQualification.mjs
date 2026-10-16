@@ -21,7 +21,7 @@ async function qualifyCase(image, shape) {
   const labelKey = 'io.classifarr.archive-qualification', label = `${labelKey}=${suffix}`;
   const volumes = Object.fromEntries(['archives', 'receipts', 'socket', 'configuration', 'fixtures'].map(name =>
     [name, `classifarr-archive-${name}-${suffix}`]));
-  const workers = Object.fromEntries(['archiver', 'verifier'].map(name => [name, `classifarr-${name}-${suffix}`]));
+  const workers = Object.fromEntries(['archiver', 'verifier','cleanup'].map(name => [name, `classifarr-${name}-${suffix}`]));
   const mount = (name, target, readonly = false) => ['--mount', `type=volume,source=${volumes[name]},target=${target}${readonly ? ',readonly' : ''}`];
   const ownedRemove = name => {
     if (!docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim()) return;
@@ -44,7 +44,7 @@ async function qualifyCase(image, shape) {
       const source = spec.containerName;
       docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/configuration', '/fixtures']);
       docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/configuration', '/fixtures']);
-      for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs']) {
+      for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs','cleanupQualification.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {
@@ -54,11 +54,11 @@ async function qualifyCase(image, shape) {
       };
       const create = (kind, mode = 'normal') => {
         const name = workers[kind]; ownedRemove(name);
-        const archiveWorker = kind === 'archiver', memory = archiveWorker ? '256m' : '1536m';
+        const archiveWorker = kind !== 'verifier', memory = archiveWorker ? '256m' : '1536m';
         docker(['create', '--name', name, '--label', label, '--network', 'none', '--read-only', '--init', '--no-healthcheck',
           '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
           '--memory', memory, '--memory-swap', memory, '--cpus', archiveWorker ? '0.5' : '1', '--pids-limit', archiveWorker ? '32' : '64',
-          ...mount('archives', '/archives', !archiveWorker), ...mount('receipts', '/receipts', archiveWorker), ...mount('fixtures', '/fixtures', true),
+          ...mount('archives', '/archives', kind !== 'archiver'), ...mount('receipts', '/receipts', archiveWorker), ...mount('fixtures', '/fixtures', true),
           ...(archiveWorker ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] : [
             '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
           '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
@@ -82,10 +82,10 @@ async function qualifyCase(image, shape) {
           const logs = records(docker(['logs', run.name]));
           const limit = logs.find(record => record.fixture === 'limits');
           if (limit) {
-            assert.equal(limit.memory, run.kind === 'archiver' ? '268435456' : '1610612736');
-            assert.equal(limit.swap, '0'); assert.equal(limit.pids, run.kind === 'archiver' ? '32' : '64');
+            assert.equal(limit.memory, run.kind !== 'verifier' ? '268435456' : '1610612736');
+            assert.equal(limit.swap, '0'); assert.equal(limit.pids, run.kind !== 'verifier' ? '32' : '64');
             const [quota, period] = limit.cpu.split(' ').map(Number);
-            assert.equal(quota / period, run.kind === 'archiver' ? 0.5 : 1);
+            assert.equal(quota / period, run.kind !== 'verifier' ? 0.5 : 1);
           }
           if (boundary && logs.some(record => record.fixture === 'boundary')) return logs;
           if (!state.Running) {
@@ -116,7 +116,42 @@ async function qualifyCase(image, shape) {
       };
       try {
         report({ scenario: shape, stage: 'setup' }); fixture('setup');
-        if (shape === 'protection') {
+        if (shape === 'cleanup') {
+          hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
+          hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
+          fixture('accept-old'); hasState(await run('archiver'),'unchanged');
+          const before = fixture('inspect'); assert.equal(before.protections.length,1);
+          fixture('cleanup-tamper');
+          const blocked = await run('cleanup'); hasState(blocked,'cleanup_blocked');
+          assert.ok(blocked.some(row => row.reason === 'gateway_archive_protection_fence'));
+          assert.equal(fixture('cleanup-inspect').operations.length,0);
+          fixture('cleanup-repair-fixture'); hasState(await run('cleanup'),'completed');
+          const confirmed = fixture('cleanup-inspect').operations[0]; assert.ok(confirmed.confirmed_at);
+          assert.equal(confirmed.deleted_bindings,100); assert.equal(confirmed.attempt,1);
+          hasState(await run('cleanup'),'unchanged'); assert.deepEqual(fixture('cleanup-inspect').operations[0],confirmed);
+          assert.equal(fixture('inspect').admission.binding_count,79900);
+          assert.equal(fixture('inspect').admission.attempts,'80000');
+          for (let cycle=0;cycle<3;cycle++) {
+            if (cycle) { fixture('admit'); fixture('due'); }
+            hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
+            hasState(await run('archiver'),'unchanged');
+            const latest = fixture('inspect').jobs.at(-1);
+            if (!cycle) assert.deepEqual(latest.receipt.preserves,[]);
+          }
+          const after = fixture('inspect');
+          assert.equal(after.admission.binding_count,79902); assert.equal(after.admission.attempts,'80002');
+          assert.equal(after.jobs[2].status,'retired'); assert.equal(after.archives.length,4);
+          assert.ok(after.jobs.slice(0,2).every(job => job.recovery_protection_id && job.status === 'verified'));
+          assert.ok(after.jobs.at(-1).receipt.preserves.includes(after.jobs[2].id));
+          fixture('cleanup-top-up'); hasState(await run('archiver'),'not_due');
+          assert.equal(fixture('inspect').protections.length,2);
+          fixture('cleanup-commit-cut'); assert.equal(fixture('cleanup-inspect').operations[1].confirmed_at,null);
+          hasState(await run('cleanup'),'unchanged');
+          const recovered = fixture('cleanup-inspect').operations;
+          assert.equal(recovered.length,2); assert.ok(recovered[1].confirmed_at); assert.deepEqual(recovered[0],confirmed);
+          assert.equal(fixture('inspect').admission.binding_count,79900); assert.equal(fixture('inspect').admission.attempts,'80100');
+          report({ scenario: shape,state: 'deleted_and_rotation_continued',deletedBindings: 200,attempts: '80100',retainedArchives: 4 });
+        } else if (shape === 'protection') {
           const before = fixture('fingerprint');
           hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
           hasState(await run('archiver'),'awaiting_verification');
@@ -195,7 +230,7 @@ async function qualifyCase(image, shape) {
           assert.equal(fixture('inspect').jobs.length, 4); assert.equal(blocked.admission.attempts, '100000');
           report({ scenario: shape, ...fixture('quota') });
         }
-        report({ scenario: shape, state: 'passed', providerCalls: 0, purgeAuthorized: false });
+        report({ scenario: shape, state: 'passed', providerCalls: 0, syntheticDeletedBindings: shape === 'cleanup' ? 200 : 0 });
       } catch (error) {
         try { report({ scenario: shape, diagnostic: fixture('diagnose') }); } catch { report({ scenario: shape, diagnostic: 'unavailable' }); }
         throw error;
@@ -215,9 +250,9 @@ async function qualifyCase(image, shape) {
   }
 }
 
-export async function runGatewayArchiveQualification(image, revision) {
+export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  for (const shape of ['capacity', 'oversize', 'cancel','protection']) await qualifyCase(image, shape);
+  for (const shape of cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup']) await qualifyCase(image, shape);
   report({ qualification: 'passed', image, revision });
 }

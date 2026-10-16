@@ -2,7 +2,9 @@
 
 These services are not enabled by the ordinary Classifarr Compose file or by an
 upgrade. They archive only the optional gateway ledger. Do not replace ordinary
-application backups with this feature. No live history is deleted.
+application backups with this feature. Archiving alone deletes no live history.
+The separately installed [cleanup worker](gateway-bounded-cleanup-operations.md)
+can remove bounded, protected batches; it is not included in the archive template.
 
 ## One-time installation boundary
 
@@ -108,8 +110,9 @@ but still consumes the same three-attempt revision budget and cooldowns. Do not
 remove protection markers or edit holds to make space. An unready hold resumes
 publication after restart; a missing marker on a ready hold blocks maintenance.
 Protection does not expire from archive age: the required 30-day recovery window
-must start from confirmed deletion, which is not implemented. No live history is
-deleted by these services. The new worker refuses a missing protection schema.
+must start from confirmed deletion, recorded only by the separate cleanup extension.
+No live history is deleted by these archive services and no protection expiry is
+implemented. The new worker refuses a missing protection schema.
 
 An interrupted export is intentionally not retried from a timeout alone. Preserve
 its directory and job record and investigate the stopped worker before a future
@@ -125,9 +128,9 @@ export. Maintenance jobs stop growing at 10,000 records; no live job pruning is
 implemented. Resource limits are safety caps, not a guarantee that every
 256 MiB dump can restore within 1 GiB scratch. A bounded failure is preferable to
 removing recovery evidence. An archive is only a local recovery copy, not an
-off-host disaster-recovery backup. Next work is fresh, transactional live-history
-eligibility plus atomic deletion-completion evidence before automatic purge or
-protection expiry can be enabled.
+off-host disaster-recovery backup. Bounded transactional deletion is a separate
+optional extension. Maintenance-catalog recovery and protection expiry remain
+future work; never release a hold to make storage available.
 
 ## Local capacity and interruption qualification
 

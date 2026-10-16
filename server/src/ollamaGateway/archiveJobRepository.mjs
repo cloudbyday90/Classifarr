@@ -14,6 +14,13 @@ export async function lockArchiveCoordinator(client) {
 export function archiveJobRepository(client) {
   return {
     ...archiveProtectionRepository(client),
+    async cleanupOperations() {
+      const installed = (await client.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='gateway_cleanup') AS installed")).rows[0].installed;
+      if (!installed) return null;
+      const result = await client.query('SELECT candidates_sha256,status,attempt FROM gateway_cleanup.operation LIMIT 1001');
+      if (result.rowCount > 1000) throw gatewayError('gateway_cleanup_capacity');
+      return result.rows;
+    },
     async list() {
       const result = await client.query(`SELECT j.id,j.ledger_id,j.provider_hash,j.policy_hash,j.revision,j.attempt,j.status,
         j.created_at,j.completed_at,j.retry_after,j.manifest_sha256,j.reason,j.recovery_protection_id,

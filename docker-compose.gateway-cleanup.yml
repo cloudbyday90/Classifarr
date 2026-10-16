@@ -1,0 +1,29 @@
+# Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
+# Explicitly optional. Requires the cleanup extension and a separate restricted role.
+services:
+  gateway-cleanup:
+    image: ${CLASSIFARR_GATEWAY_ARCHIVE_IMAGE:?Set the tested immutable Classifarr image ID}
+    entrypoint: ["node", "/app/src/scripts/runGatewayCleanupWorker.mjs"]
+    user: "1000:1000"
+    init: true
+    healthcheck:
+      disable: true
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+    pids_limit: 32
+    stop_grace_period: 130s
+    restart: "no"
+    environment:
+      CLASSIFARR_GATEWAY_CLEANUP_CONFIG_FILE: /run/cleanup-config.json
+    volumes:
+      - ${CLASSIFARR_GATEWAY_CLEANUP_CONFIG:?Set private cleanup config path}:/run/cleanup-config.json:ro
+      - ${CLASSIFARR_GATEWAY_ARCHIVE_SOCKET:?Set source PostgreSQL socket directory}:/source-socket:ro
+      - ${CLASSIFARR_GATEWAY_ARCHIVE_DIRECTORY:?Set private managed archive directory}:/archives:ro
+      - ${CLASSIFARR_GATEWAY_ARCHIVE_RECEIPTS:?Set private receipt directory}:/receipts:ro
+    tmpfs:
+      - /tmp:size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev

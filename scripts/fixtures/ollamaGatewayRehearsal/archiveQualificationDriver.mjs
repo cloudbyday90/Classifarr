@@ -27,13 +27,14 @@ async function restoreProgress() {
   } catch { return 0; } finally { await client.end(); }
 }
 async function run() {
-  assert.ok(['archiver', 'verifier'].includes(kind));
+  assert.ok(['archiver', 'verifier','cleanup'].includes(kind));
   assert.ok(['normal', 'pause', 'cancel'].includes(mode));
   const resources = await qualificationResources();
   process.stdout.write(`${JSON.stringify({ fixture: 'limits', ...resources.limits })}\n`);
-  const entry = kind === 'archiver' ? 'runGatewayArchiveWorker.mjs' : 'runGatewayArchiveVerifier.mjs';
+  const entry = kind === 'archiver' ? 'runGatewayArchiveWorker.mjs' : kind === 'cleanup' ? 'runGatewayCleanupWorker.mjs' : 'runGatewayArchiveVerifier.mjs';
   const child = spawn(process.execPath, [`/app/src/scripts/${entry}`, '--once'], {
-    env: { PATH: '/usr/bin:/bin', ...(kind === 'archiver' ? { CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE: '/configuration/worker.json' } : {}) },
+    env: { PATH: '/usr/bin:/bin', ...(kind === 'archiver' ? { CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE: '/configuration/worker.json' } :
+      kind === 'cleanup' ? { CLASSIFARR_GATEWAY_CLEANUP_CONFIG_FILE: '/configuration/cleanup.json' } : {}) },
     stdio: ['ignore', 'inherit', 'inherit'], shell: false,
   });
   let ended = false, observed = false;

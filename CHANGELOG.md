@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add optional bounded gateway-history cleanup with fresh record checks, protected
+  recovery copies, persistent retry limits and atomic completion records. Preserve
+  inference counters and archive verification; existing deployments stay unchanged.
+
 - Protect paired, restore-verified gateway recovery archives from rotation, with
   restart-safe publication and bounded second-copy creation. Preserve retry and
   storage limits; live-history deletion and protection expiry remain disabled.

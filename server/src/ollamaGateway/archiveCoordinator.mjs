@@ -51,7 +51,7 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     jobs = await repository.list();
   }
   await reconcileArchiveProtection(repository,parent,jobs,signal);
-  const protection = archiveProtectionPlan({ ...snapshot,jobs });
+  const protection = archiveProtectionPlan({ ...snapshot,jobs,cleanupOperations: await repository.cleanupOperations() });
   if (protection.pair) {
     if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full',purgeAuthorized: false };
     for (const job of protection.pair) await checkManagedArchive(parent,job,signal);
