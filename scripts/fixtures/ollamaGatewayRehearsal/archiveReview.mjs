@@ -22,7 +22,11 @@ export async function rehearseGatewayRetentionReview(admin, command) {
         installation='synthetic',started_at=now(),cooldown_until=now()+interval '1 hour';
       GRANT USAGE ON SCHEMA ollama_gateway TO gateway_archive_fixture_reader;
       GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO gateway_archive_fixture_reader`);
-    const rows = async () => Promise.all(ARCHIVE_TABLES.map(name => database.query(`SELECT * FROM ollama_gateway.${name} ORDER BY id`).then(r => r.rows)));
+    const rows = async () => {
+      const result = [];
+      for (const name of ARCHIVE_TABLES) result.push((await database.query(`SELECT * FROM ollama_gateway.${name} ORDER BY id`)).rows);
+      return result;
+    };
     const before = await rows(), parent = await mkdtemp('/tmp/gateway-review-fixture-'); await chmod(parent, 0o700);
     const configFile = join(parent, 'config.json');
     const configuration = { database: { host: '/var/run/postgresql', user: 'gateway_archive_fixture_reader', database: 'classifarr_gateway_review_fixture' },
