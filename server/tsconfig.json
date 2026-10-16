@@ -23,6 +23,8 @@
     "src/scripts/runOllamaGateway.mjs",
     "src/scripts/recoverOllamaGateway.mjs",
     "src/scripts/archiveOllamaGateway.mjs",
+    "src/scripts/runGatewayArchiveWorker.mjs",
+    "src/scripts/runGatewayArchiveVerifier.mjs",
     "src/services/healthConnectionProbe.mjs",
     "src/services/healthProbeRequest.mjs",
     "src/services/healthArrProbe.mjs",

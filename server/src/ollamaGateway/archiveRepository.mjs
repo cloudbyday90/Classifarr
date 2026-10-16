@@ -3,7 +3,7 @@ import { gatewayError } from './errors.mjs';
 import { validateArchiveReport } from './archiveContract.mjs';
 import { archiveCategorySql } from './archiveRetentionQueries.mjs';
 
-async function reportSnapshot(client, providerHash, retentionDays) {
+export async function reportSnapshot(client, providerHash, retentionDays) {
   const result = await client.query(`SELECT id,provider_hash,attempts::text,binding_count,active_request,
     clock_timestamp() AS captured_at,clock_timestamp()-make_interval(days=>$2::int) AS cutoff
     FROM ollama_gateway.admission WHERE singleton AND version=7 AND provider_hash=$1`, [providerHash, retentionDays]);

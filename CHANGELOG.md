@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add optional automatic online gateway archives with persistent UUIDv7 jobs,
+  bounded retries and storage, isolated restore verification, and verified-copy
+  rotation; leave live history, inference safeguards and existing deployments unchanged.
+
 - Add the repository-local grill-me planning workflow for future features and
   changes, with pinned upstream instructions and its required grilling skill.
 
