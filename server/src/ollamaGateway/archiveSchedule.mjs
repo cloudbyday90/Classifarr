@@ -1,18 +1,20 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
+import { archiveAttemptsUsed } from './archiveRevision.mjs';
 
 export const ARCHIVE_POLICY = Object.freeze({ version: 1, budgetBytes: 1073741824, copies: 2,
   assessmentMs: 300000, dailyMs: 86400000, pressureMs: 3600000, pressureCount: 80000, maxAttempts: 3 });
 export const archivePolicyHash = retentionDays => createHash('sha256').update(JSON.stringify({ ...ARCHIVE_POLICY, retentionDays })).digest('hex');
 
-export function archiveDue({ report, revision, jobs, now }) {
+export function archiveDue({ report, revision, jobs, now, compatibleRevisions = [revision] }) {
   if (!report.counterMatches || report.legacyActiveWithoutBinding) return 'source_inconsistent';
   if (!report.counts.request_binding) return 'empty';
   if (jobs.some(job => ['exporting','awaiting_verification','interrupted','retiring'].includes(job.status))) return 'pending';
   if (jobs.some(job => job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash)) return 'identity_changed';
-  const attempts = jobs.filter(job => job.revision === revision);
+  const identities = new Set([revision, ...compatibleRevisions]);
+  const attempts = jobs.filter(job => identities.has(job.revision));
   if (attempts.some(job => ['verified','retired'].includes(job.status))) return 'unchanged';
-  if (attempts.length >= ARCHIVE_POLICY.maxAttempts) return 'attempts_exhausted';
+  if (archiveAttemptsUsed(attempts) >= ARCHIVE_POLICY.maxAttempts) return 'attempts_exhausted';
   if (attempts.some(job => job.retry_after && new Date(job.retry_after).getTime() > now)) return 'cooldown';
   const last = jobs.filter(job => ['verified','retired'].includes(job.status)).at(-1);
   const interval = report.bindingCount >= ARCHIVE_POLICY.pressureCount ? ARCHIVE_POLICY.pressureMs : ARCHIVE_POLICY.dailyMs;

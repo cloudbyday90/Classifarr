@@ -21,10 +21,11 @@ export function archiveJobRepository(client) {
       if (result.rowCount > 10000) throw gatewayError('gateway_archive_job_capacity');
       return result.rows;
     },
-    async begin(report, revision, policyHash) {
+    async begin(report, revision, policyHash, compatibleRevisions = [revision]) {
       return (await client.query(`INSERT INTO gateway_archive.job(ledger_id,provider_hash,revision,policy_hash,attempt,status)
-        SELECT $1,$2,$3,$4,COALESCE(max(attempt),0)+1,'exporting' FROM gateway_archive.job
-        WHERE ledger_id=$1 AND provider_hash=$2 AND revision=$3 RETURNING *`, [report.ledgerId,report.providerHash,revision,policyHash])).rows[0];
+        SELECT $1,$2,$3,$4,GREATEST(count(*)::int,COALESCE(max(attempt),0))+1,'exporting' FROM gateway_archive.job
+        WHERE ledger_id=$1 AND provider_hash=$2 AND revision=ANY($5::text[]) RETURNING *`,
+      [report.ledgerId,report.providerHash,revision,policyHash,[...new Set([revision, ...compatibleRevisions])]])).rows[0];
     },
     async published(id, result) {
       const row = await client.query(`UPDATE gateway_archive.job SET status='awaiting_verification',manifest_sha256=$2,manifest=$3

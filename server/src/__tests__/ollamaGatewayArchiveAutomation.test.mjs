@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { archiveDue,archivePolicyHash,ARCHIVE_POLICY } from '../ollamaGateway/archiveSchedule.mjs';
 import { validateArchiveContent,validateArchiveReceipt } from '../ollamaGateway/onlineArchiveContract.mjs';
-import { preservesArchiveContent } from '../ollamaGateway/archiveContent.mjs';
+import { captureArchiveContent,preservesArchiveContent } from '../ollamaGateway/archiveContent.mjs';
 import { ARCHIVE_TABLES } from '../ollamaGateway/archiveContract.mjs';
 
 const id = '019a0000-0000-7000-8000-000000000001', hash = 'a'.repeat(64);
@@ -17,6 +17,14 @@ test('daily changes and earlier capacity checks use different minimum intervals'
   expect(due({ jobs: [job] })).toBe('not_due');
   expect(due({ jobs: [job],now: now+ARCHIVE_POLICY.dailyMs })).toBe('due');
   expect(due({ jobs: [job],now: now+ARCHIVE_POLICY.pressureMs,report: { ...report,bindingCount: 80000 } })).toBe('due');
+});
+
+test('the capacity threshold is exact and does not replace unchanged-history or pending gates',() => {
+  const atHour = { jobs: [{ ...job,completed_at: new Date(now-ARCHIVE_POLICY.pressureMs) }] };
+  expect(due({ ...atHour,report: { ...report,bindingCount: 79999 } })).toBe('not_due');
+  expect(due({ ...atHour,report: { ...report,bindingCount: 80000 } })).toBe('due');
+  expect(due({ ...atHour,report: { ...report,bindingCount: 100000 },revision: 'old' })).toBe('unchanged');
+  expect(due({ report: { ...report,bindingCount: 100000 },jobs: [{ ...job,status: 'interrupted' }] })).toBe('pending');
 });
 test.each(['verified','retired'])('unchanged %s history is not dumped repeatedly',status => {
   expect(due({ jobs: [{ ...job,status,revision: hash }] })).toBe('unchanged');
@@ -55,6 +63,19 @@ test('rotation requires identical immutable prefixes; mutable admission may adva
   const old = content(), next = content(); next.admission.sha256 = 'b'.repeat(64);
   expect(preservesArchiveContent(next,old)).toBe(true);
   next.request_binding.sha256 = 'b'.repeat(64); expect(preservesArchiveContent(next,old)).toBe(false);
+});
+
+test.each(['rows','bytes'])('content %s limit closes its cursor and never returns a partial proof',async kind => {
+  // Reuse a bounded row buffer instead of constructing a table-sized JS array.
+  const rows = kind === 'rows' ? Array.from({ length: 256 },() => ({ id,row: '{}' })) : [{ id,row: 'x'.repeat(4*1024*1024) }];
+  let fetches = 0, closed = 0;
+  const client = { query: async sql => {
+    if (sql === 'FETCH FORWARD 256 FROM archive_content_cursor') { fetches++; return { rows }; }
+    if (sql === 'CLOSE archive_content_cursor') closed++;
+    return { rows: [] };
+  } };
+  await expect(captureArchiveContent(client)).rejects.toMatchObject({ code: 'gateway_archive_size_limit' });
+  expect(closed).toBe(1); expect(fetches).toBe(kind === 'rows' ? 782 : 64);
 });
 const receipt = () => ({ version: 1,archiveId: id,manifestSha256: hash,dumpSha256: hash,verified: true,preserves: [],purgeAuthorized: false });
 test('receipts are strictly bounded and never authorize deletion',() => {

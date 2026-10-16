@@ -1,12 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { createHash } from 'node:crypto';
+import { archiveRevision } from './archiveRevision.mjs';
 import { reportSnapshot } from './archiveRepository.mjs';
 import { captureArchiveContent } from './archiveContent.mjs';
 import { createArchiveDirectory, finishArchive } from './archiveFiles.mjs';
 import { dumpGatewayArchive } from './archiveDump.mjs';
 import { gatewayError } from './errors.mjs';
 
-export async function withOnlineArchiveSnapshot(client, configuration, consume, signal) {
+export async function withOnlineArchiveSnapshot(client, configuration, consume, signal, previousRevisions = []) {
   try {
     signal?.throwIfAborted();
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -15,8 +15,8 @@ export async function withOnlineArchiveSnapshot(client, configuration, consume, 
     const report = await reportSnapshot(client, configuration.providerHash, configuration.retentionDays);
     if (!report.counterMatches || report.legacyActiveWithoutBinding) throw gatewayError('gateway_archive_source_inconsistent');
     const admission = (await client.query('SELECT to_jsonb(a)::text AS row FROM ollama_gateway.admission a')).rows[0].row;
-    const revision = createHash('sha256').update(admission).update(JSON.stringify(report.counts)).digest('hex');
-    const result = await consume({ report, revision });
+    const identity = archiveRevision(admission, report.counts, previousRevisions);
+    const result = await consume({ report, ...identity });
     signal?.throwIfAborted(); await client.query('COMMIT'); return result;
   } catch (error) {
     try { await client.query('ROLLBACK'); } catch { /* Dedicated session is discarded by the caller. */ }

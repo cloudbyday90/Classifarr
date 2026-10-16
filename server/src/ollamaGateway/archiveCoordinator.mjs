@@ -27,8 +27,8 @@ export async function runArchiveAssessment({ source, repository, configuration, 
   const policyHash = archivePolicyHash(configuration.retentionDays);
   let jobs = await repository.list();
   if (jobs.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
-  const { report, revision, now } = await withOnlineArchiveSnapshot(source,configuration,async value => ({ ...value,
-    now: Date.parse(value.report.capturedAt) }),signal);
+  const { report, revision, compatibleRevisions, now } = await withOnlineArchiveSnapshot(source,configuration,async value => ({ ...value,
+    now: Date.parse(value.report.capturedAt) }),signal,jobs.map(job => job.revision));
   if (jobs.some(job => job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash)) {
     return { state: 'identity_changed',purgeAuthorized: false };
   }
@@ -45,7 +45,7 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     jobs = await repository.list();
   }
   await rotate(repository,parent,jobs,signal); jobs = await repository.list();
-  const state = archiveDue({ report,revision,jobs,now });
+  const state = archiveDue({ report,revision,compatibleRevisions,jobs,now });
   if (state !== 'due') return { state, purgeAuthorized: false };
   if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full', purgeAuthorized: false };
   const prior = jobs.filter(job => job.status === 'verified');
@@ -55,7 +55,7 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     predecessors.push({ archiveId: job.id, manifestSha256: job.manifest_sha256, content: job.manifest.content });
   }
   signal?.throwIfAborted();
-  const job = await repository.begin(report,revision,policyHash);
+  const job = await repository.begin(report,revision,policyHash,compatibleRevisions);
   let result;
   try { result = await createOnlineArchive(source,configuration,parent,job,predecessors,signal); }
   catch (error) {

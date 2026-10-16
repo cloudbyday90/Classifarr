@@ -5,9 +5,14 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { createSchemaCheckRunSpec,withSchemaCheckContainer } from './check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
+import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualification.mjs';
 
-const [image,revision] = process.argv.slice(2);
+const [image,revision,mode] = process.argv.slice(2);
+if (process.argv.length > 5 || (mode && mode !== '--qualification')) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
+if (mode === '--qualification') {
+  await runGatewayArchiveQualification(image,revision);
+} else {
 const docker = args => execFileSync('docker',args,{ encoding: 'utf8',windowsHide: true,timeout: 240000,maxBuffer: 1048576 });
 assert.equal(JSON.parse(docker(['image','inspect',image]))[0].Config.Labels['org.opencontainers.image.revision'],revision);
 const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
@@ -72,3 +77,4 @@ try {
 assert.equal(docker(['ps','-aq','--filter',`name=^${verifier}$`]).trim(),'');
 assert.equal(existsSync(spec.hostDataPath),false);
 process.stdout.write('online_archive_rehearsal_cleanup_verified\n');
+}

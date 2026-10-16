@@ -73,6 +73,8 @@ healthcheck: these workers do not expose the application server or an HTTP port.
 - Three attempts per source revision, with persistent five-minute/30-minute
   cooldowns. Attempts are independent of inference limits. Failed partial files
   count against the budget and are not silently erased.
+  Legacy fingerprints caused solely by count-row ordering share the same budget;
+  upgrading does not reset their attempts, timestamps or verified receipts.
 - Rotation removes only registered older copies whose immutable history was
   proved present in a verified replacement. It never touches live SQL history.
 - Unknown export termination, changed configuration/identity, malformed receipts,
@@ -101,3 +103,30 @@ implemented. Resource limits are safety caps, not a guarantee that every
 removing recovery evidence. An archive is only a local recovery copy, not an
 off-host disaster-recovery backup. Next work is fresh, transactional live-history
 eligibility and durable archive pins before any automatic purge can be enabled.
+
+## Local capacity and interruption qualification
+
+Run the existing rehearsal's explicit extended mode against an immutable image
+and its full source revision:
+
+```text
+node scripts/run-gateway-online-archive-rehearsal.mjs <immutable-image-id> <source-revision> --qualification
+```
+
+This uses only newly created labelled containers, volumes and synthetic databases.
+It does not connect to a configured gateway, Unraid or a provider. It exercises
+separate production-sized archive workers, large histories, content/storage
+refusal, actual process interruption and reconstructed narrow retirement states.
+CPU, memory, swap and PID limits are checked inside the container as well as in
+Docker configuration. The fixture observer shares those limits; it is not part
+of the production service. Extra Node diagnostic processes must not be launched
+inside the 32-PID worker during the exercise, since the diagnostic itself can
+exhaust that budget.
+
+The runner prints bounded measurements and verifies owned-resource cleanup.
+It fails if a required interruption boundary is missed. Database fixtures advance
+archive scheduling timestamps explicitly; they never refund inference attempts.
+See the [qualification design](gateway-archive-qualification-design.md) and its
+separate outcome record for tested shapes and limitations. Passing a synthetic
+100,000-binding history is not a promise that every shape of that history fits
+the independent byte, restore-scratch or timeout limits.

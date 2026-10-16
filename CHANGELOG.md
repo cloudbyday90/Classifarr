@@ -9,6 +9,13 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Stabilize gateway archive fingerprints across database row ordering while
+  preserving existing archive retry budgets and cooldowns.
+
+- Add isolated gateway archive capacity and interruption rehearsals that check
+  deployed resource limits, preserved retry counters and safe copy rotation;
+  keep live-history deletion and existing deployment behavior unchanged.
+
 - Add optional automatic online gateway archives with persistent UUIDv7 jobs,
   bounded retries and storage, isolated restore verification, and verified-copy
   rotation; leave live history, inference safeguards and existing deployments unchanged.
