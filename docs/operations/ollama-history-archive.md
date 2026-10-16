@@ -42,6 +42,7 @@ Run inside the operator's Linux environment with the matching packaged source:
 node /app/src/scripts/archiveOllamaGateway.mjs inspect
 node /app/src/scripts/archiveOllamaGateway.mjs create /private/gateway-archives
 node /app/src/scripts/archiveOllamaGateway.mjs verify /private/gateway-archives/gateway-archive-UUID
+node /app/src/scripts/archiveOllamaGateway.mjs review /private/gateway-archives/gateway-archive-UUID TRUSTED_MANIFEST_SHA256
 ```
 
 The paths above are examples, not existing mounts. Provision and review your
@@ -63,6 +64,35 @@ storage according to your policy. The tool does not encrypt or sign files.
 `verify` needs no database configuration. It reads bounded private files and
 checks the manifest and dump hash. `restoreVerified: false` is intentional: no SQL
 is executed. A checksum is not authenticity if both files have been replaced.
+
+New archives use manifest version 2, with up to 100 oldest terminal request
+references and fingerprints captured in the same snapshot as the dump. Older
+version 1 archives still verify; they cannot be used for review. Create a fresh
+archive rather than editing a manifest to add missing evidence.
+
+`review` uses the same SELECT-only configuration and offline gateway lock. Supply
+the manifest hash retained separately from the successful creation receipt.
+Do not compute a replacement hash from the directory you are trying to trust.
+The command compares exact row fingerprints, admission state, table counts,
+provider/ledger identity and the configured retention horizon. It makes no Ollama
+calls, executes no restore SQL and writes nothing to the database or archive.
+
+The result has a time-based UUIDv7 review reference and one of three statuses:
+
+- `ready_for_review`: the archived candidates still match this read-only snapshot.
+- `no_work`: there were no eligible candidates in the archive.
+- `blocked`: drift, new protection or inconsistent history prevents a usable plan.
+
+A successful command exit means the review completed, **not** that its status
+permits cleanup. Inspect `status` and `reasons`. `remainingCandidates` reports any
+eligible rows beyond the first 100; it does not authorize looping or deletion.
+Even a matching result always has `purgeAuthorized: false`. Keep the JSON output
+private if you save it. No consent is persisted, and no plan is an execution
+capability. A later cleanup implementation must revalidate under write-time
+locks, retain tombstones and preserve lifetime attempts and cooldowns.
+
+See the [retention review design](../architecture/ollama-retention-review-design.md)
+for the bounded contract and tradeoffs.
 
 ## Failures and restoration
 

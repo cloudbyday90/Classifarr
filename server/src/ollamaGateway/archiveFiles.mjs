@@ -56,13 +56,13 @@ export async function finishArchive(directory, manifest) {
     bytes: manifest.dump.bytes, purgeAuthorized: false };
 }
 
-export async function verifyGatewayArchive(directory, signal) {
+export async function readVerifiedGatewayArchive(directory, signal) {
   directory = await archiveDirectory(directory);
   let file;
   try {
     // Read the checked descriptor, bounded even if another local process grows the file.
     const marker = await openArchiveFile(directory, 'manifest.json');
-    let manifest;
+    let manifest, manifestSha256;
     try {
       const data = Buffer.alloc(65537); let length = 0;
       while (length < data.length) {
@@ -72,6 +72,7 @@ export async function verifyGatewayArchive(directory, signal) {
         length += bytesRead;
       }
       if (length > 65536) throw new Error();
+      manifestSha256 = createHash('sha256').update(data.subarray(0, length)).digest('hex');
       manifest = validateArchiveManifest(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(data.subarray(0, length))));
     } finally { await marker.close(); }
     file = await openArchiveFile(directory, 'gateway.dump');
@@ -86,7 +87,12 @@ export async function verifyGatewayArchive(directory, signal) {
       digest.update(buffer.subarray(0, result.bytesRead));
     }
     if (bytes !== manifest.dump.bytes || digest.digest('hex') !== manifest.dump.sha256) throw new Error();
-    return { archiveId: manifest.archiveId, bytes, integrity: 'verified', restoreVerified: false, purgeAuthorized: false };
+    return { manifest, manifestSha256 };
   } catch { throw gatewayError(signal?.aborted ? 'gateway_archive_cancelled' : 'gateway_archive_verification_failed'); }
   finally { await file?.close(); }
+}
+
+export async function verifyGatewayArchive(directory, signal) {
+  const { manifest } = await readVerifiedGatewayArchive(directory, signal);
+  return { archiveId: manifest.archiveId, bytes: manifest.dump.bytes, integrity: 'verified', restoreVerified: false, purgeAuthorized: false };
 }

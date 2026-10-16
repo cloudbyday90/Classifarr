@@ -5,9 +5,10 @@ import { gatewayArchiveConfiguration } from '../ollamaGateway/archiveContract.mj
 import { withGatewayArchiveSnapshot } from '../ollamaGateway/archiveRepository.mjs';
 import { createGatewayArchive } from '../ollamaGateway/archiveService.mjs';
 import { verifyGatewayArchive } from '../ollamaGateway/archiveFiles.mjs';
+import { reviewGatewayArchive } from '../ollamaGateway/archiveReviewService.mjs';
 
-// Linux/local socket only. Usage: inspect | create <private-parent> | verify <archive-directory>.
-// Env: CLASSIFARR_GATEWAY_ARCHIVE_CONFIG_FILE (inspect/create). No automatic cleanup, restore or purge.
+// Linux/local socket only. Usage: inspect | create <parent> | verify <archive> | review <archive> <trusted-manifest-sha256>.
+// Env: CLASSIFARR_GATEWAY_ARCHIVE_CONFIG_FILE (inspect/create/review). No cleanup, restore or purge.
 const controller = new AbortController();
 process.once('SIGINT', () => controller.abort()); process.once('SIGTERM', () => controller.abort());
 const abortTimer = setTimeout(() => controller.abort(), 90000);
@@ -15,8 +16,9 @@ const abortTimer = setTimeout(() => controller.abort(), 90000);
 const deadline = setTimeout(() => { process.stderr.write('gateway_archive_deadline\n'); process.exit(1); }, 120000);
 let client;
 try {
-  const [action, path, ...extra] = process.argv.slice(2);
-  if (process.platform !== 'linux' || extra.length || !['inspect', 'create', 'verify'].includes(action) ||
+  const [action, path, trustedHash, ...extra] = process.argv.slice(2);
+  if (process.platform !== 'linux' || extra.length || !['inspect', 'create', 'verify', 'review'].includes(action) ||
+      (action === 'review' ? !trustedHash : trustedHash !== undefined) ||
       (action === 'inspect' ? path !== undefined : !path)) throw new Error();
   let result;
   if (action === 'verify') result = await verifyGatewayArchive(path, controller.signal);
@@ -27,13 +29,16 @@ try {
       statement_timeout: 4000, options: '-c default_transaction_read_only=on', application_name: 'classifarr-gateway-offline-archive' });
     client.on('error', () => controller.abort()); await client.connect();
     result = action === 'inspect' ? await withGatewayArchiveSnapshot(client, { ...configuration, signal: controller.signal }) :
-      await createGatewayArchive(client, configuration, path, controller.signal);
+      action === 'review' ? await reviewGatewayArchive(client, configuration, path, trustedHash, controller.signal) :
+        await createGatewayArchive(client, configuration, path, controller.signal);
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (error) {
   const safe = ['gateway_archive_config_invalid', 'gateway_archive_file_invalid', 'gateway_archive_gateway_running',
     'gateway_archive_dedicated_session_required', 'gateway_archive_ledger_unavailable', 'gateway_archive_report_invalid',
-    'gateway_archive_dump_failed', 'gateway_archive_size_limit', 'gateway_archive_cancelled', 'gateway_archive_verification_failed'];
+    'gateway_archive_dump_failed', 'gateway_archive_size_limit', 'gateway_archive_cancelled', 'gateway_archive_verification_failed',
+    'gateway_archive_inventory_invalid', 'gateway_archive_review_requires_inventory', 'gateway_archive_review_hash_invalid',
+    'gateway_archive_review_hash_mismatch'];
   process.stderr.write(`${safe.includes(error.code) ? error.code : 'gateway_archive_unavailable'}\n`); process.exitCode = 1;
 } finally {
   try { await client?.end(); } catch {

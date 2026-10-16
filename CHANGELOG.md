@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add archive-bound Ollama history review plans with exact request references,
+  bounded record fingerprints and drift checks before future retention cleanup;
+  keep deletion disabled and preserve existing archive verification.
+
 - Add an offline, read-only Ollama gateway archive and retention report with
   time-based UUIDv7 references, private integrity-checked backups and isolated
   restore verification; preserve uncertain work, attempt limits and all history.

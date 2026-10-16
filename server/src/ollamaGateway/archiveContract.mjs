@@ -1,11 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
+import { archiveUuid, validateRetentionInventory } from './archiveRetentionContract.mjs';
+export { archiveUuid } from './archiveRetentionContract.mjs';
 
 export const ARCHIVE_LIMIT = 256 * 1024 * 1024;
 export const ARCHIVE_TABLES = Object.freeze(['admission', 'request_binding', 'completion_receipt',
   'recovery_receipt', 'provider_stop_intent', 'provider_stop_observation', 'upstream_peer_observation']);
 export const ARCHIVE_CATEGORIES = Object.freeze(['active', 'lifecycle', 'unknown', 'recent', 'older_terminal_review']);
-export const archiveUuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const exact = (value, keys) => object(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
@@ -43,11 +44,13 @@ export function validateArchiveReport(value) {
 }
 
 export function validateArchiveManifest(value) {
-  if (!exact(value, ['version', 'schemaVersion', 'archiveId', 'report', 'dump']) || value.version !== 1 || value.schemaVersion !== 7 ||
+  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...(value?.version === 2 ? ['retention'] : [])];
+  if (!exact(value, keys) || ![1, 2].includes(value.version) || value.schemaVersion !== 7 ||
       !archiveUuid(value.archiveId) || !exact(value.dump, ['name', 'bytes', 'sha256']) || value.dump.name !== 'gateway.dump' ||
       !Number.isSafeInteger(value.dump.bytes) || value.dump.bytes < 5 || value.dump.bytes > ARCHIVE_LIMIT || !hash(value.dump.sha256)) {
     throw gatewayError('gateway_archive_manifest_invalid');
   }
   validateArchiveReport(value.report);
+  if (value.version === 2) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
   return value;
 }

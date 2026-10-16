@@ -8,6 +8,7 @@ import { ARCHIVE_TABLES, ARCHIVE_LIMIT } from '/app/src/ollamaGateway/archiveCon
 import { createArchiveDirectory, openArchiveFile, verifyGatewayArchive } from '/app/src/ollamaGateway/archiveFiles.mjs';
 import { dumpGatewayArchive } from '/app/src/ollamaGateway/archiveDump.mjs';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
+import { rehearseGatewayRetentionReview } from './archiveReview.mjs';
 
 async function command(executable, args, env) {
   const child = spawn(executable, args, { env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -112,5 +113,6 @@ export async function rehearseGatewayArchive(admin, database) {
   assert.equal((await cli('verify', failedDirectory)).code, 1);
   assert.deepEqual(await rows(database), before);
   process.stdout.write('gateway_archive_passed: SELECT-only native snapshot dump, seven-table exact restore, immutable evidence, UUIDv7, uncertain work/counters/cooldown preserved, permissions/symlink/hardlink/corruption/size/incomplete/cancellation refusals; no provider calls\n');
+  await rehearseGatewayRetentionReview(admin, command);
   // All files/databases belong to the isolated container and are removed with it.
 }

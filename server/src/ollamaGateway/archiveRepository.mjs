@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
 import { validateArchiveReport } from './archiveContract.mjs';
+import { archiveCategorySql } from './archiveRetentionQueries.mjs';
 
 async function reportSnapshot(client, providerHash, retentionDays) {
   const result = await client.query(`SELECT id,provider_hash,attempts::text,binding_count,active_request,
@@ -17,12 +18,7 @@ async function reportSnapshot(client, providerHash, retentionDays) {
     UNION ALL SELECT 'upstream_peer_observation',count(*)::int FROM ollama_gateway.upstream_peer_observation`);
   const categories = { active: 0, lifecycle: 0, unknown: 0, recent: 0, older_terminal_review: 0 };
   const groups = await client.query(`SELECT category,count(*)::int AS n FROM (
-    SELECT CASE WHEN b.request_id=$1::uuid THEN 'active'
-      WHEN EXISTS(SELECT 1 FROM ollama_gateway.recovery_receipt r WHERE r.request_id=b.request_id)
-        OR EXISTS(SELECT 1 FROM ollama_gateway.provider_stop_intent s WHERE s.binding_id=b.id) THEN 'lifecycle'
-      WHEN c.outcome IS NULL OR c.outcome NOT IN ('response_completed','provider_rejected','not_dispatched') THEN 'unknown'
-      WHEN b.admitted_at >= $2::timestamptz OR c.recorded_at >= $2::timestamptz THEN 'recent'
-      ELSE 'older_terminal_review' END AS category FROM ollama_gateway.request_binding b
+    SELECT ${archiveCategorySql} AS category FROM ollama_gateway.request_binding b
       LEFT JOIN ollama_gateway.completion_receipt c ON c.request_id=b.request_id) classified GROUP BY category`, [row.active_request, row.cutoff]);
   for (const group of groups.rows) categories[group.category] = group.n;
   const counts = Object.fromEntries(countRows.rows.map(entry => [entry.name, entry.n]));
@@ -46,6 +42,7 @@ export async function withGatewayArchiveSnapshot(client, { providerHash, retenti
     if (!locked) throw gatewayError('gateway_archive_gateway_running');
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'); transaction = true;
     await client.query("SET LOCAL lock_timeout='2s'; SET LOCAL statement_timeout='4s'; SET LOCAL idle_in_transaction_session_timeout='75s'");
+    await client.query("SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");
     const report = await reportSnapshot(client, providerHash, retentionDays);
     signal?.throwIfAborted();
     const meta = (await client.query('SELECT uuidv7() AS id,pg_export_snapshot() AS snapshot')).rows[0];
@@ -57,7 +54,7 @@ export async function withGatewayArchiveSnapshot(client, { providerHash, retenti
     if (transaction) { try { await client.query('ROLLBACK'); } catch { /* Caller closes dedicated session. */ } }
     if (signal?.aborted) throw gatewayError('gateway_archive_cancelled');
     const safe = ['gateway_archive_dedicated_session_required', 'gateway_archive_gateway_running', 'gateway_archive_ledger_unavailable',
-      'gateway_archive_report_invalid', 'gateway_archive_file_invalid', 'gateway_archive_dump_failed', 'gateway_archive_size_limit'];
+      'gateway_archive_report_invalid', 'gateway_archive_inventory_invalid', 'gateway_archive_file_invalid', 'gateway_archive_dump_failed', 'gateway_archive_size_limit'];
     throw gatewayError(safe.includes(error.code) ? error.code : 'gateway_archive_unavailable');
   } finally {
     if (locked) { try { await client.query('SELECT pg_advisory_unlock(11435,1)'); } catch { /* Caller closes dedicated session. */ } }
