@@ -70,3 +70,9 @@ limits are recorded separately in the [outcome](../architecture/ollama-work-hist
 For an offline copy and advisory retention assessment, use the
 [history archive runbook](ollama-history-archive.md). Archiving does not purge
 history, reclaim admission capacity or authorize recovery.
+
+The gateway also runs an [automatic capacity assessment](../architecture/ollama-retention-assessment-design.md)
+at startup and every five minutes. This runs independently of this history page;
+the cached result is available in authenticated gateway status and decision-change
+process logs. It does not require another administrator command and does not yet
+delete history. The history UI itself still loads pages only when requested.

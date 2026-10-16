@@ -7,6 +7,7 @@ import { gatewayError } from './errors.mjs';
 import { gatewayUpstreamTls } from './upstreamIdentity.mjs';
 import { gatewayWorkKey } from './workIdentity.mjs';
 import { readGatewayHistoryPath } from './historyContract.mjs';
+import { gatewayRetentionDays } from './retentionAssessment.mjs';
 
 export { gatewayError };
 const hash = value => createHash('sha256').update(value).digest();
@@ -25,7 +26,7 @@ export function gatewayProviderIdentity(value) {
 }
 
 export function gatewayConfig(raw) {
-  if (!record(raw) || Object.keys(raw).some(key => !['upstream','upstreamTls','workIdentityKey','host','tls','port','models','credentials','timeoutMs','queueMs','providerInstance'].includes(key))) {
+  if (!record(raw) || Object.keys(raw).some(key => !['upstream','upstreamTls','workIdentityKey','host','tls','port','models','credentials','timeoutMs','queueMs','providerInstance','retentionDays'].includes(key))) {
     throw gatewayError('gateway_config_invalid');
   }
   const identity = gatewayProviderIdentity(raw.upstream);
@@ -47,7 +48,7 @@ export function gatewayConfig(raw) {
   if (!privateGatewayAddress(host) || (!raw.tls && host !== '127.0.0.1')) throw gatewayError('gateway_config_invalid');
   const tls = raw.tls === undefined ? undefined : gatewayServerTls(raw.tls, host);
   return Object.freeze({ ...identity, host, tls, upstreamTls, workIdentity, port, timeoutMs, queueMs, providerInstance,
-    models, credentials: Object.freeze(credentials.map(entry => Object.freeze({
+    retentionDays: gatewayRetentionDays(raw.retentionDays), models, credentials: Object.freeze(credentials.map(entry => Object.freeze({
       installation: entry.installation, workClass: entry.workClass, digest: hash(entry.token),
     }))) });
 }

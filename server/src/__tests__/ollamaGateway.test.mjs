@@ -9,6 +9,7 @@ const raw = () => ({ upstream: 'http://127.0.0.1:11434', models: ['synthetic:lat
   credentials: [{ installation: 'local',workClass: 'background',token }] });
 test('credentials are hashed, work class is credential-bound, config is frozen', () => {
   const config = gatewayConfig(raw());
+  expect(config.retentionDays).toBe(90);
   expect(Object.isFrozen(config)).toBe(true);
   expect(JSON.stringify(config)).not.toContain(token);
   expect(authenticateGateway(config,`Bearer ${token}`)).toMatchObject({ installation: 'local',workClass: 'background' });
@@ -20,6 +21,7 @@ test.each(['https://127.0.0.1','http://169.254.169.254','http://example.com','ht
   expect(() => gatewayConfig({ ...raw(),upstream })).toThrow('gateway_config_invalid');
 });
 test.each([{ port: 0 },{ timeoutMs: 300001 },{ queueMs: 30001 },{ timeoutMs: 1000,queueMs: 1000 },
+  { retentionDays: 0 },{ retentionDays: 3651 },{ retentionDays: '90' },
   { models: ['test:cloud'] },{ models: ['untagged'] },{ models: [] },{ credentials: [] },{ extra: true },
   { credentials: [{ installation: 'local',workClass: 'administrator',token }] },
   { credentials: [{ installation: 'local',workClass: 'foreground',token: 'short' }] }])('rejects invalid config %#', invalid => {

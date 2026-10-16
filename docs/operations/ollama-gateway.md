@@ -152,8 +152,26 @@ available only through offline database inspection. It does not imply GPU-wide i
 
 Binding history is capped at 100,000 records. At capacity new compute is refused;
 completion, recovery and status still work. Do not reset the counter or delete
-history to bypass the cap. A reviewed retention/archiving policy is deferred, so
-this remains a bounded prototype rather than an unattended production rollout.
+history to bypass the cap. The standalone process now assesses history at startup
+and every five minutes, without a browser visit or Ollama call. Status includes
+the cached `retention` result: freshness, UUIDv7 reference, observation time,
+capacity pressure, candidate/protected counts and fixed decision reasons. See
+[automatic retention assessment](../architecture/ollama-retention-assessment-design.md).
+
+At 80,000 bindings the default assessment signals approaching capacity; at
+100,000 it signals full. `gateway.retentionDays` defaults to 90 (range 1–3650)
+and changes require a gateway restart. These are assessment defaults, not deletion
+permission. Read-only diagnostics use one separate connection and fixed deadlines;
+failure is explicit and does not shut down an otherwise working admission writer.
+Process logs emit decision transitions, not repetitive per-poll warnings. Failed
+or stale status may contain the last observation, which must not be treated as
+current. No new administrator action is needed to run these checks.
+
+Cleanup and automatic archive verification are not implemented. Active/uncertain,
+lifecycle-linked and recent history remains protected; no attempt or cooldown is
+reset. Row capacity is not disk usage, and deleting records would not guarantee
+smaller PostgreSQL files. This remains a local-only bounded prototype, not an
+unattended production rollout.
 
 Supported upstream routes: GET `/api/tags`, `/api/ps`, `/api/version`; POST
 `/api/show`, `/api/generate` with an explicit boolean `stream`, and `/api/embed` with

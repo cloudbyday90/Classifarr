@@ -92,6 +92,7 @@ GRANT SELECT(request_id, action, provider_hash, installation, recorded_at)
   ON ollama_gateway.recovery_receipt TO gateway_runtime;
 GRANT SELECT, INSERT ON ollama_gateway.completion_receipt TO gateway_runtime;
 GRANT SELECT, INSERT ON ollama_gateway.request_binding TO gateway_runtime;
+GRANT SELECT(binding_id) ON ollama_gateway.provider_stop_intent TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.request_binding TO gateway_recovery;
 GRANT SELECT, INSERT ON ollama_gateway.upstream_peer_observation TO gateway_runtime;
 GRANT SELECT ON ollama_gateway.upstream_peer_observation TO gateway_recovery;
@@ -103,6 +104,12 @@ Do not grant receipt/binding UPDATE/DELETE/TRUNCATE or schema ownership. Their t
 also reject modification/deletion by ordinary users; privileged DBAs can override
 database controls, so retain the external incident record. Recovery does not need
 provider tokens, gateway bearer tokens, Docker access or application DB access.
+
+The automatic retention assessment uses only `binding_id` from stop intents to
+protect lifecycle-linked history. It cannot read operator/evidence references or
+write/delete receipts. Existing restricted installations missing this read grant
+report an unavailable assessment; they do not bypass protection. No new role,
+administrator command or schema migration is required for assessment.
 
 ## Private configuration and inspection
 

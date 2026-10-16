@@ -65,7 +65,7 @@ async function launch() {
   outputs.set(child,{ stdout: '',stderr: '' });
   child.stdout.on('data',data => { output += data.toString(); outputs.get(child).stdout += data.toString(); });
   child.stderr.on('data',data => { outputs.get(child).stderr += data.toString(); });
-  await until(() => output.includes('ollama_gateway_ready')); return child;
+  await until(() => output.includes('ollama_gateway_ready') && output.includes('gateway_retention_assessment')); return child;
 }
 async function kill(child, signal = 'SIGKILL') {
   if (child.exitCode !== null || child.signalCode !== null) return;
@@ -100,6 +100,7 @@ try {
       ON ollama_gateway.admission TO gateway_fixture_runtime`);
   await database.query('GRANT SELECT, INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt TO gateway_fixture_runtime');
   await database.query('GRANT SELECT(request_id,action,provider_hash,installation,recorded_at) ON ollama_gateway.recovery_receipt TO gateway_fixture_runtime');
+  await database.query('GRANT SELECT(binding_id) ON ollama_gateway.provider_stop_intent TO gateway_fixture_runtime');
   const restricted = new pg.Client({ host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' });
   try {
     await restricted.connect();
@@ -113,6 +114,13 @@ try {
   database: { host: '/var/run/postgresql',user: 'gateway_fixture_runtime',database: 'classifarr_gateway_fixture' } };
   await saveConfiguration(configuration);
   let child = await launch(); assert.equal((await status()).attempts,'0'); assert.equal(calls,0);
+  const assessment = (await status()).retention;
+  assert.equal(assessment.state,'available'); assert.equal(assessment.assessment.decision,'not_needed');
+  assert.match(assessment.assessment.reference,/^[a-f0-9-]{14}7/);
+  assert.equal(assessment.assessment.purgeAuthorized,false);
+  const diagnosticState = await database.query(`SELECT application_name FROM pg_stat_activity
+    WHERE datname=current_database() AND application_name='classifarr-gateway-retention-assessment'`);
+  assert.equal(diagnosticState.rowCount,1);
   assert.equal((await fetch(`${base}/gateway/status`)).status,401);
   assert.equal((await call(0)).status,200); assert.equal((await call(1)).status,200);
   assert.equal((await status()).attempts,'2');

@@ -34,7 +34,7 @@ function readBody(req, signal) {
 }
 
 /** Authentication is server-to-server only. No app sessions, cookies or CORS. */
-export function createGatewayServer({ config, ledger }) {
+export function createGatewayServer({ config, ledger, retention = null }) {
   const admission = createGatewayAdmission(config), shutdown = new AbortController();
   const credentials = createGatewayCredentials(config);
   let handling = 0, credits = 120, windowStart = Date.now();
@@ -80,7 +80,7 @@ export function createGatewayServer({ config, ledger }) {
         }
         if (req.url === '/gateway/status') {
           const status = await ledger.status(); signal.throwIfAborted();
-          send(200,{ ...status,waiting: admission.pending }); return;
+          send(200,{ ...status,waiting: admission.pending,retention: retention?.status() ?? { state: 'not_running' } }); return;
         }
         let body;
         if (req.method === 'POST') {
@@ -122,6 +122,7 @@ export function createGatewayServer({ config, ledger }) {
   server.on('checkContinue', (_req,res) => { res.writeHead(417,{ Connection: 'close' }); res.end(); });
   server.on('connect', (_req,socket) => { socket.destroy(); });
   return { server, replaceCredentials: next => credentials.replace(next), async stop() {
+    retention?.stop();
     credentials.stop(); admission.stop(); shutdown.abort();
     const closing = new Promise(resolve => { server.close(resolve); });
     server.closeAllConnections(); await closing;

@@ -9,6 +9,13 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add the repository-local grill-me planning workflow for future features and
+  changes, with pinned upstream instructions and its required grilling skill.
+
+- Automatically assess optional Ollama gateway history at startup and on a bounded
+  schedule, reporting capacity pressure, protected records and stale checks without
+  page visits, provider calls, manual purge controls or changes to retry limits.
+
 - Add archive-bound Ollama history review plans with exact request references,
   bounded record fingerprints and drift checks before future retention cleanup;
   keep deletion disabled and preserve existing archive verification.

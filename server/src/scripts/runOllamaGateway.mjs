@@ -5,18 +5,20 @@ import { readGatewayConfiguration } from '../ollamaGateway/configurationFile.mjs
 import { createGatewayConfigurationReload } from '../ollamaGateway/configurationReload.mjs';
 import { openGatewayLedger } from '../ollamaGateway/ledger.mjs';
 import { createGatewayServer } from '../ollamaGateway/server.mjs';
+import { createGatewayRetentionMonitor } from '../ollamaGateway/retentionMonitor.mjs';
 
 // Deliberately separate from index.mjs: merely installing/upgrading Classifarr
 // cannot enable the gateway or touch its dedicated database.
-let client, gateway, reload, stopping = false;
+let client, gateway, reload, retention, diagnostics, stopping = false;
 async function stop(failed = false) {
   if (stopping) return;
   stopping = true;
   reload?.stop();
+  retention?.stop();
   // eslint-disable-next-line n/no-process-exit -- standalone CLI must bound shutdown if the database/socket never settles.
   const deadline = setTimeout(() => process.exit(1),5000); deadline.unref();
   try {
-    await gateway?.stop(); await client?.end();
+    await gateway?.stop(); await diagnostics?.end(); await client?.end();
     clearTimeout(deadline); process.exitCode = failed ? 1 : 0;
   } catch {
     // Retain the shutdown deadline if handles survive; never print database errors.
@@ -32,7 +34,15 @@ try {
   client.on('error', () => { void stop(true); });
   await client.connect();
   const ledger = await openGatewayLedger(client,config.providerHash,config.providerInstance);
-  gateway = createGatewayServer({ config,ledger });
+  diagnostics = new pg.Pool({ ...initial.database, max: 1, connectionTimeoutMillis: 5000, query_timeout: 5000,
+    statement_timeout: 4000, idleTimeoutMillis: 10000, options: '-c default_transaction_read_only=on',
+    application_name: 'classifarr-gateway-retention-assessment' });
+  diagnostics.on('error', () => {}); // The next check reports failure; no writer shutdown or raw connection log.
+  retention = createGatewayRetentionMonitor({
+    read: () => ledger.assessRetention((sql, args) => diagnostics.query(sql, args), config.retentionDays),
+    onTransition: value => process.stdout.write(`${JSON.stringify({ event: 'gateway_retention_assessment', ...value })}\n`),
+  });
+  gateway = createGatewayServer({ config,ledger,retention });
   await new Promise((resolve,reject) => {
     gateway.server.once('error',reject); gateway.server.listen(config.port,config.host,resolve);
   });

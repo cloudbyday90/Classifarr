@@ -17,6 +17,7 @@ await ledger.query(`GRANT USAGE ON SCHEMA ollama_gateway TO gateway_network_runt
   GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)
     ON ollama_gateway.admission TO gateway_network_runtime;
   GRANT SELECT,INSERT ON ollama_gateway.request_binding,ollama_gateway.completion_receipt TO gateway_network_runtime;
+  GRANT SELECT(binding_id) ON ollama_gateway.provider_stop_intent TO gateway_network_runtime;
   GRANT SELECT(request_id,action,provider_hash,installation,recorded_at) ON ollama_gateway.recovery_receipt TO gateway_network_runtime`);
 await ledger.end();
 const runtime = new pg.Client({ host: '/var/run/postgresql', user: 'gateway_network_runtime', database: 'classifarr_gateway_network' });

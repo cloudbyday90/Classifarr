@@ -43,7 +43,7 @@ test('scope cleanup is idempotent and bounded; incompatible reload preserves exi
   const scopes = Array.from({ length: 32 },() => authority.acquire(auth()));
   expect(() => authority.acquire(auth())).toThrow('gateway_busy');
   scopes[0].release(); scopes[0].release(); expect(authority.acquire(auth()).signal.aborted).toBe(false);
-  for (const changes of [{ port: 12345 },{ upstream: 'http://127.0.0.1:12345' },{ models: ['other:latest'] },{ queueMs: 1 },{ timeoutMs: 250000 }]) {
+  for (const changes of [{ port: 12345 },{ upstream: 'http://127.0.0.1:12345' },{ models: ['other:latest'] },{ queueMs: 1 },{ timeoutMs: 250000 },{ retentionDays: 91 }]) {
     expect(() => authority.replace(gatewayConfig({ ...raw([entries[1]]),...changes }))).toThrow('gateway_reload_incompatible');
   }
   expect(scopes[1].signal.aborted).toBe(false); authority.stop();

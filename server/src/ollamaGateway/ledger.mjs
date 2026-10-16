@@ -5,6 +5,7 @@ import { claimGatewayRequest } from './requestBindingRepository.mjs';
 import { recordGatewayPeer } from './upstreamPeerRepository.mjs';
 import { completeGatewayRequest } from './completionRepository.mjs';
 import { readGatewayHistory } from './historyRepository.mjs';
+import { readGatewayRetentionAssessment } from './retentionAssessmentRepository.mjs';
 
 /** Dedicated connected pg.Client, never a pool or a shared app database session. */
 export async function openGatewayLedger(client, providerHash, instance = null) {
@@ -25,6 +26,9 @@ export async function openGatewayLedger(client, providerHash, instance = null) {
     catch { available = false; throw gatewayError('gateway_ledger_unavailable'); }
   };
   return {
+    assessRetention(readQuery, retentionDays) {
+      return readGatewayRetentionAssessment(readQuery, { owner, providerHash, retentionDays });
+    },
     async status() {
       const result = await query(`SELECT a.active_request, a.started_at, a.attempts::text, a.binding_count,
         a.maintenance_receipt, a.cooldown_until, a.cooldown_until > clock_timestamp() AS cooling,
