@@ -65,6 +65,17 @@ kill-at-instruction tests. Verified copies, immutable history and lifetime
 inference attempts remain intact except for declared synthetic admissions.
 Every result retains `purgeAuthorized: false`.
 
+### Protection extension
+
+The subsequent [protection increment](gateway-archive-protection-design.md) keeps
+protected historical files in addition to two rolling copies. Its capacity case
+now checks those holds rather than retiring the protected first generation.
+The basic rehearsal separately covers seven generations and interrupted retirement
+of an unprotected copy. A fourth extended case verifies automatic second-copy
+creation for unchanged pressure history: attempts remain 1 and 2 for the same
+revision, both files undergo native restore, and later assessments add no exports.
+The original resource, storage, interruption and no-provider-call limits remain.
+
 ## Admission, failure and completion
 
 ### Reproduced revision defect

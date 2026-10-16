@@ -71,8 +71,9 @@ healthcheck: these workers do not expose the application server or an HTTP port.
 
 - First archive after nonempty history; daily if changed; as early as hourly
   when bindings reach 80,000. The five-minute check does not imply a five-minute dump.
-- Two verified copies, plus one replacement in progress, within 1 GiB total
-  managed storage. Each dump is capped at 256 MiB. An additional 64 MiB free-space
+- Two rolling verified copies, protected historical copies, and at most one
+  replacement in progress, within 1 GiB total managed storage. Each dump is capped
+  at 256 MiB. An additional 64 MiB free-space
   reserve is required; the archive budget does not include verifier scratch.
 - Three attempts per source revision, with persistent five-minute/30-minute
   cooldowns. Attempts are independent of inference limits. Failed partial files
