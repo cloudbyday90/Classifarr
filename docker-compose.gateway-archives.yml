@@ -6,6 +6,9 @@ services:
     image: ${CLASSIFARR_GATEWAY_ARCHIVE_IMAGE:?Set the tested immutable Classifarr image ID}
     entrypoint: ["node", "/app/src/scripts/runGatewayArchiveWorker.mjs"]
     user: "1000:1000"
+    init: true
+    healthcheck:
+      disable: true
     network_mode: none
     read_only: true
     cap_drop: [ALL]
@@ -29,6 +32,9 @@ services:
     image: ${CLASSIFARR_GATEWAY_ARCHIVE_IMAGE:?Set the tested immutable Classifarr image ID}
     entrypoint: ["node", "/app/src/scripts/runGatewayArchiveVerifier.mjs"]
     user: "1000:1000"
+    init: true
+    healthcheck:
+      disable: true
     network_mode: none
     read_only: true
     cap_drop: [ALL]

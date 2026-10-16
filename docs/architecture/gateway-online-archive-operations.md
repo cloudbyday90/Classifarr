@@ -60,6 +60,8 @@ the source socket, configuration, environment credentials or Docker socket.
 Neither service needs network access. Keep one instance of each service.
 The verifier has a read-only archive mount and writes only its receipt mount and
 private scratch space; the coordinator reads receipts but cannot modify them.
+The template enables an init/reaper and disables the inherited application HTTP
+healthcheck: these workers do not expose the application server or an HTTP port.
 
 ## Automatic behavior
 

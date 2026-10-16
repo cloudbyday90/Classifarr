@@ -29,7 +29,8 @@ try {
     const fixture = action => process.stdout.write(docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
       'node','/tmp/online-archive.mjs',action]));
     fixture('setup');
-    docker(['create','--name',verifier,'--label',label,'--network','none','--user','1000:1000','--read-only',
+    fixture('checks');
+    docker(['create','--name',verifier,'--label',label,'--network','none','--user','1000:1000','--read-only','--init','--no-healthcheck',
       '--cap-drop','ALL','--security-opt','no-new-privileges','--memory','1536m','--memory-swap','1536m','--cpus','1','--pids-limit','64',
       '--mount',`type=volume,source=${archives},target=/archives,readonly`,'--mount',`type=volume,source=${receipts},target=/receipts`,
       '--tmpfs','/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
@@ -45,6 +46,10 @@ try {
       if (cycle) fixture('next');
       const output = docker(['start','-a',verifier]); assert.ok(output.includes('"state":"verified"'),output);
       assert.equal(JSON.parse(docker(['inspect',verifier]))[0].State.ExitCode,0);
+      if (!cycle) {
+        fixture('receipt-crash');
+        assert.ok(docker(['start','-a',verifier]).includes('"state":"idle"'));
+      }
       fixture('accept');
     }
     fixture('corrupt');
