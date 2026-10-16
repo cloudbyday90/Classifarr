@@ -7,6 +7,7 @@ import { archiveStorageAvailable } from '/app/src/ollamaGateway/archiveManagedFi
 import { captureArchiveContent } from '/app/src/ollamaGateway/archiveContent.mjs';
 import { ARCHIVE_TABLES } from '/app/src/ollamaGateway/archiveContract.mjs';
 import { withOnlineArchiveSnapshot } from '/app/src/ollamaGateway/onlineArchive.mjs';
+import { captureRetentionInventory } from '/app/src/ollamaGateway/archiveRetentionQueries.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape = 'capacity'] = process.argv.slice(2);
@@ -104,8 +105,9 @@ try {
   } else if (action === 'diagnose') {
     let stage = 'snapshot'; const started = Date.now();
     try {
-      await withOnlineArchiveSnapshot(client, { providerHash: 'e'.repeat(64), retentionDays: 90 }, async () => {
+      await withOnlineArchiveSnapshot(client, { providerHash: 'e'.repeat(64), retentionDays: 90 }, async ({ report }) => {
         stage = 'content'; await captureArchiveContent(client);
+        stage = 'inventory'; await captureRetentionInventory(client,report);
       });
       result = { stage, readOnlyCheck: 'passed', elapsedMs: Date.now()-started };
     } catch (error) {

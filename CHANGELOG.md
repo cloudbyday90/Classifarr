@@ -13,6 +13,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   and independently verify it during isolated restore; preserve legacy archives,
   retry limits and the prohibition on automatic live-history deletion.
 
+- Bound gateway archive candidate selection before fetching record fingerprints
+  to avoid query timeouts on large histories without weakening resource limits.
+
 - Stabilize gateway archive fingerprints across database row ordering while
   preserving existing archive retry budgets and cooldowns.
 

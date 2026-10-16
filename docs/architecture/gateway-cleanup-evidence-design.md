@@ -70,6 +70,12 @@ inventory. Exact equality is required, including the total beyond the 100-record
 page. A malformed, omitted, substituted, newly protected or changed entry fails
 verification. There is no partial-success receipt.
 
+Select at most 100 candidate IDs using the existing ledger/attempt index before
+fetching full joined fingerprints. Keep both queries in the same snapshot. A
+row limit on a wide join alone did not bound query work at capacity: the first
+packaged qualification timed out in that query. The fixed query and a
+100,000-binding regression retain the existing four-second statement limit.
+
 New reports use one millisecond-precision capture timestamp and derive the cutoff
 from it. Version 4 rejects a cutoff inconsistent with the declared retention
 duration; old formats retain their original validation rules.

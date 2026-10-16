@@ -25,10 +25,15 @@ export async function readRetentionState(client) {
 
 export async function captureRetentionInventory(client, report) {
   const state = await readRetentionState(client);
-  const result = await client.query(`${entrySelect} WHERE (${archiveCategorySql})='older_terminal_review'
-    ORDER BY b.attempt LIMIT $3`, [state.active_request, report.cutoff, RETENTION_REVIEW_LIMIT]);
+  // Use the ledger/attempt index and bound identities before joining peer records or hashing full rows.
+  // Both reads stay in the caller's one read-only snapshot; LIMIT on a wide join alone is not a work bound.
+  const selected = await client.query(`SELECT b.id FROM ollama_gateway.request_binding b
+    LEFT JOIN ollama_gateway.completion_receipt c ON c.request_id=b.request_id
+    WHERE b.ledger_id=$3::uuid AND (${archiveCategorySql})='older_terminal_review'
+    ORDER BY b.attempt LIMIT $4`, [state.active_request, report.cutoff, report.ledgerId, RETENTION_REVIEW_LIMIT]);
+  const rows = selected.rows.length ? await readRetentionEntries(client, state.active_request, report.cutoff, selected.rows.map(row => row.id)) : [];
   return validateRetentionInventory({ version: 1, ledgerSha256: state.digest,
-    entries: result.rows.map(({ category: _category, ...entry }) => entry),
+    entries: rows.map(({ category: _category, ...entry }) => entry),
     totalCandidates: report.categories.older_terminal_review,
     hasMore: report.categories.older_terminal_review > RETENTION_REVIEW_LIMIT }, report.categories.older_terminal_review);
 }

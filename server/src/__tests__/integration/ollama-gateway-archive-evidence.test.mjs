@@ -35,6 +35,18 @@ async function capture(reference = null) {
 }
 const verify = manifest => inspect(() => verifyRestoredRetention(source, validateArchiveManifest(manifest)));
 
+test('full 100000-binding ledger captures only 100 candidate fingerprints within the existing statement timeout', async () => {
+  await seed(100000);
+  await inspect(async ({ report }) => {
+    expect((await source.query("SHOW statement_timeout")).rows[0].statement_timeout).toBe('4s');
+    const inventory = await captureRetentionInventory(source, report);
+    expect(inventory.totalCandidates).toBe(100000); expect(inventory.hasMore).toBe(true);
+    expect(inventory.entries).toHaveLength(100);
+    expect(inventory.entries[0].attempt).toBe('1'); expect(inventory.entries[99].attempt).toBe('100');
+  });
+  expect(fixture.calls).toHaveLength(0);
+});
+
 test.each([0, 1, 101])('restored comparison verifies %i candidates without mutating source or calling provider', async count => {
   if (count) await seed(count);
   const value = await capture(), before = await inspect(() => captureArchiveContent(source));
