@@ -116,3 +116,6 @@ covering mixed old/new formats, a full candidate page, tampering, restart and
 unchanged live history. Record actual checks and omissions in a separate outcome.
 Next: retention-aware archive generations and durable pins, followed by bounded
 transactional cleanup with a separately bounded audit-summary lifecycle.
+
+Actual checks, discovered failures and limits are recorded separately in the
+[implementation outcome](gateway-cleanup-evidence-outcome.md).
