@@ -17,11 +17,11 @@ let client;
 async function seed(count, wide = false) {
   await client.query(`INSERT INTO ollama_gateway.request_binding(ledger_id,request_id,owner_id,provider_hash,
     installation,admitted_at,attempt,evidence_kind,work_version,operation,model,work_fingerprint,fingerprint_key_id)
-    SELECT a.id,uuidv7(),a.owner_id,a.provider_hash,repeat('x',64),clock_timestamp(),i,'unbound',
+    SELECT a.id,uuidv7(),a.owner_id,a.provider_hash,repeat('x',64),clock_timestamp()-interval '100 days',i,'unbound',
       1,'/api/generate',repeat('m',$2),repeat('f',64),repeat('a',64)
     FROM ollama_gateway.admission a CROSS JOIN generate_series(a.binding_count+1,$1::int) i`, [count, wide ? 200 : 16]);
-  await client.query(`INSERT INTO ollama_gateway.completion_receipt(request_id,outcome,http_status)
-    SELECT b.request_id,'response_completed',200 FROM ollama_gateway.request_binding b
+  await client.query(`INSERT INTO ollama_gateway.completion_receipt(request_id,outcome,http_status,recorded_at)
+    SELECT b.request_id,'response_completed',200,b.admitted_at FROM ollama_gateway.request_binding b
     WHERE NOT EXISTS(SELECT 1 FROM ollama_gateway.completion_receipt c WHERE c.request_id=b.request_id)`);
   await client.query('UPDATE ollama_gateway.admission SET attempts=$1::int,binding_count=$1::int,completed_at=clock_timestamp()', [count]);
   await client.query(`INSERT INTO ollama_gateway.recovery_receipt(ledger_id,action,provider_hash,owner_id,request_id,

@@ -3,10 +3,14 @@ import { gatewayError } from './errors.mjs';
 import { validateArchiveReport } from './archiveContract.mjs';
 import { archiveCategorySql } from './archiveRetentionQueries.mjs';
 
-export async function reportSnapshot(client, providerHash, retentionDays) {
-  const result = await client.query(`SELECT id,provider_hash,attempts::text,binding_count,active_request,
-    clock_timestamp() AS captured_at,clock_timestamp()-make_interval(days=>$2::int) AS cutoff
-    FROM ollama_gateway.admission WHERE singleton AND version=7 AND provider_hash=$1`, [providerHash, retentionDays]);
+// reference fixes the historical clock only when checking an isolated restored archive.
+export async function reportSnapshot(client, providerHash, retentionDays, reference = null) {
+  const result = await client.query(`WITH capture AS (
+    SELECT COALESCE($3::timestamptz,date_trunc('milliseconds',clock_timestamp())) AS captured_at)
+    SELECT id,provider_hash,attempts::text,binding_count,active_request,
+    captured_at,captured_at-make_interval(days=>$2::int) AS cutoff
+    FROM ollama_gateway.admission CROSS JOIN capture WHERE singleton AND version=7 AND provider_hash=$1`,
+  [providerHash, retentionDays, reference?.capturedAt ?? null]);
   if (result.rowCount !== 1) throw gatewayError('gateway_archive_ledger_unavailable');
   const row = result.rows[0];
   const countRows = await client.query(`SELECT 'admission' AS name,count(*)::int AS n FROM ollama_gateway.admission

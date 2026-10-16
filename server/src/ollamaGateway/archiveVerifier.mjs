@@ -9,6 +9,7 @@ import { ARCHIVE_TABLES } from './archiveContract.mjs';
 import { captureArchiveContent, preservesArchiveContent } from './archiveContent.mjs';
 import { archiveDirectory, readVerifiedGatewayArchive } from './archiveFiles.mjs';
 import { gatewayError } from './errors.mjs';
+import { verifyRestoredRetention } from './archiveRetentionVerification.mjs';
 
 const environment = Object.freeze({ PATH: '/usr/bin:/bin', LANG: 'C', PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '5' });
 async function command(executable,args,signal) {
@@ -25,10 +26,10 @@ async function command(executable,args,signal) {
 /** Only invoke in the network-none verifier container, never in the coordinator or live DB container. */
 export async function verifyArchiveRestore(directory,scratch,signal) {
   const { manifest,manifestSha256 } = await readVerifiedGatewayArchive(directory,signal);
-  if (manifest.version !== 3) throw gatewayError('gateway_archive_restore_contract');
+  if (![3, 4].includes(manifest.version)) throw gatewayError('gateway_archive_restore_contract');
   scratch = await archiveDirectory(scratch);
   const workspace = await mkdtemp(join(scratch,'gateway-verify-'));
-  let postgres, client, closed, verified = false; const preserves = [];
+  let postgres, client, closed, retentionSha256 = null, verified = false; const preserves = [];
   try {
     await command('/usr/libexec/postgresql18/initdb',['-D',workspace,'-U','archive_owner','-A','trust','--no-locale','--encoding=UTF8'],signal);
     postgres = spawn('/usr/libexec/postgresql18/postgres',['-D',workspace,'-k',workspace,'-c','listen_addresses=',
@@ -63,6 +64,7 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");
     if (!isDeepStrictEqual(await captureArchiveContent(client,signal),manifest.content)) throw gatewayError('gateway_archive_restore_mismatch');
+    if (manifest.version === 4) retentionSha256 = await verifyRestoredRetention(client,manifest,signal);
     for (const prior of manifest.predecessors) {
       const prefix = await captureArchiveContent(client,signal,prior.content);
       if (preservesArchiveContent(prefix,prior.content)) preserves.push(prior.archiveId);
@@ -90,6 +92,7 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
     }
   }
   signal?.throwIfAborted();
-  return { version: 1,archiveId: manifest.archiveId,manifestSha256,dumpSha256: manifest.dump.sha256,
-    verified,preserves: verified ? preserves : [],purgeAuthorized: false };
+  return { version: manifest.version === 4 ? 2 : 1,archiveId: manifest.archiveId,manifestSha256,dumpSha256: manifest.dump.sha256,
+    verified,preserves: verified ? preserves : [],purgeAuthorized: false,
+    ...(manifest.version === 4 ? { retentionSha256: verified ? retentionSha256 : null } : {}) };
 }

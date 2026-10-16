@@ -2,14 +2,21 @@
 import assert from 'node:assert/strict';
 import { readFile,writeFile,readdir,unlink,link,mkdtemp,mkdir,truncate } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import pg from '/app/node_modules/pg/lib/index.js';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
 import { archiveStorageAvailable } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
+import { retentionInventorySha256 } from '/app/src/ollamaGateway/archiveRetentionContract.mjs';
 
 if (process.env.CLASSIFARR_GATEWAY_FIXTURE !== 'isolated') throw new Error('isolated_fixture_required');
 const action = process.argv[2], databaseName = 'gateway_online_archive_fixture';
 const admin = new pg.Client({ host: '/var/run/postgresql',user: 'classifarr',database: 'classifarr' });
 let database;
+async function replaceFixtureManifest(job, manifest) {
+  const data = `${JSON.stringify(manifest)}\n`, digest = createHash('sha256').update(data).digest('hex');
+  await writeFile(`/archives/gateway-archive-${job.id}/manifest.json`,data,{ mode: 0o600 });
+  await database.query('UPDATE gateway_archive.job SET manifest=$2,manifest_sha256=$3 WHERE id=$1',[job.id,manifest,digest]);
+}
 async function worker() {
   const child = spawn(process.execPath,['/app/src/scripts/runGatewayArchiveWorker.mjs','--once'],{ env: {
     PATH: '/usr/bin:/bin',CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE: '/tmp/archive-worker-fixture.json' },stdio: ['ignore','pipe','pipe'] });
@@ -40,9 +47,22 @@ try {
     { mode: 0o600,flag: 'wx' });
     const ledger = await openGatewayLedger(database,'e'.repeat(64));
     const empty = await worker(); assert.equal(empty.state,'empty'); assert.equal((await readdir('/archives')).length,0);
+    // Synthetic old history, not elapsed retention time or production counter changes.
+    await database.query(`INSERT INTO ollama_gateway.request_binding(ledger_id,request_id,owner_id,provider_hash,installation,admitted_at,attempt,evidence_kind)
+      SELECT a.id,uuidv7(),a.owner_id,a.provider_hash,'synthetic',now()-interval '100 days',i,'unbound'
+      FROM ollama_gateway.admission a CROSS JOIN generate_series(1,101) i;
+      INSERT INTO ollama_gateway.completion_receipt(request_id,outcome,http_status,recorded_at)
+      SELECT request_id,'response_completed',200,admitted_at FROM ollama_gateway.request_binding;
+      UPDATE ollama_gateway.admission SET attempts=101,binding_count=101`);
     const request = await ledger.claim('synthetic'); await ledger.complete(request,false,{ state: 'response_completed',httpStatus: 200 });
     assert.equal((await worker()).state,'awaiting_verification');
-    assert.equal((await ledger.status()).attempts,'1');
+    assert.equal((await ledger.status()).attempts,'102');
+    const job = (await database.query('SELECT * FROM gateway_archive.job')).rows[0];
+    assert.equal(job.manifest.version,4); assert.equal(job.manifest.retention.entries.length,100);
+    assert.equal(job.manifest.retention.totalCandidates,101);
+    // Construct the legacy artifact shape to exercise mixed-format rotation, not a published-image upgrade.
+    const { retention: _retention,...legacy } = job.manifest;
+    await replaceFixtureManifest(job,{ ...legacy,version: 3 });
   } else if (action === 'checks') {
     for (const user of ['archive_fixture_reader','archive_fixture_writer']) {
       const restricted = new pg.Client({ host: '/var/run/postgresql',database: databaseName,user });
@@ -75,7 +95,7 @@ try {
   } else if (action === 'next') {
     const ledger = await openGatewayLedger(database,'e'.repeat(64));
     const request = await ledger.claim('synthetic'); await ledger.complete(request,false,{ state: 'response_completed',httpStatus: 200 });
-    if ((await ledger.status()).attempts === '3') {
+    if ((await ledger.status()).attempts === '104') {
       // Populate every history table and the admission/recovery FK cycle before the third restore.
       await database.query(`INSERT INTO ollama_gateway.recovery_receipt(ledger_id,action,provider_hash,owner_id,request_id,
         installation,started_at,attempts,operator_ref,evidence_ref,observed_at)
@@ -89,23 +109,50 @@ try {
       await database.query(`INSERT INTO ollama_gateway.provider_stop_observation(intent_id,finished_at,exit_code)
         SELECT id,'2026-10-16T00:00:00.000Z',0 FROM ollama_gateway.provider_stop_intent`);
       await database.query(`INSERT INTO ollama_gateway.upstream_peer_observation(binding_id,public_key_sha256,certificate_sha256)
-        SELECT id,repeat('d',64),repeat('e',64) FROM ollama_gateway.request_binding WHERE attempt=3`);
+        SELECT id,repeat('d',64),repeat('e',64) FROM ollama_gateway.request_binding WHERE attempt=104`);
     }
     // Explicit fixture clock advance, not evidence that a real day elapsed; no inference counter is reset.
     await database.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified'");
     assert.equal((await worker()).state,'awaiting_verification');
+  } else if (action === 'receipt-downgrade') {
+    const job = (await database.query("SELECT * FROM gateway_archive.job WHERE status='awaiting_verification'")).rows[0];
+    assert.equal(job.manifest.version,4);
+    const path = `/receipts/${job.id}.json`;
+    await writeFile(path,JSON.stringify({ version: 1,archiveId: job.id,manifestSha256: job.manifest_sha256,
+      dumpSha256: job.manifest.dump.sha256,verified: true,preserves: [],purgeAuthorized: false }),{ mode: 0o600,flag: 'wx' });
+    assert.equal((await worker()).reason,'gateway_archive_receipt_invalid'); await unlink(path);
+    assert.equal((await worker()).state,'awaiting_verification');
+  } else if (action === 'tamper-inventory') {
+    const job = (await database.query("SELECT * FROM gateway_archive.job WHERE status='awaiting_verification'")).rows[0];
+    assert.equal(job.manifest.version,4); assert.equal(job.manifest.retention.entries.length,100);
+    await writeFile('/tmp/online-archive-original-manifest.json',JSON.stringify(job.manifest),{ mode: 0o600,flag: 'wx' });
+    job.manifest.retention.entries[0].rowSha256 = '0'.repeat(64);
+    await replaceFixtureManifest(job,job.manifest);
+  } else if (action === 'restore-inventory-fixture') {
+    const job = (await database.query("SELECT * FROM gateway_archive.job WHERE status='awaiting_verification'")).rows[0];
+    const path = `/receipts/${job.id}.json`, receipt = JSON.parse(await readFile(path,'utf8'));
+    assert.equal(receipt.version,2); assert.equal(receipt.verified,false); assert.equal(receipt.retentionSha256,null);
+    assert.equal(receipt.purgeAuthorized,false); assert.deepEqual(receipt.preserves,[]); assert.equal(job.attempt,1);
+    // Restore only the synthetic tamper fixture; no SQL attempt or failed-job state is reset.
+    await replaceFixtureManifest(job,JSON.parse(await readFile('/tmp/online-archive-original-manifest.json','utf8')));
+    await unlink(path);
   } else if (action === 'accept') {
     assert.equal((await worker()).state,'unchanged');
     const jobs = (await database.query('SELECT *,uuid_extract_version(id) AS uuid_version FROM gateway_archive.job ORDER BY created_at')).rows;
     const kept = jobs.filter(job => job.status === 'verified');
     assert.equal(kept.length,Math.min(2,jobs.length));
     assert.ok(jobs.every(job => job.uuid_version === 7 && job.attempt === 1));
-    for (const job of kept) { assert.equal(job.receipt.verified,true); assert.equal(job.receipt.purgeAuthorized,false); }
+    for (const job of kept) {
+      assert.equal(job.receipt.verified,true); assert.equal(job.receipt.purgeAuthorized,false);
+      assert.equal(job.receipt.version,job.manifest.version === 4 ? 2 : 1);
+      if (job.manifest.version === 4) assert.equal(job.receipt.retentionSha256,retentionInventorySha256(job.manifest.retention));
+    }
     assert.equal((await readdir('/archives')).length,kept.length);
     if (jobs.length === 3) {
       assert.equal(jobs[0].status,'retired'); assert.ok(jobs[2].receipt.preserves.includes(jobs[0].id));
-      assert.equal((await database.query('SELECT count(*)::int AS n FROM ollama_gateway.request_binding')).rows[0].n,3);
-      assert.equal((await database.query('SELECT attempts::text FROM ollama_gateway.admission')).rows[0].attempts,'3');
+      assert.equal((await database.query('SELECT count(*)::int AS n FROM ollama_gateway.request_binding')).rows[0].n,104);
+      assert.equal((await database.query('SELECT attempts::text FROM ollama_gateway.admission')).rows[0].attempts,'104');
+      assert.equal(jobs[2].manifest.retention.entries.length,99); assert.equal(jobs[2].manifest.retention.totalCandidates,99);
       assert.ok(Object.values(jobs[2].manifest.content).every(table => table.count > 0));
     }
   } else if (action === 'corrupt') {

@@ -49,6 +49,11 @@ try {
     assert.ok(configuration.Config.Env.every(value => !/PASSWORD=|TOKEN=|CONFIG_FILE=/.test(value)));
     for (let cycle=0;cycle<3;cycle++) {
       if (cycle) fixture('next');
+      if (cycle === 1) {
+        fixture('receipt-downgrade'); fixture('tamper-inventory');
+        assert.ok(docker(['start','-a',verifier]).includes('"state":"verification_failed"'));
+        fixture('restore-inventory-fixture');
+      }
       const output = docker(['start','-a',verifier]); assert.ok(output.includes('"state":"verified"'),output);
       assert.equal(JSON.parse(docker(['inspect',verifier]))[0].State.ExitCode,0);
       if (!cycle) {
@@ -58,7 +63,7 @@ try {
       fixture('accept');
     }
     fixture('corrupt');
-    process.stdout.write('online_archive_rehearsal_passed: online SELECT-only exports; real restricted restore in separate network-none sandbox; UUIDv7 jobs; restarted services; 3 verified archives rotated to 2; corruption refusal; live history unchanged; zero provider calls\n');
+    process.stdout.write('online_archive_rehearsal_passed: online SELECT-only exports; isolated restricted restore; full candidate-page proof; inventory tamper and legacy receipt refusal; UUIDv7 jobs; restarted services; mixed v3/v4 rotation to 2; corruption refusal; live history unchanged; zero provider calls\n');
   } });
 } finally {
   const found = docker(['ps','-aq','--filter',`name=^${verifier}$`]).trim();

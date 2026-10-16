@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add exact, bounded cleanup-candidate evidence to automatic gateway archives
+  and independently verify it during isolated restore; preserve legacy archives,
+  retry limits and the prohibition on automatic live-history deletion.
+
 - Stabilize gateway archive fingerprints across database row ordering while
   preserving existing archive retry budgets and cooldowns.
 

@@ -18,6 +18,9 @@ export function validateArchiveContent(value) {
 
 export function validateOnlineArchiveFields(value) {
   validateArchiveContent(value.content);
+  if (value.version === 4 && Date.parse(value.report.capturedAt) - Date.parse(value.report.cutoff) !== value.report.retentionDays * 86400000) {
+    throw gatewayError('gateway_archive_content_invalid');
+  }
   if (!hash(value.policyHash) || !hash(value.revision) || !Array.isArray(value.predecessors) || value.predecessors.length > 2 ||
       new Set(value.predecessors.map(entry => entry.archiveId)).size !== value.predecessors.length) throw gatewayError('gateway_archive_content_invalid');
   for (const prior of value.predecessors) {
@@ -29,9 +32,11 @@ export function validateOnlineArchiveFields(value) {
 }
 
 export function validateArchiveReceipt(value) {
-  if (!exact(value, ['version', 'archiveId', 'manifestSha256', 'dumpSha256', 'verified', 'preserves', 'purgeAuthorized']) ||
-      value.version !== 1 || !archiveUuid(value.archiveId) || !hash(value.manifestSha256) || !hash(value.dumpSha256) ||
+  if (!exact(value, ['version', 'archiveId', 'manifestSha256', 'dumpSha256', 'verified', 'preserves', 'purgeAuthorized',
+    ...(value?.version === 2 ? ['retentionSha256'] : [])]) ||
+      ![1, 2].includes(value.version) || !archiveUuid(value.archiveId) || !hash(value.manifestSha256) || !hash(value.dumpSha256) ||
       typeof value.verified !== 'boolean' || value.purgeAuthorized !== false || !Array.isArray(value.preserves) || value.preserves.length > 2 ||
+      value.version === 2 && (value.verified ? !hash(value.retentionSha256) : value.retentionSha256 !== null) ||
       (!value.verified && value.preserves.length !== 0) ||
       !value.preserves.every(archiveUuid) || new Set(value.preserves).size !== value.preserves.length) throw gatewayError('gateway_archive_receipt_invalid');
   return value;

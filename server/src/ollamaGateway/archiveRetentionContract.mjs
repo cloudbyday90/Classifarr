@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { createHash } from 'node:crypto';
 import { gatewayError } from './errors.mjs';
 
 export const RETENTION_REVIEW_LIMIT = 100;
@@ -24,4 +25,12 @@ export function validateRetentionInventory(value, totalCandidates) {
     bindings.add(entry.bindingId); requests.add(entry.requestId); previous = BigInt(entry.attempt);
   }
   return value;
+}
+
+/** Stable across JSONB key reordering; never hash caller-supplied object order. */
+export function retentionInventorySha256(value) {
+  validateRetentionInventory(value, value?.totalCandidates);
+  const { version, ledgerSha256, totalCandidates, hasMore } = value;
+  const entries = value.entries.map(({ bindingId, requestId, attempt, rowSha256 }) => ({ bindingId, requestId, attempt, rowSha256 }));
+  return createHash('sha256').update(JSON.stringify({ version, ledgerSha256, entries, totalCandidates, hasMore })).digest('hex');
 }

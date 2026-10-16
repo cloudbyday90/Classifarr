@@ -2,6 +2,7 @@
 import { archiveRevision } from './archiveRevision.mjs';
 import { reportSnapshot } from './archiveRepository.mjs';
 import { captureArchiveContent } from './archiveContent.mjs';
+import { captureRetentionInventory } from './archiveRetentionQueries.mjs';
 import { createArchiveDirectory, finishArchive } from './archiveFiles.mjs';
 import { dumpGatewayArchive } from './archiveDump.mjs';
 import { gatewayError } from './errors.mjs';
@@ -30,9 +31,11 @@ export async function createOnlineArchive(client, configuration, parent, job, pr
     if (report.ledgerId !== job.ledger_id || revision !== job.revision) throw gatewayError('gateway_archive_source_changed');
     const snapshot = (await client.query('SELECT pg_export_snapshot() AS snapshot')).rows[0].snapshot;
     const content = await captureArchiveContent(client, signal);
+    const retention = await captureRetentionInventory(client, report);
+    signal?.throwIfAborted();
     directory = await createArchiveDirectory(parent, job.id);
     const dump = await dumpGatewayArchive(configuration, snapshot, directory, signal);
-    return { version: 3, schemaVersion: 7, archiveId: job.id, report, revision, policyHash: job.policy_hash, content, predecessors, dump };
+    return { version: 4, schemaVersion: 7, archiveId: job.id, report, revision, policyHash: job.policy_hash, content, predecessors, retention, dump };
   }, signal);
   const result = await finishArchive(directory, manifest);
   return { ...result, manifest };

@@ -3,6 +3,7 @@ import { archiveDue, archivePolicyHash } from './archiveSchedule.mjs';
 import { withOnlineArchiveSnapshot, createOnlineArchive } from './onlineArchive.mjs';
 import { archiveStorageAvailable, readArchiveReceipt, checkManagedArchive, retireManagedArchive } from './archiveManagedFiles.mjs';
 import { gatewayError } from './errors.mjs';
+import { validateReceiptForArchive } from './archiveReceiptBinding.mjs';
 
 async function rotate(repository, parent, jobs, signal) {
   const verified = jobs.filter(job => job.status === 'verified');
@@ -37,9 +38,7 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     await checkManagedArchive(parent,pending,signal);
     const receipt = await readArchiveReceipt(receipts,pending.id);
     if (!receipt) return { state: 'awaiting_verification', archiveId: pending.id, purgeAuthorized: false };
-    if (receipt.archiveId !== pending.id || receipt.manifestSha256 !== pending.manifest_sha256 ||
-        receipt.dumpSha256 !== pending.manifest.dump.sha256 ||
-        receipt.preserves.some(id => !pending.manifest.predecessors.some(prior => prior.archiveId === id))) throw gatewayError('gateway_archive_receipt_invalid');
+    validateReceiptForArchive(receipt,pending.manifest,pending.manifest_sha256);
     if (!receipt.verified) await repository.failed(pending.id,'verification_failed');
     else await repository.verified(pending.id,receipt);
     jobs = await repository.list();

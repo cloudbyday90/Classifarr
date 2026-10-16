@@ -8,6 +8,7 @@ import { archiveDirectory, readVerifiedGatewayArchive, openArchiveFile } from '.
 import { ARCHIVE_LIMIT, archiveUuid } from './archiveContract.mjs';
 import { ARCHIVE_POLICY } from './archiveSchedule.mjs';
 import { validateArchiveReceipt } from './onlineArchiveContract.mjs';
+import { validateReceiptForArchive } from './archiveReceiptBinding.mjs';
 import { gatewayError } from './errors.mjs';
 
 export function managedArchivePath(parent, id) {
@@ -141,7 +142,8 @@ export async function retireManagedArchive(parent, job) {
 
 export async function checkManagedArchive(parent, job, signal) {
   const value = await readVerifiedGatewayArchive(managedArchivePath(parent,job.id),signal);
-  if (value.manifest.version !== 3 || value.manifest.archiveId !== job.id || value.manifestSha256 !== job.manifest_sha256 ||
+  if (![3, 4].includes(value.manifest.version) || value.manifest.archiveId !== job.id || value.manifestSha256 !== job.manifest_sha256 ||
       !isDeepStrictEqual(value.manifest,job.manifest)) throw gatewayError('gateway_archive_job_fence');
+  if (job.receipt) validateReceiptForArchive(job.receipt,value.manifest,value.manifestSha256);
   return value;
 }

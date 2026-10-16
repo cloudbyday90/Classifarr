@@ -45,15 +45,15 @@ export function validateArchiveReport(value) {
 }
 
 export function validateArchiveManifest(value) {
-  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...(value?.version === 2 ? ['retention'] : []),
-    ...(value?.version === 3 ? ['content', 'predecessors', 'policyHash', 'revision'] : [])];
-  if (!exact(value, keys) || ![1, 2, 3].includes(value.version) || value.schemaVersion !== 7 ||
+  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...([2, 4].includes(value?.version) ? ['retention'] : []),
+    ...([3, 4].includes(value?.version) ? ['content', 'predecessors', 'policyHash', 'revision'] : [])];
+  if (!exact(value, keys) || ![1, 2, 3, 4].includes(value.version) || value.schemaVersion !== 7 ||
       !archiveUuid(value.archiveId) || !exact(value.dump, ['name', 'bytes', 'sha256']) || value.dump.name !== 'gateway.dump' ||
       !Number.isSafeInteger(value.dump.bytes) || value.dump.bytes < 5 || value.dump.bytes > ARCHIVE_LIMIT || !hash(value.dump.sha256)) {
     throw gatewayError('gateway_archive_manifest_invalid');
   }
   validateArchiveReport(value.report);
-  if (value.version === 2) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
-  if (value.version === 3) validateOnlineArchiveFields(value);
+  if ([2, 4].includes(value.version)) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
+  if ([3, 4].includes(value.version)) validateOnlineArchiveFields(value);
   return value;
 }

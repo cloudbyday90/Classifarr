@@ -87,6 +87,15 @@ archive has `status=verified` and a matching receipt with `verified=true` and
 create such a receipt. Missing verifier output remains pending, not successful
 and not a reason to start another overlapping restore.
 
+New exports use version-4 manifests with at most 100 exact retention candidates;
+version-2 restore receipts bind their independently verified inventory digest.
+Version-3 manifests and version-1 receipts remain usable for legacy restore and
+rotation only, not candidate-level cleanup evidence. Upgrade coordinator and
+verifier together; old verifiers safely refuse new manifests. Unchanged legacy
+history is not forcibly re-exported and retry limits are not reset. See the
+[cleanup-evidence design](gateway-cleanup-evidence-design.md) for compatibility
+and the separate, still-deferred automatic deletion and recovery-window work.
+
 An interrupted export is intentionally not retried from a timeout alone. Preserve
 its directory and job record and investigate the stopped worker before a future
 recovery procedure changes that state. The compose template does not restart

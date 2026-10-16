@@ -614,7 +614,7 @@
     }
   ],
   "entries": [
-    {"path":"server/src/ollamaGateway/archiveVerifier.mjs","digest":"33f009dc5e5cdd2428c79a8f9207295724dc0163c400b66fb4d1ce13f3323def","analysisDigest":"b430c36407c01e8fbe93500a619470ad97b27567813235a8c23132f1f5b7f82d","review":"isolated_provider_resource_recovery"},
+    {"path":"server/src/ollamaGateway/archiveVerifier.mjs","digest":"091af259c9799bf1daf78906b1072f1f6cf0b3438cca7e550e206cd431e7e324","analysisDigest":"b430c36407c01e8fbe93500a619470ad97b27567813235a8c23132f1f5b7f82d","review":"isolated_provider_resource_recovery"},
     {"path":"server/src/ollamaGateway/ledger.mjs","digest":"c182ff036d34483fe667fae776490d822050df6a54b077aebaab365a5e373c5b","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_controls"},
     {"path":"server/src/scripts/runOllamaGateway.mjs","digest":"44d0eafc94d09c8f4859a76e13cb653a6a9a14470eae80700dcb33775f1e93b9","analysisDigest":"93d6e3fa8502e42affd4fa42cf775c3dfd9c62e7d96ce044398290ea165c0c08","review":"evaluation_workload_controls"},
     {"path":"server/src/scripts/descriptionCorpusProfile/fixture.mjs","digest":"52c4712b38f799c45d7bdcb1a39985c16e5793e9d375314f5bf636592ff64f53","analysisDigest":"4dbfb9478cfae21a84ac2e6eb30961d21072f32425adfa8f68e89157a1e1db4a","review":"offline_description_corpus_profile"},
