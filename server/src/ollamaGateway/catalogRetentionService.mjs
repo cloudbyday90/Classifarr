@@ -7,6 +7,7 @@ import { validateCatalogRetention } from './catalogRetentionContract.mjs';
 import { catalogRetentionRepository } from './catalogRetentionRepository.mjs';
 import { withArchiveMaintenance } from './archiveMaintenanceLock.mjs';
 import { gatewayError } from './errors.mjs';
+import { checkCatalogInventoryFiles, requiredCatalogArchives } from './catalogRecoveryFiles.mjs';
 
 async function locations(paths) {
   if (!paths || Object.keys(paths).sort().join(',') !== 'archives,catalogs,receipts') throw gatewayError('gateway_catalog_contract');
@@ -15,9 +16,10 @@ async function locations(paths) {
   return { catalogs: values[0], archives: values[1], receipts: values[2] };
 }
 
-async function inspectDependencies(client, paths, signal, collect = null, selected = null) {
+async function inspectDependencies(client, paths, signal, collect = null, version = 1) {
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout='4s'; SET LOCAL lock_timeout='2s'; SET LOCAL idle_in_transaction_session_timeout='75s'");
+    const selected = version === 2 ? await requiredCatalogArchives(client) : null;
     const summary = await inspectCatalogDependencies(client, paths.archives, paths.receipts, signal, collect, selected);
     signal?.throwIfAborted(); await client.query('COMMIT'); return summary;
   } catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -30,8 +32,7 @@ async function checkSet(client, repository, paths, root, signal) {
   if (checked.manifestSha256 !== root.manifest_sha256 || !isDeepStrictEqual(checked.manifest, root.manifest)) {
     throw gatewayError('gateway_catalog_registration_invalid');
   }
-  const summary = await inspectDependencies(client, paths, signal, null, new Set(entries.map(entry => entry.id)));
-  if (!isDeepStrictEqual(summary, root.manifest.catalog.dependencies)) throw gatewayError('gateway_catalog_dependency');
+  await checkCatalogInventoryFiles(paths, entries, signal);
 }
 
 /** Internal, optional retention seam. No timer, endpoint, capture admission or provider call. */
@@ -50,7 +51,7 @@ export function catalogRetentionService(client) {
       return run(paths, signal, async (checkedPaths, bounded) => {
         const checked = await readVerifiedGatewayArchive(managedArchivePath(checkedPaths.catalogs, archiveId), bounded);
         const entries = [];
-        const summary = await inspectDependencies(client, checkedPaths, bounded, entry => entries.push(entry));
+        const summary = await inspectDependencies(client, checkedPaths, bounded, entry => entries.push(entry), checked.manifest.catalog?.version);
         if (!isDeepStrictEqual(summary, checked.manifest.catalog?.dependencies)) throw gatewayError('gateway_catalog_dependency');
         bounded.throwIfAborted();
         const root = await repository.register(checked.manifest, checked.manifestSha256, verification, entries, bounded);

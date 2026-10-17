@@ -7,6 +7,10 @@ import { lockArchiveCoordinator,archiveJobRepository } from '../ollamaGateway/ar
 import { runArchiveAssessment } from '../ollamaGateway/archiveCoordinator.mjs';
 import { ARCHIVE_POLICY } from '../ollamaGateway/archiveSchedule.mjs';
 import { withArchiveMaintenance } from '../ollamaGateway/archiveMaintenanceLock.mjs';
+import { checkCatalogReader } from '../ollamaGateway/catalogReader.mjs';
+import { catalogJobRepository } from '../ollamaGateway/catalogJobRepository.mjs';
+import { runCatalogAssessment } from '../ollamaGateway/catalogCoordinator.mjs';
+import { checkCatalogMaintenanceRole } from '../ollamaGateway/catalogMaintenanceRole.mjs';
 
 const controller = new AbortController();
 process.once('SIGINT',() => controller.abort()); process.once('SIGTERM',() => controller.abort());
@@ -21,14 +25,22 @@ try {
     options: readOnly ? '-c default_transaction_read_only=on' : undefined });
   source = connection(configuration.source.database,true); maintenance = connection(configuration.maintenance,false);
   for (const client of [source,maintenance]) { client.on('error',() => controller.abort()); await client.connect(); }
-  await checkArchiveRole(source,true); await checkArchiveRole(maintenance);
+  if (configuration.catalogs) await checkCatalogReader(source, 2);
+  else await checkArchiveRole(source,true);
+  await checkArchiveRole(maintenance);
+  if (configuration.catalogs) await checkCatalogMaintenanceRole(maintenance);
   await lockArchiveCoordinator(maintenance);
   const repository = archiveJobRepository(maintenance); await repository.assertSchema(); let initialized = false;
   while (!controller.signal.aborted) {
     const deadline = AbortSignal.timeout(120000), signal = AbortSignal.any([controller.signal,deadline]);
     let result;
     try { result = await withArchiveMaintenance(maintenance,async () => {
-      if (!initialized) { await repository.interrupted(); initialized = true; }
+      if (!initialized) {
+        if (configuration.catalogs) await catalogJobRepository(maintenance).interrupted();
+        await repository.interrupted(); initialized = true;
+      }
+      if (configuration.catalogs) return runCatalogAssessment({ source, maintenance, repository, configuration: configuration.source,
+        paths: { archives: configuration.archives, receipts: configuration.receipts, catalogs: configuration.catalogs }, signal });
       return runArchiveAssessment({ source,repository,configuration: configuration.source,
         parent: configuration.archives,receipts: configuration.receipts,signal });
     }); }
@@ -36,7 +48,9 @@ try {
       const safe = ['gateway_archive_receipt_invalid','gateway_archive_job_fence','gateway_archive_rotation_blocked',
         'gateway_archive_file_invalid','gateway_archive_verification_failed','gateway_archive_unmanaged_files',
         'gateway_archive_storage_blocked','gateway_archive_job_capacity','gateway_archive_source_inconsistent',
-        'gateway_archive_protection_fence'];
+        'gateway_archive_protection_fence','gateway_catalog_dependency','gateway_catalog_budget_blocked',
+        'gateway_catalog_job_fence','gateway_catalog_admission_blocked','gateway_catalog_rotation_blocked',
+        'gateway_catalog_verification_invalid','gateway_catalog_size_limit','gateway_catalog_capture_pending'];
       result = { state: 'archive_blocked',reason: safe.includes(error.code) ? error.code : 'gateway_archive_unavailable',purgeAuthorized: false };
     }
     const text = JSON.stringify(result);

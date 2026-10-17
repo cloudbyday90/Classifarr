@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add optional automatic gateway recovery-catalog scheduling with UUIDv7 jobs,
+  shared retry/storage limits, and isolated restore verification. Keep historical
+  records and protected copies; release old file dependencies only after verified
+  replacements. Existing deployments and live-history cleanup remain unchanged.
+
 - Add a separate, UUIDv7-backed gateway catalog-retention registry with shared-file
   protection and restart-safe snapshot rotation. Preserve audit history and retry
   limits; automatic catalog scheduling and production activation remain disabled.

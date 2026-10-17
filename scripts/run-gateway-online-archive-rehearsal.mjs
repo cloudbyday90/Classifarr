@@ -8,11 +8,14 @@ import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualification.mjs';
 import { runGatewayCatalogRehearsal } from './lib/gatewayCatalogRehearsal.mjs';
 import { runGatewayCatalogRetentionRehearsal } from './lib/gatewayCatalogRetentionRehearsal.mjs';
+import { runGatewayCatalogSchedulingRehearsal } from './lib/gatewayCatalogSchedulingRehearsal.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
-if (process.argv.length > 5 || (mode && !['--qualification','--cleanup'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
+if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
-if (mode === '--qualification' || mode === '--cleanup') {
+if (mode === '--catalog-scheduling') {
+  await runGatewayCatalogSchedulingRehearsal(image, revision);
+} else if (mode === '--qualification' || mode === '--cleanup') {
   await runGatewayArchiveQualification(image,revision,mode === '--cleanup');
 } else {
 const docker = args => execFileSync('docker',args,{ encoding: 'utf8',windowsHide: true,timeout: 240000,maxBuffer: 1048576 });

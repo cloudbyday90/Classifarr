@@ -2,11 +2,17 @@
 import { gatewayError } from './errors.mjs';
 
 /** Validate logical links not covered by the packaged foreign keys. Read-only. */
-export async function checkCatalogRelationships(client, archiveId, report) {
-  const { valid } = (await client.query(`SELECT
-    (SELECT count(*)=1 FROM gateway_archive.job WHERE id=$1 AND status='exporting' AND manifest IS NULL
+export async function checkCatalogRelationships(client, archiveId, report, version = 1) {
+  const admission = version === 2 ? `(SELECT count(*)=1 FROM gateway_catalog.job WHERE id=$1 AND status='exporting'
+      AND manifest IS NULL AND receipt IS NULL AND completed_at IS NULL)
+    AND NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE status IN ('exporting','awaiting_verification','interrupted') AND id<>$1)
+    AND NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE ledger_id IS DISTINCT FROM $2::uuid OR provider_hash IS DISTINCT FROM $3)
+    AND NOT EXISTS(SELECT 1 FROM gateway_archive.job WHERE status IN ('exporting','awaiting_verification','interrupted','retiring'))` :
+    `(SELECT count(*)=1 FROM gateway_archive.job WHERE id=$1 AND status='exporting' AND manifest IS NULL
       AND receipt IS NULL AND completed_at IS NULL AND recovery_protection_id IS NULL)
-    AND NOT EXISTS(SELECT 1 FROM gateway_archive.job WHERE status IN ('exporting','awaiting_verification','interrupted','retiring') AND id<>$1)
+    AND NOT EXISTS(SELECT 1 FROM gateway_archive.job WHERE status IN ('exporting','awaiting_verification','interrupted','retiring') AND id<>$1)`;
+  const { valid } = (await client.query(`SELECT
+    ${admission}
     AND NOT EXISTS(SELECT 1 FROM gateway_archive.job WHERE ledger_id IS DISTINCT FROM $2::uuid OR provider_hash IS DISTINCT FROM $3)
     AND NOT EXISTS(SELECT 1 FROM gateway_archive.protection p
       LEFT JOIN gateway_archive.job a ON a.id=p.first_archive_id LEFT JOIN gateway_archive.job b ON b.id=p.second_archive_id

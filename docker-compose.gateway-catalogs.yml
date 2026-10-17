@@ -1,0 +1,14 @@
+# Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
+# Optional overlay for docker-compose.gateway-archives.yml. Not included in normal Compose.
+# Requires the v2 optional catalog schema, restricted roles and a private config with catalogs=/catalogs.
+services:
+  gateway-archiver:
+    volumes:
+      - ${CLASSIFARR_GATEWAY_CATALOG_DIRECTORY:?Set private managed catalog directory}:/catalogs
+  gateway-catalog-verifier:
+    extends:
+      file: docker-compose.gateway-archives.yml
+      service: gateway-archive-verifier
+    entrypoint: ["node", "/app/src/scripts/runGatewayArchiveVerifier.mjs", "--catalog"]
+    volumes:
+      - ${CLASSIFARR_GATEWAY_CATALOG_DIRECTORY:?Set private managed catalog directory}:/catalogs:ro

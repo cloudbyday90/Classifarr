@@ -4,6 +4,8 @@ import { gatewayError } from './errors.mjs';
 
 // Versioned fixed identifiers, never names supplied by a manifest or caller.
 export const CATALOG_TABLES = Object.freeze(['gateway_archive.job', 'gateway_archive.protection', 'gateway_cleanup.operation']);
+export const catalogTables = version => version === 2 ? [...CATALOG_TABLES, 'gateway_catalog.job'] : CATALOG_TABLES;
+export const CATALOG_JOB_COLUMNS = 'id:uuid,ledger_id:uuid,provider_hash:text,policy_hash:text,revision:text,compatible_revisions:text[],semantic_sha256:text,attempt:integer,status:text,created_at:timestamp with time zone,completed_at:timestamp with time zone,retry_after:timestamp with time zone,manifest_sha256:text,manifest:jsonb,receipt:jsonb,reason:text';
 export const CATALOG_ROW_LIMIT = 131072;
 export const CATALOG_COUNTS = Object.freeze([10000, 1000, 1000]);
 export const CATALOG_COLUMNS = Object.freeze([
@@ -15,11 +17,13 @@ const exact = (value, keys) => value && typeof value === 'object' && !Array.isAr
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 
 export function validateCatalog(value) {
-  if (!exact(value, ['version', 'tables', 'dependencies']) || value.version !== 1 ||
-      !exact(value.tables, CATALOG_TABLES) || !CATALOG_TABLES.every((name, index) => {
+  const tables = catalogTables(value?.version);
+  if (!exact(value, ['version', 'tables', 'dependencies', ...(value?.version === 2 ? ['semanticSha256'] : [])]) || ![1, 2].includes(value.version) ||
+      (value.version === 2 && !archiveHash(value.semanticSha256)) ||
+      !exact(value.tables, tables) || !tables.every((name, index) => {
         const item = value.tables[name];
         return exact(item, ['count', 'maxId', 'sha256']) && Number.isInteger(item.count) && item.count >= 0 &&
-          item.count <= CATALOG_COUNTS[index] && (item.count ? archiveUuid(item.maxId) : item.maxId === null) && archiveHash(item.sha256);
+          item.count <= (CATALOG_COUNTS[index] ?? 10000) && (item.count ? archiveUuid(item.maxId) : item.maxId === null) && archiveHash(item.sha256);
       }) || !exact(value.dependencies, ['count', 'bytes', 'sha256']) ||
       !Number.isSafeInteger(value.dependencies.count) || value.dependencies.count < 0 || value.dependencies.count > 40000 ||
       !Number.isSafeInteger(value.dependencies.bytes) || value.dependencies.bytes < 0 || value.dependencies.bytes > 1073741824 ||

@@ -9,12 +9,15 @@ import { captureRetentionInventory } from '../../ollamaGateway/archiveRetentionQ
 import { retentionInventorySha256 } from '../../ollamaGateway/archiveRetentionContract.mjs';
 import { candidateBatchSha256 } from '../../ollamaGateway/archiveProtectionPolicy.mjs';
 import { archivePolicyHash } from '../../ollamaGateway/archiveSchedule.mjs';
+import { catalogRetentionRepository, assertArchiveNotCatalogPinned } from '../../ollamaGateway/catalogRetentionRepository.mjs';
+import { catalogSample, inventory } from '../fixtures/gatewayCatalogRetention.mjs';
+import { requiredCatalogArchives } from '../../ollamaGateway/catalogRecoveryFiles.mjs';
 
 let fixture,owner,other,repository,pair,configuration,batch;
 const schema = name => readFile(new URL(`../../../../database/ollama-gateway-archive/${name}`,import.meta.url),'utf8');
 beforeEach(async () => {
   fixture = await createOllamaApplicationFixture(getPool()); owner = await getPool().connect(); other = await getPool().connect();
-  await owner.query('DROP SCHEMA IF EXISTS gateway_archive CASCADE'); await owner.query(await schema('current.sql'));
+  await owner.query('DROP SCHEMA IF EXISTS gateway_catalog CASCADE; DROP SCHEMA IF EXISTS gateway_archive CASCADE'); await owner.query(await schema('current.sql'));
   repository = archiveJobRepository(owner); await repository.assertSchema();
   // Seed old synthetic records; never rewrite append-only inference history or refund attempts.
   await owner.query(`INSERT INTO ollama_gateway.request_binding(ledger_id,request_id,owner_id,provider_hash,installation,admitted_at,attempt,evidence_kind)
@@ -37,7 +40,10 @@ beforeEach(async () => {
   }
   pair = await repository.list(); batch = candidateBatchSha256(pair[0].manifest.retention);
 });
-afterEach(async () => { owner?.release(true); other?.release(true); await fixture?.close(); });
+afterEach(async () => {
+  await owner?.query('ROLLBACK; DROP SCHEMA IF EXISTS gateway_catalog CASCADE');
+  owner?.release(true); other?.release(true); await fixture?.close();
+});
 
 test('native UUIDv7 holds protect both jobs atomically, remain indefinite, and preserve inference',async () => {
   const before = (await owner.query('SELECT to_jsonb(a) AS value FROM ollama_gateway.admission a')).rows[0].value;
@@ -54,6 +60,26 @@ test('native UUIDv7 holds protect both jobs atomically, remain indefinite, and p
   await expect(repository.ready(hold.id)).rejects.toThrow('gateway_archive_protection_fence');
   expect((await owner.query('SELECT to_jsonb(a) AS value FROM ollama_gateway.admission a')).rows[0].value).toEqual(before);
   expect(fixture.calls).toHaveLength(0);
+});
+
+test('catalog pins allow validated protection promotion without rewriting the old snapshot', async () => {
+  await owner.query(await readFile(new URL('../../../../database/ollama-gateway-catalog/current.sql', import.meta.url), 'utf8'));
+  await owner.query('SELECT pg_advisory_lock(11435,4)');
+  const entries = pair.flatMap(item => inventory(item.id).map(entry => ({ ...entry,
+    sha256: entry.kind === 'manifest' ? item.manifest_sha256 : entry.sha256 })));
+  entries.sort((a, b) => a.id.localeCompare(b.id) || ['dump', 'manifest', 'receipt'].indexOf(a.kind) - ['dump', 'manifest', 'receipt'].indexOf(b.kind));
+  const value = catalogSample(undefined, pair[0].ledger_id, entries);
+  value.manifest.report.providerHash = pair[0].provider_hash; value.manifest.policyHash = pair[0].policy_hash;
+  const roots = catalogRetentionRepository(owner);
+  const before = await roots.register(value.manifest, value.manifestSha256, value.verification, entries);
+  const hold = await repository.protect(pair, batch); await repository.ready(hold.id);
+  expect((await roots.list())[0]).toEqual(before);
+  expect(await roots.entries(before.id)).toEqual(entries);
+  expect(await requiredCatalogArchives(owner)).toEqual(new Set(pair.map(item => item.id)));
+  await expect(assertArchiveNotCatalogPinned(owner, pair[0].id)).rejects.toThrow('gateway_catalog_dependency');
+  for (const sql of ["UPDATE gateway_archive.job SET manifest='{}'", 'UPDATE gateway_archive.job SET recovery_protection_id=NULL']) {
+    await expect(owner.query(sql)).rejects.toThrow();
+  }
 });
 
 test('retirement wins first: stale protection request cannot claim the retired job',async () => {

@@ -64,7 +64,7 @@ export async function archiveStorageAvailable(parent, receipts, jobs, additional
     free.bavail * free.bsize >= reserve + 67108864n;
 }
 
-export async function readArchiveReceipt(parent, id) {
+export async function readArchiveReceipt(parent, id, validate = validateArchiveReceipt) {
   if (!archiveUuid(id)) throw gatewayError('gateway_archive_receipt_invalid');
   let file;
   try {
@@ -73,15 +73,15 @@ export async function readArchiveReceipt(parent, id) {
     if (!stat.isFile() || stat.uid !== process.geteuid() || stat.nlink !== 1 || (stat.mode & 0o077) || stat.size > 4096) throw new Error();
     const buffer = Buffer.alloc(4097); const { bytesRead } = await file.read(buffer,0,buffer.length,0);
     if (bytesRead > 4096) throw new Error();
-    return validateArchiveReceipt(JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(buffer.subarray(0,bytesRead))));
+    return validate(JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(buffer.subarray(0,bytesRead))));
   } catch (error) {
     if (error.code === 'ENOENT') return null;
     throw gatewayError('gateway_archive_receipt_invalid');
   } finally { await file?.close(); }
 }
 
-export async function writeArchiveReceipt(parent, receipt) {
-  validateArchiveReceipt(receipt); parent = await archiveDirectory(parent);
+export async function writeArchiveReceipt(parent, receipt, validate = validateArchiveReceipt) {
+  validate(receipt); parent = await archiveDirectory(parent);
   const pending = join(parent,`${receipt.archiveId}.pending`), final = join(parent,`${receipt.archiveId}.json`);
   const file = await open(pending, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW,0o600);
   try { await file.writeFile(`${JSON.stringify(receipt)}\n`); await file.sync(); } finally { await file.close(); }
@@ -90,7 +90,7 @@ export async function writeArchiveReceipt(parent, receipt) {
 }
 
 /** Finish a fully written receipt after a crash between write/link/unlink; never overwrite a published result. */
-export async function recoverArchiveReceiptPublication(parent,id) {
+export async function recoverArchiveReceiptPublication(parent,id,validate = validateArchiveReceipt) {
   if (!archiveUuid(id)) throw gatewayError('gateway_archive_receipt_invalid');
   parent = await archiveDirectory(parent);
   const pending = join(parent,`${id}.pending`), final = join(parent,`${id}.json`);
@@ -101,7 +101,7 @@ export async function recoverArchiveReceiptPublication(parent,id) {
     if (!stat.isFile() || stat.uid !== process.geteuid() || ![1,2].includes(stat.nlink) || (stat.mode & 0o077) || stat.size > 4096) throw new Error();
     const buffer = Buffer.alloc(4097), result = await file.read(buffer,0,buffer.length,0);
     if (result.bytesRead > 4096) throw new Error();
-    const receipt = validateArchiveReceipt(JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(buffer.subarray(0,result.bytesRead))));
+    const receipt = validate(JSON.parse(new TextDecoder('utf-8',{ fatal: true }).decode(buffer.subarray(0,result.bytesRead))));
     if (receipt.archiveId !== id) throw new Error();
     await file.sync();
     try { await link(pending,final); }

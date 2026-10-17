@@ -46,16 +46,19 @@ export function validateArchiveReport(value) {
 }
 
 export function validateArchiveManifest(value) {
-  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...([2, 4, 5].includes(value?.version) ? ['retention'] : []),
-    ...([3, 4, 5].includes(value?.version) ? ['content', 'predecessors', 'policyHash', 'revision'] : []), ...(value?.version === 5 ? ['catalog'] : [])];
-  if (!exact(value, keys) || ![1, 2, 3, 4, 5].includes(value.version) || value.schemaVersion !== 7 ||
+  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...([2, 4, 5, 6].includes(value?.version) ? ['retention'] : []),
+    ...([3, 4, 5, 6].includes(value?.version) ? ['content', 'predecessors', 'policyHash', 'revision'] : []), ...([5, 6].includes(value?.version) ? ['catalog'] : [])];
+  if (!exact(value, keys) || ![1, 2, 3, 4, 5, 6].includes(value.version) || value.schemaVersion !== 7 ||
       !archiveUuid(value.archiveId) || !exact(value.dump, ['name', 'bytes', 'sha256']) || value.dump.name !== 'gateway.dump' ||
       !Number.isSafeInteger(value.dump.bytes) || value.dump.bytes < 5 || value.dump.bytes > ARCHIVE_LIMIT || !hash(value.dump.sha256)) {
     throw gatewayError('gateway_archive_manifest_invalid');
   }
   validateArchiveReport(value.report);
-  if ([2, 4, 5].includes(value.version)) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
-  if ([3, 4, 5].includes(value.version)) validateOnlineArchiveFields(value);
-  if (value.version === 5) validateCatalog(value.catalog);
+  if ([2, 4, 5, 6].includes(value.version)) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
+  if ([3, 4, 5, 6].includes(value.version)) validateOnlineArchiveFields(value);
+  if ([5, 6].includes(value.version)) {
+    validateCatalog(value.catalog);
+    if (value.catalog.version !== (value.version === 6 ? 2 : 1)) throw gatewayError('gateway_archive_manifest_invalid');
+  }
   return value;
 }

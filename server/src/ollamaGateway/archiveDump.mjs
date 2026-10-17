@@ -5,12 +5,12 @@ import { ARCHIVE_LIMIT, gatewayArchiveConfiguration } from './archiveContract.mj
 import { openArchiveFile } from './archiveFiles.mjs';
 import { gatewayError } from './errors.mjs';
 import { ARCHIVE_TABLES } from './archiveTables.mjs';
-import { CATALOG_TABLES } from './catalogContract.mjs';
+import { catalogTables } from './catalogContract.mjs';
 
-export function archiveDumpOptions(configuration, snapshot, catalog = false) {
+export function archiveDumpOptions(configuration, snapshot, catalog = /** @type {boolean | number} */ (false)) {
   const { database } = gatewayArchiveConfiguration(configuration);
   if (typeof snapshot !== 'string' || !/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}-[0-9]+$/.test(snapshot)) throw gatewayError('gateway_archive_config_invalid');
-  const scope = catalog ? [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...CATALOG_TABLES].map(name => `--table=${name}`) : ['--schema=ollama_gateway'];
+  const scope = catalog ? [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...catalogTables(catalog === 2 ? 2 : 1)].map(name => `--table=${name}`) : ['--schema=ollama_gateway'];
   return { args: ['--format=custom', '--compress=0', ...scope, '--strict-names', '--no-owner', '--no-acl',
     '--no-comments', '--no-security-labels', '--no-password', '--lock-wait-timeout=2000', `--snapshot=${snapshot}`],
   env: { PATH: '/usr/bin:/bin', PGHOST: database.host, PGPORT: String(database.port ?? 5432), PGDATABASE: database.database,
@@ -18,7 +18,7 @@ export function archiveDumpOptions(configuration, snapshot, catalog = false) {
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=30000 -c lock_timeout=2000' } };
 }
 
-export async function dumpGatewayArchive(configuration, snapshot, directory, signal, catalog = false) {
+export async function dumpGatewayArchive(configuration, snapshot, directory, signal, catalog = /** @type {boolean | number} */ (false)) {
   const options = archiveDumpOptions(configuration, snapshot, catalog);
   signal?.throwIfAborted();
   const file = await openArchiveFile(directory, 'gateway.dump', true);

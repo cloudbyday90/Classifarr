@@ -6,6 +6,8 @@ export async function hasCatalogRetention(client) {
   const { installed } = (await client.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='gateway_catalog') AS installed")).rows[0];
   if (!installed) return false;
   await client.query('SELECT gateway_catalog.require_lock()');
+  if ((await client.query("SELECT to_regclass('gateway_catalog.job') IS NOT NULL AS jobs")).rows[0].jobs &&
+      (await client.query('SELECT EXISTS(SELECT 1 FROM gateway_catalog.job) AS active')).rows[0].active) return true;
   return (await client.query("SELECT EXISTS(SELECT 1 FROM gateway_catalog.snapshot WHERE status<>'retired') AS active")).rows[0].active;
 }
 

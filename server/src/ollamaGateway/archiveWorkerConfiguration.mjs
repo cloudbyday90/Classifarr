@@ -1,19 +1,24 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, resolve, sep } from 'node:path';
 import { gatewayArchiveConfiguration } from './archiveContract.mjs';
 import { gatewayError } from './errors.mjs';
 
 export function archiveWorkerConfiguration(value) {
-  if (!value || Object.keys(value).sort().join(',') !== 'archives,maintenance,receipts,source') throw gatewayError('gateway_archive_config_invalid');
+  if (!value || !['archives,maintenance,receipts,source','archives,catalogs,maintenance,receipts,source'].includes(Object.keys(value).sort().join(','))) throw gatewayError('gateway_archive_config_invalid');
   const source = gatewayArchiveConfiguration(value.source);
   const maintenance = gatewayArchiveConfiguration({ ...source,database: value.maintenance }).database;
   if (!['host','database'].every(key => source.database[key] === maintenance[key]) ||
       (source.database.port ?? 5432) !== (maintenance.port ?? 5432) || source.database.user === maintenance.user ||
       ![value.archives,value.receipts].every(path => typeof path === 'string' && isAbsolute(path) && resolve(path) === path) ||
-      value.archives === value.receipts || value.archives.startsWith(`${value.receipts}/`) || value.receipts.startsWith(`${value.archives}/`)) {
+      value.archives === value.receipts || value.archives.startsWith(`${value.receipts}${sep}`) || value.receipts.startsWith(`${value.archives}${sep}`)) {
     throw gatewayError('gateway_archive_config_invalid');
   }
-  return { source,maintenance,archives: value.archives,receipts: value.receipts };
+  if (Object.hasOwn(value, 'catalogs')) {
+    const paths = [value.archives, value.receipts, value.catalogs];
+    if (typeof value.catalogs !== 'string' || !isAbsolute(value.catalogs) || resolve(value.catalogs) !== value.catalogs ||
+        paths.some((path, index) => paths.some((other, n) => n !== index && (path === other || path.startsWith(`${other}${sep}`))))) throw gatewayError('gateway_archive_config_invalid');
+  }
+  return { source,maintenance,archives: value.archives,receipts: value.receipts, ...(Object.hasOwn(value, 'catalogs') ? { catalogs: value.catalogs } : {}) };
 }
 
 export async function checkArchiveRole(client, source = false) {

@@ -8,12 +8,13 @@ import { captureRetentionInventory } from './archiveRetentionQueries.mjs';
 import { archiveProtectionPlan,rollingArchives } from './archiveProtectionPolicy.mjs';
 import { reconcileArchiveProtection } from './archiveProtectionService.mjs';
 
-async function rotate(repository, parent, jobs, signal) {
+async function rotate(repository, parent, jobs, signal, pinned = new Set()) {
   const verified = jobs.filter(job => job.status === 'verified');
   const retiring = jobs.find(job => job.status === 'retiring');
   const rolling = rollingArchives(jobs);
   const prior = retiring ?? verified.find(job => !job.recovery_protection_id && !rolling.includes(job));
   if (!prior) return;
+  if (pinned.has(prior.id)) return;
   await repository.assertNotCatalogPinned(prior.id);
   const remaining = rolling.filter(job => job.id !== prior.id);
   if (remaining.length < 2) throw gatewayError('gateway_archive_rotation_blocked');
@@ -33,12 +34,13 @@ async function rotate(repository, parent, jobs, signal) {
 }
 
 /** Called serially by a lock-owning service; no inference writes or provider calls. */
-export async function runArchiveAssessment({ source, repository, configuration, parent, receipts, signal }) {
+export async function runArchiveAssessment({ source, repository, configuration, parent, receipts, signal, catalog = null }) {
   // The legacy worker does not own the separate catalog store or its shared admission budget.
   // Do not silently admit more inference archives with incomplete storage accounting.
-  if (await repository.hasCatalogRetention()) return { state: 'catalog_retention_integration_required', purgeAuthorized: false };
+  if (!catalog && await repository.hasCatalogRetention()) return { state: 'catalog_retention_integration_required', purgeAuthorized: false };
   const policyHash = archivePolicyHash(configuration.retentionDays);
   let jobs = await repository.list();
+  const available = async () => archiveStorageAvailable(parent, receipts, [...await repository.list(), ...(catalog?.jobs ?? [])], catalog ? [catalog.parent] : []);
   if (jobs.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
   const snapshot = await withOnlineArchiveSnapshot(source,configuration,async value => ({ ...value,
     inventory: value.report.bindingCount >= ARCHIVE_POLICY.pressureCount ? await captureRetentionInventory(source,value.report) : null,
@@ -60,15 +62,16 @@ export async function runArchiveAssessment({ source, repository, configuration, 
   await reconcileArchiveProtection(repository,parent,jobs,signal);
   const protection = archiveProtectionPlan({ ...snapshot,jobs,cleanupOperations: await repository.cleanupOperations() });
   if (protection.pair) {
-    if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full',purgeAuthorized: false };
+    if (!await available()) return { state: 'storage_full',purgeAuthorized: false };
     for (const job of protection.pair) await checkManagedArchive(parent,job,signal);
     signal?.throwIfAborted(); await repository.protect(protection.pair,protection.candidatesSha256);
     jobs = await repository.list(); await reconcileArchiveProtection(repository,parent,jobs,signal);
   }
-  await rotate(repository,parent,await repository.list(),signal); jobs = await repository.list();
-  const state = archiveDue({ report,revision,compatibleRevisions,jobs,now,needsRecoveryCopy: protection.needsRecoveryCopy });
+  await rotate(repository,parent,await repository.list(),signal,catalog?.pinned); jobs = await repository.list();
+  const state = archiveDue({ report,revision,compatibleRevisions,jobs,now,needsRecoveryCopy: protection.needsRecoveryCopy,
+    budgetJobs: [...jobs, ...(catalog?.jobs ?? [])] });
   if (state !== 'due') return { state, purgeAuthorized: false };
-  if (!await archiveStorageAvailable(parent,receipts,jobs)) return { state: 'storage_full', purgeAuthorized: false };
+  if (!await available()) return { state: 'storage_full', purgeAuthorized: false };
   const prior = rollingArchives(jobs);
   const predecessors = [];
   for (const job of prior) {

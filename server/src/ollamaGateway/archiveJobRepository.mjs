@@ -37,9 +37,12 @@ export function archiveJobRepository(client) {
       return result.rows;
     },
     async begin(report, revision, policyHash, compatibleRevisions = [revision]) {
+      const installed = (await client.query("SELECT to_regclass('gateway_catalog.job') IS NOT NULL AS installed")).rows[0].installed;
+      const extra = installed ? 'UNION ALL SELECT attempt FROM gateway_catalog.job WHERE compatible_revisions && $5::text[]' : '';
       return (await client.query(`INSERT INTO gateway_archive.job(ledger_id,provider_hash,revision,policy_hash,attempt,status)
-        SELECT $1,$2,$3,$4,GREATEST(count(*)::int,COALESCE(max(attempt),0))+1,'exporting' FROM gateway_archive.job
-        WHERE ledger_id=$1 AND provider_hash=$2 AND revision=ANY($5::text[]) RETURNING *`,
+        SELECT $1,$2,$3,$4,GREATEST(count(*)::int,COALESCE(max(attempt),0))+1,'exporting' FROM (
+          SELECT attempt FROM gateway_archive.job WHERE ledger_id=$1 AND provider_hash=$2 AND revision=ANY($5::text[]) ${extra}
+        ) prior RETURNING *`,
       [report.ledgerId,report.providerHash,revision,policyHash,[...new Set([revision, ...compatibleRevisions])]])).rows[0];
     },
     async published(id, result) {

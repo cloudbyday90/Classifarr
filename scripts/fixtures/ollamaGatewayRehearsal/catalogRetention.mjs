@@ -25,7 +25,8 @@ if (action === 'verify') {
   try {
     await owner.connect(); const service = catalogRetentionService(owner), repository = catalogRetentionRepository(owner);
     if (action === 'setup') {
-      await owner.query(await readFile('/app/database/ollama-gateway-catalog/current.sql', 'utf8'));
+      // This exercise deliberately retains the legacy v5 admission contract.
+      await owner.query(await readFile('/app/database/ollama-gateway-catalog/20261017_230000_catalog_retention.sql', 'utf8'));
     } else if (action === 'capacity') {
       await owner.query('SELECT pg_advisory_lock(11435,4)');
       const generated = [];
