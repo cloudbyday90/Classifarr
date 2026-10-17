@@ -18,7 +18,12 @@ export async function runCatalogAssessment({ source, maintenance, repository, co
   const jobsRepository = catalogJobRepository(maintenance), rootsRepository = catalogRetentionRepository(maintenance);
   let jobs = await jobsRepository.list();
   const policyHash = archivePolicyHash(configuration.retentionDays);
-  if (jobs.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
+  const history = [...jobs, ...await repository.list(), ...await rootsRepository.list()];
+  if (history.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
+  // Check the live source before acknowledgment/retirement, not only before another export.
+  const identity = (await source.query('SELECT id,provider_hash FROM ollama_gateway.admission WHERE singleton')).rows[0];
+  if (history.some(job => job.ledger_id !== identity?.id || job.provider_hash !== identity?.provider_hash ||
+      job.provider_hash !== configuration.providerHash)) return { state: 'identity_changed', purgeAuthorized: false };
   if (jobs.some(job => ['exporting', 'interrupted'].includes(job.status))) return { state: 'catalog_interrupted', purgeAuthorized: false };
   const pending = jobs.find(job => job.status === 'awaiting_verification');
   if (pending) {

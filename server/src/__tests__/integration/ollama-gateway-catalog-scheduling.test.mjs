@@ -5,6 +5,8 @@ import { catalogJobRepository } from '../../ollamaGateway/catalogJobRepository.m
 import { catalogRetentionRepository, hasCatalogRetention } from '../../ollamaGateway/catalogRetentionRepository.mjs';
 import { archiveJobRepository } from '../../ollamaGateway/archiveJobRepository.mjs';
 import { requiredCatalogArchives } from '../../ollamaGateway/catalogRecoveryFiles.mjs';
+import { runCatalogAssessment } from '../../ollamaGateway/catalogCoordinator.mjs';
+import { archivePolicyHash } from '../../ollamaGateway/archiveSchedule.mjs';
 import { catalogSample, syntheticHash } from '../fixtures/gatewayCatalogRetention.mjs';
 
 let client, ledgerId, repository;
@@ -88,4 +90,17 @@ test('required set is latest two verified bundles, not all historical verified r
   const first = await inference(1), second = await inference(2), third = await inference(3);
   expect(await requiredCatalogArchives(client)).toEqual(new Set([second.id, third.id]));
   expect((await client.query('SELECT status FROM gateway_archive.job WHERE id=$1', [first.id])).rows[0].status).toBe('verified');
+});
+
+test.each(['provider', 'ledger'])('changed %s refuses pending acknowledgment before file access or mutation', async kind => {
+  await client.query('UPDATE ollama_gateway.admission SET provider_hash=$1', [syntheticHash]);
+  const policy = archivePolicyHash(90), jobLedger = kind === 'ledger' ? (await client.query('SELECT uuidv7() AS id')).rows[0].id : ledgerId;
+  const job = await repository.begin({ ledgerId: jobLedger, providerHash: syntheticHash }, syntheticHash, policy, syntheticHash, [syntheticHash]);
+  const value = capture(job); value.manifest.policyHash = policy; value.manifest.report.ledgerId = jobLedger;
+  await repository.published(job.id, value);
+  expect(await runCatalogAssessment({ source: client, maintenance: client, repository: archiveJobRepository(client),
+    configuration: { retentionDays: 90, providerHash: kind === 'provider' ? 'b'.repeat(64) : syntheticHash }, paths: {}, signal: AbortSignal.timeout(1000) }))
+    .toEqual({ state: 'identity_changed', purgeAuthorized: false });
+  expect((await repository.list())[0]).toMatchObject({ id: job.id, status: 'awaiting_verification', attempt: 1 });
+  expect(await catalogRetentionRepository(client).list()).toEqual([]);
 });
