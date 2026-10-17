@@ -24,24 +24,29 @@ async function syncDirectory(path) {
   try { await file.sync(); } finally { await file.close(); }
 }
 
-export async function archiveStorageAvailable(parent, receipts, jobs) {
+export async function archiveStorageAvailable(parent, receipts, jobs, additionalParents = []) {
   parent = await archiveDirectory(parent); receipts = await archiveDirectory(receipts);
-  const known = new Set(jobs.map(job => `gateway-archive-${job.id}`));
+  if (!Array.isArray(additionalParents) || additionalParents.length > 1) throw gatewayError('gateway_archive_storage_blocked');
+  const parents = [parent, ...await Promise.all(additionalParents.map(archiveDirectory))];
+  if (new Set(parents).size !== parents.length) throw gatewayError('gateway_archive_storage_blocked');
+  const known = new Map(jobs.map(job => [`gateway-archive-${job.id}`, job]));
   let bytes = 0n;
-  const entries = await readdir(parent);
-  if (entries.length > 10000) throw gatewayError('gateway_archive_storage_blocked');
-  for (const name of entries) {
-    if (!known.has(name)) throw gatewayError('gateway_archive_unmanaged_files');
-    const directory = await archiveDirectory(join(parent,name));
-    const files = await readdir(directory);
-    const job = jobs.find(item => `gateway-archive-${item.id}` === name);
-    if (files.some(file => !['gateway.dump','manifest.json',...(job.recovery_protection_id ? PROTECTION_FILES : [])].includes(file))) {
-      throw gatewayError('gateway_archive_unmanaged_files');
-    }
-    for (const file of files) {
-      const stat = await lstat(join(directory,file));
-      if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.geteuid() || (stat.mode & 0o077) || !Number.isSafeInteger(stat.size)) throw gatewayError('gateway_archive_file_invalid');
-      bytes += BigInt(stat.size);
+  for (const archiveParent of parents) {
+    const entries = await readdir(archiveParent);
+    if (entries.length > 10000) throw gatewayError('gateway_archive_storage_blocked');
+    for (const name of entries) {
+      const job = known.get(name);
+      if (!job) throw gatewayError('gateway_archive_unmanaged_files');
+      const directory = await archiveDirectory(join(archiveParent,name));
+      const files = await readdir(directory);
+      if (files.some(file => !['gateway.dump','manifest.json',...(job.recovery_protection_id ? PROTECTION_FILES : [])].includes(file))) {
+        throw gatewayError('gateway_archive_unmanaged_files');
+      }
+      for (const file of files) {
+        const stat = await lstat(join(directory,file));
+        if (!stat.isFile() || stat.nlink !== 1 || stat.uid !== process.geteuid() || (stat.mode & 0o077) || !Number.isSafeInteger(stat.size)) throw gatewayError('gateway_archive_file_invalid');
+        bytes += BigInt(stat.size);
+      }
     }
   }
   const results = await readdir(receipts);
@@ -112,8 +117,15 @@ export async function recoverArchiveReceiptPublication(parent,id) {
 }
 
 /** No recursive deletion. Exactly the two known files, in a registered verified bundle. */
-export async function retireManagedArchive(parent, job) {
+export async function retireManagedArchive(parent, job, signal) {
   if (job.status !== 'retiring' || !job.receipt?.verified) throw gatewayError('gateway_archive_rotation_blocked');
+  return retireArchiveFiles(parent, job, signal);
+}
+
+/** Shared fixed-file removal, only after the caller's durable retirement and evidence checks. */
+export async function retireArchiveFiles(parent, job, signal) {
+  if (job.status !== 'retiring') throw gatewayError('gateway_archive_rotation_blocked');
+  signal?.throwIfAborted();
   parent = await archiveDirectory(parent);
   const directory = managedArchivePath(parent,job.id);
   try { await lstat(directory); } catch (error) { if (error.code === 'ENOENT') return; throw error; }
@@ -128,6 +140,7 @@ export async function retireManagedArchive(parent, job) {
     let length = 0;
     try {
       for (;;) {
+        signal?.throwIfAborted();
         const { bytesRead } = await file.read(buffer,0,buffer.length,null);
         if (!bytesRead) break;
         length += bytesRead;
@@ -139,7 +152,10 @@ export async function retireManagedArchive(parent, job) {
       }
     } finally { await file.close(); }
   }
-  for (const name of ['manifest.json','gateway.dump']) if (names.includes(name)) await unlink(join(directory,name));
+  for (const name of ['manifest.json','gateway.dump']) if (names.includes(name)) {
+    signal?.throwIfAborted(); await unlink(join(directory,name));
+  }
+  signal?.throwIfAborted();
   await rmdir(directory); await syncDirectory(parent);
 }
 /* eslint-enable security/detect-non-literal-fs-filename */

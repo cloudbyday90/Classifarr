@@ -30,16 +30,18 @@ async function evidence(directory, name, expected, limit = 4096) {
 }
 
 /** Derive the inventory from the same SQL snapshot; never repair publication or copy dependencies recursively. */
-export async function inspectCatalogDependencies(client, archives, receipts, signal) {
+export async function inspectCatalogDependencies(client, archives, receipts, signal, collect = null, selected = null) {
   archives = await archiveDirectory(archives); receipts = await archiveDirectory(receipts);
   const digest = createHash('sha256'); let count = 0, bytes = 0;
   function record(id, kind, item) {
     bytes += item.bytes;
     if (++count > 40000 || bytes > 1073741824) throw gatewayError('gateway_catalog_size_limit');
     digest.update(JSON.stringify({ id, kind, ...item })).update('\n');
+    collect?.({ id, kind, ...item });
   }
   await visitCatalogRows(client, 0, async row => {
     const job = JSON.parse(row.row);
+    if (selected && !selected.has(job.id)) return;
     // Unfinished/failed jobs are historical records, not usable restore evidence.
     // The relationship check excludes other active publication/retirement states.
     if (job.status !== 'verified') return;

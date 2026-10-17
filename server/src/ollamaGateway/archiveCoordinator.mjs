@@ -14,6 +14,7 @@ async function rotate(repository, parent, jobs, signal) {
   const rolling = rollingArchives(jobs);
   const prior = retiring ?? verified.find(job => !job.recovery_protection_id && !rolling.includes(job));
   if (!prior) return;
+  await repository.assertNotCatalogPinned(prior.id);
   const remaining = rolling.filter(job => job.id !== prior.id);
   if (remaining.length < 2) throw gatewayError('gateway_archive_rotation_blocked');
   for (const kept of remaining) await checkManagedArchive(parent,kept,signal);
@@ -25,11 +26,17 @@ async function rotate(repository, parent, jobs, signal) {
     await checkManagedArchive(parent,prior,signal);
     signal?.throwIfAborted(); await repository.retiring(prior.id);
   }
-  await retireManagedArchive(parent,{ ...prior,status: 'retiring' }); await repository.retired(prior.id);
+  // Recheck even on restart: an old retiring decision is not present dependency evidence.
+  await repository.assertNotCatalogPinned(prior.id);
+  signal?.throwIfAborted();
+  await retireManagedArchive(parent,{ ...prior,status: 'retiring' },signal); await repository.retired(prior.id);
 }
 
 /** Called serially by a lock-owning service; no inference writes or provider calls. */
 export async function runArchiveAssessment({ source, repository, configuration, parent, receipts, signal }) {
+  // The legacy worker does not own the separate catalog store or its shared admission budget.
+  // Do not silently admit more inference archives with incomplete storage accounting.
+  if (await repository.hasCatalogRetention()) return { state: 'catalog_retention_integration_required', purgeAuthorized: false };
   const policyHash = archivePolicyHash(configuration.retentionDays);
   let jobs = await repository.list();
   if (jobs.some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };

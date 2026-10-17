@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a separate, UUIDv7-backed gateway catalog-retention registry with shared-file
+  protection and restart-safe snapshot rotation. Preserve audit history and retry
+  limits; automatic catalog scheduling and production activation remain disabled.
+
 - Add verification-only capture and isolated restoration of gateway maintenance
   history alongside its matching inference snapshot, preserving retry state and
   checking required recovery files. Live scheduling and recovery remain unchanged.

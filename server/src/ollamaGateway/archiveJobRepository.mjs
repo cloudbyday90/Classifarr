@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
 import { archiveProtectionRepository } from './archiveProtectionRepository.mjs';
+import { assertArchiveNotCatalogPinned, hasCatalogRetention } from './catalogRetentionRepository.mjs';
+import { catalogRetentionService } from './catalogRetentionService.mjs';
 
 /** This dedicated maintenance session must never share the inference session. */
 export async function lockArchiveCoordinator(client) {
@@ -14,6 +16,9 @@ export async function lockArchiveCoordinator(client) {
 export function archiveJobRepository(client) {
   return {
     ...archiveProtectionRepository(client),
+    catalogRetention: catalogRetentionService(client),
+    hasCatalogRetention: () => hasCatalogRetention(client),
+    assertNotCatalogPinned: id => assertArchiveNotCatalogPinned(client, id),
     async cleanupOperations() {
       const installed = (await client.query("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname='gateway_cleanup') AS installed")).rows[0].installed;
       if (!installed) return null;
@@ -56,6 +61,7 @@ export function archiveJobRepository(client) {
       await client.query("UPDATE gateway_archive.job SET status='interrupted',reason='export_interrupted' WHERE status='exporting'");
     },
     async retiring(id) {
+      await assertArchiveNotCatalogPinned(client, id);
       const result = await client.query("UPDATE gateway_archive.job SET status='retiring' WHERE id=$1 AND status='verified' RETURNING id", [id]);
       if (result.rowCount !== 1) throw gatewayError('gateway_archive_job_fence');
     },

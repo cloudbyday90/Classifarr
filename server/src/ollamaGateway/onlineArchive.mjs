@@ -35,7 +35,8 @@ export async function withOnlineArchiveSnapshot(client, configuration, consume, 
 // Internal opt-in seam for isolated catalog verification, not a live worker setting.
 export async function createOnlineArchive(client, configuration, parent, job, predecessors, signal, catalog = null) {
   if (!catalog) return captureOnlineArchive(client, configuration, parent, job, predecessors, signal, null);
-  if (Object.keys(catalog).join(',') !== 'receipts' || typeof catalog.receipts !== 'string') throw gatewayError('gateway_catalog_contract');
+  if (!['receipts', 'archives,receipts'].includes(Object.keys(catalog).sort().join(',')) || typeof catalog.receipts !== 'string' ||
+      (Object.hasOwn(catalog, 'archives') && typeof catalog.archives !== 'string')) throw gatewayError('gateway_catalog_contract');
   signal = AbortSignal.any([...(signal ? [signal] : []), AbortSignal.timeout(120000)]);
   await checkCatalogReader(client);
   const identity = (await client.query('SELECT current_user AS role,current_database() AS database')).rows[0];
@@ -58,13 +59,16 @@ async function captureOnlineArchive(client, configuration, parent, job, predeces
       await checkCatalogRelationships(client, job.id, report);
       const tables = await captureCatalogContent(client, signal, budget);
       const jobs = (await client.query('SELECT id,recovery_protection_id FROM gateway_archive.job ORDER BY id LIMIT 10001')).rows;
-      if (jobs.length > 10000 || !await archiveStorageAvailable(parent, catalog.receipts, jobs)) throw gatewayError('gateway_archive_storage_blocked');
-      capturedCatalog = { version: 1, tables, dependencies: await inspectCatalogDependencies(client, parent, catalog.receipts, signal) };
+      const dependencies = catalog.archives ?? parent;
+      if (jobs.length > 10000 || !await archiveStorageAvailable(parent, catalog.receipts, jobs, dependencies === parent ? [] : [dependencies])) {
+        throw gatewayError('gateway_archive_storage_blocked');
+      }
+      capturedCatalog = { version: 1, tables, dependencies: await inspectCatalogDependencies(client, dependencies, catalog.receipts, signal) };
     }
     signal?.throwIfAborted();
     directory = await createArchiveDirectory(parent, job.id);
     const dump = await dumpGatewayArchive(configuration, snapshot, directory, signal, Boolean(catalog));
-    if (catalog && !isDeepStrictEqual(capturedCatalog.dependencies, await inspectCatalogDependencies(client, parent, catalog.receipts, signal))) {
+    if (catalog && !isDeepStrictEqual(capturedCatalog.dependencies, await inspectCatalogDependencies(client, catalog.archives ?? parent, catalog.receipts, signal))) {
       throw gatewayError('gateway_catalog_dependency');
     }
     return { version: catalog ? 5 : 4, schemaVersion: 7, archiveId: job.id, report, revision, policyHash: job.policy_hash,

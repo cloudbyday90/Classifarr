@@ -7,6 +7,7 @@ import { createSchemaCheckRunSpec,withSchemaCheckContainer } from './check-schem
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualification.mjs';
 import { runGatewayCatalogRehearsal } from './lib/gatewayCatalogRehearsal.mjs';
+import { runGatewayCatalogRetentionRehearsal } from './lib/gatewayCatalogRetentionRehearsal.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
 if (process.argv.length > 5 || (mode && !['--qualification','--cleanup'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
@@ -18,13 +19,15 @@ const docker = args => execFileSync('docker',args,{ encoding: 'utf8',windowsHide
 assert.equal(JSON.parse(docker(['image','inspect',image]))[0].Config.Labels['org.opencontainers.image.revision'],revision);
 const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
 const archives = `classifarr-archive-test-${suffix}`, receipts = `classifarr-receipt-test-${suffix}`, verifier = `classifarr-verifier-test-${suffix}`;
+const catalogs = `classifarr-catalog-store-${suffix}`;
 const label = `io.classifarr.archive-rehearsal=${suffix}`;
 const command = (args,options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
   'run','--network','none','--memory','2g','--cpus','2','--pids-limit','512',
   '--tmpfs','/input-quota:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-  '--mount',`type=volume,source=${archives},target=/archives`,'--mount',`type=volume,source=${receipts},target=/receipts`,...args.slice(1)] : args,options);
+  '--mount',`type=volume,source=${archives},target=/archives`,'--mount',`type=volume,source=${receipts},target=/receipts`,
+  '--mount',`type=volume,source=${catalogs},target=/catalogs`,...args.slice(1)] : args,options);
 try {
-  for (const volume of [archives,receipts]) {
+  for (const volume of [archives,receipts,catalogs]) {
     assert.equal(docker(['volume','ls','-q','--filter',`name=^${volume}$`]).trim(),'');
     docker(['volume','create','--label',label,volume]);
   }
@@ -33,8 +36,8 @@ try {
     docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/archiveRestoreInput.mjs'),`${source}:/tmp/archive-restore-input.mjs`]);
     process.stdout.write(docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
       'node','/tmp/archive-restore-input.mjs']));
-    docker(['exec','--user','0:0',source,'chown','1000:1000','/archives','/receipts']);
-    docker(['exec','--user','0:0',source,'chmod','700','/archives','/receipts']);
+    docker(['exec','--user','0:0',source,'chown','1000:1000','/archives','/receipts','/catalogs']);
+    docker(['exec','--user','0:0',source,'chmod','700','/archives','/receipts','/catalogs']);
     docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/onlineArchive.mjs'),`${source}:/tmp/online-archive.mjs`]);
     const fixture = action => process.stdout.write(docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
       'node','/tmp/online-archive.mjs',action]));
@@ -80,6 +83,7 @@ try {
     }
     protection('rotated');
     runGatewayCatalogRehearsal({ docker,image,source,archives,receipts,label,suffix });
+    runGatewayCatalogRetentionRehearsal({ docker,image,source,archives,receipts,catalogs,label,suffix });
     process.stdout.write('online_archive_rehearsal_passed: online SELECT-only exports; isolated restricted restore; full candidate-page proof; inventory tamper and legacy receipt refusal; UUIDv7 jobs; restarted services; mixed v3/v4 rotation to 2; corruption refusal; live history unchanged; zero provider calls\n');
   } });
 } finally {
@@ -88,7 +92,7 @@ try {
     assert.equal(JSON.parse(docker(['inspect',verifier]))[0].Config.Labels['io.classifarr.archive-rehearsal'],suffix);
     docker(['rm','-f',verifier]);
   }
-  for (const volume of [archives,receipts]) {
+  for (const volume of [archives,receipts,catalogs]) {
     if (docker(['volume','ls','-q','--filter',`name=^${volume}$`]).trim()) {
       assert.equal(JSON.parse(docker(['volume','inspect',volume]))[0].Labels['io.classifarr.archive-rehearsal'],suffix);
       docker(['volume','rm',volume]);
