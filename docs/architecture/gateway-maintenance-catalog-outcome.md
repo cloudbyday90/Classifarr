@@ -60,7 +60,9 @@ Initial host checks: 435 gateway unit tests in 20 suites passed, including 40 ne
 model/input tests. The model includes 1,620 production-scheduler comparisons and
 8,192 deterministic event attempts, not exhaustive state exploration. The first
 wider run lacked OpenSSL in PATH; rerunning with the existing explicit binary
-passed. Image rehearsal and local rebuild results will be recorded after execution.
+passed. The PostgreSQL regression run passed 272 tests across 14 suites. Those
+existing SQL/role/transport tests are regression evidence, not evidence that the
+new abstract model has been persisted or that maintenance catalogs now restore.
 
 Typecheck, test/security lint (after removing one unnecessary suppression), both
 Knip modes, copyright, Markdown, static imports, ESM mock-shape and npm-flag checks
@@ -74,6 +76,82 @@ for this scoped increment.
 Fresh GitHub MCP enumeration found no open Classifarr PRs. No closed PR was
 substituted. No dependency upgrade or new table is included. Existing native
 UUIDv7 storage conventions remain unchanged; test identifiers are synthetic UUIDv7.
+
+## Rebuilt image evidence
+
+No-cache local Compose build succeeded from clean source
+`8b390dd6c8f5b3bf1d1347c53f90b32d3580ebfa`. The resulting immutable image is
+`sha256:540ab15d78144886c3db3b5c894c7f1a798f4e5fe0760ce0d43d33a46e67487c`;
+its source label matches that commit. Test-harness-only commit
+`b8c2dd60b4f9d48990500e96133cf0020c75d0ce` adds a real small-scratch refusal check;
+it changes no image build inputs. Later outcome documentation also leaves the
+tested runtime unchanged. This is a local Docker image ID, not a published
+registry digest or signed provenance claim.
+
+The ordinary seven-generation image rehearsal passed, then passed again with
+the final test harness. Its new real Linux
+file test confirmed exact copied bytes, a distinct inode, mode 0400, refusal of
+ordinary writes to the copy, unchanged private bytes after shared-path replacement,
+and refusal of changed source data, public permissions, symlinks, hard links and
+cancellation. A real 16 MiB scratch mount refused staging before any input directory
+was created. Existing native restoration, v3/v4 compatibility, inventory tamper,
+receipt publication recovery, protected-copy retention, interrupted retirement
+and rotation checks passed. Synthetic live history remained unchanged, no provider
+calls were made, and the runner verified removal of its generated resources.
+
+All five capacity/interruption qualification scenarios passed for this image:
+
+- Capacity: 100,000 synthetic bindings; concurrent admission during a paused
+  export; native restore killed after observing 6,252 rows; interrupted export;
+  preserved attempt 1/cooldown on cancellation; and quota/free-space refusals.
+  The native restore command was checked to use the private staged input path.
+- Oversize: 322,656,591 canonical bytes refused, with the previous verified
+  archive retained and cooldown enforced.
+- Cancellation: the consumed attempt and cooldown remained; no extra archive.
+- Protection: two verified copies retained using attempts 1 and 2, with inference
+  history unchanged.
+- Cleanup: 200 synthetic bindings deleted through the bounded cleanup path;
+  80,100 lifetime attempts preserved; archiving/rotation continued and four
+  archives remained, including protected copies. This was isolated fixture data,
+  not local appdata.
+
+Every scenario reported zero provider calls and verified fixture cleanup. No
+completed measured worker reported OOM, memory-limit or PID-limit events. Peak
+verifier memory was 566,448,128 bytes (about 540 MiB) against its 1,536 MiB limit;
+peak archiver memory was 130,875,392 bytes (about 125 MiB) against 256 MiB. The
+private copy did not require larger configured limits for these fixtures.
+
+These are Linux/amd64, local Docker/cgroup-v1 process-interruption checks. Fixture
+clock changes do not prove real daily/30-day time elapsed; process kills do not
+prove host power-loss durability. ARM64, cgroup-v2, off-host disaster recovery,
+published-release upgrades, full catalog restoration and remote CI are not
+established. Frontend tests and full-repository coverage/ratchet were not run;
+the unchanged frontend compiled during the no-cache build.
+
+Local Compose replacement completed using the exact tested image, with no rebuild,
+pull or dependency-service replacement. Classifarr became healthy; `/health` and
+`/` returned 200 and unauthenticated `/api/settings/ollama/gateway-history` returned
+401. The container retained UID/GID 1000, a read-only root, no-new-privileges and
+the 2 GiB memory limit; it had zero restarts and no OOM indication. One post-start
+sample was 523.6 MiB, not a peak/soak claim.
+
+Read-only checks found no optional gateway/archive/cleanup schemas in the ordinary
+application database. Its capture-budget settings remained `when_idle`, zero daily
+calls/tokens/reservations, revision 2 and the existing next-check timestamp.
+Harmoniarr's container ID and start time were unchanged. Unraid, Plex and shared
+Ollama were not changed; no optional gateway worker was enabled by this deployment.
+
+Retained local backup:
+`data/backups/gateway-catalog-foundation-before-20261016.dump`, 76,253,071 bytes,
+mode 0600, SHA-256
+`C3F559BD3400B050C034623B14C1CB14611E39F62AB94B610FB83D01FC4F2C21`.
+`pg_restore --list` succeeded with 1,933 lines. This ordinary application backup
+was catalog-checked, not restored. The prior running image remains protected by
+`classifarr-local-rollback:58e99b45f1f2e3762d7d15205bef8d75000d72252ff720319b5545993d4c998f`.
+
+The implementation stays on `main`, with high-level changes under Unreleased.
+No release, tag, PR merge or dependency update is part of this work. A final
+GitHub MCP enumeration still found no open PR to select.
 
 ## Next
 
