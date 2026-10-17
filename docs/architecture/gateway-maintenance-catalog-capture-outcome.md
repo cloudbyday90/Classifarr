@@ -136,6 +136,10 @@ substituted, and no release/tag is part of this work.
 
 ## Next gate
 
+The subsequent [retention increment](gateway-catalog-retention-outcome.md) adds a
+separate registry and dependency-preserving rotation. Its documented remaining
+admission/scheduling work supersedes the initial gate below.
+
 Integrate persistent catalog-aware scheduling only after dependency-preserving
 rotation is proven. Preserve the original attempt budget and unknown outcomes;
 do not treat verification as authority to resume restored workers. Protection

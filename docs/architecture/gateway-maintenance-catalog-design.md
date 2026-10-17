@@ -402,3 +402,11 @@ restore and existing isolated Docker workers. This provides stronger recovery
 evidence without new dependencies; the costs are additional read I/O, bounded
 scratch and refusal when dependencies or capacity are unavailable. Automatic
 scheduling and dependency-preserving rotation remain a separate integration gate.
+
+## Third implementation gate: separate retention lifecycle
+
+The user approved a separate catalog lifecycle instead of recursively retaining
+older catalog backups. See the [retention design](gateway-catalog-retention-design.md)
+and [outcome](gateway-catalog-retention-outcome.md) for dependency pins, interrupted
+rotation, shared storage checks and the remaining independent-admission gate.
+No automatic catalog scheduling or production activation follows from that work.
