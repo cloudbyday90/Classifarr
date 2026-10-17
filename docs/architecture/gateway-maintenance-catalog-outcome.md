@@ -155,6 +155,10 @@ GitHub MCP enumeration still found no open PR to select.
 
 ## Next
 
+Follow-up: the [capture and isolated-restore outcome](gateway-maintenance-catalog-capture-outcome.md)
+records the second increment. The following was the recommendation at this first
+checkpoint.
+
 Implement bounded, same-snapshot catalog capture and exact restoration, including
 the explicit reader-role contract, relationship checks and artifact dependency
 inventory. Only then persist and integrate the modeled scheduling distinction;

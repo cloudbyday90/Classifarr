@@ -353,6 +353,9 @@ causal bookkeeping from changing live retry behavior.
 
 ## Second implementation gate: capture and isolated restoration
 
+Execution results and remaining limits are in the separate
+[capture outcome](gateway-maintenance-catalog-capture-outcome.md).
+
 2026-10-17: implement a verification-only v5 capture seam, not a new administrator
 command or live scheduler setting. Existing v3/v4 producers, roles and receipts
 retain their meaning. The caller must already have admitted its exporting job;
