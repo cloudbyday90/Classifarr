@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, writeFile, stat, chmod, symlink, link, unlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, stat, chmod, symlink, link, unlink, rm, rmdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { stageArchiveRestoreInput } from '/app/src/ollamaGateway/archiveRestoreInput.mjs';
 
@@ -15,6 +15,11 @@ try {
   await mkdir(source, { mode: 0o700 });
   const original = join(source, 'gateway.dump');
   await writeFile(original, data, { flag: 'wx', mode: 0o600 });
+  const quota = await mkdtemp('/input-quota/gateway-input-test-');
+  try {
+    await assert.rejects(stageArchiveRestoreInput(source, quota, dump), { code: 'gateway_archive_scratch_full' });
+    await assert.rejects(stat(join(quota, 'input')), { code: 'ENOENT' });
+  } finally { await rmdir(quota); }
   const workspace = await mkdtemp(join(parent, 'private-'));
   const staged = await stageArchiveRestoreInput(source, workspace, dump);
   assert.equal(staged, join(workspace, 'input', 'gateway.dump'));
@@ -40,7 +45,7 @@ try {
   const cancelled = new AbortController(); cancelled.abort();
   await assert.rejects(stageArchiveRestoreInput(source, await mkdtemp(join(parent, 'cancelled-')), dump, cancelled.signal),
     { code: 'gateway_archive_cancelled' });
-  process.stdout.write('private_restore_input_passed: exact bytes; distinct inode; read-only copy; shared-path replacement; permission/symlink/hardlink/cancellation refusal\n');
+  process.stdout.write('private_restore_input_passed: exact bytes; distinct inode; read-only copy; shared-path replacement; real low-space refusal before copying; permission/symlink/hardlink/cancellation refusal\n');
 } finally {
   assert.equal(dirname(parent), '/tmp'); assert.ok(parent.startsWith('/tmp/gateway-input-test-'));
   // Only this invocation's synthetic private directory, never a supplied archive path.

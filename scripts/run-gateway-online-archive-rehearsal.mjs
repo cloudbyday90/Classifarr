@@ -20,6 +20,7 @@ const archives = `classifarr-archive-test-${suffix}`, receipts = `classifarr-rec
 const label = `io.classifarr.archive-rehearsal=${suffix}`;
 const command = (args,options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
   'run','--network','none','--memory','2g','--cpus','2','--pids-limit','512',
+  '--tmpfs','/input-quota:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
   '--mount',`type=volume,source=${archives},target=/archives`,'--mount',`type=volume,source=${receipts},target=/receipts`,...args.slice(1)] : args,options);
 try {
   for (const volume of [archives,receipts]) {
