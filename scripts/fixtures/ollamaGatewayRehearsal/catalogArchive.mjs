@@ -21,9 +21,10 @@ if (action === 'capture') {
       SELECT pg_advisory_lock(11435,4)`);
     await owner.query(`INSERT INTO gateway_cleanup.operation(protection_id,ledger_id,provider_hash,candidates_sha256,
       attempt,status,last_attempt_at,completed_at,completed_xid,confirmed_at,deleted_bindings,deleted_completions,deleted_peers)
-      SELECT id,ledger_id,provider_hash,candidates_sha256,3,'completed','2026-10-17 00:00:00.123456+00',
-        '2026-10-17 00:01:00.654321+00','9007199254740993'::xid8,'2026-10-17 00:02:00.987654+00',100,100,0
-      FROM gateway_archive.protection WHERE ready_at IS NOT NULL;
+      SELECT p.id,p.ledger_id,p.provider_hash,p.candidates_sha256,3,'completed','2026-10-17 00:00:00.123456+00',
+        '2026-10-17 00:01:00.654321+00','9007199254740993'::xid8,'2026-10-17 00:02:00.987654+00',
+        jsonb_array_length(j.manifest->'retention'->'entries'),jsonb_array_length(j.manifest->'retention'->'entries'),0
+      FROM gateway_archive.protection p JOIN gateway_archive.job j ON j.id=p.first_archive_id WHERE p.ready_at IS NOT NULL;
       INSERT INTO gateway_archive.job(ledger_id,provider_hash,policy_hash,revision,attempt,status,created_at,completed_at,retry_after,reason)
       SELECT id,provider_hash,repeat('a',64),repeat('f',64),3,'failed','2026-10-17 00:00:00.123456+00',
         '2026-10-17 00:01:00.654321+00','2026-10-17 00:31:00.987654+00','cancelled' FROM ollama_gateway.admission;
