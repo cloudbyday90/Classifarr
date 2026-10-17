@@ -232,6 +232,10 @@ async function qualifyCase(image, shape) {
         }
         report({ scenario: shape, state: 'passed', providerCalls: 0, syntheticDeletedBindings: shape === 'cleanup' ? 200 : 0 });
       } catch (error) {
+        if (shape === 'cleanup') {
+          try { report({ scenario: shape,cleanupDiagnostic: fixture('cleanup-diagnose') }); }
+          catch { report({ scenario: shape,cleanupDiagnostic: 'unavailable' }); }
+        }
         try { report({ scenario: shape, diagnostic: fixture('diagnose') }); } catch { report({ scenario: shape, diagnostic: 'unavailable' }); }
         throw error;
       } finally { for (const name of Object.values(workers)) ownedRemove(name); }

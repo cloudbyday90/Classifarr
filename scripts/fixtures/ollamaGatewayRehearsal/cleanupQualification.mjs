@@ -7,6 +7,34 @@ import { cleanupRepository,lockCleanupWorker } from '/app/src/ollamaGateway/clea
 import { archivePolicyHash } from '/app/src/ollamaGateway/archiveSchedule.mjs';
 import { checkCleanupRole } from '/app/src/ollamaGateway/cleanupConfiguration.mjs';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
+import { checkManagedArchive,readArchiveReceipt,archiveStorageAvailable,managedArchivePath } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
+import { ensureArchiveProtection } from '/app/src/ollamaGateway/archiveProtectionFiles.mjs';
+
+async function diagnoseCleanup(client,jobs,database) {
+  let stage = 'files',worker;
+  const operations = (await client.query('SELECT id,status,attempt FROM gateway_cleanup.operation ORDER BY id')).rows;
+  try {
+    for (const job of jobs.filter(row => row.status === 'verified')) {
+      stage = 'archive'; await checkManagedArchive('/archives',job);
+      stage = 'receipt'; assert.deepEqual(await readArchiveReceipt('/receipts',job.id),job.receipt);
+      stage = 'marker'; await ensureArchiveProtection(managedArchivePath('/archives',job.id),job);
+    }
+    stage = 'storage'; assert.equal(await archiveStorageAvailable('/archives','/receipts',jobs),true);
+    const op = operations.find(row => row.status === 'admitted');
+    if (op) {
+      await client.query('SELECT pg_advisory_unlock(11435,4)');
+      worker = new pg.Client({ host: '/var/run/postgresql',database,user: 'qualification_cleanup',statement_timeout: 1000 });
+      await worker.connect(); await lockCleanupWorker(worker); await worker.query('SELECT pg_advisory_lock(11435,4)');
+      // Isolated fixture only: diagnose the existing admitted transaction, always rolling every effect back.
+      await worker.query('BEGIN'); stage = 'execute'; await cleanupRepository(worker).execute(op);
+    }
+    return { stage,state: 'passed',operations };
+  } catch (error) {
+    const code = ['57014','55P03','42501','EROFS','EPERM','EINVAL'].includes(error.code) ? error.code :
+      /^gateway_[a-z_]+$/.test(error.message) ? error.message : 'unclassified';
+    return { stage,state: 'failed',code,operations };
+  } finally { if (worker) { await worker.query('ROLLBACK'); await worker.end(); } }
+}
 
 export async function setupCleanupQualification(client,database) {
   assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE,'isolated');
@@ -26,7 +54,9 @@ export async function cleanupQualificationAction(client,action,database) {
   assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE,'isolated');
   const jobs = await archiveJobRepository(client).list(), held = jobs.filter(job => job.recovery_protection_id);
   const marker = `/archives/gateway-archive-${held[0].id}/protection.json`;
-  if (action === 'cleanup-tamper') {
+  if (action === 'cleanup-diagnose') {
+    return diagnoseCleanup(client,jobs,database);
+  } else if (action === 'cleanup-tamper') {
     await writeFile('/configuration/marker-copy.json',await readFile(marker),{ mode: 0o600,flag: 'wx' });
     await writeFile(marker,'{}');
   } else if (action === 'cleanup-repair-fixture') {

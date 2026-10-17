@@ -2,6 +2,7 @@
 import { cleanupConfiguration } from '../ollamaGateway/cleanupConfiguration.mjs';
 import { withArchiveMaintenance } from '../ollamaGateway/archiveMaintenanceLock.mjs';
 import { resolve } from 'node:path';
+import { cleanupFailureReason } from '../ollamaGateway/cleanupFailure.mjs';
 
 const valid = () => ({ database: { host: '/source-socket',database: 'gateway',user: 'cleanup' },
   providerHash: 'a'.repeat(64),retentionDays: 90,archives: resolve('archives'),receipts: resolve('receipts') });
@@ -11,6 +12,16 @@ test('cleanup configuration retains the minimum window and fixed private socket 
     { database: { ...valid().database,host: 'https://provider' } },{ providerHash: 'bad' },
     { archives: '../escape' },{ receipts: valid().archives }]) {
     expect(() => cleanupConfiguration({ ...valid(),...change })).toThrow();
+  }
+});
+test('cleanup failures distinguish bounded database outcomes without exposing error content',() => {
+  for (const [code,reason] of [['57014','gateway_cleanup_statement_timeout'],['55P03','gateway_cleanup_contended'],
+    ['42501','gateway_cleanup_permission_denied']]) {
+    expect(cleanupFailureReason({ code,message: 'private SQL',detail: 'private data' })).toBe(reason);
+  }
+  expect(cleanupFailureReason({ message: 'gateway_cleanup_cooldown' })).toBe('gateway_cleanup_cooldown');
+  for (const error of [null,undefined,{ code: 'secret',message: 'private' },{ message: 'gateway_cleanup_cooldown private' }]) {
+    expect(cleanupFailureReason(error)).toBe('gateway_cleanup_unavailable');
   }
 });
 test('maintenance exclusion yields without acting and always releases after failure',async () => {

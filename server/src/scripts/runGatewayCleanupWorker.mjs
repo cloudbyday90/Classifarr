@@ -6,6 +6,7 @@ import { cleanupConfiguration,checkCleanupRole } from '../ollamaGateway/cleanupC
 import { lockCleanupWorker } from '../ollamaGateway/cleanupRepository.mjs';
 import { withArchiveMaintenance } from '../ollamaGateway/archiveMaintenanceLock.mjs';
 import { runCleanupAssessment } from '../ollamaGateway/cleanupService.mjs';
+import { cleanupFailureReason } from '../ollamaGateway/cleanupFailure.mjs';
 
 const controller = new AbortController();
 process.once('SIGINT',() => controller.abort()); process.once('SIGTERM',() => controller.abort());
@@ -25,11 +26,7 @@ try {
       await checkCleanupRole(client); await lockCleanupWorker(client);
       result = await withArchiveMaintenance(client,() => runCleanupAssessment({ client,configuration,signal }));
     } catch (error) {
-      const safe = ['gateway_cleanup_cooldown','gateway_cleanup_attempts_exhausted','gateway_cleanup_candidates_changed',
-        'gateway_cleanup_archive_boundary','gateway_cleanup_source_changed','gateway_cleanup_identity_changed',
-        'gateway_cleanup_role_unsafe','gateway_cleanup_worker_running','gateway_archive_protection_fence'];
-      result = { state: 'cleanup_blocked',reason: safe.includes(error.code) ? error.code :
-        safe.includes(error.message) ? error.message : 'gateway_cleanup_unavailable' };
+      result = { state: 'cleanup_blocked',reason: cleanupFailureReason(error) };
     } finally {
       // Release this session even after an ambiguous query timeout. A later session must acquire the lock
       // and reconcile durable state before another attempt; connection errors never authorize replay.
