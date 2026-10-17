@@ -103,6 +103,10 @@ frontend compiled in both no-cache images. Remote CI was not evaluated.
 
 ## Remaining integration
 
+Follow-up: the [catalog scheduling outcome](gateway-catalog-scheduling-outcome.md)
+records the subsequent optional integration and its local verification. The
+following paragraph describes the boundary at this earlier checkpoint.
+
 Independent catalog admission must replace v5's verification-only exporting-job
 seam, preserve combined original retry budgets, and integrate the initial/daily/
 capacity schedule with both storage directories. No live scheduler is enabled by
