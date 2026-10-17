@@ -1,0 +1,82 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import assert from 'node:assert/strict';
+
+/** All mutations target the harness's synthetic database and labeled volumes only. */
+export async function qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report }) {
+  hasState(await run('archiver'), 'catalog_empty');
+  fixture('admit'); report({ scenario: shape, ...fixture('history') });
+  hasState(await run('archiver'), 'awaiting_verification');
+  hasState(await run('verifier'), 'verified');
+  if (shape === 'catalog-wide') {
+    // Accept the real isolated verifier's prerequisite receipt, then capture wide
+    // failed history twice through the packaged worker and restore both snapshots.
+    fixture('acknowledge-inference'); report({ scenario: shape, ...fixture('wide') });
+    hasState(await run('archiver'), 'awaiting_catalog_verification');
+    hasState(await run('catalog-verifier'), 'verified');
+    hasState(await run('archiver'), 'awaiting_catalog_verification');
+    hasState(await run('catalog-verifier'), 'verified');
+    hasState(await run('archiver'), 'catalog_unchanged');
+    fixture('history-change');
+    const before = fixture('inspect'), fingerprint = fixture('fingerprint');
+    hasState(await run('archiver'), 'catalog_attempts_exhausted');
+    assert.deepEqual(fixture('inspect'), before); assert.deepEqual(fixture('fingerprint'), fingerprint);
+    report({ scenario: shape, ...fixture('oversized-evidence') });
+    const corrupted = fixture('inspect');
+    const refused = await run('archiver'); hasState(refused,'archive_blocked');
+    assert.ok(refused.some(row => row.reason === 'gateway_archive_history_size_limit'));
+    assert.deepEqual(fixture('inspect'), corrupted); assert.deepEqual(fixture('fingerprint'), fingerprint);
+    return;
+  }
+  if (shape === 'catalog-capacity' || shape === 'catalog-interruption') {
+    const exporting = create('archiver','pause');
+    const boundary = await wait(exporting,true); report({ scenario: shape, ...boundary.find(row => row.fixture === 'boundary') });
+    const before = fixture('inspect'); assert.equal(before.jobs[0].status,'exporting'); assert.equal(before.jobs[0].attempt,2);
+    hasState(await wait(create('archiver','contention','contender')), 'contender_refused');
+    assert.deepEqual(fixture('inspect').jobs,before.jobs);
+    if (shape === 'catalog-interruption') {
+      kill(exporting); hasState(await run('archiver'),'catalog_interrupted');
+      const after = fixture('inspect'); assert.equal(after.jobs.length,1); assert.equal(after.jobs[0].attempt,2);
+      assert.equal(after.jobs[0].status,'interrupted'); hasState(await run('archiver'),'catalog_interrupted'); return;
+    }
+    assert.equal(fixture('admit').attempts,'2'); resume(exporting);
+    hasState(await wait(exporting),'awaiting_catalog_verification');
+    const published = fixture('inspect'); assert.equal(published.jobs[0].content.request_binding.count,1);
+    assert.equal(published.admission.binding_count,2);
+    assert.equal(published.jobs[0].tables['gateway_archive.job'].count,10000);
+    const restoring=create('catalog-verifier','pause');
+    const restoreBoundary=await wait(restoring,true); report({ scenario:shape,...restoreBoundary.find(row => row.fixture==='boundary') });
+    const pending=fixture('inspect'); kill(restoring);
+    assert.deepEqual(fixture('inspect'),pending);
+    hasState(await run('catalog-verifier'),'verified');
+    // Inference changed after the snapshot. Its normal daily cadence is preserved.
+    await run('archiver'); const accepted = fixture('inspect'); assert.equal(accepted.jobs[0].status,'verified');
+    report({ scenario: shape,...fixture('quota'), concurrentInferenceContinued: true }); return;
+  }
+  if (shape === 'catalog-publication') {
+    const active = create('archiver','publication'), events = await wait(active,true);
+    report({ scenario: shape,...events.find(row => row.fixture === 'boundary') });
+    const before = fixture('inspect'); assert.equal(before.jobs[0].status,'exporting');
+    assert.ok(before.files.some(file => file.file === 'manifest.json'));
+    kill(active);
+    // PostgreSQL may complete a queued statement when the fixture blocker dies,
+    // even though its client was killed. Read durable truth; neither outcome refunds work.
+    const stopped=fixture('inspect');
+    assert.ok(['exporting','awaiting_verification'].includes(stopped.jobs[0].status));
+    const confirmed=stopped.jobs[0].status==='awaiting_verification';
+    hasState(await run('archiver'),confirmed ? 'awaiting_catalog_verification' : 'catalog_interrupted');
+    const after = fixture('inspect'); assert.equal(after.jobs.length,1);
+    assert.equal(after.jobs[0].status,confirmed ? 'awaiting_verification' : 'interrupted');
+    assert.equal(after.jobs[0].attempt,2); assert.deepEqual(after.files,before.files);
+    report({ scenario:shape,publicationCommittedAfterKill:confirmed }); return;
+  }
+  hasState(await run('archiver'),'awaiting_catalog_verification');
+  hasState(await run('catalog-verifier'),'verified');
+  const active = create('archiver','acknowledgment'), events = await wait(active,true);
+  report({ scenario: shape,...events.find(row => row.fixture === 'boundary') });
+  const before = fixture('inspect'); assert.equal(before.roots.length,1); assert.equal(before.jobs[0].status,'awaiting_verification');
+  kill(active); hasState(await run('archiver'),'awaiting_catalog_verification');
+  const after = fixture('inspect'); assert.equal(after.jobs[0].status,'verified'); assert.equal(after.jobs[0].attempt,2);
+  assert.deepEqual(after.roots,before.roots); assert.equal(after.dependencies,before.dependencies);
+  hasState(await run('catalog-verifier'),'verified'); hasState(await run('archiver'),'catalog_unchanged');
+  assert.deepEqual(fixture('inspect').jobs.map(job => job.attempt),[2,3]);
+}

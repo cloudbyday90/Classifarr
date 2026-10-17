@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
+import { qualifyCatalogScenario } from './gatewayCatalogQualificationScenarios.mjs';
 
 const driver = '/fixtures/archiveQualificationDriver.mjs';
 const fixtureDirectory = 'scripts/fixtures/ollamaGatewayRehearsal';
@@ -17,11 +18,12 @@ const records = output => output.trim().split('\n').filter(line => line.startsWi
 const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
 async function qualifyCase(image, shape) {
+  const catalog = shape.startsWith('catalog-');
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const labelKey = 'io.classifarr.archive-qualification', label = `${labelKey}=${suffix}`;
-  const volumes = Object.fromEntries(['archives', 'receipts', 'socket', 'configuration', 'fixtures'].map(name =>
+  const volumes = Object.fromEntries(['archives', 'receipts', 'socket', 'configuration', 'fixtures', ...(catalog ? ['catalogs'] : [])].map(name =>
     [name, `classifarr-archive-${name}-${suffix}`]));
-  const workers = Object.fromEntries(['archiver', 'verifier','cleanup'].map(name => [name, `classifarr-${name}-${suffix}`]));
+  const workers = Object.fromEntries(['archiver', 'verifier','cleanup','catalog-verifier','contender'].map(name => [name, `classifarr-${name}-${suffix}`]));
   const mount = (name, target, readonly = false) => ['--mount', `type=volume,source=${volumes[name]},target=${target}${readonly ? ',readonly' : ''}`];
   const ownedRemove = name => {
     if (!docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim()) return;
@@ -33,6 +35,7 @@ async function qualifyCase(image, shape) {
     'run', '--network', 'none', '--memory', '2g', '--memory-swap', '2g', '--cpus', '2', '--pids-limit', '512',
     ...mount('archives', '/archives'), ...mount('receipts', '/receipts'), ...mount('socket', '/var/run/postgresql'),
     ...mount('configuration', '/configuration'), ...mount('fixtures', '/fixtures'),
+    ...(catalog ? mount('catalogs', '/catalogs') : []),
     '--tmpfs', '/quota:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev', ...args.slice(1),
   ] : args, options);
   try {
@@ -44,26 +47,32 @@ async function qualifyCase(image, shape) {
       const source = spec.containerName;
       docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/configuration', '/fixtures']);
       docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/configuration', '/fixtures']);
+      if (catalog) {
+        docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/catalogs']);
+        docker(['exec', '--user', '0:0', source, 'chmod', '700', '/catalogs']);
+      }
       for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
-        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs']) {
+        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {
         const output = docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
-          'node', '/fixtures/archiveQualificationData.mjs', action, shape]);
+          'node', catalog ? '/fixtures/catalogQualificationData.mjs' : '/fixtures/archiveQualificationData.mjs', action, shape]);
         return JSON.parse(output);
       };
-      const create = (kind, mode = 'normal') => {
-        const name = workers[kind]; ownedRemove(name);
-        const archiveWorker = kind !== 'verifier', memory = archiveWorker ? '256m' : '1536m';
+      const create = (kind, mode = 'normal', slot = kind) => {
+        assert.ok(Object.hasOwn(workers,slot));
+        const name = workers[slot]; ownedRemove(name);
+        const archiveWorker = !kind.endsWith('verifier'), memory = archiveWorker ? '256m' : '1536m';
         docker(['create', '--name', name, '--label', label, '--network', 'none', '--read-only', '--init', '--no-healthcheck',
           '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
           '--memory', memory, '--memory-swap', memory, '--cpus', archiveWorker ? '0.5' : '1', '--pids-limit', archiveWorker ? '32' : '64',
           ...mount('archives', '/archives', kind !== 'archiver'), ...mount('receipts', '/receipts', archiveWorker), ...mount('fixtures', '/fixtures', true),
+          ...(catalog ? mount('catalogs', '/catalogs', kind !== 'archiver') : []),
           ...(archiveWorker ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] : [
             '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
           '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-          '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, driver, kind, mode]);
+          '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, driver, kind, mode, ...(catalog ? ['catalog'] : [])]);
         const value = inspect(name);
         assert.equal(value.Image, image); assert.equal(value.HostConfig.NetworkMode, 'none');
         assert.equal(value.HostConfig.ReadonlyRootfs, true); assert.equal(value.Config.User, '1000:1000');
@@ -71,8 +80,8 @@ async function qualifyCase(image, shape) {
         assert.equal(value.HostConfig.MemorySwap, value.HostConfig.Memory);
         assert.equal(value.HostConfig.NanoCpus, archiveWorker ? 500000000 : 1000000000);
         assert.equal(value.HostConfig.PidsLimit, archiveWorker ? 32 : 64);
-        assert.ok(value.Mounts.every(m => (archiveWorker ? ['/archives','/receipts','/fixtures','/source-socket','/configuration'] :
-          ['/archives','/receipts','/fixtures']).includes(m.Destination)));
+        assert.ok(value.Mounts.every(m => [...(archiveWorker ? ['/archives','/receipts','/fixtures','/source-socket','/configuration'] :
+          ['/archives','/receipts','/fixtures']), ...(catalog ? ['/catalogs'] : [])].includes(m.Destination)));
         if (!archiveWorker) assert.ok(value.Config.Env.every(item => !/PASSWORD=|TOKEN=|CONFIG_FILE=/.test(item)));
         docker(['start', name]); return { name, started: Date.now(), kind };
       };
@@ -83,10 +92,10 @@ async function qualifyCase(image, shape) {
           const logs = records(docker(['logs', run.name]));
           const limit = logs.find(record => record.fixture === 'limits');
           if (limit) {
-            assert.equal(limit.memory, run.kind !== 'verifier' ? '268435456' : '1610612736');
-            assert.equal(limit.swap, '0'); assert.equal(limit.pids, run.kind !== 'verifier' ? '32' : '64');
+            assert.equal(limit.memory, !run.kind.endsWith('verifier') ? '268435456' : '1610612736');
+            assert.equal(limit.swap, '0'); assert.equal(limit.pids, !run.kind.endsWith('verifier') ? '32' : '64');
             const [quota, period] = limit.cpu.split(' ').map(Number);
-            assert.equal(quota / period, run.kind !== 'verifier' ? 0.5 : 1);
+            assert.equal(quota / period, !run.kind.endsWith('verifier') ? 0.5 : 1);
           }
           if (boundary && logs.some(record => record.fixture === 'boundary')) return logs;
           if (!state.Running) {
@@ -117,7 +126,9 @@ async function qualifyCase(image, shape) {
       };
       try {
         report({ scenario: shape, stage: 'setup' }); fixture('setup');
-        if (shape === 'cleanup') {
+        if (catalog) {
+          await qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report });
+        } else if (shape === 'cleanup') {
           hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
           hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
           fixture('accept-old'); hasState(await run('archiver'),'unchanged');
@@ -261,9 +272,10 @@ async function qualifyCase(image, shape) {
   }
 }
 
-export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false) {
+export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  for (const shape of cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup']) await qualifyCase(image, shape);
+  for (const shape of catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide'] :
+    cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup']) await qualifyCase(image, shape);
   report({ qualification: 'passed', image, revision });
 }

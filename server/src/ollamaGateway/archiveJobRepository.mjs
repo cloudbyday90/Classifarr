@@ -3,6 +3,7 @@ import { gatewayError } from './errors.mjs';
 import { archiveProtectionRepository } from './archiveProtectionRepository.mjs';
 import { assertArchiveNotCatalogPinned, hasCatalogRetention } from './catalogRetentionRepository.mjs';
 import { catalogRetentionService } from './catalogRetentionService.mjs';
+import { readArchiveHistory } from './archiveHistoryReader.mjs';
 
 /** This dedicated maintenance session must never share the inference session. */
 export async function lockArchiveCoordinator(client) {
@@ -26,16 +27,7 @@ export function archiveJobRepository(client) {
       if (result.rowCount > 1000) throw gatewayError('gateway_cleanup_capacity');
       return result.rows;
     },
-    async list() {
-      const result = await client.query(`SELECT j.id,j.ledger_id,j.provider_hash,j.policy_hash,j.revision,j.attempt,j.status,
-        j.created_at,j.completed_at,j.retry_after,j.manifest_sha256,j.reason,j.recovery_protection_id,
-        CASE WHEN j.status IN ('verified','awaiting_verification','retiring') THEN j.manifest END AS manifest,
-        CASE WHEN j.status IN ('verified','retiring') THEN j.receipt END AS receipt,to_jsonb(p) AS protection
-        FROM gateway_archive.job j LEFT JOIN gateway_archive.protection p ON p.id=j.recovery_protection_id
-        ORDER BY j.created_at,j.id LIMIT 10001`);
-      if (result.rowCount > 10000) throw gatewayError('gateway_archive_job_capacity');
-      return result.rows;
-    },
+    list: () => readArchiveHistory(client),
     async begin(report, revision, policyHash, compatibleRevisions = [revision]) {
       const installed = (await client.query("SELECT to_regclass('gateway_catalog.job') IS NOT NULL AS installed")).rows[0].installed;
       const extra = installed ? 'UNION ALL SELECT attempt FROM gateway_catalog.job WHERE compatible_revisions && $5::text[]' : '';

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Bound gateway archive-history reads before nested metadata reaches Node, with
+  explicit resource-limit diagnostics and unchanged retry/protection rules. Add
+  isolated catalog load and process-interruption qualification at deployed limits.
+
 - Add optional automatic gateway recovery-catalog scheduling with UUIDv7 jobs,
   shared retry/storage limits, and isolated restore verification. Keep historical
   records and protected copies; release old file dependencies only after verified

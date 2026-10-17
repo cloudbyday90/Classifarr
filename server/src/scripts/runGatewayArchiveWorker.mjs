@@ -47,7 +47,7 @@ try {
     catch (error) {
       const safe = ['gateway_archive_receipt_invalid','gateway_archive_job_fence','gateway_archive_rotation_blocked',
         'gateway_archive_file_invalid','gateway_archive_verification_failed','gateway_archive_unmanaged_files',
-        'gateway_archive_storage_blocked','gateway_archive_job_capacity','gateway_archive_source_inconsistent',
+        'gateway_archive_storage_blocked','gateway_archive_job_capacity','gateway_archive_history_size_limit','gateway_archive_source_inconsistent',
         'gateway_archive_protection_fence','gateway_catalog_dependency','gateway_catalog_budget_blocked',
         'gateway_catalog_job_fence','gateway_catalog_admission_blocked','gateway_catalog_rotation_blocked',
         'gateway_catalog_verification_invalid','gateway_catalog_size_limit','gateway_catalog_capture_pending'];
