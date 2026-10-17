@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { readFile, writeFile, unlink, readdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, unlink, readdir, stat, mkdir, open, rmdir } from 'node:fs/promises';
 import pg from '/app/node_modules/pg/lib/index.js';
 import { createOnlineArchive, withOnlineArchiveSnapshot } from '/app/src/ollamaGateway/onlineArchive.mjs';
 import { archiveJobRepository } from '/app/src/ollamaGateway/archiveJobRepository.mjs';
@@ -8,6 +8,7 @@ import { archivePolicyHash } from '/app/src/ollamaGateway/archiveSchedule.mjs';
 import { verifyArchiveRestore } from '/app/src/ollamaGateway/archiveVerifier.mjs';
 import { catalogRetentionService } from '/app/src/ollamaGateway/catalogRetentionService.mjs';
 import { catalogRetentionRepository, assertArchiveNotCatalogPinned } from '/app/src/ollamaGateway/catalogRetentionRepository.mjs';
+import { archiveStorageAvailable } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const action = process.argv[2], paths = { catalogs: '/catalogs', archives: '/archives', receipts: '/receipts' };
@@ -25,6 +26,26 @@ if (action === 'verify') {
     await owner.connect(); const service = catalogRetentionService(owner), repository = catalogRetentionRepository(owner);
     if (action === 'setup') {
       await owner.query(await readFile('/app/database/ollama-gateway-catalog/current.sql', 'utf8'));
+    } else if (action === 'capacity') {
+      await owner.query('SELECT pg_advisory_lock(11435,4)');
+      const generated = [];
+      try {
+        for (const [parent, size, attempt] of [['/archives', 600, 1], ['/catalogs', 300, 2]]) {
+          const row = (await owner.query(`INSERT INTO gateway_archive.job(ledger_id,provider_hash,policy_hash,revision,attempt,status)
+            SELECT id,provider_hash,$1,repeat('c',64),$2,'failed' FROM ollama_gateway.admission RETURNING id`, [archivePolicyHash(90), attempt])).rows[0];
+          const directory = `${parent}/gateway-archive-${row.id}`;
+          await mkdir(directory, { mode: 0o700 }); generated.push(directory);
+          const file = await open(`${directory}/gateway.dump`, 'wx', 0o600);
+          try { await file.truncate(size * 1048576); } finally { await file.close(); }
+        }
+        const jobs = await archiveJobRepository(owner).list();
+        assert.equal(await archiveStorageAvailable('/archives', '/receipts', jobs), true);
+        assert.equal(await archiveStorageAvailable('/catalogs', '/receipts', jobs, ['/archives']), false);
+      } finally {
+        // Only the fixed sparse files and generated empty directories from this isolated invocation.
+        for (const directory of generated) { await unlink(`${directory}/gateway.dump`); await rmdir(directory); }
+      }
+      process.stdout.write('catalog_combined_capacity_passed: sparse synthetic byte accounting, not dump throughput\n');
     } else if (action === 'capture') {
       const jobs = archiveJobRepository(owner);
       await owner.query('SELECT pg_advisory_lock(11435,4)');

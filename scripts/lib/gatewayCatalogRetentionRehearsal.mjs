@@ -9,6 +9,7 @@ export function runGatewayCatalogRetentionRehearsal({ docker, image, source, arc
     source, 'node', '/tmp/catalog-retention.mjs', ...args]).trim();
   const name = `classifarr-catalog-retention-${suffix}`;
   fixture('setup');
+  process.stdout.write(`${fixture('capacity')}\n`);
   for (let cycle = 0; cycle < 3; cycle++) {
     const id = fixture('capture'); assert.match(id, /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/);
     assert.equal(docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim(), '');
