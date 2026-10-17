@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Restore optional gateway archives from a bounded, verified private copy, and
+  add executable recovery-scheduling checks for preserved retry limits and
+  backup feedback loops. Maintenance-catalog capture remains disabled.
+
 - Document maintenance-catalog recovery risks and verification requirements,
   including matching snapshots, preserved retry state and isolated restores.
   This research update does not activate recovery or archive expiry.

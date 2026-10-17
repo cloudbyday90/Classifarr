@@ -65,6 +65,9 @@ async function run() {
             }
             if (!bytes) continue;
           } else {
+            const command = (await readFile(`/proc/${candidate.pid}/cmdline`, 'utf8')).split('\0').filter(Boolean);
+            assert.match(command.at(-1), /^\/verification\/gateway-verify-[A-Za-z0-9]+\/input\/gateway\.dump$/,
+              'restore_must_use_private_checked_input');
             restoredRows = await restoreProgress();
             if (!restoredRows) continue;
           }

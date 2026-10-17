@@ -28,6 +28,9 @@ try {
   }
   await withSchemaCheckContainer({ imageName: image,runSpec: spec,command,action: async () => {
     const source = spec.containerName;
+    docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/archiveRestoreInput.mjs'),`${source}:/tmp/archive-restore-input.mjs`]);
+    process.stdout.write(docker(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
+      'node','/tmp/archive-restore-input.mjs']));
     docker(['exec','--user','0:0',source,'chown','1000:1000','/archives','/receipts']);
     docker(['exec','--user','0:0',source,'chmod','700','/archives','/receipts']);
     docker(['cp',resolve('scripts/fixtures/ollamaGatewayRehearsal/onlineArchive.mjs'),`${source}:/tmp/online-archive.mjs`]);

@@ -1,6 +1,6 @@
 # Gateway maintenance-catalog recovery — design and risk review
 
-Date: 2026-10-16. Scope approved; implementation pending. The user requested a
+Date: 2026-10-16. Scope approved; implementation is staged. The user requested a
 deeper research pass before coding. This document refines the approved safeguards,
 not permission for live recovery, archive expiry, or production activation.
 See the separate [outcome](gateway-maintenance-catalog-outcome.md).
@@ -272,3 +272,81 @@ Next gate: finish maintenance-catalog verification. Before protection expiry,
 prove dependency-preserving retirement and the confirmed minimum recovery window.
 Before any restored-worker activation, design a separate authority/fencing
 protocol; passing this verifier is explicitly not that authority.
+
+## First implementation gate: model and private restore input
+
+The first increment implements the executable scheduling specification and C7's
+private-input handoff. It does **not** enable maintenance-catalog capture, change
+the live scheduler, install tables, expand reader privileges or alter receipts.
+
+The test-only [model](../../server/src/__tests__/fixtures/gatewayCatalogModel.mjs)
+separates exact captured state, semantic maintenance generation and inference
+retry identity. Generations are an abstraction, not an approved SQL migration or
+a claim of a durable event log. Snapshot capture occurs after admission and takes
+the current maintenance generation, not the initial assessment's older value.
+The current exporting job stays unfinished inside that immutable snapshot.
+
+Successful own-job publication and receipt acknowledgment do not create another
+semantic generation. Independent protection, cleanup-attempt, confirmation and
+retirement changes do. Mapping actual SQL mutations to that causal distinction
+remains an integration requirement; arbitrary changes cannot label themselves
+"internal" to bypass capture. In particular, rotation-induced dependency changes
+must be proven before live integration. The model does not establish artifact
+dependency closure or solve post-capture retirement.
+
+Cancellation and failures consume the original three-attempt budget and retain
+five-/30-minute cooldowns. Second copies count too. With unchanged inference
+history, repeated catalog-only refreshes can exhaust that budget, even after
+successful copies. This conservative limitation is intentional: changing catalog
+hashes must not silently mint new attempts. No budget/policy reset is implemented.
+The model applies the daily/hourly interval to new catalog-only changes, while
+existing retry cooldowns remain authoritative. A restored model is disabled.
+
+The tests include hand-authored expected transitions, 1,620 comparisons with the
+existing production scheduler's inference-only projection, and 8,192 fixed-seed
+event attempts. Invalid transitions must be assertion failures, not swallowed
+runtime errors. This is bounded testing, not exhaustive model checking or formal
+verification of the database worker. Fresh/disabled and uncertain states must
+remain safe; separate real SQL, transport and crash tests are still necessary.
+
+The production [input helper](../../server/src/ollamaGateway/archiveRestoreInput.mjs)
+streams the shared dump into an exclusively created file below the verifier's
+private workspace. It checks length, PGDMP header and SHA-256 while copying, using
+64 KiB memory, then syncs, changes mode to 0400 and closes both handles before
+returning a path. Native restore receives only that private path. Source symlinks,
+hard links and public permissions remain forbidden by existing file checks.
+The final shared-bundle check remains in place. Replacing the source path cannot
+change the accepted private bytes; a compromised verifier UID/host is still outside
+this isolation claim. File mode is defense in depth, not immutable storage.
+
+Before copying, require free scratch for twice the dump bytes plus 64 MiB. This
+admits the copy and a minimum restoration reserve; it does not predict database
+expansion. The unchanged 1 GiB scratch mount, 1,536 MiB verifier memory, 256 MiB
+dump limit and existing execution deadlines remain hard bounds. Failure to fit
+refuses verification. The extra copy costs up to 256 MiB scratch and one streamed
+read/write pass. The 1 GiB **managed archive** budget is separate and unchanged.
+The PostgreSQL data directory moves to a sibling of private input within the
+same ephemeral workspace. Cleanup still waits for PostgreSQL exit and removes
+only that invocation's directory, including partially staged files.
+
+Research rechecked through MCP on 2026-10-16 (America/New_York):
+
+- [Amazon's executable-model approach](https://www.amazon.science/publications/using-lightweight-formal-methods-to-validate-a-key-value-storage-node-in-amazon-s3)
+  supports using independent property tests alongside implementation tests.
+- [AWS retry guidance](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/?did=ba_card&trk=ba_card)
+  supports stable intent identity rather than treating every observation as new work.
+- [Node 24 file APIs](https://nodejs.org/download/release/v24.20.0/docs/api/fs.html)
+  document descriptor operations and warn that a file copy is not guaranteed atomic.
+  Our conclusion is to publish a private path only after bounded copy validation,
+  not to rely on copying alone as integrity proof. This is versioned API guidance,
+  not a recommendation to downgrade the pinned Node 24.21.0 runtime.
+- [PostgreSQL restore guidance](https://www.postgresql.org/docs/18/app-pgrestore.html)
+  continues to require treating archive execution as untrusted. Private staging
+  supplements, rather than replaces, the restricted role and isolated network.
+
+The recommended stack is unchanged: modular ESM, PostgreSQL 18/native UUIDv7,
+restricted roles and isolated Docker verification, with no new dependencies.
+Compared with shared-path rechecks alone, private copying costs I/O and space but
+ties native restore to the checked bytes. Compared with immediately enabling the
+catalog scheduler, a test-only model delays functionality but prevents unproven
+causal bookkeeping from changing live retry behavior.

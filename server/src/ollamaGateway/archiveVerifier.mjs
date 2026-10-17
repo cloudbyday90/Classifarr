@@ -10,6 +10,7 @@ import { captureArchiveContent, preservesArchiveContent } from './archiveContent
 import { archiveDirectory, readVerifiedGatewayArchive } from './archiveFiles.mjs';
 import { gatewayError } from './errors.mjs';
 import { verifyRestoredRetention } from './archiveRetentionVerification.mjs';
+import { stageArchiveRestoreInput } from './archiveRestoreInput.mjs';
 
 const environment = Object.freeze({ PATH: '/usr/bin:/bin', LANG: 'C', PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '5' });
 async function command(executable,args,signal) {
@@ -31,8 +32,10 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
   const workspace = await mkdtemp(join(scratch,'gateway-verify-'));
   let postgres, client, closed, retentionSha256 = null, verified = false; const preserves = [];
   try {
-    await command('/usr/libexec/postgresql18/initdb',['-D',workspace,'-U','archive_owner','-A','trust','--no-locale','--encoding=UTF8'],signal);
-    postgres = spawn('/usr/libexec/postgresql18/postgres',['-D',workspace,'-k',workspace,'-c','listen_addresses=',
+    const restoreInput = await stageArchiveRestoreInput(directory,workspace,manifest.dump,signal);
+    const databaseDirectory = join(workspace,'postgres');
+    await command('/usr/libexec/postgresql18/initdb',['-D',databaseDirectory,'-U','archive_owner','-A','trust','--no-locale','--encoding=UTF8'],signal);
+    postgres = spawn('/usr/libexec/postgresql18/postgres',['-D',databaseDirectory,'-k',workspace,'-c','listen_addresses=',
       '-c','shared_buffers=32MB','-c','max_connections=8','-c','work_mem=4MB','-c','temp_file_limit=131072'],
     { env: environment,stdio: 'ignore',shell: false });
     closed = new Promise(resolve => { postgres.once('error',() => resolve(null)); postgres.once('close',resolve); });
@@ -60,7 +63,7 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
       GRANT USAGE ON SCHEMA ollama_gateway TO archive_restore;
       GRANT INSERT,SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO archive_restore`);
     await command('/usr/bin/pg_restore',['--data-only','--no-owner','--no-acl','--no-comments','--no-security-labels',
-      '--exit-on-error','--single-transaction','--no-password','-h',workspace,'-U','archive_restore','-d','postgres',join(directory,'gateway.dump')],signal);
+      '--exit-on-error','--single-transaction','--no-password','-h',workspace,'-U','archive_restore','-d','postgres',restoreInput],signal);
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");
     if (!isDeepStrictEqual(await captureArchiveContent(client,signal),manifest.content)) throw gatewayError('gateway_archive_restore_mismatch');
