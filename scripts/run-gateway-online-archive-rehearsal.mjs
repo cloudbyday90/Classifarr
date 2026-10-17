@@ -6,6 +6,7 @@ import { existsSync } from 'node:fs';
 import { createSchemaCheckRunSpec,withSchemaCheckContainer } from './check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualification.mjs';
+import { runGatewayCatalogRehearsal } from './lib/gatewayCatalogRehearsal.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
 if (process.argv.length > 5 || (mode && !['--qualification','--cleanup'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
@@ -78,6 +79,7 @@ try {
       if (cycle === 4) { protection('stage'); fixture('accept'); protection('check'); }
     }
     protection('rotated');
+    runGatewayCatalogRehearsal({ docker,image,source,archives,receipts,label,suffix });
     process.stdout.write('online_archive_rehearsal_passed: online SELECT-only exports; isolated restricted restore; full candidate-page proof; inventory tamper and legacy receipt refusal; UUIDv7 jobs; restarted services; mixed v3/v4 rotation to 2; corruption refusal; live history unchanged; zero provider calls\n');
   } });
 } finally {

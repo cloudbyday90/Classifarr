@@ -3,24 +3,30 @@ import { createHash } from 'node:crypto';
 import { ARCHIVE_TABLES, ARCHIVE_LIMIT } from './archiveContract.mjs';
 import { gatewayError } from './errors.mjs';
 
-/** Call inside one UTC, read-only repeatable-read transaction. Never materialize a table in JS. */
-export async function captureArchiveContent(client, signal, prefixes = null) {
-  const content = {}; let bytes = 0;
+/** Call inside one UTC, read-only repeatable-read transaction. Never materialize a table in JS.
+ * @param {any} client
+ * @param {AbortSignal} [signal]
+ * @param {any} [prefixes]
+ * @param {{bytes: number, rowLimit?: number}} [budget]
+ */
+export async function captureArchiveContent(client, signal, prefixes = null, budget = { bytes: 0 }) {
+  const content = {};
   for (const table of ARCHIVE_TABLES) {
     const digest = createHash('sha256'); let count = 0, maxId = null;
     // The identifier comes only from the fixed seven-table contract, never from a manifest.
     const upper = prefixes ? prefixes[table].maxId : null;
     await client.query(`DECLARE archive_content_cursor NO SCROLL CURSOR FOR
-      SELECT id,to_jsonb(t)::text AS row FROM ollama_gateway.${table} t
-      WHERE ($1::uuid IS NULL OR id <= $1::uuid) AND $2::boolean ORDER BY id`, [upper, !prefixes || upper !== null]);
+      SELECT id,CASE WHEN $3::integer IS NULL OR octet_length(to_jsonb(t)::text)<=$3 THEN to_jsonb(t)::text END AS row FROM ollama_gateway.${table} t
+      WHERE ($1::uuid IS NULL OR id <= $1::uuid) AND $2::boolean ORDER BY id`, [upper, !prefixes || upper !== null, budget.rowLimit ?? null]);
     try {
       for (;;) {
         signal?.throwIfAborted();
         const rows = (await client.query('FETCH FORWARD 256 FROM archive_content_cursor')).rows;
         if (!rows.length) break;
         for (const row of rows) {
-          bytes += Buffer.byteLength(row.row) + 1; count++; maxId = row.id;
-          if (count > 200000 || bytes > ARCHIVE_LIMIT) throw gatewayError('gateway_archive_size_limit');
+          if (typeof row.row !== 'string') throw gatewayError('gateway_archive_size_limit');
+          budget.bytes += Buffer.byteLength(row.row) + 1; count++; maxId = row.id;
+          if (count > 200000 || budget.bytes > ARCHIVE_LIMIT) throw gatewayError('gateway_archive_size_limit');
           digest.update(row.row).update('\n');
         }
       }

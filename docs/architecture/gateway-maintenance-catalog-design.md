@@ -350,3 +350,52 @@ Compared with shared-path rechecks alone, private copying costs I/O and space bu
 ties native restore to the checked bytes. Compared with immediately enabling the
 catalog scheduler, a test-only model delays functionality but prevents unproven
 causal bookkeeping from changing live retry behavior.
+
+## Second implementation gate: capture and isolated restoration
+
+2026-10-17: implement a verification-only v5 capture seam, not a new administrator
+command or live scheduler setting. Existing v3/v4 producers, roles and receipts
+retain their meaning. The caller must already have admitted its exporting job;
+capture cannot manufacture an attempt or complete that job. The optional source
+must use a separately checked SELECT-only reader covering all ten fixed tables.
+The legacy inference-only reader check is not relaxed.
+
+Hold the existing non-waiting maintenance exclusion lock while exporting one
+repeatable-read snapshot. Include the original unfinished export, protection
+records and cleanup attempts/confirmation values. Use PostgreSQL canonical text
+for digests, preserving integer and timestamp precision without JavaScript numeric
+conversion. Bound rows before transmitting them, fetch small batches and enforce
+the shared 256 MiB content/dump ceiling. Unknown table layouts fail closed.
+
+Keep manifests within 64 KiB: store bounded table digests and a dependency
+count/hash, not a recursively expanded artifact list. Derive that inventory again
+from restored SQL. Require retained verified bundles and receipts, plus markers
+for ready protections; retired and unfinished jobs retain their historical state
+without requiring nonexistent future files. No publication-recovery helper runs
+during this read-only inspection. The active exporting job must be the sole
+pending job. Dependency verification is a point-in-time observation, not an expiry
+authorization or promise that future rotation preserves the set.
+
+Load only packaged schemas in the network-isolated verifier. Temporarily disable
+only the named maintenance ingestion guards in that disposable database, defer
+foreign keys, restore through a restricted login, then re-enable guards and remove
+loading privileges. Check exact rows, cross-schema relationships and required
+files independently. Keep original completion XIDs historical; never reconcile
+or resume restored workers. Live roles receive no trigger-bypass privilege.
+
+Official guidance re-opened through MCP on 2026-10-17:
+
+- [PostgreSQL snapshot synchronization](https://www.postgresql.org/docs/18/functions-admin.html)
+  gives participants the same database view only while the exporting transaction
+  remains open; it does not snapshot files.
+- [PostgreSQL restore warnings](https://www.postgresql.org/docs/18/app-pgrestore.html)
+  support retaining the restricted role, trusted schema and isolated container.
+- [PostgreSQL JSON types](https://www.postgresql.org/docs/18/datatype-json.html)
+  warn about numeric precision when interchanging with other systems. Hashing
+  database text and using native restore are our implementation choices.
+
+Recommendation: fixed versioned contracts, streamed PostgreSQL text, native dump/
+restore and existing isolated Docker workers. This provides stronger recovery
+evidence without new dependencies; the costs are additional read I/O, bounded
+scratch and refusal when dependencies or capacity are unavailable. Automatic
+scheduling and dependency-preserving rotation remain a separate integration gate.

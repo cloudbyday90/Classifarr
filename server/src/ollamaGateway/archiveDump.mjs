@@ -4,19 +4,22 @@ import { createHash } from 'node:crypto';
 import { ARCHIVE_LIMIT, gatewayArchiveConfiguration } from './archiveContract.mjs';
 import { openArchiveFile } from './archiveFiles.mjs';
 import { gatewayError } from './errors.mjs';
+import { ARCHIVE_TABLES } from './archiveTables.mjs';
+import { CATALOG_TABLES } from './catalogContract.mjs';
 
-export function archiveDumpOptions(configuration, snapshot) {
+export function archiveDumpOptions(configuration, snapshot, catalog = false) {
   const { database } = gatewayArchiveConfiguration(configuration);
   if (typeof snapshot !== 'string' || !/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}-[0-9]+$/.test(snapshot)) throw gatewayError('gateway_archive_config_invalid');
-  return { args: ['--format=custom', '--compress=0', '--schema=ollama_gateway', '--strict-names', '--no-owner', '--no-acl',
+  const scope = catalog ? [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...CATALOG_TABLES].map(name => `--table=${name}`) : ['--schema=ollama_gateway'];
+  return { args: ['--format=custom', '--compress=0', ...scope, '--strict-names', '--no-owner', '--no-acl',
     '--no-comments', '--no-security-labels', '--no-password', '--lock-wait-timeout=2000', `--snapshot=${snapshot}`],
   env: { PATH: '/usr/bin:/bin', PGHOST: database.host, PGPORT: String(database.port ?? 5432), PGDATABASE: database.database,
     PGUSER: database.user, PGPASSWORD: database.password ?? '', PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '5',
     PGOPTIONS: '-c default_transaction_read_only=on -c statement_timeout=30000 -c lock_timeout=2000' } };
 }
 
-export async function dumpGatewayArchive(configuration, snapshot, directory, signal) {
-  const options = archiveDumpOptions(configuration, snapshot);
+export async function dumpGatewayArchive(configuration, snapshot, directory, signal, catalog = false) {
+  const options = archiveDumpOptions(configuration, snapshot, catalog);
   signal?.throwIfAborted();
   const file = await openArchiveFile(directory, 'gateway.dump', true);
   let child, timer, exit;

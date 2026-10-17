@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add verification-only capture and isolated restoration of gateway maintenance
+  history alongside its matching inference snapshot, preserving retry state and
+  checking required recovery files. Live scheduling and recovery remain unchanged.
+
 - Restore optional gateway archives from a bounded, verified private copy, and
   add executable recovery-scheduling checks for preserved retry limits and
   backup feedback loops. Maintenance-catalog capture remains disabled.

@@ -18,7 +18,7 @@ export function validateArchiveContent(value) {
 
 export function validateOnlineArchiveFields(value) {
   validateArchiveContent(value.content);
-  if (value.version === 4 && Date.parse(value.report.capturedAt) - Date.parse(value.report.cutoff) !== value.report.retentionDays * 86400000) {
+  if ([4, 5].includes(value.version) && Date.parse(value.report.capturedAt) - Date.parse(value.report.cutoff) !== value.report.retentionDays * 86400000) {
     throw gatewayError('gateway_archive_content_invalid');
   }
   if (!hash(value.policyHash) || !hash(value.revision) || !Array.isArray(value.predecessors) || value.predecessors.length > 2 ||

@@ -32,6 +32,8 @@ try {
         try { await lstat(join(directory,'manifest.json')); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
         const signal = AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]);
         const receipt = await verifyArchiveRestore(directory,scratch,signal);
+        // Catalog verification is a separate internal contract, never a live worker receipt.
+        if ('kind' in receipt) throw new Error();
         await writeArchiveReceipt(receipts,receipt);
         state = receipt.verified ? 'verified' : 'verification_failed';
       } catch { state = 'verification_blocked'; }

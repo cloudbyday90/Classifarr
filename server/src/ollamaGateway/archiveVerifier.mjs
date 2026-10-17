@@ -11,6 +11,10 @@ import { archiveDirectory, readVerifiedGatewayArchive } from './archiveFiles.mjs
 import { gatewayError } from './errors.mjs';
 import { verifyRestoredRetention } from './archiveRetentionVerification.mjs';
 import { stageArchiveRestoreInput } from './archiveRestoreInput.mjs';
+import { prepareCatalogRestore, sealCatalogRestore } from './catalogRestore.mjs';
+import { captureCatalogContent } from './catalogContent.mjs';
+import { checkCatalogRelationships } from './catalogRelationships.mjs';
+import { inspectCatalogDependencies } from './catalogDependencies.mjs';
 
 const environment = Object.freeze({ PATH: '/usr/bin:/bin', LANG: 'C', PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '5' });
 async function command(executable,args,signal) {
@@ -25,12 +29,15 @@ async function command(executable,args,signal) {
 }
 
 /** Only invoke in the network-none verifier container, never in the coordinator or live DB container. */
-export async function verifyArchiveRestore(directory,scratch,signal) {
+export async function verifyArchiveRestore(directory,scratch,signal,catalog = null) {
   const { manifest,manifestSha256 } = await readVerifiedGatewayArchive(directory,signal);
-  if (![3, 4].includes(manifest.version)) throw gatewayError('gateway_archive_restore_contract');
+  if (![3, 4, 5].includes(manifest.version) || (manifest.version === 5 &&
+      (!catalog || Object.keys(catalog).sort().join(',') !== 'archives,receipts')) || (manifest.version !== 5 && catalog)) {
+    throw gatewayError('gateway_archive_restore_contract');
+  }
   scratch = await archiveDirectory(scratch);
   const workspace = await mkdtemp(join(scratch,'gateway-verify-'));
-  let postgres, client, closed, retentionSha256 = null, verified = false; const preserves = [];
+  let postgres, client, closed, retentionSha256 = null, verified = false, catalogRestored = false; const preserves = [];
   try {
     const restoreInput = await stageArchiveRestoreInput(directory,workspace,manifest.dump,signal);
     const databaseDirectory = join(workspace,'postgres');
@@ -52,6 +59,7 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
     }
     const schema = await readFile('/app/database/ollama-gateway/current.sql','utf8');
     await client.query(schema);
+    if (catalog) await prepareCatalogRestore(client);
     await client.query('DELETE FROM ollama_gateway.admission');
     // Fixed packaged schema, not SQL from the archive. FK cycles are checked at restore commit.
     await client.query(`DO $$ DECLARE r record; BEGIN FOR r IN
@@ -62,12 +70,25 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
       CREATE ROLE archive_restore LOGIN; GRANT CONNECT ON DATABASE postgres TO archive_restore;
       GRANT USAGE ON SCHEMA ollama_gateway TO archive_restore;
       GRANT INSERT,SELECT ON ALL TABLES IN SCHEMA ollama_gateway TO archive_restore`);
+    if (catalog) await client.query(`GRANT USAGE ON SCHEMA gateway_archive,gateway_cleanup TO archive_restore;
+      GRANT INSERT,SELECT ON ALL TABLES IN SCHEMA gateway_archive,gateway_cleanup TO archive_restore`);
     await command('/usr/bin/pg_restore',['--data-only','--no-owner','--no-acl','--no-comments','--no-security-labels',
       '--exit-on-error','--single-transaction','--no-password','-h',workspace,'-U','archive_restore','-d','postgres',restoreInput],signal);
+    if (catalog) await sealCatalogRestore(client, new pg.Client({ host: workspace,user: 'archive_restore',database: 'postgres',
+      connectionTimeoutMillis: 1000,statement_timeout: 4000,query_timeout: 5000 }));
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");
-    if (!isDeepStrictEqual(await captureArchiveContent(client,signal),manifest.content)) throw gatewayError('gateway_archive_restore_mismatch');
-    if (manifest.version === 4) retentionSha256 = await verifyRestoredRetention(client,manifest,signal);
+    const budget = { bytes: 0, ...(catalog ? { rowLimit: 131072 } : {}) };
+    if (!isDeepStrictEqual(await captureArchiveContent(client,signal,null,budget),manifest.content)) throw gatewayError('gateway_archive_restore_mismatch');
+    if ([4, 5].includes(manifest.version)) retentionSha256 = await verifyRestoredRetention(client,manifest,signal);
+    if (catalog) {
+      if (!isDeepStrictEqual(await captureCatalogContent(client,signal,budget),manifest.catalog.tables)) throw gatewayError('gateway_archive_restore_mismatch');
+      await checkCatalogRelationships(client,manifest.archiveId,manifest.report);
+      catalogRestored = true;
+      if (!isDeepStrictEqual(await inspectCatalogDependencies(client,catalog.archives,catalog.receipts,signal),manifest.catalog.dependencies)) {
+        throw gatewayError('gateway_catalog_dependency');
+      }
+    }
     for (const prior of manifest.predecessors) {
       const prefix = await captureArchiveContent(client,signal,prior.content);
       if (preservesArchiveContent(prefix,prior.content)) preserves.push(prior.archiveId);
@@ -95,6 +116,9 @@ export async function verifyArchiveRestore(directory,scratch,signal) {
     }
   }
   signal?.throwIfAborted();
+  if (catalog) return { kind: 'catalog_verification',version: 1,archiveId: manifest.archiveId,manifestSha256,
+    dumpSha256: manifest.dump.sha256,rowsRestored: catalogRestored,dependenciesAvailable: verified,
+    runtimeEnabled: false,purgeAuthorized: false };
   return { version: manifest.version === 4 ? 2 : 1,archiveId: manifest.archiveId,manifestSha256,dumpSha256: manifest.dump.sha256,
     verified,preserves: verified ? preserves : [],purgeAuthorized: false,
     ...(manifest.version === 4 ? { retentionSha256: verified ? retentionSha256 : null } : {}) };
