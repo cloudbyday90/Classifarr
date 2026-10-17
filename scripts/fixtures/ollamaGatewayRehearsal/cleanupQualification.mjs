@@ -11,7 +11,7 @@ import { checkManagedArchive,readArchiveReceipt,archiveStorageAvailable,managedA
 import { ensureArchiveProtection } from '/app/src/ollamaGateway/archiveProtectionFiles.mjs';
 
 async function diagnoseCleanup(client,jobs,database) {
-  let stage = 'files',worker;
+  let stage = 'files',worker,settings; const timings = [];
   const operations = (await client.query('SELECT id,status,attempt FROM gateway_cleanup.operation ORDER BY id')).rows;
   try {
     for (const job of jobs.filter(row => row.status === 'verified')) {
@@ -23,16 +23,28 @@ async function diagnoseCleanup(client,jobs,database) {
     const op = operations.find(row => row.status === 'admitted');
     if (op) {
       await client.query('SELECT pg_advisory_unlock(11435,4)');
-      worker = new pg.Client({ host: '/var/run/postgresql',database,user: 'qualification_cleanup',statement_timeout: 1000 });
+      worker = new pg.Client({ host: '/var/run/postgresql',database,user: 'classifarr',statement_timeout: 1000 });
       await worker.connect(); await lockCleanupWorker(worker); await worker.query('SELECT pg_advisory_lock(11435,4)');
+      worker.on('notice',notice => {
+        const match = notice.message.match(/^duration: ([0-9.]+) ms\s+plan:\s+([\s\S]+)/);
+        if (!match) return;
+        const plan = JSON.parse(match[2]), root = plan.Plan;
+        if (Number(match[1]) < 10 || timings.length >= 20) return;
+        timings.push({ milliseconds: Number(match[1]),type: root['Node Type'],rows: root['Actual Rows'],
+          jit: plan.JIT,triggers: plan.Triggers,ioRead: root['I/O Read Time'],ioWrite: root['I/O Write Time'],
+          children: root.Plans?.map(child => ({ type: child['Node Type'],
+            relation: child['Relation Name'],rows: child['Actual Rows'],loops: child['Actual Loops'],time: child['Actual Total Time'] })) });
+      });
+      settings = (await worker.query("SELECT current_setting('jit') AS jit,pg_jit_available() AS available,current_setting('shared_buffers') AS buffers")).rows[0];
+      await worker.query("LOAD 'auto_explain'; SET auto_explain.log_min_duration=0; SET auto_explain.log_nested_statements=on; SET auto_explain.log_analyze=on; SET auto_explain.log_level=notice; SET auto_explain.log_format=json; SET auto_explain.log_parameter_max_length=0; SET auto_explain.log_triggers=on; SET auto_explain.log_buffers=on; SET track_io_timing=on");
       // Isolated fixture only: diagnose the existing admitted transaction, always rolling every effect back.
-      await worker.query('BEGIN'); stage = 'execute'; await cleanupRepository(worker).execute(op);
+      await worker.query('BEGIN; SET LOCAL ROLE qualification_cleanup'); stage = 'execute'; await cleanupRepository(worker).execute(op);
     }
-    return { stage,state: 'passed',operations };
+    return { stage,state: 'passed',operations,settings,timings };
   } catch (error) {
     const code = ['57014','55P03','42501','EROFS','EPERM','EINVAL'].includes(error.code) ? error.code :
       /^gateway_[a-z_]+$/.test(error.message) ? error.message : 'unclassified';
-    return { stage,state: 'failed',code,operations };
+    return { stage,state: 'failed',code,operations,settings,timings };
   } finally { if (worker) { await worker.query('ROLLBACK'); await worker.end(); } }
 }
 
@@ -64,7 +76,7 @@ export async function cleanupQualificationAction(client,action,database) {
   } else if (action === 'cleanup-commit-cut') {
     // A reconstructed post-commit cutpoint using packaged routines, not a production hook or elapsed cooldown.
     await client.query('SELECT pg_advisory_unlock(11435,4)');
-    const worker = new pg.Client({ host: '/var/run/postgresql',database,user: 'qualification_cleanup',statement_timeout: 1000 });
+    const worker = new pg.Client({ host: '/var/run/postgresql',database,user: 'qualification_cleanup',statement_timeout: 3000 });
     try {
       await worker.connect(); await checkCleanupRole(worker); await lockCleanupWorker(worker); await worker.query('SELECT pg_advisory_lock(11435,4)');
       const repository = cleanupRepository(worker), op = await repository.admit(held.at(-1).protection,archivePolicyHash(90));

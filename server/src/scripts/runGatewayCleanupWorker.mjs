@@ -20,7 +20,8 @@ try {
     let result;
     try {
       client = new pg.Client({ ...configuration.database,password: configuration.database.password ?? '',ssl: false,
-        connectionTimeoutMillis: 5000,statement_timeout: 1000,query_timeout: 3000,lock_timeout: 100,
+        // Real image tests include cold trigger setup and FK checks. Keep transport timeout above SQL cancellation.
+        connectionTimeoutMillis: 5000,statement_timeout: 3000,query_timeout: 5000,lock_timeout: 100,
         application_name: 'classifarr-gateway-cleanup' });
       client.on('error',() => {}); await client.connect();
       await checkCleanupRole(client); await lockCleanupWorker(client);

@@ -69,7 +69,8 @@ or writable archive mount: 256 MiB, half CPU, 32 PIDs, no swap, read-only root.
 One assessment every five minutes, at most 100 records, only at 80,000 or more
 resident bindings. Records must be terminal and older than the configured window
 (minimum 90 days). Full file/receipt/marker validation happens before short SQL
-transactions. SQL statements have a one-second deadline; contended locks yield.
+transactions. SQL statements have a three-second deadline; transport waits at
+most five seconds and lock waits at most 100 ms (explicit NOWAIT checks yield immediately).
 No provider work or broad table rewrite runs during cleanup.
 
 One operation per exact batch has three lifetime attempts and persisted

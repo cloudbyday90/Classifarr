@@ -87,6 +87,16 @@ test('unacknowledged completion is recovered without repeating deletion or chang
   expect((await owner.query('SELECT count(*)::integer AS n FROM ollama_gateway.request_binding')).rows[0].n).toBe(79900);
 });
 
+test('dense completed history stays within the worker statement deadline',async () => {
+  await owner.query(`INSERT INTO ollama_gateway.completion_receipt(request_id,outcome,http_status,recorded_at)
+    SELECT b.request_id,'response_completed',200,b.admitted_at FROM ollama_gateway.request_binding b
+    WHERE b.attempt>100`);
+  const op = await admit();
+  await worker.query("SET statement_timeout='3s'");
+  expect((await repository.execute(op)).deleted_bindings).toBe(100);
+  expect((await repository.reconcile(op.id)).confirmed_at).not.toBeNull();
+});
+
 test('restart preserves failed attempt and cooldown; exhausted attempts never reset',async () => {
   const op = await admit(); const failed = await repository.reconcile(op.id);
   expect(failed.attempt).toBe(1); expect(failed.status).toBe('failed');

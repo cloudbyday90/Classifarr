@@ -44,7 +44,8 @@ async function qualifyCase(image, shape) {
       const source = spec.containerName;
       docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/configuration', '/fixtures']);
       docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/configuration', '/fixtures']);
-      for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs','cleanupQualification.mjs']) {
+      for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
+        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {

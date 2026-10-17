@@ -30,6 +30,13 @@ Official sources discovered through search MCP and opened on 2026-10-16:
 - [pgBackRest retention](https://pgbackrest.org/user-guide.html): successful
   replacement precedes expiration. Copy counts do not replace time-based recovery
   protection. No pgBackRest dependency is introduced.
+- [PostgreSQL nested-plan diagnostics](https://www.postgresql.org/docs/18/auto-explain.html):
+  nested statements and trigger timing can identify overhead, but instrumentation
+  itself costs time. Use it only in the isolated rollback diagnostic here, with
+  parameter logging disabled; no global or live diagnostic setting is enabled.
+- [PostgreSQL JIT decisions](https://www.postgresql.org/docs/18/jit-decision.html):
+  compilation can hurt short statements, but first establish that JIT is available.
+  It was not available in this tested image; no speculative JIT change was made.
 
 | Approach | Benefit | Cost / limitation |
 | --- | --- | --- |
@@ -88,6 +95,16 @@ without preserving A/B. D can preserve C; E can preserve C/D, permitting ordinar
 rotation of C. A/B are never retirement targets. This uses the verifier's existing
 meaning of `verified` versus `preserves`, not an exception to the prefix proof.
 The same gate applies before every subsequent batch.
+
+The cleanup worker allows three seconds per SQL statement, five seconds for its
+client response and 100 ms for lock acquisition; explicit NOWAIT row/table locks
+refuse contention immediately. A one-second prototype budget passed host tests
+but repeatedly cancelled the real image's 100-row transaction. Isolated nested
+plan diagnostics showed cold trigger overhead and foreign-key checks; JIT was
+unavailable, so disabling it would not help. This is a worker-local deadline,
+not a global database setting or permission for larger batches. A slow operation
+still rolls back and retains its consumed attempt. File verification stays
+outside the short transaction and the overall assessment stays bounded at 120 s.
 
 Receipts live in the separate cleanup schema, not the seven-table inference dump.
 No expiry is implemented, so restoring old metadata cannot age out a hold: private
