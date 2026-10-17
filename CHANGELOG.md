@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Document maintenance-catalog recovery risks and verification requirements,
+  including matching snapshots, preserved retry state and isolated restores.
+  This research update does not activate recovery or archive expiry.
+
 - Add optional bounded gateway-history cleanup with fresh record checks, protected
   recovery copies, persistent retry limits and atomic completion records. Preserve
   inference counters and archive verification; existing deployments stay unchanged.
