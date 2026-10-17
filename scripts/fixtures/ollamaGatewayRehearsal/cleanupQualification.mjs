@@ -88,6 +88,10 @@ export async function cleanupQualificationAction(client,action,database) {
     for (let i=0;i<98;i++) {
       const request = await ledger.claim('synthetic'); await ledger.complete(request,false,{ state: 'response_completed',httpStatus: 200 });
     }
+  } else if (action === 'cleanup-due') {
+    // Advance only the global admission cadence in this isolated fixture. Never reset attempts or recovery clocks.
+    assert.equal((await client.query('SELECT count(*)::int AS n FROM gateway_cleanup.operation')).rows[0].n,1);
+    await client.query("UPDATE gateway_cleanup.operation SET last_attempt_at=clock_timestamp()-interval '6 minutes' WHERE status='completed'");
   } else if (action === 'cleanup-inspect') {
     return { operations: (await client.query('SELECT * FROM gateway_cleanup.operation ORDER BY id')).rows };
   } else throw new Error('cleanup_qualification_action_invalid');

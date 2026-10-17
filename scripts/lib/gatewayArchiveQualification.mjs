@@ -146,10 +146,16 @@ async function qualifyCase(image, shape) {
           assert.ok(after.jobs.at(-1).receipt.preserves.includes(after.jobs[2].id));
           fixture('cleanup-top-up'); hasState(await run('archiver'),'not_due');
           assert.equal(fixture('inspect').protections.length,2);
+          const cadence = await run('cleanup'); hasState(cadence,'cleanup_blocked');
+          assert.ok(cadence.some(row => row.reason === 'gateway_cleanup_cooldown'));
+          assert.deepEqual(fixture('cleanup-inspect').operations,[confirmed]);
+          fixture('cleanup-due');
+          const scheduled = fixture('cleanup-inspect').operations[0];
+          assert.deepEqual({ ...scheduled,last_attempt_at: confirmed.last_attempt_at },confirmed);
           fixture('cleanup-commit-cut'); assert.equal(fixture('cleanup-inspect').operations[1].confirmed_at,null);
           hasState(await run('cleanup'),'unchanged');
           const recovered = fixture('cleanup-inspect').operations;
-          assert.equal(recovered.length,2); assert.ok(recovered[1].confirmed_at); assert.deepEqual(recovered[0],confirmed);
+          assert.equal(recovered.length,2); assert.ok(recovered[1].confirmed_at); assert.deepEqual(recovered[0],scheduled);
           assert.equal(fixture('inspect').admission.binding_count,79900); assert.equal(fixture('inspect').admission.attempts,'80100');
           report({ scenario: shape,state: 'deleted_and_rotation_continued',deletedBindings: 200,attempts: '80100',retainedArchives: 4 });
         } else if (shape === 'protection') {
