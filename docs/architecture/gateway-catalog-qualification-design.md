@@ -68,9 +68,25 @@ cost of longer tests and conservative refusal when resource safety is unknown.
 Increasing limits hides scaling weaknesses; automatically replaying ambiguous
 work risks duplicate side effects. Neither is part of this change.
 
+| Option | Benefit | Cost or risk | Decision |
+| --- | --- | --- | --- |
+| Bound the existing SQL result before transfer | Small change, preserves complete accepted evidence, prevents the reproduced Node allocation failure | Large legitimate evidence sets can pause maintenance | Implement now |
+| Validate protected evidence incrementally | Could support larger histories with bounded working memory | Must preserve a consistent snapshot, ordering, identity and complete dependency checks across pages | Next item |
+| Increase memory or retry interrupted work automatically | May postpone capacity failures or resume work sooner | Does not bound growth; uncertain writes can be repeated and budgets undermined | Not selected |
+
 Completion means recorded results for the tested envelope, not a claim that all
 possible histories fit or that local copies protect against host/disk loss.
 Publish results and remaining limits in a separate outcome document.
+
+Run against an immutable locally built image and its exact 40-character source
+revision, using the existing runner's `--catalog-qualification` mode:
+
+```text
+node scripts/run-gateway-online-archive-rehearsal.mjs <sha256:image-id> <revision> --catalog-qualification
+```
+
+The command accepts no live endpoint or volume override. It creates and removes
+only its own synthetic resources; a nonzero exit means qualification failed.
 
 ## Implementation choice
 

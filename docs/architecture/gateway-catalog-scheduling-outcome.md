@@ -122,3 +122,7 @@ memory and completion time, verify preserved attempts and exact cleanup, and
 address measured bottlenecks before enabling this optional flow on a real gateway.
 Do not introduce protection expiry, broader retries or a new purge button as a
 substitute for that evidence.
+
+Follow-up: the separate [catalog qualification outcome](gateway-catalog-qualification-outcome.md)
+records the deployed-limit load and process-interruption work, its measured
+bottleneck, safeguards and remaining limits.

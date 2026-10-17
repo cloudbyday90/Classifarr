@@ -272,10 +272,13 @@ async function qualifyCase(image, shape) {
   }
 }
 
-export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false) {
+export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  for (const shape of catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide'] :
-    cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup']) await qualifyCase(image, shape);
-  report({ qualification: 'passed', image, revision });
+  const shapes = catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide'] :
+    cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup'];
+  assert.ok(only === null || shapes.includes(only), 'qualification_case_invalid');
+  const selected = only === null ? shapes : [only];
+  for (const shape of selected) await qualifyCase(image, shape);
+  report({ qualification: 'passed', cases: selected, image, revision });
 }

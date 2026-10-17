@@ -85,7 +85,7 @@ try {
     await client.query('SELECT pg_advisory_lock(11435,4)');
     // Deliberately inconsistent SQL-only evidence: must refuse before materializing
     // hundreds of MiB, never mistake it for valid files or completed real work.
-    await client.query("UPDATE gateway_archive.job SET status='verified',receipt='{}' WHERE status='failed'");
+    await client.query("UPDATE gateway_archive.job SET status='verified',receipt='{}' WHERE status='failed' AND manifest IS NOT NULL");
     result = { injectedFault: 'oversized_untrusted_evidence', rows: 3000 };
   } else if (action === 'fingerprint') {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");
