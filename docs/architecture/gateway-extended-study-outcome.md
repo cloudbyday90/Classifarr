@@ -2,6 +2,10 @@
 
 ## Result: extended load blocked, not certified
 
+For the subsequent query remediation and its separately identified evidence, see
+the [history-query outcome](gateway-history-query-outcome.md). The original
+failed-study observations below remain unchanged.
+
 Implemented on main on 18 October 2026. The
 [design](gateway-extended-study-design.md) records the approved 30-minute
 normal-cadence study, separate controlled rotation drill, official-source
