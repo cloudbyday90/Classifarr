@@ -128,6 +128,11 @@ not changed. No release or tag was created.
 
 ## Limits and next recommendation
 
+Follow-up (2026-10-18): the
+[incremental-evidence outcome](gateway-incremental-evidence-outcome.md) records
+the implemented bounded reader and successful real protected-history qualification.
+The limitations below describe this document's earlier candidate.
+
 The 8 MiB bound can conservatively refuse a legitimate large active/protected
 evidence set. It preserves the records and inference availability; it is not a
 replacement for sequential evidence validation. The next improvement is to read
