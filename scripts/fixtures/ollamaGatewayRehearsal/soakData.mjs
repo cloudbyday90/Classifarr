@@ -7,11 +7,14 @@ import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
 import { archiveJobRepository } from '/app/src/ollamaGateway/archiveJobRepository.mjs';
 import { archivePolicyHash } from '/app/src/ollamaGateway/archiveSchedule.mjs';
 import { readArchiveReceipt } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
+import { soakProfile } from './soakProfile.mjs';
+import { studyPadding, failedHistoryEvidence } from './studyHistory.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 export const soakConnection = { host: '/var/run/postgresql', user: 'classifarr', database: 'gateway_inference_soak' };
 export const soakProvider = gatewayProviderIdentity('http://127.0.0.1:11434');
 const action = process.argv[2];
+const profile = soakProfile(process.env.CLASSIFARR_SOAK_PROFILE ?? 'regression');
 if (action === 'setup') {
   const admin = new pg.Client({ ...soakConnection, database: 'classifarr' }); await admin.connect();
   try {
@@ -57,22 +60,46 @@ try {
     const receipt = await readArchiveReceipt('/receipts', job.id); assert.equal(receipt.verified, true);
     await repository.verified(job.id, receipt);
     const manifest = (await client.query('SELECT manifest FROM gateway_archive.job WHERE id=$1', [job.id])).rows[0].manifest;
-    await client.query(`UPDATE gateway_archive.job SET manifest=$1::jsonb||jsonb_build_object('archiveId',id,'revision',revision,
+    if (profile.name === 'extended') {
+      const ids = (await client.query("SELECT id FROM gateway_archive.job WHERE status='failed' ORDER BY id LIMIT 3001")).rows.map(row => row.id);
+      assert.equal(ids.length, 3000);
+      for (let offset = 0; offset < ids.length; offset += 16) {
+        const batch = ids.slice(offset, offset + 16);
+        await client.query(`UPDATE gateway_archive.job j SET manifest=$3::jsonb||jsonb_build_object('archiveId',j.id,'revision',j.revision,
+          'fixturePadding',p.padding),manifest_sha256=repeat('f',64) FROM unnest($1::uuid[],$2::text[]) AS p(id,padding) WHERE j.id=p.id`,
+        [batch, batch.map((_, index) => studyPadding(offset + index)), manifest]);
+      }
+      const evidence = await failedHistoryEvidence(client);
+      assert.ok(evidence.storage.toast_bytes > evidence.bytes * 0.45, 'study_history_storage_not_varied');
+      await writeFile('/fixtures/study-history.json', JSON.stringify(evidence), { mode: 0o600, flag: 'wx' });
+      console.log(JSON.stringify({ fixture: 'history-storage', profile: profile.name, ...evidence }));
+    } else await client.query(`UPDATE gateway_archive.job SET manifest=$1::jsonb||jsonb_build_object('archiveId',id,'revision',revision,
       'fixturePadding',repeat('x',75000)),manifest_sha256=repeat('f',64) WHERE status='failed'`, [manifest]);
     const bytes = (await client.query('SELECT sum(octet_length(to_jsonb(j)::text)+1)::float8 AS bytes FROM gateway_archive.job j')).rows[0].bytes;
     assert.ok(bytes > 220000000 && bytes < 268435456); console.log(JSON.stringify({ historicalRows: 3000, bytes }));
   } else if (action === 'check') {
     const admission = (await client.query('SELECT attempts::int,binding_count,active_request FROM ollama_gateway.admission')).rows[0];
-    assert.deepEqual(admission, { attempts: 481, binding_count: 481, active_request: null });
+    assert.deepEqual(admission, { attempts: profile.foreground + 1, binding_count: profile.foreground + 1, active_request: null });
     const rows = (await client.query(`SELECT count(*)::int AS n,count(DISTINCT work_fingerprint)::int AS fingerprints,
       count(*) FILTER (WHERE uuid_extract_version(id)=7 AND uuid_extract_version(request_id)=7)::int AS v7
       FROM ollama_gateway.request_binding WHERE installation<>'prerequisite'`)).rows[0];
-    assert.deepEqual(rows, { n: 480, fingerprints: 480, v7: 480 });
-    assert.equal((await client.query('SELECT count(*)::int AS n FROM ollama_gateway.completion_receipt')).rows[0].n, 481);
+    assert.deepEqual(rows, { n: profile.foreground, fingerprints: profile.foreground, v7: profile.foreground });
+    assert.equal((await client.query('SELECT count(*)::int AS n FROM ollama_gateway.completion_receipt')).rows[0].n, profile.foreground + 1);
     assert.equal((await client.query("SELECT count(*)::int AS n FROM gateway_archive.job WHERE status='failed'")).rows[0].n, 3000);
     const jobs = (await client.query('SELECT status,attempt,reason FROM gateway_catalog.job ORDER BY id')).rows;
     assert.ok(jobs.some(row => row.status === 'verified'));
     assert.ok(jobs.every(row => row.status === 'verified' && row.attempt >= 1 && row.attempt <= 3));
+    if (profile.name === 'extended') {
+      assert.equal(jobs.length, 2); assert.ok(jobs.every(row => row.attempt === 1));
+      const baseline = JSON.parse(await readFile('/fixtures/study-history.json', 'utf8'));
+      const after = await failedHistoryEvidence(client);
+      assert.equal(after.sha256, baseline.sha256); assert.equal(after.bytes, baseline.bytes);
+      const roots = (await client.query("SELECT count(*)::int AS n FROM gateway_catalog.snapshot WHERE status='retained'")).rows[0].n;
+      assert.equal(roots, 2);
+      const dumps = (await client.query("SELECT id,(manifest->'dump'->>'bytes')::float8 AS bytes FROM gateway_catalog.job ORDER BY id")).rows;
+      assert.ok(dumps.every(row => row.bytes > 220000000 && row.bytes <= 268435456));
+      console.log(JSON.stringify({ fixture: 'history-preserved', ...after, retainedRoots: roots, dumps }));
+    }
     assert.equal((await client.query('SELECT count(*)::int AS n FROM gateway_cleanup.operation')).rows[0].n, 0);
     const windows = JSON.parse(process.argv[3]); assert.ok(Array.isArray(windows) && windows.length <= 20);
     const overlaps = [];

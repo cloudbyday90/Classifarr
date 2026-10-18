@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { test, expect } from '@jest/globals';
 import { readFileSync } from 'node:fs';
-import { collectOwnershipInventory, INGESTION_RELATIONS } from '../scripts/inventoryWriterCompatibility/ownershipInventory.mjs';
+import { collectOwnershipInventory, INGESTION_RELATIONS, INGESTION_GUARDS } from '../scripts/inventoryWriterCompatibility/ownershipInventory.mjs';
 import { evaluateOwnershipGate } from '../scripts/inventoryWriterCompatibility/ownershipGate.mjs';
 import { runInventoryWriterCompatibility } from '../scripts/runInventoryWriterCompatibility.mjs';
 
@@ -18,6 +18,20 @@ function manifest(report = inventory(), classification = 'unresolved') {
         entries: report.entries.map(entry => ({ path: entry.path, digest: entry.digest, analysisDigest: entry.analysisDigest, review: 'review' })) };
 }
 const failures = result => result.failures.map(item => item.reason);
+
+test('v7 admission restore is an explicit reviewed dependency, including non-SQL guard changes', () => {
+    const path = 'server/src/ollamaGateway/catalogAdmissionRestore.mjs';
+    expect(INGESTION_GUARDS).toContain(path);
+    const source = readFileSync(new URL('../ollamaGateway/catalogAdmissionRestore.mjs', import.meta.url), 'utf8');
+    const report = inventory([{ path, source }], [], [path]);
+    const review = JSON.parse(readFileSync(new URL('../scripts/inventoryWriterCompatibility/ownershipReview.json', import.meta.url), 'utf8'));
+    const entry = review.entries.find(item => item.path === path);
+    const actual = report.entries.find(item => item.path === path);
+    expect(entry).toMatchObject({ digest: actual.digest, analysisDigest: actual.analysisDigest });
+    expect(review.reviews.find(item => item.id === entry.review).classification).toBe('separately_coordinated');
+    expect(failures(evaluateOwnershipGate(inventory([{ path, source: `${source}\n// changed boundary\n` }], [], [path]),
+        { ...review, entries: [entry] }))).toContain('changed_review_source');
+});
 
 test('all four relations, capture triggers and checkpoint cascade parents share existing discovery', () => {
     const report = inventory([schema, { ...writer, source: INGESTION_RELATIONS.map(name => `db.query('DELETE FROM ${name}');`).join('\n') + "db.query('DELETE FROM libraries');" }]);

@@ -15,6 +15,7 @@ import { catalogDue, catalogSemanticRevision } from '/app/src/ollamaGateway/cata
 import { captureCatalogContent } from '/app/src/ollamaGateway/catalogContent.mjs';
 import { captureScheduledCatalog } from '/app/src/ollamaGateway/catalogCapture.mjs';
 import { readArchiveReceipt, checkManagedArchive } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
+import { runCatalogRotationStudy } from './catalogRotationStudy.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const action = process.argv[2], database = 'gateway_catalog_schedule_fixture';
@@ -113,6 +114,9 @@ try {
     reader = new pg.Client(configuration.database); await reader.connect();
     await jobsRepository.published(job.id, await captureScheduledCatalog({ source: reader, maintenance: owner, configuration, paths, job, signal: AbortSignal.timeout(120000) }));
     assert.equal(job.attempt, 2);
+  } else if (['study-begin','study-refresh','study-check'].includes(action)) {
+    reader = new pg.Client(configuration.database); await reader.connect();
+    await runCatalogRotationStudy({ action, owner, reader, configuration, paths });
   } else if (action === 'handoff') {
     await owner.query('SELECT pg_advisory_lock(11435,4)');
     const jobs = await archiveJobRepository(owner).list(), first = jobs[0];

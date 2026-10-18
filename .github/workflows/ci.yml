@@ -61,6 +61,9 @@ jobs:
       - name: Check ingestion ownership review drift
         run: npm run inventory:ownership:check
 
+      - name: Test bounded gateway study contracts
+        run: npm run test:tooling:gateway
+
       - name: Check release provenance workflow contract
         run: |
           cd server

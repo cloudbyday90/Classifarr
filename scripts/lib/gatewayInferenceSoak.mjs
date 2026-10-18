@@ -6,13 +6,16 @@ import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
+import { soakProfile } from '../fixtures/ollamaGatewayRehearsal/soakProfile.mjs';
+import { finishGatewayStudyCleanup } from './gatewayStudyCleanup.mjs';
 
 const docker = args => execFileSync('docker', args, { encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576 });
 const records = output => output.trim().split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
 const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
 /** Local fixture only: no caller-supplied database, provider, mounts or runtime settings. */
-export async function runGatewayInferenceSoak(image, revision) {
+export async function runGatewayInferenceSoak(image, revision, profileName = 'regression') {
+  const profile = soakProfile(profileName);
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
@@ -39,10 +42,12 @@ export async function runGatewayInferenceSoak(image, revision) {
       const paths = ['/archives', '/receipts', '/catalogs', '/configuration', '/fixtures'];
       docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', ...paths]);
       docker(['exec', '--user', '0:0', source, 'chmod', '700', ...paths]);
-      for (const file of ['soakData.mjs', 'soakWorker.mjs', 'soakInference.mjs', 'soakWorkload.mjs', 'archiveQualificationResources.mjs']) {
+      for (const file of ['soakData.mjs', 'soakWorker.mjs', 'soakInference.mjs', 'soakWorkload.mjs', 'soakProfile.mjs',
+        'studyHistory.mjs','studyMeasurements.mjs','studyResource.mjs','studyDatabase.mjs','archiveQualificationProbe.mjs','archiveQualificationResources.mjs']) {
         docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal', file), `${source}:/fixtures/${file}`]);
       }
-      const fixture = (action, ...args) => records(docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
+      const fixture = (action, ...args) => records(docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
+        '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`, source,
         'node', '/fixtures/soakData.mjs', action, ...args]));
       const read = path => JSON.parse(docker(['exec', '--user', '1000:1000', source, 'node', '--input-type=module', '-e',
         'import {readFile} from "node:fs/promises";try{console.log(await readFile(process.argv[1],"utf8"))}catch(e){if(e.code!=="ENOENT")throw e;console.log("null")}', path]));
@@ -56,6 +61,7 @@ export async function runGatewayInferenceSoak(image, revision) {
           ...mount('fixtures', '/fixtures', true), ...(archiver ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] :
             ['--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
           '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
+          '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`,
           '--entrypoint', 'node', image, '/fixtures/soakWorker.mjs', kind, mode]);
         const value = inspect(name); assert.equal(value.Image, image);
         assert.equal(value.HostConfig.NetworkMode, 'none'); assert.equal(value.HostConfig.ReadonlyRootfs, true);
@@ -79,11 +85,12 @@ export async function runGatewayInferenceSoak(image, revision) {
         while (inspect(name).State.Running) { assert.ok(Date.now() < deadline, 'soak_worker_deadline'); await delay(500); }
         return check(name);
       };
-      report({ stage: 'setup', image, revision }); fixture('setup');
+      report({ stage: 'setup', image, revision, profile: profile.name }); fixture('setup');
       assert.ok((await once('archiver')).some(row => row.state === 'awaiting_verification'));
       assert.ok((await once('verifier')).some(row => row.state === 'verified')); fixture('wide').forEach(report);
-      docker(['exec', '-d', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source, 'node', '/fixtures/soakInference.mjs']);
-      const deadline = Date.now() + 530000; let workerAt, verifierAt, stopped = false, result;
+      docker(['exec', '-d', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`,
+        source, 'node', '/fixtures/soakInference.mjs']);
+      const deadline = Date.now() + profile.runnerMs; let workerAt, verifierAt, stopped = false, result;
       const windows = [];
       while (!(result = read('/fixtures/soak-result.json'))) {
         assert.ok(Date.now() < deadline, 'soak_deadline');
@@ -110,13 +117,19 @@ export async function runGatewayInferenceSoak(image, revision) {
       fixture('check', JSON.stringify(windows)).forEach(report);
     } });
   } finally {
-    for (const name of Object.values(names)) remove(name);
-    for (const volume of Object.values(stores)) {
-      if (docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim()) {
-        assert.equal(JSON.parse(docker(['volume', 'inspect', volume]))[0].Labels[key], suffix); docker(['volume', 'rm', volume]);
-      }
-      assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
-    }
+    finishGatewayStudyCleanup([
+      ...Object.values(names).map(name => ({ name, run: () => remove(name) })),
+      ...Object.values(stores).map(volume => ({ name: volume, run: () => {
+        if (docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim()) {
+          assert.equal(JSON.parse(docker(['volume', 'inspect', volume]))[0].Labels[key], suffix); docker(['volume', 'rm', volume]);
+        }
+        assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
+      } })),
+      { name: 'study-labeled-containers', run: () => assert.equal(docker(['ps', '-aq', '--filter', `label=${label}`]).trim(), '') },
+      { name: 'study-labeled-volumes', run: () => assert.equal(docker(['volume', 'ls', '-q', '--filter', `label=${label}`]).trim(), '') },
+      { name: 'disposable-data-directory', run: () => assert.equal(existsSync(spec.hostDataPath), false) },
+    ]);
+    report({ stage: 'owned_cleanup_verified', profile: profile.name });
   }
   assert.equal(existsSync(spec.hostDataPath), false); report({ stage: 'soak_passed_cleanup_verified' });
 }

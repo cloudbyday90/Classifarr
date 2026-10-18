@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a bounded 30-minute gateway load study with varied historical data,
+  memory/cache and transaction observations, plus a separate real-restore rotation
+  drill. Preserve production cadence, limits and retry rules; renew the narrowly
+  reviewed v7 restore ownership records and pin the admission helper.
+
 - Keep gateway archive planning and export on one read-only snapshot while
   inference continues. Add a versioned catalog format that preserves its separate
   admission record, with explicit optional-schema upgrade and isolated restore
