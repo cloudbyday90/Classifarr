@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Keep gateway archive planning and export on one read-only snapshot while
+  inference continues. Add a versioned catalog format that preserves its separate
+  admission record, with explicit optional-schema upgrade and isolated restore
+  verification; retain older archive formats and existing retry limits.
+
 - Add an isolated gateway inference/archive soak with bounded synthetic HTTP
   traffic, latency and pre-claim timing, real scheduled exports and sandboxed
   restore checks. Preserve production limits, cooldowns and provider settings.

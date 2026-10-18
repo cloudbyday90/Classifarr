@@ -9,8 +9,9 @@ import { catalogTables } from './catalogContract.mjs';
 
 export function archiveDumpOptions(configuration, snapshot, catalog = /** @type {boolean | number} */ (false)) {
   const { database } = gatewayArchiveConfiguration(configuration);
+  if (![false, true, 1, 2, 3].includes(catalog)) throw gatewayError('gateway_catalog_contract');
   if (typeof snapshot !== 'string' || !/^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}-[0-9]+$/.test(snapshot)) throw gatewayError('gateway_archive_config_invalid');
-  const scope = catalog ? [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...catalogTables(catalog === 2 ? 2 : 1)].map(name => `--table=${name}`) : ['--schema=ollama_gateway'];
+  const scope = catalog ? [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...catalogTables(catalog === true ? 1 : catalog)].map(name => `--table=${name}`) : ['--schema=ollama_gateway'];
   return { args: ['--format=custom', '--compress=0', ...scope, '--strict-names', '--no-owner', '--no-acl',
     '--no-comments', '--no-security-labels', '--no-password', '--lock-wait-timeout=2000', `--snapshot=${snapshot}`],
   env: { PATH: '/usr/bin:/bin', PGHOST: database.host, PGPORT: String(database.port ?? 5432), PGDATABASE: database.database,

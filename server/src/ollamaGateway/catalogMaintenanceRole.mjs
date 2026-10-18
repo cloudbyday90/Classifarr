@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
+import { requireCatalogCaptureFormat } from './catalogAdmission.mjs';
 
 /** Extra authority is not an acceptable fallback for incomplete optional provisioning. */
 export async function checkCatalogMaintenanceRole(client) {
@@ -21,4 +22,5 @@ export async function checkCatalogMaintenanceRole(client) {
     tgrelid IN (to_regclass('gateway_catalog.job'),to_regclass('gateway_archive.job')) AND tgenabled='O'
     AND tgname IN ('catalog_job_guard','catalog_job_truncate','archive_catalog_guard','archive_catalog_admission','archive_catalog_truncate')`)).rows[0].n;
   if (!safe || guards !== 5) throw gatewayError('gateway_catalog_maintenance_unsafe');
+  await requireCatalogCaptureFormat(client);
 }

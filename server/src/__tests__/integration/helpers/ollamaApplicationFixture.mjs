@@ -7,10 +7,11 @@ import { openGatewayLedger } from '../../../ollamaGateway/ledger.mjs';
 import { createGatewayServer } from '../../../ollamaGateway/server.mjs';
 import { createOllamaApplicationRouting } from '../../../services/ollamaApplicationRouting.mjs';
 
-export async function createOllamaApplicationFixture(pool, tls = null) {
+export async function createOllamaApplicationFixture(pool, tls = null, prepare = async () => {}) {
   // Caller is the repository's per-suite disposable PostgreSQL database.
   await pool.query('DROP SCHEMA IF EXISTS ollama_gateway CASCADE');
   await pool.query(await readFile(new URL('../../../../../database/ollama-gateway/current.sql', import.meta.url), 'utf8'));
+  await prepare();
   const model = 'synthetic:latest', vectorModel = 'vectors:latest', digest = 'a'.repeat(64), calls = [], classes = [];
   let hold = false, failure = false, disconnected = false;
   const provider = createServer(async (req, res) => {

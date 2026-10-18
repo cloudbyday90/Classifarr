@@ -13,9 +13,11 @@ import { archiveStorageAvailable } from './archiveManagedFiles.mjs';
 import { dumpGatewayArchive } from './archiveDump.mjs';
 import { gatewayError } from './errors.mjs';
 import { isDeepStrictEqual } from 'node:util';
+import { captureFrozenCatalog } from './catalogFrozenCapture.mjs';
 
 /** The maintenance connection owns exclusion; the independent source stays SELECT-only. */
-export async function captureScheduledCatalog({ source, maintenance, configuration, paths, job, signal }) {
+export async function captureScheduledCatalog({ source, maintenance, configuration, paths, job, signal, context = null }) {
+  if (context) return captureFrozenCatalog({ source, maintenance, configuration, paths, job, signal, context });
   await maintenance.query('SELECT gateway_catalog.require_lock()');
   await checkCatalogReader(source, 2);
   const identity = (await source.query('SELECT current_user AS role,current_database() AS database')).rows[0];

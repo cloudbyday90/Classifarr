@@ -14,9 +14,10 @@ const guards = Object.freeze([
 
 /** Only on the fresh, private verifier database. Never install these changes on a source. */
 export async function prepareCatalogRestore(client, version = 1) {
+  catalogTables(version);
   await client.query(await readFile('/app/database/ollama-gateway-archive/current.sql', 'utf8'));
   await client.query(await readFile('/app/database/ollama-gateway-cleanup/current.sql', 'utf8'));
-  if (version === 2) {
+  if (version >= 2) {
     await client.query(await readFile('/app/database/ollama-gateway-catalog/current.sql', 'utf8'));
     await client.query('ALTER TABLE gateway_catalog.job DISABLE TRIGGER catalog_job_guard; ALTER TABLE gateway_archive.job DISABLE TRIGGER archive_catalog_admission');
   }
@@ -30,7 +31,7 @@ export async function prepareCatalogRestore(client, version = 1) {
 export async function sealCatalogRestore(client, restricted, version = 1) {
   for (const [table, trigger] of guards) await client.query(`ALTER TABLE ${table} ENABLE TRIGGER ${trigger}`);
   await client.query('REVOKE INSERT ON ALL TABLES IN SCHEMA ollama_gateway,gateway_archive,gateway_cleanup FROM archive_restore');
-  if (version === 2) await client.query(`ALTER TABLE gateway_catalog.job ENABLE TRIGGER catalog_job_guard;
+  if (version >= 2) await client.query(`ALTER TABLE gateway_catalog.job ENABLE TRIGGER catalog_job_guard;
     ALTER TABLE gateway_archive.job ENABLE TRIGGER archive_catalog_admission;
     REVOKE INSERT ON gateway_catalog.job FROM archive_restore`);
   if ((await client.query(`SELECT EXISTS(SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid

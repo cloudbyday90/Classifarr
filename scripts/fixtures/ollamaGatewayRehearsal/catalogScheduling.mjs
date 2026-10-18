@@ -56,7 +56,7 @@ try {
       GRANT SELECT,INSERT ON gateway_archive.protection,gateway_catalog.dependency TO catalog_schedule_writer;
       GRANT UPDATE(ready_at) ON gateway_archive.protection TO catalog_schedule_writer;
       GRANT SELECT ON gateway_cleanup.operation TO catalog_schedule_writer;
-      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock() TO catalog_schedule_writer`);
+      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock(),gateway_catalog.capture_format() TO catalog_schedule_writer`);
     await writeFile('/tmp/catalog-schedule-config.json', JSON.stringify({ source: configuration,
       maintenance: { ...connection, user: 'catalog_schedule_writer' }, ...paths }), { mode: 0o600, flag: 'wx' });
     ledger = await openGatewayLedger(owner, configuration.providerHash);
@@ -79,7 +79,7 @@ try {
     for (let index = 0; index < 3; index++) assert.equal((await worker()).state, 'catalog_unchanged');
     assert.deepEqual((await owner.query('SELECT id,attempt,status FROM gateway_catalog.job ORDER BY id')).rows, before);
     const roots = await catalogRetentionRepository(owner).list(); assert.equal(roots.length, 2);
-    assert.ok(roots.every(root => root.manifest.version === 6));
+    assert.ok(roots.every(root => root.manifest.version === 7));
     process.stdout.write('catalog_schedule_initial_and_quiet_passed\n');
   } else if (action === 'inference') {
     await addRequest(); await owner.query('SELECT pg_advisory_lock(11435,4)');

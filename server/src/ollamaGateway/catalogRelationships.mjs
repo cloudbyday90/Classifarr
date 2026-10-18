@@ -3,9 +3,11 @@ import { gatewayError } from './errors.mjs';
 
 /** Validate logical links not covered by the packaged foreign keys. Read-only. */
 export async function checkCatalogRelationships(client, archiveId, report, version = 1) {
-  const admission = version === 2 ? `(SELECT count(*)=1 FROM gateway_catalog.job WHERE id=$1 AND status='exporting'
-      AND manifest IS NULL AND receipt IS NULL AND completed_at IS NULL)
-    AND NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE status IN ('exporting','awaiting_verification','interrupted') AND id<>$1)
+  if (![1, 2, 3].includes(version)) throw gatewayError('gateway_catalog_contract');
+  const admission = version >= 2 ? `${version === 3 ? 'NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE id=$1)' :
+    `(SELECT count(*)=1 FROM gateway_catalog.job WHERE id=$1 AND status='exporting'
+      AND manifest IS NULL AND receipt IS NULL AND completed_at IS NULL)`}
+    AND NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE status IN ('exporting','awaiting_verification','interrupted') ${version === 2 ? 'AND id<>$1' : ''})
     AND NOT EXISTS(SELECT 1 FROM gateway_catalog.job WHERE ledger_id IS DISTINCT FROM $2::uuid OR provider_hash IS DISTINCT FROM $3)
     AND NOT EXISTS(SELECT 1 FROM gateway_archive.job WHERE status IN ('exporting','awaiting_verification','interrupted','retiring'))` :
     `(SELECT count(*)=1 FROM gateway_archive.job WHERE id=$1 AND status='exporting' AND manifest IS NULL

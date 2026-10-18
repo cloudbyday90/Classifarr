@@ -19,7 +19,7 @@ async function locations(paths) {
 async function inspectDependencies(client, paths, signal, collect = null, version = 1) {
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout='4s'; SET LOCAL lock_timeout='2s'; SET LOCAL idle_in_transaction_session_timeout='75s'");
-    const selected = version === 2 ? await requiredCatalogArchives(client) : null;
+    const selected = version >= 2 ? await requiredCatalogArchives(client) : null;
     const summary = await inspectCatalogDependencies(client, paths.archives, paths.receipts, signal, collect, selected);
     signal?.throwIfAborted(); await client.query('COMMIT'); return summary;
   } catch (error) { await client.query('ROLLBACK'); throw error; }

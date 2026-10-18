@@ -35,7 +35,7 @@ try {
       GRANT SELECT,INSERT ON gateway_archive.protection,gateway_catalog.dependency TO catalog_writer;
       GRANT UPDATE(ready_at) ON gateway_archive.protection TO catalog_writer;
       GRANT SELECT ON gateway_cleanup.operation TO catalog_writer;
-      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock() TO catalog_writer`);
+      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock(),gateway_catalog.capture_format() TO catalog_writer`);
     await writeFile('/configuration/worker.json', JSON.stringify({ source: { database: { ...connection, host: '/source-socket', user: 'catalog_reader' },
       providerHash, retentionDays: 90 }, maintenance: { ...connection, host: '/source-socket', user: 'catalog_writer' },
     archives: '/archives', receipts: '/receipts', catalogs: '/catalogs' }), { mode: 0o600, flag: 'wx' });

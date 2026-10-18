@@ -87,8 +87,10 @@ limitations in a separate outcome. No production rollout, release or tag.
 
 This is not an application migration or an enabled-by-default service. Keep the
 existing optional inference/archive/cleanup schemas. For a fresh catalog schema,
-apply `database/ollama-gateway-catalog/current.sql`; for catalog v1 apply only
-`20261017_235000_catalog_jobs.sql`. Stop maintenance workers first. The migration
+apply `database/ollama-gateway-catalog/current.sql`; for catalog v1 apply
+`20261017_235000_catalog_jobs.sql`, then `20261018_130000_frozen_snapshot.sql`.
+For catalog v2 apply only the latter migration. See the
+[frozen-snapshot contract](gateway-frozen-snapshot-design.md). Stop maintenance workers first. The migration
 refuses competing locks and unfinished inference jobs; do not mark an unknown
 legacy export complete merely to get past that check.
 
@@ -98,7 +100,7 @@ tables. It must have no write privileges, ownership, elevated role memberships o
 executable functions in these schemas. The maintenance role needs schema usage,
 SELECT/INSERT/UPDATE on `gateway_catalog.job` and `gateway_catalog.snapshot`,
 SELECT/INSERT on `gateway_catalog.dependency`, and EXECUTE on
-`gateway_catalog.require_lock()`, in addition to the existing restricted archive
+`gateway_catalog.require_lock()` and `gateway_catalog.capture_format()`, in addition to the existing restricted archive
 and protection permissions. It cannot write inference or cleanup history. Startup
 validates these restrictions; use dedicated roles, not the database owner.
 

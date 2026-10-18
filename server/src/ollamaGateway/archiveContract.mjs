@@ -4,6 +4,7 @@ import { archiveUuid, validateRetentionInventory } from './archiveRetentionContr
 import { validateOnlineArchiveFields } from './onlineArchiveContract.mjs';
 import { ARCHIVE_TABLES } from './archiveTables.mjs';
 import { validateCatalog } from './catalogContract.mjs';
+import { validateCatalogAdmission } from './catalogAdmissionContract.mjs';
 export { ARCHIVE_TABLES } from './archiveTables.mjs';
 export { archiveUuid } from './archiveRetentionContract.mjs';
 
@@ -46,19 +47,20 @@ export function validateArchiveReport(value) {
 }
 
 export function validateArchiveManifest(value) {
-  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...([2, 4, 5, 6].includes(value?.version) ? ['retention'] : []),
-    ...([3, 4, 5, 6].includes(value?.version) ? ['content', 'predecessors', 'policyHash', 'revision'] : []), ...([5, 6].includes(value?.version) ? ['catalog'] : [])];
-  if (!exact(value, keys) || ![1, 2, 3, 4, 5, 6].includes(value.version) || value.schemaVersion !== 7 ||
+  const keys = ['version', 'schemaVersion', 'archiveId', 'report', 'dump', ...([2, 4, 5, 6, 7].includes(value?.version) ? ['retention'] : []),
+    ...([3, 4, 5, 6, 7].includes(value?.version) ? ['content', 'predecessors', 'policyHash', 'revision'] : []), ...([5, 6, 7].includes(value?.version) ? ['catalog'] : [])];
+  if (!exact(value, keys) || ![1, 2, 3, 4, 5, 6, 7].includes(value.version) || value.schemaVersion !== 7 ||
       !archiveUuid(value.archiveId) || !exact(value.dump, ['name', 'bytes', 'sha256']) || value.dump.name !== 'gateway.dump' ||
       !Number.isSafeInteger(value.dump.bytes) || value.dump.bytes < 5 || value.dump.bytes > ARCHIVE_LIMIT || !hash(value.dump.sha256)) {
     throw gatewayError('gateway_archive_manifest_invalid');
   }
   validateArchiveReport(value.report);
-  if ([2, 4, 5, 6].includes(value.version)) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
-  if ([3, 4, 5, 6].includes(value.version)) validateOnlineArchiveFields(value);
-  if ([5, 6].includes(value.version)) {
+  if ([2, 4, 5, 6, 7].includes(value.version)) validateRetentionInventory(value.retention, value.report.categories.older_terminal_review);
+  if ([3, 4, 5, 6, 7].includes(value.version)) validateOnlineArchiveFields(value);
+  if ([5, 6, 7].includes(value.version)) {
     validateCatalog(value.catalog);
-    if (value.catalog.version !== (value.version === 6 ? 2 : 1)) throw gatewayError('gateway_archive_manifest_invalid');
+    if (value.catalog.version !== value.version - 4) throw gatewayError('gateway_archive_manifest_invalid');
+    if (value.version === 7) validateCatalogAdmission(value.catalog.admission, value);
   }
   return value;
 }

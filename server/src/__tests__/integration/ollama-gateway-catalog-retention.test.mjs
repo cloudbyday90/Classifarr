@@ -31,7 +31,7 @@ async function retain(n = 10, entries) {
 
 test('timestamped installation matches fresh schema exactly', async () => {
   const base = new URL('../../../../database/ollama-gateway-catalog/', import.meta.url);
-  const migrations = ['20261017_230000_catalog_retention.sql', '20261017_235000_catalog_jobs.sql'];
+  const migrations = ['20261017_230000_catalog_retention.sql', '20261017_235000_catalog_jobs.sql', '20261018_130000_frozen_snapshot.sql'];
   expect((await readFile(new URL('current.sql', base), 'utf8')).replace(/\r\n/g, '\n').trim())
     .toBe((await Promise.all(migrations.map(name => readFile(new URL(name, base), 'utf8')))).map(text => text.replace(/\r\n/g, '\n').trim()).join('\n'));
 });

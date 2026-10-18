@@ -11,10 +11,12 @@ import { readVerifiedGatewayArchive } from './archiveFiles.mjs';
 import { managedArchivePath, readArchiveReceipt, archiveStorageAvailable } from './archiveManagedFiles.mjs';
 import { validateCatalogVerification } from './catalogVerificationResult.mjs';
 import { gatewayError } from './errors.mjs';
+import { requireCatalogCaptureFormat } from './catalogAdmission.mjs';
 
 /** Called inside the coordinator's maintenance exclusion, never on a status read. */
 export async function runCatalogAssessment({ source, maintenance, repository, configuration, paths, signal }) {
   await maintenance.query('SELECT gateway_catalog.require_lock()');
+  await requireCatalogCaptureFormat(maintenance);
   const jobsRepository = catalogJobRepository(maintenance), rootsRepository = catalogRetentionRepository(maintenance);
   let jobs = await jobsRepository.list();
   const policyHash = archivePolicyHash(configuration.retentionDays);
@@ -51,21 +53,27 @@ export async function runCatalogAssessment({ source, maintenance, repository, co
   if (!['unchanged', 'not_due', 'attempts_exhausted', 'cooldown', 'empty'].includes(inference.state)) return inference;
   const inferenceJobs = await repository.list(), roots = await rootsRepository.list();
   if ([...jobs, ...inferenceJobs].some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
-  const snapshot = await withOnlineArchiveSnapshot(source, configuration, async value => ({ ...value,
-    semantic: catalogSemanticRevision(await captureCatalogContent(source, signal, { bytes: 0 })),
-    now: Date.parse(value.report.capturedAt) }), signal, [...jobs, ...inferenceJobs].map(job => job.revision));
-  const state = catalogDue({ ...snapshot, jobs, inferenceJobs, roots });
-  if (state !== 'due') return { state: `catalog_${state}`, purgeAuthorized: false };
-  if (!await archiveStorageAvailable(paths.catalogs, paths.receipts, [...jobs, ...inferenceJobs], [paths.archives])) return { state: 'storage_full', purgeAuthorized: false };
-  signal?.throwIfAborted();
-  const job = await jobsRepository.begin(snapshot.report, snapshot.revision, policyHash, snapshot.semantic, snapshot.compatibleRevisions);
-  let result;
-  try { result = await captureScheduledCatalog({ source, maintenance, configuration, paths, job, signal }); }
-  catch (error) {
-    await jobsRepository.failed(job.id, signal?.aborted ? 'cancelled' : error.code === 'gateway_archive_source_changed' ? 'source_changed' : 'export_failed');
-    return { state: signal?.aborted ? 'catalog_cancelled' : 'catalog_export_failed', archiveId: job.id, purgeAuthorized: false };
-  }
+  let cancelled;
+  const outcome = await withOnlineArchiveSnapshot(source, configuration, async context => {
+    const semantic = catalogSemanticRevision(await captureCatalogContent(source, signal, { bytes: 0 }));
+    const state = catalogDue({ ...context, semantic, now: Date.parse(context.report.capturedAt), jobs, inferenceJobs, roots });
+    if (state !== 'due') return { state: `catalog_${state}`, purgeAuthorized: false };
+    if (!await archiveStorageAvailable(paths.catalogs, paths.receipts, [...jobs, ...inferenceJobs], [paths.archives])) return { state: 'storage_full', purgeAuthorized: false };
+    signal?.throwIfAborted();
+    const job = await jobsRepository.begin(context.report, context.revision, policyHash, semantic, context.compatibleRevisions);
+    try { return { job, result: await captureScheduledCatalog({ source, maintenance, configuration, paths, job, signal, context }) }; }
+    catch (error) {
+      await jobsRepository.failed(job.id, signal?.aborted ? 'cancelled' : error.code === 'gateway_archive_source_changed' ? 'source_changed' : 'export_failed');
+      const result = { state: signal?.aborted ? 'catalog_cancelled' : 'catalog_export_failed', archiveId: job.id, purgeAuthorized: false };
+      if (signal?.aborted) cancelled = result;
+      return result;
+    }
+  }, signal, [...jobs, ...inferenceJobs].map(job => job.revision)).catch(error => {
+    if (cancelled && signal?.aborted) return cancelled;
+    throw error;
+  });
+  if (!outcome.job) return outcome;
   // An ambiguous publication stays exporting; restart never guesses that it is retryable.
-  await jobsRepository.published(job.id, result);
-  return { state: 'awaiting_catalog_verification', archiveId: job.id, purgeAuthorized: false };
+  await jobsRepository.published(outcome.job.id, outcome.result);
+  return { state: 'awaiting_catalog_verification', archiveId: outcome.job.id, purgeAuthorized: false };
 }

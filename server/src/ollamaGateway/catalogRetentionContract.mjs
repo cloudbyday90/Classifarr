@@ -38,7 +38,7 @@ export function catalogInventorySummary(entries) {
 
 export function validateCatalogRetention(manifest, manifestSha256, verification, entries) {
   validateArchiveManifest(manifest);
-  if (![5, 6].includes(manifest.version) || !archiveHash(manifestSha256) ||
+  if (![5, 6, 7].includes(manifest.version) || !archiveHash(manifestSha256) ||
       !isDeepStrictEqual(verification, { kind: 'catalog_verification', version: 1, archiveId: manifest.archiveId,
         manifestSha256, dumpSha256: manifest.dump.sha256, rowsRestored: true, dependenciesAvailable: true,
         runtimeEnabled: false, purgeAuthorized: false }) ||

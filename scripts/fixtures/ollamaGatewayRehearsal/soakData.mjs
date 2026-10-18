@@ -34,7 +34,7 @@ try {
       GRANT SELECT,INSERT ON gateway_archive.protection,gateway_catalog.dependency TO soak_writer;
       GRANT UPDATE(ready_at) ON gateway_archive.protection TO soak_writer;
       GRANT SELECT ON gateway_cleanup.operation TO soak_writer;
-      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock() TO soak_writer;
+      GRANT EXECUTE ON FUNCTION gateway_catalog.require_lock(),gateway_catalog.capture_format() TO soak_writer;
       GRANT USAGE ON SCHEMA ollama_gateway TO soak_runtime;
       GRANT SELECT ON ollama_gateway.admission TO soak_runtime;
       GRANT UPDATE(owner_id,provider_hash,active_request,installation,started_at,attempts,completed_at,cooldown_until,binding_count)

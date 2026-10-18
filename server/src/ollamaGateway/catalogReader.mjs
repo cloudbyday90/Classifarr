@@ -15,7 +15,7 @@ export async function checkCatalogReader(client, version = 1) {
         OR has_any_column_privilege(current_user,c.oid,'INSERT,UPDATE,REFERENCES')))
     AND NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
       WHERE n.nspname=ANY($1) AND has_function_privilege(current_user,p.oid,'EXECUTE')) AS safe
-    FROM pg_roles r WHERE r.rolname=current_user`, [['ollama_gateway', 'gateway_archive', 'gateway_cleanup', ...(version === 2 ? ['gateway_catalog'] : [])]])).rows[0];
+    FROM pg_roles r WHERE r.rolname=current_user`, [['ollama_gateway', 'gateway_archive', 'gateway_cleanup', ...(version >= 2 ? ['gateway_catalog'] : [])]])).rows[0];
   if (!safe) throw gatewayError('gateway_catalog_reader_unsafe');
   for (const table of [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...catalogTables(version)]) {
     if (!(await client.query('SELECT has_table_privilege(current_user,$1,\'SELECT\') AS allowed', [table])).rows[0].allowed) {
