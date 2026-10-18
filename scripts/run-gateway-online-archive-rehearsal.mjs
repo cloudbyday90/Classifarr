@@ -11,9 +11,12 @@ import { runGatewayCatalogRetentionRehearsal } from './lib/gatewayCatalogRetenti
 import { runGatewayCatalogSchedulingRehearsal } from './lib/gatewayCatalogSchedulingRehearsal.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
-if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling','--catalog-qualification'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
+if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling','--catalog-qualification',
+  '--catalog-memory','--catalog-memory-baseline'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
-if (mode === '--catalog-scheduling') {
+if (['--catalog-memory','--catalog-memory-baseline'].includes(mode)) {
+  await runGatewayArchiveQualification(image, revision, false, true, 'catalog-wide', mode === '--catalog-memory');
+} else if (mode === '--catalog-scheduling') {
   await runGatewayCatalogSchedulingRehearsal(image, revision);
 } else if (['--qualification','--cleanup','--catalog-qualification'].includes(mode)) {
   await runGatewayArchiveQualification(image,revision,mode === '--cleanup',mode === '--catalog-qualification');

@@ -17,7 +17,7 @@ const inspect = name => JSON.parse(docker(['inspect', name]))[0];
 const records = output => output.trim().split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
 const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
-async function qualifyCase(image, shape) {
+async function qualifyCase(image, shape, measure) {
   const catalog = shape.startsWith('catalog-');
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const labelKey = 'io.classifarr.archive-qualification', label = `${labelKey}=${suffix}`;
@@ -53,7 +53,7 @@ async function qualifyCase(image, shape) {
       }
       for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
         'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs',
-        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs']) {
+        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs','archiveQualificationMeasurements.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {
@@ -73,7 +73,8 @@ async function qualifyCase(image, shape) {
           ...(archiveWorker ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] : [
             '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
           '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-          '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, driver, kind, mode, ...(catalog ? ['catalog'] : [])]);
+          '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, driver, kind, mode, ...(catalog ? ['catalog'] : []),
+          ...(measure && kind === 'archiver' ? ['measure'] : [])]);
         const value = inspect(name);
         assert.equal(value.Image, image); assert.equal(value.HostConfig.NetworkMode, 'none');
         assert.equal(value.HostConfig.ReadonlyRootfs, true); assert.equal(value.Config.User, '1000:1000');
@@ -100,9 +101,12 @@ async function qualifyCase(image, shape) {
           }
           if (boundary && logs.some(record => record.fixture === 'boundary')) return logs;
           if (!state.Running) {
+            const observations = logs.find(record => record.fixture === 'observations');
+            if (observations) report({ scenario: shape, ...observations });
             assert.equal(state.OOMKilled, false); assert.equal(state.ExitCode, 0, JSON.stringify(logs));
             assert.ok(!boundary, 'qualification_boundary_missed'); assert.ok(limit, 'qualification_limits_missing');
             const metrics = logs.find(record => record.fixture === 'metrics'); assert.ok(metrics, 'qualification_metrics_missing');
+            if (measure && run.kind === 'archiver') assert.ok(observations?.samples > 0, 'qualification_observations_missing');
             report({ scenario: shape, ...metrics, elapsedMs: Date.now() - run.started }); return logs;
           }
           assert.ok(Date.now() - run.started < 220000, 'qualification_observation_deadline');
@@ -273,13 +277,14 @@ async function qualifyCase(image, shape) {
   }
 }
 
-export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null) {
+export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null, measure = false) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
   const shapes = catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide','catalog-protected'] :
     cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup'];
   assert.ok(only === null || shapes.includes(only), 'qualification_case_invalid');
+  assert.ok(typeof measure === 'boolean' && (!measure || (catalogs && only === 'catalog-wide')), 'qualification_measurement_scope');
   const selected = only === null ? shapes : [only];
-  for (const shape of selected) await qualifyCase(image, shape);
+  for (const shape of selected) await qualifyCase(image, shape, measure);
   report({ qualification: 'passed', cases: selected, image, revision });
 }

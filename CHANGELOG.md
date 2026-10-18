@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add bounded, local-only gateway catalog memory measurements and matched baseline
+  rehearsals, separating observed process/cache usage from lifetime container peaks
+  without changing production limits, retries or archive verification.
+
 - Bound gateway archive-history reads before nested metadata reaches Node, with
   explicit resource-limit diagnostics and unchanged retry/protection rules. Add
   isolated catalog load and process-interruption qualification at deployed limits.

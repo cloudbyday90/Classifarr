@@ -1,14 +1,19 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { readFile, readlink, readdir, stat } from 'node:fs/promises';
+import { readFile, readlink, readdir, stat, realpath } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { qualificationResources } from './archiveQualificationResources.mjs';
 import pg from '/app/node_modules/pg/lib/index.js';
 import { catalogQualificationBoundary } from './catalogQualificationBoundary.mjs';
+import { performance } from 'node:perf_hooks';
+import { createQualificationProbe } from './archiveQualificationProbe.mjs';
+import { createQualificationMeasurements } from './archiveQualificationMeasurements.mjs';
+import { readResidentText } from '/app/src/scripts/comparisonMemoryStudy/residentMemory.mjs';
+import * as residentParsers from '/app/src/scripts/comparisonMemoryStudy/residentMemoryParsers.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
-const [kind, mode, store] = process.argv.slice(2);
+const [kind, mode, store, measurement] = process.argv.slice(2);
 async function identity(pid) {
   const raw = await readFile(`/proc/${pid}/stat`, 'utf8');
   const fields = raw.slice(raw.lastIndexOf(')') + 2).split(' ');
@@ -31,10 +36,13 @@ async function run() {
   assert.ok(['archiver', 'verifier','cleanup','catalog-verifier','batch-verifier'].includes(kind));
   assert.ok(['normal', 'pause', 'cancel','publication','acknowledgment','contention'].includes(mode));
   assert.ok(store === undefined || store === 'catalog');
+  assert.ok(measurement === undefined || (measurement === 'measure' && store === 'catalog'));
   const boundary = ['publication','acknowledgment'].includes(mode) ? await catalogQualificationBoundary(mode) : null;
   const resources = await qualificationResources();
+  const dumpExecutable = measurement ? await realpath('/usr/bin/pg_dump') : null;
   process.stdout.write(`${JSON.stringify({ fixture: 'limits', ...resources.limits })}\n`);
   const entry = kind === 'archiver' ? 'runGatewayArchiveWorker.mjs' : kind === 'cleanup' ? 'runGatewayCleanupWorker.mjs' : 'runGatewayArchiveVerifier.mjs';
+  const started = performance.now();
   const child = spawn(process.execPath, [...(kind === 'cleanup' ? ['--import','/fixtures/cleanupQueryDiagnostics.mjs'] : []),
     ...(kind === 'batch-verifier' ? ['/fixtures/archiveEvidenceVerifier.mjs'] :
       [`/app/src/scripts/${entry}`, '--once', ...(kind === 'catalog-verifier' ? ['--catalog'] : [])])], {
@@ -43,14 +51,19 @@ async function run() {
         kind === 'batch-verifier' ? { CLASSIFARR_GATEWAY_FIXTURE:'isolated' } : {}) },
     stdio: ['ignore', 'inherit', 'inherit'], shell: false,
   });
-  let ended = false, observed = false;
+  let ended = false, observed = false, workerElapsedMs;
   const closed = new Promise((resolve, reject) => {
-    child.once('error', reject); child.once('close', code => { ended = true; resolve(code); });
+    child.once('error', reject); child.once('close', code => { workerElapsedMs = performance.now() - started; ended = true; resolve(code); });
   });
   const deadline = Date.now() + 210000;
+  let observations;
   try {
+    observations = measurement ? createQualificationMeasurements(createQualificationProbe({
+      version: resources.limits.version, workerPid: child.pid, read: readResidentText, parsers: residentParsers, dumpExecutable,
+    })) : null;
     while (!ended) {
       assert.ok(Date.now() < deadline, 'qualification_worker_deadline');
+      await observations?.tick();
       if (!['normal','contention'].includes(mode) && !observed) {
         if (boundary) {
           const evidence = await boundary.observe();
@@ -118,8 +131,9 @@ async function run() {
     assert.equal(metrics.memoryEvents.oom_kill, '0');
     assert.equal(metrics.memoryEvents.oom ?? metrics.memoryEvents.under_oom, '0');
     assert.equal(metrics.pidsEvents, 'max 0');
-    process.stdout.write(`${JSON.stringify({ fixture: 'metrics', kind, ...metrics })}\n`);
+    process.stdout.write(`${JSON.stringify({ fixture: 'metrics', kind, workerElapsedMs, ...metrics })}\n`);
   } finally {
+    if (observations) process.stdout.write(`${JSON.stringify({ fixture: 'observations', kind, ...observations.summary() })}\n`);
     if (!ended) { child.kill('SIGKILL'); await closed; }
     await boundary?.close();
   }
