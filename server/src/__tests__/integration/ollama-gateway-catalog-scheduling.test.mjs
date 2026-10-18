@@ -5,6 +5,7 @@ import { catalogJobRepository } from '../../ollamaGateway/catalogJobRepository.m
 import { catalogRetentionRepository, hasCatalogRetention } from '../../ollamaGateway/catalogRetentionRepository.mjs';
 import { archiveJobRepository } from '../../ollamaGateway/archiveJobRepository.mjs';
 import { requiredCatalogArchives } from '../../ollamaGateway/catalogRecoveryFiles.mjs';
+import { visitCatalogDependencyRows, visitCatalogRows } from '../../ollamaGateway/catalogRowReader.mjs';
 import { runCatalogAssessment } from '../../ollamaGateway/catalogCoordinator.mjs';
 import { archivePolicyHash } from '../../ollamaGateway/archiveSchedule.mjs';
 import { catalogSample, syntheticHash } from '../fixtures/gatewayCatalogRetention.mjs';
@@ -90,6 +91,29 @@ test('required set is latest two verified bundles, not all historical verified r
   const first = await inference(1), second = await inference(2), third = await inference(3);
   expect(await requiredCatalogArchives(client)).toEqual(new Set([second.id, third.id]));
   expect((await client.query('SELECT status FROM gateway_archive.job WHERE id=$1', [first.id])).rows[0].status).toBe('verified');
+});
+
+test('selective rows retain protected history plus newest two with deterministic timestamp ties', async () => {
+  // SQL-only selection records; these are not claimed as restored file evidence.
+  const older = [await inference(1,'b'.repeat(64)),await inference(2,'b'.repeat(64))];
+  const tied = [await inference(1,'c'.repeat(64)),await inference(2,'c'.repeat(64)),await inference(3,'c'.repeat(64))];
+  await client.query(`UPDATE gateway_archive.job SET created_at='2026-10-01',
+    manifest='{"version":4,"retention":{"entries":[{}]}}',
+    receipt=jsonb_build_object('version',2,'verified',true,'manifestSha256',manifest_sha256) WHERE revision=$1`,['b'.repeat(64)]);
+  await client.query("UPDATE gateway_archive.job SET created_at='2026-10-02' WHERE revision=$1",['c'.repeat(64)]);
+  await archiveJobRepository(client).protect(older,syntheticHash);
+  await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL timezone='UTC'");
+  try {
+    const selected = await requiredCatalogArchives(client);
+    const expectedIds = [...older,...tied.sort((a,b) => a.id.localeCompare(b.id)).slice(-2)].map(row => row.id).sort();
+    expect([...selected]).toEqual(expectedIds);
+    const full = [], actual = [];
+    await visitCatalogRows(client,0,row => full.push(row));
+    await visitCatalogDependencyRows(client,row => actual.push(row),undefined,selected);
+    expect(actual).toEqual(full.filter(row => selected.has(row.id)));
+    const all = []; await visitCatalogDependencyRows(client,row => all.push(row));
+    expect(all).toEqual(full);
+  } finally { await client.query('ROLLBACK'); }
 });
 
 test.each(['provider', 'ledger'])('changed %s refuses pending acknowledgment before file access or mutation', async kind => {

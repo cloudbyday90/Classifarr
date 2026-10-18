@@ -44,6 +44,7 @@ export async function qualifyCatalogScenario({ shape, fixture, create, wait, run
     // Accept the real isolated verifier's prerequisite receipt, then capture wide
     // failed history twice through the packaged worker and restore both snapshots.
     fixture('acknowledge-inference'); report({ scenario: shape, ...fixture('wide') });
+    report({ scenario:shape,...fixture('compare-reads') });
     hasState(await run('archiver'), 'awaiting_catalog_verification');
     hasState(await run('catalog-verifier'), 'verified');
     hasState(await run('archiver'), 'awaiting_catalog_verification');

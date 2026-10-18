@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Reduce gateway catalog dependency transfer by returning full job records only
+  for required verified archives. Preserve complete history guards, file checks,
+  restore verification and retention pins; add differential SQL and file-race
+  rehearsals.
+
 - Add bounded, local-only gateway catalog memory measurements and matched baseline
   rehearsals, separating observed process/cache usage from lifetime container peaks
   without changing production limits, retries or archive verification.

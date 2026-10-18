@@ -8,6 +8,7 @@ import { archiveStorageAvailable, readArchiveReceipt } from '/app/src/ollamaGate
 import { archiveJobRepository } from '/app/src/ollamaGateway/archiveJobRepository.mjs';
 import { captureArchiveContent } from '/app/src/ollamaGateway/archiveContent.mjs';
 import { incrementalEvidenceFixture } from './incrementalEvidenceFixture.mjs';
+import { compareCatalogReads } from './catalogReadComparison.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape] = process.argv.slice(2), database = 'gateway_catalog_qualification';
@@ -62,6 +63,8 @@ try {
     result = (await client.query(`SELECT count(*)::int AS rows,sum(octet_length(to_jsonb(j)::text)+1)::float8 AS bytes,
       max(octet_length(to_jsonb(j)::text)) AS largest FROM gateway_archive.job j`)).rows[0];
     assert.ok(result.bytes > 220000000 && result.bytes < 268435456); assert.ok(result.largest < 131072);
+  } else if (action === 'compare-reads') {
+    result = await compareCatalogReads(client);
   } else if (action === 'acknowledge-inference') {
     await client.query('SELECT pg_advisory_lock(11435,4)');
     const job=(await client.query("SELECT id FROM gateway_archive.job WHERE status='awaiting_verification'")).rows[0];

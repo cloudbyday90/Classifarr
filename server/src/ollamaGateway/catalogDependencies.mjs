@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { archiveDirectory } from './archiveFiles.mjs';
 import { checkManagedArchive, managedArchivePath } from './archiveManagedFiles.mjs';
-import { visitCatalogRows } from './catalogContent.mjs';
+import { visitCatalogDependencyRows } from './catalogRowReader.mjs';
 import { candidateBatchSha256 } from './archiveProtectionPolicy.mjs';
 import { gatewayError } from './errors.mjs';
 
@@ -39,7 +39,7 @@ export async function inspectCatalogDependencies(client, archives, receipts, sig
     digest.update(JSON.stringify({ id, kind, ...item })).update('\n');
     collect?.({ id, kind, ...item });
   }
-  await visitCatalogRows(client, 0, async row => {
+  await visitCatalogDependencyRows(client, async row => {
     const job = JSON.parse(row.row);
     if (selected && !selected.has(job.id)) return;
     // Unfinished/failed jobs are historical records, not usable restore evidence.
@@ -65,6 +65,6 @@ export async function inspectCatalogDependencies(client, archives, receipts, sig
         candidatesSha256: protection.candidates_sha256, recoveryDays: 30,
       }));
     }
-  }, signal);
+  }, signal, selected);
   return { count, bytes, sha256: digest.digest('hex') };
 }

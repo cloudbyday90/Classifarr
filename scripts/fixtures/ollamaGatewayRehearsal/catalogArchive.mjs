@@ -6,6 +6,7 @@ import { createOnlineArchive, withOnlineArchiveSnapshot } from '/app/src/ollamaG
 import { archivePolicyHash } from '/app/src/ollamaGateway/archiveSchedule.mjs';
 import { verifyArchiveRestore } from '/app/src/ollamaGateway/archiveVerifier.mjs';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
+import { checkLateCatalogFiles } from './catalogLateFiles.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const action = process.argv[2];
@@ -36,6 +37,7 @@ if (action === 'capture') {
       VALUES($1,$2,$3,$4,1,'exporting') RETURNING *`,[identity.report.ledgerId,configuration.providerHash,archivePolicyHash(90),identity.revision])).rows[0];
     await owner.query('SELECT pg_advisory_unlock(11435,4)');
     reader = new pg.Client(configuration.database); await reader.connect();
+    await checkLateCatalogFiles(reader,configuration,job);
     const query = reader.query.bind(reader); let advanced = false;
     reader.query = async (...args) => {
       const result = await query(...args);

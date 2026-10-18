@@ -9,6 +9,7 @@ import { verifyArchiveRestore } from '/app/src/ollamaGateway/archiveVerifier.mjs
 import { catalogRetentionService } from '/app/src/ollamaGateway/catalogRetentionService.mjs';
 import { catalogRetentionRepository, assertArchiveNotCatalogPinned } from '/app/src/ollamaGateway/catalogRetentionRepository.mjs';
 import { archiveStorageAvailable } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
+import { checkRetentionReadGuards } from './catalogRetentionGuards.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const action = process.argv[2], paths = { catalogs: '/catalogs', archives: '/archives', receipts: '/receipts' };
@@ -24,7 +25,9 @@ if (action === 'verify') {
   const owner = new pg.Client(connection); let reader;
   try {
     await owner.connect(); const service = catalogRetentionService(owner), repository = catalogRetentionRepository(owner);
-    if (action === 'setup') {
+    if (action === 'read-guards') {
+      await checkRetentionReadGuards(owner);
+    } else if (action === 'setup') {
       // This exercise deliberately retains the legacy v5 admission contract.
       await owner.query(await readFile('/app/database/ollama-gateway-catalog/20261017_230000_catalog_retention.sql', 'utf8'));
     } else if (action === 'capacity') {

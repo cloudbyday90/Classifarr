@@ -53,7 +53,8 @@ async function qualifyCase(image, shape, measure) {
       }
       for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
         'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs',
-        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs','archiveQualificationMeasurements.mjs']) {
+        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs','archiveQualificationMeasurements.mjs',
+        'catalogReadComparison.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {

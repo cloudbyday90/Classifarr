@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 export function runGatewayCatalogRetentionRehearsal({ docker, image, source, archives, receipts, catalogs, label, suffix }) {
   const script = resolve('scripts/fixtures/ollamaGatewayRehearsal/catalogRetention.mjs');
   docker(['cp', script, `${source}:/tmp/catalog-retention.mjs`]);
+  docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal/catalogRetentionGuards.mjs'), `${source}:/tmp/catalogRetentionGuards.mjs`]);
   const fixture = (...args) => docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
     source, 'node', '/tmp/catalog-retention.mjs', ...args]).trim();
   const name = `classifarr-catalog-retention-${suffix}`;
@@ -18,13 +19,14 @@ export function runGatewayCatalogRetentionRehearsal({ docker, image, source, arc
         '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '1536m', '--memory-swap', '1536m', '--cpus', '1', '--pids-limit', '64',
         '--mount', `type=volume,source=${archives},target=/archives,readonly`, '--mount', `type=volume,source=${receipts},target=/receipts,readonly`,
         '--mount', `type=volume,source=${catalogs},target=/catalogs,readonly`, '--mount', `type=bind,source=${script},target=/catalog-retention.mjs,readonly`,
+        '--mount', `type=bind,source=${resolve('scripts/fixtures/ollamaGatewayRehearsal/catalogRetentionGuards.mjs')},target=/catalogRetentionGuards.mjs,readonly`,
         '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
         '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
         '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, '/catalog-retention.mjs', 'verify', id]);
       const config = JSON.parse(docker(['inspect', name]))[0];
       assert.equal(config.HostConfig.NetworkMode, 'none'); assert.equal(config.HostConfig.ReadonlyRootfs, true);
       assert.equal(config.Config.User, '1000:1000'); assert.equal(config.Image, image);
-      assert.equal(config.Mounts.length, 4); assert.ok(config.Mounts.every(m => !m.RW));
+      assert.equal(config.Mounts.length, 5); assert.ok(config.Mounts.every(m => !m.RW));
       assert.ok(config.Config.Env.every(value => !/PASSWORD=|TOKEN=|CONFIG_FILE=/.test(value)));
       const receipt = JSON.parse(docker(['start', '-a', name]));
       const stopped = JSON.parse(docker(['inspect', name]))[0];
@@ -40,4 +42,5 @@ export function runGatewayCatalogRetentionRehearsal({ docker, image, source, arc
     }
   }
   process.stdout.write(`${fixture('faults')}\n${fixture('resume')}\n`);
+  process.stdout.write(`${fixture('read-guards')}\n`);
 }
