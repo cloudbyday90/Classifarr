@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a source-bound, isolated catalog row-mode comparison with counterbalanced
+  memory/allocation measurements and exact integrity checks before considering
+  runtime changes.
+
 - Add an isolated repeated-large-restore memory study with separate natural and
   allocation-sampling lanes, strict receipt/source-preservation checks and bounded
   diagnostics. Keep production schedules, limits and verification unchanged.
