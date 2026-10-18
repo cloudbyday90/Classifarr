@@ -63,7 +63,9 @@ five sequential restores without artificial quiet periods; profiling surrounds
 each restore. It is diagnostic throughput, not production-cadence evidence.
 Each restore retains the packaged 180-second outer deadline and existing native
 command, four-second SQL and five-second client limits. Lane wall-clock limits
-are 26 and 16 minutes respectively, with no caller overrides. No automatic retry.
+are 26 and 16 minutes respectively, with no caller overrides. The host allows a
+further 30 seconds for worker exit observation before refusal/owned cleanup.
+No automatic retry.
 
 Run from the repository root with the immutable image ID and inspected source
 revision, using the fixed mode (no database/provider/duration arguments):
