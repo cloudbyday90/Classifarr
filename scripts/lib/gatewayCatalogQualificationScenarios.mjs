@@ -13,12 +13,19 @@ export async function qualifyCatalogScenario({ shape, fixture, create, wait, run
       if (size.evidencebytes > 9*1048576) break;
     }
     assert.ok(size.evidencebytes > 9*1048576,'qualification_valid_evidence_size');
+    assert.ok(size.payloadbytes > 8*1048576,'qualification_full_payload_size');
     const before=fixture('inspect'),fingerprint=fixture('fingerprint');
     fixture('evidence-tamper');
     const refused=await run('archiver'); hasState(refused,'archive_blocked');
     assert.ok(refused.some(row => row.reason==='gateway_archive_protection_fence'));
+    const cleanupRefused=await run('cleanup'); hasState(cleanupRefused,'cleanup_blocked');
+    assert.ok(cleanupRefused.some(row => row.reason==='gateway_archive_protection_fence'));
     assert.deepEqual(fixture('inspect'),before); assert.deepEqual(fixture('fingerprint'),fingerprint);
     fixture('evidence-repair-fixture');
+    // Every file must pass before SQL independently refuses low-pressure cleanup.
+    const lowPressure=await run('cleanup'); hasState(lowPressure,'cleanup_blocked');
+    assert.ok(lowPressure.some(row => row.reason==='gateway_cleanup_identity_changed'));
+    assert.equal(fixture('inspect').cleanupOperations,0);
     hasState(await run('archiver'),'awaiting_catalog_verification');
     hasState(await run('catalog-verifier'),'verified');
     hasState(await run('archiver'),'catalog_attempts_exhausted');

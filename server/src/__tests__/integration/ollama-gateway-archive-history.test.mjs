@@ -55,6 +55,15 @@ test('changed payload with the same stored manifest hash cannot reuse captured m
   await expect(repository.evidence(job)).rejects.toMatchObject({ code:'gateway_archive_job_fence' });
 });
 
+test('sub-millisecond timestamp changes cannot hide behind native Date rounding',async () => {
+  await seed(1,10);
+  await client.query("UPDATE gateway_archive.job SET completed_at='2026-10-18T00:00:00.000001Z'");
+  const repository=archiveJobRepository(client),[job]=await repository.list();
+  await client.query("UPDATE gateway_archive.job SET completed_at='2026-10-18T00:00:00.000002Z'");
+  const [changed]=await repository.list(); expect(changed.completed_at).toEqual(job.completed_at);
+  await expect(repository.evidence(job)).rejects.toMatchObject({ code:'gateway_archive_job_fence' });
+});
+
 test.each(['status','revision','provider_hash','policy_hash','completed_at'])('changed %s invalidates a selected record',async field => {
   await seed(1,10); const repository=archiveJobRepository(client),[job]=await repository.list();
   const updates={ status:"status='retiring'",revision:"revision=repeat('c',64)",provider_hash:"provider_hash=repeat('c',64)",

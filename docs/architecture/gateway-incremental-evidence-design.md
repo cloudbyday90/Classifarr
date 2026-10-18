@@ -14,7 +14,8 @@ before transmission. This allows JSONB serialization overhead above the existing
 64 KiB file manifest / 4 KiB receipt limits; it does not raise file limits.
 
 Each detail read must match its captured metadata, including a digest of the
-manifest and receipt. Missing, oversized, changed or malformed evidence refuses
+complete stored job (also preserving timestamp precision lost by JavaScript Date).
+Missing, oversized, changed or malformed evidence refuses
 maintenance. Do not concatenate pages, cache hydrated records, trust SQL summaries
 as proof of files, or carry partial verification credit across assessments.
 

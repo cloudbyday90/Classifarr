@@ -18,6 +18,13 @@ export async function incrementalEvidenceFixture(client,action,configuration) {
   const repository=archiveJobRepository(client);
   await client.query('SELECT pg_advisory_lock(11435,4)');
   if (action==='evidence-seed') {
+    await client.query(`CREATE ROLE qualification_cleanup LOGIN;
+      GRANT USAGE ON SCHEMA ollama_gateway,gateway_archive,gateway_cleanup TO qualification_cleanup;
+      GRANT SELECT ON ALL TABLES IN SCHEMA ollama_gateway,gateway_archive,gateway_cleanup TO qualification_cleanup;
+      GRANT EXECUTE ON FUNCTION gateway_cleanup.admit(uuid,text,text,text),gateway_cleanup.execute_batch(uuid,integer),
+        gateway_cleanup.reconcile(uuid) TO qualification_cleanup`);
+    await writeFile('/configuration/cleanup.json',JSON.stringify({ database:{ ...configuration.database,host:'/source-socket',user:'qualification_cleanup' },
+      providerHash:configuration.providerHash,retentionDays:90,archives:'/archives',receipts:'/receipts' }),{ flag:'wx',mode:0o600 });
     await client.query(`INSERT INTO ollama_gateway.request_binding(ledger_id,request_id,owner_id,provider_hash,installation,admitted_at,attempt,evidence_kind)
       SELECT id,uuidv7(),owner_id,provider_hash,'synthetic',clock_timestamp()-interval '100 days',i,'unbound'
       FROM ollama_gateway.admission CROSS JOIN generate_series(1,100) i;
@@ -67,7 +74,8 @@ export async function incrementalEvidenceFixture(client,action,configuration) {
       }
       await repository.ready(hold.id);
     }
-    return (await client.query(`SELECT count(*)::int AS archives,sum(octet_length(to_jsonb(j)::text))::float8 AS evidenceBytes
+    return (await client.query(`SELECT count(*)::int AS archives,sum(octet_length(to_jsonb(j)::text))::float8 AS evidenceBytes,
+      sum(octet_length(jsonb_build_array(j.manifest,j.receipt)::text))::float8 AS payloadBytes
       FROM gateway_archive.job j`)).rows[0];
   }
   const [last]=(await repository.list()).slice(-1);

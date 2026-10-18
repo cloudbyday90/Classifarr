@@ -79,6 +79,7 @@ try {
     result.dependencies = (await client.query('SELECT count(*)::int AS count FROM gateway_catalog.dependency')).rows[0].count;
     result.receipts = (await readdir('/receipts')).sort();
     result.inferenceJobs = (await client.query('SELECT count(*)::int AS count FROM gateway_archive.job')).rows[0].count;
+    result.cleanupOperations = (await client.query('SELECT count(*)::int AS count FROM gateway_cleanup.operation')).rows[0].count;
     result.files = [];
     for (const name of await readdir('/catalogs')) {
       assert.match(name, /^gateway-archive-[a-f0-9-]{36}$/);

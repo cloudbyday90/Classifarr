@@ -4,4 +4,4 @@ export const ARCHIVE_HISTORY_FIELDS = `j.id,j.ledger_id,j.provider_hash,j.policy
   j.created_at,j.completed_at,j.retry_after,j.manifest_sha256,j.reason,j.recovery_protection_id,
   to_jsonb(p) AS protection,
   CASE WHEN j.status IN ('verified','awaiting_verification','retiring') THEN
-    encode(sha256(convert_to(jsonb_build_array(j.manifest,j.receipt)::text,'UTF8')),'hex') END AS evidence_sha256`;
+    encode(sha256(convert_to(to_jsonb(j)::text,'UTF8')),'hex') END AS evidence_sha256`;
