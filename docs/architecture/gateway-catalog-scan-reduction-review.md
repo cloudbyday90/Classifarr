@@ -1,8 +1,9 @@
 # Next opportunity: reduce unnecessary catalog reads
 
 Research review, 2026-10-18. The user selected reducing repeated archive checks as
-the next opportunity, with impact and risk understood first. This document is a
-proposal, not an implemented optimization or approval to remove verification.
+the next opportunity, with impact and risk understood first. This document
+retains the research/options review; the design and outcome below record the
+subsequent implementation. No verification-removal authority is implied.
 
 ## Where the repeated work occurs
 
@@ -74,7 +75,16 @@ Discovered and opened through MCP on 2026-10-18:
   documents transaction snapshot semantics. Keep the existing read-only
   repeatable-read boundary; it does not freeze external archive files.
 
-Before implementation, confirm the narrow contract above through grill-me.
+The user requested implementation of this scope on 2026-10-18 after the contract
+and safeguards were explained. The
+[selective-read design](gateway-catalog-selective-reads-design.md) records that
+agreement. Validation remains incremental: each visited row is bounded, and the
+whole cursor must finish before dependency inspection returns a summary. Its
+consumers read and hash files; they cannot publish or register a partial scan.
+
 Acceptance requires equivalent safety results plus measured reduced transfer,
-with separate design/outcome records. The current change only supplies the
-[measurement foundation](gateway-catalog-memory-design.md).
+with a separate outcome record. The
+[measurement foundation](gateway-catalog-memory-design.md) distinguishes process
+memory from file cache and does not promise a lower peak for this optimization.
+The [implementation outcome](gateway-catalog-selective-reads-outcome.md) records
+the same-snapshot comparison, preserved refusal paths and local image evaluation.
