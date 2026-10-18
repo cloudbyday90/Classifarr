@@ -12,7 +12,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 - Add a bounded 30-minute gateway load study with varied historical data,
   memory/cache and transaction observations, plus a separate real-restore rotation
   drill. Preserve production cadence, limits and retry rules; renew the narrowly
-  reviewed v7 restore ownership records and pin the admission helper.
+  reviewed v7 restore ownership records and pin the admission helper. Stop blocked
+  studies automatically and retain explicitly incomplete observations.
 
 - Keep gateway archive planning and export on one read-only snapshot while
   inference continues. Add a versioned catalog format that preserves its separate
