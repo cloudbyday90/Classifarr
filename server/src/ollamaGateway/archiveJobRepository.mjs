@@ -4,6 +4,7 @@ import { archiveProtectionRepository } from './archiveProtectionRepository.mjs';
 import { assertArchiveNotCatalogPinned, hasCatalogRetention } from './catalogRetentionRepository.mjs';
 import { catalogRetentionService } from './catalogRetentionService.mjs';
 import { readArchiveHistory } from './archiveHistoryReader.mjs';
+import { readArchiveEvidence } from './archiveEvidenceReader.mjs';
 
 /** This dedicated maintenance session must never share the inference session. */
 export async function lockArchiveCoordinator(client) {
@@ -28,6 +29,7 @@ export function archiveJobRepository(client) {
       return result.rows;
     },
     list: () => readArchiveHistory(client),
+    evidence: (summary, signal) => readArchiveEvidence(client, summary, signal),
     async begin(report, revision, policyHash, compatibleRevisions = [revision]) {
       const installed = (await client.query("SELECT to_regclass('gateway_catalog.job') IS NOT NULL AS installed")).rows[0].installed;
       const extra = installed ? 'UNION ALL SELECT attempt FROM gateway_catalog.job WHERE compatible_revisions && $5::text[]' : '';

@@ -14,7 +14,8 @@ async function diagnoseCleanup(client,jobs,database) {
   let stage = 'files',worker,settings; const timings = [];
   const operations = (await client.query('SELECT id,status,attempt FROM gateway_cleanup.operation ORDER BY id')).rows;
   try {
-    for (const job of jobs.filter(row => row.status === 'verified')) {
+    for (const summary of jobs.filter(row => row.status === 'verified')) {
+      const job=await archiveJobRepository(client).evidence(summary);
       stage = 'archive'; await checkManagedArchive('/archives',job);
       stage = 'receipt'; assert.deepEqual(await readArchiveReceipt('/receipts',job.id),job.receipt);
       stage = 'marker'; await ensureArchiveProtection(managedArchivePath('/archives',job.id),job);

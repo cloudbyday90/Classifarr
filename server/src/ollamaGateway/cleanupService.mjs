@@ -15,7 +15,8 @@ export async function runCleanupAssessment({ client,configuration,signal }) {
   for (const op of operations.filter(op => op.status === 'admitted' || op.status === 'completed' && !op.confirmed_at)) {
     signal?.throwIfAborted(); await repository.reconcile(op.id);
   }
-  const jobs = await archiveJobRepository(client).list(), pair = rollingArchives(jobs), policyHash = archivePolicyHash(configuration.retentionDays);
+  const archives=archiveJobRepository(client);
+  const jobs = await archives.list(), pair = rollingArchives(jobs), policyHash = archivePolicyHash(configuration.retentionDays);
   if (jobs.some(job => job.provider_hash !== configuration.providerHash || job.policy_hash !== policyHash)) {
     return { state: 'configuration_changed' };
   }
@@ -24,8 +25,10 @@ export async function runCleanupAssessment({ client,configuration,signal }) {
         job.status === 'verified' && (!job.recovery_protection_id || !job.protection?.ready_at))) return { state: 'awaiting_protection' };
   const hold = pair[0].protection;
   if (operations.some(op => op.candidates_sha256 === hold.candidates_sha256 && op.status === 'completed')) return { state: 'unchanged' };
-  for (const job of jobs.filter(job => job.status === 'verified')) {
+  for (const summary of jobs) {
+    if (summary.status !== 'verified') continue;
     signal?.throwIfAborted();
+    const job=await archives.evidence(summary,signal);
     await checkManagedArchive(configuration.archives,job,signal);
     if (!isDeepStrictEqual(await readArchiveReceipt(configuration.receipts,job.id),job.receipt)) {
       throw gatewayError('gateway_archive_receipt_invalid');

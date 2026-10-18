@@ -183,6 +183,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- Optional gateway archive maintenance now reads compact job history and validates
+  full recovery evidence one record at a time, keeping large protected archive
+  sets within the existing worker memory budget without relaxing cleanup checks.
+
 - **AI readiness** — Missing first-time Ollama verification stays pending through
   busy periods and gets staggered background opportunities without an open page.
   Configuration-specific waiting reasons survive restart; status refresh and

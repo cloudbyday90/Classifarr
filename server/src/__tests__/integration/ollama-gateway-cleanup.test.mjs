@@ -38,7 +38,8 @@ beforeEach(async () => {
     await archives.published(job.id,{ manifest,manifestSha256: 'b'.repeat(64) });
     await archives.verified(job.id,{ version: 2,verified: true,manifestSha256: 'b'.repeat(64) });
   }
-  pair = await archives.list(); hold = await archives.protect(pair,candidateBatchSha256(pair[0].manifest.retention)); await archives.ready(hold.id);
+  pair = await Promise.all((await archives.list()).map(job => archives.evidence(job)));
+  hold = await archives.protect(pair,candidateBatchSha256(pair[0].manifest.retention)); await archives.ready(hold.id);
   await owner.query(await schema('ollama-gateway-cleanup'));
   await owner.query(`DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='cleanup_test_worker') THEN CREATE ROLE cleanup_test_worker LOGIN PASSWORD 'synthetic-cleanup-only'; END IF; END $$;
     GRANT USAGE ON SCHEMA ollama_gateway,gateway_archive,gateway_cleanup TO cleanup_test_worker;
@@ -157,7 +158,7 @@ test('replacement recovery pairs preserve the exact batch retry budget',async ()
     await archives.published(job.id,{ manifest: pair[0].manifest,manifestSha256: 'c'.repeat(64) });
     await archives.verified(job.id,{ version: 2,verified: true,manifestSha256: 'c'.repeat(64) });
   }
-  const newer = (await archives.list()).slice(-2);
+  const newer = await Promise.all((await archives.list()).slice(-2).map(job => archives.evidence(job)));
   const replacement = await archives.protect(newer,hold.candidates_sha256); await archives.ready(replacement.id);
   await owner.query("UPDATE gateway_cleanup.operation SET last_attempt_at=clock_timestamp()-interval '1 hour',retry_after=clock_timestamp()-interval '1 second'");
   await owner.query('SELECT pg_advisory_unlock(11435,4)'); await worker.query('SELECT pg_advisory_lock(11435,4)');

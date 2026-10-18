@@ -7,6 +7,7 @@ import { archivePolicyHash } from '/app/src/ollamaGateway/archiveSchedule.mjs';
 import { archiveStorageAvailable, readArchiveReceipt } from '/app/src/ollamaGateway/archiveManagedFiles.mjs';
 import { archiveJobRepository } from '/app/src/ollamaGateway/archiveJobRepository.mjs';
 import { captureArchiveContent } from '/app/src/ollamaGateway/archiveContent.mjs';
+import { incrementalEvidenceFixture } from './incrementalEvidenceFixture.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape] = process.argv.slice(2), database = 'gateway_catalog_qualification';
@@ -38,6 +39,8 @@ try {
       providerHash, retentionDays: 90 }, maintenance: { ...connection, host: '/source-socket', user: 'catalog_writer' },
     archives: '/archives', receipts: '/receipts', catalogs: '/catalogs' }), { mode: 0o600, flag: 'wx' });
     await openGatewayLedger(client, providerHash);
+  } else if (action.startsWith('evidence-')) {
+    result = await incrementalEvidenceFixture(client,action,{ database:{ ...connection,user:'catalog_reader' },providerHash,retentionDays:90 });
   } else if (action === 'admit') {
     const ledger = await openGatewayLedger(client, providerHash), request = await ledger.claim('synthetic');
     assert.ok(request); await ledger.complete(request, false, { state: 'response_completed', httpStatus: 200 });
@@ -83,9 +86,10 @@ try {
     }
   } else if (action === 'oversized-evidence') {
     await client.query('SELECT pg_advisory_lock(11435,4)');
-    // Deliberately inconsistent SQL-only evidence: must refuse before materializing
-    // hundreds of MiB, never mistake it for valid files or completed real work.
-    await client.query("UPDATE gateway_archive.job SET status='verified',receipt='{}' WHERE status='failed' AND manifest IS NOT NULL");
+    // Deliberately inconsistent, individually oversized SQL-only evidence. Never
+    // mistake it for valid files or completed real work; refuse before transfer.
+    await client.query(`UPDATE gateway_archive.job SET status='verified',receipt='{}',
+      manifest=manifest||jsonb_build_object('fixturePadding',repeat('x',150000)) WHERE status='failed' AND manifest IS NOT NULL`);
     result = { injectedFault: 'oversized_untrusted_evidence', rows: 3000 };
   } else if (action === 'fingerprint') {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL timezone='UTC'; SET LOCAL datestyle='ISO, YMD'");

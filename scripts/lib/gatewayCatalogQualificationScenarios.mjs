@@ -4,6 +4,32 @@ import assert from 'node:assert/strict';
 /** All mutations target the harness's synthetic database and labeled volumes only. */
 export async function qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report }) {
   hasState(await run('archiver'), 'catalog_empty');
+  if (shape === 'catalog-protected') {
+    fixture('evidence-seed'); let size;
+    for (let batch=0;batch<25;batch++) {
+      fixture('evidence-generate');
+      hasState(await wait(create('batch-verifier','normal','verifier')),'verified');
+      size=fixture('evidence-accept'); report({ scenario:shape,batch:batch+1,...size });
+      if (size.evidencebytes > 9*1048576) break;
+    }
+    assert.ok(size.evidencebytes > 9*1048576,'qualification_valid_evidence_size');
+    const before=fixture('inspect'),fingerprint=fixture('fingerprint');
+    fixture('evidence-tamper');
+    const refused=await run('archiver'); hasState(refused,'archive_blocked');
+    assert.ok(refused.some(row => row.reason==='gateway_archive_protection_fence'));
+    assert.deepEqual(fixture('inspect'),before); assert.deepEqual(fixture('fingerprint'),fingerprint);
+    fixture('evidence-repair-fixture');
+    hasState(await run('archiver'),'awaiting_catalog_verification');
+    hasState(await run('catalog-verifier'),'verified');
+    hasState(await run('archiver'),'catalog_attempts_exhausted');
+    const after=fixture('inspect');
+    assert.equal(after.jobs.length,1); assert.equal(after.jobs[0].status,'verified'); assert.equal(after.jobs[0].attempt,3);
+    assert.equal(after.jobs[0].tables['gateway_archive.job'].count,size.archives);
+    assert.equal(after.inferenceJobs,size.archives); assert.equal(after.roots.length,1);
+    assert.ok(after.dependencies>=size.archives); assert.deepEqual(fixture('fingerprint'),fingerprint);
+    hasState(await run('archiver'),'catalog_attempts_exhausted'); assert.deepEqual(fixture('inspect'),after);
+    report({ scenario:shape,state:'large_valid_protected_evidence_verified',...size }); return;
+  }
   fixture('admit'); report({ scenario: shape, ...fixture('history') });
   hasState(await run('archiver'), 'awaiting_verification');
   hasState(await run('verifier'), 'verified');

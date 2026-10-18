@@ -1,17 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { gatewayError } from './errors.mjs';
+import { ARCHIVE_HISTORY_FIELDS } from './archiveHistoryProjection.mjs';
 
 // Operational read bound, not a new retention policy or permission to drop history.
 // Repeated coordinator reads must fit the deployed 256 MiB process/container.
 const HISTORY_BYTES = 8 * 1024 * 1024;
 
-/** One statement/snapshot: oversized nested evidence never crosses the SQL boundary. */
+/** Complete ordered metadata only; never aggregate full evidence in the coordinator. */
 export async function readArchiveHistory(client) {
   const result = await client.query(`WITH selected AS MATERIALIZED (
-    SELECT j.id,j.ledger_id,j.provider_hash,j.policy_hash,j.revision,j.attempt,j.status,
-      j.created_at,j.completed_at,j.retry_after,j.manifest_sha256,j.reason,j.recovery_protection_id,
-      CASE WHEN j.status IN ('verified','awaiting_verification','retiring') THEN j.manifest END AS manifest,
-      CASE WHEN j.status IN ('verified','retiring') THEN j.receipt END AS receipt,to_jsonb(p) AS protection
+    SELECT ${ARCHIVE_HISTORY_FIELDS}
     FROM gateway_archive.job j LEFT JOIN gateway_archive.protection p ON p.id=j.recovery_protection_id
     ORDER BY j.created_at,j.id LIMIT 10001
   ), budget AS MATERIALIZED (

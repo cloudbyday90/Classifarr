@@ -87,7 +87,8 @@ try {
     const value = await withOnlineArchiveSnapshot(owner, configuration, async data => data);
     const job = await repository.begin(value.report, value.revision, archivePolicyHash(90), value.compatibleRevisions);
     const predecessors = [];
-    for (const prior of jobs.filter(item => item.status === 'verified').slice(-2)) {
+    for (const summary of jobs.filter(item => item.status === 'verified').slice(-2)) {
+      const prior=await repository.evidence(summary);
       await checkManagedArchive(paths.archives, prior);
       predecessors.push({ archiveId: prior.id, manifestSha256: prior.manifest_sha256, content: prior.manifest.content });
     }

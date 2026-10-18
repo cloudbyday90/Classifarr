@@ -52,7 +52,8 @@ async function qualifyCase(image, shape) {
         docker(['exec', '--user', '0:0', source, 'chmod', '700', '/catalogs']);
       }
       for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
-        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs']) {
+        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs',
+        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs']) {
         docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
       }
       const fixture = action => {
@@ -275,7 +276,7 @@ async function qualifyCase(image, shape) {
 export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null) {
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  const shapes = catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide'] :
+  const shapes = catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide','catalog-protected'] :
     cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup'];
   assert.ok(only === null || shapes.includes(only), 'qualification_case_invalid');
   const selected = only === null ? shapes : [only];

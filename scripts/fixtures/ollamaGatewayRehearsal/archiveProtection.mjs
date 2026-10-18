@@ -15,11 +15,12 @@ try {
   if (action === 'stage') {
     // Scheduling fixture only, before immutable holds exist. No counter/attempt refund.
     await database.query("UPDATE gateway_archive.job SET completed_at=clock_timestamp()-interval '25 hours' WHERE status='verified'");
-    const pair = (await repository.list()).filter(job => job.status === 'verified'); assert.equal(pair.length,2);
+    const summaries = (await repository.list()).filter(job => job.status === 'verified'); assert.equal(summaries.length,2);
+    const pair = await Promise.all(summaries.map(job => repository.evidence(job)));
     const digest = candidateBatchSha256(pair[0].manifest.retention);
     assert.equal(candidateBatchSha256(pair[1].manifest.retention),digest);
     await repository.protect(pair,digest);
-    const first = (await repository.list()).find(job => job.id === pair[0].id);
+    const first = await repository.evidence((await repository.list()).find(job => job.id === pair[0].id));
     const directory = `/archives/gateway-archive-${first.id}`;
     await ensureArchiveProtection(directory,first);
     await link(`${directory}/protection.json`,`${directory}/protection.pending`);
@@ -27,7 +28,8 @@ try {
     assert.equal((await database.query('SELECT ready_at FROM gateway_archive.protection')).rows[0].ready_at,null);
   } else if (action === 'check') {
     const held = (await repository.list()).filter(job => job.recovery_protection_id); assert.equal(held.length,2);
-    for (const job of held) {
+    for (const summary of held) {
+      const job=await repository.evidence(summary);
       assert.ok(job.protection.ready_at); assert.equal(job.protection.minimum_recovery_days,30);
       const directory = `/archives/gateway-archive-${job.id}`, markerPath = `${directory}/protection.json`;
       assert.deepEqual((await readdir(directory)).sort(),['gateway.dump','manifest.json','protection.json']);

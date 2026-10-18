@@ -38,7 +38,8 @@ beforeEach(async () => {
     await repository.verified(job.id,{ version: 2,archiveId: job.id,manifestSha256: 'b'.repeat(64),dumpSha256: 'a'.repeat(64),
       verified: true,preserves: [],purgeAuthorized: false,retentionSha256: retentionInventorySha256(data.retention) });
   }
-  pair = await repository.list(); batch = candidateBatchSha256(pair[0].manifest.retention);
+  pair = await Promise.all((await repository.list()).map(job => repository.evidence(job)));
+  batch = candidateBatchSha256(pair[0].manifest.retention);
 });
 afterEach(async () => {
   await owner?.query('ROLLBACK; DROP SCHEMA IF EXISTS gateway_catalog CASCADE');

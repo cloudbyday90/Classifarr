@@ -5,20 +5,22 @@ import { archiveStorageAvailable, readArchiveReceipt, checkManagedArchive, retir
 import { gatewayError } from './errors.mjs';
 import { validateReceiptForArchive } from './archiveReceiptBinding.mjs';
 import { captureRetentionInventory } from './archiveRetentionQueries.mjs';
-import { archiveProtectionPlan,rollingArchives } from './archiveProtectionPolicy.mjs';
-import { reconcileArchiveProtection } from './archiveProtectionService.mjs';
+import { rollingArchives } from './archiveProtectionPolicy.mjs';
+import { reconcileArchiveProtection,planArchiveProtection } from './archiveProtectionService.mjs';
 
 async function rotate(repository, parent, jobs, signal, pinned = new Set()) {
   const verified = jobs.filter(job => job.status === 'verified');
   const retiring = jobs.find(job => job.status === 'retiring');
   const rolling = rollingArchives(jobs);
-  const prior = retiring ?? verified.find(job => !job.recovery_protection_id && !rolling.includes(job));
-  if (!prior) return;
-  if (pinned.has(prior.id)) return;
-  await repository.assertNotCatalogPinned(prior.id);
-  const remaining = rolling.filter(job => job.id !== prior.id);
+  const selected = retiring ?? verified.find(job => !job.recovery_protection_id && !rolling.includes(job));
+  if (!selected || pinned.has(selected.id)) return;
+  await repository.assertNotCatalogPinned(selected.id);
+  const prior=await repository.evidence(selected,signal), remaining=[];
+  for (const summary of rolling.filter(job => job.id !== prior.id)) {
+    const kept=await repository.evidence(summary,signal);
+    await checkManagedArchive(parent,kept,signal); remaining.push(kept);
+  }
   if (remaining.length < 2) throw gatewayError('gateway_archive_rotation_blocked');
-  for (const kept of remaining) await checkManagedArchive(parent,kept,signal);
   if (!remaining.some(job => job.receipt?.verified && job.receipt.preserves.includes(prior.id) &&
       job.manifest.predecessors.some(item => item.archiveId === prior.id && item.manifestSha256 === prior.manifest_sha256) &&
       job.ledger_id === prior.ledger_id && job.provider_hash === prior.provider_hash &&
@@ -49,8 +51,9 @@ export async function runArchiveAssessment({ source, repository, configuration, 
   if (jobs.some(job => job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash)) {
     return { state: 'identity_changed',purgeAuthorized: false };
   }
-  const pending = jobs.find(job => job.status === 'awaiting_verification');
-  if (pending) {
+  const pendingSummary = jobs.find(job => job.status === 'awaiting_verification');
+  if (pendingSummary) {
+    const pending=await repository.evidence(pendingSummary,signal);
     await checkManagedArchive(parent,pending,signal);
     const receipt = await readArchiveReceipt(receipts,pending.id);
     if (!receipt) return { state: 'awaiting_verification', archiveId: pending.id, purgeAuthorized: false };
@@ -60,7 +63,8 @@ export async function runArchiveAssessment({ source, repository, configuration, 
     jobs = await repository.list();
   }
   await reconcileArchiveProtection(repository,parent,jobs,signal);
-  const protection = archiveProtectionPlan({ ...snapshot,jobs,cleanupOperations: await repository.cleanupOperations() });
+  jobs=await repository.list();
+  const protection = await planArchiveProtection(repository,{ ...snapshot,jobs,cleanupOperations: await repository.cleanupOperations() },signal);
   if (protection.pair) {
     if (!await available()) return { state: 'storage_full',purgeAuthorized: false };
     for (const job of protection.pair) await checkManagedArchive(parent,job,signal);
@@ -74,7 +78,8 @@ export async function runArchiveAssessment({ source, repository, configuration, 
   if (!await available()) return { state: 'storage_full', purgeAuthorized: false };
   const prior = rollingArchives(jobs);
   const predecessors = [];
-  for (const job of prior) {
+  for (const summary of prior) {
+    const job=await repository.evidence(summary,signal);
     await checkManagedArchive(parent,job,signal);
     predecessors.push({ archiveId: job.id, manifestSha256: job.manifest_sha256, content: job.manifest.content });
   }

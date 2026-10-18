@@ -28,7 +28,7 @@ async function restoreProgress() {
   } catch { return 0; } finally { await client.end(); }
 }
 async function run() {
-  assert.ok(['archiver', 'verifier','cleanup','catalog-verifier'].includes(kind));
+  assert.ok(['archiver', 'verifier','cleanup','catalog-verifier','batch-verifier'].includes(kind));
   assert.ok(['normal', 'pause', 'cancel','publication','acknowledgment','contention'].includes(mode));
   assert.ok(store === undefined || store === 'catalog');
   const boundary = ['publication','acknowledgment'].includes(mode) ? await catalogQualificationBoundary(mode) : null;
@@ -36,9 +36,11 @@ async function run() {
   process.stdout.write(`${JSON.stringify({ fixture: 'limits', ...resources.limits })}\n`);
   const entry = kind === 'archiver' ? 'runGatewayArchiveWorker.mjs' : kind === 'cleanup' ? 'runGatewayCleanupWorker.mjs' : 'runGatewayArchiveVerifier.mjs';
   const child = spawn(process.execPath, [...(kind === 'cleanup' ? ['--import','/fixtures/cleanupQueryDiagnostics.mjs'] : []),
-    `/app/src/scripts/${entry}`, '--once', ...(kind === 'catalog-verifier' ? ['--catalog'] : [])], {
+    ...(kind === 'batch-verifier' ? ['/fixtures/archiveEvidenceVerifier.mjs'] :
+      [`/app/src/scripts/${entry}`, '--once', ...(kind === 'catalog-verifier' ? ['--catalog'] : [])])], {
     env: { PATH: '/usr/bin:/bin', ...(kind === 'archiver' ? { CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE: '/configuration/worker.json' } :
-      kind === 'cleanup' ? { CLASSIFARR_GATEWAY_CLEANUP_CONFIG_FILE: '/configuration/cleanup.json',CLASSIFARR_GATEWAY_FIXTURE: 'isolated' } : {}) },
+      kind === 'cleanup' ? { CLASSIFARR_GATEWAY_CLEANUP_CONFIG_FILE: '/configuration/cleanup.json',CLASSIFARR_GATEWAY_FIXTURE: 'isolated' } :
+        kind === 'batch-verifier' ? { CLASSIFARR_GATEWAY_FIXTURE:'isolated' } : {}) },
     stdio: ['ignore', 'inherit', 'inherit'], shell: false,
   });
   let ended = false, observed = false;

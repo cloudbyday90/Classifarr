@@ -12,22 +12,34 @@ export function candidateBatchSha256(inventory) {
 
 /** This is archive readiness, never deletion authority. Live rows must be revalidated by any future cleanup. */
 export function archiveProtectionPlan({ report,inventory,jobs,revision,compatibleRevisions = [revision],cleanupOperations = null }) {
-  if (report.bindingCount < ARCHIVE_POLICY.pressureCount || !inventory?.entries.length) return { needsRecoveryCopy: false };
-  const candidatesSha256 = candidateBatchSha256(inventory);
-  const matching = jobs.filter(job => {
-    if (job.status !== 'verified' || job.manifest?.version !== 4 || !job.receipt?.verified ||
-        job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash) return false;
-    validateReceiptForArchive(job.receipt,job.manifest,job.manifest_sha256);
-    return candidateBatchSha256(job.manifest.retention) === candidatesSha256;
-  });
-  const held = matching.some(job => job.protection?.candidates_sha256 === candidatesSha256);
-  if (held && !cleanupOperations) return { needsRecoveryCopy: false };
-  if (cleanupOperations?.some(op => op.candidates_sha256 === candidatesSha256 &&
-      (op.status === 'completed' || op.attempt >= 3))) return { needsRecoveryCopy: false };
-  const available = matching.filter(job => !job.recovery_protection_id);
-  if (available.length >= 2) return { needsRecoveryCopy: false,pair: available.slice(-2),candidatesSha256 };
-  const revisions = new Set([revision,...compatibleRevisions]);
-  return { needsRecoveryCopy: available.length === 1 && revisions.has(available[0].revision) };
+  const plan=createArchiveProtectionPlan({ report,inventory,revision,compatibleRevisions,cleanupOperations });
+  for (const job of jobs) plan.consider(job);
+  return plan.result();
+}
+
+/** Ordered reducer: only two matching bodies can survive a visit. No cross-assessment cache. */
+export function createArchiveProtectionPlan({ report,inventory,revision,compatibleRevisions = [revision],cleanupOperations = null }) {
+  const needed=report.bindingCount >= ARCHIVE_POLICY.pressureCount && Boolean(inventory?.entries.length);
+  const candidatesSha256=needed ? candidateBatchSha256(inventory) : null;
+  const available=[]; let held=false;
+  return {
+    needed,
+    consider(job) {
+      if (!needed || job.status !== 'verified' || job.manifest?.version !== 4 || !job.receipt?.verified ||
+          job.ledger_id !== report.ledgerId || job.provider_hash !== report.providerHash) return;
+      validateReceiptForArchive(job.receipt,job.manifest,job.manifest_sha256);
+      if (candidateBatchSha256(job.manifest.retention) !== candidatesSha256) return;
+      held ||= job.protection?.candidates_sha256 === candidatesSha256;
+      if (!job.recovery_protection_id) { available.push(job); if (available.length > 2) available.shift(); }
+    },
+    result() {
+      if (!needed || held && !cleanupOperations || cleanupOperations?.some(op => op.candidates_sha256 === candidatesSha256 &&
+          (op.status === 'completed' || op.attempt >= 3))) return { needsRecoveryCopy:false };
+      if (available.length === 2) return { needsRecoveryCopy:false,pair:available,candidatesSha256 };
+      const revisions=new Set([revision,...compatibleRevisions]);
+      return { needsRecoveryCopy:available.length === 1 && revisions.has(available[0].revision) };
+    },
+  };
 }
 
 export function rollingArchives(jobs) {
