@@ -9,12 +9,15 @@ import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualificatio
 import { runGatewayCatalogRehearsal } from './lib/gatewayCatalogRehearsal.mjs';
 import { runGatewayCatalogRetentionRehearsal } from './lib/gatewayCatalogRetentionRehearsal.mjs';
 import { runGatewayCatalogSchedulingRehearsal } from './lib/gatewayCatalogSchedulingRehearsal.mjs';
+import { runGatewayInferenceSoak } from './lib/gatewayInferenceSoak.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
 if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling','--catalog-qualification',
-  '--catalog-memory','--catalog-memory-baseline'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
+  '--catalog-memory','--catalog-memory-baseline','--inference-soak'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
-if (['--catalog-memory','--catalog-memory-baseline'].includes(mode)) {
+if (mode === '--inference-soak') {
+  await runGatewayInferenceSoak(image, revision);
+} else if (['--catalog-memory','--catalog-memory-baseline'].includes(mode)) {
   await runGatewayArchiveQualification(image, revision, false, true, 'catalog-wide', mode === '--catalog-memory');
 } else if (mode === '--catalog-scheduling') {
   await runGatewayCatalogSchedulingRehearsal(image, revision);

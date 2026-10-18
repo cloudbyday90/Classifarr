@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an isolated gateway inference/archive soak with bounded synthetic HTTP
+  traffic, latency and pre-claim timing, real scheduled exports and sandboxed
+  restore checks. Preserve production limits, cooldowns and provider settings.
+
 - Reduce gateway catalog dependency transfer by returning full job records only
   for required verified archives. Preserve complete history guards, file checks,
   restore verification and retention pins; add differential SQL and file-race
