@@ -8,21 +8,22 @@ import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-sch
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { soakProfile } from '../fixtures/ollamaGatewayRehearsal/soakProfile.mjs';
 import { finishGatewayStudyCleanup } from './gatewayStudyCleanup.mjs';
+import { RESTORE_STUDY_FILES, runGatewayRestoreMemoryStudy } from './gatewayRestoreMemoryStudy.mjs';
 
 const docker = args => execFileSync('docker', args, { encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576 });
 const records = output => output.trim().split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
 const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
 /** Local fixture only: no caller-supplied database, provider, mounts or runtime settings. */
-export async function runGatewayInferenceSoak(image, revision, profileName = 'regression', diagnostic = false) {
+export async function runGatewayInferenceSoak(image, revision, profileName = 'regression', study = 'inference') {
   const profile = soakProfile(profileName);
-  assert.equal(typeof diagnostic, 'boolean'); assert.ok(!diagnostic || profile.name === 'extended');
+  assert.ok(['inference','history','restores'].includes(study)); assert.ok(study === 'inference' || profile.name === 'extended');
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const key = 'io.classifarr.inference-soak', label = `${key}=${suffix}`;
   const stores = Object.fromEntries(['archives', 'receipts', 'catalogs', 'socket', 'configuration', 'fixtures'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
-  const names = Object.fromEntries(['archiver', 'verifier', 'catalog-verifier'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
+  const names = Object.fromEntries(['archiver', 'verifier', 'catalog-verifier','restore-natural','restore-allocations'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
   const inspect = name => JSON.parse(docker(['inspect', name]))[0];
   const mount = (kind, target, readonly = false) => ['--mount', `type=volume,source=${stores[kind]},target=${target}${readonly ? ',readonly' : ''}`];
   const remove = name => {
@@ -45,7 +46,7 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
       docker(['exec', '--user', '0:0', source, 'chmod', '700', ...paths]);
       for (const file of ['soakData.mjs', 'soakWorker.mjs', 'soakInference.mjs', 'soakWorkload.mjs', 'soakProfile.mjs',
         'studyHistory.mjs','studyMeasurements.mjs','studyResource.mjs','studyDatabase.mjs','archiveQualificationProbe.mjs','archiveQualificationResources.mjs',
-        'historyQueryProfile.mjs','historyQueryReference.mjs','historyPlanSummary.mjs']) {
+        'historyQueryProfile.mjs','historyQueryReference.mjs','historyPlanSummary.mjs', ...RESTORE_STUDY_FILES]) {
         docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal', file), `${source}:/fixtures/${file}`]);
       }
       const fixture = (action, ...args) => records(docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
@@ -92,7 +93,11 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
       report({ stage: 'setup', image, revision, profile: profile.name }); fixture('setup');
       assert.ok((await once('archiver')).some(row => row.state === 'awaiting_verification'));
       assert.ok((await once('verifier')).some(row => row.state === 'verified')); fixture('wide').forEach(report);
-      if (diagnostic) {
+      if (study === 'restores') {
+        await runGatewayRestoreMemoryStudy({ docker, image, source, label, names, stores, mount, remove, inspect, once, report });
+        return;
+      }
+      if (study === 'history') {
         const output = runDockerCheckCommand(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
           'node', '/fixtures/historyQueryProfile.mjs'], { timeoutMs: 75000 });
         const rows = records(output.stdout); rows.forEach(report);
@@ -145,5 +150,7 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
     ]);
     report({ stage: 'owned_cleanup_verified', profile: profile.name });
   }
-  assert.equal(existsSync(spec.hostDataPath), false); report({ stage: diagnostic ? 'history_profile_passed_cleanup_verified' : 'soak_passed_cleanup_verified' });
+  assert.equal(existsSync(spec.hostDataPath), false);
+  report({ stage: study === 'history' ? 'history_profile_passed_cleanup_verified' :
+    study === 'restores' ? 'restore_memory_passed_cleanup_verified' : 'soak_passed_cleanup_verified' });
 }

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an isolated repeated-large-restore memory study with separate natural and
+  allocation-sampling lanes, strict receipt/source-preservation checks and bounded
+  diagnostics. Keep production schedules, limits and verification unchanged.
+
 - Keep gateway archive-history reads narrow before eligible full-row hashing,
   preserving complete metadata, fingerprints, limits and retry budgets. Add
   isolated query-plan/equivalence diagnostics and explicit fixed restore
