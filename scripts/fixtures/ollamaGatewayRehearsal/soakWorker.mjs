@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { readdir, readlink, readFile, realpath } from 'node:fs/promises';
 import { qualificationResources } from './archiveQualificationResources.mjs';
-import { soakProfile } from './soakProfile.mjs';
+import { soakProfile, studyWorkerBlocked } from './soakProfile.mjs';
 import { createStudyMeasurements, requireStudyCoverage } from './studyMeasurements.mjs';
 import { createStudyResourceSample } from './studyResource.mjs';
 import { createQualificationProbe } from './archiveQualificationProbe.mjs';
@@ -23,11 +23,15 @@ const child = spawn(process.execPath, [kind === 'archiver' ? '/app/src/scripts/r
   env: { PATH: '/usr/bin:/bin', ...(kind === 'archiver' ? { CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE: '/configuration/worker.json' } : {}) },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-let lines = 0;
+let lines = 0, blocked = false;
 for (const stream of [child.stdout, child.stderr]) createInterface({ input: stream }).on('line', line => {
   if (++lines > 100 || line.length > 4096) { child.kill('SIGKILL'); return; }
   // Fixed packaged state records only, never raw child stderr or provider bodies.
-  try { console.log(JSON.stringify({ fixture: 'worker-state', kind, at: Date.now(), ...JSON.parse(line) })); }
+  try {
+    const record = JSON.parse(line);
+    console.log(JSON.stringify({ fixture: 'worker-state', kind, at: Date.now(), ...record }));
+    if (studyWorkerBlocked(profile.name, record)) { blocked = true; child.kill('SIGTERM'); }
+  }
   catch { console.log(JSON.stringify({ fixture: 'worker-error', kind })); }
 });
 console.log(JSON.stringify({ fixture: 'worker-start', kind, at: Date.now() }));
@@ -61,13 +65,21 @@ const sampler = setInterval(() => {
 try {
   const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   clearInterval(sampler); await samplePending; await measurements?.stop();
+  const metrics = await resources.metrics();
+  console.log(JSON.stringify({ fixture: 'resources', kind, at: Date.now(), ...metrics }));
+  if (measurements) {
+    const summary = measurements.summary(); let coveragePassed = false;
+    try {
+      requireStudyCoverage(summary, profile.durationMs - 120000 - (kind === 'catalog-verifier' ? 20000 : 0) - 5000);
+      coveragePassed = true;
+    } catch { /* Retain partial observations, then fail closed below. */ }
+    console.log(JSON.stringify({ fixture: 'study-observations', kind, coveragePassed, ...summary }));
+    assert.equal(blocked, false, 'study_archive_blocked');
+    assert.equal(coveragePassed, true, 'study_coverage_invalid');
+  }
   assert.equal(code, 0, 'soak_worker_failed');
   assert.equal(samplingFailure, false, 'soak_sampling_failed');
-  const metrics = await resources.metrics();
   assert.ok(Object.values(metrics.memoryEvents).every(value => Number(value) === 0), 'soak_memory_event');
   assert.ok(metrics.pidsEvents.split(/\s+/).every(value => value === 'max' || value === '0'), 'soak_pid_event');
-  console.log(JSON.stringify({ fixture: 'resources', kind, at: Date.now(), ...metrics }));
-  if (measurements) console.log(JSON.stringify({ fixture: 'study-observations', kind,
-    ...requireStudyCoverage(measurements.summary(), profile.durationMs - 120000 - (kind === 'catalog-verifier' ? 20000 : 0) - 5000) }));
   for (const window of windows.values()) console.log(JSON.stringify({ fixture: 'child-window', kind, ...window }));
 } finally { clearInterval(sampler); await samplePending; await measurements?.stop(); clearTimeout(timer); stop(); process.removeListener('SIGTERM', stop); process.removeListener('SIGINT', stop); }

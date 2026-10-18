@@ -16,3 +16,8 @@ export function soakProfile(name = 'regression') {
   if (typeof name !== 'string' || !Object.hasOwn(profiles, name)) throw new Error('soak_profile_invalid');
   return profiles[name];
 }
+
+/** A load study without archive progress is not a successful concurrency measurement. */
+export function studyWorkerBlocked(profileName, record) {
+  return soakProfile(profileName).name === 'extended' && record?.state === 'archive_blocked';
+}

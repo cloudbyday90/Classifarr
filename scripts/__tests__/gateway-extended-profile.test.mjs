@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateSync } from 'node:zlib';
-import { soakProfile } from '../fixtures/ollamaGatewayRehearsal/soakProfile.mjs';
+import { soakProfile, studyWorkerBlocked } from '../fixtures/ollamaGatewayRehearsal/soakProfile.mjs';
 import { soakArrivals, summarizeSoak, distribution, runSoakArrivals } from '../fixtures/ollamaGatewayRehearsal/soakWorkload.mjs';
 import { studyPadding } from '../fixtures/ollamaGatewayRehearsal/studyHistory.mjs';
 
@@ -26,6 +26,15 @@ test('extended accounting rejects short, missing, failed and duplicate evidence'
   assert.throws(() => summarizeSoak(rows, [...observed.slice(1), observed[1]], 'extended'));
   assert.throws(() => summarizeSoak([{ ...rows[0], outcome: 'dropped' }, ...rows.slice(1)], observed, 'extended'));
   assert.throws(() => distribution(Array(2049).fill(1), 'extended'));
+});
+
+test('blocked extended archive workers stop the study without changing the regression profile', () => {
+  assert.equal(studyWorkerBlocked('extended', { state: 'archive_blocked' }), true);
+  assert.equal(studyWorkerBlocked('regression', { state: 'archive_blocked' }), false);
+  for (const record of [null, {}, { state: 'catalog_not_due' }, { state: 'awaiting_catalog_verification' }]) {
+    assert.equal(studyWorkerBlocked('extended', record), false);
+  }
+  assert.throws(() => studyWorkerBlocked('unknown', { state: 'archive_blocked' }));
 });
 
 test('extended plan keeps late drops explicit and refuses unknown profiles before calls', async () => {

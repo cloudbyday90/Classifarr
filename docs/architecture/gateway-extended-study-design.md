@@ -92,6 +92,10 @@ On cancellation, timeout, event-counter increase, invalid/missing mandatory
 evidence or insufficient storage, fail nonzero and stop only owned fixture
 processes. Never reset persistent attempts, replay unknown work or auto-rerun a
 failed study. Verify cleanup even after failure; unresolved cleanup is not a pass.
+After the first experiment exposed a blocked assessment, the extended wrapper
+also stops immediately on `archive_blocked`, emits bounded partial observations
+with failed coverage, and exits nonzero. A blocked worker must not silently turn
+this into an inference-only test. The original regression profile is unchanged.
 
 ## Controlled rotation lane
 

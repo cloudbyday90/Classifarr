@@ -75,10 +75,12 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
         docker(['start', name]); return name;
       };
       const check = name => {
-        const value = inspect(name); assert.equal(value.State.Running, false); assert.equal(value.State.OOMKilled, false); assert.equal(value.State.ExitCode, 0);
+        const value = inspect(name);
         const rows = records(docker(['logs', name]));
+        rows.forEach(report);
+        assert.equal(value.State.Running, false); assert.equal(value.State.OOMKilled, false); assert.equal(value.State.ExitCode, 0);
         assert.ok(rows.some(row => row.fixture === 'resources')); assert.ok(!rows.some(row => row.fixture === 'worker-error'));
-        rows.forEach(report); return rows;
+        return rows;
       };
       const once = async kind => {
         const name = create(kind, 'once'), deadline = Date.now() + 200000;
@@ -107,7 +109,9 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
           stopped = true; report({ stage: 'scheduled_workers_stopped' });
         }
         for (const kind of ['archiver', 'catalog-verifier']) if (!stopped && (kind === 'archiver' ? workerAt : verifierAt)) {
-          assert.equal(inspect(names[kind]).State.Running, true, 'soak_worker_early_exit');
+          const running = inspect(names[kind]).State.Running;
+          if (!running) check(names[kind]);
+          assert.equal(running, true, 'soak_worker_early_exit');
         }
         await delay(2000);
       }
