@@ -8,7 +8,7 @@ import { summarizeRestoreHeap, sampleRestoreAllocations, requireRestoreHeapSumma
 import { RESTORE_METRICS, createRestoreMeasurements, requireRestoreCoverage } from '../fixtures/ollamaGatewayRehearsal/restoreStudyMetrics.mjs';
 import { restoreStudyDockerArgs, assertRestoreStudySandbox, requireRestoreStudyRecords } from '../lib/gatewayRestoreMemoryStudy.mjs';
 
-const identity = { archiveId: '019f0000-0000-7000-8000-000000000001', dumpBytes: 233000000,
+const identity = { archiveId: '019f0000-0000-7000-8000-000000000001', dumpBytes: 233000000, catalogAttempt:2,
   dumpSha256: 'a'.repeat(64), manifestSha256: 'b'.repeat(64), sourceSha256: 'c'.repeat(64) };
 const receipt = { kind: 'catalog_verification', version: 1, archiveId: identity.archiveId, manifestSha256: identity.manifestSha256,
   dumpSha256: identity.dumpSha256, rowsRestored: true, dependenciesAvailable: true, runtimeEnabled: false, purgeAuthorized: false };
@@ -25,7 +25,7 @@ test('exact identity and full successful receipt are required; a fulfilled false
     { dumpSha256:'d'.repeat(64) },{ archiveId:'019f0000-0000-7000-8000-000000000002' },{ extra:1 }]) {
     assert.throws(() => requireRestoreReceipt({ ...receipt,...patch }, identity));
   }
-  for (const patch of [{ archiveId:identity.archiveId.replace('-7000','-4000') },{ dumpBytes:268435457 },{ extra:1 }]) {
+  for (const patch of [{ archiveId:identity.archiveId.replace('-7000','-4000') },{ dumpBytes:268435457 },{ catalogAttempt:1 },{ catalogAttempt:3 },{ extra:1 }]) {
     assert.throws(() => validateRestoreIdentity({ ...identity,...patch }));
   }
 });

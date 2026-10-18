@@ -23,13 +23,19 @@ try {
     (SELECT count(*)::int FROM gateway_archive.job WHERE status='failed') AS failed`)).rows[0];
   assert.deepEqual(counts, { snapshots: 0, dependencies: 0, failed: 3000 });
   assert.equal(catalog['gateway_catalog.job'].count, 1); assert.equal(catalog['gateway_cleanup.operation'].count, 0);
-  const jobs = (await client.query(`SELECT id,manifest_sha256,manifest->'dump' AS dump FROM gateway_catalog.job
-    WHERE status='awaiting_verification' AND attempt=1`)).rows; assert.equal(jobs.length, 1);
+  const jobs = (await client.query(`SELECT id,attempt,compatible_revisions,manifest_sha256,manifest->'dump' AS dump FROM gateway_catalog.job
+    WHERE status='awaiting_verification'`)).rows; assert.equal(jobs.length, 1);
+  assert.equal(jobs[0].attempt, 2);
+  const prerequisite = (await client.query(`SELECT count(*)::int AS n FROM gateway_archive.job
+    WHERE status='verified' AND attempt=1 AND revision=ANY($1::text[])`, [jobs[0].compatible_revisions])).rows[0];
+  assert.equal(prerequisite.n, 1);
   const identity = validateRestoreIdentity({ archiveId: jobs[0].id, manifestSha256: jobs[0].manifest_sha256,
-    dumpSha256: jobs[0].dump.sha256, dumpBytes: jobs[0].dump.bytes,
+    dumpSha256: jobs[0].dump.sha256, dumpBytes: jobs[0].dump.bytes, catalogAttempt: jobs[0].attempt,
     sourceSha256: createHash('sha256').update(JSON.stringify({ archive, catalog, counts, admission })).digest('hex') });
   await client.query('ROLLBACK');
   if (action === 'before') await writeFile('/fixtures/restore-source.json', JSON.stringify(identity), { mode: 0o600, flag: 'wx' });
   else assert.deepEqual(identity, JSON.parse(await readFile('/fixtures/restore-source.json', 'utf8')));
   console.log(JSON.stringify({ fixture: 'restore-source', action, ...identity, failedHistoryRows: 3000, sourceUnchanged: action === 'after' }));
+} catch {
+  console.log(JSON.stringify({ fixture: 'restore-source-failed', action })); process.exitCode = 1;
 } finally { await client.end(); }

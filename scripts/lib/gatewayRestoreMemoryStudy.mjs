@@ -4,6 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { RESTORE_STUDY, restoreStudyLane } from '../fixtures/ollamaGatewayRehearsal/restoreStudyContract.mjs';
 import { requireRestoreCoverage } from '../fixtures/ollamaGatewayRehearsal/restoreStudyMetrics.mjs';
 import { requireRestoreHeapSummary } from '../fixtures/ollamaGatewayRehearsal/restoreStudyHeap.mjs';
+import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 
 export const RESTORE_STUDY_FILES = Object.freeze(['restoreStudyContract.mjs','restoreStudyHeap.mjs',
   'restoreStudyMetrics.mjs','restoreStudySource.mjs','restoreStudyWorker.mjs']);
@@ -59,9 +60,10 @@ export function requireRestoreStudyRecords(rows, lane) {
 /** Only called from the existing isolated producer. No source authority is passed into a verifier. */
 export async function runGatewayRestoreMemoryStudy({ docker, image, source, label, names, stores, mount, remove, inspect, once, report }) {
   const sourceCheck = action => {
-    const output = docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
-      'node', '/fixtures/restoreStudySource.mjs', action]);
-    for (const line of output.trim().split('\n').filter(Boolean)) report(JSON.parse(line));
+    const output = runDockerCheckCommand(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
+      'node', '/fixtures/restoreStudySource.mjs', action], { timeoutMs: 150000 });
+    for (const line of output.stdout.trim().split('\n').filter(line => line.startsWith('{'))) report(JSON.parse(line));
+    assert.equal(output.ok, true, 'restore_study_source_failed');
   };
   assert.ok((await once('archiver')).some(row => row.state === 'awaiting_catalog_verification'));
   sourceCheck('before');

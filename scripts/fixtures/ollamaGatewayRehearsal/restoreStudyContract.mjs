@@ -7,9 +7,11 @@ const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-7[a
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 export function restoreStudyLane(lane) { assert.ok(['natural','allocations'].includes(lane), 'restore_study_lane'); return lane; }
 export function validateRestoreIdentity(value) {
-  assert.deepEqual(Object.keys(value).sort(), ['archiveId','dumpBytes','dumpSha256','manifestSha256','sourceSha256']);
+  assert.deepEqual(Object.keys(value).sort(), ['archiveId','catalogAttempt','dumpBytes','dumpSha256','manifestSha256','sourceSha256']);
   assert.ok(uuid(value.archiveId) && hash(value.dumpSha256) && hash(value.manifestSha256) && hash(value.sourceSha256));
   assert.ok(Number.isSafeInteger(value.dumpBytes) && value.dumpBytes > 220000000 && value.dumpBytes <= 268435456);
+  // No inference advances the revision: prerequisite archive 1 + catalog 2 share the existing budget.
+  assert.equal(value.catalogAttempt, 2);
   return value;
 }
 export function requireRestoreReceipt(receipt, identity) {

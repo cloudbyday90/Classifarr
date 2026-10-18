@@ -52,6 +52,11 @@ fingerprints before measurement; compare them afterward. Do not publish repeated
 receipts, accept the source catalog, refund attempts, edit clocks or delete
 history. Restore the same immutable artifact to reduce input variation.
 
+With no new inference advancing the revision, the prerequisite archive consumes
+shared attempt 1 and the catalog consumes attempt 2. Assert that relationship and
+preserve the original attempt-2 record, rather than assuming the attempt-1 catalog
+seen in the concurrent-inference study. Repeated restore calls admit no new job.
+
 Natural lane: one-minute baseline, five sequential restores with four one-minute
 gaps, then five minutes idle. Allocation lane: fresh verifier process/container,
 five sequential restores without artificial quiet periods; profiling surrounds
