@@ -6,7 +6,7 @@ import { runWorkspaceTests, summarizeResults } from '../../../scripts/run-worksp
 import { withConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const { scripts } = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
-const preflightScripts = ['check-copyright', 'inventory:ownership:check', 'lint:server:dependencies', 'lint:server:dependencies:production'];
+const preflightScripts = ['check-copyright', 'inventory:ownership:check', 'lint:server:dependencies', 'lint:server:dependencies:production', 'test:tooling:gateway'];
 
 test('local CI runs copyright, ownership and dependency checks before behavioral tests', () => {
     expect(scripts['test:ci']).toMatch(/^npm run test:ci:preflight && /u);

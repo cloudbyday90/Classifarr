@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
 import pg from 'pg';
-import { ARCHIVE_TABLES } from './archiveContract.mjs';
+import { archiveDeletionProbes } from './archiveRestoreStatements.mjs';
 import { captureArchiveContent, preservesArchiveContent } from './archiveContent.mjs';
 import { archiveDirectory, readVerifiedGatewayArchive } from './archiveFiles.mjs';
 import { gatewayError } from './errors.mjs';
@@ -105,8 +105,8 @@ export async function verifyArchiveRestore(directory,scratch,signal,catalog = nu
       if (preservesArchiveContent(prefix,prior.content)) preserves.push(prior.archiveId);
     }
     await client.query('COMMIT');
-    for (const name of ARCHIVE_TABLES.filter(table => table !== 'admission')) {
-      try { await client.query(`DELETE FROM ollama_gateway.${name} WHERE false`); throw gatewayError('gateway_archive_restore_mutable'); }
+    for (const query of archiveDeletionProbes()) {
+      try { await client.query(query); throw gatewayError('gateway_archive_restore_mutable'); }
       catch (error) { if (error.code !== '42501') throw error; }
     }
     const after = await readVerifiedGatewayArchive(directory,signal);

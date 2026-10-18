@@ -13,10 +13,10 @@ import { runGatewayInferenceSoak } from './lib/gatewayInferenceSoak.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
 if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling','--catalog-qualification',
-  '--catalog-memory','--catalog-memory-baseline','--inference-soak','--extended-soak','--rotation-study'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
+  '--catalog-memory','--catalog-memory-baseline','--inference-soak','--extended-soak','--rotation-study','--history-profile'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
-if (['--inference-soak','--extended-soak'].includes(mode)) {
-  await runGatewayInferenceSoak(image, revision, mode === '--extended-soak' ? 'extended' : 'regression');
+if (['--inference-soak','--extended-soak','--history-profile'].includes(mode)) {
+  await runGatewayInferenceSoak(image, revision, mode === '--inference-soak' ? 'regression' : 'extended', mode === '--history-profile');
 } else if (['--catalog-memory','--catalog-memory-baseline'].includes(mode)) {
   await runGatewayArchiveQualification(image, revision, false, true, 'catalog-wide', mode === '--catalog-memory');
 } else if (['--catalog-scheduling','--rotation-study'].includes(mode)) {

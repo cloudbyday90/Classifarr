@@ -15,6 +15,7 @@ const entrySelect = `SELECT b.id AS "bindingId",b.request_id AS "requestId",b.at
   FROM ollama_gateway.request_binding b
   LEFT JOIN ollama_gateway.completion_receipt c ON c.request_id=b.request_id
   LEFT JOIN ollama_gateway.upstream_peer_observation p ON p.binding_id=b.id`;
+const retentionEntriesQuery = entrySelect + ' WHERE b.id=ANY($3::uuid[]) ORDER BY b.attempt';
 
 // Only call inside the archive's read-only snapshot, never a pooled standalone query.
 export async function readRetentionState(client) {
@@ -39,6 +40,6 @@ export async function captureRetentionInventory(client, report) {
 }
 
 export async function readRetentionEntries(client, activeRequest, cutoff, bindingIds) {
-  return (await client.query(`${entrySelect} WHERE b.id=ANY($3::uuid[]) ORDER BY b.attempt`,
+  return (await client.query(retentionEntriesQuery,
     [activeRequest, cutoff, bindingIds])).rows;
 }

@@ -19,10 +19,10 @@ function manifest(report = inventory(), classification = 'unresolved') {
 }
 const failures = result => result.failures.map(item => item.reason);
 
-test('v7 admission restore is an explicit reviewed dependency, including non-SQL guard changes', () => {
-    const path = 'server/src/ollamaGateway/catalogAdmissionRestore.mjs';
+test.each(['catalogAdmissionRestore', 'archiveRestoreStatements', 'archiveHistoryQuery'])('%s is an explicit reviewed dependency, including non-SQL guard changes', name => {
+    const path = `server/src/ollamaGateway/${name}.mjs`;
     expect(INGESTION_GUARDS).toContain(path);
-    const source = readFileSync(new URL('../ollamaGateway/catalogAdmissionRestore.mjs', import.meta.url), 'utf8');
+    const source = readFileSync(new URL(`../ollamaGateway/${name}.mjs`, import.meta.url), 'utf8');
     const report = inventory([{ path, source }], [], [path]);
     const review = JSON.parse(readFileSync(new URL('../scripts/inventoryWriterCompatibility/ownershipReview.json', import.meta.url), 'utf8'));
     const entry = review.entries.find(item => item.path === path);

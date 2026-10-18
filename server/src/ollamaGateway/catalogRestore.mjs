@@ -1,16 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readFile } from 'node:fs/promises';
-import { ARCHIVE_TABLES } from './archiveTables.mjs';
 import { catalogTables } from './catalogContract.mjs';
 import { gatewayError } from './errors.mjs';
-
-const guards = Object.freeze([
-  ['gateway_archive.protection', 'archive_protection_guard'],
-  ['gateway_archive.protection', 'archive_protection_fence'],
-  ['gateway_archive.protection', 'protection_cleanup_exclusion'],
-  ['gateway_archive.job', 'archive_job_protection_guard'],
-  ['gateway_archive.job', 'archive_cleanup_exclusion'],
-]);
+import { catalogGuardStatements, catalogMutationDenialStatements } from './archiveRestoreStatements.mjs';
 
 /** Only on the fresh, private verifier database. Never install these changes on a source. */
 export async function prepareCatalogRestore(client, version = 1) {
@@ -21,7 +13,7 @@ export async function prepareCatalogRestore(client, version = 1) {
     await client.query(await readFile('/app/database/ollama-gateway-catalog/current.sql', 'utf8'));
     await client.query('ALTER TABLE gateway_catalog.job DISABLE TRIGGER catalog_job_guard; ALTER TABLE gateway_archive.job DISABLE TRIGGER archive_catalog_admission');
   }
-  for (const [table, trigger] of guards) await client.query(`ALTER TABLE ${table} DISABLE TRIGGER ${trigger}`);
+  for (const statement of catalogGuardStatements(false)) await client.query(statement);
   await client.query(`DO $$ DECLARE r record; BEGIN FOR r IN
     SELECT conrelid::regclass AS relation,conname FROM pg_constraint
     WHERE connamespace IN ('gateway_archive'::regnamespace,'gateway_cleanup'::regnamespace) AND contype='f'
@@ -29,7 +21,7 @@ export async function prepareCatalogRestore(client, version = 1) {
 }
 
 export async function sealCatalogRestore(client, restricted, version = 1) {
-  for (const [table, trigger] of guards) await client.query(`ALTER TABLE ${table} ENABLE TRIGGER ${trigger}`);
+  for (const statement of catalogGuardStatements(true)) await client.query(statement);
   await client.query('REVOKE INSERT ON ALL TABLES IN SCHEMA ollama_gateway,gateway_archive,gateway_cleanup FROM archive_restore');
   if (version >= 2) await client.query(`ALTER TABLE gateway_catalog.job ENABLE TRIGGER catalog_job_guard;
     ALTER TABLE gateway_archive.job ENABLE TRIGGER archive_catalog_admission;
@@ -40,11 +32,9 @@ export async function sealCatalogRestore(client, restricted, version = 1) {
   // This is the actual unprivileged login, not SET ROLE on the owner connection.
   await restricted.connect();
   try {
-    for (const table of [...ARCHIVE_TABLES.map(name => `ollama_gateway.${name}`), ...catalogTables(version)]) {
-      for (const query of [`DELETE FROM ${table} WHERE false`, `UPDATE ${table} SET id=id WHERE false`]) {
-        try { await restricted.query(query); throw gatewayError('gateway_catalog_restore_guards'); }
-        catch (error) { if (error.code !== '42501') throw error; }
-      }
+    for (const query of catalogMutationDenialStatements(version)) {
+      try { await restricted.query(query); throw gatewayError('gateway_catalog_restore_guards'); }
+      catch (error) { if (error.code !== '42501') throw error; }
     }
     try { await restricted.query('SELECT gateway_cleanup.reconcile(NULL)'); throw gatewayError('gateway_catalog_restore_guards'); }
     catch (error) { if (error.code !== '42501') throw error; }

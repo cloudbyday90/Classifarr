@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Keep gateway archive-history reads narrow before eligible full-row hashing,
+  preserving complete metadata, fingerprints, limits and retry budgets. Add
+  isolated query-plan/equivalence diagnostics and explicit fixed restore
+  statements; repair CI contract expectations without relaxing security gates.
+
 - Add a bounded 30-minute gateway load study with varied historical data,
   memory/cache and transaction observations, plus a separate real-restore rotation
   drill. Preserve production cadence, limits and retry rules; renew the narrowly

@@ -1,11 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readFile } from 'node:fs/promises';
+import pg from 'pg';
 import { getPool } from './setup.mjs';
 import { archiveJobRepository } from '../../ollamaGateway/archiveJobRepository.mjs';
+import { readArchiveHistory } from '../../ollamaGateway/archiveHistoryReader.mjs';
+import { HISTORY_REFERENCE_SQL, HISTORY_REFERENCE_VALUES } from '../../../../scripts/fixtures/ollamaGatewayRehearsal/historyQueryReference.mjs';
+import { studyPadding } from '../../../../scripts/fixtures/ollamaGatewayRehearsal/studyHistory.mjs';
 
 let client;
 beforeEach(async () => {
   client = await getPool().connect();
+  await client.query("SET timezone='UTC'; SET datestyle='ISO, YMD'");
   await client.query('DROP SCHEMA IF EXISTS gateway_catalog CASCADE; DROP SCHEMA IF EXISTS gateway_cleanup CASCADE; DROP SCHEMA IF EXISTS gateway_archive CASCADE');
   await client.query(await readFile(new URL('../../../../database/ollama-gateway-archive/current.sql',import.meta.url),'utf8'));
 });
@@ -95,4 +100,52 @@ test('existing row capacity still refuses excess historical jobs without droppin
   await seed(10001,0,'failed');
   await expect(archiveJobRepository(client).list()).rejects.toMatchObject({ code:'gateway_archive_job_capacity' });
   expect((await client.query('SELECT sum(attempt)::int AS n FROM gateway_archive.job')).rows[0].n).toBe(10001);
+});
+
+// Keep microsecond precision in the raw comparison, before the production native Date boundary.
+const rawTypes = { getTypeParser(oid, format) { return [1114,1184].includes(oid) ? value => value : pg.types.getTypeParser(oid, format); } };
+async function compareRawHistory() {
+  const expected = await client.query({ text: HISTORY_REFERENCE_SQL, values: HISTORY_REFERENCE_VALUES, types: rawTypes });
+  let observed;
+  const rows = await readArchiveHistory({ query: async (text, values) => {
+    observed = await client.query({ text, values, types: rawTypes }); return observed;
+  } });
+  expect(observed.rows).toEqual(expected.rows);
+  expect(observed.fields.map(field => [field.name, field.dataTypeID])).toEqual(expected.fields.map(field => [field.name, field.dataTypeID]));
+  expect(rows).toHaveLength(expected.rows[0].history_count);
+  return observed.rows;
+}
+
+test.each(['exporting','awaiting_verification','verified','failed','interrupted','retiring','retired'])
+('raw SQL history, budgets and fingerprints equal the fixed reference for %s',async status => {
+  await seed(1,123,status); await seed(2,0,'failed');
+  const failed = (await client.query("SELECT id FROM gateway_archive.job WHERE status='failed' ORDER BY id")).rows;
+  for (const [index, row] of failed.entries()) await client.query(
+    'UPDATE gateway_archive.job SET manifest=jsonb_build_object(\'nested\',$2::text) WHERE id=$1',
+    [row.id, studyPadding(index).slice(0, 1000 + index * 31000)]);
+  await client.query("UPDATE gateway_archive.job SET created_at='2026-10-18T00:00:00.000001Z',completed_at='2026-10-18T00:00:00.000002Z'");
+  if (['exporting','failed','interrupted'].includes(status)) await client.query(
+    'UPDATE gateway_archive.job SET manifest=NULL,manifest_sha256=NULL,receipt=NULL,completed_at=NULL,retry_after=NULL WHERE status=$1',[status]);
+  const rows = await compareRawHistory();
+  expect(rows).toHaveLength(3);
+  expect(rows.every(row => row.created_at.endsWith('000001+00'))).toBe(true);
+  expect(rows.every(row => row.protection === null)).toBe(true);
+  expect(rows.filter(row => row.evidence_sha256 !== null)).toHaveLength(['verified','awaiting_verification','retiring'].includes(status) ? 1 : 0);
+});
+
+test('full protection metadata stays equivalent and a legitimate ready-at change invalidates old evidence',async () => {
+  await seed(2,10);
+  const ids = (await client.query('SELECT id FROM gateway_archive.job ORDER BY id')).rows.map(row => row.id);
+  await client.query(`UPDATE gateway_archive.job SET ledger_id=$1,revision=encode(sha256(convert_to(id::text,'UTF8')),'hex'),
+    manifest='{"version":4,"retention":{"entries":[{}]}}',
+    receipt=jsonb_build_object('version',2,'verified',true,'manifestSha256',repeat('b',64))`,[ids[0]]);
+  await client.query(`INSERT INTO gateway_archive.protection(ledger_id,provider_hash,candidates_sha256,first_archive_id,second_archive_id,
+    first_manifest_sha256,second_manifest_sha256) VALUES($1,repeat('a',64),repeat('c',64),$2,$3,repeat('b',64),repeat('b',64))`,[ids[0],...ids]);
+  const before = await compareRawHistory();
+  const complete = (await client.query('SELECT to_jsonb(p) AS body FROM gateway_archive.protection p')).rows[0].body;
+  expect(before.every(row => JSON.stringify(row.protection) === JSON.stringify(complete))).toBe(true);
+  const repository = archiveJobRepository(client), [selected] = await repository.list();
+  await client.query('UPDATE gateway_archive.protection SET ready_at=clock_timestamp()');
+  const after = await compareRawHistory(); expect(after[0].protection.ready_at).not.toBeNull();
+  await expect(repository.evidence(selected)).rejects.toMatchObject({ code: 'gateway_archive_job_fence' });
 });
