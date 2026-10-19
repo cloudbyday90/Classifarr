@@ -2,8 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { ROW_ORDER, ROW_BOUND_FIXTURES, requireRowParity, requireArrayFields, requireRowRuns, rowPromotionScreen } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
+import { ROW_ORDER, requireRowParity, requireArrayFields, requireRowRuns, rowPromotionScreen } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
 import { bindStudySources } from '../lib/gatewayStudyBinding.mjs';
+import { studyPolicy } from '../lib/gatewayStudyPolicy.mjs';
+import { STUDY_BOOTSTRAP } from '../lib/gatewayStudyBootstrap.mjs';
 import { observeRowRun } from '../fixtures/ollamaGatewayRehearsal/rowModeObservations.mjs';
 import { requireRowModeRecords, assertRowModeSandbox } from '../lib/gatewayRowModeStudy.mjs';
 
@@ -74,17 +76,17 @@ test('excluded dependency rows retain sizes, booleans, body-null and selected-se
 });
 test('source binding rejects dirty/replaced/uncommitted files and records every copied fixture', () => {
   const revision = 'a'.repeat(40), image = `sha256:${'b'.repeat(64)}`;
-  const git = args => args[0] === 'rev-parse' ? revision : args[0] === 'status' ? '' : 'public\n';
+  const git = args => args[0] === 'rev-parse' ? revision : args[0] === 'status' ? '' :
+    args[0] === 'ls-tree' ? `100644 blob ${'c'.repeat(40)}\t${args.at(-1)}` : 'public\n';
   const result = bindStudySources({ revision,image,read:() => 'public\r\n',git });
-  assert.deepEqual(Object.keys(result.manifest.files),ROW_BOUND_FIXTURES); assert.match(result.sha256,/^[a-f0-9]{64}$/);
+  assert.deepEqual(Object.keys(result.manifest.files),studyPolicy('rowmode','extended').files); assert.match(result.sha256,/^[a-f0-9]{64}$/);
   assert.throws(() => bindStudySources({ revision,image,read:() => 'changed',git }));
   assert.throws(() => bindStudySources({ revision,image,read:() => 'public\n',git:args => args[0] === 'status' ? ' M source' : git(args) }));
   assert.throws(() => bindStudySources({ revision:'c'.repeat(40),image,read:() => 'public\n',git }));
 });
 test('manifest identity is passed through the inspected command and checked before fixture imports', () => {
-  const worker = read(fixtureUrl('rowModeWorker.mjs'));
-  assert.ok(worker.indexOf('assert.equal(sha(raw),process.argv[3])') < worker.indexOf('JSON.parse(raw)'));
-  assert.ok(worker.indexOf('assert.equal(sha(raw),process.argv[3])') < worker.indexOf("await import('./rowModeContract.mjs')"));
+  assert.ok(STUDY_BOOTSTRAP.indexOf('check.equal(sha(raw),expected)') < STUDY_BOOTSTRAP.indexOf('JSON.parse(raw)'));
+  assert.ok(STUDY_BOOTSTRAP.indexOf('check.equal(sha(raw),expected)') < STUDY_BOOTSTRAP.indexOf('await import(`file:///fixtures/'));
   assert.throws(() => assertRowModeSandbox({Config:{Cmd:['/fixtures/rowModeWorker.mjs','natural','a'.repeat(64)]}},'image','natural',{},'b'.repeat(64)));
   assert.throws(() => assertRowModeSandbox({},'image','natural',{},'invalid'));
 });

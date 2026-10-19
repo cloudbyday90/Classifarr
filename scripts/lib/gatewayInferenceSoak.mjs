@@ -2,15 +2,17 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { soakProfile } from '../fixtures/ollamaGatewayRehearsal/soakProfile.mjs';
 import { finishGatewayStudyCleanup } from './gatewayStudyCleanup.mjs';
-import { RESTORE_STUDY_FILES, runGatewayRestoreMemoryStudy } from './gatewayRestoreMemoryStudy.mjs';
-import { ROW_BOUND_FIXTURES } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
-import { bindStudySources, verifyCopiedStudySources } from './gatewayStudyBinding.mjs';
+import { runGatewayRestoreMemoryStudy } from './gatewayRestoreMemoryStudy.mjs';
+import { bindStudySources } from './gatewayStudyBinding.mjs';
+import { stageStudyInputs,assertStudyVolumes,assertStudyCommand } from './gatewayStudyInputs.mjs';
+import { createStudyExecution } from './gatewayStudyExecution.mjs';
+import { studyNodeArgs } from './gatewayStudyBootstrap.mjs';
+import { requireBoundStudyRecords,studyBindingRecord } from './gatewayStudyPolicy.mjs';
 import { runGatewayRowModeStudy } from './gatewayRowModeStudy.mjs';
 
 const docker = args => execFileSync('docker', args, { encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576 });
@@ -23,11 +25,12 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
   assert.ok(['inference','history','restores','rowmode'].includes(study)); assert.ok(study === 'inference' || profile.name === 'extended');
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
-  const binding = study === 'rowmode' ? bindStudySources({ revision,image }) : null;
+  const bind = () => bindStudySources({ revision,image,study,profile:profile.name });
+  const binding = bind();
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const key = 'io.classifarr.inference-soak', label = `${key}=${suffix}`;
-  const stores = Object.fromEntries(['archives', 'receipts', 'catalogs', 'socket', 'configuration', 'fixtures'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
-  const names = Object.fromEntries(['archiver', 'verifier', 'catalog-verifier','restore-natural','restore-allocations','row-natural','row-allocations'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
+  const stores = Object.fromEntries(['archives', 'receipts', 'catalogs', 'socket', 'configuration', 'fixtures','results'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
+  const names = Object.fromEntries(['stager','archiver', 'verifier', 'catalog-verifier','restore-natural','restore-allocations','row-natural','row-allocations'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
   const inspect = name => JSON.parse(docker(['inspect', name]))[0];
   const mount = (kind, target, readonly = false) => ['--mount', `type=volume,source=${stores[kind]},target=${target}${readonly ? ',readonly' : ''}`];
   const remove = name => {
@@ -37,28 +40,21 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
   };
   const command = (args, options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
     'run', '--network', 'none', '--memory', '2g', '--memory-swap', '2g', '--cpus', '2', '--pids-limit', '512',
-    ...Object.keys(stores).flatMap(kind => mount(kind, kind === 'socket' ? '/var/run/postgresql' : `/${kind}`)), ...args.slice(1)] : args, options);
+    ...Object.keys(stores).flatMap(kind => mount(kind, kind === 'socket' ? '/var/run/postgresql' : `/${kind}`,kind === 'fixtures')), ...args.slice(1)] : args, options);
   try {
     for (const volume of Object.values(stores)) {
       assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
       docker(['volume', 'create', '--label', label, volume]);
     }
+    stageStudyInputs({docker,image,binding,name:names.stager,label,stores,inspect,remove});
+    assert.deepEqual(bind(),binding);
     await withSchemaCheckContainer({ imageName: image, runSpec: spec, command, action: async () => {
+      try {
       const source = spec.containerName;
-      const paths = ['/archives', '/receipts', '/catalogs', '/configuration', '/fixtures'];
+      const paths = ['/archives', '/receipts', '/catalogs', '/configuration', '/results'];
       docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', ...paths]);
       docker(['exec', '--user', '0:0', source, 'chmod', '700', ...paths]);
-      for (const file of study === 'rowmode' ? ROW_BOUND_FIXTURES : ['soakData.mjs', 'soakWorker.mjs', 'soakInference.mjs', 'soakWorkload.mjs', 'soakProfile.mjs',
-        'studyHistory.mjs','studyMeasurements.mjs','studyResource.mjs','studyDatabase.mjs','archiveQualificationProbe.mjs','archiveQualificationResources.mjs',
-        'historyQueryProfile.mjs','historyQueryReference.mjs','historyPlanSummary.mjs', ...RESTORE_STUDY_FILES]) {
-        docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal', file), `${source}:/fixtures/${file}`]);
-      }
-      if (binding) { assert.deepEqual(bindStudySources({ revision,image }),binding); verifyCopiedStudySources(source,binding); }
-      const fixture = (action, ...args) => records(docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
-        '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`, source,
-        'node', '/fixtures/soakData.mjs', action, ...args]));
-      const read = path => JSON.parse(docker(['exec', '--user', '1000:1000', source, 'node', '--input-type=module', '-e',
-        'import {readFile} from "node:fs/promises";try{console.log(await readFile(process.argv[1],"utf8"))}catch(e){if(e.code!=="ENOENT")throw e;console.log("null")}', path]));
+      const {fixture,read,execFixture} = createStudyExecution({docker,source,binding,stores,inspect,report});
       const create = (kind, mode) => {
         const name = names[kind], archiver = kind === 'archiver'; remove(name);
         const memory = archiver ? '256m' : '1536m';
@@ -66,16 +62,17 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
           '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', memory, '--memory-swap', memory,
           '--cpus', archiver ? '0.5' : '1', '--pids-limit', archiver ? '32' : '64',
           ...mount('archives', '/archives', !archiver), ...mount('receipts', '/receipts', archiver), ...mount('catalogs', '/catalogs', !archiver),
-          ...mount('fixtures', '/fixtures', true), ...(archiver ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] :
+          ...mount('fixtures', '/fixtures', true), ...mount('results','/results',true), ...(archiver ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] :
             ['--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
           '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated',
           '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`,
-          '--entrypoint', 'node', image, '/fixtures/soakWorker.mjs', kind, mode]);
+          '--entrypoint', 'node', image,...studyNodeArgs(binding,'soakWorker.mjs',[kind,mode])]);
         const value = inspect(name); assert.equal(value.Image, image);
+        assertStudyCommand(value,binding,'soakWorker.mjs',[kind,mode]); assertStudyVolumes(value,stores);
         assert.equal(value.HostConfig.NetworkMode, 'none'); assert.equal(value.HostConfig.ReadonlyRootfs, true);
         assert.equal(value.Config.User, '1000:1000'); assert.equal(value.HostConfig.MemorySwap, value.HostConfig.Memory);
         assert.equal(Object.keys(value.HostConfig.PortBindings ?? {}).length, 0);
-        const allowed = archiver ? [...paths, '/source-socket'] : ['/archives', '/receipts', '/catalogs', '/fixtures'];
+        const allowed = archiver ? [...paths, '/fixtures','/source-socket'] : ['/archives', '/receipts', '/catalogs', '/fixtures','/results'];
         assert.equal(value.Mounts.length, allowed.length);
         assert.ok(value.Mounts.every(item => allowed.includes(item.Destination) && item.RW ===
           (archiver ? ['/archives', '/catalogs'].includes(item.Destination) : item.Destination === '/receipts')));
@@ -88,7 +85,7 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
         rows.forEach(report);
         assert.equal(value.State.Running, false); assert.equal(value.State.OOMKilled, false); assert.equal(value.State.ExitCode, 0);
         assert.ok(rows.some(row => row.fixture === 'resources')); assert.ok(!rows.some(row => row.fixture === 'worker-error'));
-        return rows;
+        return requireBoundStudyRecords(rows,binding,'soakWorker.mjs');
       };
       const once = async kind => {
         const name = create(kind, 'once'), deadline = Date.now() + 200000;
@@ -99,34 +96,34 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
       assert.ok((await once('archiver')).some(row => row.state === 'awaiting_verification'));
       assert.ok((await once('verifier')).some(row => row.state === 'verified')); fixture('wide').forEach(report);
       if (study === 'rowmode') {
-        await runGatewayRowModeStudy({ docker,image,revision,source,label,names,stores,mount,remove,inspect,once,report,binding });
+        await runGatewayRowModeStudy({ docker,image,revision,source,label,names,stores,mount,remove,inspect,once,report,binding,execFixture });
         return;
       }
       if (study === 'restores') {
-        await runGatewayRestoreMemoryStudy({ docker, image, source, label, names, stores, mount, remove, inspect, once, report });
+        await runGatewayRestoreMemoryStudy({ docker, image, source, label, names, stores, mount, remove, inspect, once, report,binding,execFixture });
         return;
       }
       if (study === 'history') {
-        const output = runDockerCheckCommand(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
-          'node', '/fixtures/historyQueryProfile.mjs'], { timeoutMs: 75000 });
-        const rows = records(output.stdout); rows.forEach(report);
+        const output = execFixture('historyQueryProfile.mjs',[],{timeoutMs:75000});
+        const rows = requireBoundStudyRecords(records(output.stdout),binding,'historyQueryProfile.mjs'); rows.forEach(report);
         assert.equal(output.ok, true, 'history_query_profile_failed');
         assert.ok(rows.some(row => row.fixture === 'history-query-profile' && row.equivalent && row.productionBudgetPassed));
         return;
       }
       docker(['exec', '-d', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`,
-        source, 'node', '/fixtures/soakInference.mjs']);
+        source, 'node',...studyNodeArgs(binding,'soakInference.mjs')]);
       const deadline = Date.now() + profile.runnerMs; let workerAt, verifierAt, stopped = false, result;
       const windows = [];
-      while (!(result = read('/fixtures/soak-result.json'))) {
+      while (!(result = read('/results/soak-result.json'))) {
+        assert.equal(read('/results/binding-failed.json'),null,'inference_bootstrap_failed');
         assert.ok(Date.now() < deadline, 'soak_deadline');
-        if (!workerAt && read('/fixtures/soak-archives.json')) {
+        if (!workerAt && read('/results/soak-archives.json')) {
           create('archiver', 'loop'); workerAt = Date.now(); report({ stage: 'scheduled_archive_started' });
         }
         if (workerAt && !verifierAt && Date.now() - workerAt >= 20000) {
           create('catalog-verifier', 'loop'); verifierAt = Date.now();
         }
-        if (workerAt && !stopped && read('/fixtures/soak-after.json')) {
+        if (workerAt && !stopped && read('/results/soak-after.json')) {
           for (const kind of ['archiver', 'catalog-verifier']) {
             docker(['stop', '--time', '20', names[kind]]); windows.push(...check(names[kind]).filter(row => row.fixture === 'child-window'));
           }
@@ -139,10 +136,12 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
         }
         await delay(2000);
       }
+      assert.deepEqual(read('/results/inference-binding.json'),studyBindingRecord(binding,'soakInference.mjs'));
       report({ stage: 'inference', ...result }); assert.equal(result.passed, true); assert.ok(stopped && verifierAt);
       // Accept actual receipts after load drains; do not alter schedules or retry state.
       await once('catalog-verifier'); await once('archiver');
       fixture('check', JSON.stringify(windows)).forEach(report);
+      } finally { assert.deepEqual(bind(),binding); }
     } });
   } finally {
     finishGatewayStudyCleanup([

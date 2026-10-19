@@ -33,8 +33,8 @@ try {
     dumpSha256: jobs[0].dump.sha256, dumpBytes: jobs[0].dump.bytes, catalogAttempt: jobs[0].attempt,
     sourceSha256: createHash('sha256').update(JSON.stringify({ archive, catalog, counts, admission })).digest('hex') });
   await client.query('ROLLBACK');
-  if (action === 'before') await writeFile('/fixtures/restore-source.json', JSON.stringify(identity), { mode: 0o600, flag: 'wx' });
-  else assert.deepEqual(identity, JSON.parse(await readFile('/fixtures/restore-source.json', 'utf8')));
+  if (action === 'before') await writeFile('/results/restore-source.json', JSON.stringify(identity), { mode: 0o600, flag: 'wx' });
+  else assert.deepEqual(identity, JSON.parse(await readFile('/results/restore-source.json', 'utf8')));
   console.log(JSON.stringify({ fixture: 'restore-source', action, ...identity, failedHistoryRows: 3000, sourceUnchanged: action === 'after' }));
 } catch {
   console.log(JSON.stringify({ fixture: 'restore-source-failed', action })); process.exitCode = 1;

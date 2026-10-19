@@ -32,7 +32,7 @@ const recordGc = entries => {
   } catch { gcFailure = true; controller.abort(); }
 };
 try {
-  const raw = await readFile('/fixtures/restore-source.json', 'utf8'); assert.ok(Buffer.byteLength(raw) <= 2048);
+  const raw = await readFile('/results/restore-source.json', 'utf8'); assert.ok(Buffer.byteLength(raw) <= 2048);
   const identity = validateRestoreIdentity(JSON.parse(raw)), directory = `/catalogs/gateway-archive-${identity.archiveId}`;
   const { manifest, manifestSha256 } = await readVerifiedGatewayArchive(directory, controller.signal);
   assert.equal(manifest.version, 7); assert.equal(manifest.catalog.version, 3);

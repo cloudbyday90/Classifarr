@@ -71,7 +71,7 @@ try {
       }
       const evidence = await failedHistoryEvidence(client);
       assert.ok(evidence.storage.toast_bytes > evidence.bytes * 0.45, 'study_history_storage_not_varied');
-      await writeFile('/fixtures/study-history.json', JSON.stringify(evidence), { mode: 0o600, flag: 'wx' });
+      await writeFile('/results/study-history.json', JSON.stringify(evidence), { mode: 0o600, flag: 'wx' });
       console.log(JSON.stringify({ fixture: 'history-storage', profile: profile.name, ...evidence }));
     } else await client.query(`UPDATE gateway_archive.job SET manifest=$1::jsonb||jsonb_build_object('archiveId',id,'revision',revision,
       'fixturePadding',repeat('x',75000)),manifest_sha256=repeat('f',64) WHERE status='failed'`, [manifest]);
@@ -91,7 +91,7 @@ try {
     assert.ok(jobs.every(row => row.status === 'verified' && row.attempt >= 1 && row.attempt <= 3));
     if (profile.name === 'extended') {
       assert.equal(jobs.length, 2); assert.ok(jobs.every(row => row.attempt === 1));
-      const baseline = JSON.parse(await readFile('/fixtures/study-history.json', 'utf8'));
+      const baseline = JSON.parse(await readFile('/results/study-history.json', 'utf8'));
       const after = await failedHistoryEvidence(client);
       assert.equal(after.sha256, baseline.sha256); assert.equal(after.bytes, baseline.bytes);
       const roots = (await client.query("SELECT count(*)::int AS n FROM gateway_catalog.snapshot WHERE status='retained'")).rows[0].n;

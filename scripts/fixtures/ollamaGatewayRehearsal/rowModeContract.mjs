@@ -3,12 +3,6 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 export const ROW_ORDER = Object.freeze(['object','array','array','object','object','array','array','object']);
-export const ROW_APPLICATION_FILES = Object.freeze(['catalogRowReader.mjs','catalogContent.mjs']);
-export const ROW_BOUND_FIXTURES = Object.freeze(['soakData.mjs','soakWorker.mjs','soakInference.mjs','soakWorkload.mjs','soakProfile.mjs',
-  'studyHistory.mjs','studyMeasurements.mjs','studyResource.mjs','studyDatabase.mjs','archiveQualificationProbe.mjs','archiveQualificationResources.mjs',
-  'historyQueryProfile.mjs','historyQueryReference.mjs','historyPlanSummary.mjs','restoreStudyContract.mjs','restoreStudyHeap.mjs',
-  'restoreStudyMetrics.mjs','restoreStudySource.mjs','restoreStudyWorker.mjs','rowModeContract.mjs','rowModeCandidate.mjs',
-  'rowModeContent.mjs','rowModeObservations.mjs','rowModeProbe.mjs','rowModeWorker.mjs']);
 export const normalizeRowSource = text => text.replaceAll('\r\n', '\n');
 export const rowSha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const once = (source, from, to) => {

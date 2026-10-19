@@ -2,25 +2,24 @@
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { bindStudySources } from './gatewayStudyBinding.mjs';
-import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
+import { requireBoundStudyRecords } from './gatewayStudyPolicy.mjs';
 import { restoreStudyDockerArgs, assertRestoreStudySandbox } from './gatewayRestoreMemoryStudy.mjs';
 import { requireRowRuns, rowPromotionScreen } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
 import { requireRestoreHeapSummary } from '../fixtures/ollamaGatewayRehearsal/restoreStudyHeap.mjs';
 
-export function assertRowModeSandbox(value,image,lane,stores,bindingSha256) {
-  assert.match(bindingSha256,/^[a-f0-9]{64}$/);
-  assert.deepEqual(value.Config.Cmd,['/fixtures/rowModeWorker.mjs',lane,bindingSha256]);
+export function assertRowModeSandbox(value,image,lane,stores,binding) {
+  assert.match(binding.sha256,/^[a-f0-9]{64}$/);
   const socket = value.Mounts.filter(item => item.Destination === '/source-socket');
   assert.equal(socket.length,1); assert.equal(socket[0].Name,stores.socket);
   assert.equal(socket[0].Type,'volume'); assert.equal(socket[0].RW,false);
   // Apply the existing verifier's common resource/input-only contract, then the
   // separately asserted study command and SELECT-only source socket above.
-  assertRestoreStudySandbox({ ...value, Config:{ ...value.Config,Cmd:['/fixtures/restoreStudyWorker.mjs',lane] },
-    Mounts:value.Mounts.filter(item => item.Destination !== '/source-socket') },image,lane,stores);
+  assertRestoreStudySandbox({ ...value,
+    Mounts:value.Mounts.filter(item => item.Destination !== '/source-socket') },image,lane,stores,binding,'rowModeWorker.mjs');
 }
 export function requireRowModeRecords(rows,lane,binding) {
   assert.equal(rows.length,10);
-  assert.deepEqual(rows[0],{ fixture:'row-mode-binding',lane,revision:binding.manifest.revision,image:binding.manifest.image,sha256:binding.sha256 });
+  requireBoundStudyRecords(rows,binding,'rowModeWorker.mjs');
   const runs = rows.slice(1,9); assert.ok(runs.every(row => row.fixture === 'row-mode-run')); requireRowRuns(runs,lane);
   for (const row of runs) {
     if (lane === 'allocations') requireRestoreHeapSummary(row.profile); else assert.equal(row.profile,undefined);
@@ -41,36 +40,20 @@ export function requireRowModeRecords(rows,lane,binding) {
   assert.equal(last.limits.cpu,'100000 100000'); assert.equal(last.limits.pids,'64');
   return runs;
 }
-export async function runGatewayRowModeStudy({ docker,image,revision,source,label,names,stores,mount,remove,inspect,once,report,binding }) {
+export async function runGatewayRowModeStudy({ docker,image,revision,label,names,stores,mount,remove,inspect,once,report,binding,execFixture }) {
   assert.deepEqual(bindStudySources({ revision,image }),binding);
-  const writeBinding = (manifest,first = false) => {
-    const output = runDockerCheckCommand(['exec','--user','1000:1000',source,'node','--input-type=module','-e',
-      'import {writeFile} from "node:fs/promises";await writeFile("/fixtures/fixture-provenance.json",process.argv[1],{mode:0o600,flag:process.argv[2]})',
-      JSON.stringify(manifest),first ? 'wx' : 'w'],{ timeoutMs:10000 });
-    assert.equal(output.ok,true,'row_mode_binding_write_failed');
-  };
   const create = lane => {
     const name = names[`row-${lane}`]; remove(name);
-    const args = restoreStudyDockerArgs({ name,label,image,lane,mount });
-    args.splice(args.indexOf('--entrypoint'),0,...mount('socket','/source-socket',true)); args[args.length-2] = '/fixtures/rowModeWorker.mjs';
-    args.push(binding.sha256);
-    docker(args); assertRowModeSandbox(inspect(name),image,lane,stores,binding.sha256); return name;
+    const args = restoreStudyDockerArgs({ name,label,image,lane,mount,binding,entry:'rowModeWorker.mjs' });
+    args.splice(args.indexOf('--entrypoint'),0,...mount('socket','/source-socket',true));
+    docker(args); assertRowModeSandbox(inspect(name),image,lane,stores,binding); return name;
   };
   const sourceCheck = action => {
-    const checked = runDockerCheckCommand(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,
-      'node','/fixtures/restoreStudySource.mjs',action],{ timeoutMs:150000 });
-    for (const line of checked.stdout.trim().split('\n').filter(Boolean)) report(JSON.parse(line));
+    const checked = execFixture('restoreStudySource.mjs',[action],{timeoutMs:150000});
     assert.equal(checked.ok,true,'row_mode_source_check_failed');
+    requireBoundStudyRecords(checked.stdout.trim().split('\n').map(line => JSON.parse(line)),binding,'restoreStudySource.mjs').forEach(report);
   };
   assert.ok((await once('archiver')).some(row => row.state === 'awaiting_catalog_verification')); sourceCheck('before');
-  // A real bootstrap refusal must occur before comparison imports/SQL. Mutate
-  // only this run's generated manifest, never copied executable files or history.
-  const changed = structuredClone(binding.manifest); changed.files['rowModeCandidate.mjs'] = '0'.repeat(64); writeBinding(changed,true);
-  const refused = create('natural'); docker(['start',refused]); const refusalDeadline = Date.now()+30000;
-  while (inspect(refused).State.Running) { assert.ok(Date.now() < refusalDeadline); await delay(250); }
-  assert.equal(inspect(refused).State.ExitCode,1); assert.equal(inspect(refused).State.OOMKilled,false);
-  assert.deepEqual(JSON.parse(docker(['logs',refused]).trim()),{ fixture:'row-mode-failed',stage:'binding',reason:'binding_or_comparison_failed' });
-  writeBinding(binding.manifest); report({ stage:'row_mode_binding_refusal_passed' });
   const results = {};
   for (const lane of ['natural','allocations']) {
     const name = create(lane); docker(['start',name]); report({ stage:'row_mode_lane_started',lane });

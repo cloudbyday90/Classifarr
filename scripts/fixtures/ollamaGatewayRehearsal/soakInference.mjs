@@ -79,7 +79,7 @@ try {
   const results = await runSoakArrivals({ profileName: profile.name, request: async arrival => {
     if (phase !== arrival.phase) {
       phase = arrival.phase;
-      await writeFile(`/fixtures/soak-${phase}.json`, JSON.stringify({ phase, at: Date.now() }), { mode: 0o600, flag: 'wx' });
+      await writeFile(`/results/soak-${phase}.json`, JSON.stringify({ phase, at: Date.now() }), { mode: 0o600, flag: 'wx' });
       console.log(JSON.stringify({ phase, at: Date.now() }));
     }
     const client = clients[['first', 'second', 'background'].indexOf(arrival.installation)];
@@ -93,7 +93,7 @@ try {
   if (profile.name === 'extended') await delay(Math.max(0, profile.durationMs - (performance.now() - loadStarted)));
   const phases = summarizeSoak(results, observations, profile.name); lag.disable();
   if (profile.settleMs) {
-    phase = 'idle'; await writeFile('/fixtures/soak-idle.json', JSON.stringify({ phase, at: Date.now() }), { mode: 0o600, flag: 'wx' });
+    phase = 'idle'; await writeFile('/results/soak-idle.json', JSON.stringify({ phase, at: Date.now() }), { mode: 0o600, flag: 'wx' });
     await delay(profile.settleMs);
   }
   clearInterval(sampler); await measurements?.stop();
@@ -105,11 +105,11 @@ try {
   assert.equal(protocolFailure, false); assert.equal(attempts, profile.foreground); assert.equal(peakActive, 1);
   const metrics = await resources.metrics();
   assert.ok(Object.values(metrics.memoryEvents).every(value => Number(value) === 0));
-  await writeFile('/fixtures/soak-result.json', JSON.stringify({ passed: true, startedAt, endedAt: Date.now(), phases,
+  await writeFile('/results/soak-result.json', JSON.stringify({ passed: true, startedAt, endedAt: Date.now(), phases,
     providerAttempts: attempts, peakProviderConcurrency: peakActive, resources: metrics, ...(study ? { study } : {}),
     eventLoopMs: { p95: lag.percentile(95) / 1e6, max: lag.max / 1e6 } }), { mode: 0o600, flag: 'wx' });
 } catch {
-  await writeFile('/fixtures/soak-result.json', JSON.stringify({ passed: false, reason: 'soak_inference_failed' }), { mode: 0o600, flag: 'wx' });
+  await writeFile('/results/soak-result.json', JSON.stringify({ passed: false, reason: 'soak_inference_failed' }), { mode: 0o600, flag: 'wx' });
   process.exitCode = 1;
 } finally {
   clearInterval(sampler); await measurements?.stop(); lag.disable(); clients.forEach(client => client.close()); await gateway?.stop();

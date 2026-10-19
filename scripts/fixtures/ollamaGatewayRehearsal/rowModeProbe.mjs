@@ -23,7 +23,7 @@ export async function runRowModeProbe(lane, phase = () => {}) {
   phase('parity');
   requireRowParity(...await Promise.all(['/app/src/ollamaGateway/catalogRowReader.mjs','/app/src/ollamaGateway/catalogContent.mjs',
     '/fixtures/rowModeCandidate.mjs','/fixtures/rowModeContent.mjs'].map(path => readFile(path,'utf8'))));
-  const identity = validateRestoreIdentity(JSON.parse(await readFile('/fixtures/restore-source.json','utf8')));
+  const identity = validateRestoreIdentity(JSON.parse(await readFile('/results/restore-source.json','utf8')));
   phase('identity');
   const checked = await readVerifiedGatewayArchive(`/catalogs/gateway-archive-${identity.archiveId}`,AbortSignal.timeout(120000));
   assert.equal(checked.manifestSha256,identity.manifestSha256); assert.equal(checked.manifest.dump.sha256,identity.dumpSha256);

@@ -2,28 +2,31 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
-import { ROW_BOUND_FIXTURES, ROW_APPLICATION_FILES, normalizeRowSource, rowSha256 } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
+import { createHash } from 'node:crypto';
+import { studyPolicy } from './gatewayStudyPolicy.mjs';
 
-export function bindStudySources({ revision, image, read = path => readFileSync(path, 'utf8'),
-  git = args => execFileSync('git', args, { encoding: 'utf8', windowsHide: true, timeout: 10000, maxBuffer: 1048576 }) }) {
-  assert.match(revision, /^[a-f0-9]{40}$/); assert.match(image, /^sha256:[a-f0-9]{64}$/);
-  assert.equal(git(['rev-parse','HEAD']).trim(), revision, 'row_mode_checkout_revision');
-  assert.equal(git(['status','--porcelain']).trim(), '', 'row_mode_checkout_dirty');
-  const committed = path => {
-    const bytes = read(path); assert.ok(Buffer.byteLength(bytes) < 131072);
-    assert.equal(normalizeRowSource(bytes), normalizeRowSource(git(['show',`${revision}:${path}`])), 'row_mode_uncommitted_source');
+const normalize = bytes => bytes.toString('utf8').replaceAll('\r\n','\n');
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+export function bindStudySources({ revision,image,fixtureRevision = revision,study = 'rowmode',profile = 'extended',
+  read = path => readFileSync(path), git = args => execFileSync('git',args,{windowsHide:true,timeout:10000,maxBuffer:1048576}) }) {
+  for (const value of [revision,fixtureRevision]) assert.match(value,/^[a-f0-9]{40}$/);
+  assert.match(image,/^sha256:[a-f0-9]{64}$/);
+  const policy = studyPolicy(study,profile);
+  assert.equal(git(['rev-parse','HEAD']).toString().trim(),fixtureRevision,'study_checkout_revision');
+  assert.equal(git(['status','--porcelain']).toString().trim(),'','study_checkout_dirty');
+  if (study === 'rowmode') assert.equal(revision,fixtureRevision,'row_mode_parity_revision');
+  const committed = (path,ref) => {
+    assert.match(git(['ls-tree',ref,'--',path]).toString(),/^100644 blob [a-f0-9]{40}\t/,'study_input_not_regular');
+    const bytes = Buffer.from(git(['show',`${ref}:${path}`]));
+    assert.ok(bytes.length > 0 && bytes.length < 131072,'study_input_size');
     return bytes;
   };
-  const files = Object.fromEntries(ROW_BOUND_FIXTURES.map(name => [name, rowSha256(committed(`scripts/fixtures/ollamaGatewayRehearsal/${name}`))]));
-  const application = Object.fromEntries(ROW_APPLICATION_FILES.map(name => [name, rowSha256(normalizeRowSource(committed(`server/src/ollamaGateway/${name}`)))]));
-  const manifest = { version: 1, revision, image, files, application };
-  return { manifest, sha256: rowSha256(JSON.stringify(manifest)) };
-}
-
-export function verifyCopiedStudySources(source,binding) {
-  const result = runDockerCheckCommand(['exec','--user','1000:1000',source,'node','--input-type=module','-e',
-    'import {readFile} from "node:fs/promises";import {createHash} from "node:crypto";for(const [name,sha] of Object.entries(JSON.parse(process.argv[1]))){if(createHash("sha256").update(await readFile("/fixtures/"+name)).digest("hex")!==sha)process.exitCode=1}',
-    JSON.stringify(binding.manifest.files)],{ timeoutMs:10000 });
-  assert.equal(result.ok,true,'row_mode_copied_source_drift');
+  const sources = Object.fromEntries(policy.files.map(name => {
+    const path = `scripts/fixtures/ollamaGatewayRehearsal/${name}`, bytes = committed(path,fixtureRevision);
+    assert.equal(normalize(read(path)),normalize(bytes),'study_uncommitted_source'); return [name,bytes];
+  }));
+  const application = Object.fromEntries(policy.application.map(name => [name,sha(normalize(committed(`server/src/ollamaGateway/${name}`,revision)))]));
+  const manifest = { version:2,study,profile,fixtureRevision,imageRevision:revision,image,entries:policy.entries,
+    files:Object.fromEntries(Object.entries(sources).map(([name,bytes]) => [name,sha(bytes)])),application };
+  return { manifest,sha256:sha(JSON.stringify(manifest)),sources };
 }

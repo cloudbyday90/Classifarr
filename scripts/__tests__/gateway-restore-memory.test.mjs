@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import test from 'node:test';
+import { studyNodeArgs } from '../lib/gatewayStudyBootstrap.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { url as inspectorUrl } from 'node:inspector';
@@ -103,19 +104,21 @@ test('host validator rejects a passed flag without complete cycles, coverage and
     [...rows.slice(0,5),{...rows[5],memoryEvents:{oom_kill:'1'}},rows[6]]]) assert.throws(()=>requireRestoreStudyRecords(value,'natural'));
 });
 test('sandbox is fixed, input-only and rejects wrong mounts, writable receipts, secrets and host PID namespace', () => {
-  const volumes=Object.fromEntries(['archives','receipts','catalogs','fixtures'].map(name=>[name,`owned-${name}`]));
-  const args=restoreStudyDockerArgs({name:'owned',label:'owned=yes',image:'image',lane:'natural',mount:(kind,path,readonly)=>
+  const volumes=Object.fromEntries(['archives','receipts','catalogs','fixtures','results'].map(name=>[name,`owned-${name}`]));
+  const binding={sha256:'a'.repeat(64),manifest:{image:'image',profile:'extended',entries:['restoreStudyWorker.mjs']}};
+  const args=restoreStudyDockerArgs({name:'owned',label:'owned=yes',image:'image',lane:'natural',binding,mount:(kind,path,readonly)=>
     ['--mount',`type=volume,source=${volumes[kind]},target=${path}${readonly?',readonly':''}`]});
-  assert.equal(args.filter(value=>value.endsWith(',readonly')).length,4); assert.ok(!args.some(value=>value.includes('source-socket')));
+  assert.equal(args.filter(value=>value.endsWith(',readonly')).length,5); assert.ok(!args.some(value=>value.includes('source-socket')));
   const value={Image:'image',HostConfig:{NetworkMode:'none',ReadonlyRootfs:true,Privileged:false,PidMode:'',Init:true,CapDrop:['ALL'],
     SecurityOpt:['no-new-privileges'],Memory:1610612736,MemorySwap:1610612736,NanoCpus:1000000000,PidsLimit:64,
     Tmpfs:{'/verification':'rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev','/tmp':'rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev'}},
-  Config:{User:'1000:1000',Entrypoint:['node'],Cmd:['/fixtures/restoreStudyWorker.mjs','natural'],Env:[]},
+  Config:{User:'1000:1000',Entrypoint:['node'],Cmd:studyNodeArgs(binding,'restoreStudyWorker.mjs',['natural']),
+    Env:['CLASSIFARR_SOAK_PROFILE=extended','CLASSIFARR_GATEWAY_FIXTURE=isolated']},
   Mounts:Object.entries(volumes).map(([kind,Name])=>({Destination:`/${kind}`,Name,Type:'volume',RW:false}))};
-  assertRestoreStudySandbox(value,'image','natural',volumes);
+  assertRestoreStudySandbox(value,'image','natural',volumes,binding);
   for(const mutate of [v=>{v.Mounts[0].RW=true;},v=>{v.Mounts[1].Name='unowned';},v=>{v.HostConfig.PidMode='host';},
     v=>{v.Config.Env=['NODE_OPTIONS=--inspect'];},v=>{v.Mounts.push({Destination:'/var/run/docker.sock',RW:false});}]) {
-    const changed=structuredClone(value); mutate(changed); assert.throws(()=>assertRestoreStudySandbox(changed,'image','natural',volumes));
+    const changed=structuredClone(value); mutate(changed); assert.throws(()=>assertRestoreStudySandbox(changed,'image','natural',volumes,binding));
   }
 });
 test('CLI remains fixed and source/counters are checked on both sides; production verifier is not modified', () => {

@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Bind gateway inference, history, restore-memory and row-mode studies to committed
+  fixture inputs and exact image identities. Keep test code read-only, separate
+  generated results, and reject mismatches before fixture execution without
+  changing production recovery behavior.
+
 - Add a source-bound, isolated catalog row-mode comparison with counterbalanced
   memory/allocation measurements and exact integrity checks before considering
   runtime changes.
