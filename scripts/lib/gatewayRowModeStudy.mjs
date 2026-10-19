@@ -7,8 +7,9 @@ import { restoreStudyDockerArgs, assertRestoreStudySandbox } from './gatewayRest
 import { requireRowRuns, rowPromotionScreen } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
 import { requireRestoreHeapSummary } from '../fixtures/ollamaGatewayRehearsal/restoreStudyHeap.mjs';
 
-export function assertRowModeSandbox(value,image,lane,stores) {
-  assert.deepEqual(value.Config.Cmd,['/fixtures/rowModeWorker.mjs',lane]);
+export function assertRowModeSandbox(value,image,lane,stores,bindingSha256) {
+  assert.match(bindingSha256,/^[a-f0-9]{64}$/);
+  assert.deepEqual(value.Config.Cmd,['/fixtures/rowModeWorker.mjs',lane,bindingSha256]);
   const socket = value.Mounts.filter(item => item.Destination === '/source-socket');
   assert.equal(socket.length,1); assert.equal(socket[0].Name,stores.socket);
   assert.equal(socket[0].Type,'volume'); assert.equal(socket[0].RW,false);
@@ -52,7 +53,8 @@ export async function runGatewayRowModeStudy({ docker,image,revision,source,labe
     const name = names[`row-${lane}`]; remove(name);
     const args = restoreStudyDockerArgs({ name,label,image,lane,mount });
     args.splice(args.indexOf('--entrypoint'),0,...mount('socket','/source-socket',true)); args[args.length-2] = '/fixtures/rowModeWorker.mjs';
-    docker(args); assertRowModeSandbox(inspect(name),image,lane,stores); return name;
+    args.push(binding.sha256);
+    docker(args); assertRowModeSandbox(inspect(name),image,lane,stores,binding.sha256); return name;
   };
   const sourceCheck = action => {
     const checked = runDockerCheckCommand(['exec','--user','1000:1000','-e','CLASSIFARR_GATEWAY_FIXTURE=isolated',source,

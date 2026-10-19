@@ -8,9 +8,11 @@ const sha = value => createHash('sha256').update(value).digest('hex');
 let stage = 'binding';
 try {
   assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE,'isolated'); assert.equal(process.env.NODE_OPTIONS,undefined);
-  assert.equal(process.execArgv.length,0); assert.equal(process.argv.length,3);
+  assert.equal(process.execArgv.length,0); assert.equal(process.argv.length,4);
   const lane = process.argv[2]; assert.ok(['natural','allocations'].includes(lane));
   const raw = await readFile('/fixtures/fixture-provenance.json','utf8'); assert.ok(Buffer.byteLength(raw) < 16384);
+  // Expected identity comes from the inspected host command, not this manifest.
+  assert.match(process.argv[3],/^[a-f0-9]{64}$/); assert.equal(sha(raw),process.argv[3]);
   const binding = JSON.parse(raw);
   assert.deepEqual(Object.keys(binding).sort(),['application','files','image','revision','version']);
   assert.equal(binding.version,1); assert.match(binding.image,/^sha256:[a-f0-9]{64}$/); assert.match(binding.revision,/^[a-f0-9]{40}$/);

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { ROW_ORDER, ROW_BOUND_FIXTURES, requireRowParity, requireArrayFields, requireRowRuns, rowPromotionScreen } from '../fixtures/ollamaGatewayRehearsal/rowModeContract.mjs';
 import { bindStudySources } from '../lib/gatewayStudyBinding.mjs';
 import { observeRowRun } from '../fixtures/ollamaGatewayRehearsal/rowModeObservations.mjs';
-import { requireRowModeRecords } from '../lib/gatewayRowModeStudy.mjs';
+import { requireRowModeRecords, assertRowModeSandbox } from '../lib/gatewayRowModeStudy.mjs';
 
 const fixtureUrl = name => new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url);
 const read = url => readFileSync(url,'utf8');
@@ -80,6 +80,13 @@ test('source binding rejects dirty/replaced/uncommitted files and records every 
   assert.throws(() => bindStudySources({ revision,image,read:() => 'changed',git }));
   assert.throws(() => bindStudySources({ revision,image,read:() => 'public\n',git:args => args[0] === 'status' ? ' M source' : git(args) }));
   assert.throws(() => bindStudySources({ revision:'c'.repeat(40),image,read:() => 'public\n',git }));
+});
+test('manifest identity is passed through the inspected command and checked before fixture imports', () => {
+  const worker = read(fixtureUrl('rowModeWorker.mjs'));
+  assert.ok(worker.indexOf('assert.equal(sha(raw),process.argv[3])') < worker.indexOf('JSON.parse(raw)'));
+  assert.ok(worker.indexOf('assert.equal(sha(raw),process.argv[3])') < worker.indexOf("await import('./rowModeContract.mjs')"));
+  assert.throws(() => assertRowModeSandbox({Config:{Cmd:['/fixtures/rowModeWorker.mjs','natural','a'.repeat(64)]}},'image','natural',{},'b'.repeat(64)));
+  assert.throws(() => assertRowModeSandbox({},'image','natural',{},'invalid'));
 });
 const runs = (lane, ratio = 1) => ROW_ORDER.map(mode => ({ lane,mode,equivalent:true,fetchedRows:3002,bodyBytes:233000000,chargedBytes:233003002,
   contentSha256:'c'.repeat(64),elapsedMs:100,queryMs:90,processCpuUs:10,

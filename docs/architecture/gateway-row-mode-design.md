@@ -69,7 +69,9 @@ Require a clean committed checkout matching the image revision. Hash every
 copied fixture and bind its bytes to the corresponding committed source (allowing
 only checkout CRLF/LF differences). Also bind the packaged row-reader/content
 sources. Verify copied hashes in the worker before importing the comparison,
-then recheck host sources afterward. Record the manifest digest and revision;
+then recheck host sources afterward. Pass the expected manifest digest through
+the inspected container command and compare raw manifest bytes before parsing or
+importing any copied executable. Record the manifest digest and revision;
 these are local identity checks, not signatures or registry provenance.
 
 The array reader is a fixture-only copy. A deterministic parity check permits
