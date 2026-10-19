@@ -9,6 +9,7 @@ import { studyPolicy,studyBindingRecord,requireBoundStudyRecords } from '../lib/
 import { bindStudySources } from '../lib/gatewayStudyBinding.mjs';
 import { studyNodeArgs,STUDY_BOOTSTRAP } from '../lib/gatewayStudyBootstrap.mjs';
 import { assertStudyCommand,assertStudyVolumes,stageStudyInputs } from '../lib/gatewayStudyInputs.mjs';
+import { schedulingActionArgs } from '../lib/gatewaySchedulingExecution.mjs';
 
 const revision = 'a'.repeat(40), image = `sha256:${'b'.repeat(64)}`;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -31,9 +32,9 @@ test('image and fixture revisions are independent except explicit row-mode parit
 });
 
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
-  for (const study of ['inference','history','restores','rowmode','archive','qualification']) {
-    const policy = studyPolicy(study,['archive','qualification'].includes(study) ? 'regression' : 'extended');
-    assert.equal(policy.files.length,study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
+  for (const study of ['inference','history','restores','rowmode','archive','qualification','scheduling']) {
+    const policy = studyPolicy(study,['archive','qualification','scheduling'].includes(study) ? 'regression' : 'extended');
+    assert.equal(policy.files.length,study === 'scheduling' ? 3 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -75,6 +76,36 @@ function withBootstrap(study,profile,body) {
   };
   try { body({fixtures,results,app,binding,run,replace}); }
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
+}
+
+for (const profile of ['regression','rotation']) {
+  test(`scheduling/${profile} preserves one action and rejects cross-profile intent before import`, () => withBootstrap('scheduling',profile,({binding,run,replace,results}) => {
+    replace('catalogScheduling.mjs','console.log(JSON.stringify({args:process.argv.slice(2),execArgv:process.execArgv}));');
+    const allowed = ['setup','worker','register-only','quiet','inference','accept-inference',
+      ...(profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'])];
+    for (const action of allowed) {
+      schedulingActionArgs(binding,action);
+      const result = run(undefined,undefined,{NODE_OPTIONS:undefined},[action]); assert.equal(result.status,0,result.stderr);
+      assert.deepEqual(requireBoundStudyRecords(result.stdout.trim().split('\n').map(JSON.parse),binding,'catalogScheduling.mjs'),[{args:[action],execArgv:[]}]);
+    }
+    for (const args of [[],['setup','extra'],['unknown'],[profile === 'rotation' ? 'refresh' : 'study-begin']]) {
+      const result = run(undefined,undefined,{NODE_OPTIONS:undefined},args); assert.equal(result.status,1);
+      assert.equal(JSON.parse(result.stdout.trim()).stage,'binding');
+      if (args.length === 1) assert.throws(() => schedulingActionArgs(binding,args[0]));
+    }
+    assert.equal(existsSync(resolve(results,'executed')),false);
+    assert.throws(() => studyPolicy('scheduling','extended'));
+    assert.throws(() => studyNodeArgs(binding,'catalogRotationStudy.mjs',['setup']));
+  }));
+}
+
+for (const helper of ['catalogRotationStudy.mjs','rotationStudyContract.mjs']) {
+  test(`scheduling rejects changed helper ${helper} before database setup`, () => withBootstrap('scheduling','rotation',({fixtures,results,run}) => {
+    writeFileSync(resolve(fixtures,helper),'changed executable');
+    const result = run(undefined,undefined,{NODE_OPTIONS:undefined},['setup']);
+    assert.equal(result.status,1); assert.equal(existsSync(resolve(results,'executed')),false);
+    assert.equal(JSON.parse(result.stdout.trim()).stage,'binding');
+  }));
 }
 
 for (const [study,profile] of [['inference','regression'],['inference','extended'],['history','extended'],['restores','extended'],['rowmode','extended'],['archive','regression'],

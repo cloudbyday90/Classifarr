@@ -12,6 +12,11 @@ const archiveEntries = ['archiveRestoreInput.mjs','onlineArchive.mjs','archivePr
 const qualificationEntries = ['archiveQualificationData.mjs','catalogQualificationData.mjs','archiveQualificationDriver.mjs'];
 
 export function studyPolicy(study, profile) {
+  if (study === 'scheduling') {
+    assert.ok(['regression','rotation'].includes(profile),'study_profile_invalid');
+    return { files:['catalogScheduling.mjs','catalogRotationStudy.mjs','rotationStudyContract.mjs'],
+      entries:['catalogScheduling.mjs'],application:[] };
+  }
   if (study === 'qualification') {
     assert.ok(['regression','measured','unsampled'].includes(profile),'study_profile_invalid');
     return { files:[...qualificationEntries,'archiveQualificationResources.mjs','cleanupQualification.mjs','cleanupQueryDiagnostics.mjs',

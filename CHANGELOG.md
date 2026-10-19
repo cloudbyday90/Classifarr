@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Bind gateway scheduling and rotation rehearsals to sealed committed inputs,
+  validate isolated verifier results and resource boundaries, and preserve all
+  recovery checks and retry limits. Update pinned frontend test/build tooling.
+
 - Bind gateway qualification and cleanup rehearsals to sealed committed inputs,
   validate child launch inputs and worker output, and verify exhaustive owned
   cleanup while preserving resource measurements and recovery limits. Update

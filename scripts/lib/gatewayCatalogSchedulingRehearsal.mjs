@@ -2,99 +2,75 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
+import { createSchemaCheckRunSpec,withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { finishGatewayStudyCleanup } from './gatewayStudyCleanup.mjs';
+import { bindStudySources } from './gatewayStudyBinding.mjs';
+import { stageStudyInputs } from './gatewayStudyInputs.mjs';
+import { createSchedulingExecution,assertSchedulingVerification } from './gatewaySchedulingExecution.mjs';
+import { createSchedulingVerifier,assertSchedulingSandbox,assertSchedulingSource } from './gatewaySchedulingSandbox.mjs';
+import { runSchedulingScenarios } from './gatewaySchedulingScenarios.mjs';
 
-export async function runGatewayCatalogSchedulingRehearsal(image, revision, rotationStudy = false) {
-  assert.equal(typeof rotationStudy, 'boolean');
-  const docker = args => execFileSync('docker', args, { encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576 });
-  assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
+export async function runGatewayCatalogSchedulingRehearsal(image,revision,rotationStudy = false) {
+  assert.equal(typeof rotationStudy,'boolean');
+  assert.match(image,/^sha256:[a-f0-9]{64}$/); assert.match(revision,/^[a-f0-9]{40}$/);
+  const docker = args => execFileSync('docker',args,{encoding:'utf8',windowsHide:true,timeout:240000,maxBuffer:1048576});
+  assert.equal(JSON.parse(docker(['image','inspect',image]))[0].Config.Labels['org.opencontainers.image.revision'],revision);
+  const bind = () => bindStudySources({image,revision,study:'scheduling',profile:rotationStudy ? 'rotation' : 'regression'}), binding = bind();
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
-  const stores = Object.fromEntries(['archives', 'receipts', 'catalogs'].map(kind => [kind, `classifarr-schedule-${kind}-${suffix}`]));
-  const names = ['classifarr-schedule-verify-', 'classifarr-schedule-catalog-verify-'].map(prefix => `${prefix}${suffix}`);
-  const label = `io.classifarr.archive-rehearsal=${suffix}`;
-  const command = (args, options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
-    'run', '--network', 'none', '--memory', '2g', '--cpus', '2', '--pids-limit', '512',
-    ...Object.entries(stores).flatMap(([kind, volume]) => ['--mount', `type=volume,source=${volume},target=/${kind}`]), ...args.slice(1)] : args, options);
+  const stores = Object.fromEntries(['archives','receipts','catalogs','fixtures'].map(kind => [kind,`classifarr-schedule-${kind}-${suffix}`]));
+  const names = ['classifarr-schedule-verify-','classifarr-schedule-catalog-verify-'].map(prefix => `${prefix}${suffix}`);
+  const stager = `classifarr-schedule-stager-${suffix}`, key = 'io.classifarr.archive-rehearsal', label = `${key}=${suffix}`;
+  const inspect = name => JSON.parse(docker(['inspect',name]))[0];
+  const remove = name => {
+    if (docker(['ps','-aq','--filter',`name=^${name}$`]).trim()) {
+      assert.equal(inspect(name).Config.Labels[key],suffix); docker(['rm','-f',name]);
+    }
+    assert.equal(docker(['ps','-aq','--filter',`name=^${name}$`]).trim(),'');
+  };
+  const command = (args,options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
+    'run','--network','none','--memory','2g','--memory-swap','2g','--cpus','2','--pids-limit','512',
+    ...Object.entries(stores).flatMap(([kind,volume]) => ['--mount',`type=volume,source=${volume},target=/${kind}${kind === 'fixtures' ? ',readonly' : ''}`]),
+    ...args.slice(1)] : args,options);
   try {
     for (const volume of Object.values(stores)) {
-      assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
-      docker(['volume', 'create', '--label', label, volume]);
+      assert.equal(docker(['volume','ls','-q','--filter',`name=^${volume}$`]).trim(),'');
+      docker(['volume','create','--label',label,volume]);
     }
-    await withSchemaCheckContainer({ imageName: image, runSpec: spec, command, action: async () => {
+    stageStudyInputs({docker,image,binding,name:stager,label,stores,inspect,remove});
+    assert.deepEqual(bind(),binding);
+    await withSchemaCheckContainer({imageName:image,runSpec:spec,command,action:async () => {
       const source = spec.containerName;
-      docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/catalogs']);
-      docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/catalogs']);
-      docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal/catalogScheduling.mjs'), `${source}:/tmp/catalog-scheduling.mjs`]);
-      for (const file of ['catalogRotationStudy.mjs','rotationStudyContract.mjs']) docker(['cp', resolve('scripts/fixtures/ollamaGatewayRehearsal', file), `${source}:/tmp/${file}`]);
-      const fixture = action => docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
-        'node', '/tmp/catalog-scheduling.mjs', action]).trim();
-      for (const [index, name] of names.entries()) {
-        assert.equal(docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim(), '');
-        const mounts = index ? Object.entries(stores) : Object.entries(stores).filter(([kind]) => kind !== 'catalogs');
-        docker(['create', '--name', name, '--label', label, '--network', 'none', '--user', '1000:1000', '--read-only', '--init', '--no-healthcheck',
-          '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '1536m', '--memory-swap', '1536m', '--cpus', '1', '--pids-limit', '64',
-          ...mounts.flatMap(([kind, volume]) => ['--mount', `type=volume,source=${volume},target=/${kind}${kind === 'receipts' ? '' : ',readonly'}`]),
-          '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-          '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-          '--entrypoint', 'node', image, '/app/src/scripts/runGatewayArchiveVerifier.mjs', '--once', ...(index ? ['--catalog'] : [])]);
-        const config = JSON.parse(docker(['inspect', name]))[0];
-        assert.equal(config.HostConfig.NetworkMode, 'none'); assert.equal(config.HostConfig.ReadonlyRootfs, true);
-        assert.equal(config.Config.User, '1000:1000'); assert.equal(config.Image, image);
-        assert.equal(config.Mounts.length, mounts.length);
-        assert.ok(config.Mounts.every(m => mounts.some(([kind]) => m.Destination === `/${kind}`) && m.RW === (m.Destination === '/receipts')));
-        assert.ok(config.Config.Env.every(value => !/PASSWORD=|TOKEN=|CONFIG_FILE=/.test(value)));
+      assertSchedulingSource(inspect(source),{image,stores});
+      docker(['exec','--user','0:0',source,'chown','1000:1000','/archives','/receipts','/catalogs']);
+      docker(['exec','--user','0:0',source,'chmod','700','/archives','/receipts','/catalogs']);
+      const fixture = createSchedulingExecution({docker,source,binding,stores,inspect});
+      for (const [index,name] of names.entries()) {
+        assert.equal(docker(['ps','-aq','--filter',`name=^${name}$`]).trim(),'');
+        createSchedulingVerifier({docker,inspect,image,stores,name,label,catalog:index === 1});
       }
       const verify = index => {
-        const output = docker(['start', '-a', names[index]]);
-        assert.ok(output.includes('"state":"verified"'), output);
-        const state = JSON.parse(docker(['inspect', names[index]]))[0].State;
-        assert.equal(state.ExitCode, 0); assert.equal(state.OOMKilled, false);
+        const expected = {image,stores,catalog:index === 1};
+        assertSchedulingSandbox(inspect(names[index]),expected);
+        const output = docker(['start','-a',names[index]]), value = inspect(names[index]);
+        assertSchedulingSandbox(value,expected); assertSchedulingVerification(output,value);
       };
-      const advance = expected => {
-        const result = JSON.parse(fixture('worker')); assert.ok(expected.includes(result.state), JSON.stringify(result));
-      };
-      fixture('setup'); verify(0);
-      advance(['awaiting_catalog_verification']);
-      advance(['awaiting_catalog_verification']); verify(1);
-      fixture('register-only');
-      advance(['awaiting_catalog_verification']); verify(1);
-      advance(['catalog_unchanged']); process.stdout.write(`${fixture('quiet')}\n`);
-      if (rotationStudy) fixture('study-begin');
-      for (let cycle = 0; cycle < (rotationStudy ? 3 : 1); cycle++) {
-        for (let index = 0; index < 2; index++) { fixture('inference'); verify(0); fixture('accept-inference'); }
-        fixture(rotationStudy ? 'study-refresh' : 'refresh'); verify(1);
-        advance(['awaiting_catalog_verification']); verify(1);
-        advance(['catalog_unchanged', 'catalog_attempts_exhausted']);
-        if (rotationStudy) {
-          for (let drain = 0; drain < 2; drain++) advance(['catalog_unchanged', 'catalog_attempts_exhausted']);
-          process.stdout.write(`${fixture('study-check')}\n`);
-        } else process.stdout.write(`${fixture('handoff')}\n`);
-      }
-    } });
+      runSchedulingScenarios({fixture,verify,rotationStudy});
+    }});
   } finally {
     finishGatewayStudyCleanup([
-    ...names.map(name => ({ name, run: () => {
-      if (docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim()) {
-        assert.equal(JSON.parse(docker(['inspect', name]))[0].Config.Labels['io.classifarr.archive-rehearsal'], suffix);
-        docker(['rm', '-f', name]);
-      }
-      assert.equal(docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim(), '');
-    } })),
-    ...Object.values(stores).map(volume => ({ name: volume, run: () => {
-      if (docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim()) {
-        assert.equal(JSON.parse(docker(['volume', 'inspect', volume]))[0].Labels['io.classifarr.archive-rehearsal'], suffix);
-        docker(['volume', 'rm', volume]);
-      }
-      assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
-    } })),
-    { name: 'schedule-labeled-containers', run: () => assert.equal(docker(['ps', '-aq', '--filter', `label=${label}`]).trim(), '') },
-    { name: 'schedule-labeled-volumes', run: () => assert.equal(docker(['volume', 'ls', '-q', '--filter', `label=${label}`]).trim(), '') },
-    { name: 'disposable-data-directory', run: () => assert.equal(existsSync(spec.hostDataPath), false) },
+      {name:'committed-inputs',run:() => assert.deepEqual(bind(),binding)},
+      ...[stager,...names].map(name => ({name,run:() => remove(name)})),
+      ...Object.values(stores).map(volume => ({name:volume,run:() => {
+        if (docker(['volume','ls','-q','--filter',`name=^${volume}$`]).trim()) {
+          assert.equal(JSON.parse(docker(['volume','inspect',volume]))[0].Labels[key],suffix); docker(['volume','rm',volume]);
+        }
+        assert.equal(docker(['volume','ls','-q','--filter',`name=^${volume}$`]).trim(),'');
+      }})),
+      {name:'schedule-labeled-containers',run:() => assert.equal(docker(['ps','-aq','--filter',`label=${label}`]).trim(),'')},
+      {name:'schedule-labeled-volumes',run:() => assert.equal(docker(['volume','ls','-q','--filter',`label=${label}`]).trim(),'')},
+      {name:'disposable-data-directory',run:() => assert.equal(existsSync(spec.hostDataPath),false)},
     ]);
   }
-  assert.equal(existsSync(spec.hostDataPath), false);
   process.stdout.write('catalog_scheduling_rehearsal_cleanup_verified\n');
 }

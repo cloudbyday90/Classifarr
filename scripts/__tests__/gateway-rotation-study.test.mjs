@@ -16,3 +16,17 @@ test('missing/rebound/duplicate history, refunded attempts and fake retained cou
     value => { value.cleanupOperations = 1; }]) { const value = after(); mutate(value); assert.throws(() => verifyRotationHistory(before, value, 1)); }
   for (const cycle of [0, 4, NaN]) assert.throws(() => verifyRotationHistory(before, after(), cycle));
 });
+
+test('all three controlled cycles retain complete prior history and exact exhausted catalog attempts', () => {
+  let prior = before;
+  for (let cycle = 1; cycle <= 3; cycle++) {
+    const value = {inference:Array.from({length:1+cycle*2},(_,i) => row(i+1)),catalog:Array.from({length:2+cycle*2},(_,i) => row(i+1)),
+      attempts:1+cycle*2,bindings:1+cycle*2,catalogAttempts:Array.from({length:cycle+1},() => [2,3]).flat(),
+      rootCounts:{total:2+cycle*2,retained:2,retired:cycle*2},cleanupOperations:0};
+    assert.equal(verifyRotationHistory(prior,value,cycle).cycle,cycle);
+    for (const mutate of [v => {v.inference.shift();},v => {v.catalog[0].body='rebound';},v => {v.catalog.push(v.catalog[0]);},
+      v => {v.bindings--;},v => {v.rootCounts.total--;},v => {v.rootCounts.retired--;},v => {v.catalogAttempts.pop();},
+      v => {v.cleanupOperations=1;}]) { const changed=structuredClone(value); mutate(changed); assert.throws(() => verifyRotationHistory(prior,changed,cycle)); }
+    prior=value;
+  }
+});

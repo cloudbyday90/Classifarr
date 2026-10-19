@@ -26,9 +26,10 @@ async function bootstrap() {
     check.deepEqual(Object.keys(binding).sort(),['application','entries','files','fixtureRevision','image','imageRevision','profile','study','version']);
     check.equal(binding.version,2); check.match(binding.image,/^sha256:[a-f0-9]{64}$/);
     for (const value of [binding.fixtureRevision,binding.imageRevision]) check.match(value,/^[a-f0-9]{40}$/);
-    check.ok(['inference','history','restores','rowmode','archive','qualification'].includes(binding.study));
+    check.ok(['inference','history','restores','rowmode','archive','qualification','scheduling'].includes(binding.study));
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
-    check.ok(binding.study === 'qualification' ? ['regression','measured','unsampled'].includes(binding.profile) :
+    check.ok(binding.study === 'scheduling' ? ['regression','rotation'].includes(binding.profile) :
+      binding.study === 'qualification' ? ['regression','measured','unsampled'].includes(binding.profile) :
       ['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
         (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
     // The existing sampled archiver alone has four arguments. No generic relaxation.
@@ -61,6 +62,11 @@ async function bootstrap() {
       console.log(JSON.stringify({ fixture:'study-sealed',sha256:expected,symlinkRefused:true })); return;
     }
     check.ok(binding.entries.includes(entry));
+    if (binding.study === 'scheduling') {
+      const actions = ['setup','worker','register-only','quiet','inference','accept-inference',
+        ...(binding.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'])];
+      check.equal(entry,'catalogScheduling.mjs'); check.equal(args.length,1); check.ok(actions.includes(args[0]));
+    }
     check.ok((await lstat('/fixtures')).isDirectory());
     const record = { fixture:'study-binding',version:2,study:binding.study,profile:binding.profile,
       fixtureRevision:binding.fixtureRevision,imageRevision:binding.imageRevision,image:binding.image,sha256:expected,entry };
