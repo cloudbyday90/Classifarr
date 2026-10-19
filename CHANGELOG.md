@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Bind gateway qualification and cleanup rehearsals to sealed committed inputs,
+  validate child launch inputs and worker output, and verify exhaustive owned
+  cleanup while preserving resource measurements and recovery limits. Update
+  Markdown lint tooling without changing rules or production recovery behavior.
+
 - Bind default gateway archive, catalog and retention rehearsals to sealed
   committed inputs, preserve UUID/receipt output, and verify all owned cleanup.
   Fix fresh-checkout gateway test setup and update pinned CodeQL/OSV actions

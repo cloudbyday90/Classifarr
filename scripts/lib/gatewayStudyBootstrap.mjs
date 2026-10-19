@@ -14,7 +14,7 @@ async function bootstrap() {
     check.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE,'isolated'); check.equal(process.env.NODE_OPTIONS,undefined);
     check.equal(process.execArgv.length,3); check.deepEqual(process.execArgv.slice(0,2),['--input-type=module','-e']);
     const [expected,selected,...args] = process.argv.slice(1); entry = selected;
-    check.match(expected,/^[a-f0-9]{64}$/); check.ok(args.length <= 3 && args.every(value => Buffer.byteLength(value) <= 32768));
+    check.match(expected,/^[a-f0-9]{64}$/); check.ok(args.length <= 4 && args.every(value => Buffer.byteLength(value) <= 32768));
     const read = async (path,limit) => {
       const file = await open(path,constants.O_RDONLY | constants.O_NOFOLLOW);
       try { const info = await file.stat(); check.ok(info.isFile() && info.size > 0 && info.size < limit); return await file.readFile(); }
@@ -26,10 +26,14 @@ async function bootstrap() {
     check.deepEqual(Object.keys(binding).sort(),['application','entries','files','fixtureRevision','image','imageRevision','profile','study','version']);
     check.equal(binding.version,2); check.match(binding.image,/^sha256:[a-f0-9]{64}$/);
     for (const value of [binding.fixtureRevision,binding.imageRevision]) check.match(value,/^[a-f0-9]{40}$/);
-    check.ok(['inference','history','restores','rowmode','archive'].includes(binding.study));
+    check.ok(['inference','history','restores','rowmode','archive','qualification'].includes(binding.study));
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
-    check.ok(['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
-      (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
+    check.ok(binding.study === 'qualification' ? ['regression','measured','unsampled'].includes(binding.profile) :
+      ['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
+        (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
+    // The existing sampled archiver alone has four arguments. No generic relaxation.
+    check.ok(args.length <= 3 || (binding.study === 'qualification' && binding.profile === 'measured' &&
+      entry === 'archiveQualificationDriver.mjs' && JSON.stringify(args) === '["archiver","normal","catalog","measure"]'));
     const names = Object.keys(binding.files); check.ok(names.length > 0 && names.length <= 32);
     check.deepEqual((await readdir('/fixtures')).sort(),[...names,'fixture-provenance.json'].sort());
     for (const name of names) {
@@ -77,6 +81,8 @@ export const STUDY_BOOTSTRAP = `await (${bootstrap.toString()})();`;
 export function studyNodeArgs(binding,entry,args = []) {
   assert.ok(entry === 'seal' || binding.manifest.entries.includes(entry),'study_entry_invalid');
   assert.match(binding.sha256,/^[a-f0-9]{64}$/);
-  assert.ok(args.length <= 3 && args.every(value => typeof value === 'string' && Buffer.byteLength(value) <= 32768));
+  assert.ok((args.length <= 3 || (binding.manifest.study === 'qualification' && binding.manifest.profile === 'measured' &&
+    entry === 'archiveQualificationDriver.mjs' && JSON.stringify(args) === '["archiver","normal","catalog","measure"]')) &&
+    args.every(value => typeof value === 'string' && Buffer.byteLength(value) <= 32768));
   return ['--input-type=module','-e',STUDY_BOOTSTRAP,binding.sha256,entry,...args];
 }

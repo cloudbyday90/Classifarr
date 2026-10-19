@@ -9,9 +9,19 @@ import { test } from 'node:test';
 import { readLintConfiguration, selectMarkdownFiles } from '../markdownlint/files.mjs';
 import { matchesPattern, validatePatterns } from '../markdownlint/patterns.mjs';
 import { runMarkdownLint } from '../markdownlint/run.mjs';
+import stringWidth from 'string-width';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const configuration = readLintConfiguration(root);
+
+test('markdownlint uses its supported display-width dependency without the retired downgrade', () => {
+  const pkg = JSON.parse(readFileSync(resolve(root,'package.json'),'utf8'));
+  const lock = JSON.parse(readFileSync(resolve(root,'package-lock.json'),'utf8'));
+  assert.equal(pkg.devDependencies.markdownlint,lock.packages['node_modules/markdownlint'].version);
+  assert.equal(pkg.overrides['string-width'],undefined);
+  assert.equal(lock.packages['node_modules/markdownlint'].dependencies['string-width'],lock.packages['node_modules/string-width'].version);
+  for (const [text,width] of [['abc',3],['古',2],['e\u0301',1],['👩🏽‍💻',2],['\u001B[31mred\u001B[0m',3]]) assert.equal(stringWidth(text),width);
+});
 
 function fixture(context) {
   const directory = mkdtempSync(resolve(tmpdir(), 'classifarr-markdown-'));

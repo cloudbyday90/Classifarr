@@ -1,29 +1,32 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createSchemaCheckRunSpec, withSchemaCheckContainer } from '../check-schema-snapshot-container.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
 import { qualifyCatalogScenario } from './gatewayCatalogQualificationScenarios.mjs';
+import { bindStudySources } from './gatewayStudyBinding.mjs';
+import { stageStudyInputs } from './gatewayStudyInputs.mjs';
+import { finishGatewayStudyCleanup } from './gatewayStudyCleanup.mjs';
+import { createQualificationExecution,qualificationRecords } from './gatewayQualificationExecution.mjs';
+import { createQualificationWorker,assertQualificationSource } from './gatewayQualificationSandbox.mjs';
 
-const driver = '/fixtures/archiveQualificationDriver.mjs';
-const fixtureDirectory = 'scripts/fixtures/ollamaGatewayRehearsal';
 const docker = args => execFileSync('docker', args, {
   encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576,
 });
 const inspect = name => JSON.parse(docker(['inspect', name]))[0];
-const records = output => output.trim().split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
 const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
-async function qualifyCase(image, shape, measure) {
+async function qualifyCase(image, shape, measure, binding, bind) {
   const catalog = shape.startsWith('catalog-');
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const labelKey = 'io.classifarr.archive-qualification', label = `${labelKey}=${suffix}`;
   const volumes = Object.fromEntries(['archives', 'receipts', 'socket', 'configuration', 'fixtures', ...(catalog ? ['catalogs'] : [])].map(name =>
     [name, `classifarr-archive-${name}-${suffix}`]));
   const workers = Object.fromEntries(['archiver', 'verifier','cleanup','catalog-verifier','contender'].map(name => [name, `classifarr-${name}-${suffix}`]));
+  const stager = `classifarr-qualification-stager-${suffix}`;
+  const records = (output,running = false) => qualificationRecords(output,binding,running);
   const mount = (name, target, readonly = false) => ['--mount', `type=volume,source=${volumes[name]},target=${target}${readonly ? ',readonly' : ''}`];
   const ownedRemove = name => {
     if (!docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim()) return;
@@ -34,7 +37,7 @@ async function qualifyCase(image, shape, measure) {
   const command = (args, options) => runDockerCheckCommand(args[0] === 'run' && args.includes('--label') ? [
     'run', '--network', 'none', '--memory', '2g', '--memory-swap', '2g', '--cpus', '2', '--pids-limit', '512',
     ...mount('archives', '/archives'), ...mount('receipts', '/receipts'), ...mount('socket', '/var/run/postgresql'),
-    ...mount('configuration', '/configuration'), ...mount('fixtures', '/fixtures'),
+    ...mount('configuration', '/configuration'), ...mount('fixtures', '/fixtures', true),
     ...(catalog ? mount('catalogs', '/catalogs') : []),
     '--tmpfs', '/quota:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev', ...args.slice(1),
   ] : args, options);
@@ -43,56 +46,29 @@ async function qualifyCase(image, shape, measure) {
       assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
       docker(['volume', 'create', '--label', label, volume]);
     }
+    stageStudyInputs({docker,image,binding,name:stager,label,stores:volumes,inspect,remove:ownedRemove});
+    assert.deepEqual(bind(),binding);
     await withSchemaCheckContainer({ imageName: image, runSpec: spec, command, action: async () => {
       const source = spec.containerName;
-      docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/configuration', '/fixtures']);
-      docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/configuration', '/fixtures']);
+      assertQualificationSource(inspect(source),{image,stores:volumes,catalog});
+      docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/archives', '/receipts', '/configuration']);
+      docker(['exec', '--user', '0:0', source, 'chmod', '700', '/archives', '/receipts', '/configuration']);
       if (catalog) {
         docker(['exec', '--user', '0:0', source, 'chown', '1000:1000', '/catalogs']);
         docker(['exec', '--user', '0:0', source, 'chmod', '700', '/catalogs']);
       }
-      for (const name of ['archiveQualificationData.mjs', 'archiveQualificationDriver.mjs', 'archiveQualificationResources.mjs',
-        'cleanupQualification.mjs','cleanupQueryDiagnostics.mjs','catalogQualificationData.mjs','catalogQualificationBoundary.mjs',
-        'incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs','archiveQualificationMeasurements.mjs',
-        'catalogReadComparison.mjs']) {
-        docker(['cp', resolve(fixtureDirectory, name), `${source}:/fixtures/${name}`]);
-      }
-      const fixture = action => {
-        const output = docker(['exec', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', source,
-          'node', catalog ? '/fixtures/catalogQualificationData.mjs' : '/fixtures/archiveQualificationData.mjs', action, shape]);
-        return JSON.parse(output);
-      };
+      const fixture = createQualificationExecution({docker,source,binding,stores:volumes,inspect,catalog,shape});
       const create = (kind, mode = 'normal', slot = kind) => {
         assert.ok(Object.hasOwn(workers,slot));
         const name = workers[slot]; ownedRemove(name);
-        const archiveWorker = !kind.endsWith('verifier'), memory = archiveWorker ? '256m' : '1536m';
-        docker(['create', '--name', name, '--label', label, '--network', 'none', '--read-only', '--init', '--no-healthcheck',
-          '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
-          '--memory', memory, '--memory-swap', memory, '--cpus', archiveWorker ? '0.5' : '1', '--pids-limit', archiveWorker ? '32' : '64',
-          ...mount('archives', '/archives', kind !== 'archiver'), ...mount('receipts', '/receipts', archiveWorker), ...mount('fixtures', '/fixtures', true),
-          ...(catalog ? mount('catalogs', '/catalogs', kind !== 'archiver') : []),
-          ...(archiveWorker ? [...mount('socket', '/source-socket', true), ...mount('configuration', '/configuration', true)] : [
-            '--tmpfs', '/verification:rw,size=1g,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev']),
-          '--tmpfs', '/tmp:rw,size=16m,uid=1000,gid=1000,mode=0700,noexec,nosuid,nodev',
-          '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '--entrypoint', 'node', image, driver, kind, mode, ...(catalog ? ['catalog'] : []),
-          ...(measure && kind === 'archiver' ? ['measure'] : [])]);
-        const value = inspect(name);
-        assert.equal(value.Image, image); assert.equal(value.HostConfig.NetworkMode, 'none');
-        assert.equal(value.HostConfig.ReadonlyRootfs, true); assert.equal(value.Config.User, '1000:1000');
-        assert.equal(value.HostConfig.Memory, archiveWorker ? 268435456 : 1610612736);
-        assert.equal(value.HostConfig.MemorySwap, value.HostConfig.Memory);
-        assert.equal(value.HostConfig.NanoCpus, archiveWorker ? 500000000 : 1000000000);
-        assert.equal(value.HostConfig.PidsLimit, archiveWorker ? 32 : 64);
-        assert.ok(value.Mounts.every(m => [...(archiveWorker ? ['/archives','/receipts','/fixtures','/source-socket','/configuration'] :
-          ['/archives','/receipts','/fixtures']), ...(catalog ? ['/catalogs'] : [])].includes(m.Destination)));
-        if (!archiveWorker) assert.ok(value.Config.Env.every(item => !/PASSWORD=|TOKEN=|CONFIG_FILE=/.test(item)));
+        createQualificationWorker({docker,inspect,image,name,label,kind,mode,stores:volumes,binding,catalog,measure});
         docker(['start', name]); return { name, started: Date.now(), kind };
       };
       const wait = async (run, boundary = false) => {
         for (;;) {
           // Inspect before reading logs: an exit observed after an older log read can hide the final metric record.
           const state = inspect(run.name).State;
-          const logs = records(docker(['logs', run.name]));
+          const logs = records(docker(['logs', run.name]),state.Running);
           const limit = logs.find(record => record.fixture === 'limits');
           if (limit) {
             assert.equal(limit.memory, !run.kind.endsWith('verifier') ? '268435456' : '1610612736');
@@ -254,7 +230,6 @@ async function qualifyCase(image, shape, measure) {
           assert.equal(fixture('inspect').jobs.length, 4); assert.equal(blocked.admission.attempts, '100000');
           report({ scenario: shape, ...fixture('quota') });
         }
-        report({ scenario: shape, state: 'passed', providerCalls: 0, syntheticDeletedBindings: shape === 'cleanup' ? 200 : 0 });
       } catch (error) {
         if (shape === 'cleanup') {
           try { report({ scenario: shape,cleanupDiagnostic: fixture('cleanup-diagnose') }); }
@@ -262,20 +237,26 @@ async function qualifyCase(image, shape, measure) {
         }
         try { report({ scenario: shape, diagnostic: fixture('diagnose') }); } catch { report({ scenario: shape, diagnostic: 'unavailable' }); }
         throw error;
-      } finally { for (const name of Object.values(workers)) ownedRemove(name); }
+      } finally { finishGatewayStudyCleanup(Object.values(workers).map(name => ({name,run:() => ownedRemove(name)}))); }
     } });
   } finally {
-    for (const name of Object.values(workers)) ownedRemove(name);
-    for (const volume of Object.values(volumes)) {
-      if (docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim()) {
-        assert.equal(JSON.parse(docker(['volume', 'inspect', volume]))[0].Labels[labelKey], suffix);
-        docker(['volume', 'rm', volume]);
-      }
-      assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
-    }
-    assert.equal(existsSync(spec.hostDataPath), false);
+    finishGatewayStudyCleanup([
+      {name:'committed-inputs',run:() => assert.deepEqual(bind(),binding)},
+      ...[stager,...Object.values(workers)].map(name => ({name,run:() => ownedRemove(name)})),
+      ...Object.values(volumes).map(volume => ({name:volume,run:() => {
+        if (docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim()) {
+          assert.equal(JSON.parse(docker(['volume', 'inspect', volume]))[0].Labels[labelKey], suffix);
+          docker(['volume', 'rm', volume]);
+        }
+        assert.equal(docker(['volume', 'ls', '-q', '--filter', `name=^${volume}$`]).trim(), '');
+      }})),
+      {name:'qualification-labeled-containers',run:() => assert.equal(docker(['ps','-aq','--filter',`label=${label}`]).trim(),'')},
+      {name:'qualification-labeled-volumes',run:() => assert.equal(docker(['volume','ls','-q','--filter',`label=${label}`]).trim(),'')},
+      {name:'disposable-data-directory',run:() => assert.equal(existsSync(spec.hostDataPath),false)},
+    ]);
     report({ scenario: shape, cleanup: 'verified' });
   }
+  report({ scenario: shape, state: 'passed', providerCalls: 0, syntheticDeletedBindings: shape === 'cleanup' ? 200 : 0 });
 }
 
 export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null, measure = false) {
@@ -286,6 +267,8 @@ export async function runGatewayArchiveQualification(image, revision, cleanupOnl
   assert.ok(only === null || shapes.includes(only), 'qualification_case_invalid');
   assert.ok(typeof measure === 'boolean' && (!measure || (catalogs && only === 'catalog-wide')), 'qualification_measurement_scope');
   const selected = only === null ? shapes : [only];
-  for (const shape of selected) await qualifyCase(image, shape, measure);
-  report({ qualification: 'passed', cases: selected, image, revision });
+  const profile = measure ? 'measured' : only === 'catalog-wide' ? 'unsampled' : 'regression';
+  const bind = () => bindStudySources({image,revision,study:'qualification',profile}), binding = bind();
+  for (const shape of selected) await qualifyCase(image, shape, measure, binding, bind);
+  report({ qualification: 'passed', cases: selected, image, revision, profile, inputSha256:binding.sha256 });
 }

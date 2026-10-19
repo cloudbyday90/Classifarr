@@ -9,8 +9,15 @@ const row = ['rowModeContract.mjs','rowModeCandidate.mjs','rowModeContent.mjs','
 const extra = { inference:['soakInference.mjs'], history:['historyQueryProfile.mjs'],
   restores:['restoreStudySource.mjs','restoreStudyWorker.mjs'], rowmode:['restoreStudySource.mjs','rowModeWorker.mjs'] };
 const archiveEntries = ['archiveRestoreInput.mjs','onlineArchive.mjs','archiveProtection.mjs','catalogArchive.mjs','catalogRetention.mjs'];
+const qualificationEntries = ['archiveQualificationData.mjs','catalogQualificationData.mjs','archiveQualificationDriver.mjs'];
 
 export function studyPolicy(study, profile) {
+  if (study === 'qualification') {
+    assert.ok(['regression','measured','unsampled'].includes(profile),'study_profile_invalid');
+    return { files:[...qualificationEntries,'archiveQualificationResources.mjs','cleanupQualification.mjs','cleanupQueryDiagnostics.mjs',
+      'catalogQualificationBoundary.mjs','incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs',
+      'archiveQualificationMeasurements.mjs','catalogReadComparison.mjs'],entries:[...qualificationEntries],application:[] };
+  }
   if (study === 'archive') {
     assert.equal(profile,'regression','study_profile_invalid');
     return { files:[...archiveEntries,'catalogLateFiles.mjs','catalogRetentionGuards.mjs'],entries:[...archiveEntries],application:[] };

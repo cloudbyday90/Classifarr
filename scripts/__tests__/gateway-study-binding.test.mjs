@@ -31,9 +31,9 @@ test('image and fixture revisions are independent except explicit row-mode parit
 });
 
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
-  for (const study of ['inference','history','restores','rowmode','archive']) {
-    const policy = studyPolicy(study,study === 'archive' ? 'regression' : 'extended');
-    assert.equal(policy.files.length,study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
+  for (const study of ['inference','history','restores','rowmode','archive','qualification']) {
+    const policy = studyPolicy(study,['archive','qualification'].includes(study) ? 'regression' : 'extended');
+    assert.equal(policy.files.length,study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -77,7 +77,8 @@ function withBootstrap(study,profile,body) {
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
 }
 
-for (const [study,profile] of [['inference','regression'],['inference','extended'],['history','extended'],['restores','extended'],['rowmode','extended'],['archive','regression']]) {
+for (const [study,profile] of [['inference','regression'],['inference','extended'],['history','extended'],['restores','extended'],['rowmode','extended'],['archive','regression'],
+  ['qualification','regression'],['qualification','measured'],['qualification','unsampled']]) {
   test(`pre-import bootstrap binds ${study}/${profile} with original argument shape`, () => withBootstrap(study,profile,({results,binding,run}) => {
     const result = run(undefined,undefined,{NODE_OPTIONS:undefined}); assert.equal(result.status,0,result.stderr);
     const rows = result.stdout.trim().split('\n').map(line => JSON.parse(line));
@@ -85,6 +86,40 @@ for (const [study,profile] of [['inference','regression'],['inference','extended
     assert.equal(existsSync(resolve(results,'executed')),true);
   }));
 }
+
+for (const helper of ['cleanupQueryDiagnostics.mjs','archiveEvidenceVerifier.mjs']) {
+  test(`qualification rejects changed indirect launch input ${helper} before driver execution`, () => withBootstrap('qualification','regression',({fixtures,results,run}) => {
+    writeFileSync(resolve(fixtures,helper),'changed executable');
+    const result = run('archiveQualificationDriver.mjs',undefined,{NODE_OPTIONS:undefined},['cleanup','normal']);
+    assert.equal(result.status,1); assert.equal(existsSync(resolve(results,'executed')),false);
+    assert.equal(JSON.parse(result.stdout.trim()).stage,'binding');
+  }));
+}
+
+test('only the measured qualification archiver accepts its exact existing four arguments', () => {
+  for (const profile of ['regression','measured','unsampled']) withBootstrap('qualification',profile,({binding,run,replace}) => {
+    replace('archiveQualificationDriver.mjs','console.log(JSON.stringify({args:process.argv.slice(2),execArgv:process.execArgv}));');
+    const entry = 'archiveQualificationDriver.mjs', valid = ['archiver','normal','catalog','measure'];
+    for (const args of [valid,['cleanup','normal','catalog','measure'],['archiver','pause','catalog','measure'],
+      ['archiver','normal','catalog','other'],[...valid,'extra']]) {
+      const allowed = profile === 'measured' && args === valid;
+      if (allowed) assert.doesNotThrow(() => studyNodeArgs(binding,entry,args));
+      else assert.throws(() => studyNodeArgs(binding,entry,args));
+      const result = run(entry,binding.sha256,{NODE_OPTIONS:undefined},args);
+      assert.equal(result.status,allowed ? 0 : 1,result.stderr);
+      const rows = result.stdout.trim().split('\n').map(line => JSON.parse(line));
+      if (allowed) assert.deepEqual(requireBoundStudyRecords(rows,binding,entry),[{args:valid,execArgv:[]}]);
+      else assert.equal(rows[0].stage,'binding');
+    }
+    assert.throws(() => studyNodeArgs(binding,'catalogQualificationData.mjs',valid));
+    assert.equal(run('catalogQualificationData.mjs',binding.sha256,{NODE_OPTIONS:undefined},valid).status,1);
+  });
+  withBootstrap('archive','regression',({binding,run}) => {
+    const args = ['archiver','normal','catalog','measure'];
+    assert.throws(() => studyNodeArgs(binding,'catalogArchive.mjs',args));
+    assert.equal(run('catalogArchive.mjs',binding.sha256,{NODE_OPTIONS:undefined},args).status,1);
+  });
+});
 
 for (const failure of ['digest','helper','entry','profile']) {
   test(`archive bootstrap refuses ${failure} before fixture execution`, () => withBootstrap('archive','regression',({fixtures,results,binding,run}) => {
