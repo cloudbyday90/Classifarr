@@ -119,3 +119,6 @@ reuse only in the bound study, unchanged filesystem/restore fences, then observe
 equality and cost evidence. Promote nothing automatically. The outcome document
 will identify whether one duplicate merits a separately reviewed runtime change;
 end-to-end pressure/load and crash/restore verification would still be required.
+
+See the [measured outcome](gateway-snapshot-reuse-study-outcome.md) for results,
+limitations, local image identity and the next bounded recommendation.
