@@ -1,6 +1,6 @@
 # Gateway row-mode comparison outcome
 
-## Decision and subjects
+## Decision and initial subjects
 
 Retain the current production object-row reader. The approved array-row
 comparison passed correctness and safety checks, but failed the predeclared
@@ -61,7 +61,7 @@ at 4/5/2 seconds, with the existing finite scan/cancellation bounds. No heavy
 tests/builds overlapped measurements. Natural and profiler lanes used fresh
 processes; they are not a profiler-overhead crossover.
 
-## Results
+## Initial comparison results
 
 MiB means 1,048,576 bytes. Allocation estimates are sampled operation totals,
 not live bytes, retained ownership, process RSS or exact native-buffer allocation.
@@ -138,7 +138,7 @@ them as receiving the new copied-file binding automatically.
 
 ## Verification and local handoff
 
-Gateway tooling: 41 tests passed. Affected backend preflight, code-health and
+Initial gateway tooling: 41 tests passed. Affected backend preflight, code-health and
 ownership contracts: 36,319 tests in three suites passed. Preflight/copyright,
 both Knip modes, server/client lint and types, four policy gates, static ESM
 imports, mock shapes, syntax, Markdown and secret/whitespace checks passed.
@@ -172,8 +172,101 @@ the emitted binding digest, the worker originally imported a fixture before
 checking the expected file-name set. Hardened the command to carry the trusted
 expected manifest digest and compare it before parsing/imports. The extra unit
 contract brings tooling to 42 passing tests. The original well-formed comparison
-above remains recorded against its exact source; the hardened build, adversarial
-refusal and repeated study must be verified separately before final handoff.
+above remains recorded against its exact source. The hardened build and repeated
+study below have separate identities; the measurements are not pooled.
+
+## Final hardened replay
+
+| Subject | Exact identity |
+| --- | --- |
+| Tested hardened implementation | `d3771fea416d278a81c87d68ead2dc8755551569` |
+| Second no-cache local image ID | `sha256:ec579c2b2d9999f6418eb4015bed7672a1c3e33a9ea2a96bc897581bc6ae51a9` |
+| Command-pinned fixture-binding SHA-256 | `5214201feef3da56b5478e8fbbff6e70bf23dda05032ff4d855521f99e2304e3` |
+| Catalog UUIDv7 | `01a1517d-58c1-762e-912c-90320dfeb8be` |
+| Catalog manifest SHA-256 | `4dde44fbb1166b976d84f30de305ae7cd0eb9201822a84588c457a2bc6faee5e` |
+| Real dump bytes | 233,157,841 |
+| Dump SHA-256 | `9ba85d7a99d76493eeb057cf26e2571c3eaecca6e9eef8d65cd8d9719de2e9ae` |
+| Complete source SHA-256 before/after | `cc318542597187eab3229cbd50a6ce52cf8fc7af02630c813aac7d33f87c97e4` |
+
+This was a complete new protocol run from clean committed source, not a partial
+retry. The generated dataset is not byte-identical to the initial one. Within
+each run, both readers saw identical frozen data. All sixteen hardened-run scans
+matched exact counts/max IDs/hashes, with 3,002 rows, 233,854,399 body bytes and
+233,857,401 charged bytes. Content SHA-256:
+`109026a7bb8c221b2d45fa8c7ab1e5cd81f6bf2b3a7d95260578f803c2e744a2`.
+
+| Ordered run | Mode | Natural elapsed ms | Separate sampled allocation MiB |
+| --- | --- | --- | --- |
+| 1 | Object | 7,997.04 | 239.39 |
+| 2 | Array | 8,396.07 | 244.61 |
+| 3 | Array | 7,560.34 | 231.81 |
+| 4 | Object | 7,401.72 | 223.80 |
+| 5 | Object | 7,737.81 | 238.15 |
+| 6 | Array | 8,846.45 | 233.93 |
+| 7 | Array | 7,557.65 | 209.28 |
+| 8 | Object | 7,754.90 | 231.68 |
+
+Natural medians were 7,746.35 ms (object) and 7,978.20 ms (array), an observed
+2.99% increase for arrays. Mirrored allocation ratios were 1.02182, 1.03579,
+0.98229 and 0.90334; the unchanged 0.90 screen again failed. Both independent
+runs support retaining the current reader, not claiming a universal regression
+or statistically proven equivalence. Sampling estimates can fall below actual
+transferred bytes and are not exact allocation counts or safety budgets.
+
+Natural monitoring collected 264 samples, maximum gap 260.09 ms and 734.11 ms
+measured sampling-read time over 63,251.98 ms of measured scans. The separate
+profiler lane collected 272 samples, maximum gap 255.15 ms and 806.74 ms of
+sampling-read time. Required counters were complete, forced GC was zero, and
+OOM/memory/PID-limit events were zero. Lifetime cgroup peaks were respectively
+191.51 and 195.02 MiB; these are not complete-restore capacity measurements.
+
+The command-pinned manifest refusal, both sets of ten cursor/budget/cancellation
+probes, read-only denials, dependency equality, source preservation and host
+source rechecks all passed. The runner exited 0 with
+`row_mode_passed_cleanup_verified`; owned resources were removed. No threshold,
+production limit, attempt or algorithm was changed for the repeat. The trusted
+expected digest is now checked before manifest parsing or any copied import.
+
+## Final validation and protected local refresh
+
+The unchanged full native archive/catalog/retention rehearsal also passed on the
+exact hardened image, exiting 0 with `online_archive_rehearsal_cleanup_verified`.
+It was run after both measured lanes, with no measurement overlap. Both study
+and safety-rehearsal label-filtered container/volume inventories were empty.
+Only owned disposable resources were removed; no normal history was purged.
+
+Final gateway tooling: 42 tests passed. The three affected backend suites were
+rerun after hardening: all 36,319 tests passed. Hardened preflight, copyright,
+ownership, both Knip modes, ESM imports/mock shapes and Markdown passed. Earlier
+lint/types and all four policy gates also passed; no server/client/database
+source changed anywhere in this patch. Full backend/frontend coverage and
+published multi-platform acceptance remain outside this scoped verification.
+
+Rechecked Docker context `desktop-linux`, the exact preceding container/image
+and repository data bind before replacing normal local Compose. Created another
+private backup without overwriting prior copies:
+`data/backups/gateway-row-mode-binding-ready-20261018.dump`, 76,251,020 bytes,
+mode 0600, SHA-256
+`a3d121bade968127e9224ab9ecf6afd6f836c35d0a2181e8266d22ff18303a45`.
+`pg_restore --list` passed; that is list validation, not a full application
+database restore rehearsal.
+
+Protected replacement used `--no-build --no-deps --pull never` and the tested
+image, not a later rebuild. Container
+`2a20020ea89e9f17132499b666d52adab2055b76b6e6d147d2ae27654dbb1a11`
+is healthy with the inspected `d3771fea416d278a81c87d68ead2dc8755551569`
+revision. `/health`, `/api/system/health/ready` and `/` returned HTTP 200 on
+local port 21324. The previous image remains under its verified
+`classifarr-local-rollback:6c80612098dbac7688fe7a131d0353921a2e804f1f9cd9d701a2d63919ea8783`
+tag; older rollback images/backups were not pruned.
+
+Read-only before/after checks found zero optional gateway/archive/catalog/cleanup
+namespaces in the normal application database. Capture budget revision 2, its
+four zero call/token/reservation counters and existing next-check timestamp were
+unchanged. No standalone service was activated. This final documentation update
+does not alter the tested executable sources. Remote CI for the final pushed
+head must be reported separately from these local checks and the previous main's
+successful [pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/39176119611).
 
 ## Recommendation stack and next item
 
@@ -183,8 +276,9 @@ refusal and repeated study must be verified separately before final handoff.
    an automatically recurring task or an admin action. Advantage: exact negative
    results are preserved. Cost: fixture parity must be maintained explicitly.
 3. Next, extend copied-fixture source binding to the other existing archive and
-   restore studies, reviewing their callers and CI compatibility first. This
-   addresses an observed evidence weakness without changing recovery authority.
+   restore studies, reviewing their callers and CI compatibility first. Upgrade
+   studies can require distinct image/fixture revisions, not blanket equality.
+   This addresses an observed evidence weakness without changing recovery authority.
 4. Defer batch tuning or a real raw-byte streaming/COPY prototype to a separately
    reviewed design. Smaller batches add round trips without eliminating text
    decoding; raw transport could avoid decoding but expands protocol, encoding,
