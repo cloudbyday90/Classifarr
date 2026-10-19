@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Bind default gateway archive, catalog and retention rehearsals to sealed
+  committed inputs, preserve UUID/receipt output, and verify all owned cleanup.
+  Fix fresh-checkout gateway test setup and update pinned CodeQL/OSV actions
+  without changing production recovery behavior or scanner permissions.
+
 - Bind gateway inference, history, restore-memory and row-mode studies to committed
   fixture inputs and exact image identities. Keep test code read-only, separate
   generated results, and reject mismatches before fixture execution without

@@ -1,9 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { mkdtempSync,writeFileSync,rmSync,lstatSync } from 'node:fs';
+import { mkdirSync,mkdtempSync,writeFileSync,rmSync,lstatSync } from 'node:fs';
 import { resolve,sep } from 'node:path';
 import { studyNodeArgs } from './gatewayStudyBootstrap.mjs';
 import { runDockerCheckCommand } from './dockerCheckCommand.mjs';
+
+export function assertStudyFixtureVolume(value,fixtureStore) {
+  const mounts = value.Mounts.filter(item => item.Destination === '/fixtures');
+  assert.equal(mounts.length,1); assert.equal(mounts[0].Type,'volume');
+  assert.equal(mounts[0].Name,fixtureStore); assert.equal(mounts[0].RW,false,'study_input_mount_writable');
+}
 
 export function assertStudyVolumes(value,stores,writableResults = false) {
   for (const [kind,writable] of [['fixtures',false],['results',writableResults]]) {
@@ -22,7 +28,8 @@ export function assertStudyCommand(value,binding,entry,args = []) {
 
 /** Exact committed bytes enter a private volume before any workload starts. */
 export function stageStudyInputs({ docker,image,binding,name,label,stores,inspect,remove }) {
-  const root = resolve('.tmp'), directory = mkdtempSync(resolve(root,'gateway-study-inputs-'));
+  const root = resolve('.tmp'); mkdirSync(root,{recursive:true});
+  const directory = mkdtempSync(resolve(root,'gateway-study-inputs-'));
   try {
     for (const [file,bytes] of Object.entries(binding.sources)) writeFileSync(resolve(directory,file),bytes,{mode:0o600,flag:'wx'});
     writeFileSync(resolve(directory,'fixture-provenance.json'),JSON.stringify(binding.manifest),{mode:0o600,flag:'wx'});
@@ -59,4 +66,11 @@ export function verifyStudyInputProtection(docker,source) {
   const result = docker(['exec','--user','1000:1000',source,'node','--input-type=module','-e',
     'import{open,writeFile,unlink}from"node:fs/promises";for(const p of ["/fixtures/soakData.mjs","/fixtures/new.mjs"]){let denied=false;try{const f=await open(p,"a");await f.close()}catch(e){denied=["EROFS","EACCES"].includes(e.code)}if(!denied)throw Error("study_input_write_allowed")}await writeFile("/results/write-probe.json","{}",{flag:"wx",mode:0o600});await unlink("/results/write-probe.json");console.log("protected")']);
   assert.equal(result.trim(),'protected','study_input_protection_failed');
+}
+
+export function verifyStudyFixtureProtection(docker,source,entry) {
+  assert.match(entry,/^[A-Za-z]+\.mjs$/);
+  const output = docker(['exec','--user','1000:1000',source,'node','--input-type=module','-e',
+    'import{open}from"node:fs/promises";for(const p of ["/fixtures/"+process.argv[1],"/fixtures/new.mjs"]){let denied=false;try{const f=await open(p,"a");await f.close()}catch(e){denied=["EROFS","EACCES"].includes(e.code)}if(!denied)throw Error("study_input_write_allowed")}console.log("protected")',entry]);
+  assert.equal(output.trim(),'protected','study_input_protection_failed');
 }

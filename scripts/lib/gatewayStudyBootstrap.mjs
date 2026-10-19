@@ -26,9 +26,10 @@ async function bootstrap() {
     check.deepEqual(Object.keys(binding).sort(),['application','entries','files','fixtureRevision','image','imageRevision','profile','study','version']);
     check.equal(binding.version,2); check.match(binding.image,/^sha256:[a-f0-9]{64}$/);
     for (const value of [binding.fixtureRevision,binding.imageRevision]) check.match(value,/^[a-f0-9]{40}$/);
-    check.ok(['inference','history','restores','rowmode'].includes(binding.study));
+    check.ok(['inference','history','restores','rowmode','archive'].includes(binding.study));
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
-    check.ok(['regression','extended'].includes(binding.profile) && (binding.study === 'inference' || binding.profile === 'extended'));
+    check.ok(['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
+      (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
     const names = Object.keys(binding.files); check.ok(names.length > 0 && names.length <= 32);
     check.deepEqual((await readdir('/fixtures')).sort(),[...names,'fixture-provenance.json'].sort());
     for (const name of names) {

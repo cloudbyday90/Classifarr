@@ -32,8 +32,8 @@ test('PR 537 pins verified Docker revisions without changing tag-only publishing
   expect(job.permissions).toEqual({ attestations: 'write', contents: 'read', 'id-token': 'write', packages: 'write' });
 });
 
-test('PR 537 pins all OSV entrypoints and preserves failure gates and Dependabot least privilege', () => {
-  const osv = workflow('osv-scanner'), revision = 'a345acffa64b0eaede81a3d9aae6141214d9c8fc';
+test('PR 561 pins all OSV entrypoints and preserves failure gates and Dependabot least privilege', () => {
+  const osv = workflow('osv-scanner'), revision = 'b1d267aea5211fa648d9d442fa64b90dbdcbdd36';
   expect(osv.on.pull_request_target).toBeUndefined();
   expect(osv.on.merge_group.branches).toEqual(['main']);
   const bot = osv.jobs['pr-scan-dependabot'];
@@ -68,7 +68,7 @@ test('CodeQL and SARIF upload use one immutable action revision and unchanged le
   }
   expect(references).toHaveLength(4);
   expect(new Set(references).size).toBe(1);
-  expect(references[0]).toBe('24c54180a607b1449ed407dd24f251e4e9147c8d'); // PR #560; upstream v4.38.3.
+  expect(references[0]).toBe('6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee'); // PR #561; upstream v4.39.0.
   expect(codeql.jobs.analyze.strategy.matrix.language).toEqual(['javascript-typescript', 'actions']);
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/init@')).with.queries).toBe('security-extended');
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/analyze@')).with.category)

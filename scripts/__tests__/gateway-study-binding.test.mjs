@@ -31,8 +31,9 @@ test('image and fixture revisions are independent except explicit row-mode parit
 });
 
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
-  for (const study of ['inference','history','restores','rowmode']) {
-    const policy = studyPolicy(study,'extended'); assert.equal(policy.files.length,study === 'rowmode' ? 25 : 19);
+  for (const study of ['inference','history','restores','rowmode','archive']) {
+    const policy = studyPolicy(study,study === 'archive' ? 'regression' : 'extended');
+    assert.equal(policy.files.length,study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -43,11 +44,12 @@ test('all copied relative imports are in the fixed closure; writable results are
       assert.ok(!/writeFile\(['"`]\/fixtures\//.test(source),`${name}: executable input write`);
     }
   }
-  for (const args of [['history','regression'],['__proto__','extended'],['inference','short']]) assert.throws(() => studyPolicy(...args));
+  for (const args of [['history','regression'],['__proto__','extended'],['inference','short'],['archive','extended']]) assert.throws(() => studyPolicy(...args));
 });
 
 function withBootstrap(study,profile,body) {
-  const root = resolve('.tmp'), directory = mkdtempSync(resolve(root,'binding-test-'));
+  const root = resolve('.tmp'); mkdirSync(root,{recursive:true});
+  const directory = mkdtempSync(resolve(root,'binding-test-'));
   const fixtures = resolve(directory,'fixtures'), results = resolve(directory,'results'), app = resolve(directory,'app');
   for (const path of [fixtures,results,app]) mkdirSync(path);
   const policy = studyPolicy(study,profile), sources = {};
@@ -64,20 +66,54 @@ function withBootstrap(study,profile,body) {
   const binding = {manifest,sha256:sha(raw)};
   const script = STUDY_BOOTSTRAP.replaceAll('/app/src/ollamaGateway',app.replaceAll('\\','/'))
     .replaceAll('/fixtures',fixtures.replaceAll('\\','/')).replaceAll('/results',results.replaceAll('\\','/'));
-  const run = (entry = policy.entries[0],digest = binding.sha256,env = {}) => spawnSync(process.execPath,
-    ['--input-type=module','-e',script,digest,entry],{encoding:'utf8',timeout:10000,maxBuffer:32768,
+  const run = (entry = policy.entries[0],digest = binding.sha256,env = {},args = []) => spawnSync(process.execPath,
+    ['--input-type=module','-e',script,digest,entry,...args],{encoding:'utf8',timeout:10000,maxBuffer:131072,
       env:{...process.env,NODE_OPTIONS:'',CLASSIFARR_GATEWAY_FIXTURE:'isolated',CLASSIFARR_SOAK_PROFILE:profile,...env}});
-  try { body({fixtures,results,app,binding,run}); }
+  const replace = (name,source) => {
+    writeFileSync(resolve(fixtures,name),source); manifest.files[name] = sha(source);
+    const raw = JSON.stringify(manifest); writeFileSync(resolve(fixtures,'fixture-provenance.json'),raw); binding.sha256 = sha(raw);
+  };
+  try { body({fixtures,results,app,binding,run,replace}); }
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
 }
 
-for (const [study,profile] of [['inference','regression'],['inference','extended'],['history','extended'],['restores','extended'],['rowmode','extended']]) {
+for (const [study,profile] of [['inference','regression'],['inference','extended'],['history','extended'],['restores','extended'],['rowmode','extended'],['archive','regression']]) {
   test(`pre-import bootstrap binds ${study}/${profile} with original argument shape`, () => withBootstrap(study,profile,({results,binding,run}) => {
     const result = run(undefined,undefined,{NODE_OPTIONS:undefined}); assert.equal(result.status,0,result.stderr);
     const rows = result.stdout.trim().split('\n').map(line => JSON.parse(line));
-    assert.deepEqual(requireBoundStudyRecords(rows,binding,'soakData.mjs'),[]); assert.equal(existsSync(resolve(results,'executed')),true);
+    assert.deepEqual(requireBoundStudyRecords(rows,binding,studyPolicy(study,profile).entries[0]),[]);
+    assert.equal(existsSync(resolve(results,'executed')),true);
   }));
 }
+
+for (const failure of ['digest','helper','entry','profile']) {
+  test(`archive bootstrap refuses ${failure} before fixture execution`, () => withBootstrap('archive','regression',({fixtures,results,binding,run}) => {
+    if (failure === 'helper') writeFileSync(resolve(fixtures,'catalogLateFiles.mjs'),'changed helper');
+    const result = run(failure === 'entry' ? 'catalogLateFiles.mjs' : undefined,failure === 'digest' ? '0'.repeat(64) : binding.sha256,
+      {NODE_OPTIONS:undefined,...(failure === 'profile' ? {CLASSIFARR_SOAK_PROFILE:'extended'} : {})});
+    assert.equal(result.status,1); assert.equal(existsSync(resolve(results,'executed')),false);
+    assert.deepEqual(JSON.parse(result.stdout.trim()),{fixture:'study-binding-failed',stage:'binding',reason:'fixture_binding_or_execution_failed'});
+  }));
+}
+
+test('archive receipt arguments preserve their exact shape and existing 32 KiB bound', t => withBootstrap('archive','regression',({binding,run,replace}) => {
+  replace('catalogRetention.mjs','console.log(JSON.stringify(process.argv.slice(2)));');
+  const maximum = JSON.stringify({padding:'x'.repeat(32754)}); assert.equal(Buffer.byteLength(maximum),32768);
+  assert.doesNotThrow(() => studyNodeArgs(binding,'catalogRetention.mjs',['accept',maximum]));
+  assert.throws(() => studyNodeArgs(binding,'catalogRetention.mjs',['accept',`${maximum} `]));
+  // Windows' total CreateProcess command line is smaller than this bound plus
+  // the inline bootstrap. Linux CI proves the complete boundary invocation.
+  const args = ['accept',process.platform === 'win32' ? JSON.stringify({padding:'x'.repeat(1024)}) : maximum];
+  const result = run('catalogRetention.mjs',binding.sha256,{NODE_OPTIONS:undefined},args);
+  assert.equal(result.status,0,result.stderr);
+  const rows = result.stdout.trim().split('\n').map(line => JSON.parse(line));
+  assert.deepEqual(requireBoundStudyRecords(rows,binding,'catalogRetention.mjs'),[args]);
+  if (process.platform === 'win32') t.diagnostic('32 KiB host bound checked; Linux CI exercises full-size bootstrap launch beyond Windows total command-line limit');
+  else {
+    const oversized = run('catalogRetention.mjs',binding.sha256,{NODE_OPTIONS:undefined},['accept',`${maximum} `]);
+    assert.equal(oversized.status,1); assert.equal(JSON.parse(oversized.stdout.trim()).stage,'binding');
+  }
+}));
 
 for (const failure of ['digest','changed','missing','extra','entry','environment','application','oversize','malformed']) {
   test(`bootstrap refuses ${failure} before any fixture side effect`, () => withBootstrap('rowmode','extended',({fixtures,results,app,binding,run}) => {
@@ -121,10 +157,27 @@ test('inspected commands, mounts and output must match independently expected id
 });
 
 test('staging failure still removes the owned container and exact generated input directory', () => {
+  mkdirSync(resolve('.tmp'),{recursive:true});
   const before = readdirSync(resolve('.tmp')).filter(name => name.startsWith('gateway-study-inputs-'));
   const removed = [], binding = bind();
   assert.throws(() => stageStudyInputs({image,binding,name:'owned-stager',label:'owned=yes',stores:{fixtures:'owned-inputs'},
     docker() { throw Error('synthetic_create_failure'); },remove:name => removed.push(name)}),/synthetic_create_failure/);
   assert.deepEqual(removed,['owned-stager']);
   assert.deepEqual(readdirSync(resolve('.tmp')).filter(name => name.startsWith('gateway-study-inputs-')),before);
+});
+
+test('stager initializes an absent .tmp in an empty working directory and cleans a failed create', () => {
+  mkdirSync(resolve('.tmp'),{recursive:true});
+  const root = resolve('.tmp'), directory = mkdtempSync(resolve(root,'fresh-binding-'));
+  const module = new URL('../lib/gatewayStudyInputs.mjs',import.meta.url).href;
+  const binding = bind(); binding.sources = Object.fromEntries(Object.entries(binding.sources).map(([name,value]) => [name,value.toString()]));
+  const script = `import assert from 'node:assert/strict';import{existsSync,readdirSync}from'node:fs';
+    import{stageStudyInputs}from${JSON.stringify(module)};assert.equal(existsSync('.tmp'),false);const removed=[];
+    assert.throws(()=>stageStudyInputs({image:${JSON.stringify(image)},binding:${JSON.stringify(binding)},name:'owned-stager',label:'owned=yes',stores:{fixtures:'owned-inputs'},
+      docker(){throw Error('synthetic_create_failure')},remove(name){removed.push(name)}}),/synthetic_create_failure/);
+    assert.deepEqual(removed,['owned-stager']);assert.deepEqual(readdirSync('.tmp'),[]);console.log('fresh-staging-passed');`;
+  try {
+    const result = spawnSync(process.execPath,['--input-type=module','-e',script],{cwd:directory,encoding:'utf8',timeout:10000});
+    assert.equal(result.status,0,result.stderr); assert.equal(result.stdout.trim(),'fresh-staging-passed');
+  } finally { assert.ok(directory.startsWith(`${root}${sep}fresh-binding-`)); rmSync(directory,{recursive:true,force:true}); }
 });
