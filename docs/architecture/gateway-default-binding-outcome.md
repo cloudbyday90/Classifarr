@@ -130,3 +130,8 @@ Next, apply this boundary to qualification/cleanup rehearsals, then scheduling a
 rotation. Their staging remains unbound. Do not reduce production verification or
 infer new purge/self-healing authority from this test-tooling result. Keep all
 changes on main with Unreleased notes; no release, tag or PR merge.
+
+Follow-up: the qualification/cleanup increment is now covered by its separate
+[design](gateway-qualification-binding-design.md) and
+[outcome](gateway-qualification-binding-outcome.md). Scheduling/rotation remains
+the next unbound family; the historical evidence above is unchanged.

@@ -69,10 +69,16 @@ couple test-only tooling to production artifacts; retain the existing separation
   elapsed time starts at the unchanged child spawn; host elapsed and lifetime
   cgroup peaks also include bootstrap overhead. Baseline means unsampled, not an
   older image. No direct performance comparison with historical unbound runs.
+  [Docker's statistics documentation](https://docs.docker.com/reference/cli/docker/container/stats/)
+  also distinguishes cache-adjusted CLI usage from raw container accounting.
+  Do not equate container peaks with Node RSS, add shared RSS values, or treat
+  partial samples and unavailable pressure counters as zero. Preserve the
+  existing between-read observation budget, not a claim of syscall preemption.
 - Try every exact owned cleanup and source recheck after failures. Missing
   containers are harmless; foreign ownership, failed removal or residual labels
-  fail completion. Abrupt host loss may leave labeled resources; no new cleanup
-  daemon or automatic destructive recovery is authorized.
+  fail completion. Abrupt host loss or the existing schema helper's CLI signal
+  exit can bypass outer volume cleanup and leave labeled resources; no success
+  is reported. No new cleanup daemon or destructive recovery is authorized.
 
 ## Random PR and dependency scope
 
