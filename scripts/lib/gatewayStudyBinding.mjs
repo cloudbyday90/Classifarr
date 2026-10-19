@@ -15,6 +15,7 @@ export function bindStudySources({ revision,image,fixtureRevision = revision,stu
   assert.equal(git(['rev-parse','HEAD']).toString().trim(),fixtureRevision,'study_checkout_revision');
   assert.equal(git(['status','--porcelain']).toString().trim(),'','study_checkout_dirty');
   if (study === 'rowmode') assert.equal(revision,fixtureRevision,'row_mode_parity_revision');
+  if (study === 'snapshot') assert.equal(revision,fixtureRevision,'snapshot_parity_revision');
   const committed = (path,ref) => {
     assert.match(git(['ls-tree',ref,'--',path]).toString(),/^100644 blob [a-f0-9]{40}\t/,'study_input_not_regular');
     const bytes = Buffer.from(git(['show',`${ref}:${path}`]));

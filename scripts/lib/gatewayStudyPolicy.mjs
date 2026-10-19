@@ -12,6 +12,12 @@ const archiveEntries = ['archiveRestoreInput.mjs','onlineArchive.mjs','archivePr
 const qualificationEntries = ['archiveQualificationData.mjs','catalogQualificationData.mjs','archiveQualificationDriver.mjs'];
 
 export function studyPolicy(study, profile) {
+  if (study === 'snapshot') {
+    assert.equal(profile,'regression','study_profile_invalid');
+    return { files:['snapshotReuseStudy.mjs','snapshotReuseData.mjs','snapshotReuseProbe.mjs','snapshotReuseGuards.mjs',
+      'snapshotReuseCache.mjs','snapshotReuseContent.mjs','snapshotReuseContract.mjs'],entries:['snapshotReuseStudy.mjs'],
+    application:['catalogRowReader.mjs','catalogContent.mjs','onlineArchiveSnapshot.mjs','archiveRetentionQueries.mjs'] };
+  }
   if (study === 'scheduling') {
     assert.ok(['regression','rotation'].includes(profile),'study_profile_invalid');
     return { files:['catalogScheduling.mjs','catalogRotationStudy.mjs','rotationStudyContract.mjs'],

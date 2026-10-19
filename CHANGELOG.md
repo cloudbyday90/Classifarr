@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a source-bound local study of duplicate gateway reads within one active
+  snapshot, with cancellation, lifetime and byte-limit checks. Keep production
+  recovery unchanged. Update pinned Vue and Pinia runtime dependencies.
+
 - Bind gateway scheduling and rotation rehearsals to sealed committed inputs,
   validate isolated verifier results and resource boundaries, and preserve all
   recovery checks and retry limits. Update pinned frontend test/build tooling.

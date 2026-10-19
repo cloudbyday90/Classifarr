@@ -3,12 +3,15 @@ import { runGatewayArchiveQualification } from './lib/gatewayArchiveQualificatio
 import { runGatewayArchiveRehearsal } from './lib/gatewayArchiveRehearsal.mjs';
 import { runGatewayCatalogSchedulingRehearsal } from './lib/gatewayCatalogSchedulingRehearsal.mjs';
 import { runGatewayInferenceSoak } from './lib/gatewayInferenceSoak.mjs';
+import { runGatewaySnapshotReuseStudy } from './lib/gatewaySnapshotReuseStudy.mjs';
 
 const [image,revision,mode] = process.argv.slice(2);
 if (process.argv.length > 5 || (mode && !['--qualification','--cleanup','--catalog-scheduling','--catalog-qualification',
-  '--catalog-memory','--catalog-memory-baseline','--inference-soak','--extended-soak','--rotation-study','--history-profile','--restore-memory','--row-mode-profile'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
+  '--catalog-memory','--catalog-memory-baseline','--inference-soak','--extended-soak','--rotation-study','--history-profile','--restore-memory','--row-mode-profile','--snapshot-reuse'].includes(mode))) throw new Error('archive_rehearsal_arguments_invalid');
 if (!/^sha256:[a-f0-9]{64}$/.test(image ?? '') || !/^[a-f0-9]{40}$/.test(revision ?? '')) throw new Error('immutable_image_and_revision_required');
-if (['--inference-soak','--extended-soak','--history-profile','--restore-memory','--row-mode-profile'].includes(mode)) {
+if (mode === '--snapshot-reuse') {
+  await runGatewaySnapshotReuseStudy(image,revision);
+} else if (['--inference-soak','--extended-soak','--history-profile','--restore-memory','--row-mode-profile'].includes(mode)) {
   await runGatewayInferenceSoak(image, revision, mode === '--inference-soak' ? 'regression' : 'extended',
     mode === '--history-profile' ? 'history' : mode === '--restore-memory' ? 'restores' : mode === '--row-mode-profile' ? 'rowmode' : 'inference');
 } else if (['--catalog-memory','--catalog-memory-baseline'].includes(mode)) {

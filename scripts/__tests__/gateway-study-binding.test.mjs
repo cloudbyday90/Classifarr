@@ -24,6 +24,7 @@ test('image and fixture revisions are independent except explicit row-mode parit
   assert.equal(binding.sources['soakData.mjs'].toString(),'committed\n');
   assert.equal(binding.manifest.files['soakData.mjs'],sha('committed\n'));
   assert.throws(() => bind({study:'rowmode',revision:'d'.repeat(40),fixtureRevision:revision}),/row_mode_parity_revision/);
+  assert.throws(() => bind({study:'snapshot',profile:'regression',revision:'d'.repeat(40),fixtureRevision:revision}),/snapshot_parity_revision/);
   for (const patch of [{fixtureRevision:'e'.repeat(40)},{read:() => 'drift'},
     {git:args => args[0] === 'status' ? ' M source' : git(args)},
     {git:args => args[0] === 'ls-tree' ? `120000 blob ${'c'.repeat(40)}\tlink` : git(args)},
@@ -32,9 +33,9 @@ test('image and fixture revisions are independent except explicit row-mode parit
 });
 
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
-  for (const study of ['inference','history','restores','rowmode','archive','qualification','scheduling']) {
-    const policy = studyPolicy(study,['archive','qualification','scheduling'].includes(study) ? 'regression' : 'extended');
-    assert.equal(policy.files.length,study === 'scheduling' ? 3 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
+  for (const study of ['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot']) {
+    const policy = studyPolicy(study,['archive','qualification','scheduling','snapshot'].includes(study) ? 'regression' : 'extended');
+    assert.equal(policy.files.length,study === 'snapshot' ? 7 : study === 'scheduling' ? 3 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -77,6 +78,17 @@ function withBootstrap(study,profile,body) {
   try { body({fixtures,results,app,binding,run,replace}); }
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
 }
+
+test('snapshot bootstrap restricts actions and verifies every helper and application input before import',()=>withBootstrap('snapshot','regression',({fixtures,app,run,results})=>{
+  for(const action of ['setup','small','wide','probes','restart']) assert.equal(run(undefined,undefined,{NODE_OPTIONS:undefined},[action]).status,0);
+  for(const args of [[],['setup','extra'],['refresh']]) assert.equal(run(undefined,undefined,{NODE_OPTIONS:undefined},args).status,1);
+  for(const [root,name] of [[fixtures,'snapshotReuseCache.mjs'],[app,'onlineArchiveSnapshot.mjs']]) {
+    const path=resolve(root,name), original=readFileSync(path); writeFileSync(path,'changed');
+    const result=run(undefined,undefined,{NODE_OPTIONS:undefined},['setup']); assert.equal(result.status,1);
+    assert.equal(JSON.parse(result.stdout.trim()).stage,'binding'); writeFileSync(path,original);
+  }
+  assert.equal(existsSync(resolve(results,'executed')),true);
+}));
 
 for (const profile of ['regression','rotation']) {
   test(`scheduling/${profile} preserves one action and rejects cross-profile intent before import`, () => withBootstrap('scheduling',profile,({binding,run,replace,results}) => {

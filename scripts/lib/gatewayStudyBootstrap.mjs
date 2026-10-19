@@ -26,9 +26,10 @@ async function bootstrap() {
     check.deepEqual(Object.keys(binding).sort(),['application','entries','files','fixtureRevision','image','imageRevision','profile','study','version']);
     check.equal(binding.version,2); check.match(binding.image,/^sha256:[a-f0-9]{64}$/);
     for (const value of [binding.fixtureRevision,binding.imageRevision]) check.match(value,/^[a-f0-9]{40}$/);
-    check.ok(['inference','history','restores','rowmode','archive','qualification','scheduling'].includes(binding.study));
+    check.ok(['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot'].includes(binding.study));
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
     check.ok(binding.study === 'scheduling' ? ['regression','rotation'].includes(binding.profile) :
+      binding.study === 'snapshot' ? binding.profile === 'regression' :
       binding.study === 'qualification' ? ['regression','measured','unsampled'].includes(binding.profile) :
       ['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
         (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
@@ -42,7 +43,9 @@ async function bootstrap() {
       check.equal(sha(await read(`/fixtures/${name}`,131072)),binding.files[name]);
     }
     check.ok(Array.isArray(binding.entries) && binding.entries.every(name => names.includes(name)));
-    check.deepEqual(Object.keys(binding.application),binding.study === 'rowmode' ? ['catalogRowReader.mjs','catalogContent.mjs'] : []);
+    check.deepEqual(Object.keys(binding.application),binding.study === 'snapshot' ?
+      ['catalogRowReader.mjs','catalogContent.mjs','onlineArchiveSnapshot.mjs','archiveRetentionQueries.mjs'] :
+      binding.study === 'rowmode' ? ['catalogRowReader.mjs','catalogContent.mjs'] : []);
     for (const [name,digest] of Object.entries(binding.application)) {
       check.match(digest,/^[a-f0-9]{64}$/);
       check.equal(sha((await read(`/app/src/ollamaGateway/${name}`,131072)).toString('utf8').replaceAll('\r\n','\n')),digest);
@@ -62,6 +65,10 @@ async function bootstrap() {
       console.log(JSON.stringify({ fixture:'study-sealed',sha256:expected,symlinkRefused:true })); return;
     }
     check.ok(binding.entries.includes(entry));
+    if (binding.study === 'snapshot') {
+      check.equal(entry,'snapshotReuseStudy.mjs'); check.equal(args.length,1);
+      check.ok(['setup','small','wide','probes','restart'].includes(args[0]));
+    }
     if (binding.study === 'scheduling') {
       const actions = ['setup','worker','register-only','quiet','inference','accept-inference',
         ...(binding.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'])];
