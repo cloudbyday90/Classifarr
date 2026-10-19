@@ -133,10 +133,12 @@ The common CLI still defaults to equal image/fixture source. The neutral helper
 supports explicitly separate revisions and tests that contract; existing upgrade
 callers/receipt schemas were not forced through a universal equality restriction.
 
-Default archive/catalog/retention, qualification/cleanup and scheduling/rotation
-families remain deferred and unbound. Next, apply the proven pattern to the default
-archive/catalog/retention family, then the other two staging mechanisms, without
-changing recovery authority. No new admin functions or purge permissions are needed.
+At completion of this batch, default archive/catalog/retention,
+qualification/cleanup and scheduling/rotation families were deferred and unbound.
+The subsequent [default-family outcome](gateway-default-binding-outcome.md) records
+its separately tested rollout on October 19. Qualification/cleanup and
+scheduling/rotation remain follow-ons, without new recovery authority, admin
+functions or purge permissions.
 
 GitHub MCP enumeration found no open PRs, including the repeat check during this
 work. No closed PR was presented as open. All changes stay on main, with high-level
