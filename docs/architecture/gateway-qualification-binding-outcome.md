@@ -151,3 +151,7 @@ fully qualified evidence. Keep production verification and resource limits intac
 partial memory observations are not sufficient to establish headroom. This work
 and its documentation stay on main under Unreleased: no release, Git tag or PR merge.
 Hosted CI for the final documentation commit is separate from the local evidence.
+
+Follow-up: [scheduling/rotation binding outcome](gateway-scheduling-binding-outcome.md)
+records the completed remaining rehearsal boundary and its unchanged recovery
+checks. Production verification and resource limits were not reduced.
