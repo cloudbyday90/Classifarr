@@ -77,6 +77,7 @@ test('PowerShell query has only validated targets and fixed read-only cmdlets, n
     calls++; assert.match(file, /WindowsPowerShell[\\/]v1\.0[\\/]powershell\.exe$/);
     assert.deepEqual(args.slice(0, 4), ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand']);
     const query = Buffer.from(args[4], 'base64').toString('utf16le');
+    assert.match(query, /Set-StrictMode -Version Latest/);
     assert.match(query, /Get-VM -Id/); assert.ok(query.includes(vmId) && query.includes(switchId));
     assert.match(query, /Get-VHD -Path/); assert.match(query, /Get-VMSnapshot -VM/);
     assert.doesNotMatch(query, /\b(?:New|Set|Remove|Start|Stop|Grant|Invoke|Mount|Import)-VM|Start-Process|RunAs|ComputerName|Credential/);

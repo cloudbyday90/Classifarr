@@ -41,6 +41,8 @@ No JSON receipt can grant readiness, and there is no imported-evidence CLI mode.
 
 Commands are fixed read-only queries, use no shell for guest commands and a
 constant encoded PowerShell query with validated GUID literals on Windows.
+PowerShell strict mode refuses missing properties before boolean/numeric casts
+can turn unknown values into plausible defaults.
 Capture is bounded to 64 KiB and ten seconds per command; a guest check uses
 three commands (30 seconds total command time). Git fsmonitor and optional index
 refreshes are disabled for these reads. No retries, saved scheduling

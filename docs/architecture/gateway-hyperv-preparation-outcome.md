@@ -18,6 +18,7 @@ qualification: every output retains `studyReady: false`. Queries do not request
 elevation, retry, provision infrastructure, import a passed receipt or start work.
 Review also disabled Git filesystem-monitor hooks and optional index refreshes,
 and removed case-insensitive Docker environment overrides for local-only probes.
+PowerShell strict mode prevents absent properties from becoming false/zero defaults.
 
 ## Verification
 

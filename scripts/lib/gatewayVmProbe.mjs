@@ -27,7 +27,8 @@ export function captureHypervPreparation({ vmId, switchId, platform = process.pl
   const unavailable = () => vmPreparationResult('host', [{ check: 'hyperv_observation', status: 'unavailable' }]);
   if (platform !== 'win32' || typeof systemRoot !== 'string' || !/^[a-z]:[\\/]/i.test(systemRoot)) return unavailable();
   // Only validated GUID literals enter this constant query. No names, paths or remote host arguments.
-  const query = `$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';
+  const query = `Set-StrictMode -Version Latest;
+$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';
 try {
   Import-Module Hyper-V -ErrorAction Stop;
   $vm = Get-VM -Id ([guid]'${vmId}');
