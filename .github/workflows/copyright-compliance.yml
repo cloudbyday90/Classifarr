@@ -33,12 +33,16 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
       - name: Set up npm and npx
         run: npm install --global npm@12.2.0 && npm --version && npx --version
       - name: Install root dependencies
         run: npm ci
-      - name: Check root tooling dependency security and compatibility
+      - name: Install client dependencies for independent redirect regression tests
+        run: npm --prefix client ci
+      - name: Check tooling dependency security and compatibility
         run: npm run test:tooling:dependencies
       - name: Check copyright headers
         run: npm run check-copyright

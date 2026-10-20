@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Patch redirect-header handling in root/client dependencies and test both actual
+  installed copies without changing the server transport or installation policy.
+
+- Model on-demand study VM ownership, cancellation, bounded drain and graceful
+  shutdown with simulation-only ESM tooling. Real VM operations remain disabled.
+
 - Prepare a dedicated local Hyper-V study environment with a fixed VM profile,
   administrator setup guide and bounded read-only prerequisite checks. No VM
   provisioning, study execution or production changes are performed.

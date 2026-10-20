@@ -61,6 +61,7 @@
     "fsevents@2.3.3": false
   },
   "overrides": {
+    "follow-redirects": "1.16.1",
     "source-map-js": "1.2.2",
     "postcss-selector-parser": "7.1.6",
     "glob": "13.0.6",

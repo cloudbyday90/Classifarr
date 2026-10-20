@@ -33,6 +33,12 @@ Use Hyper-V Manager to create the dedicated Generation 2 Linux VM with the
 | Access | Host-only SSH, public keys, verified host key |
 | Startup | On demand; no automatic study/resume |
 
+Configure this owned VM not to start automatically when Windows starts. It should
+be off between jobs, not a continuously running background service. Verify guest
+shutdown integration before using graceful shutdown; do not force power-off or
+save state when drain/cleanup is uncertain. The current tooling cannot operate
+its power state. See the [on-demand lifecycle design](../architecture/on-demand-study-vm-design.md).
+
 The full disk is allocated upfront; memory is reserved while running. Keep room
 for Windows and normal applications. 64 GiB is an estimate, not a validated build
 minimum. Avoid checkpoints/backup jobs during measurement; turn off automatic
@@ -134,3 +140,20 @@ contention. Coordinate a quiet window without stopping normal applications.
 
 No remote study runner, VM lifecycle controller, production deployment or purge
 is included. Retain evidence and report missing checks rather than marking ready.
+
+## 7. Lifecycle logic rehearsal (no VM required)
+
+```text
+node scripts/check-gateway-vm-job-lifecycle.mjs --simulate
+```
+
+This runs fixed fictional scenarios for owned startup, completed/failed/cancelled
+work, verified cleanup, refused adoption, reboot and timeout. Exit 0 means those
+model expectations matched, not that a VM is ready or was operated. Every result
+sets `liveOperationsEnabled: false` and `studyReady: false`. No environment inputs,
+credentials, imported receipts, power commands or live adapter are supported.
+
+A future executor must start only its exclusively owned, initially off VM and
+shut it down gracefully only after closing admission, draining all work,
+verifying cleanup and rechecking identity. Uncertainty leaves power unchanged
+with an actionable failure. A job that did not start the VM must not stop it.
