@@ -33,3 +33,9 @@ driver or runtime logic changes; do not claim new database-integration coverage.
 Generate the lockfile with lifecycle scripts disabled, review additions/removals
 before clean installation, and record actual results in a separate outcome.
 Keep this dependency commit separate from the host-observation implementation.
+
+The ownership inventory also uses ESLint's `Linter` with a custom collection rule
+and intentionally reviews its version. An upgrade must compare the complete
+inventory against existing source/analysis digests, run inventory/gate regressions
+and review only the parser-version metadata when equivalence holds. Never
+regenerate all ownership entries or relax this check merely to clear CI.

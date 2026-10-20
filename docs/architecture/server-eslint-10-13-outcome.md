@@ -15,6 +15,19 @@ Using repository-pinned Node 24.21.0/npm 12.2.0:
 - Dependency/toolchain contracts: 43/43 passed, including installer-policy tests.
 - No lint rules, lifecycle approvals or security overrides changed.
 
+The final preflight initially refused `parser_review_changed`: the offline SQL
+inventory intentionally pins `Linter.version`. Reviewed its collector (only its
+custom literal/template/query rule is enabled, inline suppression disabled) and
+compared the complete current inventory against the existing review. With only
+the parser-version field substituted in memory, all 869 entries retained their
+source/analysis digests and classifications; candidate/gap counts remained
+151/348 and source fingerprint remained
+`c66d23aefca15ec698e24e60d38a5ac84ab53f367b08b3e46e0a1483cfc787f5`.
+Updated only the reviewed parser version to 10.13.0, not the review baseline,
+entries, classifications, scanner or acceptance rules. The focused ownership and
+writer-inventory suites passed 57/57 tests; the complete final preflight passed
+after this review. The initial failure is retained in the local verification log.
+
 Full application tests were not rerun for this lint-only update. Native gateway
 and archive image regressions are tracked in the separate quiet-window outcome;
 they are not a replacement for new application integration coverage. Other

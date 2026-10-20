@@ -6,6 +6,10 @@ release, Git tag, version bump, new admin control or Unraid/shared-Ollama change
 The approved [design and official research](gateway-archiver-pressure-design.md)
 remain the scope of this work.
 
+Follow-up: the [quiet-window qualification](gateway-quiet-pressure-outcome.md)
+passed on a later exact image with matching endpoint observations. It does not
+retroactively remove the interference recorded in this earlier study.
+
 ## Exact subject and execution
 
 Final clean-source revision: `b34eb19eb1efb31ea65f590fd44e5be6716b5305`.

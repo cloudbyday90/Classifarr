@@ -6,6 +6,7 @@ normal applications running; coordinate no unrelated builds, tests or deployment
 Add bounded read-only checks before the study and after each arm's verified cleanup.
 On interference or an unavailable check, retain completed correctness evidence,
 mark timing inconclusive and stop remaining arms without automatic retry.
+See the separate [observed outcome](gateway-quiet-pressure-outcome.md).
 
 ## Contract and limits
 
