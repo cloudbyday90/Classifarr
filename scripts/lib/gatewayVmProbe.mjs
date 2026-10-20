@@ -39,10 +39,14 @@ try {
   });
   $adapters = @(Get-VMNetworkAdapter -VM $vm | ForEach-Object { @{switchId=[string]$_.SwitchId} });
   $switch = Get-VMSwitch -Id ([guid]'${switchId}');
+  $shutdown = @(Get-VMIntegrationService -VM $vm -Name 'Shutdown');
+  if ($shutdown.Count -ne 1 -or $shutdown[0].Enabled -isnot [bool]) { throw 'shutdown_observation_unavailable' };
   @{vmId=[string]$vm.Id;generation=[int]$vm.Generation;cpus=[int]$cpu.Count;
     memoryBytes=[long]$mem.Startup;dynamicMemory=[bool]$mem.DynamicMemoryEnabled;
     disks=$disks;adapters=$adapters;switchId=[string]$switch.Id;switchType=[string]$switch.SwitchType;
-    checkpoints=@(Get-VMSnapshot -VM $vm).Count} | ConvertTo-Json -Compress -Depth 4;
+    checkpoints=@(Get-VMSnapshot -VM $vm).Count;
+    automaticStartAction=[string]$vm.AutomaticStartAction;automaticStopAction=[string]$vm.AutomaticStopAction;
+    hostShutdownEnabled=$shutdown[0].Enabled} | ConvertTo-Json -Compress -Depth 4;
 } catch { exit 2 }`;
   try {
     const raw = command(join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),

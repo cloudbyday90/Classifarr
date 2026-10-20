@@ -2,6 +2,7 @@
 import { readFileSync, realpathSync, statfsSync } from 'node:fs';
 import { runVmProbe, VM_PROBE_LIMIT } from './gatewayVmProbe.mjs';
 import { isVmRevision, vmCheck, vmPreparationResult } from './gatewayVmPreparation.mjs';
+import { captureGuestShutdown } from './gatewayVmShutdown.mjs';
 
 const dockerArgs = ['--host', 'unix:///var/run/docker.sock', 'info', '--format',
   '{"os":{{json .OSType}},"arch":{{json .Architecture}},"cpus":{{json .NCPU}},"cgroup":{{json .CgroupVersion}}}'];
@@ -10,7 +11,7 @@ const unavailable = check => ({ check, status: 'unavailable' });
 /** Run inside the guest checkout, not through a Windows/remote Docker context. */
 export function captureGuestPreparation({ root, revision, platform = process.platform, arch = process.arch,
   nodeVersion = process.versions.node, uid = process.getuid?.(), gid = process.getgid?.(), command = runVmProbe,
-  canonical = realpathSync, controllers = () => readFileSync('/sys/fs/cgroup/cgroup.controllers', 'utf8'),
+  canonical = realpathSync, controllers = () => readFileSync('/sys/fs/cgroup/cgroup.controllers', 'utf8'), shutdown = captureGuestShutdown,
   space = path => { const s = statfsSync(path, { bigint: true }); return Number(s.bavail * s.bsize); } } = {}) {
   if (!isVmRevision(revision) || typeof root !== 'string') throw new Error('gateway_vm_arguments_invalid');
   const checks = [vmCheck('linux_x64_controller', platform === 'linux' && arch === 'x64'),
@@ -51,5 +52,10 @@ export function captureGuestPreparation({ root, revision, platform = process.pla
   try { const bytes = space(root); if (Number.isSafeInteger(bytes) && bytes >= 0) filesystemFreeBytes = bytes; } catch { /* Unknown is not zero. */ }
   checks.push(filesystemFreeBytes === null ? unavailable('filesystem_space_observation')
     : vmCheck('filesystem_space_observation', true));
+  try {
+    const row = shutdown();
+    if (row?.check !== 'guest_shutdown_channel_bound' || !['matched', 'mismatch', 'unavailable'].includes(row.status)) throw new Error();
+    checks.push({ check: row.check, status: row.status });
+  } catch { checks.push(unavailable('guest_shutdown_channel_bound')); }
   return { ...vmPreparationResult('guest', checks), filesystemFreeBytes };
 }

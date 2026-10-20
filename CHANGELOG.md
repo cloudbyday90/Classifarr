@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Check on-demand study VM startup/shutdown prerequisites and private UUIDv7
+  handoff records with bounded read-only ESM tools. Keep authentication, real VM
+  operations and study readiness explicitly unverified.
+
 - Patch redirect-header handling in root/client dependencies and test both actual
   installed copies without changing the server transport or installation policy.
 

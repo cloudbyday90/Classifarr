@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "hypervisor": "hyperv",
   "generation": 2,
   "cpus": 4,
@@ -11,5 +11,8 @@
   "switchType": "Internal",
   "access": "host-only-key-based-ssh",
   "measurementInternet": false,
-  "controller": "guest-local-linux-x64-uid-gid-1000"
+  "controller": "guest-local-linux-x64-uid-gid-1000",
+  "automaticStartAction": "Nothing",
+  "automaticStopAction": "ShutDown",
+  "hostShutdownEnabled": true
 }

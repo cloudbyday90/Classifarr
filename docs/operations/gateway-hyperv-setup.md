@@ -3,6 +3,8 @@
 This is a setup/handoff guide, **not** authorization or an automated provisioner.
 The current change creates no VM and runs no study. Read the
 [design and tradeoffs](../architecture/gateway-hyperv-preparation-design.md) first.
+The [handoff-check design](../architecture/vm-handoff-checks-design.md) explains
+the version-2 preparation checks and their remaining trust boundaries.
 Keep existing applications, Unraid, shared Ollama and Windows security services unchanged.
 
 ## 1. Record the target before changing anything
@@ -31,7 +33,9 @@ Use Hyper-V Manager to create the dedicated Generation 2 Linux VM with the
 | Disk | One new fixed-size 64 GiB VHDX; not dynamic/differencing |
 | Measurement network | One adapter on a dedicated Internal switch |
 | Access | Host-only SSH, public keys, verified host key |
-| Startup | On demand; no automatic study/resume |
+| Automatic start action | `Nothing`; on demand, no host-boot automatic start |
+| Automatic stop action | `ShutDown`; not save state or power-off |
+| Shutdown integration | Enabled on the host; guest channel binding observed separately |
 
 Configure this owned VM not to start automatically when Windows starts. It should
 be off between jobs, not a continuously running background service. Verify guest
@@ -111,6 +115,9 @@ Run the second command on Windows under an already-authorized account; it does
 not request elevation. Substitute actual handoff GUIDs, not the literal angle
 brackets. The check queries only that VM/switch and projects sanitized statuses.
 Missing/denied/malformed/timeout observations are `unavailable`, not success.
+The version-2 profile adds automatic start/stop policy and host shutdown-service
+enablement. A localized/unsupported `Shutdown` service query is unavailable;
+the checker does not guess another service or change any setting.
 
 Inside the eventual guest checkout:
 
@@ -122,14 +129,68 @@ This always selects `unix:///var/run/docker.sock` explicitly and ignores Docker
 environment overrides; it does not switch contexts. Run from the guest, not a
 Windows controller pointed at a remote engine. The filesystem-space number is
 diagnostic, not a sufficient build/restore capacity check.
+The guest also reads the fixed Linux VMBus sysfs interface twice, with at most
+128 devices and 40 bytes per class read. It requires one shutdown-class device
+bound to `hv_utils`. A missing interface, unreadable observation or changed
+inventory is unavailable. A stable absent channel or different driver is a
+mismatch. These are separate observations, not an atomic snapshot, a host/guest
+identity binding or proof of successful shutdown. No module is loaded and no
+shutdown request is sent.
 
 Exit 0 = requested preparation observations matched; 2 = mismatch/unavailable;
-1 = invalid invocation/profile. `studyReady` is **always false**. Queries have
+1 = invalid invocation/profile. `studyReady`, `liveOperationsEnabled` and
+`handoffAuthenticated` are **always false**. Process queries have
 10-second/64-KiB limits, no retries and no resource/configuration writes; no imported JSON can override
 the missing readiness gates. Output excludes raw names, paths, keys and errors.
 Re-run after configuration changes; a previous result is not persistent consent.
 
-## 6. Handoff — stop here
+## 6. Private handoff record — format checks only
+
+An administrator may prepare one version-1 JSON record after independently
+reviewing the real target and console host key. This tooling does not create the
+record, generate keys, change known-hosts files or open an SSH connection.
+
+| Required field | Value |
+| --- | --- |
+| `version` | Integer `1` |
+| `handoffId` | New lowercase time-based UUIDv7; a record identifier, not approval |
+| `vmId`, `switchId` | Actual nonzero Hyper-V GUIDs |
+| `ssh.address` | Literal RFC1918 IPv4 or ULA IPv6 address; not a hostname or scoped address |
+| `ssh.port` | Integer 1–65535 |
+| `ssh.user` | Non-root lowercase account, at most 32 simple ASCII characters |
+| `ssh.hostKey` | One `ssh-ed25519` public key, no comment or options |
+| `ssh.hostKeyFingerprint` | That key's `SHA256:` fingerprint, no padding |
+
+Use exactly those fields, with all five SSH fields inside `ssh`. No private key,
+password, command, approval flag or free-form note belongs in the file. Serialize
+as compact or two-space JSON, optionally one final newline (LF or CRLF). Other
+JSON formatting and duplicate keys are rejected. This deliberately narrow format
+avoids different parsers silently choosing different values.
+
+Store it outside Git, in an administrator-reviewed private directory on a local
+filesystem. Use its absolute canonical path, not a symlink, junction, hard link,
+network share or alternate stream. The reader accepts only a regular single-link
+file of 1–4096 bytes, checks metadata around a bounded read and rejects invalid
+UTF-8 or replacement. It cannot qualify remotely mounted storage or defeat a
+privileged attacker changing the filesystem. Keep directory ownership/ACLs safe.
+
+On Unix, require ownership by the current user and no group/other access (normally
+mode `0600`). Windows ACL privacy needs separate administrator review;
+`unixFileModeChecked: false` is expected on Windows, not an ACL failure or proof
+of privacy. The flag only reports the Unix file-mode check, not directory security.
+
+```text
+node scripts/check-gateway-vm-preparation.mjs --handoff --file <absolute-local-record-path> --vm-id <independently-selected-VM-GUID> --switch-id <independently-selected-switch-GUID>
+```
+
+Supply the expected target IDs separately. A valid record for a different target
+is `mismatch`; malformed, unreadable or unsafe input is `unavailable`. Results
+exclude the record's values, paths and raw exceptions. Matching the public key
+to its hash only checks consistency: anyone can create such a pair. UUIDv7 and
+private IPs prove neither authority nor isolation. No result authenticates SSH,
+authorizes power control or bypasses the remaining readiness gates.
+
+## 7. Handoff — stop here
 
 Before measurement, the next change must qualify the real guest and implement
 bounded Windows **and** guest lifecycle observations before/between arms. Preserve
@@ -141,7 +202,7 @@ contention. Coordinate a quiet window without stopping normal applications.
 No remote study runner, VM lifecycle controller, production deployment or purge
 is included. Retain evidence and report missing checks rather than marking ready.
 
-## 7. Lifecycle logic rehearsal (no VM required)
+## 8. Lifecycle logic rehearsal (no VM required)
 
 ```text
 node scripts/check-gateway-vm-job-lifecycle.mjs --simulate

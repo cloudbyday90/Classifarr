@@ -1,12 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { isVmGuid } from './gatewayVmPreparation.mjs';
+import { isVmGuid, isVmUuidv7 } from './gatewayVmPreparation.mjs';
 
 // Model deadlines, not a production executor configuration or a power-off timer.
 export const VM_JOB_DEADLINES = Object.freeze({ inspect: 10000, starting: 120000,
   readiness: 180000, work: 4 * 60 * 60 * 1000, drain: 120000, confirm: 10000, stopping: 120000 });
 export const VM_JOB_MAX_OBSERVATIONS = 64;
-const uuidv7 = value => typeof value === 'string' && value.length === 36
-  && /^[a-f0-9]{8}-[a-f0-9]{4}-7[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
 const digest = value => typeof value === 'string' && value.length === 64 && /^[a-f0-9]{64}$/.test(value);
 export function exactVmKeys(value, names) {
   const expected = names === '' ? [] : names.split(' ');
@@ -16,7 +14,7 @@ export function exactVmKeys(value, names) {
 
 export function requireVmJobBinding(value) {
   if (!exactVmKeys(value, 'mode jobId vmId configDigest ownerToken') || value.mode !== 'simulation'
-    || !uuidv7(value.jobId) || !uuidv7(value.ownerToken) || !isVmGuid(value.vmId) || !digest(value.configDigest)) {
+    || !isVmUuidv7(value.jobId) || !isVmUuidv7(value.ownerToken) || !isVmGuid(value.vmId) || !digest(value.configDigest)) {
     throw new Error('gateway_vm_job_binding_invalid');
   }
   return Object.freeze({ ...value });

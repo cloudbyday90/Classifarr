@@ -15,12 +15,14 @@ const target = { vmId, switchId };
 function observation() {
   return { vmId, generation: 2, cpus: 4, memoryBytes: 8589934592, dynamicMemory: false,
     disks: [{ size: 68719476736, type: 'Fixed', format: 'VHDX', parent: false }],
-    adapters: [{ switchId }], switchId, switchType: 'Internal', checkpoints: 0 };
+    adapters: [{ switchId }], switchId, switchType: 'Internal', checkpoints: 0,
+    automaticStartAction: 'Nothing', automaticStopAction: 'ShutDown', hostShutdownEnabled: true };
 }
 const capture = command => captureHypervPreparation({ ...target, platform: 'win32', systemRoot: 'C:\\Windows', command });
 function guestOptions(overrides = {}) {
   return { root: '/checkout', revision, platform: 'linux', arch: 'x64', nodeVersion: '24.21.0', uid: 1000, gid: 1000,
     canonical: path => path, controllers: () => 'cpu memory pids io\n', space: () => 20000000000,
+    shutdown: () => ({ check: 'guest_shutdown_channel_bound', status: 'matched' }),
     command: (file, args) => file === 'docker' ? '{"os":"linux","arch":"x86_64","cpus":4,"cgroup":"2"}'
       : args.includes('rev-parse') ? `/checkout\n${revision}\n` : '', ...overrides };
 }
@@ -30,18 +32,21 @@ test('committed profile is exact, immutable and never an authorization receipt',
   assert.equal(profile.memoryBytes, 8 * 1024 ** 3); assert.equal(profile.diskBytes, 64 * 1024 ** 3);
   assert.ok(Object.isFrozen(profile));
   for (const mutation of [p => { p.cpus = 8; }, p => { delete p.version; }, p => { p.passed = true; },
-    p => { p.dynamicMemory = true; }, p => { p.measurementInternet = true; }, p => { p.diskType = 'Dynamic'; }]) {
+    p => { p.dynamicMemory = true; }, p => { p.measurementInternet = true; }, p => { p.diskType = 'Dynamic'; },
+    p => { p.version = 1; }, p => { p.automaticStartAction = 'Start'; }, p => { p.automaticStopAction = 'Save'; },
+    p => { p.hostShutdownEnabled = false; }]) {
     const copy = { ...profile }; mutation(copy);
     assert.throws(() => requireGatewayVmProfile(copy), { message: 'gateway_vm_profile_invalid' });
   }
   const result = runVmPreparationCli(['--profile']);
-  assert.equal(result.status, 'matched'); assert.equal(result.studyReady, false); assert.equal(result.remaining.length, 4);
+  assert.equal(result.version, 2); assert.equal(result.status, 'matched'); assert.equal(result.studyReady, false);
+  assert.equal(result.liveOperationsEnabled, false); assert.equal(result.handoffAuthenticated, false); assert.equal(result.remaining.length, 7);
 });
 
 test('matching Hyper-V configuration still needs network/identity and interference qualification', () => {
   const result = assessHypervConfiguration(observation(), target);
   assert.equal(result.status, 'matched'); assert.equal(result.studyReady, false);
-  assert.equal(result.checks.length, 7); assert.ok(!JSON.stringify(result).includes(vmId));
+  assert.equal(result.checks.length, 10); assert.ok(!JSON.stringify(result).includes(vmId));
   assert.equal(assessHypervConfiguration({ ...observation(), vmId: vmId.toUpperCase() }, target).status, 'matched');
 });
 
@@ -52,7 +57,10 @@ test('wrong identities, resource allocations, extra devices, external/private sw
     v => { v.disks[0].format = 'VHD'; }, v => { v.disks[0].size++; }, v => { v.disks[0].parent = true; },
     v => { v.switchType = 'External'; }, v => { v.switchType = 'Private'; }, v => { v.switchId = vmId; },
     v => { v.adapters = []; }, v => { v.adapters.push(v.adapters[0]); },
-    v => { v.adapters[0].switchId = vmId; }, v => { v.checkpoints = 1; }]) {
+    v => { v.adapters[0].switchId = vmId; }, v => { v.checkpoints = 1; },
+    v => { v.automaticStartAction = 'Start'; }, v => { v.automaticStartAction = 'StartIfRunning'; },
+    v => { v.automaticStopAction = 'Save'; }, v => { v.automaticStopAction = 'TurnOff'; },
+    v => { v.hostShutdownEnabled = false; }]) {
     const value = observation(); mutate(value);
     const result = assessHypervConfiguration(value, target);
     assert.equal(result.status, 'mismatch'); assert.equal(result.studyReady, false);
@@ -63,7 +71,10 @@ test('incomplete/untyped/extra Hyper-V evidence is unavailable, not a match or l
   for (const mutate of [v => { delete v.dynamicMemory; }, v => { v.cpus = '4'; },
     v => { v.disks[0].size = null; }, v => { v.vmId = 'bad'; }, v => { v.adapters[0].switchId = ''; },
     v => { v.checkpoints = -1; }, v => { v.raw = secret; }, v => { v.disks = Array(9).fill(v.disks[0]); },
-    v => { v.adapters = Array(9).fill(v.adapters[0]); }, v => { v.disks[0].path = secret; }]) {
+    v => { v.adapters = Array(9).fill(v.adapters[0]); }, v => { v.disks[0].path = secret; },
+    v => { delete v.automaticStartAction; }, v => { v.automaticStartAction = null; },
+    v => { delete v.automaticStopAction; }, v => { v.automaticStopAction = 1; },
+    v => { delete v.hostShutdownEnabled; }, v => { v.hostShutdownEnabled = 'true'; }]) {
     const value = observation(); mutate(value);
     const result = assessHypervConfiguration(value, target);
     assert.equal(result.status, 'unavailable'); assert.ok(!JSON.stringify(result).includes(secret));
@@ -80,6 +91,11 @@ test('PowerShell query has only validated targets and fixed read-only cmdlets, n
     assert.match(query, /Set-StrictMode -Version Latest/);
     assert.match(query, /Get-VM -Id/); assert.ok(query.includes(vmId) && query.includes(switchId));
     assert.match(query, /Get-VHD -Path/); assert.match(query, /Get-VMSnapshot -VM/);
+    assert.match(query, /Get-VMIntegrationService -VM \$vm -Name 'Shutdown'/);
+    assert.match(query, /\$shutdown.Count -ne 1/); assert.match(query, /Enabled -isnot \[bool\]/);
+    assert.match(query, /automaticStartAction=\[string\]\$vm.AutomaticStartAction/);
+    assert.match(query, /automaticStopAction=\[string\]\$vm.AutomaticStopAction/);
+    assert.doesNotMatch(query, /Enable-VM|Disable-VM/);
     assert.doesNotMatch(query, /\b(?:New|Set|Remove|Start|Stop|Grant|Invoke|Mount|Import)-VM|Start-Process|RunAs|ComputerName|Credential/);
     return JSON.stringify(observation());
   });
@@ -146,12 +162,17 @@ test('guest version/identity/architecture checks and missing local observations 
     { nodeVersion: '25.0.0' }, { nodeVersion: '24.21.0-rc.1' }, { canonical: () => { throw new Error(secret); } },
     { controllers: () => 'cpu io' }, { space: () => null }, { space: () => -1 },
     { space: () => Infinity }, { controllers: () => { throw new Error(secret); } },
-    { controllers: () => 'x'.repeat(4097) }, { command: () => null }]) {
+    { controllers: () => 'x'.repeat(4097) }, { command: () => null },
+    { shutdown: () => ({ check: 'guest_shutdown_channel_bound', status: 'unavailable', private: secret }) },
+    { shutdown: () => ({ check: 'guest_shutdown_channel_bound', status: 'mismatch' }) },
+    { shutdown: () => ({ check: secret, status: 'matched' }) }, { shutdown: () => ({ status: 'healthy' }) },
+    { shutdown: () => { throw new Error(secret); } }]) {
     const result = captureGuestPreparation(guestOptions(overrides));
     assert.notEqual(result.status, 'matched'); assert.equal(result.studyReady, false);
     assert.ok(!JSON.stringify(result).includes(secret));
   }
-  const nonLinux = captureGuestPreparation(guestOptions({ platform: 'win32', command: () => { throw new Error('must not call'); } }));
+  const nonLinux = captureGuestPreparation(guestOptions({ platform: 'win32', command: () => { throw new Error('must not call'); },
+    shutdown: () => assert.fail('non-Linux must not probe') }));
   assert.equal(nonLinux.status, 'unavailable');
   assert.throws(() => captureGuestPreparation(guestOptions({ revision: 'main' })), /gateway_vm_arguments_invalid/);
 });
@@ -179,15 +200,20 @@ test('dirty/wrong checkout and unsupported/malformed Docker engine evidence stay
 test('CLI accepts only explicit ordered modes and rejects write/receipt/retry options before any probe', () => {
   let calls = 0;
   const dependencies = { host: args => { calls++; assert.deepEqual(args, target); return {}; },
-    guest: args => { calls++; assert.equal(args.revision, revision); assert.ok(args.root); return {}; } };
+    guest: args => { calls++; assert.equal(args.revision, revision); assert.ok(args.root); return {}; },
+    handoff: args => { calls++; assert.deepEqual(args, { file: '/private/record.json', ...target }); return {}; } };
   for (const args of [[], ['--apply'], ['--profile', '--run'], ['--host'], ['--host', '--vm-id', '*', '--switch-id', switchId],
     ['--guest', '--revision', 'main'], ['--guest', '--revision', `${revision}\n`],
-    ['--guest', '--revision', revision, '--retry'], ['--receipt', 'proof.json']]) {
+    ['--guest', '--revision', revision, '--retry'], ['--receipt', 'proof.json'], ['--handoff'],
+    ['--handoff', '--file', '/private/record.json', '--switch-id', switchId, '--vm-id', vmId],
+    ['--handoff', '--file', '/private/record.json', '--vm-id', '*', '--switch-id', switchId]]) {
     assert.throws(() => runVmPreparationCli(args, dependencies), /gateway_vm_arguments_invalid/);
   }
   assert.equal(calls, 0);
   runVmPreparationCli(['--host', '--vm-id', vmId, '--switch-id', switchId], dependencies);
-  runVmPreparationCli(['--guest', '--revision', revision], dependencies); assert.equal(calls, 2);
+  runVmPreparationCli(['--guest', '--revision', revision], dependencies);
+  runVmPreparationCli(['--handoff', '--file', '/private/record.json', '--vm-id', vmId, '--switch-id', switchId], dependencies);
+  assert.equal(calls, 3);
 });
 
 test('real CLI prints only bounded preparation evidence with meaningful exit codes', () => {
