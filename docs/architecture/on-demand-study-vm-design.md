@@ -50,10 +50,20 @@ trusted receipts or authorization for a real power operation. No CLI accepts
 external proof files or enables a live adapter. In-process single-job state is
 not an interprocess lock. A future executor needs a trusted host/guest channel,
 durable exclusive ownership, admission fencing and independently verified drain.
+UUIDv7 values identify the simulated job/owner; they are not authentication,
+bearer credentials or a distributed fencing counter. A future executor must
+authenticate its transport and establish authority independently of these IDs.
 The model checks deadlines when advanced or cancelled; it does not install a
 background timer. A future executor must drive those deadlines even if SSH or
 work stops responding. Hyper-V `Running` alone is not OS or job readiness.
 ([Microsoft integration services](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/integration-services))
+
+Model bounds are 10 seconds for initial/final inspection, 120 seconds for
+startup/drain/shutdown, 180 seconds for readiness, four hours for requested work
+and 64 total observations. These are conservative simulation limits, not
+qualified production timing or polling defaults. Their expiry never grants
+permission to stop a VM; a future executor must qualify bounds and observation
+cadence together.
 
 ## Weak points and verification
 
