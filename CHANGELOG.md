@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Guard local archiver timing studies with bounded host lifecycle observations;
+  stop on interference after verified cleanup while retaining completed restore evidence.
+
+- Update server lint tooling without changing lint rules or installation safeguards.
+
 - Add a bounded local archiver pressure study with matched varied history, explicit
   accounting availability, repeated real restores and unchanged resource limits.
 
