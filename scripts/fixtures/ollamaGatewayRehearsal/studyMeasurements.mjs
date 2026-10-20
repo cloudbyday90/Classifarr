@@ -2,7 +2,9 @@
 import { performance } from 'node:perf_hooks';
 
 const fields = Object.freeze(['currentBytes','anonBytes','fileBytes','workerRssBytes','observerRssBytes','heapUsedBytes',
-  'cpuUsageUs','cpuThrottledUs','readBytes','writeBytes','pressureSomeUs','pressureFullUs','maxTransactionAgeMs','observedTransactions']);
+  'cpuUsageUs','cpuThrottledUs','readBytes','writeBytes','pressureSomeUs','pressureFullUs','maxTransactionAgeMs','observedTransactions',
+  'managedConnections','archiveSourceConnections','coordinatorConnections','catalogSnapshotConnections','catalogSnapshotTransactions',
+  'maxCatalogTransactionAgeMs','observedCatalogTransactions']);
 
 /** Bounded one-second observations; missing fields are never manufactured as zero. */
 export function createStudyMeasurements(readSample, { now = () => performance.now(), phase = () => 'worker' } = {}) {

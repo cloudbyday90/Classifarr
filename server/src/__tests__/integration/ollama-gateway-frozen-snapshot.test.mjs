@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import pg from 'pg';
 import { getPool } from './setup.mjs';
+import { readRuntime } from './runtime.mjs';
 import { createOllamaApplicationFixture } from './helpers/ollamaApplicationFixture.mjs';
 import { withOnlineArchiveSnapshot, assertArchiveSnapshot } from '../../ollamaGateway/onlineArchiveSnapshot.mjs';
 import { catalogJobRepository } from '../../ollamaGateway/catalogJobRepository.mjs';
@@ -17,6 +18,7 @@ import { catalogSample, syntheticHash } from '../fixtures/gatewayCatalogRetentio
 import { canonicalAdmission } from '../fixtures/gatewayCatalogAdmission.mjs';
 import { withOwnedCatalogSnapshot } from '../../ollamaGateway/ownedCatalogSnapshot.mjs';
 import { withCatalogSnapshotContent,captureSnapshotCatalogContent } from '../../ollamaGateway/catalogSnapshotContent.mjs';
+import { createStudyDatabaseSample } from '../../../../scripts/fixtures/ollamaGatewayRehearsal/studyDatabase.mjs';
 
 let fixture, owner, source, configuration, repository;
 const migration = name => readFile(new URL(`../../../../database/ollama-gateway-catalog/${name}`, import.meta.url), 'utf8');
@@ -67,6 +69,35 @@ function ownedConfiguration() {
 async function ownedConnections() {
   return (await owner.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND application_name='classifarr-gateway-catalog-snapshot'")).rows[0].n;
 }
+
+test('read-only study observes the actual private owner separately and sees it disappear after scope cleanup',async()=>{
+  // Pool deliberately keeps its password non-enumerable; only this isolated run supplies it.
+  const observer=new pg.Client({...getPool().options,password:readRuntime().password,connectionTimeoutMillis:5000,
+    options:'-c default_transaction_read_only=on',statement_timeout:500,query_timeout:1000,application_name:'classifarr-study-observer'});
+  try {
+    await observer.connect();
+    expect((await observer.query('SHOW transaction_read_only')).rows[0].transaction_read_only).toBe('on');
+    const sample=createStudyDatabaseSample(observer);
+    await source.query("SELECT set_config('application_name','classifarr-gateway-archive-source',false)");
+    await owner.query("SELECT set_config('application_name','classifarr-gateway-archive-coordinator',false)");
+    expect(await sample()).toMatchObject({managedConnections:2,archiveSourceConnections:1,coordinatorConnections:1,
+      catalogSnapshotConnections:0,observedTransactions:0});
+    await withOnlineArchiveSnapshot(source,configuration,()=>withOwnedCatalogSnapshot(ownedConfiguration(),async()=>{
+      const value=await sample();
+      expect(value).toMatchObject({managedConnections:3,archiveSourceConnections:1,coordinatorConnections:1,
+        catalogSnapshotConnections:1,catalogSnapshotTransactions:1,observedTransactions:2,observedCatalogTransactions:1});
+      expect(value.maxCatalogTransactionAgeMs).toBeGreaterThanOrEqual(0);
+      expect(Object.keys(value).some(key=>/pid|identity|query/.test(key))).toBe(false);
+      expect((await sample()).observedTransactions).toBe(2);
+    }));
+    expect(await sample()).toMatchObject({managedConnections:2,catalogSnapshotConnections:0,catalogSnapshotTransactions:0,
+      maxCatalogTransactionAgeMs:0,observedTransactions:2,observedCatalogTransactions:1});
+    expect(await ownedConnections()).toBe(0);
+  } finally {
+    await source.query("SELECT set_config('application_name','',false)");
+    await owner.query("SELECT set_config('application_name','',false)"); await observer.end();
+  }
+});
 
 test('owned API confines transaction authority, remains frozen across unrelated transaction replacement and disposes escaped capture',async()=>{
   let escaped;

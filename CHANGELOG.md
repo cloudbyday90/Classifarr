@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Measure private catalog connections and observed transaction ages in the bounded
+  synthetic co-load study, with coverage checks and verified idle cleanup.
+
 - Update server configuration/validation dependencies and patch direct and
   Discord HTTP clients, retaining strict install policy and transport safeguards.
 

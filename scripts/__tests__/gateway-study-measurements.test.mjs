@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createStudyMeasurements, requireStudyCoverage } from '../fixtures/ollamaGatewayRehearsal/studyMeasurements.mjs';
 import { createStudyResourceSample, studyCpu, studyIo } from '../fixtures/ollamaGatewayRehearsal/studyResource.mjs';
-import { createStudyDatabaseSample } from '../fixtures/ollamaGatewayRehearsal/studyDatabase.mjs';
+import { createStudyDatabaseSample, requireStudyDatabaseCoverage } from '../fixtures/ollamaGatewayRehearsal/studyDatabase.mjs';
 import * as parsers from '../../server/src/scripts/comparisonMemoryStudy/residentMemoryParsers.mjs';
 
 test('minute bins keep first/last/range and separate idle; raw untrusted fields are omitted', async () => {
@@ -63,9 +63,74 @@ test('missing optional kernel metrics remain absent, while mandatory memory is n
 });
 
 test('transaction observation records bounded metadata only, without query text', async () => {
-  let current = [{ identity: 'pid:start', age: 12 }]; const sql = [];
-  const sample = createStudyDatabaseSample({ query: async text => { sql.push(text); return { rows: current }; } });
-  assert.deepEqual(await sample(), { observedTransactions: 1, maxTransactionAgeMs: 12 });
-  current = []; assert.deepEqual(await sample(), { observedTransactions: 1, maxTransactionAgeMs: 0 });
-  assert.ok(sql.every(text => !/SELECT\s+query\b/.test(text)));
+  let current = [{application:'classifarr-gateway-archive-source',connection:'12',identity:'12:start',age:12}]; const sql = [];
+  const sample = createStudyDatabaseSample({ query: async (...args) => { sql.push(args); return { rows: current }; } });
+  const first = await sample(); assert.equal(first.observedTransactions,1); assert.equal(first.maxTransactionAgeMs,12);
+  current = [{application:'classifarr-gateway-catalog-snapshot',connection:'13',identity:'13:start',age:20},
+    {application:'classifarr-gateway-archive-source',connection:'12',identity:null,age:null},
+    {application:'classifarr-gateway-archive-coordinator',connection:'14',identity:'14:statement',age:1}];
+  assert.deepEqual(await sample(),{managedConnections:3,archiveSourceConnections:1,coordinatorConnections:1,
+    catalogSnapshotConnections:1,catalogSnapshotTransactions:1,maxTransactionAgeMs:20,maxCatalogTransactionAgeMs:20,
+    observedTransactions:2,observedCatalogTransactions:1});
+  current=[]; const idle=await sample();
+  assert.equal(idle.managedConnections,0); assert.equal(idle.observedTransactions,2); assert.equal(idle.observedCatalogTransactions,1);
+  assert.equal(idle.maxCatalogTransactionAgeMs,0);
+  assert.ok(sql.every(([text,values])=>!text.includes('SELECT query') && values[0].length===3 && values[0].includes('classifarr-gateway-catalog-snapshot')));
+  assert.ok(!JSON.stringify(idle).includes('start'));
+});
+
+test('malformed, duplicate, excessive and unknown sessions never become valid zero samples',async()=>{
+  const row={application:'classifarr-gateway-catalog-snapshot',connection:'1',identity:'1:start',age:1};
+  for(const rows of [null,Array(6).fill(row),[row,row],[row,{...row,connection:'2',identity:'2:start'}],
+    [{...row,application:'unknown'}],[{...row,connection:'../1'}],[{...row,age:NaN}],[{...row,age:-1}],
+    [{...row,identity:null}],[{...row,identity:'different'}],[{...row,identity:'1:'+ 'x'.repeat(128)}]]) {
+    const sample=createStudyDatabaseSample({query:async()=>({rows})}); await assert.rejects(sample());
+  }
+  const failed=createStudyDatabaseSample({query:async()=>{throw Error('offline');}}); await assert.rejects(failed());
+});
+
+test('transaction history stays bounded and a refused sample cannot poison cumulative observations',async()=>{
+  let current=[];
+  const sample=createStudyDatabaseSample({query:async()=>({rows:current})});
+  for(let i=0;i<128;i++) {current=[{application:'classifarr-gateway-catalog-snapshot',connection:'1',identity:`1:${i}`,age:1}];await sample();}
+  current=[{application:'classifarr-gateway-catalog-snapshot',connection:'1',identity:'1:overflow',age:1}];
+  await assert.rejects(sample(),/study_transaction_history_limit/); current=[];
+  assert.equal((await sample()).observedCatalogTransactions,128);
+});
+
+function databaseSummary() {
+  const fields=['managedConnections','archiveSourceConnections','coordinatorConnections','catalogSnapshotConnections',
+    'catalogSnapshotTransactions','maxTransactionAgeMs','maxCatalogTransactionAgeMs','observedTransactions','observedCatalogTransactions'];
+  return {samples:100,coverage:Object.fromEntries(fields.map(key=>[key,100])),
+    peaks:{observedTransactions:4,observedCatalogTransactions:2,catalogSnapshotConnections:1},
+    bins:[{phase:'idle',values:{managedConnections:{count:45,max:0},catalogSnapshotConnections:{count:45,max:0}}}]};
+}
+
+test('database coverage requires owner observations, original progress and complete settled disappearance',()=>{
+  assert.equal(requireStudyDatabaseCoverage(databaseSummary()).samples,100);
+  for(const change of [s=>{delete s.coverage.managedConnections;},s=>{s.coverage.maxCatalogTransactionAgeMs=89;},
+    s=>{s.coverage.managedConnections=101;},s=>{s.peaks.observedTransactions=Infinity;},s=>{s.peaks.observedTransactions=129;},
+    s=>{s.peaks.observedCatalogTransactions=5;},
+    s=>{s.peaks.observedTransactions=3;},s=>{s.peaks.observedCatalogTransactions=1;},s=>{s.peaks.catalogSnapshotConnections=2;},
+    s=>{s.bins=[];},s=>{s.bins[0].values.managedConnections.max=1;},s=>{s.bins[0].values.catalogSnapshotConnections.count=44;},
+    s=>{delete s.bins[0].values.catalogSnapshotConnections;}]) {
+    const value=databaseSummary();change(value);assert.throws(()=>requireStudyDatabaseCoverage(value));
+  }
+});
+
+test('an unavailable observer loses coverage instead of reporting a successful empty database',async()=>{
+  const sample=createStudyDatabaseSample({query:async()=>{throw Error('offline');}});
+  const measurements=createStudyMeasurements(sample);
+  await measurements.tick();const summary=measurements.summary();
+  assert.equal(summary.samples,1);assert.equal(summary.failedSamples,1);
+  assert.equal(summary.coverage.managedConnections,undefined);assert.equal(summary.peaks.managedConnections,undefined);
+  assert.throws(()=>requireStudyDatabaseCoverage(summary));
+});
+
+test('owner connection fields are retained by the sampler while raw session identity is omitted',async()=>{
+  const measurements=createStudyMeasurements(async()=>({managedConnections:3,catalogSnapshotConnections:1,
+    observedCatalogTransactions:2,maxCatalogTransactionAgeMs:12,identity:'private-pid'}));
+  await measurements.tick(); const summary=measurements.summary();
+  assert.equal(summary.peaks.catalogSnapshotConnections,1);assert.equal(summary.coverage.maxCatalogTransactionAgeMs,1);
+  assert.equal(summary.bins[0].values.managedConnections.max,3);assert.ok(!JSON.stringify(summary).includes('private-pid'));
 });

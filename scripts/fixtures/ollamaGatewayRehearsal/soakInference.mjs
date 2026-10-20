@@ -17,7 +17,7 @@ import { qualificationResources } from './archiveQualificationResources.mjs';
 import { soakProfile } from './soakProfile.mjs';
 import { createStudyMeasurements, requireStudyCoverage } from './studyMeasurements.mjs';
 import { createStudyResourceSample } from './studyResource.mjs';
-import { createStudyDatabaseSample } from './studyDatabase.mjs';
+import { createStudyDatabaseSample, requireStudyDatabaseCoverage } from './studyDatabase.mjs';
 import { readResidentText } from '/app/src/scripts/comparisonMemoryStudy/residentMemory.mjs';
 import * as residentParsers from '/app/src/scripts/comparisonMemoryStudy/residentMemoryParsers.mjs';
 
@@ -70,8 +70,10 @@ try {
     assert.equal((await observer.query('SHOW transaction_read_only')).rows[0].transaction_read_only, 'on');
     const databaseSample = createStudyDatabaseSample(observer);
     measurements = createStudyMeasurements(createStudyResourceSample({ version: resources.limits.version, read: readResidentText,
-      parsers: residentParsers, extra: async () => ({ ...await databaseSample(),
-        workerRssBytes: process.memoryUsage().rss, heapUsedBytes: process.memoryUsage().heapUsed }) }), { phase: () => phase ?? 'before' });
+      parsers: residentParsers, extra: async () => {
+        const database = await databaseSample(), memory = process.memoryUsage();
+        return {...database,workerRssBytes:memory.rss,heapUsedBytes:memory.heapUsed};
+      } }), { phase: () => phase ?? 'before' });
     await measurements.tick();
     sampler = setInterval(() => { void measurements.tick().catch(() => { protocolFailure = true; }); }, 1000);
   }
@@ -98,10 +100,7 @@ try {
   }
   clearInterval(sampler); await measurements?.stop();
   const study = measurements ? requireStudyCoverage(measurements.summary(), profile.durationMs + profile.settleMs - 2500, true) : null;
-  if (study) {
-    assert.ok(study.peaks.observedTransactions >= 4, 'study_transactions_not_observed');
-    assert.ok(study.coverage.maxTransactionAgeMs >= study.samples * 0.9, 'study_database_coverage');
-  }
+  if (study) requireStudyDatabaseCoverage(study);
   assert.equal(protocolFailure, false); assert.equal(attempts, profile.foreground); assert.equal(peakActive, 1);
   const metrics = await resources.metrics();
   assert.ok(Object.values(metrics.memoryEvents).every(value => Number(value) === 0));
