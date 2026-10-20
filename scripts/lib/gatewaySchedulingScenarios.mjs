@@ -24,4 +24,9 @@ export function runSchedulingScenarios({fixture,verify,rotationStudy,write = val
       write(fixture('study-check'));
     } else write(fixture('handoff'));
   }
+  if (!rotationStudy) {
+    fixture('owned-prepare');
+    for (let index=0;index<2;index++) { fixture('inference'); verify(0); fixture('accept-inference'); }
+    fixture('owned-capture'); verify(1); write(fixture('owned-check'));
+  }
 }

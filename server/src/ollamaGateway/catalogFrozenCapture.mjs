@@ -3,7 +3,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { assertArchiveSnapshot } from './onlineArchiveSnapshot.mjs';
 import { checkCatalogReader } from './catalogReader.mjs';
 import { captureArchiveContent } from './archiveContent.mjs';
-import { captureCatalogContent } from './catalogContent.mjs';
+import { captureSnapshotCatalogContent } from './catalogSnapshotContent.mjs';
 import { catalogSemanticRevision } from './catalogSchedule.mjs';
 import { captureRetentionInventory } from './archiveRetentionQueries.mjs';
 import { requiredCatalogArchives } from './catalogRecoveryFiles.mjs';
@@ -30,7 +30,7 @@ export async function captureFrozenCatalog({ source, maintenance, configuration,
   const budget = { bytes: Buffer.byteLength(admission.row), rowLimit: 131072 };
   const content = await captureArchiveContent(source, signal, null, budget);
   const retention = await captureRetentionInventory(source, report);
-  const tables = await captureCatalogContent(source, signal, budget, 3);
+  const tables = await captureSnapshotCatalogContent(source, context, signal, budget);
   if (catalogSemanticRevision(tables) !== job.semantic_sha256) throw gatewayError('gateway_archive_source_changed');
   const jobs = (await source.query(`SELECT id,recovery_protection_id FROM gateway_archive.job
     UNION ALL SELECT id,NULL::uuid FROM gateway_catalog.job LIMIT 20001`)).rows;

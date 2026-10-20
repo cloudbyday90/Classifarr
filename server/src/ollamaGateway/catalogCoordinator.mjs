@@ -1,12 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { archivePolicyHash } from './archiveSchedule.mjs';
 import { runArchiveAssessment } from './archiveCoordinator.mjs';
-import { withOnlineArchiveSnapshot } from './onlineArchive.mjs';
-import { captureCatalogContent } from './catalogContent.mjs';
-import { catalogDue, catalogSemanticRevision } from './catalogSchedule.mjs';
+import { withOwnedCatalogSnapshot } from './ownedCatalogSnapshot.mjs';
+import { catalogDue } from './catalogSchedule.mjs';
 import { catalogJobRepository } from './catalogJobRepository.mjs';
 import { catalogRetentionRepository } from './catalogRetentionRepository.mjs';
-import { captureScheduledCatalog } from './catalogCapture.mjs';
 import { readVerifiedGatewayArchive } from './archiveFiles.mjs';
 import { managedArchivePath, readArchiveReceipt, archiveStorageAvailable } from './archiveManagedFiles.mjs';
 import { validateCatalogVerification } from './catalogVerificationResult.mjs';
@@ -54,22 +52,23 @@ export async function runCatalogAssessment({ source, maintenance, repository, co
   const inferenceJobs = await repository.list(), roots = await rootsRepository.list();
   if ([...jobs, ...inferenceJobs].some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
   let cancelled;
-  const outcome = await withOnlineArchiveSnapshot(source, configuration, async context => {
-    const semantic = catalogSemanticRevision(await captureCatalogContent(source, signal, { bytes: 0 }));
+  const outcome = await withOwnedCatalogSnapshot(configuration, async context => {
+    const { semantic } = context;
     const state = catalogDue({ ...context, semantic, now: Date.parse(context.report.capturedAt), jobs, inferenceJobs, roots });
     if (state !== 'due') return { state: `catalog_${state}`, purgeAuthorized: false };
     if (!await archiveStorageAvailable(paths.catalogs, paths.receipts, [...jobs, ...inferenceJobs], [paths.archives])) return { state: 'storage_full', purgeAuthorized: false };
     signal?.throwIfAborted();
     const job = await jobsRepository.begin(context.report, context.revision, policyHash, semantic, context.compatibleRevisions);
-    try { return { job, result: await captureScheduledCatalog({ source, maintenance, configuration, paths, job, signal, context }) }; }
+    try { return { job, result: await context.capture({ maintenance, paths, job }) }; }
     catch (error) {
-      await jobsRepository.failed(job.id, signal?.aborted ? 'cancelled' : error.code === 'gateway_archive_source_changed' ? 'source_changed' : 'export_failed');
-      const result = { state: signal?.aborted ? 'catalog_cancelled' : 'catalog_export_failed', archiveId: job.id, purgeAuthorized: false };
-      if (signal?.aborted) cancelled = result;
+      const aborted = context.signal.aborted;
+      await jobsRepository.failed(job.id, aborted ? 'cancelled' : error.code === 'gateway_archive_source_changed' ? 'source_changed' : 'export_failed');
+      const result = { state: aborted ? 'catalog_cancelled' : 'catalog_export_failed', archiveId: job.id, purgeAuthorized: false };
+      if (aborted) cancelled = result;
       return result;
     }
   }, signal, [...jobs, ...inferenceJobs].map(job => job.revision)).catch(error => {
-    if (cancelled && signal?.aborted) return cancelled;
+    if (cancelled && error.code === 'gateway_archive_cancelled') return cancelled;
     throw error;
   });
   if (!outcome.job) return outcome;

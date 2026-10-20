@@ -21,7 +21,7 @@ export function requireRowParity(reader, content, candidate, accumulator) {
   }
   assert.equal(normalizeRowSource(candidate), expected, 'row_mode_candidate_drift');
   let common = rebase(content);
-  common = once(common, 'budget, version = 1)', 'budget, version = 1, visit = visitCatalogRows)');
+  common = once(common, 'budget, version = 1, first = 0)', 'budget, version = 1, visit = visitCatalogRows, first = 0)');
   common = once(common, 'await visitCatalogRows(client,', 'await visit(client,');
   assert.equal(normalizeRowSource(accumulator), common, 'row_mode_accumulator_drift');
 }

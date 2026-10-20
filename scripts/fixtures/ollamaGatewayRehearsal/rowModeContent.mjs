@@ -5,10 +5,11 @@ import { visitCatalogRows } from '/app/src/ollamaGateway/catalogRowReader.mjs';
 import { gatewayError } from '/app/src/ollamaGateway/errors.mjs';
 export { visitCatalogRows } from '/app/src/ollamaGateway/catalogRowReader.mjs';
 
-export async function captureCatalogContent(client, signal, budget, version = 1, visit = visitCatalogRows) {
+export async function captureCatalogContent(client, signal, budget, version = 1, visit = visitCatalogRows, first = 0) {
+  if (first !== 0 && (first !== 3 || version !== 3)) throw gatewayError('gateway_catalog_contract');
   const tables = {};
   const names = catalogTables(version);
-  for (let index = 0; index < names.length; index++) {
+  for (let index = first; index < names.length; index++) {
     const hash = createHash('sha256'); let count = 0, maxId = null;
     await visit(client, index, row => {
       budget.bytes += Buffer.byteLength(row.row) + 1;

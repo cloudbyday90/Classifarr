@@ -16,8 +16,8 @@ const frame=body => `${JSON.stringify(studyBindingRecord(binding,SCHEDULING_ENTR
 const stopped={Running:false,ExitCode:0,OOMKilled:false};
 const quiet=work => {const write=process.stdout.write; process.stdout.write=() => true; try{return work();}finally{process.stdout.write=write;}};
 
-test('scheduling binds only its complete three-file closure and preserves mixed output losslessly', () => {
-  assert.deepEqual(studyPolicy('scheduling','rotation'),{files:['catalogScheduling.mjs','catalogRotationStudy.mjs','rotationStudyContract.mjs'],entries:[SCHEDULING_ENTRY],application:[]});
+test('scheduling binds only its complete four-file closure and preserves mixed output losslessly', () => {
+  assert.deepEqual(studyPolicy('scheduling','rotation'),{files:['catalogScheduling.mjs','catalogRotationStudy.mjs','rotationStudyContract.mjs','catalogOwnedPressure.mjs'],entries:[SCHEDULING_ENTRY],application:[]});
   for (const body of ['', '0199d30f-7420-7000-8000-000000000001\n','quiet passed\r\n','{"state":"catalog_unchanged"}\n']) {
     assert.equal(requireBoundStudyOutput(frame(body),binding,SCHEDULING_ENTRY),body);
   }
@@ -82,8 +82,9 @@ for (const rotationStudy of [false,true]) test(`scenario order preserves ${rotat
   const initial=['setup','verify:0','worker','worker','verify:1','register-only','worker','verify:1','worker','quiet'];
   const cycle=['inference','verify:0','accept-inference','inference','verify:0','accept-inference',rotationStudy?'study-refresh':'refresh','verify:1','worker','verify:1','worker',
     ...(rotationStudy?['worker','worker','study-check']:['handoff'])];
-  assert.deepEqual(calls,[...initial,...(rotationStudy?['study-begin']:[]),...Array.from({length:cycles},()=>cycle).flat()]);
-  assert.equal(writes.length,cycles+1);
+  const pressure=rotationStudy?[]:['owned-prepare','inference','verify:0','accept-inference','inference','verify:0','accept-inference','owned-capture','verify:1','owned-check'];
+  assert.deepEqual(calls,[...initial,...(rotationStudy?['study-begin']:[]),...Array.from({length:cycles},()=>cycle).flat(),...pressure]);
+  assert.equal(writes.length,cycles+1+(rotationStudy?0:1));
   assert.throws(()=>runSchedulingScenarios({rotationStudy,fixture:()=>'{"state":"idle"}',verify:()=>{},write:()=>{}}),/scheduling_worker_state_invalid/);
 });
 

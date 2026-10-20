@@ -5,10 +5,8 @@ import { createHash } from 'node:crypto';
 export const REUSE_ORDER = Object.freeze(['baseline','reuse','reuse','baseline','baseline','reuse','reuse','baseline']);
 export const reuseSha = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export function requireReuseContentParity(original,candidate) {
-  let expected = original.replaceAll('\r\n','\n').replaceAll(/from '\.\/([A-Za-z]+)\.mjs'/g,"from '/app/src/ollamaGateway/$1.mjs'");
-  for (const [before,after] of [['budget, version = 1)','budget, version = 1, first = 0)'],['let index = 0;','let index = first;']]) {
-    assert.equal(expected.split(before).length,2,'snapshot_reuse_source_drift'); expected = expected.replace(before,after);
-  }
+  const expected = original.replaceAll('\r\n','\n').replaceAll(/from '\.\/([A-Za-z]+)\.mjs'/g,"from '/app/src/ollamaGateway/$1.mjs'");
+  assert.equal(expected.split('let index = first;').length,2,'snapshot_reuse_source_drift');
   assert.equal(candidate.replaceAll('\r\n','\n'),expected,'snapshot_reuse_accumulator_drift');
 }
 export function requireReuseRuns(runs) {

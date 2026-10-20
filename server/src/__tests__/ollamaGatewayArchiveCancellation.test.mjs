@@ -10,10 +10,21 @@ import * as roots from '../ollamaGateway/catalogRetentionRepository.mjs';
 import * as content from '../ollamaGateway/catalogContent.mjs';
 import * as capture from '../ollamaGateway/catalogCapture.mjs';
 import * as admission from '../ollamaGateway/catalogAdmission.mjs';
+import * as owned from '../ollamaGateway/ownedCatalogSnapshot.mjs';
 
 let controller, repository, events, catalog;
 const report = { ledgerId: 'ledger', providerHash: 'provider', bindingCount: 1, capturedAt: new Date().toISOString() };
 const job = { id: 'job', revision: 'revision' };
+jest.unstable_mockModule('../ollamaGateway/ownedCatalogSnapshot.mjs', () => ({ ...owned,
+  withOwnedCatalogSnapshot: async (_configuration,consume,signal) => {
+    try {
+      const result = await consume({report,revision:'revision',compatibleRevisions:['revision'],semantic:'semantic',signal,
+        capture:async () => {controller.abort();signal.throwIfAborted();}});
+      if (signal.aborted) throw Object.assign(new Error('gateway_archive_cancelled'),{code:'gateway_archive_cancelled'});
+      events.push('commit'); return result;
+    } catch (error) {events.push('rollback');throw error;}
+  },
+}));
 jest.unstable_mockModule('../ollamaGateway/onlineArchive.mjs', () => ({ ...online,
   withOnlineArchiveSnapshot: async (_source, _configuration, consume, signal) => {
     try {

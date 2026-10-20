@@ -35,7 +35,7 @@ test('image and fixture revisions are independent except explicit row-mode parit
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
   for (const study of ['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot']) {
     const policy = studyPolicy(study,['archive','qualification','scheduling','snapshot'].includes(study) ? 'regression' : 'extended');
-    assert.equal(policy.files.length,study === 'snapshot' ? 7 : study === 'scheduling' ? 3 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
+    assert.equal(policy.files.length,study === 'snapshot' ? 7 : study === 'scheduling' ? 4 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -94,7 +94,7 @@ for (const profile of ['regression','rotation']) {
   test(`scheduling/${profile} preserves one action and rejects cross-profile intent before import`, () => withBootstrap('scheduling',profile,({binding,run,replace,results}) => {
     replace('catalogScheduling.mjs','console.log(JSON.stringify({args:process.argv.slice(2),execArgv:process.execArgv}));');
     const allowed = ['setup','worker','register-only','quiet','inference','accept-inference',
-      ...(profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'])];
+      ...(profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff','owned-prepare','owned-capture','owned-check'])];
     for (const action of allowed) {
       schedulingActionArgs(binding,action);
       const result = run(undefined,undefined,{NODE_OPTIONS:undefined},[action]); assert.equal(result.status,0,result.stderr);
@@ -111,7 +111,7 @@ for (const profile of ['regression','rotation']) {
   }));
 }
 
-for (const helper of ['catalogRotationStudy.mjs','rotationStudyContract.mjs']) {
+for (const helper of ['catalogRotationStudy.mjs','rotationStudyContract.mjs','catalogOwnedPressure.mjs']) {
   test(`scheduling rejects changed helper ${helper} before database setup`, () => withBootstrap('scheduling','rotation',({fixtures,results,run}) => {
     writeFileSync(resolve(fixtures,helper),'changed executable');
     const result = run(undefined,undefined,{NODE_OPTIONS:undefined},['setup']);

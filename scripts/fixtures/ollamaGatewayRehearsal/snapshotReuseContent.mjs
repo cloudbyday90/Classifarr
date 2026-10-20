@@ -6,6 +6,7 @@ import { gatewayError } from '/app/src/ollamaGateway/errors.mjs';
 export { visitCatalogRows } from '/app/src/ollamaGateway/catalogRowReader.mjs';
 
 export async function captureCatalogContent(client, signal, budget, version = 1, first = 0) {
+  if (first !== 0 && (first !== 3 || version !== 3)) throw gatewayError('gateway_catalog_contract');
   const tables = {};
   const names = catalogTables(version);
   for (let index = first; index < names.length; index++) {

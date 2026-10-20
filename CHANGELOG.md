@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Give catalog snapshots a private, bounded read-only connection and reuse base
+  table hashes only within their transaction. Preserve byte-limit failure behavior,
+  fresh safety checks and recovery budgets. Update client lint tooling.
+
 - Add a source-bound local study of duplicate gateway reads within one active
   snapshot, with cancellation, lifetime and byte-limit checks. Keep production
   recovery unchanged. Update pinned Vue and Pinia runtime dependencies.

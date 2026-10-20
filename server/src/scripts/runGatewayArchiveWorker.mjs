@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import pg from 'pg';
+import { archiveDatabaseClient } from '../ollamaGateway/archiveDatabaseClient.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readGatewayPrivateDocument } from '../ollamaGateway/privateDocument.mjs';
 import { archiveWorkerConfiguration,checkArchiveRole } from '../ollamaGateway/archiveWorkerConfiguration.mjs';
@@ -19,11 +19,7 @@ try {
   const once = process.argv.length === 3 && process.argv[2] === '--once';
   if (process.platform !== 'linux' || (!once && process.argv.length !== 2)) throw new Error();
   const configuration = archiveWorkerConfiguration(await readGatewayPrivateDocument(process.env.CLASSIFARR_GATEWAY_ARCHIVE_WORKER_CONFIG_FILE));
-  const connection = (database,readOnly) => new pg.Client({ ...database,password: database.password ?? '',ssl: false,
-    connectionTimeoutMillis: 5000,statement_timeout: 4000,query_timeout: 5000,
-    application_name: readOnly ? 'classifarr-gateway-archive-source' : 'classifarr-gateway-archive-coordinator',
-    options: readOnly ? '-c default_transaction_read_only=on' : undefined });
-  source = connection(configuration.source.database,true); maintenance = connection(configuration.maintenance,false);
+  source = archiveDatabaseClient(configuration.source.database,true); maintenance = archiveDatabaseClient(configuration.maintenance,false);
   for (const client of [source,maintenance]) { client.on('error',() => controller.abort()); await client.connect(); }
   if (configuration.catalogs) await checkCatalogReader(source, 2);
   else await checkArchiveRole(source,true);

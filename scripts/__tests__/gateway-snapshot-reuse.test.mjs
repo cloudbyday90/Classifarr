@@ -94,7 +94,7 @@ test('tail accumulator is production code with only the reviewed range-start par
   for (const changed of [candidate.replace('268435456','999999999'),candidate.replace("hash.update(row.row)","hash.update('wrong')"),candidate.replace('first = 0','first = 3')]) {
     assert.throws(()=>requireReuseContentParity(original,changed));
   }
-  assert.throws(()=>requireReuseContentParity(original.replace('let index = 0;','let index = 1;'),candidate));
+  assert.throws(()=>requireReuseContentParity(original.replace('let index = first;','let index = 1;'),candidate));
 });
 
 test('comparison contract rejects mismatches and requires fewer logical bytes and queries in every pair',()=>{

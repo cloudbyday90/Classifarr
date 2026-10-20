@@ -11,7 +11,7 @@ const common = ['setup','worker','register-only','quiet','inference','accept-inf
 export function schedulingActionArgs(binding,action) {
   assert.equal(binding.manifest.study,'scheduling');
   assert.ok(['regression','rotation'].includes(binding.manifest.profile));
-  const actions = binding.manifest.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'];
+  const actions = binding.manifest.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff','owned-prepare','owned-capture','owned-check'];
   assert.ok([...common,...actions].includes(action),'scheduling_action_invalid');
   return studyNodeArgs(binding,SCHEDULING_ENTRY,[action]);
 }

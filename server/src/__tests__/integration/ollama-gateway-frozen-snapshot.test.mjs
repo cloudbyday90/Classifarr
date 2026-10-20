@@ -15,6 +15,8 @@ import { requireCatalogCaptureFormat, readCatalogAdmission, checkCatalogAdmissio
 import { runCatalogAssessment } from '../../ollamaGateway/catalogCoordinator.mjs';
 import { catalogSample, syntheticHash } from '../fixtures/gatewayCatalogRetention.mjs';
 import { canonicalAdmission } from '../fixtures/gatewayCatalogAdmission.mjs';
+import { withOwnedCatalogSnapshot } from '../../ollamaGateway/ownedCatalogSnapshot.mjs';
+import { withCatalogSnapshotContent,captureSnapshotCatalogContent } from '../../ollamaGateway/catalogSnapshotContent.mjs';
 
 let fixture, owner, source, configuration, repository;
 const migration = name => readFile(new URL(`../../../../database/ollama-gateway-catalog/${name}`, import.meta.url), 'utf8');
@@ -57,6 +59,82 @@ async function admitted(consume) {
     return consume({ context, job, manifest });
   });
 }
+
+function ownedConfiguration() {
+  const {host,port,database}=getPool().options;
+  return {...configuration,database:{host,port,database,user:'frozen_source_reader',password:'synthetic-frozen-only'}};
+}
+async function ownedConnections() {
+  return (await owner.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND application_name='classifarr-gateway-catalog-snapshot'")).rows[0].n;
+}
+
+test('owned API confines transaction authority, remains frozen across unrelated transaction replacement and disposes escaped capture',async()=>{
+  let escaped;
+  await withOwnedCatalogSnapshot(ownedConfiguration(),async view=>{
+    escaped=view; expect(await ownedConnections()).toBe(1);
+    expect(Object.keys(view).sort()).toEqual(['capture','compatibleRevisions','report','revision','semantic','signal']);
+    expect(view.query).toBeUndefined(); expect(view.end).toBeUndefined(); expect(view.connection).toBeUndefined();
+    expect(()=>{view.report.counts.request_binding=99;}).toThrow();
+    await source.query('BEGIN; COMMIT; BEGIN; ROLLBACK');
+    const request=await fixture.ledger.claim('local'); await fixture.ledger.complete(request,false,{state:'response_completed',httpStatus:200});
+    expect(view.report.bindingCount).toBe(0);
+    expect(()=>view.capture({source,job:{},maintenance:owner,paths:{}})).toThrow('gateway_catalog_contract');
+  });
+  expect(()=>escaped.capture({job:{},maintenance:owner,paths:{}})).toThrow(); expect(await ownedConnections()).toBe(0);
+  await withOwnedCatalogSnapshot(ownedConfiguration(),async view=>{expect(view.report.bindingCount).toBe(1);});
+  expect(await ownedConnections()).toBe(0);
+});
+
+test('terminated private backend and cancellation cannot turn a callback result into success or leak sessions',async()=>{
+  await expect(withOwnedCatalogSnapshot(ownedConfiguration(),async()=>{
+    const rows=(await owner.query("SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND application_name='classifarr-gateway-catalog-snapshot'")).rows;
+    expect(rows).toHaveLength(1); await owner.query('SELECT pg_terminate_backend($1)',[rows[0].pid]); return 'must_not_succeed';
+  })).rejects.toThrow();
+  expect(await ownedConnections()).toBe(0);
+  const controller=new AbortController();
+  await expect(withOwnedCatalogSnapshot(ownedConfiguration(),()=>{controller.abort();return 'must_not_succeed';},controller.signal)).rejects.toThrow('gateway_archive_cancelled');
+  expect(await ownedConnections()).toBe(0); expect(await repository.list()).toEqual([]);
+});
+
+test('real catalog reuse matches streamed summaries/charges and the exact original overflow row with prior charges',async()=>{
+  await owner.query(`INSERT INTO gateway_archive.job(ledger_id,provider_hash,policy_hash,revision,attempt,status,reason,completed_at)
+    SELECT id,provider_hash,$1,encode(sha256(convert_to(i::text,'UTF8')),'hex'),1,'failed','export_failed',clock_timestamp()
+    FROM ollama_gateway.admission CROSS JOIN generate_series(1,3) i`,[archivePolicyHash(90)]);
+  await withOnlineArchiveSnapshot(source,configuration,async context=>{
+    const bytes={bytes:0}, expected=await captureCatalogContent(source,undefined,bytes,3);
+    await withCatalogSnapshotContent(source,context,undefined,async()=>{
+      const successful={bytes:37}; expect(await captureSnapshotCatalogContent(source,context,undefined,successful)).toEqual(expected);
+      expect(successful.bytes).toBe(bytes.bytes+37);
+      for(const remaining of [0,1,500,bytes.bytes-1]){
+        const original={bytes:268435456-remaining}, reused={...original};
+        await expect(captureCatalogContent(source,undefined,original,3)).rejects.toThrow('gateway_catalog_size_limit');
+        await expect(captureSnapshotCatalogContent(source,context,undefined,reused)).rejects.toThrow('gateway_catalog_size_limit');
+        expect(reused.bytes).toBe(original.bytes);
+        expect((await source.query("SELECT count(*)::int AS n FROM pg_cursors WHERE name='gateway_catalog_cursor'")).rows[0].n).toBe(0);
+      }
+      await expect(captureCatalogContent(source,undefined,{bytes:0},3,1)).rejects.toThrow('gateway_catalog_contract');
+    });
+  });
+});
+
+test('owned snapshot handles genuine 80k synthetic bindings without counter resets and isolates concurrent inference',async()=>{
+  expect((await owner.query('SELECT attempts::text,binding_count FROM ollama_gateway.admission')).rows[0]).toEqual({attempts:'0',binding_count:0});
+  await owner.query(`BEGIN;
+    INSERT INTO ollama_gateway.request_binding(ledger_id,request_id,owner_id,provider_hash,installation,admitted_at,attempt,evidence_kind)
+    SELECT id,uuidv7(),owner_id,provider_hash,'owned-pressure-fixture',clock_timestamp()-interval '100 days',i,'unbound'
+    FROM ollama_gateway.admission CROSS JOIN generate_series(1,80000) i;
+    INSERT INTO ollama_gateway.completion_receipt(request_id,outcome,http_status,recorded_at)
+    SELECT request_id,'response_completed',200,admitted_at FROM ollama_gateway.request_binding;
+    UPDATE ollama_gateway.admission SET attempts=80000,binding_count=80000; COMMIT;`);
+  await withOwnedCatalogSnapshot(ownedConfiguration(),async view=>{
+    expect(view.report).toMatchObject({attempts:'80000',bindingCount:80000,counterMatches:true});
+    const request=await fixture.ledger.claim('local'); await fixture.ledger.complete(request,false,{state:'response_completed',httpStatus:200});
+    expect(view.report.counts.request_binding).toBe(80000); expect(view.report.counts.completion_receipt).toBe(80000);
+  });
+  expect((await owner.query('SELECT attempts::text,binding_count,active_request FROM ollama_gateway.admission')).rows[0]).toEqual({attempts:'80001',binding_count:80001,active_request:null});
+  expect((await owner.query('SELECT count(*)::int AS n FROM gateway_cleanup.operation')).rows[0].n).toBe(0);
+  expect(await ownedConnections()).toBe(0);
+});
 
 test('one frozen SELECT-only view survives actual admission/completion and retains a separate immutable job', async () => {
   let saved;

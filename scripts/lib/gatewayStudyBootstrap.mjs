@@ -71,7 +71,7 @@ async function bootstrap() {
     }
     if (binding.study === 'scheduling') {
       const actions = ['setup','worker','register-only','quiet','inference','accept-inference',
-        ...(binding.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff'])];
+        ...(binding.profile === 'rotation' ? ['study-begin','study-refresh','study-check'] : ['refresh','handoff','owned-prepare','owned-capture','owned-check'])];
       check.equal(entry,'catalogScheduling.mjs'); check.equal(args.length,1); check.ok(actions.includes(args[0]));
     }
     check.ok((await lstat('/fixtures')).isDirectory());

@@ -5,10 +5,11 @@ import { visitCatalogRows } from './catalogRowReader.mjs';
 import { gatewayError } from './errors.mjs';
 export { visitCatalogRows } from './catalogRowReader.mjs';
 
-export async function captureCatalogContent(client, signal, budget, version = 1) {
+export async function captureCatalogContent(client, signal, budget, version = 1, first = 0) {
+  if (first !== 0 && (first !== 3 || version !== 3)) throw gatewayError('gateway_catalog_contract');
   const tables = {};
   const names = catalogTables(version);
-  for (let index = 0; index < names.length; index++) {
+  for (let index = first; index < names.length; index++) {
     const hash = createHash('sha256'); let count = 0, maxId = null;
     await visitCatalogRows(client, index, row => {
       budget.bytes += Buffer.byteLength(row.row) + 1;
