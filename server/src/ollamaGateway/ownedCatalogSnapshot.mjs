@@ -47,6 +47,7 @@ export async function withOwnedCatalogSnapshot(configuration,consume,signal,prev
         catch (error) { callbackFailed = true; throw error; }
         check();
         if (pending && !settled) throw gatewayError('gateway_archive_snapshot_invalid');
+        if (pending) await pending;
         return result;
       } finally {
         invalidate();

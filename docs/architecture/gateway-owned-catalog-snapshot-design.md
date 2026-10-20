@@ -62,7 +62,8 @@ space, pins, dump validation and isolated restore verification remain fresh.
 Expose only frozen report/revision/semantic data and one capture call. Refuse
 overlap, repeat capture, invalid options and escaped operations after completion.
 Invalidate on cancellation or client end/error. Drain in-flight capture before
-closing the scope; a caller that does not await it cannot produce success.
+closing the scope; unfinished capture or a settled capture failure cannot produce
+success. Callers must await capture to use its result.
 Discard summaries in finally on commit, rollback, error, cancellation or restart.
 
 No new retries or side effects are admitted. Preserve existing shared ordinals,

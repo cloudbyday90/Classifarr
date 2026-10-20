@@ -51,7 +51,7 @@ export async function runCatalogAssessment({ source, maintenance, repository, co
   if (!['unchanged', 'not_due', 'attempts_exhausted', 'cooldown', 'empty'].includes(inference.state)) return inference;
   const inferenceJobs = await repository.list(), roots = await rootsRepository.list();
   if ([...jobs, ...inferenceJobs].some(job => job.policy_hash !== policyHash)) return { state: 'configuration_changed', purgeAuthorized: false };
-  let cancelled;
+  let cancelled, recordedFailure;
   const outcome = await withOwnedCatalogSnapshot(configuration, async context => {
     const { semantic } = context;
     const state = catalogDue({ ...context, semantic, now: Date.parse(context.report.capturedAt), jobs, inferenceJobs, roots });
@@ -65,10 +65,12 @@ export async function runCatalogAssessment({ source, maintenance, repository, co
       await jobsRepository.failed(job.id, aborted ? 'cancelled' : error.code === 'gateway_archive_source_changed' ? 'source_changed' : 'export_failed');
       const result = { state: aborted ? 'catalog_cancelled' : 'catalog_export_failed', archiveId: job.id, purgeAuthorized: false };
       if (aborted) cancelled = result;
+      recordedFailure = { error, result };
       return result;
     }
   }, signal, [...jobs, ...inferenceJobs].map(job => job.revision)).catch(error => {
     if (cancelled && error.code === 'gateway_archive_cancelled') return cancelled;
+    if (recordedFailure?.error === error) return recordedFailure.result;
     throw error;
   });
   if (!outcome.job) return outcome;

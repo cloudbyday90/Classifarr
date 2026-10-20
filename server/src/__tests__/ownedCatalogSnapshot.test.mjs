@@ -85,6 +85,15 @@ test('unknown durable failure stays visible even if cancellation also occurs',as
   expect(events).toEqual(['rollback']);
 });
 
+test('an already settled capture failure cannot be ignored by a consumer',async()=>{
+  capture.mockRejectedValueOnce(Error('capture_failed'));
+  await expect(run(async view=>{
+    await view.capture(options()).catch(error=>{expect(error.message).toBe('capture_failed');});
+    return 'must_not_succeed';
+  })).rejects.toThrow('capture_failed');
+  expect(events).toEqual(['rollback']); expect(client.end).toHaveBeenCalled();
+});
+
 test('failed connect/role/identity always closes without invoking consumer',async()=>{
   const consume=jest.fn(); client.connect.mockRejectedValueOnce(Error('connect_failed'));
   await expect(run(consume)).rejects.toThrow('connect_failed'); expect(client.end).toHaveBeenCalled();

@@ -12,15 +12,16 @@ import * as capture from '../ollamaGateway/catalogCapture.mjs';
 import * as admission from '../ollamaGateway/catalogAdmission.mjs';
 import * as owned from '../ollamaGateway/ownedCatalogSnapshot.mjs';
 
-let controller, repository, events, catalog;
+let controller, repository, events, catalog, captureError;
 const report = { ledgerId: 'ledger', providerHash: 'provider', bindingCount: 1, capturedAt: new Date().toISOString() };
 const job = { id: 'job', revision: 'revision' };
 jest.unstable_mockModule('../ollamaGateway/ownedCatalogSnapshot.mjs', () => ({ ...owned,
   withOwnedCatalogSnapshot: async (_configuration,consume,signal) => {
     try {
       const result = await consume({report,revision:'revision',compatibleRevisions:['revision'],semantic:'semantic',signal,
-        capture:async () => {controller.abort();signal.throwIfAborted();}});
+        capture:async () => {if(captureError)throw captureError;controller.abort();signal.throwIfAborted();}});
       if (signal.aborted) throw Object.assign(new Error('gateway_archive_cancelled'),{code:'gateway_archive_cancelled'});
+      if (captureError) throw captureError;
       events.push('commit'); return result;
     } catch (error) {events.push('rollback');throw error;}
   },
@@ -49,7 +50,7 @@ const { runArchiveAssessment } = await import('../ollamaGateway/archiveCoordinat
 const { runCatalogAssessment } = await import('../ollamaGateway/catalogCoordinator.mjs');
 
 beforeEach(() => {
-  controller = new AbortController(); events = []; catalog = false;
+  controller = new AbortController(); events = []; catalog = false; captureError = null;
   repository = { list: async () => [], hasCatalogRetention: async () => false, cleanupOperations: async () => [],
     begin: jest.fn(async () => job), published: jest.fn(), failed: jest.fn(async () => { events.push('recorded'); }),
     catalogRetention: { rotate: async () => {} } };
@@ -73,4 +74,16 @@ test.each([false, true])('failed cancellation persistence stays uncertain, not a
   catalog = value; repository.failed.mockRejectedValue(new Error('persistence_unknown'));
   await expect(run()).rejects.toThrow('persistence_unknown');
   expect(events.at(-1)).toBe('rollback'); expect(repository.published).not.toHaveBeenCalled();
+});
+
+test('settled capture failure returns its outcome only after durable recording',async()=>{
+  catalog=true; captureError=new Error('capture_failed');
+  expect(await run()).toEqual({state:'catalog_export_failed',archiveId:job.id,purgeAuthorized:false});
+  expect(repository.failed).toHaveBeenCalledWith(job.id,'export_failed');
+  expect(events.slice(-2)).toEqual(['recorded','rollback']); expect(repository.published).not.toHaveBeenCalled();
+});
+
+test('settled capture failure cannot hide failed persistence',async()=>{
+  catalog=true; captureError=new Error('capture_failed'); repository.failed.mockRejectedValue(new Error('persistence_unknown'));
+  await expect(run()).rejects.toThrow('persistence_unknown'); expect(repository.published).not.toHaveBeenCalled();
 });
