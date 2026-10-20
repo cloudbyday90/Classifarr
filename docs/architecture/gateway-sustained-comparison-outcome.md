@@ -1,12 +1,13 @@
-# Sustained archiving on/off comparison — preparation outcome
+# Sustained archiving on/off comparison — outcome
 
-2026-10-20. Implementation and native preparation passed; **the four-arm measured
-comparison has not started**. Another project's temporary test containers were
-still cycling on this Docker host during preparation. A fresh coordinated quiet
-window is pending; no automatic attempt or retry was launched. Do not interpret
-the preparation regression as an archiving on/off comparison.
+2026-10-20. Implementation and native preparation passed. A subsequently
+coordinated four-arm attempt **stopped after the first off arm** because the host
+lifecycle fingerprint changed. Baseline correctness and cleanup passed; timing
+is inconclusive. Arms 2–4 were not started, and no automatic retry was launched.
+Neither the preparation regression nor this partial attempt is a completed
+archiving on/off comparison.
 
-## Subject and implementation
+## Initial subject and implementation
 
 Source: `45c30285f8d46731fa923ada9179eae64268fe32`, clean main checkout for build
 and rehearsals. No-cache smart Compose build with required local provenance:
@@ -97,10 +98,93 @@ update was already adopted on main with reviewed parser metadata. There was no
 new eligible PR delta to implement; no PR was merged or otherwise changed.
 No version bump, tag or release was created.
 
+## Coordinated measured attempt
+
+After explicit quiet-window coordination, rebuilt without cache from clean main
+revision `7ee7a546ee242336dd44816637a0054b2355a66f`. This differs from the initial
+source only by the preparation-outcome document. Exact measured subject:
+
+- Local image ID: `sha256:c34366f1e2e67efc4fa2cdf95f8a7362f6a4e6209c45779f01f127ee534af5c5`.
+- Image config digest: `sha256:66f4815f1c2d52a6065b2009acf744e51f0b91417b48c1e2446b773c7be6a90a`.
+- All 151 Linux tooling tests passed again, with zero skips. The real default
+  archive/restore regression and its owned cleanup also passed on this image.
+- All seven GitHub workflows for this source revision subsequently passed.
+
+The quiet window began around 16:21 UTC (12:21 Eastern). Arm 1's 30-minute traffic
+plus 60-second idle observations ran 16:23:27.656–16:54:27.784 UTC. The runner
+validated its result and exact-owned cleanup before taking the next host snapshot.
+
+Baseline correctness passed:
+
+- 1,980 offered arrivals: 1,800 foreground successes, 180 expected busy responses,
+  no failed/dropped/unexpected responses, and provider concurrency one.
+- 1,800 distinct fingerprints and UUIDv7 bindings; 1,801 total admission attempts
+  and bindings including the prerequisite; no active request remained.
+- All 3,000 failed historical rows preserved: 233,849,332 bytes, SHA-256
+  `6d33dca8af135d7b81f7c256ea71185c627e7be2d4e20b9f4d599b2079216f41`.
+- Zero measured archive workers, catalog jobs/roots, dump windows and cleanup
+  operations. All managed archive connection/transaction observations were zero.
+- 1,860 resource/database samples, zero failed samples, mandatory coverage 100%,
+  maximum sample gap 1,110.728 ms; all 60 idle samples showed zero managed/catalog
+  connections. Optional device-I/O and PSI fields were unavailable, not zero.
+- Source lifetime peak 612,450,304 bytes within 2 GiB; sampled current-memory peak
+  439,390,208 bytes. Recorded memory/PID events were zero. These are different
+  observation populations, not interchangeable memory measurements.
+
+Retained latency observations below are **contaminated diagnostic observations**,
+not a quiet baseline, on/off difference or production acceptance result:
+
+| Population | p50 ms | p95 ms | p99 ms | Max ms |
+| --- | ---: | ---: | ---: | ---: |
+| Foreground, 1,800 requests | 769.632 | 1,267.110 | 1,279.959 | 1,377.082 |
+| Expected busy, 180 requests | 1.340 | 2.303 | 3.634 | 4.775 |
+| Generator lateness, 1,980 arrivals | 0 | 0.657 | 0.931 | 1.037 |
+| Pre-claim, 1,800 admissions | 3.257 | 608.591 | 617.583 | 717.074 |
+| SQL claim, 1,800 admissions | 1.908 | 3.697 | 9.891 | 90.535 |
+
+All thirty minute bins had exactly 60 foreground and six busy observations.
+Minute foreground p95 ranged 1,262.063–1,305.601 ms. The worst foreground request
+was synthetic request 2, second installation, offered at 50 ms in minute zero;
+its latency was 1,377.082 ms, pre-claim 717.074 ms, SQL claim 1.969 ms and generator
+lateness zero. Overall quantiles were not calculated by averaging minute quantiles.
+
+### Why the runner stopped
+
+Both endpoint snapshots counted 18 containers, but their lifecycle fingerprints
+changed from `99fbf553a0c4e45012ca2220aa5e059be62f786d508ab7b86908d6334b45d641`
+to `5c5fa5760e57388a668d7ce96c30fa5912cbb64b6454ceb04bc347b9ad160b3a`.
+Container count alone would have missed this interference.
+
+Read-only inspection afterward found `harmoniarr-walkthrough-harmoniarr-1` was
+created at 16:31:40.416 UTC and started at 16:31:42.127 UTC (12:31 Eastern), during
+measurement. Its current ID was
+`5aeb070e74925c614f56ad2c604293535e38223ccb08868a9f594089d5a31088`.
+The same named application was already running before the window; this is direct
+evidence of container replacement during the run, not proof of which command or
+operator caused it. The bounded event-history query returned no matching records,
+so attribution beyond observed lifecycle state is unavailable.
+
+The CLI exited 1 with `gateway_host_state_changed`, retained the completed arm,
+marked timing inconclusive and did not start an on arm or reset the baseline.
+No retries, foreign cleanup, broad exclusions or relaxed assertions were used.
+Study-owned containers, volumes and disposable database files were verified gone;
+only synthetic fixture resources were removed. Logs and ignored bundles remain.
+The full local log `.tmp/sustained-comparison-7ee7a546.log` has SHA-256
+`9773bbaf61ae5f6168343dd802d7dcfe7cd3262081fdc14deeb6d93eea945293`.
+
+Local Classifarr remained on the previously evaluated image/container: no restart,
+replacement, OOM or gateway activation during this attempt. Post-attempt health,
+readiness and UI responses were HTTP 200; normal-appdata capture budget and zero gateway
+schemas were unchanged. The newly built image was used only in disposable tests.
+Unraid, Plex and shared Ollama remained untouched. The quiet window ended after
+the failed boundary check; this attempt is not still running.
+
 ## Next step
 
-Coordinate roughly 2½ hours without unrelated builds, tests or deployments while
-normal applications keep running, then run all four balanced arms. After a
+Coordinate a new roughly 2½-hour window that also prevents unrelated application
+container replacements, or select a separate test host, then run all four arms
+from the beginning. Do not splice this contaminated off arm into a later run.
+Normal applications may keep running without deployments. After a
 documentation-only commit, rebuild from the clean current revision before using
 the source-bound CLI; do not bypass the clean-checkout/source identity checks or
 substitute earlier-image results.
@@ -111,7 +195,7 @@ responses, matching plans/counts, verified archive progress in both on arms,
 positive archive absence in both off arms, unchanged history, settled connection
 disappearance and verified cleanup before reporting comparison completion.
 
-Until then there is no on/off latency difference, varied-history co-load result
+Until then there is no on/off latency difference or varied-history co-load result
 or basis for reducing repeated archive checks to report. Even a completed study
 would remain exploratory synthetic evidence: two repetitions per treatment,
 endpoint-only host observations and minute bins do not establish real-LLM
