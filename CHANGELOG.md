@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Update isolated PostgreSQL test tooling, retaining strict installation policy
+  and the reviewed HTTP-client security patches.
+
 - Measure private catalog connections and observed transaction ages in the bounded
   synthetic co-load study, with coverage checks and verified idle cleanup.
 
