@@ -108,3 +108,6 @@ fresh fourth-table capture → unchanged filesystem and restore fences. Defer
 retention reuse and any further check reduction until this bounded runtime change
 has end-to-end evidence. Document the outcome before committing/pushing all work;
 no release is part of this batch.
+
+See the [implementation outcome](gateway-owned-catalog-snapshot-outcome.md) for
+artifact identity, verification, local Compose evaluation and remaining risks.
