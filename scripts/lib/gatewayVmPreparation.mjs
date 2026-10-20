@@ -13,10 +13,10 @@ export function requireGatewayVmProfile(value = profile) {
   return Object.freeze({ ...expected });
 }
 
-export const isVmGuid = value => typeof value === 'string'
+export const isVmGuid = value => typeof value === 'string' && value.length === 36
   && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)
   && !/^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(value);
-export const isVmRevision = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
+export const isVmRevision = value => typeof value === 'string' && value.length === 40 && /^[a-f0-9]{40}$/.test(value);
 
 export function vmPreparationResult(mode, checks) {
   return { version: 1, mode, status: checks.some(row => row.status === 'unavailable') ? 'unavailable'

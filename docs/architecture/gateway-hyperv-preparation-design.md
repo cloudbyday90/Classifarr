@@ -62,8 +62,9 @@ The setup guide requires IPv4/IPv6 isolation and effective SSH configuration rev
 
 Before any study, a separate implementation must preserve the existing guest
 engine guard **and** observe Windows interference before/between arms. No such
-cross-boundary controller is added here. Checks are point-in-time, not continuous
-monitoring or durable authorization. Do not weaken the existing stop-after-current-
+cross-boundary controller is added here. Queries are not an atomic configuration
+snapshot; checks are point-in-time, not continuous monitoring or durable
+authorization. Do not weaken the existing stop-after-current-
 arm, verified-cleanup, nonzero-exit and no-auto-retry behavior.
 
 ## Official research and tradeoffs

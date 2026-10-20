@@ -89,7 +89,7 @@ test('PowerShell query has only validated targets and fixed read-only cmdlets, n
 
 test('invalid/injection GUIDs never reach a command; unsupported host does not probe', () => {
   const command = () => { throw new Error('must not call'); };
-  for (const invalid of ['*', `${vmId}';exit;#`, '', null, '00000000-0000-0000-0000-000000000000']) {
+  for (const invalid of ['*', `${vmId}';exit;#`, `${vmId}\n`, `${vmId}\r\n`, '', null, '00000000-0000-0000-0000-000000000000']) {
     assert.throws(() => captureHypervPreparation({ vmId: invalid, switchId, command }), /gateway_vm_arguments_invalid/);
     assert.throws(() => assessHypervConfiguration(observation(), { vmId, switchId: invalid }), /gateway_vm_arguments_invalid/);
   }
@@ -181,7 +181,8 @@ test('CLI accepts only explicit ordered modes and rejects write/receipt/retry op
   const dependencies = { host: args => { calls++; assert.deepEqual(args, target); return {}; },
     guest: args => { calls++; assert.equal(args.revision, revision); assert.ok(args.root); return {}; } };
   for (const args of [[], ['--apply'], ['--profile', '--run'], ['--host'], ['--host', '--vm-id', '*', '--switch-id', switchId],
-    ['--guest', '--revision', 'main'], ['--guest', '--revision', revision, '--retry'], ['--receipt', 'proof.json']]) {
+    ['--guest', '--revision', 'main'], ['--guest', '--revision', `${revision}\n`],
+    ['--guest', '--revision', revision, '--retry'], ['--receipt', 'proof.json']]) {
     assert.throws(() => runVmPreparationCli(args, dependencies), /gateway_vm_arguments_invalid/);
   }
   assert.equal(calls, 0);
