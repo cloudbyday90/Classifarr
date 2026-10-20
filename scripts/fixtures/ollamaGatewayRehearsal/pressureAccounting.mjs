@@ -25,12 +25,12 @@ export function pressureMemory(text,version) {
 }
 export function pressureIo(text,version) {
   if (![1,2].includes(version) || typeof text!=='string' || Buffer.byteLength(text)>65536) throw Error('pressure_counter_invalid');
-  const seen=new Set(),devices=new Map();
+  const seen=new Set(),devices=new Map();let total;
   for (const line of text.trim().split('\n').filter(Boolean)) {
     const [device,...parts]=line.trim().split(/\s+/);
     if (version===1 && device==='Total') {
       if (seen.has('Total') || parts.length!==1) throw Error('pressure_counter_invalid');
-      unsigned(parts[0]);seen.add('Total');continue;
+      total=unsigned(parts[0]);seen.add('Total');continue;
     }
     if (!/^\d+:\d+$/.test(device)) throw Error('pressure_counter_invalid');
     if (version===2 && devices.has(device)) throw Error('pressure_counter_invalid');
@@ -44,6 +44,7 @@ export function pressureIo(text,version) {
   for (const keys of devices.values()) for (const key of version===1 ? ['Read','Write'] : ['rbytes','wbytes']) {
     if (!keys.has(key)) throw Error('pressure_counter_invalid');
   }
+  if (!devices.size && total>0) throw Error('pressure_counter_invalid');
   // A readable empty file means no attributed device rows, not no physical I/O.
   return studyIo(text,version);
 }

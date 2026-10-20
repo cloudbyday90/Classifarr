@@ -27,7 +27,8 @@ test('I/O counters select disjoint operations and reject duplicate, incomplete o
   assert.deepEqual(pressureIo('8:0 Read 10\n8:0 Write 20\n8:0 Sync 25\n8:0 Total 30\nTotal 30',1),{readBytes:10,writeBytes:20});
   assert.deepEqual(pressureIo('8:0 wbytes=20 rbytes=10 rios=1\n8:1 rbytes=30 wbytes=40',2),{readBytes:40,writeBytes:60});
   for(const version of [1,2]) assert.deepEqual(pressureIo('',version),{readBytes:0,writeBytes:0});
-  for(const [raw,version] of [['8:0 Read 1\n8:0 Read 1\n8:0 Write 2',1],['Total 1\nTotal 1',1],['8:0 Read 1',1],
+  assert.deepEqual(pressureIo('Total 0',1),{readBytes:0,writeBytes:0});
+  for(const [raw,version] of [['8:0 Read 1\n8:0 Read 1\n8:0 Write 2',1],['Total 1\nTotal 1',1],['Total 1',1],['8:0 Read 1',1],
     ['8:0 rbytes=1 wbytes=2\n8:0 rbytes=1 wbytes=2',2],['8:0 rbytes=1 rbytes=2 wbytes=3',2],['8:0 rios=1',2],
     ['8:0 rbytes=-1 wbytes=2',2],['x'.repeat(65537),2]]) assert.throws(()=>pressureIo(raw,version));
 });
