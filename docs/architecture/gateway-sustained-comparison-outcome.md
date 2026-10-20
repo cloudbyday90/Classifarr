@@ -1,5 +1,8 @@
 # Sustained archiving on/off comparison — outcome
 
+Next preparation step: [dedicated Hyper-V profile and read-only checks](gateway-hyperv-preparation-outcome.md).
+This package does not provision a VM or authorize another measured attempt.
+
 2026-10-20. Implementation and native preparation passed. A subsequently
 coordinated four-arm attempt **stopped after the first off arm** because the host
 lifecycle fingerprint changed. Baseline correctness and cleanup passed; timing

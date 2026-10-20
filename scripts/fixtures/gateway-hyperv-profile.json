@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hypervisor": "hyperv",
+  "generation": 2,
+  "cpus": 4,
+  "memoryBytes": 8589934592,
+  "dynamicMemory": false,
+  "diskBytes": 68719476736,
+  "diskType": "Fixed",
+  "diskFormat": "VHDX",
+  "switchType": "Internal",
+  "access": "host-only-key-based-ssh",
+  "measurementInternet": false,
+  "controller": "guest-local-linux-x64-uid-gid-1000"
+}
