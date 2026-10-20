@@ -2,6 +2,8 @@
 
 Approved 2026-10-20 through grill-me: a short, four-run matched-shape study before
 another sustained co-load comparison. No production optimization or admin controls.
+See the separate [observed outcome](gateway-archiver-pressure-outcome.md), including
+the shared-host timing confound and limits on attribution.
 The [co-load outcome](gateway-owned-catalog-coload-outcome.md) found a 256 MiB
 archiver peak. Earlier unsampled qualification also reached that ceiling; high
 charge alone is neither a heap-leak diagnosis nor comfortable headroom.
