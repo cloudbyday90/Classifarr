@@ -15,7 +15,7 @@ export async function withOwnedCatalogSnapshot(configuration,consume,signal,prev
   const source = archiveDatabaseClient(config.database,true,'classifarr-gateway-catalog-snapshot');
   let open = true, callbackFailed = false;
   const invalidate = () => { open = false; };
-  const stop = () => { invalidate(); void source.end().catch(() => {}); };
+  const stop = () => { invalidate(); void source.end().catch(() => {}); }; // swallow-error: final disposal is awaited; abort cleanup must not throw in an event listener.
   source.on('error',invalidate); source.on('end',invalidate); bounded.addEventListener('abort',stop,{once:true});
   try {
     await source.connect(); bounded.throwIfAborted();
@@ -38,7 +38,7 @@ export async function withOwnedCatalogSnapshot(configuration,consume,signal,prev
           pending = captureScheduledCatalog({source,context,configuration:config,maintenance:options.maintenance,job,paths,signal:bounded})
             .then(result => {check(); return result;}).finally(() => {settled = true;});
           // A forgotten await must not leak an unhandled rejection or outlive ownership.
-          void pending.catch(() => {}); return pending;
+          void pending.catch(() => {}); return pending; // swallow-error: caller receives the original promise; only prevent an unhandled rejection before scope cleanup.
         },
       });
       try {
@@ -51,7 +51,7 @@ export async function withOwnedCatalogSnapshot(configuration,consume,signal,prev
       } finally {
         invalidate();
         if (pending && !settled) controller.abort();
-        await pending?.catch(() => {});
+        await pending?.catch(() => {}); // swallow-error: drain only; preserve the callback/cancellation failure already propagating.
       }
     }),bounded,previousRevisions);
   } catch (error) {
