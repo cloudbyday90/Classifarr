@@ -180,3 +180,7 @@ snapshot age, memory, I/O and inference latency. Keep timing/limits unchanged an
 use synthetic local providers only. Defer retention-summary reuse and further
 check reduction until that evidence shows a worthwhile saving without weakening
 recovery readiness. No new admin buttons or automatic purge authority are needed.
+
+Follow-up completed: see the [co-load outcome](gateway-owned-catalog-coload-outcome.md)
+for measured connections, latency, memory, missing I/O evidence and the next
+bounded archiver-pressure investigation.
