@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { runGatewayArchiveQualification } from './gatewayArchiveQualification.mjs';
 
-export async function runGatewayPressureStudy(image,revision,run=runGatewayArchiveQualification,report=value=>process.stdout.write(`${JSON.stringify(value)}\n`)) {
+export async function runGatewayPressureStudy(image,revision,run=runGatewayArchiveQualification,report=value=>process.stdout.write(`${JSON.stringify(value)}\n`),afterArm=()=>{}) {
   assert.match(image,/^sha256:[a-f0-9]{64}$/);assert.match(revision,/^[a-f0-9]{40}$/);
   let shape;
   for (const [index,measure] of [false,true,true,false].entries()) {
@@ -15,6 +15,8 @@ export async function runGatewayPressureStudy(image,revision,run=runGatewayArchi
     if (shape) assert.deepEqual(result.history.shape,shape,'pressure_workload_shape_changed');
     else shape=result.history.shape;
     report({study:'archiver-pressure',run:index+1,mode:measure ? 'sampled' : 'unsampled',...result});
+    // Qualification returns only after verified cleanup; preserve its result before checking the host.
+    await afterArm(index+1);
   }
   report({study:'archiver-pressure',stage:'passed_cleanup_verified',runs:4});
 }
