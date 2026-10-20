@@ -122,14 +122,45 @@ SHA-256 `3e5da97749f7dfc33ab88049c9ff0bd2bdbe5f294f6cfe15fd2f992b0a05fb35`.
 The previous image remains under the exact rollback tag
 `classifarr-local-rollback:5ced862feab49c773d917febc32ed95e79d37a5dbac779aa51e0a2ebf300f0f5`.
 
-The new local container is
+The initially evaluated local container was
 `de6bb4424d6b555c1e88529b9d64755bdeab061a855c996ca73f324f1746bf2e`, started
-14:54:39.220 UTC on the tested image. It is healthy, read-only-root, 2 GiB, zero
+14:54:39.220 UTC on the timing-study image. It was healthy, read-only-root, 2 GiB, zero
 restarts and no OOM; `/health`, `/ready` and `/` returned HTTP 200. The existing
 capture guard remained revision 2 with zero calls/tokens/reservations and its old
 next-check timestamp unchanged. No gateway schemas were added to normal appdata.
 Unraid, Plex and shared Ollama were unchanged. No new admin function, table,
 release, Git tag, version bump or PR merge was created.
+
+## Final image after parser review
+
+The final preflight exposed the offline parser-version review described above.
+After resolving it, rebuilt without cache from clean source
+`6b7a6af4e3332b6601a54dc1aae50906d4135f43`, retaining provenance and rollback
+protection. Final local image ID:
+`sha256:b4fe24676e4b60ac75bf7042e4ac28a684393297f1c0eec3997666d1b5b4092a`.
+Compared with the timing subject, the only non-document source change is the
+offline `ownershipReview.json` parser-version field. Gateway runtime, worker,
+fixture and study code are unchanged. Do not relabel the earlier timing numbers
+as measurements of this new image: the four-arm study was not rerun.
+
+Repeated final-image checks: native gateway tooling 141/141 with no skips, plus
+the full default archive real-restore/corruption/rotation/read-guard regression
+and exhaustive cleanup. Independent label checks found no study containers or
+volumes. Final preflight, focused ownership tests and documentation checks passed.
+
+Before the final local refresh, created another private mode-0600 backup,
+`data/backups/gateway-quiet-20261020-6b7a6af4.dump`, 76,205,584 bytes, SHA-256
+`bd777d438d74de4f3c720ca5089a5d60d02044aee1785c4943efdea2caf0a597`.
+Its `pg_restore --list` check passed; no full application-backup restore is claimed.
+Retained the timing image under rollback tag
+`classifarr-local-rollback:de6bb4424d6b555c1e88529b9d64755bdeab061a855c996ca73f324f1746bf2e`.
+
+Final container:
+`3d79a440d0103d6f66cd5d5840b232b5e59e515d45330b1cde7a6ef02bc164d3`, started
+15:11:49.225 UTC. Healthy, read-only-root, 2 GiB, zero restarts and no OOM;
+all three HTTP checks returned 200. Node/PostgreSQL/pgvector versions, existing
+capture-guard state and absence of gateway schemas remained as reported above.
+Only local Classifarr was replaced. Later documentation commits change no image inputs.
 
 ## Recommendation and next item
 
