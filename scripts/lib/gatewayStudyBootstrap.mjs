@@ -30,11 +30,11 @@ async function bootstrap() {
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
     check.ok(binding.study === 'scheduling' ? ['regression','rotation'].includes(binding.profile) :
       binding.study === 'snapshot' ? binding.profile === 'regression' :
-      binding.study === 'qualification' ? ['regression','measured','unsampled'].includes(binding.profile) :
+      binding.study === 'qualification' ? ['regression','measured','unsampled','pressure-measured','pressure-unsampled'].includes(binding.profile) :
       ['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
         (binding.study === 'archive' ? binding.profile === 'regression' : binding.profile === 'extended')));
     // The existing sampled archiver alone has four arguments. No generic relaxation.
-    check.ok(args.length <= 3 || (binding.study === 'qualification' && binding.profile === 'measured' &&
+    check.ok(args.length <= 3 || (binding.study === 'qualification' && ['measured','pressure-measured'].includes(binding.profile) &&
       entry === 'archiveQualificationDriver.mjs' && JSON.stringify(args) === '["archiver","normal","catalog","measure"]'));
     const names = Object.keys(binding.files); check.ok(names.length > 0 && names.length <= 32);
     check.deepEqual((await readdir('/fixtures')).sort(),[...names,'fixture-provenance.json'].sort());
@@ -65,6 +65,16 @@ async function bootstrap() {
       console.log(JSON.stringify({ fixture:'study-sealed',sha256:expected,symlinkRefused:true })); return;
     }
     check.ok(binding.entries.includes(entry));
+    if (binding.study==='qualification' && binding.profile.startsWith('pressure-')) {
+      if (entry==='catalogQualificationData.mjs') {
+        check.equal(args.length,2);check.equal(args[1],'catalog-pressure');
+        check.ok(['setup','admit','history','wide','acknowledge-inference','pressure-history','history-change','inspect','diagnose','oversized-evidence','fingerprint'].includes(args[0]));
+      } else {
+        check.equal(entry,'archiveQualificationDriver.mjs');
+        check.ok(['archiver','verifier','catalog-verifier'].includes(args[0]));check.equal(args[1],'normal');check.equal(args[2],'catalog');
+        check.deepEqual(args.slice(3),args[0]==='archiver' && binding.profile==='pressure-measured' ? ['measure'] : []);
+      }
+    }
     if (binding.study === 'snapshot') {
       check.equal(entry,'snapshotReuseStudy.mjs'); check.equal(args.length,1);
       check.ok(['setup','small','wide','probes','restart'].includes(args[0]));
@@ -94,7 +104,7 @@ export const STUDY_BOOTSTRAP = `await (${bootstrap.toString()})();`;
 export function studyNodeArgs(binding,entry,args = []) {
   assert.ok(entry === 'seal' || binding.manifest.entries.includes(entry),'study_entry_invalid');
   assert.match(binding.sha256,/^[a-f0-9]{64}$/);
-  assert.ok((args.length <= 3 || (binding.manifest.study === 'qualification' && binding.manifest.profile === 'measured' &&
+  assert.ok((args.length <= 3 || (binding.manifest.study === 'qualification' && ['measured','pressure-measured'].includes(binding.manifest.profile) &&
     entry === 'archiveQualificationDriver.mjs' && JSON.stringify(args) === '["archiver","normal","catalog","measure"]')) &&
     args.every(value => typeof value === 'string' && Buffer.byteLength(value) <= 32768));
   return ['--input-type=module','-e',STUDY_BOOTSTRAP,binding.sha256,entry,...args];

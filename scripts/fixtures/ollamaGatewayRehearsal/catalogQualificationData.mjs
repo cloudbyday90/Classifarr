@@ -9,6 +9,8 @@ import { archiveJobRepository } from '/app/src/ollamaGateway/archiveJobRepositor
 import { captureArchiveContent } from '/app/src/ollamaGateway/archiveContent.mjs';
 import { incrementalEvidenceFixture } from './incrementalEvidenceFixture.mjs';
 import { compareCatalogReads } from './catalogReadComparison.mjs';
+import { seedPressureHistory } from './pressureHistory.mjs';
+import { failedHistoryEvidence } from './studyHistory.mjs';
 
 assert.equal(process.env.CLASSIFARR_GATEWAY_FIXTURE, 'isolated');
 const [action, shape] = process.argv.slice(2), database = 'gateway_catalog_qualification';
@@ -49,7 +51,7 @@ try {
   } else if (action === 'history') {
     await client.query('SELECT pg_advisory_lock(11435,4)');
     // Historical failed attempts are inert, not restore evidence or invented successful work.
-    const count = shape === 'catalog-wide' ? 3000 : 9999;
+    const count = ['catalog-wide','catalog-pressure'].includes(shape) ? 3000 : 9999;
     await client.query(`INSERT INTO gateway_archive.job(ledger_id,provider_hash,policy_hash,revision,attempt,status,reason,completed_at)
       SELECT id,provider_hash,$1,encode(sha256(convert_to(i::text,'UTF8')),'hex'),1,'failed','export_failed',clock_timestamp()
       FROM ollama_gateway.admission CROSS JOIN generate_series(1,$2::int) i`, [policyHash,count]);
@@ -58,11 +60,15 @@ try {
     await client.query('SELECT pg_advisory_lock(11435,4)');
     // Preserve nested JSON in historical failed captures, with no usable receipt/files.
     const manifest = (await client.query("SELECT manifest FROM gateway_archive.job WHERE status='verified' ORDER BY id LIMIT 1")).rows[0].manifest;
-    await client.query(`UPDATE gateway_archive.job SET manifest=$1::jsonb||jsonb_build_object('archiveId',id,'revision',revision,
+    if (shape === 'catalog-pressure') result = await seedPressureHistory(client,manifest);
+    else await client.query(`UPDATE gateway_archive.job SET manifest=$1::jsonb||jsonb_build_object('archiveId',id,'revision',revision,
       'fixturePadding',repeat('x',75000)),manifest_sha256=repeat('f',64) WHERE status='failed'`, [manifest]);
-    result = (await client.query(`SELECT count(*)::int AS rows,sum(octet_length(to_jsonb(j)::text)+1)::float8 AS bytes,
+    if (shape !== 'catalog-pressure') result = (await client.query(`SELECT count(*)::int AS rows,sum(octet_length(to_jsonb(j)::text)+1)::float8 AS bytes,
       max(octet_length(to_jsonb(j)::text)) AS largest FROM gateway_archive.job j`)).rows[0];
-    assert.ok(result.bytes > 220000000 && result.bytes < 268435456); assert.ok(result.largest < 131072);
+    assert.ok(result.bytes > 220000000 && result.bytes < 268435456);
+    if (shape !== 'catalog-pressure') assert.ok(result.largest < 131072);
+  } else if (action === 'pressure-history') {
+    assert.equal(shape,'catalog-pressure');result=await failedHistoryEvidence(client);
   } else if (action === 'compare-reads') {
     result = await compareCatalogReads(client);
   } else if (action === 'acknowledge-inference') {

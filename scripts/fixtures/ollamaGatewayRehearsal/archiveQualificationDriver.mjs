@@ -9,6 +9,7 @@ import { catalogQualificationBoundary } from './catalogQualificationBoundary.mjs
 import { performance } from 'node:perf_hooks';
 import { createQualificationProbe } from './archiveQualificationProbe.mjs';
 import { createQualificationMeasurements } from './archiveQualificationMeasurements.mjs';
+import { createPressureAccounting,pressureDelta } from './pressureAccounting.mjs';
 import { readResidentText } from '/app/src/scripts/comparisonMemoryStudy/residentMemory.mjs';
 import * as residentParsers from '/app/src/scripts/comparisonMemoryStudy/residentMemoryParsers.mjs';
 
@@ -39,6 +40,13 @@ async function run() {
   assert.ok(measurement === undefined || (measurement === 'measure' && store === 'catalog'));
   const boundary = ['publication','acknowledgment'].includes(mode) ? await catalogQualificationBoundary(mode) : null;
   const resources = await qualificationResources();
+  const pressureStudy=['pressure-measured','pressure-unsampled'].includes(process.env.CLASSIFARR_SOAK_PROFILE);
+  if (pressureStudy) {
+    assert.equal(store,'catalog');assert.equal(mode,'normal');assert.ok(['archiver','verifier','catalog-verifier'].includes(kind));
+    assert.equal(Boolean(measurement),kind==='archiver' && process.env.CLASSIFARR_SOAK_PROFILE==='pressure-measured');
+  }
+  const accounting=pressureStudy ? createPressureAccounting({version:resources.limits.version,read:readResidentText}) : null;
+  const before=await accounting?.();
   const dumpExecutable = measurement ? await realpath('/usr/bin/pg_dump') : null;
   process.stdout.write(`${JSON.stringify({ fixture: 'limits', ...resources.limits })}\n`);
   const entry = kind === 'archiver' ? 'runGatewayArchiveWorker.mjs' : kind === 'cleanup' ? 'runGatewayCleanupWorker.mjs' : 'runGatewayArchiveVerifier.mjs';
@@ -131,7 +139,9 @@ async function run() {
     assert.equal(metrics.memoryEvents.oom_kill, '0');
     assert.equal(metrics.memoryEvents.oom ?? metrics.memoryEvents.under_oom, '0');
     assert.equal(metrics.pidsEvents, 'max 0');
-    process.stdout.write(`${JSON.stringify({ fixture: 'metrics', kind, workerElapsedMs, ...metrics })}\n`);
+    const after=await accounting?.();
+    process.stdout.write(`${JSON.stringify({ fixture: 'metrics', kind, workerElapsedMs, ...metrics,
+      ...(pressureStudy ? {accounting:{before,after,delta:pressureDelta(before,after)}} : {}) })}\n`);
   } finally {
     if (observations) process.stdout.write(`${JSON.stringify({ fixture: 'observations', kind, ...observations.summary() })}\n`);
     if (!ended) { child.kill('SIGKILL'); await closed; }

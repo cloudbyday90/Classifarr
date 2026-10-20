@@ -35,7 +35,7 @@ test('image and fixture revisions are independent except explicit row-mode parit
 test('all copied relative imports are in the fixed closure; writable results are never executable imports', () => {
   for (const study of ['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot']) {
     const policy = studyPolicy(study,['archive','qualification','scheduling','snapshot'].includes(study) ? 'regression' : 'extended');
-    assert.equal(policy.files.length,study === 'snapshot' ? 7 : study === 'scheduling' ? 4 : study === 'qualification' ? 12 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
+    assert.equal(policy.files.length,study === 'snapshot' ? 7 : study === 'scheduling' ? 4 : study === 'qualification' ? 16 : study === 'archive' ? 7 : study === 'rowmode' ? 25 : 19);
     assert.equal(new Set(policy.files).size,policy.files.length);
     for (const name of policy.files) {
       const source = readFileSync(new URL(`../fixtures/ollamaGatewayRehearsal/${name}`,import.meta.url),'utf8');
@@ -77,6 +77,29 @@ function withBootstrap(study,profile,body) {
   };
   try { body({fixtures,results,app,binding,run,replace}); }
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
+}
+
+for (const profile of ['pressure-measured','pressure-unsampled']) {
+  test(`qualification/${profile} permits only its fixed pressure actions and worker arguments`,()=>withBootstrap('qualification',profile,({run,results})=>{
+    const measured=profile==='pressure-measured';
+    const allowed=[['catalogQualificationData.mjs',['setup','catalog-pressure']],
+      ['catalogQualificationData.mjs',['fingerprint','catalog-pressure']],
+      ['catalogQualificationData.mjs',['pressure-history','catalog-pressure']],
+      ['archiveQualificationDriver.mjs',['archiver','normal','catalog',...(measured ? ['measure'] : [])]],
+      ['archiveQualificationDriver.mjs',['verifier','normal','catalog']],
+      ['archiveQualificationDriver.mjs',['catalog-verifier','normal','catalog']]];
+    for(const [entry,args] of allowed) assert.equal(run(entry,undefined,{NODE_OPTIONS:undefined},args).status,0);
+    assert.equal(existsSync(resolve(results,'executed')),true);
+    rmSync(resolve(results,'executed'));
+    for(const [entry,args] of [['archiveQualificationData.mjs',[]],['catalogQualificationData.mjs',['wide','catalog-wide']],
+      ['catalogQualificationData.mjs',['compare-reads','catalog-pressure']],['archiveQualificationDriver.mjs',['cleanup','normal','catalog']],
+      ['archiveQualificationDriver.mjs',['archiver','pause','catalog']],['archiveQualificationDriver.mjs',['archiver','normal']],
+      ['archiveQualificationDriver.mjs',['archiver','normal','catalog',...(measured ? [] : ['measure'])]],
+      ['archiveQualificationDriver.mjs',['verifier','normal','catalog','measure']]]) {
+      const result=run(entry,undefined,{NODE_OPTIONS:undefined},args);assert.equal(result.status,1,result.stderr);
+      assert.equal(JSON.parse(result.stdout.trim()).stage,'binding');assert.equal(existsSync(resolve(results,'executed')),false);
+    }
+  }));
 }
 
 test('snapshot bootstrap restricts actions and verifies every helper and application input before import',()=>withBootstrap('snapshot','regression',({fixtures,app,run,results})=>{

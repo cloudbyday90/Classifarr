@@ -24,10 +24,11 @@ export function studyPolicy(study, profile) {
       entries:['catalogScheduling.mjs'],application:[] };
   }
   if (study === 'qualification') {
-    assert.ok(['regression','measured','unsampled'].includes(profile),'study_profile_invalid');
+    assert.ok(['regression','measured','unsampled','pressure-measured','pressure-unsampled'].includes(profile),'study_profile_invalid');
     return { files:[...qualificationEntries,'archiveQualificationResources.mjs','cleanupQualification.mjs','cleanupQueryDiagnostics.mjs',
       'catalogQualificationBoundary.mjs','incrementalEvidenceFixture.mjs','archiveEvidenceVerifier.mjs','archiveQualificationProbe.mjs',
-      'archiveQualificationMeasurements.mjs','catalogReadComparison.mjs'],entries:[...qualificationEntries],application:[] };
+      'archiveQualificationMeasurements.mjs','catalogReadComparison.mjs','pressureHistory.mjs','studyHistory.mjs','pressureAccounting.mjs','studyResource.mjs'],
+    entries:profile.startsWith('pressure-') ? ['catalogQualificationData.mjs','archiveQualificationDriver.mjs'] : [...qualificationEntries],application:[] };
   }
   if (study === 'archive') {
     assert.equal(profile,'regression','study_profile_invalid');

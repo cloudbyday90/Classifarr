@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a bounded local archiver pressure study with matched varied history, explicit
+  accounting availability, repeated real restores and unchanged resource limits.
+
 - Update isolated PostgreSQL test tooling, retaining strict installation policy
   and the reviewed HTTP-client security patches.
 

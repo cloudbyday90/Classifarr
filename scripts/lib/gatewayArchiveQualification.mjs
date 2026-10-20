@@ -20,6 +20,7 @@ const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 
 async function qualifyCase(image, shape, measure, binding, bind) {
   const catalog = shape.startsWith('catalog-');
+  let outcome;
   const spec = createSchemaCheckRunSpec(), suffix = spec.containerName.slice('classifarr-schema-check-'.length);
   const labelKey = 'io.classifarr.archive-qualification', label = `${labelKey}=${suffix}`;
   const volumes = Object.fromEntries(['archives', 'receipts', 'socket', 'configuration', 'fixtures', ...(catalog ? ['catalogs'] : [])].map(name =>
@@ -109,7 +110,7 @@ async function qualifyCase(image, shape, measure, binding, bind) {
       try {
         report({ scenario: shape, stage: 'setup' }); fixture('setup');
         if (catalog) {
-          await qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report });
+          outcome=await qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report,measure });
         } else if (shape === 'cleanup') {
           hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
           hasState(await run('archiver'),'awaiting_verification'); hasState(await run('verifier'),'verified');
@@ -257,6 +258,7 @@ async function qualifyCase(image, shape, measure, binding, bind) {
     report({ scenario: shape, cleanup: 'verified' });
   }
   report({ scenario: shape, state: 'passed', providerCalls: 0, syntheticDeletedBindings: shape === 'cleanup' ? 200 : 0 });
+  return outcome;
 }
 
 export async function runGatewayArchiveQualification(image, revision, cleanupOnly = false, catalogs = false, only = null, measure = false) {
@@ -264,11 +266,14 @@ export async function runGatewayArchiveQualification(image, revision, cleanupOnl
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
   const shapes = catalogs ? ['catalog-capacity','catalog-publication','catalog-acknowledgment','catalog-interruption','catalog-wide','catalog-protected'] :
     cleanupOnly ? ['cleanup'] : ['capacity', 'oversize', 'cancel','protection','cleanup'];
-  assert.ok(only === null || shapes.includes(only), 'qualification_case_invalid');
-  assert.ok(typeof measure === 'boolean' && (!measure || (catalogs && only === 'catalog-wide')), 'qualification_measurement_scope');
+  assert.ok(only === null || shapes.includes(only) || (catalogs && only==='catalog-pressure'), 'qualification_case_invalid');
+  assert.ok(typeof measure === 'boolean' && (!measure || (catalogs && ['catalog-wide','catalog-pressure'].includes(only))), 'qualification_measurement_scope');
   const selected = only === null ? shapes : [only];
-  const profile = measure ? 'measured' : only === 'catalog-wide' ? 'unsampled' : 'regression';
+  const profile = only==='catalog-pressure' ? (measure ? 'pressure-measured' : 'pressure-unsampled') :
+    measure ? 'measured' : only === 'catalog-wide' ? 'unsampled' : 'regression';
   const bind = () => bindStudySources({image,revision,study:'qualification',profile}), binding = bind();
-  for (const shape of selected) await qualifyCase(image, shape, measure, binding, bind);
+  const outcomes=[];
+  for (const shape of selected) outcomes.push(await qualifyCase(image, shape, measure, binding, bind));
   report({ qualification: 'passed', cases: selected, image, revision, profile, inputSha256:binding.sha256 });
+  return outcomes;
 }

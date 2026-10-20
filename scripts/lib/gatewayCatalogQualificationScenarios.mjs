@@ -1,8 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
+import { requirePressureCapture } from './gatewayPressureContract.mjs';
 
 /** All mutations target the harness's synthetic database and labeled volumes only. */
-export async function qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report }) {
+export async function qualifyCatalogScenario({ shape, fixture, create, wait, run, hasState, kill, resume, report,measure=false }) {
   hasState(await run('archiver'), 'catalog_empty');
   if (shape === 'catalog-protected') {
     fixture('evidence-seed'); let size;
@@ -40,16 +41,26 @@ export async function qualifyCatalogScenario({ shape, fixture, create, wait, run
   fixture('admit'); report({ scenario: shape, ...fixture('history') });
   hasState(await run('archiver'), 'awaiting_verification');
   hasState(await run('verifier'), 'verified');
-  if (shape === 'catalog-wide') {
+  if (['catalog-wide','catalog-pressure'].includes(shape)) {
     // Accept the real isolated verifier's prerequisite receipt, then capture wide
     // failed history twice through the packaged worker and restore both snapshots.
-    fixture('acknowledge-inference'); report({ scenario: shape, ...fixture('wide') });
-    report({ scenario:shape,...fixture('compare-reads') });
-    hasState(await run('archiver'), 'awaiting_catalog_verification');
-    hasState(await run('catalog-verifier'), 'verified');
-    hasState(await run('archiver'), 'awaiting_catalog_verification');
-    hasState(await run('catalog-verifier'), 'verified');
+    fixture('acknowledge-inference'); const history=fixture('wide'); report({ scenario: shape, ...history });
+    if (shape==='catalog-wide') report({ scenario:shape,...fixture('compare-reads') });
+    const captures=[];
+    for (let index=0;index<2;index++) {
+      const logs=await run('archiver');hasState(logs,'awaiting_catalog_verification');
+      const metrics=shape==='catalog-pressure' ? requirePressureCapture(logs,measure) :
+        logs.find(row=>row.fixture==='metrics');assert.ok(metrics);
+      captures.push(metrics);report({scenario:shape,stage:`large_capture_${index+1}`,...metrics});
+      hasState(await run('catalog-verifier'),'verified');
+    }
     hasState(await run('archiver'), 'catalog_unchanged');
+    if (shape==='catalog-pressure') {
+      const after=fixture('pressure-history'),inspection=fixture('inspect');
+      assert.equal(after.sha256,history.sha256);assert.equal(after.bytes,history.bytes);assert.equal(after.rows,history.rows);
+      assert.equal(inspection.jobs.length,2);assert.ok(inspection.jobs.every(job=>job.status==='verified'));
+      assert.equal(inspection.roots.length,2);assert.equal(inspection.cleanupOperations,0);
+    }
     fixture('history-change');
     const before = fixture('inspect'), fingerprint = fixture('fingerprint');
     hasState(await run('archiver'), 'catalog_attempts_exhausted');
@@ -59,7 +70,7 @@ export async function qualifyCatalogScenario({ shape, fixture, create, wait, run
     const refused = await run('archiver'); hasState(refused,'archive_blocked');
     assert.ok(refused.some(row => row.reason === 'gateway_archive_history_size_limit'));
     assert.deepEqual(fixture('inspect'), corrupted); assert.deepEqual(fixture('fingerprint'), fingerprint);
-    return;
+    return shape==='catalog-pressure' ? {captures,history,historyPreserved:true} : undefined;
   }
   if (shape === 'catalog-capacity' || shape === 'catalog-interruption') {
     const exporting = create('archiver','pause');

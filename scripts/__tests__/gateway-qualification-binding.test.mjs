@@ -18,7 +18,7 @@ const read = path => readFileSync(new URL(path,import.meta.url),'utf8');
 test('qualification policy covers the fixed direct and indirect launch closure without extra entry authority', () => {
   for (const profile of ['regression','measured','unsampled']) {
     const policy = studyPolicy('qualification',profile);
-    assert.equal(policy.files.length,12);
+    assert.equal(policy.files.length,16);
     assert.deepEqual(policy.entries,['archiveQualificationData.mjs','catalogQualificationData.mjs',QUALIFICATION_DRIVER]);
     assert.deepEqual(policy.application,[]);
     for (const name of ['cleanupQueryDiagnostics.mjs','archiveEvidenceVerifier.mjs']) {
@@ -148,5 +148,5 @@ test('qualification seals before startup, keeps bound resume logs and verifies a
     'disposable-data-directory','Config.Labels[labelKey], suffix','Labels[labelKey], suffix']) assert.ok(source.includes(token),token);
   assert.ok(source.indexOf("qualification: 'passed'") > source.indexOf("cleanup: 'verified'"));
   const cli = read('../run-gateway-online-archive-rehearsal.mjs');
-  for (const flag of ['--qualification','--cleanup','--catalog-qualification','--catalog-memory','--catalog-memory-baseline']) assert.ok(cli.includes(flag));
+  for (const flag of ['--qualification','--cleanup','--catalog-qualification','--catalog-memory','--catalog-memory-baseline','--archiver-pressure-study']) assert.ok(cli.includes(flag));
 });
