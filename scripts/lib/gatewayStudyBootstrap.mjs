@@ -26,9 +26,10 @@ async function bootstrap() {
     check.deepEqual(Object.keys(binding).sort(),['application','entries','files','fixtureRevision','image','imageRevision','profile','study','version']);
     check.equal(binding.version,2); check.match(binding.image,/^sha256:[a-f0-9]{64}$/);
     for (const value of [binding.fixtureRevision,binding.imageRevision]) check.match(value,/^[a-f0-9]{40}$/);
-    check.ok(['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot'].includes(binding.study));
+    check.ok(['inference','history','restores','rowmode','archive','qualification','scheduling','snapshot','comparison'].includes(binding.study));
     check.equal(process.env.CLASSIFARR_SOAK_PROFILE,binding.profile);
-    check.ok(binding.study === 'scheduling' ? ['regression','rotation'].includes(binding.profile) :
+    check.ok(binding.study === 'comparison' ? ['comparison-off','comparison-on'].includes(binding.profile) :
+      binding.study === 'scheduling' ? ['regression','rotation'].includes(binding.profile) :
       binding.study === 'snapshot' ? binding.profile === 'regression' :
       binding.study === 'qualification' ? ['regression','measured','unsampled','pressure-measured','pressure-unsampled'].includes(binding.profile) :
       ['regression','extended'].includes(binding.profile) && (binding.study === 'inference' ||
@@ -65,6 +66,17 @@ async function bootstrap() {
       console.log(JSON.stringify({ fixture:'study-sealed',sha256:expected,symlinkRefused:true })); return;
     }
     check.ok(binding.entries.includes(entry));
+    if (binding.study === 'comparison') {
+      if (entry === 'soakData.mjs') {
+        check.ok(['setup','wide','check'].includes(args[0]));
+        check.equal(args.length,args[0] === 'check' ? 2 : 1);
+        if (args[0] === 'check' && binding.profile === 'comparison-off') check.equal(args[1],'[]');
+      } else if (entry === 'soakWorker.mjs') {
+        check.equal(args.length,2);
+        check.ok(args[1] === 'once' ? ['archiver','verifier','catalog-verifier'].includes(args[0]) :
+          binding.profile === 'comparison-on' && args[1] === 'loop' && ['archiver','catalog-verifier'].includes(args[0]));
+      } else { check.equal(entry,'soakInference.mjs'); check.equal(args.length,0); }
+    }
     if (binding.study==='qualification' && binding.profile.startsWith('pressure-')) {
       if (entry==='catalogQualificationData.mjs') {
         check.equal(args.length,2);check.equal(args[1],'catalog-pressure');

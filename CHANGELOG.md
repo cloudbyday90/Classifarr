@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an isolated sustained archiving on/off comparison with matched workloads,
+  bounded minute-level latency evidence and strict treatment-specific recovery checks.
+
 - Guard local archiver timing studies with bounded host lifecycle observations;
   stop on interference after verified cleanup while retaining completed restore evidence.
 

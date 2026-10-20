@@ -79,6 +79,24 @@ function withBootstrap(study,profile,body) {
   finally { assert.ok(directory.startsWith(`${root}${sep}binding-test-`)); rmSync(directory,{recursive:true,force:true}); }
 }
 
+for (const profile of ['comparison-off','comparison-on']) {
+  test(`comparison/${profile} binds exact treatment intent and refuses unbound worker loops before imports`,() => withBootstrap('comparison',profile,({run,results}) => {
+    for (const [entry,args] of [['soakData.mjs',['setup']],['soakData.mjs',['wide']],['soakData.mjs',['check','[]']],
+      ['soakInference.mjs',[]],['soakWorker.mjs',['archiver','once']],['soakWorker.mjs',['verifier','once']],
+      ...(profile === 'comparison-on' ? [['soakWorker.mjs',['archiver','loop']],['soakWorker.mjs',['catalog-verifier','loop']]] : [])]) {
+      assert.equal(run(entry,undefined,{NODE_OPTIONS:undefined},args).status,0);
+    }
+    rmSync(resolve(results,'executed'));
+    for (const [entry,args] of [['soakInference.mjs',['extra']],['soakData.mjs',['unknown']],['soakData.mjs',['setup','extra']],
+      ['soakData.mjs',['check']],['soakWorker.mjs',['verifier','loop']],
+      ...(profile === 'comparison-off' ? [['soakWorker.mjs',['archiver','loop']],['soakData.mjs',['check','[{}]']]] : [])]) {
+      const result = run(entry,undefined,{NODE_OPTIONS:undefined},args); assert.equal(result.status,1);
+      assert.equal(JSON.parse(result.stdout.trim()).stage,'binding'); assert.equal(existsSync(resolve(results,'executed')),false);
+    }
+    assert.throws(() => studyPolicy('inference',profile)); assert.throws(() => studyPolicy('comparison','extended'));
+  }));
+}
+
 for (const profile of ['pressure-measured','pressure-unsampled']) {
   test(`qualification/${profile} permits only its fixed pressure actions and worker arguments`,()=>withBootstrap('qualification',profile,({run,results})=>{
     const measured=profile==='pressure-measured';

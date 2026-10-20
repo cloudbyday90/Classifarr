@@ -2,6 +2,8 @@
 import { performance } from 'node:perf_hooks';
 import { setTimeout as delay } from 'node:timers/promises';
 import { soakProfile } from './soakProfile.mjs';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 export const SOAK_PHASES = soakProfile().phases;
 
@@ -66,4 +68,30 @@ export function summarizeSoak(results, observations, profileName = 'regression')
       latenessMs: stats(rows.map(row => row.latenessMs)), preClaimMs: stats(admitted.map(row => row.preClaimMs)),
       claimMs: stats(admitted.map(row => row.claimMs)) };
   });
+}
+
+/** Exact offered slots, not completion time, define the same bounded bins in both treatments. */
+export function summarizeSoakMinutes(results, observations, profileName) {
+  assert.ok(['comparison-off','comparison-on'].includes(profileName), 'comparison_profile_invalid');
+  const profile = soakProfile(profileName), plan = soakArrivals(profileName);
+  assert.deepEqual(results.map(({id,at,phase,installation}) => ({id,at,phase,installation})), plan, 'comparison_arrivals_changed');
+  summarizeSoak(results, observations, profileName);
+  const observed = new Map(observations.map(value => [value.id,value]));
+  const stats = values => distribution(values,profileName);
+  const rounded = value => Number(value.toFixed(3));
+  const summarize = rows => {
+    const success = rows.filter(row => row.status === 200), busy = rows.filter(row => row.status === 429);
+    assert.ok(rows.every(row => row.latenessMs <= 500), 'comparison_arrival_late');
+    return { offered: rows.length, completed: success.length, busy: busy.length,
+      latencyMs: stats(success.map(row => row.latencyMs)), busyLatencyMs: stats(busy.map(row => row.latencyMs)),
+      latenessMs: stats(rows.map(row => row.latenessMs)), preClaimMs: stats(success.map(row => observed.get(row.id).preClaimMs)),
+      claimMs: stats(success.map(row => observed.get(row.id).claimMs)) };
+  };
+  const worst = results.filter(row => row.status === 200).reduce((a,b) => b.latencyMs > a.latencyMs ? b : a);
+  return { version:1, planSha256:createHash('sha256').update(JSON.stringify(plan)).digest('hex'),
+    overall:summarize(results), minutes:Array.from({length:profile.durationMs / 60000},(_,minute) => ({ minute,
+      startMs:minute * 60000, endMs:(minute + 1) * 60000,
+      ...summarize(results.filter(row => row.at >= minute * 60000 && row.at < (minute + 1) * 60000)) })),
+    worst:{ id:worst.id, installation:worst.installation, atMs:worst.at, latencyMs:rounded(worst.latencyMs),
+      latenessMs:rounded(worst.latenessMs), preClaimMs:rounded(observed.get(worst.id).preClaimMs), claimMs:rounded(observed.get(worst.id).claimMs) } };
 }

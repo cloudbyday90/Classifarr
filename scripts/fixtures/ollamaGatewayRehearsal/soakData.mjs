@@ -60,7 +60,7 @@ try {
     const receipt = await readArchiveReceipt('/receipts', job.id); assert.equal(receipt.verified, true);
     await repository.verified(job.id, receipt);
     const manifest = (await client.query('SELECT manifest FROM gateway_archive.job WHERE id=$1', [job.id])).rows[0].manifest;
-    if (profile.name === 'extended') {
+    if (profile.name !== 'regression') {
       const ids = (await client.query("SELECT id FROM gateway_archive.job WHERE status='failed' ORDER BY id LIMIT 3001")).rows.map(row => row.id);
       assert.equal(ids.length, 3000);
       for (let offset = 0; offset < ids.length; offset += 16) {
@@ -87,15 +87,19 @@ try {
     assert.equal((await client.query('SELECT count(*)::int AS n FROM ollama_gateway.completion_receipt')).rows[0].n, profile.foreground + 1);
     assert.equal((await client.query("SELECT count(*)::int AS n FROM gateway_archive.job WHERE status='failed'")).rows[0].n, 3000);
     const jobs = (await client.query('SELECT status,attempt,reason FROM gateway_catalog.job ORDER BY id')).rows;
-    assert.ok(jobs.some(row => row.status === 'verified'));
-    assert.ok(jobs.every(row => row.status === 'verified' && row.attempt >= 1 && row.attempt <= 3));
-    if (profile.name === 'extended') {
-      assert.equal(jobs.length, 2); assert.ok(jobs.every(row => row.attempt === 1));
-      const baseline = JSON.parse(await readFile('/results/study-history.json', 'utf8'));
+    const baseline = profile.name === 'comparison-off';
+    if (baseline) assert.equal(jobs.length,0,'baseline_catalog_activity');
+    else {
+      assert.ok(jobs.some(row => row.status === 'verified'));
+      assert.ok(jobs.every(row => row.status === 'verified' && row.attempt >= 1 && row.attempt <= 3));
+    }
+    if (profile.name !== 'regression') {
+      assert.equal(jobs.length, baseline ? 0 : 2); assert.ok(jobs.every(row => row.attempt === 1));
+      const before = JSON.parse(await readFile('/results/study-history.json', 'utf8'));
       const after = await failedHistoryEvidence(client);
-      assert.equal(after.sha256, baseline.sha256); assert.equal(after.bytes, baseline.bytes);
+      assert.equal(after.sha256, before.sha256); assert.equal(after.bytes, before.bytes);
       const roots = (await client.query("SELECT count(*)::int AS n FROM gateway_catalog.snapshot WHERE status='retained'")).rows[0].n;
-      assert.equal(roots, 2);
+      assert.equal(roots, baseline ? 0 : 2);
       const dumps = (await client.query("SELECT id,(manifest->'dump'->>'bytes')::float8 AS bytes FROM gateway_catalog.job ORDER BY id")).rows;
       assert.ok(dumps.every(row => row.bytes > 220000000 && row.bytes <= 268435456));
       console.log(JSON.stringify({ fixture: 'history-preserved', ...after, retainedRoots: roots, dumps }));
@@ -111,7 +115,9 @@ try {
       [window.start, window.end])).rows[0].n;
       overlaps.push({ ...window, admittedRequests: count });
     }
-    for (const kind of ['archiver', 'catalog-verifier']) assert.ok(overlaps.some(window => window.kind === kind && window.admittedRequests > 0));
-    console.log(JSON.stringify({ admission, rows, catalogJobs: jobs, cleanupOperations: 0, overlaps }));
+    if (baseline) assert.equal(windows.length,0,'baseline_worker_windows');
+    else for (const kind of ['archiver', 'catalog-verifier']) assert.ok(overlaps.some(window => window.kind === kind && window.admittedRequests > 0));
+    console.log(JSON.stringify({ ...(profile.name.startsWith('comparison-') ? {fixture:'soak-check'} : {}),
+      admission, rows, catalogJobs: jobs, cleanupOperations: 0, overlaps }));
   } else throw new Error('soak_data_action_invalid');
 } finally { await client.end(); }

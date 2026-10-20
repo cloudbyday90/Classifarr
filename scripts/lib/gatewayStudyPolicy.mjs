@@ -12,6 +12,10 @@ const archiveEntries = ['archiveRestoreInput.mjs','onlineArchive.mjs','archivePr
 const qualificationEntries = ['archiveQualificationData.mjs','catalogQualificationData.mjs','archiveQualificationDriver.mjs'];
 
 export function studyPolicy(study, profile) {
+  if (study === 'comparison') {
+    assert.ok(['comparison-off','comparison-on'].includes(profile),'study_profile_invalid');
+    return { files:[...shared],entries:['soakData.mjs','soakWorker.mjs','soakInference.mjs'],application:[] };
+  }
   if (study === 'snapshot') {
     assert.equal(profile,'regression','study_profile_invalid');
     return { files:['snapshotReuseStudy.mjs','snapshotReuseData.mjs','snapshotReuseProbe.mjs','snapshotReuseGuards.mjs',

@@ -40,7 +40,7 @@ const timer = setTimeout(() => child.kill('SIGKILL'), mode === 'loop' ? profile.
 let sampling = false, samplePending, samplingFailure = false;
 const windows = new Map();
 const target = await realpath(kind === 'archiver' ? '/usr/bin/pg_dump' : '/usr/bin/pg_restore');
-const measurements = profile.name === 'extended' && mode === 'loop' ? createStudyMeasurements(createStudyResourceSample({
+const measurements = profile.name !== 'regression' && mode === 'loop' ? createStudyMeasurements(createStudyResourceSample({
   version: resources.limits.version, read: readResidentText, parsers: residentParsers,
   probe: createQualificationProbe({ version: resources.limits.version, workerPid: child.pid, read: readResidentText,
     parsers: residentParsers, executable: await realpath(process.execPath), dumpExecutable: target }),

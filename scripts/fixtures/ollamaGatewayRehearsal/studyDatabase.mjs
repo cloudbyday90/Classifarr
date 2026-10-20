@@ -42,15 +42,17 @@ export function createStudyDatabaseSample(client) {
   };
 }
 
-export function requireStudyDatabaseCoverage(summary) {
+export function requireStudyDatabaseCoverage(summary, baseline = false) {
   const fields = ['managedConnections','archiveSourceConnections','coordinatorConnections','catalogSnapshotConnections',
     'catalogSnapshotTransactions','maxTransactionAgeMs','maxCatalogTransactionAgeMs','observedTransactions','observedCatalogTransactions'];
   if (!Number.isInteger(summary?.samples) || summary.samples < 1 || !summary.coverage || !summary.peaks ||
       fields.some(key=>!Number.isInteger(summary.coverage[key]) || summary.coverage[key] < summary.samples * 0.9 || summary.coverage[key] > summary.samples) ||
-      !Number.isInteger(summary.peaks.observedTransactions) || summary.peaks.observedTransactions < 4 || summary.peaks.observedTransactions > 128 ||
-      !Number.isInteger(summary.peaks.observedCatalogTransactions) || summary.peaks.observedCatalogTransactions < 2 ||
+      typeof baseline !== 'boolean' ||
+      !Number.isInteger(summary.peaks.observedTransactions) || summary.peaks.observedTransactions < (baseline ? 0 : 4) || summary.peaks.observedTransactions > 128 ||
+      !Number.isInteger(summary.peaks.observedCatalogTransactions) || summary.peaks.observedCatalogTransactions < (baseline ? 0 : 2) ||
       summary.peaks.observedCatalogTransactions > summary.peaks.observedTransactions ||
-      summary.peaks.catalogSnapshotConnections !== 1 || !Array.isArray(summary.bins)) throw new Error('study_database_coverage');
+      summary.peaks.catalogSnapshotConnections !== (baseline ? 0 : 1) || !Array.isArray(summary.bins)) throw new Error('study_database_coverage');
+  if (baseline && fields.some(key => summary.peaks[key] !== 0)) throw new Error('study_baseline_archive_activity');
   const idle = summary.bins.filter(bin=>bin.phase === 'idle');
   for (const field of ['managedConnections','catalogSnapshotConnections']) {
     if (idle.reduce((sum,bin)=>sum+(bin.values[field]?.count ?? 0),0) < 45 ||

@@ -9,7 +9,8 @@ const create = (name, durationMs, settleMs, sampleLimit) => Object.freeze({
     Object.freeze({ name: 'after', start: durationMs - 60000, end: durationMs }),
   ]),
 });
-const profiles = Object.freeze({ regression: create('regression', 480000, 0, 600), extended: create('extended', 1800000, 60000, 2048) });
+const profiles = Object.freeze({ regression: create('regression', 480000, 0, 600), extended: create('extended', 1800000, 60000, 2048),
+  'comparison-off': create('comparison-off', 1800000, 60000, 2048), 'comparison-on': create('comparison-on', 1800000, 60000, 2048) });
 
 /** Fixed fixture profiles only; never caller-defined duration, provider or resource limits. */
 export function soakProfile(name = 'regression') {
@@ -19,5 +20,5 @@ export function soakProfile(name = 'regression') {
 
 /** A load study without archive progress is not a successful concurrency measurement. */
 export function studyWorkerBlocked(profileName, record) {
-  return soakProfile(profileName).name === 'extended' && record?.state === 'archive_blocked';
+  return soakProfile(profileName).name !== 'regression' && record?.state === 'archive_blocked';
 }

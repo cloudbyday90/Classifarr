@@ -12,7 +12,7 @@ import { createGatewayServer } from '/app/src/ollamaGateway/server.mjs';
 import { createGatewayClient } from '/app/src/ollamaGateway/client.mjs';
 import { openGatewayLedger } from '/app/src/ollamaGateway/ledger.mjs';
 import { readGatewayTaskSource } from '/app/src/ollamaGateway/taskSource.mjs';
-import { runSoakArrivals, summarizeSoak } from './soakWorkload.mjs';
+import { runSoakArrivals, summarizeSoak, summarizeSoakMinutes } from './soakWorkload.mjs';
 import { qualificationResources } from './archiveQualificationResources.mjs';
 import { soakProfile } from './soakProfile.mjs';
 import { createStudyMeasurements, requireStudyCoverage } from './studyMeasurements.mjs';
@@ -62,7 +62,7 @@ try {
   for (const credential of credentials) clients.push(createGatewayClient({ url: 'http://127.0.0.1:11435', upstream: config.upstream,
     models: config.models, token: credential.token }, { expectedUpstream: config.upstream }));
   const resources = await qualificationResources(), startedAt = Date.now(); lag.enable();
-  if (profile.name === 'extended') {
+  if (profile.name !== 'regression') {
     observer = new pg.Client({ host: '/var/run/postgresql', database: 'gateway_inference_soak', user: 'classifarr',
       options: '-c default_transaction_read_only=on', statement_timeout: 500, query_timeout: 1000,
       application_name: 'classifarr-study-observer' });
@@ -92,7 +92,7 @@ try {
       assert.equal(value.response, 'synthetic'); return 200;
     } catch (error) { if (error.status === 429) return 429; throw error; }
   } });
-  if (profile.name === 'extended') await delay(Math.max(0, profile.durationMs - (performance.now() - loadStarted)));
+  if (profile.name !== 'regression') await delay(Math.max(0, profile.durationMs - (performance.now() - loadStarted)));
   const phases = summarizeSoak(results, observations, profile.name); lag.disable();
   if (profile.settleMs) {
     phase = 'idle'; await writeFile('/results/soak-idle.json', JSON.stringify({ phase, at: Date.now() }), { mode: 0o600, flag: 'wx' });
@@ -100,13 +100,16 @@ try {
   }
   clearInterval(sampler); await measurements?.stop();
   const study = measurements ? requireStudyCoverage(measurements.summary(), profile.durationMs + profile.settleMs - 2500, true) : null;
-  if (study) requireStudyDatabaseCoverage(study);
+  if (study) requireStudyDatabaseCoverage(study, profile.name === 'comparison-off');
   assert.equal(protocolFailure, false); assert.equal(attempts, profile.foreground); assert.equal(peakActive, 1);
   const metrics = await resources.metrics();
   assert.ok(Object.values(metrics.memoryEvents).every(value => Number(value) === 0));
-  await writeFile('/results/soak-result.json', JSON.stringify({ passed: true, startedAt, endedAt: Date.now(), phases,
+  const output = JSON.stringify({ passed: true, startedAt, endedAt: Date.now(), phases,
     providerAttempts: attempts, peakProviderConcurrency: peakActive, resources: metrics, ...(study ? { study } : {}),
-    eventLoopMs: { p95: lag.percentile(95) / 1e6, max: lag.max / 1e6 } }), { mode: 0o600, flag: 'wx' });
+    ...(profile.name.startsWith('comparison-') ? { comparison:summarizeSoakMinutes(results,observations,profile.name) } : {}),
+    eventLoopMs: { p95: lag.percentile(95) / 1e6, max: lag.max / 1e6 } });
+  assert.ok(Buffer.byteLength(output) < 262144, 'soak_result_size');
+  await writeFile('/results/soak-result.json', output, { mode: 0o600, flag: 'wx' });
 } catch {
   await writeFile('/results/soak-result.json', JSON.stringify({ passed: false, reason: 'soak_inference_failed' }), { mode: 0o600, flag: 'wx' });
   process.exitCode = 1;

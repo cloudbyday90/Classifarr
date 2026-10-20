@@ -12,8 +12,9 @@ import { bindStudySources } from './gatewayStudyBinding.mjs';
 import { stageStudyInputs,assertStudyVolumes,assertStudyCommand } from './gatewayStudyInputs.mjs';
 import { createStudyExecution } from './gatewayStudyExecution.mjs';
 import { studyNodeArgs } from './gatewayStudyBootstrap.mjs';
-import { requireBoundStudyRecords,studyBindingRecord } from './gatewayStudyPolicy.mjs';
+import { requireBoundStudyRecords } from './gatewayStudyPolicy.mjs';
 import { runGatewayRowModeStudy } from './gatewayRowModeStudy.mjs';
+import { runGatewaySoakLoad } from './gatewaySoakLoad.mjs';
 
 const docker = args => execFileSync('docker', args, { encoding: 'utf8', windowsHide: true, timeout: 240000, maxBuffer: 1048576 });
 const records = output => output.trim().split('\n').filter(line => line.startsWith('{')).map(line => JSON.parse(line));
@@ -22,7 +23,10 @@ const report = value => process.stdout.write(`${JSON.stringify(value)}\n`);
 /** Local fixture only: no caller-supplied database, provider, mounts or runtime settings. */
 export async function runGatewayInferenceSoak(image, revision, profileName = 'regression', study = 'inference') {
   const profile = soakProfile(profileName);
-  assert.ok(['inference','history','restores','rowmode'].includes(study)); assert.ok(study === 'inference' || profile.name === 'extended');
+  const comparison = study === 'comparison';
+  assert.ok(['inference','history','restores','rowmode','comparison'].includes(study));
+  assert.ok(comparison ? ['comparison-off','comparison-on'].includes(profile.name) :
+    study === 'inference' ? ['regression','extended'].includes(profile.name) : profile.name === 'extended');
   assert.match(image, /^sha256:[a-f0-9]{64}$/); assert.match(revision, /^[a-f0-9]{40}$/);
   assert.equal(JSON.parse(docker(['image', 'inspect', image]))[0].Config.Labels['org.opencontainers.image.revision'], revision);
   const bind = () => bindStudySources({ revision,image,study,profile:profile.name });
@@ -33,6 +37,7 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
   const names = Object.fromEntries(['stager','archiver', 'verifier', 'catalog-verifier','restore-natural','restore-allocations','row-natural','row-allocations'].map(kind => [kind, `cf-soak-${kind}-${suffix}`]));
   const inspect = name => JSON.parse(docker(['inspect', name]))[0];
   const mount = (kind, target, readonly = false) => ['--mount', `type=volume,source=${stores[kind]},target=${target}${readonly ? ',readonly' : ''}`];
+  let outcome, history;
   const remove = name => {
     if (!docker(['ps', '-aq', '--filter', `name=^${name}$`]).trim()) return;
     assert.equal(inspect(name).Config.Labels[key], suffix); docker(['rm', '-f', name]);
@@ -94,7 +99,8 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
       };
       report({ stage: 'setup', image, revision, profile: profile.name }); fixture('setup');
       assert.ok((await once('archiver')).some(row => row.state === 'awaiting_verification'));
-      assert.ok((await once('verifier')).some(row => row.state === 'verified')); fixture('wide').forEach(report);
+      assert.ok((await once('verifier')).some(row => row.state === 'verified'));
+      const seeded = fixture('wide'); seeded.forEach(report); history = seeded.find(row => row.fixture === 'history-storage');
       if (study === 'rowmode') {
         await runGatewayRowModeStudy({ docker,image,revision,source,label,names,stores,mount,remove,inspect,once,report,binding,execFixture });
         return;
@@ -110,37 +116,15 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
         assert.ok(rows.some(row => row.fixture === 'history-query-profile' && row.equivalent && row.productionBudgetPassed));
         return;
       }
-      docker(['exec', '-d', '--user', '1000:1000', '-e', 'CLASSIFARR_GATEWAY_FIXTURE=isolated', '-e', `CLASSIFARR_SOAK_PROFILE=${profile.name}`,
-        source, 'node',...studyNodeArgs(binding,'soakInference.mjs')]);
-      const deadline = Date.now() + profile.runnerMs; let workerAt, verifierAt, stopped = false, result;
-      const windows = [];
-      while (!(result = read('/results/soak-result.json'))) {
-        assert.equal(read('/results/binding-failed.json'),null,'inference_bootstrap_failed');
-        assert.ok(Date.now() < deadline, 'soak_deadline');
-        if (!workerAt && read('/results/soak-archives.json')) {
-          create('archiver', 'loop'); workerAt = Date.now(); report({ stage: 'scheduled_archive_started' });
-        }
-        if (workerAt && !verifierAt && Date.now() - workerAt >= 20000) {
-          create('catalog-verifier', 'loop'); verifierAt = Date.now();
-        }
-        if (workerAt && !stopped && read('/results/soak-after.json')) {
-          for (const kind of ['archiver', 'catalog-verifier']) {
-            docker(['stop', '--time', '20', names[kind]]); windows.push(...check(names[kind]).filter(row => row.fixture === 'child-window'));
-          }
-          stopped = true; report({ stage: 'scheduled_workers_stopped' });
-        }
-        for (const kind of ['archiver', 'catalog-verifier']) if (!stopped && (kind === 'archiver' ? workerAt : verifierAt)) {
+      if (comparison) for (const name of Object.values(names)) remove(name);
+      const value = await runGatewaySoakLoad({ docker,source,binding,profile,read,create,once,fixture,report,
+        check(kind, stop) {
+          if (stop) { docker(['stop','--time','20',names[kind]]); return check(names[kind]); }
           const running = inspect(names[kind]).State.Running;
           if (!running) check(names[kind]);
-          assert.equal(running, true, 'soak_worker_early_exit');
-        }
-        await delay(2000);
-      }
-      assert.deepEqual(read('/results/inference-binding.json'),studyBindingRecord(binding,'soakInference.mjs'));
-      report({ stage: 'inference', ...result }); assert.equal(result.passed, true); assert.ok(stopped && verifierAt);
-      // Accept actual receipts after load drains; do not alter schedules or retry state.
-      await once('catalog-verifier'); await once('archiver');
-      fixture('check', JSON.stringify(windows)).forEach(report);
+          assert.equal(running,true,'soak_worker_early_exit');
+        } });
+      if (comparison) outcome = { ...value, history, profile:profile.name };
       } finally { assert.deepEqual(bind(),binding); }
     } });
   } finally {
@@ -161,4 +145,5 @@ export async function runGatewayInferenceSoak(image, revision, profileName = 're
   assert.equal(existsSync(spec.hostDataPath), false);
   report({ stage: study === 'history' ? 'history_profile_passed_cleanup_verified' :
     study === 'restores' ? 'restore_memory_passed_cleanup_verified' : study === 'rowmode' ? 'row_mode_passed_cleanup_verified' : 'soak_passed_cleanup_verified' });
+  if (comparison) return { ...outcome, cleanup:'verified' };
 }
