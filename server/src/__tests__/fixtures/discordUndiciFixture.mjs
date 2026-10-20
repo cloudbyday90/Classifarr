@@ -8,7 +8,7 @@ import { createLoopbackServer, loadDiscordTransport } from './discordTransportSu
 const { undici, version } = await loadDiscordTransport(process.env.CLASSIFARR_DISCORD_TRANSPORT_FIXTURE);
 
 test('uses the reviewed nested transport version', () => {
-  assert.equal(version, '6.29.0');
+  assert.equal(version, '6.29.1');
 });
 
 for (const status of [300, 404, 416]) {

@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Update server configuration/validation dependencies and patch direct and
+  Discord HTTP clients, retaining strict install policy and transport safeguards.
+
 - Give catalog snapshots a private, bounded read-only connection and reuse base
   table hashes only within their transaction. Preserve byte-limit failure behavior,
   fresh safety checks and recovery budgets. Update client lint tooling.
