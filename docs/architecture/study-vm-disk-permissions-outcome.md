@@ -126,11 +126,45 @@ tests do not prove this VM now qualifies and no completion apply was run.
 The same temporary attribution probe was updated to instrument the five exact
 ACL rejection points without changing their decisions. It distinguishes a
 directory/file Allow rule, null file DACL and observed root descriptor drift,
-reporting only fixed categories and numeric flags. Four tests passed: actual
-read-only PowerShell AST, bounded sanitized projection, and synthetic production
-guards for VM-group/file grants, null DACL and descriptor drift. It cannot change
-ACLs or VM settings. A fresh administrator attribution result is pending; no
-further exception, identity trust or permission repair has been inferred.
+reporting only fixed categories and numeric flags. The administrator's subsequent
+result identified a disk-file Allow grant: `principalKind: other`, rights mask
+1180063, inheritance/propagation flags zero, not inherited. It was not a null
+DACL or observed root descriptor drift. This is separate from the already
+qualified folder template, and the file policy correctly continues to refuse it.
+
+The mask is `0x12019f`, exactly Read, Write and Synchronize, confirmed against the
+installed enum and [Microsoft's FileSystemRights definitions](https://learn.microsoft.com/en-us/dotnet/api/system.security.accesscontrol.filesystemrights?view=net-10.0).
+It includes data modification, but not FullControl's delete, ACL-change,
+take-ownership or execute rights. The diagnostic's `other` category is a
+remainder, not identification of an account, VM or standard native principal.
+The mask alone cannot establish identity or provenance.
+
+A direct non-elevated metadata read was unavailable; no elevation or permission
+bypass was attempted. The same temporary probe was extended to report only a
+fixed SID family, native well-known type number, account-SID flag and equality
+with the invoking native token's user/groups. It performs no name translation,
+account lookup or network discovery. Well-known-type iteration is capped at
+128 and token groups at 256; token handles are disposed. A type of -1 means no
+match in that runtime's enum, not proof that Windows universally lacks a type.
+
+Five tests passed: actual read-only PowerShell AST, bounded sanitized projection
+and rejection of malformed/private fields, synthetic production guards for
+VM-group/file grants, null DACL and descriptor drift, plus native SID-family,
+well-known-type and current-token comparisons without identity output. The
+native cases accommodate enum types absent from installed Windows PowerShell.
+Literal anchored patterns are tested after source interpolation, which uses
+replacement callbacks so JavaScript replacement tokens cannot corrupt them.
+
+Token-group presence is not proof of enabled membership or current effective
+access. Neither a well-known category nor token equality establishes that
+New-VHD installed the grant, binds it exclusively to this VM or authorizes it.
+[SecurityIdentifier.IsWellKnown](https://learn.microsoft.com/en-us/dotnet/api/system.security.principal.securityidentifier.iswellknown?view=netframework-4.7.2)
+provides classification;
+[TOKEN_GROUPS](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_groups)
+separately defines enabled, deny-only and logon-group attributes. No official
+creation contract was found that explains the observed principal from this
+mask alone. The new administrator classification capture is pending. No
+production code, allowlist, ACL or VM setting was changed in this diagnosis.
 
 ## Recommendation and next step
 
