@@ -82,6 +82,45 @@ Run focused, gateway/preflight and relevant quality gates; no-cache build and
 isolated image evaluation must match the exact committed source. Report native,
 synthetic and Linux evidence separately.
 
+## Unapproved permission-policy follow-up
+
+The administrator's read-only completion inspection now stops on an explicit
+CREATOR OWNER inheritance-only rule on the owned disk directory: SID `S-1-3-0`,
+GENERIC_ALL mask 268435456, object/container inheritance flags 3, propagation
+flags 2, not inherited. This is evidence of a particular rule, not evidence of
+its provenance or authorization to accept or remove it.
+
+Microsoft documents that an inheritance-only rule does not control access to
+the object carrying it. When inherited as an effective rule, generic rights are
+mapped and CREATOR OWNER becomes the owner of the resulting child security
+descriptor. That owner is not necessarily the parent directory's owner. A
+protected parent DACL prevents incoming inheritance; it does not disable the
+parent's own rules from propagating to descendants. These facts make a blanket
+inheritance-only exception unsafe.
+
+| Option | Benefit | Weakness |
+| --- | --- | --- |
+| Retain the current refusal | No permission-policy expansion | The partial VM cannot be completed |
+| Remove or rewrite the rule | Could restore the original expected ACL shape | Adds unauthorized ACL mutation and risks changing native behavior |
+| Qualify exact-template recognition with descendant checks | Can preserve existing permissions and resources | Requires new native tests and evidence that child ownership/access remain restricted |
+
+Recommend investigating the last option only after explicit scope agreement.
+Any proposed recognition must be confined to the owned, protected disk directory,
+not parents, the VM configuration directory or a general trusted-principal list.
+Require the exact SID, allow type, mask, flags and explicit status, plus the
+existing trusted owner and protected-DACL checks. Check the expected VHD's owner
+and access rules and use bounded inventory to reject unexpected children or
+reparse points. Retain every other refusal and repeated identity/off/disk checks.
+No permission edits, broad group trust, automatic retries or VM power/network
+operations are proposed.
+
+Qualification would use disposable native Windows filesystem fixtures to
+demonstrate actual parent/child inheritance and protected-child behavior, with
+negative cases for every altered rule field, wrong target, untrusted child owner
+or grant, unexpected child and loss of protection. Synthetic tests alone cannot
+establish Windows inheritance semantics. This section is a proposal: neither
+production validation nor the private completion currently accepts the rule.
+
 ## Official sources
 
 Located and opened through the search MCP on 21 October 2026:
@@ -90,6 +129,15 @@ Located and opened through the search MCP on 21 October 2026:
   distinguishes the VM group from the per-VM SID namespace.
 - [New-VM](https://learn.microsoft.com/en-us/powershell/module/hyper-v/new-vm?view=windowsserver2025-ps):
   a VM gets an adapter automatically; connecting it to a switch is optional.
+- [ACE_HEADER flags](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-ace_header):
+  inheritance-only entries do not grant access to the object carrying them.
+- [ACE inheritance rules](https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-inheritance-rules):
+  effective child entries map generic rights and creator identities.
+- [CreatePrivateObjectSecurityEx](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-createprivateobjectsecurityex):
+  creator-owner substitution uses the resulting child's owner, not necessarily
+  the parent's owner.
+- [Security descriptor control](https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-control):
+  protected DACLs prevent modification by incoming inherited entries.
 
 The precise null-ID representation is independently observed on this Windows
 installation and corroborated by its installed Microsoft implementation, not

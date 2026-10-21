@@ -69,10 +69,19 @@ inspection stopped at `prechecks/acl_review_required`, with
 `mutationAttempted: false`. No apply was run. A tested temporary read-only
 attribution probe was prepared to identify the exact target/principal category
 and numeric rule flags without emitting raw ACLs, account names or SIDs. Its
-three AST/projection/synthetic-guard tests passed. The permission policy was not
-weakened and no repair is authorized by the completion agreement. Actual
-completion remains blocked until that refusal is understood and resolved within
-explicit scope. Later image results must match the new source, not an earlier build.
+three AST/projection/synthetic-guard tests passed. The administrator's result
+attributed the refusal to the owned disk directory itself (depth 1): explicit
+CREATOR OWNER, rights mask 268435456, inheritance flags 3 and propagation flags 2.
+The result reported `readOnly: true`, `studyReady: false`; no apply was run.
+
+This is an inheritance-only template, not a direct grant on the containing
+directory. It can nevertheless grant full control to owners of descendant
+objects. Neither its harmlessness nor which operation installed it has been
+established. Protected permissions stop incoming inheritance, not propagation
+of the directory's own inheritable rules. See the official sources and
+[unapproved follow-up options](study-vm-validation-design.md#unapproved-permission-policy-follow-up).
+The permission policy remains unchanged; the approved completion does not
+authorize ACL repair or an exception. Actual completion remains blocked.
 
 Full Windows CI preflight passed 212/214 gateway tooling cases with two existing
 symlink-privilege skips. Copyright (1,791 files), static inventory ownership
@@ -85,10 +94,61 @@ No dependency, database/table, API contract, release, Unraid/shared Ollama chang
 normal-container replacement or live VM settings operation occurred in these tests.
 Temporary files are intentionally ignored and are not a permanent admin tool.
 
+## Exact-source no-cache image evaluation
+
+The protected Compose builder completed a no-cache build from clean committed
+source `36c854bdc903fdf76d013ea6f9635a152749338b`, with provenance required and
+running-image protection enabled. It built only the local candidate; no Compose
+up, container replacement or application deployment was performed.
+
+| Identity | Value |
+| --- | --- |
+| Local image/index ID | `sha256:f29d95d9fb3a2fdefe552d783966cb476f81ff172da1c6299fbf3ce28c2e354b` |
+| Linux amd64 child manifest | `sha256:c6190328a846033cbe3f777ad63d799662a961fd218e2cd2bbd9df2bda884c40` |
+| Image configuration | `sha256:b6218c8a41f4ec5200072cad07778e3a66a9bd9149f37a08bc45084bebf285a5` |
+| Committed-source archive SHA-256 | `d30de3d2655836ac52788ef713f8e32133f41cc3c7b2811f7bb7902c051b43ff` |
+
+The source archive was 80,855,040 bytes. The isolated driver verified its digest,
+Node 24.21.0, and byte-identical packaged/source copies of the creator, creation
+query, private-directory query and identity query. It then ran the complete
+gateway tooling list sequentially: 214 tests, 205 passed, nine Windows-only
+skips, no failures, exit zero. Linux skips are not Windows behavioral evidence;
+the 19 native Windows focused tests above provide separate qualification.
+
+The candidate ran as UID/GID 1000, network none, read-only root, all capabilities
+dropped, no-new-privileges, 512 MiB memory with no extra swap, one CPU and 64 PIDs.
+Source and driver mounts were read-only; work and temporary storage were bounded
+tmpfs. There were no live application data, credentials, VM folders or Docker
+socket mounts. The application entrypoint was not started. The exact disposable
+test container was absent before and after evaluation, confirming cleanup.
+
+During build-dependency removal, Alpine's index refresh emitted one TLS warning;
+that phase and the build still exited zero. No certificate verification,
+dependency pinning or permission control was relaxed to obtain success.
+This is local image evidence, not signed published provenance, a Windows image
+test, a VM settings operation or release readiness.
+
+The normal Classifarr container retained its original image, start time and zero
+restarts; it remained healthy and `/health`, `/ready` and `/` returned HTTP 200.
+Its protected rollback image remained available. No normal application was
+restarted or replaced.
+
+At recording time, the exact source's remote secret, copyright, OSV, Trivy and
+resource-capacity workflows passed. The
+[CI/CD workflow](https://github.com/cloudbyday90/Classifarr/actions/runs/39600667078)
+and CodeQL were still running; full remote success is not claimed. The only open
+PR, #568 (ESLint 10.13.0), was already represented on main, so there was no
+eligible unapplied PR to implement and no PR was merged or closed.
+
 ## Next
 
-Review the completion's fresh read-only inspection, then hand off one explicit
-administrator-run apply only if its checks pass. Preserve partial resources and
-review every failure; never recreate/delete or rerun automatically. Verified off
-configuration is followed by installer authenticity and guest/network setup,
-not a claim of study readiness.
+Agree whether to qualify narrowly scoped recognition of the observed inheritance
+template, with trusted owner, protected directory and expected disk/descendant
+checks, without changing filesystem permissions. The grill-me workflow pauses
+that policy change pending shared scope confirmation. Keep the VM off and do
+not run completion apply, recreate resources or repair permissions meanwhile.
+If approved, prove the exact rule and rejection boundaries in disposable native
+filesystem fixtures before changing validation or requesting fresh inspection.
+Only a successful inspection can precede an explicit administrator-run apply.
+Verified off configuration still requires installer authenticity and later
+guest/network setup; it is not study readiness.
