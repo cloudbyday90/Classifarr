@@ -242,6 +242,11 @@ Retaining the current evidence without a new reproduction remains the lowest-
 impact alternative, at the cost of leaving the cause and study prerequisites
 unresolved.
 
+The user subsequently approved preparing the
+[separate reproduction plan](study-vm-removal-reproduction-design.md), without
+resources, execution or access to existing targets. That plan does not extend
+cleanup authority or implement a native runner.
+
 ## Official sources
 
 Discovered and opened through search MCP on 21 October 2026:
