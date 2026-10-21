@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Prepare a separately reviewed, source-pinned one-shot study-fixture cleanup
+  command with truthful uncertain-effect reporting. Preserve the original
+  read-only inspector and require separate explicit administrator execution.
+
 - Prepare guarded, one-target study-fixture recovery with fresh identity review,
   protected step receipts and disabled cleanup execution pending separate approval.
   Record successful read-only admission without treating it as deletion approval.

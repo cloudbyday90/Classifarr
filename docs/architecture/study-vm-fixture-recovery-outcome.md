@@ -147,3 +147,9 @@ earlier exact runtime-source no-cache image evidence remains separate in the
 [disk-permission outcome](study-vm-disk-permissions-outcome.md), not a build of
 this documentation commit. No running container, Unraid, shared Ollama, release,
 branch, merge or production deployment was created or changed.
+
+The user subsequently approved preparing a separate execution-ready command,
+not executing it. See its [design](study-vm-fixture-execution-design.md) and
+[outcome](study-vm-fixture-execution-outcome.md). The original CLI documented here
+still refuses apply before launch; the new entry point does not alter this
+inspector, the original runner or their frozen query fingerprints.
