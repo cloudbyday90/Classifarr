@@ -217,7 +217,85 @@ historical creator identity remains distinct from the new claim's saved identity
 
 Two focused metadata-review regressions were rerun and passed without skips or
 failures; no operation/query source was changed. No protected receipt or event
-contents were read by the agent. The next recommendation is a separately agreed,
-bounded receipt-and-VMMS diagnostic described in the design. It is not yet
-implemented or run. Retain the fixture off and leave the receipt/root untouched;
-no second removal attempt is approved.
+contents were read by the agent. The separately agreed bounded receipt-and-VMMS
+diagnostic is prepared below; its administrator capture remains pending. Retain
+the fixture off and leave the receipt/root untouched; no second removal attempt
+is approved.
+
+## Prepared receipt and VMMS diagnostic
+
+The user approved this bounded read-only scope after the metadata review. Five
+small ignored local ESM files separate receipt validation, event filtering,
+query composition, public projection/capture and tests. The source-pinned entry
+point supports a source-only check and explicit read-only inspection, never
+cleanup execution. No frozen operation, receipt writer, root pin or permission
+policy source was changed. The existing execution attempt remains consumed.
+
+The diagnostic independently recomputes the saved snapshot fingerprint against
+the literal accepted target, validates the reported three-record failure and
+intent subject, compares the saved GUID with current VM inventory, then reads
+only the fixed local VMMS Admin channel in the bounded receipt-metadata window.
+It returns allowlisted event IDs, levels and numeric codes only for whole-field
+named VM-identity matches. A GUID mentioned in free text is insufficient.
+Receipt/root metadata, bytes and current VM identity are checked again afterward.
+
+Preparation found and corrected three compatibility/attribution defects before
+any privileged capture. First, an isolated invocation of the installed Windows
+PowerShell 5.1 hash-filter date builder shifted UTC inputs by this host's local
+offset. The diagnostic now uses explicit UTC FilterXml bounds, avoiding local
+reparsing and repeated-hour ambiguity. Second, the unchanged receipt writer's
+typed optional string serializes as an empty string, not null. Flow tests now
+generate receipt records with that actual function and an in-memory append
+instead of only hand-constructing expected JSON. Third, scanning arbitrary GUID
+tokens could attribute a description's incidental mention to the wrong VM.
+Matching now requires a whole VmId/VirtualMachineId value and refuses conflicting
+or invalid identity fields. None of these findings explains the native removal
+failure or authorizes a change to the original safeguards.
+
+### Qualification and limits
+
+The new diagnostic tests exercise real Windows PowerShell parsing and logic with
+all VM inventory, protected receipt, native identity and event operations mocked.
+Synthetic positive flows use their generated snapshot fingerprint; a separate
+fixed-approval negative flow retains the literal accepted fingerprint and proves
+that merely repeating that field cannot authenticate a different snapshot.
+Scenarios cover unsafe permissions/receipt shapes, wrong/currently running VM,
+implausible timing, pre/post-read drift, missing/disabled/empty logs, unsupported
+payloads, incidental/conflicting GUIDs, XML/row/event bounds, provider failures,
+strict output projection, capture failures and cancellation without retry.
+Provider output is collected incrementally so records returned before a later
+terminating error are still disposed; partial-query errors remain incomplete.
+The full verification passed 51 Windows tests without failures or skips:
+12 diagnostic cases and the unchanged 39-test wrapper/review/recovery/fixture
+regression set. The synthetic scenarios do not prove native privileged access.
+
+An installed 5.1 FilterXml property round-trip preserves fractional ISO UTC
+bounds, including a repeated local DST hour, without invoking the cmdlet's query
+methods, reading events or constructing an event reader. Read-only installed
+method inspection also confirmed direct XML handoff, not DateTime reparsing;
+this is compatibility evidence, not native event-query success. The actual
+receipt reader was exercised only against its own ordinary temporary file:
+read-only open, exact length/bytes, wrong-length refusal, handle release and
+unchanged contents/mtime, followed by verified removal of that test file.
+
+The source-only CLI reports source_bound, commandLaunchAttempted false, readOnly
+true, mutationAttempted/cleanupAttempted false and retryAllowed false. It does
+not read the protected fixture or establish administrator access. Source pins
+do not authenticate administrator intent or attest installed binaries.
+
+The protected receipt and VMMS event collection have not yet been run by the
+agent or supplied by the administrator. Receipt metadata is a mutable,
+approximate time anchor, not certified event timing. Named identity schemas and
+numeric-code fields may be incomplete; missing, limited or unrecognized evidence
+must not become a root-cause claim. The recognized field names are a conservative
+subset, not a verified complete VMMS manifest contract. No raw receipt, GUID,
+path, account, XML or message is returned. No new disk-reference, effective-access, deletion-readiness
+or historical-creator proof is claimed.
+
+No application/image source changed, so application suites and Docker no-cache
+build/replacement were not repeated for this Windows-only ignored preparation
+and documentation update. No branch, merge, release, production, Unraid or shared
+Ollama operation occurred. Next: obtain the single approved read-only
+administrator capture and review it before proposing any further action. Do not
+rerun apply, reset/remove the receipt, change permissions, restart services or
+start either VM to obtain new evidence.

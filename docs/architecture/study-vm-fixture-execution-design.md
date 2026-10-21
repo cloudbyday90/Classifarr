@@ -119,12 +119,13 @@ cause or authorize further cleanup. Any later receipt/event/provider diagnosis
 must remain separately scoped and sanitized. Do not weaken root/receipt sharing
 protections, repair ACLs or try another Remove-VM call based on a hypothesis.
 
-## Proposed next diagnostic scope
+## Approved read-only diagnostic scope
 
 The post-attempt metadata capture is now complete: a name-selected fixture VM
 remains off with its disk and five files. Repeating the metadata probe will not
-recover the missing provider error. The following proposal is pending shared
-scope confirmation under grill-me, not approved implementation or collection.
+recover the missing provider error. The user approved preparation, testing and
+one administrator read-only capture of the following diagnostic scope under
+grill-me. This does not approve another cleanup attempt or a different remedy.
 
 Prepare/test one read-only local diagnostic that validates the protected receipt
 against the literal accepted target fingerprint and compares the saved VM GUID
@@ -145,13 +146,19 @@ mutable correlation anchor, not a certified attempt-time record.
 Inspect at most 64 time-window candidates, using a 65th as a limit sentinel, with
 bounded XML/field/output sizes and a single 30-second/64 KiB capture. Return only
 events matching the saved GUID in bounded structured XML, and sanitized event
-IDs, levels and allowlisted numeric diagnostic codes. Do not return raw messages,
-XML, event payloads, receipt contents, unrelated event details or private names.
+IDs, levels and allowlisted numeric diagnostic codes. Match only a whole GUID in
+a named VmId or VirtualMachineId field; descriptions, incidental GUID tokens,
+invalid identity fields and conflicting identities cannot establish a match.
+Do not return raw messages, XML, event payloads, receipt contents, unrelated
+event details or private names.
 
 Windows PowerShell 5.1 supports channel/provider/time filtering but not PowerShell
-6's named-data FilterHashtable keys. Use compatible filtering followed by bounded
+6's named-data FilterHashtable keys. Use FilterXml with explicit invariant ISO UTC
+SystemTime bounds, the fixed channel and fixed provider, followed by bounded
 structured EventData/UserData identity matching; do not assume Data=GUID covers
-UserData. Missing/disabled logs, no matching events, truncation/size limits and
+UserData. Do not pass UTC DateTime objects through the installed 5.1 hash-filter
+builder: its local-time reparse was independently reproduced without querying
+logs. Missing/disabled logs, no matching events, truncation/size limits and
 query failure must remain distinct, incomplete diagnostic outcomes. An
 unrecognized payload schema must not be counted as a proven nonmatching event.
 Do not enable logs, clear/export logs, broaden to other channels, restart services or rerun
@@ -162,8 +169,52 @@ replaying the failed write. Limits: protected receipt/log access requires an
 administrator, timestamps are correlation rather than historical authentication,
 and events may be missing or insufficient. GUID/time/code agreement is
 correlation, not proof of root cause. Retaining the off fixture without
-further collection remains the non-destructive alternative. No new diagnostic
-tool, receipt read or live event query has been implemented or performed yet.
+further collection remains the non-destructive alternative. Implementation and
+qualification results are recorded separately in the
+[outcome](study-vm-fixture-execution-outcome.md#prepared-receipt-and-vmms-diagnostic).
+
+### Diagnostic implementation contract
+
+Keep the private, one-target ESM entry point and modules in ignored local
+material. Reuse the existing read-only metadata and bounded VM inventory guards,
+not journal writers, root pinning or removal actions. Verify the frozen cleanup
+source bindings and the exact new diagnostic query before launching. A
+source-only check must not launch PowerShell or access the fixture.
+
+The explicit inspection mode launches one hidden, shell-free, noninteractive
+Windows PowerShell 5.1 child using the existing filtered-environment transport.
+No caller-supplied target, path, hostname, query, enablement or automatic retry is
+accepted. Timeout, cancellation, stderr, malformed capture or the 64 KiB output
+limit produce unavailable evidence, not a successful diagnosis. Incomplete and
+blocked results use a nonzero exit status; neither grants retry authority.
+
+Validate the receipt's protected administrator ownership, exact explicit
+SYSTEM/Administrators grants and bounded native identity before opening the
+existing file read-only. Match the unchanged writer's actual three-record shape,
+including its empty-string optional subject fields, rather than a handwritten
+null-valued approximation. Recompute the saved snapshot hash and validate the
+remove_vm intent's saved-GUID subject hash before querying current inventory.
+Require saved/current VM identity and paths to agree, with the VM off. Recheck
+root/receipt metadata, receipt bytes and current VM after event collection; any
+detected drift prevents a successful current-state result. These sequential
+checks are not atomic protection against a concurrent trusted administrator;
+native file identity is checked around reads, not through the opened stream.
+
+Bound event XML to 64 KiB per event and 256 KiB total, at most 64 payload fields,
+depth 12 and 2,048 characters per field. Prohibit DTD processing and external XML
+resolution. Return at most 16 matched rows and four unique numeric codes per
+row. Code names are limited to HResult, Win32Error, ErrorCode/Error, Result and
+Status; normalize accepted signed/hexadecimal/unsigned 32-bit values without
+interpreting every code as an HRESULT. Unsupported schemas remain incomplete,
+not proven nonmatches. Dispose captured event/configuration objects without
+changing logs; disposal failure also prevents a successful observation.
+
+Recommendation stack: preserve the consumed execution attempt and protected
+receipt; qualify the read-only diagnostic; collect the single approved capture;
+review identity, completeness and any correlated provider codes. Only then
+consider a separately agreed next action. Retaining the fixture off is a valid
+alternative throughout. This diagnostic does not verify foreign-disk references,
+effective access, historical creator identity, cleanup readiness or root cause.
 
 ## Official sources
 
@@ -182,8 +233,15 @@ Discovered and opened through search MCP on 21 October 2026:
   identifies the exact VMMS Admin channel. Its broader recovery commands and
   bulk export are not selected or authorized by this diagnostic proposal.
 - [Get-WinEvent for Windows PowerShell 5.1](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent?view=powershell-5.1)
-  documents local filtered reads, time bounds and MaxEvents. Unbounded defaults
-  are not appropriate for the proposed probe.
+  documents local structured XML filtering and MaxEvents. The fixed query uses
+  UTC bounds rather than unbounded defaults or client-side full-log filtering.
 - [FilterHashtable compatibility](https://learn.microsoft.com/en-us/powershell/scripting/samples/creating-get-winevent-queries-with-filterhashtable)
-  states that named-data query keys were added in PowerShell 6; the proposal
+  states that named-data query keys were added in PowerShell 6; the diagnostic
   must not silently depend on that behavior in the fixed 5.1 child.
+- [Microsoft's UTC SystemTime filtering example](https://learn.microsoft.com/en-us/troubleshoot/azure/virtual-machines/windows/debug-customscriptextension-runcommand-scripts)
+  demonstrates explicit UTC lower/upper bounds in FilterXml. Only that query
+  pattern is relevant here; its logging, registry, replay and export instructions
+  are not selected.
+- [Windows Event Log query semantics](https://learn.microsoft.com/en-us/windows/win32/wes/consuming-events)
+  documents structured selectors and supported comparison operators. It does not
+  establish a complete VMMS payload schema or prove this failure's cause.
