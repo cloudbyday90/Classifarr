@@ -79,9 +79,10 @@ This local registry format is an observed diagnostic input, not a stable public
 contract or source of authorization. Preserve the file guard's refusal and
 require a separate grill-me agreement before any trust-policy expansion.
 
-The administrator comparison has identified vmWorkerProcess. Recommended next
-step, not yet authorized: qualify the native create/attach sequence on exclusive
-disposable resources while leaving the real study VM untouched and off. Record
+The administrator comparison has identified vmWorkerProcess. Preparation of the
+[native create/attach qualification](study-vm-native-acl-qualification-design.md)
+is now approved, using exclusive disposable resources while leaving the real
+study VM untouched and off. Record
 the file ACL at each stage, never start a guest or connect networking, and allow
 cleanup only after exact fixture identity/path/off-state checks. Stop and retain
 uncertain resources for review; never retry native mutations automatically.

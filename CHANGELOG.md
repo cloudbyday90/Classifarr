@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Document bounded, one-shot native study-VM permission qualification, guarded
+  disposable-resource cleanup and the separate permission-policy review boundary.
+
 - Recognize the exact reviewed disk-folder inheritance template only with trusted,
   protected ownership, expected-only contents and independent disk permission checks.
   Reject observed permission drift without modifying existing ACLs.

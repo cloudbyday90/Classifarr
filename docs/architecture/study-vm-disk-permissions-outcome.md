@@ -304,9 +304,12 @@ exclusive disposable, powered-off VM. Never start or connect it; leave the real
 study VM and existing ACLs unchanged. Cleanup must be limited to
 positively identified fixture resources, with uncertainty preserved for review.
 This would establish reproducibility and the stage at which the rule appears,
-not universal provenance or runtime access isolation. Preparation and execution
-are not yet approved; no such fixture has been created. A subsequent exact-rule
-policy proposal, if warranted, still requires grill-me agreement before code.
+not universal provenance or runtime access isolation. The user subsequently
+approved preparing this one-shot test. Its
+[separate preparation outcome](study-vm-native-acl-qualification-outcome.md)
+records verification and the pending administrator execution; no native fixture
+has been created during preparation. A subsequent exact-rule policy proposal,
+if warranted, still requires grill-me agreement before code.
 
 ## Recommendation and next step
 
