@@ -1,7 +1,8 @@
 # Gateway study VM: administrator preparation
 
-This is a setup/handoff guide, **not** authorization or an automated provisioner.
-The current change creates no VM and runs no study. Read the
+This is a setup/handoff guide, **not** authorization to provision or run a study.
+Preparation checks remain read-only. The separate, explicit administrator-run
+creator below can create a new powered-off VM after target approval. Read the
 [design and tradeoffs](../architecture/gateway-hyperv-preparation-design.md) first.
 The [handoff-check design](../architecture/vm-handoff-checks-design.md) explains
 the version-2 preparation checks and their remaining trust boundaries.
@@ -23,7 +24,7 @@ from routine guest SSH. Stop if resources or ownership are uncertain.
 
 ## 2. Create only the reviewed resources (administrator, later)
 
-Use Hyper-V Manager to create the dedicated Generation 2 Linux VM with the
+Use Hyper-V Manager or the one-shot creator below for the dedicated Generation 2 Linux VM with the
 [committed profile](../../scripts/fixtures/gateway-hyperv-profile.json):
 
 | Setting | Planned value |
@@ -37,11 +38,50 @@ Use Hyper-V Manager to create the dedicated Generation 2 Linux VM with the
 | Automatic stop action | `ShutDown`; not save state or power-off |
 | Shutdown integration | Enabled on the host; guest channel binding observed separately |
 
+### Explicit powered-off creator
+
+Only after the administrator and user agree the exact targets, use
+`scripts/create-gateway-study-vm.mjs`. See its separate
+[design and tradeoffs](../architecture/study-vm-creation-design.md) and
+[verification outcome](../architecture/study-vm-creation-outcome.md).
+It creates no switch and leaves the default adapter disconnected; network/guest
+installation and final preparation checks are later steps, not relaxed checks.
+
+Supply actual existing, reviewed local parent folders, not these placeholders:
+
+```text
+node scripts/create-gateway-study-vm.mjs --plan --vm-parent "C:\Reviewed\VmParent" --disk-parent "D:\Reviewed\DiskParent"
+node scripts/create-gateway-study-vm.mjs --create --vm-parent "C:\Reviewed\VmParent" --disk-parent "D:\Reviewed\DiskParent"
+```
+
+`--plan` is pure and displays derived paths locally. It does not inspect the
+host, authenticate an administrator, reserve names or authorize creation.
+`--create` must run in an already-authorized Administrator PowerShell session.
+It derives `Classifarr-Study` children and a `Classifarr-Study.vhdx` disk, refuses
+existing targets, checks ancestors/ACLs and fresh capacity, restricts only the
+new directories and configures only the new VM. It does not alter parent ACLs or
+host defaults, start a VM, attach a switch/ISO, elevate or install software.
+
+Allocation may take several minutes. The single command budget is 15 minutes;
+output is bounded to 64 KiB and there are no automatic retries. Exit 0 means
+`planned` or verified `created_off`, depending on mode; 1 means invalid arguments;
+2 means blocked or `review_required`. After timeout, cancellation, malformed
+output or any possible partial creation, stop and inspect the targets. The
+Hyper-V/storage service might still be completing a write even after its caller
+exits. Never blindly rerun, delete partial resources, or treat a status as
+rollback. A blocked permissions result needs review, not a broad permission fix.
+
+`created_off` includes the actual returned Hyper-V VM GUID for private follow-up.
+It does not establish guest readiness, SSH authentication, safe runtime shutdown
+or study approval. The full `--host` preparation check will not yet match without
+the separately reviewed Internal switch and installed guest.
+
 Configure this owned VM not to start automatically when Windows starts. It should
 be off between jobs, not a continuously running background service. Verify guest
 shutdown integration before using graceful shutdown; do not force power-off or
 save state when drain/cleanup is uncertain. The current tooling cannot operate
-its power state. See the [on-demand lifecycle design](../architecture/on-demand-study-vm-design.md).
+its running power state. The creator only produces an off VM; see the
+[on-demand lifecycle design](../architecture/on-demand-study-vm-design.md).
 
 The full disk is allocated upfront; memory is reserved while running. Keep room
 for Windows and normal applications. 64 GiB is an estimate, not a validated build

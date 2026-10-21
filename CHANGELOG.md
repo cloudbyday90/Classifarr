@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add an explicit administrator-run creator for a new, powered-off study VM,
+  with reviewed local storage, fixed resources, restricted new directories and
+  no automatic retries, existing-resource adoption or network/power operations.
+
 - Check on-demand study VM startup/shutdown prerequisites and private UUIDv7
   handoff records with bounded read-only ESM tools. Keep authentication, real VM
   operations and study readiness explicitly unverified.
