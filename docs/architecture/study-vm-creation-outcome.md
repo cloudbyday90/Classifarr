@@ -46,8 +46,45 @@ PowerShell positive-path tests use synthetic cmdlets, not real provisioning;
 administrator-token and new VM SID resolution remain native qualification work.
 No safe lifecycle, SSH handoff or study-readiness claim is made.
 
-The separate no-cache image-only evaluation is pending at this code checkpoint;
-this is not a claim that a VM was created or the study ran.
+## No-cache image-only evaluation
+
+Evaluated clean code/test subject: `3801d051df65c5d3af98f60365b8bb363933a996`.
+The protected Compose build completed with `--no-cache --require-provenance`.
+It built the separate local `classifarr:archive-binding` tag, without replacing
+the normal container or publishing a release.
+
+| Identity | Value |
+| --- | --- |
+| Local image/index ID | `sha256:ca2d8c17f79848c740180330ca62bbcde561eca2b27534d9d8bed20798a46aef` |
+| Exported Linux/amd64 image manifest | `sha256:b0f3a7d0de7a8842dd28d7cd134900c105e11683dd358b3707c376a94b27f324` |
+| Exported image config | `sha256:a52683c873b11d3be27e0b9a2341ddcb822802b20d786ff6acf602f9c2d0ea2a` |
+| Matching committed source bundle SHA-256 | `e4489b95a5c48f2ebc5173392ace99799b8d6d1d2ee675a2b104bf299a8fd8c6` |
+
+The local image revision matched the evaluated source. These are local build
+identities, not published registry verification or signed source authentication.
+
+In that exact image, **203 of 204 gateway tests passed**, with one disclosed
+Windows-only PowerShell test skipped. Both existing symlink tests ran on Linux.
+The full matching committed bundle was extracted separately into `/work`; it did
+not replace image application source/dependencies. Tests ran sequentially as
+UID/GID 1000 with no network/socket, read-only root, all capabilities dropped,
+no-new-privileges, one CPU, 512 MiB with no extra swap and 64 PIDs. The `/work`
+and `/tmp` tmpfs limits were 256 MiB and 128 MiB. All tests completed in 25.46 s.
+The exact test container `classifarr-vm-creation-3801d051df65` was absent before
+creation and after automatic cleanup. No database, inference, VM or study ran.
+
+Normal Classifarr retained container
+`560a828dc2123f066acfee0d309731b9a405a7a086065ddf7310a49ca6830a2e`, image
+`sha256:82a6025389df3ebfddb4ff47f4ee7f375cd7281e0d66b8b903c0acd733154baa`
+and start time `2026-10-20T15:56:46.339240429Z`. It remained healthy with zero
+restarts/OOM kills; `/health`, `/ready` and `/` returned HTTP 200. Candidate unit
+tests are not evidence of a new application deployment or native Hyper-V creation.
+
+At recording time, source-commit Copyright, Gitleaks, OSV, Trivy and Resource
+Capacity workflows had succeeded. The exact source's
+[CI/CD run](https://github.com/cloudbyday90/Classifarr/actions/runs/39584056386)
+and CodeQL were still running; no all-CI-green claim is made. This documentation
+follow-up is separate from the evaluated code/image subject above.
 
 ## Open PR
 
