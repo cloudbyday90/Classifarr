@@ -10,7 +10,10 @@ export const VM_CREATION_MAX_BYTES = 64 * 1024;
 // and base64 JSON data enter stdin; no caller-supplied command/script is accepted.
 // Module auto-loading can occur in the outer session, before the inner script's
 // local preference applies. Suppress progress there; keep errors/warnings intact.
-export const VM_CREATION_BOOTSTRAP = "$global:ProgressPreference='SilentlyContinue'; & ([ScriptBlock]::Create([Console]::In.ReadToEnd()))";
+// Hyper-V uses COMPUTERNAME for its implicit local target. Derive it inside the
+// fresh child from Windows, never from caller-controlled environment identity.
+// Failure to obtain it stops before reading/executing any creation input.
+export const VM_CREATION_BOOTSTRAP = "$global:ErrorActionPreference='Stop'; $global:ProgressPreference='SilentlyContinue'; $env:COMPUTERNAME=[Environment]::MachineName; & ([ScriptBlock]::Create([Console]::In.ReadToEnd()))";
 const name = 'Classifarr-Study';
 const stages = ['preflight', 'permissions', 'capacity', 'collisions', 'directories', 'disk', 'vm', 'settings', 'verify'];
 

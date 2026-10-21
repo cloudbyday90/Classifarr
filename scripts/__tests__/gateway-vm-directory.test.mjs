@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, symlink, rm, access, writeFile } from 'node:fs/promises
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { PRIVATE_DIRECTORY_QUERY } from '../lib/gatewayVmDirectoryQuery.mjs';
-import { VM_CREATION_BOOTSTRAP } from '../lib/gatewayVmCreation.mjs';
+import { VM_CREATION_BOOTSTRAP, planVmCreation } from '../lib/gatewayVmCreation.mjs';
+import { vmCreationQuery } from '../lib/gatewayVmCreationQuery.mjs';
 import { registryCommand } from '../lib/registryCommand.mjs';
 
 test('native boundary is fixed, exclusive, protected and does not repair existing ACLs', () => {
@@ -47,6 +48,31 @@ $security.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($sid,
   [Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow));
 `;
 }
+
+test('production metadata read observes an actual hidden Windows directory without changing it', { skip: process.platform !== 'win32' }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'classifarr-vm-hidden-'));
+  try {
+    const hidden = join(directory, 'hidden-parent');
+    await mkdir(hidden);
+    const source = vmCreationQuery(planVmCreation({ vmParent: 'C:\\Fixture VMs', diskParent: 'D:\\Fixture Disks' }));
+    const metadataRead = source.match(/\$item=(Get-Item -LiteralPath \$current(?: -Force)? -ErrorAction Stop);/);
+    assert.ok(metadataRead, 'production metadata read must remain explicit and literal');
+    const data = Buffer.from(JSON.stringify({ path: hidden })).toString('base64');
+    const result = await invoke(`$ErrorActionPreference='Stop';
+      $current=([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${data}'))|ConvertFrom-Json).path;
+      [IO.File]::SetAttributes($current,[IO.FileAttributes]::Directory -bor [IO.FileAttributes]::Hidden);
+      $before=(Get-Acl -LiteralPath $current).Sddl;
+      $ordinaryMissing=$false;try{Get-Item -LiteralPath $current -ErrorAction Stop|Out-Null}catch{
+        if([string]$_.CategoryInfo.Category -ne 'ObjectNotFound'){throw};$ordinaryMissing=$true};
+      ${metadataRead[0]}
+      @{ordinaryMissing=$ordinaryMissing;directory=$item.PSIsContainer;hidden=[bool]($item.Attributes -band [IO.FileAttributes]::Hidden);
+        aclUnchanged=((Get-Acl -LiteralPath $current).Sddl -ceq $before)}|ConvertTo-Json -Compress`);
+    assert.deepEqual(result, { ordinaryMissing: true, directory: true, hidden: true, aclUnchanged: true });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await assert.rejects(access(directory), { code: 'ENOENT' });
+  }
+});
 
 test('real Windows creation starts protected, excludes inherited grants and refuses existing targets without edits', { skip: process.platform !== 'win32' }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'classifarr-vm-directory-'));

@@ -38,7 +38,10 @@ The existing complete-preparation checks must still reject this unfinished VM.
 Accept canonical drive-rooted local parent paths only: no UNC/device path, ADS,
 wildcards, relative segments, control characters, reserved names, overlapping
 targets or paths deeper than the inspection bound. Check every existing ancestor
-for reparse points and trusted ownership. Conservatively reject effective allow
+for reparse points and trusted ownership. Include hidden/system items only in
+the exact literal metadata read; this `Get-Item -Force` does not change attributes
+or bypass access control. See the [hidden-path correction](study-vm-hidden-path-design.md).
+Conservatively reject effective allow
 entries for untrusted destructive access on ancestors and untrusted write access
 on final parents, apart from the exact reviewed non-inheriting, create-only
 All Virtual Machines parent ACE described in the
@@ -72,8 +75,11 @@ budget and 64-KiB combined output limit, with no budget renewal or retries.
 A small fixed PowerShell bootstrap reads the generated script over stdin to
 avoid Windows command-line length limits; paths remain base64 JSON data within
 that script. No caller-supplied command or script is supported.
-The bootstrap sets only the child process's global progress preference before
-parsing/executing that input. Native module auto-loading can report progress in
+The bootstrap sets the child process's global progress preference and stop-on-error
+policy, then derives its `COMPUTERNAME` from Windows' `Environment.MachineName`
+before parsing/executing input. Never inherit caller-supplied host identity or
+restore the full environment. See the [local-identity correction](study-vm-local-identity-design.md).
+Native module auto-loading can report progress in
 the outer scope even when the inner query suppresses it. Keep rejecting warnings,
 errors, nonempty stderr and malformed JSON; do not strip arbitrary CLIXML or
 weaken response validation. The parent's PowerShell preferences are unchanged.

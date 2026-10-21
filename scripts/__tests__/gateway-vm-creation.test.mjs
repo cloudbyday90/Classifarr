@@ -16,7 +16,8 @@ const secret = 'PRIVATE-RAW-OUTPUT';
 const args = mode => [mode, '--vm-parent', parents.vmParent, '--disk-parent', parents.diskParent];
 const success = () => ({ ok: true, stderr: '', stdout: JSON.stringify({ status: 'created_off', stage: 'verify', mutationAttempted: true, vmId }) });
 const options = command => ({ platform: 'win32', systemRoot: 'C:\\Windows',
-  env: { DOCKER_HOST: secret, docker_context: secret, GITHUB_TOKEN: secret, psmodulepath: secret, TEMP: 'C:\\Temp' }, command });
+  env: { DOCKER_HOST: secret, docker_context: secret, GITHUB_TOKEN: secret, psmodulepath: secret,
+    COMPUTERNAME: secret, computername: secret, TEMP: 'C:\\Temp' }, command });
 
 test('pure plan preserves Windows backslashes, derives dedicated children and freezes the agreed profile', async () => {
   const plan = planVmCreation(parents);
@@ -64,6 +65,7 @@ test('creator uses one bounded shell-free primitive, built-in modules and data-o
     assert.equal(settings.maxBytes, VM_CREATION_MAX_BYTES);
     assert.equal(settings.env.DOCKER_HOST, undefined); assert.equal(settings.env.docker_context, undefined);
     assert.equal(settings.env.GITHUB_TOKEN, undefined); assert.equal(settings.env.psmodulepath, undefined);
+    assert.equal(settings.env.COMPUTERNAME, undefined); assert.equal(settings.env.computername, undefined);
     assert.equal(settings.env.TEMP, 'C:\\Temp');
     assert.match(settings.env.PSModulePath, /WindowsPowerShell[\\/]v1\.0[\\/]Modules$/);
     return success();
@@ -131,9 +133,17 @@ test('fixed script has no remote targets, retry, overwrite, deletion, power or n
   assert.match(query, /Set-VM -VM \$vm -AutomaticStartAction Nothing -AutomaticStopAction ShutDown/);
   assert.match(query, /AreAccessRulesProtected/); assert.match(query, /InheritOnly/);
   assert.match(query, /-DynamicMemoryEnabled \$false/);
-  assert.doesNotMatch(query, /\b(?:Start|Stop|Save|Remove|Restart|Suspend|Resume|Import|Connect|Disconnect)-VM|New-VMSwitch|Set-VMHost|ComputerName|Credential|RunAs|Start-Process|Invoke-Expression|-Force\b|-Overwrite\b|-AsJob\b|NewVHDSizeBytes/);
+  const allowedMetadataRead = 'Get-Item -LiteralPath $current -Force -ErrorAction Stop';
+  assert.equal(query.split(allowedMetadataRead).length, 2);
+  assert.doesNotMatch(query.replace(allowedMetadataRead, ''), /-Force\b/);
+  assert.doesNotMatch(query, /\b(?:Start|Stop|Save|Remove|Restart|Suspend|Resume|Import|Connect|Disconnect)-VM|New-VMSwitch|Set-VMHost|ComputerName|Credential|RunAs|Start-Process|Invoke-Expression|-Overwrite\b|-AsJob\b|NewVHDSizeBytes/);
   assert.doesNotMatch(query, /ErrorAction\s+SilentlyContinue|Start-Sleep/);
   assert.doesNotMatch(query, /\bNew-Item\b|\bSet-Acl\b/);
+  const nativeIdentity = '$env:COMPUTERNAME=[Environment]::MachineName;';
+  assert.equal(VM_CREATION_BOOTSTRAP.split(nativeIdentity).length, 2);
+  assert.match(VM_CREATION_BOOTSTRAP, /^\$global:ErrorActionPreference='Stop';/);
+  assert.ok(VM_CREATION_BOOTSTRAP.indexOf("$global:ErrorActionPreference='Stop'") < VM_CREATION_BOOTSTRAP.indexOf(nativeIdentity));
+  assert.ok(VM_CREATION_BOOTSTRAP.indexOf(nativeIdentity) < VM_CREATION_BOOTSTRAP.indexOf('[Console]::In.ReadToEnd()'));
 });
 
 test('CLI rejects invalid invocation without commands or raw exception output', () => {
@@ -147,9 +157,16 @@ test('CLI rejects invalid invocation without commands or raw exception output', 
 const mocks = String.raw`
 $script:events=[Collections.Generic.List[string]]::new(); $script:dirs=@{}; $script:security=@{}; $script:created=$null;
 function Import-Module { [CmdletBinding()] param([string]$Name) }
-function Get-Item { [CmdletBinding()] param([string]$LiteralPath)
+function Get-Item { [CmdletBinding()] param([string]$LiteralPath,[switch]$Force)
   $attributes=[IO.FileAttributes]::Directory;
+  if($scenario -eq 'hidden' -or $scenario -eq 'hidden_reparse'){
+    $attributes=$attributes -bor [IO.FileAttributes]::Hidden;
+    if(!$Force){throw 'not_found'};
+  };
+  if($scenario -eq 'hidden_missing'){throw 'not_found'};
+  if($scenario -eq 'metadata_denied'){throw 'access_denied'};
   if($scenario -eq 'reparse' -and $LiteralPath -eq 'C:\Fixture VMs'){$attributes=$attributes -bor [IO.FileAttributes]::ReparsePoint};
+  if($scenario -eq 'hidden_reparse' -and $LiteralPath -eq 'C:\Fixture VMs'){$attributes=$attributes -bor [IO.FileAttributes]::ReparsePoint};
   [pscustomobject]@{PSIsContainer=$true;Attributes=$attributes;FullName=$LiteralPath}
 }
 function Get-Acl { [CmdletBinding()] param([string]$LiteralPath)
@@ -299,6 +316,42 @@ test('native Windows warning/error streams still refuse a success-shaped capture
   }
 });
 
+test('native creator bootstrap derives only the local hostname without trusting caller identity', { skip: process.platform !== 'win32' }, async () => {
+  const callerEnvironment = { ...process.env, COMPUTERNAME: 'not-the-local-host.invalid' };
+  const originalHostname = process.env.COMPUTERNAME;
+  let captured;
+  let calls = 0;
+  const probe = String.raw`Set-StrictMode -Version Latest;
+    @{present=![string]::IsNullOrEmpty($env:COMPUTERNAME);
+      native=[string]::Equals($env:COMPUTERNAME,[Environment]::MachineName,[StringComparison]::OrdinalIgnoreCase);
+      privateAbsent=($null -eq $env:GITHUB_TOKEN);dockerAbsent=($null -eq $env:DOCKER_HOST)} | ConvertTo-Json -Compress`;
+  const result = await createStudyVm(parents, {
+    env: { ...callerEnvironment, GITHUB_TOKEN: secret, DOCKER_HOST: secret },
+    command: async (file, argv, settings) => {
+      calls++;
+      assert.equal(settings.env.COMPUTERNAME, undefined);
+      // Replace the entire input. This real child only reads its own environment;
+      // no Hyper-V cmdlet, infrastructure query or creation code can run.
+      captured = await registryCommand(file, argv, { ...settings, input: probe, timeoutMs: 10000 });
+      return { ok: true, stderr: '', stdout: JSON.stringify({ status: 'blocked', stage: 'preflight', reasonCode: 'query_failed', mutationAttempted: false }) };
+    },
+  });
+  assert.equal(calls, 1); assert.equal(result.status, 'blocked'); assert.equal(result.mutationAttempted, false);
+  assert.equal(captured.ok, true); assert.equal(captured.stderr, '');
+  assert.deepEqual(JSON.parse(captured.stdout), { present: true, native: true, privateAbsent: true, dockerAbsent: true });
+  assert.equal(callerEnvironment.COMPUTERNAME, 'not-the-local-host.invalid');
+  assert.equal(process.env.COMPUTERNAME, originalHostname);
+
+  // Simulate native identity acquisition failing before the fixed input reader.
+  // The synthetic failure must prevent even a read-only marker from executing.
+  const failingBootstrap = VM_CREATION_BOOTSTRAP.replace('[Environment]::MachineName', "$(throw 'synthetic identity unavailable')");
+  const failed = await registryCommand(join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(failingBootstrap, 'utf16le').toString('base64')],
+    { input: "'input_must_not_execute'", timeoutMs: 10000 });
+  assert.equal(failed.ok, false);
+  assert.doesNotMatch(failed.stdout, /input_must_not_execute/);
+});
+
 test('Windows parses the emitted PowerShell and exercises refusal/partial/success entirely with mocked cmdlets', { skip: process.platform !== 'win32' }, async () => {
   const query = vmCreationQuery(planVmCreation(parents));
   const executable = join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
@@ -330,18 +383,21 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
   for (const scenario of ['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision',
     'directory_failure','directory_race','disk_failure','vm_failure','settings_failure','identity','running','verify','network','missing','own_vm_acl','foreign_vm_acl','success',
     'parent_create','parent_wrong_sid','parent_write_attributes','parent_write_ea','parent_delete_child','parent_delete','parent_permissions','parent_ownership',
-    'parent_inherited','parent_inheriting','parent_propagating','parent_extra_hostile','native_unavailable','child_group_write','child_group_read','child_group_inherit_only','child_unprotected']) {
+    'parent_inherited','parent_inheriting','parent_propagating','parent_extra_hostile','native_unavailable','child_group_write','child_group_read','child_group_inherit_only','child_unprotected',
+    'hidden','hidden_reparse','hidden_missing','metadata_denied']) {
     const script = `$scenario='${scenario}';\n${mocks}\n$observed=& { ${runnable} };@{result=($observed | ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`;
     const captured = await invoke(script);
     assert.equal(captured.ok, true, scenario); assert.equal(captured.stderr, '', scenario);
     assert.ok(!captured.stdout.includes(secret));
     const value = JSON.parse(captured.stdout);
-    if (['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision','native_unavailable'].includes(scenario)
+    if (['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision','native_unavailable','hidden_reparse','hidden_missing','metadata_denied'].includes(scenario)
       || (scenario.startsWith('parent_') && scenario !== 'parent_create')) {
       assert.equal(value.result.status, 'blocked', scenario); assert.equal(value.result.mutationAttempted, false);
       assert.deepEqual(value.events, [], scenario);
       if (scenario.startsWith('parent_')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
-    } else if (['success','own_vm_acl','parent_create'].includes(scenario)) {
+      if (scenario === 'hidden_missing') assert.equal(value.result.reasonCode, 'not_found');
+      if (scenario === 'metadata_denied') assert.equal(value.result.reasonCode, 'access_denied');
+    } else if (['success','own_vm_acl','parent_create','hidden'].includes(scenario)) {
       assert.equal(value.result.status, 'created_off', JSON.stringify(value)); assert.equal(value.result.vmId, vmId);
       assert.deepEqual(value.events, ['directory_private','directory_private','disk','vm','settings','cpu','memory','firmware','shutdown_service']);
     } else {

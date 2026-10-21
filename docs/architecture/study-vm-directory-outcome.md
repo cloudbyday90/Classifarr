@@ -1,5 +1,11 @@
 # Private study VM directory outcome
 
+Later native follow-up: another administrator attempt stopped before writes
+because ordinary metadata lookup treated the hidden `ProgramData` ancestor as
+missing. The native directory tests below had not exercised the full real parent
+walk. See the [hidden-path outcome](study-vm-hidden-path-outcome.md); no successful
+VM creation is inferred from these directory-boundary results.
+
 ## Delivered change
 
 Implemented the user's approved

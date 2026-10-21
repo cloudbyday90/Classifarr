@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Restore Hyper-V's local machine identity inside the restricted study-VM child
+  process without forwarding caller-provided hostnames or private environment data.
+
+- Inspect hidden Windows parent folders correctly during study VM preflight,
+  without changing folder attributes, permissions or existing-target safeguards.
+
 - Recognize the reviewed Hyper-V parent create rule without trusting all VMs,
   and create private study folders with protected permissions from the start.
   Preserve existing-target refusal and leave shared parent permissions unchanged.

@@ -24,7 +24,7 @@ __PRIVATE_DIRECTORY_QUERY__
     $current=$path; $depth=0;
     while ($current) {
       $depth++; if ($depth -gt 32) { throw 'path_depth' };
-      $item=Get-Item -LiteralPath $current -ErrorAction Stop;
+      $item=Get-Item -LiteralPath $current -Force -ErrorAction Stop;
       if (!$item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
         ![string]::Equals($item.FullName,$current,[StringComparison]::OrdinalIgnoreCase)) { throw 'path_review_required' };
       $acl=Get-Acl -LiteralPath $current -ErrorAction Stop;

@@ -57,6 +57,9 @@ node scripts/create-gateway-study-vm.mjs --create --vm-parent "C:\Reviewed\VmPar
 `--plan` is pure and displays derived paths locally. It does not inspect the
 host, authenticate an administrator, reserve names or authorize creation.
 `--create` must run in an already-authorized Administrator PowerShell session.
+The restricted child process derives its local hostname from Windows instead of
+trusting caller `COMPUTERNAME`. Missing identity must block, not imply an empty VM
+inventory. See the [identity correction](../architecture/study-vm-local-identity-design.md).
 It derives `Classifarr-Study` children and a `Classifarr-Study.vhdx` disk, refuses
 existing targets, checks ancestors/ACLs and fresh capacity, restricts only the
 new directories and configures only the new VM. It does not alter parent ACLs or
@@ -67,6 +70,9 @@ Machines. It does not trust that group generally or grant it child access. New
 child permissions are protected at exclusive creation, not repaired afterward;
 existing files/folders/junctions still refuse. Never remove a shared Hyper-V
 permission to make the creator pass, or add a broader allow rule.
+Hidden Windows ancestors are included by the creator's literal metadata read.
+Do not unhide system folders or create a replacement for an ancestor reported as
+missing. A preflight observation remains separate from successful creation.
 
 Allocation may take several minutes. The single command budget is 15 minutes;
 output is bounded to 64 KiB and there are no automatic retries. Exit 0 means
