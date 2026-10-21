@@ -77,9 +77,60 @@ The GitHub MCP found only open PR #568, ESLint 10.13.0, already present in the
 server manifest and lockfile on main. There was no eligible unapplied PR to
 implement; none was merged or closed.
 
-Exact-source no-cache image evaluation and administrator inspection results
-will be recorded below when complete. Older image evidence does not prove this
-correction, and a synthetic success does not configure the VM.
+Static ESM imports and Markdown (2,336 files) passed, as did whitespace and staged
+secret checks. No security/ownership baseline was refreshed.
+
+## Exact-source image evidence
+
+The protected Compose no-cache build succeeded from clean committed source
+`48d6e86b96de9a0154ef3ef16b07b69a6d76a921`, with provenance required and running
+image rollback protection enabled. No Compose up or application replacement ran.
+
+| Identity | Value |
+| --- | --- |
+| Local image/index ID | `sha256:4eae47bca3832630820fe70d1ca8128c8d6ca3a8588427209bcc84861b3ca57a` |
+| Linux amd64 child manifest | `sha256:07e7d542983908279497d6dd0cbe040a1622ade51402c18f5350dac738ebe0e7` |
+| Image configuration | `sha256:7507d38c02226a67d003610655085eaed3731adb2c0a3320e95a9bd911dbf496` |
+| Source archive SHA-256 | `f43e1084d8f2ee17f329ee34e3b5260dea86e2d37ec70d1f742012f8a897597c` |
+
+The committed-source archive was 80,896,000 bytes. An isolated driver checked
+its digest, Node 24.21.0 and byte-identical copies of all five relevant packaged
+and archived ESM modules, including the new disk permission functions. The full
+gateway list ran sequentially in the exact candidate: 220 tests, 206 passed,
+14 Windows-only skips, no failures, exit zero. Duration was 25.49 seconds.
+Those skips are not Windows proof; native qualification is recorded separately.
+
+Actual container inspection verified UID/GID 1000, network none, read-only root,
+not privileged, all capabilities dropped, no-new-privileges, 512 MiB/no extra
+swap, one CPU and 64 PIDs. Source/driver mounts were read-only; work and temporary
+directories were bounded noexec/nosuid tmpfs. No live data, credentials, VM
+folders or Docker socket were mounted and the app entrypoint was not started.
+The exact disposable container was absent before and after the test. The normal
+Classifarr container kept its original image, start time and zero restarts,
+remained healthy and retained its verified rollback image. Its health, readiness
+and root HTTP probes returned 200. No TLS or permission bypass was needed.
+
+At recording time the source's secret, copyright, OSV and Trivy workflows passed;
+[CI/CD](https://github.com/cloudbyday90/Classifarr/actions/runs/39603817184),
+CodeQL and resource-capacity workflows were still running. Full remote success
+is not claimed. This local build/test is not published signed provenance or
+release evidence for deployment; no release was created.
+
+## Administrator inspection remains blocked
+
+The administrator ran the updated private completion's read-only inspection
+against the actual partial VM. It returned `blocked`, `prechecks`,
+`acl_review_required`, `mutationAttempted: false`. Therefore the correction's
+tests do not prove this VM now qualifies and no completion apply was run.
+
+The same temporary attribution probe was updated to instrument the five exact
+ACL rejection points without changing their decisions. It distinguishes a
+directory/file Allow rule, null file DACL and observed root descriptor drift,
+reporting only fixed categories and numeric flags. Four tests passed: actual
+read-only PowerShell AST, bounded sanitized projection, and synthetic production
+guards for VM-group/file grants, null DACL and descriptor drift. It cannot change
+ACLs or VM settings. A fresh administrator attribution result is pending; no
+further exception, identity trust or permission repair has been inferred.
 
 ## Recommendation and next step
 
