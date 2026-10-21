@@ -98,3 +98,58 @@ Official sources discovered/opened via the search MCP on 21 October 2026:
 
 Record preparation and native results separately in an outcome document. No
 release, production deployment, Unraid or shared Ollama operation is implied.
+
+## Read-only review after uncertain cleanup
+
+The first administrator run reached all three measurements but returned
+cleanup/query_failed. That broad stage cannot establish whether Remove-VM or a
+file removal was attempted. Preserve the original frozen runner; do not fix its
+source, refresh its integrity baseline or rerun it to obtain a clearer error.
+
+Prepare a separate, physically read-only query against the same pinned private
+plan. Inventory the exact-name VM once and report only state, identity validity,
+path containment, expected disk, adapter and checkpoint/settings booleans. A
+fresh GUID or filesystem ID is a current observation, not proof of original
+ownership and never authority to adopt or delete a leftover resource.
+
+Require the private root descriptor before descending into the bounded tree.
+Report existing disk profile and capability rules on encountered descendants,
+including inheritance, protection and numeric rights. Keep fixed depth/count,
+size and output limits. Stop on reparse points, unreadable metadata or excessive
+inventory; partial observations must stay explicitly partial. Root descriptor
+and native identity readback detect within-probe drift, not concurrent-admin
+fencing. Absence at one instant is not a historical cleanup receipt.
+
+Use the original metadata reader's refusal semantics, adding fixed labels for
+reparse/link-count conditions and a numeric link count only. The separate reader
+omits the root-pinning method; opens use metadata access, OPEN_EXISTING and full
+sharing. Report the failing read step, target category/depth, bounded numeric
+Win32/HRESULT/category and strict-property/variable classifications. Never emit
+raw names, paths, SIDs, native file IDs or exception text. A hardlink is a possible
+refusal cause, not a conclusion about the native VM configuration file.
+
+One restricted ten-second/64 KiB capture, no automatic retries. This query has no
+VM/ACL writers, networking changes, settings, power or payload-removal commands.
+Fixed native metadata interop compilation is a diagnostic dependency, not VM provisioning.
+Failure, cancellation or malformed capture yields unavailable evidence; success
+means reads completed, not cleanup, permission acceptance or study readiness.
+
+| Option | Benefit | Cost or risk |
+| --- | --- | --- |
+| Read-only state and predicate review | Preserves evidence; narrows the uncertain failure | Requires administrator capture; does not complete cleanup; recommended |
+| Retry the fixture or its cleanup now | Might clear leftovers | Could replay an uncertain effect without original identity evidence; rejected |
+| Accept the earlier explicit capability rule | Could advance settings | Ignores the newly observed inherited FullControl rule and effective-access uncertainty; deferred |
+
+Recommendation stack: preserve both VMs and the existing policy; capture bounded
+read-only state; explain the native refusal; then agree a separate exact-target
+cleanup plan if needed. Review the complete observed ACL surface before any
+file-only policy proposal. No repeated native test or permission exception is
+authorized by this diagnostic work.
+
+The official [file-information contract](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information)
+defines the reported link count and the non-permanent identity limitations.
+[Remove-VM](https://learn.microsoft.com/en-us/powershell/module/hyper-v/remove-vm?view=windowsserver2025-ps)
+separates configuration deletion from retained VHDs and checkpoint merging.
+Both were rediscovered/opened through the search MCP on 21 October 2026. These
+contracts justify independent read predicates, not a claim that a particular
+cleanup substep failed or that absence authorizes deleting remaining files.

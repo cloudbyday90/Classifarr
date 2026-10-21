@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Record native study-VM permission observations and uncertain fixture cleanup;
+  prepare bounded read-only attribution without retries or permission-policy changes.
+
 - Document bounded, one-shot native study-VM permission qualification, guarded
   disposable-resource cleanup and the separate permission-policy review boundary.
 

@@ -306,10 +306,14 @@ positively identified fixture resources, with uncertainty preserved for review.
 This would establish reproducibility and the stage at which the rule appears,
 not universal provenance or runtime access isolation. The user subsequently
 approved preparing this one-shot test. Its
-[separate preparation outcome](study-vm-native-acl-qualification-outcome.md)
-records verification and the pending administrator execution; no native fixture
-has been created during preparation. A subsequent exact-rule policy proposal,
-if warranted, still requires grill-me agreement before code.
+[separate outcome](study-vm-native-acl-qualification-outcome.md)
+records preparation and the later administrator execution: three native ACL
+measurements completed, but cleanup returned review_required/query_failed.
+The disk showed both the explicit 1180063 capability rule and an inherited
+FullControl capability rule after create/attach. No permission exception or
+cleanup retry follows from that result. Current fixture state needs the prepared
+read-only review; a separate recovery or exact-rule policy proposal, if warranted,
+still requires grill-me agreement before code.
 
 ## Recommendation and next step
 
