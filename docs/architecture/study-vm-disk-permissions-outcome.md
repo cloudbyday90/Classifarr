@@ -163,8 +163,67 @@ provides classification;
 [TOKEN_GROUPS](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_groups)
 separately defines enabled, deny-only and logon-group attributes. No official
 creation contract was found that explains the observed principal from this
-mask alone. The new administrator classification capture is pending. No
-production code, allowlist, ACL or VM setting was changed in this diagnosis.
+mask alone. No production code, allowlist, ACL or VM setting was changed in this
+diagnosis.
+
+## Capability classification and finite comparison
+
+The next administrator capture reported `sidFamily: capability`,
+`wellKnownType: -1`, `isAccountSid: false`, `matchesTokenUser: false` and
+`matchesTokenGroup: false`, with the same file grant mask/flags. This identifies
+the S-1-15-3 capability family, not a particular capability or ordinary account.
+It excludes the earlier logon/account hypotheses; no identity was assumed from
+the mask. The specific capability is still unverified.
+
+Microsoft documents that capability SIDs intentionally do not resolve to friendly
+names and warns that removing their grants can break features. Its
+[capability SID troubleshooting guidance](https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/sids-not-resolve-into-friendly-names)
+points to Windows' local capability cache, which may not contain every
+third-party capability. Cache membership is therefore an observation, not a
+purpose, provenance or trust guarantee. No grant was removed.
+
+Read-only local registry inspection found the documented AllCachedCapabilities
+as a REG_MULTI_SZ value on CapabilityClasses, not a subkey, with 358 SID-only
+entries. Native 64/32-bit parent views were checked; no names or SID inventory
+were emitted. No recursive registry discovery or registry writes were used.
+The probe reads only the 64-bit value with a non-writable key handle, checks
+its type, count (at most 2,048), individual length (192) and aggregate length,
+and reports absent/invalid/limited/unavailable separately from registered false.
+All registry handles close on completion/refusal. The managed value's size is
+checked after reading it; this is bounded processing/capture, not a preallocation
+bound on a hostile registry value. The cache remains outside the trust policy.
+
+Static read-only inspection found the exact literal VirtualDisk in installed
+Microsoft vhdmp.sys and vmcompute.exe. This supports one finite comparison
+candidate; string presence alone is not a published capability-purpose contract.
+Microsoft's [DeriveCapabilitySidsFromName API](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-derivecapabilitysidsfromname)
+was then used in an isolated non-administrator preparation process to derive
+the reference for that exact name. A built-in internetClient derivation matched
+its published SID; each derivation returned one group SID and one capability
+SID, with both arrays and their individual SIDs freed. The fixed wrapper loads
+only the documented System32 native DLLs and performs in-memory derivation,
+not resource creation or VM/ACL access. No capability-name guessing loop ran.
+
+The administrator disk probe contains only the resulting exact-reference
+comparison, not native compilation or capability derivation. It now returns
+virtualDiskCandidateMatch, capabilityCacheStatus and registeredCapability with
+the earlier bounded categories/booleans, never the refused raw SID. No prefix or
+cache match is an exception to the file permission guard. Seven temporary tests
+passed, including the actual native derivation/reference binding, rejection of a
+different capability SID, ten cache success/failure/limit cases with verified
+handle closure, native SID/token classification and the unchanged read-only
+PowerShell AST and production refusal paths.
+
+Traditional token-user/group comparisons do not inventory capabilities. Microsoft
+documents separate capability information in the token and AppContainer's
+combined user/capability access model:
+[AppContainer overview](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer),
+[TokenCapabilities](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ne-winnt-token_information_class).
+The negative comparisons therefore do not prove that no Windows component can
+use the grant. Even an exact name-derived match would establish identity
+correspondence, not who added the ACE or that its reach is limited to this VM.
+The new administrator comparison is pending. Any proposed trust-policy change
+still requires a separate grill-me decision; no existing permission was changed.
 
 ## Recommendation and next step
 
