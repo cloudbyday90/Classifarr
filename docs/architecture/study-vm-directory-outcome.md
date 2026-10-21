@@ -57,8 +57,52 @@ client test suites were not rerun for this standalone Windows tooling change.
 The small final native error-sanitization guard was separately rerun through all
 three native-boundary tests, with no skips.
 
-The no-cache image evaluation remains a separate next check; this document does
-not claim it has run or that a VM was successfully created.
+## No-cache image-only evaluation
+
+Evaluated clean source: `fc47cbbaa76a93135580e84512bd4c236d9ec9c9`.
+The protected Compose build completed with `--no-cache --require-provenance`
+using the separate local `classifarr:archive-binding` tag. No normal container
+was replaced and no image/release was published.
+
+| Identity | Value |
+| --- | --- |
+| Local image/index ID | `sha256:d79a34779407a98d4ecbdddae508ca1909806a71e809d6bf87c08f1e5a740595` |
+| Exported Linux/amd64 manifest | `sha256:6b4d1f624b071d50dba63a49aae414ef2fc7eb8710fdbef4bf66a9d304da733b` |
+| Exported config | `sha256:a1b37ba409712fd832cae9d2967c5e82cba78b47c9a93b0830206f6cc1f3960b` |
+| Committed source bundle SHA-256 | `48df4ee05170ade40ed5c4b1af50e5e17c5b3670bb0b0e27cd42d79d1cc22e94` |
+| Native-boundary ESM file SHA-256 | `6d9f313e534d84ed496320fccc5ed9b60522786030c187445dfb5aff767b6c05` |
+
+The 80,803,840-byte committed source bundle was extracted separately into `/work`,
+not mounted over application files or dependencies. The image's revision matched
+the selected source, and both changed production ESM modules matched the bundle
+byte-for-byte. The source-bundle hash and native-boundary hash were also verified
+inside the exact image. These are local identities/checks, not a signed source
+authentication or a published registry digest rehearsal.
+
+In that image, **204 of 209 gateway tests passed**, with five Windows-only cases
+skipped; the Windows checks above passed locally. Both existing Unix symlink
+tests ran on Linux. Sequential tests completed in 24.81 seconds. The inspected
+container ran as UID/GID 1000, without network/socket, privileged mode or writable
+root, with all capabilities dropped and no-new-privileges. Limits were one CPU,
+512 MiB with no additional swap, 64 PIDs, 256-MiB `/work` and 128-MiB `/tmp`
+tmpfs. Both input mounts were read-only. The exact temporary container
+`classifarr-vm-directory-fc47cbbaa76a` was absent before creation and after
+automatic cleanup. No database, inference, VM or study ran.
+
+Normal Classifarr retained container
+`560a828dc2123f066acfee0d309731b9a405a7a086065ddf7310a49ca6830a2e`, image
+`sha256:82a6025389df3ebfddb4ff47f4ee7f375cd7281e0d66b8b903c0acd733154baa`
+and start time `2026-10-20T15:56:46.339240429Z`, healthy with zero restarts and
+no OOM kill. Rollback-image protection was verified by the build wrapper.
+The ordinary `/health`, `/ready` and `/` endpoints returned HTTP 200 during the
+evaluation. None of this proves native Hyper-V creation or study readiness.
+
+At recording time the exact code commit's Copyright, Gitleaks, OSV, Trivy and
+CodeQL workflows had succeeded. Its
+[CI/CD run](https://github.com/cloudbyday90/Classifarr/actions/runs/39589453726)
+and Resource Capacity Regression remained in progress; no all-CI-green claim
+is made. This evidence-only documentation update is separate from the evaluated
+code/image subject above.
 
 ## PR and next step
 
