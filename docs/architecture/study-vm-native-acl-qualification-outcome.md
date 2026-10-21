@@ -16,8 +16,8 @@ The local invocation of the actual read-only inspection stopped at
 administrator_required, before mutation admission. It reported blocked,
 mutationAttempted false, envelope not_created and no samples. This demonstrates
 the unelevated boundary, not administrator preflight success. The later native
-result is recorded separately below; current leftover state needs a read-only
-administrator capture.
+execution and completed read-only administrator review are recorded separately
+below. Leftovers are present; no successful cleanup is claimed.
 
 ## First administrator execution
 
@@ -176,20 +176,110 @@ documents with zero errors; the tracked changes remain documentation only.
 A separate real ordinary-file test observes an NTFS hardlink count of two and
 the labelled refusal, without changing the original guard. Its temporary files
 are removed and absence checked. This proves the diagnostic label, not that a
-native VM configuration file caused the actual cleanup failure. Administrator
-execution of the review remains pending; this agent cannot access protected
-fixture resources or observe their current state from the unelevated process.
+native VM configuration file caused the actual cleanup failure. At that handoff,
+administrator execution of the review remained pending; this agent could not
+access protected fixture resources from the unelevated process.
 The actual unelevated invocation stopped at administrator_required, with unknown
 target state, zero identities read, mutationAttempted false and cleanupAttempted
 false. No fixture inventory was attempted after that refusal.
 
+## Completed administrator read-only review
+
+The subsequent screenshot on 21 October 2026 reports status observed,
+readOnly true, mutationAttempted false, cleanupAttempted false, automaticRetry
+false and studyReady false. This is a completed current-state read, not a
+successful cleanup or permission-policy acceptance.
+
+The exact-name fixture VM is present and off. Its current GUID is syntactically
+valid, configured paths are inside the private envelope, the expected disk is
+configured, the adapter is disconnected, zero checkpoints were returned, and
+automatic startup/checkpoints are disabled. The root exists and passes the
+exact private descriptor check. The disk exists, matches the fixed VHDX profile
+and is not mounted according to Get-VHD. This last result does not establish
+that no other VM configuration references it.
+
+The review completed eleven native identity reads, five descendant directories
+and four files. It did not reproduce a current metadata failure, hardlink or
+reparse refusal. The root identity and descriptor passed within-probe readback;
+neither was compared with a persisted receipt from the original native run.
+No raw VM GUID, disk identifier, filesystem identity or private path was emitted.
+
+Eight encountered descendants have capability rules:
+
+| Surface | Observed capability rules | DACL protection |
+| --- | --- | --- |
+| Disk directory | Explicit effective FullControl 2032127 plus explicit inherit-only GENERIC_ALL 268435456, inheritance flags 3/propagation 2 | Protected |
+| Disk file | Explicit 1180063 plus inherited FullControl 2032127, both with zero inheritance/propagation flags | Unprotected |
+| Three nested directories | Inherited effective FullControl plus inherited inherit-only GENERIC_ALL with flags 3/2 | Unprotected |
+| Three native VM files | Inherited FullControl, zero inheritance/propagation flags | Unprotected |
+
+This shows an inheritable capability surface beyond the original explicit disk
+rule. The root remaining private does not mean every descendant has only its
+original System/Administrators grants. Microsoft's
+[ACE inheritance rules](https://learn.microsoft.com/en-us/windows/win32/secauthz/ace-inheritance-rules)
+explain generic-to-effective mapping and retained inherit-only entries. The
+observed pattern is consistent with that model, not proof of the native call
+which installed it or of actual worker-token access. The source was located
+and opened through the search MCP on 21 October 2026. Do not remove these rules
+or accept them into a general trusted-principal list.
+
+Pure in-memory testing of the original unedited execution query with five
+directories/four files succeeds when the three native basenames match its
+created VM GUID. A wrong native basename instead returns unexpected_file before
+removal. The original cleanup checks child owners, not a capability allowlist;
+an owner mismatch returns owner_changed. Therefore neither the increased file
+count nor the observed capability rights establishes the generic query_failed
+cause. The read-only review classifies native files by extension and does not
+check original basenames, trusted child owners or foreign-VM disk references.
+Its success is not a complete replay of cleanup admission.
+
+The first call to Assert-NoForeignAttachment occurs at cleanup, before tree
+inventory or Remove-VM. It queries every other bounded VM's configured drives.
+The completed read-only review queries only the selected fixture's drives.
+A raw error in that first other-VM query reproduces cleanup/query_failed with
+three samples, one other-drive query, zero removal calls and the VM/disk retained
+in pure mocks. This is an unexercised native-provider possibility, not evidence
+that the other VM or this query caused the actual failure.
+
+That experiment exposed a concrete test defect: mock Get-VM ignored -Id and
+returned the synthetic foreign VM even for an exact-ID lookup. The original
+foreign-attachment scenario therefore refused too early at fixture_settings,
+without exercising the intended cleanup check; preservation-only assertions
+missed this. Corrected the mock filter, not the execution query, and added exact
+stage/reason/sample/query/removal assertions for foreign attachment and raw
+other-drive errors. Added supported four-file topology and wrong-basename
+regressions plus a projection test showing that the current eight-surface
+observation is not historical identity or cleanup authorization.
+
+After those corrections, all seventeen local diagnostic/fixture tests pass on
+Windows without skips: seven review tests and ten execution-flow tests. VM and
+VHD operations remain mocked; real native filesystem tests use only their own
+ordinary temporary files and verify cleanup. Both original operation-query
+fingerprints still match. No new administrator capture, VM operation or
+application runtime change was made while investigating these cases.
+
+A VM with the fixture name and expected paths is currently present. This is
+not verified cleanup or proof that the original VM was never removed. It cannot
+prove that the prior Remove-VM was never attempted, which original predicate
+failed, or historical identity continuity. A transient
+provider/metadata error or a failed removal remain possibilities, not diagnoses.
+The original query and fingerprints remain unchanged; no retry was performed.
+
 ## Next decision
 
-Obtain the prepared read-only administrator capture once. Preserve the original
-fixture claim and any partial resources; do not rerun the fixture, creator or
-completion apply, remove an ACE or start either VM. If leftovers require cleanup,
-agree an exact-target, evidence-backed recovery plan separately. Current identity
-observations must not be treated as automatic adoption of the prior operation.
+The read-only capture is complete; do not ask for the same command again as a
+substitute for the missing historical error. Preserve the original fixture claim
+and leftovers; do not rerun the fixture, creator or completion apply, remove an
+ACE or start either VM.
+
+Recommend preparation of a separate one-target cleanup after grill-me agreement,
+with explicit review of the current target identity rather than silent adoption.
+Preparation must include fresh original-equivalent admission predicates, exact
+disk/native-file scope, before-effect identity evidence, bounded step-specific
+receipts and no automatic retry. It must leave the real study VM and permission
+policy unchanged. Preparing or inspecting such a recovery is not approval to
+execute deletion. No recovery implementation or write is authorized by the
+completed read-only capture alone.
 
 Review both the explicit capability rule and inherited FullControl surface
 before proposing any narrowly scoped permission exception. Reproduction alone

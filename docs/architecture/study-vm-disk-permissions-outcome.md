@@ -311,9 +311,12 @@ records preparation and the later administrator execution: three native ACL
 measurements completed, but cleanup returned review_required/query_failed.
 The disk showed both the explicit 1180063 capability rule and an inherited
 FullControl capability rule after create/attach. No permission exception or
-cleanup retry follows from that result. Current fixture state needs the prepared
-read-only review; a separate recovery or exact-rule policy proposal, if warranted,
-still requires grill-me agreement before code.
+cleanup retry follows from that result. The subsequent administrator read-only
+review completed and found the off, disconnected fixture VM and disk retained,
+with capability rules on directories and native VM files as well. It did not
+reproduce the original failure or establish cleanup authority. A separate
+recovery or exact-rule policy proposal, if warranted, still requires grill-me
+agreement before code.
 
 ## Recommendation and next step
 

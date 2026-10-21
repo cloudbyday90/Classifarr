@@ -153,3 +153,14 @@ separates configuration deletion from retained VHDs and checkpoint merging.
 Both were rediscovered/opened through the search MCP on 21 October 2026. These
 contracts justify independent read predicates, not a claim that a particular
 cleanup substep failed or that absence authorizes deleting remaining files.
+
+The first administrator review completed without reproducing a current read
+failure and found the fixture VM/disk retained. Do not repeat the same read or
+replay the original writes to manufacture a historical explanation. The review
+does not establish original identity continuity, expected native basenames,
+trusted child owners or absence of foreign disk references. Read success is not
+cleanup admission. See the separate outcome for the expanded directory/file
+capability surface; a root-only privacy result is not descendant permission
+acceptance. The next proposed decision is separately approved preparation of
+an exact-target cleanup, with before-effect identity review and durable,
+step-specific outcome evidence. This proposal does not authorize a new writer.
