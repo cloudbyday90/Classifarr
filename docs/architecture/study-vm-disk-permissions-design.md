@@ -79,6 +79,25 @@ This local registry format is an observed diagnostic input, not a stable public
 contract or source of authorization. Preserve the file guard's refusal and
 require a separate grill-me agreement before any trust-policy expansion.
 
+The administrator comparison has identified vmWorkerProcess. Recommended next
+step, not yet authorized: qualify the native create/attach sequence on exclusive
+disposable resources while leaving the real study VM untouched and off. Record
+the file ACL at each stage, never start a guest or connect networking, and allow
+cleanup only after exact fixture identity/path/off-state checks. Stop and retain
+uncertain resources for review; never retry native mutations automatically.
+Reproduction would not prove effective isolation or justify a general allowlist.
+
+| Next option | Benefit | Remaining cost or risk |
+| --- | --- | --- |
+| Keep refusal only | No trust-policy change or native test writes | Completion stays blocked without additional evidence |
+| Accept the exact observed rule now | Could unblock settings without editing ACLs | Name and mask do not establish native provenance or effective access; deferred |
+| Native fixture qualification, then policy review | Tests the create/attach sequence without touching the study VM | Needs explicit resource/cleanup approval; does not prove runtime token isolation; recommended |
+
+Do not delete the capability ACE, accept a whole capability prefix/cache, add it
+to trusted directory principals or weaken other owner/path/disk/VM checks. Any
+future exception must specify its exact file-only scope, SID, rights and flags,
+and qualify changed/wrong-target/foreign-principal cases before fresh inspection.
+
 ## Verification and official sources
 
 Use exclusive new disposable Windows fixture directories, not real VM storage.

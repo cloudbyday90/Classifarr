@@ -262,11 +262,51 @@ check all named/literal comparisons, foreign-SID refusal, ambiguity and match
 limits, invalid/duplicate/SID/class-label name input, capture limits/failures and
 sanitized projection. The actual PowerShell AST remains read-only. A synthetic
 vmWorkerProcess grant with the observed mask exercises the complete production
-guard and public projection; it remains blocked with no mutation. This is test
-evidence, not attribution of the real grant. The finite-catalog administrator
-capture is pending. No tracked runtime code or permission policy changed, so the
-earlier exact-source no-cache image qualification is not relabeled as a build
+guard and public projection; it remains blocked with no mutation. This synthetic
+case alone did not attribute the real grant. No tracked runtime code or
+permission policy changed, so the earlier exact-source no-cache image
+qualification is not relabeled as a build
 of these later documentation updates.
+
+## Administrator match and remaining policy decision
+
+The subsequent administrator screenshot on 21 October 2026 reports
+derivedCapabilityStatus matched and derivedCapabilityNames containing only
+vmWorkerProcess. Its catalog fingerprint matches the frozen 319-name reference.
+Cache status is observed and registeredCapability true; catalogLiteralMatch is
+false, meaning it matched a derived name rather than one of the separate 39
+literal catalog entries. That is consistent with the positive overall cache
+observation. VirtualDisk remains a negative comparison. The file rule still has
+mask 1180063, no inheritance/propagation flags and not inherited. The guard still
+refuses it; readOnly is true and studyReady false. No completion apply ran.
+
+The exact name-to-SID correspondence is now established. Because the documented
+[derivation API](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-derivecapabilitysidsfromname)
+takes a capability name and no VM GUID, this is a named capability, not the
+VM-specific SID. This conclusion follows from the API contract, not an observed
+worker token. It does not prove which operation installed the ACE, which
+processes possess an enabled capability, or effective cross-VM access.
+
+Official sources researched through the search MCP on 21 October 2026 do not
+provide a definition of vmWorkerProcess or a contract for this exact VHDX grant.
+Microsoft's [disk access troubleshooting guidance](https://learn.microsoft.com/en-us/troubleshoot/windows-server/virtualization/hyper-v-virtual-machine-not-start-0x80070005)
+documents a distinct per-VM disk identity, not an exception for this capability.
+The [AppContainer dual-principal model](https://learn.microsoft.com/en-us/windows/win32/secauthz/implementing-an-appcontainer)
+and [restricted token access checks](https://learn.microsoft.com/en-us/windows/win32/secauthz/restricted-tokens)
+show why a shared named capability alone cannot establish effective access.
+Those general models do not establish the actual worker token on this host.
+Do not infer that the grant is harmless, malicious, VM-exclusive or usable by
+every VM. Preserve it and keep the current validator refusal.
+
+The next recommendation is a separately approved, bounded native qualification:
+observe permissions around creation and attachment of a small blank disk to an
+exclusive disposable, powered-off VM. Never start or connect it; leave the real
+study VM and existing ACLs unchanged. Cleanup must be limited to
+positively identified fixture resources, with uncertainty preserved for review.
+This would establish reproducibility and the stage at which the rule appears,
+not universal provenance or runtime access isolation. Preparation and execution
+are not yet approved; no such fixture has been created. A subsequent exact-rule
+policy proposal, if warranted, still requires grill-me agreement before code.
 
 ## Recommendation and next step
 
