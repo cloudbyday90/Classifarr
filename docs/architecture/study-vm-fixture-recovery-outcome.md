@@ -105,15 +105,37 @@ PowerShell launch. No native VM, VHD or protected fixture mutation was attempted
 
 ## Limitations and handoff
 
-An administrator inspection of this new full-admission query remains pending.
-The earlier read-only review did not test all these predicates. No new target
-fingerprint has been accepted, no protected receipt created, and no deletion
-authorized. Keep both VMs off; do not rerun qualification, creation or the real
-study VM completion.
+The user supplied the administrator --inspect screenshot on 21 October 2026.
+It reports inspection_ready at snapshot_compare, with a proposed target
+fingerprint, five directories, four files and nine remaining payload entries.
+The final snapshot reports one other-VM drive query; this counter resets for
+each reference check and is not a command-wide query total. No refusal or error
+was reported. This establishes that the full admission checks passed and the
+two current snapshots matched during that inspection, not that the original
+cleanup failure has been explained or the original VM identity recovered.
 
-The next step is one administrator --inspect capture from the prepared private
-CLI. Review any refusal or proposed fingerprint explicitly. Do not treat its
-success as permission to enable execution. Native removal may alter/drop
+The same result reports readOnly true, receiptWriteAttempted false,
+payloadMutationAttempted false, receiptStatus absent, zero receipt records and
+zero resource actions. vmAbsent false and cleanupComplete false correctly
+describe the retained fixture, not failed cleanup during this inspection.
+Automatic retry, study readiness and live execution remain false. The raw
+fingerprint and private identities are not copied into tracked documentation.
+For this evidence-only update, both public-projection and disabled-execution
+regressions were rerun and passed; Markdown and whitespace checks also passed.
+
+Administrator inspection is complete; do not request the same command again
+as a substitute for the missing historical evidence. The proposed current target
+has not been accepted for deletion. No protected receipt was created and no
+cleanup was authorized or executed. Keep both VMs off; do not rerun qualification,
+creation, the real study VM completion or cleanup execution.
+
+The next decision is whether to proceed from preparation-only to a separately
+reviewed, explicitly approved one-shot cleanup of this current disposable target.
+That requires accepting current identity rather than claiming historical
+continuity, pinning its fingerprint and exact apply source, testing the bounded
+execution wrapper, and agreeing execution scope before any removal. Retaining
+the off fixture remains the non-destructive alternative. Inspection success
+does not enable execution. Native removal may alter/drop
 configuration files or permissions; unfamiliar effects stop recovery. Literal-
 path checks do not provide atomic handle-bound deletion or defend against a
 concurrent trusted administrator. Hashes do not attest file contents, worker

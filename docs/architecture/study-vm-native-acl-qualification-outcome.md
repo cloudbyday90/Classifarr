@@ -284,7 +284,9 @@ completed read-only capture alone.
 The user subsequently approved that preparation/testing scope, not deletion.
 See the separate [recovery design](study-vm-fixture-recovery-design.md) and
 [preparation outcome](study-vm-fixture-recovery-outcome.md) for the tested,
-disabled-by-default tool and the pending fresh administrator inspection.
+disabled-by-default tool and the subsequently successful full administrator
+inspection. Two matching current snapshots do not recover the original VM
+identity or explain the original failure. Deletion remains separately unapproved.
 
 Review both the explicit capability rule and inherited FullControl surface
 before proposing any narrowly scoped permission exception. Reproduction alone
