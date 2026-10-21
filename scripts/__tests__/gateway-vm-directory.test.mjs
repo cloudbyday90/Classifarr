@@ -150,3 +150,42 @@ test('concurrent native attempts create once and refuse the competing target', {
     await assert.rejects(access(directory), { code: 'ENOENT' });
   }
 });
+
+test('native CREATOR OWNER template maps child ownership but does not enter a protected child', { skip: process.platform !== 'win32' }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'classifarr-vm-creator-owner-'));
+  try {
+    const result = await invoke(fixturePrefix(directory) + String.raw`
+      # This descriptor affects only a new disposable fixture. A non-inheriting
+      # user grant leaves child effective access attributable to the template.
+      $template=[Security.AccessControl.DirectorySecurity]::new();
+      $template.SetSecurityDescriptorSddlForm(('O:{0}D:P(A;;FA;;;{0})(A;OICIIO;GA;;;CO)' -f $sid.Value));
+      $parent=Join-Path $fixture.path 'template-parent';New-ExclusiveDirectory $parent $template;
+      $before=(Get-Acl -LiteralPath $parent).Sddl;
+      $rules=@((Get-Acl -LiteralPath $parent).GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]));
+      $co=@($rules|Where-Object{$_.IdentityReference.Value -eq 'S-1-3-0'});
+      if($co.Count -ne 1 -or [long]$co[0].FileSystemRights -ne 268435456 -or
+        [int]$co[0].InheritanceFlags -ne 3 -or [int]$co[0].PropagationFlags -ne 2 -or $co[0].IsInherited){throw 'template_shape'};
+      $file=Join-Path $parent 'ordinary-file';[IO.File]::WriteAllText($file,'synthetic');
+      $child=Join-Path $parent 'ordinary-directory';[IO.Directory]::CreateDirectory($child)|Out-Null;
+      foreach($path in @($file,$child)){
+        $acl=Get-Acl -LiteralPath $path;$owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value;
+        $effective=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])|Where-Object{
+          $_.AccessControlType -eq 'Allow' -and !($_.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly)});
+        if($owner -ne $sid.Value -or $effective.Count -ne 1 -or $effective[0].IdentityReference.Value -ne $owner -or
+          [string]$effective[0].FileSystemRights -ne 'FullControl' -or !$effective[0].IsInherited){throw 'child_mapping'};
+      };
+      $protected=Join-Path $parent 'protected-child';New-ExclusiveDirectory $protected $security;
+      $protectedAcl=Get-Acl -LiteralPath $protected;
+      $protectedRules=@($protectedAcl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]));
+      if(!$protectedAcl.AreAccessRulesProtected -or $protectedRules.Count -ne 1 -or
+        $protectedRules[0].IsInherited -or $protectedRules[0].IdentityReference.Value -ne $sid.Value){throw 'protected_child'};
+      if((Get-Acl -LiteralPath $parent).Sddl -cne $before){throw 'parent_changed'};
+      @{exactTemplate=$true;effectiveParentGrant=$false;childOwnerMapped=$true;protectedChildExcludedTemplate=$true;parentUnchanged=$true}|ConvertTo-Json -Compress
+    `);
+    assert.deepEqual(result, { exactTemplate: true, effectiveParentGrant: false, childOwnerMapped: true,
+      protectedChildExcludedTemplate: true, parentUnchanged: true });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    await assert.rejects(access(directory), { code: 'ENOENT' });
+  }
+});

@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Recognize the exact reviewed disk-folder inheritance template only with trusted,
+  protected ownership, expected-only contents and independent disk permission checks.
+  Reject observed permission drift without modifying existing ACLs.
+
 - Correct specific-VM SID and unconnected-adapter validation in the study VM
   creator, retaining strict target checks and exercising the real validators in tests.
 

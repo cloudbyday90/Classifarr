@@ -134,8 +134,10 @@ test('fixed script has no remote targets, retry, overwrite, deletion, power or n
   assert.match(query, /AreAccessRulesProtected/); assert.match(query, /InheritOnly/);
   assert.match(query, /-DynamicMemoryEnabled \$false/);
   const allowedMetadataRead = 'Get-Item -LiteralPath $current -Force -ErrorAction Stop';
+  const allowedInventoryRead = 'Get-ChildItem -LiteralPath $c.diskDirectory -Force -ErrorAction Stop';
   assert.equal(query.split(allowedMetadataRead).length, 2);
-  assert.doesNotMatch(query.replace(allowedMetadataRead, ''), /-Force\b/);
+  assert.equal(query.split(allowedInventoryRead).length, 2);
+  assert.doesNotMatch(query.replace(allowedMetadataRead, '').replace(allowedInventoryRead, ''), /-Force\b/);
   assert.doesNotMatch(query, /\b(?:Start|Stop|Save|Remove|Restart|Suspend|Resume|Import|Connect|Disconnect)-VM|New-VMSwitch|Set-VMHost|ComputerName|Credential|RunAs|Start-Process|Invoke-Expression|-Overwrite\b|-AsJob\b|NewVHDSizeBytes/);
   assert.doesNotMatch(query, /ErrorAction\s+SilentlyContinue|Start-Sleep/);
   assert.doesNotMatch(query, /\bNew-Item\b|\bSet-Acl\b/);
@@ -155,7 +157,7 @@ test('CLI rejects invalid invocation without commands or raw exception output', 
 });
 
 const mocks = String.raw`
-$script:events=[Collections.Generic.List[string]]::new(); $script:dirs=@{}; $script:security=@{}; $script:created=$null;
+$script:events=[Collections.Generic.List[string]]::new(); $script:dirs=@{}; $script:security=@{}; $script:created=$null; $script:diskReady=$false;
 function Import-Module { [CmdletBinding()] param([string]$Name) }
 function Get-Item { [CmdletBinding()] param([string]$LiteralPath,[switch]$Force)
   $attributes=[IO.FileAttributes]::Directory;
@@ -172,6 +174,7 @@ function Get-Item { [CmdletBinding()] param([string]$LiteralPath,[switch]$Force)
 function Get-Acl { [CmdletBinding()] param([string]$LiteralPath)
   if($script:security.ContainsKey($LiteralPath)){return $script:security[$LiteralPath]};
   $acl=[Security.AccessControl.DirectorySecurity]::new(); $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-18'));
+  $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new('S-1-5-18'),'FullControl','Allow'));
   if($scenario -eq 'owner'){$acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-1-0'))};
   if($scenario -eq 'acl'){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new('Everyone','FullControl','Allow'))};
   if($scenario.StartsWith('parent_') -and @('C:\Fixture VMs','D:\Fixture Disks') -contains $LiteralPath){
@@ -213,7 +216,12 @@ function Test-Path { [CmdletBinding()] param([string]$LiteralPath)
 }
 function New-VHD { [CmdletBinding()] param([string]$Path,[switch]$Fixed,[long]$SizeBytes)
   $script:events.Add('disk'); if($scenario -eq 'disk_failure'){throw 'PRIVATE-RAW-OUTPUT'};
-  if(!$Fixed -or $SizeBytes -ne 64GB){throw 'wrong_disk'}
+  if(!$Fixed -or $SizeBytes -ne 64GB){throw 'wrong_disk'};$script:diskReady=$true;
+}
+function Get-ChildItem { [CmdletBinding()] param([string]$LiteralPath,[switch]$Force)
+  if(!$Force){throw 'hidden_inventory_not_checked'};
+  if($script:diskReady){[pscustomobject]@{PSIsContainer=$false;Attributes=[IO.FileAttributes]::Archive;
+    FullName='D:\Fixture Disks\Classifarr-Study\Classifarr-Study.vhdx'}}
 }
 function New-VM { [CmdletBinding()] param([string]$Name,[int]$Generation,[long]$MemoryStartupBytes,[string]$Path,[string]$VHDPath)
   $script:events.Add('vm'); if($scenario -eq 'vm_failure'){throw 'PRIVATE-RAW-OUTPUT'};
@@ -223,6 +231,10 @@ function New-VM { [CmdletBinding()] param([string]$Name,[int]$Generation,[long]$
     $sid=$(if($scenario -eq 'own_vm_acl'){'S-1-5-83-1-1-2-3-4'}else{'S-1-5-83-1-5-6-7-8'});
     $rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),'FullControl','Allow');
     $script:security[$Path].AddAccessRule($rule);
+  };
+  if($scenario -eq 'disk_creator_owner'){
+    $diskDirectory='D:\Fixture Disks\Classifarr-Study';
+    $script:security[$diskDirectory].SetSecurityDescriptorSddlForm('O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICIIO;GA;;;CO)');
   };
   if($scenario.StartsWith('child_group')){
     $rights=$(if($scenario -eq 'child_group_read'){'Read'}else{'Write'});
@@ -395,7 +407,7 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
     'parent_create','parent_wrong_sid','parent_write_attributes','parent_write_ea','parent_delete_child','parent_delete','parent_permissions','parent_ownership',
     'parent_inherited','parent_inheriting','parent_propagating','parent_extra_hostile','native_unavailable','child_group_write','child_group_read','child_group_inherit_only','child_unprotected',
     'hidden','hidden_reparse','hidden_missing','metadata_denied','sid_failure','sid_group','sid_old',
-    'adapter_null','adapter_absent','adapter_extra','adapter_connected','adapter_named']) {
+    'adapter_null','adapter_absent','adapter_extra','adapter_connected','adapter_named','disk_creator_owner']) {
     const script = `$scenario='${scenario}';\n${mocks}\n$observed=& { ${runnable} };@{result=($observed | ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`;
     const captured = await invoke(script);
     assert.equal(captured.ok, true, scenario); assert.equal(captured.stderr, '', scenario);
@@ -408,7 +420,7 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
       if (scenario.startsWith('parent_')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
       if (scenario === 'hidden_missing') assert.equal(value.result.reasonCode, 'not_found');
       if (scenario === 'metadata_denied') assert.equal(value.result.reasonCode, 'access_denied');
-    } else if (['success','own_vm_acl','parent_create','hidden','adapter_null'].includes(scenario)) {
+    } else if (['success','own_vm_acl','parent_create','hidden','adapter_null','disk_creator_owner'].includes(scenario)) {
       assert.equal(value.result.status, 'created_off', JSON.stringify(value)); assert.equal(value.result.vmId, vmId);
       assert.deepEqual(value.events, ['directory_private','directory_private','disk','vm','settings','cpu','memory','firmware','shutdown_service']);
     } else {

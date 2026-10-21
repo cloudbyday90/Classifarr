@@ -1,12 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { PRIVATE_DIRECTORY_QUERY } from './gatewayVmDirectoryQuery.mjs';
 import { VM_IDENTITY_QUERY } from './gatewayVmIdentityQuery.mjs';
+import { VM_DISK_PERMISSION_QUERY } from './gatewayVmDiskPermissionQuery.mjs';
 
 export const VM_CREATION_REASONS = Object.freeze(['administrator_required', 'path_depth', 'path_review_required',
   'owner_review_required', 'acl_limit', 'acl_review_required', 'inventory_limit', 'vm_exists',
   'vm_identity_or_state_changed', 'directory_not_protected', 'capacity_required', 'storage_capacity_required',
   'directory_exists', 'disk_exists', 'created_identity_missing', 'configuration_mismatch', 'disk_mismatch',
-  'vm_sid_unavailable', 'not_found', 'access_denied', 'query_failed', 'unsupported', 'invalid_argument', 'target_exists']);
+  'vm_sid_unavailable', 'disk_contents_review_required', 'not_found', 'access_denied', 'query_failed', 'unsupported', 'invalid_argument', 'target_exists']);
 
 /** Fixed commands; paths/profile travel as base64 JSON data, never executable source. */
 export function vmCreationQuery(plan) {
@@ -14,8 +15,9 @@ export function vmCreationQuery(plan) {
   return `$creationData='${data}';\n` + String.raw`& {
   Set-StrictMode -Version Latest;
   $ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';
-  $stage='preflight'; $changed=$false; $createdSid=$null;
+  $stage='preflight'; $changed=$false; $createdSid=$null; $diskExpected=$false;
 __PRIVATE_DIRECTORY_QUERY__
+__VM_DISK_PERMISSION_QUERY__
   function Assert-Administrator {
     $identity=[Security.Principal.WindowsIdentity]::GetCurrent();
     $principal=[Security.Principal.WindowsPrincipal]::new($identity);
@@ -34,6 +36,13 @@ __PRIVATE_DIRECTORY_QUERY__
       if ($rules.Count -gt 256) { throw 'acl_limit' };
       $owned=($depth -eq 1 -and (@($c.vmDirectory,$c.diskDirectory) -contains $current));
       if ($owned -and !$acl.AreAccessRulesProtected) { throw 'directory_not_protected' };
+      if ($owned -and [string]::Equals($current,$c.diskDirectory,[StringComparison]::OrdinalIgnoreCase)) {
+        $rootDescriptor=[Convert]::ToBase64String($acl.GetSecurityDescriptorBinaryForm());
+        Assert-PrivateDiskContents;
+        $verifiedRoot=Get-Acl -LiteralPath $current -ErrorAction Stop;
+        if ($rootDescriptor -cne
+          [Convert]::ToBase64String($verifiedRoot.GetSecurityDescriptorBinaryForm())) { throw 'acl_review_required' };
+      };
       $mask=[Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor
         [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership;
       if ($depth -eq 1) { $mask=$mask -bor [Security.AccessControl.FileSystemRights]::Write };
@@ -42,6 +51,7 @@ __PRIVATE_DIRECTORY_QUERY__
         $writers=$writers + @($createdSid);
       };
       foreach ($rule in $rules) {
+        if (Test-DiskCreatorOwnerTemplate $rule $current $depth $owned) { continue };
         if ($owned -and $rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
           $rule.FileSystemRights -and $writers -notcontains $rule.IdentityReference.Value) { throw 'acl_review_required' };
         if ($rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
@@ -117,12 +127,14 @@ __VM_IDENTITY_QUERY__
     $stage='disk'; Assert-NameAbsent; Assert-PathTree $c.diskDirectory;
     if (Test-Path -LiteralPath $c.diskFile -ErrorAction Stop) { throw 'disk_exists' };
     New-VHD -Path $c.diskFile -Fixed -SizeBytes $c.diskBytes -ErrorAction Stop | Out-Null;
+    $diskExpected=$true; Assert-PathTree $c.diskDirectory;
     $stage='vm'; Assert-NameAbsent; Assert-PathTree $c.vmDirectory;
     $vm=New-VM -Name $c.name -Generation $c.generation -MemoryStartupBytes $c.memoryBytes -Path $c.vmDirectory -VHDPath $c.diskFile -ErrorAction Stop;
     if ($vm.Id -isnot [guid] -or $vm.Id -eq [guid]::Empty) { throw 'created_identity_missing' };
     $createdId=$vm.Id;
     $stage='settings'; $vm=Assert-Off;
     $createdSid=Resolve-CreatedVmSid $createdId;
+    Assert-PathTree $c.vmDirectory; Assert-PathTree $c.diskDirectory;
     Set-VM -VM $vm -AutomaticStartAction Nothing -AutomaticStopAction ShutDown -AutomaticCheckpointsEnabled $false -CheckpointType Disabled -ErrorAction Stop;
     $vm=Assert-Off; Set-VMProcessor -VM $vm -Count $c.cpus -ErrorAction Stop;
     $vm=Assert-Off; Set-VMMemory -VM $vm -DynamicMemoryEnabled $false -StartupBytes $c.memoryBytes -ErrorAction Stop;
@@ -166,5 +178,6 @@ __VM_IDENTITY_QUERY__
   }
 }`.replace('__PRIVATE_DIRECTORY_QUERY__', () => PRIVATE_DIRECTORY_QUERY)
     .replace('__VM_IDENTITY_QUERY__', () => VM_IDENTITY_QUERY)
+    .replace('__VM_DISK_PERMISSION_QUERY__', () => VM_DISK_PERMISSION_QUERY)
     .replace('__CREATION_REASONS__', JSON.stringify(VM_CREATION_REASONS));
 }

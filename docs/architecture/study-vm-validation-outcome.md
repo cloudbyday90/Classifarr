@@ -79,9 +79,11 @@ directory. It can nevertheless grant full control to owners of descendant
 objects. Neither its harmlessness nor which operation installed it has been
 established. Protected permissions stop incoming inheritance, not propagation
 of the directory's own inheritable rules. See the official sources and
-[unapproved follow-up options](study-vm-validation-design.md#unapproved-permission-policy-follow-up).
-The permission policy remains unchanged; the approved completion does not
-authorize ACL repair or an exception. Actual completion remains blocked.
+[follow-up options](study-vm-validation-design.md#permission-policy-follow-up).
+At this recording the permission policy was unchanged. The user subsequently
+approved the narrow correction, tracked in the separate
+[disk permission outcome](study-vm-disk-permissions-outcome.md). ACL repair
+remains outside scope; these historical results do not prove completion.
 
 Full Windows CI preflight passed 212/214 gateway tooling cases with two existing
 symlink-privilege skips. Copyright (1,791 files), static inventory ownership
@@ -142,13 +144,9 @@ eligible unapplied PR to implement and no PR was merged or closed.
 
 ## Next
 
-Agree whether to qualify narrowly scoped recognition of the observed inheritance
-template, with trusted owner, protected directory and expected disk/descendant
-checks, without changing filesystem permissions. The grill-me workflow pauses
-that policy change pending shared scope confirmation. Keep the VM off and do
-not run completion apply, recreate resources or repair permissions meanwhile.
-If approved, prove the exact rule and rejection boundaries in disposable native
-filesystem fixtures before changing validation or requesting fresh inspection.
-Only a successful inspection can precede an explicit administrator-run apply.
-Verified off configuration still requires installer authenticity and later
-guest/network setup; it is not study readiness.
+Follow the separately approved disk permission correction and its fresh
+inspection results, not this earlier build. Keep the VM off; do not recreate
+resources or repair permissions. Only a successful current inspection can
+precede an explicit administrator-run apply. Verified off configuration still
+requires installer authenticity and later guest/network setup; it is not study
+readiness.

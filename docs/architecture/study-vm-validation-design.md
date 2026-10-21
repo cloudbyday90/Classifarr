@@ -82,7 +82,11 @@ Run focused, gateway/preflight and relevant quality gates; no-cache build and
 isolated image evaluation must match the exact committed source. Report native,
 synthetic and Linux evidence separately.
 
-## Unapproved permission-policy follow-up
+## Permission-policy follow-up
+
+The user subsequently approved the exact-template correction with independent
+disk checks. The separate [disk permission design](study-vm-disk-permissions-design.md)
+now defines its scope; the following records the original decision and rationale.
 
 The administrator's read-only completion inspection now stops on an explicit
 CREATOR OWNER inheritance-only rule on the owned disk directory: SID `S-1-3-0`,
@@ -104,7 +108,7 @@ inheritance-only exception unsafe.
 | Remove or rewrite the rule | Could restore the original expected ACL shape | Adds unauthorized ACL mutation and risks changing native behavior |
 | Qualify exact-template recognition with descendant checks | Can preserve existing permissions and resources | Requires new native tests and evidence that child ownership/access remain restricted |
 
-Recommend investigating the last option only after explicit scope agreement.
+The user selected the last option through grill-me on 21 October 2026.
 Any proposed recognition must be confined to the owned, protected disk directory,
 not parents, the VM configuration directory or a general trusted-principal list.
 Require the exact SID, allow type, mask, flags and explicit status, plus the
@@ -118,8 +122,9 @@ Qualification would use disposable native Windows filesystem fixtures to
 demonstrate actual parent/child inheritance and protected-child behavior, with
 negative cases for every altered rule field, wrong target, untrusted child owner
 or grant, unexpected child and loss of protection. Synthetic tests alone cannot
-establish Windows inheritance semantics. This section is a proposal: neither
-production validation nor the private completion currently accepts the rule.
+establish Windows inheritance semantics. See the separate
+[disk permission outcome](study-vm-disk-permissions-outcome.md) for implementation
+and verification; historical results here do not prove the follow-up's behavior.
 
 ## Official sources
 
