@@ -4,8 +4,9 @@
 
 On 21 October 2026 the user approved preparing this separate plan with better
 sanitized error capture, without creating resources, running a reproduction or
-accessing either existing VM or its receipt. This is documentation-only planning,
-not approval to implement a native runner, provision, inspect targets or delete.
+accessing either existing VM or its receipt. That approval covered planning only.
+The user subsequently approved the pure projector/synthetic-test slice below,
+not a native runner, provisioning, target inspection or deletion.
 The existing removal attempt stays consumed and its sources/bindings stay frozen.
 No permission exception, service/logging change, network/power operation,
 Unraid/shared Ollama access, application change or release is included.
@@ -22,7 +23,7 @@ unknown; a future failure with similar numbers would not by itself prove it.
 | Option | Benefit | Cost or limitation |
 | --- | --- | --- |
 | Retain evidence and stop | No additional host/VM effects | Cause and study prerequisites remain unresolved |
-| Pure capture contract and mocked tests first | Qualifies privacy, failure preservation and bounds without VM access | Cannot reproduce Hyper-V behavior; recommended next implementation scope |
+| Pure capture contract and mocked tests first | Qualifies privacy, failure preservation and bounds without VM access | Implemented slice; cannot reproduce Hyper-V behavior |
 | Separately approved fresh disposable reproduction | Can capture evidence at the actual future failure | New resources and destructive effects; may not reproduce and may leave an off fixture |
 | Replay retained cleanup or relax protections | No new fixture needed | Consumed authority and uncertain effects; rejected |
 
@@ -35,7 +36,7 @@ queue: a consumed native attempt cannot be restarted or automatically replaced.
 
 ## First implementation slice: no native capability
 
-Proposed small ESM files, not created by this planning change:
+Small ESM files implemented after separate confirmation of this slice:
 
 - `scripts/lib/vmRemovalErrorContract.mjs`: strict, bounded public DTO validation
   and projection; no process, filesystem, network or target access.
@@ -58,6 +59,14 @@ and source-query hash. A new script line number is not the old query's line 364.
 Primary operation evidence and secondary projection/journal/dispose failures
 must occupy separate fields; a finally failure cannot overwrite the primary.
 
+The pure JavaScript functions project one detail, construct a report and append
+secondary failures immutably. They accept only bounded own-data fields on plain
+JSON-like objects; accessors, proxies, inherited fields, sparse arrays and invalid
+relationships are rejected with an opaque error. Unknown extras are not read or
+serialized. An invalid secondary detail becomes unavailable/projectionFailed
+without replacing the validated primary. The operation label is not evidence
+that an operation ran; no ownership, absence, mutation or cleanup claim exists.
+
 Allow only finite classifications, booleans and validated numeric codes in public
 output or the sanitized diagnostic record. Proposed fields are schema version,
 operation/stage enums, numeric ErrorCategory, finite error-ID classification,
@@ -76,6 +85,25 @@ getter failures, cycles and exhaustion report partial/unavailable detail.
 Arbitrary provider interfaces or script properties must not be invoked through
 generic reflection or object expansion. A complete bounded projection is not a
 complete provider diagnosis.
+
+Implemented extraction uses cached fixed CLR members, not ETS/PowerShell adapter
+properties. Only an exact RuntimeException may supply its overridable embedded
+ErrorRecord getter; unreviewed IContainsErrorRecord implementations remain
+unsupported. Exact ErrorRecord inputs are required; remoting/unknown subclasses
+are not silently treated as qualified inputs. No Message/Data getter is read.
+
+Each extraction admits at most six exception objects and six ErrorRecords.
+Private reference edges are retained even for visited objects, then a bounded
+reachability closure detects cycles among at most twelve admitted vertices.
+First-path ancestry alone was insufficient for cycles behind shared shortcuts.
+Repeated acyclic sharing is not labeled a cycle. Refused over-budget traversal
+is partial even when a hidden cycle cannot be inspected.
+
+The JavaScript report additionally caps all emitted nodes across primary and up
+to four secondary entries at six, preserving primary priority and marking
+secondary truncation. Independent extractor calls do not share a traversal
+context: the global six-node output cap is not a claim of six total getter reads
+across future multiple calls. No native caller/composition is implemented.
 
 Never serialize or print the ErrorRecord/exception graph. Do not emit messages,
 ErrorDetails text, unknown FullyQualifiedErrorId/type names, TargetObject,
@@ -183,11 +211,14 @@ does not execute Remove-VM and cannot reproduce its provider-side failure.
 
 ## Verification and next gate
 
-The current deliverable is this plan plus a separate outcome and Unreleased
-entry. Validate documentation/links, diff and secrets; do not claim runtime tests
-or Docker evidence for prose. Recommended next scope is only the pure contract,
-PowerShell projector source and synthetic tests above. Under grill-me, confirm
-that slice before implementation. Host/inventory choice, exact new paths,
+The planning deliverables and the subsequently approved pure implementation are
+recorded separately in the outcome. Run `npm run test:tooling:vm-errors`; it is
+also wired into local preflight and the actual CI workflow. Portable contracts
+run everywhere; installed PowerShell 5.1 synthetic/AST cases run only on Windows
+and are explicitly skipped elsewhere. These do not qualify native Hyper-V.
+
+The next gate is host/inventory scope and quarantine acceptance before any native
+runner design/implementation; there is no apply command to hand off. Exact new paths,
 created-identity durability, native guard/receipt bounds, quarantine acceptance
 and execution authority remain later gates, not silently settled decisions.
 

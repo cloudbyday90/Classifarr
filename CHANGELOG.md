@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add pure ESM removal-error projection with private-safe bounded exception
+  graphs, primary/secondary failure preservation and synthetic PowerShell tests;
+  wire portable checks into CI without adding VM operations or a native runner.
+  Make handoff metadata-drift test injection deterministic for large inode values.
+
 - Plan a separate study-fixture removal reproduction with bounded sanitized
   primary-error evidence and explicit isolation/quarantine gates; no new VM,
   native runner or cleanup retry is implemented or executed.

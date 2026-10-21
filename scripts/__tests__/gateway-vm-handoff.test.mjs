@@ -19,6 +19,7 @@ const hostKeyFingerprint = `SHA256:${createHash('sha256').update(wire).digest('b
 const record = () => ({ version: 1, handoffId: '019a0000-1234-7abc-8def-0123456789ab', ...target,
   ssh: { address: '192.168.70.2', port: 22, user: 'study', hostKey, hostKeyFingerprint } });
 const assess = value => assessVmHandoff(JSON.stringify(value), target);
+const changedInode = value => value === 0 ? 1 : 0;
 function safe(result, status) {
   assert.equal(result.status, status); assert.equal(result.studyReady, false);
   assert.equal(result.handoffAuthenticated, false); assert.equal(result.liveOperationsEnabled, false);
@@ -147,6 +148,11 @@ test('owner and mode are mandatory on Unix; Windows ACL privacy is never claimed
   }
   const windows = assessVmHandoffFile(f.args, { platform: 'win32' }); safe(windows, 'matched'); assert.equal(windows.unixFileModeChecked, false);
 });
+test('inode-drift fault injection changes even a Number whose unit increment rounds away', () => {
+  assert.equal(2 ** 54 + 1, 2 ** 54);
+  for (const value of [0, 1, 42, Number.MAX_SAFE_INTEGER, 2 ** 54]) assert.notEqual(changedInode(value), value);
+});
+
 test('changed metadata, canonical path, reads and close failures cannot leave a positive result', t => {
   const f = fileFixture(t);
   for (const method of ['lstatSync', 'realpathSync', 'openSync', 'fstatSync', 'readSync']) {
@@ -155,7 +161,8 @@ test('changed metadata, canonical path, reads and close failures cannot leave a 
   }
   for (const method of ['fstatSync', 'lstatSync']) {
     let calls = 0;
-    const io = { ...fs, [method]: value => { const stat = fs[method](value); if (++calls > (method === 'lstatSync' ? 1 : 0)) stat.ino++; return stat; } };
+    // Windows inode Numbers may exceed MAX_SAFE_INTEGER: adding one can round away.
+    const io = { ...fs, [method]: value => { const stat = fs[method](value); if (++calls > (method === 'lstatSync' ? 1 : 0)) stat.ino = changedInode(stat.ino); return stat; } };
     safe(assessVmHandoffFile(f.args, { io }), 'unavailable');
   }
   let stats = 0;
