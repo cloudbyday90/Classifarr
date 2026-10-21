@@ -12,6 +12,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 - Record the first guarded fixture-removal failure with preserved receipt and
   unknown post-attempt state; qualify the read-only review for retained receipts
   without retries or changes to deletion safeguards.
+  Record the retained off VM/disk observation and propose separately scoped,
+  identity-bound diagnostics without claiming cleanup or failure cause.
 
 - Prepare a separately reviewed, source-pinned one-shot study-fixture cleanup
   command with truthful uncertain-effect reporting. Preserve the original

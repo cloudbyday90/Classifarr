@@ -119,6 +119,52 @@ cause or authorize further cleanup. Any later receipt/event/provider diagnosis
 must remain separately scoped and sanitized. Do not weaken root/receipt sharing
 protections, repair ACLs or try another Remove-VM call based on a hypothesis.
 
+## Proposed next diagnostic scope
+
+The post-attempt metadata capture is now complete: a name-selected fixture VM
+remains off with its disk and five files. Repeating the metadata probe will not
+recover the missing provider error. The following proposal is pending shared
+scope confirmation under grill-me, not approved implementation or collection.
+
+Prepare/test one read-only local diagnostic that validates the protected receipt
+against the literal accepted target fingerprint and compares the saved VM GUID
+with current inventory before event correlation. Bound receipt input to the
+existing 512 KiB total/256 KiB record limits, require the observed three-record
+claim/intent/stopped shape and expected protected permissions, reject native
+identity drift/reparse/hardlinks, and return no raw claim, GUID, path or account.
+Recompute the saved snapshot's fingerprint; its record's fingerprint field alone
+does not authenticate the snapshot contents or GUID.
+No claim overwrite, resume, adoption or authority to retry can follow a read.
+
+After identity validation, verify only the exact local
+Microsoft-Windows-Hyper-V-VMMS-Admin channel. Use a receipt-metadata time window
+covering at most the five-minute attempt plus two minutes either side; invalid,
+unavailable or implausible timing must stop rather than widen the search.
+The journal has no per-record timestamps: receipt metadata is an approximate,
+mutable correlation anchor, not a certified attempt-time record.
+Inspect at most 64 time-window candidates, using a 65th as a limit sentinel, with
+bounded XML/field/output sizes and a single 30-second/64 KiB capture. Return only
+events matching the saved GUID in bounded structured XML, and sanitized event
+IDs, levels and allowlisted numeric diagnostic codes. Do not return raw messages,
+XML, event payloads, receipt contents, unrelated event details or private names.
+
+Windows PowerShell 5.1 supports channel/provider/time filtering but not PowerShell
+6's named-data FilterHashtable keys. Use compatible filtering followed by bounded
+structured EventData/UserData identity matching; do not assume Data=GUID covers
+UserData. Missing/disabled logs, no matching events, truncation/size limits and
+query failure must remain distinct, incomplete diagnostic outcomes. An
+unrecognized payload schema must not be counted as a proven nonmatching event.
+Do not enable logs, clear/export logs, broaden to other channels, restart services or rerun
+Remove-VM to obtain fresh errors. No matching event is not proof of no failure.
+
+Benefit: saved-identity correlation and potentially useful provider codes without
+replaying the failed write. Limits: protected receipt/log access requires an
+administrator, timestamps are correlation rather than historical authentication,
+and events may be missing or insufficient. GUID/time/code agreement is
+correlation, not proof of root cause. Retaining the off fixture without
+further collection remains the non-destructive alternative. No new diagnostic
+tool, receipt read or live event query has been implemented or performed yet.
+
 ## Official sources
 
 Discovered and opened through search MCP on 21 October 2026:
@@ -132,3 +178,12 @@ Discovered and opened through search MCP on 21 October 2026:
   identifies Remove-VM separately from disk operations. The previously verified
   [removal and receipt sources](study-vm-fixture-recovery-design.md#official-sources-and-limits)
   still govern the unchanged cleanup query and its limitations.
+- [Microsoft Hyper-V troubleshooting](https://learn.microsoft.com/en-us/troubleshoot/windows-server/virtualization/hyper-v-start-state-access-failures-clustered-standalone)
+  identifies the exact VMMS Admin channel. Its broader recovery commands and
+  bulk export are not selected or authorized by this diagnostic proposal.
+- [Get-WinEvent for Windows PowerShell 5.1](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent?view=powershell-5.1)
+  documents local filtered reads, time bounds and MaxEvents. Unbounded defaults
+  are not appropriate for the proposed probe.
+- [FilterHashtable compatibility](https://learn.microsoft.com/en-us/powershell/scripting/samples/creating-get-winevent-queries-with-filterhashtable)
+  states that named-data query keys were added in PowerShell 6; the proposal
+  must not silently depend on that behavior in the fixed 5.1 child.

@@ -170,8 +170,8 @@ The capture preserves an outer HRESULT and selected native codes, not the full
 provider error or extended payload. A stopped-record read cannot recover details
 that were never serialized; state observation alone also cannot establish cause.
 
-Next: one fresh capture using the unchanged metadata-only cleanup review, tested
-with the additional receipt and with VM present/absent. It reports current state
+The next requested capture used the unchanged metadata-only cleanup review,
+tested with the additional receipt and with VM present/absent. It reports current state
 without opening receipt contents or modifying resources. It does not validate
 saved GUID equality, receipt integrity or foreign references, identify the root
 cause, or grant further cleanup authority. The earlier pre-write inspection is
@@ -189,3 +189,35 @@ failures/skips. Mocked failures both before and after the native removal effect
 preserve the same three-record claim/intent/stopped pattern and unknown public
 absence; only the mock's private state distinguishes whether its VM remained.
 Both operation and read-only query hashes still match their frozen bindings.
+
+## Completed post-attempt administrator review
+
+The user supplied that read-only screenshot on 21 October 2026. It reports
+observed, one name-selected VM off, syntax-valid identity, configuration paths
+within the fixture, zero checkpoints, expected drive, disconnected networking,
+and automatic startup/checkpoints disabled. The root exists and is private;
+the expected fixed disk exists, matches the profile and reports diskMounted false.
+The review read twelve native identities and counted five directories/five files.
+Those counts are consistent with the previous nine-entry tree plus the new
+receipt, but this output neither names that extra file nor verifies its contents.
+
+The eight reported capability surfaces retain the previously observed rule forms:
+two explicit directory capability rows, explicit/inherited disk rows, inherited
+directory rules and inherited native-file rules. That is not descriptor equality,
+effective-access proof or permission-policy acceptance. No receipt rule surface
+is identified by this output. The observation confirms a current off fixture VM
+and disk remain; it does not prove that no intermediate native change occurred.
+
+readOnly is true, mutationAttempted and cleanupAttempted false, automaticRetry
+and studyReady false. The probe did not retry removal or alter permissions.
+It does not compare the selected VM GUID to the private saved claim, authenticate
+receipt bytes, check configured foreign-VM references or identify failure cause.
+diskMounted false is not proof of the latter reference check. The missing
+historical creator identity remains distinct from the new claim's saved identity.
+
+Two focused metadata-review regressions were rerun and passed without skips or
+failures; no operation/query source was changed. No protected receipt or event
+contents were read by the agent. The next recommendation is a separately agreed,
+bounded receipt-and-VMMS diagnostic described in the design. It is not yet
+implemented or run. Retain the fixture off and leave the receipt/root untouched;
+no second removal attempt is approved.
