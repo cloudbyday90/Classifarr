@@ -84,6 +84,11 @@ exits. Never blindly rerun, delete partial resources, or treat a status as
 rollback. A blocked permissions result needs review, not a broad permission fix.
 
 `created_off` includes the actual returned Hyper-V VM GUID for private follow-up.
+Per-VM SID validation uses Windows' resolved `83-1` identity, not the VM group's
+`83-0` namespace. One unconnected adapter may have a null switch ID; verification
+also requires false connection state and an empty switch name. See the
+[native validation correction](../architecture/study-vm-validation-design.md).
+This does not authorize rerunning creation or resuming any existing target.
 It does not establish guest readiness, SSH authentication, safe runtime shutdown
 or study approval. The full `--host` preparation check will not yet match without
 the separately reviewed Internal switch and installed guest.

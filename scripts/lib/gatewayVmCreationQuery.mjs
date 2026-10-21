@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { PRIVATE_DIRECTORY_QUERY } from './gatewayVmDirectoryQuery.mjs';
+import { VM_IDENTITY_QUERY } from './gatewayVmIdentityQuery.mjs';
 
 export const VM_CREATION_REASONS = Object.freeze(['administrator_required', 'path_depth', 'path_review_required',
   'owner_review_required', 'acl_limit', 'acl_review_required', 'inventory_limit', 'vm_exists',
@@ -64,12 +65,7 @@ __PRIVATE_DIRECTORY_QUERY__
       if ([string]::Equals($existing.Name,$c.name,[StringComparison]::OrdinalIgnoreCase)) { throw 'vm_exists' }
     }
   }
-  function Resolve-CreatedVmSid([guid]$id) {
-    try { $sid=[Security.Principal.NTAccount]::new('NT VIRTUAL MACHINE',[string]$id).Translate([Security.Principal.SecurityIdentifier]).Value }
-    catch { throw 'vm_sid_unavailable' };
-    if ($sid -notmatch '^S-1-5-83-0-(?:[0-9]+-){3}[0-9]+$') { throw 'vm_sid_unavailable' };
-    return $sid;
-  }
+__VM_IDENTITY_QUERY__
   function Assert-Off {
     $observed=Get-VM -Id $createdId -ErrorAction Stop;
     if ($observed.Id -ne $createdId -or [string]$observed.State -ne 'Off' -or
@@ -145,7 +141,7 @@ __PRIVATE_DIRECTORY_QUERY__
       $vm.AutomaticCheckpointsEnabled -isnot [bool] -or $vm.AutomaticCheckpointsEnabled -or [string]$vm.CheckpointType -ne 'Disabled' -or
       @(Get-VMSnapshot -VM $vm -ErrorAction Stop).Count -ne 0 -or $disks.Count -ne 1 -or
       ![string]::Equals($disks[0].Path,$c.diskFile,[StringComparison]::OrdinalIgnoreCase) -or
-      $adapters.Count -ne 1 -or [string]$adapters[0].SwitchId -ne [string][guid]::Empty -or
+      !(Test-DisconnectedVmAdapter $adapters) -or
       [string]$firmware.SecureBoot -ne 'On' -or [string]$firmware.SecureBootTemplate -ne 'MicrosoftUEFICertificateAuthority' -or
       $shutdown.Count -ne 1 -or $shutdown[0].Enabled -isnot [bool] -or !$shutdown[0].Enabled) { throw 'configuration_mismatch' };
     $disk=Get-VHD -Path $c.diskFile -ErrorAction Stop;
@@ -169,5 +165,6 @@ __PRIVATE_DIRECTORY_QUERY__
     @{status=$(if($changed){'review_required'}else{'blocked'});stage=$stage;reasonCode=$reason;mutationAttempted=$changed} | ConvertTo-Json -Compress
   }
 }`.replace('__PRIVATE_DIRECTORY_QUERY__', () => PRIVATE_DIRECTORY_QUERY)
+    .replace('__VM_IDENTITY_QUERY__', () => VM_IDENTITY_QUERY)
     .replace('__CREATION_REASONS__', JSON.stringify(VM_CREATION_REASONS));
 }

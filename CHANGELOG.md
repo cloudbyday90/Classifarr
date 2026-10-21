@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Correct specific-VM SID and unconnected-adapter validation in the study VM
+  creator, retaining strict target checks and exercising the real validators in tests.
+
 - Restore Hyper-V's local machine identity inside the restricted study-VM child
   process without forwarding caller-provided hostnames or private environment data.
 

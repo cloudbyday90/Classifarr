@@ -1,5 +1,10 @@
 # Study VM local-identity correction outcome
 
+Later follow-up: the administrator's full fixed preflight passed. A separately
+reviewed creation then produced an off partial VM but stopped before settings
+on SID validation. See the [native validation outcome](study-vm-validation-outcome.md).
+The results below retain their original source and recording-time limits.
+
 ## Cause and correction
 
 On 21 October 2026 the administrator's read-only precreation check reached

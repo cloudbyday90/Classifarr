@@ -220,7 +220,7 @@ function New-VM { [CmdletBinding()] param([string]$Name,[int]$Generation,[long]$
   $script:created=[pscustomobject]@{Id=[guid]'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';Name=$Name;Generation=$Generation;Path=$Path;State='Off';
     AutomaticStartAction='StartIfRunning';AutomaticStopAction='Save';AutomaticCheckpointsEnabled=$true;CheckpointType='Production'};
   if(@('own_vm_acl','foreign_vm_acl') -contains $scenario){
-    $sid=$(if($scenario -eq 'own_vm_acl'){'S-1-5-83-0-1-2-3-4'}else{'S-1-5-83-0-5-6-7-8'});
+    $sid=$(if($scenario -eq 'own_vm_acl'){'S-1-5-83-1-1-2-3-4'}else{'S-1-5-83-1-5-6-7-8'});
     $rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),'FullControl','Allow');
     $script:security[$Path].AddAccessRule($rule);
   };
@@ -247,7 +247,12 @@ function Get-VMProcessor { [CmdletBinding()] param($VM) [pscustomobject]@{Count=
 function Get-VMMemory { [CmdletBinding()] param($VM) [pscustomobject]@{Startup=8GB;DynamicMemoryEnabled=$false} }
 function Get-VMFirmware { [CmdletBinding()] param($VM) [pscustomobject]@{SecureBoot='On';SecureBootTemplate='MicrosoftUEFICertificateAuthority'} }
 function Get-VMHardDiskDrive { [CmdletBinding()] param($VM) [pscustomobject]@{Path='D:\Fixture Disks\Classifarr-Study\Classifarr-Study.vhdx'} }
-function Get-VMNetworkAdapter { [CmdletBinding()] param($VM) [pscustomobject]@{SwitchId=$(if($scenario -eq 'network'){[guid]::NewGuid()}else{[guid]::Empty})} }
+function Get-VMNetworkAdapter { [CmdletBinding()] param($VM)
+  if($scenario -eq 'adapter_absent'){return};
+  $adapter=[pscustomobject]@{Connected=($scenario -eq 'adapter_connected');SwitchName=$(if($scenario -eq 'adapter_named'){'assigned'}else{''});
+    SwitchId=$(if($scenario -eq 'network'){[guid]'11111111-2222-3333-4444-555555555555'}elseif($scenario -eq 'adapter_null'){$null}else{[guid]::Empty})};
+  $adapter;if($scenario -eq 'adapter_extra'){$adapter}
+}
 function Get-VMIntegrationService { [CmdletBinding()] param($VM,[string]$Name)
   if($scenario -eq 'missing'){return [pscustomobject]@{Other=$true}};
   [pscustomobject]@{Enabled=$true}
@@ -363,8 +368,14 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
   // Exercise the real token check too, with every infrastructure cmdlet still
   // mocked so this cannot provision anything even on an administrator test host.
   assert.equal(query.split(PRIVATE_DIRECTORY_QUERY).length, 2);
-  const syntheticQuery = query.replace(PRIVATE_DIRECTORY_QUERY, () => nativeMocks);
-  const tokenQuery = syntheticQuery.replace('$createdSid=Resolve-CreatedVmSid $createdId;', "$createdSid='S-1-5-83-0-1-2-3-4';");
+  const sidLookup = "$sid=[Security.Principal.NTAccount]::new('NT VIRTUAL MACHINE',[string]$id).Translate([Security.Principal.SecurityIdentifier]).Value";
+  assert.equal(query.split(sidLookup).length, 2);
+  // Substitute only native translation. The actual production resolver and its
+  // SID namespace guard remain active throughout the complete creator tests.
+  const sidStub = "if($scenario -eq 'sid_failure'){throw 'synthetic translation failure'}; "
+    + "$sid=$(if($scenario -eq 'sid_group'){'S-1-5-83-0'}elseif($scenario -eq 'sid_old'){'S-1-5-83-0-1-2-3-4'}else{'S-1-5-83-1-1-2-3-4'})";
+  const syntheticQuery = query.replace(PRIVATE_DIRECTORY_QUERY, () => nativeMocks).replace(sidLookup, sidStub);
+  const tokenQuery = syntheticQuery;
   const guarded = await invoke(`$scenario='success';${mocks}\n$observed=& { ${tokenQuery} };
     $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent());
     @{isAdmin=$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator);result=($observed|ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`);
@@ -375,16 +386,16 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
     assert.equal(guardResult.result.reasonCode, 'administrator_required');
     assert.deepEqual(guardResult.events, []);
   }
-  // Only token/SID resolution need real host identities. Exclude those calls in
-  // this synthetic test; all ACL policy and mutation sequencing runs unchanged.
+  // Exclude the token check only. Native SID lookup is already substituted,
+  // while the real SID and adapter validators and ACL sequencing stay active.
   assert.equal(query.split('    Assert-Administrator;').length, 2);
-  const runnable = syntheticQuery.replace('    Assert-Administrator;', '    # Token check excluded from the synthetic test only.')
-    .replace('$createdSid=Resolve-CreatedVmSid $createdId;', "$createdSid='S-1-5-83-0-1-2-3-4';");
+  const runnable = syntheticQuery.replace('    Assert-Administrator;', '    # Token check excluded from the synthetic test only.');
   for (const scenario of ['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision',
     'directory_failure','directory_race','disk_failure','vm_failure','settings_failure','identity','running','verify','network','missing','own_vm_acl','foreign_vm_acl','success',
     'parent_create','parent_wrong_sid','parent_write_attributes','parent_write_ea','parent_delete_child','parent_delete','parent_permissions','parent_ownership',
     'parent_inherited','parent_inheriting','parent_propagating','parent_extra_hostile','native_unavailable','child_group_write','child_group_read','child_group_inherit_only','child_unprotected',
-    'hidden','hidden_reparse','hidden_missing','metadata_denied']) {
+    'hidden','hidden_reparse','hidden_missing','metadata_denied','sid_failure','sid_group','sid_old',
+    'adapter_null','adapter_absent','adapter_extra','adapter_connected','adapter_named']) {
     const script = `$scenario='${scenario}';\n${mocks}\n$observed=& { ${runnable} };@{result=($observed | ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`;
     const captured = await invoke(script);
     assert.equal(captured.ok, true, scenario); assert.equal(captured.stderr, '', scenario);
@@ -397,7 +408,7 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
       if (scenario.startsWith('parent_')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
       if (scenario === 'hidden_missing') assert.equal(value.result.reasonCode, 'not_found');
       if (scenario === 'metadata_denied') assert.equal(value.result.reasonCode, 'access_denied');
-    } else if (['success','own_vm_acl','parent_create','hidden'].includes(scenario)) {
+    } else if (['success','own_vm_acl','parent_create','hidden','adapter_null'].includes(scenario)) {
       assert.equal(value.result.status, 'created_off', JSON.stringify(value)); assert.equal(value.result.vmId, vmId);
       assert.deepEqual(value.events, ['directory_private','directory_private','disk','vm','settings','cpu','memory','firmware','shutdown_service']);
     } else {
@@ -407,6 +418,11 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
       if (scenario.startsWith('child_group')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
       if (scenario === 'child_unprotected') assert.equal(value.result.reasonCode, 'directory_not_protected');
       if (scenario === 'directory_race') { assert.equal(value.result.reasonCode, 'directory_exists'); assert.ok(!value.events.includes('disk')); }
+      if (scenario.startsWith('sid_')) {
+        assert.equal(value.result.stage, 'settings'); assert.equal(value.result.reasonCode, 'vm_sid_unavailable');
+        assert.deepEqual(value.events, ['directory_private','directory_private','disk','vm']);
+      }
+      if (scenario.startsWith('adapter_')) assert.equal(value.result.reasonCode, 'configuration_mismatch');
     }
   }
 });
