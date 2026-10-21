@@ -1,7 +1,9 @@
 # Powered-off study VM creation outcome
 
 Native follow-up: the first administrator invocation returned an uncertain
-capture result. See the [capture follow-up](study-vm-capture-outcome.md). Earlier
+capture result, followed by a reviewed manual attempt blocked before writes at
+the parent ACL check. See the [capture follow-up](study-vm-capture-outcome.md) and
+[private-directory outcome](study-vm-directory-outcome.md). Earlier
 mock/image evidence below did not qualify real Windows module-loading output,
 and does not establish the state left by that invocation.
 

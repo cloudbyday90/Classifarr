@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createStudyVm, planVmCreation, VM_CREATION_TIMEOUT_MS, VM_CREATION_MAX_BYTES, VM_CREATION_BOOTSTRAP } from '../lib/gatewayVmCreation.mjs';
 import { vmCreationQuery } from '../lib/gatewayVmCreationQuery.mjs';
+import { PRIVATE_DIRECTORY_QUERY } from '../lib/gatewayVmDirectoryQuery.mjs';
 import { runVmCreationCli } from '../create-gateway-study-vm.mjs';
 import { registryCommand } from '../lib/registryCommand.mjs';
 
@@ -132,6 +133,7 @@ test('fixed script has no remote targets, retry, overwrite, deletion, power or n
   assert.match(query, /-DynamicMemoryEnabled \$false/);
   assert.doesNotMatch(query, /\b(?:Start|Stop|Save|Remove|Restart|Suspend|Resume|Import|Connect|Disconnect)-VM|New-VMSwitch|Set-VMHost|ComputerName|Credential|RunAs|Start-Process|Invoke-Expression|-Force\b|-Overwrite\b|-AsJob\b|NewVHDSizeBytes/);
   assert.doesNotMatch(query, /ErrorAction\s+SilentlyContinue|Start-Sleep/);
+  assert.doesNotMatch(query, /\bNew-Item\b|\bSet-Acl\b/);
 });
 
 test('CLI rejects invalid invocation without commands or raw exception output', () => {
@@ -155,6 +157,22 @@ function Get-Acl { [CmdletBinding()] param([string]$LiteralPath)
   $acl=[Security.AccessControl.DirectorySecurity]::new(); $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-18'));
   if($scenario -eq 'owner'){$acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-1-0'))};
   if($scenario -eq 'acl'){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new('Everyone','FullControl','Allow'))};
+  if($scenario.StartsWith('parent_') -and @('C:\Fixture VMs','D:\Fixture Disks') -contains $LiteralPath){
+    $sid='S-1-5-83-0';$rights=1179791;$inheritance=[Security.AccessControl.InheritanceFlags]::None;
+    if($scenario -eq 'parent_wrong_sid'){$sid='S-1-5-32-545'};
+    if($scenario -eq 'parent_write_attributes'){$rights=$rights -bor 256};
+    if($scenario -eq 'parent_write_ea'){$rights=$rights -bor 16};
+    if($scenario -eq 'parent_delete_child'){$rights=$rights -bor 64};
+    if($scenario -eq 'parent_delete'){$rights=$rights -bor 65536};
+    if($scenario -eq 'parent_permissions'){$rights=$rights -bor 262144};
+    if($scenario -eq 'parent_ownership'){$rights=$rights -bor 524288};
+    if($scenario -eq 'parent_inheriting'){$inheritance=[Security.AccessControl.InheritanceFlags]::ContainerInherit};
+    $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),$rights,
+      $inheritance,[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow));
+    if($scenario -eq 'parent_inherited'){$acl.SetSecurityDescriptorSddlForm('O:SYD:(A;ID;0x12008f;;;S-1-5-83-0)')};
+    if($scenario -eq 'parent_propagating'){$acl.SetSecurityDescriptorSddlForm('O:SYD:(A;CINP;0x12008f;;;S-1-5-83-0)')};
+    if($scenario -eq 'parent_extra_hostile'){$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new('Everyone','Write','Allow'))};
+  };
   return $acl
 }
 function Get-CimInstance { [CmdletBinding()] param([string]$ClassName)
@@ -176,13 +194,6 @@ function Get-VM { [CmdletBinding()] param([guid]$Id)
 function Test-Path { [CmdletBinding()] param([string]$LiteralPath)
   return ($scenario -eq 'directory_collision' -or $script:dirs.ContainsKey($LiteralPath))
 }
-function New-Item { [CmdletBinding()] param([string]$Path,[string]$ItemType)
-  $script:events.Add('directory'); if($scenario -eq 'directory_failure'){throw 'PRIVATE-RAW-OUTPUT'};
-  if($script:dirs.ContainsKey($Path)){throw 'collision'}; $script:dirs[$Path]=$true
-}
-function Set-Acl { [CmdletBinding()] param([string]$LiteralPath,$AclObject)
-  $script:events.Add('directory_acl'); $script:security[$LiteralPath]=$AclObject
-}
 function New-VHD { [CmdletBinding()] param([string]$Path,[switch]$Fixed,[long]$SizeBytes)
   $script:events.Add('disk'); if($scenario -eq 'disk_failure'){throw 'PRIVATE-RAW-OUTPUT'};
   if(!$Fixed -or $SizeBytes -ne 64GB){throw 'wrong_disk'}
@@ -196,6 +207,14 @@ function New-VM { [CmdletBinding()] param([string]$Name,[int]$Generation,[long]$
     $rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),'FullControl','Allow');
     $script:security[$Path].AddAccessRule($rule);
   };
+  if($scenario.StartsWith('child_group')){
+    $rights=$(if($scenario -eq 'child_group_read'){'Read'}else{'Write'});
+    $propagation=$(if($scenario -eq 'child_group_inherit_only'){[Security.AccessControl.PropagationFlags]::InheritOnly}else{[Security.AccessControl.PropagationFlags]::None});
+    $rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new('S-1-5-83-0'),$rights,
+      [Security.AccessControl.InheritanceFlags]::ContainerInherit,$propagation,[Security.AccessControl.AccessControlType]::Allow);
+    $script:security[$Path].AddAccessRule($rule);
+  };
+  if($scenario -eq 'child_unprotected'){$script:security[$Path].SetAccessRuleProtection($false,$true)};
   return $script:created
 }
 function Set-VM { [CmdletBinding()] param($VM,[string]$AutomaticStartAction,[string]$AutomaticStopAction,[bool]$AutomaticCheckpointsEnabled,[string]$CheckpointType)
@@ -218,6 +237,24 @@ function Get-VMIntegrationService { [CmdletBinding()] param($VM,[string]$Name)
 }
 function Get-VMSnapshot { [CmdletBinding()] param($VM) }
 function Get-VHD { [CmdletBinding()] param([string]$Path) [pscustomobject]@{Size=64GB;VhdType='Fixed';VhdFormat='VHDX';ParentPath=$null} }
+`;
+
+// Replace the entire native boundary in synthetic tests, not just individual
+// cmdlets: these tests cannot call CreateDirectoryW even when run as admin.
+const nativeMocks = String.raw`
+  function Initialize-PrivateDirectoryNative { if($scenario -eq 'native_unavailable'){throw 'unsupported'} }
+  function New-ExclusiveDirectory([string]$path,[Security.AccessControl.DirectorySecurity]$security) {
+    if(!$security.AreAccessRulesProtected -or $security.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne 'S-1-5-32-544'){throw 'wrong_security'};
+    $rules=@($security.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]));
+    if($rules.Count -ne 2){throw 'wrong_rules'};
+    foreach($rule in $rules){if(@('S-1-5-18','S-1-5-32-544') -notcontains $rule.IdentityReference.Value -or
+      [string]$rule.FileSystemRights -ne 'FullControl' -or [int]$rule.InheritanceFlags -ne 3 -or [int]$rule.PropagationFlags -ne 0){throw 'wrong_rule'}};
+    $script:events.Add('directory_private');
+    if($scenario -eq 'directory_failure'){throw 'PRIVATE-RAW-OUTPUT'};
+    if($scenario -eq 'directory_race' -and $script:dirs.Count -eq 1){throw 'directory_exists'};
+    if($script:dirs.ContainsKey($path)){throw 'directory_exists'};
+    $script:dirs[$path]=$true; $script:security[$path]=$security;
+  }
 `;
 
 test('real Windows module imports keep progress out of the production creator capture', { skip: process.platform !== 'win32' }, async t => {
@@ -272,7 +309,9 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
   assert.equal(parsed.ok, true); assert.equal(parsed.stdout.trim(), 'syntax_ok');
   // Exercise the real token check too, with every infrastructure cmdlet still
   // mocked so this cannot provision anything even on an administrator test host.
-  const tokenQuery = query.replace('$createdSid=Resolve-CreatedVmSid $createdId;', "$createdSid='S-1-5-83-0-1-2-3-4';");
+  assert.equal(query.split(PRIVATE_DIRECTORY_QUERY).length, 2);
+  const syntheticQuery = query.replace(PRIVATE_DIRECTORY_QUERY, () => nativeMocks);
+  const tokenQuery = syntheticQuery.replace('$createdSid=Resolve-CreatedVmSid $createdId;', "$createdSid='S-1-5-83-0-1-2-3-4';");
   const guarded = await invoke(`$scenario='success';${mocks}\n$observed=& { ${tokenQuery} };
     $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent());
     @{isAdmin=$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator);result=($observed|ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`);
@@ -286,25 +325,32 @@ test('Windows parses the emitted PowerShell and exercises refusal/partial/succes
   // Only token/SID resolution need real host identities. Exclude those calls in
   // this synthetic test; all ACL policy and mutation sequencing runs unchanged.
   assert.equal(query.split('    Assert-Administrator;').length, 2);
-  const runnable = query.replace('    Assert-Administrator;', '    # Token check excluded from the synthetic test only.')
+  const runnable = syntheticQuery.replace('    Assert-Administrator;', '    # Token check excluded from the synthetic test only.')
     .replace('$createdSid=Resolve-CreatedVmSid $createdId;', "$createdSid='S-1-5-83-0-1-2-3-4';");
   for (const scenario of ['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision',
-    'directory_failure','disk_failure','vm_failure','settings_failure','identity','running','verify','network','missing','own_vm_acl','foreign_vm_acl','success']) {
+    'directory_failure','directory_race','disk_failure','vm_failure','settings_failure','identity','running','verify','network','missing','own_vm_acl','foreign_vm_acl','success',
+    'parent_create','parent_wrong_sid','parent_write_attributes','parent_write_ea','parent_delete_child','parent_delete','parent_permissions','parent_ownership',
+    'parent_inherited','parent_inheriting','parent_propagating','parent_extra_hostile','native_unavailable','child_group_write','child_group_read','child_group_inherit_only','child_unprotected']) {
     const script = `$scenario='${scenario}';\n${mocks}\n$observed=& { ${runnable} };@{result=($observed | ConvertFrom-Json);events=@($script:events)} | ConvertTo-Json -Compress -Depth 5`;
     const captured = await invoke(script);
     assert.equal(captured.ok, true, scenario); assert.equal(captured.stderr, '', scenario);
     assert.ok(!captured.stdout.includes(secret));
     const value = JSON.parse(captured.stdout);
-    if (['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision'].includes(scenario)) {
+    if (['reparse','owner','acl','capacity','volume','collision','inventory','directory_collision','native_unavailable'].includes(scenario)
+      || (scenario.startsWith('parent_') && scenario !== 'parent_create')) {
       assert.equal(value.result.status, 'blocked', scenario); assert.equal(value.result.mutationAttempted, false);
       assert.deepEqual(value.events, [], scenario);
-    } else if (['success','own_vm_acl'].includes(scenario)) {
+      if (scenario.startsWith('parent_')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
+    } else if (['success','own_vm_acl','parent_create'].includes(scenario)) {
       assert.equal(value.result.status, 'created_off', JSON.stringify(value)); assert.equal(value.result.vmId, vmId);
-      assert.deepEqual(value.events, ['directory','directory_acl','directory','directory_acl','disk','vm','settings','cpu','memory','firmware','shutdown_service']);
+      assert.deepEqual(value.events, ['directory_private','directory_private','disk','vm','settings','cpu','memory','firmware','shutdown_service']);
     } else {
       assert.equal(value.result.status, 'review_required', scenario); assert.equal(value.result.mutationAttempted, true);
       assert.ok(value.events.length > 0, scenario);
       if (['identity','running'].includes(scenario)) assert.ok(!value.events.includes('settings'));
+      if (scenario.startsWith('child_group')) assert.equal(value.result.reasonCode, 'acl_review_required', scenario);
+      if (scenario === 'child_unprotected') assert.equal(value.result.reasonCode, 'directory_not_protected');
+      if (scenario === 'directory_race') { assert.equal(value.result.reasonCode, 'directory_exists'); assert.ok(!value.events.includes('disk')); }
     }
   }
 });

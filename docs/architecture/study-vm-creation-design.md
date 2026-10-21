@@ -40,13 +40,20 @@ wildcards, relative segments, control characters, reserved names, overlapping
 targets or paths deeper than the inspection bound. Check every existing ancestor
 for reparse points and trusted ownership. Conservatively reject effective allow
 entries for untrusted destructive access on ancestors and untrusted write access
-on final parents; do not try to infer safety by subtracting deny ACEs. Ignore
-inherit-only rules when assessing access to the directory itself. Bound ACL
+on final parents, apart from the exact reviewed non-inheriting, create-only
+All Virtual Machines parent ACE described in the
+[private-directory design](study-vm-directory-design.md). It is not a trusted
+principal or a child-directory exception. Do not try to infer safety by
+subtracting deny ACEs. Ignore inherit-only rules when assessing access to the
+parent itself; protected child creation prevents their inheritance. Bound ACL
 entries and path depth. An unavailable observation blocks writes.
 
-Create absent dedicated directories without force, then set a protected DACL
-granting only SYSTEM and local Administrators full control before placing any
-disk/configuration. Hyper-V may subsequently grant its new VM principal access:
+Create absent dedicated directories exclusively with a protected DACL granting
+only SYSTEM and local Administrators full control **at creation**, not in a later
+`Set-Acl` repair. Refuse existing directories/files and missing parents without
+adoption or automatic parent creation. Recheck protection and reject untrusted
+child allow entries, including read-only and inherit-only entries. Hyper-V may
+subsequently grant its new VM principal access:
 resolve only that returned VM ID's SID and recognize it only on the two owned
 directories, never on their parents or as an all-VMs group. Native SID resolution
 still needs administrator qualification, not a mock-only claim.

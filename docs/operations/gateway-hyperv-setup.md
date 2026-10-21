@@ -61,6 +61,12 @@ It derives `Classifarr-Study` children and a `Classifarr-Study.vhdx` disk, refus
 existing targets, checks ancestors/ACLs and fresh capacity, restricts only the
 new directories and configures only the new VM. It does not alter parent ACLs or
 host defaults, start a VM, attach a switch/ISO, elevate or install software.
+The [private-directory refinement](../architecture/study-vm-directory-design.md)
+recognizes only the reviewed non-inheriting parent create rule for All Virtual
+Machines. It does not trust that group generally or grant it child access. New
+child permissions are protected at exclusive creation, not repaired afterward;
+existing files/folders/junctions still refuse. Never remove a shared Hyper-V
+permission to make the creator pass, or add a broader allow rule.
 
 Allocation may take several minutes. The single command budget is 15 minutes;
 output is bounded to 64 KiB and there are no automatic retries. Exit 0 means

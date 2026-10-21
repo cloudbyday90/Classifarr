@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Recognize the reviewed Hyper-V parent create rule without trusting all VMs,
+  and create private study folders with protected permissions from the start.
+  Preserve existing-target refusal and leave shared parent permissions unchanged.
+
 - Keep ordinary Windows PowerShell module-loading progress from obscuring study
   VM creation results, while retaining strict error handling and no automatic retry.
 

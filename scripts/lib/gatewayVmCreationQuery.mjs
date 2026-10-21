@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { PRIVATE_DIRECTORY_QUERY } from './gatewayVmDirectoryQuery.mjs';
 
 export const VM_CREATION_REASONS = Object.freeze(['administrator_required', 'path_depth', 'path_review_required',
   'owner_review_required', 'acl_limit', 'acl_review_required', 'inventory_limit', 'vm_exists',
@@ -13,6 +14,7 @@ export function vmCreationQuery(plan) {
   Set-StrictMode -Version Latest;
   $ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue';
   $stage='preflight'; $changed=$false; $createdSid=$null;
+__PRIVATE_DIRECTORY_QUERY__
   function Assert-Administrator {
     $identity=[Security.Principal.WindowsIdentity]::GetCurrent();
     $principal=[Security.Principal.WindowsPrincipal]::new($identity);
@@ -29,6 +31,8 @@ export function vmCreationQuery(plan) {
       if ($trusted -notcontains $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value) { throw 'owner_review_required' };
       $rules=@($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]));
       if ($rules.Count -gt 256) { throw 'acl_limit' };
+      $owned=($depth -eq 1 -and (@($c.vmDirectory,$c.diskDirectory) -contains $current));
+      if ($owned -and !$acl.AreAccessRulesProtected) { throw 'directory_not_protected' };
       $mask=[Security.AccessControl.FileSystemRights]::Delete -bor [Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles -bor
         [Security.AccessControl.FileSystemRights]::ChangePermissions -bor [Security.AccessControl.FileSystemRights]::TakeOwnership;
       if ($depth -eq 1) { $mask=$mask -bor [Security.AccessControl.FileSystemRights]::Write };
@@ -37,9 +41,18 @@ export function vmCreationQuery(plan) {
         $writers=$writers + @($createdSid);
       };
       foreach ($rule in $rules) {
+        if ($owned -and $rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
+          $rule.FileSystemRights -and $writers -notcontains $rule.IdentityReference.Value) { throw 'acl_review_required' };
         if ($rule.AccessControlType -eq [Security.AccessControl.AccessControlType]::Allow -and
           !($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and
-          ($rule.FileSystemRights -band $mask) -and $writers -notcontains $rule.IdentityReference.Value) { throw 'acl_review_required' }
+          ($rule.FileSystemRights -band $mask) -and $writers -notcontains $rule.IdentityReference.Value) {
+          # Exact reviewed, parent-only create rights. Never trust the VM group
+          # generally, accept extra rights/flags, or apply this to owned children.
+          if ($depth -eq 1 -and (@($c.vmParent,$c.diskParent) -contains $current) -and
+            $rule.IdentityReference.Value -eq 'S-1-5-83-0' -and [long]$rule.FileSystemRights -eq 1179791 -and
+            !$rule.IsInherited -and [int]$rule.InheritanceFlags -eq 0 -and [int]$rule.PropagationFlags -eq 0) { continue };
+          throw 'acl_review_required'
+        }
       };
       $current=[IO.Path]::GetDirectoryName($current);
     }
@@ -66,7 +79,6 @@ export function vmCreationQuery(plan) {
     return $observed;
   }
   function New-PrivateDirectory([string]$path) {
-    New-Item -Path $path -ItemType Directory -ErrorAction Stop | Out-Null;
     $security=[Security.AccessControl.DirectorySecurity]::new();
     $security.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'));
     $security.SetAccessRuleProtection($true,$false);
@@ -77,7 +89,7 @@ export function vmCreationQuery(plan) {
         [Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow);
       $security.AddAccessRule($rule);
     };
-    Set-Acl -LiteralPath $path -AclObject $security -ErrorAction Stop;
+    New-ExclusiveDirectory $path $security;
     Assert-PathTree $path;
     if (!(Get-Acl -LiteralPath $path -ErrorAction Stop).AreAccessRulesProtected) { throw 'directory_not_protected' }
   }
@@ -103,6 +115,7 @@ export function vmCreationQuery(plan) {
     $stage='collisions'; Assert-NameAbsent;
     if ((Test-Path -LiteralPath $c.vmDirectory -ErrorAction Stop) -or
       (Test-Path -LiteralPath $c.diskDirectory -ErrorAction Stop)) { throw 'directory_exists' };
+    Initialize-PrivateDirectoryNative;
     $stage='directories'; $changed=$true;
     New-PrivateDirectory $c.vmDirectory; New-PrivateDirectory $c.diskDirectory;
     $stage='disk'; Assert-NameAbsent; Assert-PathTree $c.diskDirectory;
@@ -155,5 +168,6 @@ export function vmCreationQuery(plan) {
     if ($known -ccontains [string]$_.Exception.Message) { $reason=[string]$_.Exception.Message };
     @{status=$(if($changed){'review_required'}else{'blocked'});stage=$stage;reasonCode=$reason;mutationAttempted=$changed} | ConvertTo-Json -Compress
   }
-}`.replace('__CREATION_REASONS__', JSON.stringify(VM_CREATION_REASONS));
+}`.replace('__PRIVATE_DIRECTORY_QUERY__', () => PRIVATE_DIRECTORY_QUERY)
+    .replace('__CREATION_REASONS__', JSON.stringify(VM_CREATION_REASONS));
 }

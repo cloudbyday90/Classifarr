@@ -42,17 +42,26 @@ unreviewed static drift. Static-import and Markdown checks passed (2326 document
 zero errors). The temporary read-only review query also passed actual PowerShell
 syntax parsing and a no-mutation-command check, without executing a host query.
 
-The fix has not been image-evaluated or deployed. A further image build is
-deferred while the administrator write attempt remains uncertain; the earlier
-creator image evaluation predates this fix. The state left by that invocation
-remains unverified pending the administrator's separate bounded read-only
-VM/folder observation. No successful creation, safe rerun, guest readiness or
-rollback is claimed. No normal application, Unraid or shared Ollama was changed.
+At this capture-fix checkpoint, the fix had not been image-evaluated or deployed;
+the earlier creator image evaluation predates it. A build was deferred while the
+administrator write attempt remained uncertain. No successful creation, guest
+readiness or rollback was claimed. No normal application, Unraid or shared
+Ollama was changed.
+
+Subsequent administrator read-only review observed zero named VMs and absent
+approved child directories/disk. After review of the completed caller and command
+ordering, the user ran one manual attempt with the capture fix. This returned
+the actual semantic result: `blocked`, stage `permissions`,
+`acl_review_required`, `mutationAttempted: false`. A separate read-only ACL
+diagnostic identified the same narrow parent create ACE on both targets. This
+does not reconstruct the original lost response, but the latest refusal is
+known to precede resource writes. See the separate
+[private-directory outcome](study-vm-directory-outcome.md) for the approved
+follow-up; do not reinterpret absence alone as permission for arbitrary retries.
 
 ## Next step
 
-Inspect the exact named VM and approved child paths without modifying anything.
-Retain partial resources and review their provenance/configuration if present.
-An absence observation alone is not proof that an uncertain service-side writer
-has stopped; do not automatically rerun creation. Resolve that uncertainty before
-continuing with the already-planned installer and guest preparation.
+The directory-policy follow-up must be tested before a new native attempt.
+Keep the original no-retry/no-adoption safeguards. Any later uncertain response
+again requires independent review before continuing; do not delete partial
+resources. Installer/guest preparation remains after verified off-state creation.
