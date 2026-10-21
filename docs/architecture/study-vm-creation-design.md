@@ -65,6 +65,13 @@ budget and 64-KiB combined output limit, with no budget renewal or retries.
 A small fixed PowerShell bootstrap reads the generated script over stdin to
 avoid Windows command-line length limits; paths remain base64 JSON data within
 that script. No caller-supplied command or script is supported.
+The bootstrap sets only the child process's global progress preference before
+parsing/executing that input. Native module auto-loading can report progress in
+the outer scope even when the inner query suppresses it. Keep rejecting warnings,
+errors, nonempty stderr and malformed JSON; do not strip arbitrary CLIXML or
+weaken response validation. The parent's PowerShell preferences are unchanged.
+([Windows PowerShell preferences](https://learn.microsoft.com/en-us/PowerShell/module/microsoft.PowerShell.core/about/about_preference_variables?view=powershell-5.1),
+[CLI output formatting issue](https://github.com/PowerShell/PowerShell/issues/5912))
 
 Configure only the returned new VM object/ID, rechecking that it is off and its
 configuration remains under the dedicated directory. Set fixed memory, four

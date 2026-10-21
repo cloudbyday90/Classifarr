@@ -1,5 +1,10 @@
 # Powered-off study VM creation outcome
 
+Native follow-up: the first administrator invocation returned an uncertain
+capture result. See the [capture follow-up](study-vm-capture-outcome.md). Earlier
+mock/image evidence below did not qualify real Windows module-loading output,
+and does not establish the state left by that invocation.
+
 ## Delivered scope
 
 The grill-me workflow settled the existing resource profile and the user's exact

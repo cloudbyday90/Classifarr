@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Keep ordinary Windows PowerShell module-loading progress from obscuring study
+  VM creation results, while retaining strict error handling and no automatic retry.
+
 - Add an explicit administrator-run creator for a new, powered-off study VM,
   with reviewed local storage, fixed resources, restricted new directories and
   no automatic retries, existing-resource adoption or network/power operations.

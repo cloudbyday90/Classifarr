@@ -220,6 +220,48 @@ function Get-VMSnapshot { [CmdletBinding()] param($VM) }
 function Get-VHD { [CmdletBinding()] param([string]$Path) [pscustomobject]@{Size=64GB;VhdType='Fixed';VhdFormat='VHDX';ParentPath=$null} }
 `;
 
+test('real Windows module imports keep progress out of the production creator capture', { skip: process.platform !== 'win32' }, async t => {
+  let captured;
+  const probe = String.raw`$ProgressPreference='SilentlyContinue';$ErrorActionPreference='Stop';
+    $missing=@('Hyper-V','Storage' | Where-Object { !(Get-Module -ListAvailable -Name $_ -ErrorAction Stop) });
+    if($missing.Count -gt 0){@{probe='missing_modules'} | ConvertTo-Json -Compress}
+    else {
+      Import-Module Hyper-V -ErrorAction Stop;
+      Import-Module Storage -ErrorAction Stop;
+      @{status='blocked';stage='preflight';reasonCode='query_failed';mutationAttempted=$false} | ConvertTo-Json -Compress;
+    }`;
+  const result = await createStudyVm(parents, {
+    command: async (file, argv, settings) => {
+      // Entire input is replaced with a read-only module probe. No creation
+      // query, resource inspection, admin requirement or write reaches the child.
+      captured = await registryCommand(file, argv, { ...settings, input: probe, timeoutMs: 10000 });
+      return captured;
+    },
+  });
+  assert.equal(captured.ok, true);
+  const observed = JSON.parse(captured.stdout.trim().replace(/^\uFEFF/, ''));
+  if (observed.probe === 'missing_modules') { t.skip('Hyper-V/Storage modules are not installed'); return; }
+  assert.equal(captured.stderr.length, 0, 'module first-use progress must not contaminate stderr');
+  assert.equal(result.status, 'blocked'); assert.equal(result.mutationAttempted, false);
+  assert.equal(result.reasonCode, 'query_failed');
+});
+
+test('native Windows warning/error streams still refuse a success-shaped capture', { skip: process.platform !== 'win32' }, async () => {
+  for (const diagnostic of ["Write-Warning 'synthetic diagnostic';", "Write-Error 'synthetic diagnostic' -ErrorAction Continue;"]) {
+    let captured;
+    const probe = diagnostic + `@{status='created_off';stage='verify';mutationAttempted=$true;vmId='${vmId}'} | ConvertTo-Json -Compress;`;
+    const result = await createStudyVm(parents, {
+      command: async (file, argv, settings) => {
+        captured = await registryCommand(file, argv, { ...settings, input: probe, timeoutMs: 10000 });
+        return captured;
+      },
+    });
+    assert.equal(result.status, 'review_required'); assert.equal(result.mutationAttempted, true);
+    assert.ok(!JSON.stringify(result).includes('synthetic diagnostic'));
+    assert.ok(captured.stderr.length > 0 || !captured.stdout.trim().startsWith('{'));
+  }
+});
+
 test('Windows parses the emitted PowerShell and exercises refusal/partial/success entirely with mocked cmdlets', { skip: process.platform !== 'win32' }, async () => {
   const query = vmCreationQuery(planVmCreation(parents));
   const executable = join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');

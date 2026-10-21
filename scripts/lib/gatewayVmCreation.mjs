@@ -8,7 +8,9 @@ export const VM_CREATION_TIMEOUT_MS = 15 * 60 * 1000;
 export const VM_CREATION_MAX_BYTES = 64 * 1024;
 // Fixed bootstrap avoids Windows' command-line length limit. Only our fixed script
 // and base64 JSON data enter stdin; no caller-supplied command/script is accepted.
-export const VM_CREATION_BOOTSTRAP = '& ([ScriptBlock]::Create([Console]::In.ReadToEnd()))';
+// Module auto-loading can occur in the outer session, before the inner script's
+// local preference applies. Suppress progress there; keep errors/warnings intact.
+export const VM_CREATION_BOOTSTRAP = "$global:ProgressPreference='SilentlyContinue'; & ([ScriptBlock]::Create([Console]::In.ReadToEnd()))";
 const name = 'Classifarr-Study';
 const stages = ['preflight', 'permissions', 'capacity', 'collisions', 'directories', 'disk', 'vm', 'settings', 'verify'];
 
