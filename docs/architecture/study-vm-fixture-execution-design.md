@@ -216,6 +216,32 @@ consider a separately agreed next action. Retaining the fixture off is a valid
 alternative throughout. This diagnostic does not verify foreign-disk references,
 effective access, historical creator identity, cleanup readiness or root cause.
 
+### Boundary after the empty administrator capture
+
+The approved capture is complete and returned verified saved/current identity
+with no candidate events; see the
+[native outcome](study-vm-fixture-execution-outcome.md#completed-administrator-receipt-and-vmms-capture).
+Do not repeat that capture, relax GUID recognition or widen channel/time scope
+without new evidence and agreement. Zero candidates means XML recognition was
+not reached, not that recognition rejected the failure event.
+
+The frozen catch/receipt projection did not persist richer original error
+details. The command transport kept streams in memory and its child exited;
+another PowerShell session's error history is not that child's ErrorRecord.
+No independently saved richer capture is established by the current evidence.
+Do not invent a cached-job search or rerun the failed write to recover it.
+
+Recommendation: retain the fixture off and its receipt intact, record cause as
+unresolved, and stop collection. A separately agreed future preparation-only
+plan could define an isolated disposable reproduction with bounded sanitized
+catch-time error evidence. That could improve future observability but cannot
+promise reproduction or prove the original cause. It would need independent
+scope, resource/cleanup safeguards and execution agreement; nothing here
+authorizes creating/removing another VM or replaying the consumed attempt.
+Retaining the current evidence without a new reproduction remains the lowest-
+impact alternative, at the cost of leaving the cause and study prerequisites
+unresolved.
+
 ## Official sources
 
 Discovered and opened through search MCP on 21 October 2026:

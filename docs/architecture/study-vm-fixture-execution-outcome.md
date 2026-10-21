@@ -218,9 +218,9 @@ historical creator identity remains distinct from the new claim's saved identity
 Two focused metadata-review regressions were rerun and passed without skips or
 failures; no operation/query source was changed. No protected receipt or event
 contents were read by the agent. The separately agreed bounded receipt-and-VMMS
-diagnostic is prepared below; its administrator capture remains pending. Retain
-the fixture off and leave the receipt/root untouched; no second removal attempt
-is approved.
+diagnostic is prepared below; its subsequent administrator capture is recorded
+at the end of this document. Retain the fixture off and leave the receipt/root
+untouched; no second removal attempt is approved.
 
 ## Prepared receipt and VMMS diagnostic
 
@@ -283,9 +283,9 @@ true, mutationAttempted/cleanupAttempted false and retryAllowed false. It does
 not read the protected fixture or establish administrator access. Source pins
 do not authenticate administrator intent or attest installed binaries.
 
-The protected receipt and VMMS event collection have not yet been run by the
-agent or supplied by the administrator. Receipt metadata is a mutable,
-approximate time anchor, not certified event timing. Named identity schemas and
+At preparation time, the protected receipt and VMMS event collection had not
+been run by the agent or supplied by the administrator. Receipt metadata is a
+mutable, approximate time anchor, not certified event timing. Named identity schemas and
 numeric-code fields may be incomplete; missing, limited or unrecognized evidence
 must not become a root-cause claim. The recognized field names are a conservative
 subset, not a verified complete VMMS manifest contract. No raw receipt, GUID,
@@ -295,7 +295,59 @@ or historical-creator proof is claimed.
 No application/image source changed, so application suites and Docker no-cache
 build/replacement were not repeated for this Windows-only ignored preparation
 and documentation update. No branch, merge, release, production, Unraid or shared
-Ollama operation occurred. Next: obtain the single approved read-only
-administrator capture and review it before proposing any further action. Do not
-rerun apply, reset/remove the receipt, change permissions, restart services or
+Ollama operation occurred. The single approved read-only administrator capture
+has now been supplied and reviewed below. Do not rerun apply, reset/remove the
+receipt, change permissions, restart services or
 start either VM to obtain new evidence.
+
+## Completed administrator receipt and VMMS capture
+
+The user supplied the read-only diagnostic screenshot on 21 October 2026. It
+reports incomplete at complete with reasonCode no_events, category 0 and HRESULT
+0. The completed step means the bounded inspection and final readback reached
+their end, not that the native removal succeeded or its cause was established.
+
+receiptVerified, snapshotMatches and currentVmMatches are true, receiptRecords
+is three, and vmState is off. Under the unchanged pinned query, these results
+establish that the protected three-record receipt passed validation, its saved
+snapshot recomputed to the accepted fingerprint, and its saved VM GUID and paths
+matched the current off VM before and after collection. This closes the earlier
+saved/current identity gap. It does not recover the missing historical creator
+identity, establish effective access, verify foreign-disk references or authorize
+cleanup. No raw receipt, GUID, path or account was returned.
+
+channelVerified is true and windowSeconds is 241. The enabled, expected-provider
+VMMS Admin channel was recognized, but eventsScanned, eventsMatched and
+eventsUnrecognized are all zero and rows is empty. This is an empty bounded
+channel/provider/time result, not a set of events rejected by the GUID matcher
+or an XML-schema failure. The reported 241 seconds are the rounded correlation
+window including two minutes on each side, not the removal duration. Receipt
+filesystem timestamps remain an approximate, mutable time anchor.
+
+readOnly is true; mutationAttempted, cleanupAttempted, automaticRetry,
+retryAllowed, rootCauseConfirmed and studyReady are false. No query/limit/close
+failure was reported, but no provider event code was available. This does not
+prove the failure was unlogged everywhere, that the original call was harmless,
+or that deletion is now safe. No additional administrator query, cleanup retry,
+log widening, permission change or service/power operation was performed by the
+agent in response.
+
+One new screenshot-shaped projection regression passed without failures or
+skips. It preserves verified identity alongside incomplete/no_events and refuses
+to promote that result to observed, root-cause confirmation or retry authority.
+The source-only check still reports source_bound without launching PowerShell.
+The earlier 51-test qualification remains separate; no operation or diagnostic
+query source was changed for this documentation update.
+
+Source review confirms the original catch/receipt retained only the known
+failure projection, not richer provider messages, ErrorDetails or the full
+exception chain. The child runspace has exited and the transport created no
+persistent richer capture. No independent original capture is known to exist.
+The next recommendation is therefore to preserve the off fixture and receipt
+and stop collection with cause unresolved. A future isolated, instrumented
+reproduction would require its own agreed preparation and execution scope;
+no such reproduction was prepared or run in response to this screenshot.
+
+This update changes documentation and one ignored projection regression only.
+No application suite, Docker rebuild/replacement, dependency/PR implementation,
+branch or release operation was needed or performed.

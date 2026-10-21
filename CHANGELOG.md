@@ -12,6 +12,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 - Prepare bounded, read-only study-fixture receipt and VMMS correlation with
   explicit UTC filtering, saved-identity checks and sanitized outcomes; preserve
   consumed cleanup authority and unchanged deletion/permission safeguards.
+  Record verified saved/current identity with an empty bounded event result,
+  without claiming failure cause or permitting another cleanup attempt.
 
 - Record the first guarded fixture-removal failure with preserved receipt and
   unknown post-attempt state; qualify the read-only review for retained receipts
