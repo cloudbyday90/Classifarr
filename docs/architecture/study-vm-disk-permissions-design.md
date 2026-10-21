@@ -61,6 +61,24 @@ then the real production guards and rejection cases, then complete synthetic
 creator/completion flows. Finally request a fresh administrator read-only
 inspection. A passing inspection is not permission to apply or study readiness.
 
+## Unresolved disk-file capability boundary
+
+Attribution of a refused file capability remains read-only diagnosis, not a new
+allow rule. Cache membership, a capability-family prefix, token comparison or a
+matching name-derived SID cannot establish who added the grant or restrict it
+to the current VM. Never remove an unknown native capability grant to satisfy
+the validator, and never infer its purpose solely from a permission mask.
+
+For the temporary diagnostic, prefer one finite comparison against actual
+registry-observed capability names to repeated guessed-name probes. Read only
+the fixed direct member lists, separate literal SIDs and class-reference labels,
+validate/bound names, derive through the documented native API outside the
+administrator process, and freeze the reference with an integrity check. Report
+exact matches, ambiguity or no match without emitting the refused raw SID.
+This local registry format is an observed diagnostic input, not a stable public
+contract or source of authorization. Preserve the file guard's refusal and
+require a separate grill-me agreement before any trust-policy expansion.
+
 ## Verification and official sources
 
 Use exclusive new disposable Windows fixture directories, not real VM storage.

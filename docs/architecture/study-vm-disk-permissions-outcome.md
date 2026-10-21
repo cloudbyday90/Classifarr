@@ -222,8 +222,51 @@ combined user/capability access model:
 The negative comparisons therefore do not prove that no Windows component can
 use the grant. Even an exact name-derived match would establish identity
 correspondence, not who added the ACE or that its reach is limited to this VM.
-The new administrator comparison is pending. Any proposed trust-policy change
-still requires a separate grill-me decision; no existing permission was changed.
+The administrator comparison subsequently reported `registeredCapability: true`
+and `virtualDiskCandidateMatch: false`, with cache status observed. This rules
+out that exact candidate; the grant must not be attributed to VirtualDisk from
+the earlier installed-file strings. Any proposed trust-policy change still
+requires a separate grill-me decision; no existing permission was changed.
+
+## Complete local name-catalog comparison
+
+Read-only Registry64 inspection then identified a finite direct name catalog:
+the MemberCapability REG_MULTI_SZ values in the General, Restricted and Windows
+classes. Their 360 entries contain 319 distinct capability names and 39 distinct
+literal SIDs; two literal entries are duplicates. The other classes contain
+class-reference labels and flattened caches, not additional direct names.
+The direct union matched the Windows and DevUnlock_Internal flattened caches.
+These are observed local structures, not a documented stable registry schema.
+
+The ignored preparation helper reads only those three fixed values, excludes
+literal SIDs before name validation, rejects class labels and derives each of
+the 319 actual names through Microsoft's native API. It does not guess names or
+query the protected VHDX. Names are bounded to 128 ASCII grammar-checked
+characters and 512 distinct entries; each value is limited to 1,024 entries,
+with aggregate count/character checks. Handles close in finally blocks. As with
+the earlier cache read, managed allocation precedes size validation. Preparation
+uses ten-second, 256 KiB captures and a filtered environment, not elevation.
+
+All 319 native derivations succeeded with one group and one capability SID each,
+and explicit native memory cleanup. The internetClient reference check still
+passes. A frozen, SHA-256-bound local reference keeps named derivations and the
+39 literal SIDs separate. The administrator probe performs equality comparisons
+only; it does not compile native code or call the derivation API. Its output
+adds derivedCapabilityStatus, derivedCapabilityNames and catalogLiteralMatch,
+plus the fixed catalog count/fingerprint. Only names in the frozen catalog can
+appear. No match, multiple matches and an excessive match count remain distinct;
+there is no fallback to an account lookup, broader discovery or policy acceptance.
+
+Twelve temporary tests pass without skips. They re-derive the complete reference,
+check all named/literal comparisons, foreign-SID refusal, ambiguity and match
+limits, invalid/duplicate/SID/class-label name input, capture limits/failures and
+sanitized projection. The actual PowerShell AST remains read-only. A synthetic
+vmWorkerProcess grant with the observed mask exercises the complete production
+guard and public projection; it remains blocked with no mutation. This is test
+evidence, not attribution of the real grant. The finite-catalog administrator
+capture is pending. No tracked runtime code or permission policy changed, so the
+earlier exact-source no-cache image qualification is not relabeled as a build
+of these later documentation updates.
 
 ## Recommendation and next step
 
