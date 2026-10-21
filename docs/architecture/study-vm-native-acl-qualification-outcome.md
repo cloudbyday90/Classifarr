@@ -281,6 +281,11 @@ policy unchanged. Preparing or inspecting such a recovery is not approval to
 execute deletion. No recovery implementation or write is authorized by the
 completed read-only capture alone.
 
+The user subsequently approved that preparation/testing scope, not deletion.
+See the separate [recovery design](study-vm-fixture-recovery-design.md) and
+[preparation outcome](study-vm-fixture-recovery-outcome.md) for the tested,
+disabled-by-default tool and the pending fresh administrator inspection.
+
 Review both the explicit capability rule and inherited FullControl surface
 before proposing any narrowly scoped permission exception. Reproduction alone
 does not prove effective cross-VM isolation. The production guard remains strict;

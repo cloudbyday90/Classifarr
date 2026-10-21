@@ -9,6 +9,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Prepare guarded, one-target study-fixture recovery with fresh identity review,
+  protected step receipts and disabled cleanup execution pending separate approval.
+
 - Record native study-VM permission observations and uncertain fixture cleanup;
   verify retained fixture state with bounded read-only attribution, without
   retries or permission-policy changes.
