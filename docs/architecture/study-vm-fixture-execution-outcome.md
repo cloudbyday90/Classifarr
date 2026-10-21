@@ -1,13 +1,15 @@
-# One-target study-fixture execution preparation outcome
+# One-target study-fixture execution outcome
 
 ## Result and authority
 
 Prepared on 21 October 2026 under the approved
 [execution-wrapper design](study-vm-fixture-execution-design.md). A separate
 private local entry point is execution-capable for the single reviewed current
-fixture. Preparation approval does not authorize running it. No live apply,
-elevation, VM/VHD/provider operation or protected fixture write was performed.
-The existing inspector still refuses apply before launching PowerShell.
+fixture. Preparation approval did not authorize running it. During preparation,
+the agent performed no live apply, elevation, VM/VHD/provider operation or
+protected fixture write. The user subsequently gave separate approval for one
+administrator execution and supplied its review-required result below. The
+existing inspector still refuses apply before launching PowerShell.
 
 The accepted binding is the current-target fingerprint from the successful
 [administrator inspection](study-vm-fixture-recovery-outcome.md#limitations-and-handoff),
@@ -109,19 +111,81 @@ VMs off and prohibit concurrent VM administration during eventual execution.
 
 The five-minute capture timeout attempts abrupt child termination; it does not
 guarantee Hyper-V service cancellation, descendant termination, rollback or
-physical power-loss durability. Native removal, privileged receipt creation on
-this protected fixture and its actual post-removal ACL/tree behavior remain
-unqualified. Unexpected changes may stop recovery after VM removal, leaving
-payload that requires a separate review. Do not delete/replace the receipt or
+physical power-loss durability. Successful native removal and actual post-removal
+ACL/tree behavior remain unqualified. Privileged receipt admission and three
+flushes were reported by the first native attempt, but its current bytes and
+metadata have not been independently reviewed. Unexpected changes may stop
+recovery after VM removal, leaving payload that requires a separate review.
+Do not delete/replace the receipt or
 root, rerun the original fixture, retry apply, or adopt new identities to bypass
 a refusal.
 
-Next: obtain separate agreement for one administrator execution of this exact
-prepared command, then review its sanitized result before further action. The
-non-destructive alternative remains retaining the powered-off fixture. No
-execution command was invoked or handed off as authorized by preparation alone.
+The first separately approved execution has now occurred. No further attempt is
+approved. Preserve all remaining resources and the receipt; do not reset the
+claim, refresh the target fingerprint or retry the original or prepared runner.
 
 No application/image source changed, so application suites and Docker no-cache
 build/replacement were not repeated for this ignored Windows-only preparation
 and Markdown update. Prior runtime image evidence remains separate. No branch,
 merge, release, production change, Unraid or shared Ollama operation occurred.
+
+## First administrator execution
+
+The user ran the handed-off absolute-path command once and supplied a screenshot
+on 21 October 2026. It reports review_required at remove_vm, query_failed,
+category 7, HRESULT -2146233088, errorKind other, queryLine 364 and no captured
+native error code/condition. Capture validation and targetMatchesApproved are
+true. The five-directory/four-file summary is the admitted baseline, not a
+fresh observation of what remains after the attempted removal.
+
+The exact bound apply query still matches its frozen hash. Line 364 is
+Remove-VM with the freshly validated VM object, confirmation disabled and
+terminating errors enabled. The preceding line sets the attempt flag, increments
+resourceActions and invalidates absence/remaining observations. Therefore this
+result attributes failure to that cmdlet call, unlike the older undifferentiated
+qualification cleanup error. It does not prove whether Hyper-V performed part
+or all of the removal before reporting failure.
+
+Both receiptWriteAttempted and payloadMutationAttempted are true. Receipt state
+is claimed with three records and one resource action; vmAbsent and remaining
+are null, cleanupComplete false, retryAllowed false. In the frozen control flow,
+the reported successful flushes correspond to claim, remove_vm intent and stopped
+failure. No removal confirmation or later scripted file/directory removal was
+reached. These are source-correlated reports, not an independent readback of the
+protected receipt. Native configuration-file effects remain possible.
+
+Category 7 is PowerShell InvalidOperation, while the signed HRESULT is
+0x80131500, the generic COR_E_EXCEPTION rather than the separate invalid-operation
+exception constant. Neither establishes an ACL or sharing cause.
+The [category definitions](https://learn.microsoft.com/en-us/dotnet/api/system.management.automation.errorcategory?view=powershellsdk-7.4.0)
+and [Framework constants](https://raw.githubusercontent.com/microsoft/referencesource/main/mscorlib/system/__hresults.cs)
+were opened through search MCP on 21 October 2026. Root pinning and receipt
+handles can constrain operations on those particular objects under the
+[Windows sharing rules](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew), but
+that does not establish interference with descendant configuration removal.
+No close failure was reported; disposal does not imply rollback. Do not release
+protections, accept a capability exception, change deletion flags or rerun as a
+diagnostic experiment.
+The capture preserves an outer HRESULT and selected native codes, not the full
+provider error or extended payload. A stopped-record read cannot recover details
+that were never serialized; state observation alone also cannot establish cause.
+
+Next: one fresh capture using the unchanged metadata-only cleanup review, tested
+with the additional receipt and with VM present/absent. It reports current state
+without opening receipt contents or modifying resources. It does not validate
+saved GUID equality, receipt integrity or foreign references, identify the root
+cause, or grant further cleanup authority. The earlier pre-write inspection is
+not current post-attempt evidence.
+
+Focused post-attempt verification passed eighteen tests without failures/skips:
+eight read-only review tests and ten wrapper tests. The new mocked receipt cases
+cover five payload-plus-receipt files with the VM present and a possible missing
+configuration file with the VM absent. The screenshot-shaped projection preserves
+three records, one attempt and unknown current absence instead of completion.
+No native operation source or permission policy was changed; all actual fixture
+observations still require the administrator capture.
+The full four-suite regression run subsequently passed 39 Windows tests without
+failures/skips. Mocked failures both before and after the native removal effect
+preserve the same three-record claim/intent/stopped pattern and unknown public
+absence; only the mock's private state distinguishes whether its VM remained.
+Both operation and read-only query hashes still match their frozen bindings.

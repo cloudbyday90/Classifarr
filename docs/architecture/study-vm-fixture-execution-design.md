@@ -98,6 +98,27 @@ Document exact results and limits separately in an outcome. Windows-only ignored
 preparation and documentation do not change application/image source; do not
 replace containers or claim a new Docker build. No Unraid/shared Ollama access.
 
+## Read-only review after the first native attempt
+
+After separately approving one execution, the user supplied a removal-stage
+failure. That consumes the agreed attempt; it does not authorize replay or a
+changed removal method. Preserve the private receipt/root and frozen operation
+sources. Do not infer current VM absence or file inventory from pre-write counts.
+
+Reuse the existing source-pinned metadata-only state review. Its bounded tree
+accepts the additional protected regular receipt as an extra file, but does not
+read its contents, open a writer or pin the root. Verify compatibility in mocked
+VM-present and VM-absent cases before requesting one fresh administrator capture.
+This is a new post-mutation observation, not a repetition of old evidence to
+explain the original failure.
+
+The review can distinguish present/absent VM and disk observations and bounded
+metadata failures. It cannot bind a returned VM to the receipt's saved GUID,
+validate receipt records, establish foreign-disk references, prove native failure
+cause or authorize further cleanup. Any later receipt/event/provider diagnosis
+must remain separately scoped and sanitized. Do not weaken root/receipt sharing
+protections, repair ACLs or try another Remove-VM call based on a hypothesis.
+
 ## Official sources
 
 Discovered and opened through search MCP on 21 October 2026:

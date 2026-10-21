@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Record the first guarded fixture-removal failure with preserved receipt and
+  unknown post-attempt state; qualify the read-only review for retained receipts
+  without retries or changes to deletion safeguards.
+
 - Prepare a separately reviewed, source-pinned one-shot study-fixture cleanup
   command with truthful uncertain-effect reporting. Preserve the original
   read-only inspector and require separate explicit administrator execution.
