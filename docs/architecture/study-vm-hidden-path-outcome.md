@@ -46,8 +46,10 @@ results are recorded in the identity outcome; do not substitute the earlier run
 for that changed source.
 
 The earlier no-cache image evaluates commit `fc47cbbaa76a93135580e84512bd4c236d9ec9c9`,
-not this metadata follow-up. Further quality/image results belong to the exact
-new source once recorded. No successful VM creation, native production-owner
+not this metadata follow-up. The combined correction was subsequently rebuilt
+without cache from `55d5ebaf44f21a80796d124852b61854bf77e75d`; its exact image,
+204/211 Linux test passes and seven Windows-only skips are recorded in the
+[local-identity outcome](study-vm-local-identity-outcome.md). No successful VM creation, native production-owner
 qualification, study readiness, release or normal-container replacement is claimed.
 
 ## Next step
