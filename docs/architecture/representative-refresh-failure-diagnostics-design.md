@@ -102,3 +102,9 @@ exclusion and testing logging failures. The
 describes timeout signals and composition retaining the originating abort reason.
 Both URLs were discovered and opened through MCP on 22 October 2026. The latter
 currently documents 24.22.1; no toolchain update is included (tests use 24.21.0).
+
+The [implementation outcome](representative-refresh-diagnostics-implementation-outcome.md)
+records passed isolated attribution tests and the frozen no-cache image matrix.
+Further research confirmed Node 24.22.1 is a security release, making a separate
+bounded toolchain/security review the next priority before deployment. This does
+not change the frozen diagnostic candidate or establish the old incident's cause.

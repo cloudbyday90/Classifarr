@@ -50,3 +50,8 @@ before changing retries, validation, memory or provider settings. Preserving
 finite stage/category evidence is the next recommended platform item; it cannot
 retroactively reconstruct the discarded error. Further live log/database scope
 or recovery actions are not implied by this investigation.
+
+The subsequently approved
+[implementation outcome](representative-refresh-diagnostics-implementation-outcome.md)
+records bounded diagnostic propagation, isolated tests and image qualification.
+It does not retrospectively identify this incident's discarded cause.

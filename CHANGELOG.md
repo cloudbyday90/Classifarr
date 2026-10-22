@@ -13,6 +13,9 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   and incident references through scheduler logs without retaining raw errors or
   provider data. Keep retry, admission and publication safeguards unchanged;
   verify attribution with isolated PostgreSQL and HTTP regressions.
+  Qualify the committed source with a passed no-cache image/soak and three-profile
+  installation recovery matrix; record a separate Node security-update review as
+  the next priority without changing the tested toolchain or releasing anything.
 
 - Add modular file-only creation-journal qualification with protected exclusive
   Windows file creation, bounded framing/acknowledgements and guarded fixture
