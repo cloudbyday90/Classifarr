@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add a disabled, mock-only ESM fixture runner with separate phases, bounded
+  identity/journal contracts and preserved primary/secondary failure evidence.
+  Test uncertain creation, replay refusal and cleanup boundaries in CI without
+  adding native VM operations or treating simulation as durable evidence.
+
 - Add pure ESM removal-error projection with private-safe bounded exception
   graphs, primary/secondary failure preservation and synthetic PowerShell tests;
   wire portable checks into CI without adding VM operations or a native runner.

@@ -196,14 +196,14 @@ documentation-only change; no new runtime qualification is claimed.
 
 ## Next recommendation
 
-Confirm the proposed disabled ESM runner preparation in the design: separate
-creation/admission/removal phases, durable returned-identity and bounded journal
-contracts, primary/secondary error capture and synthetic failure tests. No live
-CLI/transport, real target binding or administrator handoff is included. The
-repository's grill-me workflow requires shared implementation-scope confirmation
-before code changes; this host/retention answer does not substitute for it.
+The user subsequently confirmed the disabled preparation scope. Its separate
+[design](study-vm-removal-simulation-design.md) and
+[outcome](study-vm-removal-simulation-outcome.md) record the implemented data-only
+ESM runner, memory journal and failure tests. This qualifies modeled ordering,
+not actual durable identity, filesystem exclusivity or native provider behavior.
 
-Then qualify that preparation before reviewing exact future native paths,
-reference coverage, early-failure retention, source/identity bindings and separate
-execution authority. No administrator command needs to be run for this handoff;
+Next agree a source-only native-integration design covering actual creation-
+identity persistence, reference coverage, early-failure retention, exact future
+paths and protected journal/source bindings. Implementation and administrator
+execution remain separate agreements. No command needs to be run for this handoff;
 original cause remains unresolved and the consumed cleanup must not be replayed.

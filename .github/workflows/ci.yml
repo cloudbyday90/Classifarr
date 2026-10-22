@@ -67,6 +67,9 @@ jobs:
       - name: Test pure VM removal error contracts
         run: npm run test:tooling:vm-errors
 
+      - name: Test disabled VM removal simulation
+        run: npm run test:tooling:vm-simulation
+
       - name: Check release provenance workflow contract
         run: |
           cd server

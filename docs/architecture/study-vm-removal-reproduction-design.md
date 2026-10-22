@@ -12,6 +12,10 @@ read-only inventory/configured-drive checks, including the retained VMs, for a
 future separately approved run. It accepts retention of at most one new fixture
 and its private evidence if cleanup is uncertain. This settles planning choices,
 not implementation or execution authority; no inventory check is authorized now.
+The user subsequently approved and received the separate
+[mock-only runner preparation](study-vm-removal-simulation-design.md). That
+implementation models ordering and failure evidence in memory; it adds no native
+runner, persisted receipt, provider query or execution authority.
 The existing removal attempt stays consumed and its sources/bindings stay frozen.
 No permission exception, service/logging change, network/power operation,
 Unraid/shared Ollama access, application change or release is included.
@@ -207,25 +211,27 @@ Start-VM command. Preserve uncertainty and stop without another creation or
 cleanup attempt. This early-failure case needs explicit review before any live
 creation agreement. No script can guarantee successful removal or safe cleanup.
 
-### Proposed next preparation slice
+### Approved disabled preparation slice
 
-Pending confirmation of shared implementation scope, prepare a separate disabled
-ESM runner in small modules, with synthetic plans and mocked operation adapters.
+After confirmation of shared implementation scope, implemented a separate
+disabled ESM runner in small modules, with synthetic plans and data-only mock
+adapters. See its separate [design](study-vm-removal-simulation-design.md) and
+[outcome](study-vm-removal-simulation-outcome.md) for exact evidence and limits.
 There is no live CLI, environment-variable enablement, administrator command or
 native transport connection in this slice. Importing it or running its tests
 must not import providers, query inventory or access existing targets/receipts.
 Do not generate a real target binding or change the frozen old modules.
 
 Keep creation, read-only admission and later one-shot removal as distinct phases.
-Qualify the creation intent, returned GUID/disk identity persistence and bounded
-journal transitions before permitting any later mocked operation. Creation,
+Model creation intent, returned synthetic identity recording and bounded
+journal transitions before permitting later mocked resource effects. Creation,
 short-write/flush, settings or capture uncertainty stops the sequence; no adoption
 by name, replay, automatic cleanup or replacement fixture follows. Preserve
 primary/secondary errors using the implemented projector. Exact future native
 paths, supported reference checks, phase budgets and execution bindings still
 need review; mock success cannot satisfy a native admission predicate.
 
-Tests should cover collisions, malformed/duplicate identities, inventory limits,
+Tests cover collisions, malformed/duplicate identities, inventory limits,
 foreign configured paths and failed observations, partial creation/settings,
 identity-write failure, prior/partial journal records, concurrent claims, source
 drift, cancellation/timeout, simultaneous primary/secondary failures and retained
@@ -275,9 +281,11 @@ also wired into local preflight and the actual CI workflow. Portable contracts
 run everywhere; installed PowerShell 5.1 synthetic/AST cases run only on Windows
 and are explicitly skipped elsewhere. These do not qualify native Hyper-V.
 
-Host/inventory scope and the intended retention policy are settled for planning.
-The next gate is confirmation of the disabled preparation scope above, following
-the repository's grill-me workflow. No native runner has been implemented and
+Host/inventory scope and the intended retention policy are settled for planning,
+and the separately approved mock-only preparation is implemented. Its in-memory
+acknowledgements do not qualify native identity persistence or journal durability.
+The next gate is a separately scoped native-integration design, following the
+repository's grill-me workflow. No native runner has been implemented and
 there is no apply command to hand off. Exact new paths, created-identity
 durability, reference-check coverage, native guard/receipt bounds, early-failure
 retention and execution authority remain later review gates. No host/VM readiness,
