@@ -32,3 +32,15 @@ Full application tests were not rerun for this lint-only update. Native gateway
 and archive image regressions are tracked in the separate quiet-window outcome;
 they are not a replacement for new application integration coverage. Other
 outdated packages reported by npm remain outside this bounded batch.
+
+## Open-PR recheck on 2026-10-21
+
+GitHub MCP again returned only open/unmerged PR #568, with the same reviewed head.
+Random selection from that singleton did not identify a new missing update.
+Manifest, lock root, locked package and installed ESLint remain 10.13.0, with the
+same registry URL/integrity. A fresh scoped npm outdated check returned an empty
+object; server test/security lint passed using pinned Node 24.21.0/npm 12.2.0.
+No install, dependency/policy change, PR mutation or merge was necessary.
+The separate [creation-journal research outcome](study-vm-creation-journal-outcome.md)
+records this selection and its limits. The earlier audit result is historical,
+not a fresh vulnerability assessment on this date.

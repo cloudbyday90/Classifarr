@@ -91,3 +91,8 @@ integration design for real creation-identity persistence, protected journal and
 early-failure handling; resolve reference coverage and exact binding review;
 only then consider a separately approved native implementation and execution.
 No administrator command or existing cleanup retry is needed for this handoff.
+
+Subsequent source-only [creation-journal research](study-vm-creation-journal-design.md)
+develops that next recommendation. Its separate outcome records official sources,
+open-PR requalification and the pending file-only/Docker scope choices; it does
+not add a native implementation or execution authority.

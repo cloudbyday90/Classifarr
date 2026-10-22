@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Plan native study-fixture creation-identity journaling and partial-creation
+  safeguards, with proposed file-only qualification and isolated image evaluation.
+  Recheck the selected open tooling PR already present locally; no VM execution,
+  duplicate dependency update or cleanup retry is introduced.
+
 - Add a disabled, mock-only ESM fixture runner with separate phases, bounded
   identity/journal contracts and preserved primary/secondary failure evidence.
   Test uncertain creation, replay refusal and cleanup boundaries in CI without
