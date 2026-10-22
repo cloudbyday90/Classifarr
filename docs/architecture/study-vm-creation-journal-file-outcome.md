@@ -46,6 +46,13 @@ static-import policy, Markdown (2,349 files at that check) and diff whitespace
 checks passed. Final image evaluation and any later documentation checks are
 recorded separately against their actual source revision.
 
+Final new-suite rerun: 12/12 passed after the additional malformed-UTF8/JSON and
+duplicate-key checks. Final Markdown at implementation commit: 2,351 files,
+zero errors. Staged gitleaks and whitespace checks passed. The
+[no-cache rehearsal attempt](creation-journal-image-rehearsal-outcome.md) stopped
+at required baseline authentication before any image build; runtime evaluation
+is explicitly not verified.
+
 ## Limits and next recommendation
 
 No live integration, real creation identity schema, administrator envelope
