@@ -48,10 +48,12 @@ recorded separately against their actual source revision.
 
 Final new-suite rerun: 12/12 passed after the additional malformed-UTF8/JSON and
 duplicate-key checks. Final Markdown at implementation commit: 2,351 files,
-zero errors. Staged gitleaks and whitespace checks passed. The
-[no-cache rehearsal attempt](creation-journal-image-rehearsal-outcome.md) stopped
-at required baseline authentication before any image build; runtime evaluation
-is explicitly not verified.
+zero errors. Staged gitleaks and whitespace checks passed. The initial no-cache
+attempt stopped at baseline authentication before any image build. After the
+user approved process-local token omission with the existing CLI login, the
+[complete image rehearsal](creation-journal-image-rehearsal-outcome.md) passed:
+one no-cache Linux/AMD64 candidate, the sustained soak, all three saved-template
+profiles and verified owned cleanup. This does not add Windows/native VM proof.
 
 ## Limits and next recommendation
 

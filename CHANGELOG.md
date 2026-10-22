@@ -13,6 +13,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
   Windows file creation, bounded framing/acknowledgements and guarded fixture
   cleanup. Add portable CI contracts and real Windows tests without integrating
   VM/provider operations or enabling old cleanup attempts.
+  Record a passed isolated no-cache image, sustained soak and three-profile
+  installation/upgrade recovery rehearsal without replacing the live service.
 
 - Plan native study-fixture creation-identity journaling and partial-creation
   safeguards, with proposed file-only qualification and isolated image evaluation.

@@ -142,7 +142,7 @@ Configured-path comparisons are not exhaustive snapshot, differencing-parent or
 alias-reference proof. That coverage and any broader reads need separate review;
 file-only tests cannot satisfy them or establish study readiness.
 
-## Proposed Docker evaluation boundary
+## Approved Docker evaluation boundary
 
 The default installation Compose file mounts ./data and writable media. Do not
 recreate that service or use those mounts for qualification. Recommend the
@@ -193,3 +193,10 @@ Additional Microsoft sources discovered/opened through MCP on 22 October:
   restricts support to fixed NTFS rather than asserting universal identity.
 - [Final path by handle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew)
   documents normalized handle paths and bounded-buffer return behavior.
+
+GitHub CLI reference discovered through MCP on 22 October:
+
+- [Attestation verification](https://cli.github.com/manual/gh_attestation_verify)
+  distinguishes credential access from cryptographic provenance and signer/source
+  policy enforcement. Keep those checks independent; a working login alone is
+  not an accepted artifact, and a diagnostic pass is not a rehearsal receipt.
