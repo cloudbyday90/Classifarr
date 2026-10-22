@@ -1,4 +1,4 @@
-# Representative refresh failure diagnostics proposal
+# Representative refresh failure diagnostics design
 
 ## Problem and scope
 
@@ -48,12 +48,57 @@ needed to qualify this observability change.
 | Increase deadlines or loosen validation now | Might hide a symptom | Unsupported by this incident; weakens safeguards without proving a cause |
 
 Recommend bounded diagnostics first, then use the next naturally occurring
-failure to select a targeted fix. Before implementation, confirm this separate
-runtime scope through the repository planning workflow. The existing file-only
-VM journal agreement does not authorize a scheduler behavior change.
+failure to select a targeted fix. The user confirmed this separate runtime scope
+on 22 October 2026 through the repository planning workflow. It does not authorize
+live replay, provider requests, VM recovery or a release.
+
+## Approved implementation contract
+
+Use separate observation and failure-projection modules. Weak metadata preserves
+the original thrown object for existing admission/cancellation handling; the
+innermost failed stage wins. The scheduler receives a new fixed-message error
+with only a privately branded, immutable projected envelope. It never receives
+the original cause. Each failed attempt gets a random incident reference; this
+is correlation metadata, not a stable incident deduplication key.
+
+Stages cover initial/final state reads, admission, provider creation, installed
+representation inspection/checkpoint, snapshot/warm preparation, fitting,
+consumer preparation, independent verification and publication checkpoint.
+Database observations wrap actual queries. Transaction acquisition/BEGIN/COMMIT
+are observed separately from an unfinished callback: warm preparation executes
+application callbacks inside the transaction, so wrapping the entire transaction
+as a database failure would be incorrect. Initial/final state reads bridge the
+description repository's already trusted database observation. Unknown admission
+failures remain unknown rather than guessing their origin from an error code.
+
+Keep the internal 120-second signal separately, distinguishing its expiry from
+explicit shutdown/external cancellation and the provider's 60-second timeout.
+This changes diagnostic evidence only: a task deadline remains failed/backed off,
+and typed resource deferrals and explicit cancellation retain existing outcomes.
+Failure categories use existing finite provider, representative validation and
+SQLSTATE vocabularies plus task_deadline and unknown. Durations are rounded and
+capped at one day; malformed clocks produce null. No arbitrary property spread,
+getter execution, nested cause or caller-supplied SQLSTATE crosses the envelope.
+
+No database migration or new work is introduced. Retry eligibility remains
+process-local (restart loses it), with at most one active refresh and the existing
+database-scoped discovery admission. This change neither persists cooldowns nor
+changes restart ownership, configuration fencing, resource limits or attempt
+counts. Completion means verified failure metadata reaches persisted scheduler
+logs, existing success/deferral/cancellation tests pass, isolated transport and
+SQLSTATE tests pass, and a fresh committed-source no-cache image rehearsal passes.
+The rehearsal uses synthetic disposable Compose projects, not live appdata.
 
 Official guidance discovered and opened through MCP on 22 October:
 [PostgreSQL error codes](https://www.postgresql.org/docs/current/errcodes-appendix.html)
 recommends structured SQLSTATE over parsing messages. Code 57014 denotes query
 cancellation, not proof by itself of a statement timeout. No SQLSTATE was
 retained in this reported incident; do not assign one retrospectively.
+
+[OWASP logging guidance](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+supports correlation identifiers, consistent bounded fields, sensitive-data
+exclusion and testing logging failures. The
+[Node 24 API documentation](https://nodejs.org/download/release/latest-v24.x/docs/api/globals.html)
+describes timeout signals and composition retaining the originating abort reason.
+Both URLs were discovered and opened through MCP on 22 October 2026. The latter
+currently documents 24.22.1; no toolchain update is included (tests use 24.21.0).

@@ -12,6 +12,7 @@ import { installRepresentativeShadow } from './inventoryRepresentativeShadowRunt
 import { createRepresentativeValidationDiagnostics } from './representativeValidationDiagnostics.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
+import { createRepresentativeRefreshTaskError } from './inventoryRepresentativeRefreshFailure.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
@@ -38,7 +39,7 @@ export function registerInventoryRepresentativeProfileSchedule(scheduler, {
   let lastReadiness = null;
   const run = async () => {
     const report = await worker.run();
-    if (report.status === 'failed') throw new Error('inventory_representative_refresh_unavailable');
+    if (report.status === 'failed') throw createRepresentativeRefreshTaskError(report);
     if (report.status === 'published') log.info('Library representative profiles refreshed automatically', report);
     if (['published', 'up_to_date'].includes(report.status) && report.observationReadiness) {
       const signature = JSON.stringify(report.observationReadiness);

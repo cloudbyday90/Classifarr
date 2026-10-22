@@ -7,6 +7,8 @@ import { createRepresentativeValidationDiagnostics, representativeValidationIssu
 import { prepareInventoryRepresentativeCandidate } from './inventoryRepresentativeCandidate.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 import { createRepresentativeRefreshRetry } from './representativeRefreshRetry.mjs';
+import { observeRepresentativeStage } from './inventoryRepresentativeRefreshObservation.mjs';
+import { createRepresentativeRefreshFailure, forgetRepresentativeRefreshFailure } from './inventoryRepresentativeRefreshFailure.mjs';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -34,31 +36,33 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   const current = (state, expected) => state?.busy === false && configKeyOf(state) === expected;
 
   async function refresh(state, signal, runRevision, expected, checkpoint) {
-    const embedder = createEmbedder(state);
-    const identity = await inspectDescriptionRepresentation(embedder, signal);
-    const candidate = await prepareInventoryRepresentativeCandidate({ repository, identity, expected, signal,
+    const embedder = await observeRepresentativeStage('provider_creation', () => createEmbedder(state));
+    const identity = await observeRepresentativeStage('representation_inspection', () => inspectDescriptionRepresentation(embedder, signal));
+    const candidate = await observeRepresentativeStage('candidate_preparation', () => prepareInventoryRepresentativeCandidate({ repository, identity, expected, signal,
       fit, observer, neighborhoodRecovery, hasCached: Boolean(key && cache.get(key)),
       isCurrent: state => current(state, expected) && getRevision() === runRevision,
-      selectCached: sourceKey => { if (key !== sourceKey) clear(); return cache.get(sourceKey); } });
+      selectCached: sourceKey => { if (key !== sourceKey) clear(); return cache.get(sourceKey); } }));
     if (candidate.status) { clear(); return report(candidate.status, candidate.summary); }
     const { sourceKey, model, summary, reused, batch, recoveryBatch } = candidate;
-    const fresh = await repository.readRepresentativeVerification(identity, { signal, configKey: expected });
+    const fresh = await observeRepresentativeStage('verification_read', () => repository.readRepresentativeVerification(identity, { signal, configKey: expected }));
     signal.throwIfAborted();
-    await verifyDescriptionRepresentation(embedder, identity, signal);
+    await observeRepresentativeStage('representation_checkpoint', () => verifyDescriptionRepresentation(embedder, identity, signal));
     if (!current(fresh.state, expected) ||
         fresh.key !== sourceKey ||
-        !current(await readState(), expected) || getRevision() !== runRevision) {
+        !current(await observeRepresentativeStage('final_state_read', readState), expected) || getRevision() !== runRevision) {
       clear(); return report('invalidated');
     }
-    signal.throwIfAborted();
-    checkpoint();
-    if (!cache.set(sourceKey, model, model.weight)) { clear(); return report('cache_budget_exceeded'); }
-    key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
-    diagnostics.profilesRecovered();
-    try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
-    try { recoveryBatch?.commit(fresh); } catch { /* Ordinary backfill remains available. */ }
-    const readiness = neighborhoodRecovery?.readReadiness?.();
-    return report(reused ? 'up_to_date' : 'published', { ...summary, ...(readiness ? { observationReadiness: readiness } : {}) });
+    return observeRepresentativeStage('publication', () => {
+      signal.throwIfAborted();
+      checkpoint();
+      if (!cache.set(sourceKey, model, model.weight)) { clear(); return report('cache_budget_exceeded'); }
+      key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
+      diagnostics.profilesRecovered();
+      try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
+      try { recoveryBatch?.commit(fresh); } catch { /* Ordinary backfill remains available. */ }
+      const readiness = neighborhoodRecovery?.readReadiness?.();
+      return report(reused ? 'up_to_date' : 'published', { ...summary, ...(readiness ? { observationReadiness: readiness } : {}) });
+    });
   }
 
   return {
@@ -74,11 +78,13 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
       if (stopped || signal?.aborted) return report('cancelled');
       if (active) return { ...lastReport, status: 'already_running' };
       const controller = new AbortController(); active = controller;
-      const runSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000), ...(signal ? [signal] : [])]);
+      const deadline = AbortSignal.timeout(120_000);
+      const runSignal = AbortSignal.any([controller.signal, deadline, ...(signal ? [signal] : [])]);
+      let admittedFailure = null;
       try {
         const pending = observer?.hasPending() === true;
         invalidateHint();
-        const state = await readState();
+        const state = await observeRepresentativeStage('state_read', readState);
         runSignal.throwIfAborted();
         const expected = configKeyOf(state);
         if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; retry.reset(); configKey = expected; }
@@ -87,17 +93,26 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         if (retry.isCoolingDown()) return report('cooldown');
         const runRevision = getRevision();
         if (!pending && now() < nextRunAt && revision === runRevision && available && key && cache.get(key)) return { ...lastReport, status: 'not_due' };
-        const result = await withAdmission((admittedSignal, checkpoint) =>
-          refresh(state, admittedSignal, runRevision, expected, checkpoint), { signal: runSignal });
+        const result = await observeRepresentativeStage('admission', () => withAdmission(async (admittedSignal, checkpoint) => {
+          try { return await refresh(state, admittedSignal, runRevision, expected, checkpoint); }
+          catch (error) { admittedFailure = error; throw error; }
+        }, { signal: runSignal }));
         retry.reset();
         return result;
       } catch (error) {
+        if (controller.signal.aborted || signal?.aborted || error instanceof DiscoveryDeferredError) {
+          forgetRepresentativeRefreshFailure(error);
+          forgetRepresentativeRefreshFailure(admittedFailure);
+        }
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
         if (controller.signal.aborted || signal?.aborted) { clear(); return report('cancelled'); }
         if (representativeValidationIssue(error) !== 'unknown_check') diagnostics.report(representativeValidationIssue(error));
         if (error instanceof DiscoveryDeferredError) retry.defer();
         else retry.fail();
-        return error instanceof DiscoveryDeferredError ? report('deferred', { reason: error.reason }) : report('failed');
+        return error instanceof DiscoveryDeferredError ? report('deferred', { reason: error.reason }) : report('failed', {
+          failure: createRepresentativeRefreshFailure(error, { origin: admittedFailure ?? error,
+            deadlineExpired: deadline.aborted && runSignal.reason === deadline.reason }),
+        });
       } finally { active = null; }
     },
   };

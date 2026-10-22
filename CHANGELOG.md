@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Preserve bounded representative-refresh failure stages, fixed cause categories
+  and incident references through scheduler logs without retaining raw errors or
+  provider data. Keep retry, admission and publication safeguards unchanged;
+  verify attribution with isolated PostgreSQL and HTTP regressions.
+
 - Add modular file-only creation-journal qualification with protected exclusive
   Windows file creation, bounded framing/acknowledgements and guarded fixture
   cleanup. Add portable CI contracts and real Windows tests without integrating

@@ -5,12 +5,13 @@ import { assertRepresentativeSnapshotBudget, assertRepresentativePresenceBudget,
 import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
 import { representativeValidationError } from './representativeValidation.mjs';
 import { representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
+import { observeRepresentativeStage } from './inventoryRepresentativeRefreshObservation.mjs';
 
 /** End the fitting snapshot's scope before the caller's independent verification read. */
 export async function prepareInventoryRepresentativeCandidate({ repository, identity, expected, signal,
   isCurrent, selectCached, fit, observer, neighborhoodRecovery, hasCached = false }) {
   if (hasCached && repository.prepareRepresentative) {
-    const warm = await repository.prepareRepresentative(identity, { signal, configKey: expected }, async (snapshot, readVectors) => {
+    const warm = await observeRepresentativeStage('warm_preparation', () => repository.prepareRepresentative(identity, { signal, configKey: expected }, async (snapshot, readVectors) => {
       signal.throwIfAborted();
       if (!isCurrent(snapshot.state)) return { status: 'invalidated' };
       assertRepresentativePresenceBudget(snapshot, identity.dimensions);
@@ -18,10 +19,10 @@ export async function prepareInventoryRepresentativeCandidate({ repository, iden
       if (!model) return null; // Close this probe before a cold fitting read.
       return prepareConsumers({ model, snapshot, identity, expected, signal, observer, neighborhoodRecovery,
         sourceKey: snapshot.key, reused: true, readVectors });
-    });
+    }));
     if (warm) return warm;
   }
-  const snapshot = await repository.read(identity, { signal });
+  const snapshot = await observeRepresentativeStage('snapshot_read', () => repository.read(identity, { signal }));
   signal.throwIfAborted();
   if (!isCurrent(snapshot.state)) return { status: 'invalidated' };
   if (!snapshot.corpus.texts.size) return { status: 'empty_corpus' };
@@ -30,12 +31,16 @@ export async function prepareInventoryRepresentativeCandidate({ repository, iden
   if (!coverage.summary.readyLibraries) return { status: 'waiting_for_vectors', summary: coverage.summary };
   const sourceKey = inventoryRepresentativeSourceKey(snapshot, identity, expected);
   const cached = selectCached(sourceKey);
-  const model = cached ?? await fit(snapshot, identity.dimensions, { signal });
+  const model = cached ?? await observeRepresentativeStage('fit', () => fit(snapshot, identity.dimensions, { signal }));
   return prepareConsumers({ model, snapshot, identity, expected, signal, observer, neighborhoodRecovery,
     sourceKey, reused: Boolean(cached) });
 }
 
-async function prepareConsumers({ model, snapshot, identity, expected, signal, observer, neighborhoodRecovery,
+function prepareConsumers(options) {
+  return observeRepresentativeStage('consumer_preparation', () => prepareConsumersUnobserved(options));
+}
+
+async function prepareConsumersUnobserved({ model, snapshot, identity, expected, signal, observer, neighborhoodRecovery,
   sourceKey, reused, readVectors = null }) {
   signal.throwIfAborted();
   if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow' ||

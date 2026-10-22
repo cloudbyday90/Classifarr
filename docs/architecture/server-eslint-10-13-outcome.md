@@ -44,3 +44,19 @@ No install, dependency/policy change, PR mutation or merge was necessary.
 The separate [creation-journal research outcome](study-vm-creation-journal-outcome.md)
 records this selection and its limits. The earlier audit result is historical,
 not a fresh vulnerability assessment on this date.
+
+## Open-PR recheck on 2026-10-22
+
+GitHub MCP again enumerated one open/unmerged PR, #568. Cryptographic random
+selection from that singleton returned #568; its reviewed head remains
+adb08ff9c5ca94dd29d9b10c1ee72c983982a790. The two-file immutable diff proposes
+ESLint 10.13.0 with a caret range; manifest, lock root, locked package and installed
+package already use exact 10.13.0 with matching registry integrity. The official
+[ESLint releases](https://github.com/eslint/eslint/releases), discovered and opened
+through MCP on this date, still identifies 10.13.0 as latest. A fresh scoped
+`npm outdated eslint --json` returned an empty object (exit 0).
+
+No duplicate dependency edit, install, PR mutation or merge was needed. The
+representative-refresh change reruns server lint/typecheck/dependency-usage checks;
+its separate outcome records current results. The earlier audit remains
+historical, not a newly performed vulnerability assessment.

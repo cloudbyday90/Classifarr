@@ -9,6 +9,7 @@ import { fingerprintRepresentativeVerification } from './inventoryRepresentative
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
 import { withRepresentativePreparationReader } from './inventoryRepresentativePreparationReader.mjs';
+import { observeRepresentativeDatabaseOperation, observeRepresentativeTransaction } from './inventoryRepresentativeRefreshObservation.mjs';
 
 export const REPRESENTATIVE_PROFILE_LIBRARIES_SQL = `SELECT id, media_type FROM libraries
   WHERE is_active=true AND media_type IN ('movie','tv') ORDER BY id LIMIT 65`;
@@ -27,10 +28,10 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
       throw new Error('inventory_representative_config_required');
     }
     signal?.throwIfAborted();
-    const source = await withTransaction(async client => {
+    const source = await observeRepresentativeTransaction(withTransaction, async client => {
       const query = async (...args) => {
         signal?.throwIfAborted();
-        const result = await client.query(...args);
+        const result = await observeRepresentativeDatabaseOperation(() => client.query(...args));
         signal?.throwIfAborted();
         return result;
       };

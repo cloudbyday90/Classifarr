@@ -8,6 +8,7 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceC
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
 import { inspectUnseenMultiScaleSource } from '../../services/inventoryMultiScaleSource.mjs';
 import { inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
+import { createRepresentativeRefreshFailure } from '../../services/inventoryRepresentativeRefreshFailure.mjs';
 
 test.each(['complete', 'partial', 'missing'])('representative verification preserves %s coverage without materializing a vector map', async mode => {
   const v = setup(), configKey = 'fixture-config';
@@ -61,6 +62,28 @@ function setup() {
   const withTransaction = jest.fn(callback => callback(client));
   return { ...fixture, client, withTransaction, repository: createInventoryRepresentativeProfileRepository({ withTransaction }) };
 }
+
+test('warm consumer callback SQLSTATE lookalike is not a database failure', async () => {
+  const v = setup(), original = Object.assign(new Error('PRIVATE'), { code: '57014' });
+  let caught;
+  try { await v.repository.prepareRepresentative(v.identity, { configKey: 'fixture-config' }, () => { throw original; }); }
+  catch (error) { caught = error; }
+  expect(caught).toBe(original);
+  expect(createRepresentativeRefreshFailure(caught)).toMatchObject({ category: 'unknown' });
+});
+
+test('query failure inside warm preparation is correctly attributed to the database', async () => {
+  const v = setup(), original = Object.assign(new Error('PRIVATE SQL'), { code: '55P03' });
+  let caught;
+  try {
+    await v.repository.prepareRepresentative(v.identity, { configKey: 'fixture-config' }, async (snapshot, readVectors) => {
+      v.client.query.mockRejectedValueOnce(original);
+      return readVectors([...snapshot.presentHashes]);
+    });
+  } catch (error) { caught = error; }
+  expect(caught).toBe(original);
+  expect(createRepresentativeRefreshFailure(caught)).toMatchObject({ category: 'database_lock_unavailable', sqlState: '55P03' });
+});
 
 test('warm preparation gets explicit presence and an expiring bounded reader in the same transaction', async () => {
   const v = setup(); let expired;
