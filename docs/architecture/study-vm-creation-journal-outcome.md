@@ -1,5 +1,9 @@
 # Study-fixture creation journal research outcome
 
+Historical 21 October research record. The approved 22 October implementation
+and its verification are in the separate
+[file qualification outcome](study-vm-creation-journal-file-outcome.md).
+
 ## Completed work
 
 On 21 October 2026, investigated the next item after the disabled runner and

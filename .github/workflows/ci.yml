@@ -70,6 +70,9 @@ jobs:
       - name: Test disabled VM removal simulation
         run: npm run test:tooling:vm-simulation
 
+      - name: Test file-only creation journal contracts (native cases require Windows)
+        run: npm run test:tooling:creation-journal
+
       - name: Check release provenance workflow contract
         run: |
           cd server

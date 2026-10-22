@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Add modular file-only creation-journal qualification with protected exclusive
+  Windows file creation, bounded framing/acknowledgements and guarded fixture
+  cleanup. Add portable CI contracts and real Windows tests without integrating
+  VM/provider operations or enabling old cleanup attempts.
+
 - Plan native study-fixture creation-identity journaling and partial-creation
   safeguards, with proposed file-only qualification and isolated image evaluation.
   Recheck the selected open tooling PR already present locally; no VM execution,

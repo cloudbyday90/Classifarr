@@ -1,12 +1,13 @@
-# Study-fixture native creation journal proposal
+# Study-fixture native creation journal design
 
 ## Scope and status
 
 Prepared on 21 October 2026 for the next item after the completed
 [disabled simulation](study-vm-removal-simulation-outcome.md). This document is a
-source-only design, not an implemented journal or native execution agreement.
-The repository's grill-me workflow still requires confirmation of the proposed
-file-only implementation and isolated Docker evaluation boundaries below.
+source-only proposal. On 22 October the user confirmed both the file-only
+implementation and isolated no-cache Docker rehearsal boundaries below. This is
+not an agreement to integrate or execute a VM creator/remover. See the separate
+[file qualification outcome](study-vm-creation-journal-file-outcome.md).
 
 Reuse the settled local Hyper-V host, future bounded inventory/configured-drive
 scope and intended one-fixture retention policy. Do not repeat those decisions
@@ -46,7 +47,7 @@ small contract/source/qualification modules, not a large singleton or CommonJS
 wrapper. This is our architectural recommendation, not a Microsoft transaction
 guarantee.
 
-## Proposed file-only implementation boundary
+## Approved file-only implementation boundary
 
 Implement small ESM journal contracts and Windows PowerShell 5.1/.NET Framework
 file-writer function source, with a test-only bounded harness. Real file tests use
@@ -63,9 +64,9 @@ records, interrupted child output, competing creation and identity/source drift.
 Tests under the current user may qualify a protected test-owner descriptor only;
 they must not certify the future administrator-owned envelope or parent chain.
 
-Keep the proposed 64 KiB record/512 KiB total ceilings. Select and test a finite
-file-format record limit; derive the future creator's exact append/call budget
-from its operation list instead of copying the mock or old removal limit.
+Keep the 64 KiB record/512 KiB total ceilings and select 32 records for this
+file format. Derive the future creator's exact append/call budget from its
+operation list instead of copying this format, the mock or old removal limit.
 Validate exact owned scope, non-null protected DACL, handle/file identity and
 expected contents before accepting records. Reject links, path aliases, streams,
 devices and unsupported layouts rather than widening path/permission policy.
@@ -77,6 +78,46 @@ and primary/secondary error projections. Record attempted versus acknowledged
 writes honestly. A checksum detects corruption, not authorization or ownership.
 No raw errors, credentials, account/SID names, GUIDs or paths belong in public
 diagnostics. Preserve primary evidence if journaling, projection or close fails.
+
+### Concrete module contracts
+
+- `creationJournalFrames.mjs`: private, canonical qualification records with
+  version, consecutive sequence, source/plan hashes, finite kind and explicitly
+  fictional identity. Frames use LE32 payload length, SHA256 payload checksum,
+  UTF8 JSON and LF. Decode requires the expected binding and rejects any invalid
+  suffix instead of accepting a partial/truncated file as a whole journal.
+  A valid prefix still grants no completion or native authority.
+- `creationJournalIdentitySource.mjs`: inert fixed C# source for PS5.1 Add-Type;
+  local fixed NTFS paths only, canonical final handle path, no reparse ancestors,
+  reparse target or file hard links. Compare volume/file index on handles.
+  Pin the owned root without delete sharing during the test; check a non-null,
+  protected, single-current-user FullControl DACL and matching owner.
+- `creationJournalWriterSource.mjs`: inert PowerShell initializer containing
+  the fixed native declarations. CreateNew with creation-time FileSecurity,
+  write plus ReadPermissions (not data-read) access, FileShare.Read and
+  WriteThrough. On the fresh handle, validate frame/budgets/identity/DACL,
+  compare position/length after Write, then Flush(true) before acknowledging.
+  A failed append poisons the writer; close is attempted once. Bounded readback
+  after successful close independently checks identity, DACL, length and bytes.
+- Test-only qualification harness: fixed System32 PS5.1, no profile/shell,
+  filtered environment, 20-second/64-KiB output bounds; exclusive protected root
+  creation through the existing directory primitive. Only exact owned files
+  and an empty owned root are deleted, never recursively. Unexpected contents,
+  identity, ACL, capture or close uncertainty do not authorize cleanup/retry.
+
+Native framing treats payload bytes as opaque; ESM decoding provides the private
+record schema/binding check before accepting them. These are qualification
+records, not an agreed live VM journal schema. The current-user descriptor and
+NTFS file indices do not establish administrator trust, arbitrary filesystem or
+adversarial same-user parent-chain safety. Production envelope admission remains
+separate. No persistent settings/permissions are repaired to make a test pass.
+
+FileStream.Write returns void, not a successful-byte count. The native tests
+inject a deliberately shortened call separately from real Windows behavior.
+Flush acknowledgement, close and readback are separate evidence; none proves
+survival of hardware power loss. Output-loss qualification deliberately cuts
+the final envelope after normal fixture cleanup; a mid-write process/host crash
+and retained-artifact admission still require a separate fixture design.
 
 ## Future native integration requirements, not this slice
 
@@ -116,7 +157,8 @@ engine. It is image/runtime evidence on one local platform, not Windows journal
 qualification, isolation from physical host load or a new archiving timing study.
 Read all selected producers/validators before execution; preserve their gates.
 No global prune, unrelated container stop, image publication, release or merge.
-This target choice still needs confirmation; no Docker command ran for this plan.
+The user approved this target on 22 October. No Docker command ran during the
+21 October research; implementation evaluation is recorded separately.
 
 ## Official sources
 
@@ -139,3 +181,15 @@ Discovered and opened through MCP on 21 October 2026:
 - [Compose project selection](https://docs.docker.com/reference/cli/docker/compose/)
   documents explicit file/project selection; those flags alone do not make live
   bind mounts safe or substitute for the repository's owned-resource guards.
+
+Additional Microsoft sources discovered/opened through MCP on 22 October:
+
+- [FileStream.Write](https://learn.microsoft.com/en-us/dotnet/api/system.io.filestream.write?view=netframework-4.8)
+  defines the void byte-array write method; position/length checks are our
+  additional acknowledgement guard, not a native returned byte count.
+- [File information by handle](https://github.com/MicrosoftDocs/sdk-api/blob/docs/sdk-api-src/content/fileapi/nf-fileapi-getfileinformationbyhandle.md)
+  and [handle information fields](https://github.com/MicrosoftDocs/sdk-api/blob/docs/sdk-api-src/content/fileapi/ns-fileapi-by_handle_file_information.md)
+  describe volume/index comparison and link count. This slice deliberately
+  restricts support to fixed NTFS rather than asserting universal identity.
+- [Final path by handle](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew)
+  documents normalized handle paths and bounded-buffer return behavior.
