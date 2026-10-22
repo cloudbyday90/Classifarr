@@ -17,6 +17,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 - Plan a separate study-fixture removal reproduction with bounded sanitized
   primary-error evidence and explicit isolation/quarantine gates; no new VM,
   native runner or cleanup retry is implemented or executed.
+  Record the selected local host, future bounded inventory scope and one-fixture
+  retention policy, including unresolved partial-creation safeguards.
 
 - Prepare bounded, read-only study-fixture receipt and VMMS correlation with
   explicit UTC filtering, saved-identity checks and sanitized outcomes; preserve

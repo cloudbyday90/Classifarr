@@ -34,9 +34,9 @@ provider details must be visible as incomplete rather than a diagnosis.
 
 The existing tools hard-bind the old fixture, while their foreign-reference
 guards read other VMs. Neither reuse as a fresh-target runner nor a promise of
-no-existing-VM access is justified. A future host/read-scope agreement is required
-without dropping those safety checks. Potential retention of one new off fixture
-must also be agreed before any creation; cleanup cannot be guaranteed.
+no-existing-VM access is justified. At that stage host/read scope and potential
+retention of one new off fixture needed agreement without dropping those safety
+checks. The later planning choices are recorded below; cleanup is not guaranteed.
 
 ## Verification and non-actions
 
@@ -149,12 +149,61 @@ test slice. Existing containers, both VMs, their permissions and the protected
 receipt were not accessed or changed. No PR/dependency work, branch, merge,
 release, Unraid or shared Ollama operation occurred.
 
+## Subsequent host and retention planning agreement
+
+On 21 October 2026 the user answered yes to both proposed planning choices:
+
+- Use this existing local Hyper-V host, with bounded read-only VM inventory and
+  configured-drive checks including the two retained VMs in a future run.
+- Accept retaining at most one new off, disconnected disposable fixture and its
+  private evidence if cleanup fails or becomes uncertain, without automatic
+  retry, replacement fixture, permission repair or forced deletion.
+
+The question explicitly settled planning scope only. No native implementation,
+inventory query, target/receipt inspection, creation, deletion or power operation
+was approved by that answer or performed to record it. Both existing VMs and the
+consumed attempt remain untouched; their current state was not observed anew.
+
+Source-only follow-up found reusable identity, exclusive-directory, bounded
+capture and error-projection components, but no drop-in disabled reproduction
+runner. The tracked creator uses the full study profile; old private modules bind
+the old fixture and can proceed from creation into cleanup. Existing removal
+journaling begins after creation and cannot supply missing creator identity.
+
+The old recovery inventory accepts 128 VMs, 64 configured drives per other VM and
+1,024 drives combined per pass, using overflow sentinels and GUID validation.
+Its configured-path comparison is not an exhaustive snapshot/parent/alias
+reference check, and per-pass limits are not whole-phase limits. No broader
+existing-VM disk inspection was silently added to the agreed read scope.
+
+The most important remaining weak point is partial creation: ID/SID/ACL or
+capture failure can occur before startup/checkpoint settings and adapter checks.
+The code never intentionally boots the fixture, but that does not prove current
+off/disconnected/configured state. Retention must preserve unknown outcomes,
+not advertise guaranteed quarantine settings or authorize corrective operations.
+The design records this early-failure case for explicit review before live work.
+
+Refreshed official Get-VM, Get-VMHardDiskDrive and New-VM references by discovering
+and opening their URLs through search MCP on 21 October 2026. Those cmdlet
+contracts do not establish atomic ownership, crash-safe identity persistence or
+exhaustive reference detection. Installed provider behavior remains untested.
+
+Only the separate design/outcome documents and high-level Unreleased entry were
+updated for this agreement. Markdown validation checked 2,344 files with zero
+errors, and diff whitespace validation passed. No runtime test, provider child,
+Docker build/replacement, PR/dependency work or release was performed for this
+documentation-only change; no new runtime qualification is claimed.
+
 ## Next recommendation
 
-Review the qualified pure slice, then agree the future reproduction host/read
-scope and retention policy. Existing foreign-reference guards read other VMs;
-do not omit them to satisfy an unagreed no-access promise. A native reproduction
-runner remains unimplemented and requires separate scope, source/identity
-bindings, created-identity durability and execution agreement. No administrator
-command needs to be run for this implementation handoff; original cause remains
-unresolved and the consumed cleanup must not be replayed.
+Confirm the proposed disabled ESM runner preparation in the design: separate
+creation/admission/removal phases, durable returned-identity and bounded journal
+contracts, primary/secondary error capture and synthetic failure tests. No live
+CLI/transport, real target binding or administrator handoff is included. The
+repository's grill-me workflow requires shared implementation-scope confirmation
+before code changes; this host/retention answer does not substitute for it.
+
+Then qualify that preparation before reviewing exact future native paths,
+reference coverage, early-failure retention, source/identity bindings and separate
+execution authority. No administrator command needs to be run for this handoff;
+original cause remains unresolved and the consumed cleanup must not be replayed.

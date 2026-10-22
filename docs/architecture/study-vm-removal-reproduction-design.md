@@ -7,6 +7,11 @@ sanitized error capture, without creating resources, running a reproduction or
 accessing either existing VM or its receipt. That approval covered planning only.
 The user subsequently approved the pure projector/synthetic-test slice below,
 not a native runner, provisioning, target inspection or deletion.
+The later host/retention agreement selects this local Hyper-V host and bounded
+read-only inventory/configured-drive checks, including the retained VMs, for a
+future separately approved run. It accepts retention of at most one new fixture
+and its private evidence if cleanup is uncertain. This settles planning choices,
+not implementation or execution authority; no inventory check is authorized now.
 The existing removal attempt stays consumed and its sources/bindings stay frozen.
 No permission exception, service/logging change, network/power operation,
 Unraid/shared Ollama access, application change or release is included.
@@ -27,10 +32,10 @@ unknown; a future failure with similar numbers would not by itself prove it.
 | Separately approved fresh disposable reproduction | Can capture evidence at the actual future failure | New resources and destructive effects; may not reproduce and may leave an off fixture |
 | Replay retained cleanup or relax protections | No new fixture needed | Consumed authority and uncertain effects; rejected |
 
-Recommendation stack: preserve the existing evidence; implement only the pure
-capture contract and mocks after scope agreement; resolve the future host/read
-scope and quarantine policy; qualify a separate disabled runner; review exact
-bindings and obtain explicit execution agreement. No fresh install or normal
+Recommendation stack: preserve the existing evidence and qualified pure capture;
+record the selected host/read scope and retention policy; agree the next disabled
+preparation slice; qualify it without native execution; review exact bindings and
+obtain separate execution agreement. No fresh install or normal
 application operation schedules this work. There is no retry/backoff/cooldown
 queue: a consumed native attempt cannot be restarted or automatically replaced.
 
@@ -128,12 +133,28 @@ commands; no existing VM/receipt access is allowed as a test convenience.
 
 An isolated namespace is not an isolated Hyper-V engine. Existing foreign-disk
 guards enumerate bounded VM inventory and read other VMs' configured drives.
-Unchanged reuse on this host would therefore access the retained VMs, even when
-read-only. That is not covered by this plan's no-target-access scope. Before any
-native implementation/execution, separately agree either bounded read-only host
-inventory including those VMs, or a designated independent host with its own
-capacity/administrator review. Do not silently omit foreign-reference checks.
+On 21 October 2026 the user selected this existing local Windows Hyper-V host,
+including bounded read-only inventory and configured-drive checks of both
+retained VMs in a future run. Keep names, GUIDs and configured paths private;
+publish only bounded counts and finite outcomes. This is not permission to read
+their receipts, inspect their disk contents, change them, or run those checks now.
+Remote hosts, credentials and cluster discovery are outside this selection.
+
+Same-host preparation avoids designating another machine and retains comparable
+host conditions; its cost is shared provider state and limited isolation. An
+independent host remains an alternative requiring a new agreement, not a hidden
+fallback. Do not silently omit foreign-reference checks or skip inaccessible VMs.
 No separate host is designated or provisioned by this plan.
+
+Source review of the old recovery guards found 128 accepted VMs with a 129th
+sentinel, unique nonempty GUID checks, at most 64 configured drives per other VM
+with a 65th sentinel, and at most 1,024 drives combined per pass. These are
+existing source bounds, not newly executed observations or a whole-run budget.
+The path comparison is ordinal case-insensitive equality only. It does not prove
+absence of snapshot, differencing-parent or alias references. Future preparation
+must document this limitation, qualify finite pass/phase budgets and refuse
+unsupported cases rather than claim exhaustive physical-file non-use. Broader
+snapshot/other-disk inspection is not implicitly selected by this agreement.
 
 If a live experiment is later agreed, propose one new UUIDv7 fixture with a new
 private envelope, exact reviewed local paths and source/target bindings. Never
@@ -171,9 +192,46 @@ version/profile information; any future changed factor needs its own agreement.
 Before a live run, its separate design must qualify durable created identity,
 source bindings, current off/disconnected/checkpoint-free state, native file/disk
 identities, bounded tree, foreign references and collision/one-shot admission.
-The administrator must accept that one new off fixture and its evidence may
-remain quarantined on refusal or uncertain effects. No script can guarantee a
-successful Remove-VM or safe automatic cleanup afterward.
+The user accepted the policy of retaining at most one new off, disconnected
+fixture and its private evidence on refusal or uncertain cleanup, with no retry,
+replacement fixture, permission repair or forced deletion. This is not approval
+to create that fixture or to enforce quarantine through power operations.
+
+Quarantine is a stop-for-review policy, not proof that all desired settings were
+established. Both existing creation flows can fail after New-VM but before
+verifying identity/adapter state or disabling automatic startup/checkpoints;
+neither durably records the returned GUID at that boundary. A failed or ambiguous
+creation must report identity/configuration/state as unconfirmed where evidence
+is missing, never infer a fully configured off fixture from the absence of a
+Start-VM command. Preserve uncertainty and stop without another creation or
+cleanup attempt. This early-failure case needs explicit review before any live
+creation agreement. No script can guarantee successful removal or safe cleanup.
+
+### Proposed next preparation slice
+
+Pending confirmation of shared implementation scope, prepare a separate disabled
+ESM runner in small modules, with synthetic plans and mocked operation adapters.
+There is no live CLI, environment-variable enablement, administrator command or
+native transport connection in this slice. Importing it or running its tests
+must not import providers, query inventory or access existing targets/receipts.
+Do not generate a real target binding or change the frozen old modules.
+
+Keep creation, read-only admission and later one-shot removal as distinct phases.
+Qualify the creation intent, returned GUID/disk identity persistence and bounded
+journal transitions before permitting any later mocked operation. Creation,
+short-write/flush, settings or capture uncertainty stops the sequence; no adoption
+by name, replay, automatic cleanup or replacement fixture follows. Preserve
+primary/secondary errors using the implemented projector. Exact future native
+paths, supported reference checks, phase budgets and execution bindings still
+need review; mock success cannot satisfy a native admission predicate.
+
+Tests should cover collisions, malformed/duplicate identities, inventory limits,
+foreign configured paths and failed observations, partial creation/settings,
+identity-write failure, prior/partial journal records, concurrent claims, source
+drift, cancellation/timeout, simultaneous primary/secondary failures and retained
+unknown state. Use only synthetic objects and owned temporary test files where
+needed; any PowerShell test is AST/in-memory only, never a provider rehearsal.
+This preparation cannot establish the old cause or qualify live cleanup.
 
 ### Proposed execution and evidence limits
 
@@ -217,10 +275,13 @@ also wired into local preflight and the actual CI workflow. Portable contracts
 run everywhere; installed PowerShell 5.1 synthetic/AST cases run only on Windows
 and are explicitly skipped elsewhere. These do not qualify native Hyper-V.
 
-The next gate is host/inventory scope and quarantine acceptance before any native
-runner design/implementation; there is no apply command to hand off. Exact new paths,
-created-identity durability, native guard/receipt bounds, quarantine acceptance
-and execution authority remain later gates, not silently settled decisions.
+Host/inventory scope and the intended retention policy are settled for planning.
+The next gate is confirmation of the disabled preparation scope above, following
+the repository's grill-me workflow. No native runner has been implemented and
+there is no apply command to hand off. Exact new paths, created-identity
+durability, reference-check coverage, native guard/receipt bounds, early-failure
+retention and execution authority remain later review gates. No host/VM readiness,
+current off state or permission safety is newly asserted by this agreement.
 
 ## Official sources and limits
 
@@ -243,6 +304,15 @@ Discovered/opened through search MCP on 21 October 2026:
 - [CreateFileW sharing](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
   explains compatibility of access/sharing on an opened object, not the provider's
   undocumented descendant operations or the cause of this failure.
+- [Get-VM](https://learn.microsoft.com/en-us/powershell/module/hyper-v/get-vm?view=windowsserver2022-ps)
+  documents local inventory and ID selection, not an atomic name reservation.
+- [Get-VMHardDiskDrive](https://learn.microsoft.com/en-us/powershell/module/hyper-v/get-vmharddiskdrive?view=windowsserver2025-ps)
+  documents attached-drive retrieval for VM objects; it does not establish
+  exhaustive physical-file non-use from configured-path comparisons.
+- [New-VM](https://learn.microsoft.com/en-us/powershell/module/hyper-v/new-vm?view=windowsserver2025-ps)
+  returns a VirtualMachine object and permits omitting a switch connection.
+  Persisting returned identity before later work is this design's requirement,
+  not a transactional durability guarantee supplied by that cmdlet.
 
 These references guide a future contract. Installed PowerShell/.NET/Hyper-V
 behavior still needs scoped qualification; no module/toolchain update is part of
