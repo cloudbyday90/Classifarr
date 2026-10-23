@@ -5,6 +5,69 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+test('the server override, sole locked copy and installed parser are the reviewed security patch', () => {
+  const read = path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf8'));
+  const manifest = read('../../package.json'), lock = read('../../package-lock.json');
+  expect(manifest.overrides['ip-address']).toBe('10.7.4');
+  const copies = Object.entries(lock.packages).filter(([path]) => path.endsWith('node_modules/ip-address'));
+  expect(copies).toHaveLength(1);
+  expect(copies[0][1]).toMatchObject({ version: '10.7.4',
+    integrity: 'sha512-DWBMKyeM25D70nrIiTkgQth59/G+naKOTep6huF9j+GmeK3DMD60Zvxg5d5qQnz+38AHgou6ean2LECX+lrKDg==' });
+  expect(read('../../node_modules/ip-address/package.json').version).toBe('10.7.4');
+});
+
+test('IPv6 zone parsing and constructor aliases never invoke the quadratic legacy matcher', () => {
+  const source = `
+    import assert from 'node:assert/strict';
+    import { isIPv6 } from 'node:net';
+    import { Address6 } from 'ip-address';
+    import { ipKeyGenerator } from 'express-rate-limit';
+    import { RE_ZONE_STRING } from 'ip-address/dist/v6/constants.js';
+    let legacyCalls = 0;
+    const original = RE_ZONE_STRING.exec;
+    // Refuse the dangerous operation rather than actually exhaust CPU on an old copy.
+    RE_ZONE_STRING.exec = function () { legacyCalls++; throw new Error('legacy_zone_matcher_reached'); };
+    try {
+      for (const code of [10, 13, 0x2028, 0x2029]) {
+        const input = '%'.repeat(2048) + String.fromCodePoint(code) + 'x';
+        const routes = [() => new Address6(input),
+          () => Address6.fromAddressAndMask(input, 'ffff:ffff:ffff:ffff::'),
+          () => Address6.fromAddressAndMask('fe80::1', input),
+          () => Address6.fromAddressAndWildcardMask(input, '::ffff:ffff:ffff:ffff'),
+          () => Address6.fromAddressAndWildcardMask('fe80::1', input),
+          () => Address6.fromAddress4Nat64('192.0.2.1', input),
+          () => new Address6('64:ff9b::c000:201').toAddress4Nat64(input)];
+        for (const route of routes) assert.throws(route, { name: 'AddressError' });
+        assert.equal(Address6.isValid(input), false);
+        // This additional limiter guard explains why direct parser exposure is
+        // not automatically a remotely reachable application vulnerability.
+        assert.equal(isIPv6(input), false);
+        assert.equal(ipKeyGenerator(input), input);
+      }
+      const longZone = 'fe80::1%' + 'a'.repeat(8192);
+      assert.equal(new Address6(longZone).correctForm(), 'fe80::1');
+      assert.equal(ipKeyGenerator(longZone), 'fe80::/56');
+      assert.equal(legacyCalls, 0);
+    } finally { RE_ZONE_STRING.exec = original; }
+    console.log('zone_parser_boundaries_passed');`;
+  const output = execFileSync(process.execPath, ['--max-old-space-size=64', '--input-type=module', '--eval', source], {
+    cwd: new URL('../../', import.meta.url), encoding: 'utf8', timeout: 5000, maxBuffer: 8192,
+    windowsHide: true, stdio: 'pipe',
+  });
+  expect(output.trim()).toBe('zone_parser_boundaries_passed');
+});
+
+test.each(['fe80::1%eth0/64', 'fe80::1/64%eth0'])(
+  'zoned IPv6 preserves both supported CIDR orders: %s', input => {
+    const address = new Address6(input);
+    expect(address.correctForm()).toBe('fe80::1');
+    expect(address.zone).toBe('%eth0');
+    expect(address.subnetMask).toBe(64);
+  },
+);
 
 test.each([
   ['42.2.0.192.IN-ADDR.ARPA.', '192.0.2.42'],

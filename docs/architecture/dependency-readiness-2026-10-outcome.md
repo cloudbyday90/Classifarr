@@ -104,6 +104,34 @@ ip-address remains 10.7.2; no CLI-advisory remediation claim is made.
 Full application and image qualification follows the separately committed server
 patch so that results bind to the final candidate state.
 
+## Server security patch checkpoint
+
+Following the npm checkpoint, the exact server override was updated to 10.7.4.
+Scripts-disabled lock generation changed only that package's version, registry
+URL and reviewed integrity; there are no package additions/removals or other
+metadata changes. A strict clean install and complete server dependency tree
+passed. The development-inclusive server audit now reports zero findings.
+This does not cover the npm CLI's separately installed bundled copy.
+
+The parent and an independent investigator both traced Express `req.ip` through
+the default limiter key generator and its `isIPv6` guard to `Address6`. Application
+constructors do not enable proxy trust and no production direct parser imports
+were found. Therefore the installed vulnerable parser is established, but
+application attacker reachability is not. No proxy or route setting changed.
+
+Before the patch, the new deterministic regression failed on 10.7.3 because the
+instrumented legacy matcher was reached. It refused that operation rather than
+running a large CPU-exhaustion fixture; 36 compatibility cases still passed.
+After the patch, all 38 dependency cases and the nearest rate-limit/runtime
+checks passed: 56 tests across three suites, with focused test lint passing.
+They cover constructor/alias rejection for LF, CR and both Unicode line
+separators, `isValid`, long valid zones, both CIDR orders and actual local HTTP
+quota controls. The fresh, rationale-blind independent candidate review found no
+concrete bypass or new regression in the three-file patch and confirmed the
+parser aliases converge on the fixed implementation. The deprecated matcher
+remains exported upstream but no inspected application/library caller uses it.
+Final application/image qualification remains required at this checkpoint.
+
 ## Open PR
 
 The fresh GitHub MCP query again returned only open

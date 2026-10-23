@@ -32,6 +32,21 @@ IPv4, mapped IPv4 and IPv6/rate-limit behavior and bounded hostile-input rejecti
 Do not send malicious input to the running service or claim a reachable exploit
 from an audit entry alone.
 
+The inspected application path is Express `req.ip` to the default limiter key
+generator to `ipKeyGenerator` and then `Address6`. Both application constructors
+retain default proxy trust, and the limiter calls `node:net.isIPv6` before
+constructing the parser. These are meaningful reachability limits; logging a
+validation error alone is not an enforcing boundary. There is no production
+direct parser import or custom limiter key generator in the inspected source.
+
+Patch the one resolved server parser, not each route. Upstream 10.7.4 replaces
+the repeated-start zone matcher with a first-percent lookup and one anchored
+remainder check. Regression tests must cover all four line terminators and the
+constructor aliases, preserve `AddressError` / false results, long valid zones,
+both supported CIDR/zone orders and real HTTP client equivalence/quota behavior.
+Instrument the old matcher in a heap/output/time-bounded disposable child and
+refuse its execution; do not use flaky performance thresholds or exhaust CPU.
+
 For npm, align Docker, CI, all package-manager/engine declarations and lock roots,
 installer-policy tests and active setup documentation. Install the exact npm
 archive into ignored private tooling after checking registry integrity; do not

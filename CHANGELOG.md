@@ -9,6 +9,10 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Patch the server's exact `ip-address` dependency to 10.7.4 for the IPv6 zone
+  parsing advisory. Add bounded ESM parser/alias regressions and retain real
+  address/quota compatibility checks without changing proxy trust or routing.
+
 - Align npm/npx 12.2.1 across local requirements, CI and Docker, with an explicit
   executing-CLI regression and unchanged strict installer approvals. Document
   npm's separately bundled advisory rather than treating workspace audits as
