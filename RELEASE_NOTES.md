@@ -1,6 +1,139 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.49.2-beta`. Package files use semver-safe versions such as `0.49.2-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.3-beta`. Package files use semver-safe versions such as `0.49.3-beta`.
+
+## v0.49.3-beta
+
+**Review failed media identities, choose when background AI runs, and keep recovery evidence useful.**
+
+This beta adds a deliberate repair path for failed movie and TV requests,
+persistent controls for this installation's optional AI work, and clearer
+readiness and scheduler diagnostics. Separately configured Ollama gateway tools
+gain request history, archives and bounded recovery support without rerouting
+existing installations. The Node security baseline and application dependencies
+are refreshed; unfinished studies are not presented as production guarantees.
+
+Classifarr has reached **21,340 Docker Hub image pulls** as of October 23, 2026
+([Docker Hub statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
+This counts image pulls, not users or unique installations, and excludes GHCR.
+
+### Before you upgrade
+
+- Back up the database and persistent app-data, including encryption keys. Keep
+  mounts, ownership and credentials intact; an old image alone is not a schema
+  downgrade plan. Restore a matching backup when rollback requires older data.
+- Four application migrations add missing-record recovery, identity-repair
+  previews/receipts, Ollama readiness state and background evaluation controls.
+  Normal startup applies them. Stop older Classifarr writers sharing the database
+  before enabling reviewed repairs; do not remove migration records or reset
+  attempts to work around a warning.
+- Source installations now require Node 24.22.1 and npm/npx 12.2.1. Container
+  images include Node 24.22.1 on digest-pinned Alpine 3.24.3. Strict installer
+  approvals remain enforced. This remains a beta release.
+- No new Compose or Unraid template change is required for ordinary application
+  use. Gateway, archive/catalog/cleanup services and provider operations require
+  separate explicit configuration and review; an upgrade does not start them
+  or update an independently managed Ollama server.
+
+### Failed requests: check the record, review a repair, retry separately
+
+Command Center can check a failed task's saved TMDb ID without remapping or
+retrying it. Missing records are distinguished from provider failures, with
+current check details and a safe support reference. Eligible failures also
+receive finite, spaced same-ID checks and may resume their original unrouted
+task once if that same record returns. No replacement is guessed automatically.
+
+For a supported wrong identity, an administrator can inspect external-ID evidence,
+preview a replacement, confirm the same work or edition, and save a durable
+repair receipt. Retry remains a separate action. Up to five explicitly selected,
+already-reviewed repairs can be retried atomically after fresh readiness checks.
+These commands require an ordinary administrator session; API keys, refresh and
+scoped diagnostic tokens cannot approve them.
+
+Original webhook evidence, unrelated identities, attempts and cooldowns are
+preserved. Conflicting legacy or nested declarations are rejected rather than
+silently choosing one. Repaired tasks stay out of automatic recovery and generic
+Retry All; approval for one request never authorizes another. No source-library
+layout or routing policy is changed by an identity check.
+
+### Background AI: persistent choices and honest waiting states
+
+Choose Off, When idle or a daily UTC window in Command Center, with a request
+safety limit instead of a token-budget estimate. Fresh installations remain off;
+upgrades preserve existing opt-in and ceilings. Foreground work or changed
+settings cancel local capture waits without resetting attempts or cooldowns.
+Already-dispatched provider work may continue. These controls coordinate one
+Classifarr installation, not every application sharing Ollama.
+
+Missing first-time Ollama verification can stay pending through busy periods and
+receive staggered background opportunities without an open browser page.
+Configuration-specific waiting reasons survive restart. A status refresh is not
+a new provider test, and old verification results are not automatically retested.
+Memory admission and inventory/ownership safeguards remain unchanged.
+
+Representative-profile refresh failures now retain a fixed stage, cause category
+and incident reference through scheduler reporting, without exposing provider
+payloads, endpoints, descriptions, vectors or raw SQL errors. This improves
+attribution; it does not claim the original provider failure has been repaired.
+
+### Optional gateway: shared accounting without automatic activation
+
+An explicitly bound gateway can cover generation, embeddings, health,
+verification, warming and streaming with common admission and cancellation.
+Durable UUIDv7 request/task records, credential rotation and an administrator
+history view help explain uncertain work. Completion is recorded before a final
+stream response; lost or interrupted work is not silently replayed, and closing
+the owner does not fall back to direct calls or reset attempt history.
+
+Existing installations continue direct routing unless deliberately configured.
+Gateway listener/upstream identity, credentials and network boundaries need
+their documented deployment review. Private upstream HTTP is supported within
+its restricted boundary; TLS alone does not prove network isolation. Optional
+offline maintenance holds, resume and one-shot provider stop are operator-owned,
+not unattended provider restart or shared-Ollama coordination.
+
+Separate archive, catalog and cleanup services provide private reports, bounded
+online exports, verified protected recovery copies and restart-safe rotation.
+Explicitly configured history cleanup retains audit/protected records and retry
+limits. These services do not start with the normal application. Older archive
+formats remain supported; archive existence alone is not restore verification.
+
+Gateway history/catalog reads are narrowed and bounded before large metadata
+reaches Node. Snapshot/hash reuse stays inside one read-only transaction and
+full recovery evidence is checked one record at a time. Resource limits, fresh
+safety checks and recovery verification are not relaxed.
+
+### Runtime, testing and known limits
+
+The server uses patched `ip-address` 10.7.4 for the IPv6 zone-parsing advisory;
+root/client redirect-header handling is also patched. Vue/Pinia, HTTP,
+configuration/validation, database test tooling, browser/build/coverage and lint
+tools are refreshed with strict installer policy and compatibility pins intact.
+Source-sealed fixtures and bounded failure diagnostics improve CI attribution
+without weakening cleanup, coverage, scanner permissions or publication gates.
+
+npm 12.2.1 separately bundles `ip-address` 10.7.2, which remains affected by a
+[moderate advisory](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5).
+Application overrides do not patch npm itself, and no patched upstream npm
+candidate was available when reviewed on October 23. The affected files remain
+in the runtime image. Zero application audit findings are not a claim that the
+whole toolchain/image is advisory-free or that this CLI path is non-exploitable.
+See the [release outcome](https://github.com/cloudbyday90/Classifarr/blob/v0.49.3-beta/docs/architecture/release-0.49.3-beta-outcome.md)
+for the explicit release decision and verification status.
+
+Synthetic memory, transaction, inference, archiving and restore studies are
+source/image-bound and retain cleanup evidence. They are not production latency,
+accuracy or leak-free guarantees. Shared-host interference left the four-arm
+archiving comparison incomplete. The dedicated Hyper-V profile is preparation
+for an as-needed guest, not an always-on or study-ready VM. Startup/drain/shutdown
+remains modeled or disabled; retained fixtures, uncertain removal and consumed
+cleanup authority are not cleared by this release. No VM or shared-provider
+operation is authorized by upgrading.
+
+### Full change record
+
+See the [system-level changelog](https://github.com/cloudbyday90/Classifarr/blob/v0.49.3-beta/CHANGELOG.md)
+and the [preserved development record](https://github.com/cloudbyday90/Classifarr/blob/v0.49.3-beta/docs/changelog/CHANGELOG-2026-10-pre-release-0.49.3.md).
 
 ## v0.49.2-beta
 
