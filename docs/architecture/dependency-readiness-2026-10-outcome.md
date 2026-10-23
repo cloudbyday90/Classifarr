@@ -113,6 +113,15 @@ The first complete backend coverage attempt was deliberately stopped before
 editing this guard, and its private log retained. It is not a passed coverage
 run; a fresh complete attempt follows the corrected source.
 
+That complete run finished with 1,879 passing suites, 60,381 passing tests,
+one Windows skip and one stale preflight-contract failure. The baseline manifest
+already included three additional VM-tool test gates while the assertion still
+expected the older list. The test now requires the complete ordered list and
+each gate's exact command; its existing mocked failure-propagation cases also
+cover the additional gates. No manifest, runner or VM behavior changed, and
+no VM-tool command was executed by this correction. Final coverage must come
+from a fresh successful run rather than this failed checkpoint.
+
 ## Server security patch checkpoint
 
 Following the npm checkpoint, the exact server override was updated to 10.7.4.

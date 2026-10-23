@@ -6,7 +6,16 @@ import { runWorkspaceTests, summarizeResults } from '../../../scripts/run-worksp
 import { withConsoleSpy } from './setup/consoleHelpers.mjs';
 
 const { scripts } = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'));
-const preflightScripts = ['check-copyright', 'inventory:ownership:check', 'lint:server:dependencies', 'lint:server:dependencies:production', 'test:tooling:gateway'];
+const preflightScripts = [
+    'check-copyright',
+    'inventory:ownership:check',
+    'lint:server:dependencies',
+    'lint:server:dependencies:production',
+    'test:tooling:gateway',
+    'test:tooling:vm-errors',
+    'test:tooling:vm-simulation',
+    'test:tooling:creation-journal',
+];
 
 test('local CI runs copyright, ownership and dependency checks before behavioral tests', () => {
     expect(scripts['test:ci']).toMatch(/^npm run test:ci:preflight && /u);
@@ -15,6 +24,9 @@ test('local CI runs copyright, ownership and dependency checks before behavioral
     expect(scripts['inventory:ownership:check']).toBe('node server/src/scripts/runInventoryWriterCompatibility.mjs --check-ownership');
     expect(scripts['lint:server:dependencies']).toBe('npm --prefix server run lint:knip');
     expect(scripts['lint:server:dependencies:production']).toBe('npm --prefix server run lint:knip:production');
+    expect(scripts['test:tooling:vm-errors']).toBe('node --test scripts/__tests__/vm-removal-error-contract.test.mjs');
+    expect(scripts['test:tooling:vm-simulation']).toBe('node --test scripts/__tests__/vm-removal-simulation.test.mjs');
+    expect(scripts['test:tooling:creation-journal']).toBe('node --test scripts/__tests__/creation-journal.test.mjs');
 });
 
 test.each(preflightScripts)('preflight attempts every gate but preserves failure of %s without using a shell', async failedScript => {

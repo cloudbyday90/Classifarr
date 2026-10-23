@@ -16,7 +16,8 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 - Align npm/npx 12.2.1 across local requirements, CI and Docker, with an explicit
   executing-CLI regression and unchanged strict installer approvals. Document
   npm's separately bundled advisory rather than treating workspace audits as
-  proof of toolchain safety.
+  proof of toolchain safety. Keep CI validator and failure-propagation contracts
+  aligned with the pinned CLI and complete preflight task list.
 
 - Update the supported Node 24 security baseline and digest-pinned container base
   to Node 24.22.1 / Alpine 3.24.3. Align the synthetic guest-readiness version
