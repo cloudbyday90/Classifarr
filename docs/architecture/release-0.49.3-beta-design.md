@@ -41,12 +41,33 @@ live registry review on October 23 identified no newer patched npm candidate.
 Normal startup executes Node directly, but the affected files remain in the
 production image. Guarded SOCKS consumers are not proof of non-exploitability.
 
+The maintainer explicitly selected **hold publication pending remediation**.
 Do not vendor-patch npm, downgrade to another affected CLI, suppress scanners or
-silently waive the finding. Explicit residual-risk acceptance or a separately
-reviewed remediation is required before publication. Version selection alone
-does not settle that decision. Removing npm/npx only from the final runtime
-would reduce exposure but needs maintenance compatibility and new exact-image
-qualification; it is not part of this release preparation by assumption.
+silently waive the finding. A separately reviewed, verified remediation is now
+required before publication. Removing npm/npx only from the final runtime would
+leave local/CI tooling affected; it is not complete remediation of this finding.
+
+Official npm [override documentation](https://docs.npmjs.com/cli/v12/configuring-npm/package-json/#overrides)
+and the [bundled-dependency repair implementation](https://github.com/npm/cli/blob/v12.2.1/workspaces/arborist/lib/arborist/build-ideal-tree.js)
+explain why a consuming project's override cannot repair this bundle. Disposable
+tests confirmed the override leaves 10.7.2 installed; updating inside npm's
+directory fails while resolving unshipped development/workspace packages.
+
+Supported remediation is an upstream npm bundle refresh and published release
+containing the patched parser, followed by exact-version adoption and fresh
+qualification. The previous [upstream refresh](https://github.com/npm/cli/pull/10088)
+stopped at 10.7.2; it does not fix this advisory. Even the
+[October 23 upstream lockfile](https://github.com/npm/cli/blob/52f30938bd372dac25667f38fb771f5fe825e6e6/package-lock.json)
+still resolves 10.7.2. No supported patched npm candidate was verified.
+
+A reproducible replacement of the official parser package, without editing its
+JavaScript, would still be a maintained downstream npm distribution modification,
+not a supported override. That approach was proposed but not approved; the
+maintainer requested official-source research instead. Do not implement it by
+inference. Related open issues concern
+[bundled overrides](https://github.com/npm/cli/issues/10120) and the
+[installed-manifest failure](https://github.com/npm/cli/issues/9949), not this
+specific advisory. No new upstream report is authorized by this research.
 
 ## Required review and checks
 
