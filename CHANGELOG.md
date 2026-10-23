@@ -9,6 +9,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Security
+
+- **Required next-release remediation** — Block the next release until npm's
+  bundled `ip-address` finding is fixed and verified across local, CI and Docker
+  tooling. The maintainer's acceptance applies only to v0.49.3-beta.
+
 ## [v0.49.3-beta] - 2026-10-23
 
 **TL;DR:** Check and repair missing media identities with explicit review, control
@@ -104,7 +110,8 @@ preserves the original Unreleased entries, consolidated on 2026-10-23.
 - **Residual npm finding** — npm 12.2.1 separately bundles affected
   `ip-address` 10.7.2. Application overrides do not patch that CLI copy; zero
   workspace audit findings do not establish an advisory-free production image.
-  Release handling remains recorded in the
+  The maintainer accepted this finding for v0.49.3-beta only; remediation is
+  required before the next release. Release handling remains recorded in the
   [release outcome](docs/architecture/release-0.49.3-beta-outcome.md).
 - **Gateway deployment boundary** — Gateway use requires explicit credentials,
   TLS identity and network isolation appropriate to its deployment. Private

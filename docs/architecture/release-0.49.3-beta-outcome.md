@@ -2,12 +2,14 @@
 
 ## Status
 
-**Publication held pending remediation; not published.** The maintainer selected v0.49.3-beta
+**Publication authorized subject to remaining gates; not yet published.** The maintainer selected v0.49.3-beta
 on 2026-10-23 and requested the full [runbook](../../.agent/workflows/release.md).
 See the [design](release-0.49.3-beta-design.md) for scope and safeguards.
-The maintainer explicitly declined residual-risk acceptance and requested a fix,
-then official-source research before choosing a downstream modification.
-Publication remains gated by remediation and fresh candidate evidence.
+The maintainer initially held publication and requested a fix/official research,
+then explicitly accepted the npm finding for **v0.49.3-beta only** on October 23
+and requested continued publication. **This finding must be fixed before the next
+release.** No other security or release gate is waived. Publication still requires
+fresh candidate evidence, final controls, native consumers and provenance.
 No release tag, registry write, alias promotion, live
 deployment, VM operation or provider recovery has occurred during preparation.
 
@@ -47,7 +49,7 @@ work. No production speed, accuracy or leak-free claim is made.
 ## Docker Hub milestone
 
 Live API response identity matched `cloudbyday90/classifarr` and reported
-**21,340 Docker Hub image pulls** at **2026-10-23T09:25:30.3103107Z**.
+**21,344 Docker Hub image pulls** at **2026-10-23T10:05:08.8108181Z**.
 Source: [Docker Hub repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/).
 README and release notes use that observation/date and explicitly exclude GHCR
 and unique users/installations. The research connector could not retrieve this
@@ -64,14 +66,14 @@ verified its repository identity and non-negative integer count.
 | Archive fidelity, categories, links, docs/language checks | Passed before the preparation checkpoint; recheck after subsequent edits |
 | Fresh lint, full CI and coverage ratchet | Passed on e1a208329; 1,880 backend suites / 60,385 tests passed, one skipped; 477 frontend files / 7,374 tests passed |
 | Root/server/client and separate CLI audits | All four trees exit 0; workspace audits 0 each, separate CLI audit exit 1 with one moderate, no high/critical |
-| Candidate-image schema dump/check and pg_stat_statements | Deferred under the hold; use isolated data, never the live database |
-| Production-policy browser and isolated provider-fault checks | Deferred; not passed on this candidate |
-| Local installation/routing receipt | Deferred; no current-candidate receipt |
-| Complete frozen no-cache image/soak/profile matrix | Deferred until remediation; no current-candidate image or receipt |
+| Candidate-image schema dump/check and pg_stat_statements | Pending resumed qualification; use isolated data, never the live database |
+| Production-policy browser and isolated provider-fault checks | Pending; not passed on this candidate |
+| Local installation/routing receipt | Pending; no current-candidate receipt |
+| Complete frozen no-cache image/soak/profile matrix | Pending; no current-candidate image or receipt |
 | Exact candidate main CI/security checks | Pending; earlier-source green runs are not substitutes |
 | Manual security checklist A–N | Pending; no blanket security sign-off claimed |
 | Final live publication controls and credential scope | Pending recheck for the candidate |
-| Approved exact source and npm remediation | Residual risk rejected; publication explicitly held; no fix verified |
+| Approved exact source and npm exception | One moderate finding accepted for v0.49.3-beta only; next release blocked until remediation; remaining source/image gates pending |
 | Native AMD64/ARM64 published routing and digest consumers | Not run; require tag workflow |
 | Attested v3 asset, immutable release and aliases | Not published or verified |
 
@@ -98,8 +100,11 @@ The server's `ip-address` override is 10.7.4; npm 12.2.1 separately bundles
 10.7.2. The [moderate advisory](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5)
 affects that CLI copy, including files retained in the production image.
 The fresh registry/release review identified no newer patched npm candidate.
-No scanner suppression, vendor patch or residual-risk acceptance is recorded.
-The maintainer explicitly chose to hold publication pending remediation.
+No scanner suppression or vendor patch was applied. The maintainer initially
+held publication, then explicitly accepted the residual finding for
+v0.49.3-beta only. The affected files remain; no remediation or claim of
+non-exploitability follows from that decision. The runbook and Unreleased block
+every subsequent release until an actual fix and fresh verification are recorded.
 
 ### Official-source research and bounded experiments
 
@@ -132,16 +137,20 @@ The maintainer explicitly chose to hold publication pending remediation.
   found no public npm issue/PR specifically tracking this remaining advisory;
   search absence is not proof that no private or unindexed report exists.
 
-No issue or comment was created. Sanitized investigation evidence was retained
+No issue or comment was created. npm's current bug template expressly excludes
+dependency-CVE-only bump requests, and its security policy directs vulnerability
+reports privately; the requested public report could not satisfy that required
+declaration. No private message was sent. Sanitized investigation evidence was retained
 separately; raw package/debug output and temporary dependency trees are not
 published in the repository. The original issue remains present in the active
 CLI. No remediation or clean-image claim is made.
 
 ## Next item
 
-Obtain an upstream npm bundle refresh or separately agree a verified remediation
-strategy before resuming the remaining release gates. A focused upstream report
-with the sanitized reproduction would need separate authorization; the existing
-open issues do not track this exact advisory. After a verified release, resume the bounded
+Complete every remaining release gate and publish only the qualified
+v0.49.3-beta source. Before the next release, remediate the npm finding across
+the relevant toolchain/image copies and verify closure; this is mandatory, not a
+recommendation to reuse the exception. Any private upstream report needs its own
+reviewed channel/payload approval. After a verified release, resume the bounded
 representative-refresh investigation; retained VM fixture cleanup and the
 isolated archiving comparison still require their separate safeguards/authority.

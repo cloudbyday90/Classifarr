@@ -137,6 +137,22 @@ tests alone do not replace the full release suite. Inspect advisory findings;
 do not blindly apply `npm audit fix --force`, suppress a scanner, or lower a
 coverage threshold to make a release green.
 
+### One-release npm exception and mandatory follow-up
+
+The maintainer explicitly accepted the moderate `ip-address` finding bundled
+inside npm 12.2.1 for **v0.49.3-beta only** on 2026-10-23
+([decision and evidence](../../docs/architecture/release-0.49.3-beta-outcome.md)).
+This does not waive application audit gates, high/critical findings, scanners,
+installer policy or any other release check. Keep the separate CLI finding and
+runtime-image exposure visible; do not describe it as remediated or unreachable.
+
+**Every release after v0.49.3-beta is blocked until this finding is remediated.**
+Verify actual installed parser resolution and all relevant local/CI/Docker copies,
+not merely a CLI version, workspace override or audit summary. Adopt an upstream
+patched npm release when available; any other strategy requires separate review.
+Record the exact fix, fresh toolchain/image evidence and closure before publishing
+the next release. Do not carry this exception forward automatically.
+
 For schema changes, build a uniquely tagged **local verification image**, then
 use `IMAGE_NAME` with `db:dump-schema:container`, review and commit the resulting
 `database/schema/current.sql`, and run `db:check-schema:container`. Do not generate

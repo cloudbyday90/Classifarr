@@ -13,7 +13,7 @@ gain request history, archives and bounded recovery support without rerouting
 existing installations. The Node security baseline and application dependencies
 are refreshed; unfinished studies are not presented as production guarantees.
 
-Classifarr has reached **21,340 Docker Hub image pulls** as of October 23, 2026
+Classifarr has reached **21,344 Docker Hub image pulls** as of October 23, 2026
 ([Docker Hub statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
 This counts image pulls, not users or unique installations, and excludes GHCR.
 
@@ -118,6 +118,9 @@ Application overrides do not patch npm itself, and no patched upstream npm
 candidate was available when reviewed on October 23. The affected files remain
 in the runtime image. Zero application audit findings are not a claim that the
 whole toolchain/image is advisory-free or that this CLI path is non-exploitable.
+The maintainer explicitly accepted this finding for **v0.49.3-beta only**.
+Remediation is required before the next release; this exception cannot be carried
+forward automatically and does not relax any other release or security gate.
 See the [release outcome](https://github.com/cloudbyday90/Classifarr/blob/v0.49.3-beta/docs/architecture/release-0.49.3-beta-outcome.md)
 for the explicit release decision and verification status.
 

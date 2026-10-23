@@ -41,10 +41,14 @@ live registry review on October 23 identified no newer patched npm candidate.
 Normal startup executes Node directly, but the affected files remain in the
 production image. Guarded SOCKS consumers are not proof of non-exploitability.
 
-The maintainer explicitly selected **hold publication pending remediation**.
+The maintainer initially selected **hold publication pending remediation**, then
+explicitly accepted this finding for **v0.49.3-beta only** and authorized continued
+publication on 2026-10-23. **Remediation is required before the next release.**
+This supersedes the hold only for this finding/version; all other runbook gates
+remain mandatory. The exception is recorded in the runbook and Unreleased.
 Do not vendor-patch npm, downgrade to another affected CLI, suppress scanners or
-silently waive the finding. A separately reviewed, verified remediation is now
-required before publication. Removing npm/npx only from the final runtime would
+silently waive another finding or extend this exception. A separately reviewed,
+verified remediation is required before any subsequent release. Removing npm/npx only from the final runtime would
 leave local/CI tooling affected; it is not complete remediation of this finding.
 
 Official npm [override documentation](https://docs.npmjs.com/cli/v12/configuring-npm/package-json/#overrides)

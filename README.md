@@ -12,7 +12,7 @@ Classifarr supports movies and TV shows. Library-agnostic learning means discove
 
 **Source version:** `v0.49.3-beta`. It becomes a public release only after its tag pipeline succeeds; until then, use the latest published release shown in GitHub Releases. Package files use `0.49.3-beta`, while the UI, release notes, and Git tags use `v0.49.3-beta`. This beta adds reviewed failed-task identity repair and background AI controls, improves recovery diagnostics, and refreshes the Node security baseline. Optional gateway and study tooling stays separately configured or gated. Read the upgrade guidance and known limits in [RELEASE_NOTES.md](RELEASE_NOTES.md) before updating an existing installation.
 
-**21,340 Docker Hub image pulls** as of 2026-10-23 ([repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)). This counts image pulls, not unique installations, and does not include GHCR.
+**21,344 Docker Hub image pulls** as of 2026-10-23 ([repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)). This counts image pulls, not unique installations, and does not include GHCR.
 
 ## Why Classifarr
 
