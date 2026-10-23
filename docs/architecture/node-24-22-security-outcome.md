@@ -1,6 +1,6 @@
 # Node 24.22 Security Runtime Outcome
 
-Status: implementation prepared; final image qualification pending. Date:
+Status: local qualification passed on October 23, 2026. Initial research:
 October 22, 2026. Baseline main
 `05f58c4c367320456ecb0552e3af9a8de3fdae1b`. No release, version bump, live
 replacement, VM operation or provider request. See the
@@ -39,7 +39,7 @@ security patch and malformed/prerelease versions, with a test tied to `.nvmrc`.
 Synthetic preparation tests cannot authorize or execute VM operations. Private
 recovery scripts and receipts were not changed, executed or retried.
 
-## Completed checks
+## Initial runtime checkpoint
 
 Checks used private Node 24.22.1 and npm 12.2.0:
 
@@ -68,23 +68,92 @@ changed to bypass this environment prerequisite. The new DNS fixture initially
 assumed an asynchronous validation rejection; it now captures synchronous
 validation as well, preserving the required `ERR_INVALID_ARG_VALUE` assertion.
 
-## Remaining qualification and next work
+## Final application qualification
 
-The requested fresh dependency check found a server moderate advisory and a newer
-npm patch. Root/client audits report zero; the server reports two affected
-package entries for one `ip-address` advisory. See the
-[separate dependency review](dependency-readiness-2026-10-outcome.md), including
-npm's independently bundled affected package. Do not claim a clean server or CLI
-audit from earlier results.
+The separately approved npm/npx 12.2.1 and server `ip-address` 10.7.4 patches
+were implemented before final qualification. See the
+[dependency outcome](dependency-readiness-2026-10-outcome.md) for lock review,
+bounded security regressions, the two corrected CI contracts and the remaining
+CLI advisory. Final implementation source:
+`a11e3d95caae4d110a1275180e4a9a4f8d183820`.
 
-The user approved the recommended npm 12.2.1 / server ip-address 10.7.4 additions
-for separate implementation and checks next. The no-cache frozen Compose rehearsal
-has not run for this source. Neither the earlier representative-diagnostics image
-nor the old runtime outcome qualifies these changes. Full frontend tests/current
-two-workspace coverage, disposable database integration and ARM64 binding checks
-are not yet claimed here. This checkpoint precedes the runtime implementation
-commit and final image qualification; later results must identify their tested source.
+Using private Node 24.22.1 and npm 12.2.1:
 
-After the agreed patches and final isolated image validation, prepare the release
-next, including the exact-source CI and native published-image acceptance gaps.
-Resume unrelated troubleshooting afterward. No release is created by this work.
+| Workspace | Complete coverage run | Statements | Branches | Functions | Lines |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Server | 1,880 suites; 60,385 passed, one Windows skip | 89.18% | 86.47% | 90.75% | 89.18% |
+| Client | 477 files; 7,374 passed | 87.79% | 81.84% | 87.50% | 89.47% |
+
+The two-workspace coverage ratchet passed without changing its baseline.
+The final server run followed the corrected preflight assertion; the client
+tree was unchanged by those server-only contract corrections. Eight production
+browser checks passed with retries disabled. Disposable PostgreSQL/TLS integration
+passed 36 tests across three suites, using synthetic data and loopback fixtures.
+These tests did not connect to shared Ollama or the live application database.
+
+The no-cache ARM64 backend-builder and actual bcrypt correct/wrong-password
+checks passed under QEMU, reporting Node 24.22.1, Alpine 3.24.3, npm/npx 12.2.1
+and server parser 10.7.4. Its non-root, read-only, network-disabled probe and
+temporary tag were removed. This is emulated binding evidence, not native ARM64
+hardware or full ARM64 application acceptance. The Linux directory-fsync unit
+test remains skipped on Windows; image checks do not substitute for Linux CI.
+
+## Frozen no-cache image qualification
+
+The existing producer completed at `2026-10-23T04:25:05.734Z`, with a clean
+unchanged checkout, build cache disabled and this one local candidate image ID:
+
+```text
+sha256:a4e07ff492b41ec13d94792c61c2eb745a5fdc3b34a781186d68f00d8cb474a4
+```
+
+The exact-image, non-root/read-only/network-disabled library probe confirmed
+Node 24.22.1, Alpine 3.24.3, npm/npx 12.2.1, Node OpenSSL 3.5.9, bundled Undici
+7.30.1 and server parser 10.7.4. Actual bcrypt verification passed for both correct
+and wrong passwords; the zone-parser probe never invoked the legacy matcher.
+The image also contains npm's affected bundled parser 10.7.2; this is not an
+advisory-free image or toolchain claim.
+
+The same image passed the 30-minute synthetic workload plus two-minute settled
+idle under 2 CPUs / 2 GiB / 128 PIDs: 1,600/1,600 unique items, 20/20 pressure
+cohort and 8/8 provider cohort completed, with no pending or failed final backlog.
+Sampled container peak was 445.19 MiB and sampled PID peak was 60. These are
+sampled diagnostic observations, not production capacity, latency guarantees,
+archiving on/off comparisons or long-term leak certification.
+
+All 12 producer checks and the resource-budget evidence passed for each saved
+standard, Unraid and custom profile, including fresh install, published-baseline
+upgrade, interrupted restore, rejection of unverified normal startup, explicit
+verified retry and scheduler/backfill crash recovery. Database evidence matched
+across profiles and saved configuration remained unchanged. The Unraid profile
+is a local template rehearsal, not a real Unraid-host test.
+
+The first attempt passed its soak but blocked at the standard profile's required
+baseline attestation verification, before that profile created resources. An
+immediate identical read-only check passed; the earlier cause is unconfirmed.
+Its failed receipt and observations were retained, followed by one full fresh
+no-cache attempt. No digest, signer, source constraint, credential identity,
+acceptance rule or recovery timer was relaxed, and no retry loop was added.
+
+The final producer receipt is retained under ignored `.tmp/release-rehearsal/`;
+its SHA-256 is:
+
+```text
+7e6117114c210b4ee485fb93cea65a6309a0b7537b5aebcd891d9cc37d4c114c
+```
+
+Producer cleanup passed. Independent read-only checks confirmed absence of both
+attempts' owned project containers, volumes and networks and both candidate tags.
+The original live container retained its exact ID and image, remained healthy,
+and had zero restarts/OOM kills. No default Compose deployment or VM operation
+was performed. The subsequent outcome-recording changes are Markdown only;
+the image receipt qualifies the implementation revision above, not a future
+release artifact or documentation commit's image label.
+
+## Next work
+
+Prepare the release next, before resuming unrelated troubleshooting. Agree its
+version, assess the remaining npm CLI advisory and obtain exact-source CI,
+Linux-only test and native published-image acceptance evidence. Local image
+qualification is not publication approval; no release, version bump, branch or
+PR merge was created by this work.

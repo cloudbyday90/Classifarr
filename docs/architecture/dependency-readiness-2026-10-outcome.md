@@ -1,10 +1,11 @@
 # October Dependency Readiness Review Outcome
 
 Initial research date: October 22, 2026. Baseline main
-`05f58c4c367320456ecb0552e3af9a8de3fdae1b`, with approved Node/Alpine edits in
-progress. No additional package or npm update has been implemented at this point.
-The [design](dependency-readiness-2026-10-design.md) proposes separately agreed
-patches; this document records checks, not future test results.
+`05f58c4c367320456ecb0552e3af9a8de3fdae1b`. Both approved patches were subsequently
+implemented and locally qualified on October 23, 2026. The
+[design](dependency-readiness-2026-10-design.md) records scope and trade-offs;
+the initial review and intermediate checkpoints are retained below. The final
+section identifies current evidence and the remaining toolchain limitation.
 
 ## Available direct updates
 
@@ -55,7 +56,7 @@ advisory range. Existing private npm 12.2.0 contains 10.5.0. This is a distinct
 toolchain exposure assessment, not a claim that the CLI is remotely exploitable
 in this setup. No vendor patch or advisory suppression was performed.
 
-## Fresh audit finding
+## Initial audit finding
 
 Development-inclusive audits report zero findings for root/client. The server
 audit reports two moderate package entries for one advisory: `ip-address` and its
@@ -86,7 +87,7 @@ The user explicitly approved both proposed patches. Following runtime commit
 the already integrity-verified archive. Both executable entry points report
 12.2.1. Docker, all four CI installation commands, three package-manager/engine
 requirements, lock roots, installer-policy regression and active setup docs now
-agree. No global Node/npm installation or installer approval changed.
+agree. No host-global Node/npm installation or installer approval changed.
 
 Scripts-disabled lock generation changed only the npm engine at each root,
 with structural equality for every other field. Strict clean installs and full
@@ -158,3 +159,42 @@ random selection from that singleton was already implemented locally as exact
 ESLint 10.13.0; see its [separate outcome](server-eslint-10-13-outcome.md).
 This round's clean install, dependency-tree checks and server lint passed with
 that version. No duplicate update, PR merge or remote PR mutation was needed.
+
+## Final qualification and remaining risk
+
+Implementation revision `a11e3d95caae4d110a1275180e4a9a4f8d183820` passed complete
+server/client coverage and the unchanged-baseline ratchet, browser and disposable
+database/TLS checks, an emulated ARM64 bcrypt binding check, and a full no-cache
+same-image Compose soak/three-profile recovery rehearsal. See the
+[runtime outcome](node-24-22-security-outcome.md) for counts, exact artifact,
+receipt hash, the retained first provenance failure and verification limits.
+The final documentation commit changes Markdown only; it does not requalify a
+new source revision or image.
+
+At `2026-10-23T03:26:15.698Z`, npm 12.2.1 reported complete dependency trees
+without problems for root, server, client and the separate private CLI prefix.
+Development-inclusive application audits reported zero findings in all three
+workspaces. The separate CLI audit reported one moderate finding and zero
+high/critical findings. Its bundled `ip-address` remains 10.7.2, also confirmed
+inside the actual production candidate. Workspace overrides/audits do not cover
+that separately bundled copy.
+
+Inspected CLI SOCKS consumers use `isIPv6` guards or fixed-width byte conversion;
+this does not establish a complete CLI trust-boundary assessment or waive the
+[advisory](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5).
+No vendor files, audit suppressions or installer decisions were changed.
+Application remote exploitability was not established, and neither the clean
+workspace audit nor this local qualification is a supply-chain safety guarantee.
+
+## Final recommendation stack
+
+1. Retain Node 24.22.1 / Alpine 3.24.3 with the reviewed multi-platform base
+   digest, and the exact patched server parser 10.7.4.
+2. Retain the separately reviewed npm/npx 12.2.1 patch and strict installer
+   authorization. Resolve or explicitly assess its distinct bundled advisory
+   during release preparation; do not describe the toolchain as advisory-free.
+3. Prepare the release next: agree its version and verify exact-source CI and
+   native published-image evidence before publication. No release is created here.
+4. Keep the other direct updates as separate, attributable follow-ups; retain
+   Node 24 declarations and the client compiler restriction. Resume incident and
+   VM troubleshooting after release work, as requested.

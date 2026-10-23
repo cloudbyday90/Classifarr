@@ -52,6 +52,11 @@ separately agreed toolchain batch must be recorded explicitly, not silently
 folded into the runtime change. Preserve strict installer decisions and security
 overrides. A digest does not freeze subsequent APK repository contents.
 
+The subsequently approved npm 12.2.1 and server parser 10.7.4 batches have their
+own [dependency design](dependency-readiness-2026-10-design.md) and
+[outcome](dependency-readiness-2026-10-outcome.md); they do not widen this runtime
+change into a blanket dependency or major-version migration.
+
 Update all three manifest/lock root engines, `.nvmrc`, the shared Docker base and
 the provider fault-fixture base together. Update the pure guest guard to reject
 24.22.0 and earlier; synthetic checks must also reject prereleases/other majors
