@@ -1,14 +1,14 @@
 # ===========================================
 # CLASSIFARR DOCKERFILE
-# Optimized for production with Alpine 3.24.2 + Node.js 24.21.0 LTS
+# Optimized for production with Alpine 3.24.3 + Node.js 24.22.1 LTS
 # ===========================================
 
-ARG NODE_VERSION=24.21.0
+ARG NODE_VERSION=24.22.1
 ARG ALPINE_VERSION=3.24
-ARG ALPINE_RELEASE=3.24.2
+ARG ALPINE_RELEASE=3.24.3
 # Multi-platform index, not an architecture-specific manifest. Update the tag,
 # digest and expected release together after validating both shipped platforms.
-ARG NODE_IMAGE_DIGEST=sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+ARG NODE_IMAGE_DIGEST=sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
 ARG NPM_VERSION=12.2.0
 # npm defaults to two registry fetch retries. A multi-architecture build has
 # more independent registry reads, so retain `npm ci` integrity while allowing

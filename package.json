@@ -6,7 +6,7 @@
   "packageManager": "npm@12.2.0",
   "license": "GPL-3.0-or-later",
   "engines": {
-    "node": ">=24.21.0 <25",
+    "node": ">=24.22.1 <25",
     "npm": ">=12.2.0 <13"
   },
   "scripts": {

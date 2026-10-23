@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { assessHypervConfiguration, requireGatewayVmProfile } from '../lib/gatewayVmPreparation.mjs';
 import { captureHypervPreparation, runVmProbe, VM_PROBE_LIMIT, VM_PROBE_TIMEOUT } from '../lib/gatewayVmProbe.mjs';
 import { captureGuestPreparation } from '../lib/gatewayVmGuest.mjs';
@@ -20,7 +21,7 @@ function observation() {
 }
 const capture = command => captureHypervPreparation({ ...target, platform: 'win32', systemRoot: 'C:\\Windows', command });
 function guestOptions(overrides = {}) {
-  return { root: '/checkout', revision, platform: 'linux', arch: 'x64', nodeVersion: '24.21.0', uid: 1000, gid: 1000,
+  return { root: '/checkout', revision, platform: 'linux', arch: 'x64', nodeVersion: '24.22.1', uid: 1000, gid: 1000,
     canonical: path => path, controllers: () => 'cpu memory pids io\n', space: () => 20000000000,
     shutdown: () => ({ check: 'guest_shutdown_channel_bound', status: 'matched' }),
     command: (file, args) => file === 'docker' ? '{"os":"linux","arch":"x86_64","cpus":4,"cgroup":"2"}'
@@ -155,6 +156,22 @@ test('guest capture selects local socket and exact clean checkout but cannot mar
   }
   assert.deepEqual(calls[2][1].slice(0, 4), ['--host', 'unix:///var/run/docker.sock', 'info', '--format']);
   assert.ok(!JSON.stringify(result).includes('/checkout'));
+});
+
+test('guest Node security minimum follows the repository baseline using synthetic observations only', () => {
+  const baseline = readFileSync(new URL('../../.nvmrc', import.meta.url), 'utf8').trim();
+  const [major, minor, patch] = baseline.split('.').map(Number);
+  assert.ok(patch > 0, 'Update the predecessor fixture when selecting a zero-patch baseline');
+  for (const nodeVersion of [baseline, `${major}.${minor}.${patch + 1}`, '24.23.0', '24.100.0']) {
+    assert.equal(captureGuestPreparation(guestOptions({ nodeVersion })).status, 'matched', nodeVersion);
+  }
+  for (const nodeVersion of [`${major}.${minor}.${patch - 1}`, '24.21.99', '24.22.0',
+    '24.22.1-rc.1', '24.22.1+build', '24.022.1', '24.22.01', '24.22.1\n',
+    '24.9007199254740992.0', '24.23.9007199254740992', '25.0.0', null, 24]) {
+    const result = captureGuestPreparation(guestOptions({ nodeVersion }));
+    assert.equal(result.checks.find(row => row.check === 'node_24').status, 'mismatch', String(nodeVersion));
+    assert.equal(result.studyReady, false);
+  }
 });
 
 test('guest version/identity/architecture checks and missing local observations do not silently qualify', () => {

@@ -9,6 +9,11 @@ Archived changelogs: [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+- Update the supported Node 24 security baseline and digest-pinned container base
+  to Node 24.22.1 / Alpine 3.24.3. Align the synthetic guest-readiness version
+  guard without enabling VM operations; preserve strict installer policy and
+  record runtime/toolchain qualification separately from release publication.
+
 - Preserve bounded representative-refresh failure stages, fixed cause categories
   and incident references through scheduler logs without retaining raw errors or
   provider data. Keep retry, admission and publication safeguards unchanged;

@@ -8,6 +8,15 @@ const dockerArgs = ['--host', 'unix:///var/run/docker.sock', 'info', '--format',
   '{"os":{{json .OSType}},"arch":{{json .Architecture}},"cpus":{{json .NCPU}},"cgroup":{{json .CgroupVersion}}}'];
 const unavailable = check => ({ check, status: 'unavailable' });
 
+// Stable Node 24 only, including the October 2026 security patch minimum.
+function supportsGuestNode(version) {
+  const match = typeof version === 'string' && /^24\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
+  if (!match) return false;
+  const minor = Number(match[1]), patch = Number(match[2]);
+  return Number.isSafeInteger(minor) && Number.isSafeInteger(patch)
+    && (minor > 22 || (minor === 22 && patch >= 1));
+}
+
 /** Run inside the guest checkout, not through a Windows/remote Docker context. */
 export function captureGuestPreparation({ root, revision, platform = process.platform, arch = process.arch,
   nodeVersion = process.versions.node, uid = process.getuid?.(), gid = process.getgid?.(), command = runVmProbe,
@@ -16,7 +25,7 @@ export function captureGuestPreparation({ root, revision, platform = process.pla
   if (!isVmRevision(revision) || typeof root !== 'string') throw new Error('gateway_vm_arguments_invalid');
   const checks = [vmCheck('linux_x64_controller', platform === 'linux' && arch === 'x64'),
     vmCheck('uid_gid_1000', uid === 1000 && gid === 1000),
-    vmCheck('node_24', /^24\.(?:2[1-9]|[3-9]\d|[1-9]\d{2,})\.\d+$/.test(nodeVersion))];
+    vmCheck('node_24', supportsGuestNode(nodeVersion))];
   if (platform !== 'linux') return vmPreparationResult('guest', [...checks, unavailable('guest_observation')]);
   const read = (file, args) => {
     try { const raw = command(file, args, { cwd: root });
