@@ -37,7 +37,7 @@ jobs:
             package-lock.json
             client/package-lock.json
       - name: Set up npm and npx
-        run: npm install --global npm@12.2.0 && npm --version && npx --version
+        run: npm install --global npm@12.2.1 && npm --version && npx --version
       - name: Install root dependencies
         run: npm ci
       - name: Install client dependencies for independent redirect regression tests

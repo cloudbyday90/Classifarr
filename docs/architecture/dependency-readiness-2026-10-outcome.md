@@ -1,6 +1,6 @@
 # October Dependency Readiness Review Outcome
 
-Research date: October 22, 2026. Baseline main
+Initial research date: October 22, 2026. Baseline main
 `05f58c4c367320456ecb0552e3af9a8de3fdae1b`, with approved Node/Alpine edits in
 progress. No additional package or npm update has been implemented at this point.
 The [design](dependency-readiness-2026-10-design.md) proposes separately agreed
@@ -78,6 +78,31 @@ maintenance patch with its residual bundled-advisory limitation explicit. Other
 updates remain separate follow-ups. Final Docker qualification is pending the
 agreed candidate state; no new release-readiness claim, commit or publication is
 made by this review.
+
+## npm 12.2.1 implementation checkpoint
+
+The user explicitly approved both proposed patches. Following runtime commit
+`466abed53`, npm/npx 12.2.1 was installed only in ignored private tooling from
+the already integrity-verified archive. Both executable entry points report
+12.2.1. Docker, all four CI installation commands, three package-manager/engine
+requirements, lock roots, installer-policy regression and active setup docs now
+agree. No global Node/npm installation or installer approval changed.
+
+Scripts-disabled lock generation changed only the npm engine at each root,
+with structural equality for every other field. Strict clean installs and full
+dependency trees passed for all three workspaces. Development-inclusive audits
+still report zero for root/client and the same two server moderate entries;
+the separate server patch has not been applied at this checkpoint.
+
+All 59 toolchain checks passed through the actual npm 12.2.1 CLI, including real
+unknown/denied/allowed installer fixtures. A deliberate old-CLI run of the new
+executing-version test failed as required: 12.2.0 cannot masquerade as the new
+baseline. The local-file fixtures verify existing installer authorization, not
+the upstream linked-mode registry bookkeeping bug specifically. npm's bundled
+ip-address remains 10.7.2; no CLI-advisory remediation claim is made.
+
+Full application and image qualification follows the separately committed server
+patch so that results bind to the final candidate state.
 
 ## Open PR
 

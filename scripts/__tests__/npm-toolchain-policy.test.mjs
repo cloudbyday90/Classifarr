@@ -10,7 +10,7 @@ import { test } from 'node:test';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const json = path => JSON.parse(read(path));
-const npmVersion = '12.2.0';
+const npmVersion = '12.2.1';
 
 for (const workspace of ['', 'client/', 'server/']) {
   test(`${workspace || 'root'} keeps package-manager and lockfile requirements aligned`, () => {
@@ -79,10 +79,19 @@ test('Docker and CI use the same npm release and carry the install policy into b
 // Exercise npm itself, not a reimplementation of its authorization semantics.
 // Local file dependencies and --offline avoid registry access; the fixture only
 // writes a marker in its own temporary install directory.
+test('installer policy exercises the exact reviewed npm CLI, not a global fallback', () => {
+  const npmCli = process.env.npm_execpath;
+  assert.ok(npmCli && existsSync(npmCli), `Run through npm run test:tooling:dependencies with npm ${npmVersion}.`);
+  const actual = execFileSync(process.execPath, [npmCli, '--version'], {
+    encoding: 'utf8', timeout: 10_000, stdio: 'pipe', windowsHide: true,
+  }).trim();
+  assert.equal(actual, npmVersion);
+});
+
 for (const decision of ['unreviewed', 'denied', 'allowed']) {
   test(`npm strict policy: ${decision} installer`, () => {
     const npmCli = process.env.npm_execpath;
-    assert.ok(npmCli && existsSync(npmCli), 'Run through npm run test:tooling:dependencies with npm 12.2.0.');
+    assert.ok(npmCli && existsSync(npmCli), `Run through npm run test:tooling:dependencies with npm ${npmVersion}.`);
     const directory = mkdtempSync(resolve(tmpdir(), 'classifarr-npm-policy-'));
     try {
       const fixture = resolve(directory, 'fixture');

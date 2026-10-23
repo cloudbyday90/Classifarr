@@ -9,7 +9,7 @@ ARG ALPINE_RELEASE=3.24.3
 # Multi-platform index, not an architecture-specific manifest. Update the tag,
 # digest and expected release together after validating both shipped platforms.
 ARG NODE_IMAGE_DIGEST=sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53
-ARG NPM_VERSION=12.2.0
+ARG NPM_VERSION=12.2.1
 # npm defaults to two registry fetch retries. A multi-architecture build has
 # more independent registry reads, so retain `npm ci` integrity while allowing
 # short-lived registry network failures to recover.

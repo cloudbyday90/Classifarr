@@ -48,7 +48,7 @@ jobs:
             client/package-lock.json
 
       - name: Set up npm and npx
-        run: npm install --global npm@12.2.0 && npm --version && npx --version
+        run: npm install --global npm@12.2.1 && npm --version && npx --version
 
       - name: Validate migration naming
         run: npm run migration:check
@@ -393,7 +393,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
 
       - name: Set up npm and npx
-        run: npm install --global npm@12.2.0 && npm --version && npx --version
+        run: npm install --global npm@12.2.1 && npm --version && npx --version
 
       - name: Install server dependencies
         run: |
@@ -579,7 +579,7 @@ jobs:
       - name: Set up npm and npx
         run: |
           set -euo pipefail
-          npm install --global npm@12.2.0
+          npm install --global npm@12.2.1
           npm --version
           npx --version
 

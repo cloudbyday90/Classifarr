@@ -61,7 +61,7 @@ Current repo split:
 
 ### Dependency Install Scripts
 
-Use npm 12.2.0 with the committed workspace `.npmrc` files. Every workspace
+Use npm 12.2.1 with the committed workspace `.npmrc` files. Every workspace
 enforces `strict-allow-scripts=true`; unreviewed dependency installers fail
 installation. Exact identities in `package.json` record the review decision.
 

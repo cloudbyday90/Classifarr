@@ -3,10 +3,10 @@
   "version": "0.49.2-beta",
   "license": "GPL-3.0-or-later",
   "type": "module",
-  "packageManager": "npm@12.2.0",
+  "packageManager": "npm@12.2.1",
   "engines": {
     "node": ">=24.22.1 <25",
-    "npm": ">=12.2.0 <13"
+    "npm": ">=12.2.1 <13"
   },
   "description": "AI-powered media classification for the *arr ecosystem",
   "main": "src/index.mjs",
