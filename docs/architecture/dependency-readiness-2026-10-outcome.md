@@ -104,6 +104,15 @@ ip-address remains 10.7.2; no CLI-advisory remediation claim is made.
 Full application and image qualification follows the separately committed server
 patch so that results bind to the final candidate state.
 
+A follow-up source sweep found one additional hard-coded 12.2.0 requirement in
+the provider-fault workflow validator. Its real CLI rejected the updated checked-in
+workflow before correction. The validator now requires 12.2.1 without changing
+its permission, receipt, failure-enforcement or tag-only gates; all eight mutation
+tests and the actual CLI passed, including new old/moving/missing npm rejection.
+The first complete backend coverage attempt was deliberately stopped before
+editing this guard, and its private log retained. It is not a passed coverage
+run; a fresh complete attempt follows the corrected source.
+
 ## Server security patch checkpoint
 
 Following the npm checkpoint, the exact server override was updated to 10.7.4.
