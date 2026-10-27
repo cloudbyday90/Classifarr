@@ -11,7 +11,9 @@
 import express from 'express';
 import request from 'supertest';
 import { jest } from '@jest/globals';
+import { brotliCompressSync, deflateSync, gzipSync, zstdCompressSync } from 'node:zlib';
 import { createApp, shouldSkipAccessLog } from '../bootstrap/createApp.mjs';
+import { parserRequest, withParserServer } from './helpers/parserHttpFixture.mjs';
 
 function createRouter(handler) {
   const router = express.Router();
@@ -225,6 +227,43 @@ describe('createApp', () => {
     expect(csrf.status).toBe(403);
     expect(csrf.body).toEqual({ error: 'CSRF validation failed' });
     expect((await request(app).post('/api/unknown').set('Content-Type', 'application/json').send('{')).status).toBe(400);
+  });
+
+  it.each([['identity', Buffer.from], ['gzip', gzipSync], ['deflate', deflateSync], ['br', brotliCompressSync], ['zstd', zstdCompressSync]])(
+    'preserves decoded JSON and extended forms with %s encoding', async (encoding, compress) => {
+      apiRouter.post('/echo', (req, res) => res.json(req.body));
+      const app = await buildTestApp();
+      await withParserServer(app, async server => {
+        const expected = { nested: { label: 'café' }, values: ['one', 'two'] };
+        const json = await parserRequest(server, { path: '/api/echo', body: compress(Buffer.from(JSON.stringify(expected))), encoding });
+        expect(json).toEqual({ status: 200, body: expected });
+        const form = await parserRequest(server, { path: '/api/echo', encoding,
+          contentType: 'application/x-www-form-urlencoded',
+          body: compress(Buffer.from('nested[label]=caf%C3%A9&values[]=one&values[]=two')) });
+        expect(form).toEqual({ status: 200, body: expected });
+      });
+    });
+
+  it('keeps parser errors and decompressed limits ahead of destination handlers', async () => {
+    const reached = jest.fn((req, res) => res.json(req.body));
+    apiRouter.post('/echo', reached);
+    const app = await buildTestApp();
+    await withParserServer(app, async server => {
+      for (const encoding of ['gzip', 'zstd']) {
+        const compress = encoding === 'gzip' ? gzipSync : zstdCompressSync;
+        const oversized = compress(Buffer.from(JSON.stringify({ value: 'x'.repeat(101 * 1024) })));
+        expect((await parserRequest(server, { path: '/api/echo', body: oversized, encoding })).status).toBe(413);
+      }
+      for (const [body, encoding, status] of [
+        [Buffer.from('{}'), 'unknown', 415], [Buffer.from('broken'), 'gzip', 400],
+        [Buffer.from('{'), 'identity', 400], [Buffer.from('42'), 'identity', 400],
+      ]) expect((await parserRequest(server, { path: '/api/echo', body, encoding })).status).toBe(status);
+      const contentType = 'application/x-www-form-urlencoded';
+      const tooMany = Buffer.from(Array.from({ length: 1001 }, (_, index) => `key${index}=value`).join('&'));
+      expect((await parserRequest(server, { path: '/api/echo', body: tooMany, contentType })).status).toBe(413);
+      expect((await parserRequest(server, { path: '/api/echo', body: Buffer.from(`a${'[b]'.repeat(33)}=value`), contentType })).status).toBe(400);
+    });
+    expect(reached).not.toHaveBeenCalled();
   });
 
   it('forwards rejected async handlers to sanitized production JSON errors', async () => {

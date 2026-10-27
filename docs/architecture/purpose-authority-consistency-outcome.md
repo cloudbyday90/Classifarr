@@ -106,3 +106,8 @@ Before a future release, prioritize the pre-existing HTTP-parser advisories
 documented in the [separate tooling outcome](server-tooling-pr572-outcome.md).
 That security batch is independent of the purpose refactor and does not justify
 an advisory-free claim for this commit.
+
+The subsequent [parser security outcome](runtime-parser-security-outcome.md)
+records that bounded follow-up. Operator correction outcome evaluation remains
+the next classification refactor; parser updates do not establish better library
+fit or a classification accuracy rate.

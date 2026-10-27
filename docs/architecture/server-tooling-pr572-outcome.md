@@ -70,3 +70,9 @@ implemented locally, without a provider merge. The documented `@dependabot
 rebase` command was submitted to PRs 569, 570 and 571 to refresh the remaining
 updates against the new main. These are confirmed requests, not a claim that
 the asynchronous bot rebases have completed. No ignore command was used.
+
+Follow-up on 2026-10-27: the separately documented
+[runtime parser batch](runtime-parser-security-outcome.md) implements the
+recommended patched overrides and isolated HTTP regressions. The audit numbers
+above remain the historical tooling-batch result; consult the follow-up for
+the current graph and newly observed development-only advisory.

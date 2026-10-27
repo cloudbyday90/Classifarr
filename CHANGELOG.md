@@ -23,16 +23,24 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 - **Server lint tooling** — Locally implement the reviewed updates from PR #572:
   pin `eslint-plugin-n` 18.5.0 and `knip` 6.42.1, retaining install-script policy
   and overrides. No provider PR merge or release is included.
+- **Server environment tooling** — Locally implement randomly selected PR #571:
+  pin `dotenv` 18.0.9 and cover the empty `DOTENV_PATH` CLI fix with isolated
+  synthetic environment and precedence checks. No provider PR merge is included.
 
 ### Security
 
 - **Required next-release remediation** — Block the next release until npm's
   bundled `ip-address` finding is fixed and verified across local, CI and Docker
   tooling. The maintainer's acceptance applies only to v0.49.3-beta.
-- **Runtime parser follow-up** — The existing `body-parser` 2.3.0 and `qs`
-  6.16.0 audit findings remain before and after the lint-tooling update. Prioritize
-  patched overrides and isolated HTTP regression checks before the next release;
-  see the [tooling review](docs/architecture/server-tooling-pr572-outcome.md).
+- **Runtime parser remediation** — Pin `body-parser` 2.4.0 and `qs` 6.16.1 to
+  address trailing-byte decoder crashes and comma-serialization coercion errors.
+  Add isolated process probes and actual normal/restore HTTP compatibility
+  checks, retaining decoded limits, CSRF and maintenance restrictions. The parser
+  also adds upstream Zstandard support on the pinned Node runtime; see the
+  [design](docs/architecture/runtime-parser-security-design.md).
+- **Development dependency follow-up** — The full server audit retains the
+  unpatched `deepmerge` advisory through Jest. No remote production path was
+  established; avoid the audit-suggested unsupported Jest major downgrade.
 
 ## [v0.49.3-beta] - 2026-10-23
 

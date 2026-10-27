@@ -81,6 +81,17 @@ test.each(['DOTENV_QUIET', 'DOTENV_CONFIG_QUIET'])('CLI honors %s loaded from a 
     expect(stderr).toBe('');
 });
 
+test('CLI uses the default env file when DOTENV_PATH is empty and preserves external precedence', async () => {
+    directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
+    await writeFile(join(directory, '.env'), 'SYNTHETIC_ONLY=from_file\nADDED=from_file\n');
+    const { stdout, stderr } = await runFixture([
+        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--', process.execPath,
+        '--input-type=module', '--eval', 'process.stdout.write(JSON.stringify([process.env.SYNTHETIC_ONLY, process.env.ADDED]))',
+    ], { DOTENV_PATH: '', DOTENV_QUIET: 'true', SYNTHETIC_ONLY: 'external' });
+    expect(JSON.parse(stdout)).toEqual(['external', 'from_file']);
+    expect(stderr).toBe('');
+});
+
 test('CLI preserves explicit shell quiet=false even when the file overrides it', async () => {
     directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
     await writeFile(join(directory, '.env'), 'DOTENV_QUIET=true\nSYNTHETIC_ONLY=from_file\n');

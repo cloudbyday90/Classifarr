@@ -2,14 +2,48 @@
 import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
+import { brotliCompressSync, deflateSync, gzipSync, zstdCompressSync } from 'node:zlib';
 import { createRestoreApp } from '../bootstrap/createRestoreApp.mjs';
 import { createBackupRouter } from '../routes/backupRouteShared.mjs';
+import { parserRequest, withParserServer } from './helpers/parserHttpFixture.mjs';
 
 function setup() {
   const database = { query: jest.fn().mockResolvedValue({ rows: [] }) };
   const route = express.Router().use((req, res) => res.json({ allowed: req.path }));
   return { database, app: createRestoreApp({ database, authRouter: route, backupRouter: route }) };
 }
+
+test.each([['identity', Buffer.from], ['gzip', gzipSync], ['deflate', deflateSync], ['br', brotliCompressSync], ['zstd', zstdCompressSync]])(
+  'restore retains JSON, CSRF and maintenance boundaries with %s encoding', async (encoding, compress) => {
+    const route = express.Router().use((req, res) => res.json({ parsed: req.body ?? null }));
+    const app = createRestoreApp({ database: { query: jest.fn() }, authRouter: route, backupRouter: route });
+    await withParserServer(app, async server => {
+      const expected = { nested: { label: 'café' }, values: ['one', 'two'] };
+      const body = compress(Buffer.from(JSON.stringify(expected)));
+      expect(await parserRequest(server, { path: '/api/auth/login', body, encoding })).toEqual({ status: 200, body: { parsed: expected } });
+      expect((await parserRequest(server, { path: '/api/backup/import', body, encoding,
+        headers: { Cookie: 'access_token=synthetic; classifarr_csrf_token=synthetic' } })).status).toBe(403);
+      expect((await parserRequest(server, { path: '/api/unknown', body, encoding })).status).toBe(503);
+      const oversized = compress(Buffer.from(JSON.stringify({ value: 'x'.repeat(101 * 1024) })));
+      expect((await parserRequest(server, { path: '/api/auth/login', body: oversized, encoding })).status).toBe(413);
+    });
+  });
+
+test('restore keeps form bodies unparsed and rejects malformed or unsupported JSON encodings', async () => {
+  const route = express.Router().use((req, res) => res.json({ parsed: req.body ?? null }));
+  const app = createRestoreApp({ database: { query: jest.fn() }, authRouter: route, backupRouter: route });
+  await withParserServer(app, async server => {
+    expect(await parserRequest(server, { path: '/api/auth/login', body: Buffer.from('key=value'),
+      contentType: 'application/x-www-form-urlencoded' })).toEqual({ status: 200, body: { parsed: null } });
+    const malformed = await parserRequest(server, { path: '/api/auth/login', body: Buffer.from('{') });
+    expect(malformed).toEqual({ status: 400, body: {
+      error: 'Bad Request', message: 'Invalid JSON payload. Ensure the request body is valid JSON.',
+    } });
+    for (const [body, encoding, status] of [[Buffer.from('{}'), 'unknown', 415], [Buffer.from('broken'), 'gzip', 400]]) {
+      expect((await parserRequest(server, { path: '/api/auth/login', body, encoding })).status).toBe(status);
+    }
+  });
+});
 
 test.each([
   ['get', '/api/queue/status'], ['post', '/api/webhook'], ['put', '/api/settings'],
