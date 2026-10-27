@@ -63,5 +63,10 @@ already existed on main with an exact pin. Its immutable diff was inspected and
 the superseded PR was closed without merging or recreating its branch.
 PRs 569, 570 and 571 were based on current main and mergeable at initial review.
 The selected PR 572 was implemented and tested locally without merging its
-provider branch. The final task handoff records its disposition after the
-authorized main push.
+provider branch. The
+[code commit](https://github.com/cloudbyday90/Classifarr/commit/b996046021f5070cf78a3f2eb7b5a89b36c98727)
+was pushed to main and its remote SHA verified. PR 572 was then closed as
+implemented locally, without a provider merge. The documented `@dependabot
+rebase` command was submitted to PRs 569, 570 and 571 to refresh the remaining
+updates against the new main. These are confirmed requests, not a claim that
+the asynchronous bot rebases have completed. No ignore command was used.
