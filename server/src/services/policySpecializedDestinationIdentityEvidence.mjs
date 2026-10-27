@@ -19,8 +19,9 @@ import {
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { keywordMatchesTerm } from './policyEngineUtils.mjs';
 import {
-  POLICY_BROAD_GENRE_LABELS,
-} from './policyBroadGenreIdentityEligibility.mjs';
+  POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS,
+  classifyPolicyDeclaredPurposeRuleProvenance,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 export const SPECIALIZED_DESTINATION_IDENTITY_EVIDENCE_VERSION = 1;
 
@@ -32,7 +33,6 @@ export const SPECIALIZED_DESTINATION_IDENTITY_STATUS_IDS = Object.freeze({
 });
 
 const CONTENT_BEARING_IDENTITY_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios']);
-const BROAD_GENRE_LABEL_SET = new Set(POLICY_BROAD_GENRE_LABELS);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -53,13 +53,6 @@ function normalizedTerms(config = {}) {
 
 function hasRequiredTerms(config = {}) {
   return asArray(config.require_all).length > 0 || asArray(config.require_any).length > 0;
-}
-
-function isInferredProfileBroadGenre(rule = {}, signalType, term) {
-  return signalType === 'genres' &&
-    rule?.source === 'media_server_library_profile' &&
-    rule?.inference_state === 'inferred' &&
-    BROAD_GENRE_LABEL_SET.has(term);
 }
 
 function searchableItemText(item = {}) {
@@ -108,6 +101,13 @@ function matchedPurposeIdentityTerms(policy = {}, item = {}) {
   }
 
   return asArray(policy.policy_intent_contract?.purpose).flatMap((rule) => {
+    // Native storage authority does not turn migrated or observed purpose into
+    // a declaration. Those rules retain their existing scoring and scope roles.
+    if (classifyPolicyDeclaredPurposeRuleProvenance(rule) !==
+        POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.DECLARED_NATIVE) {
+      return [];
+    }
+
     const signalType = String(rule?.signal_type || '').trim().toLowerCase();
     const config = normalizeSignalConfig(rule?.values) || {};
     const semantics = resolveSignalSemantics(signalType, {
@@ -130,11 +130,6 @@ function matchedPurposeIdentityTerms(policy = {}, item = {}) {
 
     return normalizedTerms(config)
       .filter((term) => matchesConfiguredTerm(signalType, term, item))
-      // A profile-inferred broad genre says that a library often contains a
-      // kind of media. It cannot by itself prove that an item belongs there.
-      // Keep it useful to scoring, but exclude it from the specialized,
-      // cross-candidate identity proof that can make a candidate viable.
-      .filter((term) => !isInferredProfileBroadGenre(rule, signalType, term))
       .map((term) => ({
         key: `${signalType}:${term}`,
         signalType,

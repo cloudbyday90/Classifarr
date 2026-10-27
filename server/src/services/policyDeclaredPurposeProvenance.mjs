@@ -20,6 +20,12 @@ export const POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS = Object.freeze({
   UNVERIFIED: 'unverified',
 });
 
+export const POLICY_PURPOSE_PROVENANCE_IDS = Object.freeze({
+  ...POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS,
+  MIXED: 'mixed',
+});
+
+const KNOWN_PURPOSE_PROVENANCE_IDS = new Set(Object.values(POLICY_PURPOSE_PROVENANCE_IDS));
 const DECLARED_NATIVE_SOURCE_IDS = new Set([
   POLICY_DECLARED_PURPOSE_RULE_SOURCE_IDS.NATIVE_INTENT,
   POLICY_DECLARED_PURPOSE_RULE_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
@@ -60,6 +66,38 @@ export function classifyPolicyDeclaredPurposeRuleProvenance(rule = {}) {
     return POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.DECLARED_NATIVE;
   }
   return POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.UNVERIFIED;
+}
+
+/** Reduces stored purpose origins without exposing rule values or raw provenance. */
+export function buildPolicyPurposeProvenance(purposeRules = []) {
+  const provenanceIds = new Set(
+    (Array.isArray(purposeRules) ? purposeRules : []).map(classifyPolicyDeclaredPurposeRuleProvenance),
+  );
+  const id = provenanceIds.size === 1
+    ? [...provenanceIds][0]
+    : provenanceIds.size > 1
+      ? POLICY_PURPOSE_PROVENANCE_IDS.MIXED
+      : POLICY_PURPOSE_PROVENANCE_IDS.UNVERIFIED;
+
+  return Object.freeze({
+    id,
+    declarationRequired: id !== POLICY_PURPOSE_PROVENANCE_IDS.DECLARED_NATIVE,
+    rawRuleProvenanceExposed: false,
+  });
+}
+
+/** Validates only the closed aggregate contract; it grants no policy or route authority. */
+export function isPolicyPurposeProvenance(value = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+
+  const keys = Object.keys(value).sort();
+  if (keys.length !== 3 || keys.join('|') !== 'declarationRequired|id|rawRuleProvenanceExposed') {
+    return false;
+  }
+
+  return KNOWN_PURPOSE_PROVENANCE_IDS.has(value.id) &&
+    value.declarationRequired === (value.id !== POLICY_PURPOSE_PROVENANCE_IDS.DECLARED_NATIVE) &&
+    value.rawRuleProvenanceExposed === false;
 }
 
 /** Builds a static SQL predicate for profile-derived purpose evidence. */

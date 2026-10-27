@@ -93,7 +93,8 @@ describe('PolicyEngine result contract', () => {
       policy_intent_contract: {
         source: 'native_intent',
         validation: { valid: true },
-        purpose: [{ signal_type: 'genres', values: { require_any: purpose } }],
+        purpose: [{ signal_type: 'genres', values: { require_any: purpose },
+          source: 'native_intent', inference_state: 'inferred' }],
       },
     });
     const specialized = nativePolicy(1, 12, ['Drama', 'Mystery']);

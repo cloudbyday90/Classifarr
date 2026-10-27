@@ -9,24 +9,12 @@
  */
 
 import {
-  POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS,
-  classifyPolicyDeclaredPurposeRuleProvenance,
+  POLICY_PURPOSE_PROVENANCE_IDS,
+  buildPolicyPurposeProvenance,
+  isPolicyPurposeProvenance,
 } from './policyDeclaredPurposeProvenance.mjs';
 
-export const POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS = Object.freeze({
-  DECLARED_NATIVE: POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.DECLARED_NATIVE,
-  PROFILE_DERIVED: POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.PROFILE_DERIVED,
-  MIXED: 'mixed',
-  UNVERIFIED: POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.UNVERIFIED,
-});
-
-const KNOWN_PROVENANCE_IDS = new Set(
-  Object.values(POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS),
-);
-
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
+export const POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS = POLICY_PURPOSE_PROVENANCE_IDS;
 
 /**
  * Reduces stored rule provenance to one fixed status for the administrator
@@ -35,37 +23,9 @@ function asArray(value) {
  * authority or a configuration projection.
  */
 export function buildPolicyNativeIntentPurposeChangeProvenance(purposeRules = []) {
-  const provenanceIds = new Set(
-    asArray(purposeRules).map(classifyPolicyDeclaredPurposeRuleProvenance),
-  );
-  const id = provenanceIds.size === 1
-    ? [...provenanceIds][0]
-    : provenanceIds.size > 1
-      ? POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.MIXED
-      : POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.UNVERIFIED;
-  const normalizedId = KNOWN_PROVENANCE_IDS.has(id)
-    ? id
-    : POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.UNVERIFIED;
-
-  return Object.freeze({
-    id: normalizedId,
-    declarationRequired:
-      normalizedId !== POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.DECLARED_NATIVE,
-    rawRuleProvenanceExposed: false,
-  });
+  return buildPolicyPurposeProvenance(purposeRules);
 }
 
 export function isPolicyNativeIntentPurposeChangeProvenance(value = {}) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-
-  const keys = Object.keys(value).sort();
-  if (keys.length !== 3 || keys.join('|') !== 'declarationRequired|id|rawRuleProvenanceExposed') {
-    return false;
-  }
-
-  return KNOWN_PROVENANCE_IDS.has(value.id) &&
-    value.declarationRequired === (
-      value.id !== POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.DECLARED_NATIVE
-    ) &&
-    value.rawRuleProvenanceExposed === false;
+  return isPolicyPurposeProvenance(value);
 }

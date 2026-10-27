@@ -53,6 +53,11 @@ function expectDetailedPolicyIntentProjection(policy, policyId) {
       source_id: expect.any(String),
       authoritative: expect.any(Boolean),
     }),
+    purpose_provenance: {
+      id: expect.any(String),
+      declarationRequired: expect.any(Boolean),
+      rawRuleProvenanceExposed: false,
+    },
     legacy_projection: expect.objectContaining({
       final_authority: false,
     }),
@@ -470,7 +475,11 @@ describe('Policies routes coverage', () => {
       expectDetailedPolicyIntentProjection(res.body, 5);
     });
 
-    test('returns converted policy from active native intent storage', async () => {
+    test.each([
+      ['native_intent', 'declared_native', 'declared'],
+      ['media_server_library_profile', 'profile_derived', 'not_declared'],
+      ['base', 'unverified', 'not_declared'],
+    ])('returns %s purpose without changing active native storage authority', async (ruleSource, provenanceId, declarationStatus) => {
       db.query
         .mockResolvedValueOnce({
           rows: [{
@@ -521,7 +530,7 @@ describe('Policies routes coverage', () => {
             values: { require_any: ['Animation'] },
             constraint_mode: 'advisory',
             semantics: 'identity',
-            source: 'native_intent',
+            source: ruleSource,
             inference_state: 'inferred',
             sort_order: 0,
           }],
@@ -599,6 +608,18 @@ describe('Policies routes coverage', () => {
           source_id: 'native_intent',
           authoritative: true,
         }),
+        purpose_provenance: {
+          id: provenanceId,
+          declarationRequired: declarationStatus !== 'declared',
+          rawRuleProvenanceExposed: false,
+        },
+        declared_intent: {
+          status_id: declarationStatus,
+          purpose: declarationStatus === 'declared'
+            ? [expect.objectContaining({ signal_type: 'genres' })]
+            : [],
+          helpful_matches: [],
+        },
         observed_evidence_reference: expect.objectContaining({
           status_id: 'available',
           source_id: 'stored_library_profile',
@@ -609,6 +630,10 @@ describe('Policies routes coverage', () => {
         },
       }));
       expect(JSON.stringify(res.body.policy_intent_authority)).not.toContain('snapshot_payload');
+      for (const rule of res.body.policy_intent_authority.declared_intent.purpose) {
+        expect(rule).not.toHaveProperty('source');
+        expect(rule).not.toHaveProperty('inference_state');
+      }
       expect(res.body.presets).toHaveLength(1);
     });
   });

@@ -9,11 +9,30 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Fixed
+
+- **Purpose authority consistency** — Use the same declaration-provenance checks
+  in specialized destination evidence and policy API projections. Inferred
+  template or profile rules retain ranking and comparison roles without being
+  presented as declared purpose or receiving specialized declared-purpose proof.
+  Preserve native storage authority, explicit constraints and fresh learned-route
+  checks; this does not rewrite saved policies or establish an accuracy rate.
+
+### Changed
+
+- **Server lint tooling** — Locally implement the reviewed updates from PR #572:
+  pin `eslint-plugin-n` 18.5.0 and `knip` 6.42.1, retaining install-script policy
+  and overrides. No provider PR merge or release is included.
+
 ### Security
 
 - **Required next-release remediation** — Block the next release until npm's
   bundled `ip-address` finding is fixed and verified across local, CI and Docker
   tooling. The maintainer's acceptance applies only to v0.49.3-beta.
+- **Runtime parser follow-up** — The existing `body-parser` 2.3.0 and `qs`
+  6.16.0 audit findings remain before and after the lint-tooling update. Prioritize
+  patched overrides and isolated HTTP regression checks before the next release;
+  see the [tooling review](docs/architecture/server-tooling-pr572-outcome.md).
 
 ## [v0.49.3-beta] - 2026-10-23
 

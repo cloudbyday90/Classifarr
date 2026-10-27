@@ -9,6 +9,12 @@
  */
 
 import { POLICY_INTENT_SOURCES } from './policyIntentSchema.mjs';
+import {
+  buildPolicyPurposeProvenance,
+  isPolicyDeclaredNativePurposeRule,
+  isPolicyPurposeProvenance,
+  POLICY_PURPOSE_PROVENANCE_IDS,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 const POLICY_INTENT_AUTHORITY_CONTRACT_VERSION = 'policy.intent_authority.v1';
 const MAX_AUTHORITY_ISSUES = 32;
@@ -257,8 +263,14 @@ function buildPolicyIntentAuthorityContract({
   const sourceId = sourceIdFromRuntimeReadPath(runtimeReadPath);
   const nativeIntent = sourceId === POLICY_INTENT_AUTHORITY_SOURCE_IDS.NATIVE_INTENT;
   const validationStatus = buildValidationStatus(intentContract.validation);
-  const purpose = normalizeRules(intentContract.purpose);
-  const helpfulMatches = normalizeRules(intentContract.helpful_hints);
+  const purposeRules = asArray(intentContract.purpose);
+  const purposeProvenance = buildPolicyPurposeProvenance(purposeRules);
+  // Native storage authority does not turn observed or migrated rules into declarations.
+  const fullyDeclaredPurpose = nativeIntent && purposeRules.length > 0 &&
+    purposeProvenance.id === POLICY_PURPOSE_PROVENANCE_IDS.DECLARED_NATIVE;
+  const declaredPurpose = normalizeRules(purposeRules.filter(isPolicyDeclaredNativePurposeRule));
+  const declaredHelpfulMatches = normalizeRules(asArray(intentContract.helpful_hints)
+    .filter(isPolicyDeclaredNativePurposeRule));
   const hardLimits = normalizeRules(intentContract.hard_limits);
   const avoidRules = normalizeRules(intentContract.avoid);
 
@@ -273,12 +285,13 @@ function buildPolicyIntentAuthorityContract({
       status_id: boundedString(runtimeReadPath.statusId ?? runtimeReadPath.trace?.status, 80),
       authoritative: nativeIntent && validationStatus.status_id !== POLICY_INTENT_VALIDATION_STATUS_IDS.INVALID,
     },
+    purpose_provenance: purposeProvenance,
     declared_intent: {
-      status_id: nativeIntent
+      status_id: fullyDeclaredPurpose
         ? POLICY_INTENT_DECLARATION_STATUS_IDS.DECLARED
         : POLICY_INTENT_DECLARATION_STATUS_IDS.NOT_DECLARED,
-      purpose: nativeIntent ? purpose : [],
-      helpful_matches: nativeIntent ? helpfulMatches : [],
+      purpose: nativeIntent ? declaredPurpose : [],
+      helpful_matches: nativeIntent ? declaredHelpfulMatches : [],
     },
     observed_evidence_reference: buildObservedEvidenceReference({
       nativeIntent,
@@ -327,6 +340,10 @@ function validatePolicyIntentAuthorityContract(contract = {}) {
     errors.push({ code: 'unknown_authority_source', path: 'authority.source_id' });
   }
 
+  if (!isPolicyPurposeProvenance(candidate.purpose_provenance)) {
+    errors.push({ code: 'invalid_purpose_provenance', path: 'purpose_provenance' });
+  }
+
   if (!candidate.policy || typeof candidate.policy !== 'object') {
     errors.push({ code: 'invalid_policy_reference', path: 'policy' });
   }
@@ -348,6 +365,26 @@ function validatePolicyIntentAuthorityContract(contract = {}) {
 
   if (!Array.isArray(candidate.warnings)) {
     errors.push({ code: 'invalid_warnings', path: 'warnings' });
+  }
+
+  const declaredIntent = asObject(candidate.declared_intent);
+  const declarationStatus = declaredIntent.status_id;
+  if (![POLICY_INTENT_DECLARATION_STATUS_IDS.DECLARED,
+    POLICY_INTENT_DECLARATION_STATUS_IDS.NOT_DECLARED].includes(declarationStatus)) {
+    errors.push({ code: 'unknown_declaration_status', path: 'declared_intent.status_id' });
+  }
+  if (!Array.isArray(declaredIntent.purpose) || !Array.isArray(declaredIntent.helpful_matches)) {
+    errors.push({ code: 'invalid_declared_rules', path: 'declared_intent' });
+  }
+  if ([...asArray(declaredIntent.purpose), ...asArray(declaredIntent.helpful_matches)]
+    .some(rule => Object.hasOwn(asObject(rule), 'source') || Object.hasOwn(asObject(rule), 'inference_state'))) {
+    errors.push({ code: 'raw_declared_rule_provenance_exposed', path: 'declared_intent' });
+  }
+  const shouldBeDeclared = sourceId === POLICY_INTENT_AUTHORITY_SOURCE_IDS.NATIVE_INTENT &&
+    candidate.purpose_provenance?.id === POLICY_PURPOSE_PROVENANCE_IDS.DECLARED_NATIVE;
+  if ((declarationStatus === POLICY_INTENT_DECLARATION_STATUS_IDS.DECLARED) !== shouldBeDeclared ||
+      (shouldBeDeclared && asArray(declaredIntent.purpose).length === 0)) {
+    errors.push({ code: 'declared_purpose_provenance_mismatch', path: 'declared_intent' });
   }
 
   if (!VALID_OBSERVED_EVIDENCE_STATUSES.has(observedEvidenceStatus)) {

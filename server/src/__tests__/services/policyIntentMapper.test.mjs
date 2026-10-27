@@ -165,7 +165,14 @@ describe('policyIntentMapper', () => {
     expect(JSON.stringify(projectedPolicy)).not.toContain('/private/media');
   });
 
-  test('projects active native intent through the same product contract shape', () => {
+  test.each([
+    ['native_intent', 'declared_native', 'declared'],
+    ['operator_declared_intent', 'declared_native', 'declared'],
+    ['media_server_library_profile', 'profile_derived', 'not_declared'],
+    ['base', 'unverified', 'not_declared'],
+    ['native', 'unverified', 'not_declared'],
+    [undefined, 'unverified', 'not_declared'],
+  ])('projects %s purpose separately from active native storage authority', (source, provenanceId, declarationStatus) => {
     const projection = buildPolicyIntentProjection(policy({
       native_intent: {
         active: true,
@@ -191,7 +198,7 @@ describe('policyIntentMapper', () => {
             values: { require_any: ['Family'] },
             constraint_mode: 'advisory',
             semantics: 'identity',
-            source: 'native',
+            source,
             inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,
           }],
           hard_limits: [],
@@ -217,9 +224,16 @@ describe('policyIntentMapper', () => {
         authoritative: true,
       }),
       declared_intent: expect.objectContaining({
-        status_id: 'declared',
-        purpose: [expect.objectContaining({ signal_type: 'genres' })],
+        status_id: declarationStatus,
+        purpose: declarationStatus === 'declared'
+          ? [expect.objectContaining({ signal_type: 'genres' })]
+          : [],
       }),
+      purpose_provenance: {
+        id: provenanceId,
+        declarationRequired: declarationStatus !== 'declared',
+        rawRuleProvenanceExposed: false,
+      },
       legacy_projection: expect.objectContaining({
         status_id: 'not_used',
       }),

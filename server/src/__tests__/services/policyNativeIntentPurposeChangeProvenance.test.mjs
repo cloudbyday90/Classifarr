@@ -8,12 +8,28 @@ import {
   buildPolicyNativeIntentPurposeChangeProvenance,
   isPolicyNativeIntentPurposeChangeProvenance,
 } from '../../services/policyNativeIntentPurposeChangeProvenance.mjs';
+import {
+  POLICY_PURPOSE_PROVENANCE_IDS,
+  buildPolicyPurposeProvenance,
+  isPolicyPurposeProvenance,
+} from '../../services/policyDeclaredPurposeProvenance.mjs';
 
 function rule(source, inferenceState = 'inferred') {
   return { source, inference_state: inferenceState };
 }
 
 describe('policy native intent purpose-change provenance', () => {
+  test('keeps the established interface aligned with the shared aggregate', () => {
+    const rules = [rule('base'), rule('native_intent')];
+    const result = buildPolicyNativeIntentPurposeChangeProvenance(rules);
+
+    expect(POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS).toBe(POLICY_PURPOSE_PROVENANCE_IDS);
+    expect(result).toEqual(buildPolicyPurposeProvenance(rules));
+    expect(isPolicyNativeIntentPurposeChangeProvenance(result)).toBe(isPolicyPurposeProvenance(result));
+    expect(buildPolicyNativeIntentPurposeChangeProvenance()).toEqual(buildPolicyPurposeProvenance());
+    expect(isPolicyNativeIntentPurposeChangeProvenance()).toBe(false);
+  });
+
   test.each([
     ['native declarations', [rule('native_intent')], 'declared_native', false],
     ['operator declarations', [rule('operator_declared_intent')], 'declared_native', false],

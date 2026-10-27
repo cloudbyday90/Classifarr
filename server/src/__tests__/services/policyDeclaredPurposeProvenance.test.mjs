@@ -7,10 +7,13 @@ import { expect, test } from '@jest/globals';
 import {
   buildPolicyDeclaredNativePurposeRuleSqlPredicate,
   buildPolicyProfileDerivedPurposeRuleSqlPredicate,
+  buildPolicyPurposeProvenance,
   classifyPolicyDeclaredPurposeRuleProvenance,
   isPolicyDeclaredNativePurposeRule,
   isPolicyProfileDerivedPurposeRule,
+  isPolicyPurposeProvenance,
   POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS,
+  POLICY_PURPOSE_PROVENANCE_IDS,
 } from '../../services/policyDeclaredPurposeProvenance.mjs';
 
 test('recognizes only server-recorded native declarations and explicit profile observations', () => {
@@ -34,6 +37,60 @@ test('recognizes only server-recorded native declarations and explicit profile o
   expect(classifyPolicyDeclaredPurposeRuleProvenance(unknownRule)).toBe(
     POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.UNVERIFIED,
   );
+});
+
+test.each([
+  ['native declarations', [{ source: 'native_intent', inference_state: 'inferred' }], 'declared_native'],
+  ['operator declarations', [{ source: 'operator_declared_intent', inference_state: 'inferred' }], 'declared_native'],
+  ['both declaration paths', [{ source: 'native_intent' }, { source: 'operator_declared_intent' }], 'declared_native'],
+  ['profile observations', [{ source: 'media_server_library_profile', inference_state: 'inferred' }], 'profile_derived'],
+  ['base templates', [{ source: 'base', inference_state: 'inferred' }], 'unverified'],
+  ['unknown sources', [{ source: 'unknown', inference_state: 'inferred' }], 'unverified'],
+  ['missing sources', [{ inference_state: 'inferred' }], 'unverified'],
+  ['unverified profile state', [{ source: 'media_server_library_profile', inference_state: 'partial' }], 'unverified'],
+  ['malformed rules', [null, undefined, 'not a rule'], 'unverified'],
+  ['declared and profile rules', [{ source: 'native_intent' }, { source: 'media_server_library_profile', inference_state: 'inferred' }], 'mixed'],
+  ['declared and unverified rules', [{ source: 'native_intent' }, { source: 'base' }], 'mixed'],
+  ['profile and unverified rules', [{ source: 'media_server_library_profile', inference_state: 'inferred' }, {}], 'mixed'],
+  ['empty purpose', [], 'unverified'],
+  ['null purpose', null, 'unverified'],
+  ['non-array purpose', { source: 'native_intent' }, 'unverified'],
+])('reduces %s to the canonical aggregate', (_label, rules, id) => {
+  const result = buildPolicyPurposeProvenance(rules);
+
+  expect(result).toEqual({
+    id,
+    declarationRequired: id !== POLICY_PURPOSE_PROVENANCE_IDS.DECLARED_NATIVE,
+    rawRuleProvenanceExposed: false,
+  });
+  expect(isPolicyPurposeProvenance(result)).toBe(true);
+  expect(Object.isFrozen(result)).toBe(true);
+});
+
+test('the aggregate retains no rule content or raw provenance and does not mutate input', () => {
+  const rules = [{ source: 'native_intent', inference_state: 'inferred',
+    values: { require_any: ['Private configured term'] }, actor_id: 74 }];
+  const before = structuredClone(rules);
+
+  expect(buildPolicyPurposeProvenance(rules)).toEqual({
+    id: 'declared_native', declarationRequired: false, rawRuleProvenanceExposed: false,
+  });
+  expect(rules).toEqual(before);
+  expect(buildPolicyPurposeProvenance()).toEqual({
+    id: 'unverified', declarationRequired: true, rawRuleProvenanceExposed: false,
+  });
+});
+
+test.each([
+  undefined, null, [], 'declared_native', 1, {},
+  { id: 'unknown', declarationRequired: true, rawRuleProvenanceExposed: false },
+  { id: 'declared_native', declarationRequired: true, rawRuleProvenanceExposed: false },
+  { id: 'profile_derived', declarationRequired: false, rawRuleProvenanceExposed: false },
+  { id: 'mixed', declarationRequired: 'true', rawRuleProvenanceExposed: false },
+  { id: 'unverified', declarationRequired: true, rawRuleProvenanceExposed: true },
+  { id: 'declared_native', declarationRequired: false, rawRuleProvenanceExposed: false, source: 'native_intent' },
+])('rejects a malformed or contradictory aggregate %j', value => {
+  expect(isPolicyPurposeProvenance(value)).toBe(false);
 });
 
 test('builds only static SQL provenance predicates and rejects unsafe aliases', () => {
