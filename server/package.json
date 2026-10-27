@@ -129,7 +129,7 @@
     "retry": "0.13.1",
     "immutable": ">=4.3.8",
     "uuid": "^14.0.0",
-    "qs": "6.16.1",
+    "qs": ">=6.17.0",
     "ip-address": "10.7.4",
     "socket.io-parser": "4.2.7",
     "discord.js": {
