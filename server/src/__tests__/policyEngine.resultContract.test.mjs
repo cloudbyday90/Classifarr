@@ -8,10 +8,23 @@
 import { jest } from '@jest/globals';
 import { policyEngine } from '../services/policyEngine.mjs';
 import { policyCandidateRanker } from '../services/policyCandidateRanker.mjs';
+import { policyEvaluationFixture } from './fixtures/policyEvaluationCaptureFixture.mjs';
+import { holdPolicyEvaluationCapture, getLivePolicyEvaluationCapture } from '../services/policyEvaluationCapture.mjs';
 
 describe('PolicyEngine result contract', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  test('production wrapper supplies a live retained-evaluation receipt', async () => {
+    const { policy, evaluation } = policyEvaluationFixture();
+    jest.spyOn(policyEngine, 'checkAuthoritativeSignals').mockResolvedValue(null);
+    jest.spyOn(policyEngine, 'getActivePolicies').mockResolvedValue([policy]);
+    jest.spyOn(policyEngine, 'evaluatePolicy').mockResolvedValue(evaluation);
+    const item = { media_type: 'movie', tmdb_id: 42 };
+    const result = await policyEngine.evaluateItem(item, { ragCache: { matches: [] } });
+    expect(getLivePolicyEvaluationCapture(result).reasonId).toBe('complete');
+    expect(holdPolicyEvaluationCapture({ policyResult: result }, item)).not.toBeNull();
   });
 
   test('evaluateItem returns normalized prompt_select fields from ranked results', async () => {

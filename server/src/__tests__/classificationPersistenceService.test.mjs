@@ -69,6 +69,7 @@ const libraryProfileService = mockLibraryProfileService;
 
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
 const { inventoryRankingShadowFixture } = await import('./fixtures/inventoryRankingShadowFixture.mjs');
+const { mintPolicyEvaluationFixture } = await import('./fixtures/policyEvaluationCaptureFixture.mjs');
 const policyQuestionContext = {
   extractQuestionContext: jest.fn().mockReturnValue({}),
   getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),
@@ -415,6 +416,34 @@ describe('logClassification', () => {
 
     const id = await classificationPersistenceService.logClassification(baseMetadata, result, Date.now());
     expect(id).toBe(42);
+  });
+
+  test('policy evaluation child writes follow History persistence and failure leaves classification valid', async () => {
+    const { item, result: captured } = mintPolicyEvaluationFixture();
+    const originalQuery = db.query.getMockImplementation();
+    db.query.mockImplementation(async (...args) => {
+      if (args[0].includes('INSERT INTO classification_policy_evaluation_captures')) throw new Error('PRIVATE DATABASE DETAIL');
+      return originalQuery(...args);
+    });
+    const result = { ...captured, library: { id: 1 }, method: 'policy_engine', confidence: 80 };
+    await expect(classificationPersistenceService.logClassification({ ...baseMetadata, ...item, policyResult: captured.policyResult }, result)).resolves.toBe(42);
+    const calls = db.query.mock.calls.map(call => call[0]);
+    expect(calls.findIndex(sql => sql.includes('INSERT INTO classification_policy_evaluation_captures')))
+      .toBeGreaterThan(calls.findIndex(sql => sql.includes('INSERT INTO classification_history')));
+    const history = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1][9];
+    expect(history).not.toContain('policy_evaluation.v1');
+  });
+
+  test('retained second-pass policy capture is held before awaits and ranking mutation becomes a gap', async () => {
+    const original = mintPolicyEvaluationFixture(undefined, { policyId: 1 }), second = mintPolicyEvaluationFixture(undefined, { policyId: 2 });
+    const result = { ...original.result, policyResult: second.retained, library: { id: 1 }, method: 'policy_engine', confidence: 80 };
+    libraryProfileService.getProfileStats.mockImplementationOnce(async () => {
+      result.policyResult.ranked[0].score++;
+      return {};
+    });
+    await classificationPersistenceService.logClassification({ ...baseMetadata, ...second.item }, result);
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_policy_evaluation_captures'))[1];
+    expect(params[4]).toBe('binding_failure'); expect(params[5]).toBeNull();
   });
 
   test('persists only the live frozen ranking receipt, not client-supplied or copied metadata', async () => {

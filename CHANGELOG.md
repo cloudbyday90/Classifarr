@@ -11,13 +11,22 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Frozen policy evaluation evidence** — Preserve new retained live policy
+  evaluations in immutable History-bound child records: the complete compatible
+  pool up to 64 candidates, final policy ranking, closed exclusions, and separate
+  storage authority, purpose provenance and runtime admission. Expire payloads
+  after thirty days while retaining tombstones; keep evidence outside portable
+  backups. Extend the bounded private disagreement CLI with validated context
+  and explicit gaps. Classification survives capture failures; cohort scoring,
+  routing and learning remain unchanged. Historical intent is not reconstructed.
+
 - **Private prospective disagreement report** — Add the explicit evaluation CLI
   mode `--prospective-disagreements`. Compare frozen original references and
   experimental rankings against validated assessments through shared cohort
   eligibility, preserving existing aggregate results and connected holdouts.
   Bound read-only inputs and private numeric/ID output; show missing historical
   intent/policy evidence, abstentions and display omissions explicitly. No new
-  routing, learning, capture version, saved report, API/UI or scheduled job.
+  routing, learning, saved report, API/UI or scheduled job.
 
 - **Explicit History feedback review** — Assess a preserved original automated
   destination through an active-administrator, ten-minute server reference.

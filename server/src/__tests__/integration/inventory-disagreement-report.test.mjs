@@ -9,6 +9,7 @@ import { createDatabaseReadCanceller } from '../../utils/databaseReadCancellatio
 import { runInventoryOutcomeCalibration } from '../../scripts/runInventoryOutcomeCalibration.mjs';
 import { READ_INVENTORY_PROSPECTIVE_INPUT_SQL } from '../../services/inventoryProspectiveSnapshot.mjs';
 import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
+import { mintPolicyEvaluationFixture } from '../fixtures/policyEvaluationCaptureFixture.mjs';
 
 let libraries, historyId, fixtureMetadata;
 const read = (callback, options) => {
@@ -31,6 +32,12 @@ beforeAll(async () => {
   historyId = String((await db.query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,metadata,recorded_at,library_id)
     VALUES(9223372036854775807,'Private disagreement title',42,'movie',$1,$2,$3) RETURNING id`,
   [fixtureMetadata, capture.capturedAt, libraries[0]])).rows[0].id);
+  const policyCapture = structuredClone(mintPolicyEvaluationFixture(undefined, { libraryId: libraries[0] }).capture.payload);
+  policyCapture.capturedAt = new Date(Date.parse(capture.capturedAt) - 1000).toISOString();
+  await db.query(`INSERT INTO classification_policy_evaluation_captures
+    (classification_id,media_type,identity_key,observed_at,expires_at,reason_id,payload)
+    VALUES($1,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3)`,
+  [historyId, policyCapture.capturedAt, policyCapture]);
   const receipt = (await db.query(`INSERT INTO policy_authorized_outcome_source_event_receipts
     (source_id,source_event_id,command_fingerprint,classification_id,destination_library_id,final_outcome_status_id,persistence_status_id)
     VALUES('operator_confirmation',$1,$2,$3,$4,'resolved','outcome_only') RETURNING id`,
@@ -54,6 +61,8 @@ test('real private CLI read keeps exact IDs, leaves source/checkpoint state unch
     return callback(client);
   }, options));
   expect(report.cases[0]).toMatchObject({ classificationId: historyId, assessment: { libraryId: libraries[1] }, original: { status: 'unavailable' } });
+  expect(report.cases[0].policyEvaluation).toMatchObject({ status: 'available', reference: 'retained_policy_evaluation',
+    candidates: [{ policyId: 10, libraryId: libraries[0], purposeProvenance: 'declared_native' }] });
   expect(JSON.stringify(report)).not.toMatch(/Private|queryHash|snapshotId|event_key|Fingerprint/);
   expect((await db.query('SELECT * FROM classification_history WHERE id=$1', [historyId])).rows).toEqual(before);
   expect((await db.query('SELECT * FROM automatic_evidence_gap_audit')).rows).toEqual(checkpoint);
@@ -83,7 +92,7 @@ test('the real CLI process emits one private JSON document with quiet database l
     POSTGRES_CONN_TIMEOUT_MS: '1000', PGOPTIONS: '', LOG_LEVEL: 'debug', FILE_LOGGING_ENABLED: 'false' } });
   expect(result.status).toBe(0);
   const report = JSON.parse(result.stdout);
-  expect(report).toMatchObject({ version: 'inventory_prospective_disagreements.v1', private: true });
+  expect(report).toMatchObject({ version: 'inventory_prospective_disagreements.v2', private: true });
   expect(report.cases[0].classificationId).toBe(historyId);
   expect(result.stdout).not.toMatch(/Private disagreement|queryHash|snapshotId|Fingerprint|password|SLOW QUERY/);
 });

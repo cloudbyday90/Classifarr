@@ -15,7 +15,7 @@ export async function readInventoryDisagreements(runtime, { signal } = {}) {
     const snapshot = await runtime.withTransaction(async client => {
       controller.signal.throwIfAborted();
       await client.query("SET LOCAL statement_timeout='12s'; SET LOCAL lock_timeout='1s'; SET LOCAL transaction_timeout='15s'; SET LOCAL TIME ZONE 'UTC'");
-      const result = await readInventoryProspectiveSnapshot(client);
+      const result = await readInventoryProspectiveSnapshot(client, 'inventory_disagreement', { policyEvaluation: true });
       controller.signal.throwIfAborted(); return result;
     }, { signal: controller.signal, readOnly: true, isolationLevel: 'repeatable_read', timeoutMs: 15000 });
     controller.signal.throwIfAborted();

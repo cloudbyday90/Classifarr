@@ -141,6 +141,10 @@ or deployment was performed.
 
 ## Expected next boundary
 
+The follow-up is now documented in the separate
+[policy evaluation capture design](prospective-policy-intent-capture-design.md)
+and [outcome](prospective-policy-intent-capture-outcome.md).
+
 The first demonstrated explanatory gap is missing prospective policy/intent
 provenance. Next, design a versioned, bounded capture of the actual policy candidate
 ranking and declared-versus-inferred purpose authority at the decision boundary.

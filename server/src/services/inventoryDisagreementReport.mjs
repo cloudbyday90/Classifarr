@@ -4,6 +4,7 @@ import { summarizeInventoryProspectiveCases } from './inventoryProspectiveOutcom
 import { withInventoryProspectiveActivity } from './inventoryProspectiveActivity.mjs';
 import { projectInventoryDisagreementCase } from './inventoryDisagreementCase.mjs';
 import { INVENTORY_PROSPECTIVE_MAX_INPUT_BYTES } from './inventoryProspectiveLimits.mjs';
+import { POLICY_EVALUATION_GAPS } from './policyEvaluationCaptureContract.mjs';
 
 export const INVENTORY_DISAGREEMENT_CASE_LIMIT = 50;
 export const INVENTORY_DISAGREEMENT_REPORT_BYTES = 1024 * 1024;
@@ -20,10 +21,12 @@ export function buildInventoryDisagreementReport({ rows, activity, observedAt, w
   const prepared = prepareInventoryProspectiveCases(rows, { now });
   const evaluation = withInventoryProspectiveActivity(summarizeInventoryProspectiveCases(prepared), activity);
   const cohorts = { confirmation: cohortCounts(), correction: cohortCounts() };
-  const report = { version: 'inventory_prospective_disagreements.v1', private: true, status: evaluation.status,
+  const report = { version: 'inventory_prospective_disagreements.v2', private: true, status: evaluation.status,
     window: { since: window.since, until: window.until, outcomesAsOf: observedAt }, evaluation, cohorts,
     evidenceGaps: { historicalIntent: 'not_frozen', fullPolicyRanking: 'not_frozen',
       outcomesWithoutEligibleCapture: 'not_assessed', originalUnavailable: 0, originalConflicting: 0, partialOriginalSources: 0 },
+    policyEvaluationCoverage: { scope: 'eligible_prospective_experimental_cohort', available: 0,
+      gaps: Object.fromEntries(['missing', 'expired', ...POLICY_EVALUATION_GAPS].map(reason => [reason, 0])) },
     limits: { retentionDays: 30, captures: 5000, candidatesPerCapture: 64, observationsPerCapture: 100,
       inputBytes: INVENTORY_PROSPECTIVE_MAX_INPUT_BYTES, displayedCases: INVENTORY_DISAGREEMENT_CASE_LIMIT, reportBytes: INVENTORY_DISAGREEMENT_REPORT_BYTES },
     display: { eligibleCases: evaluation.sampleSize, flaggedCases: 0, shownCases: 0, omittedCases: 0, truncated: false,
@@ -32,7 +35,9 @@ export function buildInventoryDisagreementReport({ rows, activity, observedAt, w
       confirmationsMayBeSuggestionBiased: true, unavailableCompanyIsNotAnIndependentArm: true, automaticPromotionAllowed: false }, cases: [] };
   for (const row of prepared.cases) {
     if (row.disposition !== 'eligible') continue;
-    const item = projectInventoryDisagreementCase(row), cohort = cohorts[item.cohort];
+    const item = projectInventoryDisagreementCase(row, now), cohort = cohorts[item.cohort];
+    if (item.policyEvaluation.status === 'available') report.policyEvaluationCoverage.available++;
+    else report.policyEvaluationCoverage.gaps[item.policyEvaluation.reason]++;
     cohort.sampled++;
     for (const [key, status] of Object.entries(item.comparisons)) cohort[key][status]++;
     if (item.original.status !== 'available') { report.evidenceGaps.originalUnavailable++; cohort.originalUnavailable++; }
@@ -41,6 +46,10 @@ export function buildInventoryDisagreementReport({ rows, activity, observedAt, w
     if (!item.flags.length) continue;
     cohort.flagged++; report.display.flaggedCases++;
     if (report.cases.length < INVENTORY_DISAGREEMENT_CASE_LIMIT) report.cases.push(item);
+  }
+  if (report.policyEvaluationCoverage.available) {
+    const status = report.policyEvaluationCoverage.available === evaluation.sampleSize ? 'prospectively_frozen' : 'partially_frozen';
+    report.evidenceGaps.historicalIntent = status; report.evidenceGaps.fullPolicyRanking = status;
   }
   const updateDisplay = () => {
     report.display.shownCases = report.cases.length;

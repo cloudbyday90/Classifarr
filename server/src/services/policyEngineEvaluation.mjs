@@ -28,7 +28,9 @@ export async function evaluateItem(item, options, deps) {
         determineAction = (ranked) => policyCandidateRanker.determineAction(ranked),
         rankResults = (evaluations) => policyCandidateRanker.rankResults(evaluations),
         applyInventoryEvidence = (input) => policyInventoryEvidenceService.apply(input),
+        capturePolicyEvaluation = null,
     } = deps;
+    const finishCapture = (result, conflicts, reason) => capturePolicyEvaluation?.finish(result, conflicts, reason) ?? result;
 
     try {
         logger.info('Evaluating item against policies', { title: item.title });
@@ -43,13 +45,13 @@ export async function evaluateItem(item, options, deps) {
                 library: authoritativeMatch.library_name,
                 confidence: authoritativeMatch.confidence
             });
-            return policyDecisionBuilder.normalizeResult({
+            return finishCapture(policyDecisionBuilder.normalizeResult({
                 action: 'auto_classify',
                 library: authoritativeMatch,
                 confidence: authoritativeMatch.confidence,
                 method: authoritativeMatch.method,
                 ranked: [authoritativeMatch]
-            });
+            }), undefined, 'authoritative_bypass');
         }
 
         const policies = await getActivePolicies();
@@ -58,16 +60,17 @@ export async function evaluateItem(item, options, deps) {
                 options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.NO_ACTIVE_POLICIES,
             );
             logger.warn('No active policies found');
-            return policyDecisionBuilder.normalizeResult({
+            return finishCapture(policyDecisionBuilder.normalizeResult({
                 action: 'manual',
                 confidence: 0,
                 ranked: []
-            });
+            }), undefined, 'no_active_policies');
         }
 
         const itemMediaType = item.media_type?.toLowerCase();
         const { candidatePolicies, skipped: skippedPolicies } =
             policyExclusionService.applyMediaTypeFilter(policies, itemMediaType);
+        capturePolicyEvaluation?.start(policies, candidatePolicies, skippedPolicies);
 
         if (!itemMediaType) {
             logger.warn('Item missing media_type, evaluating against all policies', {
@@ -92,11 +95,11 @@ export async function evaluateItem(item, options, deps) {
                 title: item.title,
                 mediaType: itemMediaType
             });
-            return policyDecisionBuilder.normalizeResult({
+            return finishCapture(policyDecisionBuilder.normalizeResult({
                 action: 'manual',
                 confidence: 0,
                 ranked: []
-            });
+            }), undefined, 'no_compatible_policies');
         }
 
         const normalizeRagCache = (cache) => {
@@ -137,6 +140,7 @@ export async function evaluateItem(item, options, deps) {
         for (const policy of candidatePolicies) {
             const evaluation = await evaluatePolicy(policy, item, ragCache, relatedEvidence);
             rawEvaluations.push(evaluation);
+            capturePolicyEvaluation?.record(evaluation);
         }
 
         const { constraintConflicts, constraintConflictPolicyIds } =
@@ -163,13 +167,13 @@ export async function evaluateItem(item, options, deps) {
                 options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.NO_QUALIFYING_POLICY_EVALUATIONS,
             );
             logger.info('No policies matched', { title: item.title });
-            return policyDecisionBuilder.normalizeResult({
+            return finishCapture(policyDecisionBuilder.normalizeResult({
                 action: 'manual',
                 confidence: 0,
                 ranked: [],
                 languageConflicts: combinedLanguageConflicts,
                 constraintConflicts,
-            });
+            }), combinedConflictIds);
         }
 
         const identityCalibratedEvaluations = applySpecializedDestinationIdentityEvidence({
@@ -197,14 +201,14 @@ export async function evaluateItem(item, options, deps) {
             constraintConflictCount: constraintConflicts.length,
         });
 
-        return policyDecisionBuilder.normalizeResult({
+        return finishCapture(policyDecisionBuilder.normalizeResult({
             ...result,
             inventoryRankingShadow: getInventoryRankingShadow(inventoryEvaluations),
             inventoryRankingShadowReasonId: getInventoryRankingShadowReason(inventoryEvaluations),
             languageConflicts: combinedLanguageConflicts,
             constraintConflicts,
             ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }
-        });
+        }), combinedConflictIds);
 
     } catch (error) {
         logger.error('Failed to evaluate item', {

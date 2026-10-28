@@ -50,6 +50,8 @@ import {
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
 import { projectInventoryRankingShadow, projectHeldInventoryRankingShadow } from './inventoryRankingShadow.mjs';
+import { holdPolicyEvaluationCapture } from './policyEvaluationCapture.mjs';
+import { persistPolicyEvaluationCapture } from './policyEvaluationCaptureRepository.mjs';
 import { buildClassificationIntakeComparison } from './classificationIntakeComparison.mjs';
 import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 import {
@@ -317,6 +319,7 @@ export class ClassificationPersistenceService {
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
     const candidateCapture = buildClassificationCandidateCapture(result);
+    const heldPolicyEvaluation = holdPolicyEvaluationCapture(result, metadata);
     const heldInventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
     const rankedCandidates = Array.isArray(result.policyResult?.ranked)
       ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate)
@@ -499,6 +502,13 @@ export class ClassificationPersistenceService {
       },
     });
     const classificationId = lifecycleResult.classificationId;
+
+    // Diagnostic child evidence is outside the committed classification transaction.
+    try {
+      await persistPolicyEvaluationCapture(db, { classificationId, held: heldPolicyEvaluation, result, metadata });
+    } catch {
+      logger.warn('Policy evaluation evidence persistence failed; classification remains valid');
+    }
 
     if (queueTask?.id) {
       await this.intakeReceiptService.recordClassification(queueTask.id, classificationId, intakeComparison,

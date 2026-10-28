@@ -2,11 +2,12 @@
 import { summarizeProspectiveReferences } from './inventoryProspectiveReference.mjs';
 import { inventoryShadowCandidateScore } from './inventoryRankingShadow.mjs';
 import { prospectiveClassificationId, prospectiveTimestamp } from './inventoryProspectiveValues.mjs';
+import { readPolicyEvaluationContext } from './policyEvaluationCaptureRead.mjs';
 
 const compare = (prediction, assessment) => prediction === null ? 'abstained' : prediction === assessment ? 'agrees' : 'differs';
 
 /** Allowlisted private fields only. Never spread a source row, capture or receipt into output. */
-export function projectInventoryDisagreementCase(row) {
+export function projectInventoryDisagreementCase(row, now) {
   const capture = row.capture, reference = summarizeProspectiveReferences(row.prepared.observations);
   const comparisons = {
     originalVersusAssessment: reference.original.status === 'available' ? compare(reference.original.libraryId, row.selectedLibraryId) : 'unavailable',
@@ -27,6 +28,7 @@ export function projectInventoryDisagreementCase(row) {
         descriptionMean: candidate.descriptionMean, metadataFit: candidate.metadataFit, companyFit: candidate.companyFit,
         baselineScore: inventoryShadowCandidateScore(candidate), companyScore: inventoryShadowCandidateScore(candidate, true) }))
         .sort((a, b) => b.baselineScore - a.baselineScore || a.libraryId - b.libraryId) },
+    policyEvaluation: readPolicyEvaluationContext(row, now),
     comparisons, flags: Object.keys(comparisons).filter(key => comparisons[key] === 'differs'),
   };
 }

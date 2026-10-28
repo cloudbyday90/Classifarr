@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-28T15:44:01.293Z
--- Latest Migration: 20261028_160000_add_feedback_review_references.sql
+-- Generated: 2026-10-28T20:23:33.003Z
+-- Latest Migration: 20261028_180000_add_policy_evaluation_captures.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -522,6 +522,45 @@ CREATE FUNCTION public.guard_policy_candidate_correction_review_projection_audit
     AS $$
 BEGIN
     RAISE EXCEPTION 'Representative review-projection audit events are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_evaluation_capture_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_evaluation_capture_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'TRUNCATE' THEN
+        RAISE EXCEPTION 'Policy evaluation capture tombstones cannot be truncated';
+    END IF;
+    IF EXISTS (SELECT 1 FROM classification_history WHERE id = OLD.classification_id) THEN
+        RAISE EXCEPTION 'Policy evaluation captures are removed only with their History row';
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: guard_policy_evaluation_capture_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_evaluation_capture_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF (to_jsonb(NEW) - ARRAY['payload', 'expired_at']) IS DISTINCT FROM
+       (to_jsonb(OLD) - ARRAY['payload', 'expired_at'])
+       OR OLD.payload IS NULL OR NEW.payload IS NOT NULL OR OLD.expired_at IS NOT NULL
+       OR OLD.expires_at > statement_timestamp() OR NEW.expired_at IS NULL
+       OR NEW.expired_at < OLD.expires_at OR NEW.expired_at > statement_timestamp() THEN
+        RAISE EXCEPTION 'Policy evaluation captures only permit expired payload removal';
+    END IF;
+    RETURN NEW;
 END;
 $$;
 
@@ -2993,6 +3032,43 @@ COMMENT ON TABLE public.classification_intake_receipts IS 'Thirty-day classifica
 --
 
 COMMENT ON COLUMN public.classification_intake_receipts.decision_context IS 'Original saved movie/TV decision linked to classification_id; no history foreign key. Null when capture is unavailable. Same thirty-day retention as the intake receipt.';
+
+
+--
+-- Name: classification_policy_evaluation_captures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_policy_evaluation_captures (
+    classification_id bigint CONSTRAINT classification_policy_evaluation_cap_classification_id_not_null NOT NULL,
+    capture_version smallint DEFAULT 1 CONSTRAINT classification_policy_evaluation_captu_capture_version_not_null NOT NULL,
+    media_type text NOT NULL,
+    identity_key text NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    reason_id text NOT NULL,
+    payload jsonb,
+    expired_at timestamp with time zone,
+    CONSTRAINT classification_policy_evaluation_captures_capture_version_check CHECK ((capture_version = 1)),
+    CONSTRAINT classification_policy_evaluation_captures_check CHECK (
+CASE
+    WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
+    ELSE false
+END),
+    CONSTRAINT classification_policy_evaluation_captures_check1 CHECK ((isfinite(expires_at) AND (expires_at = (observed_at + '720:00:00'::interval)))),
+    CONSTRAINT classification_policy_evaluation_captures_check2 CHECK (((expired_at IS NULL) OR (isfinite(expired_at) AND (expired_at >= expires_at)))),
+    CONSTRAINT classification_policy_evaluation_captures_check3 CHECK ((((reason_id = 'complete'::text) AND (((payload IS NOT NULL) AND (expired_at IS NULL)) OR ((payload IS NULL) AND (expired_at IS NOT NULL)))) OR ((reason_id <> 'complete'::text) AND (payload IS NULL) AND (expired_at IS NULL)))),
+    CONSTRAINT classification_policy_evaluation_captures_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT classification_policy_evaluation_captures_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT classification_policy_evaluation_captures_payload_check CHECK (((payload IS NULL) OR ((jsonb_typeof(payload) = 'object'::text) AND (octet_length((payload)::text) <= 65536)))),
+    CONSTRAINT classification_policy_evaluation_captures_reason_id_check CHECK ((reason_id = ANY (ARRAY['complete'::text, 'authoritative_bypass'::text, 'no_active_policies'::text, 'no_compatible_policies'::text, 'pool_overflow'::text, 'payload_overflow'::text, 'capture_invalid'::text, 'binding_failure'::text])))
+);
+
+
+--
+-- Name: TABLE classification_policy_evaluation_captures; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.classification_policy_evaluation_captures IS 'Private first-write retained live policy evaluation; 30-day payload and expiry tombstones; History cascade, no configuration backup, routing or learning authority.';
 
 
 --
@@ -10668,6 +10744,14 @@ ALTER TABLE ONLY public.classification_intake_receipts
 
 
 --
+-- Name: classification_policy_evaluation_captures classification_policy_evaluation_captures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_policy_evaluation_captures
+    ADD CONSTRAINT classification_policy_evaluation_captures_pkey PRIMARY KEY (classification_id);
+
+
+--
 -- Name: classification_provider_circuits classification_provider_circuits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13879,6 +13963,13 @@ CREATE INDEX idx_policy_change_log_type ON public.policy_change_log USING btree 
 
 
 --
+-- Name: idx_policy_evaluation_capture_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_evaluation_capture_expiry ON public.classification_policy_evaluation_captures USING btree (expires_at, classification_id) WHERE (payload IS NOT NULL);
+
+
+--
 -- Name: idx_policy_feedback_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15135,6 +15226,27 @@ CREATE TRIGGER policy_candidate_correction_review_projection_audit_event_mutat B
 
 
 --
+-- Name: classification_policy_evaluation_captures policy_evaluation_capture_delete_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_evaluation_capture_delete_guard BEFORE DELETE ON public.classification_policy_evaluation_captures FOR EACH ROW EXECUTE FUNCTION public.guard_policy_evaluation_capture_delete();
+
+
+--
+-- Name: classification_policy_evaluation_captures policy_evaluation_capture_truncate_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_evaluation_capture_truncate_guard BEFORE TRUNCATE ON public.classification_policy_evaluation_captures FOR EACH STATEMENT EXECUTE FUNCTION public.guard_policy_evaluation_capture_delete();
+
+
+--
+-- Name: classification_policy_evaluation_captures policy_evaluation_capture_update_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_evaluation_capture_update_guard BEFORE UPDATE ON public.classification_policy_evaluation_captures FOR EACH ROW EXECUTE FUNCTION public.guard_policy_evaluation_capture_update();
+
+
+--
 -- Name: policy_identity_evidence_admissions policy_identity_evidence_admission_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -15434,6 +15546,14 @@ ALTER TABLE ONLY public.classification_evidence
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE SET NULL;
+
+
+--
+-- Name: classification_policy_evaluation_captures classification_policy_evaluation_capture_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_policy_evaluation_captures
+    ADD CONSTRAINT classification_policy_evaluation_capture_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
 
 
 --
@@ -18774,6 +18894,7 @@ FROM unnest(ARRAY[
     '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql',
     '20261028_130000_add_evidence_gap_audit.sql',
     '20261028_140000_freeze_feedback_source_receipts.sql',
-    '20261028_160000_add_feedback_review_references.sql'
+    '20261028_160000_add_feedback_review_references.sql',
+    '20261028_180000_add_policy_evaluation_captures.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
