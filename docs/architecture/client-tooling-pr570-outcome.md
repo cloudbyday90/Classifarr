@@ -55,3 +55,14 @@ was not changed. Backend validation belongs to the separate
 [prospective outcome](prospective-authorized-outcome-outcome.md). Final staged
 checks and PR closure are recorded with the delivery receipt. The provider PR is
 not merged.
+
+## Delivery and housekeeping
+
+The exact reviewed client changes were pushed on main in
+[3cea2c333c89784f271f61034d55bf1cc37a34d5](https://github.com/cloudbyday90/Classifarr/commit/3cea2c333c89784f271f61034d55bf1cc37a34d5).
+Remote main matched. MCP verified PR #570 still had reviewed head
+`06001f5a0953e9cc30ba5c2ee8793dfab567b983`, then closed it with `merged: false`.
+The subsequent open-PR query was empty. No remaining stale bot PR required a
+rebase, and no remote branch or PR was merged. Final Markdown, copyright,
+whitespace and redacted staged secret checks passed. The separate delivery
+receipt changes documentation only; it does not claim hosted/Linux validation.

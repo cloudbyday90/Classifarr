@@ -93,3 +93,20 @@ prospective capture automatically; this commit does not add a live recovery job.
 The next bounded recommendation is an automated, read-only gap audit before any
 historical import or ranking promotion. Frozen action/reference capture for
 legacy feedback is the next identified writer gap.
+
+## Delivery
+
+Implementation, Unreleased, separate feature/PR designs and outcomes, and the
+automation/backfill recommendations were committed on main as
+[3cea2c333c89784f271f61034d55bf1cc37a34d5](https://github.com/cloudbyday90/Classifarr/commit/3cea2c333c89784f271f61034d55bf1cc37a34d5).
+The push succeeded and remote main matched. Final Markdown lint passed 2,378
+documents; copyright checked 1,807 files; whitespace and redacted staged Gitleaks
+checks passed. Private/intermediate receipts remain ignored. No new branch or
+temporary worktree was created; existing unrelated worktrees were preserved.
+
+PR #570 was checked against its reviewed head, then closed without merging after
+the represented patch was pushed. The subsequent MCP open-PR query returned no
+open PRs, so no unrelated stale Dependabot PR remained to rebase. No version bump,
+release, image rehearsal, deployment or production mutation was performed. Hosted
+checks after push are separate from these local receipts. A subsequent receipt-only
+documentation commit records delivery without changing the tested application.
