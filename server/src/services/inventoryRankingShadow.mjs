@@ -13,10 +13,14 @@ const id = value => Number.isInteger(value) && value > 0 && value <= 2147483647;
 const fit = value => Number.isFinite(value) && Math.abs(value) <= 20;
 
 /** Predeclared ranking experiment, not the policy score, AI confidence, or a routing grant. */
+export function inventoryShadowCandidateScore(row, includeCompany = false) {
+  return row.descriptionMean + .25 * Math.tanh(row.metadataFit) +
+    (includeCompany ? .25 * Math.tanh(row.companyFit ?? 0) : 0);
+}
+
 export function chooseInventoryShadowCandidate(candidates, includeCompany = false) {
   const ranked = candidates.map(row => ({ id: row.libraryId,
-    score: row.descriptionMean + .25 * Math.tanh(row.metadataFit) +
-      (includeCompany ? .25 * Math.tanh(row.companyFit ?? 0) : 0) }))
+    score: inventoryShadowCandidateScore(row, includeCompany) }))
     .sort((a, b) => b.score - a.score || a.id - b.id);
   return ranked[0].score > 0 && ranked[0].score - ranked[1].score > 0.000001 ? ranked[0].id : null;
 }

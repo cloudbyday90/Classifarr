@@ -7,7 +7,7 @@ export const GAP_AUDIT_OBSERVATION_REASONS = Object.freeze(['missingSnapshotRows
 export const GAP_AUDIT_FAILURES = Object.freeze(['busy', 'memory_pressure', 'memory_unknown', 'evidence_budget',
   'invalid_evidence', 'deadline', 'evaluation_unavailable']);
 export const GAP_AUDIT_DEFERRALS = Object.freeze(['busy', 'memory_pressure', 'memory_unknown']);
-export const GAP_AUDIT_MAX_INPUT_BYTES = 64 * 1024 * 1024;
+export { INVENTORY_PROSPECTIVE_MAX_INPUT_BYTES as GAP_AUDIT_MAX_INPUT_BYTES } from './inventoryProspectiveLimits.mjs';
 export const GAP_AUDIT_MAX_REPORT_BYTES = 16384;
 export const GAP_AUDIT_LIMITS = Object.freeze({ retentionDays: 30, captures: 5000, observationsPerCapture: 100,
   observationSentinel: 101, historicalRecovery: 'not_assessed', notAccuracy: true,

@@ -7,6 +7,7 @@ import { FEEDBACK_REVIEW_SNAPSHOT_VERSION } from './feedbackReviewOutcomeSnapsho
 import { readInventoryRankingIdentity } from './inventoryRankingShadowIdentity.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { prospectiveTimestamp, prospectiveClassificationId } from './inventoryProspectiveValues.mjs';
+import { prospectiveOriginalReference } from './inventoryProspectiveReference.mjs';
 
 const invalid = () => { throw new Error('inventory_prospective_invalid_evidence'); };
 const sourceIdentity = key => typeof key === 'string' && /^source:[a-f0-9]{64}$/.test(key);
@@ -24,11 +25,14 @@ export function prepareProspectiveObservations(row, now) {
   let uncertain = false;
   for (const evidence of prepareAuthorizedOutcomeEvaluationRows(row.outcomes)) {
     if (!sameClass(evidence.classification_id, row.classification_id)) invalid();
-    let key, type, destination, kind, available, missing = false, selectionOnly = false;
+    let key, type, destination, kind, available, reference, missing = false, selectionOnly = false;
     if (evidence.origin === 'authorized_outcome') {
       missing = evidence.authorized_snapshot.snapshot_missing;
       ({ identity_key: key, media_type: type, selected_library_id: destination, was_correction: kind,
         target_available: available } = evidence);
+      reference = { origin: 'authorized_outcome', kind: evidence.authorized_snapshot.event_key.startsWith('runtime_resolution:')
+        ? 'runtime_operator_action' : 'manual_classification_change',
+      original: prospectiveOriginalReference(evidence.decision_context == null ? null : readCorrectionDecisionContext(evidence.decision_context)) };
     } else if (evidence.origin === 'retained_correction') {
       const context = evidence.decision_context == null ? null : readCorrectionDecisionContext(evidence.decision_context);
       if (evidence.decision_context != null && !context) invalid();
@@ -39,6 +43,7 @@ export function prepareProspectiveObservations(row, now) {
         ? !sourceIdentity(key) : key !== `${type}:${context.capture.tmdbId}`))) invalid();
       kind = true;
       missing = evidence.event_classification_id == null && !context;
+      reference = { origin: 'retained_correction', kind: 'manual_classification_change', original: prospectiveOriginalReference(context) };
     } else if (evidence.origin === 'legacy_feedback') {
       const snapshot = evidence.feedback_snapshot == null ? null : readFeedbackOutcomeSnapshot(evidence.feedback_snapshot);
       if (evidence.feedback_snapshot != null && !snapshot || snapshot && !feedbackSnapshotMatchesReceipt(snapshot, evidence)) invalid();
@@ -47,6 +52,10 @@ export function prepareProspectiveObservations(row, now) {
       if (snapshot) { key = `${snapshot.mediaType}:${snapshot.tmdbId}`; type = snapshot.mediaType; destination = snapshot.selectedLibraryId; }
       kind = snapshot?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION ? snapshot.action === 'correction' : null;
       available = evidence.target_available;
+      reference = { origin: snapshot?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION ? 'history_feedback_review' : 'legacy_feedback', kind: snapshot?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION
+        ? 'original_automated_destination' : selectionOnly ? 'legacy_selection' : 'legacy_unknown_action',
+      original: snapshot?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION
+        ? { status: 'available', libraryId: snapshot.reference.libraryId } : { status: 'not_captured', libraryId: null } };
     } else if (evidence.origin === 'unverified_correction') {
       missing = true;
     } else invalid();
@@ -69,7 +78,7 @@ export function prepareProspectiveObservations(row, now) {
     if (row.capture.identityKey != null && key !== row.capture.identityKey) { coverage.identityMismatchRows++; uncertain = true; }
     if (!available) coverage.unavailableOutcomeRows++;
     observations.push({ library_id: destination, was_correction: kind, target_available: available,
-      evidence_conflict: evidence.evidence_conflict === true, observed_at: time });
+      evidence_conflict: evidence.evidence_conflict === true, observed_at: time, reference });
   }
   return { observations, aliases, coverage, uncertain };
 }

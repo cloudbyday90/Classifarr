@@ -128,12 +128,12 @@ request or deployment was performed.
 
 ## Next item
 
-Add a bounded, read-only disagreement report for frozen prospective cohorts:
-original decision, explicit assessment, ranked alternatives and available declared
-purpose/intent evidence. Keep confirmations separate from destination changes and
-selection-only observations. Use the report to identify the first repeatable
-ranking/intent failure before changing scoring or learning. Missing historical
-evidence and current library membership must not become inferred labels.
+The [prospective disagreement report](prospective-disagreement-report-outcome.md)
+implements the next bounded diagnostic. It separates original/reference proof
+from experimental ranking alternatives and exposes historical policy/intent gaps.
+The next proposed boundary is prospective policy/intent provenance capture before
+changing scoring or learning. Missing historical evidence and current library
+membership must not become inferred labels.
 
 This change builds the evidence collection path; it does not establish that the
 original misclassification or underlying ranking behavior is fixed.

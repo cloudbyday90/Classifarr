@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Private prospective disagreement report** — Add the explicit evaluation CLI
+  mode `--prospective-disagreements`. Compare frozen original references and
+  experimental rankings against validated assessments through shared cohort
+  eligibility, preserving existing aggregate results and connected holdouts.
+  Bound read-only inputs and private numeric/ID output; show missing historical
+  intent/policy evidence, abstentions and display omissions explicitly. No new
+  routing, learning, capture version, saved report, API/UI or scheduled job.
+
 - **Explicit History feedback review** — Assess a preserved original automated
   destination through an active-administrator, ten-minute server reference.
   Atomically record one existing feedback/statistics transaction and frozen
