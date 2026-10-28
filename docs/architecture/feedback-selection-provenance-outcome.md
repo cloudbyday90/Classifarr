@@ -78,14 +78,30 @@ Full backend coverage passed 1,889 suites / 60,875 tests, with one skipped, in
 The coverage ratchet passed against both fresh reports without changing its
 baseline. Staged redacted secret and whitespace checks passed. Ignored private
 and intermediate receipts are excluded. The disposable schema fixture was removed;
-unrelated existing worktrees were preserved. Final delivery receipts follow the push.
+unrelated existing worktrees were preserved.
 
 GitHub MCP was rechecked after implementation and still returned no open PRs,
 including Dependabot. No random PR could be selected or stale PR rebased. No
 dependency manifest changed; existing Unreleased security follow-ups remain.
 
-No production database, provider request, historical import, new branch, PR merge,
+No production database operation, live provider request, historical import, new branch, PR merge,
 release or deployment was performed. All implementation work stays on `main`.
+
+## Delivery
+
+Implementation, migration/schema, tests, Unreleased and design/outcome documentation
+were committed and pushed on `main` as
+[b09bb380dc474563de0d6b9701ec0189821a0b03](https://github.com/cloudbyday90/Classifarr/commit/b09bb380dc474563de0d6b9701ec0189821a0b03).
+GitHub MCP verified the canonical commit URL. Remote main matched the commit and
+the working tree was clean. Verification used pinned Node 24.22.1 and npm 12.2.1;
+no global tooling upgrade was made. Final Markdown lint passed 2,382 documents;
+final staged redacted secret and whitespace checks passed. This receipt-only
+follow-up changes no tested application source.
+
+GitHub's push notice still reports one low dependency alert. Dependency manifests
+are unchanged and no advisory closure is claimed; existing Unreleased security
+follow-ups and next-release holds remain. Hosted CI after push is separate from
+the local evidence above. No release or deployment was performed.
 
 ## Next boundary
 
