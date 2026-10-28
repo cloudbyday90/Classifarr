@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-28T12:41:56.306Z
--- Latest Migration: 20261028_130000_add_evidence_gap_audit.sql
+-- Generated: 2026-10-28T13:39:50.229Z
+-- Latest Migration: 20261028_140000_freeze_feedback_source_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -424,6 +424,28 @@ CREATE FUNCTION public.guard_authorized_outcome_evaluation_update() RETURNS trig
     AS $$
 BEGIN
     RAISE EXCEPTION 'Authorized outcome evaluation snapshots cannot be updated';
+END;
+$$;
+
+
+--
+-- Name: guard_feedback_source_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_feedback_source_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.classification_id IS DISTINCT FROM OLD.classification_id
+        OR NEW.intake IS DISTINCT FROM OLD.intake
+        OR NEW.request_fingerprint IS DISTINCT FROM OLD.request_fingerprint
+        OR NEW.created_at IS DISTINCT FROM OLD.created_at
+        OR (NEW.feedback_id IS DISTINCT FROM OLD.feedback_id AND NEW.feedback_id IS NOT NULL)
+        OR (NEW.outcome_snapshot IS DISTINCT FROM OLD.outcome_snapshot AND NEW.outcome_snapshot IS NOT NULL)
+    THEN
+        RAISE EXCEPTION 'Feedback source provenance cannot be replaced' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
 END;
 $$;
 
@@ -6594,7 +6616,8 @@ CREATE TABLE public.policy_feedback_sources (
     CONSTRAINT policy_feedback_sources_classification_id_check CHECK ((classification_id > 0)),
     CONSTRAINT policy_feedback_sources_intake_check CHECK (((intake)::text = ANY (ARRAY[('standalone'::character varying)::text, ('prompt'::character varying)::text]))),
     CONSTRAINT policy_feedback_sources_outcome_snapshot_check CHECK (((outcome_snapshot IS NULL) OR ((jsonb_typeof(outcome_snapshot) = 'object'::text) AND (octet_length((outcome_snapshot)::text) <= 1024)))),
-    CONSTRAINT policy_feedback_sources_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text))
+    CONSTRAINT policy_feedback_sources_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_feedback_sources_selection_binding_check CHECK (((outcome_snapshot IS NULL) OR ((outcome_snapshot ->> 'version'::text) IS DISTINCT FROM 'classification.feedback_outcome.v2'::text) OR COALESCE(((jsonb_typeof((outcome_snapshot -> 'classificationId'::text)) = 'string'::text) AND ((outcome_snapshot ->> 'classificationId'::text) = (classification_id)::text) AND ((outcome_snapshot ->> 'intake'::text) = (intake)::text) AND ((outcome_snapshot ->> 'action'::text) = 'selection'::text)), false)))
 );
 
 
@@ -6616,7 +6639,7 @@ COMMENT ON COLUMN public.policy_feedback_sources.classification_id IS 'Validated
 -- Name: COLUMN policy_feedback_sources.outcome_snapshot; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.policy_feedback_sources.outcome_snapshot IS 'Thirty-day explicit selection and original decision projection. Expiry clears only this field, preserving the replay tombstone; no raw content or routing authority.';
+COMMENT ON COLUMN public.policy_feedback_sources.outcome_snapshot IS 'Thirty-day private versioned selection evidence. v2 binds exact classification/intake and names a commit-time server shortlist; it does not prove a confirmation command or displayed reference. Clearing preserves replay protection; replacement and rehydration are prohibited.';
 
 
 --
@@ -14833,6 +14856,13 @@ CREATE TRIGGER database_health_transition_receipts_append_only BEFORE DELETE OR 
 
 
 --
+-- Name: policy_feedback_sources feedback_source_update_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER feedback_source_update_guard BEFORE UPDATE ON public.policy_feedback_sources FOR EACH ROW EXECUTE FUNCTION public.guard_feedback_source_update();
+
+
+--
 -- Name: library_ingestion_state ingestion_compatibility_rows; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -18674,6 +18704,7 @@ FROM unnest(ARRAY[
     '20261014_060000_ollama_readiness_backfill_state.sql',
     '20261014_120000_evaluation_workload_controls.sql',
     '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql',
-    '20261028_130000_add_evidence_gap_audit.sql'
+    '20261028_130000_add_evidence_gap_audit.sql',
+    '20261028_140000_freeze_feedback_source_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

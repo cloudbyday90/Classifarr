@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-export const GAP_AUDIT_VERSION = 'evidence_gap_audit.v1';
+export const GAP_AUDIT_VERSION = 'evidence_gap_audit.v2';
 export const GAP_AUDIT_CAPTURE_REASONS = Object.freeze(['invalid', 'duplicateIdentityOrDescription', 'unboundCaptures',
   'identityMismatchCaptures', 'conflicting', 'unverifiedCaptures', 'awaitingOutcome', 'unavailable', 'mixedKinds', 'outsideCandidateScope']);
-export const GAP_AUDIT_OBSERVATION_REASONS = Object.freeze(['missingSnapshotRows', 'unknownKindRows', 'unverifiedOutcomeRows',
+export const GAP_AUDIT_OBSERVATION_REASONS = Object.freeze(['missingSnapshotRows', 'unknownKindRows', 'selectionOnlyRows', 'unverifiedOutcomeRows',
   'identityMismatchRows', 'sourceOnlyRows', 'unavailableOutcomeRows', 'excludedTemporalRows']);
 export const GAP_AUDIT_FAILURES = Object.freeze(['busy', 'memory_pressure', 'memory_unknown', 'evidence_budget',
   'invalid_evidence', 'deadline', 'evaluation_unavailable']);

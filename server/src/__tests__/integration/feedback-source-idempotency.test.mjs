@@ -6,6 +6,7 @@ import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 import { readDestinationOutcomes } from '../../services/destinationOutcomeEvaluationRepository.mjs';
 import { pruneFeedbackOutcomeSnapshots } from '../../services/feedbackOutcomeSnapshot.mjs';
+import { recreateFeedbackReceiptAt } from '../helpers/feedbackReceiptClockFixture.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const { router } = await import('../../routes/feedback.mjs');
@@ -62,7 +63,7 @@ test('expiry removes snapshot evidence but preserves idempotency and never refre
     const first = await submit();
     expect(first.status).toBe(201);
     expect((await readDestinationOutcomes(db)).overall.completedDisagreement).toBe(1);
-    await db.query("UPDATE policy_feedback_sources SET created_at=NOW()-INTERVAL '31 days'");
+    await recreateFeedbackReceiptAt(db, classificationId, new Date(Date.now() - 31 * 86400000));
     expect((await readDestinationOutcomes(db)).overall.completedDecisions).toBe(0);
     expect(await pruneFeedbackOutcomeSnapshots(db)).toBe(1);
     const expired = await state();
@@ -77,7 +78,7 @@ test('missing original capture is retained as unknown and future receipts stay o
     expect((await submit()).status).toBe(201);
     expect((await state()).receipts[0].outcome_snapshot.decisionContext).toBeNull();
     expect(await readDestinationOutcomes(db)).toMatchObject({ missingContextRows: 1, overall: { completedDecisions: 0 } });
-    await db.query("UPDATE policy_feedback_sources SET created_at=NOW()+INTERVAL '1 day'");
+    await recreateFeedbackReceiptAt(db, classificationId, new Date(Date.now() + 86400000));
     expect((await readDestinationOutcomes(db)).retainedRows).toBe(0);
 });
 
@@ -132,6 +133,7 @@ test('bigint source identifiers above JavaScript safe integers keep exact identi
     const first = await submit({ classification_id: sourceId });
     expect(first.status).toBe(201);
     expect((await state()).receipts[0].classification_id).toBe(sourceId);
+    expect((await state()).receipts[0].outcome_snapshot).toMatchObject({ classificationId: sourceId, action: 'selection', intake: 'standalone' });
     expect((await submit({ classification_id: sourceId })).body).toMatchObject({ feedbackId: first.body.feedbackId, replayed: true });
 });
 
@@ -224,11 +226,51 @@ test('prompt responses bind the same event and block standalone or reopened prom
     expect((await prompt()).status).toBe(200);
     const saved = await state();
     expect(saved.receipts[0].intake).toBe('prompt');
+    expect(saved.receipts[0].outcome_snapshot).toMatchObject({ version: 'classification.feedback_outcome.v2',
+        classificationId: String(classificationId), action: 'selection', intake: 'prompt',
+        reference: { kind: 'server_shortlist_at_commit', libraryId: originalId }, referenceRelation: 'differs' });
     expect((await submit()).status).toBe(409);
     expect(await state()).toEqual(saved);
     await db.query("UPDATE classification_history SET status='pending' WHERE id=$1", [classificationId]);
     expect((await prompt()).status).toBe(409);
     expect((await state()).feedback).toHaveLength(1);
+});
+
+test('selection reference is frozen independently of later history and mutable feedback flags', async () => {
+    await captureDecision({ destination: libraryId });
+    expect((await submit()).status).toBe(201);
+    const receipt = (await state()).receipts[0];
+    expect(receipt.outcome_snapshot).toMatchObject({ action: 'selection', referenceRelation: 'differs',
+        reference: { libraryId: originalId }, decisionContext: { capture: { libraryId } } });
+    await db.query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
+        '{classification_details,ranked_candidates}', $1::jsonb) WHERE id=$2`,
+    [JSON.stringify([{ library_id: libraryId }]), classificationId]);
+    await db.query('UPDATE policy_feedback_log SET was_correction=false');
+    expect((await submit()).body.replayed).toBe(true);
+    expect((await state()).receipts[0]).toEqual(receipt);
+});
+
+test('receipt identity, clock, feedback binding and snapshot cannot be replaced or rehydrated', async () => {
+    expect((await submit()).status).toBe(201);
+    const receipt = (await state()).receipts[0];
+    for (const assignment of ["created_at=created_at+INTERVAL '1 second'", "intake='prompt'", "request_fingerprint=repeat('b',64)",
+        'classification_id=classification_id+1', 'feedback_id=feedback_id+1', "outcome_snapshot=jsonb_set(outcome_snapshot,'{referenceRelation}','\"matches\"')"]) {
+        await expect(db.query(`UPDATE policy_feedback_sources SET ${assignment}`)).rejects.toMatchObject({ code: '23514' });
+    }
+    expect((await state()).receipts[0]).toEqual(receipt);
+    await db.query('UPDATE policy_feedback_sources SET outcome_snapshot=NULL');
+    await expect(db.query('UPDATE policy_feedback_sources SET outcome_snapshot=$1', [receipt.outcome_snapshot])).rejects.toMatchObject({ code: '23514' });
+    await db.query('DELETE FROM policy_feedback_log');
+    expect((await state()).receipts[0]).toMatchObject({ feedback_id: null, outcome_snapshot: null, created_at: receipt.created_at });
+    expect((await submit()).status).toBe(409);
+});
+
+test('commit-time reference capture does not assert that the reference library was active or displayed', async () => {
+    await db.query('UPDATE libraries SET is_active=false WHERE id=$1', [originalId]);
+    expect((await submit()).status).toBe(201);
+    expect((await state()).receipts[0].outcome_snapshot).toMatchObject({ action: 'selection',
+        reference: { kind: 'server_shortlist_at_commit', libraryId: originalId } });
+    expect((await state()).stats[0].accuracy_rate).toBeNull();
 });
 
 test('receipt failure rolls back prompt effects and permits a clean retry', async () => {

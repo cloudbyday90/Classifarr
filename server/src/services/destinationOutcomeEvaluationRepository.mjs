@@ -2,6 +2,7 @@
 import { DESTINATION_OUTCOME_ROW_LIMIT } from './destinationOutcomeGrouping.mjs';
 import { evaluateDestinationOutcomes } from './destinationOutcomeEvaluation.mjs';
 import { readFeedbackOutcomeSnapshot } from './feedbackOutcomeSnapshot.mjs';
+import { feedbackSnapshotMatchesReceipt } from './feedbackSelectionSnapshot.mjs';
 import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 import { LOG_CONFIG } from '../utils/logging/logConfig.mjs';
 import { AUTHORIZED_OUTCOME_EVALUATION_SQL, authorizedCorrectionSnapshotExists } from './authorizedOutcomeEvaluationQuery.mjs';
@@ -27,7 +28,7 @@ export const CORRECTION_DESTINATION_DECISION_SQL = `
     origin, was_correction, authorized_snapshot, tmdb_id LIMIT $1`;
 
 export const FEEDBACK_DESTINATION_OUTCOME_SQL = `
-  SELECT receipt.classification_id, receipt.outcome_snapshot,
+  SELECT receipt.classification_id, receipt.intake, receipt.outcome_snapshot,
     (destination.is_active IS TRUE AND destination.media_type = receipt.outcome_snapshot->>'mediaType') AS target_available
   FROM policy_feedback_sources receipt
   LEFT JOIN libraries destination ON destination.id::text = receipt.outcome_snapshot->>'selectedLibraryId'
@@ -47,7 +48,7 @@ export async function readDestinationOutcomeInputs(client) {
   for (const row of feedback) {
     const snapshot = readFeedbackOutcomeSnapshot(row.outcome_snapshot);
     // A malformed receipt invalidates the report instead of silently improving its rate.
-    if (!snapshot || (snapshot.decisionContext && String(snapshot.decisionContext.classificationId) !== String(row.classification_id))) {
+    if (!feedbackSnapshotMatchesReceipt(snapshot, row)) {
       throw new Error('saved_decisions_feedback_invalid');
     }
     rows.push({ classification_id: row.classification_id, media_type: snapshot.mediaType, identity_key: `${snapshot.mediaType}:${snapshot.tmdbId}`,

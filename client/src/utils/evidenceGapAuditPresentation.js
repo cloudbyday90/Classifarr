@@ -2,10 +2,11 @@
 export const auditCaptureLabels = Object.freeze({ invalid: 'Invalid comparison or observation group',
   duplicateIdentityOrDescription: 'Later comparison in an already held-out group', unboundCaptures: 'Legacy comparison without frozen identity',
   identityMismatchCaptures: 'History and frozen comparison identity differ', conflicting: 'Conflicting destination evidence',
-  unverifiedCaptures: 'Missing or unverified outcome evidence', awaitingOutcome: 'Awaiting an eligible operator outcome',
+  unverifiedCaptures: 'Missing or insufficient proof of a scored operator action', awaitingOutcome: 'Awaiting an eligible operator outcome',
   unavailable: 'Selected destination unavailable', mixedKinds: 'Mixed confirmation and change evidence',
   outsideCandidateScope: 'Choice outside the frozen candidate set' })
 export const auditObservationLabels = Object.freeze({ missingSnapshotRows: 'Missing retained snapshot', unknownKindRows: 'Unknown legacy action kind',
+  selectionOnlyRows: 'Destination selection without an explicit confirmation/change command',
   unverifiedOutcomeRows: 'Unverified legacy outcome', identityMismatchRows: 'Outcome identity differs from frozen comparison',
   sourceOnlyRows: 'Source-only identity', unavailableOutcomeRows: 'Unavailable destination', excludedTemporalRows: 'Outside the outcome time bounds' })
 const messages = Object.freeze({ never_run: 'The evidence audit has not completed its first pass.', unavailable: 'The saved evidence audit is unavailable on this server.',

@@ -26,8 +26,10 @@ observed recovery result.
 
 ## Next recommendation
 
-The read-only gap audit is implemented in the linked outcome. Implement the next
-source-specific writer gap: frozen feedback action/reference provenance. Maintain separate
+The read-only gap audit is implemented in the linked outcome. The subsequent
+[feedback provenance outcome](feedback-selection-provenance-outcome.md) freezes
+selection/reference evidence without inferring a confirm/change command. Design
+explicit action and served-reference semantics next. Maintain separate
 placement-informed suggestions and verified outcomes throughout.
 
 Benefits are less manual diagnosis and clearer evidence coverage. The tradeoff is

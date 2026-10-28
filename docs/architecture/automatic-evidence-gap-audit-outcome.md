@@ -114,9 +114,11 @@ new branch, PR merge, release or deployment was performed.
 
 ## Next recommendation
 
-Freeze feedback action/reference provenance at its authorized writer, then read
-it through the shared conservative adapters. This will improve future evidence
-coverage; it cannot truthfully fill missing old identity/action proof. A later
+The subsequent [feedback selection provenance](feedback-selection-provenance-outcome.md)
+implements that writer boundary. Current requests prove selection, so the audit
+reports it separately and preserves frozen confirmation/change exclusions.
+An explicit action plus served-reference contract is the next design boundary.
+A later
 historical recovery job needs independent source evidence, a bounded dry run and
 separate review before any import. Keep placement-informed suggestions separate
 from verified evaluation labels.

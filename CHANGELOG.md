@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Frozen feedback selection provenance** — Capture exact classification binding,
+  selection action and the server shortlist reference in new feedback receipts.
+  Protect provenance and replay clocks against replacement while preserving
+  expiry and feedback tombstones. Audit v2 separates selection-only diagnostics
+  from unknown legacy actions; neither becomes a frozen prospective
+  confirmation/change label. Existing retrospective statistics, calibration,
+  routing and learning behavior remain unchanged.
+
 - **Automatic comparison evidence audit** — Independently inspect bounded retained
   evidence with existing scheduler ownership, resource admission, cancellation and
   backoff. Save only a replaceable aggregate and show it in administrator

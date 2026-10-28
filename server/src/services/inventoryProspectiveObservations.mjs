@@ -2,6 +2,7 @@
 import { prepareAuthorizedOutcomeEvaluationRows } from './authorizedOutcomeEvaluationSnapshot.mjs';
 import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { readFeedbackOutcomeSnapshot } from './feedbackOutcomeSnapshot.mjs';
+import { FEEDBACK_SELECTION_SNAPSHOT_VERSION, feedbackSnapshotMatchesReceipt } from './feedbackSelectionSnapshot.mjs';
 import { readInventoryRankingIdentity } from './inventoryRankingShadowIdentity.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { prospectiveTimestamp, prospectiveClassificationId } from './inventoryProspectiveValues.mjs';
@@ -12,7 +13,7 @@ const sameClass = (a, b) => prospectiveClassificationId(a) !== null &&
   prospectiveClassificationId(a) === prospectiveClassificationId(b);
 
 export function prospectiveObservationCoverage() {
-  return { missingSnapshotRows: 0, unknownKindRows: 0, unverifiedOutcomeRows: 0,
+  return { missingSnapshotRows: 0, unknownKindRows: 0, selectionOnlyRows: 0, unverifiedOutcomeRows: 0,
     identityMismatchRows: 0, sourceOnlyRows: 0, unavailableOutcomeRows: 0, excludedTemporalRows: 0 };
 }
 
@@ -22,7 +23,7 @@ export function prepareProspectiveObservations(row, now) {
   let uncertain = false;
   for (const evidence of prepareAuthorizedOutcomeEvaluationRows(row.outcomes)) {
     if (!sameClass(evidence.classification_id, row.classification_id)) invalid();
-    let key, type, destination, kind, available, missing = false;
+    let key, type, destination, kind, available, missing = false, selectionOnly = false;
     if (evidence.origin === 'authorized_outcome') {
       missing = evidence.authorized_snapshot.snapshot_missing;
       ({ identity_key: key, media_type: type, selected_library_id: destination, was_correction: kind,
@@ -39,9 +40,9 @@ export function prepareProspectiveObservations(row, now) {
       missing = evidence.event_classification_id == null && !context;
     } else if (evidence.origin === 'legacy_feedback') {
       const snapshot = evidence.feedback_snapshot == null ? null : readFeedbackOutcomeSnapshot(evidence.feedback_snapshot);
-      if (evidence.feedback_snapshot != null && !snapshot ||
-          snapshot?.decisionContext && !sameClass(snapshot.decisionContext.classificationId, row.classification_id)) invalid();
+      if (evidence.feedback_snapshot != null && !snapshot || snapshot && !feedbackSnapshotMatchesReceipt(snapshot, evidence)) invalid();
       missing = !snapshot;
+      selectionOnly = snapshot?.version === FEEDBACK_SELECTION_SNAPSHOT_VERSION;
       if (snapshot) { key = `${snapshot.mediaType}:${snapshot.tmdbId}`; type = snapshot.mediaType; destination = snapshot.selectedLibraryId; }
       kind = null; available = evidence.target_available;
     } else if (evidence.origin === 'unverified_correction') {
@@ -61,7 +62,7 @@ export function prepareProspectiveObservations(row, now) {
       uncertain = true; continue;
     }
     if (!positiveDatabaseInteger(destination) || typeof available !== 'boolean') invalid();
-    if (kind === null) { coverage.unknownKindRows++; uncertain = true; }
+    if (kind === null) { coverage[selectionOnly ? 'selectionOnlyRows' : 'unknownKindRows']++; uncertain = true; }
     if (sourceIdentity(key)) { coverage.sourceOnlyRows++; uncertain = true; }
     if (row.capture.identityKey != null && key !== row.capture.identityKey) { coverage.identityMismatchRows++; uncertain = true; }
     if (!available) coverage.unavailableOutcomeRows++;

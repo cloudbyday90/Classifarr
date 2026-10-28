@@ -6,6 +6,7 @@ import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProsp
 import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
 import { recordClassificationCorrection } from '../../services/classificationCorrectionWriter.mjs';
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
+import { buildFeedbackSelectionSnapshot } from '../../services/feedbackSelectionSnapshot.mjs';
 
 let client, libraries, history;
 beforeEach(async () => {
@@ -144,6 +145,20 @@ test.each([false, true])('legacy feedback remains non-scoring with frozen snapsh
   const result = await report();
   expect(result.sampleSize).toBe(0);
   expect(result.coverage[frozen ? 'unknownKindRows' : 'missingSnapshotRows']).toBe(1);
+});
+
+test('frozen selection-only feedback preserves exact receipt binding and blocks favorable action scoring', async () => {
+  await captureOutcome();
+  const snapshot = buildFeedbackSelectionSnapshot({ ...history, metadata: { classification_details: {
+    ranked_candidates: [{ library_id: libraries[1].id }] } } }, libraries[1].id, 'standalone');
+  expect(snapshot).toMatchObject({ action: 'selection', referenceRelation: 'matches', classificationId: String(history.id) });
+  await client.query(`INSERT INTO policy_feedback_sources(classification_id,intake,request_fingerprint,outcome_snapshot)
+    VALUES($1,'standalone',$2,$3)`, [history.id, 'e'.repeat(64), snapshot]);
+  expect(await report()).toMatchObject({ sampleSize: 0, coverage: { selectionOnlyRows: 1, unknownKindRows: 0, unverifiedCaptures: 1 } });
+  await client.query('SAVEPOINT invalid_selection');
+  await expect(client.query(`INSERT INTO policy_feedback_sources(classification_id,intake,request_fingerprint,outcome_snapshot)
+    VALUES($1,'standalone',$2,$3)`, [Number(history.id) + 1, 'f'.repeat(64), snapshot])).rejects.toMatchObject({ code: '23514' });
+  await client.query('ROLLBACK TO SAVEPOINT invalid_selection');
 });
 
 test('observation overflow keeps the earliest comparison reserved against a favorable retry', async () => {

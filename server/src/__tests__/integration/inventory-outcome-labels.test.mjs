@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
+import { recreateFeedbackReceiptAt } from '../helpers/feedbackReceiptClockFixture.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL } from '../../services/inventoryOutcomeLabels.mjs';
 import { OPERATOR_POLICY_SOURCE_REVISION_SQL } from '../../services/operatorCorrectionPolicyProvenance.mjs';
 import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProspectiveOutcomeRepository.mjs';
@@ -77,7 +78,7 @@ test('prospective SQL binds delayed outcomes to exact history, never a same-iden
   await db.query("UPDATE policy_feedback_log SET responded_at='2000-01-01' WHERE id=$1", [feedbackIds[0]]);
   // Mutable feedback cannot erase an existing unverified source receipt.
   expect((await read())[0].outcomes).toHaveLength(1);
-  await db.query("UPDATE policy_feedback_sources SET created_at='2000-01-01' WHERE classification_id=$1", [historyId]);
+  await recreateFeedbackReceiptAt(db, historyId, '2000-01-01T00:00:00Z');
   await recordClassificationCorrection(db, { classification: { id: historyId, tmdb_id: 900005, media_type: 'movie', metadata: {} },
     originalLibraryId: candidateId, destinationLibraryId: selectedId, correctedBy: 'test-user' });
   // The old history placement is intentionally unchanged: a pending move must not remove the label.

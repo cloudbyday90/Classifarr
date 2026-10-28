@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 export const auditCaptureReasons = ['invalid', 'duplicateIdentityOrDescription', 'unboundCaptures', 'identityMismatchCaptures',
   'conflicting', 'unverifiedCaptures', 'awaitingOutcome', 'unavailable', 'mixedKinds', 'outsideCandidateScope']
-export const auditObservationReasons = ['missingSnapshotRows', 'unknownKindRows', 'unverifiedOutcomeRows',
+export const auditObservationReasons = ['missingSnapshotRows', 'unknownKindRows', 'selectionOnlyRows', 'unverifiedOutcomeRows',
   'identityMismatchRows', 'sourceOnlyRows', 'unavailableOutcomeRows', 'excludedTemporalRows']
 const failures = ['busy', 'memory_pressure', 'memory_unknown', 'evidence_budget', 'invalid_evidence', 'deadline', 'evaluation_unavailable']
 const deferrals = failures.slice(0, 3)
@@ -16,7 +16,7 @@ const limits = { retentionDays: 30, captures: 5000, observationsPerCapture: 100,
 
 function validReport(value) {
   if (!exact(value, ['version', 'window', 'intake', 'comparisons', 'observations', 'evidencePhase', 'limits']) ||
-    value.version !== 'evidence_gap_audit.v1' || !exact(value.window, ['since', 'until', 'outcomesAsOf']) ||
+    value.version !== 'evidence_gap_audit.v2' || !exact(value.window, ['since', 'until', 'outcomesAsOf']) ||
     !Object.values(value.window).every(time) || value.window.until !== value.window.outcomesAsOf ||
     Date.parse(value.window.until) - Date.parse(value.window.since) !== 30 * 86400000 ||
     !exact(value.intake, ['recordedMovieTvEvents', 'capped', 'withoutRetainedComparison']) ||

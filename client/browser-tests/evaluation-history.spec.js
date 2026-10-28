@@ -23,7 +23,12 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
       auditReads++
       // An unverified body fails the audit independently, without waiting on transport retries.
       if (auditFailed) data = { error: 'PRIVATE transport detail' }
-      else data = evidenceGapAuditFixture()
+      else {
+        data = evidenceGapAuditFixture()
+        Object.assign(data.report.intake, { recordedMovieTvEvents: 1, withoutRetainedComparison: 0 })
+        data.report.comparisons.inspected = 1; data.report.comparisons.exclusions.unverifiedCaptures = 1
+        data.report.observations.reasons.selectionOnlyRows = 1; data.report.evidencePhase = 'no_eligible_outcomes'
+      }
     }
     if (path === '/api/stats/evaluation-history') {
       reads++
@@ -55,13 +60,19 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
   const audit = panel.getByRole('region', { name: 'Comparison evidence audit' })
   const auditDetails = audit.locator('details'), auditDisclosure = auditDetails.locator('summary')
-  await expect(audit.getByRole('status')).toContainText('No retained movie or TV intake')
+  await expect(audit.getByRole('status')).toContainText('0 groups have eligible operator evidence')
   await expect(auditDetails).not.toHaveAttribute('open')
   await auditDisclosure.focus(); await page.keyboard.press('Enter')
   await expect(auditDetails).toHaveAttribute('open', '')
   await expect(audit).toContainText('These reasons overlap')
   await expect(audit).toContainText('historical recovery is not assessed')
+  await expect(audit).toContainText('Destination selection without an explicit confirmation/change command')
   await audit.screenshot({ path: testInfo.outputPath('evidence-gap-audit-desktop.png') })
+  await page.setViewportSize({ width: 390, height: 844 }); await page.clock.runFor(1000)
+  await audit.scrollIntoViewIfNeeded()
+  expect(await audit.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await audit.screenshot({ path: testInfo.outputPath('evidence-gap-selection-mobile.png') })
+  await page.setViewportSize({ width: 1280, height: 720 })
   const savedDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Saved results and scope' }) })
   const backfillDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Backfill progress' }) })
   await expect(savedDetails).not.toHaveAttribute('open')

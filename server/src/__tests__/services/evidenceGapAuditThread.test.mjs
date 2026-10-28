@@ -10,6 +10,10 @@ test('real isolated worker returns only aggregate data and includes window time 
   expect(first.report.comparisons.eligible).toBe(1);
   const same = await runEvidenceGapAuditThread(snapshot, { input_fingerprint: first.fingerprint, report: first.report });
   expect(same.unchanged).toBe(true);
+  const oldReport = structuredClone(first.report); oldReport.version = 'evidence_gap_audit.v1';
+  delete oldReport.observations.reasons.selectionOnlyRows;
+  const upgraded = await runEvidenceGapAuditThread(snapshot, { input_fingerprint: first.fingerprint, report: oldReport });
+  expect(upgraded).toMatchObject({ unchanged: false, report: { version: 'evidence_gap_audit.v2' } });
   const moved = structuredClone(snapshot);
   moved.observedAt = moved.inputs.observedAt = moved.inputs.window.until = '2026-10-28T12:01:00.000Z';
   moved.inputs.window.since = '2026-09-28T12:01:00.000Z';

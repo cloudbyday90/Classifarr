@@ -20,7 +20,7 @@ export const INVENTORY_PROSPECTIVE_LEGACY_OUTCOMES_SQL = `
     AND NOT ${authorizedCorrectionSnapshotExists('c.correction_id')}
   UNION ALL
   SELECT jsonb_build_object('origin', 'legacy_feedback', 'classification_id', r.classification_id::text,
-    'observed_at', r.created_at, 'feedback_snapshot',
+    'intake', r.intake, 'observed_at', r.created_at, 'feedback_snapshot',
     CASE WHEN octet_length(r.outcome_snapshot::text) <= 2048 THEN r.outcome_snapshot
       WHEN r.outcome_snapshot IS NOT NULL THEN '{"oversized":true}'::jsonb END,
     'target_available', l.is_active IS TRUE AND l.media_type = r.outcome_snapshot->>'mediaType')

@@ -54,6 +54,8 @@ test('saved status uses source observation time, withholds stale/future/failed d
   expect(projectEvidenceGapAuditStatus({ ...row, status: 'failed', failure_code: 'memory_pressure' }, row.observed_at))
     .toMatchObject({ status: 'deferred', reason: 'memory_pressure', report: null });
   expect(projectEvidenceGapAuditStatus(null, row.observed_at).status).toBe('never_run');
+  const old = structuredClone(report); old.version = 'evidence_gap_audit.v1'; delete old.observations.reasons.selectionOnlyRows;
+  expect(projectEvidenceGapAuditStatus({ ...row, report: old }, row.observed_at)).toMatchObject({ status: 'invalid', report: null });
 });
 
 test('shared lifecycle coalesces work, quiet deferrals and stop without publishing or persisting failure', async () => {

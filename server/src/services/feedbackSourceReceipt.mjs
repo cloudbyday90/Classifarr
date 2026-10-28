@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { ConflictError } from '../utils/appError.mjs';
-import { buildFeedbackOutcomeSnapshot } from './feedbackOutcomeSnapshot.mjs';
+import { buildFeedbackSelectionSnapshot } from './feedbackSelectionSnapshot.mjs';
 
 export function feedbackRequestFingerprint(normalizedRequest) {
     return createHash('sha256').update(JSON.stringify(normalizedRequest)).digest('hex');
@@ -31,7 +31,7 @@ export async function assertFeedbackSourceUnused(client, classificationId) {
 export async function recordFeedbackSource(client, { classificationId, feedbackId, intake, fingerprint,
     classification = null, selectedLibraryId = null }) {
     const snapshot = classification && String(classification.id) === String(classificationId)
-        ? buildFeedbackOutcomeSnapshot(classification, selectedLibraryId) : null;
+        ? buildFeedbackSelectionSnapshot(classification, selectedLibraryId, intake) : null;
     try {
         await client.query(`INSERT INTO policy_feedback_sources(classification_id,feedback_id,intake,request_fingerprint,outcome_snapshot)
             VALUES($1,$2,$3,$4,$5::jsonb)`, [classificationId, feedbackId, intake, fingerprint, snapshot]);

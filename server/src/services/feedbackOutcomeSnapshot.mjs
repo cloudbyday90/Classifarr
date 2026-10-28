@@ -1,12 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { captureCorrectionDecisionContext, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
+import { FEEDBACK_SELECTION_SNAPSHOT_VERSION, readFeedbackSelectionSnapshot } from './feedbackSelectionSnapshot.mjs';
 
 const VERSION = 'classification.feedback_outcome.v1';
 const keys = ['version', 'mediaType', 'tmdbId', 'selectedLibraryId', 'decisionContext'];
 const integer = value => typeof value === 'number' && positiveDatabaseInteger(value) !== null;
 
 export function readFeedbackOutcomeSnapshot(value) {
+  if (value?.version === FEEDBACK_SELECTION_SNAPSHOT_VERSION) return readFeedbackSelectionSnapshot(value);
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== keys.length ||
       !keys.every(key => Object.hasOwn(value, key)) || value.version !== VERSION ||
       !['movie', 'tv'].includes(value.mediaType) || !integer(value.tmdbId) || !integer(value.selectedLibraryId)) return null;
@@ -17,7 +19,7 @@ export function readFeedbackOutcomeSnapshot(value) {
     selectedLibraryId: value.selectedLibraryId, decisionContext: context };
 }
 
-/** Only the locked source row and validated explicit selection can produce this snapshot. */
+/** Legacy v1 constructor retained for compatibility; production receipt writers capture v2. */
 export function buildFeedbackOutcomeSnapshot(classification, selectedLibraryId) {
   if (!classification) return null;
   return readFeedbackOutcomeSnapshot({ version: VERSION, mediaType: classification.media_type,

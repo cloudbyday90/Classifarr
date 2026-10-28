@@ -83,3 +83,17 @@ it('validates counts, exact fields, temporal bounds and conservative eligibility
   capped.report.evidencePhase = 'awaiting_live_comparisons'
   expect(normalizeEvidenceGapAudit(capped)).not.toBeNull()
 })
+
+it('labels selection-only evidence separately and rejects the old audit contract', async () => {
+  const value = evidenceGapAuditFixture()
+  Object.assign(value.report.intake, { recordedMovieTvEvents: 1, withoutRetainedComparison: 0 })
+  value.report.comparisons.inspected = 1; value.report.comparisons.exclusions.unverifiedCaptures = 1
+  value.report.observations.reasons.selectionOnlyRows = 1; value.report.evidencePhase = 'no_eligible_outcomes'
+  api.getEvidenceGapAudit.mockResolvedValue(value)
+  mountAudit(); await flushPromises()
+  expect(wrapper.text()).toContain('Destination selection without an explicit confirmation/change command')
+  expect(wrapper.findAll('dd').filter(node => node.text() === '1')).toHaveLength(2)
+  const old = evidenceGapAuditFixture(); old.report.version = 'evidence_gap_audit.v1'
+  delete old.report.observations.reasons.selectionOnlyRows
+  expect(normalizeEvidenceGapAudit(old)).toBeNull()
+})

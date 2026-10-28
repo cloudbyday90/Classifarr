@@ -92,8 +92,9 @@ current conventions from historical proof. Normal operator actions already feed
 prospective capture automatically; this commit does not add a live recovery job.
 The subsequent [automatic evidence gap audit](automatic-evidence-gap-audit-outcome.md)
 implements that read-only automation before any historical import or ranking
-promotion. Frozen action/reference capture for feedback remains the next
-identified writer gap.
+promotion. The subsequent [feedback selection provenance](feedback-selection-provenance-outcome.md)
+captures the action current feedback requests actually express. Explicit action
+commands and a served-reference contract are the next boundary.
 
 ## Delivery
 
