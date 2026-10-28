@@ -68,7 +68,7 @@ test('CodeQL and SARIF upload use one immutable action revision and unchanged le
   }
   expect(references).toHaveLength(4);
   expect(new Set(references).size).toBe(1);
-  expect(references[0]).toBe('6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee'); // PR #561; upstream v4.39.0.
+  expect(references[0]).toBe('9b3254085494b55a0f7c4c2b3d2d52cc712ce370'); // PR #569; upstream v4.39.1.
   expect(codeql.jobs.analyze.strategy.matrix.language).toEqual(['javascript-typescript', 'actions']);
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/init@')).with.queries).toBe('security-extended');
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/analyze@')).with.category)

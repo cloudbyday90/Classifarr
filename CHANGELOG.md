@@ -20,6 +20,10 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **Pinned CI actions** — Locally implement PR #569's Docker Login 4.7.0 and
+  CodeQL 4.39.1 updates with full commit SHAs. Update the existing promotion
+  allowlist and security contract assertion while preserving permissions,
+  publication/event gates and failure checks. No PR merge or release is included.
 - **Server lint tooling** — Locally implement the reviewed updates from PR #572:
   pin `eslint-plugin-n` 18.5.0 and `knip` 6.42.1, retaining install-script policy
   and overrides. No provider PR merge or release is included.
