@@ -87,7 +87,7 @@ Full backend coverage passed 1,888 suites / 60,811 tests, with one skipped, in
 The ratchet passed against both fresh reports without changing its baseline.
 The staged redacted Gitleaks scan passed. Ignored private/intermediate receipts
 are not part of the commit. The disposable schema fixture was removed; unrelated
-worktrees were preserved. Final delivery receipts follow after the push.
+worktrees were preserved.
 
 GitHub MCP was rechecked after implementation: no open PRs, including Dependabot,
 were available. No random PR could be selected or stale PR rebased in this batch.
@@ -95,6 +95,22 @@ The earlier PR #570 remains a separate, already completed local implementation.
 
 No production database, live recovery, historical import, release or deployment
 was performed. Work stays on `main` as requested.
+
+## Delivery
+
+Implementation, schema, tests, Unreleased and design/outcome documentation were
+committed and pushed on `main` as
+[7dbc6032fb45ac348c3948cce4744d6f33cd689e](https://github.com/cloudbyday90/Classifarr/commit/7dbc6032fb45ac348c3948cce4744d6f33cd689e).
+The canonical commit URL was verified through GitHub MCP. Remote main matched
+the commit and the working tree was clean. Final Markdown lint again passed
+2,380 documents; the final staged redacted secret and whitespace scans passed.
+This receipt-only follow-up changes no tested application source.
+
+GitHub's push notice reports one low dependency alert. This batch changes no
+dependency manifests and does not claim that alert is closed; existing
+Unreleased security follow-ups and next-release holds remain. Hosted CI after
+push is separate from the local verification recorded above. No version bump,
+new branch, PR merge, release or deployment was performed.
 
 ## Next recommendation
 
