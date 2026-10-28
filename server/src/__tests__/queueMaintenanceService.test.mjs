@@ -83,7 +83,7 @@ describe('QueueMaintenanceService', () => {
         await expect(service.pruneCorrectionOutcomes()).resolves.toBeUndefined();
         expect(logger.warn).toHaveBeenCalledWith('Correction outcome expiry failed; the next maintenance run will retry');
         await service.pruneCorrectionOutcomes();
-        expect(db.query).toHaveBeenCalledTimes(6);
+        expect(db.query).toHaveBeenCalledTimes(8);
         expect(db.query.mock.calls[1][0]).toContain('LIMIT 1000');
         expect(db.query.mock.calls[1][0]).toContain('UPDATE policy_feedback_sources');
         expect(db.query.mock.calls[2][0]).toContain('DELETE FROM policy_authorized_outcome_evaluation_snapshots');

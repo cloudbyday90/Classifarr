@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-28T13:39:50.229Z
--- Latest Migration: 20261028_140000_freeze_feedback_source_receipts.sql
+-- Generated: 2026-10-28T15:44:01.293Z
+-- Latest Migration: 20261028_160000_add_feedback_review_references.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -437,13 +437,13 @@ CREATE FUNCTION public.guard_feedback_source_update() RETURNS trigger
     AS $$
 BEGIN
     IF NEW.classification_id IS DISTINCT FROM OLD.classification_id
-        OR NEW.intake IS DISTINCT FROM OLD.intake
-        OR NEW.request_fingerprint IS DISTINCT FROM OLD.request_fingerprint
+        OR NEW.intake IS DISTINCT FROM OLD.intake OR NEW.request_fingerprint IS DISTINCT FROM OLD.request_fingerprint
         OR NEW.created_at IS DISTINCT FROM OLD.created_at
+        OR NEW.review_id IS DISTINCT FROM OLD.review_id
+        OR NEW.review_actor_fingerprint IS DISTINCT FROM OLD.review_actor_fingerprint
         OR (NEW.feedback_id IS DISTINCT FROM OLD.feedback_id AND NEW.feedback_id IS NOT NULL)
         OR (NEW.outcome_snapshot IS DISTINCT FROM OLD.outcome_snapshot AND NEW.outcome_snapshot IS NOT NULL)
-    THEN
-        RAISE EXCEPTION 'Feedback source provenance cannot be replaced' USING ERRCODE = '23514';
+    THEN RAISE EXCEPTION 'Feedback source provenance cannot be replaced' USING ERRCODE='23514';
     END IF;
     RETURN NEW;
 END;
@@ -4057,6 +4057,31 @@ COMMENT ON TABLE public.event_loop_delay_receipts IS 'Fixed aggregate process ev
 
 
 --
+-- Name: feedback_review_references; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.feedback_review_references (
+    id uuid NOT NULL,
+    actor_id integer NOT NULL,
+    classification_id bigint NOT NULL,
+    projection jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT date_trunc('milliseconds'::text, CURRENT_TIMESTAMP) NOT NULL,
+    expires_at timestamp with time zone DEFAULT (date_trunc('milliseconds'::text, CURRENT_TIMESTAMP) + '00:10:00'::interval) NOT NULL,
+    CONSTRAINT feedback_review_references_check CHECK (((expires_at - created_at) = '00:10:00'::interval)),
+    CONSTRAINT feedback_review_references_created_at_check CHECK (isfinite(created_at)),
+    CONSTRAINT feedback_review_references_expires_at_check CHECK (isfinite(expires_at)),
+    CONSTRAINT feedback_review_references_projection_check CHECK (((jsonb_typeof(projection) = 'object'::text) AND (octet_length((projection)::text) <= 65536)))
+);
+
+
+--
+-- Name: TABLE feedback_review_references; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.feedback_review_references IS 'Bounded ten-minute actor-owned operational review state; never an outcome vote or portable backup data.';
+
+
+--
 -- Name: held_out_semantic_study_lifecycle_reaudit_state; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6613,10 +6638,14 @@ CREATE TABLE public.policy_feedback_sources (
     request_fingerprint text NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     outcome_snapshot jsonb,
+    review_id uuid,
+    review_actor_fingerprint text,
+    CONSTRAINT feedback_review_receipt_binding_check CHECK ((((review_id IS NULL) AND (review_actor_fingerprint IS NULL) AND ((outcome_snapshot IS NULL) OR ((outcome_snapshot ->> 'version'::text) IS DISTINCT FROM 'classification.feedback_outcome.v3'::text))) OR ((review_id IS NOT NULL) AND (review_actor_fingerprint IS NOT NULL) AND ((outcome_snapshot IS NULL) OR COALESCE((((outcome_snapshot ->> 'version'::text) = 'classification.feedback_outcome.v3'::text) AND ((outcome_snapshot ->> 'classificationId'::text) = (classification_id)::text) AND ((outcome_snapshot ->> 'intake'::text) = (intake)::text) AND (((outcome_snapshot -> 'reference'::text) ->> 'reviewId'::text) = (review_id)::text) AND (((outcome_snapshot -> 'reference'::text) ->> 'actorFingerprint'::text) = review_actor_fingerprint)), false))))),
     CONSTRAINT policy_feedback_sources_classification_id_check CHECK ((classification_id > 0)),
     CONSTRAINT policy_feedback_sources_intake_check CHECK (((intake)::text = ANY (ARRAY[('standalone'::character varying)::text, ('prompt'::character varying)::text]))),
     CONSTRAINT policy_feedback_sources_outcome_snapshot_check CHECK (((outcome_snapshot IS NULL) OR ((jsonb_typeof(outcome_snapshot) = 'object'::text) AND (octet_length((outcome_snapshot)::text) <= 1024)))),
     CONSTRAINT policy_feedback_sources_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_feedback_sources_review_actor_fingerprint_check CHECK ((review_actor_fingerprint ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_feedback_sources_selection_binding_check CHECK (((outcome_snapshot IS NULL) OR ((outcome_snapshot ->> 'version'::text) IS DISTINCT FROM 'classification.feedback_outcome.v2'::text) OR COALESCE(((jsonb_typeof((outcome_snapshot -> 'classificationId'::text)) = 'string'::text) AND ((outcome_snapshot ->> 'classificationId'::text) = (classification_id)::text) AND ((outcome_snapshot ->> 'intake'::text) = (intake)::text) AND ((outcome_snapshot ->> 'action'::text) = 'selection'::text)), false)))
 );
 
@@ -10903,6 +10932,22 @@ ALTER TABLE ONLY public.event_loop_delay_receipts
 
 
 --
+-- Name: feedback_review_references feedback_review_references_actor_id_classification_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback_review_references
+    ADD CONSTRAINT feedback_review_references_actor_id_classification_id_key UNIQUE (actor_id, classification_id);
+
+
+--
+-- Name: feedback_review_references feedback_review_references_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback_review_references
+    ADD CONSTRAINT feedback_review_references_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: held_out_semantic_study_lifecycle_reaudit_state held_out_semantic_study_lifecycle_reaudit_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13267,6 +13312,13 @@ CREATE INDEX idx_error_log_unresolved_stage ON public.error_log USING btree (err
 
 
 --
+-- Name: idx_feedback_review_reference_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_feedback_review_reference_expiry ON public.feedback_review_references USING btree (expires_at, id);
+
+
+--
 -- Name: idx_historic_route_safety_refresh_receipts_actor_recent; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15510,6 +15562,22 @@ ALTER TABLE ONLY public.embedding_errors
 
 ALTER TABLE ONLY public.enrichment_retry_queue
     ADD CONSTRAINT enrichment_retry_queue_media_item_id_fkey FOREIGN KEY (media_item_id) REFERENCES public.media_server_items(id) ON DELETE CASCADE;
+
+
+--
+-- Name: feedback_review_references feedback_review_references_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback_review_references
+    ADD CONSTRAINT feedback_review_references_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: feedback_review_references feedback_review_references_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback_review_references
+    ADD CONSTRAINT feedback_review_references_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
 
 
 --
@@ -18705,6 +18773,7 @@ FROM unnest(ARRAY[
     '20261014_120000_evaluation_workload_controls.sql',
     '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql',
     '20261028_130000_add_evidence_gap_audit.sql',
-    '20261028_140000_freeze_feedback_source_receipts.sql'
+    '20261028_140000_freeze_feedback_source_receipts.sql',
+    '20261028_160000_add_feedback_review_references.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -2,12 +2,14 @@
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { captureCorrectionDecisionContext, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { FEEDBACK_SELECTION_SNAPSHOT_VERSION, readFeedbackSelectionSnapshot } from './feedbackSelectionSnapshot.mjs';
+import { FEEDBACK_REVIEW_SNAPSHOT_VERSION, readFeedbackReviewOutcomeSnapshot } from './feedbackReviewOutcomeSnapshot.mjs';
 
 const VERSION = 'classification.feedback_outcome.v1';
 const keys = ['version', 'mediaType', 'tmdbId', 'selectedLibraryId', 'decisionContext'];
 const integer = value => typeof value === 'number' && positiveDatabaseInteger(value) !== null;
 
 export function readFeedbackOutcomeSnapshot(value) {
+  if (value?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION) return readFeedbackReviewOutcomeSnapshot(value);
   if (value?.version === FEEDBACK_SELECTION_SNAPSHOT_VERSION) return readFeedbackSelectionSnapshot(value);
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== keys.length ||
       !keys.every(key => Object.hasOwn(value, key)) || value.version !== VERSION ||

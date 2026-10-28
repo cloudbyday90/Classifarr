@@ -105,9 +105,8 @@ the local evidence above. No release or deployment was performed.
 
 ## Next boundary
 
-After provenance capture, design an explicit feedback action and server-owned
-served-reference contract if confirmation/change scoring is required. The current
-selection-only request cannot establish that action through library equality.
-Plan against existing canonical command ownership and exact event aliasing, so
-one operator action cannot create multiple votes. A reference shown to an operator
-needs its own server-owned binding; the commit-time shortlist cannot stand in for it.
+The [History feedback review outcome](feedback-served-reference-outcome.md)
+implements the next explicit action/reference boundary. Existing selection-only
+requests remain selections; their action cannot be inferred through library
+equality. The next investigation is a bounded cohort-specific disagreement report
+before ranking or learning changes.

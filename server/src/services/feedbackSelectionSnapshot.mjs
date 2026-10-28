@@ -3,6 +3,7 @@ import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { captureCorrectionDecisionContext, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
+import { FEEDBACK_REVIEW_SNAPSHOT_VERSION } from './feedbackReviewOutcomeSnapshot.mjs';
 
 export const FEEDBACK_SELECTION_SNAPSHOT_VERSION = 'classification.feedback_outcome.v2';
 const keys = ['version', 'classificationId', 'mediaType', 'tmdbId', 'selectedLibraryId', 'decisionContext',
@@ -47,10 +48,16 @@ export function buildFeedbackSelectionSnapshot(classification, selectedLibraryId
     reference, referenceRelation: relation(reference, selected) });
 }
 
-/** Call only with an already parsed v1/v2 snapshot and its independent receipt projection. */
+/** Call only with an already parsed snapshot and its independent receipt projection. */
 export function feedbackSnapshotMatchesReceipt(snapshot, receipt) {
   const id = canonicalDatabaseBigintId(receipt.classification_id);
   if (!snapshot || !id || snapshot.decisionContext && String(snapshot.decisionContext.classificationId) !== id) return false;
+  if (snapshot.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION) {
+    const observed = receipt.observed_at instanceof Date ? receipt.observed_at.getTime() : Date.parse(receipt.observed_at);
+    return snapshot.classificationId === id && snapshot.intake === receipt.intake &&
+      snapshot.reference.reviewId === receipt.review_id && snapshot.reference.actorFingerprint === receipt.review_actor_fingerprint &&
+      observed >= Date.parse(snapshot.reference.issuedAt) && observed <= Date.parse(snapshot.reference.expiresAt);
+  }
   return snapshot.version !== FEEDBACK_SELECTION_SNAPSHOT_VERSION ||
     snapshot.classificationId === id && snapshot.intake === receipt.intake;
 }

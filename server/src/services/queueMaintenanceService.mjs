@@ -38,6 +38,7 @@ import { ClassificationIntakeReceiptService } from './classificationIntakeReceip
 import { pruneClassificationCorrectionOutcomes } from './classificationCorrectionWriter.mjs';
 import { pruneFeedbackOutcomeSnapshots } from './feedbackOutcomeSnapshot.mjs';
 import { pruneAuthorizedOutcomeEvaluation } from './authorizedOutcomeEvaluationCapture.mjs';
+import { pruneFeedbackReviewReferences } from './feedbackReviewMaintenance.mjs';
 import { inspectQueueVacuum } from './queueVacuumObservation.mjs';
 
 const BLOAT_THRESHOLD = 1000;
@@ -94,6 +95,8 @@ export class QueueMaintenanceService {
         catch { this.logger.warn('Feedback outcome expiry failed; the next maintenance run will retry'); }
         try { await pruneAuthorizedOutcomeEvaluation(this.db); }
         catch { this.logger.warn('Authorized outcome evidence expiry failed; the next maintenance run will retry'); }
+        try { await pruneFeedbackReviewReferences(this.db); }
+        catch { this.logger.warn('Prepared feedback review expiry failed; the next maintenance run will retry'); }
     }
 
     async getTaskQueueRetentionPolicy() {

@@ -28,7 +28,8 @@ export const CORRECTION_DESTINATION_DECISION_SQL = `
     origin, was_correction, authorized_snapshot, tmdb_id LIMIT $1`;
 
 export const FEEDBACK_DESTINATION_OUTCOME_SQL = `
-  SELECT receipt.classification_id, receipt.intake, receipt.outcome_snapshot,
+  SELECT receipt.classification_id, receipt.intake, receipt.outcome_snapshot,receipt.created_at AS observed_at,
+    receipt.review_id::text,receipt.review_actor_fingerprint,
     (destination.is_active IS TRUE AND destination.media_type = receipt.outcome_snapshot->>'mediaType') AS target_available
   FROM policy_feedback_sources receipt
   LEFT JOIN libraries destination ON destination.id::text = receipt.outcome_snapshot->>'selectedLibraryId'

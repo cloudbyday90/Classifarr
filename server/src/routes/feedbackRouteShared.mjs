@@ -12,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import { recordStandaloneFeedback } from '../services/standaloneFeedbackService.mjs';
+import { registerFeedbackReviewRoutes } from './feedbackReviewRoutes.mjs';
 
 function parseIdParam(value) {
   return Number.parseInt(value, 10);
@@ -19,6 +20,7 @@ function parseIdParam(value) {
 
 export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   const router = express.Router();
+  registerFeedbackReviewRoutes(router, { db, feedbackAnalysis });
 
   router.post('/', asyncHandler(async (req, res) => {
     const result = await recordStandaloneFeedback({ db, feedbackAnalysis, body: req.body });

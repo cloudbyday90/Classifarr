@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Explicit History feedback review** — Assess a preserved original automated
+  destination through an active-administrator, ten-minute server reference.
+  Atomically record one existing feedback/statistics transaction and frozen
+  confirmation/change evidence, with stale-state rejection and scoped receipt
+  recovery after a lost response or expiry. Keep legacy selections and historical
+  gaps explicit. This assessment does not move media, reclassify, create policy
+  rules or add learning authority; it does not establish classification accuracy.
+
 - **Frozen feedback selection provenance** — Capture exact classification binding,
   selection action and the server shortlist reference in new feedback receipts.
   Protect provenance and replay clocks against replacement while preserving

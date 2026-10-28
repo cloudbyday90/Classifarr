@@ -210,9 +210,14 @@
                 class="py-3"
                 @click="openDetail(item)"
               >
-                <div class="font-medium">
+                <button
+                  type="button"
+                  class="font-medium text-left rounded-sm focus-visible:outline-2 focus-visible:outline-primary"
+                  :aria-label="`View details for ${item.title}`"
+                  @click.stop="openDetail(item)"
+                >
                   {{ item.title }}
-                </div>
+                </button>
                 <div class="text-sm text-gray-400">
                   {{ item.year }}
                 </div>
@@ -1005,6 +1010,10 @@
           </div>
 
           <!-- Actions -->
+          <HistoryFeedbackReview
+            :key="selectedItem.id"
+            :classification-id="selectedItem.id"
+          />
           <div class="space-y-3 pt-4 border-t border-gray-700">
             <!-- Correction Form -->
             <div
@@ -1101,6 +1110,7 @@ import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
 import ExhaustedRetryRecovery from '@/components/history/ExhaustedRetryRecovery.vue'
 import MoveRecoveryStatus from '@/components/history/MoveRecoveryStatus.vue'
 import ManualRoutingCheck from '@/components/history/ManualRoutingCheck.vue'
+import HistoryFeedbackReview from '@/components/history/HistoryFeedbackReview.vue'
 import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()

@@ -3,6 +3,7 @@ import { prepareAuthorizedOutcomeEvaluationRows } from './authorizedOutcomeEvalu
 import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { readFeedbackOutcomeSnapshot } from './feedbackOutcomeSnapshot.mjs';
 import { FEEDBACK_SELECTION_SNAPSHOT_VERSION, feedbackSnapshotMatchesReceipt } from './feedbackSelectionSnapshot.mjs';
+import { FEEDBACK_REVIEW_SNAPSHOT_VERSION } from './feedbackReviewOutcomeSnapshot.mjs';
 import { readInventoryRankingIdentity } from './inventoryRankingShadowIdentity.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { prospectiveTimestamp, prospectiveClassificationId } from './inventoryProspectiveValues.mjs';
@@ -44,7 +45,8 @@ export function prepareProspectiveObservations(row, now) {
       missing = !snapshot;
       selectionOnly = snapshot?.version === FEEDBACK_SELECTION_SNAPSHOT_VERSION;
       if (snapshot) { key = `${snapshot.mediaType}:${snapshot.tmdbId}`; type = snapshot.mediaType; destination = snapshot.selectedLibraryId; }
-      kind = null; available = evidence.target_available;
+      kind = snapshot?.version === FEEDBACK_REVIEW_SNAPSHOT_VERSION ? snapshot.action === 'correction' : null;
+      available = evidence.target_available;
     } else if (evidence.origin === 'unverified_correction') {
       missing = true;
     } else invalid();

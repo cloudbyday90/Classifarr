@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { apiClient } from './core'
+import { apiClient, getDataRequest } from './core'
 
 /**
  * Records one feedback observation for a completed source classification.
@@ -12,4 +12,13 @@ export function submitClassificationFeedback(feedback) {
   return apiClient.post('/feedback', feedback)
 }
 
-export default { submitClassificationFeedback }
+export function prepareFeedbackReview(classificationId) {
+  return apiClient.post(`/feedback/${encodeURIComponent(classificationId)}/review`, {}, { skipAutomaticRetry: true })
+}
+export function submitFeedbackReview(classificationId, command) {
+  return apiClient.post(`/feedback/${encodeURIComponent(classificationId)}/review/submit`, command, { skipAutomaticRetry: true })
+}
+export function getFeedbackReviewReceipt(classificationId, reviewId) {
+  return getDataRequest(`/feedback/${encodeURIComponent(classificationId)}/review/${encodeURIComponent(reviewId)}/receipt`, { skipAutomaticRetry: true })
+}
+export default { submitClassificationFeedback, prepareFeedbackReview, submitFeedbackReview, getFeedbackReviewReceipt }

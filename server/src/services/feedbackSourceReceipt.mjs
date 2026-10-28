@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { ConflictError } from '../utils/appError.mjs';
 import { buildFeedbackSelectionSnapshot } from './feedbackSelectionSnapshot.mjs';
+import { readFeedbackReviewOutcomeSnapshot } from './feedbackReviewOutcomeSnapshot.mjs';
 
 export function feedbackRequestFingerprint(normalizedRequest) {
     return createHash('sha256').update(JSON.stringify(normalizedRequest)).digest('hex');
@@ -29,12 +30,19 @@ export async function assertFeedbackSourceUnused(client, classificationId) {
 
 // Caller holds the source history lock; the receipt and feedback share its transaction.
 export async function recordFeedbackSource(client, { classificationId, feedbackId, intake, fingerprint,
-    classification = null, selectedLibraryId = null }) {
-    const snapshot = classification && String(classification.id) === String(classificationId)
+    classification = null, selectedLibraryId = null, reviewEvidence = null }) {
+    let snapshot = classification && String(classification.id) === String(classificationId)
         ? buildFeedbackSelectionSnapshot(classification, selectedLibraryId, intake) : null;
+    if (reviewEvidence) {
+        snapshot = readFeedbackReviewOutcomeSnapshot(reviewEvidence.snapshot);
+        if (!snapshot || snapshot.classificationId !== String(classificationId) || snapshot.intake !== intake ||
+            snapshot.selectedLibraryId !== selectedLibraryId || snapshot.reference.reviewId !== reviewEvidence.reviewId ||
+            snapshot.reference.actorFingerprint !== reviewEvidence.actorFingerprint) throw new Error('feedback_review_invalid_evidence');
+    }
     try {
-        await client.query(`INSERT INTO policy_feedback_sources(classification_id,feedback_id,intake,request_fingerprint,outcome_snapshot)
-            VALUES($1,$2,$3,$4,$5::jsonb)`, [classificationId, feedbackId, intake, fingerprint, snapshot]);
+        await client.query(`INSERT INTO policy_feedback_sources(classification_id,feedback_id,intake,request_fingerprint,outcome_snapshot,review_id,review_actor_fingerprint)
+            VALUES($1,$2,$3,$4,$5::jsonb,$6,$7)`, [classificationId, feedbackId, intake, fingerprint, snapshot,
+            reviewEvidence?.reviewId ?? null, reviewEvidence?.actorFingerprint ?? null]);
     } catch (error) {
         if (error.code === '23505') throw sourceConflict();
         throw error;

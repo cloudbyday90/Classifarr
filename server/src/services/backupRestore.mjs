@@ -3,6 +3,7 @@ import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { validateBackupRestoreReferences } from './backupRestoreReferences.mjs';
 import { resetEvidenceGapAuditForRestore } from './evidenceGapAuditRestore.mjs';
+import { resetFeedbackReviewReferences } from './feedbackReviewMaintenance.mjs';
 import { restoreLibraryArrMappings } from './backupRestoreDestinations.mjs';
 import {
   resetNativeIntentReconciliationSchedulingState,
@@ -157,6 +158,7 @@ export async function restoreAllTables(client, backupData, mode, { createSystemA
   // Validate the portable reference graph before any reset or configuration write.
   validateBackupRestoreReferences(backupData?.data);
   await resetEvidenceGapAuditForRestore(client);
+  await resetFeedbackReviewReferences(client);
   // The lifecycle audit state is a derived aggregate cursor, rather than
   // portable configuration. Reset it in the same transaction as every restore
   // so the passive re-audit observes the restored durable evidence.
