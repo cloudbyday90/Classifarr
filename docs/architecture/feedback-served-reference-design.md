@@ -42,7 +42,8 @@ references have different meanings:
 For a post-hoc assessment, the recommendation is the preserved original classifier
 destination, clearly separated from the current recorded outcome and shortlist.
 Do not infer that reference when original evidence is missing. This recommendation
-and its reference are confirmed. Implementation and validation follow.
+and its reference are confirmed. The [outcome](feedback-served-reference-outcome.md)
+records implementation and validation.
 
 The initial population requires a preserved, completed classifier
 destination with matching current typed identity and classifier method. Missing,

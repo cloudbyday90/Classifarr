@@ -112,6 +112,20 @@ a possible commit. The UI retains minimal recovery IDs in this tab's session
 storage, and warns if storage is unavailable. An unverified lookup is not proof
 that the submission failed.
 
+## Delivery
+
+Implementation, migration/generated schema, tests, Unreleased and design/outcome
+documents were committed and pushed on `main` as
+[f515f15d5ad65c80c4e6ce477bd41f706d036dad](https://github.com/cloudbyday90/Classifarr/commit/f515f15d5ad65c80c4e6ce477bd41f706d036dad).
+GitHub MCP verified the canonical commit URL; remote main matched and the working
+tree was clean. This delivery receipt changes documentation only.
+
+The push notice still reports one existing low dependency alert. Dependency
+manifests are unchanged and no advisory closure is claimed. Existing Unreleased
+security holds remain. Hosted CI after push is separate from the local results
+above. No new branch, PR merge, release, production database operation, provider
+request or deployment was performed.
+
 ## Next item
 
 Add a bounded, read-only disagreement report for frozen prospective cohorts:
