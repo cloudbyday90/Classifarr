@@ -120,6 +120,25 @@ PR merge, release or deployment has been performed.
 | Storage and documents | Migration/schema integrity, copyright and Markdown passed; no migration or schema change needed |
 | Staged patch | Redacted secret and whitespace checks passed |
 
+## Delivery
+
+Implementation, tests, Unreleased, reviewed ownership drift and the separate
+design/outcome documents were committed and pushed on `main` as
+[6ee366d65f380a02c8c54e63d0fb7dcae082073f](https://github.com/cloudbyday90/Classifarr/commit/6ee366d65f380a02c8c54e63d0fb7dcae082073f).
+GitHub MCP verified the canonical commit URL. Remote main matched and the working
+tree was clean. This receipt-only follow-up changes no tested application source.
+
+Verification used pinned Node 24.22.1 and npm 12.2.1. Backend coverage excludes the
+separately executed PostgreSQL suites. Client source/report were unchanged; the
+coverage baseline was not updated. Final Markdown checked 2,386 documents with
+zero errors; staged redacted secret and whitespace checks passed.
+
+The push notice still reports one existing low dependency alert. Dependency
+manifests and existing Unreleased security holds are unchanged; no advisory
+closure is claimed. Hosted CI after push is separate from the local evidence.
+No new branch, PR merge, release, production database operation, provider request
+or deployment was performed.
+
 ## Expected next boundary
 
 The first demonstrated explanatory gap is missing prospective policy/intent
