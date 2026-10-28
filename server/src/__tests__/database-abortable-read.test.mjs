@@ -38,6 +38,17 @@ test('a retained facade cannot run queries after a successful transaction closes
   expect(client.query).not.toHaveBeenCalledWith('late query');
 });
 
+test('repeatable-read isolation is fixed at BEGIN before the identity query; unknown SQL is rejected', async () => {
+  const { client, run, dependencies } = setup();
+  await run(async () => {}, { isolationLevel: 'repeatable_read' });
+  expect(client.query.mock.calls[0]).toEqual(['BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY']);
+  dependencies.connect.mockClear();
+  for (const isolationLevel of ['serializable', 'repeatable_read; UPDATE private', null]) {
+    await expect(run(async () => {}, { isolationLevel })).rejects.toThrow('database_read_isolation_invalid');
+  }
+  expect(dependencies.connect).not.toHaveBeenCalled();
+});
+
 test('already-aborted reads never acquire; invalid budgets never acquire', async () => {
   const { controller, dependencies, run } = setup();
   for (const timeoutMs of [0, -1, 15001, NaN, 1.5]) await expect(run(jest.fn(), { timeoutMs })).rejects.toThrow('database_read_timeout_invalid');

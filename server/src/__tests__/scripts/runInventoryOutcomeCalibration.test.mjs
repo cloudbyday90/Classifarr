@@ -28,6 +28,27 @@ test('CLI closes its pool when the snapshot fails', async () => {
   expect(close).toHaveBeenCalledTimes(1);
 });
 
+test('saved gap-audit status mode reads only its checkpoint and closes on success or failure', async () => {
+  const close = jest.fn(), queries = [];
+  const load = jest.fn(async () => ({ close, withTransaction: async (callback, options) => {
+    expect(options).toMatchObject({ readOnly: true, isolationLevel: 'repeatable_read', timeoutMs: 5000 });
+    return callback({ query: async sql => { queries.push(sql); return { rows: sql.includes('checked_at')
+      ? [{ checked_at: new Date('2026-10-28T12:00:00Z') }] : sql.includes('to_regclass') ? [{ installed: true }] : [] }; } });
+  } }));
+  expect(await runInventoryOutcomeCalibration({ argv: ['--gap-audit-status'], load })).toMatchObject({ status: 'never_run', report: null });
+  expect(queries).toHaveLength(4); expect(queries.join(' ')).not.toContain('classification_history');
+  expect(close).toHaveBeenCalledTimes(1);
+  for (const option of ['--prospective', '--seed', '--since']) {
+    const invalidLoad = jest.fn();
+    await expect(runInventoryOutcomeCalibration({ argv: ['--gap-audit-status', option, ...(option === '--prospective' ? [] : ['test'])], load: invalidLoad }))
+      .rejects.toThrow('inventory_outcome_mode_options');
+    expect(invalidLoad).not.toHaveBeenCalled();
+  }
+  await expect(runInventoryOutcomeCalibration({ argv: ['--gap-audit-status'], load: async () => ({ close,
+    withTransaction: async () => { throw new Error('read_failed'); } }) })).rejects.toThrow('read_failed');
+  expect(close).toHaveBeenCalledTimes(2);
+});
+
 test('prospective mode reads frozen events only, without inventory reconstruction or providers', async () => {
   const queries = [], close = jest.fn();
   const load = async () => ({ close, withTransaction: callback => callback({ query: async (sql, params) => {

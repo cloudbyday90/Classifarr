@@ -19,12 +19,14 @@ import { registerDatabaseHealthTransitionReceiptRoutes } from './statsRouteDatab
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
 import { registerEvaluationHistoryRoutes } from './statsRouteEvaluationHistory.mjs';
+import { registerEvidenceGapAuditRoutes } from './statsRouteEvidenceGapAudit.mjs';
 import { registerEvaluationWorkloadRoutes } from './statsRouteEvaluationWorkload.mjs';
 
 export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requireAdmin, rateLimit }) {
   const router = express.Router();
   router.use(authenticateTokenOrApiKey);
   registerEvaluationHistoryRoutes(router, { db, requireAdmin, rateLimit });
+  registerEvidenceGapAuditRoutes(router, { db, requireAdmin, rateLimit });
   registerEvaluationWorkloadRoutes(router, { db, requireAdmin, rateLimit });
   registerClassificationStatsRoutes(router, { db });
   registerCandidateBoundVerificationMetricsRoutes(router, { db });

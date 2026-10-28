@@ -3,7 +3,16 @@ import { expect, it, vi } from 'vitest'
 const { getDataRequest, put } = vi.hoisted(() => ({ getDataRequest: vi.fn(), put: vi.fn() }))
 vi.mock('@/api/core', () => ({ getDataRequest, apiClient: { put } }))
 import api from '@/api'
-import leaf, { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload } from '@/api/evaluationHistoryApi'
+import leaf, { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload, getEvidenceGapAudit } from '@/api/evaluationHistoryApi'
+
+it('wires the saved audit through the leaf, aggregator and barrel', async () => {
+  const result = { status: 'never_run' }
+  getDataRequest.mockResolvedValue(result)
+  expect(api.getEvidenceGapAudit).toBe(getEvidenceGapAudit)
+  expect(leaf.getEvidenceGapAudit).toBe(getEvidenceGapAudit)
+  expect(await api.getEvidenceGapAudit()).toBe(result)
+  expect(getDataRequest).toHaveBeenLastCalledWith('/stats/evidence-gap-audit')
+})
 
 it('wires the named read through the stats aggregator and barrel', async () => {
   const response = { version: 'evaluation_history_summary.v4', groups: [],

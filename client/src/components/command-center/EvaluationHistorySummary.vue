@@ -10,7 +10,7 @@
         Evaluation progress
       </h2>
       <button
-        v-if="snapshot"
+        v-if="snapshot || gapAudit || paused"
         type="button"
         :aria-pressed="paused"
         @click="togglePause"
@@ -21,6 +21,13 @@
     <p role="status">
       {{ errorMessage || (isLoading ? 'Loading evaluation history…' : paused ? 'Summary paused.' : '') }}
     </p>
+    <EvidenceGapAuditSummary
+      v-if="gapAuditAvailable"
+      :audit="gapAudit"
+      :loading="gapAuditLoading"
+      :paused="paused"
+      :error-message="gapAuditError"
+    />
     <template v-if="snapshot">
       <EvaluationActivitySummary :activity="snapshot.activity" />
       <p v-if="!latest">
@@ -90,7 +97,10 @@ import { computed } from 'vue'
 import { useEvaluationHistory } from '@/composables/useEvaluationHistory'
 import EvaluationCoverageGaps from './EvaluationCoverageGaps.vue'
 import EvaluationActivitySummary from './EvaluationActivitySummary.vue'
+import EvidenceGapAuditSummary from './EvidenceGapAuditSummary.vue'
+import { useEvidenceGapAudit } from '@/composables/useEvidenceGapAudit'
 const { available, paused, snapshot, isLoading, togglePause, errorMessage } = useEvaluationHistory()
+const { available: gapAuditAvailable, snapshot: gapAudit, isLoading: gapAuditLoading, errorMessage: gapAuditError } = useEvidenceGapAudit({ paused, enabled: available })
 const latest = computed(() => snapshot.value?.groups[0])
 </script>
 

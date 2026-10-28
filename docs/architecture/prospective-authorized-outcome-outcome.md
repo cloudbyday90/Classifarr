@@ -90,9 +90,10 @@ learning. The separate [automation design](placement-informed-automation-design.
 and [investigation outcome](placement-informed-automation-outcome.md) distinguish
 current conventions from historical proof. Normal operator actions already feed
 prospective capture automatically; this commit does not add a live recovery job.
-The next bounded recommendation is an automated, read-only gap audit before any
-historical import or ranking promotion. Frozen action/reference capture for
-legacy feedback is the next identified writer gap.
+The subsequent [automatic evidence gap audit](automatic-evidence-gap-audit-outcome.md)
+implements that read-only automation before any historical import or ranking
+promotion. Frozen action/reference capture for feedback remains the next
+identified writer gap.
 
 ## Delivery
 

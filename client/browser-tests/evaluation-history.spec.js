@@ -2,9 +2,10 @@
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { normalizeEvaluationGaps } from '../src/utils/evaluationCoverageGaps.js'
+import { evidenceGapAuditFixture } from '../src/__tests__/fixtures/evidenceGapAudit.js'
 
 test('saved evaluation coverage is compact, keyboard-pausable and clears after lost access', async ({ page }, testInfo) => {
-  let paired = 20, busy = false, denied = false, reads = 0, writes = 0
+  let paired = 20, busy = false, denied = false, reads = 0, writes = 0, auditReads = 0, auditFailed = false
   await page.clock.install()
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const path = new URL(route.request().url()).pathname
@@ -18,6 +19,12 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
     if (['/api/libraries', '/api/classification/progress', '/api/queue/pending', '/api/queue/failed'].includes(path)) data = []
     if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
     if (path.includes('native-intent-reconciliation') || path.includes('held-out-semantic')) status = 403
+    if (path === '/api/stats/evidence-gap-audit') {
+      auditReads++
+      // An unverified body fails the audit independently, without waiting on transport retries.
+      if (auditFailed) data = { error: 'PRIVATE transport detail' }
+      else data = evidenceGapAuditFixture()
+    }
     if (path === '/api/stats/evaluation-history') {
       reads++
       if (denied) status = 403
@@ -46,6 +53,15 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect(panel).toContainText('300 cases evaluated by policy replay')
   await expect(panel).toContainText('Disabled — no AI calls are scheduled for evaluation capture')
   await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
+  const audit = panel.getByRole('region', { name: 'Comparison evidence audit' })
+  const auditDetails = audit.locator('details'), auditDisclosure = auditDetails.locator('summary')
+  await expect(audit.getByRole('status')).toContainText('No retained movie or TV intake')
+  await expect(auditDetails).not.toHaveAttribute('open')
+  await auditDisclosure.focus(); await page.keyboard.press('Enter')
+  await expect(auditDetails).toHaveAttribute('open', '')
+  await expect(audit).toContainText('These reasons overlap')
+  await expect(audit).toContainText('historical recovery is not assessed')
+  await audit.screenshot({ path: testInfo.outputPath('evidence-gap-audit-desktop.png') })
   const savedDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Saved results and scope' }) })
   const backfillDetails = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Backfill progress' }) })
   await expect(savedDetails).not.toHaveAttribute('open')
@@ -72,9 +88,17 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await page.keyboard.press('Space')
   paired = 25
   busy = true
+  auditFailed = true
+  await auditDisclosure.focus()
   // Advance one polling interval without replaying every unrelated dashboard animation frame.
-  await page.clock.fastForward(300_000)
+  await page.clock.fastForward(301_000)
   await expect.poll(() => reads).toBeGreaterThan(1)
+  await expect.poll(() => auditReads).toBeGreaterThan(1)
+  await expect(audit.getByRole('status')).toContainText('Evidence gap audit is unavailable')
+  await expect(audit.locator('dl')).toHaveCount(0)
+  await expect(auditDetails).toHaveAttribute('open', '')
+  await expect(auditDisclosure).toBeFocused()
+  await expect(audit).not.toContainText('PRIVATE')
   await expect(panel).toContainText('20 completed comparisons')
   await expect(panel).toContainText('300 cases evaluated by policy replay')
   await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
@@ -102,7 +126,9 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   expect(bounds.x).toBeGreaterThanOrEqual(0)
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(390)
   await panel.screenshot({ path: testInfo.outputPath('evaluation-history-mobile.png') })
+  await audit.screenshot({ path: testInfo.outputPath('evidence-gap-audit-mobile.png') })
   expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:evaluation-history'))).toBeNull()
+  expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:evidence-gap-audit'))).toBeNull()
   await panel.getByRole('button', { name: 'Pause summary' }).press('Space')
   denied = true
   await page.clock.fastForward(300_000)

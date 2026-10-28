@@ -2,6 +2,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { learningPatternEvidenceAdapter } from './learningPatternEvidenceAdapter.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { validateBackupRestoreReferences } from './backupRestoreReferences.mjs';
+import { resetEvidenceGapAuditForRestore } from './evidenceGapAuditRestore.mjs';
 import { restoreLibraryArrMappings } from './backupRestoreDestinations.mjs';
 import {
   resetNativeIntentReconciliationSchedulingState,
@@ -155,6 +156,7 @@ export async function clearExistingConfig(client) {
 export async function restoreAllTables(client, backupData, mode, { createSystemApiKey = null } = {}) {
   // Validate the portable reference graph before any reset or configuration write.
   validateBackupRestoreReferences(backupData?.data);
+  await resetEvidenceGapAuditForRestore(client);
   // The lifecycle audit state is a derived aggregate cursor, rather than
   // portable configuration. Reset it in the same transaction as every restore
   // so the passive re-audit observes the restored durable evidence.

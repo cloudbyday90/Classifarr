@@ -14,7 +14,9 @@ destinations; this task does not establish their classification accuracy.
 The accompanying [prospective integration](prospective-authorized-outcome-outcome.md)
 modernizes new ranking identity and reads canonical operator evidence. The capture
 and normal operator command paths are passive/automatic. The prospective report
-remains an existing private CLI; no new scheduled audit or import job was added.
+remains available through the private CLI. The subsequent
+[automatic evidence audit](automatic-evidence-gap-audit-outcome.md) adds an
+independent scheduled aggregate and protected status display; it adds no import.
 
 No independent historical archive proving missing v1 comparison identities or
 legacy feedback action kinds was established. No production database/backup was
@@ -24,11 +26,8 @@ observed recovery result.
 
 ## Next recommendation
 
-Automate the read-only gap audit using existing worker admission, source revision
-signals, single-flight scheduling, retention and aggregate reporting. It should
-show what is already captured, what can be verified from retained evidence and
-what requires a new real operator action. Then implement the next source-specific
-writer gap: frozen feedback action/reference provenance. Maintain separate
+The read-only gap audit is implemented in the linked outcome. Implement the next
+source-specific writer gap: frozen feedback action/reference provenance. Maintain separate
 placement-informed suggestions and verified outcomes throughout.
 
 Benefits are less manual diagnosis and clearer evidence coverage. The tradeoff is

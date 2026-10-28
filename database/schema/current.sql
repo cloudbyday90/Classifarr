@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-28T09:52:06.061Z
--- Latest Migration: 20261028_090000_add_authorized_outcome_evaluation_snapshots.sql
+-- Generated: 2026-10-28T12:41:56.306Z
+-- Latest Migration: 20261028_130000_add_evidence_gap_audit.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2288,6 +2288,41 @@ CREATE TABLE public.automatic_evaluation_history (
     CONSTRAINT automatic_evaluation_history_result_check CHECK (COALESCE(((jsonb_typeof(result) = 'object'::text) AND ((result ->> 'version'::text) = ANY (ARRAY['evaluation_history.v1'::text, 'evaluation_history.v2'::text, 'evaluation_history.v3'::text])) AND (jsonb_typeof((result -> 'cases'::text)) = 'array'::text) AND (jsonb_array_length((result -> 'cases'::text)) <= 25) AND (octet_length((result)::text) <= 16384)), false)),
     CONSTRAINT automatic_evaluation_history_result_key_check CHECK ((result_key ~ '^[a-f0-9]{64}$'::text))
 );
+
+
+--
+-- Name: automatic_evidence_gap_audit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automatic_evidence_gap_audit (
+    singleton boolean DEFAULT true NOT NULL,
+    status text NOT NULL,
+    input_fingerprint text,
+    report jsonb,
+    observed_at timestamp with time zone NOT NULL,
+    evaluated_at timestamp with time zone,
+    next_check_at timestamp with time zone NOT NULL,
+    failure_count integer DEFAULT 0 NOT NULL,
+    failure_code text,
+    CONSTRAINT automatic_evidence_gap_audit_check CHECK ((((status = 'complete'::text) AND (input_fingerprint IS NOT NULL) AND (report IS NOT NULL) AND (evaluated_at IS NOT NULL) AND (failure_code IS NULL) AND (failure_count = 0)) OR ((status = 'failed'::text) AND (input_fingerprint IS NULL) AND (report IS NULL) AND (evaluated_at IS NULL) AND (failure_code IS NOT NULL) AND (failure_count > 0)))),
+    CONSTRAINT automatic_evidence_gap_audit_check1 CHECK (((next_check_at > observed_at) AND ((evaluated_at IS NULL) OR (evaluated_at <= observed_at)))),
+    CONSTRAINT automatic_evidence_gap_audit_evaluated_at_check CHECK (isfinite(evaluated_at)),
+    CONSTRAINT automatic_evidence_gap_audit_failure_code_check CHECK ((failure_code = ANY (ARRAY['busy'::text, 'memory_pressure'::text, 'memory_unknown'::text, 'evidence_budget'::text, 'invalid_evidence'::text, 'deadline'::text, 'evaluation_unavailable'::text]))),
+    CONSTRAINT automatic_evidence_gap_audit_failure_count_check CHECK (((failure_count >= 0) AND (failure_count <= 5))),
+    CONSTRAINT automatic_evidence_gap_audit_input_fingerprint_check CHECK ((input_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT automatic_evidence_gap_audit_next_check_at_check CHECK (isfinite(next_check_at)),
+    CONSTRAINT automatic_evidence_gap_audit_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT automatic_evidence_gap_audit_report_check CHECK (((jsonb_typeof(report) = 'object'::text) AND (octet_length((report)::text) <= 16384))),
+    CONSTRAINT automatic_evidence_gap_audit_singleton_check CHECK (singleton),
+    CONSTRAINT automatic_evidence_gap_audit_status_check CHECK ((status = ANY (ARRAY['complete'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: TABLE automatic_evidence_gap_audit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.automatic_evidence_gap_audit IS 'One replaceable aggregate checkpoint, not source evidence or recovery authority. Excluded from portable exports; reset on configuration restore.';
 
 
 --
@@ -10429,6 +10464,14 @@ ALTER TABLE ONLY public.automatic_evaluation_history
 
 
 --
+-- Name: automatic_evidence_gap_audit automatic_evidence_gap_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automatic_evidence_gap_audit
+    ADD CONSTRAINT automatic_evidence_gap_audit_pkey PRIMARY KEY (singleton);
+
+
+--
 -- Name: automatic_source_pair_evaluation automatic_source_pair_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12564,7 +12607,7 @@ CREATE INDEX idx_authorized_outcome_evaluation_observed ON public.policy_authori
 -- Name: idx_authorized_outcome_evaluation_receipts_created; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_authorized_outcome_evaluation_receipts_created ON public.policy_authorized_outcome_source_event_receipts USING btree (created_at, id) WHERE (((source_id)::text = ANY ((ARRAY['manual_classification_change'::character varying, 'operator_confirmation'::character varying])::text[])) AND ((final_outcome_status_id)::text = ANY ((ARRAY['resolved'::character varying, 'routed'::character varying])::text[])));
+CREATE INDEX idx_authorized_outcome_evaluation_receipts_created ON public.policy_authorized_outcome_source_event_receipts USING btree (created_at, id) WHERE (((source_id)::text = ANY (ARRAY[('manual_classification_change'::character varying)::text, ('operator_confirmation'::character varying)::text])) AND ((final_outcome_status_id)::text = ANY (ARRAY[('resolved'::character varying)::text, ('routed'::character varying)::text])));
 
 
 --
@@ -18630,6 +18673,7 @@ FROM unnest(ARRAY[
     '20261013_210000_queue_identity_repair.sql',
     '20261014_060000_ollama_readiness_backfill_state.sql',
     '20261014_120000_evaluation_workload_controls.sql',
-    '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql'
+    '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql',
+    '20261028_130000_add_evidence_gap_audit.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

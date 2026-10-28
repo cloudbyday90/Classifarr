@@ -7,11 +7,12 @@ const MAX_READ_MS = 15000;
 
 /** A read-only boundary; deliberately not the transaction runner for writes. */
 export async function runAbortableDatabaseRead({ connect, cancelRead, logger, assertActive }, callback,
-  { signal, timeoutMs = MAX_READ_MS }) {
+  { signal, timeoutMs = MAX_READ_MS, isolationLevel = 'read_committed' }) {
   checkAbort(signal, 'database read');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > MAX_READ_MS) {
     throw new RangeError('database_read_timeout_invalid');
   }
+  if (!['read_committed', 'repeatable_read'].includes(isolationLevel)) throw new RangeError('database_read_isolation_invalid');
   assertActive();
   const controller = new AbortController();
   const forwardAbort = () => controller.abort();
@@ -46,7 +47,7 @@ export async function runAbortableDatabaseRead({ connect, cancelRead, logger, as
       assertReadable();
       return result;
     };
-    await query('BEGIN READ ONLY');
+    await query(isolationLevel === 'repeatable_read' ? 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY' : 'BEGIN READ ONLY');
     const remainingMs = Math.max(1, Math.ceil(timeoutMs - (performance.now() - started)));
     const settings = await query(`
       SELECT pid, backend_start::text AS started,

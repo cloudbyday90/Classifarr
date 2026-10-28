@@ -291,7 +291,8 @@ export function createDatabaseModule({
     if (options.signal) {
       if (options.readOnly !== true) throw new TypeError('database_read_cancellation_requires_read_only');
       return runAbortableDatabaseRead({ connect: () => pool.connect(), cancelRead, logger,
-        assertActive: lockScope.assertHealthy }, fn, { signal: options.signal, timeoutMs: options.timeoutMs });
+        assertActive: lockScope.assertHealthy }, fn, { signal: options.signal, timeoutMs: options.timeoutMs,
+          isolationLevel: options.isolationLevel });
     }
     const client = await connectWithRetry();
     return runDatabaseTransaction(client, fn, { logger, assertActive: lockScope.assertHealthy });

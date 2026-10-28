@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Automatic comparison evidence audit** — Independently inspect bounded retained
+  evidence with existing scheduler ownership, resource admission, cancellation and
+  backoff. Save only a replaceable aggregate and show it in administrator
+  Evaluation progress through a protected read-only status API. Separate capture
+  exclusions from overlapping observation diagnostics; withhold failed or stale
+  counts even while presentation is paused. Historical recovery remains
+  unassessed; placement does not become a label, and routing/learning are unchanged.
+
 - **Prospective comparison provenance** — Freeze typed identity in new ranking
   captures and recheck it before persistence. Read canonical authorized choices
   and provably bound correction snapshots through strict, modular adapters.
