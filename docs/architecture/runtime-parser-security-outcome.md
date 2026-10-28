@@ -98,3 +98,12 @@ Keep one-item routing consent distinct from generalized learning. The broader
 documentary and seasonal-library fit gaps are unchanged by this security update.
 Review qs PR 573's 6.17.0 minor features separately; its requested version is not
 implemented by this exact 6.16.1 security patch.
+
+## Delivery receipt
+
+Code and the Unreleased changelog were committed on main as
+6bcaea15c36d09919fd57ffa13f602ae2eace971, pushed and checked against the remote
+main SHA. The staged diff passed whitespace and redacted Gitleaks checks.
+The separate [PR outcome](dotenv-pr571-outcome.md) records the completed
+housekeeping. Markdown lint passes all 2,368 documents and copyright checks pass.
+The final receipt-only documentation commit requires no application retest.
