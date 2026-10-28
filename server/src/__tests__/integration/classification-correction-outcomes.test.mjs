@@ -118,12 +118,12 @@ test('missing identity, same destination, and blank actor never produce syntheti
   expect(await outcomes()).toHaveLength(0);
 });
 
-test('inactive/type-changed destinations are excluded and library deletion cascades snapshots', async () => {
+test('inactive/type-changed destinations remain unusable conflict evidence and library deletion cascades snapshots', async () => {
   await write(await history());
   await client.query('UPDATE libraries SET is_active=false WHERE id=$1', [libraries[1].id]);
-  expect(await outcomes()).toHaveLength(0);
+  expect(await outcomes()).toEqual([expect.objectContaining({ target_available: false })]);
   await client.query("UPDATE libraries SET is_active=true,media_type='tv' WHERE id=$1", [libraries[1].id]);
-  expect(await outcomes()).toHaveLength(0);
+  expect(await outcomes()).toEqual([expect.objectContaining({ target_available: false })]);
   await client.query('DELETE FROM libraries WHERE id=$1', [libraries[1].id]);
   expect((await client.query('SELECT * FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1].id])).rows).toHaveLength(0);
 });

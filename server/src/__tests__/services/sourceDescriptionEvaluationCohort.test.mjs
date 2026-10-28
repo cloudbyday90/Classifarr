@@ -3,8 +3,22 @@ import { expect, test } from '@jest/globals';
 import { groupSourceDescriptionEvidence, prepareSourceDescriptionEvaluationCohort } from '../../services/sourceDescriptionEvaluationCohort.mjs';
 import { sourcePairFixture, sourcePairSnapshot } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { inventorySourceDescriptionKey } from '../../services/inventorySourceDescriptionIdentity.mjs';
+import { authorizedEvaluationRow, authorizedEvaluationGap } from '../helpers/authorizedOutcomeEvaluationFixture.mjs';
 
 const options = { seed: 'source-pair-test-seed', size: 16 };
+test('authorized unavailable identities stay held out while historical gaps acquire no guessed group', () => {
+  const source = sourcePairFixture(48);
+  const chosen = source.rows.find(row => row.media_type === 'movie' && row.tmdb_id !== null);
+  source.operatorFeedbackRows = [authorizedEvaluationRow({ tmdb_id: chosen.tmdb_id,
+    identity_key: `movie:${chosen.tmdb_id}`, decision_context: null, selected_library_id: 999, target_available: false }), authorizedEvaluationGap()];
+  const result = prepareSourceDescriptionEvaluationCohort(source, { ...options, size: 1 });
+  const doc = source.corpus.documents.find(value => value.key === `movie:${chosen.tmdb_id}`);
+  expect(result.corrections.size).toBe(0);
+  expect(result.feedbackExcludedHashes.has(doc.hash)).toBe(true);
+  expect(result.coverage).toMatchObject({ authorizedMissingSnapshotRows: 1, authorizedCorrectionRows: 1, unavailableIdentities: 1 });
+  source.operatorFeedbackRows = [authorizedEvaluationGap()];
+  expect(prepareSourceDescriptionEvaluationCohort(source, { ...options, size: 1 }).feedbackExcludedHashes.size).toBe(0);
+});
 test('transitive aliases, conflicting descriptions, and exact synopsis copies are held as one group', () => {
   const { libraries, rows } = sourcePairFixture(6);
   rows.forEach(row => { row.media_type = 'movie'; row.library_id = 1; });

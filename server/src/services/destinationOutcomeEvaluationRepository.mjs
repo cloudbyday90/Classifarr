@@ -4,15 +4,27 @@ import { evaluateDestinationOutcomes } from './destinationOutcomeEvaluation.mjs'
 import { readFeedbackOutcomeSnapshot } from './feedbackOutcomeSnapshot.mjs';
 import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 import { LOG_CONFIG } from '../utils/logging/logConfig.mjs';
+import { AUTHORIZED_OUTCOME_EVALUATION_SQL, authorizedCorrectionSnapshotExists } from './authorizedOutcomeEvaluationQuery.mjs';
+import { prepareAuthorizedOutcomeEvaluationRows } from './authorizedOutcomeEvaluationSnapshot.mjs';
 
 export const CORRECTION_DESTINATION_DECISION_SQL = `
+  SELECT * FROM (
   SELECT c.media_type, c.identity_key, c.selected_library_id,
     CASE WHEN octet_length(c.decision_context::text) <= 1024 THEN c.decision_context END AS decision_context,
-    (l.is_active IS TRUE AND l.media_type = c.media_type) AS target_available
+    (l.is_active IS TRUE AND l.media_type = c.media_type) AS target_available,
+    NULL::bigint AS classification_id, 'manual_correction'::text AS origin,
+    true AS was_correction, NULL::jsonb AS authorized_snapshot, NULL::integer AS tmdb_id
   FROM classification_correction_outcomes c
   LEFT JOIN libraries l ON l.id = c.selected_library_id
   WHERE c.observed_at > NOW() - INTERVAL '30 days' AND c.observed_at <= NOW()
-  ORDER BY c.observed_at, c.correction_id LIMIT $1`;
+    AND NOT ${authorizedCorrectionSnapshotExists('c.correction_id')}
+  UNION ALL
+  SELECT media_type, identity_key, selected_library_id, decision_context, target_available,
+    classification_id, origin, was_correction, authorized_snapshot, tmdb_id
+  FROM (${AUTHORIZED_OUTCOME_EVALUATION_SQL}) authorized_rows
+  ) combined_outcomes
+  ORDER BY classification_id, media_type, identity_key, selected_library_id, decision_context,
+    origin, was_correction, authorized_snapshot, tmdb_id LIMIT $1`;
 
 export const FEEDBACK_DESTINATION_OUTCOME_SQL = `
   SELECT receipt.classification_id, receipt.outcome_snapshot,
@@ -43,12 +55,14 @@ export async function readDestinationOutcomeInputs(client) {
   }
   const intake = (await client.query(DESTINATION_INTAKE_COVERAGE_SQL, [DESTINATION_OUTCOME_ROW_LIMIT + 1])).rows;
   if (intake.length > DESTINATION_OUTCOME_ROW_LIMIT) throw new Error('saved_decisions_intake_budget');
-  return { rows, intake };
+  const prepared = prepareAuthorizedOutcomeEvaluationRows(rows);
+  const authorizedMissingSnapshotRows = prepared.filter(row => row.authorized_snapshot?.snapshot_missing === true).length;
+  return { rows: prepared.filter(row => row.authorized_snapshot?.snapshot_missing !== true), intake, authorizedMissingSnapshotRows };
 }
 
 export async function readDestinationOutcomes(client) {
-  const { rows, intake } = await readDestinationOutcomeInputs(client);
-  return evaluateDestinationOutcomes(rows, intake);
+  const { rows, intake, authorizedMissingSnapshotRows } = await readDestinationOutcomeInputs(client);
+  return evaluateDestinationOutcomes(rows, intake, authorizedMissingSnapshotRows);
 }
 
 /** Private CLI only. The runtime flags must be set before loading the database module. */

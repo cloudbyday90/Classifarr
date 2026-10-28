@@ -1,38 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
-import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
-import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
+import { readClassificationOutcomeIdentity } from './classificationOutcomeIdentity.mjs';
 import { captureCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
-
-async function correctionIdentity(client, classification) {
-  if (!['movie', 'tv'].includes(classification.media_type)) return null;
-  if (classification.tmdb_id != null) {
-    const id = positiveDatabaseInteger(classification.tmdb_id);
-    return id ? `${classification.media_type}:${id}` : null;
-  }
-  // Only a persisted source-library observation can supply a source-only pointer.
-  // Titles/year are consistency guards, never lookup keys or authority to merge.
-  if (classification.method !== 'source_library') return null;
-  const metadata = safeParseJsonObject(classification.metadata);
-  const itemId = positiveDatabaseInteger(metadata.itemId);
-  const libraryId = positiveDatabaseInteger(metadata.source_library_id);
-  if (!itemId || !libraryId) return null;
-  const { rows } = await client.query(`
-    SELECT media_server_id, external_id, library_id, media_type, tmdb_id
-    FROM media_server_items
-    WHERE id = $1 AND library_id = $2 AND media_type = $3 AND tmdb_id IS NULL
-      AND title = $4 AND year IS NOT DISTINCT FROM $5::integer
-    FOR SHARE`, [itemId, libraryId, classification.media_type, classification.title, classification.year ?? null]);
-  if (!rows[0]) return null;
-  try { return inventorySourceDescriptionKey(rows[0]); }
-  catch { return null; }
-}
 
 /** The caller owns the history transaction. Event and evidence are always atomic. */
 export async function recordClassificationCorrection(client, {
   classification, originalLibraryId, destinationLibraryId, correctedBy,
 }) {
-  const identityKey = await correctionIdentity(client, classification);
+  const identityKey = await readClassificationOutcomeIdentity(client, classification);
   const { rows } = await client.query(`
     WITH correction AS (
       INSERT INTO classification_corrections

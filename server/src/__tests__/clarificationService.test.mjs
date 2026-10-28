@@ -785,6 +785,7 @@ describe('resolvePolicyQuestion', () => {
             shouldRoute: false,
         });
         expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
+        expect(client.query.mock.calls.some(([sql]) => sql.includes('SELECT transaction_timestamp() AS evaluation_observed_at'))).toBe(false);
         expect(client.query).toHaveBeenCalledWith('COMMIT');
     });
 

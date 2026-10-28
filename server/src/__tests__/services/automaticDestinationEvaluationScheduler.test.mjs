@@ -23,7 +23,7 @@ test('repository bounds reads, rejects arbitrary report writes and honors cancel
   const db = { withTransaction: callback => callback(client) };
   const repository = createAutomaticDestinationEvaluationRepository(db);
   expect(await repository.readState()).toBeNull();
-  expect(await repository.readSnapshot()).toEqual({ observedAt: '2026-09-24', inputs: { rows: [], intake: [] } });
+  expect(await repository.readSnapshot()).toEqual({ observedAt: '2026-09-24', inputs: { rows: [], intake: [], authorizedMissingSnapshotRows: 0 } });
   expect(client.query).toHaveBeenCalledWith('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
   expect(client.query).toHaveBeenCalledWith("SET LOCAL transaction_timeout = '45s'");
   expect(() => repository.save('a'.repeat(64), {}, new Date())).toThrow('invalid_report');

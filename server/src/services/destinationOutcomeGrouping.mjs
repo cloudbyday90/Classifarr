@@ -5,6 +5,12 @@ import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 
 export const DESTINATION_OUTCOME_ROW_LIMIT = 5000;
 
+function recordAuthorizedAction(group, row) {
+  if (row.origin !== 'authorized_outcome') return;
+  group.authorizedActionKinds ??= new Set();
+  group.authorizedActionKinds.add(row.was_correction ? 'correction' : 'confirmation');
+}
+
 /** One decision can have many receipts, but never more than one evaluation vote. */
 export function groupDestinationOutcomes(rows) {
   if (!Array.isArray(rows) || rows.length > DESTINATION_OUTCOME_ROW_LIMIT) throw new Error('saved_decisions_row_budget');
@@ -20,6 +26,7 @@ export function groupDestinationOutcomes(rows) {
         const group = groups.get(id) ?? { context: null, mediaType: row.media_type, identities: new Set(), labels: new Set(), rows: 0 };
         group.conflict = true;
         group.rows++;
+        recordAuthorizedAction(group, row);
         groups.set(id, group);
       }
       continue;
@@ -34,9 +41,10 @@ export function groupDestinationOutcomes(rows) {
     group.rows++;
     group.identities.add(row.identity_key);
     group.labels.add(target);
-    group.conflict ||= !identityMatches || !target || group.identities.size > 1 ||
+    group.conflict ||= row.evidence_conflict === true || !identityMatches || !target || group.identities.size > 1 ||
       JSON.stringify(group.context) !== JSON.stringify(context);
     group.unavailable ||= row.target_available !== true;
+    recordAuthorizedAction(group, row);
     if (!identityMatches || !target) invalidIdentityRows++;
     groups.set(classificationId, group);
   }

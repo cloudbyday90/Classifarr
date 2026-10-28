@@ -14,6 +14,18 @@ function fixture() {
   return { ...options, worker: createAutomaticDestinationEvaluation(options) };
 }
 
+test('historical gap counts participate in fingerprints and never become completed labels', async () => {
+  const f = fixture(); await f.worker.run();
+  const [input_fingerprint, report] = f.repository.save.mock.calls[0];
+  f.repository.readState.mockResolvedValue({ status: 'complete', input_fingerprint, report });
+  f.repository.readSnapshot.mockResolvedValue({ observedAt: new Date(), inputs: { rows: [], intake: [], authorizedMissingSnapshotRows: 1 } });
+  expect(await f.worker.run()).toEqual({ status: 'evaluated' });
+  expect(f.repository.save.mock.calls[1][0]).not.toBe(input_fingerprint);
+  expect(f.repository.save.mock.calls[1][1]).toMatchObject({ authorizedOutcomes: { missingSnapshotRows: 1 },
+    overall: { completedDecisions: 0, labeledCohortAgreementRate: null } });
+  expect(f.evaluate).toHaveBeenLastCalledWith([], [], 1);
+});
+
 test('evaluates once, then revalidates unchanged inputs without closing a pool or changing global settings', async () => {
   const env = { ...process.env };
   const f = fixture();

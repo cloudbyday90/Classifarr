@@ -9,6 +9,16 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ## [Unreleased]
 
+### Added
+
+- **Frozen authorized-outcome evaluation** — Atomically retain prospective typed
+  identity, destination, action and decision context for successful authorized
+  operator choices. Shared evaluation readers deduplicate event aliases, separate
+  confirmations from changes, reject conflicts and report historical evidence
+  gaps. Database observation times, thirty-day expiry and replay guards prevent
+  late receipts from refreshing old evidence. Routing and learning authority are
+  unchanged; this does not establish classifier accuracy or repair past labels.
+
 ### Fixed
 
 - **Purpose authority consistency** — Use the same declaration-provenance checks

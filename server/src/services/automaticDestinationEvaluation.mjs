@@ -5,7 +5,7 @@ import { readAutomaticDestinationEvaluationReport } from './automaticDestination
 import { createAutomaticEvaluationWorker } from './automaticEvaluationWorker.mjs';
 
 export const AUTOMATIC_DESTINATION_EVALUATION_LOCK = 0x41444556;
-const REVISION = 'automatic_destination_evaluation.v1:destination_outcomes.v2';
+const REVISION = 'automatic_destination_evaluation.v1:destination_outcomes.v2:authorized_outcomes.v2';
 function failureCode(error) {
   if (['saved_decisions_row_budget', 'saved_decisions_intake_budget'].includes(error?.message)) return 'evidence_budget';
   return error?.message === 'saved_decisions_feedback_invalid' ? 'invalid_feedback' : 'evaluation_unavailable';
@@ -25,7 +25,7 @@ export function createAutomaticDestinationEvaluation({ repository, withSessionAd
       const fingerprint = createHash('sha256').update(canonical).digest('hex');
       const unchanged = state?.status === 'complete' && state.input_fingerprint === fingerprint &&
         readAutomaticDestinationEvaluationReport(state.report) !== null;
-      const report = unchanged ? state.report : evaluate(snapshot.inputs.rows, snapshot.inputs.intake);
+      const report = unchanged ? state.report : evaluate(snapshot.inputs.rows, snapshot.inputs.intake, snapshot.inputs.authorizedMissingSnapshotRows ?? 0);
       return { fingerprint, report, unchanged };
     },
   });

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-14T10:58:23.719Z
--- Latest Migration: 20261014_120000_evaluation_workload_controls.sql
+-- Generated: 2026-10-28T09:52:06.061Z
+-- Latest Migration: 20261028_090000_add_authorized_outcome_evaluation_snapshots.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.6
--- Dumped by pg_dump version 18.6
+-- Dumped from database version 18.6 (Debian 18.6-1.pgdg12+2)
+-- Dumped by pg_dump version 18.6 (Debian 18.6-1.pgdg12+2)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -412,6 +412,19 @@ CREATE FUNCTION public.extract_jsonb_name_text(arr jsonb) RETURNS text
     FROM jsonb_array_elements(
         CASE WHEN arr IS NOT NULL AND jsonb_typeof(arr) = 'array' THEN arr ELSE '[]'::jsonb END
     ) AS elem
+$$;
+
+
+--
+-- Name: guard_authorized_outcome_evaluation_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_authorized_outcome_evaluation_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Authorized outcome evaluation snapshots cannot be updated';
+END;
 $$;
 
 
@@ -5885,6 +5898,41 @@ CREATE SEQUENCE public.policy_authoring_proposals_id_seq
 --
 
 ALTER SEQUENCE public.policy_authoring_proposals_id_seq OWNED BY public.policy_authoring_proposals.id;
+
+
+--
+-- Name: policy_authorized_outcome_evaluation_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_authorized_outcome_evaluation_snapshots (
+    receipt_id bigint CONSTRAINT policy_authorized_outcome_evaluation_snapsh_receipt_id_not_null NOT NULL,
+    snapshot_version smallint DEFAULT 1 CONSTRAINT policy_authorized_outcome_evaluation__snapshot_version_not_null NOT NULL,
+    event_key character varying(160) CONSTRAINT policy_authorized_outcome_evaluation_snapsho_event_key_not_null NOT NULL,
+    media_type text CONSTRAINT policy_authorized_outcome_evaluation_snapsh_media_type_not_null NOT NULL,
+    identity_key text CONSTRAINT policy_authorized_outcome_evaluation_snap_identity_key_not_null NOT NULL,
+    selected_library_id integer CONSTRAINT policy_authorized_outcome_evaluati_selected_library_id_not_null NOT NULL,
+    action_kind text CONSTRAINT policy_authorized_outcome_evaluation_snaps_action_kind_not_null NOT NULL,
+    decision_context jsonb,
+    observed_at timestamp with time zone CONSTRAINT policy_authorized_outcome_evaluation_snaps_observed_at_not_null NOT NULL,
+    CONSTRAINT policy_authorized_outcome_evaluation_sna_decision_context_check CHECK (((decision_context IS NULL) OR ((jsonb_typeof(decision_context) = 'object'::text) AND (octet_length((decision_context)::text) <= 1024)))),
+    CONSTRAINT policy_authorized_outcome_evaluation_sna_snapshot_version_check CHECK ((snapshot_version = 1)),
+    CONSTRAINT policy_authorized_outcome_evaluation_snapshot_action_kind_check CHECK ((action_kind = ANY (ARRAY['confirmation'::text, 'correction'::text]))),
+    CONSTRAINT policy_authorized_outcome_evaluation_snapshot_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT policy_authorized_outcome_evaluation_snapshots_check CHECK (((identity_key ~ '^source:[a-f0-9]{64}$'::text) OR
+CASE
+    WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
+    ELSE false
+END)),
+    CONSTRAINT policy_authorized_outcome_evaluation_snapshots_event_key_check CHECK (((length(btrim((event_key)::text)) >= 1) AND (length(btrim((event_key)::text)) <= 160))),
+    CONSTRAINT policy_authorized_outcome_evaluation_snapshots_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text])))
+);
+
+
+--
+-- Name: TABLE policy_authorized_outcome_evaluation_snapshots; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.policy_authorized_outcome_evaluation_snapshots IS 'Thirty-day private explicit-choice evidence; no actors, titles, metadata, credentials or routing/learning authority. Replay never refreshes evidence.';
 
 
 --
@@ -11389,6 +11437,14 @@ ALTER TABLE ONLY public.policy_authoring_proposals
 
 
 --
+-- Name: policy_authorized_outcome_evaluation_snapshots policy_authorized_outcome_evaluation_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_evaluation_snapshots
+    ADD CONSTRAINT policy_authorized_outcome_evaluation_snapshots_pkey PRIMARY KEY (receipt_id);
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts policy_authorized_outcome_receipts_source_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12488,6 +12544,27 @@ CREATE INDEX idx_audit_log_media_identity_receipt ON public.audit_log USING btre
 --
 
 CREATE INDEX idx_audit_log_user ON public.audit_log USING btree (user_id);
+
+
+--
+-- Name: idx_authorized_outcome_evaluation_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_authorized_outcome_evaluation_event ON public.policy_authorized_outcome_evaluation_snapshots USING btree (event_key);
+
+
+--
+-- Name: idx_authorized_outcome_evaluation_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_authorized_outcome_evaluation_observed ON public.policy_authorized_outcome_evaluation_snapshots USING btree (observed_at, receipt_id);
+
+
+--
+-- Name: idx_authorized_outcome_evaluation_receipts_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_authorized_outcome_evaluation_receipts_created ON public.policy_authorized_outcome_source_event_receipts USING btree (created_at, id) WHERE (((source_id)::text = ANY ((ARRAY['manual_classification_change'::character varying, 'operator_confirmation'::character varying])::text[])) AND ((final_outcome_status_id)::text = ANY ((ARRAY['resolved'::character varying, 'routed'::character varying])::text[])));
 
 
 --
@@ -14678,6 +14755,13 @@ CREATE INDEX manual_routing_check_due_idx ON public.manual_routing_check_state U
 
 
 --
+-- Name: policy_authorized_outcome_evaluation_snapshots authorized_outcome_evaluation_update_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER authorized_outcome_evaluation_update_guard BEFORE UPDATE ON public.policy_authorized_outcome_evaluation_snapshots FOR EACH ROW EXECUTE FUNCTION public.guard_authorized_outcome_evaluation_update();
+
+
+--
 -- Name: candidate_bound_verification_capability_receipts cbv_capability_receipts_append_only; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -15753,6 +15837,22 @@ ALTER TABLE ONLY public.policy_authoring_proposals
 
 ALTER TABLE ONLY public.policy_authoring_proposals
     ADD CONSTRAINT policy_authoring_proposals_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_authorized_outcome_evaluation_snapshots policy_authorized_outcome_evaluation_s_selected_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_evaluation_snapshots
+    ADD CONSTRAINT policy_authorized_outcome_evaluation_s_selected_library_id_fkey FOREIGN KEY (selected_library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_authorized_outcome_evaluation_snapshots policy_authorized_outcome_evaluation_snapshots_receipt_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authorized_outcome_evaluation_snapshots
+    ADD CONSTRAINT policy_authorized_outcome_evaluation_snapshots_receipt_id_fkey FOREIGN KEY (receipt_id) REFERENCES public.policy_authorized_outcome_source_event_receipts(id) ON DELETE CASCADE;
 
 
 --
@@ -18529,6 +18629,7 @@ FROM unnest(ARRAY[
     '20261013_180000_queue_metadata_recovery.sql',
     '20261013_210000_queue_identity_repair.sql',
     '20261014_060000_ollama_readiness_backfill_state.sql',
-    '20261014_120000_evaluation_workload_controls.sql'
+    '20261014_120000_evaluation_workload_controls.sql',
+    '20261028_090000_add_authorized_outcome_evaluation_snapshots.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

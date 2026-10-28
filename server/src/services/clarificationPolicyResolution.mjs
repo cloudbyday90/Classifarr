@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { captureRuntimeOutcomeEvaluationTime } from './runtimeOutcomeEvaluationTime.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
@@ -369,7 +370,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             final_library_id: selectedLibraryId,
             final_library_name: selectedLibraryName,
             runtime_question_answer: answerContract
-                ? buildPolicyRuntimeQuestionAnswerOutcome(answerContract)
+                ? { ...buildPolicyRuntimeQuestionAnswerOutcome(answerContract),
+                    evaluation_observed_at: await captureRuntimeOutcomeEvaluationTime(client) }
                 : undefined,
             ...(currentLibraryCandidateRetrievalOutcomeAttribution
                 ? {

@@ -9,6 +9,7 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { captureAuthorizedOutcomeEvaluation } from './authorizedOutcomeEvaluationCapture.mjs';
 import {
   buildPolicyAuthorizedOutcomePersistenceCommand,
 } from './policyAuthorizedOutcomePersistenceCommand.mjs';
@@ -109,6 +110,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     persistFinalOutcome = persistPolicyAuthorizedFinalOutcome,
     writeExactItemMemory = writePolicyAuthorizedExactItemMemory,
     persistRefreshBackedEvidence = persistPolicyRefreshBackedEvidence,
+    captureEvaluationSnapshot = captureAuthorizedOutcomeEvaluation,
   } = {}) {
     this.db = db;
     this.lockExecutionState = lockExecutionState;
@@ -118,6 +120,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     this.persistFinalOutcome = persistFinalOutcome;
     this.writeExactItemMemory = writeExactItemMemory;
     this.persistRefreshBackedEvidence = persistRefreshBackedEvidence;
+    this.captureEvaluationSnapshot = captureEvaluationSnapshot;
   }
 
   async execute({
@@ -235,6 +238,7 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
     });
     const learning = executionEffects?.learning || null;
     const profileRefresh = this.executeProfileRefreshOperation(command, executionEffects);
+    await this.captureEvaluationSnapshot({ client, command, executionState, receipt: receiptClaim.receipt });
 
     return buildExecutionResult({
       statusId: POLICY_AUTHORIZED_OUTCOME_EXECUTION_STATUS_IDS.APPLIED,

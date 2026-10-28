@@ -64,3 +64,8 @@ removed; application work stayed on main and no new branch was created.
 The final receipt-only documentation update is a separate main commit. Evaluation
 runtime code remains pending the explicitly recorded planning decisions; no
 unanswered scope choice was implemented.
+
+On 2026-10-28 the user confirmed both evaluation scope decisions. The separate
+[evaluation outcome](authorized-outcome-evaluation-outcome.md) records that
+subsequent implementation; the pending status above describes this earlier CI
+delivery only.

@@ -179,7 +179,10 @@ describe('Policy authorized outcome concurrency and recovery audit', () => {
       library: destination,
       tmdbId: 810001,
     });
-    const sourceEventId = `audit-replay:${classification.id}`;
+    const correction = (await db.query(`INSERT INTO classification_corrections
+      (classification_id,original_library_id,corrected_library_id,corrected_by)
+      VALUES($1,$2,$2,$3) RETURNING id`, [classification.id, destination.id, actorId])).rows[0];
+    const sourceEventId = `classification_correction:${correction.id}`;
     const admission = buildManualAdmission({
       classification,
       destination,
@@ -213,6 +216,8 @@ describe('Policy authorized outcome concurrency and recovery audit', () => {
 
     expect(receipts.rows).toHaveLength(1);
     expect(evidence.rows).toHaveLength(1);
+    expect((await db.query('SELECT receipt_id FROM policy_authorized_outcome_evaluation_snapshots WHERE receipt_id=$1',
+      [receipts.rows[0].id])).rows).toHaveLength(1);
   });
 
   test('rejects destination drift and authorization loss before a receipt or writer can persist', async () => {
