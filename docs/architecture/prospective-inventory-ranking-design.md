@@ -2,6 +2,11 @@
 
 Date: 2026-09-22. Follows [operator-outcome calibration](operator-outcome-calibration-design.md).
 
+The 2026-10-28 [integration design](prospective-authorized-outcome-design.md)
+supersedes the version-one identity/outcome intake described here. It adds
+independently frozen typed identity and explicit legacy evidence gaps while
+preserving the numerical experiment.
+
 ## Problem and decision
 
 The previous commit added a retrospective metadata/company benchmark. Its label

@@ -49,7 +49,7 @@ import {
 } from './policyCandidateCorrectionSignalSnapshot.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
-import { projectInventoryRankingShadow } from './inventoryRankingShadow.mjs';
+import { projectInventoryRankingShadow, projectHeldInventoryRankingShadow } from './inventoryRankingShadow.mjs';
 import { buildClassificationIntakeComparison } from './classificationIntakeComparison.mjs';
 import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 import {
@@ -317,10 +317,7 @@ export class ClassificationPersistenceService {
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
     const candidateCapture = buildClassificationCandidateCapture(result);
-    const inventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
-    const intakeComparison = buildClassificationIntakeComparison({
-      result, mediaType: metadata.media_type, capture: inventoryRankingShadow,
-    });
+    const heldInventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
     const rankedCandidates = Array.isArray(result.policyResult?.ranked)
       ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate)
       : [];
@@ -336,6 +333,10 @@ export class ClassificationPersistenceService {
       policyQuestion,
       profileSnapshot,
     } = await this.deriveClassificationPersistenceState(result);
+    const inventoryRankingShadow = projectHeldInventoryRankingShadow(heldInventoryRankingShadow, metadata);
+    const intakeComparison = heldInventoryRankingShadow && !inventoryRankingShadow
+      ? Object.freeze({ statusId: 'not_captured', reasonId: 'identity_mismatch' })
+      : buildClassificationIntakeComparison({ result, mediaType: metadata.media_type, capture: inventoryRankingShadow });
     const queueDecisionWitness = buildClassificationQueueDecisionWitness({
       queueTaskId: queueTask?.id,
       result,

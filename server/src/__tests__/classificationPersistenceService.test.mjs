@@ -441,6 +441,24 @@ describe('logClassification', () => {
     });
   });
 
+  test('late identity drift drops the held ranking capture without replacing it or changing the classification', async () => {
+    const { item, result: policy } = inventoryRankingShadowFixture();
+    const metadata = { ...baseMetadata, ...item };
+    const result = { ...policy, method: 'policy_engine', library: { id: 1 }, confidence: 80 };
+    libraryProfileService.getProfileStats.mockImplementationOnce(async () => {
+      metadata.tmdb_id = 124;
+      result.policyResult.inventoryRankingShadow = inventoryRankingShadowFixture('movie', 124).capture;
+      return {};
+    });
+    await classificationPersistenceService.logClassification(metadata, result);
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    expect(params[0]).toBe(124); expect(params[4]).toBe(1);
+    expect(JSON.parse(params[9]).classification_details).toMatchObject({
+      inventory_ranking_shadow: null, inventory_ranking_shadow_status_id: 'not_captured',
+      inventory_ranking_shadow_reason_id: 'identity_mismatch',
+    });
+  });
+
   test('captures an AI proposal before awaits without inheriting caller evidence or making a policy ranking', async () => {
     const result = { method: 'ai_analysis', library: { id: 1 }, confidence: 80 };
     libraryProfileService.getProfileStats.mockImplementationOnce(async () => {

@@ -2,15 +2,15 @@
 import { compareInventoryDescriptionEvidence } from './inventoryDescriptionEvidenceComparison.mjs';
 import { createHash } from 'node:crypto';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
+import { INVENTORY_RANKING_SHADOW_VERSION, LEGACY_INVENTORY_RANKING_SHADOW_VERSION,
+  inventoryRankingItemIdentity as identity, readInventoryRankingIdentity } from './inventoryRankingShadowIdentity.mjs';
 
-export const INVENTORY_RANKING_SHADOW_VERSION = 'inventory_description_company_shadow_v1';
+export { INVENTORY_RANKING_SHADOW_VERSION } from './inventoryRankingShadowIdentity.mjs';
 const captures = new WeakMap();
 const identities = new WeakMap();
 const reasons = new WeakMap();
 const id = value => Number.isInteger(value) && value > 0 && value <= 2147483647;
 const fit = value => Number.isFinite(value) && Math.abs(value) <= 20;
-const identity = item => ['movie', 'tv'].includes(item?.media_type) && id(item?.tmdb_id)
-  ? `${item.media_type}:${item.tmdb_id}` : null;
 
 /** Predeclared ranking experiment, not the policy score, AI confidence, or a routing grant. */
 export function chooseInventoryShadowCandidate(candidates, includeCompany = false) {
@@ -22,8 +22,10 @@ export function chooseInventoryShadowCandidate(candidates, includeCompany = fals
 }
 
 /** Validate persisted numeric records without trusting extra metadata or recomputing from today's library. */
-export function validInventoryRankingShadow(value) {
-  if (value?.version !== INVENTORY_RANKING_SHADOW_VERSION ||
+export function validInventoryRankingShadow(value, { allowLegacy = false } = {}) {
+  if (!(value?.version === INVENTORY_RANKING_SHADOW_VERSION ||
+      allowLegacy && value?.version === LEGACY_INVENTORY_RANKING_SHADOW_VERSION && !Object.hasOwn(value, 'identityKey')) ||
+      (value.version === INVENTORY_RANKING_SHADOW_VERSION && !readInventoryRankingIdentity(value.identityKey, value.mediaType)) ||
       !['movie', 'tv'].includes(value.mediaType) || !Number.isFinite(Date.parse(value.capturedAt)) ||
       !/^[a-f0-9]{64}$/.test(value.snapshotId ?? '') ||
       !/^[a-f0-9]{64}$/.test(value.queryHash ?? '') ||
@@ -72,7 +74,7 @@ export function rememberInventoryRankingShadow(evaluations, item, evidence) {
       libraryId: candidate.libraryId, descriptionMean: Number(mean.toFixed(6)), metadataFit: profile.relativeFit,
       companyFit: companyAvailable ? candidate.learnedProfile.companyProfile.relativeFit : null,
     })).sort((a, b) => a.libraryId - b.libraryId);
-    const capture = Object.freeze({ version: INVENTORY_RANKING_SHADOW_VERSION, mediaType: item.media_type,
+    const capture = Object.freeze({ version: INVENTORY_RANKING_SHADOW_VERSION, mediaType: item.media_type, identityKey: key,
       capturedAt: new Date().toISOString(), snapshotId: first.snapshotId, companyAvailable,
       queryHash: createHash('sha256').update(projection.text).digest('hex'),
       candidates: Object.freeze(candidates), baselineLibraryId: chooseInventoryShadowCandidate(candidates),
@@ -101,5 +103,11 @@ export function getInventoryRankingShadow(evaluations) {
 
 export function projectInventoryRankingShadow(result, metadata) {
   const capture = result?.policyResult?.inventoryRankingShadow ?? result?.signalContext?.policyResult?.inventoryRankingShadow;
-  return capture && identities.get(capture) === identity(metadata) ? capture : null;
+  return projectHeldInventoryRankingShadow(capture, metadata);
+}
+
+/** Recheck the original held object after awaits; never retrieve a replacement from result. */
+export function projectHeldInventoryRankingShadow(capture, metadata) {
+  const key = identity(metadata);
+  return capture && key && identities.get(capture) === key && capture.identityKey === key ? capture : null;
 }

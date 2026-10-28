@@ -5,6 +5,11 @@ Date: 2026-09-22. Implements the [design and recommendation stack](prospective-i
 Follow-up: [company readiness and local deployment outcome](company-observation-readiness-outcome.md)
 records the deployment gap, new coverage distinction and subsequent verification.
 
+Follow-up 2026-10-28: the [authorized-outcome integration outcome](prospective-authorized-outcome-outcome.md)
+records version-two typed ranking captures, conservative legacy holdouts and
+canonical explicit-choice intake. The historical results below describe the
+original version-one experiment and do not prove identity for newer scoring.
+
 ## Implemented
 
 Fixed the preceding benchmark's placement bias: a correction awaiting a move or

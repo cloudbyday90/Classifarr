@@ -161,3 +161,8 @@ Connect the canonical frozen outcome projection to
 correction event seams. Preserve its frozen rank captures, grouped holdouts and
 temporal exclusions. Measure the resulting coverage before considering a
 routing change. Mutable semantic-calibration readers require a separate follow-up.
+
+The 2026-10-28 [prospective integration outcome](prospective-authorized-outcome-outcome.md)
+records that next reader batch, including the newly agreed ranking identity and
+legacy unknown-kind boundaries. Its separate automation design addresses the
+subsequent placement-informed learning and historical recovery questions.

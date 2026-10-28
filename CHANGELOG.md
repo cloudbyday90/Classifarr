@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Prospective comparison provenance** — Freeze typed identity in new ranking
+  captures and recheck it before persistence. Read canonical authorized choices
+  and provably bound correction snapshots through strict, modular adapters.
+  Preserve legacy gaps, unknown action kinds, unavailable conflicts and connected
+  holdouts before separate confirmation/change scoring. Exact BIGINT IDs and
+  bounded overflow aliases cannot select a favorable retry. Current placements
+  do not become confirmed labels; routing and learning remain unchanged.
+
 - **Frozen authorized-outcome evaluation** — Atomically retain prospective typed
   identity, destination, action and decision context for successful authorized
   operator choices. Shared evaluation readers deduplicate event aliases, separate
@@ -30,6 +38,10 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **Client build tooling** — Locally implement randomly selected PR #570 with
+  exact PostCSS 8.5.31 and Vite 8.3.5 pins and the reviewed coupled lock changes.
+  Preserve install-script policy and overrides; verify client coverage, types,
+  production build and real browser route/asset checks. No PR merge or release.
 - **Pinned CI actions** — Locally implement PR #569's Docker Login 4.7.0 and
   CodeQL 4.39.1 updates with full commit SHAs. Update the existing promotion
   allowlist and security contract assertion while preserving permissions,

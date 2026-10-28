@@ -1,11 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
 import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
+import { authorizedEvaluationRow } from '../helpers/authorizedOutcomeEvaluationFixture.mjs';
 
-function row(type = 'movie') {
-  const { capture } = inventoryRankingShadowFixture(type);
-  return { classification_id: 1, tmdb_id: 123, media_type: type, capture,
-    recorded_at: capture.capturedAt, outcomes: [{ library_id: 2, was_correction: true, observed_at: capture.capturedAt }] };
+function row(type = 'movie', classificationId = 1, tmdbId = 123) {
+  const capture = structuredClone(inventoryRankingShadowFixture(type).capture);
+  capture.identityKey = `${type}:${tmdbId}`;
+  return { classification_id: classificationId, tmdb_id: tmdbId, media_type: type, capture,
+    recorded_at: capture.capturedAt, outcomes: [authorizedEvaluationRow({ classification_id: classificationId,
+      media_type: type, tmdb_id: tmdbId, identity_key: capture.identityKey, decision_context: null,
+      observed_at: capture.capturedAt, authorized_snapshot: { ...authorizedEvaluationRow().authorized_snapshot,
+        event_key: `classification_correction:${classificationId}` } })] };
 }
 
 test('scores frozen paired ranks against later exact-event corrections, not placement', () => {
@@ -17,7 +22,8 @@ test('scores frozen paired ranks against later exact-event corrections, not plac
 });
 
 test('reports confirmation regressions separately from correction gains', () => {
-  const input = row('tv'); input.outcomes[0] = { ...input.outcomes[0], library_id: 1, was_correction: false };
+  const input = row('tv'); input.outcomes[0] = { ...input.outcomes[0], selected_library_id: 1, was_correction: false,
+    authorized_snapshot: { ...input.outcomes[0].authorized_snapshot, action_kind: 'confirmation' } };
   const report = evaluateInventoryProspectiveOutcomes([input]);
   expect(report.kinds.confirmation).toMatchObject({ sampled: 1, confirmations: 1, baselineMatches: 1, combinedMatches: 0, regressions: 1 });
   expect(report.evidenceState).toEqual({ phase: 'diagnostic_only',
@@ -31,7 +37,7 @@ test('explains the automatic evidence lifecycle without changing promotion autho
   expect(evaluateInventoryProspectiveOutcomes([pending]).evidenceState).toEqual({
     phase: 'awaiting_operator_outcomes', missing: ['exact_event_outcomes'],
   });
-  const excluded = row(); excluded.outcomes[0].library_id = 99;
+  const excluded = row(); excluded.outcomes[0].selected_library_id = 99;
   expect(evaluateInventoryProspectiveOutcomes([excluded]).evidenceState).toEqual({
     phase: 'no_eligible_outcomes', missing: ['eligible_exact_event_outcomes'],
   });
@@ -52,8 +58,7 @@ test('explains the automatic evidence lifecycle without changing promotion autho
 
 test('a diagnostic spanning both media still cannot authorize promotion', () => {
   const movie = row();
-  const tv = structuredClone(row('tv'));
-  tv.classification_id = 2;
+  const tv = row('tv', 2);
   tv.capture.queryHash = 'b'.repeat(64);
   const report = evaluateInventoryProspectiveOutcomes([movie, tv]);
   expect(report.evidenceState).toEqual({ phase: 'diagnostic_only', missing: [] });
@@ -71,10 +76,10 @@ test.each([
   ['awaitingOutcome', input => { input.outcomes = []; }],
   ['awaitingOutcome', input => { input.outcomes[0].observed_at = '2000-01-01'; }],
   ['awaitingOutcome', input => { input.outcomes[0].observed_at = '2999-01-01'; }],
-  ['conflicting', input => { input.outcomes.push({ ...input.outcomes[0], library_id: 1 }); }],
-  ['outsideCandidateScope', input => { input.outcomes[0].library_id = 99; }],
+  ['conflicting', input => { input.outcomes.push({ ...input.outcomes[0], selected_library_id: 1 }); }],
+  ['outsideCandidateScope', input => { input.outcomes[0].selected_library_id = 99; }],
   ['invalid', input => { input.capture.baselineLibraryId = 2; }],
-  ['invalid', input => { input.media_type = 'tv'; }],
+  ['identityMismatchCaptures', input => { input.media_type = 'tv'; }],
   ['invalid', input => { input.recorded_at = '2000-01-01'; }],
   ['invalid', input => { input.outcomes = Array(101).fill(input.outcomes[0]); }],
 ])('reports %s rather than assigning a correctness score', (counter, mutate) => {
@@ -86,9 +91,11 @@ test.each([
 
 test('reserves the first observation, deduplicates feedback and identical description groups', () => {
   const first = row(); first.outcomes = [];
-  const retry = { ...first, classification_id: 2, recorded_at: new Date(Date.now() + 1).toISOString(),
-    outcomes: [{ library_id: 2, was_correction: true, observed_at: new Date(Date.now() + 2).toISOString() }] };
-  const copy = { ...retry, classification_id: 3, tmdb_id: 456 };
+  const retry = row('movie', 2);
+  retry.recorded_at = new Date(Date.now() + 1).toISOString();
+  retry.outcomes[0].observed_at = new Date(Date.now() + 2).toISOString();
+  const copy = row('movie', 3, 456); copy.recorded_at = retry.recorded_at;
+  copy.outcomes[0].observed_at = retry.outcomes[0].observed_at;
   const report = evaluateInventoryProspectiveOutcomes([retry, first, copy], { now: Date.now() + 1000 });
   expect(report.coverage).toMatchObject({ awaitingOutcome: 1, duplicateIdentityOrDescription: 2 });
   expect(report.sampleSize).toBe(0);
@@ -106,12 +113,11 @@ test('reports anonymous selected-library strata and fails beyond the library bud
     expect.objectContaining({ stratum: 1, mediaType: 'movie', sampled: 1, gains: 1 }),
   ]);
   const rows = Array.from({ length: 65 }, (_, n) => {
-    const value = structuredClone(input), destination = n + 10;
-    value.classification_id = n + 1; value.tmdb_id = n + 1;
+    const value = row('movie', n + 1, n + 1), destination = n + 10;
     value.capture.queryHash = n.toString(16).padStart(64, '0');
     value.capture.candidates[1].libraryId = destination;
     value.capture.combinedLibraryId = destination;
-    value.outcomes[0].library_id = destination;
+    value.outcomes[0].selected_library_id = destination;
     return value;
   });
   expect(() => evaluateInventoryProspectiveOutcomes(rows)).toThrow('library_budget');

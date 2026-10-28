@@ -6,7 +6,7 @@ import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShado
 
 test.each(['movie', 'tv'])('freezes a same-evidence description/company pair for %s without copying provider content', type => {
   const { capture, item, result, evidence, evaluations } = inventoryRankingShadowFixture(type);
-  expect(capture).toMatchObject({ mediaType: type, baselineLibraryId: 1, combinedLibraryId: 2, companyAvailable: true });
+  expect(capture).toMatchObject({ mediaType: type, identityKey: `${type}:123`, baselineLibraryId: 1, combinedLibraryId: 2, companyAvailable: true });
   expect(validInventoryRankingShadow(capture)).toBe(true);
   expect(projectInventoryRankingShadow(result, item)).toBe(capture);
   expect(getInventoryRankingShadowReason(evaluations)).toBeNull();
@@ -62,6 +62,9 @@ test('equal rankings abstain instead of favoring library identity or input order
 
 test.each([
   value => { value.version = 'future'; },
+  value => { value.identityKey = 'movie:000123'; },
+  value => { value.identityKey = 'tv:123'; },
+  value => { delete value.identityKey; },
   value => { value.capturedAt = 'bad'; },
   value => { value.queryHash = 'bad'; },
   value => { value.candidates[0].libraryId = 0; },

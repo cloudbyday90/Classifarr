@@ -6,6 +6,7 @@ import { OPERATOR_POLICY_SOURCE_REVISION_SQL } from '../../services/operatorCorr
 import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProspectiveOutcomeRepository.mjs';
 import { INVENTORY_PROSPECTIVE_ACTIVITY_SQL } from '../../services/inventoryProspectiveActivityRepository.mjs';
 import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
+import { recordClassificationCorrection } from '../../services/classificationCorrectionWriter.mjs';
 import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
 
 let db, selectedId, candidateId, policyId, historyId;
@@ -52,7 +53,7 @@ test('bounded activity count uses the same exclusive window and movie/TV scope',
 });
 
 test('prospective SQL binds delayed outcomes to exact history, never a same-identity neighbor or current placement', async () => {
-  const capture = structuredClone(inventoryRankingShadowFixture().capture);
+  const capture = structuredClone(inventoryRankingShadowFixture('movie', 900005).capture);
   capture.candidates[0].libraryId = candidateId;
   capture.candidates[1].libraryId = selectedId;
   capture.baselineLibraryId = candidateId; capture.combinedLibraryId = selectedId;
@@ -71,11 +72,14 @@ test('prospective SQL binds delayed outcomes to exact history, never a same-iden
   const rows = await read();
   expect(rows).toHaveLength(1);
   expect(rows[0].outcomes).toHaveLength(1);
-  expect(evaluateInventoryProspectiveOutcomes(rows).media.movie).toMatchObject({ sampled: 1, gains: 1 });
+  expect(evaluateInventoryProspectiveOutcomes(rows)).toMatchObject({ sampleSize: 0,
+    coverage: { missingSnapshotRows: 1, unverifiedCaptures: 1 } });
   await db.query("UPDATE policy_feedback_log SET responded_at='2000-01-01' WHERE id=$1", [feedbackIds[0]]);
-  expect((await read())[0].outcomes).toEqual([]);
-  await db.query(`INSERT INTO classification_corrections(classification_id,original_library_id,corrected_library_id,corrected_by)
-    VALUES($1,$2,$3,'test-user')`, [historyId, candidateId, selectedId]);
+  // Mutable feedback cannot erase an existing unverified source receipt.
+  expect((await read())[0].outcomes).toHaveLength(1);
+  await db.query("UPDATE policy_feedback_sources SET created_at='2000-01-01' WHERE classification_id=$1", [historyId]);
+  await recordClassificationCorrection(db, { classification: { id: historyId, tmdb_id: 900005, media_type: 'movie', metadata: {} },
+    originalLibraryId: candidateId, destinationLibraryId: selectedId, correctedBy: 'test-user' });
   // The old history placement is intentionally unchanged: a pending move must not remove the label.
   expect(evaluateInventoryProspectiveOutcomes(await read()).media.movie).toMatchObject({ sampled: 1, corrections: 1, gains: 1 });
 });

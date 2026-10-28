@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { rememberInventoryRankingShadow, getInventoryRankingShadow } from '../../services/inventoryRankingShadow.mjs';
 
-export function inventoryRankingShadowFixture(type = 'movie') {
-  const item = { tmdb_id: 123, media_type: type, overview: 'A long journey across the ocean to find a lost ship.' };
+export function inventoryRankingShadowFixture(type = 'movie', tmdbId = 123) {
+  const item = { tmdb_id: tmdbId, media_type: type, overview: 'A long journey across the ocean to find a lost ship.' };
   const evaluations = [1, 2].map(library_id => ({ library_id }));
   const evidence = { statusId: 'available', candidates: [1, 2].map(libraryId => ({
     libraryId, eligible: 30, indexed: 30,
