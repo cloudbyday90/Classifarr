@@ -47,7 +47,20 @@ contract checks do not establish those remote outcomes or release readiness.
 
 ## Delivery and housekeeping
 
-Commit/push and PR housekeeping receipts will be recorded after final document,
-whitespace and staged secret checks. PR 569 will be closed as implemented locally,
-without merging. The remaining open Dependabot PR 570 will retain its own changes
-and be refreshed against the new main with explicit old-head lease protection.
+Code, Unreleased and the separate evaluation investigation documents were
+committed on main as 0af518b3720b7e18af3b32a7ab4a06ddf2e6c7d7. The push
+succeeded and the remote main SHA matched. PR 569 was then closed without merging.
+Markdown lint passed all 2,372 documents; copyright, whitespace and redacted
+staged Gitleaks checks passed. Both Knip scans also passed.
+
+PR 570 was rebased from 808ca1a680af4eeedc9a2ef25532c09b9a9c1a83 to
+44692a0047cb67e6ef7f6235c6ae1930119f1643 with the tested code commit as its
+direct parent. `git range-diff` confirms its relative patch is identical. The
+existing remote branch was updated with an explicit old-head force-with-lease,
+then its SHA verified. It remains unmerged; this is a mechanical rebase receipt,
+not local feature-test evidence for PR 570. The temporary detached worktree was
+removed; application work stayed on main and no new branch was created.
+
+The final receipt-only documentation update is a separate main commit. Evaluation
+runtime code remains pending the explicitly recorded planning decisions; no
+unanswered scope choice was implemented.
