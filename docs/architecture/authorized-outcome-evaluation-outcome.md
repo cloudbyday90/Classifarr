@@ -131,6 +131,29 @@ Root checks include `node scripts/check-coverage-ratchet.mjs`,
 `node scripts/run-markdownlint.mjs` and `node scripts/check-copyright.mjs`.
 Server npm checks are `lint`, `typecheck`, `lint:knip` and `lint:knip:production`.
 
+## Delivery and housekeeping
+
+Implementation, Unreleased and the separate design/outcome documents were
+committed on main as
+[af0263eecf34502875e0961b13c30c96b885cf6b](https://github.com/cloudbyday90/Classifarr/commit/af0263eecf34502875e0961b13c30c96b885cf6b).
+The push succeeded and the remote main SHA matched. Markdown lint passed all
+2,372 documents, copyright passed 1,807 files, whitespace checks passed and the
+redacted staged Gitleaks scan found no leaks. Ignored private/intermediate files
+were excluded. The following receipt-only documentation commit records delivery;
+application work stayed on main, with no new branch, release tag or deployment.
+
+The open-PR check found only
+[PR #570](https://github.com/cloudbyday90/Classifarr/pull/570). Its existing bot
+branch was rebased from `44692a0047cb67e6ef7f6235c6ae1930119f1643` to
+`06001f5a0953e9cc30ba5c2ee8793dfab567b983`, with the tested implementation commit
+as direct parent. `git range-diff` confirms the relative patch is identical.
+An explicit old-head force-with-lease updated that existing branch; both Git and
+MCP verified the resulting head. It remains open and unmerged. This mechanical
+rebase is not local feature-test evidence for PR #570. Its temporary detached
+worktree was removed after verifying the exact workspace path; existing unrelated
+worktrees were preserved. The randomly selected PR #569 remains closed without
+merging, as recorded in its separate outcome.
+
 ## Next recommended item
 
 Connect the canonical frozen outcome projection to
