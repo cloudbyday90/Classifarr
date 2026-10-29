@@ -4,7 +4,7 @@
  */
 
 import {
-  POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+  LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
   buildPolicyCandidateCorrectionSignalSnapshotProjection,
 } from './policyCandidateCorrectionSignalSnapshot.mjs';
 import {
@@ -58,7 +58,7 @@ export function buildPolicyCandidateCorrectionOutcomeAttributionProjection(value
   const scoreMarginBandId = value?.score_margin_band_id ?? value?.scoreMarginBandId;
   const selectionStatusId = value?.selection_status_id ?? value?.selectionStatusId;
   const signalSnapshot = buildPolicyCandidateCorrectionSignalSnapshotProjection({
-    version: POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+    version: LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
     score_margin_band_id: scoreMarginBandId,
     evidence_source_states: value?.evidence_source_states ?? value?.evidenceSourceStates,
   });

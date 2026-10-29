@@ -70,6 +70,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Verified purpose explanations** — Distinguish declared, inferred, mixed and
+  unknown purpose on pending and library-comparison evidence cards. Require a
+  bound, server-derived declared-rule match with existing specialized/conflict
+  checks before showing declared support. Preserve actual card versions and
+  neutral numeric labels; isolate legacy correction/statistics heuristics.
+  Historical gaps, scores, routing and learning authority remain unchanged.
+
 - **Purpose authority consistency** — Use the same declaration-provenance checks
   in specialized destination evidence and policy API projections. Inferred
   template or profile rules retain ranking and comparison roles without being

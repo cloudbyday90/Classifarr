@@ -21,7 +21,7 @@ function anchoredClassification() {
 }
 
 describe('policyCandidateEvidenceCard', () => {
-  test('requests separate corroboration when profile context is the only support beyond declared policy', () => {
+  test('requests separate corroboration for profile context and treats unbound declared flags as unavailable', () => {
     const card = buildPolicyCandidateEvidenceCard({
       classification: anchoredClassification(),
       candidate: candidate({
@@ -40,7 +40,7 @@ describe('policyCandidateEvidenceCard', () => {
       }),
       expect.objectContaining({
         source_id: POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_IDS.DECLARED_POLICY,
-        state_id: POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_STATE_IDS.SUPPORTING,
+        state_id: POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_STATE_IDS.UNAVAILABLE,
       }),
       expect.objectContaining({
         source_id: POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_IDS.OBSERVED_LIBRARY_PROFILE,

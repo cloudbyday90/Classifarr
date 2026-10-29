@@ -55,6 +55,7 @@ export function getLiveFeed(limit = 50) {
 }
 
 export function getPendingClassifications() {
+  // Nested cards retain their actual v1/v2 version; presentation utilities validate their semantics.
   return getDataRequest('/classification/pending')
 }
 

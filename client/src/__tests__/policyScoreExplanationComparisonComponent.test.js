@@ -48,7 +48,7 @@ describe('PolicyScoreExplanationComparison', () => {
     expect(wrapper.find('section[tabindex="-1"]').exists()).toBe(true)
     expect(wrapper.find('table').exists()).toBe(true)
     expect(wrapper.text()).toContain('Score range: 68/100 to 71/100.')
-    expect(wrapper.text()).toContain('Declared policy intent')
+    expect(wrapper.text()).toContain('Policy purpose')
     expect(wrapper.text()).toContain('Similar items (RAG)')
     expect(wrapper.text()).toContain('Not active')
     expect(wrapper.text()).not.toContain('Do not render this destination')

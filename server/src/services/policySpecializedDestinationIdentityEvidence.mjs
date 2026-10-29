@@ -10,6 +10,7 @@
 
 import { evaluatePresetSignals } from './policyEngineSignalScoring.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
+import { refinePolicyPurposeMatchEvidence } from './policyPurposeMatchEvidence.mjs';
 import {
   hasAffirmativeSignalConstraints,
   normalizeSignalConfig,
@@ -262,6 +263,10 @@ export function applySpecializedDestinationIdentityEvidence({
       consideredCandidateCount: candidates.length,
     });
     const existingDiagnostics = asObject(candidate.candidate_diagnostics);
+    const prepared = existingDiagnostics.purpose_evidence ? { ...candidate, candidate_diagnostics: {
+      ...existingDiagnostics, purpose_evidence: refinePolicyPurposeMatchEvidence(existingDiagnostics.purpose_evidence,
+        policy, item, identityEvidence.status_id),
+    } } : candidate;
 
     // Specialization may only refine a viable candidate. A current policy
     // constraint conflict or an existing hard profile exclusion remains a
@@ -271,29 +276,29 @@ export function applySpecializedDestinationIdentityEvidence({
       existingDiagnostics.profile_hard_excluded === true
     ) {
       return {
-        ...candidate,
+        ...prepared,
         candidate_diagnostics: {
-          ...existingDiagnostics,
+          ...prepared.candidate_diagnostics,
           identity_evidence: identityEvidence,
         },
       };
     }
 
     if (identityEvidence.status_id === SPECIALIZED_DESTINATION_IDENTITY_STATUS_IDS.POSITIVE_SPECIALIZED_EVIDENCE) {
-      return withStrongIdentityEvidence(candidate, identityEvidence);
+      return withStrongIdentityEvidence(prepared, identityEvidence);
     }
 
     if (
       identityEvidence.status_id === SPECIALIZED_DESTINATION_IDENTITY_STATUS_IDS.BROAD_COMPATIBILITY_OVERLAP ||
       identityEvidence.status_id === SPECIALIZED_DESTINATION_IDENTITY_STATUS_IDS.INSUFFICIENT_SPECIALIZED_EVIDENCE
     ) {
-      return withWeakIdentityEvidence(candidate, identityEvidence);
+      return withWeakIdentityEvidence(prepared, identityEvidence);
     }
 
     return {
-      ...candidate,
+      ...prepared,
       candidate_diagnostics: {
-        ...asObject(candidate.candidate_diagnostics),
+        ...asObject(prepared.candidate_diagnostics),
         identity_evidence: identityEvidence,
       },
     };

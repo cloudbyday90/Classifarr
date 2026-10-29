@@ -70,6 +70,7 @@ const libraryProfileService = mockLibraryProfileService;
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
 const { inventoryRankingShadowFixture } = await import('./fixtures/inventoryRankingShadowFixture.mjs');
 const { mintPolicyEvaluationFixture } = await import('./fixtures/policyEvaluationCaptureFixture.mjs');
+const { purposeMatchFixture } = await import('./fixtures/purposeMatchEvidenceFixture.mjs');
 const policyQuestionContext = {
   extractQuestionContext: jest.fn().mockReturnValue({}),
   getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),
@@ -416,6 +417,15 @@ describe('logClassification', () => {
 
     const id = await classificationPersistenceService.logClassification(baseMetadata, result, Date.now());
     expect(id).toBe(42);
+  });
+
+  test('retains the bound purpose diagnostic in the classifier-owned final candidate projection', async () => {
+    const fixture = purposeMatchFixture();
+    await classificationPersistenceService.logClassification({ ...baseMetadata, ...fixture.item }, {
+      policyResult: { ranked: [fixture.candidate] }, method: 'policy_engine', library: { id: 4 }, confidence: 70 });
+    const metadata = JSON.parse(db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1][9]);
+    expect(metadata.classification_details.ranked_candidates[0].candidate_diagnostics.purpose_evidence).toEqual(fixture.proof);
+    expect(metadata.classification_details.candidate_capture).toMatchObject({ method: 'policy_engine', source: 'policy_ranked', status: 'recorded' });
   });
 
   test('policy evaluation child writes follow History persistence and failure leaves classification valid', async () => {

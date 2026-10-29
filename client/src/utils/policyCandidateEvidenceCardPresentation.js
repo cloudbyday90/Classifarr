@@ -3,8 +3,9 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-export const POLICY_CANDIDATE_EVIDENCE_CARD_VERSION =
-  'policy.candidate_evidence_card.v1'
+import { normalizePolicyPurposeEvidence, policyPurposeEvidenceCopy } from './policyPurposeEvidencePresentation'
+export const POLICY_CANDIDATE_EVIDENCE_CARD_VERSION = 'policy.candidate_evidence_card.v2'
+const LEGACY_VERSION = 'policy.candidate_evidence_card.v1'
 
 const STATUS_PRESENTATIONS = Object.freeze({
   corroborated: Object.freeze({
@@ -14,7 +15,7 @@ const STATUS_PRESENTATIONS = Object.freeze({
   }),
   counter_evidence_recommended: Object.freeze({
     label: 'Separate corroboration is limited',
-    message: 'The leading candidate has declared-policy and/or library-context support, but no retained cross-check from retrieval or confirmed outcomes. Library contents can reflect earlier placements, so compare the item identity and alternatives before confirming.',
+    message: 'Purpose and/or library context is available, but a retained cross-check from retrieval or confirmed outcomes is missing. Compare the purpose origin, item identity and alternatives before confirming.',
     tone: 'attention',
   }),
   evidence_conflict: Object.freeze({
@@ -43,12 +44,12 @@ const SOURCE_PRESENTATIONS = Object.freeze({
     }),
   }),
   declared_policy: Object.freeze({
-    label: 'Declared policy',
+    label: 'Purpose evidence',
     states: Object.freeze({
-      supporting: 'A specialized or eligible declared policy signal supports the candidate.',
-      contextual: 'Declared policy evidence is broad or overlapping and cannot establish the candidate by itself.',
-      conflicting: 'A declared policy constraint conflicts with the candidate.',
-      unavailable: 'No retained declared-policy support is available.',
+      supporting: 'A matched declared purpose has specialized supporting evidence.',
+      contextual: 'Purpose evidence provides context and cannot establish this destination by itself.',
+      conflicting: 'A deterministic policy constraint conflicts with the candidate.',
+      unavailable: 'Verified purpose support is unavailable.',
     }),
   }),
   observed_library_profile: Object.freeze({
@@ -99,10 +100,13 @@ function normalizeSource(value) {
  * policy terms, and model output are deliberately not displayable here.
  */
 export function normalizePolicyCandidateEvidenceCard(value) {
-  if (value?.version !== POLICY_CANDIDATE_EVIDENCE_CARD_VERSION) return null
+  if (![POLICY_CANDIDATE_EVIDENCE_CARD_VERSION, LEGACY_VERSION].includes(value?.version)) return null
+  const purpose = value.version === LEGACY_VERSION ? null : normalizePolicyPurposeEvidence(value.purpose_evidence)
+  if (value.version !== LEGACY_VERSION && !purpose) return null
 
   const statusId = boundedString(value?.status_id)
   const status = STATUS_PRESENTATIONS[statusId]
+  if (!Array.isArray(value.sources) || value.sources.length !== 5) return null
   const seenSourceIds = new Set()
   const sources = (Array.isArray(value?.sources) ? value.sources : [])
     .map(normalizeSource)
@@ -114,14 +118,16 @@ export function normalizePolicyCandidateEvidenceCard(value) {
     .slice(0, 5)
 
   if (!status || sources.length !== 5) return null
+  if (purpose?.origin === 'unverified' && sources.find(source => source.source_id === 'declared_policy')?.state_id !== 'unavailable') return null
+  if (purpose && sources.find(source => source.source_id === 'declared_policy')?.state_id === 'supporting' &&
+    (!['declared_native', 'mixed'].includes(purpose.origin) || purpose.declaredMatch !== 'matched' ||
+      purpose.runtimeEligible !== true || purpose.specificity !== 'positive_specialized_evidence')) return null
 
-  return { status_id: statusId, sources }
+  return { version: value.version, status_id: statusId, sources, ...(purpose ? { purpose_evidence: purpose } : {}) }
 }
 
 export function getPolicyCandidateEvidenceCardPresentation(value) {
-  const card = value && typeof value === 'object' && value.status_id && Array.isArray(value.sources)
-    ? value
-    : normalizePolicyCandidateEvidenceCard(value)
+  const card = normalizePolicyCandidateEvidenceCard(value)
   const status = STATUS_PRESENTATIONS[card?.status_id]
   if (!status) return null
 
@@ -129,11 +135,16 @@ export function getPolicyCandidateEvidenceCardPresentation(value) {
     .map((source) => {
       const sourceDefinition = SOURCE_PRESENTATIONS[source.source_id]
       const message = sourceDefinition?.states?.[source.state_id]
+      const purposeCopy = source.source_id === 'declared_policy'
+        ? policyPurposeEvidenceCopy(card.purpose_evidence, card.version === LEGACY_VERSION)
+        : null
       return sourceDefinition && message
         ? {
             id: source.source_id,
-            label: sourceDefinition.label,
-            message,
+            label: purposeCopy?.label || sourceDefinition.label,
+            message: purposeCopy
+              ? `${purposeCopy.message}${source.state_id === 'conflicting' ? ' A deterministic policy constraint conflicts with this candidate.' : ''}`
+              : message,
             state_id: source.state_id,
           }
         : null

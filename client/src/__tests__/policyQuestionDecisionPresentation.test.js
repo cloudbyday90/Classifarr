@@ -179,6 +179,7 @@ describe('policyQuestionDecisionPresentation', () => {
     }
 
     expect(policyQuestionDecisionPresentation(answer).deterministic.candidate_evidence_card).toEqual({
+      version: 'policy.candidate_evidence_card.v1',
       status_id: 'evidence_conflict',
       sources: [
         { source_id: 'item_identity', state_id: 'anchored' },

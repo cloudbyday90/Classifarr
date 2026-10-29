@@ -4,7 +4,6 @@
  */
 
 import {
-  POLICY_CANDIDATE_EVIDENCE_CARD_VERSION,
   normalizePolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCardPresentation'
 
@@ -46,10 +45,7 @@ function candidate(value) {
       library_name: libraryName,
       policy_score: policyScore,
       score_margin: scoreMargin,
-      evidence_card: {
-        version: POLICY_CANDIDATE_EVIDENCE_CARD_VERSION,
-        ...evidenceCard,
-      },
+      evidence_card: evidenceCard,
     }
     : null
 }

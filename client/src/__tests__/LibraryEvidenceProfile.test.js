@@ -55,7 +55,7 @@ describe('LibraryEvidenceProfile', () => {
     expect(wrapper.text()).toContain('Movies')
     expect(wrapper.text()).toContain('Documentaries')
     expect(wrapper.text()).toContain('16 points behind leading')
-    expect(wrapper.text()).toContain('Declared policy')
+    expect(wrapper.text()).toContain('Legacy policy context')
     expect(wrapper.text()).toContain('Similar-item retrieval')
     expect(wrapper.text()).toContain('cannot route this item or change your policy')
     expect(wrapper.text()).not.toContain('Do not display')

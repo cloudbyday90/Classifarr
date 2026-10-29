@@ -157,6 +157,11 @@ action. The isolated schema container was removed after successful reproduction.
 
 ## Recommended next item
 
+The follow-up is implemented in the separate
+[declared-purpose design](declared-purpose-evidence-design.md) and
+[outcome](declared-purpose-evidence-outcome.md). The recommendation below records
+the boundary identified by this capture batch.
+
 The next concrete refactor is the declared-purpose evidence projection in
 `policyCandidateEvidenceCard.mjs`. Its current native branch can mark
 `declared_policy` as supporting from eligibility and purpose-rule count alone.

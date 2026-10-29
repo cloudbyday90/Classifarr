@@ -6,10 +6,11 @@
 import {
   POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_IDS,
   POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_STATE_IDS,
-  buildPolicyCandidateEvidenceCard,
-} from './policyCandidateEvidenceCard.mjs';
+} from './policyCandidateEvidenceCardCore.mjs';
+import { buildLegacyPolicyCandidateEvidenceCard } from './policyCandidateLegacyEvidenceCard.mjs';
 
-export const POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION =
+// This remains the legacy statistical contract, independent of current presentation versions.
+export const LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION =
   'policy.candidate_correction_signal_snapshot.v1';
 
 export const POLICY_CANDIDATE_CORRECTION_MARGIN_BAND_IDS = Object.freeze({
@@ -93,7 +94,7 @@ export function buildPolicyCandidateCorrectionSignalSnapshot({
   const runnerUpScore = score(runnerUpCandidate?.score ?? runnerUpCandidate?.policyScore);
   if (leadingScore === null || runnerUpScore === null) return null;
 
-  const evidenceCard = buildPolicyCandidateEvidenceCard({
+  const evidenceCard = buildLegacyPolicyCandidateEvidenceCard({
     classification,
     candidate: leadingCandidate,
     sourceMetadata,
@@ -102,7 +103,7 @@ export function buildPolicyCandidateCorrectionSignalSnapshot({
   if (!evidenceSourceStates) return null;
 
   return Object.freeze({
-    version: POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+    version: LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
     score_margin_band_id: marginBandId(Math.max(0, leadingScore - runnerUpScore)),
     evidence_source_states: evidenceSourceStates,
   });
@@ -118,13 +119,13 @@ export function buildPolicyCandidateCorrectionSignalSnapshotProjection(value = {
   const evidenceSourceStates = normalizeEvidenceSourceStates(
     value?.evidence_source_states ?? value?.evidenceSourceStates,
   );
-  if (value?.version !== POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION ||
+  if (value?.version !== LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION ||
       !MARGIN_BAND_IDS.has(scoreMarginBandId) || !evidenceSourceStates) {
     return null;
   }
 
   return Object.freeze({
-    version: POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+    version: LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
     score_margin_band_id: scoreMarginBandId,
     evidence_source_states: evidenceSourceStates,
   });

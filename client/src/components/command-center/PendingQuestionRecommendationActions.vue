@@ -417,8 +417,8 @@ const scoreExplanationCalibrationMessage = computed(() => {
 
 function scoreExplanationSourceLabel(sourceId) {
   const labels = {
-    declared_policy_signal: 'Declared policy signal',
-    declared_policy_intent: 'Declared policy intent',
+    declared_policy_signal: 'Policy signals',
+    declared_policy_intent: 'Policy purpose',
     observed_library_contents: 'Observed library contents',
     confirmed_pattern: 'Confirmed classification pattern',
     similar_items: 'Similar items (RAG)',

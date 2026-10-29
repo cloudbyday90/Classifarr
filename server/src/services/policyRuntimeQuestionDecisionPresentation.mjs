@@ -23,6 +23,7 @@ import {
 import {
   buildPolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCard.mjs';
+import { readPolicyPurposeMatchPresentation } from './policyPurposeMatchEvidence.mjs';
 import {
   buildPolicyCandidateContrastiveEvidenceProjection,
 } from './policyCandidateContrastiveEvidence.mjs';
@@ -91,35 +92,19 @@ function candidateForLeadingDestination(question, candidateDestinations) {
   return candidates.find((candidate) => positiveInteger(candidate?.library_id) === leading.library_id) || null;
 }
 
-function buildEvidenceFacts({ candidate, destinationName }) {
+function buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }) {
   const diagnostics = asObject(candidate?.candidate_diagnostics || candidate?.candidateDiagnostics);
   const positiveSources = asObject(diagnostics.positive_sources || diagnostics.positiveSources);
-  const nativeIntent = asObject(diagnostics.native_intent_runtime || diagnostics.nativeIntentRuntime);
   const ragEvidence = asObject(diagnostics.rag_evidence_quality || diagnostics.ragEvidenceQuality);
-  const identityEvidence = asObject(diagnostics.identity_evidence || diagnostics.identityEvidence);
   const facts = [];
-
-  if (identityEvidence.status_id === 'positive_specialized_evidence') {
-    facts.push({
-      id: 'specialized_declared_intent',
-      label: `A current specialized declared policy signal distinguishes ${destinationName} from the other destinations.`,
-    });
-  } else if (identityEvidence.status_id === 'broad_compatibility_overlap') {
-    facts.push({
-      id: 'broad_compatibility_overlap',
-      label: `The declared policy signals for ${destinationName} overlap with another current destination and cannot select it automatically.`,
-    });
-  } else if (identityEvidence.status_id === 'insufficient_specialized_evidence') {
-    facts.push({
-      id: 'insufficient_specialized_evidence',
-      label: `No current specialized declared policy signal distinguishes ${destinationName} from the other destinations.`,
-    });
-  } else if (nativeIntent.eligible === true && Number(nativeIntent?.rule_counts?.purpose || 0) > 0) {
-    facts.push({
-      id: 'declared_intent',
-      label: `Declared policy intent supports ${destinationName}.`,
-    });
-  }
+  const purpose = readPolicyPurposeMatchPresentation({ classification, sourceMetadata, candidate });
+  const label = purpose.origin === 'profile_derived' ? `Purpose inferred from library observations provides context for ${destinationName}.` :
+    purpose.origin === 'mixed' ? `Mixed purpose origins were retained for ${destinationName}; a declared-subset match ${purpose.declaredMatch === 'matched' ? 'was established' : 'is not established'}.` :
+      purpose.origin === 'declared_native' ? purpose.declaredMatch === 'matched' && purpose.runtimeEligible === true && purpose.specificity === 'positive_specialized_evidence'
+        ? `A matched declared purpose distinguishes ${destinationName} from the other destinations.`
+        : `Declared purpose was retained for ${destinationName}, but specialized matching support is not established.` :
+        `Purpose origin and declared-rule matching evidence are unavailable for ${destinationName}.`;
+  facts.push({ id: `purpose_${purpose.origin}`, label });
   if (positiveSources.rag === true || asArray(ragEvidence.matches).length > 0) {
     facts.push({
       id: 'similar_items',
@@ -135,7 +120,7 @@ function buildEvidenceFacts({ candidate, destinationName }) {
   if (diagnostics.profile_observed_absence_advisory === true) {
     facts.push({
       id: 'observed_profile_difference',
-      label: `Observed library history differs, but does not override the declared policy intent for ${destinationName}.`,
+      label: `Observed library history differs; it does not change the retained policy decision for ${destinationName}.`,
     });
   }
   if (positiveSources.pattern === true) {
@@ -237,7 +222,7 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     review_threshold: reviewThreshold,
     automatic_threshold: automaticThreshold,
     message,
-    evidence: buildEvidenceFacts({ candidate, destinationName }),
+    evidence: buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }),
     candidate_evidence_card: buildPolicyCandidateEvidenceCard({
       classification,
       candidate,

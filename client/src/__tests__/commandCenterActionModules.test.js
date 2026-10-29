@@ -659,7 +659,7 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Similar items already associated with Movies support this match.')
     expect(wrapper.text()).toContain('How this policy score was calculated')
     expect(wrapper.text()).toContain('The score is 15 points above confirmation and 10 points below automatic routing.')
-    expect(wrapper.text()).toContain('Declared policy intent:')
+    expect(wrapper.text()).toContain('Policy purpose:')
     expect(wrapper.text()).toContain('Similar items (RAG):')
     expect(wrapper.text()).toContain('No evidence-safety calibration changed this score.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)

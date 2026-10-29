@@ -6,7 +6,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import {
-  POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+  LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
   buildPolicyCandidateCorrectionSignalSnapshot,
   buildPolicyCandidateCorrectionSignalSnapshotProjection,
 } from '../../services/policyCandidateCorrectionSignalSnapshot.mjs';
@@ -39,7 +39,7 @@ describe('policyCandidateCorrectionSignalSnapshot', () => {
     });
 
     expect(snapshot).toEqual({
-      version: POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+      version: LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
       score_margin_band_id: '5_to_14',
       evidence_source_states: [
         { source_id: 'item_identity', state_id: 'anchored' },
@@ -64,7 +64,7 @@ describe('policyCandidateCorrectionSignalSnapshot', () => {
     })).toBeNull();
 
     expect(buildPolicyCandidateCorrectionSignalSnapshotProjection({
-      version: POLICY_CANDIDATE_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
+      version: LEGACY_CORRECTION_SIGNAL_SNAPSHOT_VERSION,
       score_margin_band_id: '5_to_14',
       evidence_source_states: [
         { source_id: 'item_identity', state_id: 'anchored' },

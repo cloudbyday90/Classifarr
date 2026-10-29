@@ -290,6 +290,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
         rule_counts: details.nativeIntentDiagnostics.ruleCounts,
       }
       : null,
+    ...(details.nativeIntentDiagnostics?.purposeEvidence ? { purpose_evidence: details.nativeIntentDiagnostics.purposeEvidence } : {}),
   };
 }
 

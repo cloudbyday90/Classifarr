@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
+import { purposeMatchFixture } from '../fixtures/purposeMatchEvidenceFixture.mjs';
 
 import {
   buildPolicyRuntimeQuestionDecisionPresentation,
@@ -12,6 +13,14 @@ import {
 const candidates = [{ library_id: 5, library_name: 'Movies' }];
 
 describe('policyRuntimeQuestionDecisionPresentation', () => {
+  test.each(['declared_native', 'profile_derived', 'mixed'])('uses bound %s purpose evidence in adjacent facts', origin => {
+    const fixture = purposeMatchFixture({ origin });
+    const result = buildPolicyRuntimeQuestionDecisionPresentation({ classification: {
+      ...fixture.classification, confidence: 70, metadata: fixture.sourceMetadata },
+    question: { meta: { candidates: [fixture.candidate] } }, candidateDestinations: [{ library_id: 4, library_name: 'Animation' }] });
+    expect(result.deterministic.evidence[0].id).toBe(`purpose_${origin}`);
+    expect(result.deterministic.candidate_evidence_card.purpose_evidence.origin).toBe(origin);
+  });
   test('projects deterministic thresholds and bounded evidence facts', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {
@@ -47,7 +56,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
       automatic_threshold: 85,
     });
     expect(presentation.deterministic.evidence).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'declared_intent' }),
+      expect.objectContaining({ id: 'purpose_unverified' }),
       expect.objectContaining({ id: 'similar_items' }),
       expect.objectContaining({ id: 'observed_profile' }),
     ]));
@@ -214,8 +223,9 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
       candidateDestinations: candidates,
     });
 
-    expect(presentation.deterministic.candidate_evidence_card).toEqual({
-      version: 'policy.candidate_evidence_card.v1',
+    expect(presentation.deterministic.candidate_evidence_card).toMatchObject({
+      version: 'policy.candidate_evidence_card.v2',
+      purpose_evidence: { origin: 'unverified', declaredMatch: 'not_evaluated' },
       status_id: 'corroborated',
       sources: expect.arrayContaining([
         expect.objectContaining({ source_id: 'item_identity', state_id: 'anchored' }),
@@ -369,12 +379,12 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
 
     expect(presentation.deterministic.evidence).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'declared_intent' }),
+      expect.objectContaining({ id: 'purpose_unverified' }),
       expect.objectContaining({ id: 'observed_profile_difference' }),
     ]));
   });
 
-  test('explains specialized identity, broad overlap, and insufficient evidence with fixed facts', () => {
+  test('does not upgrade historical specialized flags to declared proof', () => {
     const buildPresentation = (statusId) => buildPolicyRuntimeQuestionDecisionPresentation({
       classification: { confidence: 80 },
       question: {
@@ -391,11 +401,11 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
 
     expect(buildPresentation('positive_specialized_evidence').deterministic.evidence)
-      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'specialized_declared_intent' })]));
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'purpose_unverified' })]));
     expect(buildPresentation('broad_compatibility_overlap').deterministic.evidence)
-      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'broad_compatibility_overlap' })]));
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'purpose_unverified' })]));
     expect(buildPresentation('insufficient_specialized_evidence').deterministic.evidence)
-      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'insufficient_specialized_evidence' })]));
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'purpose_unverified' })]));
   });
 
   test('states when the AI verification aligns with the deterministic destination', () => {

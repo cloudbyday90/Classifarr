@@ -69,6 +69,7 @@ describe('policyLibraryEvidenceProfilePresentation', () => {
       ],
     }))
     expect(JSON.stringify(normalized)).not.toContain('Do not display')
+    expect(normalized.candidates[0].evidence_card.version).toBe('policy.candidate_evidence_card.v1')
   })
 
   it('fails closed when a candidate margin does not match the leading score', () => {

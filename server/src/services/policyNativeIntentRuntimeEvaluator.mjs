@@ -17,6 +17,7 @@ import {
 import { FORMULA_CONFIDENCE_CAP, normalizeCombinationMode } from './policyEngineUtils.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
 import { INFERRED_PURPOSE_ADMISSION, isInferredProfilePurposeRule } from './policyInferredPurposeAdmission.mjs';
+import { buildPolicyPurposeMatchEvidence } from './policyPurposeMatchEvidence.mjs';
 
 export const POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS = Object.freeze({
   ACTIVE: 'native_intent_runtime_active',
@@ -135,20 +136,25 @@ function buildResult({
 export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   const runtimeAuthority = asObject(policy.policy_runtime_authority);
   const contract = asObject(policy.policy_intent_contract);
+  const finish = input => {
+    const runtime = buildResult(input);
+    return { ...runtime, purposeEvidence: buildPolicyPurposeMatchEvidence({ policy, item, runtime,
+      scoreDeclaredRules: rules => combineRuleScores(rules, item, contract.review_behavior?.combination_mode || policy.combination_mode) }) };
+  };
 
   if (
     !isNativePolicyRuntimeAuthority(policy) ||
     runtimeAuthority.validationOk !== true ||
     contract.validation?.valid !== true
   ) {
-    return buildResult({
+    return finish({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.AUTHORITY_BLOCKED,
       contract,
     });
   }
 
   if (asArray(contract.purpose).length === 0) {
-    return buildResult({
+    return finish({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.NO_PURPOSE,
       contract,
     });
@@ -156,14 +162,14 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
 
   const constraintDiagnostics = evaluatePolicyConstraints(policy, item);
   if (constraintDiagnostics.failed) {
-    return buildResult({
+    return finish({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.HARD_LIMIT_FAILED,
       contract,
       constraintDiagnostics,
     });
   }
   if (constraintDiagnostics.unknown_count > 0) {
-    return buildResult({
+    return finish({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.HARD_LIMIT_UNKNOWN,
       contract,
       constraintDiagnostics,
@@ -181,7 +187,7 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   if ((inferredRules.length > 0 && !inferredScopeMatches) ||
       (requiredRules.length > 0 && requiredScore <= 50) ||
       (inferredRules.length === 0 && purposeScore <= 50)) {
-    return buildResult({
+    return finish({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.PURPOSE_NOT_MATCHED,
       purposeScore,
       contract,
@@ -196,7 +202,7 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   const avoid = evaluateAvoidRules(contract.avoid, item);
   const avoidPenalty = avoid.matchedCount > 0 ? 15 : 0;
 
-  return buildResult({
+  return finish({
     statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.ACTIVE,
     score: (purposeScore > 50 ? purposeScore : 0) + helpfulBoost - avoidPenalty,
     purposeScore,
