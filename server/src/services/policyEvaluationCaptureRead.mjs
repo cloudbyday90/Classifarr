@@ -26,14 +26,14 @@ export function readPolicyEvaluationContext(row, now) {
   const key = inventoryRankingItemIdentity(row), observed = prospectiveTimestamp(record.observedAt), expires = prospectiveTimestamp(record.expiresAt);
   if (!prospectiveClassificationId(record.classificationId) || record.classificationId !== prospectiveClassificationId(row.classification_id) ||
     record.mediaType !== row.media_type || record.identityKey !== key) return fail('binding_failure');
-  if (record.version !== 1 || !Number.isFinite(observed) || !Number.isFinite(expires) || expires - observed !== 30 * 86400000 ||
+  if (![1, 2].includes(record.version) || !Number.isFinite(observed) || !Number.isFinite(expires) || expires - observed !== 30 * 86400000 ||
     observed > prospectiveTimestamp(row.recorded_at) || !Number.isFinite(prospectiveTimestamp(row.recorded_at)) ||
     observed > now || !Number.isFinite(now)) return fail('capture_invalid');
   if (record.reasonId !== 'complete') return POLICY_EVALUATION_GAPS.includes(record.reasonId) &&
     record.payload === null && record.expiredAt === null ? fail(record.reasonId) : fail('capture_invalid');
   if (expires <= now) return fail('expired');
   const payload = record.payload;
-  if (record.expiredAt !== null || !validPolicyEvaluationCapture(payload)) return fail('capture_invalid');
+  if (record.expiredAt !== null || !validPolicyEvaluationCapture(payload) || payload.version !== `policy_evaluation.v${record.version}`) return fail('capture_invalid');
   if (payload.identityKey !== key || payload.mediaType !== record.mediaType || Date.parse(payload.capturedAt) !== observed) return fail('binding_failure');
   // Every nested field was closed and validated above. Return a detached JSON projection, never the source row/header.
   return { status: 'available', reference: 'retained_policy_evaluation', ...JSON.parse(JSON.stringify(payload)) };

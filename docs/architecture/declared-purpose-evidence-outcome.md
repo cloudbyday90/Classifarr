@@ -81,6 +81,11 @@ release, tag, deployment, live data mutation, historical import or learning acti
 
 ## Next recommended item
 
+This follow-up is implemented in the separate
+[prospective purpose design](prospective-purpose-correction-cohort-design.md) and
+[outcome](prospective-purpose-correction-cohort-outcome.md). The recommendation
+below records the boundary identified by the presentation batch.
+
 Design a separately versioned prospective correction-signal/attribution cohort
 that retains verified purpose origin and match proof at authorized outcome commit.
 First define admission, expiry, legacy holdouts, separate confirmation/change

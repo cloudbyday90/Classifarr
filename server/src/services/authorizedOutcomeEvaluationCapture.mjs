@@ -3,6 +3,7 @@ import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { readClassificationOutcomeIdentity } from './classificationOutcomeIdentity.mjs';
 import { authorizedOutcomeDecisionContext, AUTHORIZED_EVALUATION_SOURCE_IDS, AUTHORIZED_EVALUATION_STATUS_IDS } from './authorizedOutcomeEvaluationSnapshot.mjs';
 import { readRuntimeOutcomeEvaluationTime } from './runtimeOutcomeEvaluationTime.mjs';
+import { captureAuthorizedPurposeOutcome } from './purposeOutcomePersistence.mjs';
 
 async function actionEvidence(client, command, state) {
   if (command.sourceId === 'manual_classification_change') {
@@ -54,6 +55,7 @@ export async function captureAuthorizedOutcomeEvaluation({ client, command, exec
   [receipt.id, action.eventKey, classification.media_type, identity, action.kind, authorizedOutcomeDecisionContext(classification),
     command.currentState.classificationId, command.finalOutcome.destinationLibraryId, command.sourceId, command.sourceEventId, receipt.commandFingerprint, observedAt]);
   if (result.rowCount !== 1) throw new Error('authorized_evaluation_receipt_binding');
+  await captureAuthorizedPurposeOutcome(client, receipt.id);
   return true;
 }
 

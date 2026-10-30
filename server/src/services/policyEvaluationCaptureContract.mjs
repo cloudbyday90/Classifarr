@@ -1,7 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readInventoryRankingIdentity } from './inventoryRankingShadowIdentity.mjs';
+import { validFrozenPolicyPurposeEvidence } from './policyPurposeMatchEvidence.mjs';
 
-export const POLICY_EVALUATION_CAPTURE_VERSION = 'policy_evaluation.v1';
+export const POLICY_EVALUATION_CAPTURE_VERSION = 'policy_evaluation.v2';
 export const POLICY_EVALUATION_CAPTURE_BYTES = 65536;
 export const POLICY_EVALUATION_CAPTURE_CANDIDATES = 64;
 export const POLICY_EVALUATION_GAPS = Object.freeze(['authoritative_bypass', 'no_active_policies',
@@ -40,7 +41,7 @@ export function policyEvaluationPayloadBytes(value) {
 /** Closed persisted contract: no names, raw rules, prompts, trace attributes or current configuration. */
 export function validPolicyEvaluationCapture(value) {
   if (!exact(value, ['version', 'mediaType', 'identityKey', 'capturedAt', 'stage', 'policyCount',
-    'skippedMediaTypeCount', 'candidates', 'ranked', 'exclusions']) || value.version !== POLICY_EVALUATION_CAPTURE_VERSION ||
+    'skippedMediaTypeCount', 'candidates', 'ranked', 'exclusions']) || !['policy_evaluation.v1', POLICY_EVALUATION_CAPTURE_VERSION].includes(value.version) ||
     !readInventoryRankingIdentity(value.identityKey, value.mediaType) ||
     typeof value.capturedAt !== 'string' || !Number.isFinite(Date.parse(value.capturedAt)) ||
     new Date(value.capturedAt).toISOString() !== value.capturedAt || value.stage !== 'retained_policy_evaluation' ||
@@ -51,7 +52,8 @@ export function validPolicyEvaluationCapture(value) {
     value.ranked.length > value.candidates.length || !exact(value.exclusions, POLICY_EVALUATION_DISPOSITIONS.slice(1))) return false;
   const candidates = new Map();
   for (const row of value.candidates) {
-    if (!exact(row, ['policyId', 'libraryId', 'authority', 'purposeProvenance', 'runtime', 'rawScore', 'scores', 'weights', 'thresholds', 'disposition']) ||
+    if (!exact(row, ['policyId', 'libraryId', 'authority', 'purposeProvenance', 'runtime', 'rawScore', 'scores', 'weights', 'thresholds', 'disposition',
+      ...(value.version === POLICY_EVALUATION_CAPTURE_VERSION ? ['purposeEvidence'] : [])]) ||
       !id(row.policyId) || !id(row.libraryId) || candidates.has(row.policyId) || !numeric(row.rawScore) ||
       !numbers(row.scores) || !numbers(row.weights) || !thresholds(row.thresholds) ||
       !POLICY_EVALUATION_DISPOSITIONS.includes(row.disposition) || !provenance.includes(row.purposeProvenance) ||
@@ -62,7 +64,11 @@ export function validPolicyEvaluationCapture(value) {
       !exact(row.runtime, ['status', 'eligible', 'admission']) || !POLICY_EVALUATION_RUNTIME_STATUSES.includes(row.runtime.status) ||
       ![true, false, null].includes(row.runtime.eligible) || !admissions.includes(row.runtime.admission) ||
       (row.runtime.admission === 'inferred_profile_ranking' && (row.authority.source !== 'native_intent' ||
-        row.runtime.eligible !== true || row.runtime.status !== 'native_intent_runtime_active'))) return false;
+        row.runtime.eligible !== true || row.runtime.status !== 'native_intent_runtime_active')) ||
+      (value.version === POLICY_EVALUATION_CAPTURE_VERSION && row.purposeEvidence !== null &&
+        (!validFrozenPolicyPurposeEvidence(row.purposeEvidence) || row.purposeEvidence.origin !== row.purposeProvenance ||
+          row.purposeEvidence.runtimeEligible !== row.runtime.eligible || row.authority.source !== 'native_intent' ||
+          row.authority.status !== 'native_intent_active' || row.authority.validationOk !== true))) return false;
     candidates.set(row.policyId, row);
   }
   const seen = new Set();

@@ -56,6 +56,19 @@ export function refinePolicyPurposeMatchEvidence(evidence, policy, item, status)
 const unknown = () => Object.freeze({ version: VERSION, origin: 'unverified', declaredMatch: 'not_evaluated',
   runtimeEligible: null, specificity: 'not_evaluated' });
 
+/** Only live minted evidence can enter an immutable evaluation capture. */
+export function projectLivePolicyPurposeEvidence(value, policy, item) {
+  const verified = refinePolicyPurposeMatchEvidence(value, policy, item, value?.specificity);
+  return verified ? Object.freeze({ version: VERSION, origin: verified.origin, declaredMatch: verified.declaredMatch,
+    runtimeEligible: verified.runtimeEligible, specificity: verified.specificity }) : null;
+}
+
+export function validFrozenPolicyPurposeEvidence(value) {
+  return exact(value, ['version', 'origin', 'declaredMatch', 'runtimeEligible', 'specificity']) && value.version === VERSION &&
+    origins.includes(value.origin) && matches.includes(value.declaredMatch) && typeof value.runtimeEligible === 'boolean' &&
+    specificity.includes(value.specificity) && (value.declaredMatch !== 'matched' || ['declared_native', 'mixed'].includes(value.origin));
+}
+
 /** Persisted presentation trusts the classifier-owned writer/origin, never arbitrary matching diagnostic JSON. */
 export function readPolicyPurposeMatchPresentation({ classification = {}, candidate, sourceMetadata = {} } = {}) {
   const details = sourceMetadata.classification_details, capture = details?.candidate_capture;

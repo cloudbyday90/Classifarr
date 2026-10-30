@@ -3,6 +3,7 @@ import { inventoryRankingItemIdentity } from './inventoryRankingShadowIdentity.m
 import { buildPolicyPurposeProvenance } from './policyDeclaredPurposeProvenance.mjs';
 import { isComparablePolicyCandidate } from './policyInferredPurposeAdmission.mjs';
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { projectLivePolicyPurposeEvidence } from './policyPurposeMatchEvidence.mjs';
 import { POLICY_EVALUATION_CAPTURE_VERSION, POLICY_EVALUATION_CAPTURE_BYTES, POLICY_EVALUATION_CAPTURE_CANDIDATES, POLICY_EVALUATION_SOURCES,
   POLICY_EVALUATION_AUTHORITY_STATUSES, POLICY_EVALUATION_RUNTIME_STATUSES, validPolicyEvaluationCapture,
   policyEvaluationPayloadBytes,
@@ -44,11 +45,11 @@ function runtimeProjection(evaluation, source) {
 /** Per-call capability supplied only by the production wrapper. Generic/offline evaluators default off. */
 export function createLivePolicyEvaluationCapture(item) {
   const identityKey = inventoryRankingItemIdentity(item), mediaType = item?.media_type;
-  let headers = [], evaluations = [], policyCount = 0, skippedMediaTypeCount = 0, gap = null;
+  let headers = [], evaluations = [], policies = [], policyCount = 0, skippedMediaTypeCount = 0, gap = null;
   return {
-    start(policies, compatible, skipped) {
+    start(loaded, compatible, skipped) {
       try {
-        policyCount = policies.length; skippedMediaTypeCount = skipped;
+        policyCount = loaded.length; skippedMediaTypeCount = skipped; policies = compatible;
         if (compatible.length > POLICY_EVALUATION_CAPTURE_CANDIDATES) { gap = 'pool_overflow'; return; }
         headers = freeze(compatible.map(policyHeader));
       } catch { gap = 'capture_invalid'; }
@@ -60,7 +61,8 @@ export function createLivePolicyEvaluationCapture(item) {
         evaluations.push(freeze({ policyId: evaluation.policy_id, libraryId: evaluation.library_id,
           rawScore: evaluation.score, scores: numbers(evaluation.scores), weights: numbers(evaluation.weights),
           thresholds: thresholds(evaluation), runtime: runtimeProjection(evaluation, header?.authority.source),
-          comparable: isComparablePolicyCandidate(evaluation) }));
+          purposeEvidence: projectLivePolicyPurposeEvidence(evaluation.native_intent_runtime?.purposeEvidence,
+            policies[evaluations.length], item), comparable: isComparablePolicyCandidate(evaluation) }));
       } catch { gap = 'capture_invalid'; }
     },
     finish(result, conflicts = new Set(), reason = null) {
@@ -75,7 +77,13 @@ export function createLivePolicyEvaluationCapture(item) {
             const evaluation = evaluations[index];
             if (header.policyId !== evaluation?.policyId || header.libraryId !== evaluation?.libraryId) throw new Error('capture_binding');
             const { comparable, ...numeric } = evaluation;
-            return { ...header, ...numeric, disposition: conflicts.has(header.policyId) ? 'constraint_conflict' :
+            const final = result.ranked?.find(row => row.policy_id === header.policyId && row.library_id === header.libraryId);
+            const refined = final ? projectLivePolicyPurposeEvidence(final.candidate_diagnostics?.purpose_evidence, policies[index], item) : numeric.purposeEvidence;
+            const original = numeric.purposeEvidence;
+            const purposeEvidence = original && refined && original.origin === header.purposeProvenance &&
+              original.origin === refined.origin && original.declaredMatch === refined.declaredMatch &&
+              original.runtimeEligible === refined.runtimeEligible ? refined : null;
+            return { ...header, ...numeric, purposeEvidence, disposition: conflicts.has(header.policyId) ? 'constraint_conflict' :
               !comparable ? 'non_comparable' : rankedIds.has(header.policyId) ? 'ranked' : 'ranking_excluded' };
           });
           payload = { version: POLICY_EVALUATION_CAPTURE_VERSION, mediaType, identityKey, capturedAt,

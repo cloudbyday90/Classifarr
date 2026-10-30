@@ -13,6 +13,7 @@ import { INVENTORY_PROSPECTIVE_ACTIVITY_SQL } from '../services/inventoryProspec
 import { withInventoryProspectiveActivity } from '../services/inventoryProspectiveActivity.mjs';
 import { readEvidenceGapAuditStatus } from '../services/evidenceGapAuditStatus.mjs';
 import { readInventoryDisagreements } from '../services/inventoryDisagreementRead.mjs';
+import { readPurposeOutcomeCohort } from '../services/purposeOutcomeCohortRead.mjs';
 
 async function loadRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -25,7 +26,13 @@ async function loadRuntime() {
 export async function runInventoryOutcomeCalibration({ argv = process.argv.slice(2), load = loadRuntime, signal } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' }, folds: { type: 'string' },
     prospective: { type: 'boolean' }, since: { type: 'string' }, until: { type: 'string' },
-    'gap-audit-status': { type: 'boolean' }, 'prospective-disagreements': { type: 'boolean' } } });
+    'gap-audit-status': { type: 'boolean' }, 'prospective-disagreements': { type: 'boolean' }, 'prospective-purpose': { type: 'boolean' } } });
+  if (values['prospective-purpose']) {
+    if (Object.keys(values).some(key => key !== 'prospective-purpose')) throw new Error('inventory_outcome_mode_options');
+    const runtime = await load();
+    try { return await readPurposeOutcomeCohort(runtime, { signal }); }
+    finally { await runtime.close(); }
+  }
   if (values['prospective-disagreements']) {
     if (Object.keys(values).some(key => key !== 'prospective-disagreements')) throw new Error('inventory_outcome_mode_options');
     const runtime = await load();

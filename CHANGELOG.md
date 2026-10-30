@@ -11,6 +11,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Prospective purpose-choice cohort** — Freeze new live purpose matches in
+  immutable policy capture v2 and atomically associate existing explicit choices
+  with the retained policy leader or a commit-time evidence gap. Preserve event
+  deduplication, source expiry and replay tombstones. Add the bounded private
+  aggregate CLI mode `--prospective-purpose`, with separate action/reference
+  meanings and explicit historical gaps. Legacy statistics, inventory cohorts,
+  scores, routing and learning authority remain unchanged; agreement is not accuracy.
+
 - **Frozen policy evaluation evidence** — Preserve new retained live policy
   evaluations in immutable History-bound child records: the complete compatible
   pool up to 64 candidates, final policy ranking, closed exclusions, and separate

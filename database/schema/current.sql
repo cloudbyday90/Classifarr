@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-28T20:23:33.003Z
--- Latest Migration: 20261028_180000_add_policy_evaluation_captures.sql
+-- Generated: 2026-10-29T23:50:37.415Z
+-- Latest Migration: 20261029_090000_add_prospective_purpose_outcomes.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -701,6 +701,47 @@ CREATE FUNCTION public.guard_policy_runtime_pending_question_cleanup_audit_mutat
     AS $$
 BEGIN
     RAISE EXCEPTION 'Pending-question cleanup audit records are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_purpose_outcome_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_purpose_outcome_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'TRUNCATE' THEN RAISE EXCEPTION 'Purpose outcome tombstones cannot be truncated'; END IF;
+    -- FK cascades may replace a parent in the same statement during an authorized runtime reset.
+    IF pg_trigger_depth() = 1 AND EXISTS (SELECT 1 FROM classification_history WHERE id = OLD.classification_id) AND
+       (EXISTS (SELECT 1 FROM policy_feedback_sources WHERE classification_id = OLD.feedback_classification_id) OR
+        EXISTS (SELECT 1 FROM policy_authorized_outcome_source_event_receipts WHERE id = OLD.authorized_receipt_id)) THEN
+        RAISE EXCEPTION 'Purpose outcomes are removed only with their source or History row';
+    END IF;
+    RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: guard_purpose_outcome_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_purpose_outcome_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF (to_jsonb(NEW) - ARRAY['payload', 'expired_at', 'identity_key', 'selected_library_id', 'action_kind']) IS DISTINCT FROM
+       (to_jsonb(OLD) - ARRAY['payload', 'expired_at', 'identity_key', 'selected_library_id', 'action_kind'])
+        OR NEW.payload IS NOT NULL OR NEW.identity_key IS NOT NULL OR NEW.selected_library_id IS NOT NULL
+        OR NEW.action_kind IS NOT NULL OR OLD.expired_at IS NOT NULL
+        OR OLD.expires_at > statement_timestamp() OR NEW.expired_at IS NULL
+        OR NEW.expired_at < OLD.expires_at OR NEW.expired_at > statement_timestamp() THEN
+        RAISE EXCEPTION 'Purpose outcome evidence only permits expired payload removal';
+    END IF;
+    RETURN NEW;
 END;
 $$;
 
@@ -3048,7 +3089,7 @@ CREATE TABLE public.classification_policy_evaluation_captures (
     reason_id text NOT NULL,
     payload jsonb,
     expired_at timestamp with time zone,
-    CONSTRAINT classification_policy_evaluation_captures_capture_version_check CHECK ((capture_version = 1)),
+    CONSTRAINT classification_policy_evaluation_captures_capture_version_check CHECK ((capture_version = ANY (ARRAY[1, 2]))),
     CONSTRAINT classification_policy_evaluation_captures_check CHECK (
 CASE
     WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
@@ -7923,6 +7964,60 @@ ALTER SEQUENCE public.policy_profile_refresh_outbox_id_seq OWNED BY public.polic
 
 
 --
+-- Name: policy_purpose_outcome_supplements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_purpose_outcome_supplements (
+    event_key text NOT NULL,
+    classification_id bigint NOT NULL,
+    authorized_receipt_id bigint,
+    feedback_classification_id bigint,
+    supplement_version smallint DEFAULT 1 NOT NULL,
+    source_kind text NOT NULL,
+    action_reference text NOT NULL,
+    media_type text NOT NULL,
+    identity_key text,
+    selected_library_id integer,
+    action_kind text,
+    observed_at timestamp with time zone NOT NULL,
+    frozen_at timestamp with time zone DEFAULT transaction_timestamp() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    reason_id text NOT NULL,
+    payload jsonb,
+    expired_at timestamp with time zone,
+    CONSTRAINT policy_purpose_outcome_supplements_action_kind_check CHECK ((action_kind = ANY (ARRAY['confirmation'::text, 'correction'::text]))),
+    CONSTRAINT policy_purpose_outcome_supplements_action_reference_check CHECK ((action_reference = ANY (ARRAY['runtime_answer_contract'::text, 'manual_prior_destination'::text, 'original_automated_destination'::text]))),
+    CONSTRAINT policy_purpose_outcome_supplements_check CHECK (((identity_key ~ '^source:[a-f0-9]{64}$'::text) OR
+CASE
+    WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
+    ELSE false
+END)),
+    CONSTRAINT policy_purpose_outcome_supplements_check1 CHECK ((isfinite(frozen_at) AND (frozen_at >= observed_at))),
+    CONSTRAINT policy_purpose_outcome_supplements_check2 CHECK ((isfinite(expires_at) AND (expires_at <= (observed_at + '720:00:00'::interval)))),
+    CONSTRAINT policy_purpose_outcome_supplements_check3 CHECK (((expired_at IS NULL) OR (isfinite(expired_at) AND (expired_at >= expires_at)))),
+    CONSTRAINT policy_purpose_outcome_supplements_check4 CHECK ((num_nonnulls(authorized_receipt_id, feedback_classification_id) = 1)),
+    CONSTRAINT policy_purpose_outcome_supplements_check5 CHECK (((source_kind = 'history_review'::text) = (feedback_classification_id IS NOT NULL))),
+    CONSTRAINT policy_purpose_outcome_supplements_check6 CHECK ((((source_kind = 'history_review'::text) AND (feedback_classification_id = classification_id) AND (action_reference = 'original_automated_destination'::text) AND (event_key = ('feedback_review:'::text || (classification_id)::text))) OR ((source_kind = 'manual'::text) AND (authorized_receipt_id IS NOT NULL) AND (action_reference = 'manual_prior_destination'::text) AND (event_key ~ '^classification_correction:'::text)) OR ((source_kind = 'runtime'::text) AND (authorized_receipt_id IS NOT NULL) AND (action_reference = 'runtime_answer_contract'::text) AND (event_key ~~ (('runtime_resolution:'::text || (classification_id)::text) || ':%'::text))))),
+    CONSTRAINT policy_purpose_outcome_supplements_check7 CHECK ((((expired_at IS NOT NULL) AND (payload IS NULL) AND (identity_key IS NULL) AND (selected_library_id IS NULL) AND (action_kind IS NULL)) OR ((expired_at IS NULL) AND (identity_key IS NOT NULL) AND (selected_library_id IS NOT NULL) AND (action_kind IS NOT NULL) AND (((reason_id = 'available'::text) AND (payload IS NOT NULL) AND (expires_at > frozen_at)) OR ((reason_id <> 'available'::text) AND (payload IS NULL) AND (expires_at = (observed_at + '720:00:00'::interval))))))),
+    CONSTRAINT policy_purpose_outcome_supplements_event_key_check CHECK ((event_key ~ '^(runtime_resolution:[1-9][0-9]*:[A-Za-z0-9_-]{22}|classification_correction:[1-9][0-9]*|feedback_review:[1-9][0-9]*)$'::text)),
+    CONSTRAINT policy_purpose_outcome_supplements_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT policy_purpose_outcome_supplements_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT policy_purpose_outcome_supplements_payload_check CHECK (((payload IS NULL) OR ((jsonb_typeof(payload) = 'object'::text) AND (octet_length((payload)::text) <= 4096)))),
+    CONSTRAINT policy_purpose_outcome_supplements_reason_id_check CHECK ((reason_id = ANY (ARRAY['available'::text, 'missing_capture'::text, 'legacy_capture'::text, 'expired_capture'::text, 'capture_gap'::text, 'invalid_capture'::text, 'unverified_purpose'::text, 'no_policy_leader'::text, 'source_only_identity'::text, 'binding_failure'::text, 'legacy_event'::text]))),
+    CONSTRAINT policy_purpose_outcome_supplements_selected_library_id_check CHECK ((selected_library_id > 0)),
+    CONSTRAINT policy_purpose_outcome_supplements_source_kind_check CHECK ((source_kind = ANY (ARRAY['runtime'::text, 'manual'::text, 'history_review'::text]))),
+    CONSTRAINT policy_purpose_outcome_supplements_supplement_version_check CHECK ((supplement_version = 1))
+);
+
+
+--
+-- Name: TABLE policy_purpose_outcome_supplements; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.policy_purpose_outcome_supplements IS 'Private first-write canonical-event purpose reference or commit-time gap; source-lease-bounded payload, expiry tombstones, no portable backup, routing or learning authority.';
+
+
+--
 -- Name: policy_runtime_historic_route_safety_refresh_receipt_items; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -12152,6 +12247,30 @@ ALTER TABLE ONLY public.policy_profile_refresh_outbox
 
 
 --
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_supplemen_feedback_classification_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_supplemen_feedback_classification_id_key UNIQUE (feedback_classification_id);
+
+
+--
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_supplements_authorized_receipt_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_supplements_authorized_receipt_id_key UNIQUE (authorized_receipt_id);
+
+
+--
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_supplements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_supplements_pkey PRIMARY KEY (event_key);
+
+
+--
 -- Name: policy_runtime_historic_route_safety_refresh_receipt_items policy_runtime_historic_route_safety_refresh_receipt_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14418,6 +14537,20 @@ CREATE INDEX idx_profile_refresh_inventory_latest ON public.policy_profile_refre
 
 
 --
+-- Name: idx_purpose_outcome_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purpose_outcome_expiry ON public.policy_purpose_outcome_supplements USING btree (expires_at, event_key) WHERE (expired_at IS NULL);
+
+
+--
+-- Name: idx_purpose_outcome_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_purpose_outcome_observed ON public.policy_purpose_outcome_supplements USING btree (observed_at, event_key);
+
+
+--
 -- Name: idx_queue_identity_repair_preview_task; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15307,6 +15440,27 @@ CREATE TRIGGER policy_tuning_cohorts_immutable BEFORE UPDATE ON public.policy_tu
 --
 
 CREATE TRIGGER preserve_history_recording_instant AFTER UPDATE ON public.classification_history FOR EACH ROW WHEN ((old.recorded_at IS DISTINCT FROM new.recorded_at)) EXECUTE FUNCTION public.preserve_history_recording_instant();
+
+
+--
+-- Name: policy_purpose_outcome_supplements purpose_outcome_delete_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER purpose_outcome_delete_guard BEFORE DELETE ON public.policy_purpose_outcome_supplements FOR EACH ROW EXECUTE FUNCTION public.guard_purpose_outcome_delete();
+
+
+--
+-- Name: policy_purpose_outcome_supplements purpose_outcome_truncate_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER purpose_outcome_truncate_guard BEFORE TRUNCATE ON public.policy_purpose_outcome_supplements FOR EACH STATEMENT EXECUTE FUNCTION public.guard_purpose_outcome_delete();
+
+
+--
+-- Name: policy_purpose_outcome_supplements purpose_outcome_update_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER purpose_outcome_update_guard BEFORE UPDATE ON public.policy_purpose_outcome_supplements FOR EACH ROW EXECUTE FUNCTION public.guard_purpose_outcome_update();
 
 
 --
@@ -16546,6 +16700,30 @@ ALTER TABLE ONLY public.policy_presets
 
 ALTER TABLE ONLY public.policy_presets
     ADD CONSTRAINT policy_presets_preset_id_fkey FOREIGN KEY (preset_id) REFERENCES public.content_presets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_suppleme_feedback_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_suppleme_feedback_classification_id_fkey FOREIGN KEY (feedback_classification_id) REFERENCES public.policy_feedback_sources(classification_id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_supplements_authorized_receipt_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_supplements_authorized_receipt_id_fkey FOREIGN KEY (authorized_receipt_id) REFERENCES public.policy_authorized_outcome_source_event_receipts(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_purpose_outcome_supplements policy_purpose_outcome_supplements_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_purpose_outcome_supplements
+    ADD CONSTRAINT policy_purpose_outcome_supplements_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
 
 
 --
@@ -18895,6 +19073,7 @@ FROM unnest(ARRAY[
     '20261028_130000_add_evidence_gap_audit.sql',
     '20261028_140000_freeze_feedback_source_receipts.sql',
     '20261028_160000_add_feedback_review_references.sql',
-    '20261028_180000_add_policy_evaluation_captures.sql'
+    '20261028_180000_add_policy_evaluation_captures.sql',
+    '20261029_090000_add_prospective_purpose_outcomes.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

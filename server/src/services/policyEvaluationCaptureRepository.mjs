@@ -8,8 +8,8 @@ export async function persistPolicyEvaluationCapture(database, { classificationI
   const capture = id && projectHeldPolicyEvaluationCapture(held, result, metadata, id);
   if (!capture || !id) return false;
   const saved = await database.query(`INSERT INTO classification_policy_evaluation_captures
-    (classification_id, media_type, identity_key, observed_at, expires_at, reason_id, payload)
-    SELECT ch.id, $2, $3, $4::timestamptz, $4::timestamptz + INTERVAL '720 hours', $5, $6::jsonb
+    (classification_id, media_type, identity_key, observed_at, expires_at, reason_id, payload, capture_version)
+    SELECT ch.id, $2, $3, $4::timestamptz, $4::timestamptz + INTERVAL '720 hours', $5, $6::jsonb, 2
     FROM classification_history ch WHERE ch.id = $1::bigint AND ch.media_type = $2
       AND ch.tmdb_id::text = split_part($3, ':', 2) AND ch.recorded_at >= $4::timestamptz
     ON CONFLICT (classification_id) DO NOTHING RETURNING classification_id`,

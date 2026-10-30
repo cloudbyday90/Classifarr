@@ -25,8 +25,8 @@ async function storedFixture({ exactId = false, old = false, unwritten = false }
     const observed = (await database.query("SELECT NOW() - INTERVAL '31 days' AS observed")).rows[0].observed;
     payload.capturedAt = observed.toISOString();
     await database.query(`INSERT INTO classification_policy_evaluation_captures
-      (classification_id,media_type,identity_key,observed_at,expires_at,reason_id,payload)
-      VALUES($1,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3)`, [row.id, observed, payload]);
+      (classification_id,media_type,identity_key,observed_at,expires_at,reason_id,payload,capture_version)
+      VALUES($1,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3,2)`, [row.id, observed, payload]);
   }
   return { database, fixture, row, id: String(row.id) };
 }

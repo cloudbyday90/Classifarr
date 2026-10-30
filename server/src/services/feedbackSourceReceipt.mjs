@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { ConflictError } from '../utils/appError.mjs';
 import { buildFeedbackSelectionSnapshot } from './feedbackSelectionSnapshot.mjs';
 import { readFeedbackReviewOutcomeSnapshot } from './feedbackReviewOutcomeSnapshot.mjs';
+import { captureFeedbackPurposeOutcome } from './purposeOutcomePersistence.mjs';
 
 export function feedbackRequestFingerprint(normalizedRequest) {
     return createHash('sha256').update(JSON.stringify(normalizedRequest)).digest('hex');
@@ -47,4 +48,5 @@ export async function recordFeedbackSource(client, { classificationId, feedbackI
         if (error.code === '23505') throw sourceConflict();
         throw error;
     }
+    if (reviewEvidence) await captureFeedbackPurposeOutcome(client, classificationId);
 }

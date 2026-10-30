@@ -35,8 +35,8 @@ beforeAll(async () => {
   const policyCapture = structuredClone(mintPolicyEvaluationFixture(undefined, { libraryId: libraries[0] }).capture.payload);
   policyCapture.capturedAt = new Date(Date.parse(capture.capturedAt) - 1000).toISOString();
   await db.query(`INSERT INTO classification_policy_evaluation_captures
-    (classification_id,media_type,identity_key,observed_at,expires_at,reason_id,payload)
-    VALUES($1,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3)`,
+    (classification_id,media_type,identity_key,observed_at,expires_at,reason_id,payload,capture_version)
+    VALUES($1,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3,2)`,
   [historyId, policyCapture.capturedAt, policyCapture]);
   const receipt = (await db.query(`INSERT INTO policy_authorized_outcome_source_event_receipts
     (source_id,source_event_id,command_fingerprint,classification_id,destination_library_id,final_outcome_status_id,persistence_status_id)

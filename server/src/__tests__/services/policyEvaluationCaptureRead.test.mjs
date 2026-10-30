@@ -34,7 +34,7 @@ test.each(['missing', 'expired', 'binding_failure', 'capture_invalid', 'pool_ove
 
 test.each(['version', 'time', 'duration', 'payloadIdentity', 'payloadTime', 'expiry', 'rank', 'authority'])('rejects %s drift without current policy reconstruction', kind => {
   const row = fixture(), record = row.policy_evaluation;
-  if (kind === 'version') record.version = 2;
+  if (kind === 'version') record.version = 3;
   if (kind === 'time') record.observedAt = '2026-12-28T18:00:00.000Z';
   if (kind === 'duration') record.expiresAt = '2026-12-28T18:00:00.000Z';
   if (kind === 'payloadIdentity') record.payload.identityKey = 'movie:43';

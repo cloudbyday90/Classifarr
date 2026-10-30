@@ -28,6 +28,6 @@ export function persistedPolicyEvaluationFixture(row) {
   const fixture = mintPolicyEvaluationFixture({ media_type: row.media_type, tmdb_id: row.tmdb_id });
   const payload = structuredClone(fixture.capture.payload);
   payload.capturedAt = '2026-10-28T17:57:30.000Z';
-  return { classificationId: String(row.classification_id), version: 1, mediaType: row.media_type, identityKey: payload.identityKey,
+  return { classificationId: String(row.classification_id), version: 2, mediaType: row.media_type, identityKey: payload.identityKey,
     observedAt: payload.capturedAt, expiresAt: '2026-11-27T17:57:30.000Z', expiredAt: null, reasonId: 'complete', payload };
 }

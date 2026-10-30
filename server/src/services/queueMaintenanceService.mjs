@@ -39,6 +39,7 @@ import { pruneClassificationCorrectionOutcomes } from './classificationCorrectio
 import { pruneFeedbackOutcomeSnapshots } from './feedbackOutcomeSnapshot.mjs';
 import { pruneAuthorizedOutcomeEvaluation } from './authorizedOutcomeEvaluationCapture.mjs';
 import { prunePolicyEvaluationCaptures } from './policyEvaluationCaptureRepository.mjs';
+import { prunePurposeOutcomeSupplements } from './purposeOutcomePersistence.mjs';
 import { pruneFeedbackReviewReferences } from './feedbackReviewMaintenance.mjs';
 import { inspectQueueVacuum } from './queueVacuumObservation.mjs';
 
@@ -98,6 +99,8 @@ export class QueueMaintenanceService {
         catch { this.logger.warn('Authorized outcome evidence expiry failed; the next maintenance run will retry'); }
         try { await prunePolicyEvaluationCaptures(this.db); }
         catch { this.logger.warn('Policy evaluation evidence expiry failed; the next maintenance run will retry'); }
+        try { await prunePurposeOutcomeSupplements(this.db); }
+        catch { this.logger.warn('Purpose outcome evidence expiry failed; the next maintenance run will retry'); }
         try { await pruneFeedbackReviewReferences(this.db); }
         catch { this.logger.warn('Prepared feedback review expiry failed; the next maintenance run will retry'); }
     }
