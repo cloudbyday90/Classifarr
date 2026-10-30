@@ -112,6 +112,11 @@ with no release, tag, deployment, live data mutation or historical import.
 
 ## Next recommended item
 
+The separately agreed private view is now implemented; see its
+[design](prospective-purpose-case-view-design.md) and
+[outcome](prospective-purpose-case-view-outcome.md). The following recommendation
+records the transition from this aggregate-only batch.
+
 Inspect the first aggregate's source distribution and gaps after an authorized
 deployment. Then add a separately agreed bounded, opt-in private case view for
 this purpose cohort, using frozen classification/library IDs and exact source

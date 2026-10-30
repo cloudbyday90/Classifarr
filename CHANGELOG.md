@@ -11,6 +11,15 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Private purpose disagreement cases** — Add the exclusive read-only evaluation
+  CLI mode `--prospective-purpose-cases`. List bounded eligible cases with
+  separately named frozen policy/choice, original/choice and policy/original
+  comparisons, preserving recorded confirmation/change meaning and independent
+  History-review original references, including BIGINT IDs. Share whole-window
+  validation and holdouts with the unchanged aggregate; cap private numeric
+  output at fifty cases / 1 MiB with omissions and evidence gaps. Disagreement
+  does not establish error, accuracy or cause; routing and learning are unchanged.
+
 - **Prospective purpose-choice cohort** — Freeze new live purpose matches in
   immutable policy capture v2 and atomically associate existing explicit choices
   with the retained policy leader or a commit-time evidence gap. Preserve event
