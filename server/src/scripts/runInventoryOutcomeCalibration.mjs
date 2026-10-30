@@ -28,11 +28,12 @@ export async function runInventoryOutcomeCalibration({ argv = process.argv.slice
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' }, folds: { type: 'string' },
     prospective: { type: 'boolean' }, since: { type: 'string' }, until: { type: 'string' },
     'gap-audit-status': { type: 'boolean' }, 'prospective-disagreements': { type: 'boolean' }, 'prospective-purpose': { type: 'boolean' },
-    'prospective-purpose-cases': { type: 'boolean' } } });
+    'prospective-purpose-cases': { type: 'boolean' }, 'include-policy-context': { type: 'boolean' } } });
+  if (Object.hasOwn(values, 'include-policy-context') && !values['prospective-purpose-cases']) throw new Error('inventory_outcome_mode_options');
   if (values['prospective-purpose-cases']) {
-    if (Object.keys(values).some(key => key !== 'prospective-purpose-cases')) throw new Error('inventory_outcome_mode_options');
+    if (Object.keys(values).some(key => !['prospective-purpose-cases', 'include-policy-context'].includes(key))) throw new Error('inventory_outcome_mode_options');
     const runtime = await load();
-    try { return await readPurposeOutcomeCases(runtime, { signal }); }
+    try { return await readPurposeOutcomeCases(runtime, { signal, includePolicyContext: values['include-policy-context'] === true }); }
     finally { await runtime.close(); }
   }
   if (values['prospective-purpose']) {

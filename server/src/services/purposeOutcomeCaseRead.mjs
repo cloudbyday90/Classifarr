@@ -2,6 +2,6 @@
 import { withPurposeOutcomeSnapshot } from './purposeOutcomeSnapshotRead.mjs';
 import { buildPurposeOutcomeCaseReport } from './purposeOutcomeCaseReport.mjs';
 
-export function readPurposeOutcomeCases(runtime, options = {}) {
-  return withPurposeOutcomeSnapshot(runtime, options, buildPurposeOutcomeCaseReport);
+export function readPurposeOutcomeCases(runtime, { signal, includePolicyContext = false } = {}) {
+  return withPurposeOutcomeSnapshot(runtime, { signal, includePolicyContext }, input => buildPurposeOutcomeCaseReport(input, { includePolicyContext }));
 }

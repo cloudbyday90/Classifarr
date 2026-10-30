@@ -6,6 +6,17 @@
 
 Classifarr is a Node/Express backend with a Vue 3 + Vite frontend. The server exposes REST APIs (and serves the built UI), while the client provides the web interface for policy-driven media classification.
 
+## Operator workflows and automation
+
+Design operator-facing processes for automatic execution or direct use in the
+application. Recurring checks and diagnostics should run through bounded
+background work, with saved status and useful results visible in the UI.
+Intentional operator actions should be available in the UI. Do not require users
+to run or paste CLI commands to trigger routine workflows. CLI tools may remain
+optional developer/test/diagnostic interfaces. Automated execution must preserve
+the application's authorization, resource admission, cancellation and replay
+boundaries.
+
 ## Repo Layout
 
 - `client/` - Vue 3 + Vite frontend

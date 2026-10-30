@@ -96,6 +96,11 @@ historical-data change is part of this batch. No release or deployment.
 
 ## Next recommended item
 
+The separately agreed optional policy context is now implemented; see its
+[design](prospective-purpose-case-context-design.md) and
+[outcome](prospective-purpose-case-context-outcome.md). A read-only capability
+check confirmed the current Unraid image predates these evidence contracts.
+
 After an authorized deployment, inspect this private view's aggregate coverage
 and eligible cases before selecting a routing fix. If ranking context is needed,
 the next implementation candidate is a separately scoped bounded read of the

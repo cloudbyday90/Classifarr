@@ -10,6 +10,7 @@ import { recordFeedbackSource } from '../../services/feedbackSourceReceipt.mjs';
 import { runAbortableDatabaseRead } from '../../utils/databaseAbortableRead.mjs';
 import { createDatabaseReadCanceller } from '../../utils/databaseReadCancellation.mjs';
 import { runInventoryOutcomeCalibration } from '../../scripts/runInventoryOutcomeCalibration.mjs';
+import { PURPOSE_POLICY_CONTEXT_SQL } from '../../services/purposePolicyContextRepository.mjs';
 
 let libraries, history;
 const read = (callback, options) => {
@@ -19,6 +20,9 @@ const read = (callback, options) => {
       pipeline: false, connectionTimeoutMillis: 500, statement_timeout: 500, query_timeout: 750 }) }) }, callback, options);
 };
 const execute = (withTransaction = read, signal) => runInventoryOutcomeCalibration({ argv: ['--prospective-purpose-cases'], signal,
+  load: async () => ({ withTransaction, close: async () => {} }) });
+const executeContext = (withTransaction = read, signal) => runInventoryOutcomeCalibration({
+  argv: ['--prospective-purpose-cases', '--include-policy-context'], signal,
   load: async () => ({ withTransaction, close: async () => {} }) });
 beforeAll(async () => {
   const client = await getPool().connect();
@@ -87,15 +91,17 @@ test('one snapshot keeps target admission coherent while later reads see the com
   expect((await execute()).cases[0].original.libraryId).toBe(libraries[0]);
 });
 
-test('real CLI emits one quiet bounded private JSON document', () => {
+test.each([false, true])('real CLI emits one quiet bounded private JSON document (context: %s)', includeContext => {
   const connection = getPool().options;
   const result = spawnSync(process.execPath, [fileURLToPath(new URL('../../scripts/runInventoryOutcomeCalibration.mjs', import.meta.url)),
-    '--prospective-purpose-cases'], { encoding: 'utf8', timeout: 20000, env: { ...process.env,
+    '--prospective-purpose-cases', ...(includeContext ? ['--include-policy-context'] : [])], { encoding: 'utf8', timeout: 20000, env: { ...process.env,
     POSTGRES_HOST: connection.host, POSTGRES_PORT: String(connection.port), POSTGRES_DB: connection.database,
     POSTGRES_USER: connection.user, POSTGRES_PASSWORD: connection.password,
     POSTGRES_CONN_TIMEOUT_MS: '1000', PGOPTIONS: '', LOG_LEVEL: 'debug', FILE_LOGGING_ENABLED: 'false' } });
   expect(result.status).toBe(0);
-  expect(JSON.parse(result.stdout)).toMatchObject({ version: 'policy.purpose_outcome_cases.v1', private: true, display: { shownCases: 1 } });
+  const report = JSON.parse(result.stdout);
+  expect(report).toMatchObject({ version: includeContext ? 'policy.purpose_outcome_cases.v2' : 'policy.purpose_outcome_cases.v1', private: true, display: { shownCases: 1 } });
+  if (includeContext) expect(report.policyEvaluationCoverage.available).toBe(1);
   expect(Buffer.byteLength(result.stdout)).toBeLessThanOrEqual(1048576);
   expect(result.stdout).not.toMatch(/PRIVATE|Fingerprint|password|SLOW QUERY/);
 });
@@ -110,4 +116,58 @@ test('cancellation stops active work without leaving a busy database connection'
     return client.query(...args);
   } }), options), controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
   expect((await getPool().query('SELECT 1 AS ready')).rows[0].ready).toBe(1);
+});
+
+test('optional real policy context keeps frozen BIGINT binding and measurements without changing source evidence', async () => {
+  const db = getPool(), before = (await db.query('SELECT * FROM classification_policy_evaluation_captures')).rows;
+  const sources = (await db.query('SELECT * FROM policy_feedback_sources')).rows;
+  const ordinary = await execute(), result = await executeContext();
+  expect(result.version).toBe('policy.purpose_outcome_cases.v2');
+  expect(result.cases[0].classificationId).toBe(String(history.id));
+  expect(result.policyEvaluationCoverage).toMatchObject({ eligible: 1, available: 1 });
+  expect(result.cases[0].policyEvaluation).toMatchObject({ status: 'available', version: 'policy_evaluation.v2',
+    reference: 'retained_policy_evaluation', candidates: [{ libraryId: libraries[1], purposeEvidence: { declaredMatch: 'matched' } }] });
+  expect(result.evaluation.cohorts).toEqual(ordinary.evaluation.cohorts);
+  expect(result.comparisonCohorts).toEqual(ordinary.comparisonCohorts);
+  expect(result.cases[0].comparisons).toEqual(ordinary.cases[0].comparisons);
+  expect(JSON.stringify(result)).not.toMatch(/PRIVATE|actorFingerprint|sourceVersion|reviewId|event_key|snapshot/);
+  expect((await db.query('SELECT * FROM classification_policy_evaluation_captures')).rows).toEqual(before);
+  expect((await db.query('SELECT * FROM policy_feedback_sources')).rows).toEqual(sources);
+});
+
+test('SQL context admission withholds entire rows and expired bodies before transfer', async () => {
+  const db = getPool(), now = new Date().toISOString();
+  const overBudget = (await db.query(PURPOSE_POLICY_CONTEXT_SQL, [[history.id], now, 1])).rows;
+  expect(overBudget).toHaveLength(1); expect(overBudget[0]).toMatchObject({ input: null, captures: 1 });
+  expect(Number(overBudget[0].payload_bytes)).toBeGreaterThan(1);
+  const afterLease = new Date(Date.now() + 31 * 86400000).toISOString();
+  const expired = (await db.query(PURPOSE_POLICY_CONTEXT_SQL, [[history.id], afterLease, 67108864])).rows[0].input;
+  expect(expired.capture.payload).toBeNull(); expect(expired.capture.payloadBytes).toBeGreaterThan(0);
+});
+
+test('cancellation also stops the opt-in context read and cleans its database work', async () => {
+  const controller = new AbortController();
+  await expect(executeContext((callback, options) => read(client => callback({ query: async (...args) => {
+    if (args[0].startsWith('WITH requested')) {
+      const timer = setTimeout(() => controller.abort(), 50);
+      try { return await client.query('SELECT pg_sleep(30)'); } finally { clearTimeout(timer); }
+    }
+    return client.query(...args);
+  } }), options), controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+  expect((await getPool().query('SELECT 1 AS ready')).rows[0].ready).toBe(1);
+});
+
+test('context read shares the original snapshot even across a committed History cascade deletion', async () => {
+  let deleted = false;
+  const result = await executeContext((callback, options) => read(client => callback({ query: async (...args) => {
+    const value = await client.query(...args);
+    if (!deleted && args[0].startsWith('WITH authorized')) {
+      deleted = true; await getPool().query('DELETE FROM classification_history WHERE id=$1', [history.id]);
+    }
+    return value;
+  } }), options));
+  expect(deleted).toBe(true); expect(result.policyEvaluationCoverage.available).toBe(1);
+  expect(result.cases[0].policyEvaluation.status).toBe('available');
+  const later = await executeContext(); expect(later.cases).toEqual([]);
+  expect(later.policyEvaluationCoverage).toMatchObject({ eligible: 0, available: 0 });
 });

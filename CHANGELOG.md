@@ -11,6 +11,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Optional frozen policy context** — Add `--include-policy-context` to the
+  private purpose-case CLI. Inspect complete retained policy pools with exact
+  item/time/leader/proof binding, distinct raw and ranked scores, and explicit
+  optional evidence gaps. Keep current report bytes and eligibility unchanged
+  without the option. Bound combined read-only input before transfer and omit
+  whole cases at the output ceiling. No routing or learning changes.
+
 - **Private purpose disagreement cases** — Add the exclusive read-only evaluation
   CLI mode `--prospective-purpose-cases`. List bounded eligible cases with
   separately named frozen policy/choice, original/choice and policy/original

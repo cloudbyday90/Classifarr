@@ -1,8 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { PURPOSE_OUTCOME_COHORT_SQL } from './purposeOutcomeCohortRepository.mjs';
+import { readPurposePolicyContextInputs } from './purposePolicyContextRepository.mjs';
 
 /** One bounded frozen input for aggregate and private case consumers; projection performs no further reads. */
-export async function withPurposeOutcomeSnapshot(runtime, { signal } = {}, project) {
+export async function withPurposeOutcomeSnapshot(runtime, { signal, includePolicyContext = false } = {}, project) {
   const controller = new AbortController(), abort = () => controller.abort();
   if (signal?.aborted) abort();
   signal?.addEventListener('abort', abort, { once: true });
@@ -21,7 +22,10 @@ export async function withPurposeOutcomeSnapshot(runtime, { signal } = {}, proje
           header.events > 5000 || Number(header.payload_bytes) > 67108864) throw new Error('purpose_cohort_input_budget');
       const rows = result.rows.filter(row => row.input !== null).map(row => row.input);
       if (rows.length !== header.events) throw new Error('purpose_cohort_invalid_input');
-      controller.signal.throwIfAborted(); return { rows, window, observedAt };
+      controller.signal.throwIfAborted();
+      const input = { rows, window, observedAt };
+      if (includePolicyContext) input.policyContextInputs = await readPurposePolicyContextInputs(client, input, Number(header.payload_bytes));
+      controller.signal.throwIfAborted(); return input;
     }, { signal: controller.signal, readOnly: true, isolationLevel: 'repeatable_read', timeoutMs: 15000 });
     controller.signal.throwIfAborted(); return project(input);
   } finally {
