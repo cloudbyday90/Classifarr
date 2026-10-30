@@ -10,7 +10,7 @@
         Evaluation progress
       </h2>
       <button
-        v-if="snapshot || gapAudit || paused"
+        v-if="snapshot || gapAudit || purposeSummary || paused"
         type="button"
         :aria-pressed="paused"
         @click="togglePause"
@@ -27,6 +27,13 @@
       :loading="gapAuditLoading"
       :paused="paused"
       :error-message="gapAuditError"
+    />
+    <PurposeEvaluationSummary
+      v-if="purposeAvailable"
+      :summary="purposeSummary"
+      :loading="purposeLoading"
+      :paused="paused"
+      :error-message="purposeError"
     />
     <template v-if="snapshot">
       <EvaluationActivitySummary :activity="snapshot.activity" />
@@ -99,8 +106,11 @@ import EvaluationCoverageGaps from './EvaluationCoverageGaps.vue'
 import EvaluationActivitySummary from './EvaluationActivitySummary.vue'
 import EvidenceGapAuditSummary from './EvidenceGapAuditSummary.vue'
 import { useEvidenceGapAudit } from '@/composables/useEvidenceGapAudit'
+import PurposeEvaluationSummary from './PurposeEvaluationSummary.vue'
+import { usePurposeEvaluation } from '@/composables/usePurposeEvaluation'
 const { available, paused, snapshot, isLoading, togglePause, errorMessage } = useEvaluationHistory()
 const { available: gapAuditAvailable, snapshot: gapAudit, isLoading: gapAuditLoading, errorMessage: gapAuditError } = useEvidenceGapAudit({ paused, enabled: available })
+const { available: purposeAvailable, snapshot: purposeSummary, isLoading: purposeLoading, errorMessage: purposeError } = usePurposeEvaluation({ paused, enabled: available })
 const latest = computed(() => snapshot.value?.groups[0])
 </script>
 

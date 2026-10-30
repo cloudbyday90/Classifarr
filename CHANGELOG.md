@@ -11,6 +11,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Automatic destination review summary** — Evaluate retained explicit choices
+  automatically through existing background ownership, resource limits and
+  backoff. Save bounded aggregate counts and show one quiet, expandable summary
+  in administrator Evaluation progress. Distinguish unavailable, empty, stale,
+  deferred and failed evidence without a manual CLI trigger. Keep original,
+  policy and choice comparisons separate; routing and learning remain unchanged.
+
 - **Optional frozen policy context** — Add `--include-policy-context` to the
   private purpose-case CLI. Inspect complete retained policy pools with exact
   item/time/leader/proof binding, distinct raw and ranked scores, and explicit

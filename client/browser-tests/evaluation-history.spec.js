@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { normalizeEvaluationGaps } from '../src/utils/evaluationCoverageGaps.js'
 import { evidenceGapAuditFixture } from '../src/__tests__/fixtures/evidenceGapAudit.js'
+import { purposeEvaluationFixture } from '../src/__tests__/fixtures/purposeEvaluation.js'
 
 test('saved evaluation coverage is compact, keyboard-pausable and clears after lost access', async ({ page }, testInfo) => {
   let paired = 20, busy = false, denied = false, reads = 0, writes = 0, auditReads = 0, auditFailed = false
@@ -30,6 +31,7 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
         data.report.observations.reasons.selectionOnlyRows = 1; data.report.evidencePhase = 'no_eligible_outcomes'
       }
     }
+    if (path === '/api/stats/purpose-evaluation') data = purposeEvaluationFixture()
     if (path === '/api/stats/evaluation-history') {
       reads++
       if (denied) status = 403
@@ -59,6 +61,24 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect(panel).toContainText('Disabled — no AI calls are scheduled for evaluation capture')
   await expect(panel).toContainText('Evaluation is waiting for backfill scans or queued work')
   const audit = panel.getByRole('region', { name: 'Comparison evidence audit' })
+  const purpose = panel.getByRole('region', { name: 'Destination review summary' })
+  await expect(purpose.getByRole('status')).toContainText('1 comparable choice; 1 differs')
+  await expect(purpose.locator('details')).not.toHaveAttribute('open')
+  await expect(purpose.getByRole('button')).toHaveCount(0)
+  await purpose.screenshot({ path: testInfo.outputPath('automatic-destination-summary-collapsed.png') })
+  await purpose.locator('summary').focus(); await page.keyboard.press('Enter')
+  await expect(purpose.locator('details')).toHaveAttribute('open', '')
+  await expect(purpose).toContainText('Original automated destination and operator choice')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.clock.runFor(1000)
+  await expect.poll(() => page.locator('aside').evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0)
+  await purpose.scrollIntoViewIfNeeded()
+  const purposeBounds = await purpose.boundingBox()
+  expect(purposeBounds.x).toBeGreaterThanOrEqual(0)
+  expect(purposeBounds.x + purposeBounds.width).toBeLessThanOrEqual(390)
+  expect(await purpose.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await purpose.screenshot({ path: testInfo.outputPath('automatic-destination-summary-mobile.png') })
+  await page.setViewportSize({ width: 1280, height: 720 })
   const auditDetails = audit.locator('details'), auditDisclosure = auditDetails.locator('summary')
   await expect(audit.getByRole('status')).toContainText('0 groups have eligible operator evidence')
   await expect(auditDetails).not.toHaveAttribute('open')
@@ -140,6 +160,7 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await audit.screenshot({ path: testInfo.outputPath('evidence-gap-audit-mobile.png') })
   expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:evaluation-history'))).toBeNull()
   expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:evidence-gap-audit'))).toBeNull()
+  expect(await page.evaluate(() => globalThis.localStorage.getItem('classifarr:v1:swr:purpose-evaluation'))).toBeNull()
   await panel.getByRole('button', { name: 'Pause summary' }).press('Space')
   denied = true
   await page.clock.fastForward(300_000)

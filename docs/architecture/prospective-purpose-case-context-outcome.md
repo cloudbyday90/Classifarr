@@ -123,6 +123,8 @@ The user confirmed an independent automatic summary job, bounded aggregate-only
 checkpoint and protected saved-status presentation in the existing administrator
 Evaluation progress area. That implementation follows this verified foundation;
 item-level UI remains separately scoped.
+See its [design](automatic-purpose-evaluation-design.md) and
+[outcome](automatic-purpose-evaluation-outcome.md).
 After a separately authorized deployment and evidence accumulation, use the
 results to choose a routing fix. Retained policy alternatives describe the policy
 stage; later AI/router causation still requires its own frozen trace. This batch

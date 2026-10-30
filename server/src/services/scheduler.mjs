@@ -78,6 +78,7 @@ import { registerReclassificationMoveSchedule } from './reclassificationMoveSche
 import { registerReclassificationBatchSchedule } from './reclassificationBatchScheduler.mjs';
 import { registerAutomaticDestinationEvaluationSchedule } from './automaticDestinationEvaluationScheduler.mjs';
 import { registerEvidenceGapAuditSchedule } from './evidenceGapAuditScheduler.mjs';
+import { registerPurposeEvaluationSchedule } from './purposeEvaluationScheduler.mjs';
 import { registerAutomaticSourcePairSchedule } from './automaticSourcePairScheduler.mjs';
 import { registerOllamaReadinessBackfillSchedule } from './ollamaReadinessBackfillScheduler.mjs';
 import { registerDiscordDeliveryDispatchSchedule } from './discordDeliveryDispatchScheduler.mjs';
@@ -107,6 +108,7 @@ class SchedulerService {
         this.discordDeliveryDispatchWorker?.stop();
         this.automaticDestinationEvaluationWorker?.stop();
         this.evidenceGapAuditWorker?.stop();
+        this.purposeEvaluationWorker?.stop();
         this.automaticSourcePairWorker?.stop();
         this.inventoryDescriptionRefreshWorker?.stop();
         this.inventoryRepresentativeProfileWorker?.stop();
@@ -142,6 +144,7 @@ class SchedulerService {
         registerReclassificationBatchSchedule(this);
         registerAutomaticDestinationEvaluationSchedule(this);
         registerEvidenceGapAuditSchedule(this);
+        registerPurposeEvaluationSchedule(this);
         registerAutomaticSourcePairSchedule(this);
         registerOllamaReadinessBackfillSchedule(this);
         registerDiscordDeliveryDispatchSchedule(this);

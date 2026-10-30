@@ -3,7 +3,15 @@ import { expect, it, vi } from 'vitest'
 const { getDataRequest, put } = vi.hoisted(() => ({ getDataRequest: vi.fn(), put: vi.fn() }))
 vi.mock('@/api/core', () => ({ getDataRequest, apiClient: { put } }))
 import api from '@/api'
-import leaf, { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload, getEvidenceGapAudit } from '@/api/evaluationHistoryApi'
+import leaf, { getEvaluationHistory, getEvaluationWorkload, updateEvaluationWorkload, getEvidenceGapAudit, getPurposeEvaluation } from '@/api/evaluationHistoryApi'
+
+it('wires the saved purpose summary through the leaf, aggregator and barrel', async () => {
+  const result = { status: 'never_run' }; getDataRequest.mockResolvedValue(result)
+  expect(api.getPurposeEvaluation).toBe(getPurposeEvaluation)
+  expect(leaf.getPurposeEvaluation).toBe(getPurposeEvaluation)
+  expect(await api.getPurposeEvaluation()).toBe(result)
+  expect(getDataRequest).toHaveBeenLastCalledWith('/stats/purpose-evaluation')
+})
 
 it('wires the saved audit through the leaf, aggregator and barrel', async () => {
   const result = { status: 'never_run' }

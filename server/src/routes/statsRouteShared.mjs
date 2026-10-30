@@ -20,6 +20,7 @@ import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
 import { registerEvaluationHistoryRoutes } from './statsRouteEvaluationHistory.mjs';
 import { registerEvidenceGapAuditRoutes } from './statsRouteEvidenceGapAudit.mjs';
+import { registerPurposeEvaluationRoutes } from './statsRoutePurposeEvaluation.mjs';
 import { registerEvaluationWorkloadRoutes } from './statsRouteEvaluationWorkload.mjs';
 
 export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requireAdmin, rateLimit }) {
@@ -27,6 +28,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requ
   router.use(authenticateTokenOrApiKey);
   registerEvaluationHistoryRoutes(router, { db, requireAdmin, rateLimit });
   registerEvidenceGapAuditRoutes(router, { db, requireAdmin, rateLimit });
+  registerPurposeEvaluationRoutes(router, { db, requireAdmin, rateLimit });
   registerEvaluationWorkloadRoutes(router, { db, requireAdmin, rateLimit });
   registerClassificationStatsRoutes(router, { db });
   registerCandidateBoundVerificationMetricsRoutes(router, { db });

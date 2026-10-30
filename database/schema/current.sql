@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-29T23:50:37.415Z
--- Latest Migration: 20261029_090000_add_prospective_purpose_outcomes.sql
+-- Generated: 2026-10-30T10:58:09.006Z
+-- Latest Migration: 20261030_090000_add_automatic_purpose_evaluation.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2425,6 +2425,41 @@ CREATE TABLE public.automatic_evidence_gap_audit (
 --
 
 COMMENT ON TABLE public.automatic_evidence_gap_audit IS 'One replaceable aggregate checkpoint, not source evidence or recovery authority. Excluded from portable exports; reset on configuration restore.';
+
+
+--
+-- Name: automatic_purpose_evaluation; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automatic_purpose_evaluation (
+    singleton boolean DEFAULT true NOT NULL,
+    status text NOT NULL,
+    input_fingerprint text,
+    report jsonb,
+    observed_at timestamp with time zone NOT NULL,
+    evaluated_at timestamp with time zone,
+    next_check_at timestamp with time zone NOT NULL,
+    failure_count integer DEFAULT 0 NOT NULL,
+    failure_code text,
+    CONSTRAINT automatic_purpose_evaluation_check CHECK ((((status = 'complete'::text) AND (input_fingerprint IS NOT NULL) AND (report IS NOT NULL) AND (evaluated_at IS NOT NULL) AND (failure_code IS NULL) AND (failure_count = 0)) OR ((status = 'failed'::text) AND (input_fingerprint IS NULL) AND (report IS NULL) AND (evaluated_at IS NULL) AND (failure_code IS NOT NULL) AND (failure_count > 0)))),
+    CONSTRAINT automatic_purpose_evaluation_check1 CHECK (((next_check_at > observed_at) AND ((evaluated_at IS NULL) OR (evaluated_at <= observed_at)))),
+    CONSTRAINT automatic_purpose_evaluation_evaluated_at_check CHECK (isfinite(evaluated_at)),
+    CONSTRAINT automatic_purpose_evaluation_failure_code_check CHECK ((failure_code = ANY (ARRAY['busy'::text, 'memory_pressure'::text, 'memory_unknown'::text, 'evidence_budget'::text, 'invalid_evidence'::text, 'deadline'::text, 'sources_unavailable'::text, 'evaluation_unavailable'::text]))),
+    CONSTRAINT automatic_purpose_evaluation_failure_count_check CHECK (((failure_count >= 0) AND (failure_count <= 5))),
+    CONSTRAINT automatic_purpose_evaluation_input_fingerprint_check CHECK ((input_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT automatic_purpose_evaluation_next_check_at_check CHECK (isfinite(next_check_at)),
+    CONSTRAINT automatic_purpose_evaluation_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT automatic_purpose_evaluation_report_check CHECK (((jsonb_typeof(report) = 'object'::text) AND (octet_length((report)::text) <= 16384))),
+    CONSTRAINT automatic_purpose_evaluation_singleton_check CHECK (singleton),
+    CONSTRAINT automatic_purpose_evaluation_status_check CHECK ((status = ANY (ARRAY['complete'::text, 'failed'::text])))
+);
+
+
+--
+-- Name: TABLE automatic_purpose_evaluation; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.automatic_purpose_evaluation IS 'One replaceable aggregate checkpoint, not source evidence or recovery authority. Excluded from portable exports; reset on configuration restore.';
 
 
 --
@@ -10692,6 +10727,14 @@ ALTER TABLE ONLY public.automatic_evaluation_history
 
 ALTER TABLE ONLY public.automatic_evidence_gap_audit
     ADD CONSTRAINT automatic_evidence_gap_audit_pkey PRIMARY KEY (singleton);
+
+
+--
+-- Name: automatic_purpose_evaluation automatic_purpose_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automatic_purpose_evaluation
+    ADD CONSTRAINT automatic_purpose_evaluation_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -19074,6 +19117,7 @@ FROM unnest(ARRAY[
     '20261028_140000_freeze_feedback_source_receipts.sql',
     '20261028_160000_add_feedback_review_references.sql',
     '20261028_180000_add_policy_evaluation_captures.sql',
-    '20261029_090000_add_prospective_purpose_outcomes.sql'
+    '20261029_090000_add_prospective_purpose_outcomes.sql',
+    '20261030_090000_add_automatic_purpose_evaluation.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

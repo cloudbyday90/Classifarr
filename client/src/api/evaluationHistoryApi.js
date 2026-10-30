@@ -10,6 +10,10 @@ export function getEvidenceGapAudit() {
   return getDataRequest('/stats/evidence-gap-audit')
 }
 
+export function getPurposeEvaluation() {
+  return getDataRequest('/stats/purpose-evaluation')
+}
+
 export function getEvaluationWorkload() {
   return getDataRequest('/stats/evaluation-workload')
 }
@@ -18,4 +22,4 @@ export function updateEvaluationWorkload(configuration) {
   return apiClient.put('/stats/evaluation-workload', configuration)
 }
 
-export default { getEvaluationHistory, getEvidenceGapAudit, getEvaluationWorkload, updateEvaluationWorkload }
+export default { getEvaluationHistory, getEvidenceGapAudit, getPurposeEvaluation, getEvaluationWorkload, updateEvaluationWorkload }
