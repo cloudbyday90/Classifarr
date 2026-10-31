@@ -7,6 +7,36 @@ import { DiscoveryDeferredError } from '../../services/inventoryDiscoveryAdmissi
 import { registerInventoryRepresentativeProfileSchedule } from '../../services/inventoryRepresentativeProfileScheduler.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
 import { discoveryAdmissionFixture } from '../helpers/discoveryAdmissionFixture.mjs';
+import { readInventoryRefreshReadiness } from '../../services/inventoryRefreshReadinessReader.mjs';
+import { createInventoryRefreshReadinessFailure } from '../../services/inventoryRefreshReadinessDiagnostics.mjs';
+
+test('diagnosed preflight failure preserves fitting retry debt and an already verified private cache', async () => {
+  const v = setup(); let fault = false;
+  const database = { withTransaction: callback => callback({ query: async () => {
+    if (fault) throw Object.assign(Error('PRIVATE preflight'), { code: '53100' });
+    return { rows: [{ readiness: 'ready' }] };
+  } }) };
+  const guarded = withInventoryBackgroundReadiness(v.worker, database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
+  try {
+    v.dependencies.fit.mockRejectedValueOnce(Error('first')).mockRejectedValueOnce(Error('second'));
+    expect((await guarded.run()).status).toBe('failed');
+    v.control.time = 60_000; expect((await guarded.run()).status).toBe('failed');
+    fault = true; v.control.time = 90_000;
+    expect(await guarded.run()).toMatchObject({ status: 'deferred', reason: 'unavailable', failure: { category: 'database_disk_full' } });
+    fault = false; v.control.time = 179_999;
+    expect((await guarded.run()).status).toBe('cooldown');
+    v.control.time++; expect((await guarded.run()).status).toBe('published');
+    const published = v.worker.getStatus();
+    expect(published).toMatchObject({ status: 'published', cacheStored: true });
+    const fits = v.dependencies.fit.mock.calls.length;
+    fault = true;
+    expect((await guarded.run()).status).toBe('deferred');
+    expect(v.worker.getStatus()).toEqual(published);
+    fault = false;
+    expect((await guarded.run()).status).toBe('not_due');
+    expect(v.dependencies.fit).toHaveBeenCalledTimes(fits);
+  } finally { guarded.stop(); }
+});
 
 const MIB = 1024 ** 2;
 function setup() {

@@ -72,6 +72,9 @@ generic deferred/unavailable results, so useful storage context can be lost befo
 the worker starts. Reuse the existing wrapper/diagnostic boundaries and logs; add
 no new dashboard or manual trigger. Decide that scope separately.
 
+That follow-up is now covered by the agreed [readiness design](inventory-refresh-readiness-diagnostics-design.md)
+and its separate [implementation outcome](inventory-refresh-readiness-diagnostics-outcome.md).
+
 For prevention, measure temporary-file demand and volume/quota behavior on an
 isolated workload before selecting per-job limits or host changes. Resume the
 existing automatic classification-evidence collection after a separately

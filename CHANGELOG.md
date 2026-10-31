@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Refresh readiness diagnostics** — Explain failed preliminary database checks
+  for description and representative refreshes through safe, rate-limited
+  warnings in existing logs. Keep failed checks deferred, preserve cache and
+  retry state, and resume normal admission automatically after readiness returns.
+  No new cooldown, recovery claim, interface or operator command is added.
+
 - **Inventory refresh disk-full recovery** — Recognize PostgreSQL-reported
   storage exhaustion in description and representative refreshes, retain safe
   incident diagnostics in existing logs, and automatically wait one hour before

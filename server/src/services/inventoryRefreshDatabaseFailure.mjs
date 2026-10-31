@@ -28,7 +28,8 @@ const DATABASE_PROBLEMS = Object.freeze({
   database_unknown: 'A database operation failed without an allowlisted SQLSTATE.',
 });
 const DATABASE_STEPS = 'Keep completed cache entries and safeguards. If this persists, correlate this incident and time with PostgreSQL logs and database diagnostics. Do not reset imports or increase deadlines without evidence.';
-const STORAGE_STEPS = 'Check available space, inodes and quotas on the database, temporary-file and WAL volumes. Preserve backups, completed cache entries and database files. Heavy refresh work retries automatically after one hour; this does not establish that storage has recovered.';
+export const INVENTORY_REFRESH_STORAGE_CHECKS = 'Check available space, inodes and quotas on the database, temporary-file and WAL volumes. Preserve backups, completed cache entries and database files.';
+const STORAGE_STEPS = `${INVENTORY_REFRESH_STORAGE_CHECKS} Heavy refresh work retries automatically after one hour; this does not establish that storage has recovered.`;
 
 /** Categorization only; callers must establish database origin at their operation boundary. */
 export const inventoryRefreshSqlCategory = value => typeof value === 'string' && Object.hasOwn(DATABASE_CODES, value)

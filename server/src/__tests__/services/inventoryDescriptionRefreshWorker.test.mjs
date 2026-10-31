@@ -10,6 +10,34 @@ import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNei
 import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { observeDescriptionDatabaseOperation } from '../../services/inventoryDescriptionRefreshObservation.mjs';
+import { withInventoryBackgroundReadiness } from '../../services/inventoryBackgroundReadiness.mjs';
+import { readInventoryRefreshReadiness } from '../../services/inventoryRefreshReadinessReader.mjs';
+import { createInventoryRefreshReadinessFailure } from '../../services/inventoryRefreshReadinessDiagnostics.mjs';
+
+test('preflight failure preserves completed cache and the worker storage hold without creating recovery', async () => {
+  const v = setup(2);
+  await v.worker.run();
+  const saved = new Set(v.saved);
+  v.advance();
+  v.repository.readCorpus.mockImplementationOnce(() => observeDescriptionDatabaseOperation(() => { throw { code: '53100' }; }));
+  expect(await v.worker.run()).toMatchObject({ status: 'failed', retryAfterSeconds: 3600 });
+  let fault = true;
+  const database = { withTransaction: callback => callback({ query: async () => {
+    if (fault) throw Object.assign(Error('PRIVATE preflight'), { code: '53100' });
+    return { rows: [{ readiness: 'ready' }] };
+  } }) };
+  const guarded = withInventoryBackgroundReadiness(v.worker, database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
+  try {
+    expect(await guarded.run()).toMatchObject({ status: 'deferred', reason: 'unavailable' });
+    expect(v.saved).toEqual(saved);
+    fault = false; v.advance(3_599_999);
+    expect(await guarded.run()).toMatchObject({ status: 'cooldown' });
+    expect(v.dependencies.createEmbedder).toHaveBeenCalledTimes(1);
+    v.advance(1);
+    expect(await guarded.run()).toMatchObject({ status: 'up_to_date', cacheHits: 2, embeddedDescriptions: 0 });
+    expect(v.saved).toEqual(saved);
+  } finally { guarded.stop(); }
+});
 
 test('disk-full cooldown preserves completed descriptions and automatically resumes without re-embedding them', async () => {
   const v = setup(2);

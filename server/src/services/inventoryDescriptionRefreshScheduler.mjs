@@ -10,6 +10,8 @@ import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecove
 import { recordDescriptionRepresentation } from './inventoryDescriptionRepresentationCheckpoint.mjs';
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 import { createDescriptionRefreshTaskError } from './inventoryDescriptionRefreshFailure.mjs';
+import { readInventoryRefreshReadiness } from './inventoryRefreshReadinessReader.mjs';
+import { createInventoryRefreshReadinessFailure, createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
@@ -22,7 +24,7 @@ export function createInventoryDescriptionRefreshRuntime(database = db, { neighb
     getRevision: getInventoryDescriptionRefreshRevision,
     recordVerifiedRepresentation: (identity, configKey) => recordDescriptionRepresentation(database, identity, configKey),
     recovery: createInventoryDescriptionRecovery({ log: createLogger('InventoryDescriptionRecovery') }),
-  }), database);
+  }), database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
 }
 
 export function registerInventoryDescriptionRefreshSchedule(scheduler, {
@@ -31,8 +33,10 @@ export function registerInventoryDescriptionRefreshSchedule(scheduler, {
 } = {}) {
   scheduler.inventoryDescriptionRefreshWorker?.stop();
   scheduler.inventoryDescriptionRefreshWorker = worker;
+  const readinessDiagnostics = createInventoryRefreshReadinessDiagnostics({ log });
   const run = async () => {
     const report = await worker.run();
+    readinessDiagnostics.report(report);
     if (report.status === 'failed') {
       // Preserve only the recovery service's bounded diagnostic fields.
       throw createDescriptionRefreshTaskError(report);

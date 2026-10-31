@@ -216,7 +216,9 @@ describe('Auth Service - token and persistence flows', () => {
     const randomBytesSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(Buffer.from('c'.repeat(48)));
     db.query.mockResolvedValueOnce(createDbRowsResult());
 
+    const startedAt = Date.now();
     const token = await authService.generateRefreshToken(42, 'UnitTestAgent', { platform: 'linux' });
+    const finishedAt = Date.now();
     const dbArgs = db.query.mock.calls[0][1];
 
     expect(token).toBe(Buffer.from('c'.repeat(48)).toString('base64url'));
@@ -227,10 +229,11 @@ describe('Auth Service - token and persistence flows', () => {
     expect(JSON.parse(dbArgs[4])).toEqual({ platform: 'linux' });
     expect(dbArgs[5]).toBe(false);
 
-    const min = Date.now() + 47 * 60 * 60 * 1000;
-    const max = Date.now() + 49 * 60 * 60 * 1000;
-    expect(dbArgs[2].getTime()).toBeGreaterThan(min);
-    expect(dbArgs[2].getTime()).toBeLessThan(max);
+    // Bracket the call and include both boundaries of the existing DST allowance.
+    const min = startedAt + 47 * 60 * 60 * 1000;
+    const max = finishedAt + 49 * 60 * 60 * 1000;
+    expect(dbArgs[2].getTime()).toBeGreaterThanOrEqual(min);
+    expect(dbArgs[2].getTime()).toBeLessThanOrEqual(max);
     expect(randomBytesSpy).toHaveBeenCalledWith(48);
   });
 

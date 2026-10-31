@@ -13,6 +13,8 @@ import { createRepresentativeValidationDiagnostics } from './representativeValid
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
 import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
 import { createRepresentativeRefreshTaskError } from './inventoryRepresentativeRefreshFailure.mjs';
+import { readInventoryRefreshReadiness } from './inventoryRefreshReadinessReader.mjs';
+import { createInventoryRefreshReadinessFailure, createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
@@ -26,7 +28,7 @@ export function createInventoryRepresentativeProfileRuntime(database = db, { nei
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
     getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics, neighborhoodRecovery,
   });
-  return withInventoryBackgroundReadiness({ ...worker, observer }, database);
+  return withInventoryBackgroundReadiness({ ...worker, observer }, database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
 }
 
 export function registerInventoryRepresentativeProfileSchedule(scheduler, {
@@ -36,9 +38,11 @@ export function registerInventoryRepresentativeProfileSchedule(scheduler, {
   scheduler.inventoryRepresentativeProfileWorker?.stop();
   const disconnect = installRepresentativeShadow(worker.observer ?? null);
   scheduler.inventoryRepresentativeProfileWorker = { ...worker, stop() { disconnect(); worker.stop(); } };
+  const readinessDiagnostics = createInventoryRefreshReadinessDiagnostics({ log });
   let lastReadiness = null;
   const run = async () => {
     const report = await worker.run();
+    readinessDiagnostics.report(report);
     if (report.status === 'failed') throw createRepresentativeRefreshTaskError(report);
     if (report.status === 'published') log.info('Library representative profiles refreshed automatically', report);
     if (['published', 'up_to_date'].includes(report.status) && report.observationReadiness) {
