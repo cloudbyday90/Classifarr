@@ -12,9 +12,11 @@ const database = createIntegrationDatabaseModuleMock();
 afterAll(() => setDb(null));
 
 test.each([
-  ['statement deadline', 'SELECT pg_sleep(30)'],
-  ['explicit self-cancellation', 'SELECT pg_cancel_backend(pg_backend_pid()), pg_sleep(30)'],
-])('real PostgreSQL %s survives worker, recovery, scheduler and persisted log boundaries', async (_name, faultSql) => {
+  ['statement deadline', 'SELECT pg_sleep(30)', 'database_query_cancelled', '57014', 60],
+  ['explicit self-cancellation', 'SELECT pg_cancel_backend(pg_backend_pid()), pg_sleep(30)', 'database_query_cancelled', '57014', 60],
+  ['simulated disk-full', `DO $storage$ BEGIN RAISE EXCEPTION USING ERRCODE='53100',
+    MESSAGE='PRIVATE disk failure', DETAIL='PRIVATE file/token'; END; $storage$`, 'database_disk_full', '53100', 3600],
+])('real PostgreSQL %s survives worker, recovery, scheduler and persisted log boundaries', async (_name, faultSql, category, sqlState, retryAfterSeconds) => {
   setDb(database);
   const pending = [];
   const pino = module => ({ bindings: () => ({ module }), error() {}, warn() {}, info() {} });
@@ -27,7 +29,7 @@ test.each([
     log: { warn: persist(recoveryLogger, 'warn'), info: jest.fn() } });
   const repository = createInventoryDescriptionRefreshRepository({
     withTransaction: callback => database.withTransaction(client => callback({
-      // Retain the real SET LOCAL deadlines. Only this disposable test's SELECT is delayed.
+      // Retain real deadlines. Faults are isolated SQL exceptions, never physical disk exhaustion.
       query: (sql, params) => client.query(sql === INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL ? faultSql : sql,
         sql === INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL ? [] : params),
     })),
@@ -50,11 +52,16 @@ test.each([
   const { rows } = await database.query('SELECT level, metadata FROM error_log WHERE error_id = ANY($1::uuid[]) ORDER BY level', [ids]);
   expect(rows).toHaveLength(2);
   expect(rows[0].metadata.failure).toEqual(rows[1].metadata.failure);
-  expect(rows[0].metadata).toMatchObject({ retryAfterSeconds: 60, failure: {
-    stage: 'corpus_read', category: 'database_query_cancelled', sqlState: '57014',
+  expect(rows[0].metadata).toMatchObject({ retryAfterSeconds, failure: {
+    stage: 'corpus_read', category, sqlState,
     incidentId: expect.any(String), operationDurationMs: expect.any(Number), databaseDurationMs: expect.any(Number),
   } });
-  expect(JSON.stringify(rows)).not.toMatch(/pg_sleep|pg_cancel_backend|canceling statement due to statement timeout|parameters|password/i);
+  expect(JSON.stringify(rows)).not.toMatch(/pg_sleep|pg_cancel_backend|canceling statement due to statement timeout|parameters|password|PRIVATE|file\/token/i);
+  if (sqlState === '53100') {
+    expect(rows.find(row => row.level === 'WARN').metadata).toMatchObject({
+      problem: expect.stringContaining('reported insufficient storage'), steps: expect.stringContaining('Preserve backups'),
+    });
+  }
   expect(createEmbedder).not.toHaveBeenCalled();
   expect(await worker.run()).toMatchObject({ status: 'cooldown' });
   // A rolled-back deadline does not contaminate a pooled connection's later query.

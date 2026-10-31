@@ -4,11 +4,9 @@ import { diagnoseProviderResponse } from './providerResponseDiagnosis.mjs';
 import { representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 import { descriptionRefreshDuration, descriptionRefreshSqlCategory, readDescriptionRefreshObservation } from './inventoryDescriptionRefreshObservation.mjs';
 import { readRepresentativeRefreshObservation, representativeRefreshStage, representativeFailureProperty as read } from './inventoryRepresentativeRefreshObservation.mjs';
+import { INVENTORY_REFRESH_DISK_FULL, INVENTORY_REFRESH_STORAGE_RETRY_MS, inventoryRefreshDatabaseDiagnosis, isInventoryRefreshDatabaseCategory } from './inventoryRefreshDatabaseFailure.mjs';
 
 const taskFailures = new WeakMap();
-const DATABASE_CATEGORIES = new Set(['database_query_cancelled', 'database_lock_unavailable', 'database_deadlock',
-  'database_serialization', 'database_connection', 'database_capacity', 'database_shutdown', 'database_permission',
-  'database_schema', 'database_unknown']);
 
 function categoryOf(error) {
   const projected = Object.fromEntries(['code', 'message', 'providerResponseIssue', 'providerResponsePhase', 'embeddingIssue', 'representativeIssue']
@@ -18,7 +16,7 @@ function categoryOf(error) {
 }
 
 function validCategory(category) {
-  return typeof category === 'string' && (category === 'task_deadline' || DATABASE_CATEGORIES.has(category) ||
+  return typeof category === 'string' && (category === 'task_deadline' || isInventoryRefreshDatabaseCategory(category) ||
     representativeValidationIssue({ representativeIssue: category }) === category ||
     diagnoseProviderResponse({ code: 'PROVIDER_RESPONSE_INVALID', providerResponseIssue: category }).code === category);
 }
@@ -53,6 +51,7 @@ function safeFailure(value) {
     else if (typeof duration === 'number' && Number.isFinite(duration) && duration >= 0) output[key] = descriptionRefreshDuration(duration);
   }
   const sqlState = read(value, 'sqlState');
+  if (category === INVENTORY_REFRESH_DISK_FULL && sqlState !== '53100') return null;
   if (descriptionRefreshSqlCategory(sqlState) === category) output.sqlState = sqlState;
   return Object.freeze(output);
 }
@@ -60,7 +59,10 @@ function safeFailure(value) {
 export function createRepresentativeRefreshTaskError(report) {
   const error = new Error('inventory_representative_refresh_unavailable');
   const failure = safeFailure(read(report, 'failure'));
-  taskFailures.set(error, Object.freeze(failure ? { failure } : {}));
+  const diagnosis = failure?.category === INVENTORY_REFRESH_DISK_FULL ? inventoryRefreshDatabaseDiagnosis(failure.category) : null;
+  taskFailures.set(error, Object.freeze(failure ? { failure, ...(diagnosis ? {
+    problem: diagnosis.problem, steps: diagnosis.steps, retryAfterSeconds: INVENTORY_REFRESH_STORAGE_RETRY_MS / 1000,
+  } : {}) } : {}));
   return error;
 }
 

@@ -2,6 +2,21 @@
 import { expect, test } from '@jest/globals';
 import { createRepresentativeRefreshRetry } from '../../services/representativeRefreshRetry.mjs';
 
+test('storage hold survives configuration resets, ordinary failures and resource deferrals', () => {
+  let time = 0;
+  const retry = createRepresentativeRefreshRetry({ now: () => time });
+  retry.fail({ storageFailure: true });
+  time = 60_000; retry.reset({ preserveStorage: true }); retry.fail(); retry.defer();
+  time = 3_599_999; expect(retry.isCoolingDown()).toBe(true);
+  time++; expect(retry.isCoolingDown()).toBe(false);
+  retry.fail({ storageFailure: true });
+  time += 3_599_999; expect(retry.isCoolingDown()).toBe(true);
+  time++; expect(retry.isCoolingDown()).toBe(false);
+  retry.reset(); retry.fail();
+  time += 60_000; expect(retry.isCoolingDown()).toBe(false);
+  expect(createRepresentativeRefreshRetry({ now: () => time }).isCoolingDown()).toBe(false);
+});
+
 test('deferrals do not erase or grow failure history, and exact eligibility is inclusive', () => {
   let time = 0;
   const retry = createRepresentativeRefreshRetry({ now: () => time });

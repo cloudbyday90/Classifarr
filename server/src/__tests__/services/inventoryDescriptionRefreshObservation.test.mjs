@@ -4,6 +4,49 @@ import { observeDescriptionRefreshStage, observeDescriptionDatabaseOperation, re
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 import { createDescriptionRefreshTaskError, readDescriptionRefreshTaskFailure } from '../../services/inventoryDescriptionRefreshFailure.mjs';
 import { createSchedulerTaskExecutionRunner } from '../../services/schedulerTaskExecutionRunner.mjs';
+import { inventoryRefreshDatabaseDiagnosis, inventoryRefreshSqlCategory } from '../../services/inventoryRefreshDatabaseFailure.mjs';
+
+test('trusted disk-full errors retain incident/guidance and use exact hourly rechecks without raw payloads', async () => {
+  let time = 0;
+  const log = { warn: jest.fn(), info: jest.fn() };
+  const recovery = createInventoryDescriptionRecovery({ now: () => time, random: () => 1, log });
+  const report = recovery.failed(await observed(Object.assign(Error('PRIVATE SQL/path'), { code: '53100' })));
+  expect(report).toMatchObject({ failureCode: 'database_disk_full', retryAfterSeconds: 3600,
+    failure: { category: 'database_disk_full', sqlState: '53100', stage: 'corpus_read' } });
+  expect(log.warn.mock.calls[0][1]).toMatchObject({ problem: expect.stringContaining('reported insufficient storage'),
+    steps: expect.stringContaining('space, inodes and quotas'), routingAffected: false });
+  expect(log.warn.mock.calls[0][1].steps).toContain('Preserve backups');
+  expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(/PRIVATE|SQL\/path/);
+  expect(readDescriptionRefreshTaskFailure(createDescriptionRefreshTaskError(report))).toEqual({ failure: report.failure, retryAfterSeconds: 3600 });
+  time = 3_599_999; expect(recovery.isCoolingDown()).toBe(true);
+  time++; expect(recovery.isCoolingDown()).toBe(false);
+  const second = recovery.failed(await observed({ code: '53100' }));
+  expect(second.failure.incidentId).toBe(report.failure.incidentId);
+  expect(second.retryAfterSeconds).toBe(3600);
+  recovery.completed(); expect(recovery.isCoolingDown()).toBe(false);
+});
+
+test.each(['53100', '53200', '53400'])('provider %s cannot become storage proof; other DB resource codes are not disk-full', async code => {
+  const provider = createInventoryDescriptionRecovery({ random: () => 0 }).failed(await observed({ code }, 'representation_inspection', false));
+  expect(provider).toMatchObject({ failureCode: 'unknown', retryAfterSeconds: 60 });
+  expect(provider.failure).not.toHaveProperty('sqlState');
+  if (code !== '53100') {
+    expect(createInventoryDescriptionRecovery({ random: () => 0 }).failed(await observed({ code }))).toMatchObject({
+      failureCode: 'database_unknown', retryAfterSeconds: 60 });
+  }
+});
+
+test('unknown taxonomy and inconsistent storage envelopes cannot acquire disk-full evidence', () => {
+  for (const value of [null, {}, 53100, '__proto__', 'No space left on device']) {
+    expect(inventoryRefreshSqlCategory(value)).toBeNull();
+    expect(inventoryRefreshDatabaseDiagnosis(value)).toBeNull();
+  }
+  for (const sqlState of [undefined, '53300']) {
+    const task = createDescriptionRefreshTaskError({ failure: { incidentId: '12345678-1234-1234-1234-123456789abc',
+      stage: 'corpus_read', category: 'database_disk_full', sqlState } });
+    expect(readDescriptionRefreshTaskFailure(task)).toEqual({});
+  }
+});
 
 async function observed(error, stage = 'corpus_read', database = true) {
   let tick = 0;

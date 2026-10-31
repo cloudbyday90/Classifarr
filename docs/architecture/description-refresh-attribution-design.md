@@ -65,6 +65,11 @@ categories change attribution, not scheduling policy. Explicit stop/external abo
 still returns `cancelled` without registering failure; timeout and lock-loss behavior
 is not redefined. In-flight SQL cancellation is not newly promised.
 
+The separately agreed [October 31 storage follow-up](inventory-refresh-storage-failure-design.md)
+adds trusted `53100` disk-full attribution and uses the existing one-hour ceiling
+immediately for that category. Other retry policies in this design are preserved;
+see the [storage outcome](inventory-refresh-storage-failure-outcome.md) for verification.
+
 Process restart loses diagnostic episodes and the existing process-local cooldown,
 but not cache checkpoints or persisted logs. A new process creates new references.
 Only `up_to_date` clears the recovery episode. A completed cache write remains the

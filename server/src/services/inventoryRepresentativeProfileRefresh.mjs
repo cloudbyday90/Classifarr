@@ -9,6 +9,7 @@ import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 import { createRepresentativeRefreshRetry } from './representativeRefreshRetry.mjs';
 import { observeRepresentativeStage } from './inventoryRepresentativeRefreshObservation.mjs';
 import { createRepresentativeRefreshFailure, forgetRepresentativeRefreshFailure } from './inventoryRepresentativeRefreshFailure.mjs';
+import { INVENTORY_REFRESH_DISK_FULL } from './inventoryRefreshDatabaseFailure.mjs';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -87,7 +88,8 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         const state = await observeRepresentativeStage('state_read', readState);
         runSignal.throwIfAborted();
         const expected = configKeyOf(state);
-        if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; retry.reset(); configKey = expected; }
+        // Retain storage holds across provider changes and the first successful state read.
+        if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; retry.reset({ preserveStorage: true }); configKey = expected; }
         if (!expected) { clear(); observer?.clear(); return report(state?.rag_enabled === true ? 'unsupported_provider' : 'disabled'); }
         if (state.busy !== false) { invalidate(); return report('yielded'); }
         if (retry.isCoolingDown()) return report('cooldown');
@@ -107,12 +109,11 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
         if (controller.signal.aborted || signal?.aborted) { clear(); return report('cancelled'); }
         if (representativeValidationIssue(error) !== 'unknown_check') diagnostics.report(representativeValidationIssue(error));
-        if (error instanceof DiscoveryDeferredError) retry.defer();
-        else retry.fail();
-        return error instanceof DiscoveryDeferredError ? report('deferred', { reason: error.reason }) : report('failed', {
-          failure: createRepresentativeRefreshFailure(error, { origin: admittedFailure ?? error,
-            deadlineExpired: deadline.aborted && runSignal.reason === deadline.reason }),
-        });
+        if (error instanceof DiscoveryDeferredError) { retry.defer(); return report('deferred', { reason: error.reason }); }
+        const failure = createRepresentativeRefreshFailure(error, { origin: admittedFailure ?? error,
+          deadlineExpired: deadline.aborted && runSignal.reason === deadline.reason });
+        retry.fail({ storageFailure: failure?.category === INVENTORY_REFRESH_DISK_FULL && failure.sqlState === '53100' });
+        return report('failed', { failure });
       } finally { active = null; }
     },
   };

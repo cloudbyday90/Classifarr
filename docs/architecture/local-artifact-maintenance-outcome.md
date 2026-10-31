@@ -99,3 +99,7 @@ routing defect. Local artifact cleanup does not resolve the separately observed
 Unraid database ENOSPC. For further local prevention, consider a dedicated
 Classifarr builder with bounded garbage collection; backup/rollback retirement
 still needs its own explicit retention decision.
+
+Follow-up: the agreed storage-handling batch is described in the separate
+[design](inventory-refresh-storage-failure-design.md), with implementation,
+verification and the current next item in its [outcome](inventory-refresh-storage-failure-outcome.md).

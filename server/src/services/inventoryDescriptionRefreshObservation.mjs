@@ -1,23 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { inventoryRefreshSqlCategory as descriptionRefreshSqlCategory } from './inventoryRefreshDatabaseFailure.mjs';
+
+export { descriptionRefreshSqlCategory };
 
 const observations = new WeakMap();
 const STAGES = new Set(['refresh', 'advisory_lock', 'cache_prune', 'isolation_prune',
   'state_read', 'corpus_read', 'admission_check', 'provider_creation',
   'representation_inspection', 'representation_checkpoint', 'backfill']);
-const DATABASE_CODES = Object.freeze({
-  '57014': 'database_query_cancelled', '55P03': 'database_lock_unavailable',
-  '40P01': 'database_deadlock', '40001': 'database_serialization',
-  '08000': 'database_connection', '08001': 'database_connection',
-  '08003': 'database_connection', '08006': 'database_connection',
-  '08007': 'database_connection', '08P01': 'database_connection',
-  '53300': 'database_capacity', '57P01': 'database_shutdown',
-  '57P02': 'database_shutdown', '57P03': 'database_shutdown',
-  '42501': 'database_permission', '42P01': 'database_schema', '42703': 'database_schema',
-});
 
 export const descriptionRefreshStage = value => STAGES.has(value) ? value : 'refresh';
-export const descriptionRefreshSqlCategory = value =>
-  typeof value === 'string' && Object.hasOwn(DATABASE_CODES, value) ? DATABASE_CODES[value] : null;
 export const descriptionRefreshDuration = value =>
   Number.isFinite(value) && value >= 0 ? Math.min(86_400_000, Math.round(value)) : null;
 

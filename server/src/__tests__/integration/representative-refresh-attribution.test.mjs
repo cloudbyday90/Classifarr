@@ -13,9 +13,12 @@ const database = createIntegrationDatabaseModuleMock();
 afterAll(() => setDb(null));
 
 test.each([
-  ['snapshot_read', 'SELECT pg_sleep(30)'],
-  ['state_read', 'SELECT pg_cancel_backend(pg_backend_pid()), pg_sleep(30)'],
-])('real PostgreSQL cancellation at %s survives worker/scheduler/persisted log boundaries', async (stage, faultSql) => {
+  ['snapshot_read', 'SELECT pg_sleep(30)', 'database_query_cancelled', '57014'],
+  ['state_read', 'SELECT pg_cancel_backend(pg_backend_pid()), pg_sleep(30)', 'database_query_cancelled', '57014'],
+  ...['snapshot_read', 'state_read'].map(stage => [stage,
+    `DO $storage$ BEGIN RAISE EXCEPTION USING ERRCODE='53100', MESSAGE='PRIVATE disk failure'; END; $storage$`,
+    'database_disk_full', '53100']),
+])('real PostgreSQL fault at %s (%s) survives worker/scheduler/persisted log boundaries', async (stage, faultSql, category, sqlState) => {
   setDb(database);
   const { state, identity } = representativeProfileFixture();
   const faulty = { withTransaction: callback => database.withTransaction(client => callback({
@@ -43,10 +46,12 @@ test.each([
     const { rows } = await database.query('SELECT metadata FROM error_log WHERE error_id = $1', [ids[0]]);
     expect(rows).toHaveLength(1);
     expect(rows[0].metadata).toMatchObject({ error: 'inventory_representative_refresh_unavailable', failure: {
-      stage, category: 'database_query_cancelled', sqlState: '57014', incidentId: expect.any(String),
+      stage, category, sqlState, incidentId: expect.any(String),
       operationDurationMs: expect.any(Number), databaseDurationMs: expect.any(Number),
     } });
     expect(rows[0].metadata.failure).toEqual(worker.getStatus().failure);
+    if (sqlState === '53100') expect(rows[0].metadata).toMatchObject({ retryAfterSeconds: 3600,
+      problem: expect.stringContaining('reported insufficient storage'), steps: expect.stringContaining('Preserve backups') });
     expect(JSON.stringify(rows)).not.toMatch(/pg_sleep|pg_cancel_backend|statement timeout|parameters|PRIVATE|password/);
     expect(worker.getStatus().cacheStored).toBe(false);
     expect((await database.query('SELECT 1 AS healthy')).rows[0].healthy).toBe(1);

@@ -9,6 +9,32 @@ import { providerResponseError } from '../../services/providerResponseDiagnosis.
 import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
 import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
+import { observeDescriptionDatabaseOperation } from '../../services/inventoryDescriptionRefreshObservation.mjs';
+
+test('disk-full cooldown preserves completed descriptions and automatically resumes without re-embedding them', async () => {
+  const v = setup(2);
+  expect(await v.worker.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 2 });
+  const saved = new Set(v.saved);
+  v.rows.push({ media_type: 'movie', tmdb_id: 100, library_id: 1, overview: 'PRIVATE new description' });
+  v.repository.readCorpus.mockImplementationOnce(() => observeDescriptionDatabaseOperation(() => {
+    throw Object.assign(Error('PRIVATE database file'), { code: '53100' });
+  }));
+  v.advance();
+  expect(await v.worker.run()).toMatchObject({ status: 'failed', failureCode: 'database_disk_full', retryAfterSeconds: 3600 });
+  expect(v.saved).toEqual(saved); expect(v.dependencies.createEmbedder).toHaveBeenCalledTimes(1);
+  v.advance(3_599_999);
+  expect(await v.worker.run()).toMatchObject({ status: 'cooldown' });
+  expect(v.repository.readCorpus).toHaveBeenCalledTimes(2);
+  expect(v.cache.write).toHaveBeenCalledTimes(1);
+  const cancelled = new AbortController(); cancelled.abort();
+  expect(await v.worker.run({ signal: cancelled.signal })).toMatchObject({ status: 'cancelled' });
+  v.advance(1);
+  expect(await v.worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 2, embeddedDescriptions: 1 });
+  expect(v.saved.size).toBe(3); expect([...saved].every(key => v.saved.has(key))).toBe(true);
+  expect(v.embedder.embedBatch).toHaveBeenCalledTimes(2);
+  expect(await v.worker.run()).toMatchObject({ status: 'not_due' });
+  v.worker.stop();
+});
 
 function setup(count = 10) {
   let time = 0;

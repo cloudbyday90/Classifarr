@@ -107,6 +107,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Inventory refresh disk-full recovery** — Recognize PostgreSQL-reported
+  storage exhaustion in description and representative refreshes, retain safe
+  incident diagnostics in existing logs, and automatically wait one hour before
+  retrying heavy work. Keep completed database cache entries and ownership
+  safeguards; provider changes cannot erase a storage cooldown. No automatic
+  file deletion, restart, routing or learning change is introduced.
+
 - **Verified purpose explanations** — Distinguish declared, inferred, mixed and
   unknown purpose on pending and library-comparison evidence cards. Require a
   bound, server-derived declared-rule match with existing specialized/conflict

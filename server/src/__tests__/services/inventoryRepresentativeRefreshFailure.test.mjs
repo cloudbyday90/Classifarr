@@ -15,6 +15,86 @@ import { discoveryAdmissionFixture } from '../helpers/discoveryAdmissionFixture.
 afterEach(() => jest.restoreAllMocks());
 const fail = () => { throw new Error('PRIVATE endpoint/password'); };
 
+test.each(['state_read', 'snapshot_read'])('disk-full at %s survives initial/config resets and resumes only after one hour', async stage => {
+  const v = setup(); let time = 0;
+  v.dependencies.now = () => time;
+  const storage = () => observeDescriptionDatabaseOperation(() => { throw Object.assign(Error('PRIVATE SQL'), { code: '53100' }); });
+  if (stage === 'state_read') v.dependencies.readState.mockImplementationOnce(storage);
+  else v.dependencies.repository.read.mockImplementationOnce(() => observeRepresentativeDatabaseOperation(() => {
+    throw Object.assign(Error('PRIVATE SQL'), { code: '53100' });
+  }));
+  const worker = createInventoryRepresentativeProfileRefresh(v.dependencies);
+  try {
+    const initial = await worker.run();
+    expect(initial).toMatchObject({ status: 'failed', failure: { category: 'database_disk_full', sqlState: '53100', stage } });
+    const envelope = readRepresentativeRefreshTaskFailure(createRepresentativeRefreshTaskError(initial));
+    expect(envelope).toMatchObject({ failure: initial.failure, problem: expect.stringContaining('reported insufficient storage'),
+      steps: expect.stringContaining('Preserve backups'), retryAfterSeconds: 3600 });
+    expect(JSON.stringify(envelope)).not.toContain('PRIVATE');
+    const before = v.dependencies.createEmbedder.mock.calls.length;
+    expect(await worker.run()).toMatchObject({ status: 'cooldown' }); // first successful config read must retain the hold
+    time = 1_800_000; v.state.ollama_port = 11435;
+    expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+    v.dependencies.readState.mockRejectedValueOnce(Error('PRIVATE ordinary failure'));
+    expect(await worker.run()).toMatchObject({ status: 'failed', failure: { category: 'unknown' } });
+    time = 3_599_999; expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+    expect(v.dependencies.createEmbedder).toHaveBeenCalledTimes(before);
+    expect(v.dependencies.fit).not.toHaveBeenCalled();
+    expect(worker.getStatus().cacheStored).toBe(false);
+    time++; expect(await worker.run()).toMatchObject({ status: 'published' });
+    expect(worker.getStatus().cacheStored).toBe(true);
+    expect(v.dependencies.fit).toHaveBeenCalledTimes(1);
+  } finally { worker.stop(); }
+});
+
+test('storage hold is not created from provider codes or deadline-overridden evidence', async () => {
+  const v = setup(); let time = 0;
+  v.dependencies.now = () => time;
+  v.embedder.inspect.mockRejectedValueOnce(Object.assign(Error('No space left on device PRIVATE'), { code: '53100' }));
+  const worker = createInventoryRepresentativeProfileRefresh(v.dependencies);
+  try {
+    expect(await worker.run()).toMatchObject({ status: 'failed', failure: { category: 'unknown' } });
+    time = 60_000; expect(await worker.run()).toMatchObject({ status: 'published' });
+    let error;
+    try { await observeRepresentativeDatabaseOperation(() => { throw { code: '53100' }; }); }
+    catch (caught) { error = caught; }
+    expect(createRepresentativeRefreshFailure(error, { deadlineExpired: true })).toMatchObject({ category: 'task_deadline' });
+    for (const sqlState of [undefined, '53300']) {
+      expect(readRepresentativeRefreshTaskFailure(createRepresentativeRefreshTaskError({ failure: {
+        incidentId: '12345678-1234-1234-1234-123456789abc', category: 'database_disk_full', sqlState,
+      } }))).toEqual({});
+    }
+  } finally { worker.stop(); }
+});
+
+test('disk-full invalidates the private model while busy, disabled and cancelled checks preserve the hold', async () => {
+  const v = setup(); let time = 0;
+  v.dependencies.now = () => time;
+  const worker = createInventoryRepresentativeProfileRefresh(v.dependencies);
+  try {
+    expect(await worker.run()).toMatchObject({ status: 'published' });
+    expect(worker.read(v.key())).toBeDefined();
+    const originalVectors = v.snapshot.vectors;
+    time = 300_000;
+    v.dependencies.repository.read.mockImplementationOnce(() => observeRepresentativeDatabaseOperation(() => {
+      throw Object.assign(Error('PRIVATE storage'), { code: '53100' });
+    }));
+    expect(await worker.run()).toMatchObject({ status: 'failed', failure: { category: 'database_disk_full' } });
+    expect(worker.getStatus().cacheStored).toBe(false);
+    expect(worker.read(v.key())).toBeUndefined();
+    expect(v.snapshot.vectors).toBe(originalVectors);
+    v.state.rag_enabled = false; expect(await worker.run()).toMatchObject({ status: 'disabled' });
+    v.state.rag_enabled = true; v.state.busy = true;
+    expect(await worker.run()).toMatchObject({ status: 'yielded' });
+    v.state.busy = false;
+    const cancelled = new AbortController(); cancelled.abort();
+    expect(await worker.run({ signal: cancelled.signal })).toMatchObject({ status: 'cancelled' });
+    time += 3_599_999; expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+    expect(v.dependencies.createEmbedder).toHaveBeenCalledTimes(2);
+    time++; expect(await worker.run()).toMatchObject({ status: 'published' });
+  } finally { worker.stop(); }
+});
+
 function setup() {
   const v = representativeProfileFixture();
   const embedder = { ...v.identity, inspect: jest.fn(async () => v.identity) };
