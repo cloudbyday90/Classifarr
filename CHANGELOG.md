@@ -11,6 +11,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Local artifact maintenance skill** — Add routine agent-operated Classifarr
+  housekeeping with verified stale-file and unused-image selection, explicit
+  recovery-asset protection and measured cleanup receipts. Keep shared cache,
+  application data and unrelated projects outside the default policy; no new UI
+  or operator CLI trigger is required.
+
 - **Automatic destination review summary** — Evaluate retained explicit choices
   automatically through existing background ownership, resource limits and
   backoff. Save bounded aggregate counts and show one quiet, expandable summary

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Classifarr artifact maintenance"
+  short_description: "Clean verified stale Classifarr development artifacts"
+  default_prompt: "Use $classifarr-artifact-maintenance to inspect local storage growth and clean verified stale Classifarr artifacts while preserving recovery assets."

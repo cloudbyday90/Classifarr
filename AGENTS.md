@@ -17,6 +17,15 @@ optional developer/test/diagnostic interfaces. Automated execution must preserve
 the application's authorization, resource admission, cancellation and replay
 boundaries.
 
+## Local artifact maintenance
+
+Before disk-heavy builds and at substantial build/test handoffs, use
+`.agents/skills/classifarr-artifact-maintenance/SKILL.md` to inspect local growth
+and clean verified stale Classifarr development artifacts within the agreed
+policy. The agent performs housekeeping; do not require operator CLI commands.
+Preserve recovery assets, current evidence and other projects. Read-only tasks
+remain read-only; shared cache or backup retirement needs its own scope.
+
 ## Repo Layout
 
 - `client/` - Vue 3 + Vite frontend
