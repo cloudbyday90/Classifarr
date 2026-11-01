@@ -89,10 +89,11 @@ retained. Stale zero-row finishes remain ordinary query results. Singleton
 recreation and deletion/recreation races remain separate. No uncertain operation
 is replayed or refunded.
 
-Next: design explicit finalization outcome/attempt ownership, starting with
-distinguishing a stale zero-row finish from an acknowledged update. Evaluate its
-effect on status publication and retries before changing authority. Keep singleton
-lifecycle and broader write cancellation separately scoped.
+The next batch is specified in the
+[finalization acknowledgement design](capture-finalization-acknowledgement-design.md):
+distinguish an acknowledged zero-row finish at the worker without replay or
+repository-contract changes. Same-revision attempt/status ownership, singleton
+lifecycle and broader write cancellation remain separate.
 
 ## Validation handoff
 

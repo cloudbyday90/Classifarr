@@ -3,6 +3,7 @@ import { captureCachedAdjudication } from './cachedAdjudicationCapture.mjs';
 import { remainingAdjudicationCalls } from './adjudicationBudgetContract.mjs';
 import { fingerprintAutomaticSourcePairInputs } from './automaticSourcePairComputation.mjs';
 import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
+import { createAdjudicationBudgetFinalization } from './adjudicationBudgetFinalization.mjs';
 
 /** Private capture owns no routing capabilities. Shared admission spans all provider/checkpoint work. */
 export function createAdjudicationBudgetWorker({ budget, repository, withAdmission, withWorkload, readConfig, createClient,
@@ -11,6 +12,7 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
   const controller = new AbortController();
   let active, retryAfter = 0;
   async function runOnce() {
+    const finalization = createAdjudicationBudgetFinalization(budget);
     let state;
     try {
       state = await budget.read(controller.signal); // Retention runs even while disabled.
@@ -24,7 +26,7 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
         const evaluation = await repository.readState(signal);
         if (evaluation?.status !== 'complete' || !readAutomaticSourcePairReport(evaluation.report) ||
             evaluation.report.policyReplay?.status !== 'complete') {
-          await budget.finish(state.revision,'deferred',null,signal); return { status: 'deferred' };
+          await finalization.finish(state.revision,'deferred',null,signal); return { status: 'deferred' };
         }
         if (state.published_fingerprint) {
           if (evaluation.input_fingerprint !== state.published_fingerprint) {
@@ -33,28 +35,31 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
             const current = fingerprintAutomaticSourcePairInputs(snapshot,
               { cohort: evaluation.cohort, cohortCreatedAt: evaluation.cohort_created_at });
             if (current === state.published_fingerprint) {
-              await budget.finish(state.revision,'waiting_for_replay',null,signal); return { status: 'waiting_for_replay' };
+              await finalization.finish(state.revision,'waiting_for_replay',null,signal); return { status: 'waiting_for_replay' };
             }
           } else await budget.advance(state.revision,evaluation.report.aiReplay.eligible,signal);
         }
         const maxCalls = remainingAdjudicationCalls(state);
-        if (!maxCalls) { await budget.finish(state.revision,'budget_exhausted',null,signal); return { status: 'budget_exhausted' }; }
+        if (!maxCalls) { await finalization.finish(state.revision,'budget_exhausted',null,signal); return { status: 'budget_exhausted' }; }
         const checkpoint = budget.checkpoint(state.revision);
         const result = await withWorkload((workloadSignal, check) => capture({ maxCalls }, { repository, readConfig, createClient, signal: workloadSignal,
           withAdmission: (callback, { signal: inner }) => callback(AbortSignal.any([workloadSignal,inner])),
           checkpoint: { ...checkpoint, reserve: async abort => { await check(); await budget.reserve(state.revision,abort); } }, save: checkpoint.publish,
-          onPublished: (fingerprint, complete, abort) => budget.finish(state.revision,'captured',complete ? fingerprint : null,abort),
+          onPublished: (fingerprint, complete, abort) => finalization.finish(state.revision,'captured',complete ? fingerprint : null,abort),
         }), { revision: state.revision, signal });
         return { status: 'captured', calls: result.calls, reused: result.reused, stored: result.stored };
       }, { signal: AbortSignal.any([controller.signal,AbortSignal.timeout(20 * 60000)]) });
     } catch (error) {
       if (controller.signal.aborted) return { status: 'stopped' };
-      const status = error?.message === 'adjudication_budget_exhausted' ? 'budget_exhausted'
+      const status = finalization.notApplied ? 'deferred' : error?.message === 'adjudication_budget_exhausted' ? 'budget_exhausted'
         : error?.message === 'inventory_discovery_deferred' || error?.message === 'evaluation_workload_deferred' ||
           ['disabled','busy','unsupported_provider','representation_unavailable','adjudication_budget_changed'].includes(error?.message)
           ? 'deferred' : 'unavailable';
       retryAfter = now() + 300000;
-      if (state) { try { await budget.finish(state.revision,status,null,controller.signal); } catch { /* Database recovery retains the local cooldown. */ } }
+      if (state && !finalization.notApplied) {
+        try { await finalization.finish(state.revision,status,null,controller.signal); }
+        catch { /* Best-effort cleanup preserves the observed failure and local cooldown. */ }
+      }
       if (controller.signal.aborted) return { status: 'stopped' };
       return { status };
     }

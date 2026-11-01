@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Acknowledge capture finalization** — Defer an automatic capture whose primary
+  finish acknowledges zero affected rows, retain its local cooldown and avoid a
+  second finish. Keep published caches and charged attempts intact, preserve
+  earlier failure outcomes during best-effort cleanup, and leave lost commit
+  replies uncertain. Existing schedules and UI remain unchanged.
+
 - **Preserve capture cooldowns** — Prevent later five-minute outcomes from
   shortening a valid longer cooldown. Serialize finalization before calculating
   the database-time deadline, preserve the existing one-hour validity horizon
