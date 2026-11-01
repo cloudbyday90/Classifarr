@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Keep capture cleanup owned** — Await admitted failure finalization before
+  releasing discovery admission. Use local fallback for rejected admission and
+  post-callback failures, preserve the first failure/cooldown through later
+  boundary errors, and avoid late cleanup overwriting a cooperating newer run.
+  Keep saved caches, charged attempts, schedules and UI unchanged.
+
 - **Acknowledge capture finalization** — Defer an automatic capture whose primary
   finish acknowledges zero affected rows, retain its local cooldown and avoid a
   second finish. Keep published caches and charged attempts intact, preserve

@@ -34,7 +34,8 @@ async function setup() {
     await checkpoint.publish(); await budget.finish(state.revision, 'captured', 'd'.repeat(64));
     await query('UPDATE adjudication_capture_budget SET next_check_at=statement_timestamp()');
     const before = await snapshot(), finish = jest.spyOn(budget, 'finish');
-    const worker = withAdmission => createAdjudicationBudgetWorker({ budget, repository: {}, withAdmission, withWorkload: jest.fn() });
+    const worker = readState => createAdjudicationBudgetWorker({ budget, repository: { readState },
+      withAdmission: (callback, { signal }) => callback(signal), withWorkload: jest.fn() });
     return { db, budget, state, before, finish, worker };
   } catch (error) { await db.pool.end(); throw error; }
 }

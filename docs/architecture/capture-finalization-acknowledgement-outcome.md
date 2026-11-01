@@ -82,11 +82,12 @@ No UI, operator CLI trigger, schema, endpoint, job, setting, provider capability
 routing or learning change was added. No release, deployment or restart occurred.
 The design records the recommendation stack, pros/cons and official sources.
 
-Next: assess same-revision attempt/status ownership so a late finalizer cannot
-overwrite a newer outcome merely because the configuration revision still
-matches. Design its durable fencing and uncertain-outcome semantics before
-adding retry authority. Keep singleton lifecycle and broader write cancellation
-separately scoped.
+The next batch is specified in the
+[failure admission ownership design](capture-failure-admission-ownership-design.md):
+keep awaited failure cleanup inside existing discovery admission to prevent the
+demonstrated overlap between cooperating workers. Durable fencing against
+unobserved lease loss, singleton lifecycle and broader write cancellation remain
+separate; no retry authority is inferred.
 
 ## Validation handoff
 
