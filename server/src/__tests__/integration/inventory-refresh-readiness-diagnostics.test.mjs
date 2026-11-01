@@ -6,6 +6,7 @@ import { createInventoryRepresentativeProfileRuntime, registerInventoryRepresent
 import { INVENTORY_BACKGROUND_READINESS_SQL } from '../../services/inventoryBackgroundReadiness.mjs';
 import { createSchedulerTaskExecutionRunner } from '../../services/schedulerTaskExecutionRunner.mjs';
 import { LoggerShim, setDb } from '../../utils/logging/loggerShim.mjs';
+import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 
 const database = createIntegrationDatabaseModuleMock();
 afterAll(() => setDb(null));
@@ -26,10 +27,11 @@ test.each(runtimes.flatMap(([name, create, register, workerKey]) =>
     setDb(database);
     await database.query('UPDATE ai_provider_config SET rag_enabled=false WHERE id=1');
     let inject = true;
+    const production = createReadinessDatabase({ statementMs: 250 });
     const lock = jest.fn();
     const runtime = create({ ...database, withSessionAdvisoryLock: lock,
-      withTransaction: callback => database.withTransaction(client => callback({ query: (query, parameters) =>
-        client.query(inject && query === INVENTORY_BACKGROUND_READINESS_SQL ? sql : query, parameters) })),
+      withTransaction: (callback, options) => production.withTransaction(client => callback({ query: (query, parameters) =>
+        client.query(inject && query === INVENTORY_BACKGROUND_READINESS_SQL ? sql : query, parameters) }), options),
     });
     const pending = [], pino = { bindings: () => ({ module: 'RefreshReadinessIntegration' }), warn() {} };
     const logger = new LoggerShim(pino);
@@ -59,6 +61,6 @@ test.each(runtimes.flatMap(([name, create, register, workerKey]) =>
       expect(await tick()).toMatchObject({ status: 'deferred', reason: 'disabled' });
       expect(pending).toHaveLength(1); expect(log.info).not.toHaveBeenCalled();
       expect(lock).not.toHaveBeenCalled();
-    } finally { scheduler[workerKey].stop(); setDb(null); }
+    } finally { scheduler[workerKey].stop(); setDb(null); await production.pool.end(); }
   },
 );

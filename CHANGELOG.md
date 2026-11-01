@@ -107,6 +107,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Bound automatic refresh readiness** — Cancel description and representative
+  preflight reads on stop, caller abort or a three-second probe deadline. Keep
+  scoped admission through read cleanup and late pool acquisition, preventing
+  abandoned requests from accumulating across runtime replacement. Preserve
+  genuine database diagnostics, worker caches/cooldowns and normal ownership
+  checks; local cancellation cannot become SQL failure evidence. Existing
+  automatic schedules continue without a new UI or operator command.
+
 - **Bound primary log data** — Preserve log events and safe context when data is
   cyclic, hostile or oversized. Project own data properties without invoking
   accessors or serialization hooks, retain sensitive-key redaction, and bound

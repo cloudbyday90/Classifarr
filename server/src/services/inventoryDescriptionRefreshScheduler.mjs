@@ -8,23 +8,23 @@ import { createLocalStudyEmbeddingClient } from './localStudyEmbeddingClient.mjs
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
 import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
 import { recordDescriptionRepresentation } from './inventoryDescriptionRepresentationCheckpoint.mjs';
-import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
+import { withInventoryRefreshReadiness } from './inventoryRefreshReadinessGuard.mjs';
+import { READINESS_SCOPES } from '../utils/databaseReadinessAdmission.mjs';
 import { createDescriptionRefreshTaskError } from './inventoryDescriptionRefreshFailure.mjs';
-import { readInventoryRefreshReadiness } from './inventoryRefreshReadinessReader.mjs';
-import { createInventoryRefreshReadinessFailure, createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
+import { createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
 export function createInventoryDescriptionRefreshRuntime(database = db, { neighborhoodRecovery = null } = {}) {
   const repository = createInventoryDescriptionRefreshRepository(database);
-  return withInventoryBackgroundReadiness(createInventoryDescriptionRefreshWorker({
+  return withInventoryRefreshReadiness(createInventoryDescriptionRefreshWorker({
     repository, cache: createInventoryDescriptionVectorCache(repository), neighborhoodRecovery,
     createEmbedder: createLocalStudyEmbeddingClient,
     withSessionAdvisoryLock: database.withSessionAdvisoryLock,
     getRevision: getInventoryDescriptionRefreshRevision,
     recordVerifiedRepresentation: (identity, configKey) => recordDescriptionRepresentation(database, identity, configKey),
     recovery: createInventoryDescriptionRecovery({ log: createLogger('InventoryDescriptionRecovery') }),
-  }), database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
+  }), database, READINESS_SCOPES.DESCRIPTION);
 }
 
 export function registerInventoryDescriptionRefreshSchedule(scheduler, {

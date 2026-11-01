@@ -10,6 +10,18 @@ const runtimes = [
   ['representative', createInventoryRepresentativeProfileRuntime, registerInventoryRepresentativeProfileSchedule, 'inventoryRepresentativeProfileWorker'],
 ];
 
+test.each(runtimes)('%s pre-aborted caller never starts a preliminary database read', async (_name, create) => {
+  const database = { withTransaction: jest.fn(async callback => callback({ query: async () => ({ rows: [{ readiness: 'disabled' }] }) })),
+    withSessionAdvisoryLock: jest.fn() };
+  const worker = create(database), controller = new AbortController();
+  controller.abort('PRIVATE caller reason');
+  try {
+    expect(await worker.run({ signal: controller.signal })).toEqual({ status: 'cancelled' });
+    expect(database.withTransaction).not.toHaveBeenCalled();
+    expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
+  } finally { worker.stop(); }
+});
+
 test.each(runtimes)('%s preflight warnings preserve deferral and allow immediate normal admission after a ready probe', async (_name, create, register, workerKey) => {
   const { state } = representativeProfileFixture();
   let fault = true, readiness = 'ready';
@@ -63,7 +75,7 @@ test.each(runtimes)('%s coalesces probes and a stop during failure keeps the sch
   reject(Object.assign(Error('PRIVATE stopped probe'), { code: '53100' }));
   expect(await first).toEqual({ status: 'stopped' });
   expect(await second).toEqual({ status: 'stopped' });
-  expect(query).toHaveBeenCalledTimes(2);
+  expect(query).toHaveBeenCalledTimes(1); // Timeout setup is owned by the read runner.
   expect(log.warn).not.toHaveBeenCalled(); expect(log.info).not.toHaveBeenCalled();
   expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
   expect(await tick()).toEqual({ status: 'stopped' });

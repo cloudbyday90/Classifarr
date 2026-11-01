@@ -116,6 +116,9 @@ execution; add no operator CLI requirement. Broader log-record limits and JSONB
 Unicode handling remain separately documented follow-ups. Resume classification
 evaluation with production evidence after a separately authorized deployment.
 
+The two refresh probes now have a separate [cancellation design](inventory-refresh-readiness-cancellation-design.md)
+and [implementation outcome](inventory-refresh-readiness-cancellation-outcome.md).
+
 GitHub MCP found no open PRs, including Dependabot, so no random PR or stale
 dependency PR was applicable. No PR was merged. Dependencies remain unchanged.
 Unreleased records the logging behavior.

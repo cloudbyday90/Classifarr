@@ -18,6 +18,8 @@ import { createDatabaseLockScope } from '../utils/databaseLockScope.mjs';
 import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 import { runAbortableDatabaseRead } from '../utils/databaseAbortableRead.mjs';
 import { createDatabaseReadCanceller } from '../utils/databaseReadCancellation.mjs';
+import { createDatabaseReadinessAdmission } from '../utils/databaseReadinessAdmission.mjs';
+import { checkAbort } from '../utils/abortUtils.mjs';
 import { readDatabaseProfilingStatus } from '../services/databaseProfilingStatus.mjs';
 import { ingestionConnectionOptions } from './ingestionProtocol.mjs';
 
@@ -139,6 +141,7 @@ export function createDatabaseModule({
 
   const poolConfig = createPoolConfig(environment);
   const pool = isOfflineEvaluationWorker ? new OfflineEvaluationPool() : new Pool(poolConfig);
+  const readinessAdmission = createDatabaseReadinessAdmission();
   const cancelRead = createDatabaseReadCanceller({ logger, createClient: () => new pgModule.Client({
     ...poolConfig, pipeline: false,
     connectionTimeoutMillis: 500, statement_timeout: 500, query_timeout: 750,
@@ -288,11 +291,19 @@ export function createDatabaseModule({
 
   async function withTransaction(fn, options = {}) {
     lockScope.assertHealthy();
+    if (options.readinessScope !== undefined && (!options.signal || options.readOnly !== true)) {
+      throw new TypeError('database_readiness_requires_signaled_read_only');
+    }
     if (options.signal) {
       if (options.readOnly !== true) throw new TypeError('database_read_cancellation_requires_read_only');
-      return runAbortableDatabaseRead({ connect: () => pool.connect(), cancelRead, logger,
+      const runRead = connect => runAbortableDatabaseRead({ connect, cancelRead, logger,
         assertActive: lockScope.assertHealthy }, fn, { signal: options.signal, timeoutMs: options.timeoutMs,
           isolationLevel: options.isolationLevel });
+      if (options.readinessScope !== undefined) {
+        checkAbort(options.signal, 'database read');
+        return readinessAdmission.run(options.readinessScope, () => pool.connect(), runRead);
+      }
+      return runRead(() => pool.connect());
     }
     const client = await connectWithRetry();
     return runDatabaseTransaction(client, fn, { logger, assertActive: lockScope.assertHealthy });

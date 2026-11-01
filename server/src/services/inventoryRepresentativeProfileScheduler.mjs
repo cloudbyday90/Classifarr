@@ -11,10 +11,10 @@ import { createInventoryRepresentativeShadow } from './inventoryRepresentativeSh
 import { installRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 import { createRepresentativeValidationDiagnostics } from './representativeValidationDiagnostics.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
-import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
+import { withInventoryRefreshReadiness } from './inventoryRefreshReadinessGuard.mjs';
+import { READINESS_SCOPES } from '../utils/databaseReadinessAdmission.mjs';
 import { createRepresentativeRefreshTaskError } from './inventoryRepresentativeRefreshFailure.mjs';
-import { readInventoryRefreshReadiness } from './inventoryRefreshReadinessReader.mjs';
-import { createInventoryRefreshReadinessFailure, createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
+import { createInventoryRefreshReadinessDiagnostics } from './inventoryRefreshReadinessDiagnostics.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
@@ -28,7 +28,7 @@ export function createInventoryRepresentativeProfileRuntime(database = db, { nei
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
     getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics, neighborhoodRecovery,
   });
-  return withInventoryBackgroundReadiness({ ...worker, observer }, database, readInventoryRefreshReadiness, createInventoryRefreshReadinessFailure);
+  return withInventoryRefreshReadiness({ ...worker, observer }, database, READINESS_SCOPES.REPRESENTATIVE);
 }
 
 export function registerInventoryRepresentativeProfileSchedule(scheduler, {
