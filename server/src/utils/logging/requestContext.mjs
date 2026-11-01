@@ -17,8 +17,10 @@
  */
 
 import os from 'node:os';
+import { types } from 'node:util';
 import { sanitizeData } from './sanitize.mjs';
 import { requestLogQuery, requestLogUrl } from './requestLogPrivacy.mjs';
+import { isNativeError } from './nativeError.mjs';
 
 /**
  * @param {unknown} value
@@ -88,24 +90,34 @@ export function getRequestContext(req) {
  * @returns {Error | null}
  */
 export function extractError(data, options = {}) {
-  if (options?.error instanceof Error) return options.error;
+  const optionError = ownDataValue(options, 'error');
+  if (!types.isProxy(optionError) && isNativeError(optionError)) return optionError;
+  // Preserve the existing data-container boundary; array side properties were
+  // never upstream error references, even though array indices are loggable.
+  if (!data || typeof data !== 'object' || types.isProxy(data) || Array.isArray(data)) return null;
 
-  if (!isRecord(data)) return null;
-
-  for (const candidate of [data.error, data.err, data.exception, data.cause]) {
-    if (candidate instanceof Error) return candidate;
+  for (const key of ['error', 'err', 'exception', 'cause']) {
+    const candidate = ownDataValue(data, key);
+    if (!types.isProxy(candidate) && isNativeError(candidate)) return candidate;
   }
 
-  // Plain object with a .stack string — re-hydrate as an Error for stack_trace persistence.
-  const maybe = data.error;
-  if (isRecord(maybe) && typeof maybe.stack === 'string') {
-    const e = new Error(typeof maybe.message === 'string' ? maybe.message : 'Upstream error');
-    if (typeof maybe.name === 'string') {
-      e.name = maybe.name;
-    }
-    e.stack = maybe.stack;
-    return e;
-  }
+  // Hydrate only own string data properties; stack materialization for a native
+  // Error remains the separate existing persistence policy (including its hook).
+  const maybe = ownDataValue(data, 'error');
+  if (!maybe || typeof maybe !== 'object' || types.isProxy(maybe)) return null;
+  const prototype = Object.getPrototypeOf(maybe);
+  if (prototype !== null && prototype !== Object.prototype) return null;
+  const stack = ownDataValue(maybe, 'stack');
+  if (typeof stack !== 'string') return null;
+  const message = ownDataValue(maybe, 'message'), name = ownDataValue(maybe, 'name');
+  const error = new Error(typeof message === 'string' ? message : 'Upstream error');
+  if (typeof name === 'string') error.name = name;
+  error.stack = stack;
+  return error;
+}
 
-  return null;
+function ownDataValue(value, key) {
+  if (!value || typeof value !== 'object' || types.isProxy(value)) return undefined;
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor && Object.hasOwn(descriptor, 'value') ? descriptor.value : undefined;
 }

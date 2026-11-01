@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { sanitizeData } from './sanitize.mjs';
+import { projectLogData } from './logDataProjection.mjs';
 import { getSystemContext, getRequestContext, extractError } from './requestContext.mjs';
 import { shouldThrottle } from './dedupe.mjs';
 import { createLogPersistenceFallback } from './persistenceFallback.mjs';
@@ -48,17 +48,22 @@ export function setDb(db) {
  * @param {string} level - e.g. 'ERROR' | 'WARN'
  * @param {string} moduleName
  * @param {string} message
- * @param {object | null} data
+ * @param {unknown} data
  * @param {{ req?: object, error?: Error, skipDbPersist?: boolean, persistStack?: boolean }} options
  * @returns {Promise<string | null>}
  */
 export async function persistToDb(level, moduleName, message, data, options = {}) {
+  return persistEntry(level, moduleName, message, data, options);
+}
+
+// Only this module can supply prepared data; the public entry always projects.
+async function persistEntry(level, moduleName, message, data, options, prepared) {
   const db = _db;
   if (!db || typeof db.query !== 'function') return null;
 
   try {
     const upstreamError = extractError(data, options);
-    const sanitizedData = sanitizeData(data);
+    const sanitizedData = prepared ? prepared.data : projectLogData(data);
     const systemContext = getSystemContext();
     const requestContext = options.req ? getRequestContext(options.req) : null;
     const stack = options.persistStack === false
@@ -107,18 +112,18 @@ export class LoggerShim {
    * Log an error-level message and persist to DB.
    *
    * @param {string} message
-   * @param {object | null} [data]
+   * @param {unknown} [data]
    * @param {{ req?: object, error?: Error, dedupeKey?: string, dedupeWindowMs?: number, skipDbPersist?: boolean, persistStack?: boolean }} [options]
    * @returns {Promise<string | null>} errorId from DB, or null
    */
   async error(message, data, options = {}) {
-    const sanitized = data ? sanitizeData(data) : undefined;
-    this._pino.error(sanitized ?? {}, message);
+    const sanitized = projectLogData(data);
+    this._pino.error(sanitized ?? Object.create(null), message);
 
     if (options?.skipDbPersist === true) return null;
 
     try {
-      return await persistToDb('ERROR', this.module, message, data, options);
+      return await persistEntry('ERROR', this.module, message, data, options, { data: sanitized });
     } catch (_err) {
       return null;
     }
@@ -128,20 +133,20 @@ export class LoggerShim {
    * Log a warn-level message and persist to DB (with deduplication).
    *
    * @param {string} message
-   * @param {object | null} [data]
+   * @param {unknown} [data]
    * @param {{ req?: object, error?: Error, dedupeKey?: string, dedupeWindowMs?: number, skipDbPersist?: boolean, persistStack?: boolean }} [options]
    * @returns {Promise<string | null>} errorId from DB, or null
    */
   async warn(message, data, options = {}) {
     if (shouldThrottle(this.module, 'WARN', message, options)) return null;
 
-    const sanitized = data ? sanitizeData(data) : undefined;
-    this._pino.warn(sanitized ?? {}, message);
+    const sanitized = projectLogData(data);
+    this._pino.warn(sanitized ?? Object.create(null), message);
 
     if (options?.skipDbPersist === true) return null;
 
     try {
-      return await persistToDb('WARN', this.module, message, data, options);
+      return await persistEntry('WARN', this.module, message, data, options, { data: sanitized });
     } catch (_err) {
       return null;
     }
@@ -151,21 +156,21 @@ export class LoggerShim {
    * Log an info-level message. Synchronous, no DB persist.
    *
    * @param {string} message
-   * @param {object | null} [data]
+   * @param {unknown} [data]
    */
   info(message, data) {
-    const sanitized = data ? sanitizeData(data) : undefined;
-    this._pino.info(sanitized ?? {}, message);
+    const sanitized = projectLogData(data);
+    this._pino.info(sanitized ?? Object.create(null), message);
   }
 
   /**
    * Log a debug-level message. Synchronous, no DB persist.
    *
    * @param {string} message
-   * @param {object | null} [data]
+   * @param {unknown} [data]
    */
   debug(message, data) {
-    const sanitized = data ? sanitizeData(data) : undefined;
-    this._pino.debug(sanitized ?? {}, message);
+    const sanitized = projectLogData(data);
+    this._pino.debug(sanitized ?? Object.create(null), message);
   }
 }

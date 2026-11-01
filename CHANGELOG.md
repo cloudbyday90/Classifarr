@@ -107,6 +107,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Bound primary log data** — Preserve log events and safe context when data is
+  cyclic, hostile or oversized. Project own data properties without invoking
+  accessors or serialization hooks, retain sensitive-key redaction, and bound
+  traversal and encoded metadata. Protect root log identity and share the
+  projection with ordinary database logging. Keep native stacks, existing retry
+  boundaries and durable comparison evidence separate; no operator action is needed.
+
 - **Safe logging persistence fallback** — Replace raw error-text fallback output
   with one fixed notice and a shared one-minute output limit. Hostile failures or
   a failed console cannot turn an already caught persistence failure into a

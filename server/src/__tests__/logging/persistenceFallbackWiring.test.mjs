@@ -43,7 +43,8 @@ test('one shared fixed fallback preserves null results without inspecting failur
     setDb(null);
     await expect(persistToDb('ERROR', 'Direct', 'No database', {})).resolves.toBeNull();
     setDb(replacement);
-    const preparation = { get error() { throw Object.defineProperty({}, 'message', { get: caughtMessage }); } };
+    // Request-context preparation is outside data projection/error selection.
+    const preparation = { get req() { throw Object.defineProperty({}, 'message', { get: caughtMessage }); } };
     await expect(persistToDb('ERROR', 'Direct', 'Preparation failure', {}, preparation)).resolves.toBeNull();
     expect(replacement.query).toHaveBeenCalledTimes(3);
     replacement.query.mockResolvedValueOnce({ rows: [] });

@@ -84,6 +84,10 @@ the existing logging module and sinks; add no dashboard or operator trigger.
 Then reassess remaining readiness cancellation/acquisition boundaries and resume
 automatic classification evidence after a separately authorized deployment.
 
+The primary-data follow-up now has a separate [design](primary-log-data-normalization-design.md)
+and [implementation outcome](primary-log-data-normalization-outcome.md). Its bounds
+do not extend to every field of a log record.
+
 GitHub MCP found no open PRs, including Dependabot; no applicable random PR or
 stale dependency PR required local implementation/rebase. Dependencies and the
 existing low-severity dependency alert remain unchanged. Unreleased records the
