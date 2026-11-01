@@ -94,6 +94,8 @@ test('application projection errors cannot become SQL evidence; stopped native f
   expect(await pending).toEqual({ status: 'stopped' }); guard.stop();
   expect(() => withInventoryRefreshReadiness(worker, database, 'unknown')).toThrow('scope_invalid');
   expect(() => withInventoryRefreshReadiness(worker, database, READINESS_SCOPES.SOURCE_PAIR)).toThrow('scope_invalid');
+  expect(() => withInventoryRefreshReadiness(worker, database, READINESS_SCOPES.WORKLOAD_MONITOR)).toThrow('scope_invalid');
+  expect(() => withInventoryRefreshReadiness(worker, database, READINESS_SCOPES.WORKLOAD_RESERVATION)).toThrow('scope_invalid');
   // Legacy reader remains unchanged for non-opted-in call sites.
   const query = jest.fn(async () => ({ rows: [{ readiness: 'disabled' }] }));
   expect(await readInventoryRefreshReadiness({ withTransaction: callback => callback({ query }) })).toBe('disabled');

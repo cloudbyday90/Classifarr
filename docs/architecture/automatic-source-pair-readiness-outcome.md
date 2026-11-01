@@ -93,14 +93,12 @@ be removed through pg's public API, so its scope can remain deferred until the
 actual promise settles. Admission is process/database-module state and resets
 with its pool; it is not a cross-process lease.
 
-Next: design bounded cancellation for capture's inner workload checks. They
-currently read budget/readiness before work, every two seconds and before a
-reservation, and finalization awaits an outstanding poll. Separate genuinely
-read-only SELECTs from repository methods that insert, reset or prune. Preserve
-independent budget/revision/window checks, charged reservations and uncertain
-provider outcomes. This requires its own complete planning agreement; the outer
-preflight change does not bound active capture shutdown. Library comparison and
-caller cancellation of admitted workers remain separate follow-ups.
+The inner workload-check follow-up is addressed separately in the
+[capture workload check outcome](capture-workload-check-cancellation-outcome.md).
+It preserves separate read-only transactions, fresh reservation evidence and
+charged attempts. Write-side finalization, library comparison and caller
+cancellation of admitted workers remain separate follow-ups; neither batch
+claims bounded whole-capture shutdown.
 
 GitHub MCP found no open PRs, including Dependabot, so no random PR, stale rebase
 or dependency implementation was applicable. No PR was merged. Unreleased

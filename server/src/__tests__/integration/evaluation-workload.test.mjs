@@ -13,6 +13,7 @@ import { createAdjudicationBudgetRepository } from '../../services/adjudicationB
 import { createEvaluationWorkloadGuard } from '../../services/evaluationWorkloadGuard.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { EVALUATION_WINDOW_OPEN_SQL } from '../../services/evaluationWorkloadSql.mjs';
+import { INVENTORY_BACKGROUND_READINESS_SQL } from '../../services/inventoryBackgroundReadiness.mjs';
 
 const db = createIntegrationDatabaseModuleMock(), controls = createEvaluationWorkloadRepository(db);
 const budget = createAdjudicationBudgetRepository(db);
@@ -112,9 +113,16 @@ test.each(['disable','edit','window','foreground','unknown'])('real HTTP cancell
       : { capabilities: ['completion'],model_info: { 'general.architecture': 'synthetic','synthetic.context_length': 8192 } }));
   });
   await new Promise(resolve => { server.listen(0,'127.0.0.1',resolve); });
-  const guard = createEvaluationWorkloadGuard(db,{ intervalMs: 20,readReadiness: async () => {
-    if (readiness === 'unknown') throw new Error('PRIVATE'); return readiness;
-  } });
+  // Controlled readiness only; budget SQL and HTTP remain real. Cancellation of
+  // actual database reads is covered separately through the production factory.
+  const guardedDatabase = { withTransaction: (callback, options) => db.withTransaction(client => callback({
+    query: (sql, parameters) => {
+      if (sql !== INVENTORY_BACKGROUND_READINESS_SQL) return client.query(sql, parameters);
+      if (readiness === 'unknown') throw new Error('PRIVATE');
+      return { rows: [{ readiness }] };
+    },
+  }), options) };
+  const guard = createEvaluationWorkloadGuard(guardedDatabase,{ intervalMs: 20 });
   const client = createLocalDescriptionBenchmarkClient({ primary_provider: 'ollama',ollama_host: '127.0.0.1',ollama_port: server.address().port,ollama_model: model });
   const root = new AbortController(); let execution;
   try {

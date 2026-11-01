@@ -3,6 +3,8 @@ export const READINESS_SCOPES = Object.freeze({
   DESCRIPTION: 'inventory_description_refresh',
   REPRESENTATIVE: 'inventory_representative_refresh',
   SOURCE_PAIR: 'automatic_source_pair',
+  WORKLOAD_MONITOR: 'evaluation_workload_monitor',
+  WORKLOAD_RESERVATION: 'evaluation_workload_reservation',
 });
 const scopes = new Set(Object.values(READINESS_SCOPES));
 const deferred = new WeakSet();

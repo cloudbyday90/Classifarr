@@ -107,6 +107,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Bound capture workload checks** — Cancel automatic capture's initial,
+  periodic and fresh reservation checks within one shared three-second budget.
+  Preserve separate read-only transactions and current isolation; prevent
+  queued acquisitions from accumulating across runtime replacements. Cancel and
+  drain owned checks when the callback settles, preserving its result and
+  existing inference budgets. Keep automatic schedules and UI unchanged.
+
 - **Bound automatic evaluation readiness** — Reuse a shared three-second,
   read-only preflight for automatic source-pair evaluation and capture. Retain
   one database-scoped admission slot through cancellation cleanup and queued
