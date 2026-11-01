@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Preserve capture cooldowns** — Prevent later five-minute outcomes from
+  shortening a valid longer cooldown. Serialize finalization before calculating
+  the database-time deadline, preserve the existing one-hour validity horizon
+  and cooperative stop handling, and replace ignored future timestamps. Keep
+  status semantics, budgets, automatic schedules and UI unchanged.
+
 - **Capture failure shutdown** — Pass the permanent stop signal to failure
   finalization and recheck stop after the awaited write settles. Prevent finalizer
   DML when stop arrives during pool wait, and return the stopped lifecycle result

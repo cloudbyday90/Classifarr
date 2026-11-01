@@ -94,6 +94,19 @@ describe('real PostgreSQL restore reference recovery', () => {
     client.release();
   });
 
+  it.each(['merge', 'replace'])('retains the local capture cooldown/quota through %s without exporting it', async mode => {
+    const fingerprint = '1f'.repeat(32);
+    await client.query('DELETE FROM adjudication_capture_budget');
+    await client.query(`INSERT INTO adjudication_capture_budget
+      (singleton,daily_calls,daily_tokens,calls_reserved,tokens_reserved,next_check_at,status,published_fingerprint)
+      VALUES(true,5,42240,1,8448,statement_timestamp()+interval '60 minutes','unavailable',$1)`, [fingerprint]);
+    const before = (await client.query('SELECT * FROM adjudication_capture_budget')).rows;
+    const backup = await readBackupConfiguration(client);
+    expect(JSON.stringify(backup.data)).not.toContain(fingerprint);
+    await restoreAllTables(client, backup, mode);
+    expect((await client.query('SELECT * FROM adjudication_capture_budget')).rows).toEqual(before);
+  });
+
   it('creates a restore API key only when the HTTP composition supplies its factory', async () => {
     const before = (await client.query('SELECT COUNT(*)::int AS count FROM api_keys')).rows[0].count;
     const headless = await restoreAllTables(client, { data: {} }, 'merge');

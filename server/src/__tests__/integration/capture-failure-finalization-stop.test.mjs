@@ -62,7 +62,7 @@ test('stop while finalization is queued permits BEGIN/ROLLBACK but prevents fina
   }
 });
 
-test('stop during an already-dispatched UPDATE rolls back when the repository callback settles', async () => {
+test('stop during the finish prelock prevents the later UPDATE after lock acquisition', async () => {
   const f = await setup(), blocker = await getPool().connect(); let queries, execution;
   const worker = f.worker(async () => {
     const client = await f.db.pool.connect(), nativeQuery = client.query.bind(client);
@@ -79,16 +79,45 @@ test('stop during an already-dispatched UPDATE rolls back when the repository ca
   try {
     execution = worker.run();
     await until(async () => (await query(`SELECT 1 FROM pg_stat_activity WHERE datname=current_database()
-      AND wait_event_type='Lock' AND query LIKE 'UPDATE adjudication_capture_budget SET status=%'`)).rows.length);
+      AND wait_event_type='Lock' AND query LIKE 'SELECT singleton FROM adjudication_capture_budget%'`)).rows.length);
     worker.stop(); await blocker.query('ROLLBACK');
     expect(await execution).toEqual({ status: 'stopped' });
-    expect(queries.mock.calls.filter(([sql]) => finishUpdate(sql))).toHaveLength(1);
+    expect(queries.mock.calls.filter(([sql]) => finishUpdate(sql))).toHaveLength(0);
     expect(queries.mock.calls.map(([sql]) => sql)).toContain('ROLLBACK');
     expect(queries.mock.calls.some(([sql]) => sql === 'COMMIT')).toBe(false);
     expect(await snapshot()).toEqual(f.before); expect(f.finish).toHaveBeenCalledTimes(1);
     queries.mockRestore(); expect((await f.db.query('SELECT 42 AS ok')).rows[0].ok).toBe(42);
   } finally {
     worker.stop(); await blocker.query('ROLLBACK'); blocker.release(); await execution?.catch(() => {}); // swallow-error: Settle the owned write before fixture teardown.
+    queries?.mockRestore(); f.finish.mockRestore(); await f.db.pool.end();
+  }
+});
+
+test('stop after real UPDATE execution rolls back when its acknowledgement settles', async () => {
+  const f = await setup(), updated = deferred(), acknowledge = deferred(); let queries, execution, written, settled = false;
+  const worker = f.worker(async () => {
+    const client = await f.db.pool.connect(), nativeQuery = client.query.bind(client);
+    queries = jest.spyOn(client, 'query').mockImplementation(async (sql, parameters) => {
+      const result = await nativeQuery(sql, parameters);
+      if (finishUpdate(sql)) {
+        written = (await nativeQuery('SELECT status FROM adjudication_capture_budget')).rows[0].status;
+        updated.resolve(); await acknowledge.promise;
+      }
+      return result;
+    });
+    client.release(); throw Error('PRIVATE capture failure');
+  });
+  try {
+    execution = worker.run().finally(() => { settled = true; }); await updated.promise;
+    expect(written).toBe('unavailable'); expect(await snapshot()).toEqual(f.before);
+    worker.stop(); await sleep(0); expect(settled).toBe(false);
+    acknowledge.resolve(); expect(await execution).toEqual({ status: 'stopped' });
+    expect(queries.mock.calls.filter(([sql]) => finishUpdate(sql))).toHaveLength(1);
+    expect(queries.mock.calls.map(([sql]) => sql)).toContain('ROLLBACK');
+    expect(queries.mock.calls.some(([sql]) => sql === 'COMMIT')).toBe(false);
+    expect(await snapshot()).toEqual(f.before); expect(f.finish).toHaveBeenCalledTimes(1);
+  } finally {
+    worker.stop(); acknowledge.resolve(); await execution?.catch(() => {}); // swallow-error: Join the owned fault-injected acknowledgement before teardown.
     queries?.mockRestore(); f.finish.mockRestore(); await f.db.pool.end();
   }
 });

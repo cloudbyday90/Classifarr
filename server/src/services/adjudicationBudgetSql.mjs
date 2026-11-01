@@ -11,6 +11,15 @@ export const READ_ADJUDICATION_BUDGET_SQL = `SELECT revision,daily_calls,daily_t
   workload_mode,window_start_minute,window_end_minute,${EVALUATION_WINDOW_OPEN_SQL} AS window_open,
   next_check_at>statement_timestamp() AND next_check_at<=statement_timestamp()+interval '60 minutes' AS cooling_down
   FROM adjudication_capture_budget WHERE singleton=true`;
+export const LOCK_ADJUDICATION_FINISH_SQL = `SELECT singleton FROM adjudication_capture_budget
+  WHERE singleton=true AND revision=$1 FOR UPDATE`;
+// Dispatch after the awaited row lock so a lock wait cannot age this command's validity horizon.
+export const FINISH_ADJUDICATION_BUDGET_SQL = `UPDATE adjudication_capture_budget SET status=$2,
+  next_check_at=GREATEST(
+    statement_timestamp()+CASE WHEN $2='unavailable' THEN interval '60 minutes' ELSE interval '5 minutes' END,
+    CASE WHEN next_check_at>statement_timestamp() AND next_check_at<=statement_timestamp()+interval '60 minutes'
+      THEN next_check_at ELSE statement_timestamp() END),
+  published_fingerprint=COALESCE($3,published_fingerprint) WHERE singleton=true AND revision=$1`;
 export const RESERVE_ADJUDICATION_SQL = `UPDATE adjudication_capture_budget SET
   calls_reserved=calls_reserved+1,tokens_reserved=tokens_reserved+8448
   WHERE singleton=true AND revision=$1 AND daily_calls>0 AND daily_tokens>0

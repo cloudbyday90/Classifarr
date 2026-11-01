@@ -99,11 +99,12 @@ cooldown. Zero-row revision mismatches remain normal query results, and the
 shared transaction wrapper can recreate a default singleton after deletion.
 These are documented gaps, not silently repaired by stop propagation.
 
-Next: review finish ordering and cooldown preservation, starting with preventing
-a later five-minute finish from shortening an existing one-hour backoff. Settle
-the intended same-revision, future-clock, stale/no-op and restore behavior before
-changing shared SQL. Keep status ownership and broader write cancellation as
-explicit boundaries; do not infer retry authority from a stopped result.
+The next batch is specified in the
+[cooldown preservation design](capture-finalization-cooldown-preservation-design.md):
+prevent a later five-minute finish from shortening a recognized longer cooldown,
+with explicit serialization, future-clock, stale/no-op and restore boundaries.
+Status ownership and broader write cancellation remain separate; do not infer
+retry authority from a stopped result.
 
 GitHub MCP found no open PRs, including Dependabot, so no random PR implementation
 or stale dependency rebase was applicable. No PR was merged. Unreleased records
