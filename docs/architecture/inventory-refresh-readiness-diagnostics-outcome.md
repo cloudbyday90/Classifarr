@@ -108,6 +108,9 @@ existing logging failure isolation and persistence semantics; scope that shared
 change separately. Then evaluate remaining probe acquisition/cancellation bounds
 and return to automatic classification evidence after an authorized deployment.
 
+That logging follow-up now has its own [design](logging-persistence-fallback-design.md)
+and separate [implementation outcome](logging-persistence-fallback-outcome.md).
+
 GitHub MCP found no open PRs, including Dependabot, so no random PR or stale
 dependency PR was applicable. Dependencies remain unchanged. Unreleased records
 this batch. The existing low-severity dependency alert is not resolved here.

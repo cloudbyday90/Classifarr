@@ -107,6 +107,11 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Safe logging persistence fallback** — Replace raw error-text fallback output
+  with one fixed notice and a shared one-minute output limit. Hostile failures or
+  a failed console cannot turn an already caught persistence failure into a
+  rejection. Preserve primary logs, persistence attempts and ID/null results.
+
 - **Refresh readiness diagnostics** — Explain failed preliminary database checks
   for description and representative refreshes through safe, rate-limited
   warnings in existing logs. Keep failed checks deferred, preserve cache and

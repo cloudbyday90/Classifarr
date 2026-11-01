@@ -19,6 +19,9 @@
 import { sanitizeData } from './sanitize.mjs';
 import { getSystemContext, getRequestContext, extractError } from './requestContext.mjs';
 import { shouldThrottle } from './dedupe.mjs';
+import { createLogPersistenceFallback } from './persistenceFallback.mjs';
+
+const reportPersistenceFailure = createLogPersistenceFallback();
 
 // ---------------------------------------------------------------------------
 // Module-level DB reference
@@ -70,9 +73,8 @@ export async function persistToDb(level, moduleName, message, data, options = {}
     );
 
     return result.rows[0].error_id;
-  } catch (err) {
-    // eslint-disable-next-line no-console -- fallback when DB persistence fails and logger is unavailable
-    console.error('Failed to persist log to database:', err.message);
+  } catch {
+    reportPersistenceFailure();
     return null;
   }
 }
