@@ -107,6 +107,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Bound automatic evaluation readiness** — Reuse a shared three-second,
+  read-only preflight for automatic source-pair evaluation and capture. Retain
+  one database-scoped admission slot through cancellation cleanup and queued
+  acquisition drain, fencing late work across runtime replacement. Preserve
+  refresh diagnostics and separate evaluation/inference permissions; existing
+  automatic schedules and UI remain unchanged.
+
 - **Bound automatic refresh readiness** — Cancel description and representative
   preflight reads on stop, caller abort or a three-second probe deadline. Keep
   scoped admission through read cleanup and late pool acquisition, preventing

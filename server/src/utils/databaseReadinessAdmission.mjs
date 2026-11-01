@@ -2,12 +2,13 @@
 export const READINESS_SCOPES = Object.freeze({
   DESCRIPTION: 'inventory_description_refresh',
   REPRESENTATIVE: 'inventory_representative_refresh',
+  SOURCE_PAIR: 'automatic_source_pair',
 });
 const scopes = new Set(Object.values(READINESS_SCOPES));
 const deferred = new WeakSet();
 export const isDatabaseReadinessAdmissionDeferred = error => deferred.has(error);
 
-/** Database-module lifetime, two fixed scopes, no queue and no early drain claim. */
+/** Database-module lifetime, fixed scopes, no queue and no early drain claim. */
 export function createDatabaseReadinessAdmission() {
   const occupied = new Set();
   return {

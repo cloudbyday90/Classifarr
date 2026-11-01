@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readInventoryBackgroundReadiness, INVENTORY_BACKGROUND_READINESS_SQL } from './inventoryBackgroundReadiness.mjs';
 import { observeRepresentativeDatabaseOperation, observeRepresentativeTransaction } from './inventoryRepresentativeRefreshObservation.mjs';
+import { INVENTORY_READINESS_PROBE_MS } from './boundedInventoryReadinessReader.mjs';
 
 /** Opt-in attribution: reuse readiness policy without observing application projection as SQL. */
 export function readInventoryRefreshReadiness(database, options) {
@@ -13,7 +14,6 @@ export function readInventoryRefreshReadiness(database, options) {
   });
 }
 
-export const INVENTORY_REFRESH_PROBE_MS = 3000;
 const liveQueryFailures = new WeakMap();
 export const hasLiveInventoryRefreshQueryFailure = (error, signal) => liveQueryFailures.get(signal)?.has(error) === true;
 
@@ -22,7 +22,7 @@ async function readBounded(database, { signal, scope }) {
   try {
     return await observeRepresentativeTransaction(
       operation => database.withTransaction(operation, { signal, readOnly: true,
-        timeoutMs: INVENTORY_REFRESH_PROBE_MS, readinessScope: scope }),
+        timeoutMs: INVENTORY_READINESS_PROBE_MS, readinessScope: scope }),
       async client => {
         let result;
         try {

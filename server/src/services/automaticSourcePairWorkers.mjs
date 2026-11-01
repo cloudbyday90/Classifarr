@@ -6,7 +6,8 @@ import { createAdjudicationBudgetWorker } from './adjudicationBudgetWorker.mjs';
 import { createAdjudicationBudgetRepository } from './adjudicationBudgetRepository.mjs';
 import { createLocalDescriptionBenchmarkClient } from './localDescriptionBenchmarkClient.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from './freshInventoryPolicyRuntime.mjs';
-import { withInventoryBackgroundReadiness } from './inventoryBackgroundReadiness.mjs';
+import { withBoundedInventoryReadiness } from './boundedInventoryReadinessGuard.mjs';
+import { READINESS_SCOPES } from '../utils/databaseReadinessAdmission.mjs';
 import { createEvaluationWorkloadGuard } from './evaluationWorkloadGuard.mjs';
 
 /** One scheduler lifecycle, two separate permissions: replay cannot authorize inference. */
@@ -18,8 +19,8 @@ export function createAutomaticSourcePairWorkers(database) {
     withWorkload: createEvaluationWorkloadGuard(database),
     budget: createAdjudicationBudgetRepository(database), createClient: createLocalDescriptionBenchmarkClient,
     readConfig: async () => (await database.query(FRESH_POLICY_CONFIG_SQL)).rows[0] });
-  return withInventoryBackgroundReadiness({
+  return withBoundedInventoryReadiness({
     async run() { const result = await evaluator.run(); await capture.run(); return result; },
     stop() { evaluator.stop(); capture.stop(); },
-  }, database);
+  }, database, READINESS_SCOPES.SOURCE_PAIR);
 }

@@ -122,9 +122,10 @@ backend has physically terminated. A native setup/commit cancellation whose
 original proof was replaced remains unknown. The legacy shared readiness wrapper
 continues to serve other callers; this batch grants them no new semantics.
 
-Next: inspect equivalent preliminary-readiness gaps in automatic source-pair
-evaluation/capture and library comparison workers before expanding cancellation.
-Their existing shared wrapper remains unchanged. Preserve separate evaluation
+The source-pair portion is now addressed by the separate
+[automatic source-pair readiness outcome](automatic-source-pair-readiness-outcome.md).
+Library comparison and inner workload polling remain separate follow-ups.
+Preserve separate evaluation
 and budgeted-inference authority along with their ownership, resource and
 evidence contracts. Resume Unraid
 classification-evidence assessment after a separately authorized deployment;
