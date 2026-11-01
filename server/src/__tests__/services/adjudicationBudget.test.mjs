@@ -105,6 +105,47 @@ test.each(['adjudication_budget_exhausted','inventory_discovery_deferred','PRIVA
   expect(await worker.run()).toEqual({ status: 'cooldown' });
 });
 
+test.each(['resolve', 'reject'])('stop during a pending failure finalizer returns stopped after it %s', async outcome => {
+  const { worker, capture, budget } = await fixture();
+  capture.mockRejectedValue(new Error('PRIVATE provider failure'));
+  let entered, resolve, reject, finishSignal;
+  const started = new Promise(yes => { entered = yes; });
+  const pending = new Promise((yes, no) => { resolve = yes; reject = no; });
+  budget.finish.mockImplementation((_revision, _status, _fingerprint, signal) => { finishSignal = signal; entered(); return pending; });
+  const execution = worker.run(); await started;
+  expect(await worker.run()).toEqual({ status: 'cooldown' });
+  worker.stop();
+  if (outcome === 'resolve') resolve(); else reject(Error('PRIVATE finish failure'));
+  expect(await execution).toEqual({ status: 'stopped' });
+  expect(finishSignal).toBe(budget.read.mock.calls[0][0]); expect(finishSignal.aborted).toBe(true);
+  expect(budget.finish).toHaveBeenCalledTimes(1); expect(await worker.run()).toEqual({ status: 'stopped' });
+});
+
+test('a failed finalizer preserves the local five-minute cooldown from failure time', async () => {
+  const { dependencies, capture, budget } = await fixture(); let clock = 100;
+  capture.mockRejectedValue(Error('PRIVATE provider')); budget.finish.mockRejectedValue(Error('PRIVATE database'));
+  const worker = createAdjudicationBudgetWorker({ ...dependencies, now: () => clock });
+  expect(await worker.run()).toEqual({ status: 'unavailable' });
+  expect(budget.finish).toHaveBeenCalledWith(1, 'unavailable', null, budget.read.mock.calls[0][0]);
+  expect(budget.read.mock.calls[0][0].aborted).toBe(false);
+  clock = 300099; expect(await worker.run()).toEqual({ status: 'cooldown' });
+  expect(budget.finish).toHaveBeenCalledTimes(1);
+  clock = 300100; expect(await worker.run()).toEqual({ status: 'unavailable' });
+  expect(budget.finish).toHaveBeenCalledTimes(2); worker.stop();
+});
+
+test('workload cancellation still permits cooldown persistence through the live permanent signal', async () => {
+  const { dependencies, capture, budget } = await fixture(), workload = new AbortController();
+  const worker = createAdjudicationBudgetWorker({ ...dependencies, withWorkload: async () => {
+    workload.abort(Error('evaluation_workload_deferred')); workload.signal.throwIfAborted();
+  } });
+  expect(await worker.run()).toEqual({ status: 'deferred' });
+  expect(budget.finish).toHaveBeenCalledWith(1, 'deferred', null, budget.read.mock.calls[0][0]);
+  expect(budget.finish.mock.calls[0][3]).not.toBe(workload.signal);
+  expect(budget.finish.mock.calls[0][3].aborted).toBe(false);
+  expect(capture).not.toHaveBeenCalled(); worker.stop();
+});
+
 test('admission rechecks disabled/cooling state and cancellation never leaks provider details', async () => {
   for (const stateChange of [{ daily_calls: 0 },{ cooling_down: true }]) {
     const { state,budget,capture,worker } = await fixture();
@@ -112,10 +153,11 @@ test('admission rechecks disabled/cooling state and cancellation never leaks pro
     expect((await worker.run()).status).toBe(stateChange.cooling_down ? 'cooldown' : 'disabled');
     expect(capture).not.toHaveBeenCalled();
   }
-  const { dependencies,capture } = await fixture();
+  const { dependencies,capture,budget } = await fixture();
   const worker = createAdjudicationBudgetWorker(dependencies);
   capture.mockImplementation(async (_options,{ signal }) => { worker.stop(); signal.throwIfAborted(); });
   expect(await worker.run()).toEqual({ status: 'stopped' });
+  expect(budget.finish).not.toHaveBeenCalled();
 });
 
 test('database failures use local retry cooldown and stale publication markers allow current work to recover', async () => {

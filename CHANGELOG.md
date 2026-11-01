@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Capture failure shutdown** — Pass the permanent stop signal to failure
+  finalization and recheck stop after the awaited write settles. Prevent finalizer
+  DML when stop arrives during pool wait, and return the stopped lifecycle result
+  without claiming rollback of an already-dispatched commit. Preserve quotas,
+  cooldown timing, transaction handling and automatic schedules.
+
 - **Bound capture workload checks** — Cancel automatic capture's initial,
   periodic and fresh reservation checks within one shared three-second budget.
   Preserve separate read-only transactions and current isolation; prevent

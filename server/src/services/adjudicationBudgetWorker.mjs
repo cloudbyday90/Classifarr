@@ -54,7 +54,8 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
           ['disabled','busy','unsupported_provider','representation_unavailable','adjudication_budget_changed'].includes(error?.message)
           ? 'deferred' : 'unavailable';
       retryAfter = now() + 300000;
-      if (state) { try { await budget.finish(state.revision,status); } catch { /* Database recovery retains the local cooldown. */ } }
+      if (state) { try { await budget.finish(state.revision,status,null,controller.signal); } catch { /* Database recovery retains the local cooldown. */ } }
+      if (controller.signal.aborted) return { status: 'stopped' };
       return { status };
     }
   }

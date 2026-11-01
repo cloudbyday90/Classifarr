@@ -107,12 +107,11 @@ completion; its scope remains charged until settlement without blocking guard
 finalization. Admission is per database module/process, not a cross-process lease,
 and resets with its pool.
 
-Next: review capture's write-side cancellation/finalization, starting with the
-unsigned budget.finish failure path. Establish safe handling for committed,
-rolled-back and uncertain outcomes before proposing bounded write behavior.
-Preserve reservations, durable cooldowns, publication identity and owner fencing;
-do not reuse the read-only runner for writes or claim full shutdown recovery.
-Library comparison and caller cancellation of admitted workers remain separate.
+The unsigned failure-finalization follow-up is addressed in the separate
+[cooperative stop outcome](capture-failure-finalization-stop-outcome.md).
+It preserves awaited write settlement and uncertain commit handling; it adds no
+write deadline or full shutdown guarantee. Finish ordering/cooldown preservation,
+library comparison and caller cancellation of admitted workers remain separate.
 
 GitHub MCP found no open PRs, including Dependabot, so no random local PR
 implementation or stale rebase was applicable. No PR was merged. Unreleased
