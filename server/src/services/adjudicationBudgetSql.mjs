@@ -11,6 +11,8 @@ export const READ_ADJUDICATION_BUDGET_SQL = `SELECT revision,daily_calls,daily_t
   workload_mode,window_start_minute,window_end_minute,${EVALUATION_WINDOW_OPEN_SQL} AS window_open,
   next_check_at>statement_timestamp() AND next_check_at<=statement_timestamp()+interval '60 minutes' AS cooling_down
   FROM adjudication_capture_budget WHERE singleton=true`;
+export const LOCK_ADJUDICATION_MAINTENANCE_SQL = `SELECT singleton FROM adjudication_capture_budget
+  WHERE singleton=true FOR UPDATE`;
 export const LOCK_OWNED_ADJUDICATION_BUDGET_SQL = `SELECT singleton FROM adjudication_capture_budget
   WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid FOR UPDATE`;
 export const ADVANCE_ADJUDICATION_BUDGET_SQL = `UPDATE adjudication_capture_budget SET

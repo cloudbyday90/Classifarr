@@ -76,20 +76,12 @@ revoke accepted provider work, constrain older binaries/physical rollback or
 change independent manual-cache and read-time maintenance authority. No new
 deadline, SQL cancellation or bounded whole-worker shutdown is claimed.
 
-Next investigate read-time progress pruning after row contention. read() performs
-UTC quota reset and retention pruning before any flight claim; on the current
-quota day its reset can affect zero rows, leaving prune without a prior row
-prelock. A prune waiting behind checkpoint open may compare newly committed
-captured_at against its older statement-time anchor and classify fresh progress
-as future. This is a precise scheduling hypothesis, not a reproduced failure;
-freeze an isolated PostgreSQL regression first.
-
-If confirmed, assess a singleton prelock followed by the existing maintenance
-commands with fresh anchors. Preserve its unclaimed maintenance authority,
-disabled/default bootstrap, charge predicates and write transaction. Do not
-require a flight UUID on preliminary reads, infer quota refunds, convert it to
-read-only cancellation or extend the hypothesis to independent cache maintenance
-without separate evidence. Any change needs its own scope agreement.
+The subsequent [maintenance outcome](adjudication-budget-maintenance-outcome.md)
+reproduces and fixes progress pruning after row contention with a singleton
+prelock, preserving unclaimed maintenance authority and the existing write
+transaction. The next separate investigation is truthful outer-read settlement
+after permanent stop. Do not extend either result to independent cache maintenance
+or the production inner-admission boundary without its own evidence.
 
 The recommendation stack remains acknowledged private authority, owned prelock
 plus guarded mutation, settled private refusal, existing lifecycle/fallback and

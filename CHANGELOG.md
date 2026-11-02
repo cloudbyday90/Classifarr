@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Serialized capture-budget maintenance** — Lock the budget singleton before
+  UTC reset and progress pruning so a contended read cannot erase a newly
+  committed capture using an older timestamp. Keep maintenance independent of
+  flight claims, preserve retention and charges, and distinguish absent-row
+  deferral from malformed results without adding retries or replay.
+
 - **Owner-bound automatic rotation** — Require the acknowledged capture
   revision/UUID before advancing rotation or clearing retained progress.
   Serialize ownership, preserve same-flight authority and distinguish proven

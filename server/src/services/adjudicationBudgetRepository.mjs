@@ -4,7 +4,8 @@ import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { createAdjudicationReservationRefusal } from './adjudicationReservationRefusal.mjs';
 import { createAdjudicationCheckpoint } from './adjudicationCheckpointRepository.mjs';
 import { advanceAdjudicationBudget } from './adjudicationAdvanceRepository.mjs';
-import { READ_ADJUDICATION_BUDGET_SQL, RESET_ADJUDICATION_DAY_SQL, PRUNE_ADJUDICATION_PROGRESS_SQL,
+import { readAdjudicationBudget } from './adjudicationBudgetMaintenanceRepository.mjs';
+import { READ_ADJUDICATION_BUDGET_SQL,
   LOCK_OWNED_ADJUDICATION_BUDGET_SQL, FINISH_ADJUDICATION_BUDGET_SQL,
   RESET_ADJUDICATION_RESERVATION_DAY_SQL,
   RESERVE_ADJUDICATION_SQL } from './adjudicationBudgetSql.mjs';
@@ -19,11 +20,7 @@ export function createAdjudicationBudgetRepository(database) {
     const value = await callback(client); signal?.throwIfAborted(); return value;
   });
   return {
-    read: signal => transaction(async client => {
-      await client.query(RESET_ADJUDICATION_DAY_SQL);
-      await client.query(PRUNE_ADJUDICATION_PROGRESS_SQL);
-      return (await client.query(READ_ADJUDICATION_BUDGET_SQL)).rows[0];
-    }, signal),
+    read: signal => readAdjudicationBudget(transaction, signal),
     configure: options => {
       const { dailyCalls, dailyTokens } = validateAdjudicationBudget(options);
       return transaction(async client => {

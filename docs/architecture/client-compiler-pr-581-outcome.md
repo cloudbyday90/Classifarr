@@ -125,3 +125,18 @@ unchanged containers and 425 comparable image-tag rows. Classifarr remains healt
 with unchanged identity/image/start time. No pre-existing artifacts or images
 were retired; existing recovery assets, worktrees and shared resources remain
 protected. The sole worktree removal was the newly owned rebase checkout above.
+
+## November 2 repeated selection recheck
+
+During the subsequent [budget maintenance batch](adjudication-budget-maintenance-outcome.md),
+a new uniform selection from the two current open PRs again chose 581. MCP
+confirms the same head 15b66950a5739e6fdb5290f2cf4c0120d4259015, still open and
+unmerged. The registry still publishes 3.3.14 as latest, with integrity matching
+the saved candidate lock. Original reports 6322/6328 remain open/pending triage;
+no fixed published candidate was established.
+
+Reuse the settled deferral and prior 12/12 baseline, 7/12 candidate and restored
+102/102 focused receipts. These are prior tests, not new executions. Current
+client source/tree/report checks match the verified baseline. No compiler install,
+dependency edit, new fixture scope or second random selection is warranted.
+Keep npm unchanged, leave PRs unmerged and rebase only genuine applicable drift.
