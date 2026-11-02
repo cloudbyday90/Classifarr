@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
+import { createRequire } from 'node:module';
 import { readLintConfiguration, selectMarkdownFiles } from '../markdownlint/files.mjs';
 import { matchesPattern, validatePatterns } from '../markdownlint/patterns.mjs';
 import { runMarkdownLint } from '../markdownlint/run.mjs';
@@ -13,6 +14,87 @@ import stringWidth from 'string-width';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const configuration = readLintConfiguration(root);
+
+test('markdownlint resolves the reviewed RE2JS artifact without a second consumer copy', () => {
+  const require = createRequire(import.meta.url);
+  const consumer = createRequire(require.resolve('markdownlint'));
+  const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
+  const lock = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'));
+  const installed = JSON.parse(readFileSync(resolve(root, 'node_modules/re2js/package.json'), 'utf8'));
+  assert.equal(pkg.overrides.markdownlint.re2js, '2.8.7');
+  assert.equal(lock.packages['node_modules/re2js'].version, '2.8.7');
+  assert.equal(installed.version, '2.8.7');
+  assert.equal(consumer.resolve('re2js'), require.resolve('re2js'));
+});
+
+function runRe2jsProbe(source) {
+  const result = spawnSync(process.execPath, ['--max-old-space-size=128', '--input-type=module', '-e', source],
+    { cwd: root, encoding: 'utf8', shell: false, windowsHide: true, timeout: 10_000, maxBuffer: 64 * 1024 });
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+test('real repeated lookbehind matching bounds observed input reads and preserves every match', () => {
+  const results = runRe2jsProbe(`
+    import assert from 'node:assert/strict';
+    import { RE2JS, MatcherInput } from 're2js';
+    const pattern = RE2JS.compile('(?<=a)b', RE2JS.LOOKBEHINDS);
+    const nativeCharCodeAt = String.prototype.charCodeAt;
+    const collect = matcher => {
+      const matches = [];
+      while (matcher.find()) matches.push([matcher.start(), matcher.end(), matcher.group()]);
+      return matches;
+    };
+    const results = [];
+    for (const size of [256, 512]) {
+      const text = 'ab'.repeat(size / 2);
+      const sequence = new String(text);
+      let reads = 0;
+      // Per-input observation only; neither vendor code nor a global prototype is changed.
+      Object.defineProperty(sequence, 'charCodeAt', { value(index) {
+        reads++; return nativeCharCodeAt.call(this, index);
+      } });
+      const actual = collect(pattern.matcher(MatcherInput.utf16(sequence)));
+      assert.deepEqual(actual, Array.from({ length: size / 2 }, (_, i) => [2 * i + 1, 2 * i + 2, 'b']));
+      assert.deepEqual(actual, collect(pattern.matcher(text)));
+      assert.ok(reads > 0, 'observer must remain active');
+      results.push({ size, reads, matches: actual.length });
+    }
+    console.log(JSON.stringify(results));
+  `);
+  for (const { size, reads, matches } of results) {
+    assert.equal(matches, size / 2);
+    // A generous bound on this fixed scan, not a wall-clock or universal complexity claim.
+    assert.ok(reads <= 64 * size, `${size} characters required ${reads} input reads`);
+  }
+});
+
+test('real RE2JS retains default flags, repeated APIs, reset and Unicode behavior', () => {
+  const result = runRe2jsProbe(`
+    import assert from 'node:assert/strict';
+    import { RE2JS } from 're2js';
+    assert.throws(() => RE2JS.compile('(?<=a)b'));
+    const positive = RE2JS.compile('(?<=a)b', RE2JS.LOOKBEHINDS);
+    const negative = RE2JS.compile('(?<!a)b', RE2JS.LOOKBEHINDS);
+    assert.equal(positive.test('ab'), true); assert.equal(positive.test('cb'), false);
+    assert.equal(negative.test('cb'), true); assert.equal(negative.test('ab'), false);
+    assert.deepEqual([...positive.matchAll('abab')].map(match => [match.index, match[0]]), [[1, 'b'], [3, 'b']]);
+    assert.equal(positive.matcher('abab').replaceAll('X'), 'aXaX');
+    assert.deepEqual(positive.split('abab'), ['a', 'a']);
+    const matcher = positive.matcher('abab');
+    assert.equal(matcher.find(), true); assert.equal(matcher.start(), 1);
+    assert.equal(matcher.find(), true); assert.equal(matcher.start(), 3);
+    matcher.reset(); assert.equal(matcher.find(), true); assert.equal(matcher.start(), 1);
+    matcher.resetMatcherInput('cbab'); assert.equal(matcher.find(), true); assert.equal(matcher.start(), 3);
+    const unicode = RE2JS.compile('古|👩🏽‍💻|e\\u0301');
+    assert.deepEqual([...unicode.matchAll('古 👩🏽‍💻 e\\u0301')].map(match => match[0]), ['古', '👩🏽‍💻', 'e\\u0301']);
+    assert.equal(RE2JS.compile('ab').matcher('abab').replaceAll('X'), 'XX');
+    console.log(JSON.stringify({ controls: 'passed' }));
+  `);
+  assert.equal(result.controls, 'passed');
+});
 
 test('markdownlint uses its supported display-width dependency without the retired downgrade', () => {
   const pkg = JSON.parse(readFileSync(resolve(root,'package.json'),'utf8'));

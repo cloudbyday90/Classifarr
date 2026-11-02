@@ -76,3 +76,8 @@ Follow-up on 2026-10-27: the separately documented
 recommended patched overrides and isolated HTTP regressions. The audit numbers
 above remain the historical tooling-batch result; consult the follow-up for
 the current graph and newly observed development-only advisory.
+
+November 2 follow-up: [PR 578 local adoption](server-tooling-pr-578-outcome.md)
+updates the security plugin to 4.2.1 and Knip to 6.44.0 with exact pins and real
+plugin/CLI controls. Earlier versions, PR actions and audit counts above remain
+the historical record of the PR 572 batch.

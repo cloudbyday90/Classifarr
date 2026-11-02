@@ -2,6 +2,19 @@
 import { reported, runKnip, withFixture } from './helpers/knipCliFixture.mjs';
 
 describe('installed Knip entry-boundary contracts', () => {
+  test('deep namespace use retains the referenced export and still reports the unused sibling', () => {
+    withFixture({
+      'entry.mjs': "import * as api from './barrel.mjs';\napi.deep.tools.used();\n",
+      'barrel.mjs': "export * as deep from './middle.mjs';\n",
+      'middle.mjs': "export * as tools from './operations.mjs';\n",
+      'operations.mjs': 'export function used() {}\nexport function unused() {}\n',
+    }, directory => {
+      const result = runKnip(directory, ['--include-entry-exports', '--exports']);
+      expect(result.status).toBe(1);
+      expect(reported(result, 'exports')).toEqual(['operations.mjs:unused']);
+    });
+  });
+
   test('wildcard package exports do not let tests hide production-only unused exports', () => {
     withFixture({
       'src/index.mjs': "import { live } from './operations.mjs';\nlive();\n",

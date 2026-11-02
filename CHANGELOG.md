@@ -223,14 +223,21 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   CodeQL 4.39.1 updates with full commit SHAs. Update the existing promotion
   allowlist and security contract assertion while preserving permissions,
   publication/event gates and failure checks. No PR merge or release is included.
-- **Server lint tooling** — Locally implement the reviewed updates from PR #572:
-  pin `eslint-plugin-n` 18.5.0 and `knip` 6.42.1, retaining install-script policy
-  and overrides. No provider PR merge or release is included.
+- **Server lint tooling** — Locally implement PR #572's `eslint-plugin-n` 18.5.0
+  and PR #578's exact `eslint-plugin-security` 4.2.1 / `knip` 6.44.0 updates.
+  Verify real RegExp call diagnostics and Knip analysis, retaining severities,
+  exclusions, install-script policy and overrides. No provider PR merge or release.
 - **Server environment tooling** — Locally implement randomly selected PR #571:
   pin `dotenv` 18.0.9 and cover the empty `DOTENV_PATH` CLI fix with isolated
   synthetic environment and precedence checks. No provider PR merge is included.
 
 ### Security
+
+- **RE2JS tooling patch** — Scope exact RE2JS 2.8.7 beneath Markdownlint 0.42.0
+  for GHSA-gg6h-894w-4m9c. Reproduce repeated lookbehind scanning with a bounded
+  real-library input observer and verify exact results plus legitimate lint
+  behavior. The inspected Classifarr lint path does not enable the advisory's
+  lookbehind condition; application behavior and lint protections stay unchanged.
 
 - **Cross-realm redirect filtering** — Patch both independent root/client
   follow-redirects overrides to exact 1.16.2 for GHSA-mrwp-f3q8-3g9p. Reproduce

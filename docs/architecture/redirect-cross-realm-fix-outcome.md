@@ -95,6 +95,10 @@ Markdownlint downgrade or audit fix --force automatically. After that, resume
 checkpoint/advance/publication ownership fencing with manual cache authority
 kept separate.
 
+Subsequent November 2 follow-up: the [RE2JS outcome](re2js-tooling-fix-outcome.md)
+records the scoped 2.8.7 override and direct-library work regression. The two root
+high nodes above describe this earlier redirect batch's audit boundary.
+
 The final recommendation remains the small upstream patch with exact independent
 pins, strict installs and real boundary controls. This costs ongoing override
 maintenance; it avoids introducing a production transport wrapper or fork.

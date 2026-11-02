@@ -157,6 +157,9 @@
     "typescript": "^7.0.2"
   },
   "overrides": {
+    "markdownlint": {
+      "re2js": "2.8.7"
+    },
     "follow-redirects": "1.16.2",
     "micromark-extension-math": {
       "katex": "0.18.2"
