@@ -73,11 +73,11 @@ not revoke a previously accepted charge, make SQL/HTTP atomic or fence the
 independent manual cache writer. Older binaries, physical rollback and ordinary
 read-time reset/pruning remain separate boundaries.
 
-The next application item is same-revision advance: it still changes rotation
-and clears progress/fingerprint using revision alone. Assess its acknowledged
-claim binding, private exact-zero evidence, stop/rollback and unknown-commit
-behavior as a separate batch. Keep manual cache authority, broader shutdown/
-acquisition and any durable provider-dispatch protocol separately scoped.
+The subsequent [advance fence outcome](capture-advance-fence-outcome.md) records
+completion of same-revision rotation/progress-clear fencing. The next separate
+investigation is read-time budget retention maintenance under row contention.
+Keep manual cache authority, broader shutdown/acquisition and any durable
+provider-dispatch protocol separately scoped.
 
 The recommended stack remains private acknowledged authority, owner prelock plus
 guarded SQL, settled trusted refusal, atomic save without uncertain replay, and

@@ -43,7 +43,7 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
               if (current === state.published_fingerprint) {
                 await finalization.finish(state.revision,'waiting_for_replay',null,signal); return { status: 'waiting_for_replay' };
               }
-            } else await budget.advance(state.revision,evaluation.report.aiReplay.eligible,signal);
+            } else await finalization.advance(state.revision,evaluation.report.aiReplay.eligible,signal);
           }
           const maxCalls = remainingAdjudicationCalls(state);
           if (!maxCalls) { await finalization.finish(state.revision,'budget_exhausted',null,signal); return { status: 'budget_exhausted' }; }

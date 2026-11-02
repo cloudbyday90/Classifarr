@@ -13,6 +13,10 @@ export const READ_ADJUDICATION_BUDGET_SQL = `SELECT revision,daily_calls,daily_t
   FROM adjudication_capture_budget WHERE singleton=true`;
 export const LOCK_OWNED_ADJUDICATION_BUDGET_SQL = `SELECT singleton FROM adjudication_capture_budget
   WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid FOR UPDATE`;
+export const ADVANCE_ADJUDICATION_BUDGET_SQL = `UPDATE adjudication_capture_budget SET
+  selection_offset=CASE WHEN selection_offset+25 >= $2 THEN 0 ELSE selection_offset+25 END,
+  published_fingerprint=NULL,progress_key=NULL,progress=NULL,captured_at=NULL,expires_at=NULL
+  WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$3::uuid`;
 export const RESET_ADJUDICATION_RESERVATION_DAY_SQL = `${RESET_ADJUDICATION_DAY_SQL}
   AND singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid`;
 // Dispatch after the awaited row lock so a lock wait cannot age this command's validity horizon.

@@ -15,17 +15,23 @@ defineProps({ count: { type: Number, required: true } })
 `
 
 // Check actual workspace options with the installed CLI, never a shell or npx.
-export function typecheck(source) {
+export function typecheck(source, companions = {}) {
   mkdirSync(scratchRoot, { recursive: true })
   const directory = mkdtempSync(resolve(scratchRoot, 'vue-typecheck-'))
   try {
     writeFileSync(resolve(directory, 'tsconfig.json'), JSON.stringify({
       extends: resolve(clientRoot, 'tsconfig.components.json'),
-      include: ['./*.vue'],
+      include: ['./*.vue', './*.ts'],
       exclude: [],
     }))
     writeFileSync(resolve(directory, 'CounterValue.vue'), childComponent)
     writeFileSync(resolve(directory, 'ContractFixture.vue'), source)
+    // Fixed companion names keep multi-file compiler controls inside this owned child.
+    for (const [name, contents] of Object.entries(companions)) {
+      if (!['ModelValue.vue', 'EventValue.vue', 'SlotValue.vue', 'FixtureKeys.ts', 'SemanticSentinel.ts'].includes(name) ||
+          typeof contents !== 'string') throw new TypeError('Unsupported compiler fixture companion')
+      writeFileSync(resolve(directory, name), contents)
+    }
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
       /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|COMSPEC|TEMP|TMP|HOME|USERPROFILE)$/i.test(key)))
     const result = spawnSync(process.execPath, [

@@ -2,6 +2,7 @@
 import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { isAdjudicationReservationRefusal } from './adjudicationReservationRefusal.mjs';
 import { isAdjudicationCheckpointRefusal } from './adjudicationCheckpointRefusal.mjs';
+import { isAdjudicationAdvanceRefusal } from './adjudicationAdvanceRefusal.mjs';
 
 /** One capture flight; only a settled repository result can prove non-application. */
 export function createAdjudicationBudgetFinalization(budget) {
@@ -24,6 +25,14 @@ export function createAdjudicationBudgetFinalization(budget) {
       catch (error) {
         // Match private repository evidence only after the transaction has settled.
         if (isAdjudicationReservationRefusal(error)) notApplied = true;
+        throw error;
+      }
+    },
+    async advance(revision, eligible, signal) {
+      if (!claim || claim.revision !== revision) throw Error('adjudication_claim_missing');
+      try { await budget.advance(revision, eligible, signal, claim.attemptId); }
+      catch (error) {
+        if (isAdjudicationAdvanceRefusal(error)) notApplied = true;
         throw error;
       }
     },

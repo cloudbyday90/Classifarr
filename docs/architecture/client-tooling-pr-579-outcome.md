@@ -54,18 +54,19 @@ lookup returned E404. Classifarr's server override/installed parser remains
 patch was made; the existing release hold remains until a published archive,
 integrity, bundled parser and local/CI/container install checks are verified.
 
-Keep the compiler update separate. The open upstream 3.3.14 reports are not
-reproduced Classifarr failures. Before adopting a coupled language-tools graph,
-add bounded actual-CLI fixtures for their template patterns and an unrelated
-semantic-error sentinel. Preserve source-mapped negative diagnostics and existing
-type scopes; do not weaken compiler settings to make an upgrade pass.
+The subsequent [compiler assessment](client-compiler-pr-581-outcome.md) adds the
+bounded actual-CLI template and unrelated semantic-error controls. It reproduces
+five candidate compiler regressions on synthetic fixtures and retains 3.3.13;
+the ordinary project typechecks pass on both versions. This does not establish
+a failure in shipped application source. Preserve the semantic guards, exact
+negative diagnostics and existing scopes for a later coherent compiler update.
 
 Final recommendation: retain the verified exact three-package subset, preserve
 compiler authority, address existing advisory/toolchain follow-ups separately,
 and upgrade npm only after publication and verification. This adopts assessed
 lint/CSS fixes at the cost of leaving the selected provider PR partly unapplied.
-The application's next ownership task remains
-[same-revision advance](capture-checkpoint-fence-outcome.md#limits-and-next-recommendation).
+The subsequent [advance outcome](capture-advance-fence-outcome.md) completes that
+ownership follow-up and identifies the separate retention-maintenance investigation.
 
 ## Final coverage and delivery
 

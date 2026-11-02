@@ -66,7 +66,7 @@ test('capture is single-flight, limited per tick, and pins publication for rotat
   expect(capture).toHaveBeenCalledWith({ maxCalls: 5 },expect.any(Object));
   expect(budget.finish).toHaveBeenCalledWith(1,'captured',expect.stringMatching(/^[a-f0-9]{64}$/),expect.anything(), expect.any(String));
   state.published_fingerprint = evaluation.input_fingerprint;
-  await worker.run(); expect(budget.advance).toHaveBeenCalledWith(1,evaluation.report.aiReplay.eligible,expect.anything());
+  await worker.run(); expect(budget.advance).toHaveBeenCalledWith(1,evaluation.report.aiReplay.eligible,expect.anything(),expect.any(String));
   worker.stop(); expect(await worker.run()).toEqual({ status: 'stopped' });
 });
 

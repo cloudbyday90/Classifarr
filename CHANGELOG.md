@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Owner-bound automatic rotation** — Require the acknowledged capture
+  revision/UUID before advancing rotation or clearing retained progress.
+  Serialize ownership, preserve same-flight authority and distinguish proven
+  refusal from ordinary zero, malformed results and uncertain commits. Keep
+  existing cooldown, charge and stop behavior without replaying advance.
+
 - **Owner-bound automatic checkpoints** — Require the acknowledged capture
   revision/UUID for open, record and the existing atomic progress/cache publish.
   Serialize ownership before retention checks and guarded writes; only proven
@@ -211,6 +217,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   checks; this does not rewrite saved policies or establish an accuracy rate.
 
 ### Changed
+
+- **Compiler semantic regression guards** — Add bounded real-CLI model/event,
+  slot-default and independent semantic-error controls. Locally assess PR #581
+  and retain vue-tsc 3.3.13 after reproducing five 3.3.14 compiler regressions;
+  preserve the complete compiler graph, typecheck scopes and strict install
+  policy without application workarounds or diagnostic suppression.
 
 - **Assessed client tooling updates** — Locally apply PR #579's exact ESLint
   10.14.0, eslint-plugin-vue 10.12.0 and PostCSS 8.5.32 subset with real tooling

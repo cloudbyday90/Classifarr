@@ -3,6 +3,7 @@ import { validateAdjudicationBudget } from './adjudicationBudgetContract.mjs';
 import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { createAdjudicationReservationRefusal } from './adjudicationReservationRefusal.mjs';
 import { createAdjudicationCheckpoint } from './adjudicationCheckpointRepository.mjs';
+import { advanceAdjudicationBudget } from './adjudicationAdvanceRepository.mjs';
 import { READ_ADJUDICATION_BUDGET_SQL, RESET_ADJUDICATION_DAY_SQL, PRUNE_ADJUDICATION_PROGRESS_SQL,
   LOCK_OWNED_ADJUDICATION_BUDGET_SQL, FINISH_ADJUDICATION_BUDGET_SQL,
   RESET_ADJUDICATION_RESERVATION_DAY_SQL,
@@ -57,13 +58,7 @@ export function createAdjudicationBudgetRepository(database) {
         return client.query(FINISH_ADJUDICATION_BUDGET_SQL, [revision,status,fingerprint,attemptId]);
       }, signal);
     },
-    advance: (revision, eligible, signal) => transaction(async client => {
-      if (!Number.isInteger(eligible) || eligible < 0 || eligible > 300) throw new Error('adjudication_rotation_invalid');
-      requireWrite(await client.query(`UPDATE adjudication_capture_budget SET
-        selection_offset=CASE WHEN selection_offset+25 >= $2 THEN 0 ELSE selection_offset+25 END,
-        published_fingerprint=NULL,progress_key=NULL,progress=NULL,captured_at=NULL,expires_at=NULL
-        WHERE singleton=true AND revision=$1`, [revision,eligible]));
-    }, signal),
+    advance: (revision, eligible, signal, attemptId) => advanceAdjudicationBudget(transaction, revision, eligible, signal, attemptId),
     checkpoint: (revision, attemptId) => createAdjudicationCheckpoint(transaction, revision, attemptId),
   };
 }

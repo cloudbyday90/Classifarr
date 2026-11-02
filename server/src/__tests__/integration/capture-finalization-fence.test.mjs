@@ -76,7 +76,7 @@ test('configuration changes invalidate claims while rollover and same-revision a
   try {
     const state = await budget.configure(options), first = await claim(db, state.revision);
     await query("UPDATE adjudication_capture_budget SET quota_day=(statement_timestamp() AT TIME ZONE 'UTC')::date-1");
-    await budget.read(); await budget.advance(state.revision, 48);
+    await budget.read(); await budget.advance(state.revision, 48, undefined, first.attemptId);
     expect((await snapshot()).finalization_attempt_id).toBe(first.attemptId);
     const configured = await budget.configure(options);
     expect((await snapshot()).finalization_attempt_id).toBeNull();
