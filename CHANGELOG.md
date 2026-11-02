@@ -11,6 +11,13 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Added
 
+- **Report publication admission regressions** — Verify capture/evaluator
+  exclusion through queued writes, rollback and delayed/lost commit replies using
+  isolated PostgreSQL and the production database factory. Preserve valid
+  unpublished progress and charged reservations; document that shared admission
+  prevents the hypothesized healthy-worker race. Keep runtime SQL unchanged and
+  retain the selected compiler PR's previously demonstrated deferral.
+
 - **Local artifact maintenance skill** — Add routine agent-operated Classifarr
   housekeeping with verified stale-file and unused-image selection, explicit
   recovery-asset protection and measured cleanup receipts. Keep shared cache,

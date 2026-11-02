@@ -86,6 +86,11 @@ broader ownership changes separately scoped.
 
 Private receipts and diagnostic logs remain under .tmp, outside source control.
 
+The proposed progression follow-up is now investigated in the
+[publication admission outcome](source-pair-publication-admission-outcome.md).
+It retains runtime SQL and adds production-factory regression evidence for the
+healthy shared-admission boundary; no reachable healthy-worker defect was found.
+
 Artifact maintenance reused the verified filesystem inventory and protected
 exclusions. Fresh same-context daemon, all-container and comparable image reads
 confirm three unchanged containers, 425 image-tag rows, five worktrees and the

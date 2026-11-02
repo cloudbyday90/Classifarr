@@ -59,6 +59,17 @@ part of the final commit.
 
 ## Audit, recommendations and remaining evidence
 
+November 2 follow-up at base a85ec7eb76e80ba1ad86ef16fef35f999f281080:
+a new uniform random selection again chose PR 581. MCP confirms its exact head
+15b66950a5739e6fdb5290f2cf4c0120d4259015 and published artifact are unchanged.
+The installed baseline graph and client inputs also match the prior assessment.
+The official release and issues linked below still establish no fixed candidate.
+Retain this settled deferral without reinstalling identical known-failing inputs.
+The retained compiler's twelve real-CLI controls were freshly rerun and pass;
+the five candidate failures above remain prior executions. See the separate
+[publication investigation outcome](source-pair-publication-admission-outcome.md)
+for current audits, evidence provenance and delivery checks.
+
 Full retained-tree audits include development dependencies: root has zero
 findings, server has 29 moderate / three low affected nodes, and client has eleven
 moderate nodes. There are no high/critical findings; both runtime-only audits
