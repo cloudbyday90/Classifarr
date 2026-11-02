@@ -71,14 +71,16 @@ Do not sum propagated nodes as unique vulnerabilities or treat an empty root
 audit as a clean-platform claim. The separate existing next-release tooling hold
 is not lifted by this batch.
 
-At delivery, GitHub's push response still reported four repository alerts: one
-high, two moderate and one low. These are separate from the three local npm audit
-scopes above. The connected GitHub MCP tools expose no alert-details operation;
-the read-only GitHub API fallback returned HTTP 401. The remaining high alert's
-package, manifest and current applicability are therefore unverified. Do not
-attribute it to a known hold or assume scanner delay. Reconcile it through an
-authenticated alert source before declaring the next security batch complete;
-the existing release hold remains in force.
+The implementation push at c71f3a7a2 reported four GitHub repository alerts: one
+high, two moderate and one low. The subsequent documentation push at 9adeccaec
+reported three: two moderate and one low, with no high. These observations are
+separate from the three local npm audit scopes above. The connected GitHub MCP
+tools expose no alert-details operation; the read-only GitHub API fallback
+returned HTTP 401. Individual package/manifest identities remain unverified.
+Do not attribute the summary change to a particular finding, a known hold or an
+assumed scanner delay. Reconcile remaining repository alerts through an
+authenticated source in a separate security batch; the existing release hold
+is not lifted by a push summary.
 
 Final recommendation: keep the small scoped upstream patch, exact installs and
 real-library controls. The tradeoff is deliberately superseding the parent's
