@@ -20,6 +20,7 @@
  * Integration tests for canonical RAG API endpoints.
  */
 
+import { clearClassificationHistoryFixtures, clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
@@ -655,7 +656,7 @@ describe('RAG API Integration Tests', () => {
     describe('GET /api/rag/retrieval/recall-audit', () => {
         beforeEach(async () => {
             await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
-            await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
+            await clearClassificationHistoryFixtures(pool);
         });
 
         it('returns a bounded empty recall audit when no embeddings exist', async () => {
@@ -691,10 +692,7 @@ describe('RAG API Integration Tests', () => {
     describe('GET /api/rag/backfill/status', () => {
         beforeEach(async () => {
             await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
-            await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
-            await pool.query('TRUNCATE TABLE media_server_items RESTART IDENTITY CASCADE');
-            await pool.query('TRUNCATE TABLE libraries RESTART IDENTITY CASCADE');
-            await pool.query('TRUNCATE TABLE media_server RESTART IDENTITY CASCADE');
+            await clearMediaCatalogFixtures(pool);
 
             await pool.query(`
                 UPDATE ai_provider_config

@@ -118,15 +118,18 @@ This is agent-operated development housekeeping, not production cleanup.
 npm 12.2.1 separately bundles vulnerable ip-address 10.7.2, including in the
 production image. The application's patched parser and workspace overrides do
 not repair that CLI copy. As of the November 2 registry check, the upstream npm
-12.2.2 fix is not published. Remediation or a new explicit maintainer decision is
-required for publication; the v0.49.3-beta-only exception does not carry forward.
+12.2.2 fix is not published. The maintainer explicitly accepts this moderate
+residual finding for v0.49.4-beta only, conditional on every other fresh release
+gate passing. Verified remediation is required before subsequent releases.
 See the [release outcome](https://github.com/cloudbyday90/Classifarr/blob/main/docs/architecture/release-0.49.4-beta-outcome.md)
 for the exact decision and fresh evidence before relying on a publication claim.
 
-Development-tool advisory findings remain visible. No scanner suppression,
-blanket security claim, historical ground-truth conversion or guaranteed routing
-accuracy follows from this beta. Release publication and live deployment are
-separate operations.
+The paired glob/minimatch tooling patches have dedicated real-package controls.
+The server's exact deepmerge advisory has a short-lived OSV triage entry based
+on the official CNA rejection, expiring November 9; this is not a patched-package
+claim. Full development-audit database lag remains visible. No blanket security
+claim, historical ground-truth conversion or guaranteed routing accuracy follows
+from this beta. Release publication and live deployment are separate operations.
 
 Full system changes and preserved development history are in the
 [changelog](https://github.com/cloudbyday90/Classifarr/blob/main/CHANGELOG.md).

@@ -24,20 +24,23 @@ The live Docker Hub endpoint identified cloudbyday90/classifarr and pull_count
 21,997 at 2026-11-02T21:04:30.4829176Z. README/notes must label this Docker Hub
 image pulls, exclude GHCR and avoid a user/installation or growth-rate claim.
 
-## Security hold that preparation cannot waive
+## Explicit one-release residual-risk decision
 
 npm 12.2.1 actually resolves bundled ip-address 10.7.2; the application copy is
 separately patched. The official registry still returns E404 for npm 12.2.2,
 while its upstream release PR remains unmerged. A proposed fix is not a published
 artifact and a workspace override cannot repair npm's packaged bundle.
 
-The prior v0.49.3-only acceptance does not authorize this release. The current
-runbook blocks later publication until remediation. The maintainer's tentative
-suggestion to defer is not silently converted into a new accepted exception.
-Prepare fresh source/image risk evidence and the concrete release result first;
-then resolve this decision before any tag/publication. Keep scanners, high/critical
-gates, strict installation and all other release checks unchanged. A downstream
-npm distribution is a separate reviewed strategy, not an incidental override.
+The prior v0.49.3-only acceptance did not authorize this release. After reviewing
+the fresh source/image evidence, the maintainer explicitly superseded the hold
+for v0.49.4-beta only. This decision is conditional on every other fresh gate
+passing; later releases remain blocked until verified remediation. Keep scanners,
+high/critical gates, strict installation and all other checks unchanged. A
+downstream npm distribution remains a separate strategy, not an override here.
+
+The failed OSV gate and repeated database integration fixture failures are
+addressed by the separate [CI/security design](release-0494-ci-security-design.md).
+The rejected-CVE triage is distinct from the accepted active npm finding.
 
 Official sources read through MCP on November 2:
 
@@ -81,8 +84,8 @@ separation cannot be claimed. Registry secret names exist; values and token
 capabilities are not exposed or inferred from names alone.
 
 Push reviewed main and inspect exact-SHA CI, OSV, CodeQL, secret/image checks,
-including genuinely skipped jobs. Once every pre-tag gate and the security hold
-are resolved, tag that exact reviewed commit and push only refs/tags/v0.49.4-beta.
+including genuinely skipped jobs. Once every pre-tag gate passes under the
+explicit scoped decision, tag that exact reviewed commit and push only refs/tags/v0.49.4-beta.
 Do not manually create a release, rebuild a published artifact or bypass evidence.
 
 The tag workflow owns same-run installation/provider-fault receipts, signed index

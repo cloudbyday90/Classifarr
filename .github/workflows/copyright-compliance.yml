@@ -35,12 +35,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
+            server/package-lock.json
             client/package-lock.json
       - name: Set up npm and npx
         run: npm install --global npm@12.2.1 && npm --version && npx --version
       - name: Install root dependencies
         run: npm ci
-      - name: Install client dependencies for independent redirect regression tests
+      - name: Install server dependencies for independent glob regression tests
+        run: npm --prefix server ci
+      - name: Install client dependencies for independent dependency regression tests
         run: npm --prefix client ci
       - name: Check tooling dependency security and compatibility
         run: npm run test:tooling:dependencies

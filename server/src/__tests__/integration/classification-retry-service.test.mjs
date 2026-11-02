@@ -5,6 +5,7 @@
  * Integration tests for classification retry cleanup and enqueue behavior.
  */
 
+import { clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createMockLogger } from '../helpers/mockFactory.mjs';
@@ -30,6 +31,7 @@ describe('ClassificationRetryService integration', () => {
     logger = createMockLogger();
     service = new ClassificationRetryService({ db, logger });
 
+    await clearMediaCatalogFixtures(pool);
     await pool.query(`
       TRUNCATE TABLE
         app_notifications,
@@ -37,11 +39,7 @@ describe('ClassificationRetryService integration', () => {
         task_queue,
         media_requests,
         webhook_log,
-        learning_patterns,
-        classification_history,
-        media_server_items,
-        libraries,
-        media_server
+        learning_patterns
       RESTART IDENTITY CASCADE
     `);
   });

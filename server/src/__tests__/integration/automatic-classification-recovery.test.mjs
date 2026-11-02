@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createMockLogger } from '../helpers/mockFactory.mjs';
@@ -15,7 +16,8 @@ const { queueService } = await import('../../services/queueService.mjs');
 let pool, repository, readiness, retryService, service, logger;
 beforeAll(() => { pool = getPool(); });
 beforeEach(async () => {
-  await pool.query('TRUNCATE task_queue, classification_history, libraries, media_server_items RESTART IDENTITY CASCADE');
+  await clearMediaCatalogFixtures(pool);
+  await pool.query('TRUNCATE task_queue RESTART IDENTITY CASCADE');
   await pool.query(`INSERT INTO classification_recovery_probe_state (id) VALUES (true)
     ON CONFLICT (id) DO UPDATE SET next_probe_at = NOW(), lease_token = NULL,
       checked_at = NULL, last_outcome = NULL`);

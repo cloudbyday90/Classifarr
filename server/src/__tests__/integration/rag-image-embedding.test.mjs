@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
@@ -101,10 +102,7 @@ describe('RAG Image Embedding Integration', () => {
         ragRetriever._hasMinimumCache = null;
         ragRetriever._hasMinimumCachedAt = 0;
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE media_server_items RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE libraries RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE media_server RESTART IDENTITY CASCADE');
+        await clearMediaCatalogFixtures(pool);
     });
 
     it('combines text and image similarity when image embeddings exist', async () => {

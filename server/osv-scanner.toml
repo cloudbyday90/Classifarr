@@ -1,0 +1,6 @@
+# Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
+# Server lock only; remove/recheck this short-lived advisory-data triage.
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2026-11-09
+reason = "CNA VulnCheck REJECTED CVE-2026-93753 on 2026-11-02: does not describe a security vulnerability. Immutable record: https://github.com/CVEProject/cvelistV5/blob/3c07b72fc0c95e4db36a9ada8761f28c89541eba/cves/2026/93xxx/CVE-2026-93753.json . No package remediation claimed; see docs/architecture/release-0494-ci-security-design.md."

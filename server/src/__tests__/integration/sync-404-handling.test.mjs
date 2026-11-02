@@ -6,6 +6,7 @@
  * Tests proper error handling for missing libraries in sync endpoints
  */
 
+import { clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
@@ -66,8 +67,7 @@ describe('Sync 404 Handling Integration Tests', () => {
     beforeAll(async () => {
         pool = getPool();
 
-        await pool.query('TRUNCATE TABLE libraries RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE media_server RESTART IDENTITY CASCADE');
+        await clearMediaCatalogFixtures(pool);
 
         await pool.query(`
             INSERT INTO media_server (id, name, type, url, api_key, is_active)
@@ -81,8 +81,7 @@ describe('Sync 404 Handling Integration Tests', () => {
     });
 
     afterAll(async () => {
-        await pool.query('TRUNCATE TABLE libraries RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE media_server RESTART IDENTITY CASCADE');
+        await clearMediaCatalogFixtures(pool);
     });
 
     beforeEach(() => {

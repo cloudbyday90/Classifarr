@@ -7,6 +7,7 @@
  * contacted.
  */
 
+import { clearMediaCatalogFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
@@ -56,14 +57,8 @@ describe('privacy-bounded recovery and stale-evidence acceptance', () => {
   });
 
   beforeEach(async () => {
-    await pool.query(`
-      TRUNCATE TABLE
-        task_queue,
-        classification_history,
-        libraries,
-        media_server
-      RESTART IDENTITY CASCADE
-    `);
+    await clearMediaCatalogFixtures(pool);
+    await pool.query('TRUNCATE task_queue RESTART IDENTITY CASCADE');
   });
 
   test('a retry transaction failure returns only a bounded recovery state and leaves no partial retry', async () => {

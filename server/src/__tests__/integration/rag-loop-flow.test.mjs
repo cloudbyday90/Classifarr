@@ -3,6 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { clearClassificationHistoryFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { APP_VERSION } from '../../services/classificationRagLoopServiceShared.mjs';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
@@ -54,7 +55,7 @@ describe('RAG loop integration flows', () => {
         jest.clearAllMocks();
         ragLoopResilienceManager.reset();
 
-        await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
+        await clearClassificationHistoryFixtures(pool);
         await pool.query(`
             INSERT INTO ai_provider_config (id, primary_provider)
             VALUES (1, 'none')

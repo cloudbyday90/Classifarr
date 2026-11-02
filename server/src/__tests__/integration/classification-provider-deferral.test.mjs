@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { clearClassificationHistoryFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
@@ -23,7 +24,8 @@ let pool, circuits, recoveryRepository, admission, recovery, readiness, snapshot
 beforeAll(() => { pool = getPool(); });
 beforeEach(async () => {
   jest.restoreAllMocks();
-  await pool.query('TRUNCATE task_queue, classification_history, classification_provider_circuits, classification_recovery_probe_state RESTART IDENTITY CASCADE');
+  await clearClassificationHistoryFixtures(pool);
+  await pool.query('TRUNCATE task_queue, classification_provider_circuits, classification_recovery_probe_state RESTART IDENTITY CASCADE');
   await pool.query(`UPDATE ai_provider_config SET configuration_revision = 1, primary_provider = 'custom',
     model = 'synthetic', api_endpoint = 'https://example.invalid' WHERE id = 1`);
   const logger = createMockLogger();

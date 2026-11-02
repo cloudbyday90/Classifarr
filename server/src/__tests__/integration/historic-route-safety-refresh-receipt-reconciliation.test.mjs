@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { clearClassificationHistoryFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
@@ -48,12 +49,12 @@ describe('historic route-safety refresh receipt reconciliation integration', () 
   });
 
   beforeEach(async () => {
+    await clearClassificationHistoryFixtures(pool);
     await pool.query(`
       TRUNCATE TABLE
         policy_runtime_historic_route_safety_refresh_receipt_items,
         policy_runtime_historic_route_safety_refresh_receipts,
-        task_queue,
-        classification_history
+        task_queue
       RESTART IDENTITY CASCADE
     `);
   });

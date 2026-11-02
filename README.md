@@ -14,6 +14,11 @@ Classifarr supports movies and TV shows. Library-agnostic learning means discove
 
 **21,997 Docker Hub image pulls** as of 2026-11-02 ([repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)). This counts image pulls, not unique installations, and does not include GHCR.
 
+For v0.49.4-beta only, the maintainer accepts the moderate ip-address finding in
+npm 12.2.1's separate bundled copy, conditional on all other release gates.
+It remains present in the production image; later releases require verified
+remediation. See the [release decision](docs/architecture/release-0.49.4-beta-outcome.md).
+
 ## Why Classifarr
 
 - Helps route requests across multiple libraries using policy-based decisions.

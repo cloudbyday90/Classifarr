@@ -109,11 +109,16 @@ preserves intermediate implementation details, decisions and dependency reviews.
   cross-window un-counting without changing application policy. Markdownlint's
   scoped RE2JS 2.8.7 override patches lookbehind-scanning work; the inspected lint
   path did not enable that vulnerable condition.
-- **Unresolved tooling findings** — Keep full development audits visible,
-  including Jest/deepmerge. npm's separately bundled ip-address finding remains
-  a post-v0.49.3 release blocker until remediation or a new explicit maintainer
-  decision; the prior exception does not carry forward. Workspace overrides do
-  not patch npm, and no advisory-free or globally fenced writer claim is made.
+- **Tooling traversal patches** — Pair exact glob 14.0.3/minimatch 11.0.4
+  overrides in server/client, with cancellation, bounded expansion and real
+  consumer controls. Repair integration setup through supported parent deletion
+  while preserving immutable evidence guards and release gates.
+- **Advisory triage and residual risk** — Keep full development audits visible.
+  A server-local deepmerge OSV entry expires November 9 and cites the official
+  rejected CVE; it does not claim remediation. The maintainer explicitly accepts
+  npm's separately bundled moderate ip-address finding for v0.49.4-beta only,
+  conditional on all other fresh gates. Verified remediation is required before
+  later releases; workspace overrides do not patch npm.
 
 ## [v0.49.3-beta] - 2026-10-23
 

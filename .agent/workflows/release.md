@@ -146,12 +146,18 @@ This does not waive application audit gates, high/critical findings, scanners,
 installer policy or any other release check. Keep the separate CLI finding and
 runtime-image exposure visible; do not describe it as remediated or unreachable.
 
-**Every release after v0.49.3-beta is blocked until this finding is remediated.**
+On 2026-11-02 the maintainer separately and explicitly accepted the same moderate
+residual finding for **v0.49.4-beta only**, conditional on every other fresh gate
+passing ([decision and evidence](../../docs/architecture/release-0.49.4-beta-outcome.md)).
+This supersedes the previous hold for that exact release; it is not remediation
+and grants no deployment authority. Keep all other release checks unchanged.
+
+**Every release after v0.49.4-beta is blocked until this finding is remediated.**
 Verify actual installed parser resolution and all relevant local/CI/Docker copies,
 not merely a CLI version, workspace override or audit summary. Adopt an upstream
 patched npm release when available; any other strategy requires separate review.
 Record the exact fix, fresh toolchain/image evidence and closure before publishing
-the next release. Do not carry this exception forward automatically.
+any later release. Do not carry this exception forward automatically.
 
 For schema changes, build a uniquely tagged **local verification image**, then
 use `IMAGE_NAME` with `db:dump-schema:container`, review and commit the resulting

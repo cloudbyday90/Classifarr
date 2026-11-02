@@ -3,6 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { clearClassificationHistoryFixtures } from './helpers/clearClassificationFixtures.mjs';
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
@@ -56,7 +57,7 @@ describe('Settings AI RAG loop configuration integration', () => {
 
     beforeEach(async () => {
         await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
-        await pool.query('TRUNCATE TABLE classification_history RESTART IDENTITY CASCADE');
+        await clearClassificationHistoryFixtures(pool);
         await pool.query('TRUNCATE TABLE ai_provider_config RESTART IDENTITY CASCADE');
         await pool.query(`
             INSERT INTO ai_provider_config (id, primary_provider, api_key, embedding_provider_mode)
