@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Fence capture finalization** — Require an acknowledged private claim from the
+  discovery-lock-owning database session before saving capture outcomes. Reject
+  older claims after a replacement attempt commits, invalidate authority on
+  configuration changes/restores, and preserve cooldowns, charged work and saved
+  caches. Existing automatic schedules and UI remain unchanged.
+
 - **Keep capture cleanup owned** — Await admitted failure finalization before
   releasing discovery admission. Use local fallback for rejected admission and
   post-callback failures, preserve the first failure/cooldown through later
@@ -210,6 +216,10 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   synthetic environment and precedence checks. No provider PR merge is included.
 
 ### Security
+
+- **Rate-limit dependency patch** — Adopt and locally test express-rate-limit
+  8.7.2 from Dependabot PR #577, pinning the exact version. Fix the upstream
+  cross-window un-counting behavior without changing application limit policy.
 
 - **Required next-release remediation** — Block the next release until npm's
   bundled `ip-address` finding is fixed and verified across local, CI and Docker

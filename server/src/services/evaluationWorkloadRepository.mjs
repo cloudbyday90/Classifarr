@@ -15,7 +15,7 @@ export function createEvaluationWorkloadRepository(database) {
       return database.withTransaction(async client => {
         await client.query("SET LOCAL statement_timeout='3s'; SET LOCAL lock_timeout='1s'");
         await client.query('INSERT INTO adjudication_capture_budget(singleton) VALUES(true) ON CONFLICT DO NOTHING');
-        const result = await client.query(`UPDATE adjudication_capture_budget SET revision=revision+1,
+        const result = await client.query(`UPDATE adjudication_capture_budget SET revision=revision+1,finalization_attempt_id=NULL,
           workload_mode=$2,window_start_minute=$3,window_end_minute=$4,daily_calls=$5,daily_tokens=$6,
           status=CASE WHEN $5=0 THEN 'disabled' ELSE 'ready' END
           WHERE singleton=true AND revision=$1`, [value.revision,value.mode === 'off' ? 'when_idle' : value.mode,

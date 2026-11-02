@@ -3,6 +3,7 @@ import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission
 import { createAutomaticSourcePairEvaluation } from './automaticSourcePairEvaluation.mjs';
 import { createAutomaticSourcePairRepository } from './automaticSourcePairRepository.mjs';
 import { createAdjudicationBudgetWorker } from './adjudicationBudgetWorker.mjs';
+import { createAdjudicationFinalizationAdmission } from './adjudicationFinalizationAdmission.mjs';
 import { createAdjudicationBudgetRepository } from './adjudicationBudgetRepository.mjs';
 import { createLocalDescriptionBenchmarkClient } from './localDescriptionBenchmarkClient.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from './freshInventoryPolicyRuntime.mjs';
@@ -15,7 +16,7 @@ export function createAutomaticSourcePairWorkers(database) {
   const repository = createAutomaticSourcePairRepository(database), withAdmission = createInventoryDiscoveryAdmission(database);
   const evaluator = createAutomaticSourcePairEvaluation({ repository, withAdmission,
     withSessionAdvisoryLock: database.withSessionAdvisoryLock });
-  const capture = createAdjudicationBudgetWorker({ repository, withAdmission,
+  const capture = createAdjudicationBudgetWorker({ repository, withAdmission: createAdjudicationFinalizationAdmission(database),
     withWorkload: createEvaluationWorkloadGuard(database),
     budget: createAdjudicationBudgetRepository(database), createClient: createLocalDescriptionBenchmarkClient,
     readConfig: async () => (await database.query(FRESH_POLICY_CONFIG_SQL)).rows[0] });

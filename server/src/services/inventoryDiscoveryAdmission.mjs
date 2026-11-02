@@ -13,7 +13,7 @@ export class DiscoveryDeferredError extends Error {
 
 /** One database-scoped heavy job. The lease is not released until cancellation has settled. */
 export function createInventoryDiscoveryAdmission({ withSessionAdvisoryLock, readMemory = readDiscoveryMemory,
-  resourceAdmission = backgroundResourceAdmission }) {
+  resourceAdmission = backgroundResourceAdmission, createOwnerContext }) {
   let active = false;
   return async function withAdmission(callback, { signal, onMemoryDecision } = {}) {
     signal?.throwIfAborted();
@@ -21,7 +21,7 @@ export function createInventoryDiscoveryAdmission({ withSessionAdvisoryLock, rea
     active = true;
     try {
       let result;
-      const acquired = await withSessionAdvisoryLock(INVENTORY_DISCOVERY_LOCK, async ({ signal: lockSignal } = {}) => {
+      const acquired = await withSessionAdvisoryLock(INVENTORY_DISCOVERY_LOCK, async ({ signal: lockSignal, query } = {}) => {
         const permit = resourceAdmission.tryAcquire('discovery', { onDecision: onMemoryDecision });
         if (!permit.allowed) throw new DiscoveryDeferredError(permit.reason);
         let timer;
@@ -55,7 +55,8 @@ export function createInventoryDiscoveryAdmission({ withSessionAdvisoryLock, rea
           timer.unref();
           const checkpoint = () => { check(false); abort.throwIfAborted(); };
           try {
-            result = await callback(abort, checkpoint);
+            const context = createOwnerContext?.({ query, signal: abort });
+            result = await (createOwnerContext ? callback(abort, checkpoint, context) : callback(abort, checkpoint));
             checkpoint();
           } catch (error) {
             // Fitting adapters may replace cancellation errors. Preserve the fixed pressure reason.

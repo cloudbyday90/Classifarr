@@ -3,7 +3,7 @@ import { planSourcePairWindowAdvance } from './sourcePairWindowProgression.mjs';
 import { PRUNE_ADJUDICATION_PROGRESS_SQL } from './adjudicationBudgetSql.mjs';
 
 const advanceSql = `UPDATE adjudication_capture_budget SET
-  selection_offset=$3,revision=revision+1,published_fingerprint=NULL,
+  selection_offset=$3,revision=revision+1,finalization_attempt_id=NULL,published_fingerprint=NULL,
   progress_key=NULL,progress=NULL,captured_at=NULL,expires_at=NULL
   WHERE singleton=true AND revision=$1 AND selection_offset=$2
     AND ((progress IS NULL AND published_fingerprint IS NULL) OR published_fingerprint=$4)`;

@@ -64,7 +64,7 @@ test('capture is single-flight, limited per tick, and pins publication for rotat
   const first = worker.run(); expect(worker.run()).toBe(first);
   expect(await first).toMatchObject({ status: 'captured',calls: 5 });
   expect(capture).toHaveBeenCalledWith({ maxCalls: 5 },expect.any(Object));
-  expect(budget.finish).toHaveBeenCalledWith(1,'captured',expect.stringMatching(/^[a-f0-9]{64}$/),expect.anything());
+  expect(budget.finish).toHaveBeenCalledWith(1,'captured',expect.stringMatching(/^[a-f0-9]{64}$/),expect.anything(), expect.any(String));
   state.published_fingerprint = evaluation.input_fingerprint;
   await worker.run(); expect(budget.advance).toHaveBeenCalledWith(1,evaluation.report.aiReplay.eligible,expect.anything());
   worker.stop(); expect(await worker.run()).toEqual({ status: 'stopped' });
@@ -98,7 +98,7 @@ test('a failed finalizer preserves the local five-minute cooldown from failure t
   capture.mockRejectedValue(Error('PRIVATE provider')); budget.finish.mockRejectedValue(Error('PRIVATE database'));
   const worker = createAdjudicationBudgetWorker({ ...dependencies, now: () => clock });
   expect(await worker.run()).toEqual({ status: 'unavailable' });
-  expect(budget.finish).toHaveBeenCalledWith(1, 'unavailable', null, budget.read.mock.calls[0][0]);
+  expect(budget.finish).toHaveBeenCalledWith(1, 'unavailable', null, budget.read.mock.calls[0][0], expect.any(String));
   expect(budget.read.mock.calls[0][0].aborted).toBe(false);
   clock = 300099; expect(await worker.run()).toEqual({ status: 'cooldown' });
   expect(budget.finish).toHaveBeenCalledTimes(1);
@@ -112,7 +112,7 @@ test('workload cancellation still permits cooldown persistence through the live 
     workload.abort(Error('evaluation_workload_deferred')); workload.signal.throwIfAborted();
   } });
   expect(await worker.run()).toEqual({ status: 'deferred' });
-  expect(budget.finish).toHaveBeenCalledWith(1, 'deferred', null, budget.read.mock.calls[0][0]);
+  expect(budget.finish).toHaveBeenCalledWith(1, 'deferred', null, budget.read.mock.calls[0][0], expect.any(String));
   expect(budget.finish.mock.calls[0][3]).not.toBe(workload.signal);
   expect(budget.finish.mock.calls[0][3].aborted).toBe(false);
   expect(capture).not.toHaveBeenCalled(); worker.stop();

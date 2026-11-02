@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-10-30T10:58:09.006Z
--- Latest Migration: 20261030_090000_add_automatic_purpose_evaluation.sql
+-- Generated: 2026-11-02T11:54:25.239Z
+-- Latest Migration: 20261102_090000_add_capture_finalization_fence.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -1041,6 +1041,7 @@ CREATE TABLE public.adjudication_capture_budget (
     workload_mode text DEFAULT 'when_idle'::text NOT NULL,
     window_start_minute integer,
     window_end_minute integer,
+    finalization_attempt_id uuid,
     CONSTRAINT adjudication_capture_budget_calls_reserved_check CHECK (((calls_reserved >= 0) AND (calls_reserved <= 200))),
     CONSTRAINT adjudication_capture_budget_captured_at_check CHECK (isfinite(captured_at)),
     CONSTRAINT adjudication_capture_budget_check CHECK ((tokens_reserved = (calls_reserved * 8448))),
@@ -1067,6 +1068,13 @@ CREATE TABLE public.adjudication_capture_budget (
 --
 
 COMMENT ON TABLE public.adjudication_capture_budget IS 'Opt-in local AI evaluation quota and resumable exact-response progress. UTC reservations survive restart; unknown calls are not refunded. No prompts or routing authority.';
+
+
+--
+-- Name: COLUMN adjudication_capture_budget.finalization_attempt_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.adjudication_capture_budget.finalization_attempt_id IS 'Private owner-session claim for participating capture finalizers; NULL confers no authority. Not portable configuration.';
 
 
 --
@@ -19118,6 +19126,7 @@ FROM unnest(ARRAY[
     '20261028_160000_add_feedback_review_references.sql',
     '20261028_180000_add_policy_evaluation_captures.sql',
     '20261029_090000_add_prospective_purpose_outcomes.sql',
-    '20261030_090000_add_automatic_purpose_evaluation.sql'
+    '20261030_090000_add_automatic_purpose_evaluation.sql',
+    '20261102_090000_add_capture_finalization_fence.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

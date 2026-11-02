@@ -160,6 +160,8 @@ export async function restoreAllTables(client, backupData, mode, { createSystemA
   validateBackupRestoreReferences(backupData?.data);
   await resetEvidenceGapAuditForRestore(client);
   await resetPurposeEvaluationForRestore(client);
+  // Restored configuration must not retain a pre-restore finalization claim.
+  await client.query('UPDATE adjudication_capture_budget SET finalization_attempt_id=NULL WHERE singleton=true');
   await resetFeedbackReviewReferences(client);
   // The lifecycle audit state is a derived aggregate cursor, rather than
   // portable configuration. Reset it in the same transaction as every restore

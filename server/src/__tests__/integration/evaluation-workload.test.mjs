@@ -26,7 +26,10 @@ test('status is read-only even on empty setup; CAS, limits, cooldown and reserva
   const results = await Promise.allSettled([controls.configure(input()),controls.configure(input())]);
   expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
   expect(results.find(r => r.status === 'rejected').reason.message).toBe('evaluation_workload_conflict');
-  await budget.reserve(1); await budget.finish(1,'unavailable');
+  await budget.reserve(1);
+  const token = '41db1265-8bc1-4ab3-992f-885799a4af1d'; // Synthetic authority for this controls/SQL fixture.
+  await db.query('UPDATE adjudication_capture_budget SET finalization_attempt_id=$1::uuid', [token]);
+  await budget.finish(1,'unavailable',null,undefined,token);
   const cooldown = (await controls.read()).nextCheckAt;
   const before = (await db.query('SELECT * FROM adjudication_capture_budget')).rows;
   await controls.read(); expect((await db.query('SELECT * FROM adjudication_capture_budget')).rows).toEqual(before);

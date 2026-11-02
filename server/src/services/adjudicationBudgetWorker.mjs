@@ -22,11 +22,13 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
       if (!state?.daily_calls) return { status: 'disabled' };
       if (state.window_open === false) return { status: 'outside_window' };
       if (state.cooling_down) return { status: 'cooldown' };
-      return await withAdmission(async signal => {
+      return await withAdmission(async (signal, _checkpoint, owner) => {
         try {
           state = await budget.read(signal);
           if (!state.daily_calls || state.cooling_down) return { status: state.daily_calls ? 'cooldown' : 'disabled' };
           if (state.window_open === false) return { status: 'outside_window' };
+          await finalization.claim(state.revision, owner?.claimFinalization);
+          signal?.throwIfAborted();
           const evaluation = await repository.readState(signal);
           if (evaluation?.status !== 'complete' || !readAutomaticSourcePairReport(evaluation.report) ||
               evaluation.report.policyReplay?.status !== 'complete') {

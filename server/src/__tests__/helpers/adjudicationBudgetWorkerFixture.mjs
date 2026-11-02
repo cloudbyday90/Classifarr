@@ -27,7 +27,8 @@ export async function createAdjudicationBudgetWorkerFixture() {
     return { calls: 5, reused: 0, stored: 5 };
   });
   const repository = { readState: jest.fn(async () => evaluation), readSnapshot: jest.fn(async () => snapshot) };
-  const dependencies = { budget, repository, capture, withAdmission: (callback, { signal }) => callback(signal),
+  const owner = { claimFinalization: jest.fn(async revision => ({ revision, attemptId: '41db1265-8bc1-4ab3-992f-885799a4af1d' })) };
+  const dependencies = { budget, repository, capture, withAdmission: (callback, { signal }) => callback(signal, undefined, owner),
     withWorkload: (callback, { signal }) => callback(signal, async () => {}) };
   return { state, budget, capture, repository, evaluation, snapshot, prepared, dependencies,
     worker: createAdjudicationBudgetWorker(dependencies) };

@@ -4,12 +4,13 @@ import { getPool } from '../integration/setup.mjs';
 import { createReadinessDatabase } from './readinessDatabase.mjs';
 import { createAdjudicationBudgetWorkerFixture } from './adjudicationBudgetWorkerFixture.mjs';
 import { resourceAdmissionFixture } from './resourceAdmissionFixture.mjs';
-import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { createAdjudicationFinalizationAdmission } from '../../services/adjudicationFinalizationAdmission.mjs';
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
 
 export const ownedCaptureMemory = () => ({ available: 4e9, constrained: 8e9, total: 8e9 });
-export const ownedCaptureSnapshot = async () => ({ budget: (await getPool().query('SELECT * FROM adjudication_capture_budget')).rows,
+// These pre-existing lifecycle assertions compare payload/quotas; claim authority has dedicated tests.
+export const ownedCaptureSnapshot = async () => ({ budget: (await getPool().query('SELECT * FROM adjudication_capture_budget')).rows.map(({ finalization_attempt_id: _claim, ...state }) => state),
   cached: (await getPool().query('SELECT * FROM cached_adjudication_batch')).rows });
 
 /** Real pool, discovery lock and resource policy; synthetic retained responses, no provider. */
@@ -30,7 +31,7 @@ export async function createOwnedCaptureFixture() {
       await dependencies.onPublished(f.prepared.fingerprint, true, new AbortController().signal);
       return { calls: 0, reused: 1, stored: 1 };
     });
-    const admission = createInventoryDiscoveryAdmission({ ...db, readMemory: ownedCaptureMemory, resourceAdmission: resources });
+    const admission = createAdjudicationFinalizationAdmission({ ...db, readMemory: ownedCaptureMemory, resourceAdmission: resources });
     const finish = jest.spyOn(budget, 'finish');
     return { ...f, db, budget, state, resources, admission, finish, before: await ownedCaptureSnapshot(),
       createWorker: (overrides = {}) => createAdjudicationBudgetWorker({ ...f.dependencies, budget, withAdmission: admission, ...overrides }) };

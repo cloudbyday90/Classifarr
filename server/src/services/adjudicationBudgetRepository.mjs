@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { validateAdjudicationBudget } from './adjudicationBudgetContract.mjs';
+import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { READ_ADJUDICATION_BUDGET_SQL, RESET_ADJUDICATION_DAY_SQL, PRUNE_ADJUDICATION_PROGRESS_SQL,
   LOCK_ADJUDICATION_FINISH_SQL, FINISH_ADJUDICATION_BUDGET_SQL,
   RESERVE_ADJUDICATION_SQL, PUBLISH_ADJUDICATION_PROGRESS_SQL } from './adjudicationBudgetSql.mjs';
@@ -24,7 +25,7 @@ export function createAdjudicationBudgetRepository(database) {
       const { dailyCalls, dailyTokens } = validateAdjudicationBudget(options);
       return transaction(async client => {
         requireWrite(await client.query(`UPDATE adjudication_capture_budget SET daily_calls=$1,daily_tokens=$2,
-          revision=revision+1,status=CASE WHEN $1=0 THEN 'disabled' ELSE 'ready' END
+          revision=revision+1,finalization_attempt_id=NULL,status=CASE WHEN $1=0 THEN 'disabled' ELSE 'ready' END
           WHERE singleton=true`, [dailyCalls,dailyTokens]));
         return (await client.query(READ_ADJUDICATION_BUDGET_SQL)).rows[0];
       });
@@ -33,13 +34,14 @@ export function createAdjudicationBudgetRepository(database) {
       await client.query(RESET_ADJUDICATION_DAY_SQL);
       if ((await client.query(RESERVE_ADJUDICATION_SQL,[revision])).rowCount !== 1) throw new Error('adjudication_budget_exhausted');
     }, signal),
-    finish: (revision, status, fingerprint = null, signal) => {
+    finish: (revision, status, fingerprint = null, signal, attemptId) => {
       if (!['captured','waiting_for_replay','budget_exhausted','deferred','unavailable'].includes(status) ||
           fingerprint !== null && !/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error('adjudication_budget_status_invalid');
+      if (!isFinalizationAttemptId(attemptId)) throw new Error('adjudication_claim_invalid');
       return transaction(async client => {
-        await client.query(LOCK_ADJUDICATION_FINISH_SQL, [revision]);
+        await client.query(LOCK_ADJUDICATION_FINISH_SQL, [revision,attemptId]);
         signal?.throwIfAborted();
-        return client.query(FINISH_ADJUDICATION_BUDGET_SQL, [revision,status,fingerprint]);
+        return client.query(FINISH_ADJUDICATION_BUDGET_SQL, [revision,status,fingerprint,attemptId]);
       }, signal);
     },
     advance: (revision, eligible, signal) => transaction(async client => {

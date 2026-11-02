@@ -5,6 +5,7 @@ import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createOwnedCaptureFixture, ownedCaptureSnapshot } from '../helpers/adjudicationOwnedCaptureFixture.mjs';
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createAdjudicationFinalizationClaim } from '../../services/adjudicationFinalizationClaim.mjs';
 import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
 
 const query = (...args) => getPool().query(...args);
@@ -60,17 +61,18 @@ test('observed advisory-session loss prevents queued finalizer DML after a newer
     held = await f.db.pool.connect(); queries = jest.spyOn(held, 'query'); throw Error('PRIVATE capture failure');
   });
   try {
-    worker = f.createWorker({ withAdmission: (callback, options) => f.admission(signal => {
-      admissionSignal = signal; return callback(signal);
+    worker = f.createWorker({ withAdmission: (callback, options) => f.admission((signal, checkpoint, owner) => {
+      admissionSignal = signal; return callback(signal, checkpoint, owner);
     }, options) });
     execution = worker.run(); await until(() => f.finish.mock.calls.length === 1 && f.db.pool.waitingCount === 1);
     const locks = (await query(`SELECT pid FROM pg_locks WHERE locktype='advisory' AND granted
       AND database=(SELECT oid FROM pg_database WHERE datname=current_database()) AND classid=0 AND objid=$1`, [INVENTORY_DISCOVERY_LOCK])).rows;
     expect(locks).toHaveLength(1); await query('SELECT pg_terminate_backend($1)', [locks[0].pid]);
     await until(() => admissionSignal.aborted);
-    await next.withSessionAdvisoryLock(INVENTORY_DISCOVERY_LOCK, async () => {
+    await next.withSessionAdvisoryLock(INVENTORY_DISCOVERY_LOCK, async scope => {
+      const claim = await createAdjudicationFinalizationClaim(scope)(f.state.revision);
       const budget = createAdjudicationBudgetRepository(next);
-      expect((await budget.finish(f.state.revision, 'captured', 'd'.repeat(64))).rowCount).toBe(1);
+      expect((await budget.finish(f.state.revision, 'captured', 'd'.repeat(64), undefined, claim.attemptId)).rowCount).toBe(1);
     });
     const newer = await ownedCaptureSnapshot();
     held.release(); held = null; expect(await execution).toEqual({ status: 'unavailable' });

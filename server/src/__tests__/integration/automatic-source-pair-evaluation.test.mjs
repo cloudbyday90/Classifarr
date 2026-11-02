@@ -17,6 +17,7 @@ import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapt
 import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRuntime.mjs';
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createAdjudicationFinalizationAdmission } from '../../services/adjudicationFinalizationAdmission.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
 import { readEvaluationHistory } from '../../services/evaluationHistoryRepository.mjs';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
@@ -193,7 +194,15 @@ test('recurring capture resumes after a provider interruption, charges unknown a
   const makeCapture = () => createAdjudicationBudgetWorker({ budget,repository,
     // This isolated checkpoint test controls readiness; HTTP cancellation is covered by evaluation-workload.
     withWorkload: (callback,{ signal }) => callback(signal,async () => {}),
-    withAdmission: createInventoryDiscoveryAdmission({ ...database,readMemory: () => ({ available: 4e9,constrained: 8e9,total: 8e9 }) }),
+    withAdmission: createAdjudicationFinalizationAdmission({ ...database,
+      resourceAdmission: resourceAdmissionFixture(() => ({ available: 4e9, constrained: 8e9, total: 8e9 })),
+      readMemory: () => ({ available: 4e9, constrained: 8e9, total: 8e9 }),
+      // These relations are connection-local; claim on that exact lock-owning backend too.
+      withSessionAdvisoryLock: async (key, callback) => {
+        if (!(await client.query('SELECT pg_try_advisory_lock($1) AS acquired', [key])).rows[0].acquired) return false;
+        try { await callback({ query: client.query.bind(client), signal: new AbortController().signal }); return true; }
+        finally { await client.query('SELECT pg_advisory_unlock($1)', [key]); }
+      } }),
     readConfig: async () => (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0],
     createClient: () => ({ inspect: async () => ({ model: 'test:latest',digest: 'a'.repeat(64),contextLength: 8192 }),generate }) });
   let captureWorker = makeCapture();

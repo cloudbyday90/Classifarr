@@ -4,7 +4,7 @@ import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createAdjudicationBudgetWorkerFixture } from '../helpers/adjudicationBudgetWorkerFixture.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 
 const query = (...args) => getPool().query(...args);
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };

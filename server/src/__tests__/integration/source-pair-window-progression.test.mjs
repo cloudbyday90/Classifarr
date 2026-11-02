@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, expect, test } from '@jest/globals';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { sourcePairWindowFixture, completedWindowReport } from '../fixtures/sourcePairWindowFixture.mjs';
 import { advanceEvaluatedSourcePairWindow } from '../../services/sourcePairWindowProgressionRepository.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 
 let base, db;
 const fingerprint = 'a'.repeat(64);
@@ -33,7 +33,7 @@ test('exhausted budget progresses but reservations, quota day, status and cooldo
   const budget = createAdjudicationBudgetRepository(db), state = await budget.configure({ dailyCalls: 1, dailyTokens: 8448 });
   await budget.reserve(state.revision); await budget.finish(state.revision, 'unavailable');
   const before = await stored(); await advance(state.revision);
-  expect(await stored()).toEqual({ ...before, revision: state.revision + 1, selection_offset: 25 });
+  expect(await stored()).toEqual({ ...before, finalization_attempt_id: null, revision: state.revision + 1, selection_offset: 25 });
   await expect(budget.reserve(state.revision + 1)).rejects.toThrow('exhausted');
 });
 

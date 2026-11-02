@@ -23,7 +23,7 @@ export function createAdjudicationCaptureFailure({ finalization, stopSignal, now
     async settleAdmitted(error, state, admissionSignal) {
       if (outcome || stopSignal.aborted) return;
       const result = record(error, admissionSignal);
-      if (state && !finalization.notApplied && !stopSignal.aborted) {
+      if (state && finalization.claimed && !finalization.notApplied && !stopSignal.aborted) {
         try { await finalization.finish(state.revision, result.status, null, stopSignal); }
         catch { /* Best-effort cleanup preserves the first observed failure and local cooldown. */ }
       }

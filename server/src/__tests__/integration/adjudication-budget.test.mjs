@@ -2,7 +2,7 @@
 import { beforeEach, test, expect } from '@jest/globals';
 import { readFile } from 'node:fs/promises';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { projectAdjudicationBudget } from '../../services/adjudicationBudgetContract.mjs';
 import { readCachedAdjudication } from '../../services/cachedAdjudicationRepository.mjs';
 import { readAdjudicationProviderStatus } from '../../services/adjudicationProviderStatus.mjs';

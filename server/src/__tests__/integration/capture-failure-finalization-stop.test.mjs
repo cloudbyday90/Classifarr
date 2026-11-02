@@ -3,7 +3,7 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
 
 const query = (...args) => getPool().query(...args);
@@ -35,7 +35,7 @@ async function setup() {
     await query('UPDATE adjudication_capture_budget SET next_check_at=statement_timestamp()');
     const before = await snapshot(), finish = jest.spyOn(budget, 'finish');
     const worker = readState => createAdjudicationBudgetWorker({ budget, repository: { readState },
-      withAdmission: (callback, { signal }) => callback(signal), withWorkload: jest.fn() });
+      withAdmission: (callback, { signal }) => callback(signal, undefined, { claimFinalization: async revision => ({ revision, attemptId: '41db1265-8bc1-4ab3-992f-885799a4af1d' }) }), withWorkload: jest.fn() });
     return { db, budget, state, before, finish, worker };
   } catch (error) { await db.pool.end(); throw error; }
 }

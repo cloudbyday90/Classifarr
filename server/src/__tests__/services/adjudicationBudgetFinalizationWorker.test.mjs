@@ -30,7 +30,7 @@ test.each(['deferred', 'waiting_for_replay', 'budget_exhausted', 'captured'])(
 test('a replaced admission error cannot erase acknowledged zero or add a cleanup finish', async () => {
   const f = await fixture(); f.budget.finish.mockResolvedValue({ rowCount: 0 });
   const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async (callback, { signal }) => {
-    try { return await callback(signal); }
+    try { return await f.dependencies.withAdmission(callback, { signal }); }
     catch { throw Error('PRIVATE replacement admission failure'); }
   } });
   try {
@@ -71,7 +71,7 @@ test('a rejected finish with the internal error text is not acknowledged zero', 
 test('permanent stop overrides acknowledged zero even when admission replaces its error', async () => {
   const f = await fixture(); f.budget.finish.mockResolvedValue({ rowCount: 0 });
   const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async (callback, { signal }) => {
-    try { return await callback(signal); }
+    try { return await f.dependencies.withAdmission(callback, { signal }); }
     catch { worker.stop(); throw Error('PRIVATE replacement admission failure'); }
   } });
   try {

@@ -12,7 +12,7 @@ test('failure finish remains owned until settlement and its callback still rejec
   f.budget.finish.mockImplementation(async () => { ownedAtFinish = admitted; started.resolve(); await release.promise; return { rowCount: 1 }; });
   const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async (callback, { signal }) => {
     admitted = true;
-    try { return await callback(signal); }
+    try { return await f.dependencies.withAdmission(callback, { signal }); }
     catch (error) { callbackFailed = true; throw error; }
     finally { admitted = false; }
   } });
@@ -41,7 +41,7 @@ test.each([['inventory_discovery_deferred', 'deferred'], ['PRIVATE unlock failur
   'post-callback %s preserves saved capture and reports %s locally', async (message, status) => {
     const f = await fixture();
     const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async (callback, { signal }) => {
-      await callback(signal); throw Error(message);
+      await f.dependencies.withAdmission(callback, { signal }); throw Error(message);
     } });
     try {
       expect(await worker.run()).toEqual({ status });
@@ -54,7 +54,7 @@ test('an admission reason already aborted at failure entry retains precedence', 
   const f = await fixture(), admission = new AbortController();
   f.capture.mockImplementation(async () => { admission.abort(Error('inventory_discovery_deferred')); throw Error('PRIVATE provider failure'); });
   const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async callback => {
-    try { return await callback(admission.signal); }
+    try { return await f.dependencies.withAdmission(callback, { signal: admission.signal }); }
     catch (error) { admission.signal.throwIfAborted(); throw error; }
   } });
   try {
@@ -65,7 +65,7 @@ test('an admission reason already aborted at failure entry retains precedence', 
 
 test.each(['zero', 'rejection'])(
   'cleanup %s and late admission abort preserve the first outcome and exact fallback deadline', async cleanup => {
-    const f = await fixture(), admission = new AbortController(); let clock = 100;
+    const f = await fixture(); let admission = new AbortController(), clock = 100;
     f.capture.mockRejectedValue(Error('PRIVATE provider failure'));
     f.budget.finish.mockImplementation(async () => {
       clock = 10000; admission.abort(Error('inventory_discovery_deferred'));
@@ -73,13 +73,13 @@ test.each(['zero', 'rejection'])(
       return { rowCount: 0 };
     });
     const worker = createAdjudicationBudgetWorker({ ...f.dependencies, now: () => clock, withAdmission: async callback => {
-      try { return await callback(admission.signal); }
+      try { return await f.dependencies.withAdmission(callback, { signal: admission.signal }); }
       catch (error) { admission.signal.throwIfAborted(); throw error; }
     } });
     try {
       expect(await worker.run()).toEqual({ status: 'unavailable' }); expect(f.budget.finish).toHaveBeenCalledTimes(1);
       clock = 300099; expect(await worker.run()).toEqual({ status: 'cooldown' });
-      clock = 300100; f.capture.mockResolvedValue({ calls: 0, reused: 0, stored: 0 });
+      clock = 300100; admission = new AbortController(); f.capture.mockResolvedValue({ calls: 0, reused: 0, stored: 0 });
       expect((await worker.run()).status).toBe('captured'); // The late abort did not extend retryAfter.
     } finally { worker.stop(); }
   });
@@ -87,7 +87,7 @@ test.each(['zero', 'rejection'])(
 test('a later boundary error cannot replace an admitted budget failure or add another finish', async () => {
   const f = await fixture(); f.capture.mockRejectedValue(Error('adjudication_budget_exhausted'));
   const worker = createAdjudicationBudgetWorker({ ...f.dependencies, withAdmission: async (callback, { signal }) => {
-    try { return await callback(signal); }
+    try { return await f.dependencies.withAdmission(callback, { signal }); }
     catch { throw Error('PRIVATE later boundary failure'); }
   } });
   try {

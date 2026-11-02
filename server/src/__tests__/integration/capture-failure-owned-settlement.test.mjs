@@ -3,7 +3,8 @@ import { beforeEach, expect, jest, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createOwnedCaptureFixture, ownedCaptureMemory, ownedCaptureSnapshot } from '../helpers/adjudicationOwnedCaptureFixture.mjs';
-import { createInventoryDiscoveryAdmission, INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { createAdjudicationFinalizationAdmission as createInventoryDiscoveryAdmission } from '../../services/adjudicationFinalizationAdmission.mjs';
 
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
 beforeEach(async () => { await getPool().query('TRUNCATE adjudication_capture_budget,cached_adjudication_batch'); });

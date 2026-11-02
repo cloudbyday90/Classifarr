@@ -1,9 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { fixtureAttemptId } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { FINISH_ADJUDICATION_BUDGET_SQL, LOCK_ADJUDICATION_FINISH_SQL } from '../../services/adjudicationBudgetSql.mjs';
 
 const query = (...args) => getPool().query(...args);
@@ -36,10 +37,10 @@ test.each([
   try {
     await budget.configure({ dailyCalls: 5, dailyTokens: 42240 });
     await db.withTransaction(async client => {
-      await client.query(`PREPARE cooldown_finish(integer,text,text) AS ${FINISH_ADJUDICATION_BUDGET_SQL}`);
+      await client.query(`PREPARE cooldown_finish(integer,text,text,uuid) AS ${FINISH_ADJUDICATION_BUDGET_SQL}`);
       // One command message gives all three statements the same server timestamp, including microseconds.
       const results = await client.query(`UPDATE adjudication_capture_budget SET next_check_at=statement_timestamp()+interval '${offset}';
-        EXECUTE cooldown_finish(1,'deferred',NULL);
+        EXECUTE cooldown_finish(1,'deferred',NULL,'${fixtureAttemptId}');
         SELECT next_check_at=statement_timestamp()+interval '${expected} minutes' AS exact,
           next_check_at>statement_timestamp() AND next_check_at<=statement_timestamp()+interval '60 minutes' AS honored
         FROM adjudication_capture_budget`);

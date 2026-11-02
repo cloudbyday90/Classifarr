@@ -101,9 +101,10 @@ The design contains the recommendation stack and pros/cons. No schema, token
 protocol, UI, operator CLI trigger, endpoint, job, setting, provider capability,
 routing or learning change was added. No release, deployment or restart occurred.
 
-Next: assess a durable finalization fence for lease loss not yet observed, with
-explicit claim, legacy-writer and restore semantics. Keep bounded write acquisition
-and whole-worker shutdown separately scoped; do not implicitly add replay authority.
+The next finalization boundary is addressed in the
+[owner-session fence outcome](capture-finalization-fence-outcome.md), including
+claim, legacy-writer and restore semantics. Bounded write acquisition and
+whole-worker shutdown remain separately scoped; no replay authority is implied.
 
 ## Validation handoff
 
