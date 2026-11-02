@@ -71,6 +71,15 @@ Do not sum propagated nodes as unique vulnerabilities or treat an empty root
 audit as a clean-platform claim. The separate existing next-release tooling hold
 is not lifted by this batch.
 
+At delivery, GitHub's push response still reported four repository alerts: one
+high, two moderate and one low. These are separate from the three local npm audit
+scopes above. The connected GitHub MCP tools expose no alert-details operation;
+the read-only GitHub API fallback returned HTTP 401. The remaining high alert's
+package, manifest and current applicability are therefore unverified. Do not
+attribute it to a known hold or assume scanner delay. Reconcile it through an
+authenticated alert source before declaring the next security batch complete;
+the existing release hold remains in force.
+
 Final recommendation: keep the small scoped upstream patch, exact installs and
 real-library controls. The tradeoff is deliberately superseding the parent's
 exact pin and maintaining compatibility evidence until an assessed Markdownlint
