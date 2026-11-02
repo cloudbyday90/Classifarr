@@ -206,9 +206,14 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Changed
 
+- **Root Axios update** — Locally adopt randomly selected PR #574 with exact
+  Axios 1.21.0 and real Node GET/JSON POST compatibility checks. Preserve
+  application authentication/retry behavior and strict install policy.
+
 - **Client Axios update** — Locally adopt PR #575 with exact Axios 1.21.0, preserving
   explicit CSRF, credentials and no-replay controls. Verify header compatibility
-  and production browser assets; root Axios and redirect overrides stay separate.
+  and production browser assets. Root Axios and the subsequent redirect patch
+  have separate design and verification records.
 
 - **Client build tooling** — Locally implement randomly selected PR #570 with
   exact PostCSS 8.5.31 and Vite 8.3.5 pins and the reviewed coupled lock changes.
@@ -226,6 +231,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   synthetic environment and precedence checks. No provider PR merge is included.
 
 ### Security
+
+- **Cross-realm redirect filtering** — Patch both independent root/client
+  follow-redirects overrides to exact 1.16.2 for GHSA-mrwp-f3q8-3g9p. Reproduce
+  the foreign-array failure on both old copies, then verify custom credential
+  stripping across origins and legitimate same-origin behavior with actual
+  Node HTTP requests. Keep remaining development-tool advisories visible.
 
 - **Rate-limit dependency patch** — Adopt and locally test express-rate-limit
   8.7.2 from Dependabot PR #577, pinning the exact version. Fix the upstream

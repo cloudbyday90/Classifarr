@@ -6,8 +6,8 @@ See the [design and alternatives](redirect-dependency-fix-design.md).
 
 November 2 follow-up: a subsequently published cross-realm sensitiveHeaders
 advisory also affects the retained 1.16.1 pins. This historical outcome does not
-cover that case. See the [current client audit and next patch boundary](client-axios-1-21-outcome.md)
-for the remaining finding and recommended coupled 1.16.2 update.
+cover that case. The [subsequent cross-realm fix outcome](redirect-cross-realm-fix-outcome.md)
+records the coupled 1.16.2 patch and genuine foreign-array verification.
 
 ## Cause, patch and invariant
 

@@ -62,6 +62,11 @@ separately; do not use audit fix --force or weaken install/scanner policy.
 The prior [redirect fix outcome](redirect-dependency-fix-outcome.md) remains
 evidence for its earlier two assessed bugs, not this subsequently published case.
 
+Subsequent November 2 batch: the [cross-realm fix outcome](redirect-cross-realm-fix-outcome.md)
+records the completed coupled 1.16.2 patch, fresh audit and expanded regression
+matrix. The counts and retained 1.16.1 pins above describe this earlier batch's
+boundary. Root Axios adoption has its [own outcome](root-axios-1-21-outcome.md).
+
 ## Delivery
 
 At intake all four open Dependabot PRs were fresh and mergeable. GitHub MCP

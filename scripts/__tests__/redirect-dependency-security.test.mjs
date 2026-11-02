@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
 
 // Actual independently installed dependencies, not mocked redirect implementations.
 const trees = [
@@ -36,6 +37,20 @@ async function fixture(operation) {
   try {
     const target = await listen((req, res) => { targets.push(req.headers); res.end('ok'); });
     const source = await listen((req, res) => {
+      if (req.url === '/json') {
+        const chunks = [];
+        let bytes = 0;
+        req.on('data', chunk => {
+          bytes += chunk.length;
+          if (bytes > 1024) req.destroy(); else chunks.push(chunk);
+        });
+        req.on('end', () => {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ method: req.method, contentType: req.headers['content-type'],
+            body: Buffer.concat(chunks).toString('utf8') }));
+        });
+        return;
+      }
       if (req.url === '/target') { targets.push(req.headers); res.end('ok'); return; }
       sources.push(req.headers);
       res.writeHead(302, { location: req.url === '/same' ? '/target' : `${target}/target` }); res.end();
@@ -80,12 +95,32 @@ for (const [name, base] of trees) {
 
   test(`${name}: exact patched lock, manifest override and installed package agree`, async () => {
     const json = async path => JSON.parse(await readFile(new URL(path, base), 'utf8'));
-    assert.equal((await json('package.json')).overrides['follow-redirects'], '1.16.1');
-    assert.equal((await json('package-lock.json')).packages['node_modules/follow-redirects'].version, '1.16.1');
-    assert.equal((await json('node_modules/follow-redirects/package.json')).version, '1.16.1');
+    assert.equal((await json('package.json')).overrides['follow-redirects'], '1.16.2');
+    assert.equal((await json('package-lock.json')).packages['node_modules/follow-redirects'].version, '1.16.2');
+    assert.equal((await json('node_modules/follow-redirects/package.json')).version, '1.16.2');
   });
 
   for (const kind of ['object', 'array']) {
+    for (const direction of ['cross', 'same']) {
+      test(`${name}: foreign sensitive-header array with ${kind} headers ${direction === 'cross' ? 'strips across origins' : 'preserves same-origin values'}`, async () => {
+        // Trusted fixed code creates a genuine other-realm array; VM is not a sandbox.
+        const foreignNames = runInNewContext("['x^token', 'x|token', 'x+token']");
+        assert.equal(Array.isArray(foreignNames), true);
+        assert.equal(foreignNames instanceof Array, false);
+        await fixture(async ({ source, sources, targets }) => {
+          const input = headers();
+          const raw = kind === 'array' ? ['Host', new URL(source).host, ...Object.entries(input).flat()] : input;
+          const response = await request(lib, `${source}/${direction}`, { headers: raw, sensitiveHeaders: foreignNames });
+          assert.equal(response.statusCode, 200);
+          assertInitialAndOrdinary(sources, targets);
+          for (const [key, value] of Object.entries(input)) {
+            const normalized = key.toLowerCase();
+            assert.equal(targets[0][normalized], direction === 'cross' && confidential.includes(normalized) ? undefined : value, normalized);
+          }
+        });
+      });
+    }
+
     test(`${name}: ${kind} strips built-in and regex-token custom secrets across origins`, async () => {
       await fixture(async ({ source, sources, targets }) => {
         const input = headers();
@@ -125,6 +160,18 @@ for (const [name, base] of trees) {
       // No custom sensitiveHeaders option was supplied to Axios. Do not pretend
       // the direct-library reproduction demonstrates an application Axios leak.
       for (const key of customNames) assert.equal(targets[0][key], sources[0][key]);
+    });
+  });
+
+  test(`${name}: actual Axios Node adapter preserves JSON POST encoding and response`, async () => {
+    await fixture(async ({ source }) => {
+      const payload = { event: 'synthetic-control', count: 2 };
+      const response = await axios.post(`${source}/json`, payload, { adapter: 'http', proxy: false,
+        timeout: 3000, maxRedirects: 2 });
+      assert.equal(response.status, 200);
+      assert.equal(response.data.method, 'POST');
+      assert.equal(response.data.contentType, 'application/json');
+      assert.deepEqual(JSON.parse(response.data.body), payload);
     });
   });
 }
