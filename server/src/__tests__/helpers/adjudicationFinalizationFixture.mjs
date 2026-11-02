@@ -2,8 +2,10 @@
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
 
 export const fixtureAttemptId = '41db1265-8bc1-4ab3-992f-885799a4af1d';
+export const seedFixtureReservationAuthority = (database, revision) => database.query(
+  'UPDATE adjudication_capture_budget SET finalization_attempt_id=$1::uuid WHERE revision=$2', [fixtureAttemptId,revision]);
 
-/** Explicit synthetic claim for isolated finish/cooldown SQL tests, not ownership proof. */
+/** Explicit synthetic claim for isolated quota/finish SQL tests, not ownership proof. */
 export function createFinalizationFixtureBudget(database) {
   const repository = createAdjudicationBudgetRepository(database);
   return { ...repository,
@@ -13,6 +15,7 @@ export function createFinalizationFixtureBudget(database) {
         [fixtureAttemptId, state.revision]);
       return state;
     },
+    reserve: (revision, signal, attemptId = fixtureAttemptId) => repository.reserve(revision, signal, attemptId),
     finish: (revision, status, fingerprint, signal, attemptId = fixtureAttemptId) =>
       repository.finish(revision, status, fingerprint, signal, attemptId),
   };

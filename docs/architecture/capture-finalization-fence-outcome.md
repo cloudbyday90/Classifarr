@@ -84,10 +84,11 @@ prevent stale reservations, checkpoint writes or cache publication. Existing
 quota/workload/revision checks remain independently necessary. Unknown COMMIT
 results remain unknown; no provider replay or refund was introduced.
 
-Next: assess attempt ownership for charged reservations and checkpoint/cache
-publication, including uncertain provider outcomes. Keep bounded write
-acquisition and whole-worker shutdown separate. Routine operation remains
-automatic, with no new UI, CLI trigger, endpoint, setting or job.
+Reservation ownership is addressed in the separate
+[reservation fence outcome](capture-reservation-fence-outcome.md). Checkpoint/
+cache publication and uncertain provider outcomes remain separate boundaries.
+Keep bounded write acquisition and whole-worker shutdown separate. Routine
+operation remains automatic, with no new UI, CLI trigger, endpoint, setting or job.
 
 The independent dependency batch is documented in its
 [own outcome](express-rate-limit-8-7-2-outcome.md). Work stays on main, with

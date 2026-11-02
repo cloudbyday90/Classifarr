@@ -34,7 +34,7 @@ test('exhausted budget progresses but reservations, quota day, status and cooldo
   await budget.reserve(state.revision); await budget.finish(state.revision, 'unavailable');
   const before = await stored(); await advance(state.revision);
   expect(await stored()).toEqual({ ...before, finalization_attempt_id: null, revision: state.revision + 1, selection_offset: 25 });
-  await expect(budget.reserve(state.revision + 1)).rejects.toThrow('exhausted');
+  await expect(budget.reserve(state.revision + 1)).rejects.toThrow('not_owned');
 });
 
 test('configuration edits and cursor mismatch fence an old evaluation', async () => {

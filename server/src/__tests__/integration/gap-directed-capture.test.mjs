@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { readCachedAdjudication, projectAdjudicationConfig } from '../../services/cachedAdjudicationRepository.mjs';
 import { adjudicationDigest } from '../../services/cachedAdjudicationContract.mjs';

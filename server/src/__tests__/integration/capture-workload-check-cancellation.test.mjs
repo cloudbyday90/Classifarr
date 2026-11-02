@@ -8,7 +8,7 @@ import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createEvaluationWorkloadGuard } from '../../services/evaluationWorkloadGuard.mjs';
 import { createEvaluationWorkloadChecks } from '../../services/evaluationWorkloadChecks.mjs';
 import { createEvaluationWorkloadRepository } from '../../services/evaluationWorkloadRepository.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository, seedFixtureReservationAuthority } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { READ_ADJUDICATION_BUDGET_SQL } from '../../services/adjudicationBudgetSql.mjs';
 import { INVENTORY_BACKGROUND_READINESS_SQL } from '../../services/inventoryBackgroundReadiness.mjs';
@@ -46,6 +46,7 @@ beforeEach(async () => {
     finally { client.release(); }
   } });
   revision = (await controls.configure({ revision: 0, mode: 'when_idle', dailyRequests: 5, startMinute: null, endMinute: null })).revision;
+  await seedFixtureReservationAuthority({ query }, revision);
   expect((await query(INVENTORY_BACKGROUND_READINESS_SQL)).rows[0].readiness).toBe('ready');
 });
 

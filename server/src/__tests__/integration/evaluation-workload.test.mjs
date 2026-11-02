@@ -9,7 +9,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { requireAdmin } from '../../middleware/apiKeyAuth.mjs';
 import { registerEvaluationWorkloadRoutes } from '../../routes/statsRouteEvaluationWorkload.mjs';
 import { createEvaluationWorkloadRepository } from '../../services/evaluationWorkloadRepository.mjs';
-import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
+import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository, seedFixtureReservationAuthority } from '../helpers/adjudicationFinalizationFixture.mjs';
 import { createEvaluationWorkloadGuard } from '../../services/evaluationWorkloadGuard.mjs';
 import { createLocalDescriptionBenchmarkClient } from '../../services/localDescriptionBenchmarkClient.mjs';
 import { EVALUATION_WINDOW_OPEN_SQL } from '../../services/evaluationWorkloadSql.mjs';
@@ -26,7 +26,7 @@ test('status is read-only even on empty setup; CAS, limits, cooldown and reserva
   const results = await Promise.allSettled([controls.configure(input()),controls.configure(input())]);
   expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
   expect(results.find(r => r.status === 'rejected').reason.message).toBe('evaluation_workload_conflict');
-  await budget.reserve(1);
+  await seedFixtureReservationAuthority(db, 1); await budget.reserve(1);
   const token = '41db1265-8bc1-4ab3-992f-885799a4af1d'; // Synthetic authority for this controls/SQL fixture.
   await db.query('UPDATE adjudication_capture_budget SET finalization_attempt_id=$1::uuid', [token]);
   await budget.finish(1,'unavailable',null,undefined,token);
@@ -47,7 +47,7 @@ test('UTC window boundaries include start, exclude end, support midnight and fen
   let revision = 0;
   for (const [startMinute,endMinute,open] of cases) {
     const saved = await controls.configure({ ...input(revision),mode: 'scheduled',startMinute,endMinute });
-    revision = saved.revision;
+    revision = saved.revision; await seedFixtureReservationAuthority(db, revision);
     expect(saved.windowOpen).toBe(open);
     if (open) await budget.reserve(revision);
     else await expect(budget.reserve(revision)).rejects.toThrow('exhausted');
@@ -104,7 +104,7 @@ test('real HTTP admin authorization, input rejection, no-store reads and stale-w
 });
 
 test.each(['disable','edit','window','foreground','unknown'])('real HTTP cancellation on %s retains the charged attempt and fences later work', async reason => {
-  const saved = await controls.configure(input());
+  const saved = await controls.configure(input()); await seedFixtureReservationAuthority(db, saved.revision);
   let entered, closed, readiness = 'ready', calls = 0;
   const started = new Promise(resolve => { entered = resolve; });
   const disconnected = new Promise(resolve => { closed = resolve; });

@@ -11,8 +11,10 @@ export const READ_ADJUDICATION_BUDGET_SQL = `SELECT revision,daily_calls,daily_t
   workload_mode,window_start_minute,window_end_minute,${EVALUATION_WINDOW_OPEN_SQL} AS window_open,
   next_check_at>statement_timestamp() AND next_check_at<=statement_timestamp()+interval '60 minutes' AS cooling_down
   FROM adjudication_capture_budget WHERE singleton=true`;
-export const LOCK_ADJUDICATION_FINISH_SQL = `SELECT singleton FROM adjudication_capture_budget
+export const LOCK_OWNED_ADJUDICATION_BUDGET_SQL = `SELECT singleton FROM adjudication_capture_budget
   WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid FOR UPDATE`;
+export const RESET_ADJUDICATION_RESERVATION_DAY_SQL = `${RESET_ADJUDICATION_DAY_SQL}
+  AND singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid`;
 // Dispatch after the awaited row lock so a lock wait cannot age this command's validity horizon.
 export const FINISH_ADJUDICATION_BUDGET_SQL = `UPDATE adjudication_capture_budget SET status=$2,
   next_check_at=GREATEST(
@@ -22,7 +24,7 @@ export const FINISH_ADJUDICATION_BUDGET_SQL = `UPDATE adjudication_capture_budge
   published_fingerprint=COALESCE($3,published_fingerprint) WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$4::uuid`;
 export const RESERVE_ADJUDICATION_SQL = `UPDATE adjudication_capture_budget SET
   calls_reserved=calls_reserved+1,tokens_reserved=tokens_reserved+8448
-  WHERE singleton=true AND revision=$1 AND daily_calls>0 AND daily_tokens>0
+  WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$2::uuid AND daily_calls>0 AND daily_tokens>0
     AND calls_reserved<daily_calls AND tokens_reserved+8448<=daily_tokens
     AND quota_day<=${today} AND ${EVALUATION_WINDOW_OPEN_SQL} RETURNING calls_reserved`;
 export const PUBLISH_ADJUDICATION_PROGRESS_SQL = `INSERT INTO cached_adjudication_batch(singleton,batch,captured_at,expires_at)

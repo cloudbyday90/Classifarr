@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Fence automatic capture reservations** — Verify the private owner claim before
+  resetting the UTC quota day or charging another call. Roll back refused work,
+  distinguish proven ownership loss from exhausted budgets and unknown failures,
+  and defer stale attempts without a cleanup write, refund or replay. Preserve
+  already accepted charges, workload limits and existing automatic workflows.
+
 - **Fence capture finalization** — Require an acknowledged private claim from the
   discovery-lock-owning database session before saving capture outcomes. Reject
   older claims after a replacement attempt commits, invalidate authority on
@@ -199,6 +205,10 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   checks; this does not rewrite saved policies or establish an accuracy rate.
 
 ### Changed
+
+- **Client Axios update** — Locally adopt PR #575 with exact Axios 1.21.0, preserving
+  explicit CSRF, credentials and no-replay controls. Verify header compatibility
+  and production browser assets; root Axios and redirect overrides stay separate.
 
 - **Client build tooling** — Locally implement randomly selected PR #570 with
   exact PostCSS 8.5.31 and Vite 8.3.5 pins and the reviewed coupled lock changes.

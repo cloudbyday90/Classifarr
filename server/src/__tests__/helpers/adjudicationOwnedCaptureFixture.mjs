@@ -17,13 +17,17 @@ export const ownedCaptureSnapshot = async () => ({ budget: (await getPool().quer
 export async function createOwnedCaptureFixture() {
   const f = await createAdjudicationBudgetWorkerFixture(), db = createReadinessDatabase({ max: 2 });
   const budget = createAdjudicationBudgetRepository(db), resources = resourceAdmissionFixture(ownedCaptureMemory);
+  const admission = createAdjudicationFinalizationAdmission({ ...db, readMemory: ownedCaptureMemory, resourceAdmission: resources });
   try {
     const state = await budget.configure({ dailyCalls: 5, dailyTokens: 42240 });
     const plan = [{ key: 'c'.repeat(64), prompt: 'Synthetic comparison', count: 2 }];
     const checkpoint = budget.checkpoint(state.revision);
     await checkpoint.open(plan, { version: 'cached_adjudication.v1', configuration: 'a'.repeat(64),
       identity: { model: 'synthetic:latest', digest: 'b'.repeat(64), contextLength: 8192 }, records: [] });
-    await budget.reserve(state.revision);
+    await admission(async (_signal, _checkpoint, owner) => {
+      const claim = await owner.claimFinalization(state.revision);
+      await budget.reserve(state.revision, undefined, claim.attemptId);
+    });
     await checkpoint.record({ key: plan[0].key, generated: { response: 'Synthetic response', latencyMs: 1,
       promptTokens: 10, outputTokens: 10, outputLimitReached: false, contextLimitSuspected: false, inputTruncation: 'unknown' } });
     await checkpoint.publish();
@@ -31,7 +35,6 @@ export async function createOwnedCaptureFixture() {
       await dependencies.onPublished(f.prepared.fingerprint, true, new AbortController().signal);
       return { calls: 0, reused: 1, stored: 1 };
     });
-    const admission = createAdjudicationFinalizationAdmission({ ...db, readMemory: ownedCaptureMemory, resourceAdmission: resources });
     const finish = jest.spyOn(budget, 'finish');
     return { ...f, db, budget, state, resources, admission, finish, before: await ownedCaptureSnapshot(),
       createWorker: (overrides = {}) => createAdjudicationBudgetWorker({ ...f.dependencies, budget, withAdmission: admission, ...overrides }) };

@@ -5,7 +5,7 @@ import { fixtureAttemptId } from '../helpers/adjudicationFinalizationFixture.mjs
 import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createFinalizationFixtureBudget as createAdjudicationBudgetRepository } from '../helpers/adjudicationFinalizationFixture.mjs';
-import { FINISH_ADJUDICATION_BUDGET_SQL, LOCK_ADJUDICATION_FINISH_SQL } from '../../services/adjudicationBudgetSql.mjs';
+import { FINISH_ADJUDICATION_BUDGET_SQL, LOCK_OWNED_ADJUDICATION_BUDGET_SQL } from '../../services/adjudicationBudgetSql.mjs';
 
 const query = (...args) => getPool().query(...args);
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
@@ -85,7 +85,7 @@ test.each([['unavailable', 'deferred'], ['deferred', 'unavailable']])(
       const client = await db.pool.connect(), nativeQuery = client.query.bind(client);
       queries = jest.spyOn(client, 'query').mockImplementation(async (sql, parameters) => {
         const result = await nativeQuery(sql, parameters);
-        if (sql === LOCK_ADJUDICATION_FINISH_SQL) { locked.resolve(); await proceed.promise; }
+        if (sql === LOCK_OWNED_ADJUDICATION_BUDGET_SQL) { locked.resolve(); await proceed.promise; }
         if (sql === FINISH_ADJUDICATION_BUDGET_SQL) {
           firstDeadline = (await nativeQuery('SELECT next_check_at::text FROM adjudication_capture_budget')).rows[0].next_check_at;
         }
@@ -132,7 +132,7 @@ test('finalization retains inherited transaction isolation and existing per-stat
     const nativeQuery = client.query.bind(client), settings = [];
     queries = jest.spyOn(client, 'query').mockImplementation(async (sql, parameters) => {
       const result = await nativeQuery(sql, parameters);
-      if (sql === LOCK_ADJUDICATION_FINISH_SQL || sql === FINISH_ADJUDICATION_BUDGET_SQL) settings.push((await nativeQuery(`SELECT
+      if (sql === LOCK_OWNED_ADJUDICATION_BUDGET_SQL || sql === FINISH_ADJUDICATION_BUDGET_SQL) settings.push((await nativeQuery(`SELECT
         current_setting('transaction_isolation') AS isolation,current_setting('statement_timeout') AS statement,
         current_setting('lock_timeout') AS lock`)).rows[0]);
       return result;

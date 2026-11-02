@@ -1,8 +1,13 @@
 # Redirect dependency fix outcome
 
-Date: 20 October 2026. Outcome: **fixed** for the two pinned dependency trees.
+Date: 20 October 2026. Outcome: **fixed** for the two advisories assessed then.
 Code subject: `d190b5d79f1a84088e6228f73c3bf8bb8e258015`.
 See the [design and alternatives](redirect-dependency-fix-design.md).
+
+November 2 follow-up: a subsequently published cross-realm sensitiveHeaders
+advisory also affects the retained 1.16.1 pins. This historical outcome does not
+cover that case. See the [current client audit and next patch boundary](client-axios-1-21-outcome.md)
+for the remaining finding and recommended coupled 1.16.2 update.
 
 ## Cause, patch and invariant
 

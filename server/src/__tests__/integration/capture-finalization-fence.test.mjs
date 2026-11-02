@@ -95,7 +95,7 @@ test('replacement owner rejects an unobserved old finish without changing charge
   const db = createReadinessDatabase(), budget = createAdjudicationBudgetRepository(db);
   try {
     const state = await budget.configure(options), first = await claim(db, state.revision);
-    await budget.reserve(state.revision);
+    await budget.reserve(state.revision, undefined, first.attemptId);
     const second = await claim(db, state.revision);
     expect(second.attemptId).not.toBe(first.attemptId);
     const before = await snapshot();
@@ -187,7 +187,8 @@ test('claim checks cooldown after serialization and preserves inherited isolatio
 test.each(['merge', 'replace'])('%s restore invalidates authority atomically while preserving the other budget fields', async mode => {
   const db = createReadinessDatabase(), budget = createAdjudicationBudgetRepository(db);
   try {
-    const state = await budget.configure(options); await claim(db, state.revision); await budget.reserve(state.revision);
+    const state = await budget.configure(options), owned = await claim(db, state.revision);
+    await budget.reserve(state.revision, undefined, owned.attemptId);
     const before = await snapshot();
     await expect(db.withTransaction(async client => { await restoreAllTables(client, { data: {} }, mode); throw Error('fixture rollback'); })).rejects.toThrow('fixture rollback');
     expect(await snapshot()).toEqual(before);

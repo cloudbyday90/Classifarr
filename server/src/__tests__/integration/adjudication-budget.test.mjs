@@ -45,7 +45,7 @@ test('provider inspection uses a real read-only transaction and leaves quota/pro
 test('default off, concurrent atomic reservation, restart and configuration changes cannot reset quotas', async () => {
   await query('TRUNCATE adjudication_capture_budget'); // Fresh schema snapshot has no singleton data.
   expect(await repository.read()).toMatchObject({ daily_calls: 0,tokens_reserved: 0 });
-  await expect(repository.reserve(0)).rejects.toThrow('exhausted');
+  await expect(repository.reserve(0)).rejects.toThrow('not_owned');
   const state = await configure(10,16896);
   const results = await Promise.allSettled(Array.from({ length: 20 },() => repository.reserve(state.revision)));
   expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(2);
@@ -53,7 +53,7 @@ test('default off, concurrent atomic reservation, restart and configuration chan
   expect(await repository.read()).toMatchObject({ calls_reserved: 2,tokens_reserved: 16896 });
   const raised = await configure(20,168960);
   expect(raised.calls_reserved).toBe(2);
-  await expect(repository.reserve(state.revision)).rejects.toThrow('exhausted');
+  await expect(repository.reserve(state.revision)).rejects.toThrow('not_owned');
   const disabled = await configure(0,0);
   await expect(repository.reserve(disabled.revision)).rejects.toThrow('exhausted');
   expect((await repository.read()).calls_reserved).toBe(2);
@@ -104,7 +104,7 @@ test('disable fences in-flight response publication and subsequent admission wit
   await configure(0,0);
   await expect(checkpoint.record(record())).rejects.toThrow('changed');
   await expect(checkpoint.publish()).rejects.toThrow('changed');
-  await expect(repository.reserve(state.revision)).rejects.toThrow('exhausted');
+  await expect(repository.reserve(state.revision)).rejects.toThrow('not_owned');
   expect((await repository.read()).calls_reserved).toBe(1);
   expect(await readCachedAdjudication(getPool(),template().configuration)).toBeNull();
 });
