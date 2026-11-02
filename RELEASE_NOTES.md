@@ -1,6 +1,135 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.49.3-beta`. Package files use semver-safe versions such as `0.49.3-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.4-beta`. Package files use semver-safe versions such as `0.49.4-beta`.
+
+## v0.49.4-beta
+
+**Understand destination evidence, review original decisions, and let automatic summaries guide the next fix.**
+
+This beta distinguishes declared policy purpose from inferred or unknown support,
+adds an explicit assessment in History, and collects bounded prospective evidence
+automatically. Existing Evaluation progress gains quiet, expandable summaries;
+routine use does not require a CLI command or a new dashboard. Background database
+work, capture ownership and logging also gain tighter failure boundaries.
+
+Classifarr has reached **21,997 Docker Hub image pulls** as of November 2, 2026
+([live repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)).
+These are image pulls, not people or unique installations, and exclude GHCR.
+
+### Before you upgrade
+
+- Back up the database, persistent appdata and encryption keys. Keep mounts,
+  ownership and credentials intact. An older image is not a database downgrade
+  plan; restore a matching backup when schema rollback is necessary.
+- Eight application migrations add frozen outcome/policy evidence, review
+  references, automatic aggregate checkpoints and private capture claims. Normal
+  startup applies them. Stop older Classifarr writers sharing the database;
+  the new claim checks do not make mixed-version writers safe.
+- Node 24.22.1, npm/npx 12.2.1 and the digest-pinned Alpine base remain unchanged.
+  Strict installer approvals remain enforced. Ordinary Compose and Unraid use
+  need no new template setting. This remains a beta release.
+- Existing History and media placements are preserved. New prospective evidence
+  accumulates from supported live evaluations and successful explicit reviews;
+  missing historical proof remains a gap rather than a guessed label.
+
+### Purpose evidence that says what it can prove
+
+Pending and library-comparison cards distinguish declared, inferred, mixed and
+unknown purpose. Declared specialized support requires a genuine declared-rule
+match bound to the item and candidate. Inferred template/profile rules retain
+their ranking roles without being presented as verified declarations.
+
+This does not rewrite saved policies, numeric scores or thresholds. The shared
+authority correction addresses one proof boundary; it is not a measured accuracy
+improvement across every library, documentary or seasonal classification.
+
+### Assess the original decision in History
+
+For an eligible completed automated classification, an administrator can review
+the preserved original destination and record an explicit assessment. Current
+outcome, original decision and shortlisted choices remain distinct. References
+are short-lived and actor-bound; stale state is rejected, and uncertain responses
+recover the same receipt instead of submitting another vote.
+
+The assessment uses the existing feedback/statistics transaction. It does not move
+media, reclassify the item, create policy rules or add learning authority. Missing
+original proof, imported/manual sources and existing receipts remain conservative
+eligibility boundaries. History entry controls retain native keyboard access.
+
+### Automatic summaries without another operator workflow
+
+Independent provider-free jobs audit retained evidence and compare supported
+explicit choices with frozen original and policy references. They save compact
+aggregates and refresh through existing ownership, resource admission, cancellation
+and backoff. Status polling only reads saved results.
+
+Empty, unavailable, deferred, failed and stale states stay distinct; stale or
+invalid counts are withheld even when presentation is paused. Confirmation and
+destination-change cohorts remain separate. Agreement is not accuracy, and a
+disagreement does not establish cause. Some older or outcome-only paths remain
+unassessed. Optional private developer reports are not required for ordinary use.
+
+Frozen policy payloads retain the complete compatible pool only within the
+64-candidate / 64-KiB boundary. Overflow and binding failures are explicit gaps.
+Thirty-day payload expiry preserves tombstones; configuration exports omit these
+diagnostics, and restores reset aggregate/prepared-review state. History deletion
+cascades applicable child evidence. No historical backfill is performed.
+
+### Storage and background work keep their failure boundaries
+
+Database-proven disk exhaustion now produces fixed incident diagnostics and a
+one-hour pause before heavy description/profile refresh work retries. Completed
+database cache entries are retained. The pause is process-local and is not proof
+that storage recovered; no files are deleted and no service is restarted.
+
+Three-second readiness/workload checks cover pool wait and result acceptance.
+Fixed admission slots remain occupied through bounded cleanup and late acquisition
+settlement. Stop fences reject late results while preserving genuine database
+diagnoses. These cooperative limits do not promise immediate remote SQL/provider
+termination or bounded shutdown of an entire worker.
+
+Capture reservations, checkpoints, publication, rotation and finalization require
+the acknowledged owner claim. Cleanup stays within admission, valid longer
+cooldowns survive, and acknowledged zero-row writes remain distinct from unknown
+commit outcomes. Charged attempts are not refunded or replayed after uncertainty.
+Real PostgreSQL regressions protect the existing healthy publication boundary;
+they do not establish a global fence against older or nonparticipating writers.
+
+### Safer logging and reviewed dependency updates
+
+Bounded logging data projection preserves safe context, redaction and log identity
+when input is cyclic, hostile or oversized. Database logging failure uses fixed
+text with a shared one-minute output limit while preserving normal INSERT
+attempts. Native stacks and whole-record limits retain their separate policies.
+
+Runtime parser, redirect-credential and request-counting patches preserve ordinary
+HTTP, restore, CSRF, authentication and rate-limit behavior. Axios is updated in
+both independent application trees. Build/lint dependencies and SHA-pinned CI
+actions are reviewed without weakening checks. The scoped RE2JS patch addresses
+its tooling advisory. vue-tsc stays at 3.3.13 after the 3.3.14 candidate failed
+five targeted compiler controls; application syntax was not changed to hide them.
+
+Repository maintenance guidance now keeps verified stale development artifacts
+bounded while protecting recovery assets, current evidence and other projects.
+This is agent-operated development housekeeping, not production cleanup.
+
+### Known security and evidence limits
+
+npm 12.2.1 separately bundles vulnerable ip-address 10.7.2, including in the
+production image. The application's patched parser and workspace overrides do
+not repair that CLI copy. As of the November 2 registry check, the upstream npm
+12.2.2 fix is not published. Remediation or a new explicit maintainer decision is
+required for publication; the v0.49.3-beta-only exception does not carry forward.
+See the [release outcome](https://github.com/cloudbyday90/Classifarr/blob/main/docs/architecture/release-0.49.4-beta-outcome.md)
+for the exact decision and fresh evidence before relying on a publication claim.
+
+Development-tool advisory findings remain visible. No scanner suppression,
+blanket security claim, historical ground-truth conversion or guaranteed routing
+accuracy follows from this beta. Release publication and live deployment are
+separate operations.
+
+Full system changes and preserved development history are in the
+[changelog](https://github.com/cloudbyday90/Classifarr/blob/main/CHANGELOG.md).
 
 ## v0.49.3-beta
 

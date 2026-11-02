@@ -9,6 +9,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ## [Unreleased]
 
+No unreleased changes.
+
+## [v0.49.4-beta] - 2026-11-02
+
 **TL;DR:** Clearer movie/TV purpose evidence, explicit History assessments and
 compact automatic evaluation summaries make classification disagreements easier
 to investigate. Database-failure handling, bounded background reads, capture
