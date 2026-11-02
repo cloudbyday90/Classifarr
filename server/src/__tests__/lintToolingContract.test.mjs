@@ -1,11 +1,28 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@jest/globals';
 import { fileURLToPath } from 'node:url';
-import { ESLint } from 'eslint';
+import { ESLint, Linter } from 'eslint';
 
 const linter = new ESLint({ cwd: fileURLToPath(new URL('../../', import.meta.url)) });
 const productionFile = 'src/services/lintContractFixture.mjs';
 const lint = async (code, filePath = productionFile) => (await linter.lintText(code, { filePath }))[0].messages;
+
+const restrictedGlobals = (code, globals) => new Linter().verify(code, {
+  languageOptions: { globals: { window: 'readonly', self: 'readonly' } },
+  rules: { 'no-restricted-globals': ['error', { globals, checkGlobalObject: true }] },
+});
+
+test.each(['const obj = { foo: window };', 'class C { foo = globalThis; }'])
+('global objects used as property values do not crash the real rule: %s', code => {
+  expect(restrictedGlobals(code, ['foo'])).toEqual([]);
+});
+
+test('restricted shorthand globals still produce the exact blocking diagnostic', () => {
+  expect(restrictedGlobals('const obj = { self };', ['self'])).toEqual([
+    expect.objectContaining({ ruleId: 'no-restricted-globals', messageId: 'defaultMessage',
+      severity: 2, line: 1, column: 15, endLine: 1, endColumn: 19 }),
+  ]);
+});
 
 test('production config retains ESM and blocking security checks', async () => {
   const config = await linter.calculateConfigForFile(productionFile);

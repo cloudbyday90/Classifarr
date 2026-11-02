@@ -119,6 +119,9 @@ shared-worker extension separate from that follow-up.
 
 ## Final delivery
 
+The recommended outer-read stop follow-up is now implemented separately; see
+the [stop outcome](capture-outer-read-stop-outcome.md) for its regression and limits.
+
 | Check | Observed result |
 | --- | --- |
 | Focused backend units | Nine suites / 141 tests passed |

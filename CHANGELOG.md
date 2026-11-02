@@ -107,6 +107,11 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Capture stop after maintenance** — Recheck permanent stop after the outer
+  budget read settles, before returning readiness or entering discovery
+  admission. Keep awaiting the transaction and preserve committed maintenance,
+  caches, charges and existing retry rules without replay or a new timeout.
+
 - **Serialized capture-budget maintenance** — Lock the budget singleton before
   UTC reset and progress pruning so a contended read cannot erase a newly
   committed capture using an older timestamp. Keep maintenance independent of
@@ -223,6 +228,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   checks; this does not rewrite saved policies or establish an accuracy rate.
 
 ### Changed
+
+- **Assessed server ESLint update** — Locally adopt randomly selected PR #580's
+  exact ESLint 10.14.0 with real-rule regression controls. Verify identical
+  ownership analysis on unchanged source before updating only the reviewed
+  parser pin; preserve all review bindings, classifications and unresolved debt.
+  Keep strict install policy, independent dependency trees and the PR unmerged.
 
 - **Compiler semantic regression guards** — Add bounded real-CLI model/event,
   slot-default and independent semantic-error controls. Locally assess PR #581

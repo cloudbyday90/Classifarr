@@ -19,6 +19,7 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
     let state;
     try {
       state = await budget.read(controller.signal); // Retention runs even while disabled.
+      controller.signal.throwIfAborted();
       if (!state?.daily_calls) return { status: 'disabled' };
       if (state.window_open === false) return { status: 'outside_window' };
       if (state.cooling_down) return { status: 'cooldown' };
