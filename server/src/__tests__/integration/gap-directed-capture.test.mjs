@@ -93,7 +93,8 @@ test.each(['exhausted', 'disabled', 'changed', 'expired'])('%s allowance or rete
       return record(...args);
     };
   }
-  await expect(captureCachedAdjudication({ maxCalls: 1 }, input)).rejects.toThrow(/exhausted|changed/);
+  const refusal = mode === 'disabled' || mode === 'changed' ? 'not_owned' : mode === 'exhausted' ? 'exhausted' : 'changed';
+  await expect(captureCachedAdjudication({ maxCalls: 1 }, input)).rejects.toThrow(refusal);
   expect(sent).toBe(mode === 'expired' ? 1 : 0);
   expect(await readCachedAdjudication(getPool(), fixture.source.adjudicationConfig.fingerprint)).toBeNull();
 });

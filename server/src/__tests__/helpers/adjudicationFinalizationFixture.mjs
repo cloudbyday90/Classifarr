@@ -16,6 +16,7 @@ export function createFinalizationFixtureBudget(database) {
       return state;
     },
     reserve: (revision, signal, attemptId = fixtureAttemptId) => repository.reserve(revision, signal, attemptId),
+    checkpoint: (revision, attemptId = fixtureAttemptId) => repository.checkpoint(revision, attemptId),
     finish: (revision, status, fingerprint, signal, attemptId = fixtureAttemptId) =>
       repository.finish(revision, status, fingerprint, signal, attemptId),
   };

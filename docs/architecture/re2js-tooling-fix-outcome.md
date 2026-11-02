@@ -130,3 +130,10 @@ are updated. The PRs remain unmerged; fresh mergeable branches require no rebase
 Work stays on main with no release, deployment, service restart, schema, new UI,
 job, operator CLI trigger, provider call, routing or learning change. Private
 baseline, install, audit, counter and maintenance receipts remain under .tmp.
+
+The subsequent [client tooling outcome](client-tooling-pr-579-outcome.md) records
+partial adoption of PR 579 and a separate compiler deferral. The
+[checkpoint fence outcome](capture-checkpoint-fence-outcome.md) completes the
+three existing automatic checkpoint transactions; same-revision advance remains
+the next application ownership item. Existing audit and npm release holds remain
+visible in their respective outcomes.

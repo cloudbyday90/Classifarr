@@ -107,6 +107,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
 
 ### Fixed
 
+- **Owner-bound automatic checkpoints** — Require the acknowledged capture
+  revision/UUID for open, record and the existing atomic progress/cache publish.
+  Serialize ownership before retention checks and guarded writes; only proven
+  owner absence defers and suppresses stale cleanup. Preserve charged attempts,
+  leases, stop handling and uncertain-commit boundaries without replay.
+
 - **Fence automatic capture reservations** — Verify the private owner claim before
   resetting the UTC quota day or charging another call. Roll back refused work,
   distinguish proven ownership loss from exhausted budgets and unknown failures,
@@ -205,6 +211,12 @@ Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG
   checks; this does not rewrite saved policies or establish an accuracy rate.
 
 ### Changed
+
+- **Assessed client tooling updates** — Locally apply PR #579's exact ESLint
+  10.14.0, eslint-plugin-vue 10.12.0 and PostCSS 8.5.32 subset with real tooling
+  regression coverage. Retain vue-tsc 3.3.13 and its compiler graph pending a
+  separate compatibility batch. Keep npm pinned until the bundled parser fix
+  is published and verified; the PR remains unmerged.
 
 - **Root Axios update** — Locally adopt randomly selected PR #574 with exact
   Axios 1.21.0 and real Node GET/JSON POST compatibility checks. Preserve

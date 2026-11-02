@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { isAdjudicationReservationRefusal } from './adjudicationReservationRefusal.mjs';
+import { isAdjudicationCheckpointRefusal } from './adjudicationCheckpointRefusal.mjs';
 
 /** One capture flight; only a settled repository result can prove non-application. */
 export function createAdjudicationBudgetFinalization(budget) {
@@ -25,6 +26,17 @@ export function createAdjudicationBudgetFinalization(budget) {
         if (isAdjudicationReservationRefusal(error)) notApplied = true;
         throw error;
       }
+    },
+    checkpoint(revision) {
+      if (!claim || claim.revision !== revision) throw Error('adjudication_claim_missing');
+      const checkpoint = budget.checkpoint(revision, claim.attemptId);
+      return Object.fromEntries(['open', 'record', 'publish'].map(operation => [operation, async (...args) => {
+        try { return await checkpoint[operation](...args); }
+        catch (error) {
+          if (isAdjudicationCheckpointRefusal(error)) notApplied = true;
+          throw error;
+        }
+      }]));
     },
     async finish(revision, status, fingerprint, signal) {
       if (!claim || claim.revision !== revision) throw Error('adjudication_claim_missing');

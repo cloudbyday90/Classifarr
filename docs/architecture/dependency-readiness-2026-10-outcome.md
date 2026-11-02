@@ -198,3 +198,24 @@ workspace audit nor this local qualification is a supply-chain safety guarantee.
 4. Keep the other direct updates as separate, attributable follow-ups; retain
    Node 24 declarations and the client compiler restriction. Resume incident and
    VM troubleshooting after release work, as requested.
+
+## November 2 npm bundled-parser recheck
+
+The registry's latest and next-12 tags still resolve to npm 12.2.1. Its installed
+bundle still contains ip-address 10.7.2; the installed server copy is 10.7.4.
+Standalone ip-address 10.7.5 is published, but an application override does not
+replace npm's separate bundle.
+
+There is now a concrete upstream candidate: the open
+[npm 12.2.2 release PR](https://github.com/npm/cli/pull/10156), inspected at
+3f46427368b57fae201c0b45de21b5a5bc12c007, includes
+[the bundled 10.7.5 update](https://github.com/npm/cli/commit/b34bba52a4cf068ef695eef2d698e8e01b08b841).
+The release PR is not a published artifact: npm view for exact npm@12.2.2 returns
+registry E404 on November 2. No supported released npm upgrade was verified.
+
+Keep the next-release hold. Once published, review the actual archive/integrity,
+bundled version and remaining audit findings, then validate local/CI/Docker
+installation policy and compatibility before changing the coordinated pins.
+Do not install an unreleased branch, patch vendor files or waive the hold based
+on release notes alone. No toolchain or application dependency changed during
+this recheck. Registry, installed-manifest and upstream receipts remain under .tmp.

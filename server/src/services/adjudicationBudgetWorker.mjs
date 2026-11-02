@@ -47,7 +47,7 @@ export function createAdjudicationBudgetWorker({ budget, repository, withAdmissi
           }
           const maxCalls = remainingAdjudicationCalls(state);
           if (!maxCalls) { await finalization.finish(state.revision,'budget_exhausted',null,signal); return { status: 'budget_exhausted' }; }
-          const checkpoint = budget.checkpoint(state.revision);
+          const checkpoint = finalization.checkpoint(state.revision);
           const result = await withWorkload((workloadSignal, check) => capture({ maxCalls }, { repository, readConfig, createClient, signal: workloadSignal,
             withAdmission: (callback, { signal: inner }) => callback(AbortSignal.any([workloadSignal,inner])),
             checkpoint: { ...checkpoint, reserve: async abort => { await check(); await finalization.reserve(state.revision,abort); } }, save: checkpoint.publish,

@@ -91,9 +91,11 @@ The independent [client Axios outcome](client-axios-1-21-outcome.md) identified
 an existing high redirect dependency advisory. The subsequent
 [cross-realm fix](redirect-cross-realm-fix-outcome.md) completes the coupled
 root/client 1.16.2 patch. The [RE2JS follow-up](re2js-tooling-fix-outcome.md)
-records the subsequent scoped developer-chain remediation. Next, extend attempt
-fencing to checkpoint/advance/publication while preserving manual cache authority
-and retention. Keep whole-worker shutdown/write acquisition
+records the subsequent scoped developer-chain remediation. The subsequent
+[checkpoint fence outcome](capture-checkpoint-fence-outcome.md) covers automatic
+open, record and the existing atomic progress/cache publication. Next, assess
+same-revision advance while preserving manual cache authority and retention.
+Keep whole-worker shutdown/write acquisition
 and any durable provider dispatch protocol separately scoped.
 
 Work stays on main with Unreleased notes and no version bump, release,

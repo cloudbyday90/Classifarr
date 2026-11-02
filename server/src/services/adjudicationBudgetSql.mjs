@@ -29,6 +29,6 @@ export const RESERVE_ADJUDICATION_SQL = `UPDATE adjudication_capture_budget SET
     AND quota_day<=${today} AND ${EVALUATION_WINDOW_OPEN_SQL} RETURNING calls_reserved`;
 export const PUBLISH_ADJUDICATION_PROGRESS_SQL = `INSERT INTO cached_adjudication_batch(singleton,batch,captured_at,expires_at)
   SELECT true,progress,captured_at,expires_at FROM adjudication_capture_budget
-    WHERE singleton=true AND revision=$1 AND progress_key=$2 AND daily_calls>0
+    WHERE singleton=true AND revision=$1 AND finalization_attempt_id=$3::uuid AND progress_key=$2 AND daily_calls>0
       AND captured_at<=statement_timestamp() AND expires_at>statement_timestamp()
   ON CONFLICT(singleton) DO UPDATE SET batch=EXCLUDED.batch,captured_at=EXCLUDED.captured_at,expires_at=EXCLUDED.expires_at`;

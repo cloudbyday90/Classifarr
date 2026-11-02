@@ -102,8 +102,8 @@ test('disable fences in-flight response publication and subsequent admission wit
   const state = await configure(), checkpoint = repository.checkpoint(state.revision);
   await checkpoint.open([request],template()); await repository.reserve(state.revision);
   await configure(0,0);
-  await expect(checkpoint.record(record())).rejects.toThrow('changed');
-  await expect(checkpoint.publish()).rejects.toThrow('changed');
+  await expect(checkpoint.record(record())).rejects.toThrow('not_owned');
+  await expect(checkpoint.publish()).rejects.toThrow('not_owned');
   await expect(repository.reserve(state.revision)).rejects.toThrow('not_owned');
   expect((await repository.read()).calls_reserved).toBe(1);
   expect(await readCachedAdjudication(getPool(),template().configuration)).toBeNull();

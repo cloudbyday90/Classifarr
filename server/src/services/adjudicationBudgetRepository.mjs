@@ -2,11 +2,11 @@
 import { validateAdjudicationBudget } from './adjudicationBudgetContract.mjs';
 import { isFinalizationAttemptId } from './adjudicationFinalizationClaim.mjs';
 import { createAdjudicationReservationRefusal } from './adjudicationReservationRefusal.mjs';
+import { createAdjudicationCheckpoint } from './adjudicationCheckpointRepository.mjs';
 import { READ_ADJUDICATION_BUDGET_SQL, RESET_ADJUDICATION_DAY_SQL, PRUNE_ADJUDICATION_PROGRESS_SQL,
   LOCK_OWNED_ADJUDICATION_BUDGET_SQL, FINISH_ADJUDICATION_BUDGET_SQL,
   RESET_ADJUDICATION_RESERVATION_DAY_SQL,
-  RESERVE_ADJUDICATION_SQL, PUBLISH_ADJUDICATION_PROGRESS_SQL } from './adjudicationBudgetSql.mjs';
-import { readAdjudicationBatch, adjudicationDigest } from './cachedAdjudicationContract.mjs';
+  RESERVE_ADJUDICATION_SQL } from './adjudicationBudgetSql.mjs';
 
 const requireWrite = result => { if (result.rowCount !== 1) throw new Error('adjudication_budget_changed'); };
 export function createAdjudicationBudgetRepository(database) {
@@ -64,59 +64,6 @@ export function createAdjudicationBudgetRepository(database) {
         published_fingerprint=NULL,progress_key=NULL,progress=NULL,captured_at=NULL,expires_at=NULL
         WHERE singleton=true AND revision=$1`, [revision,eligible]));
     }, signal),
-    checkpoint(revision) {
-      let key, batch, keys;
-      return {
-        async open(plan, template, signal) {
-          key = adjudicationDigest({ configuration: template.configuration, identity: template.identity, requests: plan.map(row => row.key) });
-          keys = new Set(plan.map(row => row.key));
-          batch = await transaction(async client => {
-            const { rows: [state] } = await client.query(`SELECT progress_key,
-              CASE WHEN captured_at<=statement_timestamp() AND expires_at>statement_timestamp() THEN progress END AS progress
-              FROM adjudication_capture_budget
-              WHERE singleton=true AND revision=$1 AND daily_calls>0 FOR UPDATE`, [revision]);
-            if (!state) throw new Error('adjudication_budget_changed');
-            const retained = state.progress_key === key ? readAdjudicationBatch(state.progress,template.configuration) : null;
-            if (retained && retained.records.every(row => keys.has(row.key)) &&
-                adjudicationDigest(retained.identity) === adjudicationDigest(template.identity)) return retained;
-            // Reuse an exact published batch without renewing its retention deadline.
-            const { rows: [cached] } = await client.query(`SELECT batch,captured_at,expires_at FROM cached_adjudication_batch
-              WHERE captured_at<=statement_timestamp() AND expires_at>statement_timestamp()`);
-            const previous = readAdjudicationBatch(cached?.batch,template.configuration);
-            const matching = previous && adjudicationDigest(previous.identity) === adjudicationDigest(template.identity)
-              ? previous.records.filter(row => keys.has(row.key)) : [];
-            const reuse = matching.length > 0;
-            const next = { ...template, records: matching };
-            requireWrite(await client.query(`UPDATE adjudication_capture_budget SET progress_key=$2,progress=$3::jsonb,
-              captured_at=COALESCE($4::timestamptz,statement_timestamp()),expires_at=COALESCE($5::timestamptz,statement_timestamp()+interval '7 days'),
-              published_fingerprint=NULL WHERE singleton=true AND revision=$1`,
-            [revision,key,JSON.stringify(next),reuse ? cached.captured_at : null,reuse ? cached.expires_at : null]));
-            return next;
-          }, signal);
-          return structuredClone(batch);
-        },
-        async record(record, signal) {
-          if (!keys?.has(record.key)) throw new Error('adjudication_checkpoint_invalid');
-          const records = batch.records.filter(row => row.key !== record.key); records.push(structuredClone(record));
-          const next = { ...batch, records };
-          if (!readAdjudicationBatch(next,next.configuration)) throw new Error('adjudication_checkpoint_invalid');
-          await transaction(async client => requireWrite(await client.query(`UPDATE adjudication_capture_budget SET progress=$3::jsonb
-            WHERE singleton=true AND revision=$1 AND daily_calls>0 AND progress_key=$2
-              AND captured_at<=statement_timestamp() AND expires_at>statement_timestamp()`, [revision,key,JSON.stringify(next)])),signal);
-          batch = next;
-        },
-        publish: (next = batch, signal) => transaction(async client => {
-          if (!readAdjudicationBatch(next,batch.configuration) || adjudicationDigest(next.identity) !== adjudicationDigest(batch.identity) ||
-              next.records.some(row => !batch.records.some(saved => adjudicationDigest(saved) === adjudicationDigest(row)))) {
-            throw new Error('adjudication_checkpoint_invalid');
-          }
-          // Match publication order to the exact fingerprint used for replay/rotation.
-          requireWrite(await client.query(`UPDATE adjudication_capture_budget SET progress=$3::jsonb
-            WHERE singleton=true AND revision=$1 AND progress_key=$2 AND daily_calls>0
-              AND captured_at<=statement_timestamp() AND expires_at>statement_timestamp()`,[revision,key,JSON.stringify(next)]));
-          requireWrite(await client.query(PUBLISH_ADJUDICATION_PROGRESS_SQL,[revision,key]));
-        },signal),
-      };
-    },
+    checkpoint: (revision, attemptId) => createAdjudicationCheckpoint(transaction, revision, attemptId),
   };
 }
