@@ -5,310 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Archived changelogs: [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.3.md) | [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md) | [October 2026 through v0.49.0](docs/changelog/CHANGELOG-2026-10-releases-through-0.49.0.md) | [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md) | [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
+Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELOG-2026-11-pre-release-0.49.4.md) | [October 2026 v0.49.1–v0.49.2 Releases](docs/changelog/CHANGELOG-2026-10-releases-0.49.1-through-0.49.2.md) | [October 2026 v0.49.3 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.3.md) | [October 2026 v0.49.2 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md) | [October 2026 through v0.49.0](docs/changelog/CHANGELOG-2026-10-releases-through-0.49.0.md) | [October 2026 v0.49.1 Development](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md) | [October 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-10-pre-release.md) | [August 2026 Release Details](docs/changelog/CHANGELOG-2026-08-releases.md) | [August 2026 Pre-release Details](docs/changelog/CHANGELOG-2026-08-pre-release.md) | [June 2026](docs/changelog/CHANGELOG-2026-06.md) | [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) | [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md) | [April 2026](docs/changelog/CHANGELOG-2026-04.md) | [March 2026](docs/changelog/CHANGELOG-2026-03.md)
 
 ## [Unreleased]
 
+**TL;DR:** Clearer movie/TV purpose evidence, explicit History assessments and
+compact automatic evaluation summaries make classification disagreements easier
+to investigate. Database-failure handling, bounded background reads, capture
+ownership and logging are hardened. These changes do not establish an accuracy
+rate or retroactively turn current media placements into confirmed labels.
+
+Development entries were consolidated on 2026-11-02. The
+[complete original record](docs/changelog/CHANGELOG-2026-11-pre-release-0.49.4.md)
+preserves intermediate implementation details, decisions and dependency reviews.
+
 ### Added
 
-- **Report publication admission regressions** — Verify capture/evaluator
-  exclusion through queued writes, rollback and delayed/lost commit replies using
-  isolated PostgreSQL and the production database factory. Preserve valid
-  unpublished progress and charged reservations; document that shared admission
-  prevents the hypothesized healthy-worker race. Keep runtime SQL unchanged and
-  retain the selected compiler PR's previously demonstrated deferral.
-
-- **Local artifact maintenance skill** — Add routine agent-operated Classifarr
-  housekeeping with verified stale-file and unused-image selection, explicit
-  recovery-asset protection and measured cleanup receipts. Keep shared cache,
-  application data and unrelated projects outside the default policy; no new UI
-  or operator CLI trigger is required.
-
-- **Automatic destination review summary** — Evaluate retained explicit choices
-  automatically through existing background ownership, resource limits and
-  backoff. Save bounded aggregate counts and show one quiet, expandable summary
-  in administrator Evaluation progress. Distinguish unavailable, empty, stale,
-  deferred and failed evidence without a manual CLI trigger. Keep original,
-  policy and choice comparisons separate; routing and learning remain unchanged.
-
-- **Optional frozen policy context** — Add `--include-policy-context` to the
-  private purpose-case CLI. Inspect complete retained policy pools with exact
-  item/time/leader/proof binding, distinct raw and ranked scores, and explicit
-  optional evidence gaps. Keep current report bytes and eligibility unchanged
-  without the option. Bound combined read-only input before transfer and omit
-  whole cases at the output ceiling. No routing or learning changes.
-
-- **Private purpose disagreement cases** — Add the exclusive read-only evaluation
-  CLI mode `--prospective-purpose-cases`. List bounded eligible cases with
-  separately named frozen policy/choice, original/choice and policy/original
-  comparisons, preserving recorded confirmation/change meaning and independent
-  History-review original references, including BIGINT IDs. Share whole-window
-  validation and holdouts with the unchanged aggregate; cap private numeric
-  output at fifty cases / 1 MiB with omissions and evidence gaps. Disagreement
-  does not establish error, accuracy or cause; routing and learning are unchanged.
-
-- **Prospective purpose-choice cohort** — Freeze new live purpose matches in
-  immutable policy capture v2 and atomically associate existing explicit choices
-  with the retained policy leader or a commit-time evidence gap. Preserve event
-  deduplication, source expiry and replay tombstones. Add the bounded private
-  aggregate CLI mode `--prospective-purpose`, with separate action/reference
-  meanings and explicit historical gaps. Legacy statistics, inventory cohorts,
-  scores, routing and learning authority remain unchanged; agreement is not accuracy.
-
-- **Frozen policy evaluation evidence** — Preserve new retained live policy
-  evaluations in immutable History-bound child records: the complete compatible
-  pool up to 64 candidates, final policy ranking, closed exclusions, and separate
-  storage authority, purpose provenance and runtime admission. Expire payloads
-  after thirty days while retaining tombstones; keep evidence outside portable
-  backups. Extend the bounded private disagreement CLI with validated context
-  and explicit gaps. Classification survives capture failures; cohort scoring,
-  routing and learning remain unchanged. Historical intent is not reconstructed.
-
-- **Private prospective disagreement report** — Add the explicit evaluation CLI
-  mode `--prospective-disagreements`. Compare frozen original references and
-  experimental rankings against validated assessments through shared cohort
-  eligibility, preserving existing aggregate results and connected holdouts.
-  Bound read-only inputs and private numeric/ID output; show missing historical
-  intent/policy evidence, abstentions and display omissions explicitly. No new
-  routing, learning, saved report, API/UI or scheduled job.
-
-- **Explicit History feedback review** — Assess a preserved original automated
-  destination through an active-administrator, ten-minute server reference.
-  Atomically record one existing feedback/statistics transaction and frozen
-  confirmation/change evidence, with stale-state rejection and scoped receipt
-  recovery after a lost response or expiry. Keep legacy selections and historical
-  gaps explicit. This assessment does not move media, reclassify, create policy
-  rules or add learning authority; it does not establish classification accuracy.
-
-- **Frozen feedback selection provenance** — Capture exact classification binding,
-  selection action and the server shortlist reference in new feedback receipts.
-  Protect provenance and replay clocks against replacement while preserving
-  expiry and feedback tombstones. Audit v2 separates selection-only diagnostics
-  from unknown legacy actions; neither becomes a frozen prospective
-  confirmation/change label. Existing retrospective statistics, calibration,
-  routing and learning behavior remain unchanged.
-
-- **Automatic comparison evidence audit** — Independently inspect bounded retained
-  evidence with existing scheduler ownership, resource admission, cancellation and
-  backoff. Save only a replaceable aggregate and show it in administrator
-  Evaluation progress through a protected read-only status API. Separate capture
-  exclusions from overlapping observation diagnostics; withhold failed or stale
-  counts even while presentation is paused. Historical recovery remains
-  unassessed; placement does not become a label, and routing/learning are unchanged.
-
-- **Prospective comparison provenance** — Freeze typed identity in new ranking
-  captures and recheck it before persistence. Read canonical authorized choices
-  and provably bound correction snapshots through strict, modular adapters.
-  Preserve legacy gaps, unknown action kinds, unavailable conflicts and connected
-  holdouts before separate confirmation/change scoring. Exact BIGINT IDs and
-  bounded overflow aliases cannot select a favorable retry. Current placements
-  do not become confirmed labels; routing and learning remain unchanged.
-
-- **Frozen authorized-outcome evaluation** — Atomically retain prospective typed
-  identity, destination, action and decision context for successful authorized
-  operator choices. Shared evaluation readers deduplicate event aliases, separate
-  confirmations from changes, reject conflicts and report historical evidence
-  gaps. Database observation times, thirty-day expiry and replay guards prevent
-  late receipts from refreshing old evidence. Routing and learning authority are
-  unchanged; this does not establish classifier accuracy or repair past labels.
-
-### Fixed
-
-- **Capture stop after maintenance** — Recheck permanent stop after the outer
-  budget read settles, before returning readiness or entering discovery
-  admission. Keep awaiting the transaction and preserve committed maintenance,
-  caches, charges and existing retry rules without replay or a new timeout.
-
-- **Serialized capture-budget maintenance** — Lock the budget singleton before
-  UTC reset and progress pruning so a contended read cannot erase a newly
-  committed capture using an older timestamp. Keep maintenance independent of
-  flight claims, preserve retention and charges, and distinguish absent-row
-  deferral from malformed results without adding retries or replay.
-
-- **Owner-bound automatic rotation** — Require the acknowledged capture
-  revision/UUID before advancing rotation or clearing retained progress.
-  Serialize ownership, preserve same-flight authority and distinguish proven
-  refusal from ordinary zero, malformed results and uncertain commits. Keep
-  existing cooldown, charge and stop behavior without replaying advance.
-
-- **Owner-bound automatic checkpoints** — Require the acknowledged capture
-  revision/UUID for open, record and the existing atomic progress/cache publish.
-  Serialize ownership before retention checks and guarded writes; only proven
-  owner absence defers and suppresses stale cleanup. Preserve charged attempts,
-  leases, stop handling and uncertain-commit boundaries without replay.
-
-- **Fence automatic capture reservations** — Verify the private owner claim before
-  resetting the UTC quota day or charging another call. Roll back refused work,
-  distinguish proven ownership loss from exhausted budgets and unknown failures,
-  and defer stale attempts without a cleanup write, refund or replay. Preserve
-  already accepted charges, workload limits and existing automatic workflows.
-
-- **Fence capture finalization** — Require an acknowledged private claim from the
-  discovery-lock-owning database session before saving capture outcomes. Reject
-  older claims after a replacement attempt commits, invalidate authority on
-  configuration changes/restores, and preserve cooldowns, charged work and saved
-  caches. Existing automatic schedules and UI remain unchanged.
-
-- **Keep capture cleanup owned** — Await admitted failure finalization before
-  releasing discovery admission. Use local fallback for rejected admission and
-  post-callback failures, preserve the first failure/cooldown through later
-  boundary errors, and avoid late cleanup overwriting a cooperating newer run.
-  Keep saved caches, charged attempts, schedules and UI unchanged.
-
-- **Acknowledge capture finalization** — Defer an automatic capture whose primary
-  finish acknowledges zero affected rows, retain its local cooldown and avoid a
-  second finish. Keep published caches and charged attempts intact, preserve
-  earlier failure outcomes during best-effort cleanup, and leave lost commit
-  replies uncertain. Existing schedules and UI remain unchanged.
-
-- **Preserve capture cooldowns** — Prevent later five-minute outcomes from
-  shortening a valid longer cooldown. Serialize finalization before calculating
-  the database-time deadline, preserve the existing one-hour validity horizon
-  and cooperative stop handling, and replace ignored future timestamps. Keep
-  status semantics, budgets, automatic schedules and UI unchanged.
-
-- **Capture failure shutdown** — Pass the permanent stop signal to failure
-  finalization and recheck stop after the awaited write settles. Prevent finalizer
-  DML when stop arrives during pool wait, and return the stopped lifecycle result
-  without claiming rollback of an already-dispatched commit. Preserve quotas,
-  cooldown timing, transaction handling and automatic schedules.
-
-- **Bound capture workload checks** — Cancel automatic capture's initial,
-  periodic and fresh reservation checks within one shared three-second budget.
-  Preserve separate read-only transactions and current isolation; prevent
-  queued acquisitions from accumulating across runtime replacements. Cancel and
-  drain owned checks when the callback settles, preserving its result and
-  existing inference budgets. Keep automatic schedules and UI unchanged.
-
-- **Bound automatic evaluation readiness** — Reuse a shared three-second,
-  read-only preflight for automatic source-pair evaluation and capture. Retain
-  one database-scoped admission slot through cancellation cleanup and queued
-  acquisition drain, fencing late work across runtime replacement. Preserve
-  refresh diagnostics and separate evaluation/inference permissions; existing
-  automatic schedules and UI remain unchanged.
-
-- **Bound automatic refresh readiness** — Cancel description and representative
-  preflight reads on stop, caller abort or a three-second probe deadline. Keep
-  scoped admission through read cleanup and late pool acquisition, preventing
-  abandoned requests from accumulating across runtime replacement. Preserve
-  genuine database diagnostics, worker caches/cooldowns and normal ownership
-  checks; local cancellation cannot become SQL failure evidence. Existing
-  automatic schedules continue without a new UI or operator command.
-
-- **Bound primary log data** — Preserve log events and safe context when data is
-  cyclic, hostile or oversized. Project own data properties without invoking
-  accessors or serialization hooks, retain sensitive-key redaction, and bound
-  traversal and encoded metadata. Protect root log identity and share the
-  projection with ordinary database logging. Keep native stacks, existing retry
-  boundaries and durable comparison evidence separate; no operator action is needed.
-
-- **Safe logging persistence fallback** — Replace raw error-text fallback output
-  with one fixed notice and a shared one-minute output limit. Hostile failures or
-  a failed console cannot turn an already caught persistence failure into a
-  rejection. Preserve primary logs, persistence attempts and ID/null results.
-
-- **Refresh readiness diagnostics** — Explain failed preliminary database checks
-  for description and representative refreshes through safe, rate-limited
-  warnings in existing logs. Keep failed checks deferred, preserve cache and
-  retry state, and resume normal admission automatically after readiness returns.
-  No new cooldown, recovery claim, interface or operator command is added.
-
-- **Inventory refresh disk-full recovery** — Recognize PostgreSQL-reported
-  storage exhaustion in description and representative refreshes, retain safe
-  incident diagnostics in existing logs, and automatically wait one hour before
-  retrying heavy work. Keep completed database cache entries and ownership
-  safeguards; provider changes cannot erase a storage cooldown. No automatic
-  file deletion, restart, routing or learning change is introduced.
-
-- **Verified purpose explanations** — Distinguish declared, inferred, mixed and
-  unknown purpose on pending and library-comparison evidence cards. Require a
-  bound, server-derived declared-rule match with existing specialized/conflict
-  checks before showing declared support. Preserve actual card versions and
-  neutral numeric labels; isolate legacy correction/statistics heuristics.
-  Historical gaps, scores, routing and learning authority remain unchanged.
-
-- **Purpose authority consistency** — Use the same declaration-provenance checks
-  in specialized destination evidence and policy API projections. Inferred
-  template or profile rules retain ranking and comparison roles without being
-  presented as declared purpose or receiving specialized declared-purpose proof.
-  Preserve native storage authority, explicit constraints and fresh learned-route
-  checks; this does not rewrite saved policies or establish an accuracy rate.
+- **Automatic evaluation visibility** — Independent provider-free evidence-gap
+  and destination-review jobs save bounded aggregates in existing administrator
+  Evaluation progress. Missing, empty, deferred, failed and stale states remain
+  distinct; protected status reads never trigger work. Routine use needs no CLI
+  command or extra dashboard.
+- **History assessment** — Eligible completed automated decisions can be assessed
+  against their preserved original destination through an actor-bound,
+  ten-minute administrator reference and one atomic feedback receipt. Exact
+  replay recovery preserves statistics semantics without moving media,
+  reclassifying, creating rules or granting additional learning authority.
+- **Prospective evidence** — Freeze typed ranking identity, successful explicit
+  choices and the retained complete live policy pool, including matched purpose
+  proof. Immutable classification/event binding, conflict checks and holdouts
+  preserve separate confirmation/change cohorts and explicit legacy gaps.
+- **Private developer diagnostics** — Optional bounded aggregate, disagreement
+  and policy-context modes retain separate original/policy/experimental meanings.
+  Whole-window validation precedes the 50-case / 1-MiB display cap; titles, raw
+  contracts, actor identifiers and credentials remain excluded.
+- **Development housekeeping** — A discoverable maintenance skill inventories
+  local growth and removes only verified stale Classifarr artifacts while
+  protecting recovery assets, current evidence, worktrees and other projects.
 
 ### Changed
 
-- **Assessed server ESLint update** — Locally adopt randomly selected PR #580's
-  exact ESLint 10.14.0 with real-rule regression controls. Verify identical
-  ownership analysis on unchanged source before updating only the reviewed
-  parser pin; preserve all review bindings, classifications and unresolved debt.
-  Keep strict install policy, independent dependency trees and the PR unmerged.
+- **Upgrade and retention** — Eight startup migrations add prospective evidence,
+  review references, aggregate checkpoints and private capture claims. Back up
+  database/appdata/encryption keys and stop older shared-database writers before
+  upgrading. Thirty-day evidence payloads expire without refilling tombstones;
+  portable exports omit diagnostics, restores clear transient checkpoints and
+  invalidate claims, and History deletion cascades applicable child evidence.
+- **Runtime dependencies** — Root/client Axios is 1.21.0 and server dotenv is
+  18.0.9, preserving authentication, CSRF, cancellation, environment precedence
+  and explicit no-replay behavior. Node 24.22.1 and npm 12.2.1 remain pinned.
+- **Build and analysis tooling** — Client Vite 8.3.5/PostCSS 8.5.32 and both ESLint
+  10.14.0 graphs have real-tool controls; updated Vue/server lint plugins and
+  Knip preserve rule policy. Retain vue-tsc 3.3.13 after five 3.3.14 regressions.
+  Ownership parser review preserves bindings, classifications and unresolved debt.
+- **CI publication controls** — Docker Login 4.7.0 and CodeQL 4.39.1 use full SHA
+  pins, retaining workflow permissions, event restrictions, promotion provenance
+  and failure checks.
 
-- **Compiler semantic regression guards** — Add bounded real-CLI model/event,
-  slot-default and independent semantic-error controls. Locally assess PR #581
-  and retain vue-tsc 3.3.13 after reproducing five 3.3.14 compiler regressions;
-  preserve the complete compiler graph, typecheck scopes and strict install
-  policy without application workarounds or diagnostic suppression.
+### Fixed
 
-- **Assessed client tooling updates** — Locally apply PR #579's exact ESLint
-  10.14.0, eslint-plugin-vue 10.12.0 and PostCSS 8.5.32 subset with real tooling
-  regression coverage. Retain vue-tsc 3.3.13 and its compiler graph pending a
-  separate compatibility batch. Keep npm pinned until the bundled parser fix
-  is published and verified; the PR remains unmerged.
-
-- **Root Axios update** — Locally adopt randomly selected PR #574 with exact
-  Axios 1.21.0 and real Node GET/JSON POST compatibility checks. Preserve
-  application authentication/retry behavior and strict install policy.
-
-- **Client Axios update** — Locally adopt PR #575 with exact Axios 1.21.0, preserving
-  explicit CSRF, credentials and no-replay controls. Verify header compatibility
-  and production browser assets. Root Axios and the subsequent redirect patch
-  have separate design and verification records.
-
-- **Client build tooling** — Locally implement randomly selected PR #570 with
-  exact PostCSS 8.5.31 and Vite 8.3.5 pins and the reviewed coupled lock changes.
-  Preserve install-script policy and overrides; verify client coverage, types,
-  production build and real browser route/asset checks. No PR merge or release.
-- **Pinned CI actions** — Locally implement PR #569's Docker Login 4.7.0 and
-  CodeQL 4.39.1 updates with full commit SHAs. Update the existing promotion
-  allowlist and security contract assertion while preserving permissions,
-  publication/event gates and failure checks. No PR merge or release is included.
-- **Server lint tooling** — Locally implement PR #572's `eslint-plugin-n` 18.5.0
-  and PR #578's exact `eslint-plugin-security` 4.2.1 / `knip` 6.44.0 updates.
-  Verify real RegExp call diagnostics and Knip analysis, retaining severities,
-  exclusions, install-script policy and overrides. No provider PR merge or release.
-- **Server environment tooling** — Locally implement randomly selected PR #571:
-  pin `dotenv` 18.0.9 and cover the empty `DOTENV_PATH` CLI fix with isolated
-  synthetic environment and precedence checks. No provider PR merge is included.
+- **Purpose authority and explanations** — Shared provenance checks and v2
+  evidence cards distinguish declared, inferred, mixed and unknown purpose.
+  Declared specialized support requires genuine bound declared-rule matches;
+  inferred rules keep ranking/comparison roles. Saved policies, numeric scores,
+  thresholds and legacy statistics are not silently rewritten.
+- **Refresh storage failures** — Database-proven disk-full failures retain safe
+  incident diagnostics, preserve completed database caches and delay heavy work
+  for one hour. Bounded readiness warnings distinguish genuine database evidence
+  from provider errors or local cancellation. Holds are process-local; no file
+  deletion, restart or proven storage recovery is implied.
+- **Background read lifecycle** — Three-second readiness/workload budgets cover
+  pool wait and result acceptance, with bounded cancellation cleanup and fixed
+  admission slots held through actual acquisition settlement. Preserve fresh
+  reservation checks and existing provider limits; cooperative stop does not
+  promise immediate SQL/provider termination or whole-worker shutdown.
+- **Capture durability** — Acknowledged owner claims guard reservations,
+  checkpoints, publication, rotation and finalization. Cleanup remains admitted,
+  valid longer cooldowns and charged attempts survive, and uncertain commits are
+  not replayed or refunded. Serialized maintenance protects time-sensitive
+  pruning; permanent stop is rechecked after outer maintenance settles.
+- **Publication regression protection** — Real PostgreSQL tests verify healthy
+  capture/evaluator exclusion through queued writes, rollback and delayed/lost
+  acknowledgements. Runtime progression SQL stays unchanged because the shared
+  admission boundary prevents the hypothesized healthy-worker interleaving.
+- **Logging resilience** — Logging-only bounded data projection preserves safe
+  context, redaction and record identity without invoking accessors or hooks.
+  Persistence failure emits fixed text at most once a minute while every normal
+  INSERT is still attempted. Native stack/record limits remain separate.
 
 ### Security
 
-- **RE2JS tooling patch** — Scope exact RE2JS 2.8.7 beneath Markdownlint 0.42.0
-  for GHSA-gg6h-894w-4m9c. Reproduce repeated lookbehind scanning with a bounded
-  real-library input observer and verify exact results plus legitimate lint
-  behavior. The inspected Classifarr lint path does not enable the advisory's
-  lookbehind condition; application behavior and lint protections stay unchanged.
-
-- **Cross-realm redirect filtering** — Patch both independent root/client
-  follow-redirects overrides to exact 1.16.2 for GHSA-mrwp-f3q8-3g9p. Reproduce
-  the foreign-array failure on both old copies, then verify custom credential
-  stripping across origins and legitimate same-origin behavior with actual
-  Node HTTP requests. Keep remaining development-tool advisories visible.
-
-- **Rate-limit dependency patch** — Adopt and locally test express-rate-limit
-  8.7.2 from Dependabot PR #577, pinning the exact version. Fix the upstream
-  cross-window un-counting behavior without changing application limit policy.
-
-- **Required next-release remediation** — Block the next release until npm's
-  bundled `ip-address` finding is fixed and verified across local, CI and Docker
-  tooling. The maintainer's acceptance applies only to v0.49.3-beta.
-- **Runtime parser remediation** — Pin `body-parser` 2.4.0 and `qs` 6.16.1 to
-  address trailing-byte decoder crashes and comma-serialization coercion errors.
-  Add isolated process probes and actual normal/restore HTTP compatibility
-  checks, retaining decoded limits, CSRF and maintenance restrictions. The parser
-  also adds upstream Zstandard support on the pinned Node runtime; see the
-  [design](docs/architecture/runtime-parser-security-design.md).
-- **Development dependency follow-up** — The full server audit retains the
-  unpatched `deepmerge` advisory through Jest. No remote production path was
-  established; avoid the audit-suggested unsupported Jest major downgrade.
+- **HTTP parser patches** — body-parser 2.4.0 and qs 6.16.1 address decoder-crash
+  and coercion defects, retaining normal/restore HTTP limits, CSRF and maintenance
+  restrictions. Zstandard support is available on the pinned Node runtime.
+- **Redirect credentials** — Both root/client follow-redirects copies are exactly
+  1.16.2, fixing cross-realm custom-header filtering across origins while retaining
+  legitimate same-origin and Axios behavior.
+- **Request counting and lint parser** — express-rate-limit 8.7.2 fixes upstream
+  cross-window un-counting without changing application policy. Markdownlint's
+  scoped RE2JS 2.8.7 override patches lookbehind-scanning work; the inspected lint
+  path did not enable that vulnerable condition.
+- **Unresolved tooling findings** — Keep full development audits visible,
+  including Jest/deepmerge. npm's separately bundled ip-address finding remains
+  a post-v0.49.3 release blocker until remediation or a new explicit maintainer
+  decision; the prior exception does not carry forward. Workspace overrides do
+  not patch npm, and no advisory-free or globally fenced writer claim is made.
 
 ## [v0.49.3-beta] - 2026-10-23
 
@@ -412,168 +213,3 @@ preserves the original Unreleased entries, consolidated on 2026-10-23.
   TLS identity and network isolation appropriate to its deployment. Private
   upstream HTTP is supported only within its documented boundary; TLS alone
   does not establish isolation. No existing provider route is activated by upgrade.
-
-## [v0.49.2-beta] - 2026-10-13
-
-**TL;DR:** Review and recover unresolved media identities without rearranging your
-libraries, understand why evaluation or background work is waiting, and see
-health results that reflect the current settings. Database diagnostics,
-bounded recovery, and safer local rebuilds improve operation without relaxing
-ownership, memory, quota or routing safeguards.
-
-The [complete development record](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.2.md)
-preserves the original Unreleased entries, consolidated on 2026-10-13.
-
-### Added
-
-- **Media identity recovery** — Library-agnostic, administrator-reviewed mappings
-  preserve Plex, Jellyfin and Emby grouping across whole works, seasons and
-  individual episodes. Fresh provider checks, typed candidate lookup and
-  read-only identity audits explain conflicting or missing IDs; metadata alone
-  is not identity proof. Incomplete groups remain unresolved, and changed or
-  revoked approvals are rechecked before owned sync/backfill can use them.
-- **Mixed-media and scoped evidence** — Reviewed movie exceptions preserve TV
-  placement without teaching that movies belong in TV libraries. Season-scoped
-  descriptions support typed retrieval and optional vectors without inventing
-  a parent identity or whole-work comparison. Upgrades never approve mappings
-  or modify source media automatically.
-- **Database and resource diagnostics** — Bounded startup, shutdown and runtime
-  records correlate database readiness, timeouts, cancellation and supervisor
-  events. Synthetic profiling follows description preparation/query plans,
-  concurrent locks, workers, snapshots and caches across complete refresh cycles;
-  measurements distinguish process, container and kernel accounting. This is
-  investigation tooling, not a production heap dump or a leak-free guarantee.
-
-### Changed
-
-- **System health and information** — Concise system information separates
-  pgvector startup compatibility from live database readiness. Health cards and
-  tooltips share current status, check times and cadence; inactive, unconfigured,
-  unknown and overdue states are distinct. Saved-settings changes invalidate old
-  results, while unrelated usage counters do not.
-- **Provider checks and recovery** — AI, media-server, Radarr/Sonarr, TMDb and
-  OMDb checks validate current configuration and bounded responses instead of
-  equating configuration with health. Concurrent probes are shared and stale
-  completions rejected. OMDb health and TLS recovery share credential-specific
-  quotas/pacing; persisted waits survive restart, and verified recent lookups
-  retain their original timestamp instead of manufacturing fresh health.
-- **Settings and web navigation** — Connection messages, configuration warnings
-  and accessible dismissible notifications use clearer wording. Protected Vue
-  navigation retains encoded return paths and legacy query/hash behavior;
-  pgvector notices tolerate unavailable browser storage without claiming that
-  startup compatibility establishes database health.
-- **Local deployment and tooling** — Smart rebuilds retain and verify the exact
-  running image before replacing a mutable tag, without taking the service down
-  first. Image retention does not replace an app-data/database backup or prove
-  downgrade compatibility. Build, test, dependency-analysis and Node 24 type
-  tooling are refreshed with aligned browser/coverage versions; TypeScript major
-  pins remain deliberate and Dependabot can propose eligible updates.
-
-### Fixed
-
-- **Classification recovery** — Metadata failures distinguish confirmed missing
-  TMDb records from retryable conditions, with actionable Command Center context.
-  Upgrade backfill repairs known legacy failure context without guessing an
-  identity or replaying routing. Stale-work recovery atomically hands off queue
-  and history state with bounded provenance instead of admitting duplicate work.
-- **Library comparisons and description refresh** — Scheduler failures retain
-  the failing database stage, error and incident timing. Matching comparison
-  incidents close only after verified recovery under the same database ownership,
-  model and configuration, including across restarts; historical/manual records
-  stay untouched. Incomplete description vectors and memory pressure still defer
-  optional comparisons rather than weakening admission checks.
-- **Embeddings and inventory** — Coverage counts distinct classifications across
-  overlapping libraries, applies deterministic artwork eligibility, and excludes
-  inactive/conflicting evidence. Unresolved-ID diagnostics explain why provider
-  metadata may exist while safe identity recovery remains blocked.
-- **Evaluation visibility and independence** — Command Center distinguishes policy
-  replay, saved comparison coverage, optional AI capture, current backfill progress
-  and checkpoint references. Missing responses, stale results and ambiguous
-  Ollama model identities have specific guidance; viewing diagnostics starts no
-  AI work. Offline inferred-purpose replay uses held-out training folds and
-  versioned results without altering live policies or AI budgets.
-- **HTTP and configuration runtime** — Express response framing, downloads,
-  request limits and sanitized errors retain regression coverage; oversized
-  validation collections are rejected before parsing. Undefined optional
-  environment-loader settings preserve defaults, quiet mode and precedence.
-
-### Security
-
-- **Scoped diagnostic access** — Short-lived local evaluation tokens now retain
-  their endpoint restrictions on APIs that also support API keys. Normal user
-  sessions and independently authorized API keys keep their existing behavior.
-- **CI registry access and supply chain** — Trusted main-branch database checks use
-  a dedicated read-only Docker Hub pull token, bounded retries, logout and
-  sanitized diagnostics. PR jobs remain secret-free; authentication and quota
-  failures block validation. CodeQL action pins and least-privilege permissions
-  are updated without sharing publication credentials with verification jobs.
-  Manual Docker Hub retention cleanup now requires an explicit cleanup dispatch
-  from a v-prefixed tag; branches, including v-prefixed branch names, cannot run it.
-- **Recovery boundaries** — Mapping approval remains explicit, complete and
-  scoped; source metadata, library placement and training authority stay separate.
-  Existing database ownership, memory, quota, credential and no-route safeguards
-  remain enforced. No recovery warning authorizes deleting storage or keys.
-
-## [v0.49.1-beta] - 2026-10-08
-
-**TL;DR:** Lower temporary memory costs for library comparisons, clearer
-memory-pressure diagnostics and recovery, a working RAG statistics dashboard,
-and updated runtime networking and development tooling. Memory safeguards,
-classification rules and compatibility boundaries remain intact.
-
-The [complete development record](docs/changelog/CHANGELOG-2026-10-pre-release-0.49.1.md)
-preserves the original Unreleased entries, consolidated on 2026-10-08.
-
-### Added
-
-- **Memory-pressure diagnostics** — Comparison pauses and recovery share a
-  reference, exact admission budgets, refresh-stage measurements and recent
-  completed-cycle comparisons. Reports contain bounded aggregate context,
-  not automatic heap dumps or a claim that one sample proves a leak.
-- **Isolated memory investigation** — Synthetic catalog studies profile complete
-  refresh cycles, workers, snapshots, caches and real comparison consumers under
-  concurrent import/metadata work. Opt-in allocation and natural-GC studies
-  distinguish live data, runtime page pools and container residency, retaining
-  inconclusive results without forcing collection or changing production policy.
-
-### Changed
-
-- **Comparison memory use** — Bounded snapshot decoding and streamed warm
-  preparation, cache revalidation and publication verification avoid extra full
-  vector maps. Earlier snapshot release and less temporary fingerprint,
-  normalization and centroid storage preserve exact numeric validation,
-  fresh-snapshot checks, cancellation and publication safeguards.
-- **Runtime configuration and HTTP protection** — Updated environment loading
-  honors false-valued options; rate limiting avoids disabled-debug allocations.
-  Environment precedence, authentication quotas, client-IP boundaries, retry
-  headers and fail-closed behavior remain unchanged.
-- **Frontend and developer tooling** — Align build/test pins with supported
-  parent versions; update CSS parsing, bundling and unused-code analysis with
-  executable parser, file-access and entry-point regressions. Node 24.21.0 and
-  npm 12.2.0 requirements remain unchanged; intentional dependency holds remain
-  documented rather than bypassed.
-- **CI and release verification** — Refresh immutable setup/artifact action pins
-  without changing permissions or approval gates. Provider quota tests account
-  for UTC midnight; queue-vacuum and restore-admission fixtures observe actual
-  contention and database-session exit while retaining retry and exclusion rules.
-
-### Fixed
-
-- **Comparison readiness and retries** — Check current-model description-cache
-  completeness before loading vectors and report actionable coverage gaps.
-  Temporary resource deferrals no longer accumulate fitting-failure cooldowns;
-  ordinary retrieval remains available while optional comparison work waits.
-- **Statistics & Analytics** — Restore the RAG & Embeddings dashboard's API
-  response handling, including error and retry behavior.
-- **API documentation** — Preserve valid whitespace-only YAML examples so schema
-  annotations do not disappear, while retaining malformed-input and merge limits.
-- **Runtime networking** — Updated WebSocket/Engine.IO transport dependencies
-  preserve connections after invalid close requests, bound heartbeat extensions
-  and enforce compression negotiation.
-
-### Security
-
-- **IP parsing boundaries** — Reject oversized reverse-address input early
-  while preserving IPv4/IPv6 rate-limit behavior. Memory limits, recovery
-  ownership checks and the separate database privilege-hardening boundary
-  are not relaxed.
