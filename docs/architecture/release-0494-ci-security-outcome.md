@@ -16,8 +16,11 @@ parent through its supported cascade lifecycle; catalog fixtures clear their
 references before parents. All ten repaired suites plus the existing capture
 guard/lifecycle suite pass: 11 suites, 125 checks. Production guards, schema,
 runtime SQL, acceptance requirements and test assertions are unchanged. No live
-database was used. Complete integration and final exact-SHA CI remain release
-gates; this focused result alone does not establish release readiness.
+database was used. The complete isolated integration run subsequently passed
+323 suites / 4,084 tests, including the immutable lifecycle protections. Final
+exact-source main CI 41531574314 and tag CI 41549155570 both passed their database
+jobs. The original release-blocking failures are resolved without weakening the
+guard or excluding a failing suite.
 
 ## Dependency evidence
 
@@ -64,11 +67,28 @@ date, it likewise returns and exits 1. The repository config remains November 9;
 no global override, other ID, package or severity is suppressed. The upstream
 database lag and the temporary triage are not package remediation.
 
-## Remaining release work
+## Final release verification
 
-Full integration, fresh combined coverage and all exact-source image/frozen/remote
-gates are recorded in the release tracking document and raw private receipts.
+Fresh combined test:ci passed: backend 1,927 suites / 62,405 tests, client 484
+files / 7,521 tests and the coverage ratchet. The local Linux-only unit skip was
+exercised by exact-source Ubuntu CI; the default integration's opt-in provider-
+fault skip was covered separately by explicit synthetic Compose runs and the
+fresh tag receipt. Schema/startup, no-cache frozen soak and all three saved
+deployment profiles passed. The qualified source is
+ef5b50ed1b1d24c9407f669eb11b4c35646bc620. All seven applicable main workflows and
+all four tag workflows passed for that source.
+
+[v0.49.4-beta](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.49.4-beta)
+was published as an immutable prerelease at 2026-11-03T00:44:11Z. Native AMD64 and
+ARM64 routing, digest-only smoke, signed v3 evidence, immutable release/asset
+verification and both original-digest latest aliases passed. Their common index
+is sha256:21d75a2940ffaa49aabc9ec94bad9e44cbb1b8dc7ba8b4a7f1689126146eacc2.
+The [separate release outcome](release-0.49.4-beta-outcome.md) records exact local
+image subjects, public artifact identity, independent validators and sign-off.
+
 The maintainer explicitly accepts npm 12.2.1's moderate bundled ip-address 10.7.2
-finding for v0.49.4-beta only, conditional on every other gate passing. A fresh
-final image must retain that disclosure; later releases require verified repair.
-There is no deployment, production cleanup or PR merge in this batch.
+finding for v0.49.4-beta only. Fresh published AMD64 image inspection confirms it
+remains present; the separate application copy resolves to 10.7.4. All other
+gates passed. Later releases require verified repair. The temporary CNA triage
+still expires November 9 and does not suppress unrelated findings. There was no
+deployment, production cleanup or PR merge in this batch.
