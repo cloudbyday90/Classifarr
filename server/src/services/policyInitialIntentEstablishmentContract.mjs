@@ -188,7 +188,7 @@ function mapRule(rule, collection, intentRole) {
       ? 'strict'
       : (rule.constraint_mode ?? null),
     semantics: collection === POLICY_INTENT_COLLECTIONS.PURPOSE
-      ? 'identity'
+      ? (rule.semantics ?? 'identity')
       : (rule.semantics ?? null),
     source: POLICY_INITIAL_INTENT_AUTHORITY_SOURCE_ID,
     inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,

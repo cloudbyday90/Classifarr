@@ -32,11 +32,11 @@ describe('fresh purpose capability reuses canonical scoring semantics', () => {
     expect(supportsNativePurposeCommands([{ command_id: 'update_review_triggers', values: [{}] }])).toBe(true);
     expect(supportsNativePurposeCommands([{ command_id: 'update_purpose', values: [{}] }])).toBe(false);
   });
-  test.each([undefined, null, 'compatibility', 'identity'])('preserves initial materialization of %s as identity', semantics => {
+  test.each([undefined, null, 'compatibility', 'identity'])('preserves explicit initial %s with identity only as the nullish default', semantics => {
     const contract = buildInitialPolicyIntentContract({ declaredIntent: {
       purpose: [{ signal_type: 'genres', operator: 'include', semantics, values: { include: ['custom-token'] } }],
     } });
-    expect(contract.purpose[0].semantics).toBe('identity');
+    expect(contract.purpose[0].semantics).toBe(semantics ?? 'identity');
     expect(supportsNativePurposeDeclaration(contract.purpose)).toBe(true);
   });
 });

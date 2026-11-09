@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Initial purpose semantics** — Preserve explicitly declared identity or
+  compatibility on future initial/native-create writes, with the existing
+  identity default for omitted/null values. Preserve historical records and
+  exact old receipt recovery; fresh scores and ranking can change. See the
+  [outcome](docs/architecture/initial-purpose-semantics-outcome.md).
+
 - **Native purpose authoring** — Refuse unsupported fresh purpose declarations
   before writes across individual, initial, create and bulk paths, while
   preserving exact recovery of older receipts and unrelated edits. Offer four
@@ -54,6 +60,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [outcome](docs/architecture/client-tooling-pr-584-outcome.md).
 
 ### Security
+
+- **Server runtime dependencies** — Locally adopt PR #586's exact Undici 8.12.4,
+  express-rate-limit 8.7.3 and discord.js 14.28.1 updates, preserving nested
+  Undici 6.29.1 overrides and transport policy. Real-library controls cover
+  integrity, redirects/cache replay, error forwarding and SDK permission scope.
+  Node's bundled Undici remains a separate toolchain issue; see the
+  [outcome](docs/architecture/server-runtime-pr-586-outcome.md).
 
 - **CI action updates** — Locally adopt PR #582's exact Docker Login 4.8.0 and
   CodeQL 4.39.3 revisions while preserving publication, credential and scanner

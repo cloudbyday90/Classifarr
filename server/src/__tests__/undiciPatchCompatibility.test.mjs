@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {gatewayTlsFixture} from './helpers/gatewayTlsFixture.mjs';
 
 const targets = [
-  ['direct','../../node_modules/undici/','8.12.3'],
+  ['direct','../../node_modules/undici/','8.12.4'],
   ['discord','../../node_modules/discord.js/node_modules/undici/','6.29.1'],
   ['rest','../../node_modules/@discordjs/rest/node_modules/undici/','6.29.1'],
 ];
