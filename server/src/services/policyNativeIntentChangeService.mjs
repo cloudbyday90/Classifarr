@@ -274,6 +274,7 @@ async function applyPolicyNativeIntentChange({
         source: activeIntent.source || 'native_intent',
         inferenceState: activeIntent.inference_state || 'inferred',
         validationStatus: activeIntent.validation_status || 'valid',
+        reviewBehavior: activeIntent.review_behavior,
         createdAt: now,
       });
 

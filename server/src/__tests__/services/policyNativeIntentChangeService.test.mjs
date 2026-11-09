@@ -40,6 +40,11 @@ const VALID_INPUT = {
   authorityState: { stateId: 'single_active_native_intent', currentRevision: 3 },
 };
 
+const SAVED_REVIEW_BEHAVIOR = {
+  combination_mode: 'require_all', auto_classify_threshold: 95, prompt_threshold: 90,
+  trust_patterns: false, trust_rag: false, trust_history: false,
+};
+
 function buildReceiptRow(overrides = {}) {
   return {
     id: 300,
@@ -119,6 +124,46 @@ function buildMockDbClient(client) {
 }
 
 describe('applyPolicyNativeIntentChange', () => {
+  test.each(['update_purpose', 'update_hard_limits', 'update_avoid_rules', 'update_helpful_matches', 'update_routing_target'])(
+    '%s preserves server-owned review settings from the locked intent', async commandId => {
+      const { client, queries } = buildMockClient({
+        policyRow: { id: 42, library_id: 7 },
+        intentRow: { id: 50, policy_id: 42, library_id: 7, intent_version: 3,
+          active: true, source: 'native_intent', inference_state: 'inferred', validation_status: 'valid',
+          review_behavior: SAVED_REVIEW_BEHAVIOR },
+      });
+      const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT,
+        authorityState: { ...VALID_INPUT.authorityState, review_behavior: { combination_mode: 'best_match' } },
+        changeCommands: [{ commandId, values: commandId === 'update_purpose' ? VALID_PURPOSE_CHANGE_VALUES : [] }],
+        dbClient: buildMockDbClient(client),
+      });
+      expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+      const insertion = queries.find(({ sql }) => sql.includes('INSERT INTO policy_intents'));
+      expect(JSON.parse(insertion.params[6])).toEqual(SAVED_REVIEW_BEHAVIOR);
+      expect(queries.some(({ sql }) => sql.includes('SET review_behavior'))).toBe(false);
+    });
+
+  test.each([undefined, null, {}])('retains the existing empty review default for %j', async review_behavior => {
+    const { client, queries } = buildMockClient({ policyRow: { id: 42, library_id: 7 },
+      intentRow: { id: 50, intent_version: 3, review_behavior } });
+    const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT, dbClient: buildMockDbClient(client) });
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+    expect(JSON.parse(queries.find(({ sql }) => sql.includes('INSERT INTO policy_intents')).params[6])).toEqual({});
+  });
+
+  test('explicit review replacement remains authoritative without implicitly merging old keys', async () => {
+    const replacement = { prompt_threshold: 70 };
+    const { client, queries } = buildMockClient({ policyRow: { id: 42, library_id: 7 },
+      intentRow: { id: 50, intent_version: 3, review_behavior: SAVED_REVIEW_BEHAVIOR } });
+    const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT,
+      changeCommands: [...VALID_INPUT.changeCommands, { commandId: 'update_review_triggers', values: [replacement] }],
+      dbClient: buildMockDbClient(client),
+    });
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+    expect(JSON.parse(queries.find(({ sql }) => sql.includes('INSERT INTO policy_intents')).params[6])).toEqual(SAVED_REVIEW_BEHAVIOR);
+    expect(queries.find(({ sql }) => sql.includes('SET review_behavior')).params).toEqual([100, JSON.stringify(replacement)]);
+  });
+
   test('applies a change when admission passes and revision matches inside the transaction', async () => {
     const { client, queries } = buildMockClient({
       policyRow: { id: 42, library_id: 7 },

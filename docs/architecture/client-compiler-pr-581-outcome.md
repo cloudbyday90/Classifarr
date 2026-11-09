@@ -186,3 +186,19 @@ is not a branch conflict. Server ESLint 10.14.0 from 580 is already installed.
 No genuinely stale applicable branch was established, so no rebase, comment,
 merge, close or replacement PR was performed. Delivery rechecks and current
 baseline control results are recorded in the scoring outcome.
+
+## November 8 category-agnostic maintenance selection
+
+The [purpose-maintenance batch](category-agnostic-purpose-maintenance-design.md)
+selected 581 uniformly from the same two open PRs at 2026-11-09T03:10:25Z.
+Its head remains 15b66950a5739e6fdb5290f2cf4c0120d4259015, and fresh MCP patch
+retrieval exactly matches the assessed two-file proposal. Registry integrity
+for 3.3.14 still matches the known failing artifact; current/wanted remains
+3.3.13 and latest remains 3.3.14. No changed candidate warrants reinstalling
+that graph or weakening diagnostics. Retain the demonstrated deferral.
+
+Server ESLint from 580 is already adopted. Current branch applicability and
+actual mergeability are checked independently; an unknown computation or a
+failing check does not establish a stale/conflicted branch. Both PRs remain
+unmerged, with no forced replacement selection. Actual local verification
+and delivery checks are recorded in the maintenance outcome.

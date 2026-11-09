@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native policy edits** — Preserve saved matching mode, decision thresholds
+  and evidence-source settings across native revisions unless an explicit
+  review-settings command replaces them. Purpose edits use the same preservation
+  boundary for every category; see the
+  [outcome](docs/architecture/category-agnostic-purpose-maintenance-outcome.md).
+
 - **Policy ranking** — Count only matched, bound declarations as native intent
   support, including within mixed policies. Profile observations no longer
   receive duplicate intent weight or an extra agreement vote; existing admission

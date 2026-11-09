@@ -9,8 +9,10 @@
  */
 
 import { jest } from '@jest/globals';
+import { randomUUID } from 'node:crypto';
 import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { waitForRepairBlocking as waitForDatabaseBlocking } from '../../scripts/libraryRepairAssessment/concurrency.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -25,12 +27,17 @@ const {
   applyPolicyNativeIntentChange,
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
 } = await import('../../services/policyNativeIntentChangeService.mjs');
+const { policyEngine } = await import('../../services/policyEngine.mjs');
+
+const savedReview = mode => ({ combination_mode: mode, auto_classify_threshold: 95, prompt_threshold: 90,
+  trust_patterns: false, trust_rag: false, trust_history: false });
 
 async function createNativePurposeFixture({
   fixtureKey,
   term,
   intentVersion = 3,
   purposeRuleSource = 'native_intent',
+  reviewBehavior = {},
 }) {
   const fixture = await createPolicyEngineIntegrationFixture(db, {
     mediaServerName: 'Native Purpose Change Media Server',
@@ -48,7 +55,7 @@ async function createNativePurposeFixture({
         policy_id, library_id, schema_version, intent_version,
         active, source, inference_state, review_behavior, validation_status
       )
-      VALUES ($1, $2, 1, $3, TRUE, 'native_intent', 'inferred', '{}'::jsonb, 'valid')
+      VALUES ($1, $2, 1, $3, TRUE, 'native_intent', 'inferred', $6::jsonb, 'valid')
       RETURNING id
     )
     INSERT INTO policy_intent_rules (
@@ -67,7 +74,7 @@ async function createNativePurposeFixture({
       $5,
       'inferred'
     FROM native_intent
-  `, [fixture.policyId, fixture.libraryId, intentVersion, term, purposeRuleSource]);
+  `, [fixture.policyId, fixture.libraryId, intentVersion, term, purposeRuleSource, JSON.stringify(reviewBehavior)]);
 
   return fixture;
 }
@@ -85,6 +92,18 @@ function purposeCommand(term) {
   };
 }
 
+const changeRequest = (fixture, overrides = {}) => ({ dbClient: db, policyId: fixture.policyId,
+  expectedRevision: 3, actorId: 1, actorRole: 'admin', idempotencyKey: randomUUID(),
+  changeCommands: [purposeCommand('replacement-token')], ...overrides });
+const readVersions = async fixture => (await db.query(
+  'SELECT intent_version,active,review_behavior FROM policy_intents WHERE policy_id=$1 ORDER BY intent_version',
+  [fixture.policyId])).rows;
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+
 describe('native intent purpose change integration', () => {
   const fixtures = [];
 
@@ -92,6 +111,127 @@ describe('native intent purpose change integration', () => {
     for (const fixture of fixtures.reverse()) {
       await fixture.cleanup();
     }
+  });
+
+  test.each(['best_match', 'average', 'weighted_average', 'require_all'])(
+    'purpose-only revision preserves stored and loaded %s behavior', async mode => {
+      const reviewBehavior = savedReview(mode);
+      const fixture = await createNativePurposeFixture({ fixtureKey: `behavior-${mode}`, term: 'original-token', reviewBehavior });
+      fixtures.push(fixture);
+      const before = (await policyEngine.getActivePolicies()).find(policy => policy.id === fixture.policyId);
+      expect(before).toMatchObject({ combination_mode: mode, auto_classify_threshold: 95, prompt_threshold: 90,
+        trust_patterns: false, trust_rag: false, trust_history: false });
+      const applied = await applyPolicyNativeIntentChange({ dbClient: db, policyId: fixture.policyId,
+        expectedRevision: 3, actorId: 1, actorRole: 'admin', idempotencyKey: `purpose-${mode}`.padEnd(32, 'x'),
+        changeCommands: [purposeCommand('custom-category-token')],
+      });
+      expect(applied.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+      const { rows: [active] } = await db.query('SELECT review_behavior FROM policy_intents WHERE policy_id=$1 AND active', [fixture.policyId]);
+      expect(active.review_behavior).toEqual(reviewBehavior);
+      const after = (await policyEngine.getActivePolicies()).find(policy => policy.id === fixture.policyId);
+      expect(after).toMatchObject({ combination_mode: mode, auto_classify_threshold: 95, prompt_threshold: 90,
+        trust_patterns: false, trust_rag: false, trust_history: false });
+    });
+
+  test.each(['update_hard_limits', 'update_avoid_rules', 'update_helpful_matches', 'update_routing_target'])(
+    '%s preserves the same locked review JSON', async command_id => {
+      const reviewBehavior = savedReview('require_all');
+      const fixture = await createNativePurposeFixture({ fixtureKey: command_id, term: 'unchanged-token', reviewBehavior });
+      fixtures.push(fixture);
+      const result = await applyPolicyNativeIntentChange(changeRequest(fixture, { changeCommands: [{ command_id, values: [] }] }));
+      expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+      expect((await readVersions(fixture)).filter(row => row.active)).toEqual([
+        { intent_version: 4, active: true, review_behavior: reviewBehavior },
+      ]);
+    });
+
+  test('an explicit review command still replaces the JSON when purpose changes in the same revision', async () => {
+    const fixture = await createNativePurposeFixture({ fixtureKey: 'explicit-review', term: 'original-token', reviewBehavior: savedReview('require_all') });
+    fixtures.push(fixture);
+    const replacement = { prompt_threshold: 70 };
+    const result = await applyPolicyNativeIntentChange(changeRequest(fixture, {
+      changeCommands: [purposeCommand('replacement-token'), { command_id: 'update_review_triggers', values: [replacement] }],
+    }));
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+    expect((await readVersions(fixture)).find(row => row.active).review_behavior).toEqual(replacement);
+  });
+
+  test('a receipt-write failure rolls back the version and preserves original settings', async () => {
+    const reviewBehavior = savedReview('weighted_average');
+    const fixture = await createNativePurposeFixture({ fixtureKey: 'rollback-review', term: 'original-token', reviewBehavior });
+    fixtures.push(fixture);
+    await db.query(`CREATE FUNCTION fail_purpose_review_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'synthetic receipt failure'; END $$;
+      CREATE TRIGGER fail_purpose_review_receipt BEFORE INSERT ON policy_native_intent_change_receipts
+        FOR EACH ROW EXECUTE FUNCTION fail_purpose_review_receipt()`);
+    try {
+      const result = await applyPolicyNativeIntentChange(changeRequest(fixture));
+      expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.FAILED_ROLLED_BACK);
+      expect(await readVersions(fixture)).toEqual([{ intent_version: 3, active: true, review_behavior: reviewBehavior }]);
+      expect((await db.query('SELECT count(*)::int AS count FROM policy_native_intent_change_receipts WHERE policy_id=$1', [fixture.policyId])).rows[0].count).toBe(0);
+    } finally { await db.query('DROP TRIGGER fail_purpose_review_receipt ON policy_native_intent_change_receipts; DROP FUNCTION fail_purpose_review_receipt()'); }
+  });
+
+  test('serialization rejects a stale purpose writer and the next valid change preserves the winning review revision', async () => {
+    const original = savedReview('require_all'), replacement = savedReview('weighted_average');
+    const fixture = await createNativePurposeFixture({ fixtureKey: 'serialized-review', term: 'original-token', reviewBehavior: original });
+    fixtures.push(fixture);
+    const ownerReady = deferred(), releaseOwner = deferred(), waiterReady = deferred();
+    let ownerPid, waiter;
+    const owner = applyPolicyNativeIntentChange(changeRequest(fixture, {
+      changeCommands: [{ command_id: 'update_review_triggers', values: [replacement] }],
+      dbClient: { withTransaction: fn => db.withTransaction(async client => {
+        ownerPid = (await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+        const result = await fn(client); ownerReady.resolve(); await releaseOwner.promise; return result;
+      }) },
+    }));
+    try {
+      await Promise.race([ownerReady.promise, owner.then(() => { throw Error('Owner settled before its commit hold'); })]);
+      waiter = applyPolicyNativeIntentChange(changeRequest(fixture, {
+        dbClient: { withTransaction: fn => db.withTransaction(async client => {
+          const pid = (await client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+          waiterReady.resolve(pid); return fn(client);
+        }) },
+      }));
+      const waiterPid = await Promise.race([waiterReady.promise, waiter.then(() => { throw Error('Waiter settled before acquiring a session'); })]);
+      await waitForDatabaseBlocking(getPool(), waiterPid);
+      expect((await db.query('SELECT $1::int=ANY(pg_blocking_pids($2)) AS blocked', [ownerPid, waiterPid])).rows[0].blocked).toBe(true);
+      releaseOwner.resolve();
+      expect((await owner).statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+      expect((await waiter).statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.STALE_REVISION);
+      expect((await readVersions(fixture)).find(row => row.active)).toEqual({ intent_version: 4, active: true, review_behavior: replacement });
+      const next = await applyPolicyNativeIntentChange(changeRequest(fixture, { expectedRevision: 4 }));
+      expect(next.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+      expect((await readVersions(fixture)).find(row => row.active)).toEqual({ intent_version: 5, active: true, review_behavior: replacement });
+    } finally {
+      releaseOwner.resolve();
+      await Promise.allSettled([owner, waiter].filter(Boolean));
+    }
+  });
+
+  test('lost acknowledgement after real commit retains settings and exact replay creates no extra version', async () => {
+    const reviewBehavior = savedReview('average');
+    const fixture = await createNativePurposeFixture({ fixtureKey: 'committed-review', term: 'original-token', reviewBehavior });
+    fixtures.push(fixture);
+    const request = changeRequest(fixture);
+    const uncertain = await applyPolicyNativeIntentChange({ ...request, dbClient: {
+      withTransaction: async fn => { await db.withTransaction(fn); throw Error('synthetic lost COMMIT reply'); },
+    } });
+    // Preserve the current failure result; it is not proof that an uncertain commit rolled back.
+    expect(uncertain.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect((await readVersions(fixture)).find(row => row.active)).toEqual({ intent_version: 4, active: true, review_behavior: reviewBehavior });
+    const newerReview = savedReview('require_all');
+    const newer = await applyPolicyNativeIntentChange(changeRequest(fixture, { expectedRevision: 4,
+      changeCommands: [{ command_id: 'update_review_triggers', values: [newerReview] }],
+    }));
+    expect(newer.change).toMatchObject({ applied: true, newIntentVersion: 5 });
+    const beforeReplay = await readVersions(fixture);
+    const recovered = await applyPolicyNativeIntentChange(request);
+    expect(recovered.change).toMatchObject({ applied: true, replayed: true, newIntentVersion: 4 });
+    expect(await readVersions(fixture)).toEqual(beforeReplay);
+    expect(beforeReplay).toHaveLength(3);
+    expect(beforeReplay.find(row => row.active)).toEqual({ intent_version: 5, active: true, review_behavior: newerReview });
+    expect((await db.query('SELECT count(*)::int AS count FROM policy_native_intent_change_receipts WHERE policy_id=$1', [fixture.policyId])).rows[0].count).toBe(2);
   });
 
   test('reads aggregate profile provenance, commits an explicit native declaration, and rejects a stale new attempt', async () => {
