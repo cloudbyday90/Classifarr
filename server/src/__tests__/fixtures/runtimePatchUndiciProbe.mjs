@@ -2,10 +2,23 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { setImmediate as nextTurn } from 'node:timers/promises';
-import { Agent, fetch, request, interceptors, cacheStores } from 'undici';
+import { fileURLToPath } from 'node:url';
+import { realpathSync, readFileSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
 import { createLoopbackServer } from './discordTransportSupport.mjs';
 
 const mode = process.argv[2];
+let target = 'undici';
+if (process.argv[3] !== undefined) {
+  assert.ok(process.argv[3].length <= 4096);
+  const url = new URL(process.argv[3]);
+  assert.equal(url.protocol, 'file:'); assert.equal(url.search, ''); assert.equal(url.hash, '');
+  const path = realpathSync(fileURLToPath(url));
+  assert.ok(path.endsWith(`${sep}node_modules${sep}undici${sep}index.js`));
+  assert.equal(JSON.parse(readFileSync(join(dirname(path), 'package.json'), 'utf8')).name, 'undici');
+  target = url.href;
+}
+const { Agent, fetch, request, interceptors, cacheStores } = await import(target);
 const agents = [], servers = [];
 const server = async handler => { const value = await createLoopbackServer(handler); servers.push(value); return value; };
 const agent = (...middleware) => {

@@ -23,6 +23,8 @@ ARG NPM_VERSION
 RUN node --version && cat /etc/alpine-release \
   && test "$(node --version)" = "v${NODE_VERSION}" \
   && test "$(cat /etc/alpine-release)" = "${ALPINE_RELEASE}" \
+  && apk add --no-cache zlib=1.4-r0 \
+  && apk info --exists zlib=1.4-r0 \
   && npm install --global npm@${NPM_VERSION} \
   && npm --version && npx --version \
   && test "$(npm --version)" = "${NPM_VERSION}" \

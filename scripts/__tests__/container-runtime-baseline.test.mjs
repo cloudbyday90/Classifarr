@@ -44,6 +44,11 @@ test('all application stages and the provider fixture share a digest-pinned base
     ['frontend-builder', 'backend-builder', 'production']);
   const reference = `node:${nodeVersion}-alpine${arg('ALPINE_VERSION')}@${arg('NODE_IMAGE_DIGEST')}`;
   assert.equal(read('docker/ai-provider-fault-stub.Dockerfile').match(/^FROM (\S+)$/m)?.[1], reference);
+  assert.equal(read('scripts/fixtures/systemZlib/Dockerfile').match(/^ARG BASE_IMAGE=(\S+)$/m)?.[1], reference);
+  for (const source of [dockerfile, read('docker/ai-provider-fault-stub.Dockerfile')]) {
+    assert.ok(source.includes('apk add --no-cache zlib=1.4-r0'));
+    assert.ok(source.includes('apk info --exists zlib=1.4-r0'));
+  }
 });
 
 test('the image rejects version overrides that disagree with its pinned base', () => {

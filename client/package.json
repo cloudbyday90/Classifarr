@@ -61,6 +61,9 @@
     "fsevents@2.3.3": false
   },
   "overrides": {
+    "jsdom": {
+      "undici": "8.12.4"
+    },
     "follow-redirects": "1.16.2",
     "source-map-js": "1.2.2",
     "postcss-selector-parser": "7.1.6",

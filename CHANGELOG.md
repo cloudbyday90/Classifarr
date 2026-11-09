@@ -67,6 +67,18 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Security
 
+- **System compression library** — Pin signed Alpine zlib 1.4-r0 in the shared
+  application base and provider fixture, with automated native compression and
+  PostgreSQL archive checks in the existing image-verification job. Preserve the
+  Node/base pins and keep Node's separate transport/compression gaps explicit.
+  See the [outcome](docs/architecture/runtime-zlib-security-outcome.md).
+
+- **Client test transport** — Locally adopt PR #587's compatible Undici 8.12.4
+  subtree through a JSDOM-scoped override, retaining the DOM/compiler/Tailwind
+  graph. Verify real transport and JSDOM consumer boundaries; existing CORS
+  fidelity limitations remain explicit. See the
+  [outcome](docs/architecture/client-undici-pr-587-outcome.md).
+
 - **npm toolchain** — Coordinate npm/npx 12.2.2 across builds, CI and workspace
   contracts, preserving strict installer decisions. Verify the actual bundled
   ip-address 10.7.5 and Undici 6.29.1 fixes plus real CLI/cache/signature behavior.
