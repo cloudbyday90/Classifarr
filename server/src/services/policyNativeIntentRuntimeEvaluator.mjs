@@ -8,13 +8,14 @@
  * (at your option) any later version.
  */
 
-import { evaluatePresetSignals } from './policyEngineSignalScoring.mjs';
+import { scoreNativeIntentRules } from './policyNativeIntentRuleScoring.mjs';
+import { recordNativeIntentContribution } from './policyNativeIntentContribution.mjs';
 import {
   evaluatePolicyConstraints,
   evaluateSignalConstraint,
   POLICY_CONSTRAINT_OUTCOMES,
 } from './policyConstraintSemantics.mjs';
-import { FORMULA_CONFIDENCE_CAP, normalizeCombinationMode } from './policyEngineUtils.mjs';
+import { FORMULA_CONFIDENCE_CAP } from './policyEngineUtils.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
 import { INFERRED_PURPOSE_ADMISSION, isInferredProfilePurposeRule } from './policyInferredPurposeAdmission.mjs';
 import { buildPolicyPurposeMatchEvidence } from './policyPurposeMatchEvidence.mjs';
@@ -34,46 +35,6 @@ function asArray(value) {
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-}
-
-function numericWeight(rule = {}) {
-  const value = Number(rule?.values?.weight);
-  return Number.isFinite(value) && value > 0 ? value : 1;
-}
-
-function evaluateRule(rule = {}, item = {}) {
-  if (!rule?.signal_type) return 0;
-
-  return evaluatePresetSignals({
-    [rule.signal_type]: {
-      ...asObject(rule.values),
-      ...(rule.constraint_mode ? { constraint_mode: rule.constraint_mode } : {}),
-      ...(rule.semantics ? { semantics: rule.semantics } : {}),
-    },
-  }, item);
-}
-
-function combineRuleScores(rules, item, combinationMode) {
-  const scores = asArray(rules).map((rule) => ({
-    score: evaluateRule(rule, item),
-    weight: numericWeight(rule),
-  }));
-  if (scores.length === 0) return 0;
-
-  const mode = normalizeCombinationMode(combinationMode);
-  if (mode === 'best_match') {
-    return Math.max(...scores.map((entry) => entry.score));
-  }
-  if (mode === 'average') {
-    return scores.reduce((total, entry) => total + entry.score, 0) / scores.length;
-  }
-  if (mode === 'require_all' && scores.some((entry) => entry.score <= 50)) {
-    return 0;
-  }
-
-  const weightedScore = scores.reduce((total, entry) => total + (entry.score * entry.weight), 0);
-  const totalWeight = scores.reduce((total, entry) => total + entry.weight, 0);
-  return totalWeight > 0 ? weightedScore / totalWeight : 0;
 }
 
 function isExplicitAvoidExclusion(rule = {}) {
@@ -138,8 +99,9 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   const contract = asObject(policy.policy_intent_contract);
   const finish = input => {
     const runtime = buildResult(input);
-    return { ...runtime, purposeEvidence: buildPolicyPurposeMatchEvidence({ policy, item, runtime,
-      scoreDeclaredRules: rules => combineRuleScores(rules, item, contract.review_behavior?.combination_mode || policy.combination_mode) }) };
+    const result = { ...runtime, purposeEvidence: buildPolicyPurposeMatchEvidence({ policy, item, runtime,
+      scoreDeclaredRules: rules => scoreNativeIntentRules(rules, item, contract.review_behavior?.combination_mode || policy.combination_mode) }) };
+    return recordNativeIntentContribution(result, policy, item);
   };
 
   if (
@@ -179,8 +141,8 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   const combinationMode = contract.review_behavior?.combination_mode || policy.combination_mode;
   const inferredRules = contract.purpose.filter(isInferredProfilePurposeRule);
   const requiredRules = contract.purpose.filter(rule => !isInferredProfilePurposeRule(rule));
-  const purposeScore = combineRuleScores(contract.purpose, item, combinationMode);
-  const requiredScore = combineRuleScores(requiredRules, item, combinationMode);
+  const purposeScore = scoreNativeIntentRules(contract.purpose, item, combinationMode);
+  const requiredScore = scoreNativeIntentRules(requiredRules, item, combinationMode);
   const inferredScopeMatches = ['movie', 'tv'].includes(item.media_type) &&
     policy.library_media_type === item.media_type && inferredRules.every(rule =>
       rule.signal_type !== 'media_type' || rule.values.require_any.includes(item.media_type));
@@ -195,7 +157,7 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
     });
   }
 
-  const helpfulScore = combineRuleScores(contract.helpful_hints, item, combinationMode);
+  const helpfulScore = scoreNativeIntentRules(contract.helpful_hints, item, combinationMode);
   const helpfulBoost = purposeScore > 50 && helpfulScore > 50
     ? Math.min(10, (helpfulScore - 50) * 0.2)
     : 0;

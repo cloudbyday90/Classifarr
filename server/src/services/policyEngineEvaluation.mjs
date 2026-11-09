@@ -11,6 +11,7 @@ import {
 } from './policySpecializedDestinationIdentityEvidence.mjs';
 import { evaluatePolicyConstraints } from './policyConstraintSemantics.mjs';
 import { evaluateNativePolicyIntent } from './policyNativeIntentRuntimeEvaluator.mjs';
+import { readNativeIntentContribution } from './policyNativeIntentContribution.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
 import {
     HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS,
@@ -239,7 +240,7 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             : null;
 
         if (nativeIntentEvaluation) {
-            scores.intent = nativeIntentEvaluation.score;
+            scores.intent = readNativeIntentContribution(nativeIntentEvaluation, policy, item).score;
         } else if (policy.presets && policy.presets.length > 0) {
             scores.preset = await scorePresets(policy.presets, item, policy.combination_mode);
         }
@@ -286,6 +287,9 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
         if (canUseSupportingEvidence && policy.trust_history) {
             scores.history = await scoreHistory(policy.library_id, item);
         }
+
+        // Revalidate after asynchronous supporting reads; changed proof cannot contribute.
+        if (nativeIntentEvaluation) scores.intent = readNativeIntentContribution(nativeIntentEvaluation, policy, item).score;
 
         const weights = {
             preset: nativeIntentEvaluation ? 0 : (policy.preset_weight ?? 0.35),
@@ -338,13 +342,20 @@ export async function evaluatePolicy(policy, item, ragCache, relatedEvidence, de
             effectiveWeights.history;
         const finalScore = totalWeight > 0 ? (weightedScore / totalWeight) : 0;
 
-        const agreement = calculateAgreementMultiplier(scores, policy);
+        // Collected support with a disabled weight is still useful diagnostics,
+        // but it is not a native scoring contribution or an agreement vote.
+        const contributingScores = nativeIntentEvaluation
+            ? Object.fromEntries(Object.entries(scores).map(([source, score]) =>
+                [source, effectiveWeights[source] > 0 ? score : 0]))
+            : scores;
+        const agreement = calculateAgreementMultiplier(contributingScores, policy);
         const boostedScore = Math.min(finalScore * agreement.multiplier, FORMULA_CONFIDENCE_CAP);
-        const candidateDiagnostics = buildCandidateDiagnostics(policy, scores, agreement, {
+        const candidateDiagnostics = buildCandidateDiagnostics(policy, contributingScores, agreement, {
             profileDiagnostics,
             ragDiagnostics,
             constraintDiagnostics,
             nativeIntentDiagnostics: nativeIntentEvaluation,
+            item,
         });
 
         return {

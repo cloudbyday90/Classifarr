@@ -168,3 +168,21 @@ Normal current-tree compiler controls and quality gates will run with the
 presentation implementation. Neither an unchanged known-failing candidate nor
 the already adopted server ESLint patch warrants a forced new dependency edit.
 Both PRs are mergeable at intake; recheck at delivery before any synchronization.
+
+## November 8 provenance-scoring selection
+
+The [provenance-aware scoring batch](policy-provenance-scoring-design.md) again
+selected 581 uniformly from the two current open PRs, at 2026-11-09T02:05:26Z.
+Fresh MCP retrieval confirms the unchanged two-file diff and exact head
+15b66950a5739e6fdb5290f2cf4c0120d4259015. Published 3.3.14 integrity still matches
+the demonstrated failing compiler; no fixed published replacement was found.
+Reports 6322 and 6328 remain open. Retain 3.3.13 and distinguish prior candidate
+failures from current baseline verification; do not reinstall an identical
+known-failing graph or weaken template diagnostics to adopt it.
+
+The MCP mergeable boolean reported false, but a fresh direct GitHub REST/CLI
+check established both 580 and 581 as MERGEABLE with UNSTABLE checks. That state
+is not a branch conflict. Server ESLint 10.14.0 from 580 is already installed.
+No genuinely stale applicable branch was established, so no rebase, comment,
+merge, close or replacement PR was performed. Delivery rechecks and current
+baseline control results are recorded in the scoring outcome.

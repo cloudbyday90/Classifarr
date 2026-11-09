@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { createHash } from 'node:crypto';
+import { nativeIntentLiveBinding } from './policyNativeIntentLiveBinding.mjs';
 import { buildPolicyPurposeProvenance, isPolicyDeclaredNativePurposeRule } from './policyDeclaredPurposeProvenance.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { inventoryRankingItemIdentity } from './inventoryRankingShadowIdentity.mjs';
@@ -10,8 +10,6 @@ const origins = ['declared_native', 'profile_derived', 'mixed', 'unverified'];
 const matches = ['matched', 'not_matched', 'not_evaluated', 'no_declared_rules'];
 const specificity = ['not_evaluated', 'positive_specialized_evidence', 'broad_compatibility_overlap', 'insufficient_specialized_evidence', 'not_applicable'];
 const receipts = new WeakMap();
-const context = policy => createHash('sha256').update(JSON.stringify([policy.id, policy.library_id,
-  policy.policy_runtime_authority, policy.policy_intent_contract])).digest('hex');
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).sort().join('|') === [...keys].sort().join('|');
 
@@ -27,10 +25,8 @@ export function validPolicyPurposeMatchEvidence(value) {
 /** Synchronous native evaluation only. The injected scorer is the existing pure combination implementation. */
 export function buildPolicyPurposeMatchEvidence({ policy, item, runtime, scoreDeclaredRules }) {
   try {
-    const authority = policy.policy_runtime_authority, contract = policy.policy_intent_contract;
-    if (!inventoryRankingItemIdentity(item) || authority?.sourceId !== 'native_intent' || authority.statusId !== 'native_intent_active' ||
-      authority.validationOk !== true || contract?.source !== 'native_intent' || contract.validation?.valid !== true ||
-      contract.policy_id !== policy.id || contract.library_id !== policy.library_id) return null;
+    const binding = nativeIntentLiveBinding(policy, item), contract = policy.policy_intent_contract;
+    if (!binding) return null;
     const declared = contract.purpose.filter(isPolicyDeclaredNativePurposeRule);
     const evaluated = ['native_intent_runtime_active', 'native_intent_runtime_purpose_not_matched'].includes(runtime.statusId);
     const evidence = Object.freeze({ version: VERSION, mediaType: item.media_type, tmdbId: item.tmdb_id,
@@ -38,14 +34,14 @@ export function buildPolicyPurposeMatchEvidence({ policy, item, runtime, scoreDe
       declaredMatch: !declared.length ? 'no_declared_rules' : !evaluated ? 'not_evaluated' :
         scoreDeclaredRules(declared) > 50 ? 'matched' : 'not_matched', runtimeEligible: runtime.eligible === true, specificity: 'not_evaluated' });
     if (!validPolicyPurposeMatchEvidence(evidence)) return null;
-    receipts.set(evidence, context(policy)); return evidence;
+    receipts.set(evidence, binding); return evidence;
   } catch { return null; /* Diagnostic failure cannot alter scoring/admission. */ }
 }
 
 /** Refine only a live minted object under the same loaded contract; legacy flags cannot create proof. */
 export function refinePolicyPurposeMatchEvidence(evidence, policy, item, status) {
   try {
-    if (!validPolicyPurposeMatchEvidence(evidence) || !receipts.has(evidence) || receipts.get(evidence) !== context(policy) ||
+    if (!validPolicyPurposeMatchEvidence(evidence) || !receipts.has(evidence) || receipts.get(evidence) !== nativeIntentLiveBinding(policy, item) ||
       inventoryRankingItemIdentity(item) !== `${evidence.mediaType}:${evidence.tmdbId}` ||
       evidence.policyId !== policy.id || evidence.libraryId !== policy.library_id || !specificity.includes(status)) return null;
     const refined = Object.freeze({ ...evidence, specificity: status });

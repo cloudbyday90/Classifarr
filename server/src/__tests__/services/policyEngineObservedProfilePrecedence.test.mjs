@@ -21,12 +21,15 @@ function nativeIdentityPolicy() {
     trust_history: false,
     policy_runtime_authority: {
       sourceId: 'native_intent',
+      statusId: 'native_intent_active',
       validationOk: true,
     },
     policy_intent_contract: {
       source: 'native_intent',
+      policy_id: 19, library_id: 20,
       validation: { valid: true },
       purpose: [{
+        source: 'operator_declared_intent',
         signal_type: 'genres',
         operator: 'require_any',
         values: { require_any: ['Mystery', 'Drama'] },
@@ -70,6 +73,7 @@ describe('policyEngine observed-profile precedence', () => {
       {
         title: 'Home Before Dark',
         media_type: 'tv',
+        tmdb_id: 42,
         certification: 'TV-14',
         genres: ['Mystery', 'Drama'],
       },

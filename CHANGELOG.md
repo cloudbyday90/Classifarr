@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Policy ranking** — Count only matched, bound declarations as native intent
+  support, including within mixed policies. Profile observations no longer
+  receive duplicate intent weight or an extra agreement vote; existing admission
+  and decision safeguards remain, while scores and ranking can change. See the
+  [design](docs/architecture/policy-provenance-scoring-design.md) and
+  [verification](docs/architecture/policy-provenance-scoring-outcome.md).
+
 - **Pending classification reviews** — Cards, headers, scores, bulk confirmation
   and Discord share one server-derived destination reference. Policy/AI
   disagreement, tied leaders and invalid current proposals require an explicit

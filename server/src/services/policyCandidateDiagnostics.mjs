@@ -8,13 +8,9 @@
  * (at your option) any later version.
  */
 
-import {
-  SIGNAL_SEMANTICS,
-  hasAffirmativeSignalConstraints,
-  normalizeSignalConfig,
-  normalizeSignalSemantics,
-  resolveSignalSemantics,
-} from '../utils/policySignals.mjs';
+import { SIGNAL_SEMANTICS } from '../utils/policySignals.mjs';
+import { resolvePresetSignalEvidenceMode } from './policySourceEvidenceSemantics.mjs';
+import { readNativeIntentContribution } from './policyNativeIntentContribution.mjs';
 import { isPositiveContribution } from './policyEngineUtils.mjs';
 import { hasPolicyConstraintFailure } from './policyConstraintSemantics.mjs';
 import { INFERRED_PURPOSE_ADMISSION } from './policyInferredPurposeAdmission.mjs';
@@ -33,56 +29,6 @@ const WEAK_CANDIDATE_VIABILITY = new Set([
   CANDIDATE_VIABILITY.PROFILE_ONLY,
   CANDIDATE_VIABILITY.RAG_IMPROVED,
 ]);
-
-const BROAD_GENRE_TERMS = new Set([
-  'action',
-  'adventure',
-  'comedy',
-  'drama',
-  'family',
-  'romance',
-]);
-
-function configuredTerms(config = {}) {
-  return [
-    ...(Array.isArray(config.require_all) ? config.require_all : []),
-    ...(Array.isArray(config.require_any) ? config.require_any : []),
-    ...(Array.isArray(config.prefer) ? config.prefer : []),
-  ]
-    .map((term) => String(term || '').trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function hasRequireConstraint(config = {}) {
-  return (Array.isArray(config.require_all) && config.require_all.length > 0)
-    || (Array.isArray(config.require_any) && config.require_any.length > 0);
-}
-
-function resolvePresetSignalEvidenceMode(signalType, rawConfig) {
-  const config = normalizeSignalConfig(rawConfig);
-  if (!config || !hasAffirmativeSignalConstraints(config, signalType)) {
-    return null;
-  }
-
-  const explicit = normalizeSignalSemantics(config.semantics);
-  if (explicit) {
-    return explicit;
-  }
-
-  if (signalType === 'keywords' && !hasRequireConstraint(config)) {
-    return SIGNAL_SEMANTICS.COMPATIBILITY;
-  }
-
-  if (signalType === 'genres') {
-    const terms = configuredTerms(config);
-    const broadOnly = terms.length > 0 && terms.every((term) => BROAD_GENRE_TERMS.has(term));
-    if (broadOnly && !hasRequireConstraint({ require_all: config.require_all })) {
-      return SIGNAL_SEMANTICS.COMPATIBILITY;
-    }
-  }
-
-  return resolveSignalSemantics(signalType, config);
-}
 
 function summarizePresetSemantics(presets = []) {
   let hasIdentitySignals = false;
@@ -105,29 +51,11 @@ function summarizePresetSemantics(presets = []) {
   };
 }
 
-function summarizeNativePurposeSemantics(policy = {}) {
-  const contract = policy?.policy_intent_contract;
-  if (policy?.policy_runtime_authority?.sourceId !== 'native_intent' ||
-      contract?.source !== 'native_intent') {
-    return null;
-  }
-
-  return (contract.purpose || []).some((rule) =>
-    resolvePresetSignalEvidenceMode(rule?.signal_type, {
-      ...(rule?.values || {}),
-      ...(rule?.semantics ? { semantics: rule.semantics } : {}),
-    }) === SIGNAL_SEMANTICS.IDENTITY
-  )
-    ? SIGNAL_SEMANTICS.IDENTITY
-    : (contract.purpose || []).length > 0
-      ? SIGNAL_SEMANTICS.COMPATIBILITY
+export function inferPresetEvidenceMode(policy, scores = {}, details = {}) {
+  if (policy?.policy_runtime_authority?.sourceId === 'native_intent') {
+    return isPositiveContribution(scores.intent)
+      ? readNativeIntentContribution(details.nativeIntentDiagnostics, policy, details.item).evidenceMode
       : null;
-}
-
-export function inferPresetEvidenceMode(policy, scores = {}) {
-  const nativePurposeSemantics = summarizeNativePurposeSemantics(policy);
-  if (nativePurposeSemantics) {
-    return isPositiveContribution(scores.intent) ? nativePurposeSemantics : null;
   }
 
   if (!isPositiveContribution(scores.preset)) {
@@ -154,7 +82,7 @@ export function hasProfileObservedAbsence(profileDiagnostics = null) {
 }
 
 export function buildCandidateDiagnostics(policy, scores = {}, agreement = null, details = {}) {
-  const presetEvidenceMode = inferPresetEvidenceMode(policy, scores);
+  const presetEvidenceMode = inferPresetEvidenceMode(policy, scores, details);
   const profileObservedAbsence = hasProfileObservedAbsence(details.profileDiagnostics);
   const constraintDiagnostics = details.constraintDiagnostics || null;
   const policyConstraintFailed = hasPolicyConstraintFailure(constraintDiagnostics);
@@ -222,8 +150,10 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     primaryViability = CANDIDATE_VIABILITY.MULTI_SOURCE_SUPPORT;
   }
 
+  const boundDeclaredIdentity = profileObservedAbsence &&
+    readNativeIntentContribution(details.nativeIntentDiagnostics, policy, details.item).evidenceMode === SIGNAL_SEMANTICS.IDENTITY;
   const profileAbsenceAdvisory = profileObservedAbsence &&
-    (primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE ||
+    (primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE || boundDeclaredIdentity ||
       (details.nativeIntentDiagnostics?.eligible === true &&
        details.nativeIntentDiagnostics.admissionBasis === INFERRED_PURPOSE_ADMISSION));
   const profileHardExcluded = profileObservedAbsence && !profileAbsenceAdvisory;

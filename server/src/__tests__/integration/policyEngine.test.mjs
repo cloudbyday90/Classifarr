@@ -171,11 +171,13 @@ describe('PolicyEngine Integration Tests', () => {
 
                 const animation = await policyEngine.evaluatePolicy(nativePolicy, {
                     title: 'Animated Feature',
+                    tmdb_id: 42,
                     genres: ['Animation'],
                     media_type: 'movie',
                 });
                 const horror = await policyEngine.evaluatePolicy(nativePolicy, {
                     title: 'Horror Feature',
+                    tmdb_id: 43,
                     genres: ['Horror'],
                     media_type: 'movie',
                 });
@@ -305,6 +307,7 @@ describe('PolicyEngine Integration Tests', () => {
 
                     const result = await policyEngine.evaluateItem({
                         title: `Identity evidence ${scenario.mediaType}`,
+                        tmdb_id: 44,
                         media_type: scenario.mediaType,
                         genres: scenario.itemGenres,
                     });

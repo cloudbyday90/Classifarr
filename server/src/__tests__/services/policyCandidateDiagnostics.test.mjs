@@ -6,6 +6,17 @@ import {
   hasProfileObservedAbsence,
 } from '../../services/policyCandidateDiagnostics.mjs';
 
+import { purposeMatchFixture } from '../fixtures/purposeMatchEvidenceFixture.mjs';
+import { evaluateNativePolicyIntent } from '../../services/policyNativeIntentRuntimeEvaluator.mjs';
+
+function declaredIdentityFixture() {
+  const fixture = purposeMatchFixture();
+  fixture.policy.policy_intent_contract.purpose[0].values = { require_any: ['Mystery', 'Drama'] };
+  fixture.item.genres = ['Mystery', 'Drama'];
+  fixture.runtime = evaluateNativePolicyIntent(fixture.policy, fixture.item);
+  return fixture;
+}
+
 describe('policyCandidateDiagnostics', () => {
   test('treats positive preset score with identity signals as identity evidence', () => {
     const policy = {
@@ -209,22 +220,13 @@ describe('policyCandidateDiagnostics', () => {
         keywords: [],
       },
     };
-    const policy = {
-      policy_runtime_authority: { sourceId: 'native_intent' },
-      policy_intent_contract: {
-        source: 'native_intent',
-        purpose: [{
-          signal_type: 'genres',
-          values: { require_any: ['Mystery', 'Drama'] },
-        }],
-      },
-    };
+    const { policy, item, runtime } = declaredIdentityFixture();
 
     const diagnostics = buildCandidateDiagnostics(
       policy,
       { intent: 80, preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       null,
-      { profileDiagnostics },
+      { profileDiagnostics, item, nativeIntentDiagnostics: runtime },
     );
 
     expect(hasProfileObservedAbsence(profileDiagnostics)).toBe(true);
@@ -252,20 +254,12 @@ describe('policyCandidateDiagnostics', () => {
     const exclusions = { ratings: [], genres: [], keywords: [] };
     exclusions[`${kind}s`].push({ value, score_delta: -50 });
 
+    const { policy, item, runtime } = declaredIdentityFixture();
     const diagnostics = buildCandidateDiagnostics(
-      {
-        policy_runtime_authority: { sourceId: 'native_intent' },
-        policy_intent_contract: {
-          source: 'native_intent',
-          purpose: [{
-            signal_type: 'genres',
-            values: { require_any: ['Mystery', 'Drama'] },
-          }],
-        },
-      },
+      policy,
       { intent: 80, preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       null,
-      { profileDiagnostics: { schema_version: 1, available: true, exclusions } },
+      { profileDiagnostics: { schema_version: 1, available: true, exclusions }, item, nativeIntentDiagnostics: runtime },
     );
 
     expect(diagnostics).toEqual(expect.objectContaining({
