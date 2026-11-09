@@ -1,7 +1,7 @@
 # Client tooling PR 584 assessment outcome
 
 Date: 2026-11-09 Eastern. Status: assessed five-package subset installed locally;
-local qualification passed; delivery receipts pending. See the separate
+delivered on main; local and source-CI qualification passed. See the separate
 [design and tradeoffs](client-tooling-pr-584-design.md). No release or deployment.
 
 ## Selected subset and reviewed graph
@@ -51,7 +51,7 @@ actionable refusal, unchanged retry identity, cookie paths and inert actionabili
 Backend coverage passes 1,931 suites / 62,720 tests with one existing skip; two
 post-review tests also pass in the final focused run without changing production
 source. The current two-report coverage ratchet passes unchanged. Delivery
-receipts remain to be recorded.
+receipts follow below.
 
 Early browser runs exposed fixture defects: the broad API mock intercepted a
 source module as JSON, and exact label-text lookup did not identify the select.
@@ -60,9 +60,13 @@ role/name resolves them. Concurrent compiler-fixture writes also caused observed
 reloads; final browser runs followed coverage completion. No application syntax,
 assertion, timeout or browser security check was relaxed.
 
-At delivery intake all four Dependabot PRs remain mergeable with unchanged heads.
-No PR has been merged, closed or rebased; no genuinely stale applicable branch
-was found. Recheck after push. Next dependency work is a coherent Tailwind 4.3.5
+All four original PRs were mergeable at delivery intake. After the push,
+Dependabot automatically closed #584 unmerged at 2026-11-09T12:36:10Z and opened
+[PR 587](https://github.com/cloudbyday90/Classifarr/pull/587) for the four remaining
+grouped updates. The issue event identifies dependabot[bot] as the closing actor;
+mergedAt is null. The four currently open PRs (583, 585, 586 and 587) are mergeable.
+The agent did not merge, close or rebase PRs; no genuinely stale applicable branch
+was found. Next dependency work is a coherent Tailwind 4.3.5
 native/WASM assessment, a fixed compiler artifact and an independent jsdom major
 migration. Existing scan alerts still require separate evidence-based review.
 
@@ -75,3 +79,26 @@ three protected service identities/states and four registered worktrees remain
 unchanged. Docker image/tag rows remain 430 from this batch intake; an earlier
 pre-task inventory had 445, so that external difference is not attributed to this
 cleanup or claimed as reclaimed storage. Current evidence and toolchains remain.
+
+## Pushed source receipts
+
+Source/tooling subject: 44cf88e51fbd451b9a2d7505f5dfb820c5a337ea on main.
+[CodeQL](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058045),
+[OSV](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058544),
+[Trivy](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058443) and
+[Gitleaks](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058222)
+all passed. Existing open scan alerts remain 118 CodeQL plus four Trivy; all 122
+most-recent instances reference this source, with no newly opened alerts since
+push. This is execution/coverage evidence, not remediation or validation of those
+findings. The separate npm residual and existing deepmerge triage remain explicit.
+
+[Full CI](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058044)
+passed, including full server/client tests, database integration, fresh
+installation/upgrade acceptance, a verification image and all startup/shutdown/
+queue-recovery smoke checks. Capacity and copyright workflows also passed.
+Only delivery-record documentation changes follow this source/tooling subject.
+
+Image publication/promotion and registry cleanup jobs were skipped. The delivery
+record changes only outcome documentation; all 6,971 qualified source, installed
+lock and local coverage-report hashes remain unchanged. Subsequent documentation
+workflow receipts are not substituted for this exact implementation subject.

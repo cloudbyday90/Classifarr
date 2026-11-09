@@ -1,6 +1,6 @@
 # Replay-safe native purpose declaration validation outcome
 
-Date: 2026-11-09 Eastern. Status: implemented and locally verified; push/CI receipts pending. See the separate [design](native-purpose-declaration-validation-design.md).
+Date: 2026-11-09 Eastern. Status: delivered on main; source CI and security verification passed. See the separate [design](native-purpose-declaration-validation-design.md).
 Baseline d0a2757b5; work remains on main. No release or deployment.
 
 ## Result and preserved boundaries
@@ -56,7 +56,7 @@ in the final 104-test focused run; production source and installed inputs are
 unchanged. Coverage is 89.28% statements/lines, 86.71% branches and 90.81%
 functions. Both current coverage reports pass the unchanged ratchet; the new
 capability leaf has 100% coverage. Lint, types, Knip, ownership, ESM, copyright,
-dependency policy and repository policy gates pass. Delivery remains pending.
+dependency policy and repository policy gates pass.
 
 ## Next recommendation
 
@@ -65,3 +65,17 @@ currently forces identity while later purpose changes preserve compatibility.
 Then remove remaining category-specific prompt assumptions and assess intentional
 individual/bulk review in existing surfaces. Keep these behavior changes separate
 from this replay-safe validation boundary and from security-alert triage.
+
+## Delivery evidence
+
+Source/tooling subject: 44cf88e51fbd451b9a2d7505f5dfb820c5a337ea, pushed on main.
+[Source pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058044)
+passed, including full server/client tests, database integration, installation/
+upgrade acceptance, verification image, startup/shutdown and queue recovery. The
+[capacity regression](https://github.com/cloudbyday90/Classifarr/actions/runs/42618058042)
+and all four security workflows passed on this exact source commit.
+No release, deployment, live configuration write or PR merge was performed.
+
+Publication, image promotion and registry cleanup jobs were skipped. A following
+delivery-record commit changes only these outcome documents; all 6,971 qualified
+source/install/report hashes remain unchanged. No implementation is pending.
