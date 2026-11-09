@@ -53,6 +53,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Client CSS tooling** — Locally adopt PR #587's exact Tailwind/PostCSS 4.3.5
+  subset with compiler, native/WASI scanning and published-type controls.
+  Preserve the DOM/compiler graph, runtime dependencies and install policy; see
+  the [outcome](docs/architecture/client-tailwind-pr-587-outcome.md).
+
 - **Server tooling** — Locally adopt PR #585's exact Globals 17.14.0 and Knip
   6.44.1 pins, with real controls for unused exports behind promise-based imports.
   Preserve the parser graph, runtime dependencies and analysis policy; see the
