@@ -205,6 +205,16 @@ failed its separate OSV push scan after the previously documented server-only
 deepmerge triage expired at November 9 UTC. The runtime patch introduced no
 dependency change. The independently agreed
 [renewal design](deepmerge-triage-renewal-design.md) and
-[verified local outcome](deepmerge-triage-renewal-outcome.md) record the scoped
+[verified outcome](deepmerge-triage-renewal-outcome.md) record the scoped
 follow-up. No expired or earlier successful scan is substituted for the new
 policy change's own push receipt.
+
+The renewal commit a6fbba298c3a41bbd4f563c9271861c1b770bbef passed its own
+[OSV run](https://github.com/cloudbyday90/Classifarr/actions/runs/42548473833),
+attempt 1. The implementation's separate
+[CI/CD run](https://github.com/cloudbyday90/Classifarr/actions/runs/42545539878)
+also failed one database test: legacy capture recovery encountered the existing
+500-millisecond table-lock timeout. The failed log does not identify the
+blocker. The unchanged 17-test suite passed in a fresh isolated local run;
+the renewal's full pipeline remains in progress at this record. These results
+do not establish a runtime root cause, a repaired race or a green full pipeline.
