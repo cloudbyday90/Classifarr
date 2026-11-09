@@ -61,8 +61,22 @@ policy gates, 97 dependency/tooling tests and Markdown checks pass.
 The 1,227 qualified client source/configuration/installed-lock/report hashes remain
 unchanged. Its previous 484-file / 7,539-test coverage, production build and eight
 production-browser controls are reused, not described as rerun. This batch adds
-no UI or browser contract. Dependency/maintenance and CI delivery results are
-tracked in the separate runtime outcome and final completion message.
+no UI or browser contract. Dependency/maintenance results are tracked in the
+separate runtime outcome.
+
+## Delivery evidence
+
+Implementation commit: 2d5f12dad66e35d46ff28ee198a90495e9d4e350, pushed on main.
+Its [source pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772312)
+passed, including fresh server/client tests, browser checks, schema replay,
+isolated installation/upgrade, verification image and container recovery.
+Database CI passed 327 suites / 4,142 tests with one suite and one test skipped.
+All seven source CI/security workflows passed; exact links and receipt boundaries
+are in the [runtime outcome](server-runtime-pr-586-outcome.md#delivery-evidence).
+
+A following delivery-record commit changes only the two outcome documents.
+All 7,393 qualified non-Markdown source/install/report hashes remain unchanged.
+No implementation, deployment or release step is pending in this batch.
 
 ## Next recommendation
 

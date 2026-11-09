@@ -106,7 +106,43 @@ image/tag rows remain unchanged. No newly verified stale candidate was selected;
 zero files/images were removed. Current evidence, toolchains, recovery assets,
 other projects and shared cache were preserved. No storage savings are claimed.
 
-All four open Dependabot PRs remain mergeable at the pre-push recheck; none needs
-rebasing. No PR merge/closure, release, publication or deployment is performed.
-Exact-source CI is inspected after push and linked in the completion message;
-local evidence is not substituted for a remote receipt or registry image.
+All four intake Dependabot PRs were mergeable before push. Dependabot then closed
+586 unmerged at 14:10:53 UTC; no agent merge/closure was performed. The remaining
+583, 585 and 587 are mergeable at delivery; 585's head advanced externally. No
+agent rebase was needed. Two additional containers appeared during the last local
+inventory; their origin is unassessed and they were excluded from this work.
+Every originally protected service remained unchanged; zero removals were made.
+
+## Delivery evidence
+
+Implementation subject: 2d5f12dad66e35d46ff28ee198a90495e9d4e350, attempt 1.
+All seven source workflows passed:
+
+- [CI/CD](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772312),
+  including server/client tests, browser, database, image and recovery checks.
+- [OSV](https://github.com/cloudbyday90/Classifarr/actions/runs/42631773105),
+  [Trivy repository scans](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772276),
+  [CodeQL](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772465) and
+  [Gitleaks](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772379).
+- [Capacity regression](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772394)
+  and [copyright](https://github.com/cloudbyday90/Classifarr/actions/runs/42631772077).
+
+Linux CI reran client coverage: 484 files / 7,536 tests, plus eight production-asset
+browser cases and fourteen shared-control browser cases. Database CI passed 327
+suites / 4,142 tests with one suite and one test skipped. These are remote results,
+separate from the qualified local client reuse above.
+
+The downloaded v4 installation receipt names this source and run 42631772312 /
+attempt 1. Its candidate is CI-local image
+`sha256:bd7cd5b807d630470c15f6fc92efd731ca65ede6f356f140fc93e87d8a1933dc`;
+this is not a registry manifest digest or attestation. The downstream readout
+independently verified the receipt against workflow source, run/attempt and the
+installation job's image output, reporting `repository_acceptance_passed`.
+It does not attest an active installation. Publication, image promotion, published
+routing/smoke and registry cleanup jobs were skipped. No release or deployment
+was performed.
+
+A following documentation-only receipt commit preserves all 7,393 qualified
+non-Markdown source/install/report hashes. Its results do not replace this exact
+implementation subject's receipts. Current reports and recovery assets remain
+protected; no implementation work is left pending in this batch.
