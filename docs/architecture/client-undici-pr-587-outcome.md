@@ -1,7 +1,7 @@
 # Client Undici PR 587 subset outcome
 
 Date: November 9, 2026 Eastern. Baseline main 8879fcf7c. Scope agreed and locally
-implemented; final independent image requalification and pushed CI are in progress.
+implemented; local and exact-code CI qualification pass. No release or deployment.
 See the [design](client-undici-pr-587-design.md).
 
 ## Exact local subset
@@ -69,18 +69,22 @@ ownership, both Knip modes, policy/ESM/copyright gates and 93 affected workflow
 controls pass. Root/client audits report zero entries; the same five server
 low-severity entries remain. Fresh backend coverage passes 1,933 suites / 62,791
 tests with one existing skip (89.28% statements/lines, 86.72% branches, 90.81%
-functions); the current two-report ratchet passes. Final image and exact-source
-CI completion remain to be recorded. No assertions, timeouts, install decisions
-or scanner policies are weakened.
+functions); the current two-report ratchet passes. Exact-code [main CI](https://github.com/cloudbyday90/Classifarr/actions/runs/42689376043)
+also passes its fresh coverage/ratchet/browser, database, ordinary installation,
+native compression and full container recovery checks. All six other security/
+quality workflows succeed; the OS outcome links their exact runs. No assertions,
+timeouts, install decisions or scanner policies are weakened.
 
 The independent [OS outcome](runtime-zlib-security-outcome.md) records the exact
 source/image, successful native/PG17/PG18/curl/bcrypt controls, twelve installation
 checks, eight routing phases and unchanged residual findings. Its local ordinary
 mode is not represented as a repeated budgeted acceptance run.
 
-Both current PRs are recently updated and mergeable; an unstable check state is
-not a merge conflict. No PR merge, closure or rebase is performed at this point.
-Recheck at delivery and rebase only genuinely stale applicable branches.
+Delivery recheck finds only open Dependabot PRs 587 and 585, both updated today
+and mergeable. Dependabot refreshed PR 587's head to
+1e96827673b4e51b1f8fc540f2c64f28ca6a9244; the selected original immutable head and
+reviewed subset remain recorded above. An unstable check state is not a merge
+conflict. No agent PR merge, closure or rebase is needed or performed.
 Maintenance verifies protected services/worktrees and exact rehearsal cleanup;
 no newly verified stale files/images qualify for removal. Recovery assets and
 shared cache remain protected.

@@ -1,7 +1,7 @@
 # System zlib security assessment outcome
 
 Date: November 9, 2026 Eastern. Baseline main 8879fcf7c. Scope agreed, implemented
-and initially image-qualified; final image requalification and pushed CI are in progress.
+and qualified locally and in exact-source CI. No release or deployment.
 See the [design and trade-offs](runtime-zlib-security-design.md).
 
 ## Implemented boundary
@@ -68,20 +68,21 @@ archive inspection alone did not provide.
 ## Frozen production image
 
 The clean source-bound rehearsal qualifies implementation
-6cc1b0a26ed8083d35c20f3463d00d863d97877a and one immutable AMD64 candidate:
-sha256:3b06173821644fd97e6cfe0e3a1eea44244d86afb69c24b4a43bc995a7eda5cc.
+c74f9bfe2e4fa733a279b35648b414caa5d663e2 and one immutable AMD64 candidate:
+sha256:b63517c16223bb253847234b01a838013bd522cd3af7417cd0632f9fd5d5ccc2.
 Native, scan, runtime and installation receipts all identify that same image.
-The later fc84ad96b change updates only a test expectation excluded from the
-Docker context; it does not change the qualified runtime inputs.
+All 9,915 frozen source files and both coverage-report hashes remain unchanged
+through qualification; worktree cleanliness and owned cleanup both pass.
 
-A subsequent portability review of [BuildKit's local receiver](https://github.com/moby/buildkit/blob/master/session/filesync/diffcopy.go)
+The portability review of [BuildKit's local receiver](https://github.com/moby/buildkit/blob/master/session/filesync/diffcopy.go)
 and [fsutil's root-skipping walk](https://github.com/tonistiigi/fsutil/blob/master/fs.go)
 finds that a host-private export directory cannot be assumed readable by container
 UID 1000 on Linux. The final harness mounts only its compiled binary read-only,
 following [Docker's file-bind contract](https://docs.docker.com/engine/storage/bind-mounts/).
 It keeps the parent directory private and avoids relying on Docker Desktop's
-permission translation. Actual file-bind native controls pass; a fresh final
-source-bound candidate and its receipts remain in progress.
+permission translation. Actual file-bind native controls and the full final
+source-bound candidate rehearsal pass. The original pre-correction Linux run
+failed its native gate; the final Linux gate passes with the narrower file mount.
 
 | Boundary | Actual result |
 | --- | --- |
@@ -96,8 +97,10 @@ source-bound candidate and its receipts remain in progress.
 
 Fresh and upgraded PG18 instances report 180006 and 338 migrations. The attested
 published v0.48.4-beta baseline has 222 migrations. Local qualification uses the
-ordinary installation mode; it does not claim a repeated resource-budget mode.
-Existing CI retains its separate budgeted installation run.
+ordinary installation mode. Same-revision CI ordinary acceptance also passes;
+its downloaded artifact digest, source/workflow binding, clean worktree and
+cleanup are verified independently. The resource-budget mode is manual-only and
+skipped on this push; no repeated budget-mode evidence is claimed.
 
 Trivy 0.76.2 scans the exact candidate with unchanged scanner policy: no OS
 findings, installed zlib 1.4-r0, and two remaining medium findings in global npm's
@@ -123,17 +126,38 @@ workflow controls pass without changing scanner severities or publication gates.
 Fresh backend coverage passes 1,933 suites / 62,791 tests with one existing skip:
 89.28% statements/lines, 86.72% branches and 90.81% functions. The current two-report
 ratchet passes. Backend source, tests and configuration remain unchanged during
-that final run; only the separately exercised host image harness changes outside
-the covered backend graph. Exact-source final image and CI completion remain to
-be recorded.
+that local run; the final committed revision also passes fresh backend/client
+coverage, ratchet and browser gates in CI.
+
+All seven exact-code workflows succeed at c74f9bfe2: [main CI](https://github.com/cloudbyday90/Classifarr/actions/runs/42689376043),
+[CodeQL](https://github.com/cloudbyday90/Classifarr/actions/runs/42689376045),
+[OSV](https://github.com/cloudbyday90/Classifarr/actions/runs/42689376906),
+[Trivy](https://github.com/cloudbyday90/Classifarr/actions/runs/42689375787),
+[secret scanning](https://github.com/cloudbyday90/Classifarr/actions/runs/42689376034),
+[capacity](https://github.com/cloudbyday90/Classifarr/actions/runs/42689375971)
+and [copyright](https://github.com/cloudbyday90/Classifarr/actions/runs/42689375699).
+Main CI passes database integration, ordinary installation, native compression,
+PG startup/monitoring/adoption, loaded shutdown, queue recovery and acceptance
+readout. Manual, tag-only and publication jobs remain skipped under unchanged gates.
+
+The downloaded Linux system-zlib-verification artifact 13706679563 has verified
+ZIP SHA256 e943def9e5b6c7d89a0610cea843e650821aaba6e7d580f89842a6794102dec3.
+Its closed receipt binds the exact code revision to CI image
+sha256:32e665191f8bbc3c27d9ec9c6cf80b9e88fadb02517973c8edf26a7d7bc004da
+and independently confirms native/PG17/PG18/curl/cleanup success. This CI image is
+distinct from the locally scanned candidate above; their receipts are not mixed.
+The ordinary installation artifact is also digest- and source/workflow-verified.
+
+The final documentation-only follow-up records these completed code-revision
+receipts. It does not rebind the image evidence to a different commit.
 
 Maintenance reuses the recent reviewed inventory on the same pinned Docker daemon.
 The delivery check verifies all three protected service identities/start times/
 state/health, four worktrees and rehearsal cleanup. No newly verified stale asset
 qualifies for retirement: zero files/images are removed. Recovery/reference images,
 volumes, current evidence/tools, shared cache and other projects are preserved.
-Docker reports 162.5 GB of image storage and 300.4 GB of shared build cache; these
-overlap and are not additive or attributable cleanup savings. About 1.056 TB remains
+Docker reports 162.5 GB of image storage and 300.8 GB of shared build cache; these
+overlap and are not additive or attributable cleanup savings. About 1.05 TB remains
 free on C:. This scope does not authorize shared-cache or recovery-asset retirement.
 
 ## Recommendation stack
