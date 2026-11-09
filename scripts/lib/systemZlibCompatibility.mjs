@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
+import { resolve } from 'node:path';
 import { docker, fixture, runZlibContainer, withSystemZlibProbe } from './systemZlibDocker.mjs';
 
 export async function verifySystemZlibImage(image, sourceRevision) {
@@ -14,7 +15,8 @@ export async function verifySystemZlibImage(image, sourceRevision) {
   runZlibContainer(imageId, ['/sbin/apk', 'info', '--exists', 'zlib=1.4-r0'], { platform });
   const native = await withSystemZlibProbe(platform, async directory => JSON.parse(runZlibContainer(imageId,
     ['/bin/sh', '-c', 'cp /probe/zlib-probe /tmp/zlib-probe && chmod 0555 /tmp/zlib-probe && exec /tmp/zlib-probe'],
-    { mounts: [{ source: directory, target: '/probe' }], platform })));
+    // Keep the private export directory off the mount; host/container UIDs can differ.
+    { mounts: [{ source: resolve(directory, 'zlib-probe'), target: '/probe/zlib-probe' }], platform })));
   assert.deepEqual(native, { version: '1.4', dynamicLibrary: true, offsetBytes: 8, resetClearsHeader: true,
     exactBoundaryEnds: true, roundtrip: true, truncation: true, seek: true });
   const mounts = [{ source: fixture, target: '/zlib-fixture' }];

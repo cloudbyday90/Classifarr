@@ -1,7 +1,8 @@
 # Client Undici PR 587 subset design
 
-Research: November 9, 2026 Eastern. Baseline main 8879fcf7c. Status: agreed;
-implemented, qualification in progress. No PR merge, release or deployment.
+Research: November 9, 2026 Eastern. Baseline main 8879fcf7c. Status: agreed and
+implemented; see the separate [qualification outcome](client-undici-pr-587-outcome.md).
+No PR merge, release or deployment.
 
 ## Random selection and bounded subset
 

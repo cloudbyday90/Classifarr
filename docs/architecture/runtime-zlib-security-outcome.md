@@ -1,7 +1,7 @@
 # System zlib security assessment outcome
 
-Date: November 9, 2026 Eastern. Baseline main 8879fcf7c. Scope agreed and implemented;
-production-image qualification and delivery receipts are in progress.
+Date: November 9, 2026 Eastern. Baseline main 8879fcf7c. Scope agreed, implemented
+and initially image-qualified; final image requalification and pushed CI are in progress.
 See the [design and trade-offs](runtime-zlib-security-design.md).
 
 ## Implemented boundary
@@ -23,7 +23,7 @@ source SHA and runs native/PG/curl checks before the existing container gates;
 its aggregate receipt contains source/image/architecture and fixed test results.
 No new job, operator CLI trigger or UI is added.
 
-## Real before/after evidence so far
+## Real before/after evidence
 
 The compiled probe resolves the actual dynamically loaded libz.so.1, not Node's
 separate compression implementation. On the old immutable native base it reports
@@ -65,17 +65,81 @@ non-reachability or authorizing suppression. Source SHA512 matches the immutable
 Alpine recipe; actual trusted installation supplies signature verification that
 archive inspection alone did not provide.
 
-## Verification and delivery pending
+## Frozen production image
 
-Native PostgreSQL 17/18 gzip custom-format dump/restore, native curl, full frozen
-production image/scan/recovery, final coverage/quality, maintenance and exact-source
-CI identities will be recorded after their completion. Node's embedded compression
-fork and Undici, plus npm's separate Glob/Minimatch findings, remain explicit.
+The clean source-bound rehearsal qualifies implementation
+6cc1b0a26ed8083d35c20f3463d00d863d97877a and one immutable AMD64 candidate:
+sha256:3b06173821644fd97e6cfe0e3a1eea44244d86afb69c24b4a43bc995a7eda5cc.
+Native, scan, runtime and installation receipts all identify that same image.
+The later fc84ad96b change updates only a test expectation excluded from the
+Docker context; it does not change the qualified runtime inputs.
+
+A subsequent portability review of [BuildKit's local receiver](https://github.com/moby/buildkit/blob/master/session/filesync/diffcopy.go)
+and [fsutil's root-skipping walk](https://github.com/tonistiigi/fsutil/blob/master/fs.go)
+finds that a host-private export directory cannot be assumed readable by container
+UID 1000 on Linux. The final harness mounts only its compiled binary read-only,
+following [Docker's file-bind contract](https://docs.docker.com/engine/storage/bind-mounts/).
+It keeps the parent directory private and avoids relying on Docker Desktop's
+permission translation. Actual file-bind native controls pass; a fresh final
+source-bound candidate and its receipts remain in progress.
+
+| Boundary | Actual result |
+| --- | --- |
+| OS package/native ABI | Exact installed zlib 1.4-r0; dynamically loaded libz.so.1; all bounded native controls pass |
+| PostgreSQL compression | Both PG17 and PG18 pg_dump/pg_restore link libz.so.1 and reproduce all 32 synthetic rows and aggregate contents through gzip custom archives |
+| Other native consumers | Actual curl --compressed and bcrypt good/bad-password controls pass |
+| Provider test image | Separate signed APK build installs exact 1.4-r0; actual tags, synthetic 503, recovery, successful generation and bounded counters pass |
+| Preserved runtime | Node 24.22.1, npm 12.2.2, built-in Undici 7.30.1 and compression fork unchanged |
+| Installation/recovery | All twelve fresh/published-upgrade checks pass, including interrupted restore, verified retry, crash recovery, restart and profile preservation |
+| Routing rehearsal | All eight phases pass; two movie/two TV GETs, zero provider writes, History preserved, legacy work not enrolled |
+| Resource cleanup | Owned container/network/volume and random candidate-tag cleanup passes; protected services are unchanged |
+
+Fresh and upgraded PG18 instances report 180006 and 338 migrations. The attested
+published v0.48.4-beta baseline has 222 migrations. Local qualification uses the
+ordinary installation mode; it does not claim a repeated resource-budget mode.
+Existing CI retains its separate budgeted installation run.
+
+Trivy 0.76.2 scans the exact candidate with unchanged scanner policy: no OS
+findings, installed zlib 1.4-r0, and two remaining medium findings in global npm's
+Glob 13.0.6 (CVE-2026-118773) and Minimatch 10.2.5 (CVE-2026-118764). No suppression
+or acceptance is added. This package scan does not establish that Node's embedded
+Undici/compression is corrected; the separate observed gaps above still apply.
 The historical beta exception and November 16 rejected-CVE triage are unchanged.
 
-Intake maintenance reuses the recent full inventory on the same Docker daemon,
-verifies all three protected service identities/state/health and four registered
-worktrees, and preserves recovery assets, current evidence/tools and shared cache.
-No stale asset retirement or production action occurs. Development test images
-are independently owned; final cleanup must be verified before a passing handoff.
-No release or deployment is made.
+## Repository verification and delivery
+
+Fresh client coverage passes 486 files / 7,557 tests, with 87.93% statements,
+82.17% branches, 87.72% functions and 89.60% lines. Production build and all eight
+production-asset plus fourteen shared-form Chromium cases pass. Lint, type checks,
+107 tooling controls, complete dependency trees, full audits, ownership, both
+Knip modes, policy gates, ESM checks and copyright pass. Root/client audits have
+zero entries; the same five existing server entries are low severity.
+
+The new receipt initially tripped two existing workflow contracts: shutdown's
+closed artifact allowlist and the repository-wide upload count. A separate
+bounded artifact preserves the original shutdown allowlist; its exact immutable
+upload action raises the expected count from fourteen to fifteen. All 93 affected
+workflow controls pass without changing scanner severities or publication gates.
+Fresh backend coverage passes 1,933 suites / 62,791 tests with one existing skip:
+89.28% statements/lines, 86.72% branches and 90.81% functions. The current two-report
+ratchet passes. Backend source, tests and configuration remain unchanged during
+that final run; only the separately exercised host image harness changes outside
+the covered backend graph. Exact-source final image and CI completion remain to
+be recorded.
+
+Maintenance reuses the recent reviewed inventory on the same pinned Docker daemon.
+The delivery check verifies all three protected service identities/start times/
+state/health, four worktrees and rehearsal cleanup. No newly verified stale asset
+qualifies for retirement: zero files/images are removed. Recovery/reference images,
+volumes, current evidence/tools, shared cache and other projects are preserved.
+Docker reports 162.5 GB of image storage and 300.4 GB of shared build cache; these
+overlap and are not additive or attributable cleanup savings. About 1.056 TB remains
+free on C:. This scope does not authorize shared-cache or recovery-asset retirement.
+
+## Recommendation stack
+
+Retain the qualified exact OS repair and independent client Undici patch. Next,
+assess the actually published Node 24 security artifact and its bundled components;
+the announced November 11 window is not evidence of a fix. Then assess npm's
+independent Glob/Minimatch bundle, JSDOM/browser-contract debt and category-neutral
+compatibility-purpose prompt projection. No release or deployment is made.

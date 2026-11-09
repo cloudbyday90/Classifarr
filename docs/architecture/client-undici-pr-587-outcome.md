@@ -1,7 +1,7 @@
 # Client Undici PR 587 subset outcome
 
 Date: November 9, 2026 Eastern. Baseline main 8879fcf7c. Scope agreed and locally
-implemented; final coverage/image/CI receipts are in progress.
+implemented; final independent image requalification and pushed CI are in progress.
 See the [design](client-undici-pr-587-design.md).
 
 ## Exact local subset
@@ -56,18 +56,36 @@ Existing browser-native security checks remain necessary. No application browser
 transport changes, exploitability claim, DOM major migration or vendor patch is
 introduced to hide that gap.
 
-## Qualification and delivery pending
+## Qualification and delivery
 
-Lint/type checks, 107 dependency/tooling cases and the focused controls pass.
-Fresh full backend/client coverage, normal browser/build/quality gates, independent
-OS-image results, final maintenance and exact-source CI remain to be recorded.
-Retain the five known startup-browser contract failures as baseline debt.
+Fresh full client coverage passes 486 files / 7,557 tests: 87.93% statements,
+82.17% branches, 87.72% functions and 89.60% lines. The production build, eight
+production-asset browser cases and fourteen shared-form browser cases pass.
+The broader startup-browser suite is not rerun; its five previously established
+failures and two previously unreproduced initial failures remain explicit debt.
+
+Lint/type checks, 107 dependency/tooling cases, complete package trees, full audits,
+ownership, both Knip modes, policy/ESM/copyright gates and 93 affected workflow
+controls pass. Root/client audits report zero entries; the same five server
+low-severity entries remain. Fresh backend coverage passes 1,933 suites / 62,791
+tests with one existing skip (89.28% statements/lines, 86.72% branches, 90.81%
+functions); the current two-report ratchet passes. Final image and exact-source
+CI completion remain to be recorded. No assertions, timeouts, install decisions
+or scanner policies are weakened.
+
+The independent [OS outcome](runtime-zlib-security-outcome.md) records the exact
+source/image, successful native/PG17/PG18/curl/bcrypt controls, twelve installation
+checks, eight routing phases and unchanged residual findings. Its local ordinary
+mode is not represented as a repeated budgeted acceptance run.
 
 Both current PRs are recently updated and mergeable; an unstable check state is
 not a merge conflict. No PR merge, closure or rebase is performed at this point.
 Recheck at delivery and rebase only genuinely stale applicable branches.
+Maintenance verifies protected services/worktrees and exact rehearsal cleanup;
+no newly verified stale files/images qualify for removal. Recovery assets and
+shared cache remain protected.
 
-No provider write, live configuration change, release or deployment occurs.
 Recommendation remains this compatible one-package subset, followed by a genuinely
-corrected published Node 24 artifact and separately scoped DOM/native/compiler,
-npm-bundle and browser-contract work.
+corrected published Node 24 artifact and separately scoped npm-bundle, JSDOM CORS/
+browser-contract, DOM/native/compiler and category-neutral prompt work. No provider
+write, live configuration change, release or deployment occurs.

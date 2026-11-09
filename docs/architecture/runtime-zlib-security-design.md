@@ -2,7 +2,8 @@
 
 Research: November 9, 2026 Eastern. Baseline main
 8879fcf7c55dc94fe6ff57ecc9603b80c51b290a, clean at intake.
-Status: agreed November 9; implemented, qualification in progress. No release/deployment.
+Status: agreed and implemented November 9. See the separate
+[qualification outcome](runtime-zlib-security-outcome.md). No release/deployment.
 
 ## What the Node follow-up established
 
@@ -51,8 +52,9 @@ and [v3.24 security data](https://secdb.alpinelinux.org/v3.24/main.json) identif
 1.4-r0 as the package correction for CVE-2026-4738. Both actual shipped-architecture
 APKs are published. Archive/ELF inspection finds only the library and metadata,
 SONAME libz.so.1, 111 exports, and the existing architecture's musl dependency.
-Downloaded archive signatures have not yet been verified; successful trusted APK
-installation remains a gate.
+At research intake the downloaded archives had not independently passed signature
+verification. Successful trusted APK installation remains an implementation gate;
+the separate outcome records its result.
 
 The reported CVE concerns contrib/infback9. Old/new default build object lists
 compile core infback.o instead, and the inspected exports contain no infback9
