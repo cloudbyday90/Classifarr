@@ -2,9 +2,14 @@
 
 Research: November 9, 2026 Eastern. Baseline main
 4a6d345dbc91e948c55b142a2b5ee194807efebd, clean at intake.
-Status: agreed November 9; implemented and locally qualified. Exact-source CI pending.
+Status: agreed November 9; implemented and qualified locally and in exact-source CI.
 See the separate [observed outcome](server-tooling-pr-585-outcome.md).
 No release or deployment.
+
+The user confirmed this exact two-tool and documentation-correction scope before
+implementation. The [repository grilling skill](../../.agents/skills/grilling/SKILL.md)
+requires: "Do not act on it until the user confirms you have reached a shared
+understanding." That agreement covers this bounded batch.
 
 ## Why this is the next applicable batch
 

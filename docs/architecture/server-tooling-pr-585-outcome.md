@@ -2,7 +2,7 @@
 
 Date: November 9, 2026 Eastern. Baseline main 4a6d345db.
 Agreed [design and trade-offs](server-tooling-pr-585-design.md).
-Status: locally qualified; implementation delivery and exact-source CI are in progress.
+Status: implemented, pushed and qualified locally and in exact-source CI.
 No release or deployment.
 
 ## Actual local update
@@ -96,8 +96,30 @@ image qualifies for retirement. Zero assets are removed; recovery/reference
 images, tools, volumes, shared cache and other projects remain protected. About
 1.06 TB is free on C:; global space changes are not claimed as cleanup savings.
 
-Exact-source CI and commit/push identities remain to be recorded. Leave PRs
-unmerged; rebase only genuinely stale applicable branches.
+Implementation 2ea9eb8271e8773f9c2d955e86f082634368ed74 is pushed on main.
+All seven exact-code workflows pass: [main CI](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081711),
+[CodeQL](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081674),
+[OSV](https://github.com/cloudbyday90/Classifarr/actions/runs/42704082792),
+[Trivy](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081675),
+[secret scanning](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081673),
+[capacity](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081750)
+and [copyright](https://github.com/cloudbyday90/Classifarr/actions/runs/42704081689).
+
+Main CI passes fresh backend/client tests, coverage ratchet, both browser suites,
+database integration, ordinary installation/upgrade, native compression/PG archive
+checks, startup/monitoring/adoption, loaded shutdown, queue recovery and acceptance
+readout. Manual resource-budget mode and tag/publication jobs remain skipped under
+the unchanged gates. This is not a new local image or multi-platform release claim.
+
+GitHub's closure event identifies dependabot[bot] closing PR 585 unmerged at
+21:38:22 UTC after the local adoption lands. The bot's update workflow also passes.
+The agent performs no PR merge, closure, rebase or comment. The remaining open PR
+587 is updated today and mergeable; no stale applicable branch requires rebasing.
+
+The final follow-up changes only documentation status and completed receipts.
+Application/test inputs and both coverage reports remain byte-identical to the
+qualified implementation. Its image/CI evidence stays bound to 2ea9eb827 rather
+than being relabeled as a different commit's result.
 No operator CLI trigger, UI, schema, job, provider call, live configuration write,
 release or deployment is added.
 

@@ -71,5 +71,5 @@ permission boundary, consistent with [OWASP guidance](https://cheatsheetseries.o
 Correct queued references in initial-purpose-semantics-design/outcome,
 npm-12-2-2-security-design/outcome and runtime-zlib-security-design/outcome.
 Preserve their historical implementation and test receipts. The independently
-proposed [PR 585 batch](server-tooling-pr-585-design.md) includes these documentation
+assessed [PR 585 batch](server-tooling-pr-585-design.md) includes these documentation
 corrections without changing either runtime consumer.
