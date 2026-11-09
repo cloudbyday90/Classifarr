@@ -173,6 +173,7 @@ Keep this qualified npm patch. Next assess a supported Node 24 runtime carrying
 the newer Undici fixes, including the separate compression/OS findings. Then
 assess a supported npm artifact resolving its remaining bundle findings; avoid
 vendor-tree edits or a blanket scanner exception. Review the unchanged startup
-browser contracts separately, then return to the queued category-neutral
-compatibility-purpose prompt projection. Publication qualification remains a
-separate decision with fresh artifact evidence.
+browser contracts separately. Then choose provider-prompt evidence separately
+from post-choice learning provenance; the [consumer trace](compatibility-purpose-consumer-boundary.md)
+corrects the former queued-task label without changing runtime or historical
+receipts. Publication qualification remains separate with fresh artifact evidence.

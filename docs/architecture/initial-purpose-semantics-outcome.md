@@ -80,11 +80,16 @@ No implementation, deployment or release step is pending in this batch.
 
 ## Next recommendation
 
-The next category-neutral runtime step is compatibility-purpose prompt projection:
-the current projection omits this supported pair. Define its evidence meaning
-without relabeling purpose as a helpful hint or adding specialized identity, then
-address remaining category-specific prompt assumptions. Historical data and frozen
-captures stay untouched.
+Follow-up research corrects the queued task's name: the omitted pair belongs to
+post-choice destination-evidence learning provenance. Its adapter and candidate
+selector are separate from the provider prompt. No existing selective native-
+purpose LLM projection was demonstrated; see the
+[consumer trace](compatibility-purpose-consumer-boundary.md).
+
+Choose a future provider-prompt evidence contract separately from future learning
+admission. Do not relabel purpose as a helpful hint, add specialized identity or
+infer historical choices. Existing persistence/scoring receipts above remain valid;
+this documentation correction changes no runtime or frozen evidence.
 
 Security priority alongside that work: assess a corrected Node/npm toolchain for
 Node's bundled Undici and the existing npm/ip-address residual before another

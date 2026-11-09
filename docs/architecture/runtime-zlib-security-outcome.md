@@ -165,5 +165,22 @@ free on C:. This scope does not authorize shared-cache or recovery-asset retirem
 Retain the qualified exact OS repair and independent client Undici patch. Next,
 assess the actually published Node 24 security artifact and its bundled components;
 the announced November 11 window is not evidence of a fix. Then assess npm's
-independent Glob/Minimatch bundle, JSDOM/browser-contract debt and category-neutral
-compatibility-purpose prompt projection. No release or deployment is made.
+independent Glob/Minimatch bundle and JSDOM/browser-contract debt. Choose a
+category-neutral provider-prompt evidence contract separately from post-choice
+learning provenance; the [consumer trace](compatibility-purpose-consumer-boundary.md)
+corrects the former queued-task label. No release or deployment is made.
+
+## Follow-up availability research
+
+The November 9 follow-up at approximately 16:01 Eastern, baseline main 4a6d345db,
+still finds Node 24.22.2 as the latest published 24.x release. Its actual Undici
+remains 7.30.1, and the [official security announcement](https://github.com/nodejs/nodejs.org/blob/main/apps/site/pages/en/blog/vulnerability/november-2026-security-releases.md)
+still schedules releases on or after November 11. A newer point version alone
+does not establish the needed bundle correction.
+
+[Official npm metadata](https://registry.npmjs.org/npm/latest) and full alternate-tag
+research still identify 12.2.2, with no published 12.2.3. The actual existing bundle
+retains Glob 13.0.6 and Minimatch 10.2.5. [Upstream release PR 10244](https://github.com/npm/cli/pull/10244)
+is open; its manifest ranges do not establish unpublished bundle contents or a fix.
+Keep current pins and residual findings. The separately assessed
+[PR 585 tooling batch](server-tooling-pr-585-design.md) changes neither runtime.

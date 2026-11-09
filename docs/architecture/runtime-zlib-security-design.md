@@ -115,8 +115,10 @@ deployment, live recovery or production cleanup is included.
 
 Recommended stack: assess the narrow OS repair and independent client transport
 patch; verify the announced Node 24 release when actually published; then assess
-npm bundle residuals, existing startup-browser contracts and category-neutral
-compatibility-purpose prompt projection. Publication remains separately gated.
+npm bundle residuals and existing startup-browser contracts. Choose category-neutral
+provider-prompt evidence separately from post-choice learning provenance; the
+[consumer trace](compatibility-purpose-consumer-boundary.md) corrects the former
+queued-task label. Publication remains separately gated.
 
 ## Official sources
 

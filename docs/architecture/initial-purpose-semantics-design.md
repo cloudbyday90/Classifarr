@@ -71,13 +71,18 @@ Keep old stored identity/null/compatibility values, version copying, reversion,
 restores, immutable evaluation captures and historical statistics unchanged.
 This batch performs no backfill, live configuration write or provider call.
 
-## Existing projection limit
+## Existing post-choice projection limit
 
-The current operator-intent prompt projection includes purpose+identity as
-belongs_here and helpful-hint+compatibility as compatibility. It omits
-compatibility-purpose. That already affects later native edits and is a separate
-prompt-contract decision. Preserve this limit explicitly; do not silently relabel
-purpose or expand identity-only coverage/inventory/preflight readers.
+The operator-intent adapter maps purpose/identity to belongsHere and
+helpful_hint/compatibility to helpfulMatches. It omits purpose/compatibility and
+feeds post-choice destination-evidence learning guards. The candidate selector
+also excludes that pair. This is a learning-provenance boundary; no selective
+native-purpose provider-prompt projection was demonstrated. See the corrected
+[consumer trace](compatibility-purpose-consumer-boundary.md).
+
+Preserve this limit explicitly. Future prompt evidence and future learning
+admission require separate contracts; do not silently relabel purpose or expand
+identity-only coverage/inventory/preflight readers.
 
 ## Verification and delivery
 
@@ -131,10 +136,10 @@ Sources discovered/read through MCP on November 9, 2026:
 | Keep forced identity | No fresh behavior change | Silently contradicts accepted compatibility and later edits | Reject |
 | Reject compatibility at initial validation | One meaning initially | Breaks accepted requests/recovery if shared parser changes; leaves path inconsistency | Reject |
 | Preserve explicit semantics only for fresh writes | Consistent accepted meaning, minimal modular change | Fresh ranking/bands can change; requires replay and consumer proof | First batch |
-| Rewrite older identity or expand prompt readers too | Broader apparent alignment | Infers historical choices and combines distinct contracts | Separate decisions |
+| Rewrite older identity or expand other consumers too | Broader apparent alignment | Infers historical choices and combines distinct contracts | Separate decisions |
 
-Recommendation stack: preserve fresh explicit semantics first; then design a
-category-neutral prompt projection for purpose compatibility without granting
-identity; then remove remaining category-specific prompt assumptions. Keep
-historical review, existing security-alert triage and Node/npm toolchain security
-as independently bounded work before any later release.
+Recommendation stack: preserve fresh explicit semantics first; then choose a
+category-neutral provider-prompt evidence contract separately from post-choice
+learning provenance, using the consumer trace above. Address category-specific
+prompt assumptions under that explicit scope. Keep historical review, existing
+security-alert triage and Node/npm security independently bounded before release.

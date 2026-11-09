@@ -53,6 +53,16 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Server tooling** — Locally adopt PR #585's exact Globals 17.14.0 and Knip
+  6.44.1 pins, with real controls for unused exports behind promise-based imports.
+  Preserve the parser graph, runtime dependencies and analysis policy; see the
+  [outcome](docs/architecture/server-tooling-pr-585-outcome.md).
+
+- **Purpose evidence planning** — Correct the queued task description to
+  distinguish post-choice learning provenance from new provider-prompt evidence.
+  Preserve runtime behavior and historical receipts; see the
+  [consumer trace](docs/architecture/compatibility-purpose-consumer-boundary.md).
+
 - **Vue runtime/compiler** — Locally assess PR #583's exact Vue 3.5.45 and
   coherent compiler/runtime graph, with real disposal, static boolean, lexical
   scope, async-unmount and directive controls. Preserve language tooling and

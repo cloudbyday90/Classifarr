@@ -1,9 +1,37 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { reported, runKnip, withFixture } from './helpers/knipCliFixture.mjs';
 
+// Source text parsed by the CLI fixture, not an import in this test module.
+const awaitedImportExpression = readFileSync(
+  new URL('./fixtures/knipAwaitedImport.txt', import.meta.url), 'utf8',
+).trimEnd();
+
 describe('installed Knip CLI contracts', () => {
+  test.each([
+    { name: 'member callback in normal mode', callback: 'mod => mod.used', args: [] },
+    { name: 'destructured callback in normal mode', callback: '({ used }) => used', args: [] },
+    { name: 'member callback in production mode', callback: 'mod => mod.used', args: ['--production'] },
+    { name: 'destructured callback in production mode', callback: '({ used }) => used', args: ['--production'] },
+  ])('tracks the used export and unused sibling through $name', ({ callback, args }) => {
+    withFixture({
+      'entry.mjs': "import { used as ordinary } from './ordinary.mjs'; ordinary();\n" +
+        `const { used: awaited } = ${awaitedImportExpression}; void awaited;\n` +
+        `void import('./dynamic.mjs').then(${callback});\n`,
+      'ordinary.mjs': 'export function used() {}\nexport function unused() {}\n',
+      'awaited.mjs': 'export const used = 1;\nexport const unused = 2;\n',
+      'dynamic.mjs': 'export const used = 1;\nexport const unused = 2;\n',
+    }, directory => {
+      const result = runKnip(directory, ['--exports', ...args]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toBe('');
+      expect(reported(result, 'exports')).toEqual([
+        'awaited.mjs:unused', 'dynamic.mjs:unused', 'ordinary.mjs:unused',
+      ]);
+    });
+  });
+
   test('TOML-configured Bun preloads retain dependencies and expose genuine missing imports', () => {
     withFixture({
       'entry.mjs': 'export {};\n',

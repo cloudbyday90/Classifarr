@@ -39,6 +39,14 @@ test('valid ESM, native imports and readable international text pass', async () 
   expect(await lint("export const placeholder = '\\u3164';")).toEqual([]);
 });
 
+test('configured Node globals pass while an undefined sentinel remains blocking', async () => {
+  expect(await lint("export const runtime = process.versions.node;\nexport const bytes = Buffer.from('ok');")).toEqual([]);
+  expect(await lint('export const missing = classifarrUndefinedGlobal;')).toEqual([
+    expect.objectContaining({ ruleId: 'no-undef', messageId: 'undef', severity: 2,
+      message: "'classifarrUndefinedGlobal' is not defined." }),
+  ]);
+});
+
 test.each([
   ["export function run(input) { return eval(input); }", 'security/detect-eval-with-expression'],
   ["import fs from 'fs'; export const read = fs.readFile;", 'n/prefer-node-protocol'],

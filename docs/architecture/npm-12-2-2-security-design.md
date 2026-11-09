@@ -130,9 +130,11 @@ remediation only after evidence; preserve historical release decisions.
 | Patch npm vendor files or override its tree from the app | Superficially small diff | Does not produce a supported, reproducible CLI artifact | Reject |
 | Combine Node/Alpine and all dependencies | Wider potential updates | Hides failure attribution and broadens native/runtime scope | Separate assessments |
 
-Recommendation: qualify npm 12.2.2 first, assess the corrected Node runtime next,
-then return to category-neutral compatibility-purpose prompt projection. The
-random Vue PR is an independently gated client batch, not a prerequisite.
+Recommendation: qualify npm 12.2.2 first, assess a published corrected Node runtime
+next, then choose a category-neutral provider-prompt evidence contract separately
+from post-choice learning provenance. The [consumer trace](compatibility-purpose-consumer-boundary.md)
+corrects the former queued-task label. The random Vue PR remains an independently
+gated client batch.
 
 ## Official guidance
 
