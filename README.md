@@ -16,8 +16,13 @@ Classifarr supports movies and TV shows. Library-agnostic learning means discove
 
 For v0.49.4-beta only, the maintainer accepts the moderate ip-address finding in
 npm 12.2.1's separate bundled copy, conditional on all other release gates.
-It remains present in the production image; later releases require verified
+It remains present in that published image; later releases require verified
 remediation. See the [release decision](docs/architecture/release-0.49.4-beta-outcome.md).
+
+Development source now pins npm/npx 12.2.2; the separate
+[assessment outcome](docs/architecture/npm-12-2-2-security-outcome.md) tracks its
+bundled-parser/transport checks and remaining findings. Source changes do not
+update the published beta or a running installation.
 
 ## Why Classifarr
 

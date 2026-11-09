@@ -3,11 +3,11 @@
   "version": "0.49.4-beta",
   "private": true,
   "type": "module",
-  "packageManager": "npm@12.2.1",
+  "packageManager": "npm@12.2.2",
   "license": "GPL-3.0-or-later",
   "engines": {
     "node": ">=24.22.1 <25",
-    "npm": ">=12.2.1 <13"
+    "npm": ">=12.2.2 <13"
   },
   "scripts": {
     "docker:smart": "node scripts/docker-compose-smart.mjs",
@@ -133,7 +133,7 @@
     "test:tooling:vm-errors": "node --test scripts/__tests__/vm-removal-error-contract.test.mjs",
     "test:tooling:vm-simulation": "node --test scripts/__tests__/vm-removal-simulation.test.mjs",
     "test:tooling:creation-journal": "node --test scripts/__tests__/creation-journal.test.mjs",
-    "test:tooling:dependencies": "node --test scripts/__tests__/markdownlint-runner.test.mjs scripts/__tests__/katex-dependency-security.test.mjs scripts/__tests__/redirect-dependency-security.test.mjs scripts/__tests__/native-watch.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs scripts/__tests__/container-runtime-baseline.test.mjs scripts/__tests__/glob-minimatch-security.test.mjs",
+    "test:tooling:dependencies": "node --test scripts/__tests__/markdownlint-runner.test.mjs scripts/__tests__/katex-dependency-security.test.mjs scripts/__tests__/redirect-dependency-security.test.mjs scripts/__tests__/native-watch.test.mjs scripts/__tests__/npm-toolchain-policy.test.mjs scripts/__tests__/npm-bundled-security.test.mjs scripts/__tests__/npm-exec-security.test.mjs scripts/__tests__/npm-manifest-security.test.mjs scripts/__tests__/container-runtime-baseline.test.mjs scripts/__tests__/glob-minimatch-security.test.mjs",
     "test:tooling:gateway": "node --test scripts/__tests__/gateway-inference-soak.test.mjs scripts/__tests__/gateway-extended-profile.test.mjs scripts/__tests__/gateway-study-measurements.test.mjs scripts/__tests__/gateway-rotation-study.test.mjs scripts/__tests__/gateway-study-cleanup.test.mjs scripts/__tests__/gateway-history-plan.test.mjs scripts/__tests__/gateway-restore-memory.test.mjs scripts/__tests__/gateway-row-mode.test.mjs scripts/__tests__/gateway-study-binding.test.mjs scripts/__tests__/gateway-archive-binding.test.mjs scripts/__tests__/gateway-qualification-binding.test.mjs scripts/__tests__/gateway-scheduling-binding.test.mjs scripts/__tests__/gateway-snapshot-reuse.test.mjs scripts/__tests__/gateway-pressure-study.test.mjs scripts/__tests__/gateway-quiet-study.test.mjs scripts/__tests__/gateway-sustained-comparison.test.mjs scripts/__tests__/gateway-vm-preparation.test.mjs scripts/__tests__/gateway-vm-job-lifecycle.test.mjs scripts/__tests__/gateway-vm-handoff.test.mjs scripts/__tests__/gateway-vm-shutdown.test.mjs scripts/__tests__/gateway-vm-creation.test.mjs scripts/__tests__/gateway-vm-directory.test.mjs scripts/__tests__/gateway-vm-identity.test.mjs scripts/__tests__/gateway-vm-disk-permissions.test.mjs",
     "lint:docs:rag-api": "node scripts/check-rag-api-docs.mjs",
     "esm:report-static-imports": "node scripts/report-static-import-candidates.mjs",

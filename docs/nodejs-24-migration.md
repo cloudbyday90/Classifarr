@@ -1,27 +1,31 @@
-# Node.js 24.22.1 And npm 12.2.1 Baseline
+# Node.js 24.22.1 And npm 12.2.2 Baseline
 
-Classifarr supports Node.js `>=24.22.1 <25` and npm `>=12.2.1 <13` in local
+Classifarr supports Node.js `>=24.22.1 <25` and npm `>=12.2.2 <13` in local
 development, CI, and production. The exact Node baseline is stored in
 [`.nvmrc`](../.nvmrc). Docker pins the official `node:24.22.1-alpine3.24`
-multi-platform image digest (Alpine 3.24.3) and installs npm 12.2.1;
+multi-platform image digest (Alpine 3.24.3) and installs npm 12.2.2;
 GitHub Actions reads the same Node version file
 and installs the same npm release. `npx` is installed with npm, so its expected
-version is also 12.2.1.
+version is also 12.2.2.
 
 ## Decision
 
 Node.js recommends production applications use Active or Maintenance LTS
 releases. Node 24.22.1 is the selected security LTS baseline. Node 25 is end-of-life,
-and Node 26 remains a Current release rather than a production runtime
-contract. We can evaluate Node 26 after it reaches LTS in a dedicated upgrade.
+and the [Node 26 line reached LTS on October 28](https://nodejs.org/en/blog/release/v26.13.0).
+That newer major still needs a separate compatibility/runtime assessment before
+it can replace this application's Node 24 contract.
 
 npm recommends installing its latest stable release explicitly because its
-release cadence is independent of Node.js. npm 12.2.1 supports Node 24.22.1;
+release cadence is independent of Node.js. npm 12.2.2 supports Node 24.22.1;
 we pin the reviewed version instead of using the moving `latest` tag. Its
-separate bundled-dependency advisory remains explicit in the
-[dependency readiness review](architecture/dependency-readiness-2026-10-outcome.md).
+bundled parser/transport remediation is assessed in the
+[npm 12.2.2 outcome](architecture/npm-12-2-2-security-outcome.md).
+Node's separate built-in Undici 7.30.1 remains subject to newer November
+advisories; upgrading npm does not change it or a running/published installation.
 
-Reviewed on October 22, 2026. See the [security runtime design](architecture/node-24-22-security-design.md).
+Runtime baseline reviewed October 22; npm guidance updated November 9, 2026.
+See the [security runtime design](architecture/node-24-22-security-design.md).
 The [24.21 design](architecture/node-24-21-runtime-design.md) and
 [24.21 validation outcome](architecture/node-24-21-runtime-outcome.md) remain historical.
 The earlier [npm update](architecture/npm-12-2-outcome.md) remains a separate
@@ -32,12 +36,12 @@ historical record. Updating these files does not replace a running container.
 | Option | Benefits | Costs | Decision |
 | --- | --- | --- | --- |
 | Node 24.22.1 LTS | Supported production line with October security fixes; matches the current jsdom 30 declared support range | Requires periodic LTS updates and native-module tests | Adopt |
-| Node 26 Current | Newest runtime features | Not yet LTS; raises upgrade churn and compatibility risk | Defer |
+| Node 26 LTS | Newer supported runtime line | Major migration needs native/dependency/runtime qualification | Separate assessment |
 | Node 25 | None over the supported alternatives | End-of-life and unsupported by current jsdom 30 engines | Do not use |
 
 | Package manager option | Benefits | Costs | Decision |
 | --- | --- | --- | --- |
-| npm 12.2.1 with bundled npx | Reviewed compatible patch; one managed source for npm and npx | Strict installer checks remain required; bundled ip-address advisory is not fixed by this npm update | Adopt with documented limitation |
+| npm 12.2.2 with bundled npx | One reviewed source for npm/npx and patched bundled parser/transport | Strict installer checks remain required; Node's built-in transport is separate | Qualify through the npm security assessment |
 | Node-bundled npm | Already shipped with the Node base image | Not the reviewed npm baseline | Do not use as the baseline |
 | `npm@latest` | Automatically follows new releases | Non-reproducible builds and unreviewed behavior changes | Do not use |
 
@@ -60,9 +64,9 @@ nvm use
 ### 2. Install npm And npx
 
 ```bash
-npm install --global npm@12.2.1
-npm --version   # Should show 12.2.1
-npx --version   # Should show 12.2.1
+npm install --global npm@12.2.2
+npm --version   # Should show 12.2.2
+npx --version   # Should show 12.2.2
 ```
 
 Do not install `npx` separately. npm owns and installs the matching `npx`
@@ -72,8 +76,8 @@ binary.
 
 ```bash
 node --version  # Should show v24.22.1
-npm --version   # Should show 12.2.1
-npx --version   # Should show 12.2.1
+npm --version   # Should show 12.2.2
+npx --version   # Should show 12.2.2
 ```
 
 ### 4. Install Locked Dependencies
@@ -140,7 +144,7 @@ Changing Classifarr's npm pin does not repair the extension's bundled code.
 ### Test Failures
 
 If tests fail with "unknown option" errors:
-- Ensure you're running Node.js 24.22.1 and npm/npx 12.2.1
+- Ensure you're running Node.js 24.22.1 and npm/npx 12.2.2
 - Run `npm ci` in the affected workspace
 
 ### macOS Issues

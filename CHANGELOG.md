@@ -53,6 +53,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Vue runtime/compiler** — Locally assess PR #583's exact Vue 3.5.45 and
+  coherent compiler/runtime graph, with real disposal, static boolean, lexical
+  scope, async-unmount and directive controls. Preserve language tooling and
+  existing type diagnostics; see the
+  [outcome](docs/architecture/vue-pr-583-outcome.md).
+
 - **Client tooling** — Locally assess and adopt PR #584's exact Vite 8.3.6,
   Vitest/coverage-v8 5.1.0, Playwright 1.65.0 and globals 17.14.0 subset, preserving
   compiler, jsdom and Tailwind versions and strict install policy. Keep the
@@ -60,6 +66,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [outcome](docs/architecture/client-tooling-pr-584-outcome.md).
 
 ### Security
+
+- **npm toolchain** — Coordinate npm/npx 12.2.2 across builds, CI and workspace
+  contracts, preserving strict installer decisions. Verify the actual bundled
+  ip-address 10.7.5 and Undici 6.29.1 fixes plus real CLI/cache/signature behavior.
+  Remaining npm Glob/Minimatch and Node transport findings stay explicit; the
+  published beta is unchanged. See the
+  [outcome](docs/architecture/npm-12-2-2-security-outcome.md).
 
 - **Server runtime dependencies** — Locally adopt PR #586's exact Undici 8.12.4,
   express-rate-limit 8.7.3 and discord.js 14.28.1 updates, preserving nested

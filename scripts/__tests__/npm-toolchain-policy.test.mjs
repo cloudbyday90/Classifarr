@@ -10,7 +10,7 @@ import { test } from 'node:test';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const read = path => readFileSync(resolve(root, path), 'utf8');
 const json = path => JSON.parse(read(path));
-const npmVersion = '12.2.1';
+const npmVersion = '12.2.2';
 
 for (const workspace of ['', 'client/', 'server/']) {
   test(`${workspace || 'root'} keeps package-manager and lockfile requirements aligned`, () => {

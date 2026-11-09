@@ -41,12 +41,12 @@ describe('checkAiProviderFaultReceiptWorkflow', () => {
       .toThrow('release-candidate-provider-fault-receipt Checkout code.with.persist-credentials');
   });
 
-  test.each(['12.2.0', 'latest', ''])('rejects an old, moving or missing npm pin: %s', version => {
+  test.each(['12.2.0', '12.2.1', 'latest', ''])('rejects an old, moving or missing npm pin: %s', version => {
     const workflow = structuredClone(loadWorkflow());
     const setup = workflow.jobs['release-candidate-provider-fault-receipt'].steps.find(
       step => step.name === 'Set up npm and npx',
     );
-    setup.run = setup.run.replace('npm@12.2.1', `npm@${version}`);
+    setup.run = setup.run.replace('npm@12.2.2', `npm@${version}`);
     expect(() => validateAiProviderFaultReceiptWorkflow(workflow)).toThrow('fixed command contract');
   });
 
