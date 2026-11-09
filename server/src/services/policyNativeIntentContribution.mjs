@@ -5,6 +5,7 @@ import { scoreNativeIntentRule, scoreNativeIntentRules } from './policyNativeInt
 import { resolvePresetSignalEvidenceMode } from './policySourceEvidenceSemantics.mjs';
 import { FORMULA_CONFIDENCE_CAP } from './policyEngineUtils.mjs';
 import { SIGNAL_SEMANTICS } from '../utils/policySignals.mjs';
+import { evaluateNativePurposePositiveRule } from './nativePurposePositiveSemantics.mjs';
 
 const receipts = new WeakMap();
 const absent = Object.freeze({ score: 0, evidenceMode: null });
@@ -24,7 +25,8 @@ export function recordNativeIntentContribution(runtime, policy, item) {
     const score = Math.max(0, Math.min(purposeScore + helpfulBoost - runtime.avoidPenalty, FORMULA_CONFIDENCE_CAP));
     if (!Number.isFinite(score)) return runtime;
     const matchedModes = declared.filter(rule => scoreNativeIntentRule(rule, item) > 50).map(rule =>
-      resolvePresetSignalEvidenceMode(rule.signal_type, { ...rule.values, ...(rule.semantics ? { semantics: rule.semantics } : {}) }));
+      evaluateNativePurposePositiveRule(rule, item)?.evidenceMode ??
+        resolvePresetSignalEvidenceMode(rule.signal_type, { ...rule.values, ...(rule.semantics ? { semantics: rule.semantics } : {}) }));
     const evidenceMode = matchedModes.includes(SIGNAL_SEMANTICS.IDENTITY) ? SIGNAL_SEMANTICS.IDENTITY :
       matchedModes.includes(SIGNAL_SEMANTICS.COMPATIBILITY) ? SIGNAL_SEMANTICS.COMPATIBILITY : null;
     receipts.set(runtime, { binding, contribution: Object.freeze({ score, evidenceMode }) });

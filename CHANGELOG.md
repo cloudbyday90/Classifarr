@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native purpose operators** — Execute canonical positive genre, keyword,
+  studio and media-type declarations consistently, with shared declared-match and
+  overlap evidence. Preserve legacy, observed and exclusion behavior; repaired
+  rules can change scores and ranking. See the
+  [outcome](docs/architecture/native-purpose-positive-operators-outcome.md).
+
 - **Native policy edits** — Preserve saved matching mode, decision thresholds
   and evidence-source settings across native revisions unless an explicit
   review-settings command replaces them. Purpose edits use the same preservation
@@ -33,6 +39,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Security
+
+- **CI action updates** — Locally adopt PR #582's exact Docker Login 4.8.0 and
+  CodeQL 4.39.3 revisions while preserving publication, credential and scanner
+  gates. No publication login or release is triggered by this update; see the
+  [outcome](docs/architecture/github-actions-pr-582-outcome.md).
 
 - **Dependency scan triage** — Renew the exact server-only rejected-CVE advisory
   entry through November 16 UTC, with fresh scope/expiry controls and all other

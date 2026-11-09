@@ -1,9 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { evaluatePresetSignals } from './policyEngineSignalScoring.mjs';
 import { normalizeCombinationMode } from './policyEngineUtils.mjs';
+import { evaluateNativePurposePositiveRule } from './nativePurposePositiveSemantics.mjs';
 
 export function scoreNativeIntentRule(rule = {}, item = {}) {
   if (!rule?.signal_type) return 0;
+  const purpose = evaluateNativePurposePositiveRule(rule, item);
+  if (purpose) return purpose.score;
   const values = rule.values && typeof rule.values === 'object' && !Array.isArray(rule.values) ? rule.values : {};
   return evaluatePresetSignals({
     [rule.signal_type]: { ...values,

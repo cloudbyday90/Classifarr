@@ -14,6 +14,7 @@ import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import {
   POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID,
 } from '../../services/policyNativeIntentChangePurposePreflightContract.mjs';
+import { loadPolicyPurposeCoveragePreflightOverlap } from '../../services/policyPurposeCoveragePreflightPersistence.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -165,5 +166,48 @@ describe('native intent purpose change preflight integration', () => {
       expectedRevision: 4,
       changeCommand: purposeChangeCommand('stale-proposed-token'),
     })).rejects.toBeInstanceOf(PolicyNativeIntentChangePurposePreflightStaleRevisionError);
+  });
+
+  test.each([
+    ['declared', 'native_intent', 'identity', 'include', { include: ['include-overlap-token'] }, 1],
+    ['weighted', 'operator_declared_intent', 'identity', 'include', { include: ['include-overlap-token'], weight: 2 }, 1],
+    ['observed', 'media_server_library_profile', 'identity', 'include', { include: ['include-overlap-token'] }, 0],
+    ['unknown', 'unknown', 'identity', 'include', { include: ['include-overlap-token'] }, 0],
+    ['compatibility', 'native_intent', 'compatibility', 'include', { include: ['include-overlap-token'] }, 0],
+    ['mislabeled', 'native_intent', 'identity', 'prefer', { include: ['include-overlap-token'] }, 0],
+    ['compound', 'native_intent', 'identity', 'include', { include: ['include-overlap-token'], prefer: ['other'] }, 0],
+    ['untrimmed', 'native_intent', 'identity', 'include', { include: ['include-overlap-token', '\u00a0other'] }, 0],
+    ['bad-weight', 'native_intent', 'identity', 'include', { include: ['include-overlap-token'], weight: 0 }, 0],
+    ['underflow-weight', 'native_intent', 'identity', 'include', { include: ['include-overlap-token'] }, 0],
+    ['minimum-weight', 'native_intent', 'identity', 'include', { include: ['include-overlap-token'], weight: Number.MIN_VALUE }, 1],
+    ['utf16-overflow', 'native_intent', 'identity', 'include', { include: ['include-overlap-token', '\u{1f600}'.repeat(61)] }, 0],
+    ['utf16-boundary', 'native_intent', 'identity', 'include', { include: ['include-overlap-token', '\u{1f600}'.repeat(60)] }, 1],
+  ])('both aggregate readers treat %s include evidence consistently', async (key, source, semantics, operator, values, expected) => {
+    const target = await createNativePurposeFixture({ fixtureKey: `include-target-${key}`,
+      libraryName: `Include target ${key}`, term: 'target-only', intentVersion: 3 });
+    fixtures.push(target);
+    const other = await createNativePurposeFixture({ fixtureKey: `include-other-${key}`,
+      libraryName: `Include other ${key}`, term: 'other-only' });
+    fixtures.push(other);
+    try {
+      await db.query(`UPDATE policy_intent_rules SET operator=$2,values=$3::jsonb,source=$4,semantics=$5
+        WHERE intent_id IN (SELECT id FROM policy_intents WHERE policy_id=$1)`,
+      [other.policyId, operator, key === 'underflow-weight'
+        ? '{"include":["include-overlap-token"],"weight":1e-400}' : JSON.stringify(values), source, semantics]);
+      const command = purposeChangeCommand('include-overlap-token');
+      command.values[0].operator = 'include'; command.values[0].values = { include: ['include-overlap-token'] };
+      const result = await new PolicyNativeIntentChangePurposePreflightService({ db }).preflight({
+        policyId: target.policyId, expectedRevision: 3, changeCommand: command });
+      expect(result.coverage.sharedRequiredTermCount).toBe(expected);
+      expect(result.coverage.overlappingDestinationCount).toBe(expected);
+      const general = await loadPolicyPurposeCoveragePreflightOverlap({ db, libraryId: target.libraryId,
+        mediaType: 'movie', candidateTerms: [{ signalType: 'genres', operator: 'require_any', termKey: 'include-overlap-token' }] });
+      expect(general.shared_required_term_count).toBe(expected);
+      expect(general.overlapping_destination_count).toBe(expected);
+      expect(JSON.stringify(result)).not.toContain('include-overlap-token');
+    } finally {
+      // Retained fixtures must not contribute terms to a later table row's read.
+      await db.query('UPDATE library_policies SET enabled=false WHERE id=$1', [other.policyId]);
+    }
   });
 });

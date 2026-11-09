@@ -1,9 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@jest/globals';
+import { randomUUID } from 'node:crypto';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
 import { policyEngine } from '../../services/policyEngine.mjs';
 import { isComparablePolicyCandidate } from '../../services/policyInferredPurposeAdmission.mjs';
+import { applyPolicyNativeIntentChange } from '../../services/policyNativeIntentChangeService.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 
@@ -19,8 +21,8 @@ async function withStoredPurpose(rules, mode, run) {
       VALUES ($1,$2,1,1,true,'native_intent','inferred',$3::jsonb,'valid') RETURNING id
     ), rules AS (
       INSERT INTO policy_intent_rules(intent_id,intent_role,collection,signal_type,operator,values,constraint_mode,semantics,source,inference_state)
-      SELECT intent.id,'purpose','purpose','genres',r.operator,r.values,'advisory','identity',r.source,'inferred'
-      FROM intent CROSS JOIN jsonb_to_recordset($4::jsonb) AS r(operator text,values jsonb,source text)
+      SELECT intent.id,'purpose','purpose',coalesce(r.signal_type,'genres'),r.operator,r.values,'advisory','identity',r.source,'inferred'
+      FROM intent CROSS JOIN jsonb_to_recordset($4::jsonb) AS r(signal_type text,operator text,values jsonb,source text)
     ) INSERT INTO policy_intent_validation_status(intent_id,schema_version,status,validator_version,error_count,warning_count,errors,warnings)
       SELECT id,1,'valid','provenance-scoring-fixture',0,0,'[]'::jsonb,'[]'::jsonb FROM intent`,
     [fixture.policyId, fixture.libraryId, JSON.stringify({ combination_mode: mode, trust_patterns: false, trust_rag: false, trust_history: false }), JSON.stringify(rules)]);
@@ -29,6 +31,42 @@ async function withStoredPurpose(rules, mode, run) {
     await run(policy);
   } finally { await fixture.cleanup(); }
 }
+
+test.each([
+  ['genres', 'include', 80], ['keywords', 'include', 80], ['studios', 'include', 80],
+  ['keywords', 'require_all', 95], ['studios', 'require_all', 95],
+  ['media_type', 'require_any', 80], ['media_type', 'require_all', 95], ['media_type', 'prefer', 80],
+])('stored explicit %s %s loads, scores and replays through existing authority', async (signal, operator, expected) => {
+  await withStoredPurpose([{ operator: 'require_any', values: { require_any: ['seed'] }, source: 'native_intent' }],
+    'require_all', async original => {
+      const terms = signal === 'media_type' ? ['movie'] : ['alpha', 'beta'];
+      const request = { dbClient: db, policyId: original.id, expectedRevision: 1,
+        actorId: 1, actorRole: 'admin', idempotencyKey: randomUUID(), changeCommands: [{
+          command_id: 'update_purpose', values: [{ signal_type: signal, operator,
+            values: { [operator]: terms }, semantics: 'identity', constraint_mode: 'advisory' }],
+        }] };
+      const applied = await applyPolicyNativeIntentChange(request);
+      expect(applied.change).toMatchObject({ applied: true, newIntentVersion: 2 });
+      const policy = (await policyEngine.getActivePolicies()).find(row => row.id === original.id);
+      expect(policy.combination_mode).toBe('require_all');
+      const item = { tmdb_id: 42, media_type: 'movie', genres: ['alpha', 'beta'],
+        keywords: ['alpha', 'beta'], studios: ['alpha', 'beta'] };
+      const result = await policyEngine.evaluatePolicy(policy, item);
+      expect(result.native_intent_runtime).toMatchObject({ eligible: true,
+        purposeEvidence: { declaredMatch: 'matched' } });
+      expect(result.scores.intent).toBe(expected);
+      expect(result.score).toBe(expected);
+      const renamed = { ...policy, library_name: 'Unrelated destination label', name: 'Renamed policy' };
+      expect((await policyEngine.evaluatePolicy(renamed, item)).score).toBe(expected);
+      const mismatch = await policyEngine.evaluatePolicy(policy, { tmdb_id: 43, media_type: 'tv',
+        genres: ['other'], keywords: ['other'], studios: ['other'] });
+      expect(mismatch.native_intent_runtime.eligible).toBe(false);
+      expect(mismatch.scores.intent).toBe(0);
+      const replay = await applyPolicyNativeIntentChange(request);
+      expect(replay.change).toMatchObject({ applied: true, replayed: true, newIntentVersion: 2 });
+      expect((await db.query('SELECT count(*)::int AS count FROM policy_intents WHERE policy_id=$1', [policy.id])).rows[0].count).toBe(2);
+    });
+});
 
 test.each(['best_match', 'average', 'weighted_average', 'require_all'])('stored mixed %s uses declared numeric support rather than its stronger profile rule', async mode => {
   await withStoredPurpose([

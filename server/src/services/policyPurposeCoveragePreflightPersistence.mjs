@@ -11,6 +11,7 @@
 import {
   buildNativeIntentAuthoritySqlPredicate,
 } from './policyNativeIntentAuthorityEligibility.mjs';
+import { NATIVE_PURPOSE_INCLUDE_TERMS_SQL } from './nativePurposePositiveSql.mjs';
 
 function asRecord(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
@@ -108,6 +109,8 @@ export async function loadPolicyPurposeCoveragePreflightOverlap({
              ELSE '[]'::jsonb
            END
          ) AS require_any(value)
+         UNION
+         ${NATIVE_PURPOSE_INCLUDE_TERMS_SQL}
        ) configured_term
        WHERE policy.enabled = TRUE
          AND library.is_active = TRUE

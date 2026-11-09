@@ -17,6 +17,7 @@ import {
   POLICY_PURPOSE_COVERAGE_STATUS_IDS,
   buildPolicyPurposeCoverage,
 } from './policyPurposeCoverageReviewContract.mjs';
+import { readNativePurposePositiveRule } from './nativePurposePositiveSemantics.mjs';
 
 export const POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_VERSION = 1;
 
@@ -203,7 +204,8 @@ export function buildPolicyNativeIntentChangePurposePreflightCandidate(command) 
   for (const entry of entries) {
     if (entry.semantics !== 'identity' || !PURPOSE_SIGNAL_TYPES.has(entry.signal_type)) continue;
 
-    for (const term of collectRequiredTerms(entry.values)) {
+    const positive = readNativePurposePositiveRule({ ...entry, intent_role: 'purpose' });
+    for (const term of positive?.requiredTerms ?? collectRequiredTerms(entry.values)) {
       const termKey = term.toLowerCase();
       candidateTermsByKey.set(`${entry.signal_type}\u0000${termKey}`, {
         signalType: entry.signal_type,

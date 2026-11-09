@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const expression = text => '${{ ' + text + ' }}';
 const permissions = { attestations: 'read', contents: 'read', packages: 'write' };
-const login = 'docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6';
+const login = 'docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550';
 
 export function validateReleaseImagePromotionWorkflow(ci, reusable) {
   const build = ci.jobs['docker-release'];

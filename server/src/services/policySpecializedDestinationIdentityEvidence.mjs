@@ -19,6 +19,7 @@ import {
 } from '../utils/policySignals.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { keywordMatchesTerm } from './policyEngineUtils.mjs';
+import { evaluateNativePurposePositiveRule } from './nativePurposePositiveSemantics.mjs';
 import {
   POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS,
   classifyPolicyDeclaredPurposeRuleProvenance,
@@ -107,6 +108,13 @@ function matchedPurposeIdentityTerms(policy = {}, item = {}) {
     if (classifyPolicyDeclaredPurposeRuleProvenance(rule) !==
         POLICY_DECLARED_PURPOSE_RULE_PROVENANCE_IDS.DECLARED_NATIVE) {
       return [];
+    }
+
+    const positive = evaluateNativePurposePositiveRule(rule, item);
+    if (positive) {
+      return positive.score > 50 ? positive.matchedRequiredTerms.map(term => ({
+        key: `${rule.signal_type}:${term}`, signalType: rule.signal_type,
+      })) : [];
     }
 
     const signalType = String(rule?.signal_type || '').trim().toLowerCase();
