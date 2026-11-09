@@ -4,7 +4,7 @@
  */
 
 export const POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION =
-  'policy.runtime_question_recommendation_presentation.v1'
+  'policy.runtime_question_recommendation_presentation.v2'
 
 export const POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS = Object.freeze({
   LEADING_CANDIDATE_AVAILABLE: 'leading_candidate_available',
@@ -12,8 +12,9 @@ export const POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS = Object.freeze({
 })
 
 function positiveInteger(value) {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value))) return null
   const number = Number(value)
-  return Number.isInteger(number) && number > 0 ? number : null
+  return Number.isSafeInteger(number) && number > 0 && number <= 2147483647 ? number : null
 }
 
 function boundedString(value, maximumLength = 280) {
@@ -24,8 +25,7 @@ function boundedString(value, maximumLength = 280) {
 }
 
 function evidenceScore(value) {
-  const number = Number(value)
-  return Number.isInteger(number) && number >= 0 && number <= 100 ? number : null
+  return Number.isInteger(value) && value >= 0 && value <= 100 ? value : null
 }
 
 function candidateDestination(value) {
@@ -53,7 +53,9 @@ function candidateDestinationById(answer) {
 
 export function policyQuestionRecommendation(answer = {}) {
   const source = answer?.recommendation
-  if (!source || source.version !== POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION) return null
+  if (!source) return null
+  if (source.version === POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION) return currentRecommendation(answer)
+  if (source.version !== 'policy.runtime_question_recommendation_presentation.v1') return null
 
   const statusId = boundedString(source.status_id, 80)
   const whyNotAutomatic = source?.why_not_automatic
@@ -92,6 +94,45 @@ export function policyQuestionRecommendation(answer = {}) {
       reason_id: reasonId,
       message,
     },
+  }
+}
+
+function currentRecommendation(answer) {
+  const source = answer.recommendation
+  const keys = ['version', 'status_id', 'leading_destination', 'policy_destination', 'advisory_destination', 'why_not_automatic', 'alternative_candidate_count']
+  if (Object.keys(source).length !== keys.length || keys.some(key => !Object.hasOwn(source, key))) return null
+  const destinations = candidateDestinationById(answer)
+  if (!Array.isArray(answer.candidate_destinations) || answer.candidate_destinations.length > 64 ||
+      answer.candidate_destinations.length !== destinations.size) return null
+  const bind = (value, scored = false) => {
+    if (value === null) return null
+    const destination = destinations.get(positiveInteger(value?.library_id))
+    const score = evidenceScore(value?.evidence_score)
+    return destination && (!scored || score !== null) ? { ...destination, ...(scored ? { evidence_score: score } : {}) } : null
+  }
+  const policy = bind(source.policy_destination, true)
+  const advisory = bind(source.advisory_destination)
+  const leading = bind(source.leading_destination, true)
+  const reasonId = boundedString(source.why_not_automatic?.reason_id, 80)
+  const message = boundedString(source.why_not_automatic?.message)
+  if (!reasonId || !message || [
+    [source.policy_destination, policy], [source.advisory_destination, advisory], [source.leading_destination, leading],
+  ].some(([raw, bound]) => raw !== null && !bound)) return null
+  const hasPrimary = source.status_id === POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.LEADING_CANDIDATE_AVAILABLE
+  if (hasPrimary) {
+    if (!leading || !policy || leading.library_id !== policy.library_id || leading.evidence_score !== policy.evidence_score ||
+        advisory && advisory.library_id !== policy.library_id ||
+        ['advisory_disagreement', 'invalid_advisory_proposal', 'policy_tie', 'policy_reference_unavailable', 'no_positive_evidence'].includes(reasonId)) return null
+  } else if (source.status_id !== POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.MANUAL_DESTINATION_SELECTION_REQUIRED || source.leading_destination !== null) return null
+  if (reasonId === 'advisory_disagreement' && (!policy || !advisory || policy.library_id === advisory.library_id)) return null
+  if (source.alternative_candidate_count !== destinations.size - (hasPrimary ? 1 : 0)) return null
+  return {
+    version: source.version,
+    status_id: source.status_id,
+    leading_destination: leading,
+    policy_destination: policy,
+    advisory_destination: advisory,
+    why_not_automatic: { reason_id: reasonId, message },
   }
 }
 

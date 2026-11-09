@@ -17,20 +17,25 @@ function boundedString(value, maximumLength = 160) {
  */
 export function getPendingQuestionReviewSummaryPresentation({
   destination,
+  recommendation = null,
   canConfirmDestination = false,
   canChangeDestination = false,
 } = {}) {
   const destinationName = boundedString(destination?.library_name)
 
   if (!destinationName) {
+    const policyName = boundedString(recommendation?.policy_destination?.library_name)
+    const advisoryName = boundedString(recommendation?.advisory_destination?.library_name)
     return {
       heading: 'Choose a destination',
-      destination_label: 'Recommended destination',
-      destination: 'No destination is recommended yet.',
+      destination_label: policyName ? 'Policy candidate' : 'Recommended destination',
+      destination: policyName || 'No destination is recommended yet.',
       review_label: 'Why this needs your review',
-      review_message: 'The available policy evidence does not identify one destination that can be routed automatically.',
+      review_message: recommendation?.why_not_automatic?.reason_id === 'advisory_disagreement' && policyName && advisoryName
+        ? `Policy evidence points to ${policyName}; the AI comparison suggests ${advisoryName}. Choose the destination for this item.`
+        : recommendation?.why_not_automatic?.message || 'The available policy evidence does not identify one destination that can be routed automatically.',
       action_label: 'What to do',
-      action_message: canChangeDestination
+      action_message: canConfirmDestination || canChangeDestination
         ? 'Choose the destination that should receive this item.'
         : 'Retry classification to rebuild this review from the current policy state.',
     }

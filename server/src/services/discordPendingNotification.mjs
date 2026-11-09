@@ -58,6 +58,11 @@ function buildPendingDecisionAnswerContract(metadata, result) {
       title: metadata?.title,
       year: metadata?.year,
       media_type: metadata?.media_type,
+      tmdb_id: metadata?.tmdb_id,
+      metadata,
+      method: result?.method,
+      confidence: result?.confidence,
+      reason: result?.reason,
     },
     question,
   });
@@ -80,7 +85,7 @@ function buildPendingDecisionComponents(metadata, result) {
 
   const buttons = answerContract.candidate_destinations
     .slice(0, MAX_BUTTONS_PER_ROW)
-    .map((destination, index) => {
+    .map((destination) => {
       const customId = [
         'ai',
         'answer',
@@ -94,7 +99,9 @@ function buildPendingDecisionComponents(metadata, result) {
       return new ButtonBuilder()
         .setCustomId(customId)
         .setLabel(truncateText(`Resolve in ${destination.library_name}`, 80))
-        .setStyle(index === 0 ? ButtonStyle.Success : ButtonStyle.Secondary);
+        .setStyle(destination.library_id === answerContract.recommendation?.leading_destination?.library_id ||
+          answerContract.question.type === 'native_runtime_question' && answerContract.candidate_destinations.length === 1
+          ? ButtonStyle.Success : ButtonStyle.Secondary);
     })
     .filter(Boolean);
 
@@ -108,9 +115,9 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
     ? metadata.title.trim()
     : 'Unknown title';
   const mediaType = metadata.media_type === 'tv' ? 'tv' : 'movie';
-  const confidence = Number.isFinite(Number(result.confidence))
-    ? Number(result.confidence)
-    : null;
+  const policyDestination = answerContract?.recommendation?.policy_destination;
+  const confidence = answerContract?.recommendation ? policyDestination?.evidence_score ?? null :
+    Number.isFinite(Number(result.confidence)) ? Number(result.confidence) : null;
   const reason = result.pending_reason || result.reason || 'Manual review required';
 
   const hasInvalidQuestion = Boolean(question) && !answerContract;
@@ -140,7 +147,7 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
 
   if (confidence !== null) {
     fields.push({
-      name: 'Confidence',
+      name: policyDestination ? `Policy score: ${policyDestination.library_name}` : 'Confidence',
       value: formatDisplayPercent(confidence) || `${confidence}%`,
       inline: true,
     });
@@ -149,7 +156,7 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
   if (reason) {
     fields.push({
       name: 'Reason',
-      value: truncateText(reason, MAX_FIELD_VALUE_LENGTH),
+      value: truncateText(answerContract?.recommendation?.why_not_automatic?.message || reason, MAX_FIELD_VALUE_LENGTH),
       inline: false,
     });
   }
@@ -157,12 +164,19 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
   if (answerContract?.question?.text) {
     fields.push({
       name: 'Question',
-      value: truncateText(answerContract.question.text, MAX_FIELD_VALUE_LENGTH),
+      value: truncateText(answerContract.recommendation
+        ? answerContract.recommendation.leading_destination
+          ? `Confirm ${answerContract.recommendation.leading_destination.library_name} or choose a different destination.`
+          : 'Choose a destination for this item.'
+        : answerContract.question.text, MAX_FIELD_VALUE_LENGTH),
       inline: false,
     });
   }
 
   if (answerContract?.candidate_destinations?.length) {
+    if (answerContract.recommendation?.advisory_destination) {
+      fields.push({ name: 'AI comparison (advisory)', value: answerContract.recommendation.advisory_destination.library_name, inline: false });
+    }
     fields.push(
       {
         name: 'Candidate destinations',

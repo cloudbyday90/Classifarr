@@ -19,6 +19,8 @@
 import { describe, expect, jest, test, beforeEach } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
+import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
+import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -50,6 +52,57 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test('preserves typed identity for a bound purpose card in the emitted fingerprint', async () => {
+    const fixture = purposeMatchFixture({ origin: 'mixed' });
+    const libraries = [{ id: 4, name: 'Animation', media_type: 'movie', is_active: true },
+      { id: 5, name: 'Movies', media_type: 'movie', is_active: true }];
+    const policyResult = { ranked: [fixture.candidate, { library_id: 5, score: 60 }] };
+    const question = normalizePolicyRuntimeQuestion({ metadata: fixture.item, libraries, policyResult });
+    const metadata = { ...fixture.sourceMetadata, ...fixture.item, title: 'Synthetic typed review', policyResult };
+    const result = { classification_id: 77, method: fixture.classification.method, confidence: 70, policy_question: question };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...fixture.classification, id: 77, metadata, confidence: 70 }, question });
+    expect(contract.decision_summary.deterministic.candidate_evidence_card.purpose_evidence.origin).toBe('mixed');
+    const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
+    await sendPendingDecisionNotification(metadata, result, { client: { channels: { fetch: jest.fn().mockResolvedValue({ send }) } },
+      channelId: 'synthetic-channel', config: { enabled: true }, warnFn: jest.fn() });
+    const buttons = send.mock.calls[0][0].components[0].components.map(button => button.data);
+    expect(buttons[0]).toMatchObject({ custom_id: `ai_answer_77_c_4_${contract.fingerprint}`, style: 3 });
+    expect(buttons[1]).toMatchObject({ custom_id: `ai_answer_77_c_5_${contract.fingerprint}`, style: 2 });
+  });
+  test('emits the same fingerprint as persisted-row validation and offers no positional default during disagreement', async () => {
+    const question = normalizedPolicyQuestion();
+    const metadata = { title: 'Synthetic review', year: 2026, media_type: 'movie', classification_details: {
+      candidate_adjudication: { version: 'policy.candidate_adjudication.v1', status_id: 'proposed', candidate_count: 2,
+        proposed_destination: { library_id: 14, library_name: 'Untrusted alternate name' } } } };
+    const result = { classification_id: 77, method: 'ai_verified', confidence: 99, reason: 'Review required', policy_question: question };
+    const classification = { id: 77, title: metadata.title, year: metadata.year, media_type: metadata.media_type,
+      metadata: JSON.stringify(metadata), method: result.method, confidence: '99.00', reason: result.reason };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification, question });
+    const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
+    await sendPendingDecisionNotification(metadata, result, { client: { channels: { fetch: jest.fn().mockResolvedValue({ send }) } },
+      channelId: 'synthetic-channel', config: { enabled: true }, warnFn: jest.fn() });
+    const payload = send.mock.calls[0][0];
+    const buttons = payload.components[0].components.map(button => button.data);
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      const [, , , action, destination, fingerprint] = button.custom_id.split('_');
+      // Fingerprints use URL-safe characters including underscores; read the fixed prefix instead.
+      expect(button.custom_id).toBe(`ai_answer_77_c_${destination}_${contract.fingerprint}`);
+      expect(action).toBe('c');
+      expect(fingerprint).toBeDefined();
+      expect(button.style).toBe(2);
+      expect(validatePolicyRuntimeQuestionAnswer({ classification, question, answer: {
+        contract_version: contract.version, contract_fingerprint: contract.fingerprint,
+        action_id: 'confirm_destination', destination_library_id: Number(destination) } }).ok).toBe(true);
+    }
+    expect(payload.embeds[0].data.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'AI comparison (advisory)', value: 'Family' }),
+      expect.objectContaining({ name: 'Policy score: Movies', value: '80%' }),
+      expect.objectContaining({ name: 'Question', value: 'Choose a destination for this item.' }),
+    ]));
+    expect(JSON.stringify(payload)).not.toContain('Untrusted alternate name');
+    expect(JSON.stringify(payload)).not.toContain('99%');
+  });
   beforeEach(() => {
     mockDb.query.mockReset();
     mockDb.query.mockResolvedValue({ rows: [] });

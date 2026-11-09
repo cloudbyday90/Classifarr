@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import PendingQuestionRecommendationActions from '@/components/command-center/PendingQuestionRecommendationActions.vue'
+import { pendingReviewReference } from './fixtures/pendingReviewReference'
 
 const answer = {
   version: 'policy.runtime_question_answer.v1',
@@ -59,6 +60,19 @@ const answer = {
 }
 
 describe('PendingQuestionRecommendationActions', () => {
+  it('keeps evidence available during disagreement and requires an explicit existing candidate choice', async () => {
+    const wrapper = mount(PendingQuestionRecommendationActions, { props: { answer: pendingReviewReference(), itemId: 44, isActionBusy: () => false },
+      global: { stubs: { Button: { template: '<button><slot /></button>' } } } })
+    expect(wrapper.text()).toContain('Policy evidence points to Comedy; the AI comparison suggests Movies.')
+    expect(wrapper.text()).toContain('Policy candidate Comedy — Policy score: 37/100')
+    expect(wrapper.text()).not.toContain('Classifarr recommends Comedy')
+    expect(wrapper.findAll('button').some(button => button.text().startsWith('Confirm '))).toBe(false)
+    expect(wrapper.find('.review-evidence-and-safeguards > summary').text()).toBe('Review policy and AI evidence')
+    expect(wrapper.find('.review-evidence-and-safeguards').attributes('open')).toBeUndefined()
+    expect(wrapper.emitted()).toEqual({})
+    await wrapper.findAll('button').find(button => button.text() === 'Use Movies').trigger('click')
+    expect(wrapper.emitted('confirm-destination')).toEqual([[{ actionId: 'confirm_destination', destinationLibraryId: 8 }]])
+  })
   it('preserves the legacy AI advisory when no candidate-bound status exists', () => {
     const legacyAnswer = structuredClone(answer)
     legacyAnswer.decision_summary.candidate_bound_verification = null

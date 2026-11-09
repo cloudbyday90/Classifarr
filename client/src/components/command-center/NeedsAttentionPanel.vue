@@ -282,7 +282,7 @@ import {
   isQueuedForRetry,
   policyQuestion,
   primaryNeedsAttentionReason,
-  suggestedLibraryLabel,
+  suggestedLibraryLabel as legacySuggestedLibraryLabel,
   targetedRecheckLine,
 } from '@/utils/needsAttention'
 import {
@@ -292,6 +292,8 @@ import {
 } from '@/utils/policyQuestionAnswerContract'
 import {
   leadingPolicyQuestionDestination,
+  policyQuestionRecommendation,
+  policyQuestionCandidateDestinations,
 } from '@/utils/policyQuestionRecommendationPresentation'
 import {
   policyQuestionDecisionPresentation,
@@ -422,7 +424,14 @@ async function showScoreExplanationComparison() {
 }
 
 function confidenceLabel(item) {
-  const policyScore = decisionPresentation(item)?.deterministic?.score
+  const answer = answerContract(item)
+  const recommendation = policyQuestionRecommendation(answer)
+  if (answer && answer.question?.type !== 'native_runtime_question' && !recommendation?.leading_destination) {
+    return 'Destination selection required'
+  }
+  const policyScore = recommendation?.version === 'policy.runtime_question_recommendation_presentation.v2'
+    ? recommendation.leading_destination?.evidence_score
+    : decisionPresentation(item)?.deterministic?.score ?? recommendation?.leading_destination?.evidence_score
   if (policyScore !== null && policyScore !== undefined) {
     return `${props.safePercent(policyScore)}% policy score`
   }
@@ -430,7 +439,21 @@ function confidenceLabel(item) {
   return `${props.safePercent(item.confidence)}% confidence`
 }
 
+function suggestedLibraryLabel(item) {
+  const answer = answerContract(item)
+  if (answer?.question?.type === 'native_runtime_question') {
+    const destinations = policyQuestionCandidateDestinations(answer)
+    return destinations.length === 1 ? destinations[0].library_name : null
+  }
+  if (answer) {
+    return leadingPolicyQuestionDestination(answer)?.library_name || 'Choose destination'
+  }
+  return legacySuggestedLibraryLabel(item)
+}
+
 function needsAttentionReason(item) {
+  const recommendation = policyQuestionRecommendation(answerContract(item))
+  if (recommendation?.status_id === 'manual_destination_selection_required') return 'Destination selection required'
   const presentation = decisionPresentation(item)
   const safetyGate = presentation?.deterministic?.safety_gate
   if (safetyGate?.label) {
@@ -447,12 +470,23 @@ function needsAttentionReason(item) {
 }
 
 function questionExplanation(item) {
+  const recommendation = policyQuestionRecommendation(answerContract(item))
+  if (recommendation?.status_id === 'manual_destination_selection_required') return recommendation.why_not_automatic.message
   return decisionPresentation(item)?.deterministic?.message ||
     answerContract(item)?.question?.why_uncertain ||
     null
 }
 
 function questionText(item) {
+  const answer = answerContract(item)
+  if (item.policy_question_stale || answer?.freshness?.status === 'stale') return 'Retry Classification to refresh this review before choosing a destination.'
+  if (answer && answer.question?.type !== 'native_runtime_question') {
+    const leading = leadingPolicyQuestionDestination(answer)
+    if (!leading) return 'Choose a destination for this item.'
+    return decisionPresentation(item)?.deterministic?.status_id === 'destination_selection_required'
+      ? `Choose ${leading.library_name} or a different destination.`
+      : `Confirm ${leading.library_name} or choose a different destination.`
+  }
   const deterministic = decisionPresentation(item)?.deterministic
   if (deterministic?.status_id === 'confirmation_required' && deterministic.destination?.library_name) {
     return `Confirm ${deterministic.destination.library_name} or choose a different destination.`
@@ -504,6 +538,8 @@ const hasBulkConfirmableItems = computed(() => props.items.some(
 }
 
 .action-item {
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 1rem;
   border-radius: 0.5rem;
   border: 1px solid #374151;

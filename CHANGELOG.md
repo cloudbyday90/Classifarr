@@ -9,7 +9,15 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- **Pending classification reviews** — Cards, headers, scores, bulk confirmation
+  and Discord share one server-derived destination reference. Policy/AI
+  disagreement, tied leaders and invalid current proposals require an explicit
+  destination choice while preserving named policy evidence, stale safeguards
+  and completed-answer replay. See the
+  [design](docs/architecture/review-recommendation-reference-design.md) and
+  [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ## [v0.49.4-beta] - 2026-11-02
 

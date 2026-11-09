@@ -9,7 +9,7 @@
 <template>
   <section class="pending-question-actions">
     <div
-      v-if="primaryDestination"
+      v-if="primaryDestination || decisionPresentation"
       class="leading-recommendation"
     >
       <p
@@ -19,10 +19,10 @@
         {{ leadingDestination ? 'Leading candidate' : 'Current destination' }}
       </p>
       <p class="recommendation-score">
-        <template v-if="leadingDestination">
+        <template v-if="leadingDestination || recommendation?.policy_destination">
           {{ deterministicScoreLabel }}
         </template>
-        <template v-else>
+        <template v-else-if="primaryDestination">
           {{ answer?.question?.why_uncertain || 'The runtime decision requires a bounded operator outcome.' }}
         </template>
       </p>
@@ -43,7 +43,7 @@
         v-if="decisionPresentation"
         class="review-evidence-and-safeguards"
       >
-        <summary>Why Classifarr recommends this</summary>
+        <summary>{{ primaryDestination ? 'Why Classifarr recommends this' : 'Review policy and AI evidence' }}</summary>
         <div class="review-evidence-and-safeguards-content">
           <CandidateReviewEvidenceSummary
             :candidate-evidence="candidateEvidenceCard"
@@ -179,7 +179,7 @@
         </div>
       </details>
       <Button
-        v-if="canConfirmDestination"
+        v-if="primaryDestination && canConfirmDestination"
         variant="success"
         size="sm"
         :disabled="isResolving"
@@ -340,6 +340,7 @@ const canChangeDestination = computed(() => Boolean(availablePolicyQuestionAnswe
 )))
 const reviewSummaryPresentation = computed(() => getPendingQuestionReviewSummaryPresentation({
   destination: primaryDestination.value,
+  recommendation: recommendation.value,
   canConfirmDestination: canConfirmDestination.value,
   canChangeDestination: canChangeDestination.value,
 }))
@@ -358,8 +359,10 @@ const alternativeReviewLabel = computed(() => {
 })
 const deterministicScoreLabel = computed(() => {
   const deterministic = decisionPresentation.value?.deterministic
+  const reference = recommendation.value?.policy_destination
+  const prefix = !primaryDestination.value && reference ? `Policy candidate ${reference.library_name} — ` : ''
   if (deterministic?.score === null || deterministic?.score === undefined) {
-    return `Evidence score: ${leadingDestination.value?.evidence_score}/100`
+    return `${prefix}Evidence score: ${reference?.evidence_score ?? leadingDestination.value?.evidence_score}/100`
   }
 
   const thresholds = []
@@ -371,8 +374,8 @@ const deterministicScoreLabel = computed(() => {
   }
 
   return thresholds.length
-    ? `Policy score: ${deterministic.score}/100 (${thresholds.join(', ')})`
-    : `Policy score: ${deterministic.score}/100`
+    ? `${prefix}Policy score: ${deterministic.score}/100 (${thresholds.join(', ')})`
+    : `${prefix}Policy score: ${deterministic.score}/100`
 })
 const showSafetyGate = computed(() => {
   const safetyGate = decisionPresentation.value?.deterministic?.safety_gate
@@ -487,6 +490,7 @@ function emitConfirmDestination(destination) {
 }
 
 .review-evidence-and-safeguards-content {
+  min-width: 0;
   display: grid;
   gap: 0.75rem;
   margin-top: 0.75rem;
@@ -505,6 +509,7 @@ function emitConfirmDestination(destination) {
 }
 
 .technical-review-details-content {
+  min-width: 0;
   display: grid;
   gap: 0.75rem;
   margin-top: 0.75rem;
@@ -617,6 +622,18 @@ function emitConfirmDestination(destination) {
 
 .alternative-actions {
   margin-top: 0.75rem;
+}
+
+.pending-question-actions {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.alternative-actions :deep(button) {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .resolution-scope {

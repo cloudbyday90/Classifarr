@@ -26,6 +26,7 @@ import {
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { buildPolicyRuntimeReviewReference } from './policyRuntimeReviewReference.mjs';
 
 const POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION =
   'policy.runtime_question_answer.v1';
@@ -263,12 +264,14 @@ function buildPolicyRuntimeQuestionAnswerContract({
   const questionProjection = buildQuestionProjection(question);
   if (!questionProjection) return null;
 
+  const reviewReference = buildPolicyRuntimeReviewReference({ classification, question,
+    candidateDestinations: questionProjection.candidate_destinations });
   const recommendation = buildPolicyRuntimeQuestionRecommendationPresentation({
-    question,
+    classification, reviewReference, question,
     candidateDestinations: questionProjection.candidate_destinations,
   });
   const decisionSummary = buildPolicyRuntimeQuestionDecisionPresentation({
-    classification,
+    classification, reviewReference,
     question,
     candidateDestinations: questionProjection.candidate_destinations,
   });

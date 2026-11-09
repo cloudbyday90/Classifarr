@@ -66,6 +66,8 @@ describe('policyRuntimeQuestionRecommendationPresentation', () => {
         library_name: 'Movies',
         evidence_score: 75,
       },
+      policy_destination: { library_id: 7, library_name: 'Movies', evidence_score: 75 },
+      advisory_destination: null,
       why_not_automatic: {
         reason_id: 'missing_identity_evidence',
         message: 'A score alone does not establish destination identity automatically.',

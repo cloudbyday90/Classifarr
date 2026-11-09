@@ -4,7 +4,6 @@
  */
 
 import {
-  getPolicyDecisionCandidate,
   policyDecisionAction,
 } from '../utils/policyDecisionAuthority.mjs';
 import {
@@ -15,14 +14,14 @@ import {
   buildCandidateBoundVerificationPresentation,
 } from './classificationCandidateBoundVerificationPresentation.mjs';
 import {
-  buildPolicyCandidateAdjudicationPresentation,
-} from './policyCandidateAdjudicationPresentation.mjs';
-import {
   buildPolicyRuntimeQuestionScoreExplanation,
 } from './policyRuntimeQuestionScoreExplanation.mjs';
 import {
   buildPolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCard.mjs';
+import { buildPolicyRuntimeReviewReference } from './policyRuntimeReviewReference.mjs';
+import { hasLegacyPolicyReviewHistoricalHold } from './policyRuntimeQuestionHistoricalSafety.mjs';
+import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { readPolicyPurposeMatchPresentation } from './policyPurposeMatchEvidence.mjs';
 import {
   buildPolicyCandidateContrastiveEvidenceProjection,
@@ -69,8 +68,15 @@ function positiveInteger(value) {
 }
 
 function score(value) {
-  const number = Number(value);
-  return Number.isFinite(number) && number >= 0 && number <= 100 ? Math.round(number) : null;
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value) : null;
+}
+
+// PostgreSQL numeric columns can arrive as strings. This value may only block
+// missing historical safety evidence; it never supplies a named display score.
+function historicGlobalScore(value) {
+  const parts = typeof value === 'string' && value.length <= 32 ? value.split('.') : [];
+  const numericString = parts.length >= 1 && parts.length <= 2 && parts.every(part => /^\d+$/.test(part));
+  return numericString ? score(Number(value)) : score(value);
 }
 
 function metadata(value) {
@@ -82,14 +88,6 @@ function metadata(value) {
     }
   }
   return asObject(value);
-}
-
-function candidateForLeadingDestination(question, candidateDestinations) {
-  const candidates = asArray(question?.meta?.candidates);
-  const leading = candidateDestinations[0] || null;
-  if (!leading) return null;
-
-  return candidates.find((candidate) => positiveInteger(candidate?.library_id) === leading.library_id) || null;
 }
 
 function buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }) {
@@ -139,22 +137,19 @@ function buildEvidenceFacts({ classification, sourceMetadata, candidate, destina
   return facts.slice(0, MAX_EVIDENCE_FACTS);
 }
 
-function buildDeterministicDecision({ classification, question, candidateDestinations }) {
+function buildDeterministicDecision({ classification, question, candidateDestinations, reviewReference }) {
   const sourceMetadata = metadata(classification?.metadata);
   const policyResult = asObject(sourceMetadata.policyResult);
   const details = asObject(sourceMetadata.classification_details);
   const thresholds = asObject(policyResult.thresholds);
-  const leadingDestination = candidateDestinations[0] || null;
-  const destinationName = leadingDestination?.library_name || 'the leading destination';
-  const policyCandidate = getPolicyDecisionCandidate(policyResult, leadingDestination);
-  const questionCandidate = candidateForLeadingDestination(question, candidateDestinations);
-  const candidate = policyCandidate || questionCandidate;
-  const decisionScore = score(policyCandidate?.score) ??
-    score(policyResult.confidence) ??
-    score(questionCandidate?.score) ??
-    score(classification?.confidence);
-  const reviewThreshold = score(policyCandidate?.prompt_threshold) ?? score(thresholds.prompt);
-  const automaticThreshold = score(policyCandidate?.auto_classify_threshold) ?? score(thresholds.auto_classify);
+  const native = isPolicyRuntimeQuestionPersistenceEnvelope(question);
+  const leadingDestination = native ? candidateDestinations.length === 1 ? candidateDestinations[0] : null
+    : reviewReference.policyReference?.destination ?? null;
+  const destinationName = leadingDestination?.library_name || 'the retained policy decision';
+  const candidate = reviewReference.policyReference?.candidate ?? null;
+  const decisionScore = candidate ? score(candidate.score) : null;
+  const reviewThreshold = candidate ? score(candidate.prompt_threshold) ?? score(thresholds.prompt) : null;
+  const automaticThreshold = candidate ? score(candidate.auto_classify_threshold) ?? score(thresholds.auto_classify) : null;
   const action = policyDecisionAction(policyResult);
   const persistedRouteSafety = buildClassificationRouteSafetyProjection(details.route_safety);
   const routeSafety = persistedRouteSafety ||
@@ -172,10 +167,13 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     primarySafetyGate?.id === 'policy_threshold_unavailable'
     ? null
     : primarySafetyGate;
-  const lacksHistoricRouteSafetyDetails = !displaySafetyGate &&
-    decisionScore !== null &&
-    automaticThreshold !== null &&
-    decisionScore >= automaticThreshold;
+  const legacyHistoricalHold = hasLegacyPolicyReviewHistoricalHold({ classification, question, candidateDestinations, policyResult, persistedRouteSafety });
+  const lacksHistoricRouteSafetyDetails = legacyHistoricalHold || !displaySafetyGate &&
+    ((decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold) ||
+      (!candidate && reviewReference.hasUnboundAutomaticScore === true) ||
+      (!candidate && historicGlobalScore(policyResult.confidence ?? classification.confidence) !== null &&
+        score(thresholds.auto_classify) !== null &&
+        historicGlobalScore(policyResult.confidence ?? classification.confidence) >= score(thresholds.auto_classify)));
 
   if (lacksHistoricRouteSafetyDetails) {
     displaySafetyGate = HISTORICAL_ROUTE_SAFETY_UNAVAILABLE;
@@ -183,7 +181,10 @@ function buildDeterministicDecision({ classification, question, candidateDestina
 
   let statusId = 'manual_selection_required';
   let message = 'The current policy result requires a destination decision.';
-  if (displaySafetyGate?.id === 'policy_destination_selection_required' || action === 'prompt_select') {
+  if (displaySafetyGate?.id === HISTORICAL_ROUTE_SAFETY_UNAVAILABLE.id) {
+    statusId = POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE;
+    message = HISTORICAL_ROUTE_SAFETY_UNAVAILABLE.message;
+  } else if (displaySafetyGate?.id === 'policy_destination_selection_required' || action === 'prompt_select') {
     statusId = 'destination_selection_required';
     message = displaySafetyGate?.message ||
       `${destinationName} is a viable destination, but the policy evaluation did not establish a unique destination. Choose the destination to use for this item.`;
@@ -196,17 +197,12 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     message = displaySafetyGate?.message ||
       `${destinationName} meets the confirmation threshold but requires your confirmation before it can route.`;
   } else if (displaySafetyGate) {
-    if (displaySafetyGate.id === HISTORICAL_ROUTE_SAFETY_UNAVAILABLE.id) {
-      statusId = POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE;
-      message = `${destinationName} meets the automatic policy threshold, but the historic pending decision did not retain the state that prevented automatic routing. Retry Classification to evaluate the current policy before confirming.`;
-    } else {
-      statusId = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
-        ? 'automatic_threshold_blocked'
-        : 'automatic_route_blocked';
-      message = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
-        ? `${destinationName} meets the automatic policy threshold, but automatic routing remains blocked because ${displaySafetyGate.message}`
-        : displaySafetyGate.message;
-    }
+    statusId = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+      ? 'automatic_threshold_blocked'
+      : 'automatic_route_blocked';
+    message = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+      ? `${destinationName} meets the automatic policy threshold, but automatic routing remains blocked because ${displaySafetyGate.message}`
+      : displaySafetyGate.message;
   } else if (decisionScore !== null && reviewThreshold !== null && decisionScore >= reviewThreshold) {
     statusId = 'confirmation_required';
     message = `${destinationName} meets the confirmation threshold but not the automatic threshold.`;
@@ -222,21 +218,21 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     review_threshold: reviewThreshold,
     automatic_threshold: automaticThreshold,
     message,
-    evidence: buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }),
-    candidate_evidence_card: buildPolicyCandidateEvidenceCard({
+    evidence: candidate ? buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }) : [],
+    candidate_evidence_card: candidate ? buildPolicyCandidateEvidenceCard({
       classification,
       candidate,
       sourceMetadata,
-    }),
-    candidate_contrastive_evidence: buildPolicyCandidateContrastiveEvidenceProjection(
+    }) : null,
+    candidate_contrastive_evidence: candidate ? buildPolicyCandidateContrastiveEvidenceProjection(
       details.candidate_contrastive_evidence,
-    ),
-    library_evidence_profile: buildPolicyLibraryEvidenceProfile({
+    ) : null,
+    library_evidence_profile: candidate ? buildPolicyLibraryEvidenceProfile({
       classification,
       question,
-      candidateDestinations,
+      candidateDestinations: [leadingDestination, ...reviewReference.rankedDestinations.filter(destination => destination.library_id !== leadingDestination?.library_id)],
       sourceMetadata,
-    }),
+    }) : null,
     score_explanation: buildPolicyRuntimeQuestionScoreExplanation({
       candidate,
       displayedScore: decisionScore,
@@ -246,24 +242,16 @@ function buildDeterministicDecision({ classification, question, candidateDestina
   };
 }
 
-function buildAiAdvisory({ classification, destinationName }) {
+function buildAiAdvisory({ classification }) {
   const sourceMetadata = metadata(classification?.metadata);
   const details = asObject(sourceMetadata.classification_details);
   const advisory = asObject(details.ai_advisory);
 
   if (advisory.version === 'classification.ai_advisory.v1') {
-    const selectedDestination = asObject(advisory.proposed_destination);
-    const selectedLibraryId = positiveInteger(selectedDestination.library_id);
-    const selectedLibraryName = boundedString(selectedDestination.library_name);
-    const statusId = boundedString(advisory.status_id, 80) || 'advisory_unavailable';
-
     return {
-      status_id: statusId,
-      message: boundedString(advisory.message, 280) ||
-        'The model output was advisory and did not override the deterministic policy decision.',
-      proposed_destination: selectedLibraryId && selectedLibraryName
-        ? { library_id: selectedLibraryId, library_name: selectedLibraryName }
-        : null,
+      status_id: 'historic_advisory_not_retained',
+      message: 'This legacy advisory does not retain a bound candidate comparison. Review the policy evidence and choose the destination.',
+      proposed_destination: null,
     };
   }
 
@@ -278,8 +266,8 @@ function buildAiAdvisory({ classification, destinationName }) {
 
   if (classification?.method === 'ai_verified') {
     return {
-      status_id: 'aligned_with_deterministic',
-      message: `AI verification aligned with ${destinationName}. It remains advisory and did not determine the policy outcome.`,
+      status_id: 'advisory_unavailable',
+      message: 'This record does not retain a bound AI comparison. Review the policy evidence and choose the destination.',
       proposed_destination: null,
     };
   }
@@ -296,15 +284,6 @@ function buildCandidateBoundVerification({ classification }) {
   );
 }
 
-function buildCandidateAdjudication({ classification }) {
-  const sourceMetadata = metadata(classification?.metadata);
-  const details = asObject(sourceMetadata.classification_details);
-
-  return buildPolicyCandidateAdjudicationPresentation(
-    details.candidate_adjudication,
-  );
-}
-
 /**
  * Safe, server-derived explanation for an operator decision. It deliberately
  * excludes prompts, raw model output, provider credentials, and free-form
@@ -315,6 +294,7 @@ export function buildPolicyRuntimeQuestionDecisionPresentation({
   classification = {},
   question = null,
   candidateDestinations = [],
+  reviewReference = null,
 } = {}) {
   const destinations = asArray(candidateDestinations)
     .map((destination) => ({
@@ -322,7 +302,9 @@ export function buildPolicyRuntimeQuestionDecisionPresentation({
       library_name: boundedString(destination?.library_name),
     }))
     .filter((destination) => destination.library_id && destination.library_name);
+  const reference = reviewReference || buildPolicyRuntimeReviewReference({ classification, question, candidateDestinations: destinations });
   const deterministic = buildDeterministicDecision({
+    reviewReference: reference,
     classification,
     question: asObject(question),
     candidateDestinations: destinations,
@@ -333,13 +315,10 @@ export function buildPolicyRuntimeQuestionDecisionPresentation({
     deterministic,
     ai_advisory: buildAiAdvisory({
       classification,
-      destinationName: deterministic.destination?.library_name || 'the deterministic destination',
     }),
     candidate_bound_verification: buildCandidateBoundVerification({
       classification,
     }),
-    candidate_adjudication: buildCandidateAdjudication({
-      classification,
-    }),
+    candidate_adjudication: reference.adjudication,
   };
 }

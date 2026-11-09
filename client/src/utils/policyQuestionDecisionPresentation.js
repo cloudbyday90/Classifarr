@@ -74,8 +74,7 @@ function positiveInteger(value) {
 }
 
 function score(value) {
-  const number = Number(value)
-  return Number.isInteger(number) && number >= 0 && number <= 100 ? number : null
+  return Number.isInteger(value) && value >= 0 && value <= 100 ? value : null
 }
 
 function decimalScore(value) {

@@ -35,6 +35,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
         meta: {
           candidates: [{
             library_id: 5,
+            score: 75.16,
             candidate_diagnostics: {
               positive_sources: { rag: true, profile: true },
               native_intent_runtime: {
@@ -334,7 +335,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(presentation.deterministic.message).not.toContain('another safety gate');
   });
 
-  test('retains a structured advisory alternative without provider raw output', () => {
+  test('keeps a legacy advisory unavailable without interpreting its text or foreign destination', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {
         metadata: {
@@ -352,9 +353,9 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
 
     expect(presentation.ai_advisory).toEqual({
-      status_id: 'alternative_selected',
-      message: 'The model proposed "Drama" instead of "Movies".',
-      proposed_destination: { library_id: 8, library_name: 'Drama' },
+      status_id: 'historic_advisory_not_retained',
+      message: 'This legacy advisory does not retain a bound candidate comparison. Review the policy evidence and choose the destination.',
+      proposed_destination: null,
     });
   });
 
@@ -365,6 +366,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
         meta: {
           candidates: [{
             library_id: 5,
+            score: 75.16,
             candidate_diagnostics: {
               native_intent_runtime: {
                 eligible: true,
@@ -391,6 +393,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
         meta: {
           candidates: [{
             library_id: 5,
+            score: 75.16,
             candidate_diagnostics: {
               identity_evidence: { status_id: statusId },
             },
@@ -408,17 +411,18 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'purpose_unverified' })]));
   });
 
-  test('states when the AI verification aligns with the deterministic destination', () => {
+  test('does not infer AI agreement from the historical method alone', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {
         method: 'ai_verified',
+        metadata: { policyResult: { ranked: [{ library_id: 5, score: 70 }] } },
       },
       candidateDestinations: candidates,
     });
 
     expect(presentation.ai_advisory).toEqual({
-      status_id: 'aligned_with_deterministic',
-      message: 'AI verification aligned with Movies. It remains advisory and did not determine the policy outcome.',
+      status_id: 'advisory_unavailable',
+      message: 'This record does not retain a bound AI comparison. Review the policy evidence and choose the destination.',
       proposed_destination: null,
     });
   });

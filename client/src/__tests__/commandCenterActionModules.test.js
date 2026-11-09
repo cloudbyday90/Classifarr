@@ -20,6 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import CommandCenter from '@/views/CommandCenter.vue'
 import { createMemoryRouter, ROUTER_LINK_SIMPLE_STUB } from './helpers/vueTestUtils'
+import { pendingReviewReference } from './fixtures/pendingReviewReference'
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
@@ -173,6 +174,66 @@ const createPolicyQuestionAnswer = ({
 })
 
 describe('CommandCenter action modules', () => {
+  it('asks for a refresh when the server retains a historical hold instead of inviting confirmation', async () => {
+    const answer = pendingReviewReference(), recommendation = answer.recommendation
+    recommendation.status_id = 'leading_candidate_available'
+    recommendation.leading_destination = recommendation.policy_destination
+    recommendation.advisory_destination = null
+    recommendation.alternative_candidate_count = 1
+    recommendation.why_not_automatic = { reason_id: 'missing_identity_evidence', message: 'Review required.' }
+    answer.freshness = { status: 'stale', reason: 'route_safety_details_unavailable' }
+    answer.allowed_actions.forEach(action => { action.available = false })
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [{ id: 44, title: 'Synthetic historical review', media_type: 'movie',
+      policy_question_stale: false, policy_question_answer: answer, policy_question: { question: 'Legacy confirm prompt' } }] })
+    const wrapper = await mountCommandCenter(), card = wrapper.find('.action-item')
+    expect(card.find('.question-text').text()).toBe('Retry Classification to refresh this review before choosing a destination.')
+    expect(card.findAll('button').some(button => button.text().startsWith('Confirm '))).toBe(false)
+    expect(apiMock.resolvePendingClassification).not.toHaveBeenCalled()
+  })
+  it('uses the single native contract destination in the header while preserving its confirmation action', async () => {
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [{ id: 44, title: 'Synthetic native review', media_type: 'tv',
+      library_name: 'Unrelated mutable destination', policy_question_stale: false, policy_question: createNativePendingQuestion(),
+      policy_question_answer: createPolicyQuestionAnswer({ recommendation: null, question: { type: 'native_runtime_question' },
+        destinations: [{ library_id: 10, library_name: 'Bound native destination' }] }) }] })
+    const wrapper = await mountCommandCenter()
+    const card = wrapper.find('.action-item')
+    expect(card.find('.action-item-meta').text()).toContain('Bound native destination')
+    expect(card.text()).not.toContain('Unrelated mutable destination')
+    expect(card.findAll('button').some(button => button.text() === 'Confirm Bound native destination')).toBe(true)
+  })
+  it('does not fall back to mutable labels or manual confidence for an unsupported recommendation', async () => {
+    const answer = pendingReviewReference()
+    answer.recommendation.version = 'unsupported.future'
+    answer.decision_summary = null
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [{ id: 44, title: 'Synthetic future review', media_type: 'movie',
+      confidence: 100, library_name: 'Unrelated mutable destination', policy_question_stale: false,
+      policy_question_answer: answer, policy_question: { question: 'Legacy question' } }] })
+    const wrapper = await mountCommandCenter()
+    const card = wrapper.find('.action-item')
+    expect(card.find('.action-item-meta').text()).toContain('Destination selection required')
+    expect(card.text()).not.toContain('Unrelated mutable destination')
+    expect(card.text()).not.toContain('100% confidence')
+    expect(card.findAll('button').some(button => button.text().startsWith('Confirm '))).toBe(false)
+  })
+  it('uses the shared reference across the outer header, summary, explicit choice and bulk exclusion', async () => {
+    apiMock.getPendingClassifications.mockResolvedValue({ items: [44, 45].map(id => ({ id, title: `Synthetic review ${id}`,
+      media_type: 'movie', confidence: 100, library_name: 'Wrong mutable label', policy_question_stale: false,
+      policy_question: { question: 'Wrong legacy question', options: [{ library_id: 8, label: 'Wrong option' }] },
+      policy_question_answer: pendingReviewReference() })) })
+    const wrapper = await mountCommandCenter()
+    const card = wrapper.find('.action-item')
+    expect(card.find('.action-item-meta').text()).toContain('Destination selection required')
+    expect(card.find('.action-item-meta').text()).toContain('Choose destination')
+    expect(card.text()).not.toContain('Wrong mutable label')
+    expect(card.text()).not.toContain('100% confidence')
+    expect(card.text()).not.toContain('Confirm Comedy')
+    expect(card.text()).toContain('Policy evidence points to Comedy; the AI comparison suggests Movies.')
+    expect(wrapper.findAll('button').some(button => button.text() === 'Confirm All')).toBe(false)
+    await card.findAll('button').find(button => button.text() === 'Use Movies').trigger('click')
+    await flushPromises()
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(44, expect.objectContaining({
+      action_id: 'confirm_destination', destination_library_id: 8, contract_fingerprint: 'abcdefghijklmnopqrstuv' }))
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     apiMock.getLiveStats.mockResolvedValue(createLiveStats())

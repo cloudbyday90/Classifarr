@@ -151,3 +151,20 @@ Reuse the settled deferral and prior 12/12 baseline, 7/12 candidate and restored
 client source/tree/report checks match the verified baseline. No compiler install,
 dependency edit, new fixture scope or second random selection is warranted.
 Keep npm unchanged, leave PRs unmerged and rebase only genuine applicable drift.
+
+## November 8 review-recommendation selection
+
+The [shared review-reference batch](review-recommendation-reference-design.md)
+made one uniform random selection from currently open PRs 580 and 581 and chose
+581. MCP confirms the same head 15b66950a5739e6fdb5290f2cf4c0120d4259015, open,
+unmerged and mergeable. The two-file immutable diff and registry integrity for
+vue-tsc 3.3.14 still match the assessed artifact. The registry's latest is still
+3.3.14; reports 6322 and 6328 remain open. A newly updated issue is not evidence
+of a repaired published compiler artifact.
+
+Retain the established deferral and exact 3.3.13 compiler graph. The five failing
+candidate controls above are prior executions, not new tests in this batch.
+Normal current-tree compiler controls and quality gates will run with the
+presentation implementation. Neither an unchanged known-failing candidate nor
+the already adopted server ESLint patch warrants a forced new dependency edit.
+Both PRs are mergeable at intake; recheck at delivery before any synchronization.

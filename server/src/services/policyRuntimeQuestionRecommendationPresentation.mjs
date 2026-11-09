@@ -11,9 +11,10 @@
 import {
   POLICY_RUNTIME_QUESTION_NORMALIZATION_VERSION,
 } from './policyRuntimeQuestionNormalizer.mjs';
+import { buildPolicyRuntimeReviewReference } from './policyRuntimeReviewReference.mjs';
 
 const POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION =
-  'policy.runtime_question_recommendation_presentation.v1';
+  'policy.runtime_question_recommendation_presentation.v2';
 
 const POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS = Object.freeze({
   LEADING_CANDIDATE_AVAILABLE: 'leading_candidate_available',
@@ -57,13 +58,6 @@ function normalizeString(value, maximumLength = 160) {
   return normalized && normalized.length <= maximumLength ? normalized : null;
 }
 
-function normalizeEvidenceScore(value) {
-  const score = Number(value);
-  if (!Number.isFinite(score) || score < 0 || score > 100) return null;
-
-  return Math.round(score);
-}
-
 function normalizeCandidateDestination(value) {
   const source = asObject(value);
   const libraryId = normalizePositiveInteger(source.library_id ?? source.libraryId ?? source.id);
@@ -96,44 +90,6 @@ function getAutomationStopReason(uncertaintyType) {
   };
 }
 
-function buildScoredCandidates(question, destinations) {
-  const destinationById = new Map(destinations.map(destination => [destination.library_id, destination]));
-  const seen = new Set();
-
-  return asArray(question?.meta?.candidates)
-    .map(candidate => {
-      const source = asObject(candidate);
-      const libraryId = normalizePositiveInteger(source.library_id ?? source.libraryId ?? source.id);
-      const destination = destinationById.get(libraryId);
-      const evidenceScore = normalizeEvidenceScore(source.score);
-
-      if (!destination || evidenceScore === null || seen.has(libraryId)) return null;
-      seen.add(libraryId);
-
-      return {
-        destination,
-        evidenceScore,
-      };
-    })
-    .filter(Boolean);
-}
-
-function buildLeadingDestination(question, destinations) {
-  const scoredCandidates = buildScoredCandidates(question, destinations);
-  if (scoredCandidates.length === 0) return null;
-
-  const highestScore = Math.max(...scoredCandidates.map(candidate => candidate.evidenceScore));
-  const leaders = scoredCandidates.filter(candidate => candidate.evidenceScore === highestScore);
-  if (leaders.length !== 1) return null;
-
-  const leader = leaders[0];
-  return {
-    library_id: leader.destination.library_id,
-    library_name: leader.destination.library_name,
-    evidence_score: leader.evidenceScore,
-  };
-}
-
 function isNormalizedRuntimeQuestion(question) {
   const normalization = asObject(question?.meta?.runtime_question_normalization);
   return normalization.version === POLICY_RUNTIME_QUESTION_NORMALIZATION_VERSION;
@@ -141,13 +97,26 @@ function isNormalizedRuntimeQuestion(question) {
 
 function buildPolicyRuntimeQuestionRecommendationPresentation({
   question = null,
+  classification = {},
+  reviewReference = null,
   candidateDestinations = [],
 } = {}) {
   if (!isNormalizedRuntimeQuestion(question)) return null;
 
   const destinations = uniqueCandidateDestinations(candidateDestinations);
   const uncertaintyType = asObject(question?.meta?.runtime_question_normalization).uncertainty_type;
-  const leadingDestination = buildLeadingDestination(question, destinations);
+  const reference = reviewReference || buildPolicyRuntimeReviewReference({ classification, question, candidateDestinations });
+  const policyDestination = reference.policyReference ? {
+    ...reference.policyReference.destination, evidence_score: Math.round(reference.policyReference.candidate.score),
+  } : null;
+  const leadingDestination = reference.primaryDestination ? policyDestination : null;
+  const reasons = {
+    advisory_disagreement: 'Policy and AI comparison point to different destinations. Choose the destination for this item.',
+    invalid_advisory_proposal: 'The AI comparison could not be bound to this review. Choose a destination using the policy evidence.',
+    policy_tie: 'The leading policy scores are tied. Choose the destination for this item.',
+    policy_reference_unavailable: 'Destination-specific policy evidence is unavailable or inconsistent. Choose a destination or retry classification.',
+    no_positive_evidence: 'No candidate has positive policy support. Choose a destination or retry classification.',
+  };
 
   return {
     version: POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION,
@@ -155,7 +124,9 @@ function buildPolicyRuntimeQuestionRecommendationPresentation({
       ? POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.LEADING_CANDIDATE_AVAILABLE
       : POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.MANUAL_DESTINATION_SELECTION_REQUIRED,
     leading_destination: leadingDestination,
-    why_not_automatic: getAutomationStopReason(uncertaintyType),
+    policy_destination: policyDestination,
+    advisory_destination: reference.advisoryDestination,
+    why_not_automatic: reference.reason ? { reason_id: reference.reason, message: reasons[reference.reason] } : getAutomationStopReason(uncertaintyType),
     alternative_candidate_count: leadingDestination
       ? Math.max(0, destinations.length - 1)
       : destinations.length,
