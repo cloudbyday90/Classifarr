@@ -1,7 +1,8 @@
 # Vue PR 583 assessment outcome
 
-Date: November 9, 2026 Eastern. Baseline main 76599f4de. Local candidate assessment;
-image/delivery receipts follow separately. See the [design](vue-pr-583-design.md).
+Date: November 9, 2026 Eastern. Baseline main 76599f4de. Adopted on main at
+2d2d3b70c60572a58531eef58877231d6d637acd, with separate documentation-only receipt
+completion. See the [design](vue-pr-583-design.md).
 
 ## Assessed change
 
@@ -61,10 +62,25 @@ are outside this evidence. W3C-related existing form/focus checks remain intact.
 
 ## Delivery and next recommendation
 
-The frozen image/installation receipt, final PR freshness and exact-source CI
-results are pending at this source freeze. No release, deployment, live write,
-provider call or new operator workflow is introduced. Maintenance preserves all
-recovery assets, toolchains, current evidence, worktrees and other projects.
+All seven implementation-source workflows pass; the
+[CI pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233927)
+reports 485 client files/7,544 tests, eight production-route cases and fourteen
+shared-form cases. Local Windows coverage counts above remain separate. The same
+frozen candidate passes the full isolated installation, budgeted fresh/upgrade
+crash recovery and routing rehearsal; its image/source/cleanup details and scanner
+limits are recorded in the [npm outcome](npm-12-2-2-security-outcome.md).
+
+Dependabot automatically closes PR 583 unmerged at 16:02:06 UTC after the local
+adoption reaches main. The agent neither merges nor closes it. At delivery, PRs
+585/587 remain open, updated the same day and mergeable; no genuinely stale
+applicable branch requires rebasing. Their unstable check state is not claimed
+as passing PR validation or treated as a merge conflict.
+
+No release, deployment, live write, provider write or new operator workflow is
+introduced. Maintenance verifies protected service identities/state/health and
+worktrees, with owned rehearsal resources removed. No newly verified stale asset
+is eligible for retirement; recovery assets, toolchains, current evidence, shared
+cache and other projects remain preserved.
 
 Retain the exact coherent Vue patch with the reproduced fixes and unchanged type
 controls. Review the five existing startup-browser contracts separately before

@@ -1,8 +1,8 @@
 # npm 12.2.2 security assessment outcome
 
-Date: November 9, 2026 Eastern. Baseline main 76599f4de. Implementation and local
-qualification completed below; frozen image and delivery evidence follow in a
-separate update. See the [design](npm-12-2-2-security-design.md).
+Date: November 9, 2026 Eastern. Baseline main 76599f4de. Implemented and qualified
+on main at 2d2d3b70c60572a58531eef58877231d6d637acd; subsequent delivery changes
+only these outcome/design documents. See the [design](npm-12-2-2-security-design.md).
 
 ## Change and scope
 
@@ -88,14 +88,91 @@ six newer November 5 advisories requiring 7.30.2. This batch removes the reprodu
 older defects from npm's 6.x copy; it cannot fix Node's built-in fetch or an
 already published/running image. No all-transport or advisory-free claim is made.
 
-## Delivery and next recommendation
+## Frozen image and recovery evidence
 
-Frozen candidate image identity, controls, scan, isolated installation/recovery,
-maintenance and exact-source CI results are pending at this source freeze.
-No release, tag, deployment, provider call or live configuration write is made.
+One clean-source Linux x64 candidate carries Node 24.22.1, npm/npx 12.2.2 and the
+same 148 npm package instances. Its local image ID is:
 
-Recommendation stack: qualify the coordinated npm patch, assess a supported Node
-24 toolchain carrying the corrected newer Undici, then assess a supported npm
-artifact resolving its residual bundle findings. Return afterward to the queued
-category-neutral compatibility-purpose prompt projection. Keep publication
-qualification separate from these local development improvements.
+```text
+sha256:1ccb4dba884989f2c06ffd194110339ff471594d18a91011042aa4595e03673d
+```
+
+This is a local image/config ID, not a published registry digest. All ten npm
+controls pass inside that exact image, including POSIX executable handling. The
+read-only test mount uses a separate executable temporary fixture filesystem;
+TLS uses a host-minted ephemeral certificate through a test-only supplier.
+Production image contents are unchanged by those fixtures. Native bcrypt hash,
+matching and nonmatching comparisons pass. Actual image graph, scan target and
+installation/routing receipts all bind to this same ID and source commit.
+
+The full image scan reports three medium findings and no high/critical findings:
+the two npm entries above plus Alpine zlib 1.3.2-r1, CVE-2026-4738, with scanner
+fix version 1.4-r0. The [official zlib 1.4 release](https://github.com/madler/zlib/releases/tag/v1.4)
+includes that contrib/infback9 fix and other API/security changes. Application
+reachability was not established; no exception or package replacement is added.
+Node separately reports its compression fork as 1.3.2.1-motley-285e94b, which
+requires its own source assessment rather than inference from Alpine's package.
+Compiled-in Node Undici remains 7.30.1; its newer advisory boundary is independently
+known and is not cleared by this scanner's lack of a bundled-component finding.
+
+The existing production-entrypoint installation runner passes all twelve checks,
+including authenticated restore refusal/retry, interrupted restore, migration,
+movie/TV recovery and real startup-scheduler progress. Published baseline:
+v0.48.4-beta, revision a0e417fd714919bb4ca30e20f9cd2380136ca74e, image
+ghcr.io/cloudbyday90/classifarr@sha256:dc95fcdd80123b6bbf5b252fec286d9e81fbbc21a1030087c0a44abacd6a187f.
+Fresh and candidate databases report PostgreSQL 180006 with 338 migrations;
+the published baseline reports 222 migrations. Provenance constraints remain
+enabled, using the established stored CLI login after clearing an inherited
+credential override for the local invocation.
+
+Both fresh and upgraded scenarios pass the two-CPU, 2-GiB, 128-PID budget checks,
+real connection-pressure refusal/recovery and restart tests. Each unfinished
+backlog retains 300 movie/300 TV items and all task identities, completes 600 tasks
+with zero duplicate completions/early reclaims, and reclaims five interrupted
+tasks after the original ten-minute visibility lease. No test-time lease advance
+or provider/routing permission is substituted for that observation.
+
+The same candidate also passes the existing routing upgrade/crash/retry/pause/
+repair rehearsal against its separate locally built baseline eef03e57ffdd26d638f32f1593c424b438041ea2.
+It records two movie/two TV GET observations, zero provider writes, preserved
+history and no legacy enrollment. Installation and routing cleanup both pass.
+The final v4 receipt completed at 2026-11-09T16:39:10.334Z with a clean checkout.
+These are synthetic local AMD64 exercises, not native ARM64 or live-provider
+quality evidence. No release, deployment or live configuration write occurs.
+
+## Delivery, maintenance and next recommendation
+
+All seven workflows for implementation commit 2d2d3b70c pass:
+
+| Workflow | Exact-source receipt |
+| --- | --- |
+| CI/CD Pipeline | [42650233927](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233927) |
+| OSV Dependency Scan | [42650234818](https://github.com/cloudbyday90/Classifarr/actions/runs/42650234818) |
+| Trivy Security Scan | [42650233786](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233786) |
+| CodeQL Analysis | [42650233700](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233700) |
+| Gitleaks Secret Scan | [42650233820](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233820) |
+| Resource Capacity Regression | [42650233751](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233751) |
+| Copyright Compliance | [42650233692](https://github.com/cloudbyday90/Classifarr/actions/runs/42650233692) |
+
+CI reports 1,933 backend suites/62,791 tests and 485 client files/7,544 tests;
+these are reported separately from the local Windows counts. Real PostgreSQL CI
+passes 327 suites/4,142 tests, with one existing skipped suite/test, plus schema
+replay and the upgrade canary. The eight production-browser and fourteen shared
+form-control cases pass. Existing scanner severities, exclusions and triage
+expiry remain unchanged. Passing repository scans does not supersede the separate
+CLI/image findings above. No release/publication job is invoked by this batch.
+
+Scoped maintenance verifies the same Docker daemon, protected service identities,
+start times/state/health and four registered worktrees. The owned runner resources
+and ephemeral certificate key are removed. No additional stale files/images meet
+the established verified-removal policy; zero stale artifacts are retired.
+Recovery/reference assets, current evidence, toolchains, shared build cache and
+other projects remain preserved. Staged-secret and documentation checks pass.
+
+Keep this qualified npm patch. Next assess a supported Node 24 runtime carrying
+the newer Undici fixes, including the separate compression/OS findings. Then
+assess a supported npm artifact resolving its remaining bundle findings; avoid
+vendor-tree edits or a blanket scanner exception. Review the unchanged startup
+browser contracts separately, then return to the queued category-neutral
+compatibility-purpose prompt projection. Publication qualification remains a
+separate decision with fresh artifact evidence.

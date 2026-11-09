@@ -1,7 +1,7 @@
 # npm 12.2.2 security update design
 
 Research: November 9, 2026 Eastern. Baseline main 76599f4de, clean at intake.
-Status: agreed; implementation/qualification in progress. No release/deployment.
+Status: implemented and qualified; see the separate outcome. No release/deployment.
 
 ## Recommended boundary
 

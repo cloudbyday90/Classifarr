@@ -1,7 +1,8 @@
 # Vue PR 583 assessment design
 
-Research: November 9, 2026 Eastern. Baseline main 76599f4de. Status: agreed;
-candidate qualification in progress. No release, deployment or PR merge.
+Research: November 9, 2026 Eastern. Baseline main 76599f4de. Status: implemented
+and assessed; see the separate outcome for remaining browser debt. No release,
+deployment or PR merge.
 
 ## Immutable selection and proposed boundary
 
