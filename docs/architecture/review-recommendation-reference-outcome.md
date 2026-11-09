@@ -197,3 +197,14 @@ containers retain their identities, images, start times and health states, and
 all four registered worktrees remain. No image was built or removed, and no
 backup, volume, shared cache, model, toolchain or other project was retired.
 Global free-space readings are point-in-time observations, not cleanup savings.
+
+## Post-push scanner gate
+
+The exact implementation commit 2245535c9d89ae6a8ab8e5bd3461690a6da76b4e
+failed its separate OSV push scan after the previously documented server-only
+deepmerge triage expired at November 9 UTC. The runtime patch introduced no
+dependency change. The independently agreed
+[renewal design](deepmerge-triage-renewal-design.md) and
+[verified local outcome](deepmerge-triage-renewal-outcome.md) record the scoped
+follow-up. No expired or earlier successful scan is substituted for the new
+policy change's own push receipt.

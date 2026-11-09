@@ -19,6 +19,14 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [design](docs/architecture/review-recommendation-reference-design.md) and
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
+### Security
+
+- **Dependency scan triage** — Renew the exact server-only rejected-CVE advisory
+  entry through November 16 UTC, with fresh scope/expiry controls and all other
+  findings and severities preserved. This addresses advisory-data lag and claims
+  no package remediation; see the
+  [outcome](docs/architecture/deepmerge-triage-renewal-outcome.md).
+
 ## [v0.49.4-beta] - 2026-11-02
 
 **TL;DR:** Clearer movie/TV purpose evidence, explicit History assessments and
