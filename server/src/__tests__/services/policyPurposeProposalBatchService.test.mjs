@@ -60,6 +60,17 @@ function createService({ records = [profileRecord(7, 2), profileRecord(9, 3)], a
 }
 
 describe('PolicyPurposeProposalBatchService', () => {
+  test('prevalidates a complete fresh plan before dispatching its first child', async () => {
+    const fixture = createService();
+    const plan = await fixture.service.loadPlan(fixture.client);
+    plan.candidates[1].command.values[0] = { signal_type: 'genres', operator: 'exclude',
+      values: { exclude: ['hidden-token'] }, semantics: 'identity', constraint_mode: 'advisory' };
+    fixture.service.buildPlan = () => plan;
+    const result = await fixture.service.applyProposal({ actorId: 4, actorRole: 'admin', idempotencyKey: 'b'.repeat(32),
+      request: { proposal_fingerprint: plan.proposalFingerprint, candidate_policy_ids: [7, 9] } });
+    expect(result.statusId).toBe('request_invalid');
+    expect(fixture.applyChange).not.toHaveBeenCalled();
+  });
   test('applies the exact current compatible proposal set through one transaction boundary', async () => {
     const fixture = createService();
     const proposal = await fixture.service.getProposal();

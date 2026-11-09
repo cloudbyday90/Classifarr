@@ -63,6 +63,17 @@ function createApp(user = { id: 7, role: 'admin' }) {
 }
 
 describe('Policy initial intent establishment route', () => {
+  test('returns fixed actionable validation for a fresh unsupported declaration', async () => {
+    applyPolicyInitialIntentEstablishmentMock.mockResolvedValue(successfulResult({
+      statusId: 'initial_intent_establishment_request_invalid',
+      establishment: { applied: false, replayed: false },
+      validation: { ok: false, issues: [{ riskId: 'unsupported_purpose_declaration', message: 'private fixture value' }] },
+    }));
+    const response = await request(createApp()).post('/api/policies/44/native-intent/initial-establishment').send({}).expect(400);
+    expect(response.body.code).toBe('POLICY_PURPOSE_DECLARATION_UNSUPPORTED');
+    expect(response.body.error).toContain('Use avoid rules for exclusions.');
+    expect(JSON.stringify(response.body)).not.toContain('private fixture value');
+  });
   beforeEach(() => {
     queryMock.mockReset();
     withTransactionMock.mockReset();

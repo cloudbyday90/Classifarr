@@ -138,6 +138,31 @@ function serviceRequest(overrides = {}) {
 }
 
 describe('policyInitialIntentEstablishmentService', () => {
+  test.each([
+    { operator: 'exclude', values: { exclude: ['custom-token'] } },
+    { operator: 'include', values: { include: ['custom-token'], exclude: ['other'] } },
+    { operator: 'include', values: { prefer: ['custom-token'] } },
+    { operator: 'max', values: { max: 5 } },
+  ])('refuses fresh unsupported purpose before reservation/DML: %j', async invalid => {
+    const client = createClient(), payload = request();
+    payload.declared_intent.purpose = [{ signal_type: 'genres', ...invalid }];
+    const result = await applyPolicyInitialIntentEstablishmentInTransaction({ client, ...serviceRequest({ request: payload }) });
+    expect(result.statusId).toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST);
+    expect(result.validation.issues[0].riskId).toBe('unsupported_purpose_declaration');
+    expect(client.query.mock.calls.some(([sql]) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+  });
+
+  test('recovers an older unsupported establishment before fresh validation or current-authority checks', async () => {
+    const payload = request();
+    payload.declared_intent.purpose = [{ signal_type: 'genres', operator: 'exclude', values: { exclude: ['custom-token'] } }];
+    const fingerprint = buildInitialIntentRequestFingerprint(validatePolicyInitialIntentEstablishmentRequest(payload));
+    const client = createClient({ existingByKey: { id: 51, policy_id: 44, accepted_by: 7,
+      request_fingerprint: fingerprint, state: 'established', intent_id: 101, rollback_snapshot_id: 301 },
+      nativeHistory: [{ id: 999, active: true }] });
+    const result = await applyPolicyInitialIntentEstablishmentInTransaction({ client, ...serviceRequest({ request: payload }) });
+    expect(result.establishment.replayed).toBe(true);
+    expect(client.query.mock.calls.some(([sql]) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+  });
   test('records first native intent atomically without automated routing', async () => {
     const client = createClient();
     const dbClient = { withTransaction: jest.fn(async work => work(client)) };

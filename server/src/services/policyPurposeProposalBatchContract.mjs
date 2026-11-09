@@ -9,6 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { supportsNativePurposeCommands } from './nativePurposeDeclarationCapability.mjs';
 import {
   POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS,
   buildPolicyNativeIntentPurposeChangeProvenance,
@@ -147,7 +148,8 @@ export function buildPolicyPurposeProposalBatchPlan({ records = [], truncated = 
     .filter(Boolean)
     .sort((left, right) => left.policyId - right.policyId);
   const candidates = entries.filter(entry => (
-    entry.purposeProvenance.id === POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.PROFILE_DERIVED
+    entry.purposeProvenance.id === POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.PROFILE_DERIVED &&
+    supportsNativePurposeCommands([entry.command])
   ));
   const exceptions = entries.filter(entry => !candidates.includes(entry));
 

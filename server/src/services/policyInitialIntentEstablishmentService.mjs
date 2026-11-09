@@ -42,6 +42,10 @@ import {
   reserveInitialEstablishment,
 } from './policyInitialIntentEstablishmentPersistence.mjs';
 
+import {
+  supportsNativePurposeDeclaration, UNSUPPORTED_PURPOSE_DECLARATION, PURPOSE_DECLARATION_ERROR_MESSAGE,
+} from './nativePurposeDeclarationCapability.mjs';
+
 function normalizePositiveInteger(value) {
   const numericValue = Number(value);
   return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
@@ -301,6 +305,14 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
           establishedAt,
           riskId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS.DECLARED_INTENT_INVALID,
           message: 'The declared intent cannot be materialized as safe native policy authority.',
+        });
+      }
+
+      if (!supportsNativePurposeDeclaration(contract.purpose)) {
+        return buildResult({
+          statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST,
+          policyId: Number(policy.id), establishedAt,
+          riskId: UNSUPPORTED_PURPOSE_DECLARATION, message: PURPOSE_DECLARATION_ERROR_MESSAGE,
         });
       }
 

@@ -124,6 +124,27 @@ function buildMockDbClient(client) {
 }
 
 describe('applyPolicyNativeIntentChange', () => {
+  test('refuses every fresh unsupported purpose before DML, even before a later supported replacement', async () => {
+    const { client, queries } = buildMockClient({ policyRow: { id: 42, library_id: 7 },
+      intentRow: { id: 50, intent_version: 3 } });
+    const unsupported = { ...VALID_PURPOSE_CHANGE_VALUES[0], operator: 'exclude', values: { exclude: ['custom-token'] } };
+    const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT, dbClient: buildMockDbClient(client),
+      changeCommands: [{ commandId: 'update_purpose', values: [unsupported] }, ...VALID_INPUT.changeCommands] });
+    expect(result.statusId).toBe('retryable');
+    expect(result.risks).toContainEqual(expect.objectContaining({ riskId: 'unsupported_purpose_declaration' }));
+    expect(queries.some(({ sql }) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+  });
+
+  test('recovers an older exact exclusion receipt before applying fresh capability checks', async () => {
+    const values = [{ ...CANONICAL_PURPOSE_CHANGE_VALUES[0], operator: 'exclude', values: { exclude: ['custom-token'] } }];
+    const commandFingerprint = buildPolicyNativeIntentChangeCommandFingerprint({ policyId: 42, actorId: 1,
+      expectedRevision: 3, changeCommands: [{ commandId: 'update_purpose', values }] });
+    const { client, queries } = buildMockClient({ receiptRow: buildReceiptRow({ command_fingerprint: commandFingerprint }) });
+    const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT, dbClient: buildMockDbClient(client),
+      changeCommands: [{ commandId: 'update_purpose', values: values.map(({ source: _s, inference_state: _i, ...rule }) => rule) }] });
+    expect(result.change).toMatchObject({ applied: true, replayed: true });
+    expect(queries.some(({ sql }) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+  });
   test.each(['update_purpose', 'update_hard_limits', 'update_avoid_rules', 'update_helpful_matches', 'update_routing_target'])(
     '%s preserves server-owned review settings from the locked intent', async commandId => {
       const { client, queries } = buildMockClient({

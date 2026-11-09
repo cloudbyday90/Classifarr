@@ -64,6 +64,15 @@ function validRequest() {
 }
 
 describe('native intent change route', () => {
+  test('maps a proven fresh purpose refusal to fixed actionable 400 without exposing rule values', async () => {
+    applyPolicyNativeIntentChange.mockResolvedValue({ statusId: 'native_intent_change_retryable',
+      risks: [{ riskId: 'unsupported_purpose_declaration', message: 'must not expose this value' }] });
+    const response = await request(createApp()).post('/api/policies/17/native-intent/changes')
+      .set('Idempotency-Key', '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"').send(validRequest()).expect(400);
+    expect(response.body.code).toBe('POLICY_PURPOSE_DECLARATION_UNSUPPORTED');
+    expect(response.body.error).toContain('Use avoid rules for exclusions.');
+    expect(JSON.stringify(response.body)).not.toContain('must not expose this value');
+  });
   beforeEach(() => {
     applyPolicyNativeIntentChange.mockReset();
     applyPolicyNativeIntentChange.mockResolvedValue({

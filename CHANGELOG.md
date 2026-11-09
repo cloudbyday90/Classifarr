@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native purpose authoring** — Refuse unsupported fresh purpose declarations
+  before writes across individual, initial, create and bulk paths, while
+  preserving exact recovery of older receipts and unrelated edits. Offer four
+  positive choices while retaining saved legacy values and actionable validation
+  guidance in the existing editor. See the
+  [outcome](docs/architecture/native-purpose-declaration-validation-outcome.md).
+
 - **Native purpose operators** — Execute canonical positive genre, keyword,
   studio and media-type declarations consistently, with shared declared-match and
   overlap evidence. Preserve legacy, observed and exclusion behavior; repaired
@@ -37,6 +44,14 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   and completed-answer replay. See the
   [design](docs/architecture/review-recommendation-reference-design.md) and
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
+
+### Changed
+
+- **Client tooling** — Locally assess and adopt PR #584's exact Vite 8.3.6,
+  Vitest/coverage-v8 5.1.0, Playwright 1.65.0 and globals 17.14.0 subset, preserving
+  compiler, jsdom and Tailwind versions and strict install policy. Keep the
+  remaining grouped changes deferred; see the
+  [outcome](docs/architecture/client-tooling-pr-584-outcome.md).
 
 ### Security
 

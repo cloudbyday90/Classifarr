@@ -377,6 +377,10 @@ export function usePolicyNativeIntentPurposeChange({
           : 'Declared purpose updated. Classifarr loaded the new native revision.'
       return true
     } catch (error) {
+      if (getErrorCode(error) === 'POLICY_PURPOSE_DECLARATION_UNSUPPORTED') {
+        applyError.value = 'Edit purpose rules to use requires any, requires every, includes or prefers with a matching term list. Use avoid rules for exclusions.'
+        return false
+      }
       if (isStaleRevisionError(error)) {
         clearApplyAttempt()
         await load(policyId)

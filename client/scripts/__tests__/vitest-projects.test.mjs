@@ -1,12 +1,44 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { globSync, readFileSync } from 'node:fs';
+import { globSync, readFileSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { createVitest } from 'vitest/node';
+import { build } from 'vite';
 
 const clientRoot = resolve(import.meta.dirname, '../..');
 const relativePath = file => relative(clientRoot, file).replaceAll('\\', '/');
+
+test('real Vite retains CSS dependencies for query-bearing dynamic imports and ordinary imports', { timeout: 10_000 }, async () => {
+  const boundary = resolve(clientRoot, '.tmp');
+  mkdirSync(boundary, { recursive: true });
+  const directory = mkdtempSync(resolve(boundary, 'vite-query-css-'));
+  try {
+    writeFileSync(resolve(directory, 'index.html'), '<script type="module" src="/main.js"></script>');
+    writeFileSync(resolve(directory, 'main.js'), "import './static.css'; globalThis.loadQuery = () => import('./lazy.js?sample=one'); globalThis.loadOrdinary = () => import('./ordinary.js');");
+    writeFileSync(resolve(directory, 'lazy.js'), "import './lazy.css'; export const value = 'query-sentinel';");
+    writeFileSync(resolve(directory, 'ordinary.js'), "import './ordinary.css'; export const value = 'ordinary-sentinel';");
+    for (const name of ['static', 'lazy', 'ordinary']) writeFileSync(resolve(directory, `${name}.css`), `.${name}-sentinel { color: red; }`);
+    const result = await build({ root: directory, configFile: false, logLevel: 'silent', build: { write: false, minify: false } });
+    const output = result.output;
+    const entry = output.find(item => item.type === 'chunk' && item.isEntry);
+    assert.ok(entry, 'entry must be emitted');
+    assert.equal(entry.dynamicImports.length, 2);
+    for (const name of ['lazy', 'ordinary']) {
+      const chunk = output.find(item => item.type === 'chunk' && item.code.includes(`${name === 'lazy' ? 'query' : 'ordinary'}-sentinel`));
+      assert.ok(chunk, `${name} dynamic chunk must exist`);
+      assert.ok(entry.dynamicImports.includes(chunk.fileName));
+      const styles = [...chunk.viteMetadata.importedCss];
+      assert.equal(styles.length, 1);
+      assert.ok(output.some(item => item.type === 'asset' && item.fileName === styles[0] && String(item.source).includes(`.${name}-sentinel`)));
+      assert.ok(entry.code.includes(styles[0]), 'dynamic preload must retain its CSS dependency');
+    }
+    assert.ok(output.some(item => item.type === 'asset' && String(item.source).includes('.static-sentinel')));
+  } finally {
+    assert.ok(directory.startsWith(`${boundary}\\`) || directory.startsWith(`${boundary}/`));
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('CI opts into bounded phase diagnostics without changing the client test command', () => {
   const workflow = readFileSync(resolve(clientRoot, '../.github/workflows/ci.yml'), 'utf8');

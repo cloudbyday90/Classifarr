@@ -76,6 +76,25 @@ function clientFor({ acquired = true, receipt = null } = {}) {
 }
 
 describe('policyNativeIntentCreateService', () => {
+  test('recovers an exact old unsupported create receipt without inserting or delegating', async () => {
+    const { buildInitialIntentRequestFingerprint } = await import('../../services/policyInitialIntentEstablishmentContract.mjs');
+    const payload = establishmentRequest();
+    payload.declared_intent.purpose[0] = { signal_type: 'genres', operator: 'exclude', values: { exclude: ['custom-token'] } };
+    const client = clientFor({ receipt: { policy_id: 71, library_id: 4, intent_id: 301, policy_name: 'Animation Policy',
+      accepted_by: 7, state: 'established', request_fingerprint: buildInitialIntentRequestFingerprint(payload) } });
+    const result = await createNativeIntentPolicyInTransaction({ client, policy: policy(), actorId: 7, establishmentRequest: payload });
+    expect(result.nativeIntentEstablishment.establishment.replayed).toBe(true);
+    expect(client.query.mock.calls.some(([sql]) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+    expect(applyPolicyInitialIntentEstablishmentInTransaction).not.toHaveBeenCalled();
+  });
+  test('rejects fresh unsupported purpose before policy INSERT or delegated establishment', async () => {
+    const client = clientFor(), request = establishmentRequest();
+    request.declared_intent.purpose[0] = { signal_type: 'genres', operator: 'exclude', values: { exclude: ['custom-token'] } };
+    await expect(createNativeIntentPolicyInTransaction({ client, policy: policy(), actorId: 7,
+      establishmentRequest: request })).rejects.toMatchObject({ code: 'POLICY_PURPOSE_DECLARATION_UNSUPPORTED', statusCode: 400 });
+    expect(client.query.mock.calls.some(([sql]) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+    expect(applyPolicyInitialIntentEstablishmentInTransaction).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     applyPolicyInitialIntentEstablishmentInTransaction.mockReset();
     applyPolicyInitialIntentEstablishmentInTransaction.mockResolvedValue({

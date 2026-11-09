@@ -44,6 +44,10 @@ import {
   tryLockNativeIntentChangeIdempotencyKey,
 } from './policyNativeIntentChangeReceiptPersistence.mjs';
 
+import {
+  supportsNativePurposeCommands, UNSUPPORTED_PURPOSE_DECLARATION, PURPOSE_DECLARATION_ERROR_MESSAGE,
+} from './nativePurposeDeclarationCapability.mjs';
+
 const ADMISSION_TO_RESULT_STATUS = Object.freeze({
   [POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.ADMITTED]:
     POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED,
@@ -252,6 +256,14 @@ async function applyPolicyNativeIntentChange({
             riskId: POLICY_NATIVE_INTENT_CHANGE_RESULT_RISK_IDS.REVISION_MISMATCH_AFTER_LOCK,
             message: 'Revision changed between admission and transaction lock.',
           }],
+        });
+      }
+
+      if (!supportsNativePurposeCommands(admission.admittedCommands)) {
+        return buildPolicyNativeIntentChangeResult({
+          statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.RETRYABLE,
+          policyId: normalizedPolicyId, actorId, expectedRevision, currentRevision: lockedRevision,
+          risks: [{ riskId: UNSUPPORTED_PURPOSE_DECLARATION, message: PURPOSE_DECLARATION_ERROR_MESSAGE }],
         });
       }
 

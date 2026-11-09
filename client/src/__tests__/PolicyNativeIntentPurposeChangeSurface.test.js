@@ -136,6 +136,38 @@ function confirmedOutcomeSuggestion() {
 }
 
 describe('PolicyNativeIntentPurposeChangeSurface', () => {
+  it('offers four positive choices while retaining the saved legacy exclusion without replacing it', async () => {
+    const read = purposeRead()
+    read.changeCommand.values[0].operator = 'exclude'
+    read.changeCommand.values[0].values = { exclude: ['custom-token'] }
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(read)
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    const select = wrapper.findAll('select').find(item => item.element.value === 'exclude')
+    expect(select).toBeTruthy()
+    expect(select.findAll('option').filter(item => item.attributes('disabled') === undefined).map(item => item.element.value))
+      .toEqual(['require_any', 'require_all', 'prefer', 'include'])
+    expect(select.get('option[value="exclude"]').attributes('disabled')).toBeDefined()
+    expect(select.element.value).toBe('exclude')
+    expect(wrapper.get('input[aria-label="Purpose terms for rule 1"]').element.value).toBe('custom-token')
+  })
+
+  it('shows actionable deterministic refusal and preserves the unchanged retry key', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
+    apiMock.applyPolicyNativeIntentPurposeChange.mockRejectedValue({ response: { data: { code: 'POLICY_PURPOSE_DECLARATION_UNSUPPORTED' } } })
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Use avoid rules for exclusions.')
+    expect(wrapper.text()).not.toContain('could not confirm the purpose change outcome')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(apiMock.applyPolicyNativeIntentPurposeChange).toHaveBeenCalledTimes(2)
+    expect(apiMock.applyPolicyNativeIntentPurposeChange.mock.calls[1]).toEqual(apiMock.applyPolicyNativeIntentPurposeChange.mock.calls[0])
+  })
   it('exposes a programmatic focus target for the declaration-review worklist', async () => {
     apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
 

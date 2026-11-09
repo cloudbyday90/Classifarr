@@ -9,6 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { UNSUPPORTED_PURPOSE_DECLARATION, PURPOSE_DECLARATION_ERROR_CODE, PURPOSE_DECLARATION_ERROR_MESSAGE } from '../services/nativePurposeDeclarationCapability.mjs';
 import {
   ConflictError,
   ForbiddenError,
@@ -95,6 +96,9 @@ function getChangeHttpError(result) {
   }
 
   if (result?.statusId === POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.RETRYABLE) {
+    if (result.risks?.some(risk => risk.riskId === UNSUPPORTED_PURPOSE_DECLARATION)) {
+      return new ValidationError(PURPOSE_DECLARATION_ERROR_MESSAGE, { code: PURPOSE_DECLARATION_ERROR_CODE });
+    }
     return new ValidationError('The native intent change request is invalid or incomplete.', {
       code: 'POLICY_NATIVE_INTENT_CHANGE_RETRYABLE',
     });

@@ -14,7 +14,10 @@ import {
 } from './policyInitialIntentEstablishmentService.mjs';
 import {
   buildInitialIntentRequestFingerprint,
+  buildInitialPolicyIntentContract,
 } from './policyInitialIntentEstablishmentContract.mjs';
+import { supportsNativePurposeDeclaration, PURPOSE_DECLARATION_ERROR_CODE, PURPOSE_DECLARATION_ERROR_MESSAGE } from './nativePurposeDeclarationCapability.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import {
   buildNativePolicyCreateAdvisoryLockKey,
 } from './policyNativeIntentCreateIdempotency.mjs';
@@ -99,6 +102,11 @@ export async function createNativeIntentPolicyInTransaction({
       },
       nativeIntentEstablishment: buildReplayEstablishment(existingReceipt),
     };
+  }
+
+  const contract = buildInitialPolicyIntentContract({ declaredIntent: establishmentRequest.declared_intent });
+  if (!supportsNativePurposeDeclaration(contract.purpose)) {
+    throw new ValidationError(PURPOSE_DECLARATION_ERROR_MESSAGE, { code: PURPOSE_DECLARATION_ERROR_CODE });
   }
 
   const createdPolicy = await insertNativeIntentPolicy({ client, policy });

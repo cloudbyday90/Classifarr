@@ -194,6 +194,13 @@
                   @change="setRuleOperator(index, $event.target.value)"
                 >
                   <option
+                    v-if="rule.operator === 'exclude'"
+                    value="exclude"
+                    disabled
+                  >
+                    Saved exclusion (legacy; edit before a new declaration)
+                  </option>
+                  <option
                     v-for="option in operators"
                     :key="option.id"
                     :value="option.id"
@@ -383,7 +390,7 @@ const emit = defineEmits({
 })
 
 const signalTypes = NATIVE_PURPOSE_SIGNAL_TYPES
-const operators = NATIVE_PURPOSE_OPERATORS
+const operators = NATIVE_PURPOSE_OPERATORS.filter(option => option.id !== 'exclude')
 const semantics = NATIVE_PURPOSE_SEMANTICS
 const constraintModes = NATIVE_PURPOSE_CONSTRAINT_MODES
 

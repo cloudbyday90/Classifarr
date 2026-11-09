@@ -34,6 +34,14 @@ function record({ policyId, libraryId, revision, rule }) {
 }
 
 describe('policyPurposeProposalBatchContract', () => {
+  test('keeps parseable unsupported profile drafts in individual-review exceptions', () => {
+    const plan = buildPolicyPurposeProposalBatchPlan({ records: [record({ policyId: 7, libraryId: 17, revision: 2,
+      rule: { ...profileRule('hidden-token'), operator: 'exclude', values: { exclude: ['hidden-token'] } } })] });
+    expect(plan.candidates).toEqual([]);
+    expect(plan.presentation.statusId).toBe('individual_review_required');
+    expect(plan.presentation.exceptions.map(entry => entry.policy.id)).toEqual([7]);
+    expect(JSON.stringify(plan.presentation)).not.toContain('hidden-token');
+  });
   test('creates one opaque, compatible profile-derived proposal set without exposing purpose terms', () => {
     const plan = buildPolicyPurposeProposalBatchPlan({
       records: [

@@ -7,6 +7,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
+import { UNSUPPORTED_PURPOSE_DECLARATION, PURPOSE_DECLARATION_ERROR_CODE, PURPOSE_DECLARATION_ERROR_MESSAGE } from '../services/nativePurposeDeclarationCapability.mjs';
 import {
   ConflictError,
   ForbiddenError,
@@ -27,6 +28,10 @@ function toPositiveInteger(value) {
 
 function getEstablishmentHttpError(result) {
   const riskId = result?.validation?.issues?.[0]?.riskId;
+  if (result?.statusId === POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.BLOCKED_BY_REQUEST &&
+      riskId === UNSUPPORTED_PURPOSE_DECLARATION) {
+    return new ValidationError(PURPOSE_DECLARATION_ERROR_MESSAGE, { code: PURPOSE_DECLARATION_ERROR_CODE });
+  }
 
   if (result?.statusId === POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.FAILED_ROLLED_BACK) {
     return new ServiceUnavailableError(

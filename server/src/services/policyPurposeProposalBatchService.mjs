@@ -9,6 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { supportsNativePurposeCommands } from './nativePurposeDeclarationCapability.mjs';
 import * as defaultDb from '../config/database.mjs';
 import {
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
@@ -163,6 +164,10 @@ export class PolicyPurposeProposalBatchService {
           throw new PurposeProposalBatchAbort(
             POLICY_PURPOSE_PROPOSAL_BATCH_STATUS_IDS.PROPOSAL_STALE,
           );
+        }
+
+        if (!plan.candidates.every(candidate => supportsNativePurposeCommands([candidate.command]))) {
+          throw new PurposeProposalBatchAbort(POLICY_PURPOSE_PROPOSAL_BATCH_STATUS_IDS.REQUEST_INVALID);
         }
 
         const transactionFacade = { withTransaction: work => work(client) };
