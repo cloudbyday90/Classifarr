@@ -85,8 +85,32 @@ from Classifarr cleanup; global disk changes were not attributed to this work.
 
 ## Delivery
 
-Local qualification is complete. Commit/push and exact-source CI receipts are
-recorded here after delivery; no release or deployment is authorized or implied.
+Code commit `56b3f0b18cc57840d70d25f6e08383f8b02be78f` was committed and pushed
+on main. All seven workflows passed at that exact source:
+
+| Workflow | Result |
+| --- | --- |
+| OSV Dependency Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836475005) |
+| CI/CD Pipeline | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836474423) |
+| Trivy Security Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836473957) |
+| Copyright Compliance | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836473883) |
+| Gitleaks Secret Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836474051) |
+| Resource Capacity Regression | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836474060) |
+| CodeQL Analysis | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42836474107) |
+
+The main pipeline passed server/client tests, database integration, isolated
+fresh-install/published-upgrade acceptance, image verification, PostgreSQL
+startup/monitoring/adoption, loaded shutdown and queue-claim recovery, and the
+acceptance readout. Publication, promotion, published-digest/routing and registry
+cleanup jobs were skipped under their existing conditions. No CI rerun or gate
+change was needed. No release or production deployment ran.
+
+PR 589's post-push check still finds the same head open and mergeable with
+unstable checks. No genuinely stale applicable branch needs rebasing; the
+previously demonstrated compiler deferral remains in force.
+
+This final receipt changes Markdown only. The qualified runtime/test/package
+inputs remain unchanged; subsequent documentation-only CI is a separate run.
 
 ## Recommendations and tradeoffs
 
