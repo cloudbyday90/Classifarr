@@ -1,7 +1,10 @@
 # Client Tailwind PR 587 qualification outcome
 
 November 9, 2026 Eastern. Baseline main c5f4dd183. Local assessment of the
-agreed [design](client-tailwind-pr-587-design.md); pushed-source CI receipt pending.
+agreed [design](client-tailwind-pr-587-design.md), delivered in ed20d0691. All seven
+ordinary source workflows passed, including the
+[pipeline](https://github.com/cloudbyday90/Classifarr/actions/runs/42714196374) and
+[dependency/copyright controls](https://github.com/cloudbyday90/Classifarr/actions/runs/42714196186).
 No PR merge, release or deployment.
 
 ## Observed change
@@ -86,11 +89,13 @@ support in every browser.
 - Backend lint/typecheck, normal/production Knip and ownership checks pass with
   no classification or review-cap changes. Four policy gates, static-import and
   mock-shape checks, npm CLI policy, copyright and Markdown checks pass.
-  Pushed-source receipts are recorded separately at delivery.
+  The delivered source's seven ordinary workflows also pass; publication and
+  release remain outside this batch.
 
-The independent adjudication design remains a planning document until its final
-lifecycle agreement and implementation. This dependency outcome makes no claim
-that new purpose terms already reach a provider.
+At this dependency commit's delivery, adjudication remained a proposal awaiting
+its final lifecycle agreement. Its later implementation and verification are
+recorded in a separate [outcome](provider-purpose-adjudication-outcome.md); this
+dependency receipt does not qualify that runtime change.
 
 ## Maintenance and remaining work
 

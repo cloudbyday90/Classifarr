@@ -16,5 +16,7 @@ ${mode === 'verify' ? `CRITICAL RULES:
 3. You MUST NOT select, name, rank, compare, or request another destination.
 4. Return only the required JSON object; do not include analysis or a preamble.
 ` : ''}`;
-  return introduction + '\n\n' + await promptBuilder.buildPrompt(context, { mode });
+  const purpose = mode === 'adjudicate' && typeof context.candidatePurposePrompt === 'string'
+    ? context.candidatePurposePrompt + '\n\n' : '';
+  return introduction + '\n\n' + purpose + await promptBuilder.buildPrompt(context, { mode });
 }

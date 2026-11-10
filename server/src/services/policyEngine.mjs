@@ -20,6 +20,7 @@ import {
 import { checkAuthoritativeSignals, getActivePolicies } from './policyEngineQueries.mjs';
 import { evaluateItem, evaluatePolicy } from './policyEngineEvaluation.mjs';
 import { createLivePolicyEvaluationCapture } from './policyEvaluationCapture.mjs';
+import { createLivePolicyCandidatePurposeCapture } from './policyCandidatePurposeLiveCapture.mjs';
 
 export { FORMULA_CONFIDENCE_CAP };
 export {
@@ -67,6 +68,7 @@ class PolicyEngine {
     async evaluateItem(item, options = {}) {
         return evaluateItem(item, options, {
             capturePolicyEvaluation: createLivePolicyEvaluationCapture(item),
+            captureCandidatePurpose: createLivePolicyCandidatePurposeCapture(item),
             checkAuthoritativeSignals: (...a) => this.checkAuthoritativeSignals(...a),
             getActivePolicies: (...a) => this.getActivePolicies(...a),
             evaluatePolicy: (...a) => this.evaluatePolicy(...a),

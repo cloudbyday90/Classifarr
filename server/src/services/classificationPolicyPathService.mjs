@@ -58,6 +58,7 @@ import { createPolicyCandidateShortlistService } from './policyCandidateShortlis
 import { createPolicyCandidateConsensusService } from './policyCandidateConsensusService.mjs';
 import { createLearnedEvidenceRoutingService } from './learnedEvidenceRoutingService.mjs';
 import { observeRepresentativeDecision, readRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
+import { holdLivePolicyCandidatePurpose } from './policyCandidatePurposeLiveCapture.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -348,12 +349,14 @@ export class ClassificationPolicyPathService {
 			const aiLibraries = aiModeDecision.mode === 'adjudicate'
 				? candidateAdjudication.candidates.map((candidate) => candidate.library)
 				: libraries;
+			const candidatePurpose = aiModeDecision.mode === 'adjudicate'
+				? holdLivePolicyCandidatePurpose({ policyResult, contract: candidateAdjudication, metadata }) : null;
 			const aiOptions = {
 				mode: aiModeDecision.mode,
 				ragContext,
 				verificationCandidate: policyResult.library || policyResult.ranked?.[0] || null,
 				...(aiModeDecision.mode === 'adjudicate'
-					? { candidateAdjudicationEvidence }
+					? { candidateAdjudicationEvidence, ...(candidatePurpose ? { candidatePurpose } : {}) }
 					: {}),
 			};
 			const consensusContext = await this.policyCandidateConsensusService.prepare(policyResult);
@@ -421,6 +424,7 @@ export class ClassificationPolicyPathService {
 				try {
 					const fallbackEvidence = await loadCandidateAdjudicationEvidence();
 					if (fallbackEvidence) {
+						const fallbackPurpose = holdLivePolicyCandidatePurpose({ policyResult, contract: candidateAdjudication, metadata });
 						const fallbackMatch = await this.aiClassify(
 							metadata,
 							candidateAdjudication.candidates.map((candidate) => candidate.library),
@@ -429,6 +433,7 @@ export class ClassificationPolicyPathService {
 								mode: 'adjudicate',
 								ragContext,
 								candidateAdjudicationEvidence: fallbackEvidence,
+								...(fallbackPurpose ? { candidatePurpose: fallbackPurpose } : {}),
 							},
 						);
 						const result = {

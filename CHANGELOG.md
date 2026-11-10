@@ -53,6 +53,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Adjudication purpose evidence** — Give existing local AI comparisons bounded,
+  live-bound declared purpose for their selected candidates, preserving identity
+  and compatibility meaning. Keep remote evidence aggregate-only and preserve
+  numeric scoring, routing and learning authorization; see the
+  [outcome](docs/architecture/provider-purpose-adjudication-outcome.md).
+
 - **Client CSS tooling** — Locally adopt PR #587's exact Tailwind/PostCSS 4.3.5
   subset with compiler, native/WASI scanning and published-type controls.
   Preserve the DOM/compiler graph, runtime dependencies and install policy; see

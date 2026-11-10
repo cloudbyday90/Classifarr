@@ -1,8 +1,8 @@
 # Category-neutral purpose evidence for AI adjudication
 
-Research: November 9, 2026 Eastern. Baseline main c5f4dd183. Status: consumer,
-meaning, limits and disclosure agreed; final lifecycle/verification agreement
-pending. No release or deployment.
+Research: November 9, 2026 Eastern, intake main c5f4dd183. Implementation baseline
+ed20d0691. Status: complete scope agreed and implemented; see the separate
+[qualification outcome](provider-purpose-adjudication-outcome.md). No release or deployment.
 
 ## Problem and existing consumer
 
@@ -49,7 +49,7 @@ the affected subsection unavailable without truncating terms or changing
 require_all/combination meaning. These limits do not cap scoring or the complete
 existing prompt, which has independent sources and limits.
 
-## Proposed live lifecycle
+## Live lifecycle
 
 Use small contract, live-collector and provider-projection leaves rather than
 putting the logic in the existing prompt builder singleton.
@@ -73,8 +73,8 @@ putting the logic in the existing prompt builder singleton.
    candidateAdjudicationEvidence.candidates. Consensus serializes those candidate
    objects; keep its fingerprints and existing replay evidence unchanged. The
    prompt assembly consumes only current candidate members. Recheck typed item,
-   pair, candidate number/order and private authority
-   after asynchronous evidence loading and immediately before provider projection.
+   pair, candidate number/order and private authority after asynchronous evidence
+   loading and immediately before provider projection.
    Permit the existing valid shortlist reordering without expanding the pool.
 5. Missing, copied, serialized, legacy, replayed, stale, malformed or oversized
    evidence yields a closed unavailable state for the new subsection. Continue
@@ -93,6 +93,18 @@ matching the current detailed-adjudication-evidence boundary. Other providers,
 including Ollama at an untrusted endpoint, receive fixed aggregate availability,
 origin and match categories, without terms, raw rules, revisions, hashes or
 internal IDs. Do not add an operator setting or UI.
+
+The selected provider row is not proof of the actual Ollama endpoint: legacy
+generation can use a separately cached configuration. For a live purpose request,
+take the existing generation-configuration read under the existing provider lock,
+before formatting. A small private configuration handle supplies that exact
+snapshot to both preflight and generation. Disclose terms only when the selected
+host and actual snapshot base URL are both syntactically trusted. Otherwise use
+aggregates. Reuse the ordinary read/attempt; add no query or provider call.
+Copied handles cannot substitute an endpoint, and ordinary callers without a
+handle retain their existing path. Gateway ownership, endpoint, credential and
+model checks still run. This is not DNS/geographic attestation or a new transport
+authorization mechanism.
 
 Render escaped structured data separately from fixed instructions. Treat term
 text as untrusted even when an authorized operator declared it. Preserve strict
@@ -127,7 +139,7 @@ design does not implement RDF/PROV serialization or claim PROV conformance.
 No new web interaction is proposed, so this batch adds no new accessibility
 surface or WCAG claim.
 
-## Verification and delivery proposal
+## Verification and delivery
 
 Exercise the real canonical operator/semantics matrix, weights and combination
 modes; mixed/profile/unknown origins; strict blocking and disabled weights;

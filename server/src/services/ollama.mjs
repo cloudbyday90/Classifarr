@@ -34,6 +34,7 @@ import {
   pullModel as _pullModel,
 } from './ollamaGeneration.mjs';
 import { runScheduledPreflight as _runScheduledPreflight } from './ollamaScheduledPreflight.mjs';
+import { readOllamaGenerationConfiguration } from './ollamaGenerationConfigurationSnapshot.mjs';
 
 const logger = createLogger('OllamaService');
 
@@ -281,7 +282,8 @@ class OllamaService {
   }
 
   async preflightConnection(options = {}) {
-    return _preflightConnection(() => this.getConfig(), this.preflightCache, options);
+    const snapshot = readOllamaGenerationConfiguration(options.generationConfiguration);
+    return _preflightConnection(snapshot ? async () => snapshot : () => this.getConfig(), this.preflightCache, options);
   }
 
   async getModels(host = null, port = null) {
@@ -328,9 +330,10 @@ class OllamaService {
     externalController = null,
     options = {},
   ) {
+    const snapshot = readOllamaGenerationConfiguration(options.generationConfiguration);
     return _generateWithProgress(
-      () => this.getConfig(),
-      (opts) => this.preflightConnection(opts),
+      snapshot ? async () => snapshot : () => this.getConfig(),
+      (opts) => this.preflightConnection(snapshot ? { ...opts, generationConfiguration: options.generationConfiguration } : opts),
       prompt,
       model,
       temperature,

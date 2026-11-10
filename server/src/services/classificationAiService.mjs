@@ -11,6 +11,8 @@ import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { buildClassificationBasePrompt } from './classificationBasePrompt.mjs';
+import { buildPolicyCandidatePurposePrompt } from './policyCandidatePurposeProvider.mjs';
+import { holdOllamaGenerationConfiguration, readOllamaGenerationConfiguration } from './ollamaGenerationConfigurationSnapshot.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
 import { buildAiResponseDiagnosticArtifact } from './aiResponseDiagnosticsService.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
@@ -230,6 +232,9 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     // evidence projection, where remote providers receive aggregates only.
     ragContext: mode === 'classify' ? (options.ragContext || null) : null,
     verificationContract,
+    candidatePurposePrompt: mode === 'adjudicate' ? buildPolicyCandidatePurposePrompt(options.candidatePurpose, {
+      metadata, libraries, providerType: provider.type, providerHost: provider.config?.host,
+    }) : null,
     candidateAdjudicationEvidence: mode === 'adjudicate'
       ? projectPolicyCandidateAdjudicationEvidenceForProvider(
            options.candidateAdjudicationEvidence,
@@ -255,7 +260,10 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     }
   }
 
-  let prompt = await buildClassificationBasePrompt(promptContext, { mode, promptBuilder: aiPromptBuilder });
+  // Local term disclosure waits for the exact configuration used by generation,
+  // which can differ from the selected provider row or a stale display label.
+  const deferPurposePrompt = mode === 'adjudicate' && provider.type === 'ollama' && promptContext.candidatePurposePrompt !== null;
+  let prompt = deferPurposePrompt ? null : await buildClassificationBasePrompt(promptContext, { mode, promptBuilder: aiPromptBuilder });
 
   if (webSearchResults) {
     prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
@@ -315,6 +323,15 @@ Respond with ONLY one of the formats above.`;
         streamAttempt += 1;
         try {
           if (provider.type === 'ollama') {
+            let generationConfiguration;
+            if (deferPurposePrompt) {
+              generationConfiguration = await holdOllamaGenerationConfiguration(() => ollamaService.getConfig());
+              const actual = readOllamaGenerationConfiguration(generationConfiguration);
+              const candidatePurposePrompt = buildPolicyCandidatePurposePrompt(options.candidatePurpose, {
+                metadata, libraries, providerType: provider.type, providerHost: provider.config?.host, transportHost: actual.baseUrl,
+              });
+              prompt = await buildClassificationBasePrompt({ ...promptContext, candidatePurposePrompt }, { mode, promptBuilder: aiPromptBuilder });
+            }
             let lastLogTime = Date.now();
             response = await ollamaService.generateWithProgress(
               prompt,
@@ -335,6 +352,7 @@ Respond with ONLY one of the formats above.`;
               },
               null,
               {
+                ...(generationConfiguration ? { generationConfiguration } : {}),
                 allowPartialOnAbort: !disallowPartialStreamResponse,
               allowPartialOnStall: !disallowPartialStreamResponse,
               requireDoneSignal: disallowPartialStreamResponse,
