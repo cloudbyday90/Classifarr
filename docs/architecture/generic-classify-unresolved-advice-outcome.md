@@ -76,13 +76,41 @@ unchanged. Failed preliminary receipts remain private and unqualified.
 
 Scoped artifact maintenance reused the recent reviewed inventory and found no
 newly verified stale removal candidate. Zero files/images were removed and no
-application image was built. Current evidence, tools, worktrees, backups,
+local application image was built. Current evidence, tools, worktrees, backups,
 rollback/reference images, shared cache and other projects were preserved.
 Disposable test containers were cleaned by their harness. Classifarr remained
 running and healthy; no production service was restarted.
 
-Local verification is complete. Exact-source CI is inspected after the main
-commit is pushed and recorded in the delivery receipt below.
+Push still advertises one low Dependabot alert, number 126. The existing
+[triage outcome](deepmerge-triage-renewal-outcome.md) identifies that alert as the
+deepmerge advisory. Fresh alert-detail access was unavailable: the connector
+does not support that endpoint and the CLI credential received HTTP 401. This
+limits fresh alert-state verification; it does not change audit/scanner policy
+or the existing time-bounded triage. No credential value was recorded.
+
+## Delivery receipt
+
+Code commit `22a3c5df4a724616239b0bd48a724177029aa9f7` was committed and pushed
+on main. All seven workflows completed successfully at that exact source:
+
+| Workflow | Result |
+| --- | --- |
+| OSV Dependency Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804872) |
+| Gitleaks Secret Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804360) |
+| Copyright Compliance | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804084) |
+| Trivy Security Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804071) |
+| CodeQL Analysis | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804158) |
+| Resource Capacity Regression | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804621) |
+| CI/CD Pipeline | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42805804352) |
+
+The main pipeline passed server/client tests, database integration, fresh-install/
+published-upgrade acceptance, image verification and bounded PostgreSQL/recovery
+drills. Existing conditional manual Docker Hub cleanup and synthetic replay jobs
+were skipped; no release or production deployment ran. No CI rerun or gate
+change was needed.
+
+This final receipt changes Markdown only. The qualified runtime/test/package
+inputs remain unchanged; later documentation-only CI is a separate receipt.
 
 ## Security, alternatives and follow-up
 
