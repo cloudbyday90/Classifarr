@@ -3,8 +3,8 @@
 Research and implementation: November 10, 2026 Eastern. Baseline main
 19c8680f608b0ebdaf974268d346eb49726dbc36. The operator confirmed the recovery-only
 consumer and then the complete [design](policy-recovery-suggestion-binding-design.md)
-before implementation. Local verification is complete; exact-source CI is checked
-after the main commit is pushed. No release, deployment or live write.
+before implementation. Local and exact-source CI verification are complete.
+No release, deployment or live write.
 
 ## Behavior and limits
 
@@ -96,7 +96,34 @@ Before/after artifact checks used the same Docker context and daemon. All four
 existing service identities/start times/health and four worktrees were preserved.
 No newly verified stale candidate was removed; no development image was built.
 Current evidence, recovery assets, toolchains, other projects, volumes and shared
-cache remain intact. Commit and exact-source CI receipts follow after push.
+cache remain intact.
+
+## Commit and exact-source CI
+
+Implementation and local evidence were committed and pushed on main as
+`5f0dcfc3c5521e87eb62a29ebbf0df017e9e935f`. All seven workflows for that exact
+source passed; these are current receipts, not results from an earlier revision.
+
+| Workflow | Exact-source run | Result |
+| --- | --- | --- |
+| CI/CD Pipeline | [42855867845](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867845) | Passed |
+| CodeQL Analysis | [42855867636](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867636) | Passed |
+| Copyright Compliance | [42855867626](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867626) | Passed |
+| Gitleaks Secret Scan | [42855867662](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867662) | Passed |
+| OSV Dependency Scan | [42855868464](https://github.com/cloudbyday90/Classifarr/actions/runs/42855868464) | Passed |
+| Resource Capacity Regression | [42855867620](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867620) | Passed |
+| Trivy Security Scan | [42855867635](https://github.com/cloudbyday90/Classifarr/actions/runs/42855867635) | Passed |
+
+The main pipeline passed Build and Test, Tests with Database, Fresh Install and
+Published Upgrade, and its final acceptance readout. This includes production
+assets, the verification image, compression/archive checks, bounded PostgreSQL
+startup/monitoring/shutdown, loaded-container recovery and queue-claim recovery.
+Manual registry cleanup and synthetic replay were skipped by their existing
+conditions; no publication, release or deployment was performed.
+
+This follow-up changes only the outcome receipt. Its own CI state is reported
+separately at handoff, without attributing the implementation run to that later
+documentation revision.
 
 ## Next recommendation
 
