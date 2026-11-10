@@ -2,8 +2,8 @@
 
 November 9, 2026 Eastern. Implementation baseline main ed20d0691. The complete
 [design](provider-purpose-adjudication-design.md) is agreed. Local qualification
-is complete; runtime CI is pending at this local checkpoint. No release,
-deployment, live configuration write or paid/live provider call.
+and all seven ordinary source workflows pass for runtime commit 4acae1486.
+No release, deployment, live configuration write or paid/live provider call.
 
 ## Implemented behavior
 
@@ -108,6 +108,34 @@ tree is untouched: 486 files/7,557 unit tests, production build, eight productio
 browser checks and fourteen form browser checks remain qualified. Do not call
 this a newly executed client suite for the backend-only change.
 
+### Exact runtime CI receipts
+
+All seven workflows completed successfully for
+[4acae148665c9b8e8d5f1bcd6e2c37825bc16998](https://github.com/cloudbyday90/Classifarr/commit/4acae148665c9b8e8d5f1bcd6e2c37825bc16998),
+verified through MCP on November 9 Eastern. These receipts qualify that code
+commit; this later documentation-only update records them without changing the
+tested code or installed trees.
+
+| Workflow | Source-bound result |
+| --- | --- |
+| CI/CD Pipeline | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731804211) |
+| OSV Dependency Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731804126) |
+| Trivy Security Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731803710) |
+| Gitleaks Secret Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731803676) |
+| CodeQL Analysis | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731804038) |
+| Resource Capacity Regression | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731803757) |
+| Copyright Compliance | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42731803703) |
+
+The main pipeline passed Build and Test, Tests with Database, Fresh Install and
+Published Upgrade, and its ordinary CI-mode Release Acceptance Readout. Its
+production browser checks, verification-image build, system-zlib/archive checks,
+schema check, PostgreSQL startup/runtime/lifecycle checks, loaded shutdown drills
+and queue recovery all passed. Image publication, published-image consumer and
+routing checks, release publication, promotion and registry cleanup were skipped.
+This is source CI qualification, with no new published artifact or release claim.
+
+### Audit, PR and maintenance boundaries
+
 Fresh development-inclusive audits retain zero root/client findings and the same
 five low server deepmerge/Jest findings. Preserve the existing server-local CNA
 triage/expiry, all other findings/severities and the Node/npm residual boundaries.
@@ -123,7 +151,8 @@ Scoped maintenance verifies the same Docker daemon and all three protected
 service identities, image IDs, start times and health. Reuse the recent reviewed
 inventory; preserve current evidence, recovery/reference assets, tools, worktrees,
 volumes, shared cache and other projects. Build no image and remove no stale
-artifact in this batch; owned PostgreSQL/gateway/HTTP fixtures clean up normally.
+artifact locally in this batch; owned PostgreSQL/gateway/HTTP fixtures clean up
+normally. The CI verification image is isolated to its hosted runner.
 No production service restart, database cleanup or deployment is performed.
 
 ## Research, tradeoffs and next recommendation
@@ -141,6 +170,10 @@ principles without introducing a framework, extra model, UI or routine CLI.
 
 Next inspect category-specific assumptions in the separate classify prompt and
 replace them with category-neutral guidance grounded in configured evidence.
+The classify-only suffix in `classificationAiService.mjs` still names a
+"Family" destination and categorically dismisses content ratings as library
+indicators. Review those instructions against each library's admitted rules,
+without adding a category-specific exception or changing response authority.
 Do not expand this contract to an all-library or historical surface without its
 own binding/disclosure assessment. Keep post-choice compatibility-purpose
 learning provenance separate; this change does not widen it.
@@ -158,4 +191,4 @@ delivered in ed20d0691. Its seven ordinary source workflows passed, including
 [CI](https://github.com/cloudbyday90/Classifarr/actions/runs/42714196374),
 [OSV](https://github.com/cloudbyday90/Classifarr/actions/runs/42714197032) and
 [dependency/copyright controls](https://github.com/cloudbyday90/Classifarr/actions/runs/42714196186).
-New runtime code requires its own source-bound receipts.
+The new runtime code's independent source-bound receipts are recorded above.
