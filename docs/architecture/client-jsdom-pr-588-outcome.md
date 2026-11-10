@@ -2,8 +2,8 @@
 
 November 9, 2026 Eastern. Baseline main ff7859e3f. The complete conditional
 [design](client-jsdom-pr-588-design.md) was confirmed before assessment.
-Local qualification passes; adopt the JSDOM-only subset. Exact-source CI is
-pending push.
+Local qualification and all seven ordinary source workflows pass for combined
+code commit 8c27c97c3. Adopt the JSDOM-only subset.
 No PR merge, release or deployment.
 
 ## Selected subset and exact graph
@@ -67,8 +67,11 @@ functions 87.71% and lines 89.61%. The production build, eight production browse
 checks and fourteen form browser checks pass with unchanged assertions/deadlines.
 The independent prompt batch's fresh backend coverage also passes: 1,938 suites,
 62,964 tests and one existing skip. All 7,423 frozen code inputs and both current
-coverage reports qualify the successful coverage ratchet. Exact-source CI is
-pending push; interrupted reports are not substituted for these results.
+coverage reports qualify the successful coverage ratchet. The
+[combined code commit's exact-source receipts](category-neutral-classify-prompt-outcome.md#exact-source-ci-and-report-provenance)
+record all seven successful workflows, normal Linux tests/browser checks,
+isolated installation/database and container recovery qualification. Publication
+jobs were skipped. Interrupted reports are not substituted for these results.
 
 The first full coverage attempt caught the repository's closing-wrapper rule in
 the new parser test file. Correct the new wrapper without changing assertions,
@@ -84,8 +87,18 @@ application regression or conceal it by loosening browser checks.
 
 No application syntax, expected diagnostic, existing timeout, global DOM shim or
 scanner exception changes. Keep the production application independent of this
-test-environment major. Document final source/report hashes and maintenance
-receipts at delivery; rebase only genuinely stale applicable PRs and merge none.
+test-environment major. Source/report hashes and scoped maintenance are recorded
+with the combined delivery receipts; no local image or stale artifact removal
+was selected. Preserve recovery assets, tools, worktrees, volumes, cache and other
+projects. No genuinely stale applicable branch required rebasing.
+
+Dependabot closed selected PR 588 unmerged at 02:14:58 UTC on November 10
+(November 9 Eastern), verified by the closed-event actor `dependabot[bot]` and
+the PR's `merged: false` state. It opened the fresh
+[PR 589](https://github.com/cloudbyday90/Classifarr/pull/589) for the remaining
+compiler update. At delivery review its branch is mergeable with unstable
+checks, not a rebase conflict. No agent rebase, PR merge, reopen or bot comment
+was performed.
 
 ## Recommendation stack
 
@@ -93,3 +106,8 @@ The [design](client-jsdom-pr-588-design.md#pros-cons-and-final-recommendation-st
 records the alternatives and tradeoffs. Local gates support adopting the
 JSDOM-only subset with the reviewed parser resolution. Keep compiler updates, native canvas,
 broader browser fidelity and published Node/npm security updates separate.
+
+Node 24.22.1/npm 12.2.2 pins and the
+[existing runtime-security boundaries](runtime-zlib-security-outcome.md#recommendation-stack)
+remain. Assess actual corrected artifacts before a future publication; this
+test-environment update adds no scanner exception or all-transport fix claim.

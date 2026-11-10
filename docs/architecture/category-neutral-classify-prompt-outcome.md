@@ -2,7 +2,8 @@
 
 November 9, 2026 Eastern. Baseline main ff7859e3f. The complete
 [design](category-neutral-classify-prompt-design.md) was confirmed before
-implementation. Local qualification is complete; exact-source CI is pending push.
+implementation. Local qualification and all seven ordinary source workflows
+pass for combined code commit 8c27c97c3.
 No release, deployment, live provider call or configuration write.
 
 ## Implemented behavior
@@ -53,7 +54,7 @@ classification or review-limit changes. Fresh full backend coverage passes
 1,938 suites and 62,964 tests, with one existing skip: statements/lines 89.30%,
 branches 86.76% and functions 90.84%. All 7,423 frozen code inputs remain identical
 after execution, and both current reports pass the coverage ratchet. Exact-source
-CI results will be recorded after push. Preliminary interrupted reports do not
+CI receipts are recorded below. Preliminary interrupted reports do not
 qualify delivery. The independent
 [client outcome](client-jsdom-pr-588-outcome.md) records fresh coverage,
 production build/browser, tooling, compiler and audit results.
@@ -63,6 +64,38 @@ all three protected service/image identities, precise start times and health
 remain unchanged. Preserve recovery assets, worktrees, toolchains, volumes,
 shared cache, other projects and current evidence. No local image is built and
 no stale artifact is selected for removal; no production cleanup or restart.
+
+## Exact-source CI and report provenance
+
+All seven ordinary workflows completed successfully for
+[8c27c97c3f937528b780b16ac9a3d1f07f1098b5](https://github.com/cloudbyday90/Classifarr/commit/8c27c97c3f937528b780b16ac9a3d1f07f1098b5),
+which includes the independent dependency commit bc56572c5. Verified through MCP
+on November 9 Eastern. This later documentation-only update records those
+receipts without changing the tested code or installed trees.
+
+| Workflow | Source-bound result |
+| --- | --- |
+| CI/CD Pipeline | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152541) |
+| OSV Dependency Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152835) |
+| Trivy Security Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152144) |
+| Gitleaks Secret Scan | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152299) |
+| CodeQL Analysis | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152397) |
+| Resource Capacity Regression | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152401) |
+| Copyright Compliance | [Passed](https://github.com/cloudbyday90/Classifarr/actions/runs/42741152074) |
+
+The main pipeline passed Build and Test, Tests with Database, Fresh Install and
+Published Upgrade, and the ordinary CI-mode Release Acceptance Readout. Configured
+browser, verification-image/system-package/schema, PostgreSQL startup/runtime/
+lifecycle, loaded shutdown and queue-recovery checks passed. Image publication,
+published-image consumer/routing, release publication, promotion and registry
+cleanup were skipped. This is source qualification, not a new release artifact.
+
+The retained local coverage reports are identified by SHA-256:
+
+| Report | SHA-256 |
+| --- | --- |
+| server/coverage/coverage-summary.json | ab7a04f6b0e7ff63612e1f13b358ae29ecfe9896405e2b4664be230e10d5db65 |
+| client/coverage/coverage-final.json | 57fbd5f5480ba8f07e8f54147d25d0b87fe92f51dde26198384f1d447f888378 |
 
 ## Research and tradeoffs
 
