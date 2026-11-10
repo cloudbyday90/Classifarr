@@ -2,6 +2,9 @@
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { pendingReviewReference } from '../src/__tests__/fixtures/pendingReviewReference.js'
+import { createUnresolvedClassifyFallback } from '../../server/src/services/genericClassifyUnresolved.mjs'
+import { normalizePolicyRuntimeQuestion } from '../../server/src/services/policyRuntimeQuestionNormalizer.mjs'
+import { buildPolicyRuntimeQuestionAnswerContract } from '../../server/src/services/policyRuntimeQuestionAnswerContract.mjs'
 
 test('disagreement stays compact, keyboard accessible and explicit at narrow widths', async ({ page }, testInfo) => {
   const writes = []
@@ -65,4 +68,53 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   expect(writes[0]).toEqual({ path: '/api/classification/pending/44/resolve', method: 'POST', body: {
     contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: 'abcdefghijklmnopqrstuv',
     action_id: 'confirm_destination', destination_library_id: 8 } })
+})
+
+test('fresh unresolved server advice stays neutral until an explicit keyboard destination choice', async ({ page }) => {
+  const libraries = [{ id: 11, name: 'First arbitrary label', media_type: 'movie', is_active: true },
+    { id: 22, name: 'Movies', media_type: 'movie', is_active: true }]
+  const metadata = { title: 'Owned unresolved browser item', media_type: 'movie' }
+  const result = createUnresolvedClassifyFallback(libraries, metadata)
+  const question = normalizePolicyRuntimeQuestion({ question: result.clarification, result, libraries, metadata })
+  const item = { ...metadata, id: 45, status: 'awaiting_decision', method: 'ai_analysis', library_id: null,
+    library_name: null, policy_question: question }
+  const answer = buildPolicyRuntimeQuestionAnswerContract({ classification: item, question })
+  expect(answer.recommendation.leading_destination).toBeNull()
+  const writes = []
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const request = route.request(), path = new URL(request.url()).pathname
+    let data = {}
+    if (request.method() !== 'GET') {
+      writes.push({ path, method: request.method(), body: request.postDataJSON() })
+      data = { success: true, routed: false, libraryName: 'Movies' }
+    } else {
+      if (path === '/api/setup/status') data = { setupRequired: false }
+      if (['/api/auth/me', '/api/user/me'].includes(path)) data = { id: 1, role: 'admin', username: 'fixture-operator' }
+      if (path === '/api/notifications') data = { data: [] }
+      if (path === '/api/notifications/unread-count') data = { unread: 0 }
+      if (['/api/libraries', '/api/classification/progress', '/api/queue/pending', '/api/queue/failed'].includes(path)) data = []
+      if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
+      if (path === '/api/classification/pending') data = { items: [{ ...item, policy_question_stale: false, policy_question_answer: answer }] }
+      if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
+    }
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Cache-Control': 'no-store' }, body: JSON.stringify(data) })
+  })
+  await page.goto('/')
+  const card = page.locator('#needs-attention .action-item').first()
+  await expect(card).toContainText('Choose a destination for this item.')
+  await expect(card).not.toContainText('Classifarr recommends')
+  await expect(card.getByRole('button', { name: /^Confirm / })).toHaveCount(0)
+  expect(writes).toEqual([])
+  const candidates = card.locator('.alternative-destinations')
+  await candidates.locator(':scope > summary').focus()
+  await page.keyboard.press('Space')
+  const select = candidates.getByRole('button', { name: 'Use Movies', exact: true })
+  await select.focus()
+  await expect(select).toBeFocused()
+  expect(writes).toEqual([])
+  await page.keyboard.press('Enter')
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0]).toEqual({ path: '/api/classification/pending/45/resolve', method: 'POST', body: {
+    contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+    action_id: 'confirm_destination', destination_library_id: 22 } })
 })

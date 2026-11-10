@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Unresolved AI advice** — Keep fresh generic invalid and clarification results
+  without a primary destination; library names, list position and raw hints no
+  longer become recommendations. Keep bounded explicit choices and fix JSON
+  clarification's mode dispatch, preserving valid proposals, replay and routing
+  authorization. See the
+  [outcome](docs/architecture/generic-classify-unresolved-advice-outcome.md).
+
 - **Generic classification guidance** — Remove the built-in Family exception
   and blanket rating prohibition from initial AI advice. Require supplied
   destination support and keep observed placements separate from declared
@@ -58,6 +65,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Compiler PR review** — Reassess open PR #589's immutable compiler graph and
+  retain the previously qualified versions because the proposed artifact is
+  unchanged from the demonstrated incompatible candidate. No dependency edit or
+  PR merge; see the [outcome](docs/architecture/client-compiler-pr-589-outcome.md).
 
 - **Client DOM tooling** — Locally adopt PR #588's exact JSDOM 31.0.0 subset
   with real DOM, CSS, parser and transport controls. Preserve the deferred

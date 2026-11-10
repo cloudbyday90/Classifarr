@@ -34,6 +34,7 @@ const deliver = jest.fn(async ({ channel, payload }) => {
 jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDelivery: { send: deliver } }));
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
+const { AIResponseParser } = await import('../services/aiResponseParser.mjs');
 
 function normalizedPolicyQuestion() {
   return normalizePolicyRuntimeQuestion({
@@ -52,6 +53,27 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test('fresh generic unresolved advice produces explicit destination buttons without a primary recommendation', async () => {
+    const libraries = [{ id: 15, name: 'Movies', media_type: 'movie', is_active: true },
+      { id: 14, name: 'Arbitrary label', media_type: 'movie', is_active: true }];
+    const metadata = { title: 'Owned unresolved notification', media_type: 'movie' };
+    const result = new AIResponseParser().parse('Invalid narrative', { libraries, metadata,
+      signalContext: { confidence: 99, suggestedLibrary: libraries[0] } }, { mode: 'classify' });
+    result.classification_id = 78;
+    result.policy_question = normalizePolicyRuntimeQuestion({ question: result.policy_question, result, metadata, libraries });
+    const send = jest.fn().mockResolvedValue({ id: 'owned-message' });
+    expect(await sendPendingDecisionNotification(metadata, result, {
+      client: { channels: { fetch: async () => ({ send }) } }, channelId: 'owned-channel',
+      config: { enabled: true, notify_on_pending_items: true }, warnFn: jest.fn(),
+    })).toMatchObject({ sent: true });
+    const payload = send.mock.calls[0][0];
+    const buttons = payload.components[0].components.map(button => button.data);
+    expect(buttons.map(button => button.label)).toEqual(['Resolve in Movies', 'Resolve in Arbitrary label']);
+    expect(JSON.stringify(payload)).not.toContain('Classifarr recommends');
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...metadata,
+      id: 78, status: 'awaiting_decision', library_id: null }, question: result.policy_question });
+    expect(contract.recommendation.leading_destination).toBeNull();
+  });
   test('preserves typed identity for a bound purpose card in the emitted fingerprint', async () => {
     const fixture = purposeMatchFixture({ origin: 'mixed' });
     const libraries = [{ id: 4, name: 'Animation', media_type: 'movie', is_active: true },

@@ -326,7 +326,7 @@ describe('AIResponseParser', () => {
             expect(result.policy_question.calculated_confidence).toBe(85);
         });
 
-        it('should use suggested library from signalContext', () => {
+        it('should retain diagnostic confidence without promoting the signal-context suggestion', () => {
             const response = 'CLARIFY|Test|Why|Question|Action Movies|Drama Movies';
             const context = {
                 libraries: mockLibraries,
@@ -336,7 +336,7 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context);
 
-            expect(result.library).toEqual(mockSignalContext.suggestedLibrary);
+            expect(result.library).toBeNull();
             expect(result.confidence).toBe(85);
         });
 
@@ -435,7 +435,8 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('contract_violation');
             expect(result.needs_clarification).toBe(true);
-            expect(result.library.name).toBe('Action Movies');
+            expect(result.library).toBeNull();
+            expect(result.policy_question.meta.suggested_library_name).toBeNull();
             expect(result.policy_question.problem_summary).toBe('AI response contract violation');
         });
     });
@@ -563,7 +564,7 @@ describe('AIResponseParser', () => {
             expect(mockLogger.warn).not.toHaveBeenCalled();
         });
 
-        it('should convert malformed classify prose into contract_violation using deterministic candidates', () => {
+        it('should convert malformed classify prose into neutral contract_violation choices', () => {
             const libraries = [
                 { id: 11, name: 'TV Shows', media_type: 'tv' },
                 { id: 12, name: 'Movies', media_type: 'movie' },
@@ -583,10 +584,11 @@ describe('AIResponseParser', () => {
 
             expect(result.format).toBe('contract_violation');
             expect(result.needs_clarification).toBe(true);
-            expect(result.library).toEqual(expect.objectContaining({ id: 12, name: 'Movies' }));
+            expect(result.library).toBeNull();
             expect(result.confidence).toBe(62);
-            expect(result.policy_question.question).toContain('Movies');
-            expect(result.policy_question.meta.suggested_library_name).toBe('Movies');
+            expect(result.policy_question.question).not.toContain('Movies');
+            expect(result.policy_question.meta.suggested_library_name).toBeNull();
+            expect(result.policy_question.options.map(option => option.library_id)).toEqual([11, 12]);
             expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');
         });
 
@@ -604,9 +606,10 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
             expect(result.format).toBe('contract_violation');
-            expect(result.library).toEqual(expect.objectContaining({ id: 12, name: 'Movies' }));
-            expect(result.policy_question.question).toContain('Movies');
+            expect(result.library).toBeNull();
+            expect(result.policy_question.question).not.toContain('Movies');
             expect(result.policy_question.question).not.toContain('TV Shows');
+            expect(result.policy_question.options.map(option => option.library_id)).toEqual([11, 12]);
         });
 
         it('should handle malformed classify prose from production incident without inventing a lead library', () => {
@@ -629,7 +632,7 @@ describe('AIResponseParser', () => {
             const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
             expect(result.format).toBe('contract_violation');
-            expect(result.library.name).toBe('Movies');
+            expect(result.library).toBeNull();
             expect(result.policy_question.problem_summary).toBe('AI response contract violation');
             expect(result.pending_reason).toBe('AI response contract violation');
             expect(result.policy_question.meta.violation_reason).toBe('narrative_no_format_match');

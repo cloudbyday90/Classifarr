@@ -12,6 +12,11 @@ import { createLogger } from '../utils/logger.mjs';
 import { normalizeResponseForParsing } from './aiResponseNormalizer.mjs';
 import { parseCandidateAdjudicationResponse } from './candidateAdjudicationResponseContract.mjs';
 import {
+    createUnresolvedClassifyFallback,
+    createUnresolvedClassifyClarification,
+    createUnresolvedClassifyContractViolation,
+} from './genericClassifyUnresolved.mjs';
+import {
     getDefaultLibrary as _getDefaultLibrary,
     createFallbackResult as _createFallbackResult,
     createVerifyDisagreementResult as _createVerifyDisagreementResult,
@@ -63,6 +68,7 @@ export class AIResponseParser {
                 this.logger.warn('Invalid AI response', { response: String(response).substring(0, 100) });
             }
             return this.createFallbackResult(libraries, metadata, {
+                mode,
                 parseFailureReason: 'invalid_response'
             });
         }
@@ -84,6 +90,7 @@ export class AIResponseParser {
                         response: trimmed.substring(0, 200)
                     });
                     return this.createContractViolationResult(context, {
+                        mode,
                         violationReason: 'validation_failed',
                         validationErrors: validation.errors,
                         rawJson: parsedJson
@@ -105,6 +112,7 @@ export class AIResponseParser {
                     response: trimmed.substring(0, 200)
                 });
                 return this.createContractViolationResult(context, {
+                    mode,
                     violationReason: 'no_format_matched',
                     validationErrors: `JSON parsing error: ${err.message}`
                 });
@@ -154,6 +162,7 @@ export class AIResponseParser {
             });
         }
         return this.createFallbackResult(libraries, metadata, {
+            mode,
             parseFailureReason: 'no_format_matched'
         });
     }
@@ -289,6 +298,7 @@ export class AIResponseParser {
                 fallbackReason,
             });
             return this.createContractViolationResult(context, {
+                mode: parseOptions.mode || 'classify',
                 violationReason: fallbackReason,
                 requestedOptions: optionTokens,
                 matchedOptions: options
@@ -330,6 +340,10 @@ export class AIResponseParser {
             calculated_confidence: signalContext?.confidence || null,
         };
 
+        if ((parseOptions.mode || 'classify') === 'classify') {
+            return createUnresolvedClassifyClarification(context, policyQuestion);
+        }
+
         const suggestedLibrary = signalContext?.suggestedLibrary || 
                                  this.getDefaultLibrary(libraries, metadata?.media_type);
 
@@ -364,6 +378,7 @@ export class AIResponseParser {
         }
 
         return this.createContractViolationResult(context, {
+            mode,
             violationReason: 'narrative_no_format_match',
         });
     }
@@ -443,13 +458,14 @@ export class AIResponseParser {
             if (options.length < 2) {
                 const fallbackReason = options.length === 1 ? 'single_valid_option' : 'no_valid_options';
                 return this.createContractViolationResult(context, {
+                    mode,
                     violationReason: fallbackReason,
                     requestedOptions: optionTokens,
                     matchedOptions: options
                 });
             }
 
-            if (signalContext) {
+            if (mode === 'verify' && signalContext) {
                 return this.createVerifyDisagreementResult(context, {
                     disagreementReason: 'clarification_requested',
                     sourceFormat: 'json_clarify',
@@ -465,6 +481,10 @@ export class AIResponseParser {
                 signal_breakdown: signalContext?.breakdown || [],
                 calculated_confidence: signalContext?.confidence || null,
             };
+
+            if (mode === 'classify') {
+                return createUnresolvedClassifyClarification(context, policyQuestion);
+            }
 
             const suggestedLibrary = signalContext?.suggestedLibrary || 
                                      this.getDefaultLibrary(libraries, metadata?.media_type);
@@ -498,6 +518,7 @@ export class AIResponseParser {
     }
 
     createFallbackResult(libraries, metadata, options) {
+        if (options?.mode === 'classify') return createUnresolvedClassifyFallback(libraries, metadata, options);
         return _createFallbackResult(libraries, metadata, options);
     }
 
@@ -628,6 +649,9 @@ export class AIResponseParser {
     }
 
     createContractViolationResult(context, details) {
+        if (details?.mode === 'classify') {
+            return createUnresolvedClassifyContractViolation(context, details, new Date().toISOString());
+        }
         return _createContractViolationResult(context, details);
     }
 }

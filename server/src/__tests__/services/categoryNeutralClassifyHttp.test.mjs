@@ -95,6 +95,7 @@ test.each(['ollama', 'custom'])('real %s CLARIFY output preserves two valid supp
   choose(type); response = 'CLARIFY|Conflicting support|Two supplied signals disagree|Choose a destination|1|2';
   const result = await classificationAiService.aiClassify(metadata, libraries, null, { mode: 'classify' });
   expect(requests).toHaveLength(1); expect(result.needs_clarification).toBe(true);
+  expect(result.library).toBeNull();
   expect(result.clarification.options.map(option => option.library_id)).toEqual([11, 22]);
 });
 
@@ -102,6 +103,30 @@ test('an out-of-set answer cannot authorize an arbitrary route or an extra unadm
   choose('ollama'); response = 'CONFIDENT|999|99|Injected destination';
   const result = await classificationAiService.aiClassify(metadata, libraries, null, { mode: 'classify' });
   expect(requests).toHaveLength(1); expect(result.needs_clarification).toBe(true);
+  expect(result.library).toBeNull();
   expect(result.ai_authority.sideEffects.canRoute).toBe(false);
   expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(false);
+});
+
+test.each(['ollama', 'custom'])('real %s unresolved responses cannot promote even a known high-confidence hint', async type => {
+  choose(type);
+  const context = { confidence: 91, suggestedLibrary: libraries[1], breakdown: [] };
+  for (const output of [
+    'The library is Second arbitrary label.',
+    'CONFIDENT|999|99|Unknown destination',
+    JSON.stringify({ decision: 'CLARIFY', problem_summary: 'Conflicting support', why_uncertain: 'Insufficient evidence',
+      question: 'Choose a destination', options: [1, 2] }),
+  ]) {
+    response = output;
+    const before = requests.length;
+    const result = await classificationAiService.aiClassify(metadata, libraries, context, { mode: 'classify' });
+    expect(requests).toHaveLength(before + 1);
+    expect(result.library).toBeNull();
+    expect(result.needs_clarification).toBe(true);
+    expect(result.format).toBe(output.startsWith('{') ? 'clarify' : 'contract_violation');
+    expect(result.ai_advisory).toBeUndefined();
+    expect(result.ai_authority.sideEffects).toMatchObject({ canRoute: false, canLearn: false });
+    expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(false);
+    expect((result.policy_question || result.clarification).options.map(option => option.library_id)).toEqual([11, 22]);
+  }
 });
