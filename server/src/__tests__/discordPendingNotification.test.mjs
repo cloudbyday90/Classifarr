@@ -35,6 +35,7 @@ jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDeli
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
 const { AIResponseParser } = await import('../services/aiResponseParser.mjs');
+const { buildAiUnavailableResult } = await import('../services/classificationPathServiceShared.mjs');
 
 function normalizedPolicyQuestion() {
   return normalizePolicyRuntimeQuestion({
@@ -53,12 +54,14 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
-  test('fresh generic unresolved advice produces explicit destination buttons without a primary recommendation', async () => {
+  test.each(['classify', 'recovery'])('fresh %s unresolved advice produces explicit destination buttons without a primary recommendation', async kind => {
     const libraries = [{ id: 15, name: 'Movies', media_type: 'movie', is_active: true },
       { id: 14, name: 'Arbitrary label', media_type: 'movie', is_active: true }];
     const metadata = { title: 'Owned unresolved notification', media_type: 'movie' };
-    const result = new AIResponseParser().parse('Invalid narrative', { libraries, metadata,
-      signalContext: { confidence: 99, suggestedLibrary: libraries[0] } }, { mode: 'classify' });
+    const result = kind === 'recovery' ? buildAiUnavailableResult({ libraries, confidence: 65,
+      isTransientAiAvailability: false, suggestedLibrary: null })
+      : new AIResponseParser().parse('Invalid narrative', { libraries, metadata,
+        signalContext: { confidence: 99, suggestedLibrary: libraries[0] } }, { mode: 'classify' });
     result.classification_id = 78;
     result.policy_question = normalizePolicyRuntimeQuestion({ question: result.policy_question, result, metadata, libraries });
     const send = jest.fn().mockResolvedValue({ id: 'owned-message' });

@@ -8,9 +8,18 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({ createLogger: () => 
 jest.unstable_mockModule('../../config/database.mjs', () => ({ query: async sql => ({
   rows: sql.includes('ai_provider_config') ? [row] : [], rowCount: 1,
 }) }));
-jest.unstable_mockModule('../../services/classificationMetadataService.mjs', () => ({ enrichWithWebSearch: async () => ({
-  imdb: { provider: 'synthetic', query: 'owned fixture', results: [{ title: 'Fixture', url: 'https://example.invalid/fixture', snippet: 'Owned research sentinel', rank: 1 }] },
-}) }));
+const metadataShared = await import('../../services/classificationMetadataServiceShared.mjs');
+const metadataService = {
+  detectEventTypesFromMetadata: metadataShared.detectEventTypesFromMetadata,
+  mergeMetadataForRecheck: metadataShared.mergeMetadataForRecheck,
+  mightBeAnime: metadataShared.mightBeAnime,
+  parseOverseerrPayload: metadataShared.parseOverseerrPayload,
+  enrichWithTMDB: () => { throw new Error('Unexpected TMDB access in owned HTTP fixture'); },
+  getTavilyConfig: () => { throw new Error('Unexpected research configuration access in owned HTTP fixture'); },
+  enrichWithWebSearch: async () => ({ imdb: { provider: 'synthetic', query: 'owned fixture',
+    results: [{ title: 'Fixture', url: 'https://example.invalid/fixture', snippet: 'Owned research sentinel', rank: 1 }] } }),
+};
+jest.unstable_mockModule('../../services/classificationMetadataService.mjs', () => ({ ...metadataService, classificationMetadataService: metadataService }));
 jest.unstable_mockModule('../../services/classificationProviderAdmissionService.mjs', () => ({ classificationProviderAdmissionService: {
   admit: async () => null, failed: async () => false, succeeded: async () => {},
 } }));
@@ -20,20 +29,29 @@ jest.unstable_mockModule('../../services/providerLock.mjs', () => ({ providerLoc
 jest.unstable_mockModule('../../services/ollamaVerificationCapabilityRuntimeInvalidationService.mjs', () => ({
   ollamaVerificationCapabilityRuntimeInvalidationService: { invalidateFromGenerationError: async () => false },
 }));
+jest.unstable_mockModule('../../services/classificationRagLoopService.mjs', () => ({ classificationRagLoopService: {
+  evaluateRagLoopSecondPass: () => { throw new Error('Unexpected post-provider work in refusal fixture'); },
+} }));
 const { classificationAiService } = await import('../../services/classificationAiService.mjs');
 const { aiRouterService } = await import('../../services/aiRouter.mjs');
 const { ollamaService } = await import('../../services/ollama.mjs');
 const { classificationResponseSchema } = await import('../../services/aiResponseSchema.mjs');
 const { evaluateClassificationRouteSafety } = await import('../../services/classificationRouteSafetyGate.mjs');
+const { ClassificationLegacySignalPathService } = await import('../../services/classificationLegacySignalPathService.mjs');
+const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 
-let server, origin, requests, response;
+let server, origin, requests, response, responseStatus;
 const metadata = { title: 'Synthetic item', tmdb_id: 876543, media_type: 'movie', certification: 'R', genres: ['Thriller'] };
 const libraries = [{ id: 11, name: 'First arbitrary label', media_type: 'movie' }, { id: 22, name: 'Second arbitrary label', media_type: 'movie' }];
 beforeEach(async () => {
-  requests = []; response = 'CONFIDENT|1|99|Supplied support';
+  requests = []; response = 'CONFIDENT|1|99|Supplied support'; responseStatus = 200;
   server = createServer(async (request, reply) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8')); requests.push({ path: request.url, body });
+    if (responseStatus !== 200) {
+      reply.writeHead(responseStatus, { 'Content-Type': 'application/json' });
+      reply.end(JSON.stringify({ error: 'Owned authorization refusal' })); return;
+    }
     reply.setHeader('Content-Type', request.url === '/api/generate' ? 'application/x-ndjson' : 'application/json');
     reply.end(request.url === '/api/generate'
       ? JSON.stringify({ model: 'synthetic:latest', done: true, response }) + '\n'
@@ -129,4 +147,27 @@ test.each(['ollama', 'custom'])('real %s unresolved responses cannot promote eve
     expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(false);
     expect((result.policy_question || result.clarification).options.map(option => option.library_id)).toEqual([11, 22]);
   }
+});
+
+test.each(['ollama', 'custom'])('real %s refusal through the production legacy owner preserves recovery boundaries', async type => {
+  choose(type); responseStatus = 401;
+  class EmptyCollector {
+    async collectAll() {}
+    getSignals() { return []; }
+    getPatternSignals() { return []; }
+  }
+  const owner = new ClassificationLegacySignalPathService({ logger, SignalCollectorClass: EmptyCollector,
+    ragRetriever: { semanticSearch: async () => [] },
+    confidenceCalculator: { loadWeights: async () => {}, calculate: () => ({ confidence: 65, suggestedLibrary: null }), toAIContext: () => ({}) },
+    classificationEvidenceService: { buildRelatedEvidenceSummary: () => null },
+    classificationAiService, classificationRoutingService: { ensureDecisionQuestion },
+  });
+  const result = await owner.execute({ metadata, libraries, relatedEvidence: [] });
+  expect(requests).toHaveLength(1);
+  expect(result).toMatchObject({ library: null, confidence: 50, method: 'fallback', needs_clarification: true,
+    provider_recovery: { version: 'provider_recovery.v1', mode: 'review_required' },
+    route_safety: { automatic_route_allowed: false, primary_gate: { id: 'provider_recovery_review_required' } } });
+  expect(result.reason).toBe('AI unavailable - choose a destination for this item');
+  expect(result.policy_question.options.map(option => option.library_id)).toEqual([11, 22]);
+  expect(result.needs_retry).toBeUndefined();
 });

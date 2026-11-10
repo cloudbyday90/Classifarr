@@ -296,5 +296,6 @@ describe('classificationPolicyPathService.execute', () => {
     const out = await execute(baseParams);
     expect(out.handled).toBe(true);
     expect(out.result.method).toBe('fallback');
+    expect(out.result.library).toBeNull();
   });
 });

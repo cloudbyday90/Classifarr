@@ -241,10 +241,10 @@ describe('classificationPathServiceShared', () => {
 		});
 
 		expect(result).toEqual({
-			library: libraries[1],
+			library: null,
 			confidence: 50,
 			method: 'fallback',
-			reason: 'Default library - AI unavailable (fell back to Shows)',
+			reason: 'AI unavailable - choose a destination for this item',
 			libraries,
 			provider_recovery: {
 				version: 'provider_recovery.v1',
@@ -310,10 +310,10 @@ describe('classificationPathServiceShared', () => {
 			result: {
 				policyResult: { confidence: 65 },
 				signalContext: { confidence: 65 },
-				library: libraries[1],
+				library: null,
 				confidence: 50,
 				method: 'fallback',
-				reason: 'Default library - AI unavailable (fell back to Shows)',
+				reason: 'AI unavailable - choose a destination for this item',
 				libraries,
 				provider_recovery: {
 					version: 'provider_recovery.v1',

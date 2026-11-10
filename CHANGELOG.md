@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Recovery destination advice** — Keep AI-unavailable recovery without a
+  suggestion neutral instead of choosing the last library, including an empty
+  library pool. Preserve existing retries, signal advice, explicit resolution
+  and routing/learning safeguards. See the
+  [outcome](docs/architecture/recovery-unresolved-advice-outcome.md).
+
 - **Unresolved AI advice** — Keep fresh generic invalid and clarification results
   without a primary destination; library names, list position and raw hints no
   longer become recommendations. Keep bounded explicit choices and fix JSON

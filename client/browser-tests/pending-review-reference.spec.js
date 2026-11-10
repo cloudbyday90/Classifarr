@@ -5,6 +5,8 @@ import { pendingReviewReference } from '../src/__tests__/fixtures/pendingReviewR
 import { createUnresolvedClassifyFallback } from '../../server/src/services/genericClassifyUnresolved.mjs'
 import { normalizePolicyRuntimeQuestion } from '../../server/src/services/policyRuntimeQuestionNormalizer.mjs'
 import { buildPolicyRuntimeQuestionAnswerContract } from '../../server/src/services/policyRuntimeQuestionAnswerContract.mjs'
+import { buildUnresolvedRecoveryAdvice } from '../../server/src/services/recoveryUnresolvedAdvice.mjs'
+import { buildProviderRecovery } from '../../server/src/services/classificationProviderRecovery.mjs'
 
 test('disagreement stays compact, keyboard accessible and explicit at narrow widths', async ({ page }, testInfo) => {
   const writes = []
@@ -70,13 +72,15 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
     action_id: 'confirm_destination', destination_library_id: 8 } })
 })
 
-test('fresh unresolved server advice stays neutral until an explicit keyboard destination choice', async ({ page }) => {
+async function verifyNeutralDestinationChoice(page, kind) {
   const libraries = [{ id: 11, name: 'First arbitrary label', media_type: 'movie', is_active: true },
     { id: 22, name: 'Movies', media_type: 'movie', is_active: true }]
   const metadata = { title: 'Owned unresolved browser item', media_type: 'movie' }
-  const result = createUnresolvedClassifyFallback(libraries, metadata)
+  const result = kind === 'recovery'
+    ? { ...buildUnresolvedRecoveryAdvice(libraries), provider_recovery: buildProviderRecovery() }
+    : createUnresolvedClassifyFallback(libraries, metadata)
   const question = normalizePolicyRuntimeQuestion({ question: result.clarification, result, libraries, metadata })
-  const item = { ...metadata, id: 45, status: 'awaiting_decision', method: 'ai_analysis', library_id: null,
+  const item = { ...metadata, id: 45, status: 'awaiting_decision', method: kind === 'recovery' ? 'fallback' : 'ai_analysis', library_id: null,
     library_name: null, policy_question: question }
   const answer = buildPolicyRuntimeQuestionAnswerContract({ classification: item, question })
   expect(answer.recommendation.leading_destination).toBeNull()
@@ -117,4 +121,10 @@ test('fresh unresolved server advice stays neutral until an explicit keyboard de
   expect(writes[0]).toEqual({ path: '/api/classification/pending/45/resolve', method: 'POST', body: {
     contract_version: answer.version, contract_fingerprint: answer.fingerprint,
     action_id: 'confirm_destination', destination_library_id: 22 } })
-})
+}
+
+for (const kind of ['classify', 'recovery']) {
+  test(`fresh ${kind} unresolved server advice stays neutral until an explicit keyboard destination choice`, async ({ page }) => {
+    await verifyNeutralDestinationChoice(page, kind)
+  })
+}

@@ -37,6 +37,14 @@ tooling findings remain explicit. No install, override or scanner policy changed
 The independent runtime fix has its own
 [verification outcome](generic-classify-unresolved-advice-outcome.md).
 
+During the subsequent recovery-fallback planning review on November 10 (baseline
+81ad2f960), MCP still finds only PR 589 at the same head. Immutable blob SHAs,
+all eleven coupled compiler version/integrity records and fresh registry metadata
+match the previously failing candidate. Installed/wanted vue-tsc remains 3.3.13;
+the release and upstream reports are unchanged. The branch is still mergeable,
+with unstable checks. Retain the same deferral without a duplicate install or
+new candidate-test claim; no applicable subset or genuinely stale branch emerged.
+
 ## Recommendation
 
 The [design's alternatives](client-compiler-pr-589-design.md#recommendation-stack)

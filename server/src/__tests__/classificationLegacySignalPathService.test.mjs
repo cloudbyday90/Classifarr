@@ -288,5 +288,6 @@ describe('classificationLegacySignalPathService.execute', () => {
 
     const out = await execute(baseParams);
     expect(out.method).toBe('fallback');
+    expect(out.library).toBeNull();
   });
 });

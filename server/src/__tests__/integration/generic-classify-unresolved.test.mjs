@@ -15,6 +15,9 @@ jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddi
 const { AIResponseParser } = await import('../../services/aiResponseParser.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
+const { buildAiUnavailableResult, resolveAiUnavailableResult } = await import('../../services/classificationPathServiceShared.mjs');
+const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
+const { buildPendingRetryResult } = await import('../../services/classificationAiFailureUtils.mjs');
 const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level => [level, () => {}]));
 const parser = new AIResponseParser({ logger });
 const metadata = { title: 'Owned unresolved persistence', tmdb_id: 884412, media_type: 'movie' };
@@ -37,10 +40,13 @@ describe('fresh generic unresolved lifecycle', () => {
   });
 
   async function pending(response) {
-    const result = parser.parse(response, { metadata, libraries,
-      signalContext: { confidence: 99, suggestedLibrary: libraries[1], breakdown: [] } }, { mode: 'classify' });
+    const recovery = response === 'recovery';
+    const result = recovery ? await resolveAiUnavailableResult({ metadata, libraries, ensureDecisionQuestion,
+      confidence: 65, suggestedLibrary: null, isTransientAiAvailability: false })
+      : parser.parse(response, { metadata, libraries,
+        signalContext: { confidence: 99, suggestedLibrary: libraries[1], breakdown: [] } }, { mode: 'classify' });
     expect(result.library).toBeNull();
-    result.method = 'ai_analysis';
+    if (!recovery) result.method = 'ai_analysis';
     result.policy_question = normalizePolicyRuntimeQuestion({ question: result.policy_question || result.clarification,
       metadata, libraries, result });
     const id = await persistence.logClassification(metadata, result);
@@ -56,7 +62,7 @@ describe('fresh generic unresolved lifecycle', () => {
   const resolve = (row, answer, policyContext = context) => resolvePolicyQuestion(row.id, answer.destinationLibraryId,
     null, 'owned-operator', false, { policyQuestionContext: policyContext, answerContract: answer });
 
-  test.each([null, 'Invalid narrative response', 'CLARIFY|Ambiguous|Insufficient support|Choose?|1|2',
+  test.each(['recovery', null, 'Invalid narrative response', 'CLARIFY|Ambiguous|Insufficient support|Choose?|1|2',
     JSON.stringify({ decision: 'CLARIFY', problem_summary: 'Ambiguous', why_uncertain: 'Insufficient support',
       question: 'Choose?', options: [1, 2] }),
   ])('NULL pending destination resolves only by explicit choice and exact replay: %s', async response => {
@@ -69,8 +75,8 @@ describe('fresh generic unresolved lifecycle', () => {
     await expect(resolve(row, { ...answer, contractFingerprint: 'different-receipt' })).rejects.toMatchObject({ statusCode: 409 });
   });
 
-  test('stale question and inactive destination refuse without completing the pending row', async () => {
-    const { row, answer } = await pending('Invalid narrative response');
+  test.each(['recovery', 'Invalid narrative response'])('stale question and inactive destination refuse without completing the pending row: %s', async source => {
+    const { row, answer } = await pending(source);
     await expect(resolve(row, answer, { ...context, isPolicyQuestionStale: () => true }))
       .rejects.toMatchObject({ statusCode: 409 });
     await getPool().query('UPDATE libraries SET is_active=false WHERE id=$1', [libraries[0].id]);
@@ -79,5 +85,20 @@ describe('fresh generic unresolved lifecycle', () => {
       .toEqual({ status: 'awaiting_decision', library_id: null });
     await expect(getPool().query("UPDATE classification_history SET status='completed' WHERE id=$1", [row.id]))
       .rejects.toMatchObject({ code: '23514' });
+  });
+
+  test('retry recovery retains its NULL destination, due time and charged attempt fields', async () => {
+    const before = Date.now();
+    const result = buildAiUnavailableResult({ isTransientAiAvailability: true, confidence: 65, libraries,
+      suggestedLibrary: null, previousRetryCount: 2, maxRetries: 4, buildPendingRetryResult,
+      transientError: Object.assign(new Error('Owned timeout'), { code: 'ETIMEDOUT' }) });
+    const id = await persistence.logClassification(metadata, result);
+    const row = (await getPool().query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+    expect(row).toMatchObject({ status: 'pending_retry', library_id: null, library_name: null,
+      retry_count: 3, max_retries: 4, policy_question: null });
+    const instant = (await getPool().query(`SELECT retry_after AT TIME ZONE current_setting('TimeZone') AS instant
+      FROM classification_history WHERE id=$1`, [id])).rows[0].instant;
+    expect(instant.getTime()).toBeGreaterThanOrEqual(before + 300000);
+    expect(instant.getTime()).toBeLessThanOrEqual(Date.now() + 300000);
   });
 });

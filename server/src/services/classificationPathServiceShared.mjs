@@ -24,6 +24,7 @@ import {
 	buildProviderRecovery,
 	PROVIDER_RECOVERY_MODE_IDS,
 } from './classificationProviderRecovery.mjs';
+import { buildUnresolvedRecoveryAdvice } from './recoveryUnresolvedAdvice.mjs';
 
 function normalizeAiUnavailableConfidence(confidence) {
 	return Number(confidence) || 0;
@@ -148,14 +149,7 @@ export function buildAiUnavailableResult({
 		}, { isRetryQueued });
 	}
 
-	const fallbackLibrary = libraries[libraries.length - 1];
-	return withProviderRecovery({
-		library: fallbackLibrary,
-		confidence: 50,
-		method: 'fallback',
-		reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
-		libraries,
-	}, { isRetryQueued });
+	return withProviderRecovery(buildUnresolvedRecoveryAdvice(libraries), { isRetryQueued });
 }
 
 export async function resolveAiUnavailableResult({
