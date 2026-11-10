@@ -53,6 +53,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Client DOM tooling** — Locally adopt PR #588's exact JSDOM 31.0.0 subset
+  with real DOM, CSS, parser and transport controls. Preserve the deferred
+  compiler graph, scoped Undici patch and strict installation policy; see the
+  [outcome](docs/architecture/client-jsdom-pr-588-outcome.md).
+
 - **Adjudication purpose evidence** — Give existing local AI comparisons bounded,
   live-bound declared purpose for their selected candidates, preserving identity
   and compatibility meaning. Keep remote evidence aggregate-only and preserve

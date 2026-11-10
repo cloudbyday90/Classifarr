@@ -19,7 +19,7 @@ const execute = (file, args) => run(process.execPath, [file, ...args], {
 describe('the JSDOM-owned Undici patch', () => {
   test('is the compatible exact client copy beneath retained JSDOM', () => {
     expect(JSON.parse(readFileSync(new URL('./package.json', target), 'utf8')).version).toBe('8.12.4')
-    expect(require('jsdom/package.json').version).toBe('30.1.3')
+    expect(require('jsdom/package.json').version).toBe('31.0.0')
     expect(consumer.resolve('undici')).toBe(require.resolve('undici'))
   })
   test.each(['integrity', 'headers', 'hops', 'credentials', 'revalidation', 'replay'])(
