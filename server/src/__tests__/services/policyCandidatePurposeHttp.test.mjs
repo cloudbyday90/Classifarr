@@ -65,6 +65,7 @@ test.each(['ollama', 'custom'])('actual %s HTTP receives only its approved proje
   const sent = type === 'ollama' ? request.body.prompt : request.body.messages.find(message => message.role === 'user').content;
   expect(sent.includes(sentinel)).toBe(type === 'ollama');
   expect(sent).toContain('DECLARED POSITIVE PURPOSE EVIDENCE');
+  expect(sent).not.toContain('IMPORTANT FOR CLARIFICATION:');
   expect(request.path).toBe(type === 'ollama' ? '/api/generate' : '/chat/completions');
   expect(JSON.stringify(request.body)).not.toContain('generationConfiguration');
   expect(result.library.id).toBe(value.libraries[0].id);

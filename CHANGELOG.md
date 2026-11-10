@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Generic classification guidance** — Remove the built-in Family exception
+  and blanket rating prohibition from initial AI advice. Require supplied
+  destination support and keep observed placements separate from declared
+  policy, preserving scoring and routing/learning permission. See the
+  [outcome](docs/architecture/category-neutral-classify-prompt-outcome.md).
+
 - **Initial purpose semantics** — Preserve explicitly declared identity or
   compatibility on future initial/native-create writes, with the existing
   identity default for omitted/null values. Preserve historical records and

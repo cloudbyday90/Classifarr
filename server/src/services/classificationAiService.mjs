@@ -11,6 +11,7 @@ import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { buildClassificationBasePrompt } from './classificationBasePrompt.mjs';
+import { buildClassificationClassifyInstructions } from './classificationClassifyInstructions.mjs';
 import { buildPolicyCandidatePurposePrompt } from './policyCandidatePurposeProvider.mjs';
 import { holdOllamaGenerationConfiguration, readOllamaGenerationConfiguration } from './ollamaGenerationConfigurationSnapshot.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
@@ -282,21 +283,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   }
 
   if (mode === 'classify') {
-    prompt += `\n\nIMPORTANT FOR CLARIFICATION:
-- The problem_summary should be SHORT (max 50 chars)
-- The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
-- The question should be SPECIFIC and help the user understand what choosing each option means
-- Always provide 2-3 clear options (not just yes/no when possible)
-
-CRITICAL - DO NOT HALLUCINATE CONFLICTS:
-- Only mention libraries that have ACTUAL signal support (genres, keywords, patterns matching that library)
-- Certification (G, PG, TV-PG, R, TV-MA, etc.) is a CONTENT RATING for age-appropriateness, NOT a library indicator - do not use it to suggest which library content belongs to
-- DO NOT suggest "Family" library for R-rated Horror/Thriller content with no family-related signals
-- If signals clearly point to one library with no real conflict, use CONFIDENT format, not CLARIFY
-- In classify mode, NEVER use CONFIRM format
-- Only use CLARIFY when there are genuinely conflicting signals pointing to different libraries
-
-Respond with ONLY one of the formats above.`;
+    prompt += buildClassificationClassifyInstructions();
   }
 
   await providerLock.acquireLock('classification', 'high');
