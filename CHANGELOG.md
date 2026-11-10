@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Policy recovery evidence** — Bind AI-unavailable policy advice to the actual
+  live item/evaluation and loaded destination. Use existing neutral review when
+  proof is unavailable or changed, preserving retry decisions/counts, normal AI
+  context, scoring and routing/learning safeguards. See the
+  [outcome](docs/architecture/policy-recovery-suggestion-binding-outcome.md).
+
 - **Recovery destination advice** — Keep AI-unavailable recovery without a
   suggestion neutral instead of choosing the last library, including an empty
   library pool. Preserve existing retries, signal advice, explicit resolution

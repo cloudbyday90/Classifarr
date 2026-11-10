@@ -45,6 +45,13 @@ the release and upstream reports are unchanged. The branch is still mergeable,
 with unstable checks. Retain the same deferral without a duplicate install or
 new candidate-test claim; no applicable subset or genuinely stale branch emerged.
 
+The later policy-signal binding investigation (baseline 19c8680f6, November 10)
+again finds only PR 589 at the same head and immutable blobs. All eleven coupled
+records and fresh registry metadata match the same candidate; the official
+release and issue reports are unchanged. Mergeability recalculation settled
+at true with unstable checks. Retain the existing deferral without new installs,
+candidate-test claims or a rebase based solely on main advancing.
+
 ## Recommendation
 
 The [design's alternatives](client-compiler-pr-589-design.md#recommendation-stack)

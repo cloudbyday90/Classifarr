@@ -59,6 +59,7 @@ import { createPolicyCandidateConsensusService } from './policyCandidateConsensu
 import { createLearnedEvidenceRoutingService } from './learnedEvidenceRoutingService.mjs';
 import { observeRepresentativeDecision, readRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 import { holdLivePolicyCandidatePurpose } from './policyCandidatePurposeLiveCapture.mjs';
+import { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } from './policyRecoverySuggestionReader.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -119,6 +120,7 @@ export class ClassificationPolicyPathService {
 	async execute({ metadata, libraries, taskId, relatedEvidence }) {
 		let policyResult = null;
 		let policySignalContext = null;
+		let recoverySuggestion = null;
 
 		try {
 			if (taskId && !metadata.source_library_id) {
@@ -179,6 +181,8 @@ export class ClassificationPolicyPathService {
 					policyResult.ranked,
 					relatedEvidence,
 				);
+				recoverySuggestion = holdPolicyRecoverySuggestion({ policyResult, metadata,
+					signalContext: policySignalContext, libraries });
 			}
 		} catch (policyError) {
 			this.logger.warn('Policy path could not produce a valid deterministic outcome; requiring operator review', {
@@ -508,7 +512,8 @@ export class ClassificationPolicyPathService {
 			};
 		} catch (error) {
 			const fallbackConfidence = policySignalContext.confidence || 0;
-			const suggestedLibrary = policySignalContext.suggestedLibrary;
+			const suggestedLibrary = readPolicyRecoverySuggestion(recoverySuggestion, { policyResult, metadata,
+				signalContext: policySignalContext, libraries });
 
 			const failureResult = await this.resolveClassificationPathAiFailure({
 				logger: this.logger,

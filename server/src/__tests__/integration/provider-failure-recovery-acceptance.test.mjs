@@ -136,7 +136,7 @@ describe('provider failure and recovery acceptance', () => {
     expect(JSON.stringify(outcome.result)).not.toContain(error.message);
   });
 
-  test('a permanent provider failure preserves policy evidence but requires review before routing', async () => {
+  test('a permanent provider failure keeps unbound policy metadata as review context without primary advice', async () => {
     const providerFailure = new Error('provider authorization rejected key=fixture-secret');
     const policyPath = createPolicyPath({
       aiClassify: jest.fn().mockRejectedValue(providerFailure),
@@ -145,9 +145,9 @@ describe('provider failure and recovery acceptance', () => {
     const outcome = await policyPath.execute({ metadata, libraries, relatedEvidence: [] });
 
     expect(outcome.result).toEqual(expect.objectContaining({
-      library: libraries[0],
-      confidence: 92,
-      method: 'signal_calculation',
+      library: null,
+      confidence: 50,
+      method: 'fallback',
       needs_clarification: true,
       policyResult: expect.objectContaining({ ranked: expect.any(Array) }),
       provider_recovery: {
@@ -157,7 +157,7 @@ describe('provider failure and recovery acceptance', () => {
     }));
     expect(routeDecision(outcome.result)).toEqual({
       shouldRoute: false,
-      reason: 'not_final',
+      reason: 'no_library',
     });
     expect(JSON.stringify(outcome.result)).not.toContain('fixture-secret');
   });

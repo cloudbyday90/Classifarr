@@ -38,16 +38,21 @@ const { ollamaService } = await import('../../services/ollama.mjs');
 const { classificationResponseSchema } = await import('../../services/aiResponseSchema.mjs');
 const { evaluateClassificationRouteSafety } = await import('../../services/classificationRouteSafetyGate.mjs');
 const { ClassificationLegacySignalPathService } = await import('../../services/classificationLegacySignalPathService.mjs');
+const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
+const { policyEngine } = await import('../../services/policyEngine.mjs');
+const { recoveryPolicies } = await import('../fixtures/policyRecoveryReferenceFixture.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 
-let server, origin, requests, response, responseStatus;
+let server, origin, requests, response, responseStatus, beforeResponse;
 const metadata = { title: 'Synthetic item', tmdb_id: 876543, media_type: 'movie', certification: 'R', genres: ['Thriller'] };
 const libraries = [{ id: 11, name: 'First arbitrary label', media_type: 'movie' }, { id: 22, name: 'Second arbitrary label', media_type: 'movie' }];
 beforeEach(async () => {
   requests = []; response = 'CONFIDENT|1|99|Supplied support'; responseStatus = 200;
+  beforeResponse = () => {};
   server = createServer(async (request, reply) => {
     const chunks = []; for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString('utf8')); requests.push({ path: request.url, body });
+    beforeResponse();
     if (responseStatus !== 200) {
       reply.writeHead(responseStatus, { 'Content-Type': 'application/json' });
       reply.end(JSON.stringify({ error: 'Owned authorization refusal' })); return;
@@ -171,3 +176,33 @@ test.each(['ollama', 'custom'])('real %s refusal through the production legacy o
   expect(result.policy_question.options.map(option => option.library_id)).toEqual([11, 22]);
   expect(result.needs_retry).toBeUndefined();
 });
+
+for (const state of ['genuine', 'copied', 'inactive']) {
+  test.each(['ollama', 'custom'])(`real %s refusal through the policy owner rechecks ${state} advice without another request`, async type => {
+    choose(type); responseStatus = 401;
+    const policies = recoveryPolicies(2);
+    // Distinct supported terms preserve the existing specialization/adjudication gate.
+    policies.forEach((policy, index) => { Object.assign(policy.policy_intent_contract.purpose[0], {
+      signal_type: 'keywords', values: { require_any: [`Owned-anchor-${index}`] },
+    }); });
+    jest.spyOn(policyEngine, 'checkAuthoritativeSignals').mockResolvedValue(null);
+    jest.spyOn(policyEngine, 'getActivePolicies').mockResolvedValue(policies);
+    jest.spyOn(policyEngine, 'scoreProfileWithDiagnostics').mockResolvedValue({ score: 70, diagnostics: null });
+    const pool = policies.map(policy => ({ id: policy.library_id, name: 'Any category', media_type: 'movie', is_active: true }));
+    if (state === 'inactive') beforeResponse = () => { pool[0].is_active = false; };
+    const engine = state === 'copied' ? { evaluateItem: async (...args) => ({ ...await policyEngine.evaluateItem(...args) }) } : policyEngine;
+    const owner = new ClassificationPolicyPathService({ logger, policyEngine: engine, classificationAiService,
+      classificationRoutingService: { ensureDecisionQuestion } });
+    const out = await owner.execute({ metadata: { ...metadata, keywords: ['Owned-anchor-0', 'Owned-anchor-1'] }, libraries: pool, relatedEvidence: [] });
+    expect(out.result.policyResult).toMatchObject({ action: 'prompt_select' });
+    expect(requests).toHaveLength(1);
+    expect(out.handled).toBe(true);
+    expect(out.result).toMatchObject({ method: state === 'genuine' ? 'signal_calculation' : 'fallback',
+      provider_recovery: { version: 'provider_recovery.v1', mode: 'review_required' },
+      route_safety: { automatic_route_allowed: false, primary_gate: { id: 'provider_recovery_review_required' } } });
+    if (state === 'genuine') expect(out.result.library).toBe(pool[0]);
+    else { expect(out.result.library).toBeNull(); expect(out.result.confidence).toBe(50); }
+    expect(out.result.needs_retry).toBeUndefined();
+    expect(sent(type)).not.toMatch(/recoveryReference|policy_recovery_reference/u);
+  });
+}

@@ -3034,7 +3034,7 @@ describe('AI availability fallback handling', () => {
 
   // checkLearnedPatterns tests removed (Phase 7): method retired from classification.js alongside LEARNED_PATTERN signal removal.
 
-  test('keeps non-transient AI failures on signal-calculation fallback path', async () => {
+  test('uses neutral fallback for non-transient AI failure with unbound policy context', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
       confidence: 82,
@@ -3056,7 +3056,7 @@ describe('AI availability fallback handling', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.method).toBe('signal_calculation');
+    expect(result.method).toBe('fallback');
   });
 
   test('adds a policy question without AI when deterministic policy selection is ambiguous', async () => {

@@ -246,17 +246,21 @@ describe('classificationPolicyPathService.execute', () => {
       library: { library_id: 1, library_name: 'Movies' },
       confidence: 30,
     });
-    policyScoringContextBuilder.buildSignalContext.mockReturnValue({ confidence: 30, suggestedLibrary: null });
-    classificationAiService.aiClassify.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' }));
+    const signalContext = { confidence: 30, suggestedLibrary: libraries[0] };
+    policyScoringContextBuilder.buildSignalContext.mockReturnValue(signalContext);
+    const transientError = Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' });
+    classificationAiService.aiClassify.mockRejectedValue(transientError);
     classificationUtilsService.isAiTransientAvailabilityError.mockReturnValue(true);
 
-    const out = await execute(baseParams);
+    const out = await execute({ ...baseParams, metadata: { ...baseParams.metadata, retry_count: 2, max_retries: 4 } });
     expect(out.handled).toBe(true);
     expect(out.result.needs_retry).toBe(true);
-    expect(classificationUtilsService.buildPendingRetryResult).toHaveBeenCalled();
+    expect(classificationUtilsService.buildPendingRetryResult).toHaveBeenCalledTimes(1);
+    expect(classificationUtilsService.buildPendingRetryResult).toHaveBeenCalledWith({ confidence: 30, libraries,
+      signalContext, transientError, previousRetryCount: 2, maxRetries: 4 });
   });
 
-  it('returns signal_calculation when AI fails, confidence ≥ 50, suggestedLibrary present', async () => {
+  it('rejects an unbound policy recovery suggestion without adding a retry', async () => {
     const ranked = [{ library_id: 1, score: 70 }];
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
@@ -273,7 +277,9 @@ describe('classificationPolicyPathService.execute', () => {
 
     const out = await execute(baseParams);
     expect(out.handled).toBe(true);
-    expect(out.result.method).toBe('signal_calculation');
+    expect(out.result.method).toBe('fallback');
+    expect(out.result.library).toBeNull();
+    expect(classificationUtilsService.buildPendingRetryResult).not.toHaveBeenCalled();
     expect(out.result.provider_recovery).toEqual({
       version: 'provider_recovery.v1',
       mode: 'review_required',

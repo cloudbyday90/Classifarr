@@ -31,10 +31,12 @@ export async function evaluateItem(item, options, deps) {
         applyInventoryEvidence = (input) => policyInventoryEvidenceService.apply(input),
         capturePolicyEvaluation = null,
         captureCandidatePurpose = null,
+        captureRecoveryReference = null,
     } = deps;
     const finishCapture = (result, conflicts, reason) => {
         const captured = capturePolicyEvaluation?.finish(result, conflicts, reason) ?? result;
-        return captureCandidatePurpose?.finish(captured) ?? captured;
+        const retained = captureCandidatePurpose?.finish(captured) ?? captured;
+        return captureRecoveryReference?.finish(retained) ?? retained;
     };
 
     try {
@@ -77,6 +79,7 @@ export async function evaluateItem(item, options, deps) {
             policyExclusionService.applyMediaTypeFilter(policies, itemMediaType);
         capturePolicyEvaluation?.start(policies, candidatePolicies, skippedPolicies);
         captureCandidatePurpose?.start(policies, candidatePolicies);
+        captureRecoveryReference?.start(policies, candidatePolicies);
 
         if (!itemMediaType) {
             logger.warn('Item missing media_type, evaluating against all policies', {
@@ -148,6 +151,7 @@ export async function evaluateItem(item, options, deps) {
             rawEvaluations.push(evaluation);
             capturePolicyEvaluation?.record(evaluation);
             captureCandidatePurpose?.record(evaluation);
+            captureRecoveryReference?.record(policy, evaluation);
         }
 
         const { constraintConflicts, constraintConflictPolicyIds } =
