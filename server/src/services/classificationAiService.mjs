@@ -45,6 +45,8 @@ import {
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { createPolicyVerificationAdviceSession } from './policyVerificationAdvice.mjs';
 import { createRagRecheckAdviceSession } from './ragRecheckVerificationAdvice.mjs';
+import { enterNonadoptedRagVerification } from './nonadoptedRagVerification.mjs';
+import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
 import {
@@ -166,9 +168,11 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   // context alone must never escalate a request into verification.
   const mode = options.mode || 'classify';
   const adviceArgs = { metadata, libraries, signalContext };
-  const verificationAdvice = mode !== 'verify' ? null
+  const freshVerification = mode === 'verify' && Object.hasOwn(options, 'nonadoptedRagVerification')
+    ? enterNonadoptedRagVerification(options.nonadoptedRagVerification, adviceArgs, options.verificationCandidate) : null;
+  const verificationAdvice = freshVerification?.advice || (mode !== 'verify' ? null
     : Object.hasOwn(options, 'ragRecheckVerificationAdvice') ? createRagRecheckAdviceSession(options.ragRecheckVerificationAdvice, adviceArgs)
-    : Object.hasOwn(options, 'policyVerificationAdvice') ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, adviceArgs) : null;
+    : Object.hasOwn(options, 'policyVerificationAdvice') ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, adviceArgs) : null);
   const adjudicationSchema = mode === 'adjudicate' ? buildCandidateAdjudicationResponseSchema(libraries?.length ?? 0) : null;
   const verificationContract = mode === 'verify'
     ? buildCandidateBoundVerificationContract({
@@ -179,6 +183,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     : null;
 
   const configResult = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+  freshVerification?.assertCurrent();
   const providerRow = configResult.rows[0] || null;
   const config = providerRow
     ? { model: providerRow.ollama_model || 'llama3.2', temperature: providerRow.temperature || 0.30 }
@@ -192,6 +197,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     authorityMode: requestedAuthorityMode,
     ...(providerRow ? { configuration: providerRow } : {}),
   });
+  freshVerification?.assertCurrent();
 
   if (!provider) {
     throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
@@ -227,6 +233,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   }
 
   const providerTicket = await classificationProviderAdmissionService.admit(providerRow, provider);
+  freshVerification?.assertCurrent();
   const webSearchResults = mode === 'classify'
     ? await enrichWithWebSearch(metadata)
     : null;
@@ -273,6 +280,8 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     }
   }
 
+  freshVerification?.assertCurrent(); // Outside the optional-profile catch: local refusal must not be swallowed.
+
   // Local term disclosure waits for the exact configuration used by generation,
   // which can differ from the selected provider row or a stale display label.
   const deferPurposePrompt = mode === 'adjudicate' && provider.type === 'ollama' && promptContext.candidatePurposePrompt !== null;
@@ -307,6 +316,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   let verificationPromptFailed = false;
 
   try {
+    freshVerification?.assertCurrent(); // Inside lock cleanup coverage.
     heartbeatTimer = setInterval(() => {
       providerLock.heartbeat('classification');
     }, heartbeatIntervalMs);
@@ -318,9 +328,18 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
       const maxTransientStreamAttempts = 2;
       let streamAttempt = 0;
       let lastStreamError = null;
+      const assertFreshAttempt = () => {
+        try { freshVerification?.assertCurrent(); }
+        catch (error) {
+          // A real earlier attempt remains a real provider observation, even when no retry can proceed.
+          if (lastStreamError && isNonadoptedRagVerificationRefusal(error)) throw lastStreamError;
+          throw error;
+        }
+      };
 
       while (streamAttempt < maxTransientStreamAttempts) {
         streamAttempt += 1;
+        assertFreshAttempt();
         // Assembly failures are not provider transport failures and cannot authorize a retry.
         if (verificationAdvice) {
           try {
@@ -328,6 +347,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
               context => buildClassificationBasePrompt(context, { mode, promptBuilder: aiPromptBuilder }));
           } catch (error) { verificationPromptFailed = true; throw error; }
         }
+        assertFreshAttempt();
         try {
           if (provider.type === 'ollama') {
             let generationConfiguration;
@@ -428,7 +448,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
         await classificationProviderAdmissionService.succeeded(providerTicket);
       }
     } catch (generationError) {
-      if (verificationPromptFailed) throw generationError;
+      if (verificationPromptFailed || isNonadoptedRagVerificationRefusal(generationError)) throw generationError;
       const capabilityRevoked = await ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError({
         provider,
         authority: providerAuthority,

@@ -70,7 +70,7 @@ describe('classificationRagLoopStages.runAiRerunStage', () => {
     }));
   });
 
-  test('uses verification only for a unique rechecked review candidate', async () => {
+  test('a unique but unproven non-adopted recheck cannot spend an invocation or reuse old context', async () => {
     const ctx = createContext({
       trigger: { trigger: 'policy_prompt_confirm' },
       policyAfter: {
@@ -80,25 +80,11 @@ describe('classificationRagLoopStages.runAiRerunStage', () => {
       },
     });
 
-    await runAiRerunStage(ctx);
-
-    expect(ctx.aiClassify).toHaveBeenCalledWith(
-      ctx.expandedMetadata,
-      libraries,
-      ctx.signalContext,
-      {
-        mode: 'verify',
-        ragContext: ctx.pass2RagContext,
-        verificationCandidate: { library_id: 1, library_name: 'Movies' },
-      },
-    );
-    expect(ctx.buildAiRerunCandidate).toHaveBeenCalledWith(expect.objectContaining({
-      aiRerunMatch: expect.objectContaining({
-        deterministic_ai_mode: expect.objectContaining({
-          mode: 'verify',
-          reasonCode: 'unique_review_candidate',
-        }),
-      }),
+    expect(await runAiRerunStage(ctx)).toEqual({ pass2Candidate: null, aiCallsUsed: 0, hadError: false });
+    expect(ctx.aiClassify).not.toHaveBeenCalled();
+    expect(ctx.buildAiRerunCandidate).not.toHaveBeenCalled();
+    expect(ctx.addEvent).toHaveBeenCalledWith(expect.objectContaining({
+      stage: 'ai_rerun', outcome: 'skipped', reasonCode: 'policy_context_missing',
     }));
   });
 });

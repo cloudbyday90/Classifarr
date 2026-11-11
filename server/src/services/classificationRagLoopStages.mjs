@@ -12,6 +12,8 @@ import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
 import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice } from './ragRecheckVerificationAdvice.mjs';
+import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, acceptNonadoptedRagVerification } from './nonadoptedRagVerification.mjs';
+import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
     buildPolicyRecheckVerificationSignalContext,
@@ -230,6 +232,7 @@ export async function runPolicyRecheckStage(ctx) {
     let policyRecheckError = null;
     let policyRecheckStageError = null;
     let freshAdvice = null;
+    let freshVerification = null;
     for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
         try {
             policyAfter = await withRetryableDbConflict(
@@ -255,6 +258,7 @@ export async function runPolicyRecheckStage(ctx) {
                 },
             );
             freshAdvice = holdRagRecheckAdviceSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
+            freshVerification = holdNonadoptedRagVerificationSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             policyRecheckError = null;
             policyRecheckStageError = null;
             break;
@@ -284,7 +288,7 @@ export async function runPolicyRecheckStage(ctx) {
         addEvent({ stage: 'policy_recheck', outcome: 'error', reason: policyRecheckError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
     }
 
-    return retainRagRecheckAdvice({ policyAfter, policyGate, pass2Candidate, hadError }, freshAdvice);
+    return retainNonadoptedRagVerification(retainRagRecheckAdvice({ policyAfter, policyGate, pass2Candidate, hadError }, freshAdvice), freshVerification);
 }
 
 export async function runAiRerunStage(ctx) {
@@ -337,28 +341,40 @@ export async function runAiRerunStage(ctx) {
     let pass2Candidate = null;
     let hadError = false;
     let updatedAiCallsUsed = aiCallsUsed;
-    const verificationSignalContext = verifyPolicyRecheckCandidate
+    const needsFreshVerification = !verifyPolicyRecheckCandidate && aiModeDecision.mode === 'verify';
+    const freshVerification = needsFreshVerification ? prepareNonadoptedRagVerification(ctx.policyRecheckStage, {
+        policyResult: policyAfter, metadata: expandedMetadata, libraries,
+    }) : null;
+    if (needsFreshVerification && !freshVerification) {
+        addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING,
+            reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
+        return { pass2Candidate: null, aiCallsUsed, hadError: false };
+    }
+    const verificationSignalContext = freshVerification?.signalContext || (verifyPolicyRecheckCandidate
         ? buildPolicyRecheckVerificationSignalContext({
             signalContext,
             policyResult: policyAfter,
             libraries,
         })
-        : signalContext;
+        : signalContext);
     const candidateBaselineResult = verifyPolicyRecheckCandidate
         ? existingCandidate
         : baselineResult;
 
     try {
         updatedAiCallsUsed += 1;
-        const aiRerunMatch = {
-            ...(await aiClassify(expandedMetadata, libraries, verificationSignalContext, {
+        const providerMatch = await aiClassify(expandedMetadata, libraries, verificationSignalContext, {
                 mode: aiModeDecision.mode,
                 ragContext: pass2RagContext,
-                verificationCandidate: policyAfter?.library || policyAfter?.ranked?.[0] || null,
+                verificationCandidate: freshVerification?.candidate || policyAfter?.library || policyAfter?.ranked?.[0] || null,
+                ...(freshVerification ? { nonadoptedRagVerification: freshVerification.token } : {}),
                 ...(verifyPolicyRecheckCandidate ? { ragRecheckVerificationAdvice: takeRagRecheckAdvice(ctx.policyRecheckStage, {
                     policyResult: policyAfter, metadata: expandedMetadata, libraries, signalContext: verificationSignalContext, candidate: existingCandidate,
                 }) } : {}),
-            })),
+            });
+        if (freshVerification) acceptNonadoptedRagVerification(freshVerification.token);
+        const aiRerunMatch = {
+            ...providerMatch,
             deterministic_ai_mode: aiModeDecision,
         };
         pass2Candidate = buildAiRerunCandidate({
@@ -372,6 +388,11 @@ export async function runAiRerunStage(ctx) {
         ragLoopResilienceManager.recordSuccess('ai_rerun', config);
         addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
     } catch (error) {
+        if (isNonadoptedRagVerificationRefusal(error)) {
+            addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING,
+                reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
+            return { pass2Candidate: null, aiCallsUsed: updatedAiCallsUsed, hadError: false };
+        }
         const aiFailure = resolveAiFailureClassification(error);
         const isTransientAiAvailability = aiFailure.isTransientAvailability;
         if (!isTransientAiAvailability) {

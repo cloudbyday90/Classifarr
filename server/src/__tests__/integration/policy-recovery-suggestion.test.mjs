@@ -19,6 +19,8 @@ const { libraryProfileService } = await import('../../services/libraryProfileSer
 const { runPolicyRecheckStage, runAiRerunStage } = await import('../../services/classificationRagLoopStages.mjs');
 const { createRagRecheckAdviceSession } = await import('../../services/ragRecheckVerificationAdvice.mjs');
 const { ragRecheckStageContext } = await import('../fixtures/ragRecheckAdviceFixture.mjs');
+const { nonadoptedRagContext } = await import('../fixtures/nonadoptedRagVerificationFixture.mjs');
+const { enterNonadoptedRagVerification } = await import('../../services/nonadoptedRagVerification.mjs');
 const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
@@ -174,5 +176,43 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
     expect(reads).toHaveLength(kind === 'genuine' ? 1 : 0);
     if (kind === 'genuine') expect(reads[0].params).toEqual([created.libraryId]);
     expect(JSON.stringify(result)).not.toContain('ragRecheckVerificationAdvice');
+  });
+}
+
+for (const source of ['native_intent', 'compatibility_bridge']) {
+  test.each(['genuine', 'copied'])(`real ${source} %s non-adopted stage admits only coherent fresh verification`, async kind => {
+    const { libraries, item, created } = await fixture(source), expanded = { ...item, overview: 'Owned fresh expansion' };
+    const earlier = { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true }; libraries.push(earlier);
+    await query(`INSERT INTO media_server_items(library_id,external_id,title,media_type,genres)
+      VALUES($1,'nonadopted-observation','PRIVATE NONADOPTED ITEM','movie',ARRAY['Owned fresh observation'])`, [created.libraryId]);
+    if (kind === 'copied') {
+      const evaluate = policyEngine.evaluateItem.bind(policyEngine);
+      jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async (...args) => ({ ...await evaluate(...args) }));
+    }
+    jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+    const ctx = nonadoptedRagContext({ item: expanded, libraries }, { earlier });
+    const stage = await runPolicyRecheckStage(ctx);
+    expect(stage.policyAfter.action).toBe('prompt_confirm'); expect(stage.policyGate.shouldAdopt).toBe(false);
+    const original = database.query.bind(database), reads = [];
+    jest.spyOn(database, 'query').mockImplementation((sql, params, ...rest) => { reads.push({ sql, params }); return original(sql, params, ...rest); });
+    const aiClassify = jest.fn(async (metadata, pool, signalContext, options) => {
+      const session = enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate);
+      expect(signalContext.confidence).toBe(stage.policyAfter.confidence); expect(signalContext.confidence).not.toBe(80);
+      expect(signalContext.suggestedLibrary).toBe(libraries[0]); expect(signalContext.breakdown).toBeUndefined();
+      session.assertCurrent(); await session.advice.readProfile(id => libraryProfileService.getProfileStats(id));
+      const packet = await session.advice.buildPrompt({}, async value => value);
+      expect(packet.libraryProfile.genreDistribution).toEqual([{ genre: 'Owned fresh observation', percentage: 100 }]);
+      expect(packet.policySignals.confidence).toBe(stage.policyAfter.confidence);
+      expect(JSON.stringify(packet)).not.toMatch(/PRIVATE NONADOPTED ITEM|EARLIER PASS SENTINEL/u);
+      return { library: libraries[0], confidence: signalContext.confidence, verified_by_ai: true };
+    });
+    const result = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage, aiClassify });
+    expect(aiClassify).toHaveBeenCalledTimes(kind === 'genuine' ? 1 : 0);
+    expect(result.aiCallsUsed).toBe(kind === 'genuine' ? 2 : 1); expect(reads).toHaveLength(kind === 'genuine' ? 1 : 0);
+    if (kind === 'genuine') {
+      expect(reads[0].params).toEqual([created.libraryId]); expect(result.pass2Candidate.confidence).toBe(stage.policyAfter.confidence);
+      expect(result.pass2Candidate.signalContext).toBe(ctx.signalContext);
+    } else expect(result.pass2Candidate).toBeNull();
+    expect(JSON.stringify(result)).not.toContain('nonadoptedRagVerification');
   });
 }

@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Fresh RAG verification context** — Use the successful non-adopted recheck's
+  destination and overall confidence together. Retain baseline when private
+  proof is missing or changes, preserving charged invocations and actual provider
+  observations without a guessed fallback, refund or replay. Keep existing gates,
+  rollout and routing/learning safeguards. See the
+  [outcome](docs/architecture/nonadopted-rag-verification-context-outcome.md).
+
 - **RAG verification advice** — Bind adopted recheck advice/profile to the
   successful fresh evaluation through a private stage handoff. Omit missing or
   changed optional evidence while preserving verification admission/parsing,
