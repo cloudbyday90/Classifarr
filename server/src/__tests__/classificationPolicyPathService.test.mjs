@@ -196,6 +196,7 @@ describe('classificationPolicyPathService.execute', () => {
       expect.any(Object),
       {
         mode: 'verify',
+        policyVerificationAdvice: null,
         ragContext: null,
         verificationCandidate: { library_id: 1, library_name: 'Movies' },
       },

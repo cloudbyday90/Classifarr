@@ -14,6 +14,8 @@ const { getActivePolicies } = await import('../../services/policyEngineQueries.m
 const { applyPolicyInitialIntentEstablishment } = await import('../../services/policyInitialIntentEstablishmentService.mjs');
 const { buildSignalContext } = await import('../../services/policyScoringContextBuilder.mjs');
 const { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } = await import('../../services/policyRecoverySuggestionReader.mjs');
+const { holdPolicyVerificationAdvice, createPolicyVerificationAdviceSession } = await import('../../services/policyVerificationAdvice.mjs');
+const { libraryProfileService } = await import('../../services/libraryProfileService.mjs');
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
@@ -101,4 +103,35 @@ test.each(['genuine', 'copied'])('%s policy recovery persists pending state and 
   await query('UPDATE libraries SET is_active=true WHERE id=$1', [libraries[0].id]);
   expect(await resolve(context)).toMatchObject({ success: true, shouldRoute: true, libraryId: libraries[0].id });
   expect(await resolve(context)).toMatchObject({ idempotent: true, alreadyResolved: true, shouldRoute: false });
+});
+
+test.each(['native_intent', 'compatibility_bridge'])('real %s selection binds one later PostgreSQL profile observation without new freshness reads', async source => {
+  const { created, libraries, item } = await fixture(source);
+  await query(`INSERT INTO media_server_items(library_id,external_id,title,media_type,genres,content_rating,studio)
+    VALUES($1,'owned-observation','PRIVATE ITEM TITLE','movie',ARRAY['Owned database genre'],'PG','Owned database studio')`, [created.libraryId]);
+  const result = await policyEngine.evaluateItem(item);
+  const args = { policyResult: result, metadata: item, libraries, signalContext: buildSignalContext(result, libraries, result.ranked) };
+  const session = createPolicyVerificationAdviceSession(holdPolicyVerificationAdvice(args), args);
+  const original = database.query.bind(database), reads = [];
+  jest.spyOn(database, 'query').mockImplementation((sql, params, ...rest) => { reads.push({ sql, params }); return original(sql, params, ...rest); });
+  await session.readProfile(id => libraryProfileService.getProfileStats(id));
+  const projected = await session.buildPrompt({}, async context => context);
+  expect(reads).toHaveLength(1); expect(reads[0].params).toEqual([created.libraryId]);
+  expect(projected.libraryProfile).toMatchObject({ totalItems: 1, genreDistribution: [{ genre: 'Owned database genre', percentage: 100 }],
+    observation: { itemCount: 1, traits: { genres: { observedCount: 1, unknownCount: 0 } } } });
+  expect(projected.policySignals.confidence).toBe(result.confidence);
+  expect(JSON.stringify(projected)).not.toContain('PRIVATE ITEM TITLE');
+  const missing = createPolicyVerificationAdviceSession(null, args);
+  await missing.readProfile(id => libraryProfileService.getProfileStats(id));
+  expect(reads).toHaveLength(1); expect(await missing.buildPrompt({}, async context => context)).toEqual({ policySignals: {}, libraryProfile: null });
+});
+
+test('a loaded destination changed while the real profile query settles cannot attach its observation', async () => {
+  const { libraries, item } = await fixture(), result = await policyEngine.evaluateItem(item);
+  const args = { policyResult: result, metadata: item, libraries, signalContext: buildSignalContext(result, libraries, result.ranked) };
+  const session = createPolicyVerificationAdviceSession(holdPolicyVerificationAdvice(args), args);
+  const lookup = jest.fn(async id => { const stats = await libraryProfileService.getProfileStats(id); libraries[0].is_active = false; return stats; });
+  await session.readProfile(lookup);
+  expect(lookup).toHaveBeenCalledTimes(1); expect(lookup).toHaveBeenCalledWith(libraries[0].id);
+  expect(await session.buildPrompt({}, async context => context)).toEqual({ policySignals: {}, libraryProfile: null });
 });

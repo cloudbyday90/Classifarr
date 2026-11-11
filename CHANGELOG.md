@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Verification advice provenance** — Qualify initial policy verification's
+  optional destination/confidence and profile attachment with private live
+  evidence. Omit unbound or changed context while preserving the separate
+  verification target/admission, scoring and routing/learning safeguards. See the
+  [outcome](docs/architecture/verification-advice-provenance-outcome.md).
+
 - **Policy recovery evidence** — Bind AI-unavailable policy advice to the actual
   live item/evaluation and loaded destination. Use existing neutral review when
   proof is unavailable or changed, preserving retry decisions/counts, normal AI

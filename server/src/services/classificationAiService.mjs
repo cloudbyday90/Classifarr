@@ -43,6 +43,7 @@ import {
   ollamaVerificationCapabilityRuntimeInvalidationService,
 } from './ollamaVerificationCapabilityRuntimeInvalidationService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { createPolicyVerificationAdviceSession } from './policyVerificationAdvice.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
 import {
@@ -163,6 +164,8 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   // generic proposal path for backwards-compatible direct callers; signal
   // context alone must never escalate a request into verification.
   const mode = options.mode || 'classify';
+  const verificationAdvice = mode === 'verify' && Object.hasOwn(options, 'policyVerificationAdvice')
+    ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, { metadata, libraries, signalContext }) : null;
   const adjudicationSchema = mode === 'adjudicate' ? buildCandidateAdjudicationResponseSchema(libraries?.length ?? 0) : null;
   const verificationContract = mode === 'verify'
     ? buildCandidateBoundVerificationContract({
@@ -247,7 +250,13 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
       : null,
   };
 
-  if (mode !== 'adjudicate' && signalContext?.suggestedLibrary) {
+  if (verificationAdvice) {
+    try {
+      await verificationAdvice.readProfile(id => libraryProfileService.getProfileStats(id));
+    } catch (error) {
+      logger.warn('Failed to load library profile for AI prompt', { error: error.message });
+    }
+  } else if (mode !== 'adjudicate' && signalContext?.suggestedLibrary) {
     try {
       const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
       if (profileStats.totalItems > 0) {
@@ -264,7 +273,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   // Local term disclosure waits for the exact configuration used by generation,
   // which can differ from the selected provider row or a stale display label.
   const deferPurposePrompt = mode === 'adjudicate' && provider.type === 'ollama' && promptContext.candidatePurposePrompt !== null;
-  let prompt = deferPurposePrompt ? null : await buildClassificationBasePrompt(promptContext, { mode, promptBuilder: aiPromptBuilder });
+  let prompt = deferPurposePrompt || verificationAdvice ? null : await buildClassificationBasePrompt(promptContext, { mode, promptBuilder: aiPromptBuilder });
 
   if (webSearchResults) {
     prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
@@ -292,6 +301,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   let heartbeatTimer = null;
   let response;
   let thinkingTraceDetected = false;
+  let verificationPromptFailed = false;
 
   try {
     heartbeatTimer = setInterval(() => {
@@ -308,6 +318,13 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
 
       while (streamAttempt < maxTransientStreamAttempts) {
         streamAttempt += 1;
+        // Assembly failures are not provider transport failures and cannot authorize a retry.
+        if (verificationAdvice) {
+          try {
+            prompt = await verificationAdvice.buildPrompt(promptContext,
+              context => buildClassificationBasePrompt(context, { mode, promptBuilder: aiPromptBuilder }));
+          } catch (error) { verificationPromptFailed = true; throw error; }
+        }
         try {
           if (provider.type === 'ollama') {
             let generationConfiguration;
@@ -408,6 +425,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
         await classificationProviderAdmissionService.succeeded(providerTicket);
       }
     } catch (generationError) {
+      if (verificationPromptFailed) throw generationError;
       const capabilityRevoked = await ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError({
         provider,
         authority: providerAuthority,

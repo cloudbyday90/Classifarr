@@ -60,6 +60,7 @@ import { createLearnedEvidenceRoutingService } from './learnedEvidenceRoutingSer
 import { observeRepresentativeDecision, readRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 import { holdLivePolicyCandidatePurpose } from './policyCandidatePurposeLiveCapture.mjs';
 import { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } from './policyRecoverySuggestionReader.mjs';
+import { holdPolicyVerificationAdvice } from './policyVerificationAdvice.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -121,6 +122,7 @@ export class ClassificationPolicyPathService {
 		let policyResult = null;
 		let policySignalContext = null;
 		let recoverySuggestion = null;
+		let verificationAdvice = null;
 
 		try {
 			if (taskId && !metadata.source_library_id) {
@@ -182,6 +184,8 @@ export class ClassificationPolicyPathService {
 					relatedEvidence,
 				);
 				recoverySuggestion = holdPolicyRecoverySuggestion({ policyResult, metadata,
+					signalContext: policySignalContext, libraries });
+				verificationAdvice = holdPolicyVerificationAdvice({ policyResult, metadata,
 					signalContext: policySignalContext, libraries });
 			}
 		} catch (policyError) {
@@ -357,6 +361,7 @@ export class ClassificationPolicyPathService {
 				? holdLivePolicyCandidatePurpose({ policyResult, contract: candidateAdjudication, metadata }) : null;
 			const aiOptions = {
 				mode: aiModeDecision.mode,
+				...(aiModeDecision.mode === 'verify' ? { policyVerificationAdvice: verificationAdvice } : {}),
 				ragContext,
 				verificationCandidate: policyResult.library || policyResult.ranked?.[0] || null,
 				...(aiModeDecision.mode === 'adjudicate'
