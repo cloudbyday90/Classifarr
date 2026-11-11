@@ -20,8 +20,8 @@ export function recoveryPolicies(count = 1, source = 'native_intent') {
 }
 
 export async function policyRecoveryReferenceFixture({ count = 1, source, live = true, confidence = 70,
-  configure = () => {}, beforeEvaluate = () => {}, afterEvaluate = () => {}, metadata = {} } = {}) {
-  const item = { ...purposeMatchFixture().item, title: 'Owned item', ...metadata };
+  configure = () => {}, beforeEvaluate = () => {}, afterEvaluate = () => {}, metadata = {}, item: suppliedItem = null } = {}) {
+  const item = suppliedItem || { ...purposeMatchFixture().item, title: 'Owned item', ...metadata };
   const policies = recoveryPolicies(count, source); policies.forEach(configure);
   const libraries = policies.map(policy => ({ id: policy.library_id, name: policy.library_name, media_type: item.media_type, is_active: true }));
   const result = await evaluateItem(item, {}, {

@@ -16,6 +16,10 @@ const { buildSignalContext } = await import('../../services/policyScoringContext
 const { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } = await import('../../services/policyRecoverySuggestionReader.mjs');
 const { holdPolicyVerificationAdvice, createPolicyVerificationAdviceSession } = await import('../../services/policyVerificationAdvice.mjs');
 const { libraryProfileService } = await import('../../services/libraryProfileService.mjs');
+const { runPolicyRecheckStage, runAiRerunStage } = await import('../../services/classificationRagLoopStages.mjs');
+const { createRagRecheckAdviceSession } = await import('../../services/ragRecheckVerificationAdvice.mjs');
+const { ragRecheckStageContext } = await import('../fixtures/ragRecheckAdviceFixture.mjs');
+const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
@@ -135,3 +139,40 @@ test('a loaded destination changed while the real profile query settles cannot a
   expect(lookup).toHaveBeenCalledTimes(1); expect(lookup).toHaveBeenCalledWith(libraries[0].id);
   expect(await session.buildPrompt({}, async context => context)).toEqual({ policySignals: {}, libraryProfile: null });
 });
+
+for (const source of ['native_intent', 'compatibility_bridge']) {
+  test.each(['genuine', 'copied'])(`real ${source} %s RAG stage binds a fresh later profile without changing authority/result context`, async kind => {
+    const { libraries, item, created } = await fixture(source), expanded = { ...item, overview: 'Expanded owned metadata' };
+    await query(`INSERT INTO media_server_items(library_id,external_id,title,media_type,genres)
+      VALUES($1,'rag-observation','PRIVATE RAG ITEM','movie',ARRAY['Owned RAG observation'])`, [created.libraryId]);
+    if (kind === 'copied') {
+      const evaluate = policyEngine.evaluateItem.bind(policyEngine);
+      jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async (...args) => ({ ...await evaluate(...args) }));
+    }
+    jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+    const { ctx } = ragRecheckStageContext({ item: expanded, libraries });
+    const stage = await runPolicyRecheckStage(ctx);
+    expect(stage.policyAfter.action).toBe('prompt_confirm'); expect(stage.policyGate.shouldAdopt).toBe(true);
+    const original = database.query.bind(database), reads = [];
+    jest.spyOn(database, 'query').mockImplementation((sql, params, ...rest) => { reads.push({ sql, params }); return original(sql, params, ...rest); });
+    const aiClassify = jest.fn(async (metadata, pool, signalContext, options) => {
+      expect(metadata).toBe(expanded); expect(signalContext.breakdown).toBe(ctx.signalContext.breakdown);
+      const session = createRagRecheckAdviceSession(options.ragRecheckVerificationAdvice, { metadata, libraries: pool, signalContext });
+      await session.readProfile(id => libraryProfileService.getProfileStats(id));
+      const packet = await session.buildPrompt({}, async value => value);
+      if (kind === 'genuine') {
+        expect(packet.policySignals.confidence).toBe(stage.policyAfter.confidence);
+        expect(packet.libraryProfile).toMatchObject({ totalItems: 1, genreDistribution: [{ genre: 'Owned RAG observation', percentage: 100 }] });
+      } else expect(packet).toEqual({ policySignals: {}, libraryProfile: null });
+      expect(JSON.stringify(packet)).not.toMatch(/PRIVATE RAG ITEM|EARLIER PASS SENTINEL/u);
+      return { library: pool[0], confidence: stage.policyAfter.confidence, verified_by_ai: true };
+    });
+    const result = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
+      policyRecheckStage: stage, aiClassify });
+    expect(aiClassify).toHaveBeenCalledTimes(1); expect(result.aiCallsUsed).toBe(2);
+    expect(result.pass2Candidate.signalContext).toBe(ctx.signalContext);
+    expect(reads).toHaveLength(kind === 'genuine' ? 1 : 0);
+    if (kind === 'genuine') expect(reads[0].params).toEqual([created.libraryId]);
+    expect(JSON.stringify(result)).not.toContain('ragRecheckVerificationAdvice');
+  });
+}

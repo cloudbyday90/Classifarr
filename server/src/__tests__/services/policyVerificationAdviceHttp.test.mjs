@@ -32,6 +32,12 @@ const { ClassificationPolicyPathService } = await import('../../services/classif
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 const { candidateBoundVerificationResponseSchema } = await import('../../services/aiResponseSchema.mjs');
 const { holdPolicyVerificationAdvice } = await import('../../services/policyVerificationAdvice.mjs');
+const { ragRecheckAdviceFixture } = await import('../fixtures/ragRecheckAdviceFixture.mjs');
+const { runPolicyRecheckStage, runAiRerunStage } = await import('../../services/classificationRagLoopStages.mjs');
+const { policyEngine } = await import('../../services/policyEngine.mjs');
+const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
+const { classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
+const { ragRetriever } = await import('../../services/ragRetriever.mjs');
 
 let server, url, requests, beforeReply, done, answer;
 beforeEach(async () => {
@@ -158,4 +164,86 @@ test('prompt assembly rejection cannot become a provider retry, refusal observat
     { mode: 'verify', verificationCandidate: value.result.topCandidate, policyVerificationAdvice: holdPolicyVerificationAdvice(value.args) })).rejects.toBe(failure);
   expect(requests).toHaveLength(0); expect(admission.failed).not.toHaveBeenCalled(); expect(invalidation).not.toHaveBeenCalled();
   expect(aiPromptBuilder.buildPrompt).toHaveBeenCalledTimes(1); expect(lock.releaseLock).toHaveBeenCalledTimes(1);
+});
+
+async function executeRag(value, { copied = false, afterStage = () => {}, cap = 2 } = {}) {
+  jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(copied ? { ...value.result } : value.result);
+  jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+  const stage = await runPolicyRecheckStage(value.ctx);
+  expect(stage.policyGate.shouldAdopt).toBe(true); afterStage(stage);
+  return runAiRerunStage({ ...value.ctx, config: { ...value.ctx.config, policy_recheck_max_ai_calls_per_item: cap },
+    policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage,
+    aiClassify: classificationAiService.aiClassify });
+}
+
+test.each(['ollama', 'openai'])('actual %s adopted RAG verification uses fresh advice without earlier-pass leakage or result-context repair', async type => {
+  const value = await ragRecheckAdviceFixture({ confidence: 73 }); choose(type);
+  const result = await executeRag(value);
+  expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
+  expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Calculated Confidence: 73%');
+  expect(prompt()).toContain('Owned profile observation'); expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
+  expect(prompt()).not.toContain('Signal Breakdown'); expect(prompt()).not.toContain('DECLARED POSITIVE PURPOSE');
+  expect(result.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+  expect(result.pass2Candidate.library).toBe(value.libraries[0]); expect(result.pass2Candidate.confidence).toBe(73);
+  expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
+  expect(result.pass2Candidate.ai_authority.sideEffects).toMatchObject({ canRoute: false, canLearn: false });
+  expect(JSON.stringify({ result, logs, writes })).not.toMatch(/ragRecheckVerificationAdvice|Owned profile observation/u);
+});
+
+test.each(['ollama', 'openai'])('copied RAG result keeps actual %s verification but omits optional sections', async type => {
+  const value = await ragRecheckAdviceFixture(); choose(type);
+  const result = await executeRag(value, { copied: true });
+  expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
+  expect(prompt()).toContain('CANDIDATE-BOUND VERIFICATION MODE'); expect(prompt()).not.toMatch(/POLICY ENGINE SIGNALS|LIBRARY PROFILE/u);
+  expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled(); expect(result.pass2Candidate.confidence).toBe(70);
+});
+
+test.each(['handoff', 'profile', 'formatting', 'lock'])('RAG %s mutation removes optional material without changing the existing call count', async phase => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama');
+  if (phase === 'profile') libraryProfileService.getProfileStats.mockImplementation(async () => { value.libraries[0].is_active = false; return verificationProfile(); });
+  if (phase === 'lock') lock.acquireLock.mockImplementation(async () => { value.libraries[0].is_active = false; });
+  if (phase === 'formatting') {
+    const original = aiPromptBuilder.buildPrompt.bind(aiPromptBuilder);
+    jest.spyOn(aiPromptBuilder, 'buildPrompt').mockImplementation(async (...args) => { const text = await original(...args); value.libraries[0].is_active = false; return text; });
+  }
+  const result = await executeRag(value, { afterStage: stage => { if (phase === 'handoff') stage.policyGate = { ...stage.policyGate }; } });
+  expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
+  expect(prompt()).not.toMatch(/POLICY ENGINE SIGNALS|LIBRARY PROFILE/u); expect(prompt()).toContain('CANDIDATE-BOUND VERIFICATION MODE');
+});
+
+test('RAG provider refusal and exhausted item cap retain their existing distinct counter/dispatch behavior', async () => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama', undefined, false);
+  const refused = await executeRag(value);
+  expect(requests).toHaveLength(0); expect(refused.aiCallsUsed).toBe(2); expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled();
+  expect(refused.pass2Candidate.candidate_bound_verification.status_id).toBe('provider_capability_unavailable');
+  jest.restoreAllMocks(); choose('ollama');
+  const capped = await executeRag(await ragRecheckAdviceFixture(), { cap: 1 });
+  expect(requests).toHaveLength(0); expect(capped.aiCallsUsed).toBe(1);
+});
+
+test('whole production RAG owner carries its private stage through fresh expansion to actual HTTP', async () => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama');
+  const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
+  const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: 'apply',
+    rag_loop_trace_enabled: false, rag_loop_auto_fallback_enabled: false, rag_loop_auto_recover_enabled: false,
+    rag_loop_conflict_detection_enabled: false, rag_loop_resilience_enabled: false,
+    policy_recheck_below_prompt_threshold_enabled: true, policy_recheck_metadata_enrichment_enabled: false,
+    policy_recheck_metadata_timeout_ms: 2000, policy_recheck_identifier_caps: { keywords: 8, genres: 5, studios: 3, cast: 3 },
+    rag_conflict_top_n: 5, rag_loop_candidate_limit: 25, rag_retry_strategy: 'hybrid' };
+  jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
+  jest.spyOn(ragRetriever, 'semanticSearchCandidates').mockImplementation(async (_item, _limit, options) =>
+    [{ libraryId: options.pass === 'pass1' ? 2001 : 101, similarity: options.pass === 'pass1' ? 0.6 : 0.95 }]);
+  jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([{ libraryId: 101, similarity: 0.95 }]);
+  jest.spyOn(ragRetriever, 'hybridSearch').mockResolvedValue([{ libraryId: 101, similarity: 0.95 }]);
+  jest.spyOn(ragRetriever, 'getSuggestedLibrary').mockReturnValue({ libraryId: 101, avgSimilarity: 0.95 });
+  const evaluate = jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async expanded => {
+    expect(expanded).not.toBe(metadata);
+    return (await policyRecoveryReferenceFixture({ item: expanded })).result;
+  });
+  const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
+    baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
+  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(1);
+  expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
+  expect(prompt()).not.toContain('EARLIER PASS SENTINEL'); expect(result.library.id).toBe(101);
+  expect(result.signalContext).toBe(value.ctx.signalContext); expect(result.candidate_bound_verification.status_id).toBe('confirmed');
 });

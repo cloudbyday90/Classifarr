@@ -19,7 +19,7 @@ export function holdPolicyVerificationAdvice(args) {
 }
 
 /** Scope is explicit even for a missing token; private evidence never falls through to legacy advice. */
-export function createPolicyVerificationAdviceSession(token, { metadata, libraries, signalContext }) {
+export function createPolicyVerificationAdviceSession(token, { metadata, libraries, signalContext }, additionalCheck = null) {
   let profile = null;
   let invalidated = false;
   const read = () => {
@@ -28,7 +28,7 @@ export function createPolicyVerificationAdviceSession(token, { metadata, librari
       const value = held.get(token);
       const valid = value && value.args.metadata === metadata && value.args.libraries === libraries &&
         value.args.signalContext === signalContext && readPolicyRecoverySuggestion(value.selection, value.args) === value.library &&
-        field(value.library, 'name') === value.advice.suggestedLibrary.name;
+        field(value.library, 'name') === value.advice.suggestedLibrary.name && (!additionalCheck || additionalCheck() === true);
       if (!valid) invalidated = true;
       return valid ? value : null;
     } catch { invalidated = true; return null; }

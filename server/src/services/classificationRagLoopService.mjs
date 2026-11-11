@@ -409,6 +409,7 @@ class ClassificationRagLoopService {
       baselineResult,
       policyResult: policyResult2.policyAfter,
       policyAfter: policyResult2.policyAfter,
+      policyRecheckStage: policyResult2,
       aiCallsUsed,
       buildAiRerunCandidate: (params) => this.buildAiRerunCandidate(params),
       buildAiRerunFailureEvent: (params) => this.buildAiRerunFailureEvent(params),

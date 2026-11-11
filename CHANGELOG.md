@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **RAG verification advice** — Bind adopted recheck advice/profile to the
+  successful fresh evaluation through a private stage handoff. Omit missing or
+  changed optional evidence while preserving verification admission/parsing,
+  call budgets, adoption and routing/learning safeguards. See the
+  [outcome](docs/architecture/rag-recheck-advice-provenance-outcome.md).
+
 - **Verification advice provenance** — Qualify initial policy verification's
   optional destination/confidence and profile attachment with private live
   evidence. Omit unbound or changed context while preserving the separate

@@ -283,6 +283,7 @@ describe('RAG loop candidate-bound verification', () => {
       {
         mode: 'verify',
         ragContext: null,
+        ragRecheckVerificationAdvice: null,
         verificationCandidate: { library_id: 2, library_name: 'Family' },
       },
     );

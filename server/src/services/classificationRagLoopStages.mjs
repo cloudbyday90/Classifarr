@@ -11,6 +11,7 @@
 import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
+import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice } from './ragRecheckVerificationAdvice.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
     buildPolicyRecheckVerificationSignalContext,
@@ -228,6 +229,7 @@ export async function runPolicyRecheckStage(ctx) {
 
     let policyRecheckError = null;
     let policyRecheckStageError = null;
+    let freshAdvice = null;
     for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
         try {
             policyAfter = await withRetryableDbConflict(
@@ -252,6 +254,7 @@ export async function runPolicyRecheckStage(ctx) {
                     },
                 },
             );
+            freshAdvice = holdRagRecheckAdviceSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             policyRecheckError = null;
             policyRecheckStageError = null;
             break;
@@ -281,7 +284,7 @@ export async function runPolicyRecheckStage(ctx) {
         addEvent({ stage: 'policy_recheck', outcome: 'error', reason: policyRecheckError.message, reasonCode: stageError.reasonCode, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.POLICY_RECHECK_SKIPPED, recoverable: stageError.recoverable, sqlState: stageError.sqlState });
     }
 
-    return { policyAfter, policyGate, pass2Candidate, hadError };
+    return retainRagRecheckAdvice({ policyAfter, policyGate, pass2Candidate, hadError }, freshAdvice);
 }
 
 export async function runAiRerunStage(ctx) {
@@ -352,6 +355,9 @@ export async function runAiRerunStage(ctx) {
                 mode: aiModeDecision.mode,
                 ragContext: pass2RagContext,
                 verificationCandidate: policyAfter?.library || policyAfter?.ranked?.[0] || null,
+                ...(verifyPolicyRecheckCandidate ? { ragRecheckVerificationAdvice: takeRagRecheckAdvice(ctx.policyRecheckStage, {
+                    policyResult: policyAfter, metadata: expandedMetadata, libraries, signalContext: verificationSignalContext, candidate: existingCandidate,
+                }) } : {}),
             })),
             deterministic_ai_mode: aiModeDecision,
         };

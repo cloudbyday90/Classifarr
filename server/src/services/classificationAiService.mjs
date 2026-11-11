@@ -44,6 +44,7 @@ import {
 } from './ollamaVerificationCapabilityRuntimeInvalidationService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { createPolicyVerificationAdviceSession } from './policyVerificationAdvice.mjs';
+import { createRagRecheckAdviceSession } from './ragRecheckVerificationAdvice.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
 import {
@@ -164,8 +165,10 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   // generic proposal path for backwards-compatible direct callers; signal
   // context alone must never escalate a request into verification.
   const mode = options.mode || 'classify';
-  const verificationAdvice = mode === 'verify' && Object.hasOwn(options, 'policyVerificationAdvice')
-    ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, { metadata, libraries, signalContext }) : null;
+  const adviceArgs = { metadata, libraries, signalContext };
+  const verificationAdvice = mode !== 'verify' ? null
+    : Object.hasOwn(options, 'ragRecheckVerificationAdvice') ? createRagRecheckAdviceSession(options.ragRecheckVerificationAdvice, adviceArgs)
+    : Object.hasOwn(options, 'policyVerificationAdvice') ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, adviceArgs) : null;
   const adjudicationSchema = mode === 'adjudicate' ? buildCandidateAdjudicationResponseSchema(libraries?.length ?? 0) : null;
   const verificationContract = mode === 'verify'
     ? buildCandidateBoundVerificationContract({
