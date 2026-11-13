@@ -183,21 +183,21 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
   });
 }
 
-async function currentReviewResult(item, libraries, { currentAdvisory = null } = {}) {
+async function currentReviewResult(item, libraries, { currentAdvisory = null, adopted = false } = {}) {
   const earlier = { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true };
   if (!libraries.some(row => row.id === earlier.id)) libraries.push(earlier);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
-  const ctx = nonadoptedRagContext({ item, libraries }, { earlier });
+  const ctx = adopted ? ragRecheckStageContext({ item, libraries }, { earlier }).ctx : nonadoptedRagContext({ item, libraries }, { earlier });
   Object.assign(ctx.signalContext, { relatedEvidenceSummary: { source: 'EARLIER SUMMARY SENTINEL' },
     signals: { earlier_signal: 99 }, ragContext: { similarItems: [{ similarity: 0.99, title: 'EARLIER RETRIEVAL SENTINEL' }] } });
   ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory',
     mode: 'verification', source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
     deterministic_candidate: { library_id: earlier.id, library_name: earlier.name }, proposed_destination: null };
   const stage = await runPolicyRecheckStage(ctx);
-  expect(stage.policyGate.shouldAdopt).toBe(false);
-  const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage,
+  expect(stage.policyGate.shouldAdopt).toBe(adopted);
+  const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage,
     aiClassify: async (metadata, pool, signalContext, options) => {
-      enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
+      if (!adopted) enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
       return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: currentAdvisory === null,
         ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}) };
     } });
@@ -206,8 +206,10 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null } =
   return result;
 }
 
-test.each(['native_intent', 'compatibility_bridge'])('current %s evaluation survives the real writer, row binding and explicit receipt/replay', async source => {
-  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries);
+test.each([
+  ['native_intent', false], ['compatibility_bridge', false], ['native_intent', true], ['compatibility_bridge', true],
+])('current %s adopted=%s evaluation survives the real writer, row binding and explicit receipt/replay', async (source, adopted) => {
+  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries, { adopted });
   const original = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, policy_id: 2001, score: 80 }] };
   item.policyResult = original;
   const discord = jest.spyOn(persistence, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
@@ -235,8 +237,8 @@ test.each(['native_intent', 'compatibility_bridge'])('current %s evaluation surv
   expect((await query('SELECT metadata FROM classification_history WHERE id=$1', [id])).rows[0].metadata.classification_details.current_policy_review).toEqual(frame);
 });
 
-test('pre-insert mutation after lifecycle waits saves a row-bound evidence gap without rejecting the classification', async () => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+test.each([false, true])('adopted=%s pre-insert mutation after lifecycle waits saves a row-bound evidence gap', async adopted => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
   const ordinary = persistence.pendingDecisionLifecycleService;
   const writer = new ClassificationPersistenceService({ policyQuestionContext: context, pendingDecisionLifecycleService: {
     persist: args => ordinary.persist({ ...args, insert: async (...params) => {
@@ -252,8 +254,11 @@ test('pre-insert mutation after lifecycle waits saves a row-bound evidence gap w
   expect(contract.allowed_actions.find(action => action.id === 'confirm_destination').available).toBe(true);
 });
 
-test.each(['rollback', 'lost acknowledgement', 'delayed acknowledgement'])('current row/frame %s preserves ordinary transaction and notification semantics', async kind => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+test.each([
+  ['rollback', false], ['lost acknowledgement', false], ['delayed acknowledgement', false],
+  ['rollback', true], ['lost acknowledgement', true], ['delayed acknowledgement', true],
+])('current row/frame %s adopted=%s preserves ordinary transaction and notification semantics', async (kind, adopted) => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
   let inserted, release, committed;
   const didCommit = new Promise(resolve => { committed = resolve; });
   const gate = new Promise(resolve => { release = resolve; });
@@ -286,7 +291,7 @@ test.each(['rollback', 'lost acknowledgement', 'delayed acknowledgement'])('curr
 });
 
 test('concurrent replacements retain each frame with its own row and supersede only the older pending row', async () => {
-  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries);
+  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries, { adopted: true });
   const ids = await Promise.all([persistence.logClassification(item, first), persistence.logClassification(item, second)]);
   history.push(...ids);
   const rows = (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [ids])).rows;
@@ -294,8 +299,8 @@ test('concurrent replacements retain each frame with its own row and supersede o
   for (const row of rows) expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(row.id), status: 'recorded' });
 });
 
-test('loopback pending/answer HTTP retains the current fingerprint, refuses changed presentation and recovers exact completion first', async () => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+test.each([false, true])('adopted=%s loopback pending/answer HTTP retains current fingerprints and exact completion', async adopted => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
   item.policyResult = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, score: 80 }] };
   const id = await persistence.logClassification(item, result); history.push(id);
   const app = express(), routed = jest.fn(); app.use(express.json());
@@ -328,8 +333,8 @@ test('loopback pending/answer HTTP retains the current fingerprint, refuses chan
   expect(routed).toHaveBeenCalledTimes(1);
 });
 
-test('the actual History writer binds a BIGINT row beyond safe-number precision without an extra binding query', async () => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+test.each([false, true])('adopted=%s actual History writer binds a BIGINT row beyond safe-number precision', async adopted => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
   const original = (await query('SELECT last_value FROM classification_history_id_seq')).rows[0].last_value;
   let inserted;
   try {

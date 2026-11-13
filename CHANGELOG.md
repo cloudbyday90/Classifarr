@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Adopted RAG review evidence** — Use the accepted adopted verification
+  recheck's row-bound policy frame for pending recommendations, scores and
+  evidence. Record missing or changed proof as an explicit review gap. See the
+  [outcome](docs/architecture/adopted-policy-review-frame-outcome.md).
+
 - **RAG result context ownership** — Assemble accepted non-adopted verification
   results with their current invocation context and advisory. Clear inherited
   advisory after a fresh confirmation, while fulfilled review outcomes retain

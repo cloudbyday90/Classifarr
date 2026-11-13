@@ -37,7 +37,7 @@ const { runPolicyRecheckStage, runAiRerunStage } = await import('../../services/
 const { policyEngine } = await import('../../services/policyEngine.mjs');
 const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
-const { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame } = await import('../../services/currentPolicyReviewFrameLive.mjs');
+const { publishCurrentPolicyReviewFrame, holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame } = await import('../../services/currentPolicyReviewFrameLive.mjs');
 const { ragRetriever } = await import('../../services/ragRetriever.mjs');
 const { nonadoptedRagVerificationFixture, nonadoptedRagContext } = await import('../fixtures/nonadoptedRagVerificationFixture.mjs');
 const { aiProviderCapabilityMetricsService } = await import('../../services/aiProviderCapabilityMetricsService.mjs');
@@ -224,16 +224,19 @@ test('RAG provider refusal and exhausted item cap retain their existing distinct
   expect(requests).toHaveLength(0); expect(capped.aiCallsUsed).toBe(1);
 });
 
-test('whole production RAG owner carries its private stage through fresh expansion to actual HTTP', async () => {
+test.each(['apply', 'shadow', 'rollout mutation'])('whole production adopted RAG owner %s carries its review source through actual HTTP', async scenario => {
   const value = await ragRecheckAdviceFixture(); choose('ollama');
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
-  const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: 'apply',
+  const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: scenario === 'shadow' ? 'shadow' : 'apply',
     rag_loop_trace_enabled: false, rag_loop_auto_fallback_enabled: false, rag_loop_auto_recover_enabled: false,
     rag_loop_conflict_detection_enabled: false, rag_loop_resilience_enabled: false,
     policy_recheck_below_prompt_threshold_enabled: true, policy_recheck_metadata_enrichment_enabled: false,
     policy_recheck_metadata_timeout_ms: 2000, policy_recheck_identifier_caps: { keywords: 8, genres: 5, studios: 3, cast: 3 },
     rag_conflict_top_n: 5, rag_loop_candidate_limit: 25, rag_retry_strategy: 'hybrid' };
   jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
+  if (scenario === 'rollout mutation') jest.spyOn(classificationRagLoopService, 'maybeApplyRolloutAutomation').mockImplementation(async () => {
+    value.libraries[0].is_active = false;
+  });
   jest.spyOn(ragRetriever, 'semanticSearchCandidates').mockImplementation(async (_item, _limit, options) =>
     [{ libraryId: options.pass === 'pass1' ? 2001 : 101, similarity: options.pass === 'pass1' ? 0.6 : 0.95 }]);
   jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([{ libraryId: 101, similarity: 0.95 }]);
@@ -247,8 +250,54 @@ test('whole production RAG owner carries its private stage through fresh expansi
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
   expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(1);
   expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
-  expect(prompt()).not.toContain('EARLIER PASS SENTINEL'); expect(result.library.id).toBe(101);
-  expect(result.signalContext).toBe(value.ctx.signalContext); expect(result.candidate_bound_verification.status_id).toBe('confirmed');
+  expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
+  expect(result.signalContext).toBe(value.ctx.signalContext);
+  const held = holdCurrentPolicyReviewFrame(result, metadata);
+  if (scenario === 'shadow') {
+    expect(result.library).toBe(value.ctx.baselineResult.library);
+    expect(held).toBeNull();
+  } else {
+    expect(result.library.id).toBe(101);
+    expect(result.candidate_bound_verification.status_id).toBe('confirmed');
+    expect(projectCurrentPolicyReviewFrame(held).status).toBe(scenario === 'rollout mutation' ? 'evidence_gap' : 'recorded');
+  }
+});
+
+test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'unsupported'])('actual adopted %s outcome supplies a bounded review attempt', async outcome => {
+  const value = await ragRecheckAdviceFixture({ confidence: 75 });
+  choose('ollama', undefined, outcome !== 'unsupported');
+  if (outcome === 'ABSTAIN') answer = '{"decision":"ABSTAIN","reason":"Owned uncertainty"}';
+  if (outcome === 'invalid') answer = '{"decision":"CONFIRM","reason":"Owned","library_number":99}';
+  const result = await executeRag(value);
+  expect(requests).toHaveLength(outcome === 'unsupported' ? 0 : 1);
+  expect(result.aiCallsUsed).toBe(2);
+  expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe(
+    outcome === 'CONFIRM' ? 'confirmed' : outcome === 'ABSTAIN' ? 'abstained' :
+      outcome === 'invalid' ? 'contract_violation' : 'provider_capability_unavailable');
+  expect(result.pass2Candidate.ai_authority.sideEffects).toMatchObject({ canRoute: false, canLearn: false });
+  const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
+  expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)))
+    .toMatchObject({ status: 'recorded', policy: { confidence: 75 } });
+});
+
+test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s diagnostic evidence keeps ordinary HTTP/accounting behavior', async phase => {
+  const value = await ragRecheckAdviceFixture();
+  choose('ollama');
+  if (phase === 'profile') libraryProfileService.getProfileStats.mockImplementation(async () => {
+    value.libraries[0].is_active = false;
+    return verificationProfile();
+  });
+  if (phase === 'reply') beforeReply = () => { value.result.ranked[0].score++; };
+  if (phase === 'long label') value.libraries[0].name = 'x'.repeat(161);
+  const result = await executeRag(value, { copied: phase === 'copied' });
+  expect(requests).toHaveLength(1);
+  expect(result.aiCallsUsed).toBe(2);
+  expect(result.hadError).toBe(false);
+  expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
+  const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
+  expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)).status)
+    .toBe(phase === 'long label' ? 'recorded' : 'evidence_gap');
+  if (phase === 'long label') expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled();
 });
 
 async function executeNonadopted(value, { copied = false, afterStage = () => {}, cap = 2 } = {}) {

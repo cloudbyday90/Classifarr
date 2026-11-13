@@ -8,7 +8,13 @@ const attempted = Symbol('currentPolicyReviewAttempt');
 const candidates = new WeakMap(), published = new WeakMap(), saved = new WeakMap();
 function tuple(result) {
   const library = field(result, 'library');
-  return JSON.stringify([library == null ? null : field(library, 'id'), field(result, 'confidence'), field(result, 'method')]);
+  const libraryId = library == null ? null : field(library, 'id');
+  const confidence = field(result, 'confidence');
+  const method = field(result, 'method');
+  if ((libraryId !== null && (!Number.isSafeInteger(libraryId) || libraryId <= 0)) ||
+      typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 100 ||
+      !CLASSIFIER_CAPTURE_METHODS.includes(method)) throw new TypeError('Invalid current policy review result');
+  return JSON.stringify([libraryId, confidence, method]);
 }
 function valid(receipt, result, metadata) {
   if (!receipt || receipt.invalid) return false;
@@ -19,11 +25,13 @@ function valid(receipt, result, metadata) {
   receipt.invalid = true; return false;
 }
 
-/** Only the accepted non-adopted provider stage calls this with its private current() closure. */
+/** Successful verification stages supply their private live-evaluation check. */
 export function associateCurrentPolicyReviewCandidate(result, { seed, current, policyResult, metadata }) {
   try {
+    // Register the attempt before inspecting values so inspection failure remains an explicit gap.
+    candidates.set(result, { invalid: true });
     candidates.set(result, { seed, current, policyResult, identity: recoveryItemIdentity(metadata), tuple: tuple(result), invalid: false });
-  } catch { /* No authority can be minted from invalid result shapes. */ }
+  } catch { /* The registered attempt retains its evidence-gap status. */ }
   return result;
 }
 
