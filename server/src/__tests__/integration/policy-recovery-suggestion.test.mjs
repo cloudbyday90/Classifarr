@@ -28,6 +28,7 @@ const { ragLoopResilienceManager } = await import('../../services/ragLoopResilie
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
+const { policyQuestionBuilder } = await import('../../services/policyQuestionBuilder.mjs');
 const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
 const { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const context = { extractQuestionContext: () => ({}), getPolicyQuestionContextVersion: async () => 1,
@@ -182,17 +183,23 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
   });
 }
 
-async function currentReviewResult(item, libraries) {
+async function currentReviewResult(item, libraries, { currentAdvisory = null } = {}) {
   const earlier = { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true };
   if (!libraries.some(row => row.id === earlier.id)) libraries.push(earlier);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const ctx = nonadoptedRagContext({ item, libraries }, { earlier });
+  Object.assign(ctx.signalContext, { relatedEvidenceSummary: { source: 'EARLIER SUMMARY SENTINEL' },
+    signals: { earlier_signal: 99 }, ragContext: { similarItems: [{ similarity: 0.99, title: 'EARLIER RETRIEVAL SENTINEL' }] } });
+  ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory',
+    mode: 'verification', source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
+    deterministic_candidate: { library_id: earlier.id, library_name: earlier.name }, proposed_destination: null };
   const stage = await runPolicyRecheckStage(ctx);
   expect(stage.policyGate.shouldAdopt).toBe(false);
   const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage,
     aiClassify: async (metadata, pool, signalContext, options) => {
       enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
-      return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: true };
+      return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: currentAdvisory === null,
+        ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}) };
     } });
   const result = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
   await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
@@ -339,6 +346,33 @@ test('the actual History writer binds a BIGINT row beyond safe-number precision 
   }
 });
 
+test.each(['confirmed', 'abstained'])('selected %s persists invocation-owned context/advisory and the bound review frame', async outcome => {
+  const { libraries, item } = await fixture();
+  const currentAdvisory = outcome === 'confirmed' ? null : {
+    version: 'classification.ai_advisory.v1', status_id: 'verification_abstained', mode: 'verification',
+    source_format: 'candidate_bound_abstain', message: 'Current invocation requires review',
+    deterministic_candidate: { library_id: libraries[0].id, library_name: libraries[0].name }, proposed_destination: null,
+  };
+  const questionBuild = jest.spyOn(policyQuestionBuilder, 'build');
+  const result = await currentReviewResult(item, libraries, { currentAdvisory });
+  expect(questionBuild).toHaveBeenCalledWith(expect.objectContaining({ relatedEvidenceSummary: null }));
+  expect(Object.keys(result.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
+  expect(result.signalContext.suggestedLibrary).toBe(libraries[0]);
+  expect(result.signalContext.confidence).toBe(result.policyResult.confidence);
+  expect(result.ai_advisory).toBe(currentAdvisory);
+  expect(result.policy_question.meta.related_evidence_summary).toBeUndefined();
+  const id = await persistence.logClassification(item, result); history.push(id);
+  const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+  expect(row.signals_json).toBeNull();
+  expect(row.metadata.classification_details.rag_details).toBeNull();
+  expect(row.metadata.classification_details.ai_advisory).toEqual(currentAdvisory);
+  expect(row.metadata.classification_details.current_policy_review).toMatchObject({ status: 'recorded', classification_id: String(id) });
+  expect(JSON.stringify(row)).not.toContain('EARLIER');
+  const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+  expect(contract.decision_summary.ai_advisory.status_id).toBe(outcome === 'confirmed' ? 'advisory_unavailable' : 'historic_advisory_not_retained');
+  expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+});
+
 for (const source of ['native_intent', 'compatibility_bridge']) {
   test.each(['genuine', 'copied'])(`real ${source} %s non-adopted stage admits only coherent fresh verification`, async kind => {
     const { libraries, item, created } = await fixture(source), expanded = { ...item, overview: 'Owned fresh expansion' };
@@ -371,7 +405,8 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
     expect(result.aiCallsUsed).toBe(kind === 'genuine' ? 2 : 1); expect(reads).toHaveLength(kind === 'genuine' ? 1 : 0);
     if (kind === 'genuine') {
       expect(reads[0].params).toEqual([created.libraryId]); expect(result.pass2Candidate.confidence).toBe(stage.policyAfter.confidence);
-      expect(result.pass2Candidate.signalContext).toBe(ctx.signalContext);
+      expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+      expect(result.pass2Candidate.signalContext).not.toBe(ctx.signalContext);
     } else expect(result.pass2Candidate).toBeNull();
     expect(JSON.stringify(result)).not.toContain('nonadoptedRagVerification');
   });

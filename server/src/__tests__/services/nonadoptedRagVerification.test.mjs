@@ -2,7 +2,7 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { nonadoptedRagVerificationFixture } from '../fixtures/nonadoptedRagVerificationFixture.mjs';
 import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification,
-  enterNonadoptedRagVerification, acceptNonadoptedRagVerification } from '../../services/nonadoptedRagVerification.mjs';
+  enterNonadoptedRagVerification, acceptNonadoptedRagVerification, buildNonadoptedRagInvocationBaseline } from '../../services/nonadoptedRagVerification.mjs';
 import { isNonadoptedRagVerificationRefusal, createNonadoptedRagVerificationRefusal } from '../../services/nonadoptedRagVerificationRefusal.mjs';
 import { runPolicyRecheckStage, runAiRerunStage } from '../../services/classificationRagLoopStages.mjs';
 import { policyEngine } from '../../services/policyEngine.mjs';
@@ -79,7 +79,7 @@ test.each(['offline', 'copied', 'overflow', 'hostile label'])( '%s source cannot
   expect(holdNonadoptedRagVerificationSource(args(v))).toBeNull(); expect(trap).not.toHaveBeenCalled();
 });
 
-test('existing pure gates permit the non-adopted case; actual stage/entry preserves count and result-context precedence', async () => {
+test('existing non-adopted stage assembles the result with its accepted invocation context', async () => {
   const v = await nonadoptedRagVerificationFixture(); jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(v.result);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const stage = await runPolicyRecheckStage(v.ctx); expect(stage.policyGate.shouldAdopt).toBe(false); expect(stage.pass2Candidate).toBeNull();
@@ -89,7 +89,51 @@ test('existing pure gates permit the non-adopted case; actual stage/entry preser
   });
   const result = await runAiRerunStage({ ...v.ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage, aiClassify });
   expect(aiClassify).toHaveBeenCalledTimes(1); expect(result.aiCallsUsed).toBe(2);
-  expect(result.pass2Candidate).toMatchObject({ library: v.libraries[0], confidence: 75 }); expect(result.pass2Candidate.signalContext).toBe(v.ctx.signalContext);
+  expect(result.pass2Candidate).toMatchObject({ library: v.libraries[0], confidence: 75, ai_advisory: null });
+  expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+  expect(result.pass2Candidate.signalContext).not.toBe(v.ctx.signalContext);
+});
+
+test.each(['confirmed', 'abstained', 'contract_violation', 'provider_capability_unavailable'])(
+  '%s result owns its invocation context and advisory', async status => {
+    const v = await nonadoptedRagVerificationFixture();
+    const earlierAdvisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory',
+      deterministic_candidate: { library_id: 2001 }, message: 'EARLIER ADVISORY SENTINEL' };
+    Object.assign(v.ctx.signalContext, { relatedEvidenceSummary: { stage: 'EARLIER SUMMARY SENTINEL' },
+      signals: { earlier: 99 }, ragContext: { suggestion: 'EARLIER RETRIEVAL SENTINEL' } });
+    v.ctx.baselineResult.ai_advisory = earlierAdvisory;
+    const original = JSON.stringify(v.ctx.baselineResult);
+    jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(v.result);
+    jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+    const stage = await runPolicyRecheckStage(v.ctx);
+    const currentAdvisory = status === 'confirmed' ? null : { version: 'classification.ai_advisory.v1', status_id: status,
+      deterministic_candidate: { library_id: v.libraries[0].id }, message: 'Current invocation advisory' };
+    const aiClassify = jest.fn(async (metadata, libraries, signalContext, options) => {
+      enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate).assertCurrent();
+      return { library: libraries[0], confidence: signalContext.confidence, verified_by_ai: status === 'confirmed',
+        ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}) };
+    });
+    const result = await runAiRerunStage({ ...v.ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage, aiClassify });
+    expect(result.aiCallsUsed).toBe(2); expect(aiClassify).toHaveBeenCalledTimes(1);
+    expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+    expect(Object.keys(result.pass2Candidate.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
+    expect(result.pass2Candidate.signalContext.confidence).toBe(75);
+    expect(result.pass2Candidate.ai_advisory).toBe(currentAdvisory);
+    expect(JSON.stringify(result.pass2Candidate)).not.toContain('EARLIER');
+    expect(JSON.stringify(v.ctx.baselineResult)).toBe(original);
+  });
+
+test('unentered, copied and invalidated references refuse assembly before reading the baseline', async () => {
+  const baselineRead = jest.fn();
+  const baseline = Object.defineProperty({}, 'signalContext', { enumerable: true, get: baselineRead });
+  const v = await nonadoptedRagVerificationFixture(); retain(v); const p = prepare(v);
+  expect(() => buildNonadoptedRagInvocationBaseline(p.token, baseline)).toThrow('Fresh verification context is unavailable');
+  expect(() => buildNonadoptedRagInvocationBaseline({ ...p.token }, baseline)).toThrow('Fresh verification context is unavailable');
+  expect(baselineRead).not.toHaveBeenCalled();
+  const valid = await nonadoptedRagVerificationFixture(); retain(valid); const entered = prepare(valid); enter(valid, entered);
+  valid.result.confidence++;
+  expect(() => buildNonadoptedRagInvocationBaseline(entered.token, baseline)).toThrow('Fresh verification context is unavailable');
+  expect(baselineRead).not.toHaveBeenCalled();
 });
 
 test.each(['skip', 'failure', 'timeout'])('%s reevaluation cannot reuse a genuine retained result or its late completion', async kind => {

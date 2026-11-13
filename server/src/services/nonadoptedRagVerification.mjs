@@ -77,6 +77,17 @@ export function acceptNonadoptedRagVerification(token) {
   }
 }
 
+/** Result assembly uses the context accepted by this invocation and its own advisory output. */
+export function buildNonadoptedRagInvocationBaseline(token, baselineResult) {
+  acceptNonadoptedRagVerification(token);
+  const invocation = prepared.get(token);
+  return {
+    ...baselineResult,
+    signalContext: invocation.source.args.signalContext,
+    ai_advisory: null,
+  };
+}
+
 export function enterNonadoptedRagVerification(token, { metadata, libraries, signalContext }, candidate) {
   const value = prepared.get(token);
   if (!value || value.entered || value.source.args.metadata !== metadata || value.source.args.libraries !== libraries ||

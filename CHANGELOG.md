@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **RAG result context ownership** — Assemble accepted non-adopted verification
+  results with their current invocation context and advisory. Clear inherited
+  advisory after a fresh confirmation, while fulfilled review outcomes retain
+  their current advisory. See the
+  [outcome](docs/architecture/nonadopted-rag-result-context-outcome.md).
+
 - **Current pending-review evidence** — Save the selected non-adopted RAG
   recheck's bounded policy view with the actual History row. Use it consistently
   for recommendations, scores, evidence, web/bulk answers and Discord; require

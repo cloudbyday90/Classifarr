@@ -264,6 +264,7 @@ async function executeNonadopted(value, { copied = false, afterStage = () => {},
 
 test.each(['ollama', 'openai'])('non-adopted %s verification coherently dispatches fresh B/75 rather than old A/80', async type => {
   const value = await nonadoptedRagVerificationFixture(); choose(type);
+  value.ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
   const result = await executeNonadopted(value);
   expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
   expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Calculated Confidence: 75%');
@@ -272,7 +273,10 @@ test.each(['ollama', 'openai'])('non-adopted %s verification coherently dispatch
   expect(result.pass2Candidate.library).toBe(value.libraries[0]); expect(result.pass2Candidate.confidence).toBe(75);
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
   expect(result.pass2Candidate.ai_authority.sideEffects).toMatchObject({ canRoute: false, canLearn: false });
-  expect(result.pass2Candidate.signalContext).toBe(value.ctx.signalContext); // Separate persisted-context follow-up.
+  expect(result.pass2Candidate.signalContext).toMatchObject({ confidence: 75, suggestedLibrary: value.libraries[0] });
+  expect(result.pass2Candidate.signalContext).not.toBe(value.ctx.signalContext);
+  expect(result.pass2Candidate.ai_advisory).toBeNull();
+  expect(JSON.stringify(result.pass2Candidate)).not.toContain('EARLIER ADVISORY SENTINEL');
   expect(JSON.stringify({ result, logs, writes })).not.toMatch(/nonadoptedRagVerification|Owned profile observation/u);
 });
 
@@ -286,6 +290,7 @@ test('same destination retains fresh overall confidence rather than earlier or l
 
 test.each(['ABSTAIN', 'invalid', 'unsupported'])('%s result retains the same fresh numeric verification reference without repair', async kind => {
   const value = await nonadoptedRagVerificationFixture(); choose('ollama', undefined, kind !== 'unsupported');
+  value.ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
   answer = kind === 'invalid' ? '{"decision":"CONFIRM","reason":"Owned","library_number":99}' : '{"decision":"ABSTAIN","reason":"Owned uncertainty"}';
   const result = await executeNonadopted(value);
   expect(requests).toHaveLength(kind === 'unsupported' ? 0 : 1); expect(result.aiCallsUsed).toBe(2);
@@ -293,6 +298,9 @@ test.each(['ABSTAIN', 'invalid', 'unsupported'])('%s result retains the same fre
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe(
     kind === 'unsupported' ? 'provider_capability_unavailable' : kind === 'invalid' ? 'contract_violation' : 'abstained');
   expect(result.pass2Candidate.ai_authority.sideEffects.canRoute).toBe(false);
+  expect(result.pass2Candidate.signalContext.confidence).toBe(75);
+  expect(result.pass2Candidate.ai_advisory.deterministic_candidate.library_id).toBe(value.libraries[0].id);
+  expect(JSON.stringify(result.pass2Candidate.ai_advisory)).not.toContain('EARLIER ADVISORY SENTINEL');
 });
 
 test.each(['copied result', 'copied stage', 'changed source', 'cap'])('%s skips non-adopted verification before service invocation', async kind => {
@@ -365,9 +373,11 @@ test('a genuinely rejected pre-dispatch operation keeps its error when proof als
   expect(classifyStageError).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
 });
 
-test.each(['apply', 'shadow', 'rollout mutation'])('production RAG %s keeps policy rejection separate from final fresh verification comparison', async scenario => {
+test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation'])('production RAG %s keeps policy rejection separate from final fresh verification comparison', async scenario => {
   const mode = scenario === 'shadow' ? 'shadow' : 'apply';
   const value = await nonadoptedRagVerificationFixture(); choose('ollama');
+  const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
+  value.ctx.baselineResult.ai_advisory = earlierAdvisory;
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
   const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: mode,
     rag_loop_trace_enabled: true, rag_loop_auto_fallback_enabled: false, rag_loop_auto_recover_enabled: false,
@@ -387,7 +397,10 @@ test.each(['apply', 'shadow', 'rollout mutation'])('production RAG %s keeps poli
   jest.spyOn(ragRetriever, 'hybridSearch').mockResolvedValue(matches('pass2'));
   jest.spyOn(ragRetriever, 'getSuggestedLibrary').mockReturnValue({ libraryId: 101, avgSimilarity: 0.6 });
   const evaluate = jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async expanded => {
-    expect(expanded).not.toBe(metadata); return (await policyRecoveryReferenceFixture({ item: expanded, confidence: 75 })).result;
+    expect(expanded).not.toBe(metadata);
+    const evaluated = await policyRecoveryReferenceFixture({ item: expanded, confidence: 75 });
+    if (scenario === 'comparison rejection') evaluated.result.ranked[0].candidate_diagnostics.primary_anchor_eligible = false;
+    return evaluated.result;
   });
   const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
@@ -397,9 +410,16 @@ test.each(['apply', 'shadow', 'rollout mutation'])('production RAG %s keeps poli
     expect.objectContaining({ stage: 'policy_recheck', outcome: 'evaluated' }),
     expect.objectContaining({ stage: 'ai_rerun', outcome: 'applied' }),
   ]));
-  expect(result.signalContext).toBe(value.ctx.signalContext);
-  expect(result.library).toBe(mode === 'apply' ? value.libraries[0] : value.ctx.baselineResult.library);
+  const baselineSelected = mode === 'shadow' || scenario === 'comparison rejection';
+  if (baselineSelected) {
+    expect(result.signalContext).toBe(value.ctx.signalContext);
+    expect(result.ai_advisory).toBe(earlierAdvisory);
+  } else {
+    expect(result.signalContext).toMatchObject({ confidence: 75, suggestedLibrary: value.libraries[0], ranked: result.policyResult.ranked });
+    expect(result.ai_advisory).toBeNull();
+  }
+  expect(result.library).toBe(baselineSelected ? value.ctx.baselineResult.library : value.libraries[0]);
   const held = holdCurrentPolicyReviewFrame(result, metadata);
-  if (mode === 'shadow') expect(held).toBeNull();
+  if (baselineSelected) expect(held).toBeNull();
   else expect(projectCurrentPolicyReviewFrame(held).status).toBe(scenario === 'rollout mutation' ? 'evidence_gap' : 'recorded');
 });

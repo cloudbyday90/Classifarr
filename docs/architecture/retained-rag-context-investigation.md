@@ -81,11 +81,12 @@ The full `signalContext` is not serialized. Persistence only falls back to its
 `buildSignalContext` contains neither field, and an accepted RAG result already
 has explicit top-level policy and retrieval context.
 
-One direct visible consumer remains: `ensureDecisionQuestion` forwards
-`signalContext.relatedEvidenceSummary`, which the question builder stores under
-`question.meta.related_evidence_summary`. Replacing the old context with the
-fresh minimal request context would omit those earlier observations. They must
-not silently be relabeled as evidence produced by the new evaluation.
+`ensureDecisionQuestion` forwards `signalContext.relatedEvidenceSummary`, which
+the raw question builder places under `question.meta.related_evidence_summary`.
+The November 13 follow-up traced `normalizePolicyRuntimeQuestion`, which
+reconstructs the question metadata and drops that summary before ordinary
+persistence. The stale data affects the returned context and temporary builder
+input. The earlier assessment overstated its saved-question effect.
 
 Route-safety enforcement reads destination, confidence, policy result, AI
 authority and consensus evidence rather than `signalContext`. Existing native

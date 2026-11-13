@@ -12,7 +12,7 @@ import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
 import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice } from './ragRecheckVerificationAdvice.mjs';
-import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, acceptNonadoptedRagVerification, retainNonadoptedCurrentPolicyReview } from './nonadoptedRagVerification.mjs';
+import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, buildNonadoptedRagInvocationBaseline, retainNonadoptedCurrentPolicyReview } from './nonadoptedRagVerification.mjs';
 import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
@@ -372,13 +372,15 @@ export async function runAiRerunStage(ctx) {
                     policyResult: policyAfter, metadata: expandedMetadata, libraries, signalContext: verificationSignalContext, candidate: existingCandidate,
                 }) } : {}),
             });
-        if (freshVerification) acceptNonadoptedRagVerification(freshVerification.token);
+        const invocationBaseline = freshVerification
+            ? buildNonadoptedRagInvocationBaseline(freshVerification.token, candidateBaselineResult)
+            : candidateBaselineResult;
         const aiRerunMatch = {
             ...providerMatch,
             deterministic_ai_mode: aiModeDecision,
         };
         pass2Candidate = buildAiRerunCandidate({
-            baselineResult: candidateBaselineResult,
+            baselineResult: invocationBaseline,
             aiRerunMatch,
             libraries,
             signalContext: verificationSignalContext,
