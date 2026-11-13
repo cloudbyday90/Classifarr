@@ -3,6 +3,8 @@ import { recoveryField as field, recoveryRows, POLICY_RECOVERY_REFERENCE_LIMITS 
 import { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } from './policyRecoverySuggestionReader.mjs';
 import { holdPolicyVerificationAdvice, createPolicyVerificationAdviceSession } from './policyVerificationAdvice.mjs';
 import { createNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
+import { captureCurrentPolicyReviewSeed } from './currentPolicyReviewFrameSeed.mjs';
+import { associateCurrentPolicyReviewCandidate } from './currentPolicyReviewFrameLive.mjs';
 
 const sources = new WeakMap(), stages = new WeakMap(), prepared = new WeakMap();
 function label(library) {
@@ -21,7 +23,8 @@ export function holdNonadoptedRagVerificationSource({ policyResult, metadata, li
     const args = { policyResult, metadata, libraries, signalContext }, selection = holdPolicyRecoverySuggestion(args);
     if (!selection || readPolicyRecoverySuggestion(selection, args) !== library) return null;
     const token = Object.freeze({});
-    sources.set(token, { args, selection, library, display: label(library), advice: holdPolicyVerificationAdvice(args) });
+    sources.set(token, { args, selection, library, display: label(library), advice: holdPolicyVerificationAdvice(args),
+      reviewSeed: captureCurrentPolicyReviewSeed(policyResult, metadata) });
     return token;
   } catch { return null; }
 }
@@ -86,4 +89,11 @@ export function enterNonadoptedRagVerification(token, { metadata, libraries, sig
     assertCurrent: () => acceptNonadoptedRagVerification(token),
     advice: createPolicyVerificationAdviceSession(value.source.advice, value.source.args, () => current(value)),
   };
+}
+
+export function retainNonadoptedCurrentPolicyReview(token, candidate) {
+  const value = prepared.get(token);
+  if (!value?.entered) return candidate;
+  return associateCurrentPolicyReviewCandidate(candidate, { seed: value.source.reviewSeed,
+    current: () => current(value), policyResult: value.source.args.policyResult, metadata: value.source.args.metadata });
 }

@@ -21,6 +21,8 @@ import { createNamedMockModule } from './helpers/mockFactory.mjs';
 import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
 import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
+import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
+import { rememberSavedCurrentPolicyReview } from '../services/currentPolicyReviewFrameLive.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -34,6 +36,7 @@ const deliver = jest.fn(async ({ channel, payload }) => {
 jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDelivery: { send: deliver } }));
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
+const { sendConfidenceBasedNotification } = await import('../services/discordConfidenceNotification.mjs');
 const { AIResponseParser } = await import('../services/aiResponseParser.mjs');
 const { buildAiUnavailableResult } = await import('../services/classificationPathServiceShared.mjs');
 
@@ -54,6 +57,29 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test.each(['pending', 'confidence', 'gap'])('current %s notification uses the saved shared contract and numeric score', async kind => {
+    const value = await currentPolicyReviewFixture();
+    const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
+    const frame = kind === 'gap' ? { ...value.frame, status: 'evidence_gap', policy: null } : value.frame;
+    const metadata = rememberSavedCurrentPolicyReview(value.published, { ...value.item, title: 'Owned current review',
+      policyResult: value.ctx.policyResult, classification_details: { current_policy_review: frame } }, 77);
+    const result = { ...value.published, classification_id: 77, clarification: question, policy_question: question };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...value.item, id: 77,
+      method: result.method, metadata, confidence: 75 }, question });
+    const send = jest.fn(async () => ({ id: 'owned-current-message' })), fallback = jest.fn();
+    const context = { client: { channels: { fetch: async () => ({ send }) } }, channelId: 'owned-channel',
+      config: { enabled: true, notify_on_classification: true, notify_on_pending_items: true },
+      sendClassificationNotification: fallback, warnFn: jest.fn() };
+    await (kind === 'confidence' ? sendConfidenceBasedNotification : sendPendingDecisionNotification)(metadata, result, context);
+    expect(send).toHaveBeenCalledTimes(1); expect(fallback).not.toHaveBeenCalled();
+    const payload = send.mock.calls[0][0], buttons = payload.components[0].components.map(button => button.data);
+    for (const button of buttons) expect(button.custom_id).toContain(`_${contract.fingerprint}`);
+    if (kind === 'gap') expect(contract.recommendation.leading_destination).toBeNull();
+    else expect(payload.embeds[0].data.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Policy score: Owned destination 0', value: '70%' }),
+    ]));
+    expect(JSON.stringify(payload)).not.toContain('80%');
+  });
   test.each(['classify', 'recovery'])('fresh %s unresolved advice produces explicit destination buttons without a primary recommendation', async kind => {
     const libraries = [{ id: 15, name: 'Movies', media_type: 'movie', is_active: true },
       { id: 14, name: 'Arbitrary label', media_type: 'movie', is_active: true }];

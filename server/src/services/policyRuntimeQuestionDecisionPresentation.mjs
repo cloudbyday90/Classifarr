@@ -19,7 +19,8 @@ import {
 import {
   buildPolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCard.mjs';
-import { buildPolicyRuntimeReviewReference } from './policyRuntimeReviewReference.mjs';
+import { buildPolicyRuntimeReviewReference, reviewSourceForReference } from './policyRuntimeReviewReference.mjs';
+import { currentReviewEvidenceFacts } from './currentPolicyReviewFrameReader.mjs';
 import { hasLegacyPolicyReviewHistoricalHold } from './policyRuntimeQuestionHistoricalSafety.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { readPolicyPurposeMatchPresentation } from './policyPurposeMatchEvidence.mjs';
@@ -139,14 +140,16 @@ function buildEvidenceFacts({ classification, sourceMetadata, candidate, destina
 
 function buildDeterministicDecision({ classification, question, candidateDestinations, reviewReference }) {
   const sourceMetadata = metadata(classification?.metadata);
-  const policyResult = asObject(sourceMetadata.policyResult);
+  const reviewSource = reviewSourceForReference(reviewReference);
+  const policyResult = asObject(reviewSource?.policy ?? sourceMetadata.policyResult);
   const details = asObject(sourceMetadata.classification_details);
   const thresholds = asObject(policyResult.thresholds);
   const native = isPolicyRuntimeQuestionPersistenceEnvelope(question);
-  const leadingDestination = native ? candidateDestinations.length === 1 ? candidateDestinations[0] : null
+  const leadingDestination = native && !reviewSource?.current ? candidateDestinations.length === 1 ? candidateDestinations[0] : null
     : reviewReference.policyReference?.destination ?? null;
   const destinationName = leadingDestination?.library_name || 'the retained policy decision';
   const candidate = reviewReference.policyReference?.candidate ?? null;
+  const currentDetail = reviewSource?.detail(candidate);
   const decisionScore = candidate ? score(candidate.score) : null;
   const reviewThreshold = candidate ? score(candidate.prompt_threshold) ?? score(thresholds.prompt) : null;
   const automaticThreshold = candidate ? score(candidate.auto_classify_threshold) ?? score(thresholds.auto_classify) : null;
@@ -218,13 +221,13 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     review_threshold: reviewThreshold,
     automatic_threshold: automaticThreshold,
     message,
-    evidence: candidate ? buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }) : [],
-    candidate_evidence_card: candidate ? buildPolicyCandidateEvidenceCard({
+    evidence: reviewSource?.current ? currentReviewEvidenceFacts(currentDetail, destinationName) : candidate ? buildEvidenceFacts({ classification, sourceMetadata, candidate, destinationName }) : [],
+    candidate_evidence_card: reviewSource?.current ? currentDetail?.card ?? null : candidate ? buildPolicyCandidateEvidenceCard({
       classification,
       candidate,
       sourceMetadata,
     }) : null,
-    candidate_contrastive_evidence: candidate ? buildPolicyCandidateContrastiveEvidenceProjection(
+    candidate_contrastive_evidence: !reviewSource?.current && candidate ? buildPolicyCandidateContrastiveEvidenceProjection(
       details.candidate_contrastive_evidence,
     ) : null,
     library_evidence_profile: candidate ? buildPolicyLibraryEvidenceProfile({
@@ -233,7 +236,7 @@ function buildDeterministicDecision({ classification, question, candidateDestina
       candidateDestinations: [leadingDestination, ...reviewReference.rankedDestinations.filter(destination => destination.library_id !== leadingDestination?.library_id)],
       sourceMetadata,
     }) : null,
-    score_explanation: buildPolicyRuntimeQuestionScoreExplanation({
+    score_explanation: reviewSource?.current ? currentDetail?.explanation ?? null : buildPolicyRuntimeQuestionScoreExplanation({
       candidate,
       displayedScore: decisionScore,
     }),

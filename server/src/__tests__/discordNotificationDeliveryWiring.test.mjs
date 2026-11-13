@@ -6,6 +6,8 @@ const tier = { action: 'auto_classify' };
 jest.unstable_mockModule('../config/database.mjs', () => ({ query: jest.fn().mockResolvedValue({ rows: [] }) }));
 jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDelivery: { send } }));
 jest.unstable_mockModule('../services/discordNotificationBuilder.mjs', () => ({ buildSimpleNotificationEmbed: () => embed }));
+// This suite isolates ordinary delivery wiring; scoped pending rendering has real-builder controls.
+jest.unstable_mockModule('../services/discordPendingNotification.mjs', () => ({ sendPendingDecisionNotification: jest.fn() }));
 jest.unstable_mockModule('../services/discordTieredEmbedBuilder.mjs', () => ({ createTieredEmbed: async () => embed }));
 jest.unstable_mockModule('../services/discordNotificationComponents.mjs', () => ({
   createCorrectionComponents: async () => [], createTieredComponents: async () => [],

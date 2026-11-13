@@ -37,6 +37,7 @@ const { runPolicyRecheckStage, runAiRerunStage } = await import('../../services/
 const { policyEngine } = await import('../../services/policyEngine.mjs');
 const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { classificationRagLoopService } = await import('../../services/classificationRagLoopService.mjs');
+const { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame } = await import('../../services/currentPolicyReviewFrameLive.mjs');
 const { ragRetriever } = await import('../../services/ragRetriever.mjs');
 const { nonadoptedRagVerificationFixture, nonadoptedRagContext } = await import('../fixtures/nonadoptedRagVerificationFixture.mjs');
 const { aiProviderCapabilityMetricsService } = await import('../../services/aiProviderCapabilityMetricsService.mjs');
@@ -364,7 +365,8 @@ test('a genuinely rejected pre-dispatch operation keeps its error when proof als
   expect(classifyStageError).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
 });
 
-test.each(['apply', 'shadow'])('production RAG %s keeps policy rejection separate from final fresh verification comparison', async mode => {
+test.each(['apply', 'shadow', 'rollout mutation'])('production RAG %s keeps policy rejection separate from final fresh verification comparison', async scenario => {
+  const mode = scenario === 'shadow' ? 'shadow' : 'apply';
   const value = await nonadoptedRagVerificationFixture(); choose('ollama');
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
   const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: mode,
@@ -374,6 +376,9 @@ test.each(['apply', 'shadow'])('production RAG %s keeps policy rejection separat
     policy_recheck_identifier_caps: { keywords: 8, genres: 5, studios: 3, cast: 3 },
     rag_conflict_top_n: 5, rag_loop_candidate_limit: 25, rag_retry_strategy: 'hybrid' };
   jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(config);
+  if (scenario === 'rollout mutation') jest.spyOn(classificationRagLoopService, 'maybeApplyRolloutAutomation').mockImplementation(async () => {
+    value.libraries[0].is_active = false;
+  });
   // Two destinations keep the margin unchanged while top similarity improves enough for AI eligibility only.
   const matches = pass => [{ libraryId: 101, similarity: pass === 'pass1' ? 0.5 : 0.6 },
     { libraryId: 2001, similarity: pass === 'pass1' ? 0.2 : 0.3 }];
@@ -394,4 +399,7 @@ test.each(['apply', 'shadow'])('production RAG %s keeps policy rejection separat
   ]));
   expect(result.signalContext).toBe(value.ctx.signalContext);
   expect(result.library).toBe(mode === 'apply' ? value.libraries[0] : value.ctx.baselineResult.library);
+  const held = holdCurrentPolicyReviewFrame(result, metadata);
+  if (mode === 'shadow') expect(held).toBeNull();
+  else expect(projectCurrentPolicyReviewFrame(held).status).toBe(scenario === 'rollout mutation' ? 'evidence_gap' : 'recorded');
 });

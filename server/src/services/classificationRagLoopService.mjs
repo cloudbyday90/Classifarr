@@ -17,6 +17,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { publishCurrentPolicyReviewFrame } from './currentPolicyReviewFrameLive.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { ragLoopMetricsCollector } from './ragLoopMetricsCollector.mjs';
 import { aiClassify } from './classificationAiService.mjs';
@@ -467,7 +468,11 @@ class ClassificationRagLoopService {
     const decision = applyOrShadowDecision({ baselineResult, resolvedResult: resolution.resolvedResult, comparison, rolloutMode, trace });
     ragLoopMetricsCollector.recordEvaluation({ rolloutMode: decision.mode, wouldUpgrade: decision.wouldAdopt, adopted: decision.adopted, hadError, latencyDeltaMs: (Date.now() - loopStart) - Number(baselineResult?.signalContext?.processingTimeMs || 0) });
     await this.maybeApplyRolloutAutomation({ config, decision, correlationId, sampleRecorded: true });
-    return withRagLoopLogContext(decision.finalResult, strategySelection.strategy);
+    const finalResult = withRagLoopLogContext(decision.finalResult, strategySelection.strategy);
+    if (decision.adopted === true && resolution.resolvedResult === pass2Candidate) {
+      publishCurrentPolicyReviewFrame(pass2Candidate, finalResult);
+    }
+    return finalResult;
   }
 }
 

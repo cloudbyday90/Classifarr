@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Current pending-review evidence** — Save the selected non-adopted RAG
+  recheck's bounded policy view with the actual History row. Use it consistently
+  for recommendations, scores, evidence, web/bulk answers and Discord; require
+  explicit selection when current proof is unavailable. Preserve original
+  policy evidence and completed-answer replay. See the
+  [outcome](docs/architecture/current-policy-review-frame-outcome.md).
+
 - **Fresh RAG verification context** — Use the successful non-adopted recheck's
   destination and overall confidence together. Retain baseline when private
   proof is missing or changes, preserving charged invocations and actual provider

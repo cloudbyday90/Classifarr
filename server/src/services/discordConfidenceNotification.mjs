@@ -13,6 +13,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { createTieredComponents } from './discordNotificationComponents.mjs';
 import { createTieredEmbed } from './discordTieredEmbedBuilder.mjs';
+import { sendPendingDecisionNotification } from './discordPendingNotification.mjs';
 
 const logger = createLogger('discordConfidenceNotification');
 
@@ -54,6 +55,11 @@ export async function sendConfidenceBasedNotification(
     if (!config.notify_on_classification) {
       logger.info('[Discord] Notifications disabled in config - skipping');
       return;
+    }
+
+    if (result?.needs_clarification && metadata?.classification_details &&
+        Object.hasOwn(metadata.classification_details, 'current_policy_review')) {
+      return sendPendingDecisionNotification(metadata, result, { client, channelId, config, warnFn });
     }
 
     if (result?.classification_id) {

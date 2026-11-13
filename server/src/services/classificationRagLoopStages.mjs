@@ -12,7 +12,7 @@ import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
 import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice } from './ragRecheckVerificationAdvice.mjs';
-import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, acceptNonadoptedRagVerification } from './nonadoptedRagVerification.mjs';
+import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, acceptNonadoptedRagVerification, retainNonadoptedCurrentPolicyReview } from './nonadoptedRagVerification.mjs';
 import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
@@ -385,6 +385,7 @@ export async function runAiRerunStage(ctx) {
             policyResult: policyAfter,
             ragContext: pass2RagContext,
         });
+        if (freshVerification) retainNonadoptedCurrentPolicyReview(freshVerification.token, pass2Candidate);
         ragLoopResilienceManager.recordSuccess('ai_rerun', config);
         addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
     } catch (error) {

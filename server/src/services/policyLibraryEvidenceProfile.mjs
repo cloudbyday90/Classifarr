@@ -6,6 +6,7 @@
 import {
   buildPolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCard.mjs';
+import { resolveCurrentPolicyReviewSource } from './currentPolicyReviewFrameReader.mjs';
 
 export const POLICY_LIBRARY_EVIDENCE_PROFILE_VERSION =
   'policy.library_evidence_profile.v1';
@@ -40,10 +41,11 @@ function candidateLibraryId(candidate) {
   return positiveInteger(candidate?.library_id ?? candidate?.libraryId);
 }
 
-function candidateForLibrary({ policyResult, question, libraryId }) {
+function candidateForLibrary({ policyResult, question, libraryId, current = false }) {
   const rankedCandidate = asArray(policyResult?.ranked)
     .find((candidate) => candidateLibraryId(candidate) === libraryId);
   if (rankedCandidate) return rankedCandidate;
+  if (current) return null;
 
   return asArray(question?.meta?.candidates)
     .find((candidate) => candidateLibraryId(candidate) === libraryId) || null;
@@ -62,12 +64,14 @@ function profileCandidate({
   destination,
   rank,
   leadingScore,
+  reviewSource,
 }) {
   const libraryId = positiveInteger(destination?.library_id);
   const libraryName = boundedString(destination?.library_name);
   if (!libraryId || !libraryName) return null;
 
-  const candidate = candidateForLibrary({ policyResult, question, libraryId });
+  const candidate = candidateForLibrary({ policyResult, question, libraryId, current: reviewSource.current });
+  if (reviewSource.current && !candidate) return null;
   const candidateScore = scoreForCandidate(candidate, destination);
   if (candidateScore === null) return null;
 
@@ -77,7 +81,7 @@ function profileCandidate({
     library_name: libraryName,
     policy_score: candidateScore,
     score_margin: Math.max(0, leadingScore - candidateScore),
-    evidence_card: buildPolicyCandidateEvidenceCard({
+    evidence_card: reviewSource.current ? reviewSource.detail(candidate)?.card ?? null : buildPolicyCandidateEvidenceCard({
       classification,
       candidate,
       sourceMetadata,
@@ -102,11 +106,14 @@ export function buildPolicyLibraryEvidenceProfile({
     .slice(0, POLICY_LIBRARY_EVIDENCE_PROFILE_MAXIMUM_CANDIDATES);
   if (destinations.length < 2) return null;
 
-  const policyResult = asObject(sourceMetadata?.policyResult);
+  const reviewSource = resolveCurrentPolicyReviewSource(classification, sourceMetadata, candidateDestinations);
+  if (reviewSource.current && !reviewSource.valid) return null;
+  const policyResult = asObject(reviewSource.policy);
   const leadingCandidate = candidateForLibrary({
     policyResult,
     question,
     libraryId: positiveInteger(destinations[0]?.library_id),
+    current: reviewSource.current,
   });
   const leadingScore = scoreForCandidate(leadingCandidate, destinations[0]);
   if (leadingScore === null) return null;
@@ -120,6 +127,7 @@ export function buildPolicyLibraryEvidenceProfile({
       destination,
       rank: index + 1,
       leadingScore,
+      reviewSource,
     }))
     .filter(Boolean);
 

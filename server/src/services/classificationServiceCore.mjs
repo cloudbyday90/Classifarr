@@ -7,6 +7,7 @@
  */
 
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { savedCurrentPolicyReviewMetadata } from './currentPolicyReviewFrameLive.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import {
@@ -495,7 +496,7 @@ export class ClassificationService {
             has_libraries: !!result.libraries,
           });
 
-          await this.discordBot.sendConfidenceBasedNotification(metadata, {
+          await this.discordBot.sendConfidenceBasedNotification(savedCurrentPolicyReviewMetadata(result, metadata), {
             ...result,
             classification_id: classificationId,
             library_name: result.library?.name,

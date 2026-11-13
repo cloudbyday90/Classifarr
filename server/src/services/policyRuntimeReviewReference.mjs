@@ -1,7 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildPolicyCandidateAdjudicationPresentation } from './policyCandidateAdjudicationPresentation.mjs';
+import { resolveCurrentPolicyReviewSource } from './currentPolicyReviewFrameReader.mjs';
 
 const array = value => Array.isArray(value) ? value : [];
+const reviewSources = new WeakMap();
+export const reviewSourceForReference = reference => reviewSources.get(reference);
 const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const id = value => (typeof value === 'number' || typeof value === 'string' && /^\d+$/.test(value)) &&
   Number.isSafeInteger(Number(value)) && Number(value) > 0 && Number(value) <= 2147483647 ? Number(value) : null;
@@ -29,10 +32,12 @@ export function buildPolicyRuntimeReviewReference({ classification = {}, questio
     destinations.set(library, { library_id: library, library_name: label });
   }
   const metadata = readReviewMetadata(classification.metadata);
-  const policy = record(metadata.policyResult);
+  const reviewSource = resolveCurrentPolicyReviewSource(classification, metadata, candidateDestinations);
+  const policy = record(reviewSource.policy);
+  if (reviewSource.current && !reviewSource.valid) invalid = true;
   if (Object.hasOwn(policy, 'ranked') && !Array.isArray(policy.ranked)) invalid = true;
   const ranked = array(policy.ranked);
-  const sources = ranked.length ? ranked : array(question?.meta?.candidates);
+  const sources = ranked.length ? ranked : reviewSource.current ? [] : array(question?.meta?.candidates);
   if (sources.length > 64) invalid = true;
   const rows = new Map();
   for (const candidate of sources.slice(0, 64)) {
@@ -63,7 +68,7 @@ export function buildPolicyRuntimeReviewReference({ classification = {}, questio
     if (leaders.includes(retained) && coherentTop(retained) && policyId(top) !== null &&
         policyId(top) === policyId(retained.candidate)) policyReference = retained;
   }
-  const rawAdjudication = record(record(metadata.classification_details).candidate_adjudication);
+  const rawAdjudication = reviewSource.current ? {} : record(record(metadata.classification_details).candidate_adjudication);
   let adjudication;
   try { adjudication = buildPolicyCandidateAdjudicationPresentation(rawAdjudication); } catch { adjudication = null; }
   const proposed = rawAdjudication.version === 'policy.candidate_adjudication.v1' &&
@@ -80,8 +85,10 @@ export function buildPolicyRuntimeReviewReference({ classification = {}, questio
   const reason = invalidProposal ? 'invalid_advisory_proposal' : disagreement ? 'advisory_disagreement' :
     !policyReference ? (leaders.length > 1 && !invalid ? 'policy_tie' : 'policy_reference_unavailable') :
       leaders.length > 1 ? 'policy_tie' : policyReference.candidate.score <= 0 ? 'no_positive_evidence' : null;
-  return { policyReference, primaryDestination: reason ? null : policyReference?.destination ?? null,
+  const reference = { policyReference, primaryDestination: reason ? null : policyReference?.destination ?? null,
     advisoryDestination, adjudication, reason, hasUnboundAutomaticScore, rankedDestinations: invalid ? [] : values
       .sort((left, right) => right.candidate.score - left.candidate.score || left.destination.library_id - right.destination.library_id)
       .map(row => row.destination) };
+  reviewSources.set(reference, reviewSource);
+  return reference;
 }

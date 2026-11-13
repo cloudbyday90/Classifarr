@@ -8,7 +8,11 @@ export const POLICY_CANDIDATE_EVIDENCE_CARD_VERSION = 'policy.candidate_evidence
 
 /** Current explanations only. Legacy correction statistics use their separately named v1 producer. */
 export function buildPolicyCandidateEvidenceCard(input = {}) {
-  const purpose = readPolicyPurposeMatchPresentation(input);
+  return composePolicyCandidateEvidenceCard(input, readPolicyPurposeMatchPresentation(input));
+}
+
+/** Internal composition also serves the live writer's independently verified frozen purpose. */
+export function composePolicyCandidateEvidenceCard(input, purpose) {
   const declaredState = purpose.origin === 'unverified' ? 'unavailable' :
     purpose.declaredMatch === 'matched' && purpose.runtimeEligible === true &&
       purpose.specificity === 'positive_specialized_evidence' ? 'supporting' : 'contextual';

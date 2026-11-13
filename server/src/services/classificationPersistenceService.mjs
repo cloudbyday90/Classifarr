@@ -51,6 +51,8 @@ import { buildClassificationQueueDecisionWitness } from './classificationQueueDe
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
 import { projectInventoryRankingShadow, projectHeldInventoryRankingShadow } from './inventoryRankingShadow.mjs';
 import { holdPolicyEvaluationCapture } from './policyEvaluationCapture.mjs';
+import { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame, rememberSavedCurrentPolicyReview } from './currentPolicyReviewFrameLive.mjs';
+import { insertCurrentPolicyReview } from './currentPolicyReviewInsertSql.mjs';
 import { persistPolicyEvaluationCapture } from './policyEvaluationCaptureRepository.mjs';
 import { buildClassificationIntakeComparison } from './classificationIntakeComparison.mjs';
 import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
@@ -318,6 +320,7 @@ export class ClassificationPersistenceService {
   }
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
+    const heldCurrentReview = holdCurrentPolicyReviewFrame(result, metadata);
     const candidateCapture = buildClassificationCandidateCapture(result);
     const heldPolicyEvaluation = holdPolicyEvaluationCapture(result, metadata);
     const heldInventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
@@ -336,6 +339,7 @@ export class ClassificationPersistenceService {
       policyQuestion,
       profileSnapshot,
     } = await this.deriveClassificationPersistenceState(result);
+    projectCurrentPolicyReviewFrame(heldCurrentReview);
     const inventoryRankingShadow = projectHeldInventoryRankingShadow(heldInventoryRankingShadow, metadata);
     const intakeComparison = heldInventoryRankingShadow && !inventoryRankingShadow
       ? Object.freeze({ statusId: 'not_captured', reasonId: 'identity_mismatch' })
@@ -425,7 +429,7 @@ export class ClassificationPersistenceService {
       processingTimeMs,
     });
 
-    const enrichedMetadata = {
+    let enrichedMetadata = {
       ...metadata,
       classification_details: classificationDetails,
     };
@@ -442,6 +446,7 @@ export class ClassificationPersistenceService {
       status,
       identity: pendingDecisionIdentity,
       insert: async (client, supersededClassificationIds) => {
+        if (heldCurrentReview) classificationDetails.current_policy_review = projectCurrentPolicyReviewFrame(heldCurrentReview);
         const metadataForInsert = pendingDecisionIdentity
           ? {
               ...enrichedMetadata,
@@ -461,14 +466,7 @@ export class ClassificationPersistenceService {
         // Interpret retry_after as an instant before assigning the legacy
         // timestamp column; otherwise PostgreSQL discards the client's offset
         // and a retry may be hours early/late when process timezones differ.
-        const insertResult = await executor.query(
-          `INSERT INTO classification_history
-           (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries, director_name, primary_studio_name, genre_names, cast_ids, cast_names, pending_identity_key, retry_failure_code, retry_recovery_attempts)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::timestamptz, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-             COALESCE((SELECT classification_recovery_attempts FROM task_queue WHERE id = $27),
-               CASE WHEN $27::bigint IS NULL THEN 0 ELSE 1 END))
-           RETURNING id`,
-          [
+        const insertValues = [
             metadataForInsert.tmdb_id,
             metadataForInsert.media_type,
             metadataForInsert.title,
@@ -496,12 +494,22 @@ export class ClassificationPersistenceService {
             pendingDecisionIdentity?.key || null,
             getAutomaticRecoveryFailureCode(result),
             queueTask?.id || null,
-          ],
+          ];
+        const insertResult = heldCurrentReview
+          ? await insertCurrentPolicyReview(executor, insertValues)
+          : await executor.query(
+          `INSERT INTO classification_history
+           (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries, director_name, primary_studio_name, genre_names, cast_ids, cast_names, pending_identity_key, retry_failure_code, retry_recovery_attempts)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::timestamptz, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+             COALESCE((SELECT classification_recovery_attempts FROM task_queue WHERE id = $27),
+               CASE WHEN $27::bigint IS NULL THEN 0 ELSE 1 END))
+           RETURNING id`, insertValues,
         );
         return insertResult.rows[0].id;
       },
     });
     const classificationId = lifecycleResult.classificationId;
+    enrichedMetadata = rememberSavedCurrentPolicyReview(result, enrichedMetadata, classificationId);
 
     // Diagnostic child evidence is outside the committed classification transaction.
     try {

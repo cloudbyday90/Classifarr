@@ -11,6 +11,8 @@ import { parseOverseerrPayload } from '../services/classificationMetadataService
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
 import { projectLiveInventoryQueryMetadata } from '../services/liveInventoryLearnedProfile.mjs';
 import { buildRetryPayload } from '../utils/classificationRetryPayloads.mjs';
+import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
+import { rememberSavedCurrentPolicyReview } from '../services/currentPolicyReviewFrameLive.mjs';
 import {
   createClassificationService,
 } from '../services/classificationServiceCore.mjs';
@@ -178,6 +180,24 @@ function createService({ handoff, admission } = {}) {
 }
 
 describe('supported classification content', () => {
+  test('the core confidence-notification handoff receives the acknowledged saved frame without changing the request metadata', async () => {
+    const service = createService(); let value, originalMetadata;
+    service.discordBot.isInitialized = true;
+    service.discordBot.sendConfidenceBasedNotification = jest.fn();
+    service.runDecisionTree = jest.fn(async metadata => {
+      originalMetadata = metadata; value = await currentPolicyReviewFixture({ item: metadata });
+      return value.published;
+    });
+    service.classificationPersistenceService.logClassification.mockImplementation(async (metadata, result) => {
+      rememberSavedCurrentPolicyReview(result, { ...metadata, classification_details: { current_policy_review: value.frame } }, 94);
+      return 94;
+    });
+    await service.classify({ media: { tmdbId: 10674 } });
+    expect(originalMetadata.classification_details).toBeUndefined();
+    expect(service.discordBot.sendConfidenceBasedNotification).toHaveBeenCalledWith(expect.objectContaining({ classification_details: {
+      current_policy_review: expect.objectContaining({ classification_id: '94', status: 'recorded' }),
+    } }), expect.objectContaining({ classification_id: 94 }));
+  });
   test('queue replay returns saved uncertainty without classification, routing or notification', async () => {
     const service = createService();
     const saved = { classification_id: 94, routingOutcome: { routeResult: { routed: false } } };

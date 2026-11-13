@@ -17,6 +17,7 @@
  */
 
 import { policyEngine } from './policyEngine.mjs';
+import { transferCurrentPolicyReviewFrame } from './currentPolicyReviewFrameLive.mjs';
 import { classificationProgressStageService } from './classificationProgressStageService.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import * as policyScoringContextBuilder from './policyScoringContextBuilder.mjs';
@@ -510,10 +511,10 @@ export class ClassificationPolicyPathService {
 
 			return {
 				handled: true,
-				result: {
+				result: transferCurrentPolicyReviewFrame(successResult, {
 					...successResult,
 					candidate_contrastive_evidence: candidateContrastiveEvidence,
-				},
+				}),
 			};
 		} catch (error) {
 			const fallbackConfidence = policySignalContext.confidence || 0;

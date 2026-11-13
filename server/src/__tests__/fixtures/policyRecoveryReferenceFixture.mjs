@@ -4,6 +4,7 @@ import { createLivePolicyRecoveryReference } from '../../services/policyRecovery
 import { holdPolicyRecoverySuggestion } from '../../services/policyRecoverySuggestionReader.mjs';
 import { buildSignalContext } from '../../services/policyScoringContextBuilder.mjs';
 import { purposeMatchFixture } from './purposeMatchEvidenceFixture.mjs';
+import { createLivePolicyEvaluationCapture } from '../../services/policyEvaluationCapture.mjs';
 
 export function recoveryPolicies(count = 1, source = 'native_intent') {
   return Array.from({ length: count }, (_unused, index) => {
@@ -20,7 +21,8 @@ export function recoveryPolicies(count = 1, source = 'native_intent') {
 }
 
 export async function policyRecoveryReferenceFixture({ count = 1, source, live = true, confidence = 70,
-  configure = () => {}, beforeEvaluate = () => {}, afterEvaluate = () => {}, metadata = {}, item: suppliedItem = null } = {}) {
+  configure = () => {}, beforeEvaluate = () => {}, afterEvaluate = () => {}, metadata = {}, item: suppliedItem = null,
+  captureEvaluation = false } = {}) {
   const item = suppliedItem || { ...purposeMatchFixture().item, title: 'Owned item', ...metadata };
   const policies = recoveryPolicies(count, source); policies.forEach(configure);
   const libraries = policies.map(policy => ({ id: policy.library_id, name: policy.library_name, media_type: item.media_type, is_active: true }));
@@ -35,6 +37,7 @@ export async function policyRecoveryReferenceFixture({ count = 1, source, live =
     rankResults: async rows => rows,
     determineAction: ranked => ({ action: 'prompt_confirm', ranked, confidence }),
     ...(live ? { captureRecoveryReference: createLivePolicyRecoveryReference(item) } : {}),
+    ...(captureEvaluation ? { capturePolicyEvaluation: createLivePolicyEvaluationCapture(item) } : {}),
   });
   const context = buildSignalContext(result, libraries, result.ranked);
   const args = { policyResult: result, metadata: item, signalContext: context, libraries };

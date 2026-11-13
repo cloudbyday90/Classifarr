@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterAll, afterEach, beforeAll, expect, jest, test } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
+import express from 'express';
+import request from 'supertest';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
 
@@ -21,6 +23,7 @@ const { createRagRecheckAdviceSession } = await import('../../services/ragRechec
 const { ragRecheckStageContext } = await import('../fixtures/ragRecheckAdviceFixture.mjs');
 const { nonadoptedRagContext } = await import('../fixtures/nonadoptedRagVerificationFixture.mjs');
 const { enterNonadoptedRagVerification } = await import('../../services/nonadoptedRagVerification.mjs');
+const { publishCurrentPolicyReviewFrame, savedCurrentPolicyReviewMetadata } = await import('../../services/currentPolicyReviewFrameLive.mjs');
 const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
@@ -178,6 +181,163 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
     expect(JSON.stringify(result)).not.toContain('ragRecheckVerificationAdvice');
   });
 }
+
+async function currentReviewResult(item, libraries) {
+  const earlier = { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true };
+  if (!libraries.some(row => row.id === earlier.id)) libraries.push(earlier);
+  jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+  const ctx = nonadoptedRagContext({ item, libraries }, { earlier });
+  const stage = await runPolicyRecheckStage(ctx);
+  expect(stage.policyGate.shouldAdopt).toBe(false);
+  const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: null, policyRecheckStage: stage,
+    aiClassify: async (metadata, pool, signalContext, options) => {
+      enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
+      return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: true };
+    } });
+  const result = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
+  await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
+  return result;
+}
+
+test.each(['native_intent', 'compatibility_bridge'])('current %s evaluation survives the real writer, row binding and explicit receipt/replay', async source => {
+  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries);
+  const original = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, policy_id: 2001, score: 80 }] };
+  item.policyResult = original;
+  const discord = jest.spyOn(persistence, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
+  const id = await persistence.logClassification(item, result); history.push(id);
+  const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+  const frame = row.metadata.classification_details.current_policy_review;
+  expect(frame).toMatchObject({ version: 'policy.current_review.v1', classification_id: String(id), status: 'recorded',
+    identity_key: `movie:${item.tmdb_id}`, method: 'ai_verified', policy: { confidence: result.policyResult.confidence } });
+  expect(frame.policy.ranked[0].detail.card.purpose_evidence.origin).toBe(source === 'native_intent' ? 'declared_native' : 'unverified');
+  expect(row.metadata.policyResult).toEqual(original); expect(row.library_id).toBeNull();
+  expect(discord).toHaveBeenCalledTimes(1);
+  expect(discord.mock.calls[0][1].classification_details.current_policy_review).toEqual(frame);
+  expect(savedCurrentPolicyReviewMetadata(result, item).classification_details.current_policy_review).toEqual(frame);
+  expect(item.classification_details).toBeUndefined();
+  const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+  expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  expect(contract.decision_summary.deterministic.score).toBe(Math.round(result.policyResult.ranked[0].score));
+  const parsed = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
+    action_id: 'confirm_destination', destination_library_id: libraries[0].id });
+  const resolve = () => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
+    { policyQuestionContext: context, answerContract: parsed.answer });
+  expect(await resolve()).toMatchObject({ success: true, shouldRoute: true });
+  // Manual method changes invalidate new-frame presentation, but exact receipt recovery comes first.
+  expect(await resolve()).toMatchObject({ idempotent: true, shouldRoute: false });
+  expect((await query('SELECT metadata FROM classification_history WHERE id=$1', [id])).rows[0].metadata.classification_details.current_policy_review).toEqual(frame);
+});
+
+test('pre-insert mutation after lifecycle waits saves a row-bound evidence gap without rejecting the classification', async () => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+  const ordinary = persistence.pendingDecisionLifecycleService;
+  const writer = new ClassificationPersistenceService({ policyQuestionContext: context, pendingDecisionLifecycleService: {
+    persist: args => ordinary.persist({ ...args, insert: async (...params) => {
+      result.policyResult.ranked[0].score++;
+      return args.insert(...params);
+    } }),
+  } });
+  const id = await writer.logClassification(item, result); history.push(id);
+  const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+  expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(id), status: 'evidence_gap', policy: null });
+  const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+  expect(contract.recommendation.leading_destination).toBeNull();
+  expect(contract.allowed_actions.find(action => action.id === 'confirm_destination').available).toBe(true);
+});
+
+test.each(['rollback', 'lost acknowledgement', 'delayed acknowledgement'])('current row/frame %s preserves ordinary transaction and notification semantics', async kind => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+  let inserted, release, committed;
+  const didCommit = new Promise(resolve => { committed = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  const writer = new ClassificationPersistenceService({ policyQuestionContext: context, pendingDecisionLifecycleService: {
+    persist: async args => {
+      const classificationId = await database.withTransaction(async client => {
+        inserted = await args.insert(client, []);
+        if (kind === 'rollback') throw new Error('Owned rollback');
+        return inserted;
+      });
+      history.push(classificationId); committed();
+      if (kind === 'lost acknowledgement') throw new Error('Owned lost acknowledgement');
+      await gate; return { classificationId };
+    },
+  } });
+  const notify = jest.spyOn(writer, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
+  const pending = writer.logClassification(item, result);
+  if (kind === 'rollback') {
+    await expect(pending).rejects.toThrow('Owned rollback');
+    expect((await query('SELECT id FROM classification_history WHERE id=$1', [inserted])).rowCount).toBe(0);
+  } else if (kind === 'lost acknowledgement') {
+    await expect(pending).rejects.toThrow('Owned lost acknowledgement');
+    expect((await query('SELECT metadata FROM classification_history WHERE id=$1', [inserted])).rows[0].metadata.classification_details.current_policy_review.classification_id).toBe(String(inserted));
+  } else {
+    await didCommit; expect(notify).not.toHaveBeenCalled();
+    expect(savedCurrentPolicyReviewMetadata(result, item)).toBe(item);
+    release(); expect(await pending).toBe(inserted); expect(notify).toHaveBeenCalledTimes(1);
+  }
+  if (kind !== 'delayed acknowledgement') expect(notify).not.toHaveBeenCalled();
+});
+
+test('concurrent replacements retain each frame with its own row and supersede only the older pending row', async () => {
+  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries);
+  const ids = await Promise.all([persistence.logClassification(item, first), persistence.logClassification(item, second)]);
+  history.push(...ids);
+  const rows = (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [ids])).rows;
+  expect(rows.map(row => row.status).sort()).toEqual(['awaiting_decision', 'reclassified']);
+  for (const row of rows) expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(row.id), status: 'recorded' });
+});
+
+test('loopback pending/answer HTTP retains the current fingerprint, refuses changed presentation and recovers exact completion first', async () => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+  item.policyResult = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, score: 80 }] };
+  const id = await persistence.logClassification(item, result); history.push(id);
+  const app = express(), routed = jest.fn(); app.use(express.json());
+  app.get('/pending', async (_req, res) => {
+    const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+    res.json(buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question }));
+  });
+  app.post('/answer', async (req, res) => {
+    const parsed = parsePolicyRuntimeQuestionAnswer(req.body);
+    if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
+    try {
+      const outcome = await resolvePolicyQuestion(id, parsed.answer.destinationLibraryId, null, 'owned-operator', false,
+        { policyQuestionContext: context, answerContract: parsed.answer });
+      if (outcome.shouldRoute) routed();
+      return res.json(outcome);
+    } catch (error) { return res.status(error.statusCode || 500).json({ code: error.code }); }
+  });
+  const first = (await request(app).get('/pending')).body;
+  expect(first.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  const answer = contract => ({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
+    action_id: 'confirm_destination', destination_library_id: libraries[0].id });
+  await query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
+    '{classification_details,current_policy_review,status}', '"evidence_gap"'::jsonb) WHERE id=$1`, [id]);
+  expect((await request(app).post('/answer').send(answer(first))).status).toBe(409);
+  expect(routed).not.toHaveBeenCalled();
+  const gap = (await request(app).get('/pending')).body;
+  expect(gap.recommendation.leading_destination).toBeNull();
+  expect((await request(app).post('/answer').send(answer(gap))).body).toMatchObject({ success: true, shouldRoute: true });
+  expect((await request(app).post('/answer').send(answer(gap))).body).toMatchObject({ idempotent: true, shouldRoute: false });
+  expect(routed).toHaveBeenCalledTimes(1);
+});
+
+test('the actual History writer binds a BIGINT row beyond safe-number precision without an extra binding query', async () => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries);
+  const original = (await query('SELECT last_value FROM classification_history_id_seq')).rows[0].last_value;
+  let inserted;
+  try {
+    await query("SELECT setval('classification_history_id_seq',9007199254740992,true)");
+    inserted = await persistence.logClassification(item, result); history.push(inserted);
+    expect(inserted).toBe('9007199254740993');
+    const row = (await query('SELECT * FROM classification_history WHERE id=$1', [inserted])).rows[0];
+    expect(row.metadata.classification_details.current_policy_review.classification_id).toBe(inserted);
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+    expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  } finally {
+    if (inserted) await query('DELETE FROM classification_history WHERE id=$1', [inserted]);
+    await query("SELECT setval('classification_history_id_seq',$1,true)", [original]);
+  }
+});
 
 for (const source of ['native_intent', 'compatibility_bridge']) {
   test.each(['genuine', 'copied'])(`real ${source} %s non-adopted stage admits only coherent fresh verification`, async kind => {
