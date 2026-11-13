@@ -11,6 +11,18 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Adopted verification input** — Use the fresh evaluation's ranking,
+  destination and overall confidence together. Missing or changed private proof
+  retains the adopted policy candidate with an explicit review gap, preserving
+  charged invocations and genuine provider observations. See the
+  [outcome](docs/architecture/adopted-rag-verification-input-outcome.md).
+
+- **Vue compiler diagnostics** — Adopt vue-tsc/language-core 3.3.14 with a
+  native npm patch for slot defaults and parser-aware comment handling, preserving
+  URL/regex/template inference and exact semantic diagnostics. Patch application
+  runs automatically during installation. See the
+  [outcome](docs/architecture/vue-compiler-backport-adoption-outcome.md).
+
 - **Adopted RAG result ownership** — Return the actual adopted verification
   invocation context and its current advisory. Fresh confirmations clear the
   inherited advisory, with review fingerprints following the current result.

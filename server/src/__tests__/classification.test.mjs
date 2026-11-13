@@ -93,6 +93,7 @@ const { ollamaService } = await import('../services/ollama.mjs');
 const { aiRouterService: aiRouter } = await import('../services/aiRouter.mjs');
 const { providerLock } = await import('../services/providerLock.mjs');
 const { ragLogger } = await import('../utils/ragLogger.mjs');
+const { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame } = await import('../services/currentPolicyReviewFrameLive.mjs');
 const { OperationController } = await import('../utils/operationController.mjs');
 
 const classificationProgressStageService = mockclassificationProgressStageService;
@@ -1500,7 +1501,7 @@ describe('RAG loop orchestration', () => {
     expect(result.ragLoopTrace.mode).toBe('shadow');
   });
 
-  test('apply mode can adopt policy recheck result when comparator gates pass', async () => {
+  test('apply mode retains an unproven adopted policy candidate with a review gap and no AI invocation', async () => {
     jest.spyOn(classificationRagLoopService, 'getRagLoopConfig').mockResolvedValue(buildRagConfig('apply'));
 
     policyEngine.evaluateItem.mockResolvedValue({
@@ -1572,16 +1573,11 @@ describe('RAG loop orchestration', () => {
     });
 
     expect(result.library.id).toBe(2);
-    expect(result.method).toBe('ai_rerun');
-    expect(aiClassifySpy).toHaveBeenCalledWith(
-      expect.any(Object),
-      libraries,
-      expect.objectContaining({ suggestedLibrary: libraries[1] }),
-      expect.objectContaining({ mode: 'verify' }),
-    );
-    expect(result.candidate_bound_verification).toMatchObject({
-      status_id: 'provider_capability_unavailable',
-    });
+    expect(result.method).toBe('policy_recheck');
+    expect(aiClassifySpy).not.toHaveBeenCalled();
+    expect(result.candidate_bound_verification).toBeUndefined();
+    expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(result, { tmdb_id: 123, media_type: 'movie' })))
+      .toMatchObject({ status: 'evidence_gap', policy: null });
     expect(result.ragLoopTrace).toBeDefined();
     expect(result.ragLoopTrace.mode).toBe('apply');
   });

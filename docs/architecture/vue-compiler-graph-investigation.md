@@ -65,6 +65,10 @@ without the property read passed their controls.
 
 ## Current upstream and local status
 
+This section records intake before the backport assessment. Its subsequent
+implementation and verification are in the
+[adoption outcome](vue-compiler-backport-adoption-outcome.md).
+
 Fresh MCP retrieval on November 13 finds report 6322 open. Report 6328 closed as
 completed on November 12. Its retrieved timeline contains the closure event
 without a linked fixing commit. The latest published upstream release remains
@@ -82,7 +86,18 @@ permanent real-CLI regression controls on this retained tree. The five candidate
 failures above describe the earlier differential execution.
 [PR 589](https://github.com/cloudbyday90/Classifarr/pull/589).
 
-## Recommendation stack
+## Original recommendation and subsequent adoption
+
+November 13 follow-up: path-history research found the merged slot fix and an
+unmerged URL fix with additional parser-probe limitations. Pinned npm 12.2.2
+supports native dependency patches. The user agreed to a concrete
+[backport assessment](vue-compiler-backport-adoption-design.md), with separate
+[research findings](vue-compiler-backport-investigation.md). The original
+differential results above remain historical evidence. The new candidate now
+passes its local real-CLI and normal gates; the
+[adoption outcome](vue-compiler-backport-adoption-outcome.md) supersedes the
+retention decision below. Patch retirement still requires a tested fixed
+published release.
 
 | Recommendation | Benefit | Cost or limitation |
 | --- | --- | --- |

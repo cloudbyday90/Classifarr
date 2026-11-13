@@ -138,7 +138,7 @@ const ragLoopHelpers = createServiceStubs([
   'summarizePassDiagnostics',
 ], {
   RAG_LOOP_FALLBACK_ACTIONS: {},
-  RAG_LOOP_REASON_CODES: {},
+  RAG_LOOP_REASON_CODES: { POLICY_CONTEXT_MISSING: 'policy_context_missing' },
   buildRagLoopTrace: jest.fn().mockReturnValue(null),
   resolvePolicyContextOrFallback: jest.fn().mockReturnValue({}),
   shouldTriggerSecondPass: jest.fn().mockReturnValue({ trigger: null }),
@@ -210,7 +210,7 @@ describe('RAG loop stage helper contract', () => {
 });
 
 describe('RAG loop candidate-bound verification', () => {
-  test('verifies an adopted prompt-confirm policy recheck against its rechecked candidate', async () => {
+  test('an adopted prompt-confirm shape without a genuine stage cannot spend a verification invocation', async () => {
     const libraries = [
       { id: 1, name: 'Movies' },
       { id: 2, name: 'Family' },
@@ -273,33 +273,12 @@ describe('RAG loop candidate-bound verification', () => {
       existingCandidate,
     });
 
-    expect(aiClassify).toHaveBeenCalledWith(
-      { title: 'Family Movie', media_type: 'movie' },
-      libraries,
-      expect.objectContaining({
-        confidence: 74,
-        suggestedLibrary: libraries[1],
-      }),
-      {
-        mode: 'verify',
-        ragContext: null,
-        ragRecheckVerificationAdvice: null,
-        verificationCandidate: { library_id: 2, library_name: 'Family' },
-      },
-    );
-    expect(result.pass2Candidate).toMatchObject({
-      library: libraries[1],
-      candidate_bound_verification: {
-        status_id: 'provider_capability_unavailable',
-      },
-      deterministic_ai_mode: {
-        mode: 'verify',
-        reasonCode: 'unique_review_candidate',
-      },
-    });
+    expect(aiClassify).not.toHaveBeenCalled();
+    expect(result).toEqual({ pass2Candidate: existingCandidate, aiCallsUsed: 1, hadError: false });
     expect(addEvent).toHaveBeenCalledWith(expect.objectContaining({
       stage: 'ai_rerun',
-      outcome: 'applied',
+      outcome: 'skipped',
+      reasonCode: 'policy_context_missing',
     }));
   });
 });

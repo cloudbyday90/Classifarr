@@ -14,6 +14,9 @@ import { policyEngine } from './policyEngine.mjs';
 import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice } from './ragRecheckVerificationAdvice.mjs';
 import { holdNonadoptedRagVerificationSource, retainNonadoptedRagVerification, prepareNonadoptedRagVerification, buildNonadoptedRagInvocationBaseline, retainNonadoptedCurrentPolicyReview } from './nonadoptedRagVerification.mjs';
 import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
+import { holdAdoptedRagVerificationSource, retainAdoptedRagVerificationStage, prepareAdoptedRagVerification,
+    acceptAdoptedRagVerification, retainAdoptedRagVerificationGap } from './adoptedRagVerification.mjs';
+import { isAdoptedRagVerificationRefusal } from './adoptedRagVerificationRefusal.mjs';
 import {
     holdAdoptedCurrentPolicyReviewSource,
     retainAdoptedCurrentPolicyReviewStage,
@@ -23,7 +26,6 @@ import {
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
     buildAdoptedRagInvocationBaseline,
-    buildPolicyRecheckVerificationSignalContext,
     shouldVerifyPolicyRecheckCandidate,
 } from './classificationRagLoopVerification.mjs';
 import {
@@ -241,6 +243,7 @@ export async function runPolicyRecheckStage(ctx) {
     let freshAdvice = null;
     let freshVerification = null;
     let freshAdoptedReview = null;
+    let freshAdoptedVerification = null;
     for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
         try {
             policyAfter = await withRetryableDbConflict(
@@ -266,6 +269,7 @@ export async function runPolicyRecheckStage(ctx) {
                 },
             );
             freshAdoptedReview = holdAdoptedCurrentPolicyReviewSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
+            freshAdoptedVerification = holdAdoptedRagVerificationSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             freshAdvice = holdRagRecheckAdviceSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             freshVerification = holdNonadoptedRagVerificationSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             policyRecheckError = null;
@@ -299,6 +303,7 @@ export async function runPolicyRecheckStage(ctx) {
 
     const stage = { policyAfter, policyGate, pass2Candidate, hadError };
     retainAdoptedCurrentPolicyReviewStage(stage, freshAdoptedReview);
+    retainAdoptedRagVerificationStage(stage, freshAdoptedVerification);
     return retainNonadoptedRagVerification(retainRagRecheckAdvice(stage, freshAdvice), freshVerification);
 }
 
@@ -361,13 +366,16 @@ export async function runAiRerunStage(ctx) {
             reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
         return { pass2Candidate: null, aiCallsUsed, hadError: false };
     }
-    const verificationSignalContext = freshVerification?.signalContext || (verifyPolicyRecheckCandidate
-        ? buildPolicyRecheckVerificationSignalContext({
-            signalContext,
-            policyResult: policyAfter,
-            libraries,
-        })
-        : signalContext);
+    const adoptedVerification = verifyPolicyRecheckCandidate ? prepareAdoptedRagVerification(ctx.policyRecheckStage, {
+        policyResult: policyAfter, metadata: expandedMetadata, libraries, candidate: existingCandidate,
+    }) : null;
+    if (verifyPolicyRecheckCandidate && !adoptedVerification) {
+        addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING,
+            reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
+        return { pass2Candidate: retainAdoptedRagVerificationGap(existingCandidate, { policyResult: policyAfter, metadata: expandedMetadata }),
+            aiCallsUsed, hadError: false };
+    }
+    const verificationSignalContext = freshVerification?.signalContext || adoptedVerification?.signalContext || signalContext;
     const candidateBaselineResult = verifyPolicyRecheckCandidate
         ? existingCandidate
         : baselineResult;
@@ -380,12 +388,14 @@ export async function runAiRerunStage(ctx) {
         const providerMatch = await aiClassify(expandedMetadata, libraries, verificationSignalContext, {
                 mode: aiModeDecision.mode,
                 ragContext: pass2RagContext,
-                verificationCandidate: freshVerification?.candidate || policyAfter?.library || policyAfter?.ranked?.[0] || null,
+                verificationCandidate: freshVerification?.candidate || adoptedVerification?.candidate || policyAfter?.library || policyAfter?.ranked?.[0] || null,
                 ...(freshVerification ? { nonadoptedRagVerification: freshVerification.token } : {}),
+                ...(adoptedVerification ? { adoptedRagVerification: adoptedVerification.token } : {}),
                 ...(verifyPolicyRecheckCandidate ? { ragRecheckVerificationAdvice: takeRagRecheckAdvice(ctx.policyRecheckStage, {
                     policyResult: policyAfter, metadata: expandedMetadata, libraries, signalContext: verificationSignalContext, candidate: existingCandidate,
                 }) } : {}),
             });
+        if (adoptedVerification) acceptAdoptedRagVerification(adoptedVerification.token);
         let invocationBaseline = candidateBaselineResult;
         if (freshVerification) {
             invocationBaseline = buildNonadoptedRagInvocationBaseline(freshVerification.token, candidateBaselineResult);
@@ -412,6 +422,12 @@ export async function runAiRerunStage(ctx) {
         ragLoopResilienceManager.recordSuccess('ai_rerun', config);
         addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
     } catch (error) {
+        if (isAdoptedRagVerificationRefusal(error)) {
+            addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING,
+                reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
+            return { pass2Candidate: retainAdoptedRagVerificationGap(existingCandidate, { policyResult: policyAfter, metadata: expandedMetadata }),
+                aiCallsUsed: updatedAiCallsUsed, hadError: false };
+        }
         if (isNonadoptedRagVerificationRefusal(error)) {
             addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING,
                 reasonCode: RAG_LOOP_REASON_CODES.POLICY_CONTEXT_MISSING, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });

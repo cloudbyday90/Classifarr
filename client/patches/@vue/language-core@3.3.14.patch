@@ -1,0 +1,73 @@
+--- a/lib/codegen/template/element.js
++++ b/lib/codegen/template/element.js
+@@ -36,8 +36,9 @@
+ exports.generateComponent = generateComponent;
+ exports.generateElement = generateElement;
+ exports.generateFragment = generateFragment;
+ const CompilerDOM = __importStar(require("@vue/compiler-dom"));
++const flattenProps_1 = require("../utils/flattenProps");
+ const shared_1 = require("@vue/shared");
+ const muggle_string_1 = require("muggle-string");
+ const shared_2 = require("../../utils/shared");
+ const codeFeatures_1 = require("../codeFeatures");
+@@ -180,11 +181,9 @@
+     //   `$props` instead would report every props error a second time. The copy is not mapped to the template.
+     yield `// @ts-ignore${utils_1.newLine}`;
+     yield `const ${functionalVar} = ${options.vueCompilerOptions.checkUnknownProps ? names_1.names.asFunctionalComponent0 : names_1.names.asFunctionalComponent1}(${componentVar}, new ${componentVar}({${utils_1.newLine}`;
+     yield `// @ts-ignore${utils_1.newLine}`;
+-    yield propsStr
+-        .replace(/\/\/(.*)$/gm, (_, body) => `/*${body.replaceAll('*/', '*\\/')} */`)
+-        .replace(/\n/g, ' ');
++    yield (0, flattenProps_1.flattenProps)(options.typescript, propsStr);
+     yield `}))${utils_1.endOfLine}`;
+     yield `const `;
+     const boundary = yield* boundary_1.Boundary.start('template', node.loc.start.offset, node.loc.end.offset, codeFeatures_1.codeFeatures.doNotReportTs6133);
+     yield vnodeVar;
+--- a/lib/codegen/template/vSlot.js
++++ b/lib/codegen/template/vSlot.js
+@@ -108,9 +108,10 @@
+     const startOffset = exp.loc.start.offset - 1;
+     const types = [];
+     const interpolation = [...(0, interpolation_1.generateInterpolation)(options, ctx, options.template, codeFeatures_1.codeFeatures.all, ast.text, startOffset)];
+     (0, muggle_string_1.replaceSourceRange)(interpolation, 'template', startOffset, startOffset + `(`.length);
+-    (0, muggle_string_1.replaceSourceRange)(interpolation, 'template', startOffset + ast.text.length - `) => {}`.length, startOffset + ast.text.length);
++    (0, muggle_string_1.replaceSourceRange)(interpolation, 'template', startOffset + ast.text.length - `) => {}`.length, startOffset + ast.text.length - ` => {}`.length);
++    (0, muggle_string_1.replaceSourceRange)(interpolation, 'template', startOffset + ast.text.length - ` => {}`.length, startOffset + ast.text.length);
+     for (const { name, type } of expression.parameters) {
+         if (type) {
+             types.push([
+                 ast.text.slice(name.end, type.end),
+--- /dev/null
++++ b/lib/codegen/utils/flattenProps.js
+@@ -0,0 +1,31 @@
++"use strict";
++// Local Classifarr fix for vuejs/language-tools#6241. Upstream package MIT license applies.
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.flattenProps = flattenProps;
++function flattenProps(ts, props) {
++    const prefix = "({\n";
++    const text = prefix + props + "\n})";
++    // Match language-core's existing dummy-source API: the CLI facade omits enum objects.
++    const source = ts.createSourceFile("inference-props.ts", text, 99 /* ScriptTarget.Latest */);
++    const ranges = new Map();
++    const collect = comments => {
++        for (const range of comments || []) {
++            if (range.kind === 2 /* SyntaxKind.SingleLineCommentTrivia */ &&
++                range.pos >= prefix.length && range.end <= prefix.length + props.length) {
++                ranges.set(range.pos, range.end);
++            }
++        }
++    };
++    const pending = [source];
++    while (pending.length) {
++        const node = pending.pop();
++        collect(ts.getLeadingCommentRanges(text, node.pos));
++        collect(ts.getTrailingCommentRanges(text, node.end));
++        ts.forEachChild(node, child => { pending.push(child); });
++    }
++    for (const [start, end] of [...ranges].sort((a, b) => b[0] - a[0])) {
++        const body = text.slice(start + 2, end).replaceAll("*/", "*\\/");
++        props = props.slice(0, start - prefix.length) + "/*" + body + " */" + props.slice(end - prefix.length);
++    }
++    return props.replace(/\n/g, " ");
++}

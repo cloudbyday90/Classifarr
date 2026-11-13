@@ -47,6 +47,8 @@ import { createPolicyVerificationAdviceSession } from './policyVerificationAdvic
 import { createRagRecheckAdviceSession } from './ragRecheckVerificationAdvice.mjs';
 import { enterNonadoptedRagVerification } from './nonadoptedRagVerification.mjs';
 import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationRefusal.mjs';
+import { enterAdoptedRagVerification } from './adoptedRagVerification.mjs';
+import { isAdoptedRagVerificationRefusal } from './adoptedRagVerificationRefusal.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
 import {
@@ -169,7 +171,9 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   const mode = options.mode || 'classify';
   const adviceArgs = { metadata, libraries, signalContext };
   const freshVerification = mode === 'verify' && Object.hasOwn(options, 'nonadoptedRagVerification')
-    ? enterNonadoptedRagVerification(options.nonadoptedRagVerification, adviceArgs, options.verificationCandidate) : null;
+    ? enterNonadoptedRagVerification(options.nonadoptedRagVerification, adviceArgs, options.verificationCandidate)
+    : mode === 'verify' && Object.hasOwn(options, 'adoptedRagVerification')
+      ? enterAdoptedRagVerification(options.adoptedRagVerification, adviceArgs, options.verificationCandidate) : null;
   const verificationAdvice = freshVerification?.advice || (mode !== 'verify' ? null
     : Object.hasOwn(options, 'ragRecheckVerificationAdvice') ? createRagRecheckAdviceSession(options.ragRecheckVerificationAdvice, adviceArgs)
     : Object.hasOwn(options, 'policyVerificationAdvice') ? createPolicyVerificationAdviceSession(options.policyVerificationAdvice, adviceArgs) : null);
@@ -332,7 +336,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
         try { freshVerification?.assertCurrent(); }
         catch (error) {
           // A real earlier attempt remains a real provider observation, even when no retry can proceed.
-          if (lastStreamError && isNonadoptedRagVerificationRefusal(error)) throw lastStreamError;
+          if (lastStreamError && (isNonadoptedRagVerificationRefusal(error) || isAdoptedRagVerificationRefusal(error))) throw lastStreamError;
           throw error;
         }
       };
@@ -448,7 +452,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
         await classificationProviderAdmissionService.succeeded(providerTicket);
       }
     } catch (generationError) {
-      if (verificationPromptFailed || isNonadoptedRagVerificationRefusal(generationError)) throw generationError;
+      if (verificationPromptFailed || isNonadoptedRagVerificationRefusal(generationError) || isAdoptedRagVerificationRefusal(generationError)) throw generationError;
       const capabilityRevoked = await ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError({
         provider,
         authority: providerAuthority,

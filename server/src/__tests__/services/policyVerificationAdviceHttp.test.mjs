@@ -189,7 +189,7 @@ test.each(['ollama', 'openai'])('actual %s adopted RAG verification owns its inv
   expect(prompt()).toContain('Owned profile observation'); expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
   expect(prompt()).not.toContain('Signal Breakdown'); expect(prompt()).not.toContain('DECLARED POSITIVE PURPOSE');
   expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
-  expect(result.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
+  expect(result.pass2Candidate.signalContext.ranked).toBe(value.result.ranked);
   expect(result.pass2Candidate.ai_advisory).toBeNull();
   expect(result.pass2Candidate.library).toBe(value.libraries[0]); expect(result.pass2Candidate.confidence).toBe(73);
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
@@ -197,15 +197,17 @@ test.each(['ollama', 'openai'])('actual %s adopted RAG verification owns its inv
   expect(JSON.stringify({ result, logs, writes })).not.toMatch(/ragRecheckVerificationAdvice|Owned profile observation/u);
 });
 
-test.each(['ollama', 'openai'])('copied RAG result keeps actual %s verification but omits optional sections', async type => {
+test.each(['ollama', 'openai'])('copied RAG result skips %s verification and records a review gap', async type => {
   const value = await ragRecheckAdviceFixture(); choose(type);
   const result = await executeRag(value, { copied: true });
-  expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
-  expect(prompt()).toContain('CANDIDATE-BOUND VERIFICATION MODE'); expect(prompt()).not.toMatch(/POLICY ENGINE SIGNALS|LIBRARY PROFILE/u);
+  expect(requests).toHaveLength(0); expect(result.aiCallsUsed).toBe(1);
+  expect(aiRouterService.getProvider).not.toHaveBeenCalled();
   expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled(); expect(result.pass2Candidate.confidence).toBe(70);
+  const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
+  expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)).status).toBe('evidence_gap');
 });
 
-test.each(['handoff', 'profile', 'formatting', 'lock'])('RAG %s mutation removes optional material without changing the existing call count', async phase => {
+test.each(['handoff', 'profile', 'formatting', 'lock'])('RAG %s mutation refuses dispatch with truthful invocation accounting', async phase => {
   const value = await ragRecheckAdviceFixture(); choose('ollama');
   if (phase === 'profile') libraryProfileService.getProfileStats.mockImplementation(async () => { value.libraries[0].is_active = false; return verificationProfile(); });
   if (phase === 'lock') lock.acquireLock.mockImplementation(async () => { value.libraries[0].is_active = false; });
@@ -214,8 +216,9 @@ test.each(['handoff', 'profile', 'formatting', 'lock'])('RAG %s mutation removes
     jest.spyOn(aiPromptBuilder, 'buildPrompt').mockImplementation(async (...args) => { const text = await original(...args); value.libraries[0].is_active = false; return text; });
   }
   const result = await executeRag(value, { afterStage: stage => { if (phase === 'handoff') stage.policyGate = { ...stage.policyGate }; } });
-  expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
-  expect(prompt()).not.toMatch(/POLICY ENGINE SIGNALS|LIBRARY PROFILE/u); expect(prompt()).toContain('CANDIDATE-BOUND VERIFICATION MODE');
+  expect(requests).toHaveLength(0); expect(result.aiCallsUsed).toBe(phase === 'handoff' ? 1 : 2);
+  expect(result.pass2Candidate.library).toBe(value.libraries[0]);
+  expect(admission.failed).not.toHaveBeenCalled(); expect(invalidation).not.toHaveBeenCalled();
 });
 
 test('RAG provider refusal and exhausted item cap retain their existing distinct counter/dispatch behavior', async () => {
@@ -290,7 +293,7 @@ test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'unsupported'])('actual adopted %s o
   expect(result.aiCallsUsed).toBe(2);
   expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
   expect(result.pass2Candidate.signalContext.confidence).toBe(75);
-  expect(result.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
+  expect(result.pass2Candidate.signalContext.ranked).toBe(value.result.ranked);
   expect(result.pass2Candidate.ai_advisory).toBe(outcome === 'CONFIRM' ? null : (await classify.mock.results[0].value).ai_advisory);
   expect(JSON.stringify(result.pass2Candidate)).not.toContain('EARLIER ADVISORY SENTINEL');
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe(
@@ -302,7 +305,7 @@ test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'unsupported'])('actual adopted %s o
     .toMatchObject({ status: 'recorded', policy: { confidence: 75 } });
 });
 
-test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s diagnostic evidence keeps ordinary HTTP/accounting behavior', async phase => {
+test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s evidence has separate numeric invocation and optional-label admission', async phase => {
   const value = await ragRecheckAdviceFixture();
   choose('ollama');
   const classify = jest.spyOn(classificationAiService, 'aiClassify');
@@ -314,12 +317,17 @@ test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s diagnostic e
   if (phase === 'reply') beforeReply = () => { value.result.ranked[0].score++; };
   if (phase === 'long label') value.libraries[0].name = 'x'.repeat(161);
   const result = await executeRag(value, { copied: phase === 'copied' });
-  expect(requests).toHaveLength(1);
-  expect(result.aiCallsUsed).toBe(2);
+  expect(requests).toHaveLength(['reply', 'long label'].includes(phase) ? 1 : 0);
+  expect(result.aiCallsUsed).toBe(phase === 'copied' ? 1 : 2);
   expect(result.hadError).toBe(false);
-  expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
-  expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
-  expect(result.pass2Candidate.ai_advisory).toBeNull();
+  if (phase === 'long label') {
+    expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
+    expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
+    expect(result.pass2Candidate.ai_advisory).toBeNull();
+  } else {
+    expect(result.pass2Candidate.candidate_bound_verification).toBeUndefined();
+    expect(result.pass2Candidate.library).toBe(value.libraries[0]);
+  }
   const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
   expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)).status)
     .toBe(phase === 'long label' ? 'recorded' : 'evidence_gap');
@@ -336,6 +344,77 @@ async function executeNonadopted(value, { copied = false, afterStage = () => {},
     policyAfter: used.policyAfter, existingCandidate: used.pass2Candidate, policyRecheckStage: used,
     aiClassify: classificationAiService.aiClassify });
 }
+
+function expectAdoptedGap(value, result) {
+  expect(result.pass2Candidate.library).toBe(value.libraries[0]);
+  const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
+  expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)))
+    .toMatchObject({ status: 'evidence_gap', policy: null });
+}
+
+test.each(['configuration', 'provider', 'admission', 'profile', 'formatting', 'lock'])(
+  'adopted %s proof loss retains a charged invocation, candidate and review gap', async phase => {
+    const value = await ragRecheckAdviceFixture(), change = () => { value.libraries[0].is_active = false; };
+    choose('ollama', phase === 'provider' ? change : undefined);
+    if (phase === 'configuration') onConfiguration = change;
+    if (phase === 'admission') admission.admit.mockImplementation(async () => { change(); });
+    if (phase === 'profile') libraryProfileService.getProfileStats.mockImplementation(async () => { change(); return verificationProfile(); });
+    if (phase === 'lock') lock.acquireLock.mockImplementation(async () => { change(); });
+    if (phase === 'formatting') {
+      const build = aiPromptBuilder.buildPrompt.bind(aiPromptBuilder);
+      jest.spyOn(aiPromptBuilder, 'buildPrompt').mockImplementation(async (...args) => { const text = await build(...args); change(); return text; });
+    }
+    const observation = jest.spyOn(aiProviderCapabilityMetricsService, 'record'), failure = jest.spyOn(ragLoopResilienceManager, 'recordFailure');
+    const result = await executeRag(value);
+    expect(result).toMatchObject({ aiCallsUsed: 2, hadError: false }); expect(requests).toHaveLength(0);
+    expect(admission.failed).not.toHaveBeenCalled(); expect(invalidation).not.toHaveBeenCalled(); expect(observation).not.toHaveBeenCalled();
+    expect(failure).not.toHaveBeenCalled();
+    expect(lock.releaseLock).toHaveBeenCalledTimes(['lock', 'formatting'].includes(phase) ? 1 : 0);
+    expectAdoptedGap(value, result);
+  });
+
+test.each(['transport configuration', 'response', 'metrics'])(
+  'adopted proof loss during %s preserves completed observations while retaining the deterministic candidate', async phase => {
+    const value = await ragRecheckAdviceFixture(); choose('ollama');
+    const change = () => { value.libraries[0].is_active = false; };
+    if (phase === 'transport configuration') ollamaService.getConfig.mockImplementation(async () => { change(); return { baseUrl: url, model: 'synthetic:latest' }; });
+    if (phase === 'response') beforeReply = change;
+    const record = aiProviderCapabilityMetricsService.record.bind(aiProviderCapabilityMetricsService), deltas = [];
+    const observation = jest.spyOn(aiProviderCapabilityMetricsService, 'record').mockImplementation(async (...args) => {
+      const delta = await record(...args); deltas.push(delta); if (phase === 'metrics') change(); return delta;
+    });
+    const succeeded = jest.spyOn(admission, 'succeeded');
+    const result = await executeRag(value);
+    expect(result).toMatchObject({ aiCallsUsed: 2, hadError: false }); expect(requests).toHaveLength(1);
+    expect(succeeded).toHaveBeenCalledTimes(1); expect(observation).toHaveBeenCalledTimes(1); expect(deltas[0].requestCount).toBe(1);
+    expect(observation.mock.calls[0][0].parseResult.candidate_bound_verification.status_id).toBe('confirmed');
+    expect(admission.failed).not.toHaveBeenCalled(); expect(invalidation).not.toHaveBeenCalled(); expect(lock.releaseLock).toHaveBeenCalledTimes(1);
+    expectAdoptedGap(value, result);
+  });
+
+test('adopted real stream failure survives proof loss before retry without adding an HTTP attempt', async () => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama'); done = false;
+  beforeReply = () => { value.item.tmdb_id++; };
+  const observation = jest.spyOn(aiProviderCapabilityMetricsService, 'record'), classify = jest.fn(value.ctx.classifyStageError);
+  value.ctx.classifyStageError = classify;
+  const result = await executeRag(value);
+  expect(result.pass2Candidate.library).toBe(value.libraries[0]); expect(result.aiCallsUsed).toBe(2); expect(requests).toHaveLength(1);
+  expect(admission.failed).toHaveBeenCalledTimes(1); expect(invalidation).toHaveBeenCalledTimes(1); expect(observation).toHaveBeenCalledTimes(1);
+  const error = admission.failed.mock.calls[0][1];
+  expect(classify).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
+  expect(observation.mock.calls[0][0].generationError).toBe(error);
+  expect(holdCurrentPolicyReviewFrame(result.pass2Candidate, value.item)).toBeNull(); // Existing genuine-error fallback.
+});
+
+test('adopted genuine rejected operation keeps its identity when source proof also changes', async () => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama');
+  const error = new Error('Fresh verification context is unavailable');
+  admission.admit.mockImplementation(async () => { value.item.tmdb_id++; throw error; });
+  const classify = jest.fn(value.ctx.classifyStageError); value.ctx.classifyStageError = classify;
+  const result = await executeRag(value);
+  expect(result.hadError).toBe(true); expect(result.aiCallsUsed).toBe(2); expect(requests).toHaveLength(0);
+  expect(classify).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
+});
 
 test.each(['ollama', 'openai'])('non-adopted %s verification coherently dispatches fresh B/75 rather than old A/80', async type => {
   const value = await nonadoptedRagVerificationFixture(); choose(type);

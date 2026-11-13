@@ -17,6 +17,9 @@
 *.yml text eol=lf
 *.toml text eol=lf
 
+# Native npm patches are hashed byte-for-byte in the client lockfile.
+client/patches/** text eol=lf
+
 # Environment/runtime markers - always use LF
 .env.example text eol=lf
 .nvmrc text eol=lf

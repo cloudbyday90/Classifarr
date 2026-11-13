@@ -41,6 +41,7 @@ RUN apk add --no-cache python3 make g++
 
 # Copy package files first for better caching
 COPY client/package*.json client/.npmrc ./
+COPY client/patches/ ./patches/
 RUN npm ci --fetch-retries=${NPM_FETCH_RETRIES}
 
 # Copy source and build

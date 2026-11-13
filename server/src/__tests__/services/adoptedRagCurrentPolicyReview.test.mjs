@@ -18,6 +18,7 @@ import { policyEngine } from '../../services/policyEngine.mjs';
 import { ragLoopResilienceManager } from '../../services/ragLoopResilienceManager.mjs';
 import { buildPolicyRuntimeQuestionAnswerContract } from '../../services/policyRuntimeQuestionAnswerContract.mjs';
 import { normalizePolicyRuntimeQuestion } from '../../services/policyRuntimeQuestionNormalizer.mjs';
+import { enterAdoptedRagVerification } from '../../services/adoptedRagVerification.mjs';
 
 afterEach(() => jest.restoreAllMocks());
 
@@ -212,7 +213,8 @@ test.each([
     const currentAdvisory = outcome === 'CONFIRM' ? null : {
       version: 'classification.ai_advisory.v1', message: 'Current advisory', status_id: outcome,
     };
-    const aiClassify = jest.fn(async (_metadata, _libraries, context) => {
+    const aiClassify = jest.fn(async (metadata, libraries, context, options) => {
+      enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext: context }, options.verificationCandidate);
       expect(context.confidence).toBe(75);
       return { library: value.libraries[0], confidence: 75, verified_by_ai: outcome === 'CONFIRM',
         ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}),
@@ -224,8 +226,8 @@ test.each([
     expect(rerun.aiCallsUsed).toBe(2);
     expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
     expect(rerun.pass2Candidate.signalContext).not.toBe(value.ctx.signalContext);
-    expect(rerun.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
-    expect(rerun.pass2Candidate.signalContext.breakdown).toBe(value.ctx.signalContext.breakdown);
+    expect(rerun.pass2Candidate.signalContext.ranked).toBe(value.result.ranked);
+    expect(Object.keys(rerun.pass2Candidate.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
     expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
     expect(stage.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
     expect(stage.pass2Candidate.ai_advisory).toBe(earlierAdvisory);
@@ -233,21 +235,21 @@ test.each([
   });
 
 test.each(['missing stage', 'copied stage', 'mutated during call'])(
-  'production %s proof changes only the diagnostic frame', async kind => {
+  'production %s invocation proof retains the deterministic candidate with an explicit gap', async kind => {
     const value = await ragRecheckAdviceFixture();
     jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
     jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
     const stage = await runPolicyRecheckStage(value.ctx);
-    const aiClassify = jest.fn(async () => {
+    const aiClassify = jest.fn(async (metadata, libraries, signalContext, options) => {
+      enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
       if (kind === 'mutated during call') value.result.ranked[0].score++;
       return { library: value.libraries[0], confidence: 70, verified_by_ai: true };
     });
     const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
       policyRecheckStage: kind === 'missing stage' ? null : kind === 'copied stage' ? { ...stage } : stage, aiClassify });
-    expect(aiClassify).toHaveBeenCalledTimes(1);
-    expect(rerun).toMatchObject({ aiCallsUsed: 2, hadError: false });
-    expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
-    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    expect(aiClassify).toHaveBeenCalledTimes(kind === 'mutated during call' ? 1 : 0);
+    expect(rerun).toMatchObject({ aiCallsUsed: kind === 'mutated during call' ? 2 : 1, hadError: false });
+    expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
     expect(frame(value, rerun.pass2Candidate).status).toBe('evidence_gap');
   });
 
@@ -256,18 +258,20 @@ test('returned invocation references retain their loaded lifecycle while current
   jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const stage = await runPolicyRecheckStage(value.ctx);
-  const aiClassify = jest.fn(async () => ({ library: value.libraries[0], confidence: 75, verified_by_ai: true }));
+  const aiClassify = jest.fn(async (metadata, libraries, signalContext, options) => {
+    enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
+    return { library: value.libraries[0], confidence: 75, verified_by_ai: true };
+  });
   const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter,
     existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
   const result = rerun.pass2Candidate;
   expect(result.signalContext).toBe(aiClassify.mock.calls[0][2]);
   result.signalContext.ranked[0].score = 33;
-  expect(value.ctx.signalContext.ranked[0].score).toBe(33);
-  expect(frame(value, result).status).toBe('recorded');
-  result.signalContext.confidence = 74;
+  expect(value.ctx.signalContext.ranked[0].score).toBe(10);
   expect(frame(value, result).status).toBe('evidence_gap');
-  result.signalContext.confidence = 75;
+  result.signalContext.ranked[0].score = 75;
   expect(frame(value, result).status).toBe('evidence_gap');
+  expect(() => { result.signalContext.confidence = 74; }).toThrow(TypeError);
   expect(result.ai_advisory).toBeNull();
   expect(rerun).toMatchObject({ aiCallsUsed: 2, hadError: false });
   expect(aiClassify).toHaveBeenCalledTimes(1);

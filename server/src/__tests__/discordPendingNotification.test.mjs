@@ -26,6 +26,7 @@ import { rememberSavedCurrentPolicyReview, publishCurrentPolicyReviewFrame, hold
   projectCurrentPolicyReviewFrame } from '../services/currentPolicyReviewFrameLive.mjs';
 import { ragRecheckAdviceFixture } from './fixtures/ragRecheckAdviceFixture.mjs';
 import { runPolicyRecheckStage, runAiRerunStage } from '../services/classificationRagLoopStages.mjs';
+import { enterAdoptedRagVerification } from '../services/adoptedRagVerification.mjs';
 import { policyEngine } from '../services/policyEngine.mjs';
 import { ragLoopResilienceManager } from '../services/ragLoopResilienceManager.mjs';
 import { createCandidateBoundVerificationResult } from '../services/aiResponseParserResults.mjs';
@@ -76,9 +77,11 @@ describe('discordPendingNotification', () => {
     jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
     const stage = await runPolicyRecheckStage(value.ctx);
     const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
-      policyRecheckStage: stage, aiClassify: async (metadata, libraries, signalContext) =>
-        createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
-          { candidate: { library: libraries[0] } }, { valid: true, decision: 'CONFIRM' }),
+      policyRecheckStage: stage, aiClassify: async (metadata, libraries, signalContext, options) => {
+        enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
+        return createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
+          { candidate: { library: libraries[0] } }, { valid: true, decision: 'CONFIRM' });
+      },
     });
     expect(rerun.pass2Candidate.ai_advisory).toBeNull();
     const published = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });

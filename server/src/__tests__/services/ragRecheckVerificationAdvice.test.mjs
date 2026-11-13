@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { ragRecheckAdviceFixture } from '../fixtures/ragRecheckAdviceFixture.mjs';
+import { enterAdoptedRagVerification } from '../../services/adoptedRagVerification.mjs';
 import { verificationProfile } from '../fixtures/verificationAdviceFixture.mjs';
 import { holdRagRecheckAdviceSource, retainRagRecheckAdvice, takeRagRecheckAdvice, createRagRecheckAdviceSession } from '../../services/ragRecheckVerificationAdvice.mjs';
 import { runPolicyRecheckStage, runAiRerunStage } from '../../services/classificationRagLoopStages.mjs';
@@ -126,6 +127,7 @@ test('production stages retain the actual invocation context while qualifying fr
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const stage = await runPolicyRecheckStage(value.ctx); expect(stage.policyGate.shouldAdopt).toBe(true);
   const aiClassify = jest.fn(async (metadata, libraries, signalContext, options) => {
+    enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
     const session = createRagRecheckAdviceSession(options.ragRecheckVerificationAdvice, { metadata, libraries, signalContext });
     expect((await sections(session)).policySignals.confidence).toBe(70);
     return { library: libraries[0], confidence: 70, verified_by_ai: true };
@@ -133,6 +135,7 @@ test('production stages retain the actual invocation context while qualifying fr
   const result = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
   expect(aiClassify).toHaveBeenCalledTimes(1); expect(result.aiCallsUsed).toBe(2);
   expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
-  expect(result.pass2Candidate.signalContext.breakdown).toBe(value.ctx.signalContext.breakdown);
+  expect(result.pass2Candidate.signalContext.ranked).toBe(value.result.ranked);
+  expect(result.pass2Candidate.signalContext.breakdown).toBeUndefined();
   expect(result.pass2Candidate.ai_advisory).toBeNull();
 });

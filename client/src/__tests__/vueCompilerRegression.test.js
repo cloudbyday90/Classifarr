@@ -21,6 +21,7 @@ defineSlots<{ toolbar(props: { label: string }): unknown; secondary(): unknown }
 const slotSource = (parameter, read) => `<script setup lang="ts">
 import SlotValue from './SlotValue.vue'
 import { FixtureKeys } from './FixtureKeys'
+const fallback = { label: '' }
 </script>
 <template><SlotValue>
   <template #toolbar="${parameter}">{{ ${parameter.startsWith('{') ? 'label' : 'slotState'} }}</template>
@@ -60,6 +61,8 @@ import EventValue from './EventValue.vue'
     ['whole parameter default and imported property', 'slotState = {}', 'FixtureKeys.TOOLBAR'],
     ['inner destructuring default', '{ label = FixtureKeys.TOOLBAR }', 'FixtureKeys.TOOLBAR'],
     ['whole parameter default without property read', 'slotState = {}', 'FixtureKeys'],
+    ['whole parameter object default', "slotState = { label: '' }", 'FixtureKeys.TOOLBAR'],
+    ['whole parameter variable default', 'slotState = fallback', 'FixtureKeys.TOOLBAR'],
   ]
   test.each(slots)('accepts valid slots: %s', (_name, parameter, read) => {
     expect(typecheck(slotSource(parameter, read), slotFiles)).toEqual({ status: 0, output: '' })
@@ -71,5 +74,28 @@ import EventValue from './EventValue.vue'
     expect(result.status).toBe(2)
     expect(result.output).toMatch(/SemanticSentinel\.ts\(1,14\): error TS2322:/)
     expect(result.output.match(/: error TS\d+:/g)).toHaveLength(1)
+  }, 35_000)
+})
+
+describe('inference-only props preserve JavaScript lexical meaning', () => {
+  const expressions = [
+    ['nested template', '`outer ${`https://example.invalid/${id}`}`'],
+    ['regex literal', '/[//]/.source'],
+    ['real line comment', "'value' // it's a real comment containing */\n"],
+    ['block comment', "/* don't treat this as a string */ 'value'"],
+    ['comment in interpolation', '`value ${ // actual comment\n id}`'],
+    ['escaped quotes', "'https://example.invalid/\\'quoted'"],
+  ]
+  const source = (expression, operation) => '<script setup lang="ts">\n' +
+    "import EventValue from './EventValue.vue'\nconst id = 1\n</script>\n" +
+    '<template><EventValue :url="' + expression + '" @finished="count => count.' + operation + '()" /></template>'
+
+  test.each(expressions)('preserves inference for %s', (_name, expression) => {
+    expect(typecheck(source(expression, 'toFixed'), { 'EventValue.vue': eventCompanion }))
+      .toEqual({ status: 0, output: '' })
+  }, 35_000)
+
+  test.each(expressions)('retains the exact invalid-operation diagnostic for %s', (_name, expression) => {
+    expectVueDiagnostic(typecheck(source(expression, 'toUpperCase'), { 'EventValue.vue': eventCompanion }), '2339')
   }, 35_000)
 })
