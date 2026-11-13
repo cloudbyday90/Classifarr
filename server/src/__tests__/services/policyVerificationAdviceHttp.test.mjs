@@ -179,14 +179,18 @@ async function executeRag(value, { copied = false, afterStage = () => {}, cap = 
     aiClassify: classificationAiService.aiClassify });
 }
 
-test.each(['ollama', 'openai'])('actual %s adopted RAG verification uses fresh advice without earlier-pass leakage or result-context repair', async type => {
+test.each(['ollama', 'openai'])('actual %s adopted RAG verification owns its invocation context and current advisory', async type => {
   const value = await ragRecheckAdviceFixture({ confidence: 73 }); choose(type);
+  value.ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
+  const classify = jest.spyOn(classificationAiService, 'aiClassify');
   const result = await executeRag(value);
   expect(requests).toHaveLength(1); expect(result.aiCallsUsed).toBe(2);
   expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Calculated Confidence: 73%');
   expect(prompt()).toContain('Owned profile observation'); expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
   expect(prompt()).not.toContain('Signal Breakdown'); expect(prompt()).not.toContain('DECLARED POSITIVE PURPOSE');
-  expect(result.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+  expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
+  expect(result.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
+  expect(result.pass2Candidate.ai_advisory).toBeNull();
   expect(result.pass2Candidate.library).toBe(value.libraries[0]); expect(result.pass2Candidate.confidence).toBe(73);
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
   expect(result.pass2Candidate.ai_authority.sideEffects).toMatchObject({ canRoute: false, canLearn: false });
@@ -224,8 +228,11 @@ test('RAG provider refusal and exhausted item cap retain their existing distinct
   expect(requests).toHaveLength(0); expect(capped.aiCallsUsed).toBe(1);
 });
 
-test.each(['apply', 'shadow', 'rollout mutation'])('whole production adopted RAG owner %s carries its review source through actual HTTP', async scenario => {
+test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation'])('whole production adopted RAG owner %s carries its review source through actual HTTP', async scenario => {
   const value = await ragRecheckAdviceFixture(); choose('ollama');
+  const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
+  value.ctx.baselineResult.ai_advisory = earlierAdvisory;
+  const classify = jest.spyOn(classificationRagLoopService, 'aiClassify');
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
   const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: scenario === 'shadow' ? 'shadow' : 'apply',
     rag_loop_trace_enabled: false, rag_loop_auto_fallback_enabled: false, rag_loop_auto_recover_enabled: false,
@@ -242,35 +249,50 @@ test.each(['apply', 'shadow', 'rollout mutation'])('whole production adopted RAG
   jest.spyOn(ragRetriever, 'semanticSearch').mockResolvedValue([{ libraryId: 101, similarity: 0.95 }]);
   jest.spyOn(ragRetriever, 'hybridSearch').mockResolvedValue([{ libraryId: 101, similarity: 0.95 }]);
   jest.spyOn(ragRetriever, 'getSuggestedLibrary').mockReturnValue({ libraryId: 101, avgSimilarity: 0.95 });
+  let freshPolicyResult;
   const evaluate = jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async expanded => {
     expect(expanded).not.toBe(metadata);
-    return (await policyRecoveryReferenceFixture({ item: expanded })).result;
+    freshPolicyResult = (await policyRecoveryReferenceFixture({ item: expanded })).result;
+    return freshPolicyResult;
   });
+  if (scenario === 'comparison rejection') beforeReply = () => {
+    freshPolicyResult.ranked[0].candidate_diagnostics.primary_anchor_eligible = false;
+  };
   const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
   expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(1);
   expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
   expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
-  expect(result.signalContext).toBe(value.ctx.signalContext);
   const held = holdCurrentPolicyReviewFrame(result, metadata);
-  if (scenario === 'shadow') {
+  if (scenario === 'shadow' || scenario === 'comparison rejection') {
     expect(result.library).toBe(value.ctx.baselineResult.library);
+    expect(result.signalContext).toBe(value.ctx.signalContext);
+    expect(result.ai_advisory).toBe(earlierAdvisory);
     expect(held).toBeNull();
   } else {
     expect(result.library.id).toBe(101);
     expect(result.candidate_bound_verification.status_id).toBe('confirmed');
+    expect(result.signalContext).toBe(classify.mock.calls[0][2]);
+    expect(result.ai_advisory).toBeNull();
     expect(projectCurrentPolicyReviewFrame(held).status).toBe(scenario === 'rollout mutation' ? 'evidence_gap' : 'recorded');
   }
 });
 
 test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'unsupported'])('actual adopted %s outcome supplies a bounded review attempt', async outcome => {
   const value = await ragRecheckAdviceFixture({ confidence: 75 });
+  value.ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
   choose('ollama', undefined, outcome !== 'unsupported');
+  const classify = jest.spyOn(classificationAiService, 'aiClassify');
   if (outcome === 'ABSTAIN') answer = '{"decision":"ABSTAIN","reason":"Owned uncertainty"}';
   if (outcome === 'invalid') answer = '{"decision":"CONFIRM","reason":"Owned","library_number":99}';
   const result = await executeRag(value);
   expect(requests).toHaveLength(outcome === 'unsupported' ? 0 : 1);
   expect(result.aiCallsUsed).toBe(2);
+  expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
+  expect(result.pass2Candidate.signalContext.confidence).toBe(75);
+  expect(result.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
+  expect(result.pass2Candidate.ai_advisory).toBe(outcome === 'CONFIRM' ? null : (await classify.mock.results[0].value).ai_advisory);
+  expect(JSON.stringify(result.pass2Candidate)).not.toContain('EARLIER ADVISORY SENTINEL');
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe(
     outcome === 'CONFIRM' ? 'confirmed' : outcome === 'ABSTAIN' ? 'abstained' :
       outcome === 'invalid' ? 'contract_violation' : 'provider_capability_unavailable');
@@ -283,6 +305,8 @@ test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'unsupported'])('actual adopted %s o
 test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s diagnostic evidence keeps ordinary HTTP/accounting behavior', async phase => {
   const value = await ragRecheckAdviceFixture();
   choose('ollama');
+  const classify = jest.spyOn(classificationAiService, 'aiClassify');
+  value.ctx.baselineResult.ai_advisory = { message: 'EARLIER ADVISORY SENTINEL' };
   if (phase === 'profile') libraryProfileService.getProfileStats.mockImplementation(async () => {
     value.libraries[0].is_active = false;
     return verificationProfile();
@@ -294,6 +318,8 @@ test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s diagnostic e
   expect(result.aiCallsUsed).toBe(2);
   expect(result.hadError).toBe(false);
   expect(result.pass2Candidate.candidate_bound_verification.status_id).toBe('confirmed');
+  expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
+  expect(result.pass2Candidate.ai_advisory).toBeNull();
   const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
   expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)).status)
     .toBe(phase === 'long label' ? 'recorded' : 'evidence_gap');

@@ -192,24 +192,43 @@ test('stage and completion handoffs are consumed once', async () => {
   expect(frame(value, other).status).toBe('evidence_gap');
 });
 
-test.each(['CONFIRM', 'ABSTAIN', 'invalid', 'capability refusal'])(
-  'production stages retain a current frame for fulfilled %s with one charged invocation', async outcome => {
+test.each([
+  ['CONFIRM', false], ['ABSTAIN', false], ['invalid', false], ['capability refusal', false],
+  ['CONFIRM', true], ['ABSTAIN', true], ['invalid', true], ['capability refusal', true],
+])(
+  'production stages retain a current frame for fulfilled %s same destination=%s', async (outcome, sameDestination) => {
     const value = await ragRecheckAdviceFixture({ confidence: 75, afterEvaluate: row => { row.score = 70; } });
     value.ctx.baselineResult.confidence = 80;
+    if (sameDestination) {
+      value.ctx.baselineResult.library = value.libraries[0];
+      value.ctx.signalContext.suggestedLibrary = value.libraries[0];
+    }
+    const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'Earlier advisory sentinel' };
+    value.ctx.baselineResult.ai_advisory = earlierAdvisory;
     jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
     jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
     const stage = await runPolicyRecheckStage(value.ctx);
     expect(stage.pass2Candidate.confidence).toBe(80);
+    const currentAdvisory = outcome === 'CONFIRM' ? null : {
+      version: 'classification.ai_advisory.v1', message: 'Current advisory', status_id: outcome,
+    };
     const aiClassify = jest.fn(async (_metadata, _libraries, context) => {
       expect(context.confidence).toBe(75);
       return { library: value.libraries[0], confidence: 75, verified_by_ai: outcome === 'CONFIRM',
+        ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}),
         needs_clarification: true, candidate_bound_verification: { status_id: outcome === 'CONFIRM' ? 'confirmed' : 'abstained' } };
     });
     const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
       policyRecheckStage: stage, aiClassify });
     expect(aiClassify).toHaveBeenCalledTimes(1);
     expect(rerun.aiCallsUsed).toBe(2);
-    expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+    expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+    expect(rerun.pass2Candidate.signalContext).not.toBe(value.ctx.signalContext);
+    expect(rerun.pass2Candidate.signalContext.ranked).toBe(value.ctx.signalContext.ranked);
+    expect(rerun.pass2Candidate.signalContext.breakdown).toBe(value.ctx.signalContext.breakdown);
+    expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
+    expect(stage.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+    expect(stage.pass2Candidate.ai_advisory).toBe(earlierAdvisory);
     expect(frame(value, rerun.pass2Candidate)).toMatchObject({ status: 'recorded', policy: { confidence: 75, ranked: [{ score: 70 }] } });
   });
 
@@ -227,19 +246,55 @@ test.each(['missing stage', 'copied stage', 'mutated during call'])(
       policyRecheckStage: kind === 'missing stage' ? null : kind === 'copied stage' ? { ...stage } : stage, aiClassify });
     expect(aiClassify).toHaveBeenCalledTimes(1);
     expect(rerun).toMatchObject({ aiCallsUsed: 2, hadError: false });
+    expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
     expect(frame(value, rerun.pass2Candidate).status).toBe('evidence_gap');
   });
 
-test.each(['rejected', 'skipped'])('%s adopted rerun retains the ordinary deterministic candidate without a new frame attempt', async kind => {
-  const value = await ragRecheckAdviceFixture();
+test('returned invocation references retain their loaded lifecycle while current frame checks latch diagnostic loss', async () => {
+  const value = await ragRecheckAdviceFixture({ confidence: 75 });
   jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const stage = await runPolicyRecheckStage(value.ctx);
-  const aiClassify = jest.fn(async () => { throw new Error('Owned refusal'); });
+  const aiClassify = jest.fn(async () => ({ library: value.libraries[0], confidence: 75, verified_by_ai: true }));
+  const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter,
+    existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
+  const result = rerun.pass2Candidate;
+  expect(result.signalContext).toBe(aiClassify.mock.calls[0][2]);
+  result.signalContext.ranked[0].score = 33;
+  expect(value.ctx.signalContext.ranked[0].score).toBe(33);
+  expect(frame(value, result).status).toBe('recorded');
+  result.signalContext.confidence = 74;
+  expect(frame(value, result).status).toBe('evidence_gap');
+  result.signalContext.confidence = 75;
+  expect(frame(value, result).status).toBe('evidence_gap');
+  expect(result.ai_advisory).toBeNull();
+  expect(rerun).toMatchObject({ aiCallsUsed: 2, hadError: false });
+  expect(aiClassify).toHaveBeenCalledTimes(1);
+});
+
+test.each(['rejected', 'transient', 'skipped', 'resilience', 'mode'])('%s adopted rerun retains the ordinary deterministic candidate without a new frame attempt', async kind => {
+  const value = await ragRecheckAdviceFixture();
+  value.ctx.baselineResult.ai_advisory = { message: 'Existing candidate advisory' };
+  jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
+  jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+  const stage = await runPolicyRecheckStage(value.ctx);
+  if (kind === 'resilience') ragLoopResilienceManager.canRun.mockReturnValue({ allowed: false });
+  if (kind === 'mode') value.libraries[0].id = 0;
+  const failure = jest.spyOn(ragLoopResilienceManager, 'recordFailure');
+  const aiClassify = jest.fn(async () => {
+    const error = new Error('Owned refusal');
+    if (kind === 'transient') error.code = 'ECONNREFUSED';
+    throw error;
+  });
   const rerun = await runAiRerunStage({ ...value.ctx, ...(kind === 'skipped' ? { aiCallsUsed: 2 } : {}),
     policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
   expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
-  expect(aiClassify).toHaveBeenCalledTimes(kind === 'skipped' ? 0 : 1);
+  expect(aiClassify).toHaveBeenCalledTimes(['rejected', 'transient'].includes(kind) ? 1 : 0);
+  expect(rerun.hadError).toBe(kind === 'rejected');
+  expect(failure).toHaveBeenCalledTimes(kind === 'rejected' ? 1 : 0);
+  expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+  expect(rerun.pass2Candidate.ai_advisory).toBe(value.ctx.baselineResult.ai_advisory);
   expect(frame(value, rerun.pass2Candidate)).toBeNull();
 });
 

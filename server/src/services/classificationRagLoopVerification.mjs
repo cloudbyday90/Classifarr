@@ -65,3 +65,12 @@ export function buildPolicyRecheckVerificationSignalContext({
       : baseContext.confidence,
   };
 }
+
+/** Assemble a fulfilled adopted verification from the context actually passed to its invocation. */
+export function buildAdoptedRagInvocationBaseline({ baselineResult, signalContext }) {
+  return {
+    ...baselineResult,
+    signalContext,
+    ai_advisory: null,
+  };
+}

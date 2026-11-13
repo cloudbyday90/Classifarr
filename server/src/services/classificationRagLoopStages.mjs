@@ -22,6 +22,7 @@ import {
 } from './adoptedRagCurrentPolicyReview.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
+    buildAdoptedRagInvocationBaseline,
     buildPolicyRecheckVerificationSignalContext,
     shouldVerifyPolicyRecheckCandidate,
 } from './classificationRagLoopVerification.mjs';
@@ -385,9 +386,15 @@ export async function runAiRerunStage(ctx) {
                     policyResult: policyAfter, metadata: expandedMetadata, libraries, signalContext: verificationSignalContext, candidate: existingCandidate,
                 }) } : {}),
             });
-        const invocationBaseline = freshVerification
-            ? buildNonadoptedRagInvocationBaseline(freshVerification.token, candidateBaselineResult)
-            : candidateBaselineResult;
+        let invocationBaseline = candidateBaselineResult;
+        if (freshVerification) {
+            invocationBaseline = buildNonadoptedRagInvocationBaseline(freshVerification.token, candidateBaselineResult);
+        } else if (verifyPolicyRecheckCandidate && aiModeDecision.mode === 'verify') {
+            invocationBaseline = buildAdoptedRagInvocationBaseline({
+                baselineResult: candidateBaselineResult,
+                signalContext: verificationSignalContext,
+            });
+        }
         const aiRerunMatch = {
             ...providerMatch,
             deterministic_ai_mode: aiModeDecision,

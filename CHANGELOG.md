@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Adopted RAG result ownership** — Return the actual adopted verification
+  invocation context and its current advisory. Fresh confirmations clear the
+  inherited advisory, with review fingerprints following the current result.
+  See the [outcome](docs/architecture/adopted-rag-result-context-outcome.md).
+
 - **Adopted RAG review evidence** — Use the accepted adopted verification
   recheck's row-bound policy frame for pending recommendations, scores and
   evidence. Record missing or changed proof as an explicit review gap. See the

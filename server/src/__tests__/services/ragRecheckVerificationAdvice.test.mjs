@@ -121,7 +121,7 @@ test.each(['skip', 'failure', 'timeout'])( '%s recheck cannot recover proof from
   if (kind === 'skip') expect(evaluate).not.toHaveBeenCalled(); else expect(evaluate).toHaveBeenCalledTimes(1);
 });
 
-test('production stages keep call accounting and retained result context while qualifying fresh advice', async () => {
+test('production stages retain the actual invocation context while qualifying fresh advice', async () => {
   const value = await ragRecheckAdviceFixture(); jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
   const stage = await runPolicyRecheckStage(value.ctx); expect(stage.policyGate.shouldAdopt).toBe(true);
@@ -132,5 +132,7 @@ test('production stages keep call accounting and retained result context while q
   });
   const result = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
   expect(aiClassify).toHaveBeenCalledTimes(1); expect(result.aiCallsUsed).toBe(2);
-  expect(result.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+  expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+  expect(result.pass2Candidate.signalContext.breakdown).toBe(value.ctx.signalContext.breakdown);
+  expect(result.pass2Candidate.ai_advisory).toBeNull();
 });

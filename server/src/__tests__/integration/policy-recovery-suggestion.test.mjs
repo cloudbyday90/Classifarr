@@ -147,7 +147,7 @@ test('a loaded destination changed while the real profile query settles cannot a
 });
 
 for (const source of ['native_intent', 'compatibility_bridge']) {
-  test.each(['genuine', 'copied'])(`real ${source} %s RAG stage binds a fresh later profile without changing authority/result context`, async kind => {
+  test.each(['genuine', 'copied'])(`real ${source} %s RAG stage binds its profile and invocation-owned result`, async kind => {
     const { libraries, item, created } = await fixture(source), expanded = { ...item, overview: 'Expanded owned metadata' };
     await query(`INSERT INTO media_server_items(library_id,external_id,title,media_type,genres)
       VALUES($1,'rag-observation','PRIVATE RAG ITEM','movie',ARRAY['Owned RAG observation'])`, [created.libraryId]);
@@ -176,7 +176,9 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
     const result = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
       policyRecheckStage: stage, aiClassify });
     expect(aiClassify).toHaveBeenCalledTimes(1); expect(result.aiCallsUsed).toBe(2);
-    expect(result.pass2Candidate.signalContext).toBe(ctx.signalContext);
+    expect(result.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+    expect(result.pass2Candidate.signalContext.breakdown).toBe(ctx.signalContext.breakdown);
+    expect(result.pass2Candidate.ai_advisory).toBeNull();
     expect(reads).toHaveLength(kind === 'genuine' ? 1 : 0);
     if (kind === 'genuine') expect(reads[0].params).toEqual([created.libraryId]);
     expect(JSON.stringify(result)).not.toContain('ragRecheckVerificationAdvice');
@@ -195,12 +197,14 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
     deterministic_candidate: { library_id: earlier.id, library_name: earlier.name }, proposed_destination: null };
   const stage = await runPolicyRecheckStage(ctx);
   expect(stage.policyGate.shouldAdopt).toBe(adopted);
-  const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage,
-    aiClassify: async (metadata, pool, signalContext, options) => {
+  const aiClassify = jest.fn(async (metadata, pool, signalContext, options) => {
       if (!adopted) enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
       return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: currentAdvisory === null,
         ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}) };
-    } });
+  });
+  const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
+  expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+  expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
   const result = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
   await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
   return result;
@@ -351,7 +355,9 @@ test.each([false, true])('adopted=%s actual History writer binds a BIGINT row be
   }
 });
 
-test.each(['confirmed', 'abstained'])('selected %s persists invocation-owned context/advisory and the bound review frame', async outcome => {
+test.each([
+  ['confirmed', false], ['abstained', false], ['confirmed', true], ['abstained', true],
+])('selected %s adopted=%s persists invocation-owned context/advisory and the bound review frame', async (outcome, adopted) => {
   const { libraries, item } = await fixture();
   const currentAdvisory = outcome === 'confirmed' ? null : {
     version: 'classification.ai_advisory.v1', status_id: 'verification_abstained', mode: 'verification',
@@ -359,23 +365,49 @@ test.each(['confirmed', 'abstained'])('selected %s persists invocation-owned con
     deterministic_candidate: { library_id: libraries[0].id, library_name: libraries[0].name }, proposed_destination: null,
   };
   const questionBuild = jest.spyOn(policyQuestionBuilder, 'build');
-  const result = await currentReviewResult(item, libraries, { currentAdvisory });
-  expect(questionBuild).toHaveBeenCalledWith(expect.objectContaining({ relatedEvidenceSummary: null }));
-  expect(Object.keys(result.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
+  const result = await currentReviewResult(item, libraries, { currentAdvisory, adopted });
+  expect(questionBuild).toHaveBeenCalledWith(expect.objectContaining({
+    relatedEvidenceSummary: adopted ? { source: 'EARLIER SUMMARY SENTINEL' } : null,
+  }));
+  if (adopted) {
+    expect(result.signalContext.signals).toEqual({ earlier_signal: 99 });
+    expect(result.signalContext.ranked[0].library_id).toBe(2001);
+  } else expect(Object.keys(result.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
   expect(result.signalContext.suggestedLibrary).toBe(libraries[0]);
   expect(result.signalContext.confidence).toBe(result.policyResult.confidence);
   expect(result.ai_advisory).toBe(currentAdvisory);
   expect(result.policy_question.meta.related_evidence_summary).toBeUndefined();
   const id = await persistence.logClassification(item, result); history.push(id);
   const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
-  expect(row.signals_json).toBeNull();
-  expect(row.metadata.classification_details.rag_details).toBeNull();
+  expect(row.signals_json).toEqual(adopted ? { earlier_signal: 99 } : null);
+  if (adopted) expect(row.metadata.classification_details.rag_details).toMatchObject({ combined_similarity: 0.99 });
+  else expect(row.metadata.classification_details.rag_details).toBeNull();
   expect(row.metadata.classification_details.ai_advisory).toEqual(currentAdvisory);
   expect(row.metadata.classification_details.current_policy_review).toMatchObject({ status: 'recorded', classification_id: String(id) });
-  expect(JSON.stringify(row)).not.toContain('EARLIER');
+  expect(JSON.stringify(row)).not.toContain('EARLIER ADVISORY SENTINEL');
+  expect(JSON.stringify(row)).not.toContain('EARLIER SUMMARY SENTINEL');
   const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
   expect(contract.decision_summary.ai_advisory.status_id).toBe(outcome === 'confirmed' ? 'advisory_unavailable' : 'historic_advisory_not_retained');
   expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  if (adopted && outcome === 'confirmed') {
+    const oldRow = structuredClone(row);
+    oldRow.metadata.classification_details.ai_advisory = {
+      version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory', mode: 'verification',
+      source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
+      deterministic_candidate: { library_id: 2001, library_name: 'Earlier destination' }, proposed_destination: null,
+    };
+    const oldContract = buildPolicyRuntimeQuestionAnswerContract({ classification: oldRow, question: oldRow.policy_question });
+    expect(oldContract.recommendation).toEqual(contract.recommendation);
+    expect(oldContract.fingerprint).not.toBe(contract.fingerprint);
+    const answer = fingerprint => parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version,
+      contract_fingerprint: fingerprint, action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
+    const resolve = receipt => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
+      { policyQuestionContext: context, answerContract: receipt });
+    await expect(resolve(answer(oldContract.fingerprint))).rejects.toMatchObject({ statusCode: 409 });
+    expect((await query('SELECT status FROM classification_history WHERE id=$1', [id])).rows[0].status).toBe('awaiting_decision');
+    expect(await resolve(answer(contract.fingerprint))).toMatchObject({ success: true, shouldRoute: true });
+    expect(await resolve(answer(contract.fingerprint))).toMatchObject({ idempotent: true, shouldRoute: false });
+  }
 });
 
 for (const source of ['native_intent', 'compatibility_bridge']) {

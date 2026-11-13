@@ -16,13 +16,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { describe, expect, jest, test, beforeEach } from '@jest/globals';
+import { describe, expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
 import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
-import { rememberSavedCurrentPolicyReview } from '../services/currentPolicyReviewFrameLive.mjs';
+import { rememberSavedCurrentPolicyReview, publishCurrentPolicyReviewFrame, holdCurrentPolicyReviewFrame,
+  projectCurrentPolicyReviewFrame } from '../services/currentPolicyReviewFrameLive.mjs';
+import { ragRecheckAdviceFixture } from './fixtures/ragRecheckAdviceFixture.mjs';
+import { runPolicyRecheckStage, runAiRerunStage } from '../services/classificationRagLoopStages.mjs';
+import { policyEngine } from '../services/policyEngine.mjs';
+import { ragLoopResilienceManager } from '../services/ragLoopResilienceManager.mjs';
+import { createCandidateBoundVerificationResult } from '../services/aiResponseParserResults.mjs';
+
+afterEach(() => jest.restoreAllMocks());
 
 const mockDb = {
   query: jest.fn(),
@@ -57,6 +65,54 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test.each(['pending', 'confidence'])('adopted %s notification uses the current advisory fingerprint across both saved contracts', async kind => {
+    const value = await ragRecheckAdviceFixture({ confidence: 75, afterEvaluate: row => { row.score = 70; } });
+    const earlierAdvisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory', mode: 'verification',
+      source_format: 'earlier_pass', message: 'Earlier advisory', deterministic_candidate: {
+        library_id: 2001, library_name: 'Earlier destination',
+      }, proposed_destination: null };
+    value.ctx.baselineResult.ai_advisory = earlierAdvisory;
+    jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
+    jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
+    const stage = await runPolicyRecheckStage(value.ctx);
+    const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
+      policyRecheckStage: stage, aiClassify: async (metadata, libraries, signalContext) =>
+        createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
+          { candidate: { library: libraries[0] } }, { valid: true, decision: 'CONFIRM' }),
+    });
+    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    const published = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
+    const frame = projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item));
+    const metadata = rememberSavedCurrentPolicyReview(published, { ...value.item, title: 'Current adopted review',
+      policyResult: value.ctx.policyResult, classification_details: { current_policy_review: frame,
+        ai_advisory: published.ai_advisory } }, 77);
+    const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
+    // Both entry points receive the awaiting-decision state established by persistence.
+    const result = { ...published, classification_id: 77, needs_clarification: true,
+      policy_question: question, clarification: question };
+    const classification = { ...value.item, id: 77, method: result.method, metadata, confidence: 75 };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification, question });
+    const oldContract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...classification,
+      metadata: { ...metadata, classification_details: { ...metadata.classification_details, ai_advisory: earlierAdvisory } },
+    }, question });
+    expect(contract.recommendation).toEqual(oldContract.recommendation);
+    expect(contract.recommendation.leading_destination).toMatchObject({ library_id: 101, evidence_score: 70 });
+    expect(contract.fingerprint).not.toBe(oldContract.fingerprint);
+    const answer = fingerprint => ({ contract_version: contract.version, contract_fingerprint: fingerprint,
+      action_id: 'confirm_destination', destination_library_id: 101 });
+    expect(validatePolicyRuntimeQuestionAnswer({ classification, question, answer: answer(contract.fingerprint) }).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionAnswer({ classification, question, answer: answer(oldContract.fingerprint) }).ok).toBe(false);
+    const send = jest.fn(async () => ({ id: 'current-adopted-message' }));
+    await (kind === 'confidence' ? sendConfidenceBasedNotification : sendPendingDecisionNotification)(metadata, result, {
+      client: { channels: { fetch: async () => ({ send }) } }, channelId: 'owned-channel',
+      config: { enabled: true, notify_on_classification: true, notify_on_pending_items: true }, warnFn: jest.fn(),
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    for (const button of send.mock.calls[0][0].components[0].components) {
+      expect(button.data.custom_id).toContain(`_${contract.fingerprint}`);
+      expect(button.data.custom_id).not.toContain(`_${oldContract.fingerprint}`);
+    }
+  });
   test.each(['pending', 'confidence', 'gap'])('current %s notification uses the saved shared contract and numeric score', async kind => {
     const value = await currentPolicyReviewFixture();
     const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
