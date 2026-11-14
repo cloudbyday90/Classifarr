@@ -20,6 +20,7 @@ jest.unstable_mockModule('../../services/ollamaVerificationCapabilityRuntimeInva
   ollamaVerificationCapabilityRuntimeInvalidationService: { invalidateFromGenerationError: invalidation },
 }));
 const { policyRecoveryReferenceFixture } = await import('../fixtures/policyRecoveryReferenceFixture.mjs');
+const { automaticPolicyReviewFixture } = await import('../fixtures/automaticPolicyReviewFixture.mjs');
 const { verificationProfile } = await import('../fixtures/verificationAdviceFixture.mjs');
 const { classificationAiService } = await import('../../services/classificationAiService.mjs');
 const { aiRouterService } = await import('../../services/aiRouter.mjs');
@@ -232,8 +233,11 @@ test('RAG provider refusal and exhausted item cap retain their existing distinct
 });
 
 test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retained apply', 'retained shadow', 'retained rollout mutation',
+  'auto apply', 'auto shadow', 'auto comparison rejection', 'auto rollout mutation',
   'select apply', 'select shadow', 'select comparison rejection', 'select rollout mutation'])(
   'whole production adopted RAG owner %s carries its current review source', async scenario => {
+  const automatic = scenario.startsWith('auto ');
+  scenario = scenario.replace('auto ', '');
   const select = scenario.startsWith('select ');
   scenario = scenario.replace('select ', '');
   const retained = scenario.startsWith('retained ');
@@ -241,6 +245,7 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   const value = await ragRecheckAdviceFixture(); choose('ollama');
   const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
   value.ctx.baselineResult.ai_advisory = earlierAdvisory;
+  value.ctx.baselineResult.candidate_bound_verification = { status_id: 'confirmed' };
   const classify = jest.spyOn(classificationRagLoopService, 'aiClassify');
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
   const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: scenario === 'shadow' ? 'shadow' : 'apply',
@@ -262,8 +267,9 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   let freshPolicyResult;
   const evaluate = jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async expanded => {
     expect(expanded).not.toBe(metadata);
-    freshPolicyResult = (await policyRecoveryReferenceFixture({ item: expanded, ...(select ? { action: 'prompt_select' } : {}) })).result;
-    if (select && scenario === 'comparison rejection') freshPolicyResult.ranked[0].candidate_diagnostics.primary_anchor_eligible = false;
+    freshPolicyResult = automatic ? (await automaticPolicyReviewFixture({ item: expanded })).result
+      : (await policyRecoveryReferenceFixture({ item: expanded, ...(select ? { action: 'prompt_select' } : {}) })).result;
+    if ((select || automatic) && scenario === 'comparison rejection') freshPolicyResult.ranked[0].candidate_diagnostics.primary_anchor_eligible = false;
     return freshPolicyResult;
   });
   if (scenario === 'comparison rejection') beforeReply = () => {
@@ -271,8 +277,8 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   };
   const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
-  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(retained || select ? 0 : 1);
-  if (!retained && !select) {
+  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(retained || select || automatic ? 0 : 1);
+  if (!retained && !select && !automatic) {
     expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
     expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
   }
@@ -284,7 +290,14 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
     expect(held).toBeNull();
   } else {
     expect(result.library.id).toBe(101);
-    if (select) {
+    if (automatic) {
+      expect(classify).not.toHaveBeenCalled();
+      expect(result.method).toBe('policy_auto');
+      expect(result.candidate_bound_verification).toBeNull();
+      expect(result.signalContext).toBe(value.ctx.signalContext);
+      expect(result.ai_advisory).toBe(earlierAdvisory);
+      expect(projectCurrentPolicyReviewFrame(held).version).toBe('policy.current_review.v3');
+    } else if (select) {
       expect(classify).not.toHaveBeenCalled();
       expect(result.candidate_bound_verification).toBeNull();
       expect(result.signalContext).toEqual({ ranked: freshPolicyResult.ranked,

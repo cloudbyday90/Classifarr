@@ -82,7 +82,8 @@ export function buildPolicyRecheckCandidate({
 		method: nextAction === 'auto_classify' ? 'policy_auto' : 'policy_recheck',
 		reason: adoptionReason || `Policy re-check: ${nextAction || 'updated'}`,
 		needs_clarification: shouldClarify,
-		...(shouldClarify ? { candidate_bound_verification: null, signalContext: null, ai_advisory: null } : {}),
+		...(shouldClarify || nextAction === 'auto_classify' ? { candidate_bound_verification: null } : {}),
+		...(shouldClarify ? { signalContext: null, ai_advisory: null } : {}),
 		policyResult: policyResult || baselineResult.policyResult,
 		ragContext: ragContext || baselineResult.ragContext,
 	};

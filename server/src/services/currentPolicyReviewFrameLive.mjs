@@ -3,10 +3,16 @@ import { recoveryField as field, recoveryItemIdentity } from './policyRecoverySu
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { CURRENT_POLICY_REVIEW_VERSION, readCurrentPolicyReviewFrame } from './currentPolicyReviewFrameContract.mjs';
 import { CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
-import { currentPolicyReviewVersionSupportsMethod } from './currentPolicyReviewFrameVersions.mjs';
+import { CURRENT_POLICY_AUTO_REVIEW_VERSION, currentPolicyReviewCandidateMethod } from './currentPolicyReviewFrameVersions.mjs';
 
 const attempted = Symbol('currentPolicyReviewAttempt');
 const candidates = new WeakMap(), published = new WeakMap(), saved = new WeakMap();
+function attemptedVersion(result) {
+  try {
+    const marker = result?.[attempted];
+    return marker === CURRENT_POLICY_AUTO_REVIEW_VERSION ? marker : marker === true ? CURRENT_POLICY_REVIEW_VERSION : null;
+  } catch { return null; }
+}
 function tuple(result) {
   const library = field(result, 'library');
   const libraryId = library == null ? null : field(library, 'id');
@@ -32,7 +38,7 @@ export function associateCurrentPolicyReviewCandidate(result, { seed, current, p
   try {
     // Register the attempt before inspecting values so inspection failure remains an explicit gap.
     candidates.set(result, { invalid: true, frameVersion: CURRENT_POLICY_REVIEW_VERSION });
-    if (!currentPolicyReviewVersionSupportsMethod(frameVersion, 'policy_recheck')) return result;
+    if (!currentPolicyReviewCandidateMethod(frameVersion)) return result;
     candidates.set(result, { invalid: true, frameVersion });
     candidates.set(result, { seed, current, policyResult, frameVersion, identity: recoveryItemIdentity(metadata), tuple: tuple(result), invalid: false });
   } catch { /* The registered attempt retains its evidence-gap status. */ }
@@ -43,7 +49,8 @@ export function associateCurrentPolicyReviewCandidate(result, { seed, current, p
 export function publishCurrentPolicyReviewFrame(source, target) {
   const receipt = candidates.get(source);
   if (!receipt) return target;
-  Object.defineProperty(target, attempted, { value: true, enumerable: true });
+  Object.defineProperty(target, attempted, { value: receipt.frameVersion === CURRENT_POLICY_AUTO_REVIEW_VERSION
+    ? CURRENT_POLICY_AUTO_REVIEW_VERSION : true, enumerable: true });
   valid(receipt, source);
   valid(receipt, target);
   published.set(target, receipt);
@@ -53,17 +60,23 @@ export function publishCurrentPolicyReviewFrame(source, target) {
 /** Explicitly transfer authority across the two owner-controlled result copies. Spread alone is a gap. */
 export function transferCurrentPolicyReviewFrame(source, target) {
   const receipt = published.get(source);
-  if (receipt && source?.[attempted] === true) {
+  if (receipt && attemptedVersion(source)) {
     valid(receipt, source); valid(receipt, target); published.set(target, receipt);
   }
   return target;
 }
 
 export function holdCurrentPolicyReviewFrame(result, metadata) {
-  if (result?.[attempted] !== true) return null;
+  const markerVersion = attemptedVersion(result);
+  if (!markerVersion) return null;
   const receipt = published.get(result);
   valid(receipt, result, metadata);
-  return { receipt, result, metadata, invalid: !receipt };
+  return { receipt, result, metadata, frameVersion: receipt?.frameVersion ?? markerVersion, invalid: !receipt };
+}
+
+/** Auto evidence is admitted only after the ordinary writer derives the pending row state. */
+export function admitCurrentPolicyReviewForPersistence(held, status) {
+  return held?.frameVersion === CURRENT_POLICY_AUTO_REVIEW_VERSION && status !== 'awaiting_decision' ? null : held;
 }
 
 /** Recheck at entry, after state derivation and immediately before INSERT serialization. */
@@ -76,7 +89,7 @@ export function projectCurrentPolicyReviewFrame(held) {
     const observed = field(held.result, 'method');
     if (CLASSIFIER_CAPTURE_METHODS.includes(observed)) method = observed;
   } catch { held.invalid = true; }
-  const frame = { version: held.receipt?.frameVersion ?? CURRENT_POLICY_REVIEW_VERSION,
+  const frame = { version: held.receipt?.frameVersion ?? held.frameVersion ?? CURRENT_POLICY_REVIEW_VERSION,
     classification_id: '9223372036854775807', identity_key: identity,
     method, status: held.invalid || !held.receipt?.seed ? 'evidence_gap' : 'recorded', policy: held.invalid ? null : held.receipt?.seed?.policy ?? null };
   const [mediaType, tmdbId] = identity?.split(':') ?? [];

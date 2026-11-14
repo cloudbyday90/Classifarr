@@ -3,7 +3,7 @@ import { recoveryField as field, recoveryRows, POLICY_RECOVERY_REFERENCE_LIMITS 
 import { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } from './policyRecoverySuggestionReader.mjs';
 import { captureCurrentPolicyReviewSeed } from './currentPolicyReviewFrameSeed.mjs';
 import { associateCurrentPolicyReviewCandidate } from './currentPolicyReviewFrameLive.mjs';
-import { currentPolicyReviewVersionForAction } from './currentPolicyReviewFrameVersions.mjs';
+import { currentPolicyReviewVersionForAction, currentPolicyReviewCandidateMethod } from './currentPolicyReviewFrameVersions.mjs';
 
 const sources = new WeakMap();
 const stages = new WeakMap();
@@ -23,7 +23,8 @@ export function holdAdoptedCurrentPolicyReviewSource({ policyResult, metadata, l
     const selection = holdPolicyRecoverySuggestion(args);
     if (!selection || readPolicyRecoverySuggestion(selection, args) !== library) return null;
     const token = Object.freeze({});
-    sources.set(token, { args, action, frameVersion, selection, library, seed: captureCurrentPolicyReviewSeed(policyResult, metadata) });
+    sources.set(token, { args, action, frameVersion, method: currentPolicyReviewCandidateMethod(frameVersion),
+      selection, library, seed: captureCurrentPolicyReviewSeed(policyResult, metadata) });
     return token;
   } catch {
     return null;
@@ -37,7 +38,7 @@ function adopted(value) {
     field(value.stage, 'hadError') === false && field(value.stage, 'policyGate') === value.gate &&
     field(value.gate, 'shouldAdopt') === true && field(value.stage, 'pass2Candidate') === value.candidate &&
     field(value.candidate, 'policyResult') === value.source.args.policyResult &&
-    field(value.candidate, 'library') === value.source.library && field(value.candidate, 'method') === 'policy_recheck' &&
+    field(value.candidate, 'library') === value.source.library && field(value.candidate, 'method') === value.source.method &&
     field(value.candidate, 'confidence') === value.confidence;
 }
 

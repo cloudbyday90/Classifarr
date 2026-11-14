@@ -23,6 +23,8 @@ import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestion
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
 import { adoptedSelectPolicyReviewFixture } from './fixtures/adoptedSelectPolicyReviewFixture.mjs';
+import { automaticPolicyReviewFixture } from './fixtures/automaticPolicyReviewFixture.mjs';
+import { evaluateClassificationRouteSafety, buildClassificationRouteSafetyProjection } from '../services/classificationRouteSafetyGate.mjs';
 import { rememberSavedCurrentPolicyReview, publishCurrentPolicyReviewFrame, holdCurrentPolicyReviewFrame,
   projectCurrentPolicyReviewFrame } from '../services/currentPolicyReviewFrameLive.mjs';
 import { ragRecheckAdviceFixture } from './fixtures/ragRecheckAdviceFixture.mjs';
@@ -67,6 +69,40 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
+    'automatic held %s notification gap=%s preserves current reference and command meaning', async (kind, gap) => {
+    const value = await automaticPolicyReviewFixture();
+    value.ctx.baselineResult.candidate_bound_verification = { status_id: 'confirmed' };
+    jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
+    const stage = await runPolicyRecheckStage(value.ctx);
+    expect(stage.policyGate.shouldAdopt).toBe(true);
+    const published = publishCurrentPolicyReviewFrame(stage.pass2Candidate, { ...stage.pass2Candidate });
+    const frame = projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item));
+    const routeSafety = buildClassificationRouteSafetyProjection(evaluateClassificationRouteSafety({ result: published }));
+    const metadata = rememberSavedCurrentPolicyReview(published, { ...value.item, title: 'Owned held automatic review',
+      policyResult: value.original, classification_details: { current_policy_review: gap ? { ...frame, status: 'evidence_gap', policy: null } : frame,
+        route_safety: routeSafety } }, 77);
+    const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
+    const result = { ...published, classification_id: 77, needs_clarification: true, route_safety: routeSafety,
+      policy_question: question, clarification: question };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...value.item, id: 77,
+      method: result.method, metadata, confidence: 90 }, question });
+    expect(result.candidate_bound_verification).toBeNull();
+    expect(contract.recommendation.leading_destination).toEqual(gap ? null : expect.objectContaining({ library_id: 101, evidence_score: 90 }));
+    const send = jest.fn(async () => ({ id: 'owned-auto-message' }));
+    await (kind === 'confidence' ? sendConfidenceBasedNotification : sendPendingDecisionNotification)(metadata, result, {
+      client: { channels: { fetch: async () => ({ send }) } }, channelId: 'owned-channel',
+      config: { enabled: true, notify_on_classification: true, notify_on_pending_items: true }, warnFn: jest.fn(),
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    const payload = send.mock.calls[0][0], buttons = payload.components[0].components.map(button => button.data);
+    for (const button of buttons) expect(button.custom_id).toContain(`_${contract.fingerprint}`);
+    expect(buttons.some(button => button.style === 3)).toBe(!gap);
+    if (!gap) expect(payload.embeds[0].data.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Policy score: Owned destination 0', value: '90%' }),
+    ]));
+    expect(JSON.stringify(payload)).not.toContain('80%');
+  });
   test.each(['pending', 'confidence'])('select-only %s notification retains technical score and explicit neutral buttons', async kind => {
     const value = await adoptedSelectPolicyReviewFixture();
     const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });

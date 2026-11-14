@@ -8,7 +8,7 @@ import { ragLoopResilienceManager } from '../../services/ragLoopResilienceManage
 import { holdAdoptedCurrentPolicyReviewSource, retainAdoptedCurrentPolicyReviewStage,
   prepareAdoptedCurrentPolicyReview } from '../../services/adoptedRagCurrentPolicyReview.mjs';
 import { publishCurrentPolicyReviewFrame, holdCurrentPolicyReviewFrame,
-  projectCurrentPolicyReviewFrame } from '../../services/currentPolicyReviewFrameLive.mjs';
+  projectCurrentPolicyReviewFrame, admitCurrentPolicyReviewForPersistence } from '../../services/currentPolicyReviewFrameLive.mjs';
 
 afterEach(() => jest.restoreAllMocks());
 const args = value => ({ policyResult: value.result, metadata: value.item, libraries: value.libraries });
@@ -104,7 +104,7 @@ test('retained candidate inspection failure records a gap without invoking an ac
   expect(trap).not.toHaveBeenCalled();
 });
 
-test('automatic policy candidates retain existing support/status and have no pending frame attempt', async () => {
+test('automatic policy candidates retain support, clear inherited status and emit no completed-row frame', async () => {
   const value = await ragRecheckAdviceFixture();
   value.result.action = 'auto_classify';
   const status = { status_id: 'abstained' };
@@ -114,8 +114,10 @@ test('automatic policy candidates retain existing support/status and have no pen
   const result = buildPolicyRecheckCandidate({ ...value.ctx, policyResult: value.result });
   const stage = { ...value.stage, pass2Candidate: result };
   retainAdoptedCurrentPolicyReviewStage(stage, null, args(value));
-  expect(result.candidate_bound_verification).toBe(status);
+  expect(result.candidate_bound_verification).toBeNull();
   expect(result.signalContext).toBe(value.ctx.signalContext);
   expect(result.ai_advisory).toBe(advisory);
-  expect(frame(value, result)).toBeNull();
+  const published = publishCurrentPolicyReviewFrame(result, { ...result });
+  expect(projectCurrentPolicyReviewFrame(admitCurrentPolicyReviewForPersistence(
+    holdCurrentPolicyReviewFrame(published, value.item), 'completed'))).toBeNull();
 });

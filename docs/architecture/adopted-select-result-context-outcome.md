@@ -150,3 +150,7 @@ would leave that wrong recommendation. Preserve the existing hold and normal
 successful automatic routing while settling that review-only boundary first.
 This synthetic control inspected no live deployment or real persisted row; no
 automatic-path behavior was changed here.
+
+That review-held recommendation is implemented in the separate
+[automatic policy outcome](review-held-auto-policy-outcome.md); its broader
+context/advisory cleanup remains a follow-up.

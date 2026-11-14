@@ -51,7 +51,8 @@ import { buildClassificationQueueDecisionWitness } from './classificationQueueDe
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
 import { projectInventoryRankingShadow, projectHeldInventoryRankingShadow } from './inventoryRankingShadow.mjs';
 import { holdPolicyEvaluationCapture } from './policyEvaluationCapture.mjs';
-import { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame, rememberSavedCurrentPolicyReview } from './currentPolicyReviewFrameLive.mjs';
+import { holdCurrentPolicyReviewFrame, projectCurrentPolicyReviewFrame, rememberSavedCurrentPolicyReview,
+  admitCurrentPolicyReviewForPersistence } from './currentPolicyReviewFrameLive.mjs';
 import { insertCurrentPolicyReview } from './currentPolicyReviewInsertSql.mjs';
 import { persistPolicyEvaluationCapture } from './policyEvaluationCaptureRepository.mjs';
 import { buildClassificationIntakeComparison } from './classificationIntakeComparison.mjs';
@@ -320,7 +321,7 @@ export class ClassificationPersistenceService {
   }
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
-    const heldCurrentReview = holdCurrentPolicyReviewFrame(result, metadata);
+    let heldCurrentReview = holdCurrentPolicyReviewFrame(result, metadata);
     const candidateCapture = buildClassificationCandidateCapture(result);
     const heldPolicyEvaluation = holdPolicyEvaluationCapture(result, metadata);
     const heldInventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
@@ -340,6 +341,7 @@ export class ClassificationPersistenceService {
       profileSnapshot,
     } = await this.deriveClassificationPersistenceState(result);
     projectCurrentPolicyReviewFrame(heldCurrentReview);
+    heldCurrentReview = admitCurrentPolicyReviewForPersistence(heldCurrentReview, status);
     const inventoryRankingShadow = projectHeldInventoryRankingShadow(heldInventoryRankingShadow, metadata);
     const intakeComparison = heldInventoryRankingShadow && !inventoryRankingShadow
       ? Object.freeze({ statusId: 'not_captured', reasonId: 'identity_mismatch' })

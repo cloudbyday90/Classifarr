@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Review-held automatic policy evidence** — Tie new retained automatic-policy
+  reviews to the current evaluation through a bounded v3 frame or explicit gap.
+  Preserve saved routing holds and existing operator actions; completed automatic
+  and retry rows do not receive this frame. Clear inherited verification status
+  on new adopted automatic candidates. See the
+  [outcome](docs/architecture/review-held-auto-policy-outcome.md).
+
 - **Select result ownership** — Give new adopted selection candidates fresh
   proven policy context or explicit absence, and clear the earlier candidate's
   AI advisory. Preserve explicit destination choice, current review evidence,

@@ -9,6 +9,7 @@ import { buildUnresolvedRecoveryAdvice } from '../../server/src/services/recover
 import { buildProviderRecovery } from '../../server/src/services/classificationProviderRecovery.mjs'
 import { composePolicyCandidateEvidenceCard } from '../../server/src/services/policyCandidateEvidenceCard.mjs'
 import { unknownReviewPurpose } from '../../server/src/services/currentPolicyReviewFrameContract.mjs'
+import { evaluateClassificationRouteSafety, buildClassificationRouteSafetyProjection } from '../../server/src/services/classificationRouteSafetyGate.mjs'
 
 test('disagreement stays compact, keyboard accessible and explicit at narrow widths', async ({ page }, testInfo) => {
   const writes = []
@@ -74,24 +75,32 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
     action_id: 'confirm_destination', destination_library_id: 8 } })
 })
 
-for (const action of ['prompt_confirm', 'prompt_select']) for (const gap of [false, true]) {
-  test(`saved current ${action} ${gap ? 'gap requires choice' : 'uses the fresh destination'} without UI clutter`, async ({ page }) => {
+for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false], ['auto_classify', false], ['auto_classify', true]]) for (const gap of [false, true]) {
+  test(`saved current ${action} bulk=${bulk} ${gap ? 'gap requires choice' : 'uses the fresh destination'} without UI clutter`, async ({ page }) => {
     const selectOnly = action === 'prompt_select'
+    const automatic = action === 'auto_classify'
     const libraries = [{ id: 101, name: 'Fresh destination', media_type: 'movie', is_active: true },
       { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true }]
     const metadata = { tmdb_id: 42, media_type: 'movie', title: 'Owned saved review', policyResult: {
       action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, policy_id: 2, score: 80 }] } }
-    const candidate = { policy_id: 1, library_id: 101, score: 70, auto_classify_threshold: 85, prompt_threshold: 60,
+    const candidate = { policy_id: 1, library_id: 101, score: automatic ? 90 : 70, auto_classify_threshold: 85, prompt_threshold: 60,
       origin: 'native_intent', revision: 1, detail: { card: composePolicyCandidateEvidenceCard({ classification: metadata }, unknownReviewPurpose()),
         explanation: null, facts: [] } }
-    const policy = { action, confidence: 75, thresholds: { auto_classify: 85, prompt: 60, prompt_select: null }, ranked: [candidate] }
-    const method = selectOnly ? 'policy_recheck' : 'ai_verified'
-    metadata.classification_details = { current_policy_review: { version: selectOnly ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: '46',
+    const policy = { action, confidence: automatic ? 90 : 75, thresholds: { auto_classify: 85, prompt: 60, prompt_select: null }, ranked: [candidate] }
+    const method = automatic ? 'policy_auto' : selectOnly ? 'policy_recheck' : 'ai_verified'
+    metadata.classification_details = { current_policy_review: { version: automatic ? 'policy.current_review.v3' : selectOnly ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: '46',
       identity_key: 'movie:42', method, status: gap ? 'evidence_gap' : 'recorded', policy: gap ? null : policy } }
+    if (automatic) metadata.classification_details.route_safety = buildClassificationRouteSafetyProjection(evaluateClassificationRouteSafety({
+      result: { method, library: libraries[0], policyResult: policy, confidence: 90, ai_authority: { sideEffects: { canRoute: false } } },
+    }))
     const question = normalizePolicyRuntimeQuestion({ metadata, libraries, policyResult: policy })
-    const item = { ...metadata, id: 46, method, confidence: 75, library_id: null, status: 'awaiting_decision', metadata,
+    const item = { ...metadata, id: 46, method, confidence: automatic ? 90 : 75, library_id: null, status: 'awaiting_decision', metadata,
       policy_question: question, policy_question_stale: false }
     const answer = buildPolicyRuntimeQuestionAnswerContract({ classification: item, question })
+    const second = { ...item, id: 47, metadata: { ...metadata, classification_details: {
+      ...metadata.classification_details, current_policy_review: { ...metadata.classification_details.current_policy_review, classification_id: '47' },
+    } } }
+    const secondAnswer = buildPolicyRuntimeQuestionAnswerContract({ classification: second, question })
     const writes = []
     await page.route(url => url.pathname.startsWith('/api/'), async route => {
       const req = route.request(), path = new URL(req.url()).pathname
@@ -104,7 +113,8 @@ for (const action of ['prompt_confirm', 'prompt_select']) for (const gap of [fal
         if (path === '/api/notifications/unread-count') data = { unread: 0 }
         if (['/api/libraries', '/api/classification/progress', '/api/queue/pending', '/api/queue/failed'].includes(path)) data = []
         if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
-        if (path === '/api/classification/pending') data = { items: [{ ...item, policy_question_answer: answer }] }
+        if (path === '/api/classification/pending') data = { items: [{ ...item, policy_question_answer: answer },
+          ...(bulk ? [{ ...second, policy_question_answer: secondAnswer }] : [])] }
         if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
       }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
@@ -114,8 +124,9 @@ for (const action of ['prompt_confirm', 'prompt_select']) for (const gap of [fal
     await expect(card).not.toContainText('80%')
     if (gap || selectOnly) {
       await expect(card.getByRole('button', { name: /^Confirm / })).toHaveCount(0)
+      if (bulk) await expect(page.getByRole('button', { name: 'Confirm All', exact: true })).toHaveCount(0)
       await expect(card).toContainText('Choose a destination for this item.')
-      if (selectOnly) {
+      if (selectOnly || automatic) {
         if (!gap) await expect(card).toContainText('Policy score: 70/100 (confirmation at 60, automatic at 85)')
         for (const width of [390, 320]) {
           await page.setViewportSize({ width, height: 844 })
@@ -131,12 +142,23 @@ for (const action of ['prompt_confirm', 'prompt_select']) for (const gap of [fal
           action_id: 'confirm_destination', destination_library_id: 101 })
       }
     } else {
-      await expect(card).toContainText('70% policy score')
-      const confirm = card.getByRole('button', { name: 'Confirm Fresh destination', exact: true })
+      await expect(card).toContainText(`${automatic ? 90 : 70}% policy score`)
+      if (automatic) {
+        await expect(card).toContainText('AI advisory review required')
+        for (const width of [390, 320]) {
+          await page.setViewportSize({ width, height: 844 })
+          expect(await card.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+        }
+        expect(writes).toEqual([])
+      }
+      const confirm = bulk ? page.getByRole('button', { name: 'Confirm All', exact: true })
+        : card.getByRole('button', { name: 'Confirm Fresh destination', exact: true })
       await expect(confirm).toBeVisible()
       await confirm.focus(); await page.keyboard.press('Enter')
-      await expect.poll(() => writes.length).toBe(1)
+      await expect.poll(() => writes.length).toBe(bulk ? 2 : 1)
       expect(writes[0]).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+        action_id: 'confirm_destination', destination_library_id: 101 })
+      if (bulk) expect(writes[1]).toEqual({ contract_version: secondAnswer.version, contract_fingerprint: secondAnswer.fingerprint,
         action_id: 'confirm_destination', destination_library_id: 101 })
     }
   })
