@@ -36,6 +36,19 @@ function answer(overrides = {}) {
 }
 
 describe('policyQuestionRecommendationPresentation', () => {
+  it('retains technical select evidence but rejects a forged primary for the selection-required reason', () => {
+    const value = pendingReviewReference(), source = value.recommendation
+    source.advisory_destination = null
+    source.why_not_automatic = { reason_id: 'policy_destination_selection_required', message: 'Choose a destination.' }
+    expect(policyQuestionRecommendation(value)).toMatchObject({ leading_destination: null,
+      policy_destination: { library_id: 7, evidence_score: 37 } })
+    expect(leadingPolicyQuestionDestination(value)).toBeNull()
+    source.status_id = 'leading_candidate_available'
+    source.leading_destination = { ...source.policy_destination }
+    source.alternative_candidate_count = 1
+    expect(policyQuestionRecommendation(value)).toBeNull()
+    expect(leadingPolicyQuestionDestination(value)).toBeNull()
+  })
   it('retains separate v2 policy/advisory references and never manufactures a primary action', () => {
     const value = pendingReviewReference()
     value.recommendation.policy_destination.library_name = 'Untrusted replacement'

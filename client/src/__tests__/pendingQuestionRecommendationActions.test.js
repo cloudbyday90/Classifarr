@@ -60,6 +60,21 @@ const answer = {
 }
 
 describe('PendingQuestionRecommendationActions', () => {
+  it('offers explicit select candidates without a primary Confirm button or implied verification', async () => {
+    const value = pendingReviewReference()
+    value.recommendation.advisory_destination = null
+    value.recommendation.why_not_automatic = { reason_id: 'policy_destination_selection_required', message: 'Choose a destination.' }
+    value.decision_summary.deterministic.status_id = 'destination_selection_required'
+    value.decision_summary.candidate_bound_verification = null
+    value.decision_summary.ai_advisory = null
+    const wrapper = mount(PendingQuestionRecommendationActions, { props: { answer: value, itemId: 44, isActionBusy: () => false },
+      global: { stubs: { Button: { template: '<button><slot /></button>' } } } })
+    expect(wrapper.findAll('button').some(button => button.text().startsWith('Confirm '))).toBe(false)
+    expect(wrapper.text()).not.toContain('Candidate verification confirmed')
+    expect(wrapper.emitted()).toEqual({})
+    await wrapper.findAll('button').find(button => button.text() === 'Use Comedy').trigger('click')
+    expect(wrapper.emitted('confirm-destination')).toEqual([[{ actionId: 'confirm_destination', destinationLibraryId: 7 }]])
+  })
   it('keeps evidence available during disagreement and requires an explicit existing candidate choice', async () => {
     const wrapper = mount(PendingQuestionRecommendationActions, { props: { answer: pendingReviewReference(), itemId: 44, isActionBusy: () => false },
       global: { stubs: { Button: { template: '<button><slot /></button>' } } } })

@@ -104,9 +104,9 @@ test('retained candidate inspection failure records a gap without invoking an ac
   expect(trap).not.toHaveBeenCalled();
 });
 
-test.each(['auto_classify', 'prompt_select'])('%s policy-only candidates retain existing status and have no frame attempt', async action => {
+test('automatic policy candidates retain existing support/status and have no pending frame attempt', async () => {
   const value = await ragRecheckAdviceFixture();
-  value.result.action = action;
+  value.result.action = 'auto_classify';
   const status = { status_id: 'abstained' };
   const advisory = { message: 'Existing action-owned advisory' };
   value.ctx.baselineResult.candidate_bound_verification = status;

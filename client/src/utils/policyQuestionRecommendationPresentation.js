@@ -122,7 +122,8 @@ function currentRecommendation(answer) {
   if (hasPrimary) {
     if (!leading || !policy || leading.library_id !== policy.library_id || leading.evidence_score !== policy.evidence_score ||
         advisory && advisory.library_id !== policy.library_id ||
-        ['advisory_disagreement', 'invalid_advisory_proposal', 'policy_tie', 'policy_reference_unavailable', 'no_positive_evidence'].includes(reasonId)) return null
+        ['advisory_disagreement', 'invalid_advisory_proposal', 'policy_tie', 'policy_reference_unavailable', 'no_positive_evidence',
+          'policy_destination_selection_required'].includes(reasonId)) return null
   } else if (source.status_id !== POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.MANUAL_DESTINATION_SELECTION_REQUIRED || source.leading_destination !== null) return null
   if (reasonId === 'advisory_disagreement' && (!policy || !advisory || policy.library_id === advisory.library_id)) return null
   if (source.alternative_candidate_count !== destinations.size - (hasPrimary ? 1 : 0)) return null

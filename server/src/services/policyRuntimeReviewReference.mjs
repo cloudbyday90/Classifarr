@@ -84,7 +84,8 @@ export function buildPolicyRuntimeReviewReference({ classification = {}, questio
     policyReference.destination.library_id !== advisoryDestination.library_id);
   const reason = invalidProposal ? 'invalid_advisory_proposal' : disagreement ? 'advisory_disagreement' :
     !policyReference ? (leaders.length > 1 && !invalid ? 'policy_tie' : 'policy_reference_unavailable') :
-      leaders.length > 1 ? 'policy_tie' : policyReference.candidate.score <= 0 ? 'no_positive_evidence' : null;
+      leaders.length > 1 ? 'policy_tie' : policyReference.candidate.score <= 0 ? 'no_positive_evidence' :
+        reviewSource.current && policy.action === 'prompt_select' ? 'policy_destination_selection_required' : null;
   const reference = { policyReference, primaryDestination: reason ? null : policyReference?.destination ?? null,
     advisoryDestination, adjudication, reason, hasUnboundAutomaticScore, rankedDestinations: invalid ? [] : values
       .sort((left, right) => right.candidate.score - left.candidate.score || left.destination.library_id - right.destination.library_id)

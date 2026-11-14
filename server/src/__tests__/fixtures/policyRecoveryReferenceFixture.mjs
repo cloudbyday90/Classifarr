@@ -20,7 +20,7 @@ export function recoveryPolicies(count = 1, source = 'native_intent') {
   });
 }
 
-export async function policyRecoveryReferenceFixture({ count = 1, source, live = true, confidence = 70,
+export async function policyRecoveryReferenceFixture({ count = 1, source, live = true, confidence = 70, action = 'prompt_confirm',
   configure = () => {}, beforeEvaluate = () => {}, afterEvaluate = () => {}, metadata = {}, item: suppliedItem = null,
   captureEvaluation = false } = {}) {
   const item = suppliedItem || { ...purposeMatchFixture().item, title: 'Owned item', ...metadata };
@@ -35,7 +35,7 @@ export async function policyRecoveryReferenceFixture({ count = 1, source, live =
     },
     applyInventoryEvidence: async ({ evaluations }) => evaluations,
     rankResults: async rows => rows,
-    determineAction: ranked => ({ action: 'prompt_confirm', ranked, confidence }),
+    determineAction: ranked => ({ action, ranked, confidence }),
     ...(live ? { captureRecoveryReference: createLivePolicyRecoveryReference(item) } : {}),
     ...(captureEvaluation ? { capturePolicyEvaluation: createLivePolicyEvaluationCapture(item) } : {}),
   });

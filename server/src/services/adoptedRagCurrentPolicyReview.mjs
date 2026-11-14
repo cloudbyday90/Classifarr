@@ -3,6 +3,7 @@ import { recoveryField as field, recoveryRows, POLICY_RECOVERY_REFERENCE_LIMITS 
 import { holdPolicyRecoverySuggestion, readPolicyRecoverySuggestion } from './policyRecoverySuggestionReader.mjs';
 import { captureCurrentPolicyReviewSeed } from './currentPolicyReviewFrameSeed.mjs';
 import { associateCurrentPolicyReviewCandidate } from './currentPolicyReviewFrameLive.mjs';
+import { currentPolicyReviewVersionForAction } from './currentPolicyReviewFrameVersions.mjs';
 
 const sources = new WeakMap();
 const stages = new WeakMap();
@@ -11,7 +12,8 @@ const prepared = new WeakMap();
 /** Capture numeric review evidence before adoption callbacks and optional prompt work. */
 export function holdAdoptedCurrentPolicyReviewSource({ policyResult, metadata, libraries }) {
   try {
-    if (field(policyResult, 'action') !== 'prompt_confirm') return null;
+    const action = field(policyResult, 'action'), frameVersion = currentPolicyReviewVersionForAction(action);
+    if (!frameVersion) return null;
     const ranked = field(policyResult, 'ranked');
     const leader = recoveryRows(ranked, POLICY_RECOVERY_REFERENCE_LIMITS.candidates)[0];
     const library = recoveryRows(libraries, POLICY_RECOVERY_REFERENCE_LIMITS.libraries)
@@ -21,7 +23,7 @@ export function holdAdoptedCurrentPolicyReviewSource({ policyResult, metadata, l
     const selection = holdPolicyRecoverySuggestion(args);
     if (!selection || readPolicyRecoverySuggestion(selection, args) !== library) return null;
     const token = Object.freeze({});
-    sources.set(token, { args, selection, library, seed: captureCurrentPolicyReviewSeed(policyResult, metadata) });
+    sources.set(token, { args, action, frameVersion, selection, library, seed: captureCurrentPolicyReviewSeed(policyResult, metadata) });
     return token;
   } catch {
     return null;
@@ -30,6 +32,8 @@ export function holdAdoptedCurrentPolicyReviewSource({ policyResult, metadata, l
 
 function adopted(value) {
   return field(value.stage, 'policyAfter') === value.source.args.policyResult &&
+    field(value.source.args.policyResult, 'action') === value.source.action &&
+    (!value.source.seed || value.source.seed.policy.action === value.source.action) &&
     field(value.stage, 'hadError') === false && field(value.stage, 'policyGate') === value.gate &&
     field(value.gate, 'shouldAdopt') === true && field(value.stage, 'pass2Candidate') === value.candidate &&
     field(value.candidate, 'policyResult') === value.source.args.policyResult &&
@@ -43,20 +47,23 @@ export function retainAdoptedCurrentPolicyReviewStage(stage, token, scope) {
     const source = sources.get(token);
     sources.delete(token);
     const { policyResult, metadata } = scope ?? source?.args ?? {};
+    const frameVersion = source?.frameVersion ?? currentPolicyReviewVersionForAction(field(policyResult, 'action'));
     const candidate = field(stage, 'pass2Candidate');
     if (!candidate || field(stage, 'policyAfter') !== policyResult || field(stage, 'hadError') !== false ||
-        field(field(stage, 'policyGate'), 'shouldAdopt') !== true || field(policyResult, 'action') !== 'prompt_confirm') return stage;
+        field(field(stage, 'policyGate'), 'shouldAdopt') !== true || !frameVersion) return stage;
     // Inspection failure must remain a present gap, never an absent legacy fallback.
-    associateCurrentPolicyReviewCandidate(candidate, { seed: null, current: () => false, policyResult, metadata });
+    associateCurrentPolicyReviewCandidate(candidate, { seed: null, current: () => false, policyResult, metadata, frameVersion });
+    const action = field(policyResult, 'action');
     const confidence = field(candidate, 'confidence');
     const value = source && typeof confidence === 'number' && Number.isFinite(confidence) && confidence >= 0 && confidence <= 100
       ? { source, stage, candidate, confidence, gate: field(stage, 'policyGate'), invalid: false } : null;
-    if (value && (source.args.policyResult !== policyResult || source.args.metadata !== metadata ||
+    if (value && (source.action !== action || source.frameVersion !== frameVersion ||
+        source.args.policyResult !== policyResult || source.args.metadata !== metadata ||
         (scope && source.args.libraries !== scope.libraries))) value.invalid = true;
-    if (policyCurrent(value)) stages.set(stage, value);
+    if (policyCurrent(value) && action === 'prompt_confirm') stages.set(stage, value);
     // This association belongs to policy adoption, independently of optional AI work.
     associateCurrentPolicyReviewCandidate(candidate, {
-      seed: value?.source.seed ?? null, current: () => policyCurrent(value), policyResult, metadata,
+      seed: value?.source.seed ?? null, current: () => policyCurrent(value), policyResult, metadata, frameVersion,
     });
   } catch { /* A diagnostic gap cannot change candidate adoption. */ }
   return stage;

@@ -116,6 +116,7 @@ function buildPolicyRuntimeQuestionRecommendationPresentation({
     policy_tie: 'The leading policy scores are tied. Choose the destination for this item.',
     policy_reference_unavailable: 'Destination-specific policy evidence is unavailable or inconsistent. Choose a destination or retry classification.',
     no_positive_evidence: 'No candidate has positive policy support. Choose a destination or retry classification.',
+    policy_destination_selection_required: 'The current policy evaluation requires an explicit destination choice. Choose the destination for this item.',
   };
 
   return {

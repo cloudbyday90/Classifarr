@@ -22,6 +22,7 @@ import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestio
 import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
+import { adoptedSelectPolicyReviewFixture } from './fixtures/adoptedSelectPolicyReviewFixture.mjs';
 import { rememberSavedCurrentPolicyReview, publishCurrentPolicyReviewFrame, holdCurrentPolicyReviewFrame,
   projectCurrentPolicyReviewFrame } from '../services/currentPolicyReviewFrameLive.mjs';
 import { ragRecheckAdviceFixture } from './fixtures/ragRecheckAdviceFixture.mjs';
@@ -66,6 +67,32 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test.each(['pending', 'confidence'])('select-only %s notification retains technical score and explicit neutral buttons', async kind => {
+    const value = await adoptedSelectPolicyReviewFixture();
+    const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
+    const metadata = rememberSavedCurrentPolicyReview(value.published, { ...value.item, title: 'Owned select review',
+      policyResult: value.ctx.policyResult, classification_details: { current_policy_review: value.frame } }, 77);
+    const result = { ...value.published, classification_id: 77, clarification: question, policy_question: question };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...value.item, id: 77,
+      method: result.method, metadata, confidence: result.confidence }, question });
+    expect(contract.recommendation.leading_destination).toBeNull();
+    expect(contract.recommendation.policy_destination).toMatchObject({ library_id: 101, evidence_score: 70 });
+    const send = jest.fn(async () => ({ id: 'owned-select-message' }));
+    await (kind === 'confidence' ? sendConfidenceBasedNotification : sendPendingDecisionNotification)(metadata, result, {
+      client: { channels: { fetch: async () => ({ send }) } }, channelId: 'owned-channel',
+      config: { enabled: true, notify_on_classification: true, notify_on_pending_items: true }, warnFn: jest.fn(),
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    const payload = send.mock.calls[0][0], buttons = payload.components[0].components.map(button => button.data);
+    expect(buttons.length).toBeGreaterThan(0);
+    for (const button of buttons) {
+      expect(button.custom_id).toContain(`_${contract.fingerprint}`);
+      expect(button.style).not.toBe(3); // Discord success styling denotes the primary shortcut.
+    }
+    expect(payload.embeds[0].data.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Policy score: Owned destination 0', value: '70%' }),
+    ]));
+  });
   test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
     'adopted %s notification retained=%s uses the current advisory fingerprint across both saved contracts', async (kind, retained) => {
     const value = await ragRecheckAdviceFixture({ confidence: 75, afterEvaluate: row => { row.score = 70; } });

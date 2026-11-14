@@ -231,8 +231,11 @@ test('RAG provider refusal and exhausted item cap retain their existing distinct
   expect(requests).toHaveLength(0); expect(capped.aiCallsUsed).toBe(1);
 });
 
-test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retained apply', 'retained shadow', 'retained rollout mutation'])(
+test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retained apply', 'retained shadow', 'retained rollout mutation',
+  'select apply', 'select shadow', 'select comparison rejection', 'select rollout mutation'])(
   'whole production adopted RAG owner %s carries its current review source', async scenario => {
+  const select = scenario.startsWith('select ');
+  scenario = scenario.replace('select ', '');
   const retained = scenario.startsWith('retained ');
   scenario = scenario.replace('retained ', '');
   const value = await ragRecheckAdviceFixture(); choose('ollama');
@@ -259,7 +262,8 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   let freshPolicyResult;
   const evaluate = jest.spyOn(policyEngine, 'evaluateItem').mockImplementation(async expanded => {
     expect(expanded).not.toBe(metadata);
-    freshPolicyResult = (await policyRecoveryReferenceFixture({ item: expanded })).result;
+    freshPolicyResult = (await policyRecoveryReferenceFixture({ item: expanded, ...(select ? { action: 'prompt_select' } : {}) })).result;
+    if (select && scenario === 'comparison rejection') freshPolicyResult.ranked[0].candidate_diagnostics.primary_anchor_eligible = false;
     return freshPolicyResult;
   });
   if (scenario === 'comparison rejection') beforeReply = () => {
@@ -267,8 +271,8 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   };
   const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
-  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(retained ? 0 : 1);
-  if (!retained) {
+  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(retained || select ? 0 : 1);
+  if (!retained && !select) {
     expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
     expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
   }
@@ -280,7 +284,13 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
     expect(held).toBeNull();
   } else {
     expect(result.library.id).toBe(101);
-    if (retained) {
+    if (select) {
+      expect(classify).not.toHaveBeenCalled();
+      expect(result.candidate_bound_verification).toBeNull();
+      expect(result.signalContext).toBe(value.ctx.signalContext);
+      expect(result.ai_advisory).toBe(earlierAdvisory);
+      expect(projectCurrentPolicyReviewFrame(held).version).toBe('policy.current_review.v2');
+    } else if (retained) {
       expect(classify).not.toHaveBeenCalled();
       expect(result.candidate_bound_verification).toBeNull();
       expect(result.signalContext).toEqual({ ranked: freshPolicyResult.ranked,

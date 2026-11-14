@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Select-policy review evidence** — Keep new retained adopted selection
+  reviews tied to their fresh policy evaluation, using a bounded v2 frame or an
+  explicit evidence gap. Show the technical candidate and score while requiring
+  an explicit destination choice; primary and bulk confirmation remain
+  unavailable. Clear inherited verification status prospectively. See the
+  [outcome](docs/architecture/adopted-select-policy-review-outcome.md).
+
 - **Retained policy result ownership** — Give new adopted prompt-confirm
   candidates fresh minimal policy context or explicit absence, and clear the
   earlier candidate's AI advisory. Preserve top-level evidence, provider

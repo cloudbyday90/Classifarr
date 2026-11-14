@@ -15,6 +15,7 @@ vi.mock('@/api', () => ({
 
 import api from '@/api'
 import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions'
+import { pendingReviewReference } from '../fixtures/pendingReviewReference'
 
 function createDeps(overrides = {}) {
   return {
@@ -190,5 +191,23 @@ describe('useNeedsAttentionActions composable', () => {
 
     expect(api.resolvePendingClassification).not.toHaveBeenCalled()
     expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('without a current leading recommendation'))
+  })
+
+  it('skips select-only technical evidence in bulk while accepting an explicit candidate choice', async () => {
+    const answer = pendingReviewReference()
+    answer.recommendation.advisory_destination = null
+    answer.recommendation.why_not_automatic.reason_id = 'policy_destination_selection_required'
+    answer.decision_summary.deterministic.status_id = 'destination_selection_required'
+    const item = { id: 44, title: 'Select review', policy_question_answer: answer }
+    const deps = createDeps({ needsAttentionItems: ref([item]) })
+    const actions = useNeedsAttentionActions(deps)
+    await actions.confirmAllNeedsAttention()
+    expect(api.resolvePendingClassification).not.toHaveBeenCalled()
+    api.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
+    await actions.resolveWithOption(item, { actionId: 'confirm_destination', destinationLibraryId: 7 })
+    expect(api.resolvePendingClassification).toHaveBeenCalledWith(44, {
+      contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+      action_id: 'confirm_destination', destination_library_id: 7,
+    })
   })
 })

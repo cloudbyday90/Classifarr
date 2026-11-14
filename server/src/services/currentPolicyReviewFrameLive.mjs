@@ -3,6 +3,7 @@ import { recoveryField as field, recoveryItemIdentity } from './policyRecoverySu
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { CURRENT_POLICY_REVIEW_VERSION, readCurrentPolicyReviewFrame } from './currentPolicyReviewFrameContract.mjs';
 import { CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
+import { currentPolicyReviewVersionSupportsMethod } from './currentPolicyReviewFrameVersions.mjs';
 
 const attempted = Symbol('currentPolicyReviewAttempt');
 const candidates = new WeakMap(), published = new WeakMap(), saved = new WeakMap();
@@ -26,11 +27,14 @@ function valid(receipt, result, metadata) {
 }
 
 /** Successful policy stages and fulfilled verification observers supply their private live-evaluation check. */
-export function associateCurrentPolicyReviewCandidate(result, { seed, current, policyResult, metadata }) {
+export function associateCurrentPolicyReviewCandidate(result, { seed, current, policyResult, metadata,
+  frameVersion = CURRENT_POLICY_REVIEW_VERSION }) {
   try {
     // Register the attempt before inspecting values so inspection failure remains an explicit gap.
-    candidates.set(result, { invalid: true });
-    candidates.set(result, { seed, current, policyResult, identity: recoveryItemIdentity(metadata), tuple: tuple(result), invalid: false });
+    candidates.set(result, { invalid: true, frameVersion: CURRENT_POLICY_REVIEW_VERSION });
+    if (!currentPolicyReviewVersionSupportsMethod(frameVersion, 'policy_recheck')) return result;
+    candidates.set(result, { invalid: true, frameVersion });
+    candidates.set(result, { seed, current, policyResult, frameVersion, identity: recoveryItemIdentity(metadata), tuple: tuple(result), invalid: false });
   } catch { /* The registered attempt retains its evidence-gap status. */ }
   return result;
 }
@@ -72,7 +76,8 @@ export function projectCurrentPolicyReviewFrame(held) {
     const observed = field(held.result, 'method');
     if (CLASSIFIER_CAPTURE_METHODS.includes(observed)) method = observed;
   } catch { held.invalid = true; }
-  const frame = { version: CURRENT_POLICY_REVIEW_VERSION, classification_id: '9223372036854775807', identity_key: identity,
+  const frame = { version: held.receipt?.frameVersion ?? CURRENT_POLICY_REVIEW_VERSION,
+    classification_id: '9223372036854775807', identity_key: identity,
     method, status: held.invalid || !held.receipt?.seed ? 'evidence_gap' : 'recorded', policy: held.invalid ? null : held.receipt?.seed?.policy ?? null };
   const [mediaType, tmdbId] = identity?.split(':') ?? [];
   const checked = readCurrentPolicyReviewFrame(frame, { id: frame.classification_id, tmdb_id: Number(tmdbId),

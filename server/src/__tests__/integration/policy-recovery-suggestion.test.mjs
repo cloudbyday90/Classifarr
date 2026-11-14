@@ -52,10 +52,11 @@ afterEach(async () => {
 });
 afterAll(async () => { await database.pool.end(); });
 
-async function fixture(source = 'native_intent') {
+async function fixture(source = 'native_intent', { select = false } = {}) {
   const created = await createPolicyEngineIntegrationFixture(database, { libraryName: `Recovery ${randomUUID()}`,
     presetSignals: { keywords: { require_any: ['Owned-anchor'], semantics: 'identity' } },
-    policyValues: { trust_patterns: false, trust_rag: false, trust_history: false, profile_weight: 0.25 } });
+    policyValues: { trust_patterns: false, trust_rag: false, trust_history: false, profile_weight: 0.25,
+      ...(select ? { prompt_threshold: 90, auto_classify_threshold: 95 } : {}) } });
   fixtures.push(created);
   if (source === 'native_intent') {
     await query('DELETE FROM policy_presets WHERE policy_id=$1', [created.policyId]);
@@ -207,6 +208,7 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
   }
   const stage = await runPolicyRecheckStage(ctx);
   expect(stage.policyGate.shouldAdopt).toBe(adopted);
+  if (retained === 'select') expect(stage.policyAfter.action).toBe('prompt_select');
   const aiClassify = jest.fn(async (metadata, pool, signalContext, options) => {
       if (retained === 'rejected') throw new Error('Owned verification operation failure');
       if (!adopted) enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
@@ -216,12 +218,18 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
   });
   const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
   if (retained) {
-    expect(aiClassify).toHaveBeenCalledTimes(retained === 'cap' ? 0 : 1);
+    expect(aiClassify).toHaveBeenCalledTimes(['cap', 'select'].includes(retained) ? 0 : 1);
     expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
     expect(rerun.pass2Candidate.candidate_bound_verification).toBeNull();
-    expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: stage.policyAfter.ranked,
-      confidence: stage.policyAfter.confidence, suggestedLibrary: libraries[0] });
-    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    if (retained === 'select') {
+      expect(rerun.pass2Candidate.signalContext).toBe(ctx.signalContext);
+      expect(rerun.pass2Candidate.ai_advisory).toBe(ctx.baselineResult.ai_advisory);
+      expect(rerun.aiCallsUsed).toBe(ctx.aiCallsUsed);
+    } else {
+      expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: stage.policyAfter.ranked,
+        confidence: stage.policyAfter.confidence, suggestedLibrary: libraries[0] });
+      expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    }
     expect(ctx.baselineResult.ai_advisory.message).toBe('EARLIER ADVISORY SENTINEL');
     expect(ctx.baselineResult.candidate_bound_verification.status_id).toBe('abstained');
   } else {
@@ -271,9 +279,9 @@ test.each([['cap', false], ['rejected', false], ['cap', true], ['rejected', true
     expect(await resolve(contract.fingerprint)).toMatchObject({ idempotent: true, shouldRoute: false });
   });
 
-test.each(['cap', 'rejected'])('retained %s writes no inherited verification count and preserves historical statuses', async retained => {
-  const { libraries, item } = await fixture();
-  const oldResult = await currentReviewResult(item, libraries, { adopted: true, retained: 'cap' });
+test.each(['cap', 'rejected', 'select'])('retained %s writes no inherited verification count and preserves historical statuses', async retained => {
+  const { libraries, item } = await fixture('native_intent', { select: retained === 'select' });
+  const oldResult = await currentReviewResult(item, libraries, { adopted: true, retained: retained === 'select' ? 'select' : 'cap' });
   const oldId = await persistence.logClassification(item, oldResult); history.push(oldId);
   const oldStatus = { version: 'classification.candidate_bound_verification.v1', status_id: 'abstained' };
   await query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
@@ -296,15 +304,16 @@ test.each([
   ['native_intent', false, null], ['compatibility_bridge', false, null], ['native_intent', true, null], ['compatibility_bridge', true, null],
   ['native_intent', true, 'cap'], ['compatibility_bridge', true, 'cap'],
   ['native_intent', true, 'rejected'], ['compatibility_bridge', true, 'rejected'],
+  ['native_intent', true, 'select'], ['compatibility_bridge', true, 'select'],
 ])('current %s adopted=%s retained=%s evaluation survives the real writer, row binding and explicit receipt/replay', async (source, adopted, retained) => {
-  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries, { adopted, retained });
+  const { libraries, item } = await fixture(source, { select: retained === 'select' }), result = await currentReviewResult(item, libraries, { adopted, retained });
   const original = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, policy_id: 2001, score: 80 }] };
   item.policyResult = original;
   const discord = jest.spyOn(persistence, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
   const id = await persistence.logClassification(item, result); history.push(id);
   const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
   const frame = row.metadata.classification_details.current_policy_review;
-  expect(frame).toMatchObject({ version: 'policy.current_review.v1', classification_id: String(id), status: 'recorded',
+  expect(frame).toMatchObject({ version: retained === 'select' ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: String(id), status: 'recorded',
     identity_key: `movie:${item.tmdb_id}`, method: retained ? 'policy_recheck' : 'ai_verified', policy: { confidence: result.policyResult.confidence } });
   expect(frame.policy.ranked[0].detail.card.purpose_evidence.origin).toBe(source === 'native_intent' ? 'declared_native' : 'unverified');
   expect(row.metadata.policyResult).toEqual(original); expect(row.library_id).toBeNull();
@@ -313,7 +322,11 @@ test.each([
   expect(savedCurrentPolicyReviewMetadata(result, item).classification_details.current_policy_review).toEqual(frame);
   expect(item.classification_details).toBeUndefined();
   const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
-  expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  if (retained === 'select') {
+    expect(contract.recommendation.leading_destination).toBeNull();
+    expect(contract.recommendation.policy_destination.library_id).toBe(libraries[0].id);
+    expect(contract.recommendation.why_not_automatic.reason_id).toBe('policy_destination_selection_required');
+  } else expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
   expect(contract.decision_summary.deterministic.score).toBe(Math.round(result.policyResult.ranked[0].score));
   const parsed = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: libraries[0].id });
@@ -325,8 +338,8 @@ test.each([
   expect((await query('SELECT metadata FROM classification_history WHERE id=$1', [id])).rows[0].metadata.classification_details.current_policy_review).toEqual(frame);
 });
 
-test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s pre-insert mutation after lifecycle waits saves a row-bound evidence gap', async (adopted, retained) => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected'], [true, 'select']])('adopted=%s retained=%s pre-insert mutation after lifecycle waits saves a row-bound evidence gap', async (adopted, retained) => {
+  const { libraries, item } = await fixture('native_intent', { select: retained === 'select' }), result = await currentReviewResult(item, libraries, { adopted, retained });
   const ordinary = persistence.pendingDecisionLifecycleService;
   const writer = new ClassificationPersistenceService({ policyQuestionContext: context, pendingDecisionLifecycleService: {
     persist: args => ordinary.persist({ ...args, insert: async (...params) => {
@@ -337,6 +350,7 @@ test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('ado
   const id = await writer.logClassification(item, result); history.push(id);
   const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
   expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(id), status: 'evidence_gap', policy: null });
+  if (retained === 'select') expect(row.metadata.classification_details.current_policy_review.version).toBe('policy.current_review.v2');
   const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
   expect(contract.recommendation.leading_destination).toBeNull();
   expect(contract.allowed_actions.find(action => action.id === 'confirm_destination').available).toBe(true);
@@ -347,8 +361,9 @@ test.each([
   ['rollback', true, null], ['lost acknowledgement', true, null], ['delayed acknowledgement', true, null],
   ['rollback', true, 'cap'], ['lost acknowledgement', true, 'cap'], ['delayed acknowledgement', true, 'cap'],
   ['rollback', true, 'rejected'], ['lost acknowledgement', true, 'rejected'], ['delayed acknowledgement', true, 'rejected'],
+  ['rollback', true, 'select'], ['lost acknowledgement', true, 'select'], ['delayed acknowledgement', true, 'select'],
 ])('current row/frame %s adopted=%s retained=%s preserves ordinary transaction and notification semantics', async (kind, adopted, retained) => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
+  const { libraries, item } = await fixture('native_intent', { select: retained === 'select' }), result = await currentReviewResult(item, libraries, { adopted, retained });
   let inserted, release, committed;
   const didCommit = new Promise(resolve => { committed = resolve; });
   const gate = new Promise(resolve => { release = resolve; });
@@ -380,8 +395,11 @@ test.each([
   if (kind !== 'delayed acknowledgement') expect(notify).not.toHaveBeenCalled();
 });
 
-test('concurrent replacements retain each frame with its own row and supersede only the older pending row', async () => {
-  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries, { adopted: true, retained: 'cap' });
+test.each(['confirm', 'select'])('concurrent %s replacements retain each frame with its own row and supersede only the older pending row', async action => {
+  const select = action === 'select';
+  const { libraries, item } = await fixture('native_intent', { select });
+  const first = await currentReviewResult(item, libraries, select ? { adopted: true, retained: 'select' } : {});
+  const second = await currentReviewResult(item, libraries, { adopted: true, retained: select ? 'select' : 'cap' });
   const ids = await Promise.all([persistence.logClassification(item, first), persistence.logClassification(item, second)]);
   history.push(...ids);
   const rows = (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [ids])).rows;
@@ -389,8 +407,8 @@ test('concurrent replacements retain each frame with its own row and supersede o
   for (const row of rows) expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(row.id), status: 'recorded' });
 });
 
-test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s loopback pending/answer HTTP retains current fingerprints and exact completion', async (adopted, retained) => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected'], [true, 'select']])('adopted=%s retained=%s loopback pending/answer HTTP retains current fingerprints and exact completion', async (adopted, retained) => {
+  const { libraries, item } = await fixture('native_intent', { select: retained === 'select' }), result = await currentReviewResult(item, libraries, { adopted, retained });
   item.policyResult = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, score: 80 }] };
   const id = await persistence.logClassification(item, result); history.push(id);
   const app = express(), routed = jest.fn(); app.use(express.json());
@@ -409,7 +427,10 @@ test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('ado
     } catch (error) { return res.status(error.statusCode || 500).json({ code: error.code }); }
   });
   const first = (await request(app).get('/pending')).body;
-  expect(first.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+  if (retained === 'select') {
+    expect(first.recommendation.leading_destination).toBeNull();
+    expect(first.recommendation.policy_destination.library_id).toBe(libraries[0].id);
+  } else expect(first.recommendation.leading_destination.library_id).toBe(libraries[0].id);
   const answer = contract => ({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: libraries[0].id });
   await query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
@@ -423,8 +444,8 @@ test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('ado
   expect(routed).toHaveBeenCalledTimes(1);
 });
 
-test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s actual History writer binds a BIGINT row beyond safe-number precision', async (adopted, retained) => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected'], [true, 'select']])('adopted=%s retained=%s actual History writer binds a BIGINT row beyond safe-number precision', async (adopted, retained) => {
+  const { libraries, item } = await fixture('native_intent', { select: retained === 'select' }), result = await currentReviewResult(item, libraries, { adopted, retained });
   const original = (await query('SELECT last_value FROM classification_history_id_seq')).rows[0].last_value;
   let inserted;
   try {
@@ -434,7 +455,10 @@ test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('ado
     const row = (await query('SELECT * FROM classification_history WHERE id=$1', [inserted])).rows[0];
     expect(row.metadata.classification_details.current_policy_review.classification_id).toBe(inserted);
     const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
-    expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+    if (retained === 'select') {
+      expect(contract.recommendation.leading_destination).toBeNull();
+      expect(contract.recommendation.policy_destination.library_id).toBe(libraries[0].id);
+    } else expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
   } finally {
     if (inserted) await query('DELETE FROM classification_history WHERE id=$1', [inserted]);
     await query("SELECT setval('classification_history_id_seq',$1,true)", [original]);

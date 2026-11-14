@@ -9,8 +9,9 @@ import { POLICY_CANDIDATE_EVIDENCE_CARD_SOURCE_IDS, POLICY_CANDIDATE_EVIDENCE_CA
   POLICY_CANDIDATE_EVIDENCE_CARD_STATUS_IDS } from './policyCandidateEvidenceCardCore.mjs';
 import { POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_SOURCE_IDS,
   POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_CALIBRATION_STATUS_IDS } from './policyRuntimeQuestionScoreExplanation.mjs';
+import { currentPolicyReviewVersionForAction, currentPolicyReviewVersionSupportsMethod } from './currentPolicyReviewFrameVersions.mjs';
+export { CURRENT_POLICY_REVIEW_VERSION } from './currentPolicyReviewFrameVersions.mjs';
 
-export const CURRENT_POLICY_REVIEW_VERSION = 'policy.current_review.v1';
 export const CURRENT_POLICY_REVIEW_BYTES = 65536;
 export const CURRENT_POLICY_REVIEW_FACTS = Object.freeze(['similar_items', 'observed_profile',
   'observed_profile_difference', 'learned_pattern', 'prior_outcomes']);
@@ -69,7 +70,7 @@ export function readCurrentPolicyReviewFrame(value, classification) {
   try {
     const frame = cloneReviewData(value);
     if (!exact(frame, ['version', 'classification_id', 'identity_key', 'method', 'status', 'policy']) ||
-        frame.version !== CURRENT_POLICY_REVIEW_VERSION || !canonicalDatabaseBigintId(frame.classification_id) ||
+        !currentPolicyReviewVersionSupportsMethod(frame.version, frame.method) || !canonicalDatabaseBigintId(frame.classification_id) ||
         frame.classification_id !== canonicalDatabaseBigintId(field(classification, 'id') ?? field(classification, 'classification_id')) ||
         frame.identity_key !== recoveryItemIdentity(classification) || !frame.identity_key ||
         !CLASSIFIER_CAPTURE_METHODS.includes(frame.method) || frame.method !== field(classification, 'method') ||
@@ -77,7 +78,7 @@ export function readCurrentPolicyReviewFrame(value, classification) {
     if (frame.status === 'evidence_gap') return frame.policy === null ? freezePolicyEvaluationValue(frame) : null;
     const policy = frame.policy;
     if (frame.status !== 'recorded' || !exact(policy, ['action', 'confidence', 'thresholds', 'ranked']) ||
-        policy.action !== 'prompt_confirm' || !numeric(policy.confidence) ||
+        currentPolicyReviewVersionForAction(policy.action) !== frame.version || !numeric(policy.confidence) ||
         !exact(policy.thresholds, ['auto_classify', 'prompt', 'prompt_select']) ||
         !Object.values(policy.thresholds).every(nullableScore) || !Array.isArray(policy.ranked) ||
         !policy.ranked.length || policy.ranked.length > 64) return null;

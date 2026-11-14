@@ -74,8 +74,9 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
     action_id: 'confirm_destination', destination_library_id: 8 } })
 })
 
-for (const gap of [false, true]) {
-  test(`saved current policy ${gap ? 'gap requires choice' : 'recommends the fresh destination'} without UI clutter`, async ({ page }) => {
+for (const action of ['prompt_confirm', 'prompt_select']) for (const gap of [false, true]) {
+  test(`saved current ${action} ${gap ? 'gap requires choice' : 'uses the fresh destination'} without UI clutter`, async ({ page }) => {
+    const selectOnly = action === 'prompt_select'
     const libraries = [{ id: 101, name: 'Fresh destination', media_type: 'movie', is_active: true },
       { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true }]
     const metadata = { tmdb_id: 42, media_type: 'movie', title: 'Owned saved review', policyResult: {
@@ -83,11 +84,12 @@ for (const gap of [false, true]) {
     const candidate = { policy_id: 1, library_id: 101, score: 70, auto_classify_threshold: 85, prompt_threshold: 60,
       origin: 'native_intent', revision: 1, detail: { card: composePolicyCandidateEvidenceCard({ classification: metadata }, unknownReviewPurpose()),
         explanation: null, facts: [] } }
-    const policy = { action: 'prompt_confirm', confidence: 75, thresholds: { auto_classify: 85, prompt: 60, prompt_select: null }, ranked: [candidate] }
-    metadata.classification_details = { current_policy_review: { version: 'policy.current_review.v1', classification_id: '46',
-      identity_key: 'movie:42', method: 'ai_verified', status: gap ? 'evidence_gap' : 'recorded', policy: gap ? null : policy } }
+    const policy = { action, confidence: 75, thresholds: { auto_classify: 85, prompt: 60, prompt_select: null }, ranked: [candidate] }
+    const method = selectOnly ? 'policy_recheck' : 'ai_verified'
+    metadata.classification_details = { current_policy_review: { version: selectOnly ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: '46',
+      identity_key: 'movie:42', method, status: gap ? 'evidence_gap' : 'recorded', policy: gap ? null : policy } }
     const question = normalizePolicyRuntimeQuestion({ metadata, libraries, policyResult: policy })
-    const item = { ...metadata, id: 46, method: 'ai_verified', confidence: 75, library_id: null, status: 'awaiting_decision', metadata,
+    const item = { ...metadata, id: 46, method, confidence: 75, library_id: null, status: 'awaiting_decision', metadata,
       policy_question: question, policy_question_stale: false }
     const answer = buildPolicyRuntimeQuestionAnswerContract({ classification: item, question })
     const writes = []
@@ -110,9 +112,24 @@ for (const gap of [false, true]) {
     await page.goto('/')
     const card = page.locator('#needs-attention .action-item').first()
     await expect(card).not.toContainText('80%')
-    if (gap) {
+    if (gap || selectOnly) {
       await expect(card.getByRole('button', { name: /^Confirm / })).toHaveCount(0)
       await expect(card).toContainText('Choose a destination for this item.')
+      if (selectOnly) {
+        if (!gap) await expect(card).toContainText('Policy score: 70/100 (confirmation at 60, automatic at 85)')
+        for (const width of [390, 320]) {
+          await page.setViewportSize({ width, height: 844 })
+          expect(await card.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+        }
+        expect(writes).toEqual([])
+        const candidates = card.locator('.alternative-destinations')
+        await candidates.locator(':scope > summary').focus(); await page.keyboard.press('Space')
+        const choose = candidates.getByRole('button', { name: 'Use Fresh destination', exact: true })
+        await choose.focus(); await expect(choose).toBeFocused(); await page.keyboard.press('Enter')
+        await expect.poll(() => writes.length).toBe(1)
+        expect(writes[0]).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+          action_id: 'confirm_destination', destination_library_id: 101 })
+      }
     } else {
       await expect(card).toContainText('70% policy score')
       const confirm = card.getByRole('button', { name: 'Confirm Fresh destination', exact: true })
