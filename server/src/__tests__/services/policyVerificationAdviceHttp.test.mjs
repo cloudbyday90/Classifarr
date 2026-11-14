@@ -231,13 +231,17 @@ test('RAG provider refusal and exhausted item cap retain their existing distinct
   expect(requests).toHaveLength(0); expect(capped.aiCallsUsed).toBe(1);
 });
 
-test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation'])('whole production adopted RAG owner %s carries its review source through actual HTTP', async scenario => {
+test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retained apply', 'retained shadow', 'retained rollout mutation'])(
+  'whole production adopted RAG owner %s carries its current review source', async scenario => {
+  const retained = scenario.startsWith('retained ');
+  scenario = scenario.replace('retained ', '');
   const value = await ragRecheckAdviceFixture(); choose('ollama');
   const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
   value.ctx.baselineResult.ai_advisory = earlierAdvisory;
   const classify = jest.spyOn(classificationRagLoopService, 'aiClassify');
   const metadata = { ...value.item, genres: ['Animation'], keywords: ['Owned retrieval evidence'] };
   const config = { ...value.ctx.config, rag_retrieval_loop_enabled: true, rag_loop_rollout_mode: scenario === 'shadow' ? 'shadow' : 'apply',
+    ...(retained ? { policy_recheck_max_ai_calls_per_item: 1 } : {}),
     rag_loop_trace_enabled: false, rag_loop_auto_fallback_enabled: false, rag_loop_auto_recover_enabled: false,
     rag_loop_conflict_detection_enabled: false, rag_loop_resilience_enabled: false,
     policy_recheck_below_prompt_threshold_enabled: true, policy_recheck_metadata_enrichment_enabled: false,
@@ -263,9 +267,11 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation'])('whol
   };
   const result = await classificationRagLoopService.evaluateRagLoopSecondPass({ metadata, libraries: value.libraries,
     baselineResult: value.ctx.baselineResult, policyResult: value.ctx.policyResult, signalContext: value.ctx.signalContext, ragContext: null });
-  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(1);
-  expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
-  expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
+  expect(evaluate).toHaveBeenCalledTimes(1); expect(requests).toHaveLength(retained ? 0 : 1);
+  if (!retained) {
+    expect(prompt()).toContain('Suggested Library: Owned destination 0'); expect(prompt()).toContain('Owned profile observation');
+    expect(prompt()).not.toContain('EARLIER PASS SENTINEL');
+  }
   const held = holdCurrentPolicyReviewFrame(result, metadata);
   if (scenario === 'shadow' || scenario === 'comparison rejection') {
     expect(result.library).toBe(value.ctx.baselineResult.library);
@@ -274,9 +280,16 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation'])('whol
     expect(held).toBeNull();
   } else {
     expect(result.library.id).toBe(101);
-    expect(result.candidate_bound_verification.status_id).toBe('confirmed');
-    expect(result.signalContext).toBe(classify.mock.calls[0][2]);
-    expect(result.ai_advisory).toBeNull();
+    if (retained) {
+      expect(classify).not.toHaveBeenCalled();
+      expect(result.candidate_bound_verification).toBeNull();
+      expect(result.signalContext).toBe(value.ctx.signalContext);
+      expect(result.ai_advisory).toBe(earlierAdvisory);
+    } else {
+      expect(result.candidate_bound_verification.status_id).toBe('confirmed');
+      expect(result.signalContext).toBe(classify.mock.calls[0][2]);
+      expect(result.ai_advisory).toBeNull();
+    }
     expect(projectCurrentPolicyReviewFrame(held).status).toBe(scenario === 'rollout mutation' ? 'evidence_gap' : 'recorded');
   }
 });
@@ -325,7 +338,7 @@ test.each(['copied', 'profile', 'reply', 'long label'])('adopted %s evidence has
     expect(result.pass2Candidate.signalContext).toBe(classify.mock.calls[0][2]);
     expect(result.pass2Candidate.ai_advisory).toBeNull();
   } else {
-    expect(result.pass2Candidate.candidate_bound_verification).toBeUndefined();
+    expect(result.pass2Candidate.candidate_bound_verification).toBeNull();
     expect(result.pass2Candidate.library).toBe(value.libraries[0]);
   }
   const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
@@ -403,7 +416,7 @@ test('adopted real stream failure survives proof loss before retry without addin
   const error = admission.failed.mock.calls[0][1];
   expect(classify).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
   expect(observation.mock.calls[0][0].generationError).toBe(error);
-  expect(holdCurrentPolicyReviewFrame(result.pass2Candidate, value.item)).toBeNull(); // Existing genuine-error fallback.
+  expectAdoptedGap(value, result); // Genuine error retains policy evidence, whose changed source is a gap.
 });
 
 test('adopted genuine rejected operation keeps its identity when source proof also changes', async () => {
@@ -414,6 +427,21 @@ test('adopted genuine rejected operation keeps its identity when source proof al
   const result = await executeRag(value);
   expect(result.hadError).toBe(true); expect(result.aiCallsUsed).toBe(2); expect(requests).toHaveLength(0);
   expect(classify).toHaveBeenCalledWith('ai_rerun', error, 'ai_rerun_failed');
+  expectAdoptedGap(value, result);
+});
+
+test('adopted real failed streams retain good policy evidence without claiming a current confirmation', async () => {
+  const value = await ragRecheckAdviceFixture(); choose('ollama'); done = false;
+  value.ctx.baselineResult.candidate_bound_verification = { version: 'classification.candidate_bound_verification.v1', status_id: 'confirmed' };
+  const observation = jest.spyOn(aiProviderCapabilityMetricsService, 'record');
+  const result = await executeRag(value);
+  expect(requests).toHaveLength(2); expect(result.aiCallsUsed).toBe(2);
+  expect(admission.failed).toHaveBeenCalledTimes(2); expect(observation).toHaveBeenCalledTimes(1);
+  expect(observation.mock.calls[0][0].generationError).toBe(admission.failed.mock.calls[1][1]);
+  expect(result.pass2Candidate.candidate_bound_verification).toBeNull();
+  const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
+  expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)))
+    .toMatchObject({ status: 'recorded', method: 'policy_recheck' });
 });
 
 test.each(['ollama', 'openai'])('non-adopted %s verification coherently dispatches fresh B/75 rather than old A/80', async type => {

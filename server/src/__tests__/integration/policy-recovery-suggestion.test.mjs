@@ -24,6 +24,8 @@ const { ragRecheckStageContext } = await import('../fixtures/ragRecheckAdviceFix
 const { nonadoptedRagContext } = await import('../fixtures/nonadoptedRagVerificationFixture.mjs');
 const { enterNonadoptedRagVerification } = await import('../../services/nonadoptedRagVerification.mjs');
 const { enterAdoptedRagVerification } = await import('../../services/adoptedRagVerification.mjs');
+const { loadCandidateBoundVerificationDailyOutcomeMetrics } = await import('../../services/classificationCandidateBoundVerificationMetricsRepository.mjs');
+const { loadClassificationDecisionPathTelemetry } = await import('../../services/classificationDecisionPathTelemetryRepository.mjs');
 const { publishCurrentPolicyReviewFrame, savedCurrentPolicyReviewMetadata } = await import('../../services/currentPolicyReviewFrameLive.mjs');
 const { ragLoopResilienceManager } = await import('../../services/ragLoopResilienceManager.mjs');
 const { ClassificationPolicyPathService } = await import('../../services/classificationPolicyPathService.mjs');
@@ -189,7 +191,7 @@ for (const source of ['native_intent', 'compatibility_bridge']) {
   });
 }
 
-async function currentReviewResult(item, libraries, { currentAdvisory = null, adopted = false } = {}) {
+async function currentReviewResult(item, libraries, { currentAdvisory = null, adopted = false, retained = null } = {}) {
   const earlier = { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true };
   if (!libraries.some(row => row.id === earlier.id)) libraries.push(earlier);
   jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
@@ -199,26 +201,61 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
   ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory',
     mode: 'verification', source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
     deterministic_candidate: { library_id: earlier.id, library_name: earlier.name }, proposed_destination: null };
+  if (retained) {
+    ctx.baselineResult.candidate_bound_verification = { version: 'classification.candidate_bound_verification.v1', status_id: 'abstained' };
+    if (retained === 'cap') ctx.config.policy_recheck_max_ai_calls_per_item = 1;
+  }
   const stage = await runPolicyRecheckStage(ctx);
   expect(stage.policyGate.shouldAdopt).toBe(adopted);
   const aiClassify = jest.fn(async (metadata, pool, signalContext, options) => {
+      if (retained === 'rejected') throw new Error('Owned verification operation failure');
       if (!adopted) enterNonadoptedRagVerification(options.nonadoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
       else enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries: pool, signalContext }, options.verificationCandidate).assertCurrent();
       return { library: pool[0], confidence: signalContext.confidence, verified_by_ai: currentAdvisory === null,
         ...(currentAdvisory ? { ai_advisory: currentAdvisory } : {}) };
   });
   const rerun = await runAiRerunStage({ ...ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate, policyRecheckStage: stage, aiClassify });
-  expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
-  expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
+  if (retained) {
+    expect(aiClassify).toHaveBeenCalledTimes(retained === 'cap' ? 0 : 1);
+    expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
+    expect(rerun.pass2Candidate.candidate_bound_verification).toBeNull();
+    expect(ctx.baselineResult.candidate_bound_verification.status_id).toBe('abstained');
+  } else {
+    expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
+    expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
+  }
   const result = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
   await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
   return result;
 }
 
+test.each(['cap', 'rejected'])('retained %s writes no inherited verification count and preserves historical statuses', async retained => {
+  const { libraries, item } = await fixture();
+  const oldResult = await currentReviewResult(item, libraries, { adopted: true, retained: 'cap' });
+  const oldId = await persistence.logClassification(item, oldResult); history.push(oldId);
+  const oldStatus = { version: 'classification.candidate_bound_verification.v1', status_id: 'abstained' };
+  await query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
+    '{classification_details,candidate_bound_verification}', $2::jsonb) WHERE id=$1`, [oldId, JSON.stringify(oldStatus)]);
+  const range = { previousStart: new Date(Date.now() - 3600000), currentEnd: new Date(Date.now() + 3600000) };
+  const metrics = () => loadCandidateBoundVerificationDailyOutcomeMetrics(database, range);
+  const telemetry = () => loadClassificationDecisionPathTelemetry(database, { start: range.previousStart, end: range.currentEnd });
+  const before = await metrics(), beforeTelemetry = await telemetry();
+  expect(before.some(row => row.statusId === 'abstained' && row.outcomeCount > 0)).toBe(true);
+  const result = await currentReviewResult(item, libraries, { adopted: true, retained });
+  const id = await persistence.logClassification(item, result); history.push(id);
+  const rows = (await query('SELECT id,metadata FROM classification_history WHERE id=ANY($1::bigint[])', [[oldId, id]])).rows;
+  expect(rows.find(row => String(row.id) === String(id)).metadata.classification_details.candidate_bound_verification).toBeNull();
+  expect(rows.find(row => String(row.id) === String(oldId)).metadata.classification_details.candidate_bound_verification).toEqual(oldStatus);
+  expect(await metrics()).toEqual(before);
+  expect((await telemetry()).strict_verification_abstention_count).toEqual(beforeTelemetry.strict_verification_abstention_count);
+});
+
 test.each([
-  ['native_intent', false], ['compatibility_bridge', false], ['native_intent', true], ['compatibility_bridge', true],
-])('current %s adopted=%s evaluation survives the real writer, row binding and explicit receipt/replay', async (source, adopted) => {
-  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries, { adopted });
+  ['native_intent', false, null], ['compatibility_bridge', false, null], ['native_intent', true, null], ['compatibility_bridge', true, null],
+  ['native_intent', true, 'cap'], ['compatibility_bridge', true, 'cap'],
+  ['native_intent', true, 'rejected'], ['compatibility_bridge', true, 'rejected'],
+])('current %s adopted=%s retained=%s evaluation survives the real writer, row binding and explicit receipt/replay', async (source, adopted, retained) => {
+  const { libraries, item } = await fixture(source), result = await currentReviewResult(item, libraries, { adopted, retained });
   const original = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, policy_id: 2001, score: 80 }] };
   item.policyResult = original;
   const discord = jest.spyOn(persistence, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
@@ -226,7 +263,7 @@ test.each([
   const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
   const frame = row.metadata.classification_details.current_policy_review;
   expect(frame).toMatchObject({ version: 'policy.current_review.v1', classification_id: String(id), status: 'recorded',
-    identity_key: `movie:${item.tmdb_id}`, method: 'ai_verified', policy: { confidence: result.policyResult.confidence } });
+    identity_key: `movie:${item.tmdb_id}`, method: retained ? 'policy_recheck' : 'ai_verified', policy: { confidence: result.policyResult.confidence } });
   expect(frame.policy.ranked[0].detail.card.purpose_evidence.origin).toBe(source === 'native_intent' ? 'declared_native' : 'unverified');
   expect(row.metadata.policyResult).toEqual(original); expect(row.library_id).toBeNull();
   expect(discord).toHaveBeenCalledTimes(1);
@@ -246,8 +283,8 @@ test.each([
   expect((await query('SELECT metadata FROM classification_history WHERE id=$1', [id])).rows[0].metadata.classification_details.current_policy_review).toEqual(frame);
 });
 
-test.each([false, true])('adopted=%s pre-insert mutation after lifecycle waits saves a row-bound evidence gap', async adopted => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s pre-insert mutation after lifecycle waits saves a row-bound evidence gap', async (adopted, retained) => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
   const ordinary = persistence.pendingDecisionLifecycleService;
   const writer = new ClassificationPersistenceService({ policyQuestionContext: context, pendingDecisionLifecycleService: {
     persist: args => ordinary.persist({ ...args, insert: async (...params) => {
@@ -264,10 +301,12 @@ test.each([false, true])('adopted=%s pre-insert mutation after lifecycle waits s
 });
 
 test.each([
-  ['rollback', false], ['lost acknowledgement', false], ['delayed acknowledgement', false],
-  ['rollback', true], ['lost acknowledgement', true], ['delayed acknowledgement', true],
-])('current row/frame %s adopted=%s preserves ordinary transaction and notification semantics', async (kind, adopted) => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
+  ['rollback', false, null], ['lost acknowledgement', false, null], ['delayed acknowledgement', false, null],
+  ['rollback', true, null], ['lost acknowledgement', true, null], ['delayed acknowledgement', true, null],
+  ['rollback', true, 'cap'], ['lost acknowledgement', true, 'cap'], ['delayed acknowledgement', true, 'cap'],
+  ['rollback', true, 'rejected'], ['lost acknowledgement', true, 'rejected'], ['delayed acknowledgement', true, 'rejected'],
+])('current row/frame %s adopted=%s retained=%s preserves ordinary transaction and notification semantics', async (kind, adopted, retained) => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
   let inserted, release, committed;
   const didCommit = new Promise(resolve => { committed = resolve; });
   const gate = new Promise(resolve => { release = resolve; });
@@ -300,7 +339,7 @@ test.each([
 });
 
 test('concurrent replacements retain each frame with its own row and supersede only the older pending row', async () => {
-  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries, { adopted: true });
+  const { libraries, item } = await fixture(), first = await currentReviewResult(item, libraries), second = await currentReviewResult(item, libraries, { adopted: true, retained: 'cap' });
   const ids = await Promise.all([persistence.logClassification(item, first), persistence.logClassification(item, second)]);
   history.push(...ids);
   const rows = (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [ids])).rows;
@@ -308,8 +347,8 @@ test('concurrent replacements retain each frame with its own row and supersede o
   for (const row of rows) expect(row.metadata.classification_details.current_policy_review).toMatchObject({ classification_id: String(row.id), status: 'recorded' });
 });
 
-test.each([false, true])('adopted=%s loopback pending/answer HTTP retains current fingerprints and exact completion', async adopted => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s loopback pending/answer HTTP retains current fingerprints and exact completion', async (adopted, retained) => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
   item.policyResult = { action: 'prompt_confirm', confidence: 80, ranked: [{ library_id: 2001, score: 80 }] };
   const id = await persistence.logClassification(item, result); history.push(id);
   const app = express(), routed = jest.fn(); app.use(express.json());
@@ -342,8 +381,8 @@ test.each([false, true])('adopted=%s loopback pending/answer HTTP retains curren
   expect(routed).toHaveBeenCalledTimes(1);
 });
 
-test.each([false, true])('adopted=%s actual History writer binds a BIGINT row beyond safe-number precision', async adopted => {
-  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted });
+test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected']])('adopted=%s retained=%s actual History writer binds a BIGINT row beyond safe-number precision', async (adopted, retained) => {
+  const { libraries, item } = await fixture(), result = await currentReviewResult(item, libraries, { adopted, retained });
   const original = (await query('SELECT last_value FROM classification_history_id_seq')).rows[0].last_value;
   let inserted;
   try {

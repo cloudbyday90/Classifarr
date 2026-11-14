@@ -1575,7 +1575,7 @@ describe('RAG loop orchestration', () => {
     expect(result.library.id).toBe(2);
     expect(result.method).toBe('policy_recheck');
     expect(aiClassifySpy).not.toHaveBeenCalled();
-    expect(result.candidate_bound_verification).toBeUndefined();
+    expect(result.candidate_bound_verification).toBeNull();
     expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(result, { tmdb_id: 123, media_type: 'movie' })))
       .toMatchObject({ status: 'evidence_gap', policy: null });
     expect(result.ragLoopTrace).toBeDefined();

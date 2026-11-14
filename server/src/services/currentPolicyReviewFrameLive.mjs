@@ -25,7 +25,7 @@ function valid(receipt, result, metadata) {
   receipt.invalid = true; return false;
 }
 
-/** Successful verification stages supply their private live-evaluation check. */
+/** Successful policy stages and fulfilled verification observers supply their private live-evaluation check. */
 export function associateCurrentPolicyReviewCandidate(result, { seed, current, policyResult, metadata }) {
   try {
     // Register the attempt before inspecting values so inspection failure remains an explicit gap.

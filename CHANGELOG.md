@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retained policy review evidence** — Keep the adopted prompt-confirm
+  evaluation's bounded review frame when verification is skipped or genuinely
+  fails, using an explicit gap when proof is unavailable. Clear inherited
+  verification status on the new candidate without changing provider accounting
+  or routing/learning authority. See the
+  [outcome](docs/architecture/retained-adopted-policy-review-outcome.md).
+
 - **Adopted verification input** — Use the fresh evaluation's ranking,
   destination and overall confidence together. Missing or changed private proof
   retains the adopted policy candidate with an explicit review gap, preserving

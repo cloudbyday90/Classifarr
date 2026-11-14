@@ -302,7 +302,7 @@ export async function runPolicyRecheckStage(ctx) {
     }
 
     const stage = { policyAfter, policyGate, pass2Candidate, hadError };
-    retainAdoptedCurrentPolicyReviewStage(stage, freshAdoptedReview);
+    retainAdoptedCurrentPolicyReviewStage(stage, freshAdoptedReview, { policyResult: policyAfter, metadata: expandedMetadata, libraries });
     retainAdoptedRagVerificationStage(stage, freshAdoptedVerification);
     return retainNonadoptedRagVerification(retainRagRecheckAdvice(stage, freshAdvice), freshVerification);
 }

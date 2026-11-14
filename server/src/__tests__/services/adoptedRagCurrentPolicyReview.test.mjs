@@ -277,7 +277,7 @@ test('returned invocation references retain their loaded lifecycle while current
   expect(aiClassify).toHaveBeenCalledTimes(1);
 });
 
-test.each(['rejected', 'transient', 'skipped', 'resilience', 'mode'])('%s adopted rerun retains the ordinary deterministic candidate without a new frame attempt', async kind => {
+test.each(['rejected', 'transient', 'skipped', 'resilience', 'mode'])('%s adopted rerun retains the deterministic candidate with policy evidence or a gap', async kind => {
   const value = await ragRecheckAdviceFixture();
   value.ctx.baselineResult.ai_advisory = { message: 'Existing candidate advisory' };
   jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
@@ -299,7 +299,7 @@ test.each(['rejected', 'transient', 'skipped', 'resilience', 'mode'])('%s adopte
   expect(failure).toHaveBeenCalledTimes(kind === 'rejected' ? 1 : 0);
   expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
   expect(rerun.pass2Candidate.ai_advisory).toBe(value.ctx.baselineResult.ai_advisory);
-  expect(frame(value, rerun.pass2Candidate)).toBeNull();
+  expect(frame(value, rerun.pass2Candidate)).toMatchObject({ status: kind === 'mode' ? 'evidence_gap' : 'recorded' });
 });
 
 test.each(['accessor', 'proxy', 'confidence object', 'library object', 'method object', 'NaN', 'negative id'])(
