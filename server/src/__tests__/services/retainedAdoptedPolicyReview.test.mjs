@@ -38,8 +38,10 @@ for (const source of ['native_intent']) {
     expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
     expect(rerun.pass2Candidate).toMatchObject({ confidence: 80, candidate_bound_verification: null });
     expect(rerun.pass2Candidate.ai_authority).toBe(authority);
-    expect(rerun.pass2Candidate.ai_advisory).toBe(advisory);
-    expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
+    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked, confidence: 75, suggestedLibrary: value.libraries[0] });
+    expect(rerun.pass2Candidate.signalContext).not.toBe(value.ctx.signalContext);
+    expect(value.ctx.baselineResult.ai_advisory).toBe(advisory);
     expect(value.ctx.baselineResult.candidate_bound_verification).toBe(earlierStatus);
     const called = ['transient', 'rejected'].includes(kind);
     expect(aiClassify).toHaveBeenCalledTimes(called ? 1 : 0);
@@ -106,10 +108,14 @@ test.each(['auto_classify', 'prompt_select'])('%s policy-only candidates retain 
   const value = await ragRecheckAdviceFixture();
   value.result.action = action;
   const status = { status_id: 'abstained' };
+  const advisory = { message: 'Existing action-owned advisory' };
   value.ctx.baselineResult.candidate_bound_verification = status;
+  value.ctx.baselineResult.ai_advisory = advisory;
   const result = buildPolicyRecheckCandidate({ ...value.ctx, policyResult: value.result });
   const stage = { ...value.stage, pass2Candidate: result };
   retainAdoptedCurrentPolicyReviewStage(stage, null, args(value));
   expect(result.candidate_bound_verification).toBe(status);
+  expect(result.signalContext).toBe(value.ctx.signalContext);
+  expect(result.ai_advisory).toBe(advisory);
   expect(frame(value, result)).toBeNull();
 });

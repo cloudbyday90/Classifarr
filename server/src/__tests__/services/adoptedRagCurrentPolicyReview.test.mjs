@@ -229,8 +229,9 @@ test.each([
     expect(rerun.pass2Candidate.signalContext.ranked).toBe(value.result.ranked);
     expect(Object.keys(rerun.pass2Candidate.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
     expect(rerun.pass2Candidate.ai_advisory).toBe(currentAdvisory);
-    expect(stage.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
-    expect(stage.pass2Candidate.ai_advisory).toBe(earlierAdvisory);
+    expect(stage.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked, confidence: 75, suggestedLibrary: value.libraries[0] });
+    expect(stage.pass2Candidate.ai_advisory).toBeNull();
+    expect(value.ctx.baselineResult.ai_advisory).toBe(earlierAdvisory);
     expect(frame(value, rerun.pass2Candidate)).toMatchObject({ status: 'recorded', policy: { confidence: 75, ranked: [{ score: 70 }] } });
   });
 
@@ -297,8 +298,10 @@ test.each(['rejected', 'transient', 'skipped', 'resilience', 'mode'])('%s adopte
   expect(aiClassify).toHaveBeenCalledTimes(['rejected', 'transient'].includes(kind) ? 1 : 0);
   expect(rerun.hadError).toBe(kind === 'rejected');
   expect(failure).toHaveBeenCalledTimes(kind === 'rejected' ? 1 : 0);
-  expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
-  expect(rerun.pass2Candidate.ai_advisory).toBe(value.ctx.baselineResult.ai_advisory);
+  expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked,
+    confidence: value.result.confidence, suggestedLibrary: value.libraries[0] });
+  expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+  expect(value.ctx.baselineResult.ai_advisory).toEqual({ message: 'Existing candidate advisory' });
   expect(frame(value, rerun.pass2Candidate)).toMatchObject({ status: kind === 'mode' ? 'evidence_gap' : 'recorded' });
 });
 

@@ -283,8 +283,10 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
     if (retained) {
       expect(classify).not.toHaveBeenCalled();
       expect(result.candidate_bound_verification).toBeNull();
-      expect(result.signalContext).toBe(value.ctx.signalContext);
-      expect(result.ai_advisory).toBe(earlierAdvisory);
+      expect(result.signalContext).toEqual({ ranked: freshPolicyResult.ranked,
+        confidence: freshPolicyResult.confidence, suggestedLibrary: value.libraries[0] });
+      expect(result.ai_advisory).toBeNull();
+      expect(value.ctx.baselineResult.ai_advisory).toBe(earlierAdvisory);
     } else {
       expect(result.candidate_bound_verification.status_id).toBe('confirmed');
       expect(result.signalContext).toBe(classify.mock.calls[0][2]);
@@ -360,6 +362,10 @@ async function executeNonadopted(value, { copied = false, afterStage = () => {},
 
 function expectAdoptedGap(value, result) {
   expect(result.pass2Candidate.library).toBe(value.libraries[0]);
+  // This support belongs to construction; later refusal still forces an independent saved gap.
+  expect(result.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked,
+    confidence: value.result.confidence, suggestedLibrary: value.libraries[0] });
+  expect(result.pass2Candidate.ai_advisory).toBeNull();
   const published = publishCurrentPolicyReviewFrame(result.pass2Candidate, { ...result.pass2Candidate });
   expect(projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item)))
     .toMatchObject({ status: 'evidence_gap', policy: null });

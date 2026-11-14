@@ -17,6 +17,7 @@ import { isNonadoptedRagVerificationRefusal } from './nonadoptedRagVerificationR
 import { holdAdoptedRagVerificationSource, retainAdoptedRagVerificationStage, prepareAdoptedRagVerification,
     acceptAdoptedRagVerification, retainAdoptedRagVerificationGap } from './adoptedRagVerification.mjs';
 import { isAdoptedRagVerificationRefusal } from './adoptedRagVerificationRefusal.mjs';
+import { holdAdoptedRagResultContextSource, applyAdoptedRagResultContext } from './adoptedRagResultContext.mjs';
 import {
     holdAdoptedCurrentPolicyReviewSource,
     retainAdoptedCurrentPolicyReviewStage,
@@ -244,6 +245,7 @@ export async function runPolicyRecheckStage(ctx) {
     let freshVerification = null;
     let freshAdoptedReview = null;
     let freshAdoptedVerification = null;
+    let freshResultContext = null;
     for (let attempt = 1; attempt <= policyRecheckMaxAttempts; attempt += 1) {
         try {
             policyAfter = await withRetryableDbConflict(
@@ -268,6 +270,7 @@ export async function runPolicyRecheckStage(ctx) {
                     },
                 },
             );
+            freshResultContext = holdAdoptedRagResultContextSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             freshAdoptedReview = holdAdoptedCurrentPolicyReviewSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             freshAdoptedVerification = holdAdoptedRagVerificationSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
             freshAdvice = holdRagRecheckAdviceSource({ policyResult: policyAfter, metadata: expandedMetadata, libraries });
@@ -302,6 +305,7 @@ export async function runPolicyRecheckStage(ctx) {
     }
 
     const stage = { policyAfter, policyGate, pass2Candidate, hadError };
+    applyAdoptedRagResultContext(stage, freshResultContext, { policyResult: policyAfter, metadata: expandedMetadata, libraries });
     retainAdoptedCurrentPolicyReviewStage(stage, freshAdoptedReview, { policyResult: policyAfter, metadata: expandedMetadata, libraries });
     retainAdoptedRagVerificationStage(stage, freshAdoptedVerification);
     return retainNonadoptedRagVerification(retainRagRecheckAdvice(stage, freshAdvice), freshVerification);

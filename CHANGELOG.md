@@ -11,6 +11,13 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retained policy result ownership** — Give new adopted prompt-confirm
+  candidates fresh minimal policy context or explicit absence, and clear the
+  earlier candidate's AI advisory. Preserve top-level evidence, provider
+  accounting and routing/learning safeguards; later saved-review validation
+  remains independent. See the
+  [outcome](docs/architecture/retained-adopted-result-context-outcome.md).
+
 - **Retained policy review evidence** — Keep the adopted prompt-confirm
   evaluation's bounded review frame when verification is skipped or genuinely
   fails, using an explicit gap when proof is unavailable. Clear inherited

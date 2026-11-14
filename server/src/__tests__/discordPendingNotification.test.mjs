@@ -66,7 +66,8 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
-  test.each(['pending', 'confidence'])('adopted %s notification uses the current advisory fingerprint across both saved contracts', async kind => {
+  test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
+    'adopted %s notification retained=%s uses the current advisory fingerprint across both saved contracts', async (kind, retained) => {
     const value = await ragRecheckAdviceFixture({ confidence: 75, afterEvaluate: row => { row.score = 70; } });
     const earlierAdvisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory', mode: 'verification',
       source_format: 'earlier_pass', message: 'Earlier advisory', deterministic_candidate: {
@@ -77,6 +78,7 @@ describe('discordPendingNotification', () => {
     jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
     const stage = await runPolicyRecheckStage(value.ctx);
     const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
+      ...(retained ? { aiCallsUsed: 2 } : {}),
       policyRecheckStage: stage, aiClassify: async (metadata, libraries, signalContext, options) => {
         enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
         return createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
@@ -95,6 +97,11 @@ describe('discordPendingNotification', () => {
       policy_question: question, clarification: question };
     const classification = { ...value.item, id: 77, method: result.method, metadata, confidence: 75 };
     const contract = buildPolicyRuntimeQuestionAnswerContract({ classification, question });
+    if (retained) {
+      expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
+      expect(result.ai_advisory).toBeNull();
+      expect(contract.decision_summary.ai_advisory).toBeNull();
+    }
     const oldContract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...classification,
       metadata: { ...metadata, classification_details: { ...metadata.classification_details, ai_advisory: earlierAdvisory } },
     }, question });

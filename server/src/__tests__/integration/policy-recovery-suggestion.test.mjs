@@ -219,6 +219,10 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
     expect(aiClassify).toHaveBeenCalledTimes(retained === 'cap' ? 0 : 1);
     expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
     expect(rerun.pass2Candidate.candidate_bound_verification).toBeNull();
+    expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: stage.policyAfter.ranked,
+      confidence: stage.policyAfter.confidence, suggestedLibrary: libraries[0] });
+    expect(rerun.pass2Candidate.ai_advisory).toBeNull();
+    expect(ctx.baselineResult.ai_advisory.message).toBe('EARLIER ADVISORY SENTINEL');
     expect(ctx.baselineResult.candidate_bound_verification.status_id).toBe('abstained');
   } else {
     expect(rerun.pass2Candidate.signalContext).toBe(aiClassify.mock.calls[0][2]);
@@ -228,6 +232,44 @@ async function currentReviewResult(item, libraries, { currentAdvisory = null, ad
   await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
   return result;
 }
+
+test.each([['cap', false], ['rejected', false], ['cap', true], ['rejected', true]])(
+  'retained %s with explicit top-level evidence=%s persists owned support and replay fingerprints', async (retained, explicit) => {
+    const { libraries, item } = await fixture();
+    const questionBuild = jest.spyOn(policyQuestionBuilder, 'build');
+    const result = await currentReviewResult(item, libraries, { adopted: true, retained });
+    expect(questionBuild).toHaveBeenCalledWith(expect.objectContaining({ relatedEvidenceSummary: null }));
+    expect(Object.keys(result.signalContext).sort()).toEqual(['confidence', 'ranked', 'suggestedLibrary']);
+    const signals = { explicit_current_signal: 81 };
+    const rag = { similarItems: [{ similarity: 0.83, textSimilarity: 0.7, imageSimilarity: 0.91,
+      textWeight: 0.4, imageWeight: 0.6 }] };
+    if (explicit) { result.signals = signals; result.ragContext = rag; }
+    const id = await persistence.logClassification(item, result); history.push(id);
+    const row = (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+    expect(row.signals_json).toEqual(explicit ? signals : null);
+    expect(row.metadata.classification_details.rag_details).toEqual(explicit ? {
+      combined_similarity: 0.83, text_similarity: 0.7, image_similarity: 0.91, text_weight: 0.4, image_weight: 0.6,
+    } : null);
+    expect(row.metadata.classification_details.ai_advisory).toBeNull();
+    expect(row.metadata.classification_details.current_policy_review.status).toBe('recorded');
+    expect(JSON.stringify(row)).not.toMatch(/EARLIER ADVISORY SENTINEL|EARLIER SUMMARY SENTINEL|EARLIER RETRIEVAL SENTINEL/u);
+    if (explicit) { expect(result.signals).toBe(signals); expect(result.ragContext).toBe(rag); }
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+    expect(contract.decision_summary.ai_advisory).toBeNull();
+    expect(contract.recommendation.leading_destination.library_id).toBe(libraries[0].id);
+    const oldRow = structuredClone(row);
+    oldRow.metadata.classification_details.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory' };
+    const oldContract = buildPolicyRuntimeQuestionAnswerContract({ classification: oldRow, question: oldRow.policy_question });
+    expect(oldContract.recommendation).toEqual(contract.recommendation);
+    expect(oldContract.fingerprint).not.toBe(contract.fingerprint);
+    const answer = fingerprint => parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version,
+      contract_fingerprint: fingerprint, action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
+    const resolve = fingerprint => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
+      { policyQuestionContext: context, answerContract: answer(fingerprint) });
+    await expect(resolve(oldContract.fingerprint)).rejects.toMatchObject({ statusCode: 409 });
+    expect(await resolve(contract.fingerprint)).toMatchObject({ success: true, shouldRoute: true });
+    expect(await resolve(contract.fingerprint)).toMatchObject({ idempotent: true, shouldRoute: false });
+  });
 
 test.each(['cap', 'rejected'])('retained %s writes no inherited verification count and preserves historical statuses', async retained => {
   const { libraries, item } = await fixture();
