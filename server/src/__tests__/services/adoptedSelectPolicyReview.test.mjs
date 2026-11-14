@@ -169,7 +169,7 @@ test('fallible candidate inspection still registers a v2 gap without invoking ac
   expect(trap).not.toHaveBeenCalled();
 });
 
-test('actual select stage clears inherited status and preserves support/authority with zero AI calls', async () => {
+test('actual select stage owns fresh context, clears inherited advisory/status and preserves authority with zero AI calls', async () => {
   const value = await ragRecheckAdviceFixture({ action: 'prompt_select' });
   const status = { version: 'classification.candidate_bound_verification.v1', status_id: 'confirmed' };
   const advisory = { message: 'Earlier advisory' }, authority = { sideEffects: { canRoute: false, canLearn: false } };
@@ -181,8 +181,10 @@ test('actual select stage clears inherited status and preserves support/authorit
     policyRecheckStage: stage, aiClassify });
   expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
   expect(rerun.pass2Candidate).toMatchObject({ confidence: 80, candidate_bound_verification: null });
-  expect(rerun.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
-  expect(rerun.pass2Candidate.ai_advisory).toBe(advisory); expect(rerun.pass2Candidate.ai_authority).toBe(authority);
+  expect(rerun.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked,
+    confidence: value.result.confidence, suggestedLibrary: value.libraries[0] });
+  expect(rerun.pass2Candidate.ai_advisory).toBeNull(); expect(rerun.pass2Candidate.ai_authority).toBe(authority);
+  expect(value.ctx.baselineResult.ai_advisory).toBe(advisory);
   expect(value.ctx.baselineResult.candidate_bound_verification).toBe(status);
   expect(aiClassify).not.toHaveBeenCalled(); expect(rerun.aiCallsUsed).toBe(1);
   expect(project(value, rerun.pass2Candidate)).toMatchObject({ version: 'policy.current_review.v2', status: 'recorded' });

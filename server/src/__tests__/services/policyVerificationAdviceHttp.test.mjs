@@ -287,8 +287,10 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
     if (select) {
       expect(classify).not.toHaveBeenCalled();
       expect(result.candidate_bound_verification).toBeNull();
-      expect(result.signalContext).toBe(value.ctx.signalContext);
-      expect(result.ai_advisory).toBe(earlierAdvisory);
+      expect(result.signalContext).toEqual({ ranked: freshPolicyResult.ranked,
+        confidence: freshPolicyResult.confidence, suggestedLibrary: value.libraries[0] });
+      expect(result.ai_advisory).toBeNull();
+      expect(value.ctx.baselineResult.ai_advisory).toBe(earlierAdvisory);
       expect(projectCurrentPolicyReviewFrame(held).version).toBe('policy.current_review.v2');
     } else if (retained) {
       expect(classify).not.toHaveBeenCalled();

@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Select result ownership** — Give new adopted selection candidates fresh
+  proven policy context or explicit absence, and clear the earlier candidate's
+  AI advisory. Preserve explicit destination choice, current review evidence,
+  provider accounting and routing/learning safeguards. See the
+  [outcome](docs/architecture/adopted-select-result-context-outcome.md).
+
 - **Select-policy review evidence** — Keep new retained adopted selection
   reviews tied to their fresh policy evaluation, using a bounded v2 frame or an
   explicit evidence gap. Show the technical candidate and score while requiring

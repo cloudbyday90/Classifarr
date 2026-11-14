@@ -7,7 +7,8 @@ const sources = new WeakMap();
 /** Result ownership is independent of optional advice, invocation permission and review capture. */
 export function holdAdoptedRagResultContextSource({ policyResult, metadata, libraries }) {
   try {
-    if (field(policyResult, 'action') !== 'prompt_confirm') return null;
+    const action = field(policyResult, 'action');
+    if (!['prompt_confirm', 'prompt_select'].includes(action)) return null;
     const ranked = field(policyResult, 'ranked');
     const leader = recoveryRows(ranked, POLICY_RECOVERY_REFERENCE_LIMITS.candidates)[0];
     const library = recoveryRows(libraries, POLICY_RECOVERY_REFERENCE_LIMITS.libraries)
@@ -17,7 +18,7 @@ export function holdAdoptedRagResultContextSource({ policyResult, metadata, libr
     const selection = holdPolicyRecoverySuggestion(args);
     if (!selection || readPolicyRecoverySuggestion(selection, args) !== library) return null;
     const token = Object.freeze({});
-    sources.set(token, { args, selection, library });
+    sources.set(token, { args, action, selection, library });
     return token;
   } catch { return null; }
 }
@@ -29,7 +30,8 @@ export function applyAdoptedRagResultContext(stage, token, { policyResult, metad
   try {
     const candidate = field(stage, 'pass2Candidate');
     const confidence = field(candidate, 'confidence');
-    if (!source || source.args.policyResult !== policyResult || source.args.metadata !== metadata ||
+    if (!source || field(policyResult, 'action') !== source.action ||
+        source.args.policyResult !== policyResult || source.args.metadata !== metadata ||
         source.args.libraries !== libraries || field(stage, 'policyAfter') !== policyResult ||
         field(stage, 'hadError') !== false || field(field(stage, 'policyGate'), 'shouldAdopt') !== true ||
         field(candidate, 'policyResult') !== policyResult || field(candidate, 'library') !== source.library ||

@@ -93,9 +93,11 @@ describe('discordPendingNotification', () => {
       expect.objectContaining({ name: 'Policy score: Owned destination 0', value: '70%' }),
     ]));
   });
-  test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
-    'adopted %s notification retained=%s uses the current advisory fingerprint across both saved contracts', async (kind, retained) => {
-    const value = await ragRecheckAdviceFixture({ confidence: 75, afterEvaluate: row => { row.score = 70; } });
+  test.each([['pending', false, 'prompt_confirm'], ['confidence', false, 'prompt_confirm'],
+    ['pending', true, 'prompt_confirm'], ['confidence', true, 'prompt_confirm'],
+    ['pending', false, 'prompt_select'], ['confidence', false, 'prompt_select']])(
+    'adopted %s notification retained=%s action=%s uses the current advisory fingerprint across both saved contracts', async (kind, retained, action) => {
+    const value = await ragRecheckAdviceFixture({ action, confidence: 75, afterEvaluate: row => { row.score = 70; } });
     const earlierAdvisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory', mode: 'verification',
       source_format: 'earlier_pass', message: 'Earlier advisory', deterministic_candidate: {
         library_id: 2001, library_name: 'Earlier destination',
@@ -104,14 +106,16 @@ describe('discordPendingNotification', () => {
     jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
     jest.spyOn(ragLoopResilienceManager, 'canRun').mockReturnValue({ allowed: true });
     const stage = await runPolicyRecheckStage(value.ctx);
+    const aiClassify = jest.fn(async (metadata, libraries, signalContext, options) => {
+      enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
+      return createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
+        { candidate: { library: libraries[0] } }, { valid: true, decision: 'CONFIRM' });
+    });
     const rerun = await runAiRerunStage({ ...value.ctx, policyAfter: stage.policyAfter, existingCandidate: stage.pass2Candidate,
       ...(retained ? { aiCallsUsed: 2 } : {}),
-      policyRecheckStage: stage, aiClassify: async (metadata, libraries, signalContext, options) => {
-        enterAdoptedRagVerification(options.adoptedRagVerification, { metadata, libraries, signalContext }, options.verificationCandidate);
-        return createCandidateBoundVerificationResult({ metadata, libraries, signalContext },
-          { candidate: { library: libraries[0] } }, { valid: true, decision: 'CONFIRM' });
-      },
+      policyRecheckStage: stage, aiClassify,
     });
+    expect(aiClassify).toHaveBeenCalledTimes(retained || action === 'prompt_select' ? 0 : 1);
     expect(rerun.pass2Candidate.ai_advisory).toBeNull();
     const published = publishCurrentPolicyReviewFrame(rerun.pass2Candidate, { ...rerun.pass2Candidate });
     const frame = projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item));
@@ -124,7 +128,7 @@ describe('discordPendingNotification', () => {
       policy_question: question, clarification: question };
     const classification = { ...value.item, id: 77, method: result.method, metadata, confidence: 75 };
     const contract = buildPolicyRuntimeQuestionAnswerContract({ classification, question });
-    if (retained) {
+    if (retained || action === 'prompt_select') {
       expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
       expect(result.ai_advisory).toBeNull();
       expect(contract.decision_summary.ai_advisory).toBeNull();
@@ -133,7 +137,11 @@ describe('discordPendingNotification', () => {
       metadata: { ...metadata, classification_details: { ...metadata.classification_details, ai_advisory: earlierAdvisory } },
     }, question });
     expect(contract.recommendation).toEqual(oldContract.recommendation);
-    expect(contract.recommendation.leading_destination).toMatchObject({ library_id: 101, evidence_score: 70 });
+    if (action === 'prompt_select') {
+      expect(contract.recommendation.leading_destination).toBeNull();
+      expect(contract.recommendation.policy_destination).toMatchObject({ library_id: 101, evidence_score: 70 });
+      expect(frame.version).toBe('policy.current_review.v2');
+    } else expect(contract.recommendation.leading_destination).toMatchObject({ library_id: 101, evidence_score: 70 });
     expect(contract.fingerprint).not.toBe(oldContract.fingerprint);
     const answer = fingerprint => ({ contract_version: contract.version, contract_fingerprint: fingerprint,
       action_id: 'confirm_destination', destination_library_id: 101 });
