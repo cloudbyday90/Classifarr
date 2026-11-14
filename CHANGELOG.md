@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Automatic result ownership** — Give new adopted automatic-policy candidates
+  fresh proven policy context or explicit absence, and clear the earlier
+  candidate's AI advisory. Preserve top-level evidence, routing holds and
+  accounting; missing optional proof adds no routing hold. See the
+  [outcome](docs/architecture/adopted-auto-result-context-outcome.md).
+
 - **Pgvector browser contracts** — Verify the concise System Information facts,
   stale/unknown handling and CPU warning without restoring removed diagnostics.
   Check narrow layouts and run these cases automatically in the existing

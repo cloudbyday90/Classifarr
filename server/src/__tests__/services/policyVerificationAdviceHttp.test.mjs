@@ -243,7 +243,9 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
   const retained = scenario.startsWith('retained ');
   scenario = scenario.replace('retained ', '');
   const value = await ragRecheckAdviceFixture(); choose('ollama');
-  const earlierAdvisory = { version: 'classification.ai_advisory.v1', message: 'EARLIER ADVISORY SENTINEL' };
+  const earlierAdvisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory', mode: 'verification',
+    source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
+    deterministic_candidate: { library_id: 2001, library_name: 'Earlier destination' }, proposed_destination: null };
   value.ctx.baselineResult.ai_advisory = earlierAdvisory;
   value.ctx.baselineResult.candidate_bound_verification = { status_id: 'confirmed' };
   const classify = jest.spyOn(classificationRagLoopService, 'aiClassify');
@@ -294,8 +296,11 @@ test.each(['apply', 'shadow', 'comparison rejection', 'rollout mutation', 'retai
       expect(classify).not.toHaveBeenCalled();
       expect(result.method).toBe('policy_auto');
       expect(result.candidate_bound_verification).toBeNull();
-      expect(result.signalContext).toBe(value.ctx.signalContext);
-      expect(result.ai_advisory).toBe(earlierAdvisory);
+      expect(result.signalContext).toEqual({ ranked: freshPolicyResult.ranked,
+        confidence: freshPolicyResult.confidence, suggestedLibrary: value.libraries[0] });
+      expect(Object.isFrozen(result.signalContext)).toBe(true);
+      expect(result.ai_advisory).toBeNull();
+      expect(value.ctx.baselineResult.ai_advisory).toBe(earlierAdvisory);
       expect(projectCurrentPolicyReviewFrame(held).version).toBe('policy.current_review.v3');
     } else if (select) {
       expect(classify).not.toHaveBeenCalled();

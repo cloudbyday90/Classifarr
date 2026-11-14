@@ -8,7 +8,8 @@ const sources = new WeakMap();
 export function holdAdoptedRagResultContextSource({ policyResult, metadata, libraries }) {
   try {
     const action = field(policyResult, 'action');
-    if (!['prompt_confirm', 'prompt_select'].includes(action)) return null;
+    if (!['auto_classify', 'prompt_confirm', 'prompt_select'].includes(action)) return null;
+    const method = action === 'auto_classify' ? 'policy_auto' : 'policy_recheck';
     const ranked = field(policyResult, 'ranked');
     const leader = recoveryRows(ranked, POLICY_RECOVERY_REFERENCE_LIMITS.candidates)[0];
     const library = recoveryRows(libraries, POLICY_RECOVERY_REFERENCE_LIMITS.libraries)
@@ -18,7 +19,7 @@ export function holdAdoptedRagResultContextSource({ policyResult, metadata, libr
     const selection = holdPolicyRecoverySuggestion(args);
     if (!selection || readPolicyRecoverySuggestion(selection, args) !== library) return null;
     const token = Object.freeze({});
-    sources.set(token, { args, action, selection, library });
+    sources.set(token, { args, action, method, selection, library });
     return token;
   } catch { return null; }
 }
@@ -35,7 +36,7 @@ export function applyAdoptedRagResultContext(stage, token, { policyResult, metad
         source.args.libraries !== libraries || field(stage, 'policyAfter') !== policyResult ||
         field(stage, 'hadError') !== false || field(field(stage, 'policyGate'), 'shouldAdopt') !== true ||
         field(candidate, 'policyResult') !== policyResult || field(candidate, 'library') !== source.library ||
-        field(candidate, 'method') !== 'policy_recheck' || typeof confidence !== 'number' ||
+        field(candidate, 'method') !== source.method || typeof confidence !== 'number' ||
         !Number.isFinite(confidence) || confidence < 0 || confidence > 100 ||
         readPolicyRecoverySuggestion(source.selection, source.args) !== source.library) return stage;
     // The owned builder already cleared earlier support. Refuse accessor output slots.

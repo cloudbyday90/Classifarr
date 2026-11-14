@@ -21,6 +21,7 @@ const { publishCurrentPolicyReviewFrame, savedCurrentPolicyReviewMetadata } = aw
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { libraryProfileService } = await import('../../services/libraryProfileService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
+const { evaluateClassificationRouteSafety } = await import('../../services/classificationRouteSafetyGate.mjs');
 const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
 const { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const { loadCandidateBoundVerificationDailyOutcomeMetrics } = await import('../../services/classificationCandidateBoundVerificationMetricsRepository.mjs');
@@ -72,6 +73,11 @@ async function fixture(source = 'native_intent', { hold = 'authority', copied = 
   const original = { action: 'prompt_confirm', confidence: low ? 10 : 80, ranked: [{ library_id: earlier.id,
     policy_id: created.policyId + 100000, score: low ? 10 : 80, auto_classify_threshold: 95, prompt_threshold: 60 }] };
   Object.assign(ctx.signalContext, { ranked: original.ranked, confidence: original.confidence, suggestedLibrary: earlier });
+  Object.assign(ctx.signalContext, { relatedEvidenceSummary: { source: 'EARLIER SUMMARY SENTINEL' },
+    signals: { earlier_signal: 99 }, ragContext: { similarItems: [{ similarity: 0.99, title: 'EARLIER RETRIEVAL SENTINEL' }] } });
+  ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory',
+    mode: 'verification', source_format: 'earlier_pass', message: 'EARLIER ADVISORY SENTINEL',
+    deterministic_candidate: { library_id: earlier.id, library_name: earlier.name }, proposed_destination: null };
   Object.assign(ctx.baselineResult, { confidence: original.confidence, candidate_bound_verification: {
     version: 'classification.candidate_bound_verification.v1', status_id: 'confirmed' } });
   if (hold === 'authority') ctx.baselineResult.ai_authority = { sideEffects: { canRoute: false, canLearn: false } };
@@ -84,7 +90,10 @@ async function fixture(source = 'native_intent', { hold = 'authority', copied = 
   expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
   expect(stage.pass2Candidate.candidate_bound_verification).toBeNull();
   expect(ctx.baselineResult.candidate_bound_verification.status_id).toBe('confirmed');
-  expect(stage.pass2Candidate.signalContext).toBe(ctx.signalContext);
+  expect(stage.pass2Candidate.signalContext).toEqual(copied ? null : {
+    ranked: stage.policyAfter.ranked, confidence: stage.policyAfter.confidence, suggestedLibrary: libraries[0] });
+  expect(stage.pass2Candidate.ai_advisory).toBeNull();
+  expect(ctx.baselineResult.ai_advisory.message).toBe('EARLIER ADVISORY SENTINEL');
   const result = publishCurrentPolicyReviewFrame(stage.pass2Candidate, { ...stage.pass2Candidate });
   await ensureDecisionQuestion({ metadata: item, result, libraries, policyResult: stage.policyAfter });
   item.policyResult = original;
@@ -95,6 +104,38 @@ async function save(value, writer = persistence) {
   return (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
 }
 const contract = row => buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
+
+test.each(['native_intent', 'compatibility_bridge'])('%s unavailable optional proof adds no automatic routing hold', async source => {
+  const value = await fixture(source, { copied: true, hold: null });
+  expect(value.result.signalContext).toBeNull(); expect(value.result.ai_advisory).toBeNull();
+  expect(value.result.needs_clarification).toBe(false);
+  const row = await save(value);
+  expect(row.status).toBe('completed'); expect(row.library_id).toBe(value.libraries[0].id);
+  expect(evaluateClassificationRouteSafety({ result: value.result }).automatic_route_allowed).toBe(true);
+  expect(row.metadata.classification_details).not.toHaveProperty('current_policy_review');
+});
+
+test.each(['native_intent', 'compatibility_bridge'].flatMap(source =>
+  ['awaiting_decision', 'completed', 'pending_retry'].flatMap(status => [false, true].map(explicit => [source, status, explicit]))))(
+  '%s automatic %s persists current support with explicit top-level evidence=%s', async (source, status, explicit) => {
+    const value = await fixture(source, { hold: status === 'awaiting_decision' ? 'authority' : null });
+    if (status === 'pending_retry') value.result.needs_retry = true;
+    const signals = { explicit_current_signal: 81 }, rag = { similarItems: [{ similarity: 0.83,
+      textSimilarity: 0.7, imageSimilarity: 0.91, textWeight: 0.4, imageWeight: 0.6 }] };
+    if (explicit) { value.result.signals = signals; value.result.ragContext = rag; }
+    const row = await save(value);
+    expect(row.status).toBe(status); expect(row.signals_json).toEqual(explicit ? signals : null);
+    expect(row.metadata.classification_details.rag_details).toEqual(explicit ? { combined_similarity: 0.83,
+      text_similarity: 0.7, image_similarity: 0.91, text_weight: 0.4, image_weight: 0.6 } : null);
+    expect(row.metadata.classification_details.ai_advisory).toBeNull();
+    expect(row.metadata.policyResult).toEqual(value.original);
+    expect(JSON.stringify(row)).not.toMatch(/EARLIER ADVISORY SENTINEL|EARLIER SUMMARY SENTINEL|EARLIER RETRIEVAL SENTINEL/u);
+    if (explicit) { expect(value.result.signals).toBe(signals); expect(value.result.ragContext).toBe(rag); }
+    if (status === 'awaiting_decision') {
+      expect(row.metadata.classification_details.current_policy_review.version).toBe('policy.current_review.v3');
+      expect(contract(row).decision_summary.ai_advisory).toBeNull();
+    } else expect(row.metadata.classification_details).not.toHaveProperty('current_policy_review');
+  });
 
 test.each(['native_intent', 'compatibility_bridge'])('%s real load/decision/writer retains the current automatic reference and hold', async source => {
   const value = await fixture(source), discord = jest.spyOn(persistence, '_sendAwaitingDecisionDiscordNotification').mockResolvedValue();
@@ -193,9 +234,16 @@ test.each(['current B', 'original A'])('loopback HTTP %s explicit choice has sta
   });
   const current = contract(row), body = { contract_version: current.version, contract_fingerprint: current.fingerprint,
     action_id: 'confirm_destination', destination_library_id: destination };
+  const earlierRow = structuredClone(row);
+  earlierRow.metadata.classification_details.ai_advisory = value.ctx.baselineResult.ai_advisory;
+  const earlierContract = contract(earlierRow);
+  expect(earlierContract.recommendation).toEqual(current.recommendation);
+  expect(earlierContract.fingerprint).not.toBe(current.fingerprint);
+  expect((await request(app).post('/answer').send({ ...body, contract_fingerprint: earlierContract.fingerprint })).status).toBe(409);
   expect((await request(app).post('/answer').send({ ...body, contract_fingerprint: '0'.repeat(64) })).status).toBe(409);
   expect(routed).not.toHaveBeenCalled();
   expect((await request(app).post('/answer').send(body)).body).toMatchObject({ success: true, shouldRoute: true });
+  await query("UPDATE classification_history SET method='manual_correction' WHERE id=$1", [row.id]);
   expect((await request(app).post('/answer').send(body)).body).toMatchObject({ idempotent: true, shouldRoute: false });
   expect(routed).toHaveBeenCalledTimes(1);
 });

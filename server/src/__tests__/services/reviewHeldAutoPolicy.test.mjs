@@ -162,7 +162,7 @@ test('complete 64-candidate/library evaluation retains its ranking and only five
   expect(frame.policy.ranked.filter(row => row.detail !== null)).toHaveLength(5);
 });
 
-test('actual automatic stage clears inherited verification only and performs no extra AI work', async () => {
+test('actual automatic stage owns fresh context, clears inherited advisory/status and performs no extra AI work', async () => {
   const value = await automaticPolicyReviewFixture(), status = { status_id: 'confirmed' }, advisory = { message: 'Earlier advisory' };
   Object.assign(value.ctx.baselineResult, { candidate_bound_verification: status, ai_advisory: advisory });
   jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
@@ -172,8 +172,9 @@ test('actual automatic stage clears inherited verification only and performs no 
     policyRecheckStage: stage, aiClassify });
   expect(rerun.pass2Candidate).toBe(stage.pass2Candidate);
   expect(stage.pass2Candidate.candidate_bound_verification).toBeNull();
-  expect(stage.pass2Candidate.signalContext).toBe(value.ctx.signalContext);
-  expect(stage.pass2Candidate.ai_advisory).toBe(advisory);
+  expect(stage.pass2Candidate.signalContext).toEqual({ ranked: value.result.ranked, confidence: 90, suggestedLibrary: value.libraries[0] });
+  expect(stage.pass2Candidate.ai_advisory).toBeNull();
+  expect(value.ctx.baselineResult.ai_advisory).toBe(advisory);
   expect(stage.pass2Candidate.ai_authority).toBe(value.ctx.baselineResult.ai_authority);
   expect(value.ctx.baselineResult.candidate_bound_verification).toBe(status);
   expect(aiClassify).not.toHaveBeenCalled(); expect(rerun.aiCallsUsed).toBe(value.ctx.aiCallsUsed);

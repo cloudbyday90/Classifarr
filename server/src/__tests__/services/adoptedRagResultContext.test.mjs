@@ -166,7 +166,7 @@ describe.each(['prompt_confirm', 'prompt_select'])('%s construction-owned contex
     });
 });
 
-test.each(['auto_classify', 'manual'])('%s source is outside construction-context admission', async action => {
+test.each(['manual'])('%s source is outside construction-context admission', async action => {
   const value = await createFixture({ action });
   expect(holdAdoptedRagResultContextSource(args(value))).toBeNull();
   expect(value.candidate.signalContext).toBe(value.ctx.signalContext);

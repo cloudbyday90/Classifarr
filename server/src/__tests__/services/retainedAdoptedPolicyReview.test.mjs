@@ -104,7 +104,7 @@ test('retained candidate inspection failure records a gap without invoking an ac
   expect(trap).not.toHaveBeenCalled();
 });
 
-test('automatic policy candidates retain support, clear inherited status and emit no completed-row frame', async () => {
+test('automatic policy builder clears inherited support/status and emits no completed-row frame', async () => {
   const value = await ragRecheckAdviceFixture();
   value.result.action = 'auto_classify';
   const status = { status_id: 'abstained' };
@@ -115,8 +115,9 @@ test('automatic policy candidates retain support, clear inherited status and emi
   const stage = { ...value.stage, pass2Candidate: result };
   retainAdoptedCurrentPolicyReviewStage(stage, null, args(value));
   expect(result.candidate_bound_verification).toBeNull();
-  expect(result.signalContext).toBe(value.ctx.signalContext);
-  expect(result.ai_advisory).toBe(advisory);
+  expect(result.signalContext).toBeNull();
+  expect(result.ai_advisory).toBeNull();
+  expect(value.ctx.baselineResult.ai_advisory).toBe(advisory);
   const published = publishCurrentPolicyReviewFrame(result, { ...result });
   expect(projectCurrentPolicyReviewFrame(admitCurrentPolicyReviewForPersistence(
     holdCurrentPolicyReviewFrame(published, value.item), 'completed'))).toBeNull();

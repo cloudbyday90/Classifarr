@@ -148,6 +148,9 @@ for adopted automatic candidates. This batch deliberately preserves their earlie
 context/advisory, while correcting saved review evidence independently. Settle
 that behavior separately before implementation.
 
+That construction-owned cleanup is implemented and verified in the separate
+[automatic result-context outcome](adopted-auto-result-context-outcome.md).
+
 An isolated test also reproduced a separate pending-replacement precision defect:
 the existing lifecycle's `positiveInteger` coerces an active row ID through
 `Number` and permits unsafe integers. ID `9007199254740993` rounds to

@@ -93,6 +93,9 @@ workflow safeguards and exact-source delivery receipts. The next classification
 item is construction-owned context/advisory for adopted automatic candidates. The
 separately documented pending-replacement BIGINT precision defect also remains.
 
+The subsequent [automatic result-context outcome](adopted-auto-result-context-outcome.md)
+records that classification cleanup and its independent verification.
+
 No open PR was available at intake or the delivery recheck, so no random PR or
 stale applicable Dependabot PR could be selected. No closed PR was reused or PR
 merged. This batch has no release, deployment, live configuration write, provider

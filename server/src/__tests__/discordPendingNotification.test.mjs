@@ -73,21 +73,30 @@ describe('discordPendingNotification', () => {
     'automatic held %s notification gap=%s preserves current reference and command meaning', async (kind, gap) => {
     const value = await automaticPolicyReviewFixture();
     value.ctx.baselineResult.candidate_bound_verification = { status_id: 'confirmed' };
+    value.ctx.baselineResult.ai_advisory = { version: 'classification.ai_advisory.v1', status_id: 'earlier_advisory' };
     jest.spyOn(policyEngine, 'evaluateItem').mockResolvedValue(value.result);
     const stage = await runPolicyRecheckStage(value.ctx);
     expect(stage.policyGate.shouldAdopt).toBe(true);
+    expect(stage.pass2Candidate.ai_advisory).toBeNull();
     const published = publishCurrentPolicyReviewFrame(stage.pass2Candidate, { ...stage.pass2Candidate });
     const frame = projectCurrentPolicyReviewFrame(holdCurrentPolicyReviewFrame(published, value.item));
     const routeSafety = buildClassificationRouteSafetyProjection(evaluateClassificationRouteSafety({ result: published }));
     const metadata = rememberSavedCurrentPolicyReview(published, { ...value.item, title: 'Owned held automatic review',
       policyResult: value.original, classification_details: { current_policy_review: gap ? { ...frame, status: 'evidence_gap', policy: null } : frame,
-        route_safety: routeSafety } }, 77);
+        route_safety: routeSafety, ai_advisory: published.ai_advisory } }, 77);
     const question = normalizePolicyRuntimeQuestion({ metadata: value.item, libraries: value.libraries, policyResult: value.result });
     const result = { ...published, classification_id: 77, needs_clarification: true, route_safety: routeSafety,
       policy_question: question, clarification: question };
     const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...value.item, id: 77,
       method: result.method, metadata, confidence: 90 }, question });
     expect(result.candidate_bound_verification).toBeNull();
+    expect(contract.decision_summary.ai_advisory).toBeNull();
+    const earlierMetadata = structuredClone(metadata);
+    earlierMetadata.classification_details.ai_advisory = value.ctx.baselineResult.ai_advisory;
+    const earlierContract = buildPolicyRuntimeQuestionAnswerContract({ classification: { ...value.item, id: 77,
+      method: result.method, metadata: earlierMetadata, confidence: 90 }, question });
+    expect(earlierContract.recommendation).toEqual(contract.recommendation);
+    expect(earlierContract.fingerprint).not.toBe(contract.fingerprint);
     expect(contract.recommendation.leading_destination).toEqual(gap ? null : expect.objectContaining({ library_id: 101, evidence_score: 90 }));
     const send = jest.fn(async () => ({ id: 'owned-auto-message' }));
     await (kind === 'confidence' ? sendConfidenceBasedNotification : sendPendingDecisionNotification)(metadata, result, {
