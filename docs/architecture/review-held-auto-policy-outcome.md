@@ -140,6 +140,9 @@ expectations with the already chosen concise panel, preserving meaningful fact,
 staleness, mismatch, accessibility and no-health-claim assertions. Do not describe
 the full development-browser suite as green until that separate fix is verified.
 
+The separate [browser-contract outcome](pgvector-browser-contract-outcome.md)
+records that follow-up without changing the concise panel or health behavior.
+
 The next ordinary classification cleanup is construction-owned context/advisory
 for adopted automatic candidates. This batch deliberately preserves their earlier
 context/advisory, while correcting saved review evidence independently. Settle

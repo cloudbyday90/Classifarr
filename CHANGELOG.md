@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pgvector browser contracts** — Verify the concise System Information facts,
+  stale/unknown handling and CPU warning without restoring removed diagnostics.
+  Check narrow layouts and run these cases automatically in the existing
+  Chromium CI step. See the
+  [outcome](docs/architecture/pgvector-browser-contract-outcome.md).
+
 - **Review-held automatic policy evidence** — Tie new retained automatic-policy
   reviews to the current evaluation through a bounded v3 frame or explicit gap.
   Preserve saved routing holds and existing operator actions; completed automatic
