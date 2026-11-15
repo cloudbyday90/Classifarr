@@ -79,6 +79,9 @@ describe('ClassificationPendingDecisionLifecycleService', () => {
     expect(insert).toHaveBeenCalledWith(client, [41, 40]);
     expect(query.mock.calls[2][0]).toContain("SET status = 'reclassified'");
     expect(query.mock.calls[3][0]).toContain('UPDATE app_notifications');
+    expect(query.mock.calls[3][0]).toContain("ltrim(data->>'classificationId', '0') COLLATE \"C\"");
+    expect(query.mock.calls[3][0]).toContain('ANY($1::text[])');
+    expect(query.mock.calls[3][1]).toEqual([[41, 40]]);
     expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id'");
     expect(query.mock.calls[4][0]).toContain("'version', $2::text");
     expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id', $3::jsonb");

@@ -156,6 +156,11 @@ an explicit decision about leading zeros; AND ordering alone is not a safe guard
 No production occurrence was established. This is separate from the repaired
 valid-ID precision boundary.
 
+That follow-up is now implemented using cast-free exact matching rather than a
+guarded conversion. Its separate
+[outcome](pending-notification-id-matching-outcome.md) records compatibility,
+malformed-record preservation and regression evidence.
+
 Repeated persistence still creates a new successor; this service has no durable
 insertion replay key. It does not retry an uncertain commit or recover one through
 an operator-answer receipt. Existing completed-answer recovery remains separate.

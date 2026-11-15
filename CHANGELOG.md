@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending notification matching** — Allow valid pending replacement to finish
+  when unrelated notifications contain oversized or malformed classification
+  IDs. Compare exact validated targets without casting notification data;
+  preserve leading-zero matches and leave malformed records unchanged. See the
+  [outcome](docs/architecture/pending-notification-id-matching-outcome.md).
+
 - **Pending replacement IDs** — Preserve exact large History IDs during
   supersession and notification read tracking. Keep new lifecycle links precise
   through JSON readback while retaining small numeric IDs. Reject invalid

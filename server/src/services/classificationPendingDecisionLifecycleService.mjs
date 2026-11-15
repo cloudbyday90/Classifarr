@@ -5,6 +5,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { pendingDecisionPredecessorId, validatePendingDecisionInsertedId } from './pendingDecisionRowIds.mjs';
+import { MARK_SUPERSEDED_PENDING_NOTIFICATIONS_READ_SQL } from './pendingDecisionNotificationSql.mjs';
 
 export const CLASSIFICATION_PENDING_DECISION_IDENTITY_VERSION =
   'classification.pending_decision_identity.v1';
@@ -195,14 +196,7 @@ export class ClassificationPendingDecisionLifecycleService {
           [supersededClassificationIds],
         );
         await client.query(
-          `UPDATE app_notifications
-           SET is_read = true,
-               read_at = COALESCE(read_at, NOW())
-           WHERE is_read = false
-             AND data IS NOT NULL
-             AND data->>'notificationType' = 'awaiting_decision'
-             AND (data->>'classificationId') ~ '^[0-9]+$'
-             AND (data->>'classificationId')::bigint = ANY($1::bigint[])`,
+          MARK_SUPERSEDED_PENDING_NOTIFICATIONS_READ_SQL,
           [supersededClassificationIds],
         );
       }
