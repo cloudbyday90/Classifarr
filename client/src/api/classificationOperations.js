@@ -72,6 +72,7 @@ export function getHistoricRouteSafetyRefreshInventory(params = {}) {
 }
 
 export function executeHistoricRouteSafetyRefresh(classificationIds) {
+  // The server admits at most 50 unique positive INTEGER IDs; preserve raw scalar types here.
   return apiClient.post('/classification/pending/route-safety-refresh/retry', { classificationIds })
 }
 
@@ -94,6 +95,7 @@ export function rememberResolvedExactItem(classificationId) {
 }
 
 export function retryClassifications(classificationIds, options = {}) {
+  // The server admits numbers/canonical decimal strings from 1 through 2147483647; do not coerce IDs here.
   // HTTP success is not queue success: inspect the per-item results[].queued flag.
   return apiClient.post('/classification/retry', { classificationIds, options })
 }

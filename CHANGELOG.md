@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Exact retry targets** — Share bounded ID validation across public, batch,
+  direct and historic-refresh retry commands. Reject coercible or out-of-range
+  targets before retry work or new historic receipts, preserving valid execution,
+  authorization and uncertain-commit handling. See the
+  [outcome](docs/architecture/retry-target-admission-outcome.md).
+
 - **Retry notification cleanup** — Prevent oversized or malformed notification
   classification IDs from blocking valid retries. Preserve either-key deletion
   and the existing target INTEGER contract. See the

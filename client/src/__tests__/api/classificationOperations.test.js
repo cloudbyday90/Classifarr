@@ -158,9 +158,9 @@ describe('classificationOperations', () => {
 
   it('executeHistoricRouteSafetyRefresh sends only operator-selected IDs to the bounded command', async () => {
     mockPost.mockResolvedValueOnce({ data: { retryReceipt: 'receipt', records: [] } })
-    const result = await executeHistoricRouteSafetyRefresh([41, 42])
+    const result = await executeHistoricRouteSafetyRefresh(['41', 42])
     expect(mockPost).toHaveBeenCalledWith('/classification/pending/route-safety-refresh/retry', {
-      classificationIds: [41, 42],
+      classificationIds: ['41', 42],
     })
     expect(result).toEqual({ data: { retryReceipt: 'receipt', records: [] } })
   })
@@ -200,9 +200,9 @@ describe('classificationOperations', () => {
 
   it('retryClassifications calls POST with ids and empty default options', async () => {
     mockPost.mockResolvedValueOnce({ data: { retried: 3 } })
-    const result = await retryClassifications(['c1', 'c2', 'c3'])
+    const result = await retryClassifications([1, '2', 2147483647])
     expect(mockPost).toHaveBeenCalledWith('/classification/retry', {
-      classificationIds: ['c1', 'c2', 'c3'],
+      classificationIds: [1, '2', 2147483647],
       options: {},
     })
     expect(result).toEqual({ data: { retried: 3 } })
@@ -210,10 +210,18 @@ describe('classificationOperations', () => {
 
   it('retryClassifications passes custom options', async () => {
     mockPost.mockResolvedValueOnce({ data: { retried: 1 } })
-    await retryClassifications(['c1'], { force: true })
+    await retryClassifications(['1'], { force: true })
     expect(mockPost).toHaveBeenCalledWith('/classification/retry', {
-      classificationIds: ['c1'],
+      classificationIds: ['1'],
       options: { force: true },
     })
+  })
+
+  it('propagates server admission refusal without coercion or helper replay', async () => {
+    const refusal = { response: { status: 400, data: { error: 'Owned admission refusal' } } }
+    mockPost.mockRejectedValueOnce(refusal)
+    await expect(retryClassifications(['1e2'])).rejects.toBe(refusal)
+    expect(mockPost).toHaveBeenCalledTimes(1)
+    expect(mockPost).toHaveBeenCalledWith('/classification/retry', { classificationIds: ['1e2'], options: {} })
   })
 })

@@ -19,6 +19,7 @@
 import { randomUUID } from 'node:crypto';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { parseRetryTargetId, RETRY_TARGET_ID_VALIDATION_MESSAGE } from '../services/classificationRetryTargetIds.mjs';
 import { registerHistoryRoutes } from './classificationRouteHistory.mjs';
 import { registerSecondPassRoute } from './classificationRouteSecondPass.mjs';
 import { registerCorrectionRoutes } from './classificationRouteCorrections.mjs';
@@ -143,8 +144,10 @@ export function createClassificationRouter({
     if (classificationIds.length > 100) {
       throw new ValidationError('classificationIds exceeds maximum batch size (100)');
     }
-    if (!classificationIds.every((id) => Number.isInteger(Number(id)) && Number(id) > 0)) {
-      throw new ValidationError('classificationIds must contain only positive integers');
+    for (const id of classificationIds) {
+      if (parseRetryTargetId(id) === null) {
+        throw new ValidationError(RETRY_TARGET_ID_VALIDATION_MESSAGE);
+      }
     }
     if (options?.purgeLearning === true) {
       throw new ValidationError(

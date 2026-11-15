@@ -126,9 +126,9 @@ left protected asset trees unexpanded. Three older logs remained excluded becaus
 ownership was not established. No file/image retirement, shared-cache change,
 volume action or reclaimed-capacity claim is made.
 
-Next, define one exact retry-target contract across admission, cleanup, lineage
-and outcome records before widening the INTEGER range. Public parsing and later
-lineage rebinding still use Number.parseInt, and direct calls have different
-admission semantics. Keep that work separate from this resilience fix. Other
+The subsequent [retry admission batch](retry-target-admission-outcome.md) addresses
+public, batch, direct and historic command admission. Fresh lineage ownership and
+later rebinding still need a separate contract before widening the INTEGER range.
+Keep that work separate from this resilience fix. Other
 task/enrichment JSON casts, historical migration SQL, wider API/receipt/Discord
 limits and UUID migration remain outside this batch.

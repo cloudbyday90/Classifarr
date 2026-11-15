@@ -64,7 +64,7 @@ describe('ClassificationRetryService', () => {
       error: null,
       ids: [10, 22]
     });
-    expect(service.normalizeIds(['nope']).error).toBe('classificationIds must contain only positive integers');
+    expect(service.normalizeIds(['nope']).error).toBe('classificationIds must contain positive integer numbers or canonical decimal strings from 1 to 2147483647');
   });
 
   test('retryClassifications throws validation error for invalid batch', async () => {

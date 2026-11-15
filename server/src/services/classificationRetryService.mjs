@@ -12,6 +12,7 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
+import { parseRetryTargetId, RETRY_TARGET_ID_VALIDATION_MESSAGE } from './classificationRetryTargetIds.mjs';
 import { AUTOMATIC_RECOVERY_TASK_SOURCE, AUTOMATIC_RECOVERY_MAX_RETRIES } from './automaticClassificationRecoveryPolicy.mjs';
 import {
   getClassificationRetryEligibility,
@@ -27,11 +28,6 @@ const DEFAULT_RETRY_TASK_SOURCE = MANUAL_RETRY_TASK_SOURCE;
 const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
 const DEFAULT_INELIGIBLE_RETRY_REASON_CODE = 'retry_eligibility_not_met';
 const RETRY_REASON_CODE_PATTERN = /^[a-z0-9_]{1,120}$/;
-
-function toPositiveInt(value) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
 
 function normalizeEligibilityResult(value) {
   if (value?.eligible === true) {
@@ -69,8 +65,8 @@ export class ClassificationRetryService {
     const seen = new Set();
 
     for (const rawId of rawIds) {
-      const id = toPositiveInt(rawId);
-      if (!id) return { error: 'classificationIds must contain only positive integers', ids: [] };
+      const id = parseRetryTargetId(rawId);
+      if (id === null) return { error: RETRY_TARGET_ID_VALIDATION_MESSAGE, ids: [] };
       if (!seen.has(id)) {
         seen.add(id);
         deduped.push(id);
@@ -195,6 +191,10 @@ export class ClassificationRetryService {
       oldClassificationId: classificationId,
       newClassificationId: null,
     };
+
+    if (parseRetryTargetId(classificationId) === null) {
+      return { ...baseResult, failed: true, reasonCode: 'retry_failed' };
+    }
 
     try {
       const txResult = await this.db.withTransaction(async (client) => {

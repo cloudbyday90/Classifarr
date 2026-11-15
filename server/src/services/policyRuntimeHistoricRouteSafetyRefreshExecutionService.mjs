@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ValidationError } from '../utils/appError.mjs';
+import { MAX_RETRY_TARGET_ID, parseRetryTargetId } from './classificationRetryTargetIds.mjs';
 import {
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS,
 } from './policyRuntimeHistoricRouteSafetyRefreshInventory.mjs';
@@ -47,6 +48,7 @@ const SAFE_SKIPPED_REASON_IDS = new Set([
 ]);
 
 function positiveInteger(value) {
+  // Preserve result-map compatibility separately from command admission.
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
 }
@@ -63,7 +65,7 @@ function normalizeClassificationIds(value) {
     return null;
   }
 
-  const ids = value.map(positiveInteger);
+  const ids = Array.from(value, parseRetryTargetId);
   if (ids.some(id => !id) || new Set(ids).size !== ids.length) return null;
 
   return ids;
@@ -139,7 +141,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     const ids = normalizeClassificationIds(classificationIds);
     if (!ids) {
       throw new ValidationError(
-        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique positive integers.`,
+        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique canonical integer IDs from 1 to ${MAX_RETRY_TARGET_ID}.`,
       );
     }
 
