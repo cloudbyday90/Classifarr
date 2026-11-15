@@ -4,6 +4,7 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { pendingDecisionPredecessorId, validatePendingDecisionInsertedId } from './pendingDecisionRowIds.mjs';
 
 export const CLASSIFICATION_PENDING_DECISION_IDENTITY_VERSION =
   'classification.pending_decision_identity.v1';
@@ -181,8 +182,7 @@ export class ClassificationPendingDecisionLifecycleService {
         [identity.key],
       );
       const supersededClassificationIds = activeResult.rows
-        .map((row) => positiveInteger(row.id))
-        .filter(Boolean);
+        .map((row) => pendingDecisionPredecessorId(row.id));
 
       if (supersededClassificationIds.length > 0) {
         await client.query(
@@ -207,7 +207,7 @@ export class ClassificationPendingDecisionLifecycleService {
         );
       }
 
-      const classificationId = await insert(client, supersededClassificationIds);
+      const classificationId = validatePendingDecisionInsertedId(await insert(client, supersededClassificationIds));
 
       if (supersededClassificationIds.length > 0) {
         await client.query(
@@ -218,7 +218,7 @@ export class ClassificationPendingDecisionLifecycleService {
              jsonb_build_object(
                'version', $2::text,
                'state', 'superseded',
-               'superseded_by_classification_id', $3::bigint,
+               'superseded_by_classification_id', $3::jsonb,
                'superseded_at', NOW()
              ),
              true
@@ -227,7 +227,7 @@ export class ClassificationPendingDecisionLifecycleService {
           [
             supersededClassificationIds,
             CLASSIFICATION_PENDING_DECISION_IDENTITY_VERSION,
-            classificationId,
+            JSON.stringify(classificationId),
           ],
         );
       }

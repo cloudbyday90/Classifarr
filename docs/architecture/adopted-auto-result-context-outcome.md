@@ -149,6 +149,10 @@ BIGINT handling through lifecycle supersession, notification predicates and
 result handling, with real replacement concurrency, rollback and receipt tests.
 Do not broaden unrelated item-ID normalization without tracing its consumers.
 
+That bounded lifecycle correction is documented in the separate
+[pending replacement design](pending-replacement-bigint-design.md) and
+[outcome](pending-replacement-bigint-outcome.md).
+
 No open PR was available at intake or the implementation recheck. There was no
 random applicable PR to adopt and no stale open Dependabot branch to rebase.
 No closed PR was reused or PR merged. There are no dependency/scanner-policy,

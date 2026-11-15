@@ -81,11 +81,11 @@ describe('ClassificationPendingDecisionLifecycleService', () => {
     expect(query.mock.calls[3][0]).toContain('UPDATE app_notifications');
     expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id'");
     expect(query.mock.calls[4][0]).toContain("'version', $2::text");
-    expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id', $3::bigint");
+    expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id', $3::jsonb");
     expect(query.mock.calls[4][1]).toEqual([
       [41, 40],
       'classification.pending_decision_identity.v1',
-      42,
+      JSON.stringify(42),
     ]);
   });
 

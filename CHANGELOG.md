@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending replacement IDs** — Preserve exact large History IDs during
+  supersession and notification read tracking. Keep new lifecycle links precise
+  through JSON readback while retaining small numeric IDs. Reject invalid
+  transaction identifiers before completion. See the
+  [outcome](docs/architecture/pending-replacement-bigint-outcome.md).
+
 - **Automatic result ownership** — Give new adopted automatic-policy candidates
   fresh proven policy context or explicit absence, and clear the earlier
   candidate's AI advisory. Preserve top-level evidence, routing holds and
@@ -177,6 +183,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Classification identity groundwork** — Document the UUIDv7 preliminary
+  assessment, verified catalog/reference inventory, compatibility gaps and
+  recovery prerequisites. Keep the current identifier scheme; see the
+  [assessment](docs/architecture/classification-uuidv7-readiness-outcome.md).
 
 - **Compiler PR review** — Reassess open PR #589's immutable compiler graph and
   retain the previously qualified versions because the proposed artifact is
