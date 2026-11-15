@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Fresh retry lineage** — Build new retry tasks from the current captured
+  references or explicit absence, preventing older History lineage from being
+  forwarded after an empty capture. Preserve source metadata, fresh populated
+  captures and existing retry/transaction behavior. See the
+  [outcome](docs/architecture/retry-lineage-producer-outcome.md).
+
 - **Exact retry targets** — Share bounded ID validation across public, batch,
   direct and historic-refresh retry commands. Reject coercible or out-of-range
   targets before retry work or new historic receipts, preserving valid execution,

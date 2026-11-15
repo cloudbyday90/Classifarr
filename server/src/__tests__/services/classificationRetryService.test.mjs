@@ -59,6 +59,65 @@ describe('ClassificationRetryService', () => {
     jest.spyOn(service, 'captureRetryLineage').mockResolvedValue(null);
   });
 
+  describe('fresh lineage ownership', () => {
+    const inherited = { original_classification_id: 17, media_request_ids: [301], webhook_log_ids: [401] };
+    function prepare(metadata, capture) {
+      client.query.mockImplementation(async sql => {
+        if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') return { rows: [] };
+        if (sql.includes('FROM classification_history')) return { rows: [{ id: 41, tmdb_id: 889980,
+          media_type: 'movie', title: 'Owned lineage', status: 'awaiting_decision', metadata }] };
+        if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9901 }] };
+        if (sql.includes('UPDATE classification_history')) return { rowCount: 1, rows: [] };
+        throw new Error('Unexpected owned lineage query');
+      });
+      jest.spyOn(service, 'hasPendingClassificationTask').mockResolvedValue(null);
+      jest.spyOn(service, 'resolveMediaItemId').mockResolvedValue(7001);
+      service.captureRetryLineage.mockResolvedValue(capture);
+      jest.spyOn(service, 'cleanupClassificationArtifacts').mockResolvedValue();
+      jest.spyOn(service, 'cleanupEnrichmentState').mockResolvedValue({ enrichmentQueueRowsRemoved: 0 });
+      followupService.enqueueMetadataEnrichmentTask.mockResolvedValue({ metadataEnrichmentQueued: false });
+      const buildRetryPayload = jest.fn(service.classificationRetryPayloads.buildRetryPayload);
+      service.classificationRetryPayloads = { ...service.classificationRetryPayloads, buildRetryPayload };
+      return buildRetryPayload;
+    }
+    test.each([{ lineage: inherited }, { lineage: [301] }, { lineage: 'legacy' }, { lineage: 17 },
+      { lineage: null }, {}])('null capture omits inherited lineage from the task-only copy %#', async row => {
+      const metadata = { imdb_id: 'tt889980', posterPath: '/owned.png', ...('lineage' in row ? { retry_lineage: row.lineage } : {}) };
+      const before = structuredClone(metadata), build = prepare(metadata, null);
+      expect(await service.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
+      const taskMetadata = build.mock.calls[0][1];
+      expect(taskMetadata).not.toBe(metadata); expect(taskMetadata).not.toHaveProperty('retry_lineage');
+      expect(metadata).toEqual(before);
+      const followup = followupService.enqueueMetadataEnrichmentTask.mock.calls[0][0];
+      expect(followup.metadata).toBe(metadata); expect(followup.retryPayload).not.toHaveProperty('retry_lineage');
+      expect(followup.metadata).toMatchObject({ imdb_id: 'tt889980', posterPath: '/owned.png' });
+    });
+    test.each([41, '41'].flatMap(id => [false, true].map(array => ({ id, array }))))(
+      'fresh capture replaces task lineage without mutating source metadata %#', async ({ id, array }) => {
+        const metadata = Object.assign(array ? ['owned array entry'] : {}, { retry_lineage: inherited,
+          imdb_id: 'tt889980', posterPath: '/owned.png' });
+        const before = structuredClone(metadata), capture = { original_classification_id: id,
+          media_request_ids: [302], webhook_log_ids: [402] }, build = prepare(metadata, capture);
+        expect(await service.retrySingle({ classificationId: id, actor: 'owned' })).toMatchObject({ queued: true });
+        expect(build.mock.calls[0][1].retry_lineage).toBe(capture);
+        expect(metadata).toEqual(before); expect(Array.isArray(metadata)).toBe(array);
+        const followup = followupService.enqueueMetadataEnrichmentTask.mock.calls[0][0];
+        expect(followup.metadata).toBe(metadata); expect(followup.retryPayload.retry_lineage).toBe(capture);
+        expect(followup.retryPayload).not.toHaveProperty('0');
+        expect(service.classificationRetryPayloads.buildMetadataEnrichmentPayload(followup.retryPayload, followup.metadata, 7001))
+          .toMatchObject({ imdb_id: 'tt889980', posterPath: '/owned.png', tmdb_id: 889980, itemId: 7001 });
+      });
+    test('capture rejection does not construct a copy or invoke cleanup, receipt or follow-up', async () => {
+      const metadata = { retry_lineage: inherited }, build = prepare(metadata, null), recorder = jest.fn();
+      service.captureRetryLineage.mockRejectedValueOnce(new Error('Owned capture refusal'));
+      expect(await service.retrySingle({ classificationId: 41, actor: 'owned', retryReceiptRecorder: recorder }))
+        .toMatchObject({ failed: true, reasonCode: 'retry_failed' });
+      expect(build).not.toHaveBeenCalled(); expect(service.cleanupClassificationArtifacts).not.toHaveBeenCalled();
+      expect(recorder).not.toHaveBeenCalled(); expect(followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
+      expect(metadata.retry_lineage).toBe(inherited); expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+  });
+
   test('normalizeIds validates and de-duplicates ids', () => {
     expect(service.normalizeIds([10, '10', 22, 22])).toEqual({
       error: null,

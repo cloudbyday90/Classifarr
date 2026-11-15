@@ -128,10 +128,11 @@ not attributed to this task. Shared resources remain outside cleanup authority.
 
 ## Next item
 
-Investigate fresh retry lineage ownership and explicit absence. A null capture
-can currently leave an inherited metadata.retry_lineage object that payload
-construction forwards. Later rebinding still uses permissive parsing and separate
-writes. Exact target admission does not establish those references' ownership.
+The subsequent [fresh-lineage producer batch](retry-lineage-producer-outcome.md)
+addresses inherited metadata.retry_lineage after a null current capture. Later
+rebinding still uses permissive parsing and separate writes. Exact target
+admission and prospective payload freshness do not establish lasting reassignment
+authority.
 
 Settle absent references versus capture failure, original classification
 provenance versus reassignment authority, and atomic completion before changing

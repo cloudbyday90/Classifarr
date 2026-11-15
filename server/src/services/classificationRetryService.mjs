@@ -297,14 +297,17 @@ export class ClassificationRetryService {
 
       const mediaItemId = await this.resolveMediaItemId(client, metadata, identity);
       const retryLineage = await this.captureRetryLineage(client, classificationId);
+      const retryMetadata = { ...metadata };
       if (retryLineage) {
-        metadata.retry_lineage = retryLineage;
+        retryMetadata.retry_lineage = retryLineage;
+      } else {
+        delete retryMetadata.retry_lineage;
       }
 
       await this.cleanupClassificationArtifacts(client, classificationId);
       const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
 
-      const retryPayload = buildRetryPayload(row, metadata, mediaItemId, {
+      const retryPayload = buildRetryPayload(row, retryMetadata, mediaItemId, {
         // Ordinary scheduled retries keep their budget; explicit and bounded recovery start a cycle.
         resetRetryBudget: taskSource !== SCHEDULER_RETRY_TASK_SOURCE,
       });
