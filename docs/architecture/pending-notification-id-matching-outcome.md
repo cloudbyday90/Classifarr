@@ -116,3 +116,7 @@ cleanup: it still casts IDs to INTEGER and accepts both `classificationId` and
 removing that conversion; do not copy the pending-only predicate without those
 checks. Historical upgrade SQL and the broader INTEGER/API/receipt/Discord and
 UUIDv7 readiness boundaries remain separate.
+
+That notification-side retry repair is now implemented with the target INTEGER
+contract preserved. Its [separate outcome](retry-notification-id-matching-outcome.md)
+records the two-key deletion contract and remaining admission/lineage limits.

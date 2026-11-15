@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retry notification cleanup** — Prevent oversized or malformed notification
+  classification IDs from blocking valid retries. Preserve either-key deletion
+  and the existing target INTEGER contract. See the
+  [outcome](docs/architecture/retry-notification-id-matching-outcome.md).
+
 - **Pending notification matching** — Allow valid pending replacement to finish
   when unrelated notifications contain oversized or malformed classification
   IDs. Compare exact validated targets without casting notification data;

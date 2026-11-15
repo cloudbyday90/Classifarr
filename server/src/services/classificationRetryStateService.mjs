@@ -8,6 +8,7 @@
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
 import * as metadataEnrichmentModule from '../utils/metadataEnrichment.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
+import { DELETE_RETRY_CLASSIFICATION_NOTIFICATIONS_SQL } from './classificationRetryNotificationSql.mjs';
 
 class ClassificationRetryStateService {
   constructor(deps = {}) {
@@ -115,12 +116,7 @@ class ClassificationRetryStateService {
     await client.query('UPDATE media_requests SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
     await client.query('UPDATE webhook_log SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
     await client.query(
-      `DELETE FROM app_notifications
-       WHERE data IS NOT NULL
-         AND (
-           (data ? 'classificationId' AND (data->>'classificationId') ~ '^[0-9]+$' AND (data->>'classificationId')::int = $1)
-           OR (data ? 'classification_id' AND (data->>'classification_id') ~ '^[0-9]+$' AND (data->>'classification_id')::int = $1)
-         )`,
+      DELETE_RETRY_CLASSIFICATION_NOTIFICATIONS_SQL,
       [classificationId]
     );
     await client.query('DELETE FROM clarification_responses WHERE classification_id = $1', [classificationId]);
