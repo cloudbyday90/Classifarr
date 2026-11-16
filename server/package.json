@@ -87,8 +87,8 @@
     "eslint-plugin-security": "4.2.1",
     "globals": "17.14.0",
     "jest": "^30.5.2",
-    "knip": "6.44.1",
-    "supertest": "^7.3.1",
+    "knip": "6.45.1",
+    "supertest": "^7.3.2",
     "testcontainers": "12.2.1",
     "typescript": "^7.0.2"
   },
