@@ -3,7 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { CANDIDATE_VIABILITY } from './policyCandidateDiagnostics.mjs';
+import { CANDIDATE_VIABILITY } from './policyCandidateViability.mjs';
 
 export const POLICY_CANDIDATE_SYNTHETIC_REPLAY_FIXTURE_CORPUS_VERSION =
   'policy.candidate_synthetic_replay_fixture_corpus.v1';

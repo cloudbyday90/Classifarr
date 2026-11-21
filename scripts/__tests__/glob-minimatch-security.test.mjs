@@ -78,9 +78,10 @@ for (const tree of ['server', 'client']) {
   const json = async name => JSON.parse(await readFile(path.join(base, name), 'utf8'));
   const manifest = await json('package.json');
   const lock = await json('package-lock.json');
+  const minimatchVersion = tree === 'server' ? '11.0.9' : '11.0.4';
 
   test(`${tree}: coherent exact overrides, locks and installed artifacts`, () => {
-    for (const [name, version] of [['glob', '14.0.3'], ['minimatch', '11.0.4']]) {
+    for (const [name, version] of [['glob', '14.0.3'], ['minimatch', minimatchVersion]]) {
       assert.equal(manifest.overrides[name], version);
       assert.equal(lock.packages[`node_modules/${name}`].version, version);
       assert.equal(lock.packages[`node_modules/${name}`].dev, true);
@@ -103,17 +104,26 @@ for (const tree of ['server', 'client']) {
       });
     }
 
+    const expansionPattern = '**/../a/b/'.repeat(8) + 'target.txt';
+
     test(`${tree}/${format}: optimization honors the four-row expansion budget`, () => {
-      const pattern = '**/../a/b/'.repeat(8) + 'target.txt';
-      const matcher = new Minimatch(pattern, { optimizationLevel: 2, braceExpandMax: 4 });
+      const options = { optimizationLevel: 2, braceExpandMax: 4 };
+      if (tree === 'server') {
+        assert.throws(() => new Minimatch(expansionPattern, options), {
+          name: 'RangeError', message: "optimizationLevel 2: too many patterns from '**/..'",
+        });
+        return;
+      }
+      const matcher = new Minimatch(expansionPattern, options);
       assert.ok(matcher.globParts.length <= 4, `actual rows: ${matcher.globParts.length}`);
       assert.equal(matcher.match('a/b/target.txt'), false);
-      // The intentionally tiny budget need not retain all over-budget matches.
-      // Prove exact positive semantics when the declared budget admits them.
+    });
+
+    test(`${tree}/${format}: admitted optimization retains exact matches`, () => {
       assert.equal(new Minimatch('**/../a/b/target.txt', {
         optimizationLevel: 2, braceExpandMax: 4,
       }).match('a/b/target.txt'), true);
-      assert.equal(new Minimatch(pattern, {
+      assert.equal(new Minimatch(expansionPattern, {
         optimizationLevel: 2, braceExpandMax: 1024,
       }).match('a/b/'.repeat(8) + 'target.txt'), true);
     });

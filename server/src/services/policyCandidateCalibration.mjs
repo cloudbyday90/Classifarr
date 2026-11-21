@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { CANDIDATE_VIABILITY } from './policyCandidateDiagnostics.mjs';
+import { CANDIDATE_VIABILITY } from './policyCandidateViability.mjs';
 
 const CALIBRATION_RULES = Object.freeze({
   negative_conflict: {

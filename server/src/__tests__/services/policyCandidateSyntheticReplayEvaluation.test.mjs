@@ -3,7 +3,9 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 
 import {
   evaluatePolicyCandidateSyntheticReplayFixtureCorpus,
@@ -15,8 +17,34 @@ const FIXTURE_CORPUS_URL = new URL(
   import.meta.url,
 );
 const FIXTURE_CORPUS = JSON.parse(await readFile(FIXTURE_CORPUS_URL, 'utf8'));
+const REPLAY_RUNNER = fileURLToPath(new URL('../../../../scripts/run-policy-candidate-synthetic-replay-evaluation.mjs', import.meta.url));
 
 describe('policy candidate synthetic replay evaluation', () => {
+  test('runs the offline entry point with package resolution disabled', () => {
+    const localModulesOnly = `
+      import { isBuiltin, registerHooks } from 'node:module';
+      registerHooks({
+        resolve(specifier, context, nextResolve) {
+          if (!isBuiltin(specifier) && !/^(?:\\.\\.?\\/|file:)/.test(specifier)) {
+            throw new Error('Offline replay imported a package: ' + specifier);
+          }
+          return nextResolve(specifier, context);
+        },
+      });
+    `;
+    const result = spawnSync(process.execPath, [
+      '--import', `data:text/javascript,${encodeURIComponent(localModulesOnly)}`, REPLAY_RUNNER,
+    ], { encoding: 'utf8', timeout: 10_000, maxBuffer: 64 * 1024, env: { ...process.env, NODE_OPTIONS: '' } });
+
+    expect(result.error).toBeUndefined();
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      evaluation: { statusId: 'passed', summary: { fixtureCount: 8, matchedExpectationCount: 8, mismatchCount: 0 } },
+      authority: { automaticActions: { aiInvocation: false, persistence: false, routing: false } },
+    });
+  });
+
   test('passes the checked-in corpus without emitting fixture detail', () => {
     const result = evaluatePolicyCandidateSyntheticReplayFixtureCorpus(FIXTURE_CORPUS);
 

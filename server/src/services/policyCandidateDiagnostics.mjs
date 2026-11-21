@@ -14,21 +14,9 @@ import { readNativeIntentContribution } from './policyNativeIntentContribution.m
 import { isPositiveContribution } from './policyEngineUtils.mjs';
 import { hasPolicyConstraintFailure } from './policyConstraintSemantics.mjs';
 import { INFERRED_PURPOSE_ADMISSION } from './policyInferredPurposeAdmission.mjs';
+import { CANDIDATE_VIABILITY, isWeakPrimaryViability } from './policyCandidateViability.mjs';
 
-export const CANDIDATE_VIABILITY = Object.freeze({
-  IDENTITY_EVIDENCE: 'identity_evidence',
-  COMPATIBILITY_ONLY: 'compatibility_only',
-  PROFILE_ONLY: 'profile_only',
-  RAG_IMPROVED: 'rag_improved',
-  MULTI_SOURCE_SUPPORT: 'multi_source_support',
-  NO_POSITIVE_EVIDENCE: 'no_positive_evidence',
-});
-
-const WEAK_CANDIDATE_VIABILITY = new Set([
-  CANDIDATE_VIABILITY.COMPATIBILITY_ONLY,
-  CANDIDATE_VIABILITY.PROFILE_ONLY,
-  CANDIDATE_VIABILITY.RAG_IMPROVED,
-]);
+export { CANDIDATE_VIABILITY, isWeakCandidateViability } from './policyCandidateViability.mjs';
 
 function summarizePresetSemantics(presets = []) {
   let hasIdentitySignals = false;
@@ -169,7 +157,7 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
   if (profileAbsenceAdvisory) {
     advisoryReasons.push('profile_observed_absence');
   }
-  if (WEAK_CANDIDATE_VIABILITY.has(primaryViability)) {
+  if (isWeakPrimaryViability(primaryViability)) {
     suppressionReasons.push('weak_primary_evidence');
   }
   if (
@@ -222,9 +210,4 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
       : null,
     ...(details.nativeIntentDiagnostics?.purposeEvidence ? { purpose_evidence: details.nativeIntentDiagnostics.purposeEvidence } : {}),
   };
-}
-
-export function isWeakCandidateViability(diagnostics) {
-  const viability = diagnostics?.primary_viability || null;
-  return diagnostics?.primary_anchor_eligible === false || WEAK_CANDIDATE_VIABILITY.has(viability);
 }

@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Synthetic replay CI** — Restore the offline replay command in a clean
+  checkout by sharing dependency-free candidate viability rules. See the
+  [outcome](docs/architecture/synthetic-replay-dependency-boundary-outcome.md).
+
 - **Queue retry evidence** — Explain when a stopped retry saved its local
   replacement and routing remains unverified. Use the exact task's completion
   record in the existing Queue disclosure. See the
@@ -222,6 +226,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Server tooling** — Adopt ESLint 10.15.0 and compatible minimatch 11.0.9
+  from the PR #594 assessment. Check exact over-budget refusal and preserve
+  existing positive matching coverage. See the
+  [assessment](docs/architecture/server-eslint-pr-594-outcome.md).
 
 - **OSV Scanner workflows** — Pin all four OSV calls to the reviewed 2.7.1
   revision from PR #590 and update the workflow contract check. See the

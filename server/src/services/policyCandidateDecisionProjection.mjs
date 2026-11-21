@@ -3,7 +3,7 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
+import { isWeakCandidateViability } from './policyCandidateViability.mjs';
 import { resolvePolicyCandidateDecisionBand } from './policyCandidateDecisionBand.mjs';
 import {
   normalizePolicyDecisionThresholds,
