@@ -6,10 +6,13 @@
  * Never place an upstream exception or task payload in that state.
  */
 
+import { RETRY_LINEAGE_REFUSED } from './classificationRetryLineageContract.mjs';
+
 export const QUEUE_TASK_FAILURE_REASON_IDS = Object.freeze({
   PROCESSING_FAILED: 'task_processing_failed',
   METADATA_FETCH_FAILED: 'task_metadata_fetch_failed',
   METADATA_NOT_FOUND: 'task_metadata_not_found',
+  RETRY_LINEAGE_REFUSED,
   UNKNOWN_TASK_TYPE: 'task_unknown_type',
   VISIBILITY_TIMEOUT_RECOVERED: 'task_visibility_timeout_recovered',
   STARTUP_STALE_RECOVERED: 'task_startup_stale_recovered',

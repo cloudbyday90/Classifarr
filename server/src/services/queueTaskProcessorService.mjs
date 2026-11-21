@@ -15,6 +15,9 @@ import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcesso
 import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureReason, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { QueueClaimWriteError } from './queueClaimWriteGuard.mjs';
+import {
+    isRetryLineageSource, RetryLineageRefusal, RETRY_LINEAGE_REFUSED, RetryLineageAlreadyCompleted,
+} from './classificationRetryLineageContract.mjs';
 import { runOllamaTaskScope } from './ollamaTaskScope.mjs';
 import { createOmdbSslRecovery } from './omdbSslRecovery.mjs';
 import { omdbRecentLookup } from './omdbRecentLookup.mjs';
@@ -132,18 +135,21 @@ export class QueueTaskProcessorService {
 
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
-        if (!requireRequestIdentity(payload).mediaType) {
-            if (await this.completeTask(task.id, { success: true, skipped: true, reason: 'unsupported_media_type' }, task.claim_token) === false) return;
+        const retry = isRetryLineageSource(task.source);
+        const classificationPayload = { ...payload, taskId: task.id };
+        const result = retry
+            ? await this.classificationService.classifyQueueTask(task, classificationPayload, { checkMediaType: true })
+            : requireRequestIdentity(payload).mediaType
+                ? await this.classificationService.classifyQueueTask(task, classificationPayload)
+                : { success: true, skipped: true, reason: 'unsupported_media_type' };
+        if (result.skipped && result.reason === 'unsupported_media_type') {
+            if (await this.completeTask(task.id, result, task.claim_token) === false) return;
             if (task.webhook_log_id) await this.db.query(
                 "UPDATE webhook_log SET processing_status = 'skipped' WHERE id = $1",
                 [task.webhook_log_id],
             );
             return;
         }
-        const result = await this.classificationService.classifyQueueTask(task, {
-            ...payload,
-            taskId: task.id,
-        });
         const requestDestinationAdmission = this.policyRequestImportDestinationAdmissionService.build({
             task,
             classification: result,
@@ -157,6 +163,7 @@ export class QueueTaskProcessorService {
                 requestDestinationAdmission,
             };
         if (await this.completeTask(task.id, completedResult, task.claim_token) === false) return;
+        if (retry && result.recovered) return;
 
         if (payload.itemId && result.bestMatch) {
             const newMetadata = {
@@ -243,13 +250,16 @@ export class QueueTaskProcessorService {
                         );
                 }
             } catch (error) {
+                if (error instanceof RetryLineageAlreadyCompleted) return;
                 if (error instanceof QueueClaimWriteError && error.reason === 'queue_claim_not_owned') {
-                    this.logger.debug('Stale enrichment result discarded; queue claim is no longer owned', {
+                    this.logger.debug('Stale task result discarded; queue claim is no longer owned', {
                         taskId: task.id, reasonCode: error.reason,
                     });
                     return;
                 }
-                const failureReason = (task.task_type === 'classification' && classificationMetadataFailureReason(error))
+                const lineageRefused = task.task_type === 'classification' && error instanceof RetryLineageRefusal;
+                const failureReason = (lineageRefused && RETRY_LINEAGE_REFUSED)
+                    || (task.task_type === 'classification' && classificationMetadataFailureReason(error))
                     || QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED;
                 this.logger.error('Task processing failed', {
                     taskId: task.id,
@@ -266,7 +276,7 @@ export class QueueTaskProcessorService {
                     task.claim_token,
                     ...(error instanceof ClassificationMetadataFailure ? [error] : []),
                 );
-                if (acknowledged === false) return;
+                if (acknowledged === false || lineageRefused) return;
 
                 if (task.task_type === 'metadata_enrichment') {
                     const payload = parsePayload(task.payload);

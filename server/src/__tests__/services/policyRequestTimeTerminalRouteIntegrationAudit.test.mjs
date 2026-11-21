@@ -132,7 +132,7 @@ describe('policyRequestTimeTerminalRouteIntegrationAudit', () => {
       checkPathExists: false,
       readSourceFile: () => [
         'policyRequestImportDestinationAdmissionService.build({',
-        'classifyQueueTask(task, {',
+        'classifyQueueTask(task, classificationPayload)',
         'queueQuestionReduction: result.runtimeQueueQuestionReduction,',
         'buildPolicyRuntimeQueueQuestionReductionProducer({',
         'buildOutcomeOnlyLearningDecision(',

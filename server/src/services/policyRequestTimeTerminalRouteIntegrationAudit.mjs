@@ -77,7 +77,7 @@ const REQUEST_TIME_TERMINAL_ROUTE_CALLERS = Object.freeze([
       },
       {
         path: 'server/src/services/queueTaskProcessorService.mjs',
-        value: 'classifyQueueTask(task, {',
+        value: 'classifyQueueTask(task, classificationPayload)',
       },
       {
         path: 'server/src/services/queueTaskProcessorService.mjs',

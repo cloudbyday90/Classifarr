@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 import * as classificationRetryPayloadsModule from '../utils/classificationRetryPayloads.mjs';
+import { captureRetryLineage } from './classificationRetryLineageRepository.mjs';
 import * as metadataEnrichmentModule from '../utils/metadataEnrichment.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { DELETE_RETRY_CLASSIFICATION_NOTIFICATIONS_SQL } from './classificationRetryNotificationSql.mjs';
@@ -113,8 +114,6 @@ class ClassificationRetryStateService {
   }
 
   async cleanupClassificationArtifacts(client, classificationId) {
-    await client.query('UPDATE media_requests SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
-    await client.query('UPDATE webhook_log SET classification_id = NULL WHERE classification_id = $1', [classificationId]);
     await client.query(
       DELETE_RETRY_CLASSIFICATION_NOTIFICATIONS_SQL,
       [classificationId]
@@ -135,39 +134,7 @@ class ClassificationRetryStateService {
   }
 
   async captureRetryLineage(client, classificationId) {
-    const { toPositiveInt } = this.classificationRetryPayloads;
-    const mediaRequestsResult = await client.query(
-      `SELECT id
-       FROM media_requests
-       WHERE classification_id = $1
-       ORDER BY id ASC`,
-      [classificationId]
-    );
-
-    const webhookLogResult = await client.query(
-      `SELECT id
-       FROM webhook_log
-       WHERE classification_id = $1
-       ORDER BY id ASC`,
-      [classificationId]
-    );
-
-    const mediaRequestIds = mediaRequestsResult.rows
-      .map((row) => toPositiveInt(row.id))
-      .filter(Boolean);
-    const webhookLogIds = webhookLogResult.rows
-      .map((row) => toPositiveInt(row.id))
-      .filter(Boolean);
-
-    if (mediaRequestIds.length === 0 && webhookLogIds.length === 0) {
-      return null;
-    }
-
-    return {
-      original_classification_id: classificationId,
-      media_request_ids: mediaRequestIds,
-      webhook_log_ids: webhookLogIds
-    };
+    return captureRetryLineage(client, classificationId);
   }
 
   async cleanupEnrichmentState(client, mediaItemId) {

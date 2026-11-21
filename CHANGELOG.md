@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Atomic retry lineage** — Keep original request and webhook links in place
+  while a retry waits. Transfer verified links with the replacement History
+  and recover a committed result without replaying automatic routing. Explain
+  terminal lineage refusals in the existing queue. See the
+  [outcome](docs/architecture/retry-lineage-consumption-outcome.md).
+
 - **Fresh retry lineage** — Build new retry tasks from the current captured
   references or explicit absence, preventing older History lineage from being
   forwarded after an empty capture. Preserve source metadata, fresh populated

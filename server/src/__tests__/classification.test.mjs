@@ -105,7 +105,6 @@ const ragRetriever = mockRagRetriever;
 const contentTypeAnalyzer = mockContentTypeAnalyzer;
 const policyQuestionBuilder = mockPolicyQuestionBuilder;
 const classificationRetryService = mockClassificationRetryService;
-const classificationOutcomeService = mockClassificationOutcomeService;
 const _mediaSyncService = mockMediaSyncService;
 
 describe('ClassificationService', () => {
@@ -1051,36 +1050,6 @@ describe('Classification Details Storage', () => {
         })
       })
     );
-  });
-});
-
-describe('retry lineage outcome linking', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    db.query.mockReset();
-    db.query.mockResolvedValue({ rows: [] });
-  });
-
-  test('rebindRetryLineage links replacement classification on the original row', async () => {
-    await classificationService.rebindRetryLineage(902, {
-      retry_lineage: {
-        original_classification_id: 901,
-        media_request_ids: [11, 12],
-        webhook_log_ids: [31]
-      }
-    });
-
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE media_requests'),
-      [902, [11, 12]]
-    );
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE webhook_log'),
-      [902, [31]]
-    );
-    expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(901, {
-      replacement_classification_id: 902
-    });
   });
 });
 
@@ -2990,7 +2959,7 @@ describe('AI availability fallback handling', () => {
     expect(insertCalls[0][1][18]).toBe(4);
   });
 
-  test('rebinds request and webhook lineage after retry-created classifications are persisted', async () => {
+  test('persists a retry outcome without granting direct-classification lineage authority', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
       confidence: 82,
@@ -3018,13 +2987,13 @@ describe('AI availability fallback handling', () => {
 
     expect(result.success).toBe(true);
     expect(result.method).toBe('queued_for_retry');
-    expect(db.query).toHaveBeenCalledWith(
+    expect(db.query).not.toHaveBeenCalledWith(
       expect.stringContaining('UPDATE media_requests'),
-      [12345, [14, 18]]
+      expect.anything(),
     );
-    expect(db.query).toHaveBeenCalledWith(
+    expect(db.query).not.toHaveBeenCalledWith(
       expect.stringContaining('UPDATE webhook_log'),
-      [12345, [27]]
+      expect.anything(),
     );
   });
 

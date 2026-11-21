@@ -155,7 +155,6 @@ const mockClassificationPersistenceService = createServiceStubs([
     'isRealtimeEmbeddingEnabled',
     'logClassification',
     'persistRagLoopStageEvents',
-    'rebindRetryLineage',
     'deriveClassificationPersistenceState',
     'normalizePolicyQuestion',
 ]);
@@ -623,14 +622,6 @@ describe('classificationService delegation contracts', () => {
                 params
             );
             expect(classificationPersistenceService.persistRagLoopStageEvents).toHaveBeenCalledWith(params);
-        });
-
-        test('rebindRetryLineage passes classificationId and metadata', async () => {
-            const metadata = { tmdb_id: 99 };
-            impl(classificationPersistenceService, 'rebindRetryLineage').mockResolvedValue(SENTINEL);
-            const result = await classificationService.rebindRetryLineage(7, metadata);
-            expect(classificationPersistenceService.rebindRetryLineage).toHaveBeenCalledWith(7, metadata);
-            expect(result).toBe(SENTINEL);
         });
 
         test('deriveClassificationPersistenceState passes result', async () => {

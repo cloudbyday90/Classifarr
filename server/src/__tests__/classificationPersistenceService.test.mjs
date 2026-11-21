@@ -63,7 +63,6 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().m
 
 const db = mockDb;
 const embeddingService = mockEmbeddingService;
-const classificationOutcomeService = mockClassificationOutcomeService;
 const ragLogger = mockRagLogger;
 const libraryProfileService = mockLibraryProfileService;
 
@@ -1178,104 +1177,6 @@ describe('persistRagLoopStageEvents', () => {
         classificationId: 9,
         metadata: {},
         result,
-      }),
-    ).resolves.not.toThrow();
-  });
-});
-
-describe('rebindRetryLineage', () => {
-  test('does nothing when metadata has no retry_lineage', async () => {
-    await classificationPersistenceService.rebindRetryLineage(10, {});
-    expect(db.query).not.toHaveBeenCalled();
-  });
-
-  test('does nothing when lineage has no valid ids', async () => {
-    await classificationPersistenceService.rebindRetryLineage(10, {
-      retry_lineage: { media_request_ids: [], webhook_log_ids: [], original_classification_id: null },
-    });
-    expect(db.query).not.toHaveBeenCalled();
-  });
-
-  test('updates media_requests when media_request_ids provided', async () => {
-    db.query.mockResolvedValue({ rows: [] });
-    await classificationPersistenceService.rebindRetryLineage(42, {
-      retry_lineage: {
-        media_request_ids: [1, 2, 3],
-        webhook_log_ids: [],
-        original_classification_id: null,
-      },
-    });
-
-    const updateCall = db.query.mock.calls.find(c => c[0].includes('UPDATE media_requests'));
-    expect(updateCall).toBeDefined();
-    expect(updateCall[1]).toEqual([42, [1, 2, 3]]);
-  });
-
-  test('updates webhook_log when webhook_log_ids provided', async () => {
-    db.query.mockResolvedValue({ rows: [] });
-    await classificationPersistenceService.rebindRetryLineage(99, {
-      retry_lineage: {
-        media_request_ids: [],
-        webhook_log_ids: [7, 8],
-        original_classification_id: null,
-      },
-    });
-
-    const updateCall = db.query.mock.calls.find(c => c[0].includes('UPDATE webhook_log'));
-    expect(updateCall).toBeDefined();
-    expect(updateCall[1]).toEqual([99, [7, 8]]);
-  });
-
-  test('calls classificationOutcomeService.recordOutcome for original_classification_id', async () => {
-    db.query.mockResolvedValue({ rows: [] });
-    classificationOutcomeService.recordOutcome.mockResolvedValue({ updated: true });
-
-    await classificationPersistenceService.rebindRetryLineage(55, {
-      retry_lineage: {
-        media_request_ids: [],
-        webhook_log_ids: [],
-        original_classification_id: 33,
-      },
-    });
-
-    expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(33, {
-      replacement_classification_id: 55,
-    });
-  });
-
-  test('deduplicates media_request_ids', async () => {
-    db.query.mockResolvedValue({ rows: [] });
-    await classificationPersistenceService.rebindRetryLineage(42, {
-      retry_lineage: {
-        media_request_ids: [5, 5, 6],
-        webhook_log_ids: [],
-        original_classification_id: null,
-      },
-    });
-
-    const updateCall = db.query.mock.calls.find(c => c[0].includes('UPDATE media_requests'));
-    expect(updateCall[1][1]).toEqual([5, 6]);
-  });
-
-  test('ignores non-integer ids in media_request_ids', async () => {
-    db.query.mockResolvedValue({ rows: [] });
-    await classificationPersistenceService.rebindRetryLineage(42, {
-      retry_lineage: {
-        media_request_ids: ['abc', -1, 0, 4],
-        webhook_log_ids: [],
-        original_classification_id: null,
-      },
-    });
-
-    const updateCall = db.query.mock.calls.find(c => c[0].includes('UPDATE media_requests'));
-    expect(updateCall[1][1]).toEqual([4]);
-  });
-
-  test('is fail-safe: logs error and does not throw on db failure', async () => {
-    db.query.mockRejectedValue(new Error('db crash'));
-    await expect(
-      classificationPersistenceService.rebindRetryLineage(1, {
-        retry_lineage: { media_request_ids: [1], webhook_log_ids: [], original_classification_id: null },
       }),
     ).resolves.not.toThrow();
   });

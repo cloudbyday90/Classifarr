@@ -223,7 +223,6 @@ suite('Docker Compose provider fault integration', () => {
           relatedEvidence: [],
         });
         const classificationId = await persistence.logClassification(metadata, outcome.result, null, { queueTask: task });
-        await persistence.rebindRetryLineage(classificationId, metadata);
         const routingOutcome = await routingService.routeClassificationResult(
           classificationId,
           { classification_details: {} },

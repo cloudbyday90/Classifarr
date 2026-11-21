@@ -25,7 +25,6 @@ import {
 } from './decisionTraceContext.mjs';
 import { discordBotService } from './discordBot.mjs';
 import { persistRagLoopStageEvents as _persistRagLoopStageEvents } from './classificationPersistenceRagEvents.mjs';
-import { rebindRetryLineage as _rebindRetryLineage } from './classificationPersistenceRetryLineage.mjs';
 import {
   buildStaleRuntimeQuestionCleanup,
   requiresRuntimeQuestionCleanup,
@@ -320,7 +319,7 @@ export class ClassificationPersistenceService {
     };
   }
 
-  async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
+  async logClassification(metadata, result, startTime = null, { queueTask = null, persistRetryLineage = null } = {}) {
     let heldCurrentReview = holdCurrentPolicyReviewFrame(result, metadata);
     const candidateCapture = buildClassificationCandidateCapture(result);
     const heldPolicyEvaluation = holdPolicyEvaluationCapture(result, metadata);
@@ -444,7 +443,7 @@ export class ClassificationPersistenceService {
       title: enrichedMetadata.title,
       year: enrichedMetadata.year,
     });
-    const lifecycleResult = await this.pendingDecisionLifecycleService.persist({
+    const lifecycleInput = {
       status,
       identity: pendingDecisionIdentity,
       insert: async (client, supersededClassificationIds) => {
@@ -509,7 +508,10 @@ export class ClassificationPersistenceService {
         );
         return insertResult.rows[0].id;
       },
-    });
+    };
+    const lifecycleResult = persistRetryLineage
+      ? await persistRetryLineage(this.pendingDecisionLifecycleService, lifecycleInput, enrichedMetadata)
+      : await this.pendingDecisionLifecycleService.persist(lifecycleInput);
     const classificationId = lifecycleResult.classificationId;
     enrichedMetadata = rememberSavedCurrentPolicyReview(result, enrichedMetadata, classificationId);
 
@@ -627,9 +629,6 @@ export class ClassificationPersistenceService {
     return _persistRagLoopStageEvents(params, this.ragErrorHandler);
   }
 
-  async rebindRetryLineage(classificationId, metadata) {
-    return _rebindRetryLineage(classificationId, metadata);
-  }
 }
 
 export const classificationPersistenceService = new ClassificationPersistenceService();

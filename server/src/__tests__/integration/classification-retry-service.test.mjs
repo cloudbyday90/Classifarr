@@ -223,12 +223,12 @@ describe('ClassificationRetryService integration', () => {
     const requestLink = await pool.query(
       'SELECT classification_id FROM media_requests WHERE tmdb_id = 880001'
     );
-    expect(requestLink.rows[0].classification_id).toBeNull();
+    expect(requestLink.rows[0].classification_id).toBe(oldClassificationId);
 
     const webhookLink = await pool.query(
       'SELECT classification_id FROM webhook_log WHERE tmdb_id = 880001'
     );
-    expect(webhookLink.rows[0].classification_id).toBeNull();
+    expect(webhookLink.rows[0].classification_id).toBe(oldClassificationId);
 
     const staleNotification = await pool.query(
       `SELECT id

@@ -44,6 +44,7 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE id = $1 AND status = 'failed'
+           AND error_message IS DISTINCT FROM 'task_retry_lineage_refused'
            AND NOT EXISTS (SELECT 1 FROM queue_identity_repair_receipts repair WHERE repair.task_id=task_queue.id)
          RETURNING id, task_type, payload`,
                 [taskId]
@@ -191,6 +192,7 @@ export class QueueMutationService {
                 `UPDATE task_queue
          SET status = 'pending', attempts = 0, error_message = NULL, next_retry_at = NOW()
          WHERE status = 'failed'
+           AND error_message IS DISTINCT FROM 'task_retry_lineage_refused'
            AND NOT EXISTS (SELECT 1 FROM queue_identity_repair_receipts repair WHERE repair.task_id=task_queue.id)
          RETURNING id, task_type, payload`
             );

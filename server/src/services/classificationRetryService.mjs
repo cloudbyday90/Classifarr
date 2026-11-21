@@ -13,6 +13,8 @@ import { ClassificationRetryFollowupService } from './classificationRetryFollowu
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
 import { parseRetryTargetId, RETRY_TARGET_ID_VALIDATION_MESSAGE } from './classificationRetryTargetIds.mjs';
+import { prepareRetryLineageProof, saveRetryLineageProof } from './classificationRetryLineageRepository.mjs';
+import { requireRetryLineage } from './classificationRetryLineageContract.mjs';
 import { AUTOMATIC_RECOVERY_TASK_SOURCE, AUTOMATIC_RECOVERY_MAX_RETRIES } from './automaticClassificationRecoveryPolicy.mjs';
 import {
   getClassificationRetryEligibility,
@@ -298,14 +300,12 @@ export class ClassificationRetryService {
       const mediaItemId = await this.resolveMediaItemId(client, metadata, identity);
       const retryLineage = await this.captureRetryLineage(client, classificationId);
       const retryMetadata = { ...metadata };
-      if (retryLineage) {
-        retryMetadata.retry_lineage = retryLineage;
-      } else {
-        delete retryMetadata.retry_lineage;
-      }
-
-      await this.cleanupClassificationArtifacts(client, classificationId);
-      const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
+      delete retryMetadata.retry_lineage;
+      if (retryLineage) retryMetadata.retry_lineage = {
+        original_classification_id: classificationId,
+        media_request_ids: retryLineage.requests.map(row => row.id),
+        webhook_log_ids: retryLineage.webhooks.map(row => row.id),
+      };
 
       const retryPayload = buildRetryPayload(row, retryMetadata, mediaItemId, {
         // Ordinary scheduled retries keep their budget; explicit and bounded recovery start a cycle.
@@ -314,6 +314,12 @@ export class ClassificationRetryService {
       if (taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE) {
         retryPayload.max_retries = Math.min(retryPayload.max_retries, AUTOMATIC_RECOVERY_MAX_RETRIES);
       }
+      const lineageProof = retryLineage ? prepareRetryLineageProof({
+        row: { ...row, metadata }, references: retryLineage, taskSource, payload: retryPayload,
+      }) : null;
+      await this.cleanupClassificationArtifacts(client, classificationId);
+      const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
+
       const queueResult = await client.query(
         `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts, classification_recovery_attempts)
          VALUES ($1, $2::jsonb, $3, $4, $5, $6)
@@ -323,6 +329,9 @@ export class ClassificationRetryService {
             : taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE ? 1 : (row.retry_recovery_attempts ?? 0)]
       );
       const taskId = queueResult.rows[0]?.id || null;
+      if (lineageProof) await saveRetryLineageProof(client, {
+        sourceId: classificationId, taskId, proof: lineageProof,
+      });
 
       if (typeof retryReceiptRecorder === 'function') {
         await retryReceiptRecorder({
@@ -342,7 +351,7 @@ export class ClassificationRetryService {
          WHERE id = $1`,
         [classificationId, taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE ? 1 : 0]
       );
-      await classificationOutcomeService.recordOutcome(classificationId, {
+      const outcome = await classificationOutcomeService.recordOutcome(classificationId, {
         type: 'retried',
         source: taskSource,
         actor,
@@ -350,7 +359,8 @@ export class ClassificationRetryService {
         replacement_task_id: taskId,
         correlation_id: correlationId,
         route
-      }, { client });
+      }, lineageProof ? { client, requireWrite: true } : { client });
+      if (lineageProof) requireRetryLineage(outcome.updated === true);
 
       return {
         taskId,

@@ -1,6 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { isQueueClaimToken } from './queueTaskAcknowledgementService.mjs';
 import { buildClassificationRoutingMetadataUpdate } from './classificationRoutingMetadataPersistence.mjs';
+import { claimNotOwned } from './queueClaimWriteGuard.mjs';
+import {
+  isRetryLineageSource, requireRetryLineage, canonicalRetryLineageId, RetryLineageAlreadyCompleted,
+} from './classificationRetryLineageContract.mjs';
+import { readQueuedRetryLineage, recoverLocalRetryCompletion } from './queuedRetryLineageService.mjs';
 
 function databaseId(value) {
   const text = typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value;
@@ -33,19 +38,20 @@ export class QueuedRoutingReplayGuard {
 
   async withClaim(task, work) {
     const id = databaseId(task?.id), token = task?.claim_token;
-    if (!isQueueClaimToken(token)) throw new Error('queued_routing_claim_not_owned');
+    if (!isQueueClaimToken(token)) throw claimNotOwned();
     return this.db.withTransaction(async client => {
       await client.query("SET LOCAL lock_timeout = '2s'");
       await client.query("SET LOCAL statement_timeout = '10s'");
       await client.query("SET LOCAL idle_in_transaction_session_timeout = '10s'");
       await client.query("SET LOCAL transaction_timeout = '15s'");
-      const { rows: [claim] } = await client.query(`SELECT routing_classification_id, visible_at::text AS deadline
+      const { rows: [claim] } = await client.query(`SELECT routing_classification_id, visible_at::text AS deadline,
+        source, claim_token, COALESCE(payload->'retry_lineage' <> 'null'::jsonb, false) AS has_retry_lineage
         FROM task_queue WHERE id=$1 AND claim_token=$2::uuid
           AND task_type='classification' AND status='processing' FOR UPDATE`, [id, token]);
       const checkDeadline = async () => {
-        if (!claim?.deadline) throw new Error('queued_routing_claim_not_owned');
+        if (!claim?.deadline) throw claimNotOwned();
         const { rows: [clock] } = await client.query('SELECT clock_timestamp() < $1::timestamptz AS live', [claim.deadline]);
-        if (clock?.live !== true) throw new Error('queued_routing_claim_not_owned');
+        if (clock?.live !== true) throw claimNotOwned();
       };
       // Check after acquiring the lock; a waiting predicate can outlive its claim.
       await checkDeadline();
@@ -56,8 +62,15 @@ export class QueuedRoutingReplayGuard {
   }
 
   async read(task) {
-    return this.withClaim(task, async (client, claim) => {
-      if (claim.routing_classification_id === null) return null;
+    return this.withClaim(task, async (client, claim, id) => {
+      const proof = isRetryLineageSource(claim.source) ? await readQueuedRetryLineage(client, claim, id) : null;
+      if (proof?.completed_claim_token && proof.completed_claim_token === claim.claim_token) throw new RetryLineageAlreadyCompleted();
+      if (claim.routing_classification_id === null) {
+        if (proof?.replacement_classification_id != null) {
+          return recoverLocalRetryCompletion(client, proof.replacement_classification_id);
+        }
+        return proof ? { retryLineageProof: proof } : null;
+      }
       const { rows: [history] } = await client.query(`SELECT status,library_id,library_name,confidence,method,
         metadata #>> '{classification_details,routing}' AS routing FROM classification_history WHERE id=$1`,
       [claim.routing_classification_id]);
@@ -69,6 +82,11 @@ export class QueuedRoutingReplayGuard {
     const historyId = databaseId(classificationId);
     await this.withClaim(task, async (client, claim, id) => {
       if (claim.routing_classification_id !== null) throw new Error('queued_routing_already_admitted');
+      if (isRetryLineageSource(claim.source)) {
+        const proof = await readQueuedRetryLineage(client, claim, id);
+        if (proof) requireRetryLineage(proof.completed_claim_token === claim.claim_token &&
+          canonicalRetryLineageId(proof.replacement_classification_id) === historyId);
+      }
       const statement = buildClassificationRoutingMetadataUpdate({ classificationId: historyId, routing: 'automatic_routing_pending' });
       const saved = await client.query(`${statement.text} AND status='completed' AND library_id IS NOT NULL RETURNING id`, statement.values); // sql-interpolation: builder returns fixed SQL plus a fixed admission clause; all values remain bound
       if (saved.rowCount !== 1) throw new Error('queued_routing_classification_unavailable');

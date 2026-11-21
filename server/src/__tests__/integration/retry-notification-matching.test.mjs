@@ -67,7 +67,7 @@ test.each(['classificationId', 'classification_id'])('full retry survives unrela
   expect(await notification(matching)).toBeUndefined(); expect(await notification(bad)).toEqual(beforeBad);
   const saved = await snapshot();
   expect(saved.history[0].status).toBe('reclassified'); expect(saved.tasks).toHaveLength(1); expect(saved.markers).toHaveLength(1);
-  expect(saved.requests[0].classification_id).toBeNull(); expect(saved.webhooks[0].classification_id).toBeNull();
+  expect(saved.requests[0].classification_id).toBe(41); expect(saved.webhooks[0].classification_id).toBe(41);
   expect(followupService.enqueueMetadataEnrichmentTask).toHaveBeenCalledTimes(1);
 });
 

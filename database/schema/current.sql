@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-11-02T11:54:25.239Z
--- Latest Migration: 20261102_090000_add_capture_finalization_fence.sql
+-- Generated: 2026-11-21T14:03:11.796Z
+-- Latest Migration: 20261121_180000_add_retry_lineage_proofs.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.6 (Debian 18.6-1.pgdg12+2)
--- Dumped by pg_dump version 18.6 (Debian 18.6-1.pgdg12+2)
+-- Dumped from database version 18.7
+-- Dumped by pg_dump version 18.7
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3210,6 +3210,23 @@ CREATE TABLE public.classification_recovery_probe_state (
     last_outcome text,
     CONSTRAINT classification_recovery_probe_state_id_check CHECK (id),
     CONSTRAINT classification_recovery_probe_state_last_outcome_check CHECK ((last_outcome = ANY (ARRAY['ready'::text, 'unavailable'::text, 'configuration_changed'::text])))
+);
+
+
+--
+-- Name: classification_retry_lineage_proofs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_retry_lineage_proofs (
+    task_id bigint NOT NULL,
+    source_classification_id bigint CONSTRAINT classification_retry_lineage__source_classification_id_not_null NOT NULL,
+    evidence jsonb NOT NULL,
+    replacement_classification_id bigint,
+    completed_claim_token uuid,
+    CONSTRAINT classification_retry_lineage_pro_source_classification_id_check CHECK ((source_classification_id > 0)),
+    CONSTRAINT classification_retry_lineage_proofs_check CHECK (((replacement_classification_id IS NULL) = (completed_claim_token IS NULL))),
+    CONSTRAINT classification_retry_lineage_proofs_evidence_check CHECK ((octet_length((evidence)::text) <= 65536)),
+    CONSTRAINT classification_retry_lineage_replacement_classification_i_check CHECK ((replacement_classification_id > 0))
 );
 
 
@@ -10922,6 +10939,14 @@ ALTER TABLE ONLY public.classification_recovery_probe_state
 
 
 --
+-- Name: classification_retry_lineage_proofs classification_retry_lineage_proofs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_retry_lineage_proofs
+    ADD CONSTRAINT classification_retry_lineage_proofs_pkey PRIMARY KEY (task_id);
+
+
+--
 -- Name: comparison_incident_ledger comparison_incident_ledger_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13930,6 +13955,13 @@ CREATE INDEX idx_media_items_tmdb ON public.media_server_items USING btree (tmdb
 
 
 --
+-- Name: idx_media_requests_retry_lineage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_requests_retry_lineage ON public.media_requests USING btree (classification_id, id) WHERE (classification_id IS NOT NULL);
+
+
+--
 -- Name: idx_media_requests_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15113,6 +15145,13 @@ CREATE INDEX idx_webhook_log_received ON public.webhook_log USING btree (receive
 
 
 --
+-- Name: idx_webhook_log_retry_lineage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_log_retry_lineage ON public.webhook_log USING btree (classification_id, id) WHERE (classification_id IS NOT NULL);
+
+
+--
 -- Name: idx_webhook_log_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15775,6 +15814,14 @@ ALTER TABLE ONLY public.classification_queue_decision_witnesses
 
 ALTER TABLE ONLY public.classification_queue_decision_witnesses
     ADD CONSTRAINT classification_queue_decision_witnesses_queue_task_id_fkey FOREIGN KEY (queue_task_id) REFERENCES public.task_queue(id) ON DELETE CASCADE;
+
+
+--
+-- Name: classification_retry_lineage_proofs classification_retry_lineage_proofs_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_retry_lineage_proofs
+    ADD CONSTRAINT classification_retry_lineage_proofs_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.task_queue(id) ON DELETE CASCADE;
 
 
 --
@@ -19127,6 +19174,7 @@ FROM unnest(ARRAY[
     '20261028_180000_add_policy_evaluation_captures.sql',
     '20261029_090000_add_prospective_purpose_outcomes.sql',
     '20261030_090000_add_automatic_purpose_evaluation.sql',
-    '20261102_090000_add_capture_finalization_fence.sql'
+    '20261102_090000_add_capture_finalization_fence.sql',
+    '20261121_180000_add_retry_lineage_proofs.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

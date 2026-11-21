@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterAll, afterEach, beforeAll, expect, jest, test } from '@jest/globals';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import request from 'supertest';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
@@ -9,7 +10,11 @@ let database;
 const query = (...args) => database.query(...args), withTransaction = (...args) => database.withTransaction(...args);
 jest.unstable_mockModule('../../config/database.mjs', () => ({ query, withTransaction, default: { query, withTransaction } }));
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
-const { rebindRetryLineage } = await import('../../services/classificationPersistenceRetryLineage.mjs');
+const { classificationService } = await import('../../services/classification.mjs');
+const { QueueAdminService } = await import('../../services/queueAdminService.mjs');
+const { QueueMutationService } = await import('../../services/queueMutationService.mjs');
+const { QueueTaskProcessorService } = await import('../../services/queueTaskProcessorService.mjs');
+const { QueueTaskAcknowledgementService } = await import('../../services/queueTaskAcknowledgementService.mjs');
 const { createClassificationRouter } = await import('../../routes/classificationRouteShared.mjs');
 const { requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
 const { errorHandler } = await import('../../middleware/errorHandler.mjs');
@@ -24,6 +29,8 @@ afterEach(async () => {
   await query('DELETE FROM media_requests WHERE id=ANY($1::integer[])', [requestIds]);
   await query('DELETE FROM webhook_log WHERE id=ANY($1::integer[])', [webhookIds]);
   await query('DELETE FROM classification_history WHERE id=ANY($1::bigint[])', [history]);
+  await query('DELETE FROM classification_history WHERE tmdb_id=$1', [tmdbId]);
+  await query("DELETE FROM libraries WHERE external_id='owned-retry'");
 });
 afterAll(async () => { await database.pool.end(); });
 
@@ -64,34 +71,255 @@ test.each([{ name: 'stale reference object', value: stale },
     expect(response.status).toBe(200); expect(response.body).toMatchObject({ requested: 1, queued: 1, failed: 0 });
     const saved = await snapshot(); expect(saved.tasks).toHaveLength(1);
     expect(saved.tasks[0].payload).not.toHaveProperty('retry_lineage');
-    await rebindRetryLineage(43, saved.tasks[0].payload);
     const consumed = await snapshot(); expect(consumed.requests).toEqual(before.requests); expect(consumed.webhooks).toEqual(before.webhooks);
     expect(consumed.history[1]).toEqual(before.history[1]); expect(consumed.history[2]).toEqual(before.history[2]);
     expect(consumed.history[0].metadata).toMatchObject(metadata);
     expect(consumed.history[0].metadata.classification_details.outcome_link).not.toHaveProperty('replacement_classification_id');
   });
-test.each([41, '41'])('fresh capture for %p replaces inherited fields and keeps existing rebinding behavior', async id => {
-  await seed();
-  await query('INSERT INTO media_requests(id,classification_id,title) VALUES(302,41,$1)', ['Owned current request']);
-  await query('INSERT INTO webhook_log(id,classification_id,media_title) VALUES(402,41,$1)', ['Owned current webhook']);
+async function seedProtected(metadata = { overview: 'Owned overview', genres: ['Drama'], retry_lineage: stale }) {
+  await seed(metadata);
+  await query('INSERT INTO media_requests(id,classification_id,media_type,tmdb_id) VALUES(302,41,\'movie\',$1)', [tmdbId]);
+  await query('INSERT INTO webhook_log(id,classification_id,media_type,tmdb_id) VALUES(402,41,\'movie\',$1)', [tmdbId]);
+}
+
+async function claimRetry() {
+  return (await query(`UPDATE task_queue SET status='processing',claim_token=$2,visible_at=NOW()+INTERVAL '2 minutes'
+    WHERE payload->>'tmdb_id'=$1 RETURNING *`, [String(tmdbId), randomUUID()])).rows[0];
+}
+
+function mockReview() {
+  jest.spyOn(classificationService.classificationProgressStageService, 'updateStage').mockResolvedValue();
+  jest.spyOn(classificationService.classificationProgressStageService, 'completeTracking').mockResolvedValue();
+  jest.spyOn(classificationService.clarificationService, 'isRequireAllConfirmationsEnabled').mockResolvedValue(false);
+  jest.spyOn(classificationService, 'runDecisionTree').mockResolvedValue({
+    method: 'fallback', library: null, confidence: 50, reason: 'Owned pending review', needs_clarification: true,
+  });
+  return jest.spyOn(classificationService, 'routeClassificationResult').mockResolvedValue(null);
+}
+
+const processRetry = task => classificationService.classifyQueueTask(task, { ...task.payload, taskId: task.id });
+
+const historyCount = async () => Number((await query('SELECT count(*) FROM classification_history WHERE tmdb_id=$1', [tmdbId])).rows[0].count);
+
+function acknowledgement() {
+  const logger = createMockLogger();
+  return new QueueTaskAcknowledgementService({ db: database, logger, receiptService: { recordTerminal: jest.fn() } });
+}
+
+function worker() {
+  const ack = acknowledgement();
+  return new QueueTaskProcessorService({
+    db: database, logger: createMockLogger(), classificationService,
+    completeTask: (...args) => ack.complete(...args),
+    failTask: (id, reason, _attempts, _max, token, failure) => ack.fail(id, reason, token, failure),
+  });
+}
+
+test.each([41, '41'])('fresh capture for %p retains current owners until the worker commits', async id => {
+  await seedProtected();
   expect(await services().retry.retrySingle({ classificationId: id, actor: 'owned' })).toMatchObject({ queued: true });
   const saved = await snapshot(), payload = saved.tasks[0].payload;
   expect(payload.retry_lineage).toEqual({ original_classification_id: id, media_request_ids: [302], webhook_log_ids: [402] });
   expect(saved.history[0].metadata.retry_lineage).toEqual(stale);
-  await rebindRetryLineage(43, payload); const consumed = await snapshot();
-  expect(consumed.requests).toEqual([{ id: 301, classification_id: 42 }, { id: 302, classification_id: 43 }]);
-  expect(consumed.webhooks).toEqual([{ id: 401, classification_id: 42 }, { id: 402, classification_id: 43 }]);
-  expect(consumed.history[0].metadata.classification_details.outcome_link.replacement_classification_id).toBe(43);
+  expect(saved.requests[1].classification_id).toBe(41);
+  expect(saved.webhooks[1].classification_id).toBe(41);
+  const route = mockReview(), task = await claimRetry();
+  const { classification_id: replacementId } = await processRetry(task);
+  const consumed = await snapshot();
+  expect(consumed.requests).toEqual([{ id: 301, classification_id: 42 }, { id: 302, classification_id: replacementId }]);
+  expect(consumed.webhooks).toEqual([{ id: 401, classification_id: 42 }, { id: 402, classification_id: replacementId }]);
+  expect(consumed.history[0].metadata.classification_details.outcome_link.replacement_classification_id).toBe(replacementId);
   expect(consumed.history[1].metadata).toEqual({});
+  expect(route).toHaveBeenCalledTimes(1);
+  await expect(processRetry(task)).rejects.toThrow('retry_lineage_already_completed');
+  const reclaim = await claimRetry();
+  expect(await processRetry(reclaim)).toMatchObject({ recovered: true, classification_id: replacementId,
+    routingOutcome: { reason: 'saved_retry_automatic_route_withheld' } });
+  await expect(classificationService.queuedRoutingReplayGuard.admit(reclaim, replacementId))
+    .rejects.toThrow('task_retry_lineage_refused');
+  expect(route).toHaveBeenCalledTimes(1);
 });
-test('filtered-empty capture still omits lineage without redefining collector admission', async () => {
+
+test.each([
+  ['changed owner', 'UPDATE media_requests SET classification_id=42 WHERE id=302'],
+  ['detached owner', 'UPDATE media_requests SET classification_id=NULL WHERE id=302'],
+  ['deleted reference', 'DELETE FROM webhook_log WHERE id=402'],
+  ['changed item', 'UPDATE media_requests SET tmdb_id=99 WHERE id=302'],
+  ['additional reference', 'UPDATE media_requests SET classification_id=41 WHERE id=301'],
+  ['newer relationship', `UPDATE classification_history SET metadata=jsonb_set(metadata,
+    '{classification_details,outcome_link,replacement_task_id}','99') WHERE id=41`],
+])('worker terminally refuses %s and does not replace History', async (_name, change) => {
+  await seedProtected();
+  expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
+  await query(change);
+  const before = await snapshot(), route = mockReview(), task = await claimRetry();
+  await worker().processTask(task);
+  const after = await snapshot(), mutations = new QueueMutationService({ db: database, logger: createMockLogger() });
+  expect(after.tasks[0].status).toBe('failed');
+  expect((await query('SELECT error_message,attempts FROM task_queue WHERE id=$1', [task.id])).rows[0])
+    .toEqual({ error_message: 'task_retry_lineage_refused', attempts: 1 });
+  expect(after.requests).toEqual(before.requests);
+  expect(after.webhooks).toEqual(before.webhooks);
+  expect(after.history).toEqual(before.history);
+  expect(await historyCount()).toBe(1);
+  expect(route).not.toHaveBeenCalled();
+  expect(await mutations.retryTask(task.id)).toMatchObject({ success: false, code: 'invalid_state' });
+  await mutations.retryAllFailedTasks();
+  expect((await snapshot()).tasks[0].status).toBe('failed');
+});
+
+test.each(['protected', 'legacy'])('manual library selection and unsupported-media shortcut respect %s lineage', async mode => {
+  await seedProtected();
+  expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
+  const { id } = (await snapshot()).tasks[0];
+  if (mode === 'legacy') await query('DELETE FROM classification_retry_lineage_proofs WHERE task_id=$1', [id]);
+  const admin = new QueueAdminService({ db: database });
+  expect(await admin.manualClassifyTask(id, 1)).toMatchObject({ success: false, code: 'retry_lineage_requires_worker' });
+  await query(`UPDATE task_queue SET payload=payload || '{"media_type":"music","media":{"media_type":"music"}}'::jsonb WHERE id=$1`, [id]);
+  const route = mockReview();
+  await worker().processTask(await claimRetry());
+  expect((await snapshot()).tasks[0].status).toBe('failed');
+  expect(await historyCount()).toBe(1);
+  expect(route).not.toHaveBeenCalled();
+});
+
+test('ordinary classification treats lineage metadata as data and cannot move associations', async () => {
+  await seedProtected();
+  const before = await snapshot();
+  mockReview();
+  await classificationService.classify({ title: 'Owned generic item', media_type: 'movie', tmdb_id: tmdbId,
+    overview: 'Owned overview', genres: ['Drama'], retry_lineage: stale });
+  const after = await snapshot();
+  expect(after.requests).toEqual(before.requests);
+  expect(after.webhooks).toEqual(before.webhooks);
+  expect(after.history).toEqual(before.history);
+  expect(await historyCount()).toBe(2);
+});
+
+test('overlapping work under one claim commits one replacement and allows only its worker to continue', async () => {
+  await seedProtected();
+  await services().retry.retrySingle({ classificationId: 41, actor: 'owned' });
+  const task = await claimRetry(), route = mockReview(), entered = deferred(), release = deferred();
+  const result = await classificationService.runDecisionTree();
+  const decide = classificationService.runDecisionTree.mockClear();
+  decide.mockImplementation(async () => {
+    if (decide.mock.calls.length === 2) entered.resolve();
+    await release.promise;
+    return { ...result };
+  });
+  const runs = [processRetry(task), processRetry(task)];
+  const results = Promise.allSettled(runs);
+  try { await Promise.race([entered.promise, ...runs]); }
+  finally { release.resolve(); }
+  const settled = await results;
+  expect(settled.filter(entry => entry.status === 'fulfilled')).toHaveLength(1);
+  expect(settled.find(entry => entry.status === 'rejected').reason.message).toBe('retry_lineage_already_completed');
+  expect(await historyCount()).toBe(2);
+  expect(route).toHaveBeenCalledTimes(1);
+});
+
+test('a contended terminal acknowledgement rechecks the lease after obtaining the lock', async () => {
+  await seedProtected();
+  await services().retry.retrySingle({ classificationId: 41, actor: 'owned' });
+  const task = await claimRetry();
+  const holder = await database.pool.connect();
+  let pending;
+  try {
+    await query("UPDATE task_queue SET visible_at=clock_timestamp()+INTERVAL '1 second' WHERE id=$1", [task.id]);
+    await holder.query('BEGIN');
+    await holder.query('SELECT id FROM task_queue WHERE id=$1 FOR UPDATE', [task.id]);
+    pending = acknowledgement().fail(task.id, 'task_retry_lineage_refused', task.claim_token);
+    await query('SELECT pg_sleep(1.1)');
+    await holder.query('COMMIT');
+    expect(await pending).toBe(false);
+    expect((await query('SELECT status,attempts FROM task_queue WHERE id=$1', [task.id])).rows[0])
+      .toEqual({ status: 'processing', attempts: 0 });
+  } finally {
+    await holder.query('ROLLBACK');
+    holder.release();
+    await pending;
+  }
+});
+
+test('routing admission follows local commit and its observation survives a later claim', async () => {
+  await seedProtected();
+  await services().retry.retrySingle({ classificationId: 41, actor: 'owned' });
+  const route = mockReview(), task = await claimRetry();
+  const { rows: [library] } = await query(`INSERT INTO libraries (name,external_id,media_type)
+    VALUES('Owned retry library','owned-retry','movie') RETURNING id,name`);
+  classificationService.runDecisionTree.mockResolvedValue({
+    method: 'policy_auto', library, confidence: 97, reason: 'Owned eligible fixture',
+  });
+  route.mockImplementation(async (id, _metadata, _result, _confirmAll, admit) => {
+    const proof = (await query(`SELECT replacement_classification_id FROM classification_retry_lineage_proofs
+      WHERE task_id=$1`, [task.id])).rows[0];
+    expect(proof.replacement_classification_id).toBe(id);
+    expect((await snapshot()).requests[1].classification_id).toBe(id);
+    await admit(id);
+    return null;
+  });
+  const result = await processRetry(task);
+  const next = await claimRetry();
+  expect(await processRetry(next)).toMatchObject({ recovered: true, classification_id: result.classification_id,
+    routingOutcome: { routeResult: { attempted: true, routed: false, reason: 'automatic_routing_unconfirmed' } } });
+  expect(route).toHaveBeenCalledTimes(1);
+
+  // Legacy tasks may observe a historical provider admission without moving links.
+  await query('DELETE FROM classification_retry_lineage_proofs WHERE task_id=$1', [task.id]);
+  expect(await processRetry(next)).toMatchObject({ recovered: true, classification_id: result.classification_id });
+  expect(route).toHaveBeenCalledTimes(1);
+});
+
+test.each(['rollback', 'lost reply'])('the atomic transfer handles a database %s at the write boundary', async mode => {
+  await seedProtected();
+  expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
+  const task = await claimRetry(), route = mockReview();
+  const guard = classificationService.queuedRoutingReplayGuard;
+  const before = await snapshot();
+  if (mode === 'rollback') {
+    const withClaim = guard.withClaim.bind(guard);
+    jest.spyOn(guard, 'withClaim').mockImplementation((claim, work) => withClaim(claim, (client, ...args) => work({
+      query: (sql, values) => sql.startsWith('UPDATE webhook_log SET classification_id')
+        ? client.query('SELECT 1/0') : client.query(sql, values),
+    }, ...args)));
+  }
+  if (mode === 'lost reply') {
+    const owner = createReadinessDatabase({ max: 1 });
+    try {
+      const client = await owner.pool.connect(), native = client.query.bind(client);
+      let marked = false;
+      jest.spyOn(client, 'query').mockImplementation(async (...args) => {
+        const result = await native(...args);
+        if (args[0].startsWith('UPDATE classification_retry_lineage_proofs')) marked = true;
+        if (marked && args[0] === 'COMMIT') throw new Error('Owned lost acknowledgement');
+        return result;
+      });
+      client.release();
+      jest.replaceProperty(guard, 'db', owner);
+      await expect(processRetry(task)).rejects.toThrow('Owned lost acknowledgement');
+    } finally {
+      jest.restoreAllMocks();
+      await owner.pool.end();
+    }
+    const marked = (await query('SELECT replacement_classification_id FROM classification_retry_lineage_proofs WHERE task_id=$1', [task.id])).rows[0];
+    const recovered = await processRetry(await claimRetry());
+    expect(recovered).toMatchObject({ recovered: true, classification_id: marked.replacement_classification_id });
+    expect((await snapshot()).requests[1].classification_id).toBe(recovered.classification_id);
+    expect(await historyCount()).toBe(2);
+  } else {
+    await expect(processRetry(task)).rejects.toMatchObject({ code: '22012' });
+    expect(await snapshot()).toEqual(before);
+    expect(await historyCount()).toBe(1);
+  }
+  expect(route).not.toHaveBeenCalled();
+});
+test('unsupported reference ids refuse enqueue and keep the existing owners', async () => {
   await seed();
   await query('INSERT INTO media_requests(id,classification_id) VALUES(-301,41)');
   await query('INSERT INTO webhook_log(id,classification_id) VALUES(-401,41)');
-  expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
-  const saved = await snapshot(); expect(saved.tasks[0].payload).not.toHaveProperty('retry_lineage');
-  expect(saved.requests).toEqual([{ id: -301, classification_id: null }, { id: 301, classification_id: 42 }]);
-  expect(saved.webhooks).toEqual([{ id: -401, classification_id: null }, { id: 401, classification_id: 42 }]);
+  const before = await snapshot();
+  expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ failed: true });
+  expect(await snapshot()).toEqual(before);
 });
 test.each(['media_requests', 'webhook_log'])('genuine capture timeout in %s rolls back callback DML and never treats failure as absence', async table => {
   await seed(); const before = await snapshot(), holder = await database.pool.connect();

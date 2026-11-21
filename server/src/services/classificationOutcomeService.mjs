@@ -146,7 +146,7 @@ export class ClassificationOutcomeService {
     this.logger = deps.logger || logger;
   }
 
-  async recordOutcome(classificationId, outcomePatch, { client = null } = {}) {
+  async recordOutcome(classificationId, outcomePatch, { client = null, requireWrite = false } = {}) {
     if (!Number.isInteger(Number(classificationId)) || Number(classificationId) < 1) {
       return { updated: false, reason: 'invalid_classification_id' };
     }
@@ -229,10 +229,11 @@ export class ClassificationOutcomeService {
 
       metadata.classification_details = classificationDetails;
 
-      await executor.query(
+      const updated = await executor.query(
         'UPDATE classification_history SET metadata = $2::jsonb WHERE id = $1',
         [classificationId, JSON.stringify(metadata)]
       );
+      if (requireWrite && updated.rowCount !== 1) return { updated: false, reason: 'not_found' };
 
       return {
         updated: true,
@@ -240,6 +241,7 @@ export class ClassificationOutcomeService {
         outcomePath: mergedOutcomePath
       };
     } catch (error) {
+      if (requireWrite) throw error;
       this.logger.warn('Failed to record classification outcome link', {
         classificationId,
         error: error.message,

@@ -26,6 +26,8 @@ import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecove
 import { CONSENSUS_ROUTE_METHOD, hasCandidateConsensusReceipt } from './policyCandidateConsensusReceipt.mjs';
 import { restoreConsensusReview } from './classificationConsensusReviewRecovery.mjs';
 import { QueuedRoutingReplayGuard } from './queuedRoutingReplayGuard.mjs';
+import { buildQueuedRetryLineagePersistence } from './queuedRetryLineageService.mjs';
+import { requireRequestIdentity } from './requestIdentityNormalization.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -340,18 +342,25 @@ export class ClassificationService {
     }
   }
 
-  async classifyQueueTask(task, payload = {}) {
+  async classifyQueueTask(task, payload = {}, { checkMediaType = false } = {}) {
     const claim = Object.freeze({ id: task?.id, claim_token: task?.claim_token });
     const replay = await this.queuedRoutingReplayGuard.read(claim);
-    if (replay) {
-      if (!replay.routingOutcome.routeResult.routed) this.logger.warn('Queued routing outcome is unconfirmed; write replay withheld', {
+    if (replay?.recovered) {
+      if (replay.routingOutcome.routeResult.reason === 'automatic_routing_unconfirmed') this.logger.warn('Queued routing outcome is unconfirmed; write replay withheld', {
         taskId: task.id, classificationId: replay.classification_id, reasonCode: 'automatic_routing_unconfirmed',
       });
       return replay;
     }
+    const persistRetryLineage = replay?.retryLineageProof
+      ? buildQueuedRetryLineagePersistence(this.queuedRoutingReplayGuard, claim, replay.retryLineageProof, payload)
+      : null;
+    if (checkMediaType && !requireRequestIdentity(payload).mediaType) {
+      return { success: true, skipped: true, reason: 'unsupported_media_type' };
+    }
     return this.classify(payload, {
       queueTask: buildQueueTaskContext(task),
       beforeAutomaticRoute: classificationId => this.queuedRoutingReplayGuard.admit(claim, classificationId),
+      ...(persistRetryLineage ? { persistRetryLineage } : {}),
     });
   }
 
@@ -466,9 +475,11 @@ export class ClassificationService {
       );
 
       const classificationId = queueTask
-        ? await this.logClassification(metadata, result, startTime, { queueTask })
+        ? await this.logClassification(metadata, result, startTime, {
+          queueTask,
+          ...(runtimeContext.persistRetryLineage ? { persistRetryLineage: runtimeContext.persistRetryLineage } : {}),
+        })
         : await this.logClassification(metadata, result, startTime);
-      await this.rebindRetryLineage(classificationId, metadata);
       await this.persistRagLoopStageEvents({ classificationId, metadata, result });
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
@@ -739,10 +750,6 @@ export class ClassificationService {
 
   async persistRagLoopStageEvents(params) {
     return this.classificationPersistenceService.persistRagLoopStageEvents(params);
-  }
-
-  async rebindRetryLineage(classificationId, metadata = {}) {
-    return this.classificationPersistenceService.rebindRetryLineage(classificationId, metadata);
   }
 
   async deriveClassificationPersistenceState(result) {

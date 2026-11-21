@@ -22,7 +22,7 @@
       </h2>
       <div class="secondary-section-actions">
         <Button
-          v-if="failedQueueTasks.length"
+          v-if="failedQueueTasks.some(canRetryTask)"
           variant="warning"
           size="sm"
           :disabled="isActionBusy('retry-all-failed')"
@@ -72,7 +72,7 @@
           </div>
           <div class="error-actions">
             <Button
-              v-if="!task.payload?.identity_repair"
+              v-if="canRetryTask(task)"
               variant="warning"
               size="sm"
               @click="$emit('retry-failed-task', task.id)"
@@ -385,7 +385,7 @@
 
 <script setup>
 import { Badge, Button } from '@/components/common'
-import { queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
+import { canRetryTask, queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 import QueueMetadataCheck from './QueueMetadataCheck.vue'
 import QueueIdentityRepair from './QueueIdentityRepair.vue'

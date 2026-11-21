@@ -2,6 +2,8 @@
 import { randomUUID } from 'node:crypto';
 import { buildNonClassifierHistoryMetadata } from './nonClassifierHistoryMetadata.mjs';
 import { MANUAL_ROUTING_PENDING, MANUAL_ROUTING_MESSAGE } from './queueManualRoutingOutcome.mjs';
+import { isRetryLineageSource } from './classificationRetryLineageContract.mjs';
+import { isManualRetryLineageBlocked } from './queuedRetryLineageService.mjs';
 
 /** Only local SQL and pure preparation belong inside this transaction. */
 export async function saveManualClassification(client, { taskId, libraryId, resolvedBy, parsePayload, extract }) {
@@ -9,9 +11,12 @@ export async function saveManualClassification(client, { taskId, libraryId, reso
   if (!task) return { success: false, code: 'task_not_found' };
   if (task.task_type !== 'classification') return { success: false, code: 'invalid_task_type', taskType: task.task_type };
   if (task.status !== 'pending') return { success: false, code: 'invalid_state', currentStatus: task.status };
+  const payload = parsePayload(task.payload);
+  if (isRetryLineageSource(task.source) && await isManualRetryLineageBlocked(client, task, payload)) {
+    return { success: false, code: 'retry_lineage_requires_worker' };
+  }
   const { rows: [library] } = await client.query('SELECT * FROM libraries WHERE id=$1 AND is_active IS TRUE', [libraryId]);
   if (!library) return { success: false, code: 'library_not_found' };
-  const payload = parsePayload(task.payload);
   const metadata = payload.media || payload.metadata || payload;
   const mediaType = metadata.media_type || library.media_type;
   if (!['movie', 'tv'].includes(mediaType) || mediaType !== library.media_type) {

@@ -80,8 +80,6 @@ describe('ClassificationRetryStateService', () => {
 
   test('cleanupClassificationArtifacts writes a durable rag audit log when embeddings are removed', async () => {
     client.query
-      .mockResolvedValueOnce({ rowCount: 1 })
-      .mockResolvedValueOnce({ rowCount: 1 })
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rowCount: 0 })

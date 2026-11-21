@@ -146,7 +146,6 @@ test.each(['movie', 'tv'])('expired active trial persists %s work and resumes it
     previousRetryCount: task.payload.retry_count, maxRetries: task.payload.max_retries });
   const persistence = new ClassificationPersistenceService();
   const replacementId = await persistence.logClassification(task.payload, result, null, { queueTask: task });
-  await persistence.rebindRetryLineage(replacementId, task.payload);
   // Complete the simulated worker only after its replacement decision is durable.
   await pool.query("UPDATE task_queue SET status = 'completed' WHERE id = $1", [task.id]);
   const pending = (await pool.query(`SELECT status, retry_count, max_retries, retry_recovery_attempts,

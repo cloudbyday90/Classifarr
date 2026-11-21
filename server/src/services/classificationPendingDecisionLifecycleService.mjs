@@ -150,10 +150,16 @@ export class ClassificationPendingDecisionLifecycleService {
     status,
     identity = null,
     insert,
+    client = null,
+    beforeWrite = null,
   } = {}) {
     if (!isActivePendingDecisionStatus(status) || !identity?.key || typeof insert !== 'function') {
+      if (beforeWrite) {
+        if (identity?.key) await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [identity.key]);
+        await beforeWrite();
+      }
       return {
-        classificationId: await insert(null, []),
+        classificationId: await insert(client, []),
         supersededClassificationIds: [],
       };
     }
@@ -167,13 +173,13 @@ export class ClassificationPendingDecisionLifecycleService {
       };
     }
 
-    return this.db.withTransaction(async (client) => {
+    const writePending = async (executor) => {
       // The partial unique index is the durable invariant. This lock gives the
       // replacement workflow deterministic ordering before it releases an old
       // decision and creates its successor.
-      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [identity.key]);
+      await executor.query('SELECT pg_advisory_xact_lock(hashtext($1))', [identity.key]);
 
-      const activeResult = await client.query(
+      const activeResult = await executor.query(
         `SELECT id
          FROM classification_history
          WHERE pending_identity_key = $1
@@ -184,9 +190,10 @@ export class ClassificationPendingDecisionLifecycleService {
       );
       const supersededClassificationIds = activeResult.rows
         .map((row) => pendingDecisionPredecessorId(row.id));
+      await beforeWrite?.();
 
       if (supersededClassificationIds.length > 0) {
-        await client.query(
+        await executor.query(
           `UPDATE classification_history
            SET status = 'reclassified',
                clarification_status = 'superseded',
@@ -195,16 +202,16 @@ export class ClassificationPendingDecisionLifecycleService {
            WHERE id = ANY($1::bigint[])`,
           [supersededClassificationIds],
         );
-        await client.query(
+        await executor.query(
           MARK_SUPERSEDED_PENDING_NOTIFICATIONS_READ_SQL,
           [supersededClassificationIds],
         );
       }
 
-      const classificationId = validatePendingDecisionInsertedId(await insert(client, supersededClassificationIds));
+      const classificationId = validatePendingDecisionInsertedId(await insert(executor, supersededClassificationIds));
 
       if (supersededClassificationIds.length > 0) {
-        await client.query(
+        await executor.query(
           `UPDATE classification_history
            SET metadata = jsonb_set(
              COALESCE(metadata, '{}'::jsonb),
@@ -227,7 +234,8 @@ export class ClassificationPendingDecisionLifecycleService {
       }
 
       return { classificationId, supersededClassificationIds };
-    });
+    };
+    return client ? writePending(client) : this.db.withTransaction(writePending);
   }
 }
 

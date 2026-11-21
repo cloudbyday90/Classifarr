@@ -54,6 +54,23 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.findAllComponents({ name: 'QueueMetadataCheck' })).toHaveLength(0)
     wrapper.unmount()
   })
+  it('explains refused lineage and keeps retry actions on other failures', async () => {
+    const refused = { id: 1, task_type: 'classification', error_message: 'task_retry_lineage_refused' }
+    const wrapper = mount(CommandCenterOverviewSections, {
+      props: { ...overviewHelpers, expandedSections: { errors: true }, failedQueueTasks: [refused] },
+      global: { stubs: { Button: buttonStub } },
+    })
+    const actionLabels = () => wrapper.findAll('button').map(button => button.text())
+    expect(wrapper.text()).toContain('could not verify its original request or webhook links')
+    expect(actionLabels()).not.toContain('Retry')
+    expect(actionLabels()).not.toContain('Retry All')
+    expect(actionLabels()).toContain('Dismiss')
+
+    await wrapper.setProps({ failedQueueTasks: [refused, { id: 2, error_message: 'task_processing_failed' }] })
+    expect(actionLabels()).toContain('Retry All')
+    expect(actionLabels().filter(label => label === 'Retry')).toHaveLength(1)
+    wrapper.unmount()
+  })
   it('renders the processing panel as active Plex sync coverage when a sync is running', () => {
     const wrapper = mount(ProcessingPanel, {
       props: {

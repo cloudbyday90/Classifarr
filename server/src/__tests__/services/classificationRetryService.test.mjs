@@ -67,6 +67,7 @@ describe('ClassificationRetryService', () => {
         if (sql.includes('FROM classification_history')) return { rows: [{ id: 41, tmdb_id: 889980,
           media_type: 'movie', title: 'Owned lineage', status: 'awaiting_decision', metadata }] };
         if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9901 }] };
+        if (sql.includes('INSERT INTO classification_retry_lineage_proofs')) return { rowCount: 1 };
         if (sql.includes('UPDATE classification_history')) return { rowCount: 1, rows: [] };
         throw new Error('Unexpected owned lineage query');
       });
@@ -96,13 +97,15 @@ describe('ClassificationRetryService', () => {
       'fresh capture replaces task lineage without mutating source metadata %#', async ({ id, array }) => {
         const metadata = Object.assign(array ? ['owned array entry'] : {}, { retry_lineage: inherited,
           imdb_id: 'tt889980', posterPath: '/owned.png' });
-        const before = structuredClone(metadata), capture = { original_classification_id: id,
-          media_request_ids: [302], webhook_log_ids: [402] }, build = prepare(metadata, capture);
+        const before = structuredClone(metadata);
+        const build = prepare(metadata, { requests: [{ id: 302, media_type: null, tmdb_id: null, tvdb_id: null }],
+          webhooks: [{ id: 402, media_type: null, tmdb_id: null, tvdb_id: null }] });
+        const lineage = { original_classification_id: id, media_request_ids: [302], webhook_log_ids: [402] };
         expect(await service.retrySingle({ classificationId: id, actor: 'owned' })).toMatchObject({ queued: true });
-        expect(build.mock.calls[0][1].retry_lineage).toBe(capture);
+        expect(build.mock.calls[0][1].retry_lineage).toEqual(lineage);
         expect(metadata).toEqual(before); expect(Array.isArray(metadata)).toBe(array);
         const followup = followupService.enqueueMetadataEnrichmentTask.mock.calls[0][0];
-        expect(followup.metadata).toBe(metadata); expect(followup.retryPayload.retry_lineage).toBe(capture);
+        expect(followup.metadata).toBe(metadata); expect(followup.retryPayload.retry_lineage).toEqual(lineage);
         expect(followup.retryPayload).not.toHaveProperty('0');
         expect(service.classificationRetryPayloads.buildMetadataEnrichmentPayload(followup.retryPayload, followup.metadata, 7001))
           .toMatchObject({ imdb_id: 'tt889980', posterPath: '/owned.png', tmdb_id: 889980, itemId: 7001 });
@@ -385,15 +388,15 @@ describe('ClassificationRetryService', () => {
       }
       if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) return { rowCount: 1, rows: [] };
       if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9901 }] };
+      if (sql.includes('INSERT INTO classification_retry_lineage_proofs')) return { rowCount: 1 };
       throw new Error(`Unexpected query: ${sql}`);
     });
 
     jest.spyOn(service, 'hasPendingClassificationTask').mockResolvedValueOnce(null);
     jest.spyOn(service, 'resolveMediaItemId').mockResolvedValueOnce(7001);
     service.captureRetryLineage.mockResolvedValueOnce({
-      original_classification_id: 304,
-      media_request_ids: [41, 42],
-      webhook_log_ids: [88]
+      requests: [41, 42].map(id => ({ id, media_type: null, tmdb_id: null, tvdb_id: null })),
+      webhooks: [{ id: 88, media_type: null, tmdb_id: null, tvdb_id: null }],
     });
     jest.spyOn(service, 'cleanupClassificationArtifacts').mockResolvedValueOnce();
     jest.spyOn(service, 'cleanupEnrichmentState').mockResolvedValueOnce({
@@ -449,7 +452,7 @@ describe('ClassificationRetryService', () => {
       actor: 'admin',
       replacement_task_id: 9901,
       purged_learning: false
-    }), { client });
+    }), { client, requireWrite: true });
     expect(logger.info).toHaveBeenCalledWith('Classification retry queued', expect.objectContaining({
       classificationId: 304,
       taskId: 9901,
@@ -743,19 +746,18 @@ describe('ClassificationRetryService', () => {
     const result = await service.captureRetryLineage(client, 777);
 
     expect(result).toEqual({
-      original_classification_id: 777,
-      media_request_ids: [51, 52],
-      webhook_log_ids: [91]
+      requests: [51, 52].map(id => ({ id, media_type: null, tmdb_id: null, tvdb_id: null })),
+      webhooks: [{ id: 91, media_type: null, tmdb_id: null, tvdb_id: null }],
     });
     expect(client.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('FROM media_requests'),
-      [777]
+      [777, 257]
     );
     expect(client.query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('FROM webhook_log'),
-      [777]
+      [777, 257]
     );
   });
 

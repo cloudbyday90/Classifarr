@@ -150,7 +150,6 @@ function createService({ handoff, admission } = {}) {
     classificationPersistenceService: {
       logClassification: jest.fn().mockResolvedValue(94),
       persistRagLoopStageEvents: jest.fn().mockResolvedValue(),
-      rebindRetryLineage: jest.fn().mockResolvedValue(),
     },
     classificationRagLoopService: {},
     classificationAuthoritativeSignalService: {},
@@ -200,7 +199,7 @@ describe('supported classification content', () => {
   });
   test('queue replay returns saved uncertainty without classification, routing or notification', async () => {
     const service = createService();
-    const saved = { classification_id: 94, routingOutcome: { routeResult: { routed: false } } };
+    const saved = { recovered: true, classification_id: 94, routingOutcome: { routeResult: { routed: false } } };
     service.queuedRoutingReplayGuard.read.mockResolvedValue(saved);
     expect(await service.classifyQueueTask({ id: 42, claim_token: 'claim' })).toBe(saved);
     expect(service.runDecisionTree).not.toHaveBeenCalled();
