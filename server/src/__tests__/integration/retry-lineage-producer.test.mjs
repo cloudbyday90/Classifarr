@@ -15,6 +15,7 @@ const { QueueAdminService } = await import('../../services/queueAdminService.mjs
 const { QueueMutationService } = await import('../../services/queueMutationService.mjs');
 const { QueueTaskProcessorService } = await import('../../services/queueTaskProcessorService.mjs');
 const { QueueTaskAcknowledgementService } = await import('../../services/queueTaskAcknowledgementService.mjs');
+const { RetryLineageRefusal } = await import('../../services/classificationRetryLineageContract.mjs');
 const { createClassificationRouter } = await import('../../routes/classificationRouteShared.mjs');
 const { requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
 const { errorHandler } = await import('../../middleware/errorHandler.mjs');
@@ -141,14 +142,14 @@ test.each([41, '41'])('fresh capture for %p retains current owners until the wor
 });
 
 test.each([
-  ['changed owner', 'UPDATE media_requests SET classification_id=42 WHERE id=302'],
-  ['detached owner', 'UPDATE media_requests SET classification_id=NULL WHERE id=302'],
-  ['deleted reference', 'DELETE FROM webhook_log WHERE id=402'],
-  ['changed item', 'UPDATE media_requests SET tmdb_id=99 WHERE id=302'],
-  ['additional reference', 'UPDATE media_requests SET classification_id=41 WHERE id=301'],
-  ['newer relationship', `UPDATE classification_history SET metadata=jsonb_set(metadata,
+  ['changed owner', 'media_request_links', 'UPDATE media_requests SET classification_id=42 WHERE id=302'],
+  ['detached owner', 'media_request_links', 'UPDATE media_requests SET classification_id=NULL WHERE id=302'],
+  ['deleted reference', 'webhook_links', 'DELETE FROM webhook_log WHERE id=402'],
+  ['changed item', 'media_request_links', 'UPDATE media_requests SET tmdb_id=99 WHERE id=302'],
+  ['additional reference', 'media_request_links', 'UPDATE media_requests SET classification_id=41 WHERE id=301'],
+  ['newer relationship', 'source_relationship', `UPDATE classification_history SET metadata=jsonb_set(metadata,
     '{classification_details,outcome_link,replacement_task_id}','99') WHERE id=41`],
-])('worker terminally refuses %s and does not replace History', async (_name, change) => {
+])('worker terminally refuses %s and does not replace History', async (_name, category, change) => {
   await seedProtected();
   expect(await services().retry.retrySingle({ classificationId: 41, actor: 'owned' })).toMatchObject({ queued: true });
   await query(change);
@@ -156,8 +157,8 @@ test.each([
   await worker().processTask(task);
   const after = await snapshot(), mutations = new QueueMutationService({ db: database, logger: createMockLogger() });
   expect(after.tasks[0].status).toBe('failed');
-  expect((await query('SELECT error_message,attempts FROM task_queue WHERE id=$1', [task.id])).rows[0])
-    .toEqual({ error_message: 'task_retry_lineage_refused', attempts: 1 });
+  expect((await query('SELECT error_message,attempts,retry_lineage_refusal_category FROM task_queue WHERE id=$1', [task.id])).rows[0])
+    .toEqual({ error_message: 'task_retry_lineage_refused', attempts: 1, retry_lineage_refusal_category: category });
   expect(after.requests).toEqual(before.requests);
   expect(after.webhooks).toEqual(before.webhooks);
   expect(after.history).toEqual(before.history);
@@ -179,6 +180,8 @@ test.each(['protected', 'legacy'])('manual library selection and unsupported-med
   const route = mockReview();
   await worker().processTask(await claimRetry());
   expect((await snapshot()).tasks[0].status).toBe('failed');
+  expect((await query('SELECT retry_lineage_refusal_category FROM task_queue WHERE id=$1', [id])).rows[0])
+    .toEqual({ retry_lineage_refusal_category: mode === 'legacy' ? 'proof_unavailable' : 'item_identity' });
   expect(await historyCount()).toBe(1);
   expect(route).not.toHaveBeenCalled();
 });
@@ -228,12 +231,12 @@ test('a contended terminal acknowledgement rechecks the lease after obtaining th
     await query("UPDATE task_queue SET visible_at=clock_timestamp()+INTERVAL '1 second' WHERE id=$1", [task.id]);
     await holder.query('BEGIN');
     await holder.query('SELECT id FROM task_queue WHERE id=$1 FOR UPDATE', [task.id]);
-    pending = acknowledgement().fail(task.id, 'task_retry_lineage_refused', task.claim_token);
+    pending = acknowledgement().fail(task.id, 'task_retry_lineage_refused', task.claim_token, new RetryLineageRefusal('webhook_links'));
     await query('SELECT pg_sleep(1.1)');
     await holder.query('COMMIT');
     expect(await pending).toBe(false);
-    expect((await query('SELECT status,attempts FROM task_queue WHERE id=$1', [task.id])).rows[0])
-      .toEqual({ status: 'processing', attempts: 0 });
+    expect((await query('SELECT status,attempts,retry_lineage_refusal_category FROM task_queue WHERE id=$1', [task.id])).rows[0])
+      .toEqual({ status: 'processing', attempts: 0, retry_lineage_refusal_category: null });
   } finally {
     await holder.query('ROLLBACK');
     holder.release();

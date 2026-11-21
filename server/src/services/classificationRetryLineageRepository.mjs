@@ -4,7 +4,7 @@ import { normalizeRequestIdentity } from './requestIdentityNormalization.mjs';
 import {
   canonicalRetryLineageId, projectRetryLineageReferences, requireCompatibleLineageReferences,
   isRetryLineageSource, requireLineageItemMatch, requireRetryLineage, retryLineageHistoryItem, retryLineageItem,
-  RETRY_LINEAGE_MAX_REFERENCES,
+  RETRY_LINEAGE_MAX_REFERENCES, RETRY_LINEAGE_REFUSAL_CATEGORIES as CATEGORY,
 } from './classificationRetryLineageContract.mjs';
 
 const REFERENCE_LIMIT = RETRY_LINEAGE_MAX_REFERENCES + 1;
@@ -16,7 +16,10 @@ const READ_WEBHOOKS = `SELECT id,media_type,tmdb_id,tvdb_id FROM webhook_log
 async function readReferences(client, sourceId) {
   const requests = await client.query(READ_REQUESTS, [sourceId, REFERENCE_LIMIT]);
   const webhooks = await client.query(READ_WEBHOOKS, [sourceId, REFERENCE_LIMIT]);
-  return { requests: projectRetryLineageReferences(requests.rows), webhooks: projectRetryLineageReferences(webhooks.rows) };
+  return {
+    requests: projectRetryLineageReferences(requests.rows, CATEGORY.REQUESTS),
+    webhooks: projectRetryLineageReferences(webhooks.rows, CATEGORY.WEBHOOKS),
+  };
 }
 
 export async function captureRetryLineage(client, sourceId) {
@@ -53,29 +56,29 @@ export async function readRetryLineageProof(client, taskId) {
 }
 
 export function verifyRetryLineageItem(proof, { mediaType, tmdbId, tvdbId }) {
-  requireRetryLineage(proof?.evidence?.version === 1);
+  requireRetryLineage(proof?.evidence?.version === 1, CATEGORY.PROOF);
   requireLineageItemMatch(proof.evidence.item, retryLineageItem(mediaType, tmdbId, tvdbId));
 }
 
-function requireExactReferences(expected, actual) {
-  const projected = projectRetryLineageReferences(expected);
-  requireRetryLineage(JSON.stringify(projected) === JSON.stringify(actual));
+function requireExactReferences(expected, actual, category) {
+  const projected = projectRetryLineageReferences(expected, category);
+  requireRetryLineage(JSON.stringify(projected) === JSON.stringify(actual), category);
 }
 
 export async function lockRetryLineageTransfer(client, { proof, taskId, source, metadata }) {
   requireRetryLineage(proof && proof.replacement_classification_id === null);
   verifyRetryLineageItem(proof, { mediaType: metadata.media_type, tmdbId: metadata.tmdb_id, tvdbId: metadata.tvdb_id });
-  const sourceId = canonicalRetryLineageId(proof.source_classification_id);
+  const sourceId = canonicalRetryLineageId(proof.source_classification_id, CATEGORY.SOURCE);
   const { rows: [history] } = await client.query(`SELECT tmdb_id,media_type,metadata,status FROM classification_history
     WHERE id=$1 FOR UPDATE`, [sourceId]);
   const outcome = history?.metadata?.classification_details?.outcome_link;
   requireRetryLineage(history?.status === 'reclassified' && outcome?.type === 'retried' &&
     outcome?.source === source && outcome.replacement_classification_id == null &&
-    canonicalRetryLineageId(outcome?.replacement_task_id) === taskId);
+    canonicalRetryLineageId(outcome?.replacement_task_id, CATEGORY.SOURCE) === taskId, CATEGORY.SOURCE);
   requireLineageItemMatch(proof.evidence.item, retryLineageHistoryItem(history));
   const references = await readReferences(client, sourceId);
-  requireExactReferences(proof.evidence.requests, references.requests);
-  requireExactReferences(proof.evidence.webhooks, references.webhooks);
+  requireExactReferences(proof.evidence.requests, references.requests, CATEGORY.REQUESTS);
+  requireExactReferences(proof.evidence.webhooks, references.webhooks, CATEGORY.WEBHOOKS);
   requireRetryLineage(references.requests.length + references.webhooks.length > 0);
   return { sourceId, references };
 }

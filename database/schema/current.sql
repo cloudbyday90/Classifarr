@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-11-21T14:03:11.796Z
--- Latest Migration: 20261121_180000_add_retry_lineage_proofs.sql
+-- Generated: 2026-11-21T14:52:45.085Z
+-- Latest Migration: 20261121_190000_add_retry_lineage_refusal_category.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9148,7 +9148,9 @@ CREATE TABLE public.task_queue (
     classification_recovery_attempts smallint DEFAULT 0 NOT NULL,
     claim_token uuid,
     routing_classification_id bigint,
+    retry_lineage_refusal_category text,
     CONSTRAINT task_queue_classification_recovery_attempts_check CHECK (((classification_recovery_attempts >= 0) AND (classification_recovery_attempts <= 1))),
+    CONSTRAINT task_queue_retry_lineage_refusal_category_check CHECK ((retry_lineage_refusal_category = ANY (ARRAY['proof_unavailable'::text, 'source_relationship'::text, 'item_identity'::text, 'media_request_links'::text, 'webhook_links'::text]))),
     CONSTRAINT task_queue_routing_classification_id_check CHECK ((routing_classification_id > 0)),
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
@@ -19175,6 +19177,7 @@ FROM unnest(ARRAY[
     '20261029_090000_add_prospective_purpose_outcomes.sql',
     '20261030_090000_add_automatic_purpose_evaluation.sql',
     '20261102_090000_add_capture_finalization_fence.sql',
-    '20261121_180000_add_retry_lineage_proofs.sql'
+    '20261121_180000_add_retry_lineage_proofs.sql',
+    '20261121_190000_add_retry_lineage_refusal_category.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

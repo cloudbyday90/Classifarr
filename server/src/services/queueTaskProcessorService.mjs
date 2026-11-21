@@ -274,7 +274,7 @@ export class QueueTaskProcessorService {
                     task.attempts,
                     task.max_attempts,
                     task.claim_token,
-                    ...(error instanceof ClassificationMetadataFailure ? [error] : []),
+                    ...(lineageRefused || error instanceof ClassificationMetadataFailure ? [error] : []),
                 );
                 if (acknowledged === false || lineageRefused) return;
 

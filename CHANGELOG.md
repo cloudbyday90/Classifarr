@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retry refusal details** — Record which verification stopped a classification
+  retry and show the saved explanation in the existing Queue. Keep retry and
+  routing safeguards intact and use general wording for older tasks. See the
+  [outcome](docs/architecture/retry-lineage-refusal-details-outcome.md).
+
 - **Atomic retry lineage** — Keep original request and webhook links in place
   while a retry waits. Transfer verified links with the replacement History
   and recover a committed result without replaying automatic routing. Explain
@@ -212,6 +217,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Root tooling** — Adopt Axios 1.21.1 and Markdownlint 0.42.2 with its
+  declared RE2JS 2.9.1. Keep the follow-redirects pin and retire the temporary
+  RE2JS override after qualifying the new graph. See the
+  [outcome](docs/architecture/root-tooling-pr-591-outcome.md).
 
 - **Server development tooling** — Pin Knip 6.45.1 and Supertest 7.3.2 from
   PR #593's reviewed graph. Verify enum analysis, actual retry HTTP behavior and

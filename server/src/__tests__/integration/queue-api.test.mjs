@@ -242,6 +242,31 @@ describe('Queue API Integration Tests', () => {
             response.body.forEach(t => expect(t.status).toBe('failed'));
         });
 
+        test('returns only the saved classification refusal category to existing queue readers', async () => {
+            const recorded = await insertTask('failed');
+            const legacy = await insertTask('failed');
+            const unrelated = await insertTask('failed', 'metadata_enrichment');
+            await db.query(`UPDATE task_queue SET error_message = 'task_retry_lineage_refused',
+                payload = payload || '{"retry_lineage_refusal_category":"webhook_links"}'::jsonb
+                WHERE id = ANY($1::bigint[])`, [[recorded, legacy, unrelated]]);
+            await db.query(`UPDATE task_queue SET retry_lineage_refusal_category = 'media_request_links'
+                WHERE id = ANY($1::bigint[])`, [[recorded, unrelated]]);
+            await expect(db.query(`UPDATE task_queue SET retry_lineage_refusal_category = 'unknown'
+                WHERE id = $1`, [legacy])).rejects.toMatchObject({ code: '23514' });
+
+            const readToken = await authService.generateAccessToken({
+                id: testUserId, username: 'queuetest_user', role: 'user',
+            });
+            const response = await request(app).get('/api/queue/failed')
+                .set('Authorization', `Bearer ${readToken}`).expect(200);
+            const byId = id => response.body.find(row => row.id === id);
+            expect(byId(recorded)).toHaveProperty('retry_lineage_refusal_category', 'media_request_links');
+            expect(byId(legacy)).not.toHaveProperty('retry_lineage_refusal_category');
+            expect(byId(unrelated)).not.toHaveProperty('retry_lineage_refusal_category');
+            expect(byId(recorded)).not.toHaveProperty('claim_token');
+            expect(byId(recorded)).not.toHaveProperty('evidence');
+        });
+
         test('should respect the limit query parameter', async () => {
             for (let i = 0; i < 5; i++) {
                 await insertTask('failed');

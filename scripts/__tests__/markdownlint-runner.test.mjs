@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import { createRequire } from 'node:module';
+import { lint } from 'markdownlint/sync';
 import { readLintConfiguration, selectMarkdownFiles } from '../markdownlint/files.mjs';
 import { matchesPattern, validatePatterns } from '../markdownlint/patterns.mjs';
 import { runMarkdownLint } from '../markdownlint/run.mjs';
@@ -15,16 +16,26 @@ import stringWidth from 'string-width';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const configuration = readLintConfiguration(root);
 
-test('markdownlint resolves the reviewed RE2JS artifact without a second consumer copy', () => {
+test('markdownlint resolves the reviewed declared RE2JS artifact without a second consumer copy', () => {
   const require = createRequire(import.meta.url);
   const consumer = createRequire(require.resolve('markdownlint'));
   const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
   const lock = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'));
   const installed = JSON.parse(readFileSync(resolve(root, 'node_modules/re2js/package.json'), 'utf8'));
-  assert.equal(pkg.overrides.markdownlint.re2js, '2.8.7');
-  assert.equal(lock.packages['node_modules/re2js'].version, '2.8.7');
-  assert.equal(installed.version, '2.8.7');
+  assert.equal(pkg.overrides.markdownlint, undefined);
+  assert.equal(lock.packages['node_modules/markdownlint'].dependencies.re2js, '2.9.1');
+  assert.equal(lock.packages['node_modules/re2js'].version, '2.9.1');
+  assert.equal(installed.version, '2.9.1');
   assert.equal(consumer.resolve('re2js'), require.resolve('re2js'));
+});
+
+test('real Markdownlint preserves link checks and per-rule severity on a null-prototype configuration', () => {
+  const config = { default: false, MD042: true, MD052: true,
+    MD054: Object.assign(Object.create(null), { autolink: false, severity: 'warning' }) };
+  const strings = { sample: '# Example\n\n[empty]()\n\n<https://example.test/>\n\n[unknown][absent]\n' };
+  const findings = lint({ config, strings }).sample.map(result => [result.ruleNames[0], result.lineNumber, result.severity]);
+  assert.deepEqual(findings.sort((a, b) => a[1] - b[1]),
+    [['MD042', 3, 'error'], ['MD054', 5, 'warning'], ['MD052', 7, 'error']]);
 });
 
 function runRe2jsProbe(source) {

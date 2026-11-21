@@ -11,6 +11,7 @@
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { getClassificationQueueSummary } from './classificationQueueStatsService.mjs';
 import { safeParseInt } from '../utils/queueHelpers.mjs';
+import { projectFailedQueueTask } from './queueFailureDetails.mjs';
 
 const GAP_ANALYSIS_BATCH_SIZE = 500;
 const GAP_ANALYSIS_INTERVAL_MINUTES = 5;
@@ -185,6 +186,7 @@ export class QueueReadModel {
             const result = await this.db.query(
                 `SELECT t.id, t.task_type, t.status, t.priority, t.attempts, t.max_attempts,
                 t.error_message, t.current_stage, t.source, t.created_at, t.completed_at, t.payload,
+                t.retry_lineage_refusal_category,
                 CASE WHEN r.task_id IS NULL THEN NULL ELSE jsonb_build_object(
                   'checks', r.probe_count, 'nextCheckAt', r.next_probe_at,
                   'lastOutcome', r.last_outcome, 'checkedAt', r.checked_at,
@@ -195,7 +197,7 @@ export class QueueReadModel {
          LIMIT $1`,
                 [limit]
             );
-            return result.rows;
+            return result.rows.map(projectFailedQueueTask);
         });
     }
 

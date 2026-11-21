@@ -9,16 +9,27 @@
     class="secondary-section"
     :class="{ 'has-errors': failedQueueTasks.length > 0 }"
   >
-    <div
-      class="secondary-section-header"
-      @click="$emit('toggle-section', 'errors')"
-    >
-      <h2 class="secondary-section-title">
-        Errors
-        <span
-          v-if="failedQueueTasks.length"
-          class="secondary-section-count"
-        >({{ failedQueueTasks.length }})</span>
+    <div class="secondary-section-header errors-section-header">
+      <h2 class="secondary-section-title errors-section-title">
+        <button
+          type="button"
+          class="errors-section-toggle"
+          :aria-expanded="Boolean(expandedSections.errors)"
+          aria-controls="queue-errors-content"
+          @click="$emit('toggle-section', 'errors')"
+        >
+          <span>
+            Errors
+            <span
+              v-if="failedQueueTasks.length"
+              class="secondary-section-count"
+            >({{ failedQueueTasks.length }})</span>
+          </span>
+          <span
+            class="secondary-section-toggle"
+            aria-hidden="true"
+          >{{ expandedSections.errors ? '−' : '+' }}</span>
+        </button>
       </h2>
       <div class="secondary-section-actions">
         <Button
@@ -31,14 +42,14 @@
         >
           Retry All
         </Button>
-        <span class="secondary-section-toggle">{{ expandedSections.errors ? '−' : '+' }}</span>
       </div>
     </div>
     <div
-      v-if="expandedSections.errors"
+      v-show="expandedSections.errors"
+      id="queue-errors-content"
       class="secondary-section-content"
     >
-      <QueueRepairBackfill />
+      <QueueRepairBackfill v-if="expandedSections.errors" />
       <div
         v-if="failedQueueTasks.length"
         class="errors-list"
@@ -58,6 +69,13 @@
             <p class="error-message">
               {{ queueTaskFailureMessage(task.error_message) || truncateError(task.error_message) }}
             </p>
+            <details
+              v-if="retryLineageFailureDetail(task)"
+              class="retry-lineage-details"
+            >
+              <summary>Why this stopped</summary>
+              <p>{{ retryLineageFailureDetail(task) }}</p>
+            </details>
             <p class="error-meta">
               Task #{{ task.id }}
             </p>
@@ -385,7 +403,7 @@
 
 <script setup>
 import { Badge, Button } from '@/components/common'
-import { canRetryTask, queueTaskFailureMessage } from '@/utils/queueTaskFailurePresentation'
+import { canRetryTask, queueTaskFailureMessage, retryLineageFailureDetail } from '@/utils/queueTaskFailurePresentation'
 import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 import QueueMetadataCheck from './QueueMetadataCheck.vue'
 import QueueIdentityRepair from './QueueIdentityRepair.vue'
@@ -465,6 +483,33 @@ defineEmits([
 
 .secondary-section-header:hover {
   background: #1a2332;
+}
+
+.errors-section-header {
+  cursor: default;
+  gap: 0.75rem;
+}
+
+.errors-section-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.errors-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 24px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.errors-section-toggle:focus-visible,
+.retry-lineage-details summary:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .secondary-section-title {
@@ -560,6 +605,17 @@ defineEmits([
   font-size: 0.75rem;
   color: #f87171;
   margin-top: 0.25rem;
+}
+
+.retry-lineage-details {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #d1d5db;
+}
+
+.retry-lineage-details summary {
+  min-height: 24px;
+  cursor: pointer;
 }
 
 .error-actions {

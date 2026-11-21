@@ -2,6 +2,7 @@
 import { jest } from '@jest/globals';
 import { QueueTaskAcknowledgementService, releaseQueueClaim } from '../services/queueTaskAcknowledgementService.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
+import { RetryLineageRefusal } from '../services/classificationRetryLineageContract.mjs';
 
 const token = '11111111-1111-4111-8111-111111111111';
 const task = { id: 1, claim_token: token };
@@ -45,7 +46,18 @@ test.each(['pending', 'failed'])('accepted %s failure uses returned authoritativ
   db.query.mockResolvedValue({ rows: [{ task_type: 'classification', status, attempts: 3 }] });
   expect(await service.fail(1, 'url=https://private/?token=secret', token)).toBe(true);
   expect(receiptService.recordTerminal).toHaveBeenCalledWith(1, status === 'failed' ? 'failed' : 'retry_scheduled', 3, 'task_processing_failed');
-  expect(db.query.mock.calls[0][1]).toEqual([1, 'task_processing_failed', token, [30, 60, 120, 300, 600]]);
+  expect(db.query.mock.calls[0][1]).toEqual([1, 'task_processing_failed', token, [30, 60, 120, 300, 600], null]);
+});
+
+test.each([
+  ['task_retry_lineage_refused', new RetryLineageRefusal('media_request_links'), 'media_request_links'],
+  ['task_retry_lineage_refused', { category: 'media_request_links' }, null],
+  ['task_retry_lineage_refused', new RetryLineageRefusal('unsupported_reason'), null],
+  ['task_processing_failed', new RetryLineageRefusal('webhook_links'), null],
+])('persists evidence only for the observed lineage refusal (%s, %j)', async (reason, failure, expected) => {
+  db.query.mockResolvedValue({ rows: [{ task_type: 'classification', status: 'failed', attempts: 1 }] });
+  expect(await service.fail(1, reason, token, failure)).toBe(true);
+  expect(db.query.mock.calls[0][1][4]).toBe(expected);
 });
 
 test('query errors fail closed without logging private details', async () => {

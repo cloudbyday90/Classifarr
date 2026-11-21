@@ -2,6 +2,7 @@
 import { normalizeRequestIdentity } from './requestIdentityNormalization.mjs';
 import {
   hasRetryLineage, requireRetryLineage, canonicalRetryLineageId, RetryLineageAlreadyCompleted,
+  RETRY_LINEAGE_REFUSAL_CATEGORIES as CATEGORY,
 } from './classificationRetryLineageContract.mjs';
 import {
   completeRetryLineageTransfer, lockRetryLineageTransfer, readRetryLineageProof, verifyRetryLineageItem,
@@ -9,7 +10,7 @@ import {
 
 export async function readQueuedRetryLineage(client, claim, id) {
   const proof = await readRetryLineageProof(client, id);
-  requireRetryLineage(proof || claim.has_retry_lineage !== true || claim.routing_classification_id != null);
+  requireRetryLineage(proof || claim.has_retry_lineage !== true || claim.routing_classification_id != null, CATEGORY.PROOF);
   if (proof && claim.routing_classification_id != null) {
     requireRetryLineage(canonicalRetryLineageId(claim.routing_classification_id) ===
       canonicalRetryLineageId(proof.replacement_classification_id));
@@ -38,12 +39,13 @@ export async function recoverLocalRetryCompletion(client, replacementId) {
 
 export function buildQueuedRetryLineagePersistence(guard, task, proof, payload) {
   const identity = normalizeRequestIdentity(payload);
-  requireRetryLineage(!identity.reason && !identity.externalReason);
+  requireRetryLineage(!identity.reason && !identity.externalReason, CATEGORY.ITEM);
   verifyRetryLineageItem(proof, identity);
-  const sourceId = canonicalRetryLineageId(proof.source_classification_id);
+  const sourceId = canonicalRetryLineageId(proof.source_classification_id, CATEGORY.SOURCE);
   return (lifecycle, input, metadata) => guard.withClaim(task, async (client, claim, taskId) => {
     const current = await readQueuedRetryLineage(client, claim, taskId);
-    requireRetryLineage(current && canonicalRetryLineageId(current.source_classification_id) === sourceId);
+    requireRetryLineage(current, CATEGORY.PROOF);
+    requireRetryLineage(canonicalRetryLineageId(current.source_classification_id, CATEGORY.SOURCE) === sourceId, CATEGORY.SOURCE);
     if (current.replacement_classification_id !== null) throw new RetryLineageAlreadyCompleted();
     let transfer;
     const saved = await lifecycle.persist({

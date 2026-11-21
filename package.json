@@ -150,16 +150,13 @@
     "esm:check-test-mock-shapes:strict": "node scripts/report-esm-test-mock-shapes.mjs --strict --check"
   },
   "dependencies": {
-    "axios": "1.21.0"
+    "axios": "1.21.1"
   },
   "devDependencies": {
-    "markdownlint": "0.42.0",
+    "markdownlint": "0.42.2",
     "typescript": "^7.0.2"
   },
   "overrides": {
-    "markdownlint": {
-      "re2js": "2.8.7"
-    },
     "follow-redirects": "1.16.2",
     "micromark-extension-math": {
       "katex": "0.18.2"

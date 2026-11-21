@@ -61,7 +61,8 @@ describe('CommandCenter extracted panels', () => {
       global: { stubs: { Button: buttonStub } },
     })
     const actionLabels = () => wrapper.findAll('button').map(button => button.text())
-    expect(wrapper.text()).toContain('could not verify its original request or webhook links')
+    expect(wrapper.text()).toContain('could not verify its original links or saved result')
+    expect(wrapper.find('.retry-lineage-details').exists()).toBe(false)
     expect(actionLabels()).not.toContain('Retry')
     expect(actionLabels()).not.toContain('Retry All')
     expect(actionLabels()).toContain('Dismiss')
@@ -299,7 +300,7 @@ describe('CommandCenter extracted panels', () => {
     await buttons.find(node => node.text().includes('Retry Web Search')).trigger('click')
     await buttons.find(node => node.text() === 'Configure Media Server').trigger('click')
 
-    await wrapper.find('section.secondary-section .secondary-section-header').trigger('click')
+    await wrapper.get('.errors-section-toggle').trigger('click')
     const libraryToggle = wrapper.find('#libraries button.library-section-toggle')
     expect(libraryToggle.attributes('aria-expanded')).toBe('true')
     await libraryToggle.trigger('click')

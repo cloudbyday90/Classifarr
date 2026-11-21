@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { normalizeQueueTaskFailureReasonId, QUEUE_TASK_LOG_REASON_IDS } from './queueTaskFailureReason.mjs';
 import { classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
+import { observedRetryLineageRefusalCategory, RETRY_LINEAGE_REFUSED } from './classificationRetryLineageContract.mjs';
 
 const RETRY_DELAYS = [30, 60, 120, 300, 600];
 const CLAIM_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -46,9 +47,10 @@ export class QueueTaskAcknowledgementService {
     }
   }
 
-  async fail(taskId, failureReasonId, claimToken, metadataFailure) {
+  async fail(taskId, failureReasonId, claimToken, observedFailure) {
     if (!isQueueClaimToken(claimToken)) return this.rejected(taskId);
     const reason = normalizeQueueTaskFailureReasonId(failureReasonId);
+    const category = reason === RETRY_LINEAGE_REFUSED ? observedRetryLineageRefusalCategory(observedFailure) : null;
     try {
       // Attempt budget is authoritative in the row, not in an old worker's copy.
       const update = await this.db.query(`WITH lineage_claim AS MATERIALIZED (
@@ -59,6 +61,7 @@ export class QueueTaskAcknowledgementService {
         UPDATE task_queue
         SET status = CASE WHEN $2 IN ('task_metadata_not_found', 'task_retry_lineage_refused') OR attempts + 1 >= max_attempts THEN 'failed' ELSE 'pending' END,
             error_message = $2, attempts = attempts + 1, claim_token = NULL, visible_at = NULL,
+            retry_lineage_refusal_category = CASE WHEN task_type = 'classification' THEN $5::text END,
             completed_at = CASE WHEN $2 IN ('task_metadata_not_found', 'task_retry_lineage_refused') OR attempts + 1 >= max_attempts THEN NOW() ELSE NULL END,
             started_at = CASE WHEN $2 IN ('task_metadata_not_found', 'task_retry_lineage_refused') OR attempts + 1 >= max_attempts THEN started_at ELSE NULL END,
             next_retry_at = CASE WHEN $2 IN ('task_metadata_not_found', 'task_retry_lineage_refused') OR attempts + 1 >= max_attempts THEN next_retry_at
@@ -67,14 +70,14 @@ export class QueueTaskAcknowledgementService {
           AND ($2 <> 'task_retry_lineage_refused' OR EXISTS (
             SELECT 1 FROM lineage_claim WHERE clock_timestamp() < visible_at
           ))
-        RETURNING task_type, attempts, max_attempts, status`, [taskId, reason, claimToken, RETRY_DELAYS]);
+        RETURNING task_type, attempts, max_attempts, status`, [taskId, reason, claimToken, RETRY_DELAYS, category]);
       const row = update.rows?.[0];
       if (!row) return this.rejected(taskId);
       const terminal = row.status === 'failed';
       if (row.task_type === 'classification') await this.receiptService.recordTerminal(
         taskId, terminal ? 'failed' : 'retry_scheduled', row.attempts, reason);
       this.logger[terminal ? 'error' : 'warn'](terminal ? 'Task stopped; automatic queue retries ended' : 'Task scheduled for retry', {
-        ...(row.task_type === 'classification' ? classificationMetadataFailureLogFields(metadataFailure) : {}),
+        ...(row.task_type === 'classification' ? classificationMetadataFailureLogFields(observedFailure) : {}),
         taskId, attempts: row.attempts, maxAttempts: row.max_attempts, reasonCode: reason,
         retryOutcome: terminal ? 'stopped' : 'scheduled',
         retryStopReason: !terminal ? null
