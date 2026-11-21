@@ -78,12 +78,12 @@ describe('Queue API Integration Tests', () => {
         await db.query('DELETE FROM task_queue');
     });
 
-    async function insertTask(status, taskType = 'classification') {
+    async function insertTask(status, taskType = 'classification', source = 'webhook') {
         const result = await db.query(`
             INSERT INTO task_queue (task_type, status, priority, payload, source, max_attempts)
-            VALUES ($1, $2, 5, '{"title":"Test Movie"}', 'webhook', 5)
+            VALUES ($1, $2, 5, '{"title":"Test Movie"}', $3, 5)
             RETURNING id
-        `, [taskType, status]);
+        `, [taskType, status, source]);
         return result.rows[0].id;
     }
 
@@ -179,6 +179,55 @@ describe('Queue API Integration Tests', () => {
             expect(statuses).toContain('pending');
             expect(statuses).toContain('processing');
             expect(statuses).not.toContain('failed');
+        });
+
+        test('shows a saved replacement only after the exact retry completion commits', async () => {
+            const committed = await insertTask('failed', 'classification', 'manual_retry');
+            const noPointer = await insertTask('failed', 'classification', 'retry_queue');
+            const categorized = await insertTask('failed', 'classification', 'provider_recovery');
+            const missingProof = await insertTask('failed', 'classification', 'historic_route_safety_refresh');
+            const otherSource = await insertTask('failed');
+            const otherType = await insertTask('failed', 'metadata_enrichment', 'manual_retry');
+            const otherFailure = await insertTask('failed', 'classification', 'manual_retry');
+            const completionClaim = 'dbb90567-8af4-42af-a191-1f1fd9bfa8b7';
+            const replacement = '9223372036854775807';
+            await db.query(`UPDATE task_queue SET error_message = 'task_retry_lineage_refused',
+                payload = payload || '{"retry_lineage_replacement_saved":true}'::jsonb
+                WHERE id = ANY($1::bigint[])`, [[committed, noPointer, categorized, missingProof, otherSource, otherType]]);
+            await db.query(`UPDATE task_queue SET routing_classification_id = 5,
+                claim_token = '7e175513-6c27-4fbd-9ab6-176fbbd46d03' WHERE id = $1`, [committed]);
+            await db.query(`UPDATE task_queue SET retry_lineage_refusal_category = 'webhook_links' WHERE id = $1`, [categorized]);
+            await db.query(`INSERT INTO classification_retry_lineage_proofs (
+                task_id, source_classification_id, evidence, replacement_classification_id, completed_claim_token
+            ) SELECT id, 1, '{}'::jsonb, $2::bigint, $3::uuid FROM unnest($1::bigint[]) AS id`,
+            [[noPointer, categorized, otherSource, otherType, otherFailure], replacement, completionClaim]);
+            await db.query(`INSERT INTO classification_retry_lineage_proofs (task_id, source_classification_id, evidence)
+                VALUES ($1, 1, '{}'::jsonb)`, [committed]);
+
+            async function readFailed() {
+                const response = await request(app).get('/api/queue/failed')
+                    .set('Authorization', `Bearer ${testToken}`).expect(200);
+                return response.body;
+            }
+            expect((await readFailed()).find(row => row.id === committed)).not.toHaveProperty('retry_lineage_replacement_saved');
+            await db.withTransaction(async client => {
+                await client.query(`UPDATE classification_retry_lineage_proofs
+                    SET replacement_classification_id = $2, completed_claim_token = $3 WHERE task_id = $1`,
+                [committed, replacement, completionClaim]);
+                expect((await readFailed()).find(row => row.id === committed)).not.toHaveProperty('retry_lineage_replacement_saved');
+            });
+
+            const rows = await readFailed();
+            expect(rows.filter(row => row.retry_lineage_replacement_saved === true).map(row => row.id).sort())
+                .toEqual([committed, noPointer].sort());
+            expect(rows.find(row => row.id === categorized)).toHaveProperty('retry_lineage_refusal_category', 'webhook_links');
+            for (const row of rows) {
+                expect(row).not.toHaveProperty('replacement_classification_id');
+                expect(row).not.toHaveProperty('completed_claim_token');
+                expect(row).not.toHaveProperty('routing_classification_id');
+                expect(row).not.toHaveProperty('claim_token');
+                expect(row).not.toHaveProperty('evidence');
+            }
         });
 
         test('should respect the limit query parameter', async () => {

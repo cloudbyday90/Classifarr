@@ -32,8 +32,8 @@ test('PR 537 pins verified Docker revisions without changing tag-only publishing
   expect(job.permissions).toEqual({ attestations: 'write', contents: 'read', 'id-token': 'write', packages: 'write' });
 });
 
-test('PR 561 pins all OSV entrypoints and preserves failure gates and Dependabot least privilege', () => {
-  const osv = workflow('osv-scanner'), revision = 'b1d267aea5211fa648d9d442fa64b90dbdcbdd36';
+test('pins all OSV entrypoints and preserves failure gates and Dependabot least privilege', () => {
+  const osv = workflow('osv-scanner'), revision = '32d3cd482bdadfb38b186c0ad1b031902d55d932';
   expect(osv.on.pull_request_target).toBeUndefined();
   expect(osv.on.merge_group.branches).toEqual(['main']);
   const bot = osv.jobs['pr-scan-dependabot'];

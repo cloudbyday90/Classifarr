@@ -31,6 +31,7 @@ export function getQueuePending(limit = 20) {
 }
 
 export function getQueueFailed(limit = 20) {
+  // Optional retry_lineage_replacement_saved proves local completion only.
   return getDataRequest('/queue/failed', { params: { limit } })
 }
 

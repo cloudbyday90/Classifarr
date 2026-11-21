@@ -12,6 +12,7 @@ import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { getClassificationQueueSummary } from './classificationQueueStatsService.mjs';
 import { safeParseInt } from '../utils/queueHelpers.mjs';
 import { projectFailedQueueTask } from './queueFailureDetails.mjs';
+import { RETRY_LINEAGE_REFUSED, RETRY_LINEAGE_SOURCES } from './classificationRetryLineageContract.mjs';
 
 const GAP_ANALYSIS_BATCH_SIZE = 500;
 const GAP_ANALYSIS_INTERVAL_MINUTES = 5;
@@ -187,6 +188,12 @@ export class QueueReadModel {
                 `SELECT t.id, t.task_type, t.status, t.priority, t.attempts, t.max_attempts,
                 t.error_message, t.current_stage, t.source, t.created_at, t.completed_at, t.payload,
                 t.retry_lineage_refusal_category,
+                CASE WHEN t.task_type = 'classification' AND t.error_message = $2
+                  AND t.source = ANY($3::text[]) AND t.retry_lineage_refusal_category IS NULL
+                  THEN EXISTS (
+                    SELECT 1 FROM classification_retry_lineage_proofs p WHERE p.task_id = t.id
+                    AND p.replacement_classification_id IS NOT NULL AND p.completed_claim_token IS NOT NULL
+                  ) END AS retry_lineage_replacement_saved,
                 CASE WHEN r.task_id IS NULL THEN NULL ELSE jsonb_build_object(
                   'checks', r.probe_count, 'nextCheckAt', r.next_probe_at,
                   'lastOutcome', r.last_outcome, 'checkedAt', r.checked_at,
@@ -195,7 +202,7 @@ export class QueueReadModel {
          WHERE t.status = 'failed'
          ORDER BY t.completed_at DESC
          LIMIT $1`,
-                [limit]
+                [limit, RETRY_LINEAGE_REFUSED, RETRY_LINEAGE_SOURCES]
             );
             return result.rows.map(projectFailedQueueTask);
         });

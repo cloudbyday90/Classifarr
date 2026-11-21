@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Queue retry evidence** — Explain when a stopped retry saved its local
+  replacement and routing remains unverified. Use the exact task's completion
+  record in the existing Queue disclosure. See the
+  [outcome](docs/architecture/retry-lineage-routing-evidence-outcome.md).
+
 - **Retry refusal details** — Record which verification stopped a classification
   retry and show the saved explanation in the existing Queue. Keep retry and
   routing safeguards intact and use general wording for older tasks. See the
@@ -217,6 +222,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **OSV Scanner workflows** — Pin all four OSV calls to the reviewed 2.7.1
+  revision from PR #590 and update the workflow contract check. See the
+  [assessment](docs/architecture/osv-action-pr-590-outcome.md).
 
 - **Root tooling** — Adopt Axios 1.21.1 and Markdownlint 0.42.2 with its
   declared RE2JS 2.9.1. Keep the follow-redirects pin and retire the temporary

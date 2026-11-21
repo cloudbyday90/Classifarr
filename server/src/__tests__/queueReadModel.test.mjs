@@ -246,13 +246,29 @@ describe('QueueReadModel', () => {
         expect(rows).toEqual([row]);
         expect(db.query).toHaveBeenCalledWith(
             expect.stringContaining("WHERE t.status = 'failed'"),
-            [7]
+            [7, 'task_retry_lineage_refused', ['manual_retry', 'retry_queue', 'provider_recovery', 'historic_route_safety_refresh']]
         );
         const sql = db.query.mock.calls[0][0];
         expect(sql).toContain('LEFT JOIN queue_metadata_recovery r ON r.task_id=t.id');
         expect(sql).toContain('t.current_stage');
         expect(sql).toContain('ORDER BY t.completed_at DESC');
         expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('projects only positive completion evidence for an eligible generic refusal', async () => {
+        const task = { status: 'failed', task_type: 'classification', source: 'manual_retry', error_message: 'task_retry_lineage_refused' };
+        db.query.mockResolvedValueOnce({ rows: [
+            { ...task, retry_lineage_replacement_saved: true },
+            { ...task, retry_lineage_replacement_saved: false },
+            { ...task, retry_lineage_replacement_saved: 'true' },
+            { ...task, source: 'webhook', retry_lineage_replacement_saved: true },
+            { ...task, retry_lineage_refusal_category: 'webhook_links', retry_lineage_replacement_saved: true },
+        ] });
+
+        expect(await readModel.getFailedTasks()).toEqual([
+            { ...task, retry_lineage_replacement_saved: true }, task, task, { ...task, source: 'webhook' },
+            { ...task, retry_lineage_refusal_category: 'webhook_links' },
+        ]);
     });
 
     it('rethrows stats query failures after logging', async () => {

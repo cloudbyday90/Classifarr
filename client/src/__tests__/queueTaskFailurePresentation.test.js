@@ -21,6 +21,17 @@ describe('queue failure guidance', () => {
     expect(retryLineageFailureDetail({ ...task, retry_lineage_refusal_category: 'constructor' })).toBeNull()
     expect(retryLineageFailureDetail({ ...task, payload: { retry_lineage_refusal_category: 'media_request_links' } })).toBeNull()
   })
+
+  test('describes a saved local replacement without attesting to routing', () => {
+    const task = { task_type: 'classification', status: 'failed', error_message: 'task_retry_lineage_refused' }
+    const saved = { ...task, retry_lineage_replacement_saved: true }
+    expect(retryLineageFailureDetail(saved)).toBe('Classifarr saved the local replacement. Routing remains unverified for this task.')
+    expect(retryLineageFailureDetail({ ...saved, retry_lineage_refusal_category: 'webhook_links' })).toContain('original webhook links')
+    expect(retryLineageFailureDetail({ ...task, retry_lineage_replacement_saved: 'true' })).toBeNull()
+    expect(retryLineageFailureDetail({ ...task, payload: { retry_lineage_replacement_saved: true } })).toBeNull()
+    expect(retryLineageFailureDetail({ ...saved, error_message: 'task_processing_failed' })).toBeNull()
+    expect(canRetryTask(saved)).toBe(false)
+  })
   test.each([undefined, null, {}, 'constructor', '__proto__', '<script>private</script>'])('never reflects arbitrary input %j', value => {
     expect(queueTaskFailureMessage(value)).toBeNull()
   })

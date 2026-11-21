@@ -24,7 +24,11 @@ export function canRetryTask(task) {
 export function retryLineageFailureDetail(task) {
   if (task.task_type !== 'classification' || task.error_message !== 'task_retry_lineage_refused') return null
   const category = task.retry_lineage_refusal_category
-  return typeof category === 'string' && Object.hasOwn(RETRY_LINEAGE_DETAILS, category)
-    ? RETRY_LINEAGE_DETAILS[category]
-    : null
+  if (typeof category === 'string' && Object.hasOwn(RETRY_LINEAGE_DETAILS, category)) {
+    return RETRY_LINEAGE_DETAILS[category]
+  }
+  if (category == null && task.retry_lineage_replacement_saved === true) {
+    return 'Classifarr saved the local replacement. Routing remains unverified for this task.'
+  }
+  return null
 }

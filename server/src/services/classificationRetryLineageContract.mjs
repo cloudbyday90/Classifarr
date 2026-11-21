@@ -12,7 +12,10 @@ export const RETRY_LINEAGE_REFUSAL_CATEGORIES = Object.freeze({
   WEBHOOKS: 'webhook_links',
 });
 
-const RETRY_SOURCES = new Set(['manual_retry', 'retry_queue', 'provider_recovery', 'historic_route_safety_refresh']);
+export const RETRY_LINEAGE_SOURCES = Object.freeze([
+  'manual_retry', 'retry_queue', 'provider_recovery', 'historic_route_safety_refresh',
+]);
+const RETRY_SOURCES = new Set(RETRY_LINEAGE_SOURCES);
 const REFUSAL_CATEGORIES = new Set(Object.values(RETRY_LINEAGE_REFUSAL_CATEGORIES));
 const observedCategories = new WeakMap();
 

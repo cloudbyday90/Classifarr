@@ -80,6 +80,7 @@ test('saved retry refusal detail works with the keyboard in a narrow Queue card'
     if (path === '/api/queue/failed') data = [
       { ...refused, id: 1, payload: { title: 'Recorded retry' }, retry_lineage_refusal_category: 'webhook_links' },
       { ...refused, id: 2, payload: { title: 'Older retry' } },
+      { ...refused, id: 3, payload: { title: 'Saved replacement' }, retry_lineage_replacement_saved: true },
     ]
     if (path === '/api/classification/pending') data = { items: [] }
     if (path === '/api/notifications') data = { data: [] }
@@ -90,20 +91,29 @@ test('saved retry refusal detail works with the keyboard in a narrow Queue card'
   const section = page.locator('#errors')
   const toggle = section.getByRole('button', { name: /Errors/ })
   const summary = section.getByText('Why this stopped', { exact: true })
+  const recordedSummary = section.locator('article').filter({ hasText: 'Recorded retry' }).locator('summary')
+  const savedSummary = section.locator('article').filter({ hasText: 'Saved replacement' }).locator('summary')
   const explanation = section.getByText('Classifarr could not verify the original webhook links during this retry.')
-  await expect(summary).toHaveCount(1)
+  const savedReplacement = section.getByText('Classifarr saved the local replacement. Routing remains unverified for this task.')
+  await expect(summary).toHaveCount(2)
   await toggle.focus()
   await page.keyboard.press('Enter')
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-  await expect(summary).toBeHidden()
+  await expect(recordedSummary).toBeHidden()
+  await expect(savedSummary).toBeHidden()
   await page.keyboard.press('Space')
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(explanation).toBeHidden()
-  await summary.focus()
+  await recordedSummary.focus()
   await page.keyboard.press('Enter')
   await expect(explanation).toBeVisible()
-  await expect(summary).toBeFocused()
+  await expect(recordedSummary).toBeFocused()
+  await expect(savedReplacement).toBeHidden()
+  await savedSummary.focus()
+  await page.keyboard.press('Enter')
+  await expect(savedReplacement).toBeVisible()
+  await expect(savedSummary).toBeFocused()
   await expect(section.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
-  await expect(section.getByRole('button', { name: 'Dismiss', exact: true })).toHaveCount(2)
+  await expect(section.getByRole('button', { name: 'Dismiss', exact: true })).toHaveCount(3)
   expect(await section.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
 })
