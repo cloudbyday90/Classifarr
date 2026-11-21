@@ -1,13 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { execFile } from 'node:child_process';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import dotenv from 'dotenv';
 import { createConsoleSpy } from './setup/consoleHelpers.mjs';
+
+const dotenvManifestUrl = import.meta.resolve('dotenv/package.json');
+const dotenvManifest = JSON.parse(await readFile(new URL(dotenvManifestUrl), 'utf8'));
+const dotenvExecutable = fileURLToPath(new URL(dotenvManifest.bin.dotenv, dotenvManifestUrl));
 
 let directory;
 
@@ -74,7 +78,7 @@ test.each(['DOTENV_QUIET', 'DOTENV_CONFIG_QUIET'])('CLI honors %s loaded from a 
     directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
     await writeFile(join(directory, '.env'), `${setting}=true\nSYNTHETIC_ONLY=from_file\n`);
     const { stdout, stderr } = await runFixture([
-        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--', process.execPath,
+        dotenvExecutable, 'run', '--', process.execPath,
         '--input-type=module', '--eval', 'process.stdout.write(process.env.SYNTHETIC_ONLY)',
     ]);
     expect(stdout).toBe('from_file');
@@ -85,7 +89,7 @@ test('CLI uses the default env file when DOTENV_PATH is empty and preserves exte
     directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
     await writeFile(join(directory, '.env'), 'SYNTHETIC_ONLY=from_file\nADDED=from_file\n');
     const { stdout, stderr } = await runFixture([
-        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--', process.execPath,
+        dotenvExecutable, 'run', '--', process.execPath,
         '--input-type=module', '--eval', 'process.stdout.write(JSON.stringify([process.env.SYNTHETIC_ONLY, process.env.ADDED]))',
     ], { DOTENV_PATH: '', DOTENV_QUIET: 'true', SYNTHETIC_ONLY: 'external' });
     expect(JSON.parse(stdout)).toEqual(['external', 'from_file']);
@@ -96,7 +100,7 @@ test('CLI preserves explicit shell quiet=false even when the file overrides it',
     directory = await mkdtemp(join(tmpdir(), 'classifarr-dotenv-'));
     await writeFile(join(directory, '.env'), 'DOTENV_QUIET=true\nSYNTHETIC_ONLY=from_file\n');
     const { stdout, stderr } = await runFixture([
-        fileURLToPath(import.meta.resolve('dotenv')), 'run', '--override', '--', process.execPath,
+        dotenvExecutable, 'run', '--override', '--', process.execPath,
         '--input-type=module', '--eval', 'process.stdout.write(process.env.SYNTHETIC_ONLY)',
     ], { DOTENV_QUIET: 'false' });
     expect(stdout).toBe('from_file');

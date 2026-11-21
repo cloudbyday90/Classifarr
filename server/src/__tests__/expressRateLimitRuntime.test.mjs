@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { jest } from '@jest/globals';
 import express from 'express';
-import { rateLimit } from 'express-rate-limit';
+import { MemoryStore, rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import {
   loginLimiterConfig,
@@ -16,6 +16,24 @@ const run = promisify(execFile);
 const probe = fileURLToPath(new URL('./fixtures/rateLimitDebugProbe.mjs', import.meta.url));
 
 describe('installed HTTP rate-limit contract', () => {
+  test('the memory store stops returning expired counts and begins a fresh window', async () => {
+    const store = new MemoryStore();
+    let clock = Date.now();
+    const now = jest.spyOn(Date, 'now').mockImplementation(() => clock);
+    try {
+      store.init({ windowMs: 1000 });
+      await store.increment('fixture');
+      expect(await store.get('fixture')).toEqual({ totalHits: 1, resetTime: new Date(clock + 1000) });
+
+      clock += 1001;
+      expect(await store.get('fixture')).toBeUndefined();
+      expect(await store.increment('fixture')).toEqual({ totalHits: 1, resetTime: new Date(clock + 1000) });
+    } finally {
+      store.shutdown();
+      now.mockRestore();
+    }
+  });
+
   test.each([
     ['login', loginLimiterConfig, 5, 900],
     ['token refresh', refreshLimiterConfig, 30, 900],

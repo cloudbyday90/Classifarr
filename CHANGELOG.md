@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Code-health JSON inputs** — Exclude the two generated Playwright output
+  roots from the client JSON inventory while keeping authored validation.
+  See the [outcome](docs/architecture/code-health-json-inputs-outcome.md).
+
 - **Synthetic replay CI** — Restore the offline replay command in a clean
   checkout by sharing dependency-free candidate viability rules. See the
   [outcome](docs/architecture/synthetic-replay-dependency-boundary-outcome.md).
@@ -226,6 +230,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Server runtime dependencies** — Qualify dotenv 18.0.10 from PR #592 and
+  the publisher-patched express-rate-limit 8.7.5. Run dotenv CLI tests through
+  the package's declared executable. See the
+  [assessment](docs/architecture/server-runtime-pr-592-outcome.md).
 
 - **Dependency tooling** — Align the client minimatch override with the
   reviewed 11.0.9 server version and qualify the Knip 6.46.0 update from

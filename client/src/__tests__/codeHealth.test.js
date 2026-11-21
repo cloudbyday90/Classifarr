@@ -62,6 +62,7 @@
 import { describe, test, expect } from 'vitest';
 import fs   from 'fs';
 import path from 'path';
+import { collectCodeHealthJsonFiles } from './helpers/codeHealthJsonFiles.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,35 +94,11 @@ function collectFiles(dir, extensions, { skipDirs = [] } = {}) {
   return results;
 }
 
-/** Recursively discover all human-authored .json files in the repo. */
-function collectJsonFiles(dir, { skipDirs = [], skipFiles = [] } = {}, depth = 0) {
-  const results = [];
-  if (depth > 6) return results;
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return results; }
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name).replace(/\\/g, '/');
-    if (entry.isDirectory()) {
-      // Skip hidden dirs, node_modules, and generated output dirs
-      if (entry.name.startsWith('.') || skipDirs.includes(entry.name)) continue;
-      results.push(...collectJsonFiles(full, { skipDirs, skipFiles }, depth + 1));
-    } else if (entry.isFile() && entry.name.endsWith('.json')) {
-      if (!skipFiles.includes(entry.name)) results.push(full);
-    }
-  }
-  return results;
-}
-
 const VUE_FILES  = collectFiles(CLIENT_SRC, ['.vue'], { skipDirs: ['coverage', 'dist'] });
 const JS_FILES   = collectFiles(CLIENT_SRC, ['.js'],  { skipDirs: ['coverage', 'dist'] });
 const TEST_FILES = JS_FILES.filter(f => f.includes('__tests__') && f.endsWith('.test.js'));
 
-// Dynamically discover all human-authored JSON in the repo.
-// Exclude: generated dirs, runttime data, lockfiles (validated separately).
-const ALL_JSON_FILES = collectJsonFiles(REPO_ROOT, {
-  skipDirs:  ['node_modules', 'dist', 'coverage', '.tmp', 'postgres', 'logs', 'secrets', 'data'],
-  skipFiles: ['package-lock.json'],
-});
+const ALL_JSON_FILES = collectCodeHealthJsonFiles(REPO_ROOT);
 
 // package.json files that ship and should conform to the project schema
 const PACKAGE_JSON_FILES = [
