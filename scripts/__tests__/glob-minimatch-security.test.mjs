@@ -78,10 +78,9 @@ for (const tree of ['server', 'client']) {
   const json = async name => JSON.parse(await readFile(path.join(base, name), 'utf8'));
   const manifest = await json('package.json');
   const lock = await json('package-lock.json');
-  const minimatchVersion = tree === 'server' ? '11.0.9' : '11.0.4';
 
   test(`${tree}: coherent exact overrides, locks and installed artifacts`, () => {
-    for (const [name, version] of [['glob', '14.0.3'], ['minimatch', minimatchVersion]]) {
+    for (const [name, version] of [['glob', '14.0.3'], ['minimatch', '11.0.9']]) {
       assert.equal(manifest.overrides[name], version);
       assert.equal(lock.packages[`node_modules/${name}`].version, version);
       assert.equal(lock.packages[`node_modules/${name}`].dev, true);
@@ -108,15 +107,9 @@ for (const tree of ['server', 'client']) {
 
     test(`${tree}/${format}: optimization honors the four-row expansion budget`, () => {
       const options = { optimizationLevel: 2, braceExpandMax: 4 };
-      if (tree === 'server') {
-        assert.throws(() => new Minimatch(expansionPattern, options), {
-          name: 'RangeError', message: "optimizationLevel 2: too many patterns from '**/..'",
-        });
-        return;
-      }
-      const matcher = new Minimatch(expansionPattern, options);
-      assert.ok(matcher.globParts.length <= 4, `actual rows: ${matcher.globParts.length}`);
-      assert.equal(matcher.match('a/b/target.txt'), false);
+      assert.throws(() => new Minimatch(expansionPattern, options), {
+        name: 'RangeError', message: "optimizationLevel 2: too many patterns from '**/..'",
+      });
     });
 
     test(`${tree}/${format}: admitted optimization retains exact matches`, () => {
@@ -175,6 +168,26 @@ for (const tree of ['server', 'client']) {
       });
     });
   } else {
+    test('client: real ESLint config applies scoped rules and respects global ignores', async () => {
+      await fixture(async cwd => {
+        const { ESLint } = require('eslint');
+        const eslint = new ESLint({
+          cwd,
+          overrideConfigFile: true,
+          overrideConfig: [
+            { ignores: ['**/*.test.js'] },
+            { files: ['src/**/*.{js,mjs}'], rules: { semi: ['error', 'never'] } },
+          ],
+        });
+        const results = await eslint.lintFiles('**/*.js');
+        const diagnostics = Object.fromEntries(results.map(({ filePath, messages }) => [
+          path.relative(cwd, filePath).replaceAll('\\', '/'),
+          messages.map(({ ruleId, severity }) => [ruleId, severity]),
+        ]));
+        assert.deepEqual(diagnostics, { 'other.js': [], 'src/keep.js': [['semi', 2]] });
+      });
+    });
+
     test('client: real EditorConfig and beautifier CLI retain file matching', async () => {
       await fixture(async cwd => {
         await writeFile(path.join(cwd, '.editorconfig'), 'root = true\n\n[*.js]\nindent_style = space\nindent_size = 2\n\n[*.txt]\nindent_size = 4\n');

@@ -227,6 +227,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Dependency tooling** — Align the client minimatch override with the
+  reviewed 11.0.9 server version and qualify the Knip 6.46.0 update from
+  PR #595. See the [client outcome](docs/architecture/client-minimatch-11-0-9-outcome.md)
+  and [server outcome](docs/architecture/server-knip-pr-595-outcome.md).
+
 - **Server tooling** — Adopt ESLint 10.15.0 and compatible minimatch 11.0.9
   from the PR #594 assessment. Check exact over-budget refusal and preserve
   existing positive matching coverage. See the
