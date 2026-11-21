@@ -46,6 +46,18 @@ describe('installed Knip CLI contracts', () => {
     }, { manifest: { scripts: { test: 'bun test' }, devDependencies: { 'fixture-retained': '1.0.0' } } });
   });
 
+  test('counts enum members referenced by another member and still reports unused members', () => {
+    withFixture({
+      'entry.ts': "import { Access } from './access';\nconsole.log(Access.ReadWrite);\n",
+      'access.ts': 'export enum Access { Read = 1, Write = 2, ReadWrite = Read | Write, Unused = 8 }\n',
+    }, directory => {
+      const result = runKnip(directory, ['--include', 'enumMembers']);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toBe('');
+      expect(reported(result, 'enumMembers')).toEqual(['access.ts:Unused']);
+    }, { config: { entry: ['entry.ts!'], project: ['*.ts!'] } });
+  });
+
   test.each([
     ['direct', "/** @lintignore */\nexport { retained } from './source.mjs';\n", {}],
     ['renamed', "/** @lintignore */\nexport { retained as publicName } from './source.mjs';\n", {}],

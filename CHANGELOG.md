@@ -207,6 +207,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Server development tooling** — Pin Knip 6.45.1 and Supertest 7.3.2 from
+  PR #593's reviewed graph. Verify enum analysis, actual retry HTTP behavior and
+  a strict clean install. See the
+  [outcome](docs/architecture/server-tooling-pr-593-outcome.md).
+
 - **Classification identity groundwork** — Document the UUIDv7 preliminary
   assessment, verified catalog/reference inventory, compatibility gaps and
   recovery prerequisites. Keep the current identifier scheme; see the
