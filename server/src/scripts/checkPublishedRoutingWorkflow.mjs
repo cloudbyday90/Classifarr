@@ -6,6 +6,10 @@ const checkout = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
 const node = 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1';
 const download = 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333';
 const upload = 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9';
+const arm64Condition = "matrix.platform == 'linux/arm64'";
+const scheduledArtifact = `published-arm64-scheduled-recovery-${expression('github.run_attempt')}`;
+const scheduledUploadCondition = expression(`!cancelled() && ${arm64Condition} && ` +
+  "(steps.scheduled-recovery.outcome == 'success' || steps.scheduled-recovery.outcome == 'failure')");
 
 export function validatePublishedRoutingWorkflow(workflow) {
   const job = workflow.jobs['published-routing-acceptance'];
@@ -20,8 +24,8 @@ export function validatePublishedRoutingWorkflow(workflow) {
   ] } });
   assert.equal(job['continue-on-error'], undefined);
   assert.equal(job.env, undefined);
-  assert.equal(job.steps.length, 5);
-  const [checkoutStep, nodeStep, buildx, run, artifact] = job.steps;
+  assert.equal(job.steps.length, 7);
+  const [checkoutStep, nodeStep, buildx, run, scheduled, artifact, scheduledUpload] = job.steps;
   assert.deepEqual(checkoutStep, { name: 'Checkout routing fixture and historical baseline', uses: checkout,
     with: { 'fetch-depth': 0, 'persist-credentials': false } });
   assert.deepEqual(nodeStep, { name: 'Setup Node.js', uses: node, with: { 'node-version-file': '.nvmrc' } });
@@ -36,8 +40,13 @@ export function validatePublishedRoutingWorkflow(workflow) {
     '  --image "ghcr.io/cloudbyday90/classifarr@$' + '{IMAGE_DIGEST}" \\',
     '  --source-revision "$SOURCE_REVISION" --platform "$ROUTING_PLATFORM"',
   ].join('\n'));
+  assert.deepEqual(scheduled, { name: 'Rehearse release arm64 scheduled recovery', id: 'scheduled-recovery', if: arm64Condition,
+    env: { IMAGE_DIGEST: expression('needs.docker-release.outputs.image_digest') }, run: 'node scripts/run-release-arm64-recovery.mjs' });
   assert.deepEqual(artifact, { name: 'Upload published routing receipt', if: 'always()', uses: upload,
     with: { name: `published-routing-${expression('matrix.arch')}`, path: `.tmp/published-routing/${expression('matrix.arch')}.json`,
+      'if-no-files-found': 'error', 'include-hidden-files': true, 'retention-days': 90 } });
+  assert.deepEqual(scheduledUpload, { name: 'Upload release arm64 scheduled recovery receipt', if: scheduledUploadCondition, uses: upload,
+    with: { name: scheduledArtifact, path: '.tmp/published-routing/arm64-scheduled-recovery.json',
       'if-no-files-found': 'error', 'include-hidden-files': true, 'retention-days': 90 } });
   const publication = workflow.jobs['release-candidate-publication'];
   assert.ok(publication.needs.includes('published-routing-acceptance'));
@@ -53,5 +62,11 @@ export function validatePublishedRoutingWorkflow(workflow) {
     assert.ok(publication.steps.indexOf(steps[0]) < publication.steps.indexOf(assembly));
     assert.ok(assembly.run.includes(`--routing-${arch} .tmp/release-candidate/routing-${arch}/${arch}.json`));
   }
+  const scheduledDownloadName = 'Download release arm64 scheduled recovery receipt';
+  const [scheduledDownload, ...duplicates] = publication.steps.filter(step => step.name === scheduledDownloadName);
+  assert.equal(duplicates.length, 0);
+  assert.deepEqual(scheduledDownload, { name: scheduledDownloadName, uses: download,
+    with: { name: scheduledArtifact, path: '.tmp/release-candidate/scheduled-recovery-arm64' } });
+  assert.ok(publication.steps.indexOf(scheduledDownload) < publication.steps.indexOf(assembly));
   return true;
 }

@@ -836,12 +836,27 @@ jobs:
           npm run release:test:published-routing -- \
             --image "ghcr.io/cloudbyday90/classifarr@${IMAGE_DIGEST}" \
             --source-revision "$SOURCE_REVISION" --platform "$ROUTING_PLATFORM"
+      - name: Rehearse release arm64 scheduled recovery
+        id: scheduled-recovery
+        if: matrix.platform == 'linux/arm64'
+        env:
+          IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
+        run: node scripts/run-release-arm64-recovery.mjs
       - name: Upload published routing receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: published-routing-${{ matrix.arch }}
           path: .tmp/published-routing/${{ matrix.arch }}.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 90
+      - name: Upload release arm64 scheduled recovery receipt
+        if: ${{ !cancelled() && matrix.platform == 'linux/arm64' && (steps.scheduled-recovery.outcome == 'success' || steps.scheduled-recovery.outcome == 'failure') }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: published-arm64-scheduled-recovery-${{ github.run_attempt }}
+          path: .tmp/published-routing/arm64-scheduled-recovery.json
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 90
@@ -904,6 +919,12 @@ jobs:
           name: published-routing-arm64
           path: .tmp/release-candidate/routing-arm64
 
+      - name: Download release arm64 scheduled recovery receipt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: published-arm64-scheduled-recovery-${{ github.run_attempt }}
+          path: .tmp/release-candidate/scheduled-recovery-arm64
+
       - name: Assemble release candidate evidence
         env:
           IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
@@ -919,7 +940,8 @@ jobs:
             --consumer-smoke .tmp/release-candidate/consumer-smoke/${SOURCE_REVISION}-published-digest-consumer-smoke.json \
             --provider-fault-receipt .tmp/release-candidate/provider-fault-receipt/ai-provider-fault-compose-receipt.json \
             --routing-amd64 .tmp/release-candidate/routing-amd64/amd64.json \
-            --routing-arm64 .tmp/release-candidate/routing-arm64/arm64.json
+            --routing-arm64 .tmp/release-candidate/routing-arm64/arm64.json \
+            --scheduled-recovery-arm64 .tmp/release-candidate/scheduled-recovery-arm64/arm64-scheduled-recovery.json
 
       - name: Attest release candidate evidence
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2

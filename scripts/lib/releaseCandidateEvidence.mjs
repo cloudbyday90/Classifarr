@@ -33,6 +33,7 @@ import {
   assertSourceRevision,
   parsePublishedImageReference,
 } from './publishedDigestConsumerSmoke.mjs';
+import { validatePublishedScheduledRecovery } from './publishedScheduledRecoveryReceipt.mjs';
 import {
   AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM,
   AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES,
@@ -44,6 +45,8 @@ import {
 } from './aiProviderFaultComposeReceipt.mjs';
 
 export const RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION =
+  'classifarr.release.candidate-evidence.v4';
+export const ROUTING_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION =
   'classifarr.release.candidate-evidence.v3';
 export const PREVIOUS_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION =
   'classifarr.release.candidate-evidence.v2';
@@ -57,6 +60,7 @@ export const RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS = Object.freeze({
   INVALID_INPUT: 'invalid_input',
   PROVIDER_FAULT_RECEIPT_INVALID: 'provider_fault_receipt_invalid',
   PUBLISHED_ROUTING_INVALID: 'published_routing_invalid',
+  PUBLISHED_SCHEDULED_RECOVERY_INVALID: 'published_scheduled_recovery_invalid',
 });
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
@@ -89,7 +93,8 @@ const PREVIOUS_EVIDENCE_KEYS = Object.freeze([
   ...LEGACY_EVIDENCE_KEYS,
   'provider_fault_receipt',
 ]);
-const CURRENT_EVIDENCE_KEYS = Object.freeze([...PREVIOUS_EVIDENCE_KEYS, 'published_routing']);
+const ROUTING_EVIDENCE_KEYS = Object.freeze([...PREVIOUS_EVIDENCE_KEYS, 'published_routing']);
+const CURRENT_EVIDENCE_KEYS = Object.freeze([...ROUTING_EVIDENCE_KEYS, 'published_scheduled_recovery']);
 const CI_ACCEPTANCE_KEYS = Object.freeze([
   'generatedAt',
   'requiredComponentIds',
@@ -289,6 +294,7 @@ export function buildReleaseCandidateEvidence({
   generatedAt = new Date().toISOString(),
   providerFaultReceipt,
   publishedRoutingReceipts,
+  publishedScheduledRecoveryReceipt,
   workflow,
   sourceRevision,
   tag,
@@ -321,6 +327,14 @@ export function buildReleaseCandidateEvidence({
   } catch {
     throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PUBLISHED_ROUTING_INVALID);
   }
+  let scheduledRecovery;
+  try {
+    scheduledRecovery = validatePublishedScheduledRecovery(publishedScheduledRecoveryReceipt, {
+      tag: verifiedTag, routing: publishedRouting[1], now: generatedAt,
+    });
+  } catch {
+    throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PUBLISHED_SCHEDULED_RECOVERY_INVALID);
+  }
   const evidence = {
     ci_acceptance: ciAcceptance,
     consumer_smoke: consumerSmoke,
@@ -328,6 +342,7 @@ export function buildReleaseCandidateEvidence({
     images: createImages(verifiedDigest),
     provider_fault_receipt: providerFaultReceiptSummary,
     published_routing: publishedRouting,
+    published_scheduled_recovery: scheduledRecovery,
     schema_version: RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION,
     source_repository: EXPECTED_RELEASE_REPOSITORY,
     source_revision: verifiedSourceRevision,
@@ -351,8 +366,19 @@ function isLegacyEvidenceSchema(schemaVersion) {
   return schemaVersion === LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
 }
 
+function hasRoutingReceipts(schemaVersion) {
+  return isCurrentEvidenceSchema(schemaVersion) || schemaVersion === ROUTING_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+}
+
 function hasProviderReceipt(schemaVersion) {
-  return isCurrentEvidenceSchema(schemaVersion) || schemaVersion === PREVIOUS_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+  return hasRoutingReceipts(schemaVersion) || schemaVersion === PREVIOUS_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+}
+
+function evidenceKeys(schemaVersion) {
+  if (isCurrentEvidenceSchema(schemaVersion)) return CURRENT_EVIDENCE_KEYS;
+  if (hasRoutingReceipts(schemaVersion)) return ROUTING_EVIDENCE_KEYS;
+  if (hasProviderReceipt(schemaVersion)) return PREVIOUS_EVIDENCE_KEYS;
+  return isLegacyEvidenceSchema(schemaVersion) ? LEGACY_EVIDENCE_KEYS : null;
 }
 
 function createEvidenceFingerprintPayload(evidence) {
@@ -365,7 +391,8 @@ function createEvidenceFingerprintPayload(evidence) {
   if (hasProviderReceipt(evidence?.schema_version)) {
     payload.provider_fault_receipt = evidence?.provider_fault_receipt;
   }
-  if (isCurrentEvidenceSchema(evidence?.schema_version)) payload.published_routing = evidence?.published_routing;
+  if (hasRoutingReceipts(evidence?.schema_version)) payload.published_routing = evidence?.published_routing;
+  if (isCurrentEvidenceSchema(evidence?.schema_version)) payload.published_scheduled_recovery = evidence?.published_scheduled_recovery;
   return {
     ...payload,
     schema_version: evidence?.schema_version,
@@ -391,11 +418,10 @@ function isValidProviderFaultReceiptSummary(summary, sourceRevision) {
 export function validateReleaseCandidateEvidence(evidence) {
   const issues = [];
   const isCurrentSchema = isCurrentEvidenceSchema(evidence?.schema_version);
-  const isLegacySchema = isLegacyEvidenceSchema(evidence?.schema_version);
-  const isPreviousSchema = evidence?.schema_version === PREVIOUS_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
-  if (!isCurrentSchema && !isLegacySchema && !isPreviousSchema) {
+  const keys = evidenceKeys(evidence?.schema_version);
+  if (!keys) {
     issues.push('unknown_release_candidate_evidence_schema');
-  } else if (!hasExactKeys(evidence, isCurrentSchema ? CURRENT_EVIDENCE_KEYS : isPreviousSchema ? PREVIOUS_EVIDENCE_KEYS : LEGACY_EVIDENCE_KEYS)) {
+  } else if (!hasExactKeys(evidence, keys)) {
     issues.push('unexpected_release_candidate_evidence_fields');
   }
 
@@ -458,15 +484,23 @@ export function validateReleaseCandidateEvidence(evidence) {
     }
   }
 
-  if (isCurrentSchema) {
+  let publishedRouting;
+  if (hasRoutingReceipts(evidence?.schema_version)) {
     try {
       // Historical validation checks internal consistency at assembly time.
       // Creation above additionally binds to caller-owned workflow identity.
-      validatePublishedRoutingMatrix(evidence.published_routing, {
+      publishedRouting = validatePublishedRoutingMatrix(evidence.published_routing, {
         image: evidence.images.ghcr, sourceRevision, now: evidence.generated_at,
         workflow: evidence.published_routing?.[0]?.workflow,
       });
     } catch { issues.push('invalid_published_routing'); }
+  }
+  if (isCurrentSchema) {
+    try {
+      validatePublishedScheduledRecovery(evidence.published_scheduled_recovery, {
+        tag, routing: publishedRouting?.[1], now: evidence.generated_at,
+      });
+    } catch { issues.push('invalid_published_scheduled_recovery'); }
   }
 
   const fingerprintPayload = createEvidenceFingerprintPayload(evidence);
@@ -491,6 +525,7 @@ export function buildReleaseCandidateNotes(evidence) {
   }
 
   const isCurrentSchema = isCurrentEvidenceSchema(evidence.schema_version);
+  const includesRouting = hasRoutingReceipts(evidence.schema_version);
   const includesProvider = hasProviderReceipt(evidence.schema_version);
 
   return [
@@ -508,13 +543,17 @@ export function buildReleaseCandidateNotes(evidence) {
       `- Provider-fault receipt: \`${evidence.provider_fault_receipt.receiptFingerprint.value}\``,
       `- Provider-fault receipt completed: \`${evidence.provider_fault_receipt.completedAt}\``,
     ] : []),
-    ...(isCurrentSchema ? evidence.published_routing.map(receipt =>
+    ...(includesRouting ? evidence.published_routing.map(receipt =>
       `- Published routing ${receipt.subject.platform}: passed (${receipt.subject.manifestDigest})`) : []),
+    ...(isCurrentSchema ? [
+      `- Published scheduled recovery linux/arm64: passed (${evidence.published_scheduled_recovery.subject.manifestDigest})`,
+    ] : []),
     '',
     ...(includesProvider ? [
       'The attached release-candidate evidence asset binds this tag to the exact',
       'CI-accepted source revision, passed provider-fault receipt, and digest-only',
-      isCurrentSchema ? 'consumer smoke result, and native AMD64/ARM64 published-image routing checks.' : 'consumer smoke result.',
+      includesRouting ? 'consumer smoke result, and native AMD64/ARM64 published-image routing checks.' : 'consumer smoke result.',
+      ...(isCurrentSchema ? ['It also includes scheduled crash recovery on the same published arm64 child.'] : []),
     ] : [
       'The attached release-candidate evidence asset binds this tag to the exact',
       'CI-accepted source revision and digest-only consumer smoke result.',

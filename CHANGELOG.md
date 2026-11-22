@@ -236,6 +236,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Release arm64 recovery gate** — Require the current release attempt's
+  scheduled crash receipt for the exact published arm64 child before GitHub
+  publication or `latest` promotion. See the
+  [design](docs/architecture/published-arm64-recovery-gate-design.md).
+
 - **Published arm64 recovery evidence** — Rehearse scheduled crash recovery
   against an immutable existing release's exact arm64 image on a native
   runner. See the [outcome](docs/architecture/published-arm64-recovery-outcome.md).

@@ -35,7 +35,12 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
     job => { job.steps[0].with['persist-credentials'] = true; },
     job => { job.steps[3].run += '\ntrue'; },
     job => { job.steps[3].if = 'false'; },
-    job => { job.steps[4].with.path = '.tmp/'; },
+    job => { job.steps.find(step => step.name === 'Upload published routing receipt').with.path = '.tmp/'; },
+    job => { job.steps[4].if = 'false'; },
+    job => { job.steps[4]['continue-on-error'] = true; },
+    job => { job.steps[4].run += ' || true'; },
+    job => { job.steps[6].with.name = 'published-arm64-scheduled-recovery'; },
+    job => { job.steps[6].if = "matrix.platform == 'linux/arm64'"; },
   ])('rejects weakened native published routing boundary', mutate => {
     const workflow = structuredClone(loadWorkflow());
     mutate(workflow.jobs['published-routing-acceptance']);
@@ -47,6 +52,12 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
     job => { job.steps.find(step => step.name === 'Download ARM64 published routing receipt').with['run-id'] = 'old'; },
     job => { job.steps.find(step => step.name === 'Download AMD64 published routing receipt')['continue-on-error'] = true; },
     job => { job.steps.find(step => step.name === 'Assemble release candidate evidence').run = job.steps.find(step => step.name === 'Assemble release candidate evidence').run.replace('--routing-arm64', '--ignored'); },
+    job => { job.steps = job.steps.filter(step => step.name !== 'Download release arm64 scheduled recovery receipt'); },
+    job => { job.steps.find(step => step.name === 'Download release arm64 scheduled recovery receipt').with['run-id'] = 'old'; },
+    job => { job.steps.find(step => step.name === 'Download release arm64 scheduled recovery receipt').if = 'false'; },
+    job => { job.steps.find(step => step.name === 'Assemble release candidate evidence').run += '\ntrue'; },
+    job => { const step = job.steps.find(candidate => candidate.name === 'Assemble release candidate evidence');
+      step.run = step.run.replace('--scheduled-recovery-arm64', '--ignored'); },
   ])('rejects publication bypass or cross-run routing artifacts', mutate => {
     const workflow = structuredClone(loadWorkflow());
     mutate(workflow.jobs['release-candidate-publication']);

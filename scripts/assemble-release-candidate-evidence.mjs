@@ -35,6 +35,7 @@ const REQUIRED_OPTION_NAMES = Object.freeze([
   '--provider-fault-receipt',
   '--routing-amd64',
   '--routing-arm64',
+  '--scheduled-recovery-arm64',
   '--source-revision',
   '--tag',
 ]);
@@ -44,7 +45,8 @@ function usage() {
     'Usage:',
     '  npm run release:assemble-candidate-evidence -- --tag <vX.Y.Z> --source-revision <git-sha> \\',
     '    --digest <sha256:...> --ci-readout <readout.json> --consumer-smoke <smoke.json> \\',
-    '    --provider-fault-receipt <receipt.json> --routing-amd64 <receipt.json> --routing-arm64 <receipt.json>',
+    '    --provider-fault-receipt <receipt.json> --routing-amd64 <receipt.json> --routing-arm64 <receipt.json> \\',
+    '    --scheduled-recovery-arm64 <receipt.json>',
     '',
     'Writes bounded JSON evidence and deterministic release notes under .tmp/release-candidate.',
   ].join('\n');
@@ -108,6 +110,7 @@ export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), no
     generatedAt: generatedAt instanceof Date ? generatedAt.toISOString() : null,
     providerFaultReceipt: readJson(options['--provider-fault-receipt'], cwd),
     publishedRoutingReceipts: [readJson(options['--routing-amd64'], cwd), readJson(options['--routing-arm64'], cwd)],
+    publishedScheduledRecoveryReceipt: readJson(options['--scheduled-recovery-arm64'], cwd),
     workflow: routingWorkflowIdentity(env),
     sourceRevision: options['--source-revision'],
     tag: options['--tag'],

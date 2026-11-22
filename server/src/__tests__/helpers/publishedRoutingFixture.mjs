@@ -2,6 +2,8 @@
 import { ROUTING_EXPECTED } from '../../../../scripts/lib/manualRoutingRehearsal.mjs';
 import { routingRehearsalEvidence } from '../../../../scripts/lib/routingRehearsalEvidence.mjs';
 import { PUBLISHED_ROUTING_SCHEMA } from '../../../../scripts/lib/publishedRoutingReceipt.mjs';
+import { PUBLISHED_SCHEDULED_RECOVERY_SCHEMA } from '../../../../scripts/lib/publishedScheduledRecoveryReceipt.mjs';
+import { SCHEDULED_CRASH_RECOVERY } from '../../../../scripts/lib/scheduledInstallationContract.mjs';
 
 export const SOURCE = '0123456789abcdef0123456789abcdef01234567';
 export const DIGEST = `sha256:${'a'.repeat(64)}`;
@@ -19,4 +21,11 @@ export function receipt(platform = 'linux/amd64') {
     routing: routingRehearsalEvidence({ status: 'passed', cleanup: 'passed', candidate,
       baseline: `sha256:${'e'.repeat(64)}`, checks: Object.keys(ROUTING_EXPECTED), ...ROUTING_EXPECTED.complete },
     { sourceRevision: SOURCE, candidateImageId: candidate }) };
+}
+
+export function scheduledRecoveryReceipt(tag) {
+  const arm = receipt('linux/arm64');
+  return { schemaVersion: PUBLISHED_SCHEDULED_RECOVERY_SCHEMA, status: 'passed', tag, completedAt: NOW,
+    workflow: arm.workflow, subject: arm.subject, deploymentProfile: 'unraid',
+    crashRecovery: { ...SCHEDULED_CRASH_RECOVERY }, cleanup: 'passed' };
 }

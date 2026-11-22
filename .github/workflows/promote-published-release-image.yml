@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       source_tag:
-        description: Verified immutable v3-evidence release to promote in both registries
+        description: Verified immutable v4-evidence release to promote in both registries
         required: true
         type: string
   workflow_call:

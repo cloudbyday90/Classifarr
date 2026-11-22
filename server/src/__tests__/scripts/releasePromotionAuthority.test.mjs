@@ -1,8 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { existsSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { assertPromotionEvidence, loadPromotionAuthority } from '../../../../scripts/lib/releasePromotionAuthority.mjs';
+import { assertPromotionEvidence, loadHistoricalReleaseEvidence, loadPromotionAuthority } from '../../../../scripts/lib/releasePromotionAuthority.mjs';
 import { runPromotion } from '../../../../scripts/promote-release-images.mjs';
 import { SOURCE, DIGEST, WORKFLOW, ENV } from '../helpers/publishedRoutingFixture.mjs';
 import { TAG, promotionEvidence } from '../helpers/releasePromotionFixture.mjs';
@@ -47,6 +48,8 @@ test.each([
 
 test.each([
   value => { value.schema_version = 'classifarr.release.candidate-evidence.v2'; },
+  value => { delete value.published_scheduled_recovery; },
+  value => { value.published_scheduled_recovery.workflow.runAttempt = '1'; },
   value => { value.published_routing.pop(); },
   value => { value.published_routing[1] = value.published_routing[0]; },
   value => { value.evidence_fingerprint.value = `sha256:${'f'.repeat(64)}`; },
@@ -54,6 +57,19 @@ test.each([
 ])('incomplete or forged current evidence is refused', mutateEvidence => {
   const f = fixture({ mutateEvidence });
   expect(() => loadPromotionAuthority({ tag: TAG, ...f })).toThrow();
+});
+
+test('signed v3 evidence is readable for rehearsal and has no forward promotion authority', () => {
+  const f = fixture({ mutateEvidence: value => {
+    value.schema_version = 'classifarr.release.candidate-evidence.v3';
+    delete value.published_scheduled_recovery;
+    delete value.evidence_fingerprint;
+    value.evidence_fingerprint = { algorithm: 'sha256', value: `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}` };
+  } });
+  expect(loadHistoricalReleaseEvidence({ tag: TAG, command: f.command })).toEqual({ tag: TAG, sourceRevision: SOURCE, digest: DIGEST, releaseId: 1 });
+  expect(f.calls.at(-1)).toContain(`--source-digest ${SOURCE} --source-ref refs/tags/${TAG}`);
+  expect(() => loadPromotionAuthority({ tag: TAG, command: f.command })).toThrow();
+  expect(f.calls.every(call => !call.startsWith('docker'))).toBe(true);
 });
 
 test.each([{ sourceRevision: 'b'.repeat(40) }, { digest: `sha256:${'b'.repeat(64)}` },

@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { readInstallationSource } from './run-runtime-installation-acceptance.mjs';
 import { assertSourceRevision } from './lib/publishedDigestConsumerSmoke.mjs';
 import { assertReleaseTag } from './lib/releaseCandidateEvidence.mjs';
-import { loadPromotionAuthority } from './lib/releasePromotionAuthority.mjs';
+import { loadHistoricalReleaseEvidence } from './lib/releasePromotionAuthority.mjs';
 import { createPromotionCommand } from './lib/releasePromotionCommand.mjs';
 import { routingWorkflowIdentity } from './lib/publishedRoutingReceipt.mjs';
 import { resolvePublishedRoutingSubject } from './lib/publishedRoutingSubject.mjs';
@@ -16,7 +16,7 @@ const RECEIPT_PATH = new URL('../.tmp/ci/published-arm64-recovery.json', import.
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
 
 export async function runPublishedArm64Recovery({ env = process.env, platform = process.platform, arch = process.arch,
-  command = createPromotionCommand(), source = readInstallationSource, verifyRelease = loadPromotionAuthority,
+  command = createPromotionCommand(), source = readInstallationSource, verifyRelease = loadHistoricalReleaseEvidence,
   resolveSubject = resolvePublishedRoutingSubject, drill = runPublishedUpgradeCompose } = {}) {
   const receipt = { schemaVersion: 1, harnessRevision: null, workflow: null, platform: PLATFORM, deploymentProfile: 'unraid',
     release: null, subject: null, status: 'blocked', failureStage: 'preflight', crashRecovery: null, cleanup: 'not_verified' };

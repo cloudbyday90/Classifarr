@@ -20,7 +20,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
-import { receipt, ENV, WORKFLOW } from '../helpers/publishedRoutingFixture.mjs';
+import { receipt, scheduledRecoveryReceipt, ENV, WORKFLOW } from '../helpers/publishedRoutingFixture.mjs';
 
 import {
   POLICY_RELEASE_ACCEPTANCE_STATUS_IDS,
@@ -93,6 +93,7 @@ function buildEvidence(overrides = {}) {
     generatedAt: GENERATED_AT,
     providerFaultReceipt: createProviderFaultReceipt(),
     publishedRoutingReceipts: [receipt(), receipt('linux/arm64')],
+    publishedScheduledRecoveryReceipt: scheduledRecoveryReceipt(TAG),
     workflow: WORKFLOW,
     sourceRevision: SOURCE_REVISION,
     tag: TAG,
@@ -118,7 +119,8 @@ describe('releaseCandidateEvidence', () => {
         sourceRevision: SOURCE_REVISION,
         statusId: 'passed',
       }),
-      schema_version: 'classifarr.release.candidate-evidence.v3',
+      schema_version: 'classifarr.release.candidate-evidence.v4',
+      published_scheduled_recovery: scheduledRecoveryReceipt(TAG),
       source_repository: 'cloudbyday90/Classifarr',
       source_revision: SOURCE_REVISION,
       tag: TAG,
@@ -189,11 +191,11 @@ describe('releaseCandidateEvidence', () => {
     })).toThrow(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID);
   });
 
-  test('accepts an immutable legacy v1 record but rejects extra public receipt data in v3', () => {
-    const v2Evidence = buildEvidence();
-    const legacyPayload = { ...v2Evidence };
+  test('accepts an immutable legacy v1 record but rejects extra public receipt data in v4', () => {
+    const legacyPayload = buildEvidence();
     delete legacyPayload.provider_fault_receipt;
     delete legacyPayload.published_routing;
+    delete legacyPayload.published_scheduled_recovery;
     delete legacyPayload.evidence_fingerprint;
     legacyPayload.schema_version = LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
     const legacyEvidence = {
@@ -225,10 +227,12 @@ describe('releaseCandidateEvidence', () => {
     fs.writeFileSync(providerFaultReceiptPath, JSON.stringify(createProviderFaultReceipt()));
     fs.writeFileSync(join(cwd, 'amd64.json'), JSON.stringify(receipt()));
     fs.writeFileSync(join(cwd, 'arm64.json'), JSON.stringify(receipt('linux/arm64')));
+    const scheduledPath = join(cwd, 'scheduled.json');
+    fs.writeFileSync(scheduledPath, JSON.stringify(scheduledRecoveryReceipt(TAG)));
     fs.writeFileSync(join(cwd, 'RELEASE_NOTES.md'), `# Release Notes\n\n## ${TAG}\n\nReviewed upgrade guidance.\n\n## v0.47.5-beta\n\nOlder prose.`);
 
     try {
-      const result = assembleReleaseCandidateEvidence([
+      const args = [
         '--tag', TAG,
         '--source-revision', SOURCE_REVISION,
         '--digest', DIGEST,
@@ -237,11 +241,14 @@ describe('releaseCandidateEvidence', () => {
         '--provider-fault-receipt', 'provider-fault-receipt.json',
         '--routing-amd64', 'amd64.json',
         '--routing-arm64', 'arm64.json',
-      ], {
+        '--scheduled-recovery-arm64', 'scheduled.json',
+      ];
+      const options = {
         cwd,
         env: ENV,
         now: () => new Date(GENERATED_AT),
-      });
+      };
+      const result = assembleReleaseCandidateEvidence(args, options);
 
       expect(result.outputPaths.evidencePath).toBe(join(cwd, '.tmp', 'release-candidate', `${TAG}-evidence.json`));
       expect(result.outputPaths.notesPath).toBe(join(cwd, '.tmp', 'release-candidate', `${TAG}-notes.md`));
@@ -254,13 +261,17 @@ describe('releaseCandidateEvidence', () => {
 
       fs.rmSync(result.outputPaths.notesPath);
       fs.rmSync(result.outputPaths.evidencePath);
+      fs.rmSync(scheduledPath);
+      expect(() => assembleReleaseCandidateEvidence(args, options)).toThrow('release_artifact_unreadable');
+      expect(fs.existsSync(result.outputPaths.evidencePath)).toBe(false);
+
+      fs.writeFileSync(scheduledPath, JSON.stringify({ ...scheduledRecoveryReceipt(TAG), workflow: { ...WORKFLOW, runAttempt: '1' } }));
+      expect(() => assembleReleaseCandidateEvidence(args, options)).toThrow('published_scheduled_recovery_invalid');
+      expect(fs.existsSync(result.outputPaths.evidencePath)).toBe(false);
+
+      fs.writeFileSync(scheduledPath, JSON.stringify(scheduledRecoveryReceipt(TAG)));
       fs.writeFileSync(join(cwd, 'RELEASE_NOTES.md'), '## v9.9.9\nWrong version.');
-      expect(() => assembleReleaseCandidateEvidence([
-        '--tag', TAG, '--source-revision', SOURCE_REVISION, '--digest', DIGEST,
-        '--ci-readout', 'ci-readout.json', '--consumer-smoke', 'consumer-smoke.json',
-        '--provider-fault-receipt', 'provider-fault-receipt.json',
-        '--routing-amd64', 'amd64.json', '--routing-arm64', 'arm64.json',
-      ], { cwd, env: ENV, now: () => new Date(GENERATED_AT) })).toThrow('release_notes_version_mismatch');
+      expect(() => assembleReleaseCandidateEvidence(args, options)).toThrow('release_notes_version_mismatch');
       expect(fs.existsSync(result.outputPaths.evidencePath)).toBe(false);
       expect(fs.existsSync(result.outputPaths.notesPath)).toBe(false);
     } finally {
@@ -281,6 +292,7 @@ describe('releaseCandidateEvidence', () => {
   test('keeps immutable v2 fingerprints verifiable without authorizing new v2 creation', () => {
     const value = buildEvidence();
     delete value.published_routing;
+    delete value.published_scheduled_recovery;
     delete value.evidence_fingerprint;
     value.schema_version = 'classifarr.release.candidate-evidence.v2';
     const legacy = { ...value, evidence_fingerprint: { algorithm: 'sha256', value: `sha256:${createHash('sha256').update(JSON.stringify(value)).digest('hex')}` } };
@@ -288,6 +300,39 @@ describe('releaseCandidateEvidence', () => {
     expect(buildReleaseCandidateNotes(legacy)).toContain('Provider-fault receipt:');
     expect(() => buildEvidence({ publishedRoutingReceipts: undefined })).toThrow('published_routing_invalid');
     expect(() => buildEvidence({ workflow: { ...WORKFLOW, runAttempt: '3' } })).toThrow('published_routing_invalid');
+  });
+
+  test.each([
+    value => { value.status = 'blocked'; },
+    value => { value.tag = 'v9.9.9'; },
+    value => { value.workflow.runId = '456'; },
+    value => { value.workflow.runAttempt = '1'; },
+    value => { value.subject = receipt('linux/amd64').subject; },
+    value => { value.subject.sourceRevision = 'b'.repeat(40); },
+    value => { value.subject.image = `ghcr.io/cloudbyday90/classifarr@sha256:${'b'.repeat(64)}`; },
+    value => { value.subject.manifestDigest = `sha256:${'f'.repeat(64)}`; },
+    value => { value.subject.configDigest = `sha256:${'f'.repeat(64)}`; },
+    value => { value.subject.imageId = `sha256:${'f'.repeat(64)}`; },
+    value => { value.completedAt = '2026-08-09T03:59:59.000Z'; },
+    value => { value.completedAt = '2026-08-09T04:05:01.000Z'; },
+    value => { value.crashRecovery.routingTasks = 1; },
+    value => { value.crashRecovery.completedTasks = 0; },
+    value => { value.cleanup = 'not_verified'; },
+    value => { value.rawLog = 'private'; },
+  ])('rejects mismatched scheduled evidence during assembly and signed record validation', mutate => {
+    const scheduled = scheduledRecoveryReceipt(TAG);
+    mutate(scheduled);
+    expect(() => buildEvidence({ publishedScheduledRecoveryReceipt: scheduled })).toThrow('published_scheduled_recovery_invalid');
+    const evidence = buildEvidence();
+    delete evidence.evidence_fingerprint;
+    evidence.published_scheduled_recovery = scheduled;
+    evidence.evidence_fingerprint = { algorithm: 'sha256', value: `sha256:${createHash('sha256').update(JSON.stringify(evidence)).digest('hex')}` };
+    expect(validateReleaseCandidateEvidence(evidence).issues).toContain('invalid_published_scheduled_recovery');
+  });
+
+  test('requires scheduled evidence independently of passing routing and smoke', () => {
+    expect(() => buildEvidence({ publishedScheduledRecoveryReceipt: undefined })).toThrow('published_scheduled_recovery_invalid');
+    expect(buildReleaseCandidateNotes(buildEvidence())).toContain('Published scheduled recovery linux/arm64: passed');
   });
 
   test('routing is required even if an attacker recomputes the public fingerprint', () => {

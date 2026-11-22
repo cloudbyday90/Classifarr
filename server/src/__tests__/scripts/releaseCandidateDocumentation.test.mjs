@@ -49,7 +49,7 @@ describe('releaseCandidateDocumentation', () => {
       expect(text).not.toContain(stale);
     }
     for (const required of ['Unreleased', 'explicit approval', 'native AMD64/ARM64', 'same-run/attempt',
-      'v3', 'Current limitation', 'latest', '--no-cache --require-provenance', 'rerun', 'cleanup',
+      'v4', 'scheduled recovery', 'Current limitation', 'latest', '--no-cache --require-provenance', 'rerun', 'cleanup',
       'pull_count', 'Docker Hub image pulls', 'excludes GHCR', 'observation time/count']) {
       expect(text.toLowerCase()).toContain(required.toLowerCase());
     }

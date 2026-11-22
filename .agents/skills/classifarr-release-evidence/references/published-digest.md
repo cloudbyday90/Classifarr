@@ -17,7 +17,9 @@ unselected parent ID proves the tested child. Do not rebuild the candidate.
 Check producer, same-run artifact download, expected identity and release
 assembler. Require both AMD64 and ARM64 receipts, current run and attempt,
 freshness, exact routing counts, zero attempted provider writes and cleanup.
-Historical v1/v2 release records remain readable, but new publication needs v3.
+Also require the scheduled recovery receipt from the same native arm64 matrix
+job. Match the complete image subject, tag, run and attempt. Historical v1–v3
+release records remain readable. New publication needs v4.
 Wrong platform, duplicate architecture or failure swallowed by shell/YAML must
 block. Never inject GitHub context to manufacture CI evidence from a local run.
 
@@ -25,6 +27,8 @@ Inspect every alias writer. `docker-release` publishes version tags only;
 `promote-published-latest` calls the same workflow used for manual retries after
 consumer checks and immutable GitHub publication. Require current-schema asset
 validation plus release/asset/CI attestation verification, not a passed flag.
+The historical rehearsal's read-only verifier also accepts signed v3 and
+cannot authorize promotion.
 Read `releasePromotionAuthority.mjs` and `releaseImagePromotion.mjs` before
 running their CLI. It defaults to read-only; `--write` requires user authority.
 
@@ -50,6 +54,7 @@ Before handoff, check these cases against the actual validators:
 
 - Same source label, wrong child digest: reject before any rehearsal.
 - AMD64 receipt supplied twice: reject even if both say passed.
+- Same index but different arm64 scheduled-recovery child: reject before publication.
 - Old run/attempt or stale receipt: rerun; never edit timestamps.
 - Cleanup failure or one attempted provider write: block publication.
 - Local rehearsal passed, native ARM not run: report the missing evidence.

@@ -245,17 +245,19 @@ a replacement image to bypass the workflow. Tag CI performs this chain:
 | Source and installation | Full CI plus same-image installation/routing receipt |
 | Provider fault | Fresh bounded disposable provider-fault receipt |
 | Image publication | GHCR/Docker Hub index digest with verified provenance |
-| Published consumers | Digest-only health smoke and native AMD64/ARM64 routing |
-| Evidence assembly | v3 record bound to source, digest and current run/attempt |
+| Published consumers | Digest-only health smoke, native AMD64/ARM64 routing, and scheduled recovery on the tested arm64 child |
+| Evidence assembly | v4 record bound to source, digest and current run/attempt |
 | GitHub publication | Attested evidence asset, draft publication, release verification |
 
 Published routing independently verifies the signed index, selected child
 manifest and pulled image identity, then reuses the isolated upgrade/crash
-fixture. Both architecture jobs must pass. Missing, stale (over six hours),
+fixture. The arm64 job also runs fresh-only scheduled recovery on the same
+inspected image ID. Both architecture jobs must pass. Missing, stale (over six hours),
 wrong-run, failed-cleanup or unexpected-provider-write receipts block evidence
 assembly. An approval delay that ages evidence out requires fresh tests, not
-editing timestamps. Historical v1/v2 assets remain readable but cannot replace
-new v3 evidence. See [published routing design](../../docs/architecture/published-routing-acceptance-design.md).
+editing timestamps. Historical v1–v3 assets remain readable. New publication
+and promotion with the current workflow require v4 evidence.
+[Release arm64 recovery design](../../docs/architecture/published-arm64-recovery-gate-design.md)
 
 `docker-release` publishes the version tag only (`latest=false` explicitly).
 After both published-consumer gates and verified immutable GitHub publication,
@@ -284,8 +286,9 @@ Download the evidence asset into an ignored directory and independently run
 `--source-ref refs/tags/vX.Y.Z-beta`, `--source-digest <approved-source-sha>`,
 `--predicate-type https://slsa.dev/provenance/v1` and
 `--deny-self-hosted-runners`. Retain default public trusted roots; do not use
-`--no-public-good`. Inspect both routing receipts and their image identities in
-the v3 asset. A signature establishes provenance, not correctness by itself.
+`--no-public-good`. Inspect both routing receipts and the scheduled recovery
+receipt for the same arm64 child in the v4 asset. Verify the checks and image
+identities as well as the signature.
 
 On failure, stop announcement and inspect the exact failed job. Do not delete
 or retarget a tag just because GitHub release publication failed: registry
@@ -295,14 +298,14 @@ Rerun the full tag workflow when receipts must be refreshed; retrying only the
 publication job retains earlier-attempt artifacts and must fail validation.
 Never modify an immutable published release or reuse its tag.
 
-For a failed or partial promotion of a verified v3-evidence release, use
+For a failed or partial promotion of a verified v4-evidence release, use
 **Promote Published Release Image Alias** only with explicit promotion approval.
 Dispatch from that release tag (`--ref vX.Y.Z-beta`) with matching
 `source_tag=vX.Y.Z-beta`, not from `main`: the protected environment admits tags.
-The retry verifies immutable release/asset provenance and the full v3 record,
+The retry verifies immutable release/asset provenance and the full v4 record,
 preserves the exact indexes, and checks both registries. It skips already-correct
 writes. A newer current source, missing alias, broken graph, unknown provenance,
-or historical v1/v2-only evidence is a hard stop. Do not force or rebuild an
+or historical v1–v3 evidence in the current workflow is a hard stop. Do not force or rebuild an
 image to bypass it; missing-alias bootstrap needs a separately reviewed repair.
 For incomplete image graphs follow the
 [retirement assessment](../../docs/architecture/published-image-release-retirement.md).

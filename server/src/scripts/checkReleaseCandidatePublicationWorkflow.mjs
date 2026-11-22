@@ -311,20 +311,23 @@ function assertPublicationJob(job) {
     RELEASE_TAG: GITHUB_REF_NAME_EXPRESSION,
     SOURCE_REVISION: GITHUB_SHA_EXPRESSION,
   }, 'Assemble release candidate evidence.env');
-  const requiredAssemblyFragments = [
-    'set -euo pipefail',
-    'npm run release:assemble-candidate-evidence --',
+  const artifactArguments = [
     '--tag "$RELEASE_TAG"',
     '--source-revision "$SOURCE_REVISION"',
     '--digest "$IMAGE_DIGEST"',
     '--ci-readout .tmp/release-candidate/ci-readout/policy-release-acceptance-readout.json',
     '--consumer-smoke .tmp/release-candidate/consumer-smoke/' +
       `${SOURCE_REVISION_VARIABLE}-published-digest-consumer-smoke.json`,
-    '--provider-fault-receipt ' +
-      `${PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH}/ai-provider-fault-compose-receipt.json`,
+    `--provider-fault-receipt ${PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH}/ai-provider-fault-compose-receipt.json`,
+    '--routing-amd64 .tmp/release-candidate/routing-amd64/amd64.json',
+    '--routing-arm64 .tmp/release-candidate/routing-arm64/arm64.json',
+    '--scheduled-recovery-arm64 .tmp/release-candidate/scheduled-recovery-arm64/arm64-scheduled-recovery.json',
   ];
-  if (typeof assembleStep.run !== 'string' ||
-    requiredAssemblyFragments.some(fragment => !assembleStep.run.includes(fragment))) {
+  const assemblyScript = [
+    'set -euo pipefail',
+    ['npm run release:assemble-candidate-evidence --', ...artifactArguments.map(argument => `  ${argument}`)].join(' \\\n'),
+  ].join('\n');
+  if (Object.keys(assembleStep).sort().join(',') !== 'env,name,run' || assembleStep.run?.trim() !== assemblyScript) {
     throw new Error('Assemble release candidate evidence must bind the tag, source revision, digest, and all evidence artifacts.');
   }
 

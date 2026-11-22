@@ -2,7 +2,7 @@
 import { buildReleaseCandidateEvidence } from '../../../../scripts/lib/releaseCandidateEvidence.mjs';
 import { buildPolicyReleaseAcceptanceReadout } from '../../services/policyReleaseAcceptanceManifest.mjs';
 import { createAiProviderFaultComposeReceipt } from '../../../../scripts/lib/aiProviderFaultComposeReceipt.mjs';
-import { receipt, NOW, SOURCE, DIGEST, WORKFLOW } from './publishedRoutingFixture.mjs';
+import { receipt, scheduledRecoveryReceipt, NOW, SOURCE, DIGEST, WORKFLOW } from './publishedRoutingFixture.mjs';
 
 export const TAG = 'v0.50.0-beta';
 export function promotionEvidence() {
@@ -15,5 +15,6 @@ export function promotionEvidence() {
       source_repository: 'cloudbyday90/Classifarr', source_revision: SOURCE,
       checks: { compose_configuration: 'validated', compose_startup: 'healthy', migration_readiness: 'ready', provenance: 'verified', runtime_health: 'healthy', teardown: 'completed' } },
     publishedRoutingReceipts: [receipt(), receipt('linux/arm64')],
+    publishedScheduledRecoveryReceipt: scheduledRecoveryReceipt(TAG),
   });
 }
