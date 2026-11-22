@@ -6,8 +6,8 @@ import { expect, test } from '@jest/globals';
 const workflow = name => load(readFileSync(new URL(`../../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
 
 test.each([
-  ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 13],
-  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 15],
+  ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 14],
+  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 17],
   ['download-artifact', '9000827ccba6bdab643e8b6fd33ac0654aef8333', 6],
 ])('all %s steps use the reviewed immutable release', (action, revision, count) => {
   const files = readdirSync(new URL('../../../../.github/workflows/', import.meta.url)).filter(file => file.endsWith('.yml'));
@@ -15,6 +15,28 @@ test.each([
     .flatMap(job => job.steps ?? []).filter(step => step.uses?.startsWith(`actions/${action}@`)));
   expect(references).toHaveLength(count);
   for (const step of references) expect(step.uses).toBe(`actions/${action}@${revision}`);
+});
+
+test('native recovery is an independent read-only main-branch rehearsal', () => {
+  const config = workflow('native-arm64-recovery');
+  expect(Object.keys(config.on)).toEqual(['push']);
+  expect(config.on.push.branches).toEqual(['main']);
+  expect(config.on.push.tags).toBeUndefined();
+  expect(config.on.push.paths).toEqual(expect.arrayContaining(['Dockerfile', 'docker-entrypoint.sh', 'server/**', 'scripts/lib/**']));
+  expect(config.permissions).toEqual({ contents: 'read' });
+  expect(Object.keys(config.jobs)).toEqual(['native-arm64-recovery']);
+  const job = config.jobs['native-arm64-recovery'];
+  expect(job['runs-on']).toBe('ubuntu-24.04-arm');
+  expect(job['timeout-minutes']).toBe(50);
+  for (const key of ['permissions', 'environment', 'needs', 'continue-on-error']) expect(job[key]).toBeUndefined();
+  expect(job.steps.filter(step => step.run).map(step => step.run)).toEqual([
+    'node --test scripts/__tests__/native-arm64-recovery.test.mjs', 'node scripts/run-native-arm64-recovery.mjs',
+  ]);
+  expect(job.steps[0].with['persist-credentials']).toBe(false);
+  expect(job.steps.filter(step => step.uses).map(step => step.uses.split('@')[0])).toEqual([
+    'actions/checkout', 'actions/setup-node', 'actions/upload-artifact', 'actions/upload-artifact',
+  ]);
+  for (const step of job.steps) expect(step['continue-on-error']).toBeUndefined();
 });
 
 test('PR 537 pins verified Docker revisions without changing tag-only publishing', () => {
