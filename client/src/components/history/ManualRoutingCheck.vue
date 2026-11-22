@@ -47,7 +47,7 @@ import { computed, ref } from 'vue'
 import api from '@/api'
 import ManualRoutingBackground from './ManualRoutingBackground.vue'
 
-const props = defineProps({ classificationId: { type: Number, required: true }, details: { type: Object, required: true } })
+const props = defineProps({ classificationId: { type: [Number, String], required: true }, details: { type: Object, required: true } })
 const busy = ref(false)
 const result = ref(null)
 const hasIntent = computed(() => props.details.manual_routing_intent?.version === 1)

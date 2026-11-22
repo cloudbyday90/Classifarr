@@ -2,7 +2,7 @@
 import * as database from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
-import { normalizeArrId } from './arrResourceVerification.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { createManualRoutingCheckRepository } from './manualRoutingCheckRepository.mjs';
 import { createManualRoutingCheckService } from './manualRoutingCheckService.mjs';
 import { createManualRoutingCheckState } from './manualRoutingCheckState.mjs';
@@ -30,7 +30,9 @@ export function createManualRoutingCheckCoordinator({ db = database,
   state ??= createManualRoutingCheckState({ db });
   checker ??= createManualRoutingCheckService({ db, providers, repository: records });
   guard ??= createManualRoutingProviderGuard({ db });
-  async function read(id) {
+  async function read(value) {
+    const id = canonicalDatabaseBigintId(value);
+    if (id === null) return reply('not_found');
     const result = await state.read(id);
     if (!result.enabled) return result;
     const context = await records.load(id);
@@ -39,7 +41,9 @@ export function createManualRoutingCheckCoordinator({ db = database,
   return {
     read,
     next: () => state.next(),
-    async setEnabled(id, enabled) {
+    async setEnabled(value, enabled) {
+      const id = canonicalDatabaseBigintId(value);
+      if (id === null) return reply('not_found');
       let attemptId = null;
       if (enabled) {
         const context = await records.load(id);
@@ -51,8 +55,8 @@ export function createManualRoutingCheckCoordinator({ db = database,
       return enabled ? read(id) : result;
     },
     async check(value, { automatic = false, signal } = {}) {
-      const id = normalizeArrId(value);
-      if (!id) return reply('not_found');
+      const id = canonicalDatabaseBigintId(value);
+      if (id === null) return reply('not_found');
       let result = reply('busy');
       try {
         await db.withSessionAdvisoryLock(database.DB_ADVISORY_LOCKS.MANUAL_ROUTING_CHECK, async (lease = {}) => {

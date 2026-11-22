@@ -53,7 +53,7 @@
 import { computed, ref } from 'vue'
 import api from '@/api'
 
-const props = defineProps({ classificationId: { type: Number, required: true } })
+const props = defineProps({ classificationId: { type: [Number, String], required: true } })
 const busy = ref(false), state = ref(null), message = ref('')
 const outcomes = {
   checking: 'A check started; its result may still be pending.',

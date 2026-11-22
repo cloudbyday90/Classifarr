@@ -26,11 +26,11 @@ function fixture() {
 test('admission is committed before provider work; both paths use the same lock', async () => {
   const f = fixture();
   f.checker.check.mockImplementation(async () => {
-    expect(f.state.claim).toHaveBeenCalledWith(12, 'attempt', true);
+    expect(f.state.claim).toHaveBeenCalledWith('12', 'attempt', true);
     return { reason: 'not_present', recorded: true };
   });
   expect((await f.service.check(12, { automatic: true })).reason).toBe('not_present');
-  expect(f.state.finish).toHaveBeenCalledWith(12, 'not_present');
+  expect(f.state.finish).toHaveBeenCalledWith('12', 'not_present');
   f.checker.check.mockResolvedValue({ reason: 'verified_present' });
   await f.service.check(13);
   expect(f.db.withSessionAdvisoryLock.mock.calls.map(args => args[0])).toEqual([2028, 2028]);
@@ -54,7 +54,7 @@ test('provider pause precedes item admission and defers only automatic work', as
   const f = fixture(); f.state.defer = jest.fn();
   f.guard.prepare.mockResolvedValue({ reason: 'provider_paused', nextCheckAt: 'later' });
   expect((await f.service.check(12, { automatic: true })).reason).toBe('provider_paused');
-  expect(f.state.defer).toHaveBeenCalledWith(12, 'provider_paused', 'later');
+  expect(f.state.defer).toHaveBeenCalledWith('12', 'provider_paused', 'later');
   await f.service.check(12);
   expect(f.state.defer).toHaveBeenCalledTimes(1);
   expect(f.state.claim).not.toHaveBeenCalled(); expect(f.checker.check).not.toHaveBeenCalled();
@@ -70,7 +70,7 @@ test('provider failure is persisted before refunding the automatic item allowanc
   });
   await f.service.check(12, { automatic: true });
   expect(f.guard.finish).toHaveBeenCalledTimes(1);
-  expect(f.state.finish).toHaveBeenCalledWith(12, 'provider_auth_required', { providerFailure: true, automatic: true });
+  expect(f.state.finish).toHaveBeenCalledWith('12', 'provider_auth_required', { providerFailure: true, automatic: true });
 });
 
 test('legacy/configuration changes stop automatic work; disabling never requires eligibility', async () => {
@@ -79,9 +79,9 @@ test('legacy/configuration changes stop automatic work; disabling never requires
   expect((await f.service.setEnabled(1, true)).reason).toBe('configuration_changed');
   expect(f.state.setEnabled).not.toHaveBeenCalled();
   await f.service.setEnabled(1, false);
-  expect(f.state.setEnabled).toHaveBeenCalledWith(1, null, false);
+  expect(f.state.setEnabled).toHaveBeenCalledWith('1', null, false);
   await f.service.check(1, { automatic: true });
-  expect(f.state.finish).toHaveBeenCalledWith(1, 'configuration_changed');
+  expect(f.state.finish).toHaveBeenCalledWith('1', 'configuration_changed');
   expect(f.checker.check).not.toHaveBeenCalled();
 });
 
@@ -107,8 +107,9 @@ test('scheduler stays idle when empty, admits one record, and stops during shutd
   registerManualRoutingCheckSchedule(scheduler, { coordinator });
   const run = scheduler.schedule.mock.calls[0][2];
   await run(); expect(coordinator.check).not.toHaveBeenCalled();
-  coordinator.next.mockResolvedValue(12);
+  coordinator.next.mockResolvedValue('9223372036854775807');
   await run(); expect(coordinator.check).toHaveBeenCalledTimes(1);
+  expect(coordinator.check).toHaveBeenCalledWith('9223372036854775807', { automatic: true, signal: expect.any(AbortSignal) });
   const signal = coordinator.check.mock.calls[0][1].signal;
   scheduler.manualRoutingCheckWorker.stop();
   expect(signal.aborted).toBe(true);
@@ -140,6 +141,19 @@ test('background settings require admin, reject caller targets and never trigger
   const response = await request(app).get('/manual-routing/12/background').set('Authorization', 'admin').expect(200);
   expect(response.headers['cache-control']).toBe('no-store');
   await request(app).post('/manual-routing/12/background').set('Authorization', 'admin').send({ enabled: true }).expect(200);
-  expect(service.setEnabled).toHaveBeenCalledWith(12, true);
+  expect(service.setEnabled).toHaveBeenCalledWith('12', true);
   expect(service.check).not.toHaveBeenCalled();
+});
+
+test('all manual routing coordinator entry points refuse imprecise IDs before reading or claiming', async () => {
+  const f = fixture();
+  for (const invalid of [0, 1.1, Number.MAX_SAFE_INTEGER + 1, '012', '12x', '9223372036854775808']) {
+    expect((await f.service.read(invalid)).reason).toBe('not_found');
+    expect((await f.service.setEnabled(invalid, false)).reason).toBe('not_found');
+    expect((await f.service.check(invalid)).reason).toBe('not_found');
+  }
+  expect(f.db.withSessionAdvisoryLock).not.toHaveBeenCalled();
+  expect(f.records.load).not.toHaveBeenCalled();
+  expect(f.state.read).not.toHaveBeenCalled();
+  expect(f.state.setEnabled).not.toHaveBeenCalled();
 });

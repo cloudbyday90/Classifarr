@@ -1,7 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
 import { readFileSync } from 'node:fs';
+import express from 'express';
+import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { requireAdmin } from '../../middleware/apiKeyAuth.mjs';
+import { registerManualRoutingCheckRoute } from '../../routes/queueRouteManualRoutingCheck.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const db = await import('../../config/database.mjs');
 const { captureManualRoutingIntent } = await import('../../services/manualRoutingIntentPersistence.mjs');
@@ -53,6 +57,77 @@ test('fresh setup is off, repeatable migration enrolls nothing, enablement survi
   expect(await service().next()).toBe(id);
   expect((await service().check(id, { automatic: true })).reason).toBe('not_present');
   expect(await service().read(id)).toMatchObject({ enabled: true, attempts: 1, lastResult: 'not_present' });
+});
+
+test.each(['9007199254740993', '9223372036854775807'])(
+  'HTTP and background checks preserve the exact History ID %s', async exactId => {
+    const adjacent = String(BigInt(exactId) - 1n);
+    await db.query('UPDATE classification_history SET id=$1 WHERE id=$2', [exactId, id]);
+    id = exactId;
+    await db.query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,library_id,method,status,metadata)
+      SELECT $1,tmdb_id,media_type,'Adjacent fixture',library_id,method,status,metadata FROM classification_history WHERE id=$2`,
+    [adjacent, id]);
+    extraIds.push(adjacent);
+
+    const app = express(), router = express.Router(), coordinator = service();
+    app.use(express.json());
+    app.use((req, _res, next) => { req.user = { role: req.headers.authorization }; next(); });
+    registerManualRoutingCheckRoute(router, { requireAdmin, limiter: (_req, _res, next) => next(), service: coordinator });
+    app.use(router);
+    app.use((err, _req, res, _next) => res.status(err.statusCode || 500).json({ code: err.code }));
+
+    const base = '/manual-routing';
+    for (const invalid of [`${exactId}tail`, '0001', '+1', '1e3', '9223372036854775808']) {
+      const failure = { code: 'invalid_classification_id' };
+      await request(app).post(`${base}/${invalid}/check`).set('Authorization', 'admin').expect(400, failure);
+      await request(app).get(`${base}/${invalid}/background`).set('Authorization', 'admin').expect(400, failure);
+      await request(app).post(`${base}/${invalid}/background`).set('Authorization', 'admin').send({ enabled: true }).expect(400, failure);
+    }
+    expect(read).not.toHaveBeenCalled();
+    expect(await coordinator.next()).toBeNull();
+
+    await request(app).post(`${base}/${id}/background`).set('Authorization', 'viewer').send({ enabled: true }).expect(403);
+    await request(app).post(`${base}/${id}/background`).set('Authorization', 'admin').send({ enabled: true }).expect(200);
+    expect(await coordinator.next()).toBe(id);
+    const other = await request(app).get(`${base}/${adjacent}/background`).set('Authorization', 'admin').expect(200);
+    expect(other.body).toMatchObject({ enabled: false, attempts: 0 });
+    expect(other.headers['cache-control']).toBe('no-store');
+    expect(read).not.toHaveBeenCalled();
+
+    await request(app).post(`${base}/${id}/check`).set('Authorization', 'admin').expect(200);
+    expect(read.mock.calls[0].slice(0, 3)).toEqual(['http://fixture', 'synthetic-key', 42]);
+    await due();
+    expect(await service().check(await coordinator.next(), { automatic: true })).toMatchObject({ reason: 'not_present', recorded: true });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(await coordinator.read(id)).toMatchObject({ enabled: true, attempts: 1, lastResult: 'not_present' });
+    const rows = (await db.query(`SELECT id, metadata #>> '{classification_details,manual_routing_observation,reason}' AS reason
+      FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id`, [[adjacent, id]])).rows;
+    expect(rows).toEqual([{ id: adjacent, reason: null }, { id, reason: 'not_present' }]);
+    await db.query('DELETE FROM classification_history WHERE id=$1', [id]);
+    expect(await coordinator.next()).toBeNull();
+    expect(await coordinator.read(id)).toMatchObject({ enabled: false, attempts: 0 });
+    await request(app).post(`${base}/${id}/check`).set('Authorization', 'admin').expect(404);
+    expect(read).toHaveBeenCalledTimes(2);
+  },
+);
+
+test('the forward migration preserves populated check state, its cascading key and due index', async () => {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE manual_routing_check_state ALTER COLUMN classification_id TYPE integer');
+    const { rows: [before] } = await client.query(`INSERT INTO manual_routing_check_state
+      (classification_id,attempt_id,enabled,automatic_attempts,last_result) VALUES ($1,$2,true,2,'not_present') RETURNING *`, [id, attemptId]);
+    const migration = readFileSync(new URL('../../../../database/migrations/20261122_190000_widen_manual_routing_check_classification_id.sql', import.meta.url), 'utf8');
+    await client.query(migration);
+    const migrated = await client.query('SELECT *, pg_typeof(classification_id)::text AS id_type FROM manual_routing_check_state');
+    expect(migrated.rows).toEqual([{ ...before, id_type: 'bigint' }]);
+    const { rows: [index] } = await client.query(`SELECT indexdef FROM pg_indexes
+      WHERE schemaname='public' AND indexname='manual_routing_check_due_idx'`);
+    expect(index.indexdef).toContain('(next_check_at, classification_id) WHERE');
+    await client.query('DELETE FROM classification_history WHERE id=$1', [id]);
+    expect((await client.query('SELECT classification_id FROM manual_routing_check_state')).rowCount).toBe(0);
+  } finally { await client.query('ROLLBACK'); client.release(); }
 });
 
 test('persistent cooldown and three-attempt limit cannot be reset by toggles or restart', async () => {

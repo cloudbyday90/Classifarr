@@ -104,6 +104,25 @@ describe('queueTasksApi', () => {
     expect(await checkManualRouting(8)).toBe(response)
     expect(mockPost).toHaveBeenCalledWith('/queue/manual-routing/8/check', {}, { skipAutomaticRetry: true })
   })
+  it('preserves exact BIGINT paths for the check and both background commands', async () => {
+    await checkManualRouting('9007199254740993')
+    await getManualRoutingBackground('9223372036854775807')
+    await setManualRoutingBackground('9007199254740992', true)
+    expect(mockPost).toHaveBeenCalledWith('/queue/manual-routing/9007199254740993/check', {}, { skipAutomaticRetry: true })
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/manual-routing/9223372036854775807/background', { skipAutomaticRetry: true })
+    expect(mockPost).toHaveBeenCalledWith('/queue/manual-routing/9007199254740992/background', { enabled: true }, { skipAutomaticRetry: true })
+  })
+  it('refuses unsafe or noncanonical values before constructing a routing request', () => {
+    mockPost.mockClear()
+    mockGetDataRequest.mockClear()
+    for (const id of [9007199254740992, '009', '9path', '..', ['9'], '9223372036854775808']) {
+      expect(() => checkManualRouting(id)).toThrow('Valid classification ID is required')
+      expect(() => getManualRoutingBackground(id)).toThrow('Valid classification ID is required')
+      expect(() => setManualRoutingBackground(id, true)).toThrow('Valid classification ID is required')
+    }
+    expect(mockPost).not.toHaveBeenCalled()
+    expect(mockGetDataRequest).not.toHaveBeenCalled()
+  })
   it('preserves the separate selection/routing result and never automatically retries the write', async () => {
     const response = { data: { success: true, classificationId: 6, routing: { routed: false, recorded: true } } }
     mockPost.mockResolvedValueOnce(response)

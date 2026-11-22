@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-11-21T14:52:45.085Z
--- Latest Migration: 20261122_180000_widen_classification_intake_receipt_link.sql
+-- Latest Migration: 20261122_190000_widen_manual_routing_check_classification_id.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -5385,7 +5385,7 @@ ALTER SEQUENCE public.library_rules_v2_id_seq OWNED BY public.library_rules_v2.i
 --
 
 CREATE TABLE public.manual_routing_check_state (
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     attempt_id text NOT NULL,
     enabled boolean DEFAULT false NOT NULL,
     automatic_attempts smallint DEFAULT 0 NOT NULL,
@@ -19179,6 +19179,7 @@ FROM unnest(ARRAY[
     '20261102_090000_add_capture_finalization_fence.sql',
     '20261121_180000_add_retry_lineage_proofs.sql',
     '20261121_190000_add_retry_lineage_refusal_category.sql',
-    '20261122_180000_widen_classification_intake_receipt_link.sql'
+    '20261122_180000_widen_classification_intake_receipt_link.sql',
+    '20261122_190000_widen_manual_routing_check_classification_id.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

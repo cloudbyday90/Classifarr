@@ -96,12 +96,15 @@ test('two concurrent checks, duplicate suppression and finally cleanup bound wor
   const f = fixture(); let release;
   const hold = new Promise(resolve => { release = resolve; });
   f.read.mockImplementation(() => hold);
-  const first = f.service.check(1), second = f.service.check(2);
+  const first = f.service.check('9007199254740992');
+  const second = f.service.check('9007199254740993');
   try {
-    expect((await f.service.check(1)).reason).toBe('busy');
     expect((await f.service.check(3)).reason).toBe('busy');
+    expect(f.repository.load.mock.calls).toEqual([['9007199254740992'], ['9007199254740993']]);
   } finally { release(null); await Promise.all([first, second]); }
-  expect((await f.service.check(3)).reason).toBe('not_present');
+  const small = f.service.check(1);
+  try { expect((await f.service.check('1')).reason).toBe('busy'); }
+  finally { expect((await small).reason).toBe('not_present'); }
 });
 
 test('invalid IDs and ineligible history issue no provider calls', async () => {
@@ -131,7 +134,7 @@ test('route requires a current admin principal, validates IDs and never accepts 
   expect(check).not.toHaveBeenCalled();
   await request(app).post('/manual-routing/no/check').set('Authorization', 'admin').expect(400);
   const result = await request(app).post('/manual-routing/1/check').set('Authorization', 'admin').send({ url: 'http://attacker' }).expect(200);
-  expect(check).toHaveBeenCalledWith(1); expect(result.headers['cache-control']).toBe('no-store');
+  expect(check).toHaveBeenCalledWith('1'); expect(result.headers['cache-control']).toBe('no-store');
   check.mockResolvedValueOnce({ reason: 'busy' });
   await request(app).post('/manual-routing/1/check').set('Authorization', 'admin').expect(429);
 });

@@ -3,7 +3,8 @@ import * as defaultDb from '../config/database.mjs';
 import { radarrService } from './radarr.mjs';
 import { sonarrService } from './sonarr.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { normalizeArrId, verifyArrResource } from './arrResourceVerification.mjs';
+import { verifyArrResource } from './arrResourceVerification.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { createManualRoutingCheckRepository } from './manualRoutingCheckRepository.mjs';
 import { routingProviderRevision } from './manualRoutingProviderGuard.mjs';
 import { routingProviderFailure } from './arrLookupFailure.mjs';
@@ -31,8 +32,8 @@ export function createManualRoutingCheckService({ db = defaultDb,
   const active = new Set();
   return {
     async check(classificationId, { signal, expectedProviderRevision, onProviderResult } = {}) {
-      const id = normalizeArrId(classificationId);
-      if (!id) return response('not_found');
+      const id = canonicalDatabaseBigintId(classificationId);
+      if (id === null) return response('not_found');
       if (active.size >= 2 || active.has(id)) return response('busy');
       active.add(id);
       try {

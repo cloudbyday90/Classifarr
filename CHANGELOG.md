@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Manual routing checks** — Keep exact Classification History IDs through
+  manual and scheduled checks, including IDs above JavaScript's safe integer
+  range. Reject partial or noncanonical paths before selecting a row. See the
+  [outcome](docs/architecture/manual-routing-check-bigint-outcome.md).
+
 - **Classification intake links** — Preserve exact History IDs in intake
   receipts and recovery witnesses up to the PostgreSQL BIGINT maximum. Larger
   IDs can be linked even when the existing decision snapshot is unavailable.

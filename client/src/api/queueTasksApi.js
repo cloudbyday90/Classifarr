@@ -95,17 +95,27 @@ export function classifyQueueTask(taskId, data) {
   return apiClient.post(`/queue/tasks/${taskId}/classify`, data, { skipAutomaticRetry: true })
 }
 
+function manualRoutingPath(classificationId) {
+  const id = typeof classificationId === 'number' && Number.isSafeInteger(classificationId)
+    ? String(classificationId)
+    : classificationId
+  if (typeof id !== 'string' || !/^[1-9][0-9]{0,18}$/.test(id) || BigInt(id) > 9223372036854775807n) {
+    throw new TypeError('Valid classification ID is required')
+  }
+  return `/queue/manual-routing/${id}`
+}
+
 export function checkManualRouting(classificationId) {
-  return apiClient.post(`/queue/manual-routing/${classificationId}/check`, {}, { skipAutomaticRetry: true })
+  return apiClient.post(`${manualRoutingPath(classificationId)}/check`, {}, { skipAutomaticRetry: true })
 }
 
 export function getManualRoutingBackground(classificationId) {
   // Local status only; optional provider { reason, nextCheckAt } contains no endpoint or credentials.
-  return getDataRequest(`/queue/manual-routing/${classificationId}/background`, { skipAutomaticRetry: true })
+  return getDataRequest(`${manualRoutingPath(classificationId)}/background`, { skipAutomaticRetry: true })
 }
 
 export function setManualRoutingBackground(classificationId, enabled) {
-  return apiClient.post(`/queue/manual-routing/${classificationId}/background`, { enabled }, { skipAutomaticRetry: true })
+  return apiClient.post(`${manualRoutingPath(classificationId)}/background`, { enabled }, { skipAutomaticRetry: true })
 }
 
 const queueTasksApi = {

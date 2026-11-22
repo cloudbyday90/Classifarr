@@ -37,6 +37,16 @@ it.each([[403, 'administrator'], [429, 'limit'], [500, 'Try again later']])('saf
   expect(wrapper.text()).toContain(text); expect(wrapper.text()).not.toContain('private key')
   wrapper.unmount()
 })
+it('passes an exact History ID through the check and into the background control', async () => {
+  const classificationId = '9007199254740993'
+  checkManualRouting.mockResolvedValue({ data: { message: 'Routing checked.' } })
+  const wrapper = mount(ManualRoutingCheck, { props: { ...props, classificationId } })
+  expect(wrapper.findComponent({ name: 'ManualRoutingBackground' }).props('classificationId')).toBe(classificationId)
+  await wrapper.find('button').trigger('click'); await flushPromises()
+  expect(checkManualRouting).toHaveBeenCalledWith(classificationId)
+  expect(wrapper.find('[role="status"]').text()).toBe('Routing checked.')
+  wrapper.unmount()
+})
 it('shows persisted observations after reload without treating them as routing success', () => {
   const wrapper = mount(ManualRoutingCheck, { props: { ...props, details: { ...props.details,
     manual_routing_observation: { reason: 'verified_present', checkedAt: '2026-10-03T12:00:00Z' } } } })
