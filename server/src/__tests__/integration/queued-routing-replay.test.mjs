@@ -6,10 +6,13 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const db = await import('../../config/database.mjs');
 const { QueuedRoutingReplayGuard } = await import('../../services/queuedRoutingReplayGuard.mjs');
 const { releaseQueueClaim, completeQueueClaim } = await import('../../services/queueTaskAcknowledgementService.mjs');
-let task, historyId, libraryId;
+const { ClassificationService } = await import('../../services/classificationServiceCore.mjs');
+let task, historyId, libraryId, adjacentId;
 const guard = () => new QueuedRoutingReplayGuard({ db });
 const readTask = async () => (await getPool().query('SELECT * FROM task_queue WHERE id=$1', [task.id])).rows[0];
+const readHistory = async id => (await db.query('SELECT status,metadata FROM classification_history WHERE id=$1', [id])).rows[0];
 beforeEach(async () => {
+  adjacentId = null;
   libraryId = (await getPool().query(`INSERT INTO libraries(name,external_id,media_type)
     VALUES('Queued routing fixture','queued-routing','movie') RETURNING id`)).rows[0].id;
   historyId = (await getPool().query(`INSERT INTO classification_history(tmdb_id,media_type,title,library_id,library_name,method,status,metadata)
@@ -20,8 +23,85 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await getPool().query('DELETE FROM task_queue WHERE id=$1', [task.id]);
-  await getPool().query('DELETE FROM classification_history WHERE id=$1', [historyId]);
+  await getPool().query('DELETE FROM classification_history WHERE id=ANY($1::bigint[])', [[historyId, adjacentId]]);
   await getPool().query('DELETE FROM libraries WHERE id=$1', [libraryId]);
+});
+
+async function useHistoryId(id) {
+  await db.query('UPDATE classification_history SET id=$1 WHERE id=$2', [id, historyId]);
+  historyId = id;
+}
+
+function automaticRoute({ routeToArr, beforeRoute, blocked = false, database = db }) {
+  const service = new ClassificationService({ db: database, createLogger: () => ({ debug: jest.fn() }),
+    classificationRoutingService: { routeToArr },
+  });
+  return service.routeClassificationResult(historyId, { tmdb_id: 42, media_type: 'movie' }, {
+    library: { id: libraryId }, method: 'policy_auto', confidence: 95,
+    policyResult: { action: 'auto_classify', library: { library_id: libraryId } },
+  }, blocked, beforeRoute);
+}
+
+test.each(['routed', 'arr_add_failed', 'confirmation_required'])('automatic %s patches only the exact History row', async routing => {
+  await useHistoryId('9007199254740993');
+  adjacentId = '9007199254740992';
+  await db.query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,library_id,method,status,metadata)
+    VALUES($1,43,'movie','Adjacent fixture',$2,'policy_auto','completed','{"classification_details":{"routing":"untouched"}}')`,
+  [adjacentId, libraryId]);
+  const adjacent = await readHistory(adjacentId);
+  const blocked = routing === 'confirmation_required';
+  const routeToArr = jest.fn(async () => {
+    expect((await readTask()).routing_classification_id).toBe(historyId);
+    expect((await readHistory(historyId)).metadata.classification_details.routing).toBe('automatic_routing_pending');
+    return { attempted: true, routed: routing === 'routed', reason: routing, error: routing === 'routed' ? null : 'Fixture failure' };
+  });
+  const beforeRoute = jest.fn(id => guard().admit(task, id));
+  const result = await automaticRoute({ routeToArr, beforeRoute, blocked });
+  expect(result.shouldRoute).toBe(!blocked);
+  expect(routeToArr).toHaveBeenCalledTimes(blocked ? 0 : 1);
+  expect(beforeRoute).toHaveBeenCalledTimes(blocked ? 0 : 1);
+  expect(await readHistory(historyId)).toEqual({ status: routing === 'routed' ? 'routed' : 'completed',
+    metadata: { classification_details: { evidence: 'preserved', routing,
+      ...(routing === 'arr_add_failed' ? { routing_error: 'Fixture failure' } : {}),
+    } },
+  });
+  expect(await readHistory(adjacentId)).toEqual(adjacent);
+  if (blocked) expect((await readTask()).routing_classification_id).toBeNull();
+  else expect(await guard().read(task)).toMatchObject({ classification_id: historyId, recovered: true,
+    routingOutcome: { routeResult: { routed: routing === 'routed' } },
+  });
+});
+
+test('lost admission acknowledgement at maximum BIGINT recovers the marker without provider dispatch', async () => {
+  await useHistoryId('9223372036854775807');
+  const lost = new QueuedRoutingReplayGuard({ db: { withTransaction: async work => {
+    await db.withTransaction(work);
+    throw new Error('Fixture admission acknowledgement lost');
+  } } });
+  const routeToArr = jest.fn();
+  await expect(automaticRoute({ routeToArr, beforeRoute: id => lost.admit(task, id) })).rejects.toThrow('acknowledgement lost');
+  expect((await readTask()).routing_classification_id).toBe(historyId);
+  expect(await guard().read(task)).toMatchObject({ classification_id: historyId, recovered: true,
+    routingOutcome: { routeResult: { routed: false, reason: 'automatic_routing_unconfirmed' } },
+  });
+  await expect(automaticRoute({ routeToArr, beforeRoute: id => guard().admit(task, id) })).rejects.toThrow('already_admitted');
+  expect(routeToArr).not.toHaveBeenCalled();
+});
+
+test('lost automatic closeout acknowledgement recovers the saved outcome without a second provider call', async () => {
+  await useHistoryId('9223372036854775807');
+  const database = { ...db, query: async (sql, values) => {
+    await db.query(sql, values);
+    throw new Error('Fixture closeout acknowledgement lost');
+  } };
+  const routeToArr = jest.fn().mockResolvedValue({ attempted: true, routed: true, reason: 'routed' });
+  const beforeRoute = id => guard().admit(task, id);
+  await expect(automaticRoute({ routeToArr, beforeRoute, database })).rejects.toThrow('acknowledgement lost');
+  expect(await guard().read(task)).toMatchObject({ classification_id: historyId, recovered: true,
+    routingOutcome: { routeResult: { routed: true, reason: 'routed' } },
+  });
+  await expect(automaticRoute({ routeToArr, beforeRoute })).rejects.toThrow('already_admitted');
+  expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 
 test('fresh command admits once; a fresh guard returns uncertainty without modifying the original decision', async () => {
@@ -37,6 +117,7 @@ test('fresh command admits once; a fresh guard returns uncertainty without modif
 });
 
 test('concurrent admission commits exactly one marker', async () => {
+  await useHistoryId('9007199254740993');
   const results = await Promise.allSettled([guard().admit(task, historyId), guard().admit(task, historyId)]);
   expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
   expect((await readTask()).routing_classification_id).toBe(historyId);
@@ -72,6 +153,7 @@ test('missing or changed classification rolls back admission', async () => {
 });
 
 test('transaction failure after updating history leaves neither marker nor pending status', async () => {
+  await useHistoryId('9223372036854775807');
   const failing = new QueuedRoutingReplayGuard({ db: { withTransaction: work => db.withTransaction(client => work({
     query: (sql, values) => sql.startsWith('UPDATE task_queue SET routing_classification_id')
       ? Promise.reject(new Error('injected_commit_boundary')) : client.query(sql, values),

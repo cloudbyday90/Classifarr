@@ -102,6 +102,43 @@ async function manualFixture(routeToArr, database = db) {
     return { taskId, service };
 }
 
+async function withNextHistoryId(id, work) {
+  // This suite uses its own disposable database, so only this test sees the sequence change.
+  const { rows: [sequence] } = await db.query('SELECT last_value, is_called FROM classification_history_id_seq');
+  await db.query("SELECT setval('classification_history_id_seq', $1, false)", [id]);
+  try { return await work(); }
+  finally {
+    await db.query("SELECT setval('classification_history_id_seq', $1, $2)", [sequence.last_value, sequence.is_called]);
+  }
+}
+
+test.each([false, true])('manual closeout targets the exact BIGINT row, lost acknowledgement=%s', async lost => {
+  const id = '9007199254740993', adjacentId = '9007199254740992';
+  await db.query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,library_id,method,status,metadata)
+    VALUES($1,604,'movie',$2,$3,'manual_classification','completed','{"classification_details":{"routing":"untouched"}}')`,
+  [adjacentId, metadata().title, libraryId]);
+  const read = async key => (await db.query('SELECT status, metadata FROM classification_history WHERE id=$1', [key])).rows[0];
+  const adjacent = await read(adjacentId);
+  const route = jest.fn(async () => {
+    expect((await read(id)).metadata.classification_details.routing).toBe('manual_routing_pending');
+    return { attempted: true, routed: true, arrType: 'radarr', reason: 'routed' };
+  });
+  const query = jest.fn(async (sql, values) => {
+    const result = await db.query(sql, values);
+    if (lost) throw new Error('Fixture outcome acknowledgement lost');
+    return result;
+  });
+  const { taskId, service } = await manualFixture(route, { ...db, query });
+  const result = await withNextHistoryId(id, () => service.manualClassifyTask(taskId, libraryId));
+  expect(result.classificationId).toBe(id);
+  expect(result.routing).toMatchObject({ routed: !lost, recorded: !lost });
+  expect(await read(id)).toMatchObject({ status: 'routed', metadata: { classification_details: { routing: 'routed' } } });
+  expect(await read(adjacentId)).toEqual(adjacent);
+  expect(await service.manualClassifyTask(taskId, libraryId)).toMatchObject({ success: false, code: 'invalid_state' });
+  expect(query).toHaveBeenCalledTimes(1);
+  expect(route).toHaveBeenCalledTimes(1);
+});
+
 test('concurrent duplicate sees committed completion and cannot send another provider call', async () => {
     let release, entered;
     const holding = new Promise(resolve => { release = resolve; });
@@ -144,7 +181,9 @@ test.each(['status', 'token', 'library'])('late outcome cannot overwrite changed
         return { attempted: true, routed: true, arrType: 'radarr', reason: 'routed' };
     });
     const { service, taskId } = await manualFixture(route);
-    expect((await service.manualClassifyTask(taskId, libraryId)).routing).toMatchObject({ routed: false, recorded: false });
+  const result = await withNextHistoryId('9223372036854775807', () => service.manualClassifyTask(taskId, libraryId));
+  expect(result.classificationId).toBe('9223372036854775807');
+  expect(result.routing).toMatchObject({ routed: false, recorded: false });
     const row = (await getPool().query("SELECT status,metadata FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0];
     expect(row.status).not.toBe('routed');
     expect(row.metadata.classification_details.routing).toBe('manual_routing_pending');

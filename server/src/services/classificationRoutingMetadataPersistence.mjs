@@ -4,15 +4,11 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const MAX_ROUTING_VALUE_LENGTH = 120;
 const MAX_ROUTING_ERROR_LENGTH = 500;
 const ROUTED_STATUS = 'routed';
-
-function positiveInteger(value) {
-  const numericValue = Number(value);
-  return Number.isSafeInteger(numericValue) && numericValue > 0 ? numericValue : null;
-}
 
 function boundedText(value, maximumLength) {
   if (typeof value !== 'string') return null;
@@ -37,7 +33,7 @@ export function buildClassificationRoutingMetadataUpdate({
   routingError = null,
   status = null,
 } = {}) {
-  const id = positiveInteger(classificationId);
+  const id = canonicalDatabaseBigintId(classificationId);
   const normalizedRouting = boundedText(routing, MAX_ROUTING_VALUE_LENGTH);
   const normalizedRoutingError = routingError === null || routingError === undefined
     ? null

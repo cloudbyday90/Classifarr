@@ -18,7 +18,7 @@ describe('classificationRoutingMetadataPersistence', () => {
       status: 'routed',
     });
 
-    expect(statement.values).toEqual(['routed', null, 'routed', 42]);
+    expect(statement.values).toEqual(['routed', null, 'routed', '42']);
     expect(statement.text).toContain("COALESCE(metadata, '{}'::jsonb)");
     expect(statement.text).toContain("-> 'classification_details'");
     expect(statement.text).toContain("- 'routing_error'");
@@ -33,7 +33,25 @@ describe('classificationRoutingMetadataPersistence', () => {
       routingError: 'API Error',
     });
 
-    expect(statement.values).toEqual(['missing_arr_id', 'API Error', null, 7]);
+    expect(statement.values).toEqual(['missing_arr_id', 'API Error', null, '7']);
+  });
+
+  test.each(['9007199254740992', '9007199254740993', '9223372036854775807'])(
+    'binds exact BIGINT History ID %s without changing the routing patch', classificationId => {
+      const statement = buildClassificationRoutingMetadataUpdate({ classificationId, routing: 'routed' });
+      expect(statement.text).toBe(buildClassificationRoutingMetadataUpdate({ classificationId: 1, routing: 'routed' }).text);
+      expect(statement.values).toEqual(['routed', null, null, classificationId]);
+    },
+  );
+
+  test('rejects unsafe and coercible identities before executing SQL', async () => {
+    const query = jest.fn(), service = new ClassificationRoutingMetadataPersistenceService({ db: { query } });
+    const invalid = [Number.MAX_SAFE_INTEGER + 1, 1.5, 1n, true, ['7'], { valueOf: () => 7 }, '07', ' 7 ',
+      '7.0', '7x', '1e3', '9223372036854775808'];
+    for (const classificationId of invalid) {
+      await expect(service.persist({ classificationId, routing: 'routed' })).rejects.toThrow(TypeError);
+    }
+    expect(query).not.toHaveBeenCalled();
   });
 
   test('rejects invalid IDs and unbounded routing inputs before reaching the database', () => {
@@ -58,7 +76,7 @@ describe('classificationRoutingMetadataPersistence', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE classification_history'),
-      ['threshold_not_met', null, null, 9],
+      ['threshold_not_met', null, null, '9'],
     );
   });
 });

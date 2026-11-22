@@ -27,13 +27,13 @@ test('admission composes only fixed SQL while classification values stay paramet
   const guard = new QueuedRoutingReplayGuard({ db });
   const task = { id: 8, claim_token: '3ab9fe9d-5ed3-4d99-94f0-598b2ad02f96' };
   await guard.admit(task, 41);
-  await guard.admit(task, 42);
+  await guard.admit(task, '9223372036854775807');
   const updates = query.mock.calls.filter(([text]) => text.includes('UPDATE classification_history'));
   expect(updates).toHaveLength(2);
   expect(updates[0][0]).toBe(updates[1][0]);
   expect(updates[0][0]).toMatch(/WHERE id = \$4\s+AND status='completed' AND library_id IS NOT NULL RETURNING id$/);
   expect(updates.map(([, values]) => values)).toEqual([
-    ['automatic_routing_pending', null, null, 41], ['automatic_routing_pending', null, null, 42],
+    ['automatic_routing_pending', null, null, '41'], ['automatic_routing_pending', null, null, '9223372036854775807'],
   ]);
   db.withTransaction.mockClear();
   await expect(guard.admit(task, '1;DELETE')).rejects.toThrow('invalid_reference');

@@ -270,7 +270,7 @@ describe('ClassificationService auto-routing thresholds', () => {
 
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE classification_history'),
-        ['routed', null, 'routed', 42]
+        ['routed', null, 'routed', '42']
       );
       expect(mockDb.query.mock.calls[0][0]).toContain("'{classification_details}'");
     });
@@ -285,7 +285,7 @@ describe('ClassificationService auto-routing thresholds', () => {
 
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE classification_history'),
-        ['threshold_not_met', null, null, 42]
+        ['threshold_not_met', null, null, '42']
       );
     });
 
@@ -308,7 +308,7 @@ describe('ClassificationService auto-routing thresholds', () => {
 
       expect(mockDb.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE classification_history'),
-        ['missing_arr_id', 'API Error', null, 42]
+        ['missing_arr_id', 'API Error', null, '42']
       );
     });
   });

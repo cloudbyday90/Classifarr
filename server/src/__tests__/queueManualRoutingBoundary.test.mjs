@@ -45,7 +45,7 @@ test('unconfirmed marker and attempt token replace caller-provided routing claim
   expect(details.manual_routing_attempt_id).toMatch(/^[a-f\d-]{36}$/);
   expect(details.outcome_link).toBeUndefined(); expect(details.outcome_path).toBeUndefined();
   expect(details.manual_routing_intent).toBeUndefined(); expect(details.manual_routing_observation).toBeUndefined();
-  expect(f.db.query.mock.calls[0][1]).toEqual(['arr_add_failed', MANUAL_ROUTING_MESSAGE, null, 10, 7,
+  expect(f.db.query.mock.calls[0][1]).toEqual(['arr_add_failed', MANUAL_ROUTING_MESSAGE, null, '10', 7,
     'manual_routing_pending', details.manual_routing_attempt_id]);
   expect(result.routing).toMatchObject({ routed: false, recorded: true, reason: 'arr_add_failed' });
   expect(JSON.stringify(result)).not.toContain('private-key');

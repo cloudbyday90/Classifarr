@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Routing outcome persistence** — Preserve exact BIGINT History IDs in
+  manual and automatic outcomes and the queued admission marker. See the
+  [outcome](docs/architecture/routing-outcome-bigint-outcome.md).
+
 - **Manual routing checks** — Keep exact Classification History IDs through
   manual and scheduled checks, including IDs above JavaScript's safe integer
   range. Reject partial or noncanonical paths before selecting a row. See the
