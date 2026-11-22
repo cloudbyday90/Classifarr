@@ -8,13 +8,13 @@ const dockerArgs = ['--host', 'unix:///var/run/docker.sock', 'info', '--format',
   '{"os":{{json .OSType}},"arch":{{json .Architecture}},"cpus":{{json .NCPU}},"cgroup":{{json .CgroupVersion}}}'];
 const unavailable = check => ({ check, status: 'unavailable' });
 
-// Stable Node 24 only, including the October 2026 security patch minimum.
+// Stable Node 24 only. Keep this security floor aligned with .nvmrc.
 function supportsGuestNode(version) {
   const match = typeof version === 'string' && /^24\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
   if (!match) return false;
   const minor = Number(match[1]), patch = Number(match[2]);
   return Number.isSafeInteger(minor) && Number.isSafeInteger(patch)
-    && (minor > 22 || (minor === 22 && patch >= 1));
+    && (minor > 22 || (minor === 22 && patch >= 3));
 }
 
 /** Run inside the guest checkout, not through a Windows/remote Docker context. */

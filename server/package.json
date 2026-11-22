@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "npm@12.2.2",
   "engines": {
-    "node": ">=24.22.1 <25",
+    "node": ">=24.22.3 <25",
     "npm": ">=12.2.2 <13"
   },
   "description": "AI-powered media classification for the *arr ecosystem",

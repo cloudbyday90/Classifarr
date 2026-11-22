@@ -310,6 +310,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Security
 
+- **Node.js runtime** — Pin Node.js 24.22.3 and Alpine 3.24.4 across
+  development, CI, the application image, and test fixtures. This includes
+  November's Node.js security fixes and bundled Undici 7.30.2. Retain npm/npx
+  12.2.2 and the existing system zlib and pgvector pins. See the
+  [outcome](docs/architecture/node-24-22-3-runtime-outcome.md).
+
 - **System compression library** — Pin signed Alpine zlib 1.4-r0 in the shared
   application base and provider fixture, with automated native compression and
   PostgreSQL archive checks in the existing image-verification job. Preserve the

@@ -13,6 +13,7 @@ const vmId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const switchId = '11111111-2222-3333-4444-555555555555';
 const revision = 'a'.repeat(40), secret = 'PRIVATE-OUTPUT-DO-NOT-PRINT';
 const target = { vmId, switchId };
+const nodeBaseline = readFileSync(new URL('../../.nvmrc', import.meta.url), 'utf8').trim();
 function observation() {
   return { vmId, generation: 2, cpus: 4, memoryBytes: 8589934592, dynamicMemory: false,
     disks: [{ size: 68719476736, type: 'Fixed', format: 'VHDX', parent: false }],
@@ -21,7 +22,7 @@ function observation() {
 }
 const capture = command => captureHypervPreparation({ ...target, platform: 'win32', systemRoot: 'C:\\Windows', command });
 function guestOptions(overrides = {}) {
-  return { root: '/checkout', revision, platform: 'linux', arch: 'x64', nodeVersion: '24.22.1', uid: 1000, gid: 1000,
+  return { root: '/checkout', revision, platform: 'linux', arch: 'x64', nodeVersion: nodeBaseline, uid: 1000, gid: 1000,
     canonical: path => path, controllers: () => 'cpu memory pids io\n', space: () => 20000000000,
     shutdown: () => ({ check: 'guest_shutdown_channel_bound', status: 'matched' }),
     command: (file, args) => file === 'docker' ? '{"os":"linux","arch":"x86_64","cpus":4,"cgroup":"2"}'
@@ -159,14 +160,13 @@ test('guest capture selects local socket and exact clean checkout but cannot mar
 });
 
 test('guest Node security minimum follows the repository baseline using synthetic observations only', () => {
-  const baseline = readFileSync(new URL('../../.nvmrc', import.meta.url), 'utf8').trim();
-  const [major, minor, patch] = baseline.split('.').map(Number);
+  const [major, minor, patch] = nodeBaseline.split('.').map(Number);
   assert.ok(patch > 0, 'Update the predecessor fixture when selecting a zero-patch baseline');
-  for (const nodeVersion of [baseline, `${major}.${minor}.${patch + 1}`, '24.23.0', '24.100.0']) {
+  for (const nodeVersion of [nodeBaseline, `${major}.${minor}.${patch + 1}`, '24.23.0', '24.100.0']) {
     assert.equal(captureGuestPreparation(guestOptions({ nodeVersion })).status, 'matched', nodeVersion);
   }
   for (const nodeVersion of [`${major}.${minor}.${patch - 1}`, '24.21.99', '24.22.0',
-    '24.22.1-rc.1', '24.22.1+build', '24.022.1', '24.22.01', '24.22.1\n',
+    `${nodeBaseline}-rc.1`, `${nodeBaseline}+build`, `${major}.0${minor}.${patch}`, `${major}.${minor}.0${patch}`, `${nodeBaseline}\n`,
     '24.9007199254740992.0', '24.23.9007199254740992', '25.0.0', null, 24]) {
     const result = captureGuestPreparation(guestOptions({ nodeVersion }));
     assert.equal(result.checks.find(row => row.check === 'node_24').status, 'mismatch', String(nodeVersion));
