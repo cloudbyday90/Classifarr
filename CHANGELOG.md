@@ -315,6 +315,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Security
 
+- **OSV advisory triage** — Remove the expired server-only exception for the
+  withdrawn deepmerge advisory. The pinned scan still checks all three
+  lockfiles and rejects active advisories. See the
+  [outcome](docs/architecture/osv-withdrawn-exception-outcome.md).
+
 - **Node.js runtime** — Pin Node.js 24.22.3 and Alpine 3.24.4 across
   development, CI, the application image, and test fixtures. This includes
   November's Node.js security fixes and bundled Undici 7.30.2. Retain npm/npx
