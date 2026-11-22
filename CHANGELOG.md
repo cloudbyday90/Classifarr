@@ -239,7 +239,7 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 - **Native arm64 recovery CI** — Run the fresh-install scheduled crash drill
   on native arm64 after relevant pushes to `main`. Record the source, image,
   recovery and cleanup without involving publication. See the
-  [design](docs/architecture/native-arm64-recovery-design.md).
+  [outcome](docs/architecture/native-arm64-recovery-outcome.md).
 
 - **Server runtime dependencies** — Qualify dotenv 18.0.10 from PR #592 and
   the publisher-patched express-rate-limit 8.7.5. Run dotenv CLI tests through
