@@ -31,6 +31,15 @@ export function loadPromotionAuthority({ tag, sourceRevision, digest, workflow, 
   return loadVerifiedRelease({ tag, command, check: evidence => assertPromotionEvidence(evidence, { tag, sourceRevision, digest, workflow }) });
 }
 
+export function loadPublishedReleaseVerificationEvidence({ tag, sourceRevision, digest, workflow, command }) {
+  return loadVerifiedRelease({ tag, command, check: evidence => {
+    const subject = assertPromotionEvidence(evidence, { tag, sourceRevision, digest, workflow });
+    const routingSubjects = evidence.published_routing.map(({ subject: { platform, manifestDigest, configDigest } }) =>
+      ({ platform, manifestDigest, configDigest }));
+    return { ...subject, routingSubjects };
+  } });
+}
+
 /** Historical rehearsal can read a signed v3 release without authorizing promotion. */
 export function loadHistoricalReleaseEvidence({ tag, command }) {
   return loadVerifiedRelease({ tag, command, check: evidence => {

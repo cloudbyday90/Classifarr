@@ -1,36 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import assert from 'node:assert/strict';
-import { ROUTING_PLATFORMS, verifiedManifest } from './publishedRoutingSubject.mjs';
 import { PUBLISHED_IMAGE_REPOSITORIES, EXPECTED_RELEASE_REPOSITORY, EXPECTED_SIGNER_WORKFLOW,
-  assertSourceRevision, parsePublishedImageReference } from './publishedDigestConsumerSmoke.mjs';
+  assertSourceRevision } from './publishedDigestConsumerSmoke.mjs';
+import { inspectRegistryReference, readRegistryDigest, verifyPromotionGraph } from './releaseRegistryInspection.mjs';
+export { verifyPromotionGraph } from './releaseRegistryInspection.mjs';
 
-const indexTypes = ['application/vnd.oci.image.index.v1+json', 'application/vnd.docker.distribution.manifest.list.v2+json'];
-const childTypes = ['application/vnd.oci.image.manifest.v1+json', 'application/vnd.docker.distribution.manifest.v2+json'];
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
-
-function inspect(command, reference, format) {
-  return command('docker', ['buildx', 'imagetools', 'inspect', ...format, reference]);
-}
-
-export function verifyPromotionGraph(command, image) {
-  const { repository, digest } = parsePublishedImageReference(image);
-  const index = verifiedManifest(inspect(command, image, ['--raw']), digest);
-  assert.ok(indexTypes.includes(index.mediaType));
-  assert.ok(Array.isArray(index.manifests) && index.manifests.length >= 2 && index.manifests.length <= 16);
-  assert.equal(new Set(index.manifests.map(item => item.digest)).size, index.manifests.length);
-  for (const platform of ROUTING_PLATFORMS) {
-    assert.equal(index.manifests.filter(item => `${item.platform?.os}/${item.platform?.architecture}` === platform).length, 1);
-  }
-  // Include attestation children (unknown/unknown), not just runnable architectures.
-  for (const child of index.manifests) {
-    assert.match(child.digest ?? '', digestPattern);
-    assert.ok(childTypes.includes(child.mediaType));
-    const manifest = verifiedManifest(inspect(command, `${repository}@${child.digest}`, ['--raw']), child.digest);
-    assert.equal(manifest.mediaType, child.mediaType);
-    assert.match(manifest.config?.digest ?? '', digestPattern);
-  }
-  return index;
-}
 
 function attest(command, image, revision) {
   command('gh', ['attestation', 'verify', `oci://${image}`, '--repo', EXPECTED_RELEASE_REPOSITORY,
@@ -39,9 +14,7 @@ function attest(command, image, revision) {
 
 function currentDigest(command, repository) {
   // Missing aliases and transport/auth failures all stop; absence is not inferred from CLI text.
-  const result = JSON.parse(inspect(command, `${repository}:latest`, ['--format', '{{json .Manifest}}']));
-  assert.match(result.digest ?? '', digestPattern);
-  return result.digest;
+  return readRegistryDigest(command, `${repository}:latest`);
 }
 
 function assertForwardPromotion(command, repository, current, subject) {
@@ -49,7 +22,7 @@ function assertForwardPromotion(command, repository, current, subject) {
   const image = `${repository}@${current}`;
   const index = verifyPromotionGraph(command, image);
   const child = index.manifests.find(item => item.platform?.os === 'linux' && item.platform?.architecture === 'amd64');
-  const config = JSON.parse(inspect(command, `${repository}@${child.digest}`, ['--format', '{{json .Image}}']));
+  const config = JSON.parse(inspectRegistryReference(command, `${repository}@${child.digest}`, ['--format', '{{json .Image}}']));
   const revision = assertSourceRevision(config?.config?.Labels?.['org.opencontainers.image.revision']);
   attest(command, image, revision);
   // Serialization alone cannot prevent a delayed old run from rolling latest back.

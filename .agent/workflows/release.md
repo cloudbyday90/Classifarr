@@ -271,24 +271,26 @@ See [promotion design](../../docs/architecture/release-image-promotion-design.md
 
 ## 5. Verify or stop
 
-Watch the exact tag run. Require the attached evidence JSON, its provenance,
-the immutable GitHub release verification, and both `latest` aliases to pass
-before announcing it:
+Watch the exact tag run, then verify its published result before announcing
+the release. Supply the approved source SHA, published index digest from the
+image build, and the exact GitHub run ID and attempt:
 
 ```bash
 gh run watch <tag-run-id> --exit-status
-gh release verify vX.Y.Z-beta --repo cloudbyday90/Classifarr --format json
+node scripts/verify-published-release.mjs --tag vX.Y.Z-beta \
+  --source-revision <approved-source-sha> --digest <published-index-digest> \
+  --run-id <tag-run-id> --run-attempt <tag-run-attempt>
 ```
 
-Download the evidence asset into an ignored directory and independently run
-`gh attestation verify <evidence.json>` with `--repo cloudbyday90/Classifarr`,
-`--signer-workflow cloudbyday90/Classifarr/.github/workflows/ci.yml`,
-`--source-ref refs/tags/vX.Y.Z-beta`, `--source-digest <approved-source-sha>`,
-`--predicate-type https://slsa.dev/provenance/v1` and
-`--deny-self-hosted-runners`. Retain default public trusted roots; do not use
-`--no-public-good`. Inspect both routing receipts and the scheduled recovery
-receipt for the same arm64 child in the v4 asset. Verify the checks and image
-identities as well as the signature.
+The verifier authenticates the immutable GitHub release and its v4 asset,
+binds the signed routing and scheduled recovery receipts to the requested
+attempt, and checks the successful routing, publication and promotion jobs.
+It reads both registries' version tags and `latest` before and after checking
+the index and matching the child and config digests to the signed native
+receipts. The bounded JSON result reports observations
+at that time. Keep it with the release evidence. The existing promotion dry
+run checks write eligibility and can pass while an older image is at `latest`.
+[Verification design](../../docs/architecture/published-release-verifier-design.md)
 
 On failure, stop announcement and inspect the exact failed job. Do not delete
 or retarget a tag just because GitHub release publication failed: registry
@@ -307,6 +309,9 @@ preserves the exact indexes, and checks both registries. It skips already-correc
 writes. A newer current source, missing alias, broken graph, unknown provenance,
 or historical v1–v3 evidence in the current workflow is a hard stop. Do not force or rebuild an
 image to bypass it; missing-alias bootstrap needs a separately reviewed repair.
+Keep the retry result and registry observations with the original signed asset.
+The automatic verifier requires successful jobs from the tagged attempt and
+cannot turn a manual retry into evidence that the original promotion passed.
 For incomplete image graphs follow the
 [retirement assessment](../../docs/architecture/published-image-release-retirement.md).
 GHCR retention is read-only inventory plus review, not generic package-version

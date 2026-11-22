@@ -29,6 +29,12 @@ consumer checks and immutable GitHub publication. Require current-schema asset
 validation plus release/asset/CI attestation verification, not a passed flag.
 The historical rehearsal's read-only verifier also accepts signed v3 and
 cannot authorize promotion.
+
+After successful automatic promotion, run `scripts/verify-published-release.mjs`
+using the approved source, digest, tag, run and attempt. It checks signed v4
+evidence, exact-attempt job results and the current version and `latest`
+references in both registries. Keep manual promotion retry evidence separate
+from the original tagged attempt.
 Read `releasePromotionAuthority.mjs` and `releaseImagePromotion.mjs` before
 running their CLI. It defaults to read-only; `--write` requires user authority.
 

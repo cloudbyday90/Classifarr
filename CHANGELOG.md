@@ -236,6 +236,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Published release verification** — Check signed v4 evidence, the exact
+  tagged attempt and both registries' current version and `latest` digests
+  together with a read-only command. See the
+  [outcome](docs/architecture/published-release-verifier-outcome.md).
+
 - **Release arm64 recovery gate** — Require the current release attempt's
   scheduled crash receipt for the exact published arm64 child before GitHub
   publication or `latest` promotion. See the
