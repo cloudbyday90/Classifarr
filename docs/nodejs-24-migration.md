@@ -1,12 +1,13 @@
 # Node.js 24.22.3 and npm 12.2.2 baseline
 
-Classifarr supports Node.js `>=24.22.3 <25` and npm `>=12.2.2 <13` in local
-development, CI, and production. The exact Node baseline is stored in
-[`.nvmrc`](../.nvmrc). Docker pins the official `node:24.22.3-alpine3.24`
-multi-platform image digest (Alpine 3.24.4) and installs npm 12.2.2.
-GitHub Actions reads the same Node version file and installs the same npm
-release. `npx` is installed with npm, so its expected
-version is also 12.2.2.
+Classifarr supports Node.js `>=24.22.3 <25` and uses npm `>=12.2.2 <13`
+for development, CI, and image builds. The exact Node baseline is stored in
+[`.nvmrc`](../.nvmrc). Docker builders use the pinned official
+`node:24.22.3-alpine3.24` multi-platform image and install npm 12.2.2 with
+its bundled npx. GitHub Actions uses the same Node and npm releases.
+The production stage uses the matching pinned Alpine 3.24.4 image and
+copies the Node binary. Its operational commands use Node directly.
+[Production image design](architecture/production-image-package-manager-design.md)
 
 ## Decision
 

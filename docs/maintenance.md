@@ -128,8 +128,9 @@ Current maintenance posture:
 
 - GitHub Actions read the exact Node version from `.nvmrc` and install the
   exact supported npm version.
-- Docker runtime/build stages use concrete Node and npm versions in a shared,
-  digest-pinned Alpine base stage with build-time version checks.
+- Docker builders use the pinned Node image and exact npm/npx version.
+  Production uses the matching pinned Alpine image and copies the checked
+  Node binary and release notice.
 - CI service containers should prefer explicit image versions over floating tags.
 
 Recommended pattern:
@@ -138,10 +139,11 @@ Recommended pattern:
   Docker build arguments
 - npm and npx: one exact npm version; npx is bundled with npm and must not be
   managed independently
-- Docker images: explicit tag plus reviewed multi-platform index digest; update
-  the tag, digest and expected Alpine release together, including the provider
-  fault fixture. Keep `.nvmrc` and workspace/lockfile engines aligned. See the
-  [runtime update design](architecture/node-24-21-runtime-design.md).
+- Docker images: use explicit tags and reviewed multi-platform index digests.
+  Review the Alpine and Node pins, platform parents, Node release notice
+  checksum and provider fault fixture together. Keep `.nvmrc` and
+  workspace/lockfile engines aligned.
+  [Production image design](architecture/production-image-package-manager-design.md)
 - Service images: explicit version pin instead of `latest`
 
 ## Review Guidance

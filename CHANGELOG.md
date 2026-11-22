@@ -315,6 +315,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Security
 
+- **Production image toolchain** — Keep npm and npx in the builders.
+  Assemble production from the matching Alpine base and pinned Node
+  binary so the global npm bundle is absent from the shipped layers.
+  See the [outcome](docs/architecture/production-image-package-manager-outcome.md).
+
 - **OSV advisory triage** — Remove the expired server-only exception for the
   withdrawn deepmerge advisory. The pinned scan still checks all three
   lockfiles and rejects active advisories. See the

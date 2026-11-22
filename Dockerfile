@@ -9,14 +9,16 @@ ARG ALPINE_RELEASE=3.24.4
 # Multi-platform index, not an architecture-specific manifest. Update the tag,
 # digest and expected release together after validating both shipped platforms.
 ARG NODE_IMAGE_DIGEST=sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
+# The production index's amd64 and arm64 children are the Node image's Alpine parents.
+ARG ALPINE_IMAGE_DIGEST=sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 ARG NPM_VERSION=12.2.2
 # npm defaults to two registry fetch retries. A multi-architecture build has
 # more independent registry reads, so retain `npm ci` integrity while allowing
 # short-lived registry network failures to recover.
 ARG NPM_FETCH_RETRIES=5
 
-# Shared package-manager baseline. npm distributes npx, so both stay aligned.
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION}@${NODE_IMAGE_DIGEST} AS node-runtime-base
+# Shared builder baseline. npm distributes npx, so both stay aligned.
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION}@${NODE_IMAGE_DIGEST} AS node-build-base
 ARG NODE_VERSION
 ARG ALPINE_RELEASE
 ARG NPM_VERSION
@@ -31,7 +33,7 @@ RUN node --version && cat /etc/alpine-release \
   && test "$(npx --version)" = "${NPM_VERSION}"
 
 # Stage 1: Frontend Builder
-FROM node-runtime-base AS frontend-builder
+FROM node-build-base AS frontend-builder
 ARG NPM_FETCH_RETRIES
 
 WORKDIR /build/client
@@ -49,7 +51,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Backend Builder  
-FROM node-runtime-base AS backend-builder
+FROM node-build-base AS backend-builder
 ARG NPM_FETCH_RETRIES
 
 WORKDIR /build/server
@@ -65,7 +67,18 @@ RUN npm ci --omit=dev --fetch-retries=${NPM_FETCH_RETRIES}
 RUN npm rebuild bcrypt
 
 # Stage 3: Production Runtime
-FROM node-runtime-base AS production
+FROM alpine:${ALPINE_RELEASE}@${ALPINE_IMAGE_DIGEST} AS production
+ARG NODE_VERSION
+ARG ALPINE_RELEASE
+ENV NODE_VERSION=${NODE_VERSION}
+COPY --from=node-build-base /usr/local/bin/node /usr/local/bin/node
+# Keep the release notice available on both platform builds. Update it with Node.
+ADD --chmod=0644 --checksum=sha256:5888dbb9a1d2b18f2c3e6c5f6af1b39de658372b402a0577b002777f14c62ace \
+    https://raw.githubusercontent.com/nodejs/node/e63cab040c09d43ceef8cb35508c40044614e906/LICENSE /usr/local/LICENSE
+RUN apk add --no-cache libstdc++ libatomic zlib=1.4-r0 \
+    && test "$(node --version)" = "v${NODE_VERSION}" \
+    && test "$(cat /etc/alpine-release)" = "${ALPINE_RELEASE}" \
+    && apk info --exists ca-certificates-bundle zlib=1.4-r0
 
 # pgvector build mode:
 # - multi (default): generic + AVX + AVX2 on x86_64; portable generic elsewhere
@@ -185,10 +198,8 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
 RUN find / -perm /6000 -type f -exec chmod a-s {} \; 2>/dev/null || true
 
 # Create non-root user for security
-# Remove existing node user (UID/GID 1000) from base image to avoid conflicts
-RUN deluser --remove-home node 2>/dev/null || true && \
-    delgroup node 2>/dev/null || true && \
-    addgroup -g 1000 classifarr && \
+# Create the default application identity on the Alpine runtime base.
+RUN addgroup -g 1000 classifarr && \
     adduser -u 1000 -G classifarr -s /bin/sh -D classifarr
 
 # Extension binaries remain root-owned. Runtime selection uses the existing
@@ -212,7 +223,9 @@ RUN chmod -R go-w /app && chmod +x /app/docker-entrypoint.sh
 
 # Create directories for PostgreSQL data and runtime
 RUN mkdir -p /app/data/postgres /run/postgresql && \
-    chown -R classifarr:classifarr /app/data /run/postgresql
+    chown -R classifarr:classifarr /app/data /run/postgresql && \
+    test ! -e /usr/local/lib/node_modules && \
+    ! command -v npm && ! command -v npx
 
 # Environment variables
 ENV NODE_ENV=production
