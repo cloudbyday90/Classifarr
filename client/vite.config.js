@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { createClientCodeSplitting } from './build/clientCodeSplitting.mjs'
+import { isVueCompilerFixturePath } from './build/vueCompilerFixturePaths.mjs'
 
 const clientRoot = import.meta.dirname
 
@@ -27,6 +28,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    watch: {
+      ignored: isVueCompilerFixturePath,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:21324',

@@ -1,12 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from 'vitest'
+import { vueCompilerFixturePrefix } from '../../../build/vueCompilerFixturePaths.mjs'
 
 const clientRoot = fileURLToPath(new URL('../../../', import.meta.url))
-const scratchRoot = resolve(clientRoot, '.tmp')
+const scratchRoot = dirname(vueCompilerFixturePrefix)
 const compilerPath = resolve(clientRoot, 'node_modules/vue-tsc/bin/vue-tsc.js')
 const childComponent = `<script setup>
 defineProps({ count: { type: Number, required: true } })
@@ -17,7 +18,7 @@ defineProps({ count: { type: Number, required: true } })
 // Check actual workspace options with the installed CLI, never a shell or npx.
 export function typecheck(source, companions = {}) {
   mkdirSync(scratchRoot, { recursive: true })
-  const directory = mkdtempSync(resolve(scratchRoot, 'vue-typecheck-'))
+  const directory = mkdtempSync(vueCompilerFixturePrefix)
   try {
     writeFileSync(resolve(directory, 'tsconfig.json'), JSON.stringify({
       extends: resolve(clientRoot, 'tsconfig.components.json'),

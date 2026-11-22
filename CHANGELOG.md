@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Vite development reloads** — Ignore temporary Vue compiler projects in
+  the client watcher to preserve browser drafts during parallel validation.
+  Keep reloads for watched TypeScript configs. See the
+  [outcome](docs/architecture/vite-compiler-fixture-watcher-outcome.md).
+
 - **Code-health JSON inputs** — Exclude the two generated Playwright output
   roots from the client JSON inventory while keeping authored validation.
   See the [outcome](docs/architecture/code-health-json-inputs-outcome.md).
