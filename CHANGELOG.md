@@ -236,6 +236,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Published arm64 recovery evidence** — Rehearse scheduled crash recovery
+  against an immutable existing release's exact arm64 image on a native
+  runner. See the [design](docs/architecture/published-arm64-recovery-design.md).
+
 - **Native arm64 recovery CI** — Run the fresh-install scheduled crash drill
   on native arm64 after relevant pushes to `main`. Record the source, image,
   recovery and cleanup without involving publication. See the

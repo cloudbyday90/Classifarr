@@ -6,8 +6,8 @@ import { expect, test } from '@jest/globals';
 const workflow = name => load(readFileSync(new URL(`../../../../.github/workflows/${name}.yml`, import.meta.url), 'utf8'));
 
 test.each([
-  ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 14],
-  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 17],
+  ['setup-node', '949feb2413d6458794dcd2491c4babbbce0c15c1', 15],
+  ['upload-artifact', 'cf430e030ddbb5b0abf93d22962f4752f3646cd9', 19],
   ['download-artifact', '9000827ccba6bdab643e8b6fd33ac0654aef8333', 6],
 ])('all %s steps use the reviewed immutable release', (action, revision, count) => {
   const files = readdirSync(new URL('../../../../.github/workflows/', import.meta.url)).filter(file => file.endsWith('.yml'));
@@ -15,6 +15,31 @@ test.each([
     .flatMap(job => job.steps ?? []).filter(step => step.uses?.startsWith(`actions/${action}@`)));
   expect(references).toHaveLength(count);
   for (const step of references) expect(step.uses).toBe(`actions/${action}@${revision}`);
+});
+
+test('published arm64 rehearsal accepts dispatch only and has no publication authority', () => {
+  const config = workflow('published-arm64-recovery');
+  expect(Object.keys(config.on)).toEqual(['workflow_dispatch']);
+  expect(config.on.workflow_dispatch.inputs).toEqual({ release_tag: {
+    description: 'Existing immutable Classifarr release tag', required: true, type: 'string',
+  } });
+  expect(config.permissions).toEqual({ contents: 'read', attestations: 'read' });
+  expect(Object.keys(config.jobs)).toEqual(['published-arm64-recovery']);
+  const job = config.jobs['published-arm64-recovery'];
+  expect(job.if).toBe("github.repository == 'cloudbyday90/Classifarr' && github.ref == 'refs/heads/main'");
+  expect(job['runs-on']).toBe('ubuntu-24.04-arm');
+  for (const key of ['permissions', 'environment', 'needs', 'continue-on-error']) expect(job[key]).toBeUndefined();
+  expect(job.steps.filter(step => step.run).map(step => step.run)).toEqual([
+    'node --test scripts/__tests__/published-arm64-recovery.test.mjs', 'node scripts/run-published-arm64-recovery.mjs',
+  ]);
+  expect(job.steps.find(step => step.id === 'recovery').env).toEqual({
+    GH_TOKEN: '${{ github.token }}', RELEASE_TAG: '${{ inputs.release_tag }}',
+  });
+  expect(job.steps[0].with['persist-credentials']).toBe(false);
+  expect(job.steps.filter(step => step.uses).map(step => step.uses.split('@')[0])).toEqual([
+    'actions/checkout', 'actions/setup-node', 'actions/upload-artifact', 'actions/upload-artifact',
+  ]);
+  for (const step of job.steps) expect(step['continue-on-error']).toBeUndefined();
 });
 
 test('native recovery is an independent read-only main-branch rehearsal', () => {

@@ -6,12 +6,10 @@ import { readInstallationSource } from './run-runtime-installation-acceptance.mj
 import { runDockerCheckCommand } from './lib/dockerCheckCommand.mjs';
 import { withFrozenUpgradeCandidate } from './lib/frozenUpgradeCandidate.mjs';
 import { runPublishedUpgradeCompose } from './lib/publishedUpgradeCompose.mjs';
-import { assertScheduledCrashRecovery, SCHEDULED_CRASH_RECOVERY } from './lib/scheduledInstallationContract.mjs';
-import { installationFailureStage } from './lib/runtimeInstallationReceipt.mjs';
+import { freshInstallationFailureStage, validateFreshInstallationRecovery } from './lib/freshInstallationRecovery.mjs';
 
 const PLATFORM = 'linux/arm64';
 const RECEIPT_PATH = new URL('../.tmp/ci/native-arm64-recovery.json', import.meta.url);
-const FRESH_CHECKS = ['fresh_install_and_operational_seeds', 'fresh_startup_scheduler_progress', 'fresh_backfill_crash_recovery'];
 
 export async function runNativeArm64Recovery({ env = process.env, platform = process.platform, arch = process.arch,
   source = readInstallationSource, docker = runDockerCheckCommand, candidate = withFrozenUpgradeCandidate,
@@ -49,23 +47,13 @@ export async function runNativeArm64Recovery({ env = process.env, platform = pro
       stage = 'installation';
       const result = await drill({ candidateImageId, freshOnly: true, deploymentProfile: 'unraid' });
       stage = 'evidence';
-      assert.equal(result.status, 'passed');
-      assert.equal(result.scope, 'fresh-only');
-      assert.equal(result.candidateImageId, candidateImageId);
-      assert.equal(result.fresh?.status, 'passed');
-      assert.equal(result.cleanup, 'passed');
-      assert.deepEqual(result.checks, FRESH_CHECKS);
-      assertScheduledCrashRecovery(result.crashRecovery);
-      return SCHEDULED_CRASH_RECOVERY;
+      return validateFreshInstallationRecovery(result, candidateImageId);
     }, { sourceRevision: revision });
     checkSource();
     return { ...receipt, status: 'passed', failureStage: null, crashRecovery, cleanup: 'passed' };
   } catch (error) {
     if (error?.message === 'frozen_candidate_cleanup_failed') stage = 'cleanup';
-    if (stage === 'installation') {
-      const failureStage = installationFailureStage(error);
-      if (failureStage !== 'preflight') stage = failureStage;
-    }
+    if (stage === 'installation') stage = freshInstallationFailureStage(error);
     return { ...receipt, failureStage: stage };
   }
 }
