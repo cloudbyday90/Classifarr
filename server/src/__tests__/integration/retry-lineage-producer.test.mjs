@@ -35,11 +35,11 @@ afterEach(async () => {
 });
 afterAll(async () => { await database.pool.end(); });
 
-async function seed(metadata = { retry_lineage: stale }) {
-  for (const id of history) {
+async function seed(metadata = { retry_lineage: stale }, sourceId = 41) {
+  for (const [index, id] of [sourceId, 42, 43].entries()) {
     await query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,method,status,metadata)
       VALUES($1,$2,'movie',$3,'fallback','awaiting_decision',$4::jsonb)`,
-    [id, tmdbId + id - 41, `Owned lineage ${id}`, JSON.stringify(id === 41 ? metadata : {})]);
+    [id, tmdbId + index, `Owned lineage ${id}`, JSON.stringify(index === 0 ? metadata : {})]);
   }
   await query('INSERT INTO media_requests(id,classification_id,title) VALUES(301,42,$1)', ['Owned unrelated request']);
   await query('INSERT INTO webhook_log(id,classification_id,media_title) VALUES(401,42,$1)', ['Owned unrelated webhook']);
@@ -77,10 +77,10 @@ test.each([{ name: 'stale reference object', value: stale },
     expect(consumed.history[0].metadata).toMatchObject(metadata);
     expect(consumed.history[0].metadata.classification_details.outcome_link).not.toHaveProperty('replacement_classification_id');
   });
-async function seedProtected(metadata = { overview: 'Owned overview', genres: ['Drama'], retry_lineage: stale }) {
-  await seed(metadata);
-  await query('INSERT INTO media_requests(id,classification_id,media_type,tmdb_id) VALUES(302,41,\'movie\',$1)', [tmdbId]);
-  await query('INSERT INTO webhook_log(id,classification_id,media_type,tmdb_id) VALUES(402,41,\'movie\',$1)', [tmdbId]);
+async function seedProtected(metadata = { overview: 'Owned overview', genres: ['Drama'], retry_lineage: stale }, sourceId = 41) {
+  await seed(metadata, sourceId);
+  await query('INSERT INTO media_requests(id,classification_id,media_type,tmdb_id) VALUES(302,$2,\'movie\',$1)', [tmdbId, sourceId]);
+  await query('INSERT INTO webhook_log(id,classification_id,media_type,tmdb_id) VALUES(402,$2,\'movie\',$1)', [tmdbId, sourceId]);
 }
 
 async function claimRetry() {
@@ -116,21 +116,22 @@ function worker() {
   });
 }
 
-test.each([41, '41'])('fresh capture for %p retains current owners until the worker commits', async id => {
-  await seedProtected();
+test.each([[41, 41], ['41', 41], ['9007199254740993', '9007199254740993']])('fresh capture for %p retains current owners until the worker commits', async (id, sourceId) => {
+  await seedProtected(undefined, sourceId);
+  const sourceMetadata = async () => (await query('SELECT metadata FROM classification_history WHERE id=$1', [sourceId])).rows[0].metadata;
   expect(await services().retry.retrySingle({ classificationId: id, actor: 'owned' })).toMatchObject({ queued: true });
   const saved = await snapshot(), payload = saved.tasks[0].payload;
   expect(payload.retry_lineage).toEqual({ original_classification_id: id, media_request_ids: [302], webhook_log_ids: [402] });
-  expect(saved.history[0].metadata.retry_lineage).toEqual(stale);
-  expect(saved.requests[1].classification_id).toBe(41);
-  expect(saved.webhooks[1].classification_id).toBe(41);
+  expect((await sourceMetadata()).retry_lineage).toEqual(stale);
+  expect(saved.requests[1].classification_id).toBe(sourceId);
+  expect(saved.webhooks[1].classification_id).toBe(sourceId);
   const route = mockReview(), task = await claimRetry();
   const { classification_id: replacementId } = await processRetry(task);
   const consumed = await snapshot();
   expect(consumed.requests).toEqual([{ id: 301, classification_id: 42 }, { id: 302, classification_id: replacementId }]);
   expect(consumed.webhooks).toEqual([{ id: 401, classification_id: 42 }, { id: 402, classification_id: replacementId }]);
-  expect(consumed.history[0].metadata.classification_details.outcome_link.replacement_classification_id).toBe(replacementId);
-  expect(consumed.history[1].metadata).toEqual({});
+  expect((await sourceMetadata()).classification_details.outcome_link.replacement_classification_id).toBe(replacementId);
+  expect(consumed.history.find(row => row.id === 42).metadata).toEqual({});
   expect(route).toHaveBeenCalledTimes(1);
   await expect(processRetry(task)).rejects.toThrow('retry_lineage_already_completed');
   const reclaim = await claimRetry();

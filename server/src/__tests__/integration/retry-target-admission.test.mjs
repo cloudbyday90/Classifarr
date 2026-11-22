@@ -32,13 +32,13 @@ afterAll(async () => { await database.pool.end(); });
 const historicQuestion = () => normalizePolicyRuntimeQuestion({ metadata: { media_type: 'movie' },
   libraries: [{ id: 8, name: 'Owned fixture', media_type: 'movie', is_active: true }], policyResult: { action: 'auto_classify',
     ranked: [{ library_id: 8, score: 90, prompt_threshold: 60, auto_classify_threshold: 85 }] } });
-async function seed(id = 1, { historic = false, status = 'awaiting_decision' } = {}) {
+async function seed(id = 1, { historic = false, status = 'awaiting_decision', tmdbId = id === 100 ? 889971 : 889970 } = {}) {
   history.add(String(id));
   const metadata = historic ? { policyResult: { action: 'auto_classify', thresholds: { prompt: 60, auto_classify: 85 },
     ranked: [{ library_id: 8, score: 90, prompt_threshold: 60, auto_classify_threshold: 85 }] } } : {};
   await query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,year,confidence,method,status,metadata,policy_question)
     VALUES($1,$2,'movie',$3,2026,90,$4,$5,$6::jsonb,$7::jsonb)`,
-  [id, id === 100 ? 889971 : 889970, `Owned target admission ${id}`, historic ? 'signal_calculation' : 'fallback', status, JSON.stringify(metadata), historic ? JSON.stringify(historicQuestion()) : null]);
+  [id, tmdbId, `Owned target admission ${id}`, historic ? 'signal_calculation' : 'fallback', status, JSON.stringify(metadata), historic ? JSON.stringify(historicQuestion()) : null]);
 }
 async function snapshot() {
   return {
@@ -70,7 +70,7 @@ function app({ retry, historic }, permissions = 'read_write') {
 const invalid = [['string exponent', '1e2'], ['unsafe numeric exponent', 1e21], ['nested array', [1]],
   ['boolean', true], ['object', {}], ['fraction', 1.5], ['decimal string', '1.0'], ['whitespace', ' 1 '],
   ['leading zero', '01'], ['plus', '+1'], ['partial', '1junk'], ['zero', 0], ['negative', -1],
-  ['INTEGER overflow', '2147483648'], ['unsafe string', '9007199254740993']];
+  ['BIGINT overflow', '9223372036854775808'], ['unsafe number', Number.MAX_SAFE_INTEGER + 1]];
 test.each(invalid)('HTTP rejects %s without selecting either owned row', async (_label, id) => {
   await seed(1); await seed(100); const before = await snapshot(), deps = services();
   const command = jest.spyOn(deps.retry, 'retryClassifications');
@@ -85,6 +85,23 @@ test.each([100, '100'])('HTTP admits exact %s and queues row 100', async id => {
   const saved = await snapshot(); expect(saved.history.map(row => [row.id, row.status])).toEqual([[1, 'awaiting_decision'], [100, 'reclassified']]);
   expect(saved.tasks).toHaveLength(1); expect(saved.tasks[0].payload.tmdb_id).toBe(889971);
 });
+
+test.each([['9007199254740992', '9007199254740993'], ['9223372036854775806', '9223372036854775807']])(
+  'HTTP queues exact History target %s without touching adjacent %s', async (target, neighbor) => {
+    await seed(target); await seed(neighbor, { tmdbId: 889971 });
+    const deps = services(), http = request(app(deps));
+    const response = await http.post('/api/classification/retry').send({ classificationIds: [neighbor, '9223372036854775808'] });
+    expect(response.status).toBe(400);
+    expect(deps.db.withTransaction).not.toHaveBeenCalled();
+    const accepted = await http.post('/api/classification/retry').send({ classificationIds: [target, target] }).expect(200);
+    expect(accepted.body).toMatchObject({ requested: 1, queued: 1, failed: 0, results: [{ classificationId: target }] });
+    const saved = await snapshot();
+    expect(saved.history.map(row => [row.id, row.status])).toEqual([[target, 'reclassified'], [neighbor, 'awaiting_decision']]);
+    expect(saved.tasks).toHaveLength(1);
+    expect(saved.tasks[0].payload.tmdb_id).toBe(889970);
+    const adjacent = await http.post('/api/classification/retry').send({ classificationIds: [neighbor] }).expect(200);
+    expect(adjacent.body).toMatchObject({ queued: 1, results: [{ classificationId: neighbor }] });
+  });
 test('decoded numeric JSON exponent remains the exact number 100', async () => {
   await seed(1); await seed(100); const response = await request(app(services())).post('/api/classification/retry')
     .set('Content-Type', 'application/json').send('{"classificationIds":[1e2]}');
@@ -103,7 +120,7 @@ test('raw batch limit precedes deduplication; permitted duplicates still queue o
   expect(result).toMatchObject({ requested: 1, queued: 1, results: [{ classificationId: 1 }] });
   expect((await snapshot()).tasks).toHaveLength(1);
 });
-test.each(['0001', 0, -1, '2147483648', 1e21])('direct target %s refuses before transaction and callbacks', async id => {
+test.each(['0001', 0, -1, '9223372036854775808', 1e21])('direct target %s refuses before transaction and callbacks', async id => {
   await seed(1); await seed(100); if (id === 0 || id === -1) await seed(id);
   const before = await snapshot(), deps = services(), eligibility = jest.fn(), recorder = jest.fn();
   expect(await deps.retry.retrySingle({ classificationId: id, retryEligibilityCheck: eligibility, retryReceiptRecorder: recorder }))
@@ -111,17 +128,19 @@ test.each(['0001', 0, -1, '2147483648', 1e21])('direct target %s refuses before 
   expect(deps.db.withTransaction).not.toHaveBeenCalled(); expect(eligibility).not.toHaveBeenCalled(); expect(recorder).not.toHaveBeenCalled();
   expect(deps.followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled(); expect(await snapshot()).toEqual(before);
 });
-test.each([1, '1', 2147483647, '2147483647'])('valid direct %s preserves its scalar type in results and fresh lineage', async id => {
-  await seed(Number(id));
+test.each([1, '1', 2147483648, '2147483648', '9223372036854775807'])('valid direct %s preserves its scalar type in results and fresh lineage', async id => {
+  await seed(id);
   const link = (await query(`INSERT INTO media_requests(title,media_type,tmdb_id,classification_id)
     VALUES('Owned admission link','movie',889970,$1) RETURNING id`, [id])).rows[0].id; links.add(link);
   const deps = services(), result = await deps.retry.retrySingle({ classificationId: id, actor: 'owned' });
   expect(result).toMatchObject({ queued: true, failed: false, classificationId: id, oldClassificationId: id });
   expect((await snapshot()).tasks[0].payload.retry_lineage.original_classification_id).toBe(id);
+  const proof = await query('SELECT source_classification_id::text FROM classification_retry_lineage_proofs WHERE task_id=$1', [result.taskId]);
+  expect(proof.rows).toEqual([{ source_classification_id: String(id) }]);
 });
 test('admitted absent and ineligible targets keep existing skips', async () => {
   await seed(1, { status: 'routed' }); const deps = services();
-  expect(await deps.retry.retrySingle({ classificationId: '100' })).toMatchObject({ skipped: true, failed: false, reasonCode: 'not_found' });
+  expect(await deps.retry.retrySingle({ classificationId: '9223372036854775807' })).toMatchObject({ skipped: true, failed: false, reasonCode: 'not_found' });
   expect(await deps.retry.retrySingle({ classificationId: 1 })).toMatchObject({ skipped: true, failed: false, reasonCode: 'status_ineligible' });
   expect(deps.db.withTransaction).toHaveBeenCalledTimes(2); expect((await snapshot()).tasks).toHaveLength(0);
 });

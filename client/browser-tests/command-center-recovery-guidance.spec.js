@@ -2,6 +2,36 @@
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 
+test('Command Center retries adjacent large History IDs as separate items', async ({ page }) => {
+  const ids = ['9007199254740992', '9007199254740993']
+  let requests = 0
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const { pathname } = new URL(route.request().url())
+    let data = {}
+    if (pathname === '/api/setup/status') data = { setupRequired: false }
+    if (['/api/auth/me', '/api/user/me'].includes(pathname)) data = { id: 1, role: 'admin', username: 'fixture-operator' }
+    if (pathname === '/api/notifications') data = { data: [] }
+    if (pathname === '/api/notifications/unread-count') data = { unread: 0 }
+    if (['/api/classification/progress', '/api/queue/pending', '/api/queue/failed', '/api/libraries'].includes(pathname)) data = []
+    if (pathname === '/api/classification/pending') {
+      data = { items: requests ? [] : ids.map((id, index) => ({ id, title: `Synthetic retry ${index}`, media_type: 'movie' })) }
+    }
+    if (pathname === '/api/classification/retry') {
+      expect(route.request().method()).toBe('POST')
+      expect(route.request().postDataJSON()).toEqual({ classificationIds: ids, options: {} })
+      requests++
+      data = { success: true, queued: 2, skipped: 0, failed: 0 }
+    }
+    await route.fulfill({ json: data })
+  })
+
+  await page.goto('/')
+  const retry = page.getByRole('button', { name: 'Retry Classification All', exact: true })
+  await retry.click()
+  await expect.poll(() => requests).toBe(1)
+  await expect(retry).toHaveCount(0)
+})
+
 test('recovery banner is read-only, responsive, keyboard accessible and clears stale guidance', async ({ page }, testInfo) => {
   let writes = 0, reads = 0, denied = false
   let libraries = [

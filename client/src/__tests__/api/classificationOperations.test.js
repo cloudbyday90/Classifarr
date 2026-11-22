@@ -200,9 +200,9 @@ describe('classificationOperations', () => {
 
   it('retryClassifications calls POST with ids and empty default options', async () => {
     mockPost.mockResolvedValueOnce({ data: { retried: 3 } })
-    const result = await retryClassifications([1, '2', 2147483647])
+    const result = await retryClassifications([1, '2', '9223372036854775807'])
     expect(mockPost).toHaveBeenCalledWith('/classification/retry', {
-      classificationIds: [1, '2', 2147483647],
+      classificationIds: [1, '2', '9223372036854775807'],
       options: {},
     })
     expect(result).toEqual({ data: { retried: 3 } })

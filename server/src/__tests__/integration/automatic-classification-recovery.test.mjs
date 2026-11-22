@@ -59,6 +59,23 @@ test.each(['movie', 'tv'])('recovers exhausted %s work exactly once without rout
   expect(await service.run()).toEqual({ state: 'idle', queued: 0 });
 });
 
+test('the readiness owner queues only the eligible adjacent BIGINT History row', async () => {
+  const eligible = '9223372036854775807', refused = '9223372036854775806';
+  await pool.query('UPDATE classification_history SET id=$1 WHERE id=$2', [eligible, await seed()]);
+  await pool.query('UPDATE classification_history SET id=$1 WHERE id=$2',
+    [refused, await seed({ tmdb: 990002, code: 'ai_provider_not_found' })]);
+
+  expect(await service.run()).toEqual({ state: 'ready', queued: 1 });
+  expect(await service.run()).toEqual({ state: 'idle', queued: 0 });
+  const { rows } = await pool.query('SELECT id,status,retry_recovery_attempts FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [[eligible, refused]]);
+  expect(rows).toEqual([
+    { id: refused, status: 'failed', retry_recovery_attempts: 0 },
+    { id: eligible, status: 'reclassified', retry_recovery_attempts: 1 },
+  ]);
+  expect((await pool.query("SELECT payload->>'tmdb_id' AS tmdb_id FROM task_queue WHERE source='provider_recovery'")).rows)
+    .toEqual([{ tmdb_id: '990001' }]);
+});
+
 test('persisted cooldown survives a new service instance and prevents simultaneous probes', async () => {
   await seed();
   readiness.probe.mockResolvedValue(null);
@@ -202,8 +219,9 @@ test('replacement history inherits the database budget, not forged payload metad
   expect(manual.classification_recovery_attempts).toBe(0);
 });
 
-test('ordinary scheduled retries carry the consumed budget to their replacement task', async () => {
-  const id = await seed({ count: 1 });
+test('ordinary scheduled retries carry the consumed budget for a large History ID', async () => {
+  const id = '9007199254740993';
+  await pool.query('UPDATE classification_history SET id=$1 WHERE id=$2', [id, await seed({ count: 1 })]);
   await pool.query("UPDATE classification_history SET status = 'pending_retry', retry_count = 1, retry_after = NOW() WHERE id = $1", [id]);
   expect((await retryService.retrySingle({ classificationId: id, taskSource: 'retry_queue' })).queued).toBe(true);
   const task = (await pool.query('SELECT * FROM task_queue')).rows[0];

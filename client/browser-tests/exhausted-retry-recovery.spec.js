@@ -5,7 +5,7 @@ test('History offers keyboard recovery only for exhausted failures and announces
   let retries = 0
   let historyReads = 0
   const row = {
-    id: 71, title: 'Synthetic recovery movie', year: 2026, media_type: 'movie',
+    id: '9223372036854775807', title: 'Synthetic recovery movie', year: 2026, media_type: 'movie',
     library_id: null, library_name: null, status: 'failed', method: 'queued_for_retry',
     confidence: 0, retry_count: 3, max_retries: 3, retry_after: null,
     created_at: '2026-09-20T12:00:00Z', metadata: {},
@@ -26,11 +26,11 @@ test('History offers keyboard recovery only for exhausted failures and announces
     }
     if (route.request().method() !== 'GET') {
       expect(path).toBe('/api/classification/retry')
-      expect(route.request().postDataJSON()).toEqual({ classificationIds: [71], options: {} })
+      expect(route.request().postDataJSON()).toEqual({ classificationIds: [row.id], options: {} })
       retries++
       row.status = 'reclassified'
       row.retry_recovery = null
-      data = { success: true, queued: 1, results: [{ classificationId: 71, queued: true, taskId: 72 }] }
+      data = { success: true, queued: 1, results: [{ classificationId: row.id, queued: true, taskId: 72 }] }
     }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Classification retry IDs** — Preserve exact BIGINT History IDs in
+  ordinary retry, scheduled recovery, and notification cleanup. Command
+  Center bulk retry sends each loaded ID unchanged. See the
+  [outcome](docs/architecture/classification-retry-bigint-outcome.md).
+
 - **Reclassification History links** — Preserve exact BIGINT History IDs
   through move preview, batch execution, and receipt recovery. See the
   [outcome](docs/architecture/reclassification-history-bigint-outcome.md).

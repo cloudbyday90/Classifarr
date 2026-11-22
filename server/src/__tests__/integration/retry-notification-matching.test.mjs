@@ -121,26 +121,37 @@ test.each([
   [0, '0', true], ['-0', quoted('0'.repeat(65536)), true], [0, quoted(''), false], [0, 'null', false],
   [-41, '41', false], [2147483647, '2147483647', true], ['2147483647', quoted('0002147483647'), true],
   [-2147483648, '2147483648', false], [null, '0', false],
-])('target %s retains INTEGER coercion, range and zero normalization', async (target, scalar, matches) => {
+  ['2147483648', '2147483648', true], ['9223372036854775807', quoted('0009223372036854775807'), true],
+])('trusted target %s retains integer coercion and zero normalization with BIGINT range', async (target, scalar, matches) => {
   await seed(); const id = await notice(payload('classificationId', scalar)), before = await notification(id);
   await database.withTransaction(client => state.cleanupClassificationArtifacts(client, target));
   expect(await notification(id)).toEqual(matches ? undefined : before);
 });
-test.each(['2147483648', '-2147483649', '9007199254740993', '41.0', '41x'])(
-  'invalid/out-of-INTEGER target %s still refuses without notifications', async target => {
+test.each(['9223372036854775808', '-9223372036854775809', '41.0', '41x'])(
+  'invalid/out-of-BIGINT target %s still refuses without notifications', async target => {
     await seed(); const before = await snapshot();
     await expect(database.withTransaction(client => state.cleanupClassificationArtifacts(client, target))).rejects.toMatchObject({
       code: /\./.test(target) || target.endsWith('x') ? '22P02' : '22003',
     }); expect(await snapshot()).toEqual(before);
   });
-test('an existing positive BIGINT target above INTEGER still rolls back full retry', async () => {
-  await seed('2147483648'); const before = await snapshot(), { service, followupService } = retryService();
-  expect(await service.retrySingle({ classificationId: '2147483648', actor: 'owned' })).toMatchObject({ failed: true, reasonCode: 'retry_failed' });
-  expect(await snapshot()).toEqual(before); expect(followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
+test('BIGINT retry removes both matching keys and leaves an adjacent ID and overflow alone', async () => {
+  const id = '9223372036854775807';
+  await seed(id);
+  const first = await notice(payload('classificationId', id), { read: true });
+  const second = await notice({ classificationId: 'malformed', classification_id: `000${id}` });
+  const neighbor = await notice(payload('classificationId', '9223372036854775806'));
+  const overflow = await notice(payload('classification_id', '9223372036854775808'));
+  const before = [await notification(neighbor), await notification(overflow)];
+  const { service, followupService } = retryService();
+  expect(await service.retrySingle({ classificationId: id, actor: 'owned' })).toMatchObject({ queued: true, classificationId: id });
+  expect(await notification(first)).toBeUndefined(); expect(await notification(second)).toBeUndefined();
+  expect([await notification(neighbor), await notification(overflow)]).toEqual(before);
+  expect(followupService.enqueueMetadataEnrichmentTask).toHaveBeenCalledTimes(1);
 });
 
 test.each(['task', 'receipt'])('real %s SQL failure restores links, notifications, queue and callback marker', async phase => {
-  await seed(); await notice(payload('classificationId', '41')); await notice(payload('classification_id', quoted('2147483648')));
+  const id = '9223372036854775807';
+  await seed(id); await notice(payload('classificationId', id)); await notice(payload('classification_id', quoted('9223372036854775808')));
   const before = await snapshot(), observedErrors = [];
   const fail = async client => { try { await client.query('SELECT 1/0'); } catch (error) { observedErrors.push(error.code); throw error; } };
   const db = { withTransaction: fn => database.withTransaction(client => fn({ query: async (sql, params) => {
@@ -150,21 +161,23 @@ test.each(['task', 'receipt'])('real %s SQL failure restores links, notification
   } })) };
   const { service, followupService } = retryService(db);
   const recorder = jest.fn(async args => { await receiptMarker(args); if (phase === 'receipt') await fail(args.client); });
-  expect(await service.retrySingle({ classificationId: 41, actor: 'owned', retryReceiptRecorder: recorder })).toMatchObject({ failed: true, reasonCode: 'retry_failed' });
+  expect(await service.retrySingle({ classificationId: id, actor: 'owned', retryReceiptRecorder: recorder })).toMatchObject({ failed: true, reasonCode: 'retry_failed' });
   expect(observedErrors).toEqual(['22012']); expect(await snapshot()).toEqual(before);
   expect(recorder).toHaveBeenCalledTimes(phase === 'receipt' ? 1 : 0);
   expect(followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
 });
 test('concurrent full retries retain one queue task and callback marker with malformed notifications', async () => {
-  await seed(); await notice(payload('classificationId', '41')); await notice(payload('classification_id', quoted('2147483648')));
+  const id = '9007199254740993';
+  await seed(id); await notice(payload('classificationId', id)); await notice(payload('classification_id', quoted('9223372036854775808')));
   const services = [retryService(), retryService()], recorder = jest.fn(receiptMarker);
-  const results = await Promise.all(services.map(({ service }) => service.retrySingle({ classificationId: 41, actor: 'owned', retryReceiptRecorder: recorder })));
+  const results = await Promise.all(services.map(({ service }) => service.retrySingle({ classificationId: id, actor: 'owned', retryReceiptRecorder: recorder })));
   expect(results.filter(result => result.queued)).toHaveLength(1); expect(results.filter(result => result.skipped)).toHaveLength(1);
   expect(results.some(result => result.failed)).toBe(false); const saved = await snapshot();
   expect(saved.tasks).toHaveLength(1); expect(saved.markers).toHaveLength(1); expect(recorder).toHaveBeenCalledTimes(1);
 });
 test.each(['delayed', 'lost'])('native COMMIT with %s acknowledgement does not replay cleanup or callback', async mode => {
-  await seed(); const matching = await notice(payload('classificationId', '41')), malformed = await notice(payload('classification_id', quoted('2147483648')));
+  const id = '9223372036854775807';
+  await seed(id); const matching = await notice(payload('classificationId', id)), malformed = await notice(payload('classification_id', quoted('9223372036854775808')));
   const malformedBefore = await notification(malformed), owner = createReadinessDatabase({ max: 1 });
   const committed = deferred(), release = deferred(); let execution, spy;
   const { service, followupService } = retryService(owner), recorder = jest.fn(receiptMarker);
@@ -175,7 +188,7 @@ test.each(['delayed', 'lost'])('native COMMIT with %s acknowledgement does not r
       if (args[0] === 'COMMIT') { committed.resolve(); await release.promise; if (mode === 'lost') throw new Error('Owned lost acknowledgement'); }
       return result;
     }); client.release();
-    execution = service.retrySingle({ classificationId: 41, actor: 'owned', retryReceiptRecorder: recorder });
+    execution = service.retrySingle({ classificationId: id, actor: 'owned', retryReceiptRecorder: recorder });
     await Promise.race([committed.promise, execution.then(() => { throw new Error('Owned commit was not reached'); })]);
     const durable = await snapshot(); expect(durable.history[0].status).toBe('reclassified'); expect(durable.tasks).toHaveLength(1);
     expect(durable.markers).toHaveLength(1); expect(await notification(matching)).toBeUndefined(); expect(await notification(malformed)).toEqual(malformedBefore);

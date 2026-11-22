@@ -1,6 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
-import { parseRetryTargetId } from './classificationRetryTargetIds.mjs';
+import { canonicalDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 
 export const RETRY_LINEAGE_MAX_REFERENCES = 256;
 export const RETRY_LINEAGE_REFUSED = 'task_retry_lineage_refused';
@@ -42,7 +41,7 @@ export function requireRetryLineage(condition, category) {
 
 function optionalId(value, category) {
   if (value == null) return null;
-  const id = parseRetryTargetId(value);
+  const id = parseCanonicalDatabaseInt32Id(value);
   requireRetryLineage(id !== null, category);
   return id;
 }

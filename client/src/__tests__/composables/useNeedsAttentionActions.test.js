@@ -162,6 +162,16 @@ describe('useNeedsAttentionActions composable', () => {
     expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('queued 2, skipped 1'))
   })
 
+  it('forwards both adjacent large History IDs in bulk', async () => {
+    const ids = [4, '9007199254740992', '9007199254740993', '9223372036854775807']
+    const actions = useNeedsAttentionActions(createDeps({ needsAttentionItems: ref(ids.map(id => ({ id }))) }))
+    api.retryClassifications.mockResolvedValueOnce({ data: { queued: 4, skipped: 0, failed: 0 } })
+
+    await actions.retryAllNeedsAttention()
+
+    expect(api.retryClassifications).toHaveBeenCalledWith(ids)
+  })
+
   it('confirmAllNeedsAttention sets error for multiple routing warnings', async () => {
     const deps = createDeps({
       needsAttentionItems: ref([

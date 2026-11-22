@@ -839,7 +839,7 @@ describe('Classification Routes - Pending Resolution', () => {
         .send({ classificationIds: [1, 'invalid'] });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('classificationIds must contain positive integer numbers or canonical decimal strings from 1 to 2147483647');
+      expect(response.body.error).toBe('classificationIds must contain positive safe integer numbers or canonical decimal strings from 1 to 9223372036854775807');
       expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
     });
 

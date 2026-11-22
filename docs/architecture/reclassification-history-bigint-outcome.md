@@ -51,3 +51,7 @@ notification match still casts the trusted target to `INTEGER`. Settle the
 existing receipt and replay contract before moving those two boundaries to
 exact BIGINT. Retain the current BIGINT History identity until UUIDv7 solves
 a separately demonstrated requirement.
+
+The [ordinary retry follow-up](classification-retry-bigint-outcome.md) widens
+the shared retry command and leaves the historic receipt path as the next
+compatibility change.

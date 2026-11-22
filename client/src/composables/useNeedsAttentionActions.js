@@ -145,9 +145,7 @@ export function useNeedsAttentionActions({
 
   async function retryAllNeedsAttention() {
     await runActionWithBusy('retry-all-classifications', async () => {
-      const ids = needsAttentionItems.value
-        .map(item => Number(item.id))
-        .filter(id => Number.isInteger(id) && id > 0)
+      const ids = needsAttentionItems.value.map(item => item.id)
 
       if (!ids.length) return
 

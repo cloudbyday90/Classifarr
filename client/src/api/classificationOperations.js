@@ -95,7 +95,7 @@ export function rememberResolvedExactItem(classificationId) {
 }
 
 export function retryClassifications(classificationIds, options = {}) {
-  // The server admits numbers/canonical decimal strings from 1 through 2147483647; do not coerce IDs here.
+  // Forward safe integer numbers and canonical BIGINT decimal strings unchanged.
   // HTTP success is not queue success: inspect the per-item results[].queued flag.
   return apiClient.post('/classification/retry', { classificationIds, options })
 }

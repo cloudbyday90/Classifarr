@@ -11,7 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ValidationError } from '../utils/appError.mjs';
-import { MAX_RETRY_TARGET_ID, parseRetryTargetId } from './classificationRetryTargetIds.mjs';
+import { MAX_DATABASE_INT32_ID, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 import {
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS,
 } from './policyRuntimeHistoricRouteSafetyRefreshInventory.mjs';
@@ -65,7 +65,7 @@ function normalizeClassificationIds(value) {
     return null;
   }
 
-  const ids = Array.from(value, parseRetryTargetId);
+  const ids = Array.from(value, parseCanonicalDatabaseInt32Id);
   if (ids.some(id => !id) || new Set(ids).size !== ids.length) return null;
 
   return ids;
@@ -141,7 +141,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     const ids = normalizeClassificationIds(classificationIds);
     if (!ids) {
       throw new ValidationError(
-        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique canonical integer IDs from 1 to ${MAX_RETRY_TARGET_ID}.`,
+        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique canonical integer IDs from 1 to ${MAX_DATABASE_INT32_ID}.`,
       );
     }
 
