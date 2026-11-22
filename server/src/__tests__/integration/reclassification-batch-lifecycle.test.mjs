@@ -416,7 +416,7 @@ describe('Reclassification Batch Lifecycle Integration Tests', () => {
                 ]) {
                     await db.query(`INSERT INTO reclassification_batch_items
                       (batch_id, classification_id, target_library_id, status, execution_result, execution_order)
-                      VALUES ($1, $2, $3, $4, $5, $2)`, [batch.id, classId, targetId, status, { moveOperationId: reference }]);
+                      VALUES ($1, $2, $3, $4, $5, $6)`, [batch.id, classId, targetId, status, { moveOperationId: reference }, classId]);
                 }
                 const response = await request(app).get('/api/reclassification/batches/activity').set(authHeaders()).expect(200);
                 expect(response.body.batches[0]).toEqual({ id: batch.id, status: 'cancelled', total: 5,

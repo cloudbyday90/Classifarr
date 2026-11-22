@@ -2,8 +2,12 @@
 import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import express from 'express';
+import request from 'supertest';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 import { classificationMoveRevision, moveBlocked } from '../../services/reclassificationMoveContract.mjs';
+import { registerCorrectionRoutes } from '../../routes/classificationRouteCorrections.mjs';
+import { createReclassificationRouter } from '../../routes/reclassificationRouteShared.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const db = await import('../../config/database.mjs');
@@ -15,6 +19,15 @@ const { createReclassificationMoveRepository } = await import('../../services/re
 let libraries, rows, batch, batches, adapter, service, repository, moves;
 const tick = () => createBatchCoordinator({ database: db, service }).runOnce();
 const due = () => db.query('UPDATE reclassification_batches SET next_attempt_at=NOW()');
+const batchItems = () => rows.map(row => ({ classificationId: row.id, targetLibraryId: libraries[1] }));
+
+async function useLargeHistoryIds(ids) {
+  await db.query('DELETE FROM reclassification_batches WHERE id=$1', [batch.id]);
+  for (const [index, id] of ids.entries()) {
+    const result = await db.query('UPDATE classification_history SET id=$1 WHERE id=$2 RETURNING *', [id, rows[index].id]);
+    rows[index] = result.rows[0];
+  }
+}
 
 beforeEach(async () => {
   libraries = (await db.query(`INSERT INTO libraries(name,external_id,media_type)
@@ -23,7 +36,7 @@ beforeEach(async () => {
     VALUES ('Coordinator synthetic A',961001,'movie',$1,'completed'),
       ('Coordinator synthetic B',961002,'movie',$1,'completed') RETURNING *`, [libraries[0]])).rows;
   adapter = {
-    prepare: jest.fn(async row => ({ mediaType: row.media_type, configId: 1, remoteId: row.id,
+    prepare: jest.fn(async row => ({ mediaType: row.media_type, configId: 1, remoteId: row.tmdb_id,
       originalLibraryId: libraries[0], targetLibraryId: libraries[1], classificationStatus: row.status,
       classificationRevision: classificationMoveRevision(row),
       oldPath: `/synthetic/old/${row.id}`, newPath: `/synthetic/new/${row.id}`,
@@ -34,13 +47,54 @@ beforeEach(async () => {
   batches = new ReclassificationBatchService({ reclassificationService: service });
   repository = createBatchCoordinatorRepository(db);
   moves = createReclassificationMoveRepository(db);
-  batch = await batches.createBatch(rows.map(row => ({ classificationId: row.id, targetLibraryId: libraries[1] })));
+  batch = await batches.createBatch(batchItems());
 });
 afterEach(async () => {
   await db.query('DELETE FROM reclassification_batches');
   await db.query('DELETE FROM reclassification_move_operations');
-  await db.query('DELETE FROM classification_history WHERE id=ANY($1::integer[])', [rows.map(row => row.id)]);
+  await db.query('DELETE FROM classification_history WHERE id=ANY($1::bigint[])', [rows.map(row => row.id)]);
   await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [libraries]);
+});
+
+test('HTTP previews, queues and moves exact adjacent History IDs through the BIGINT maximum', async () => {
+  const ids = ['9223372036854775806', '9223372036854775807'];
+  await useLargeHistoryIds(ids);
+  const router = createReclassificationRouter({ express, reclassificationBatchService: batches });
+  registerCorrectionRoutes(router, { db, reclassificationService: service, requireReadWrite: (_req, _res, next) => next() });
+  const http = request(createIntegrationTestApp({ router }));
+
+  for (const row of rows) {
+    const response = await http.post('/reclassify/preview')
+      .send({ classification_id: row.id, target_library_id: libraries[1] }).expect(200);
+    expect(response.body.title).toBe(row.title);
+  }
+  await http.post('/reclassify/preview')
+    .send({ classification_id: Number.MAX_SAFE_INTEGER + 1, target_library_id: libraries[1] }).expect(400);
+  await http.post('/batch').send({ items: [...batchItems(), { classificationId: '9223372036854775808', targetLibraryId: libraries[1] }] }).expect(400);
+  expect((await db.query('SELECT id FROM reclassification_batches')).rows).toEqual([]);
+  expect((await db.query('SELECT id FROM reclassification_move_operations')).rows).toEqual([]);
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+
+  const created = await http.post('/batch').send({ items: batchItems() }).expect(201);
+  const batchId = created.body.id;
+  expect(created.body.items.map(item => item.classification_id)).toEqual(ids);
+  await http.post(`/batch/${batchId}/execute`).expect(202);
+  expect(await tick()).toEqual({ status: 'completed' });
+
+  const partial = await http.get(`/batch/${batchId}`).expect(200);
+  expect(partial.body.items.map(item => item.status)).toEqual(['completed', 'pending']);
+  const { rows: unchanged } = await db.query('SELECT library_id FROM classification_history WHERE id=$1', [ids[1]]);
+  expect(unchanged[0].library_id).toBe(libraries[0]);
+  await due();
+  expect(await tick()).toEqual({ status: 'completed' });
+  const { rows: operations } = await db.query('SELECT classification_id FROM reclassification_move_operations ORDER BY classification_id');
+  expect(operations.map(operation => operation.classification_id)).toEqual(ids);
+  const { rows: corrections } = await db.query(`SELECT correction.classification_id, review.decision_context
+    FROM classification_corrections correction
+    JOIN classification_correction_outcomes review ON review.correction_id = correction.id
+    WHERE correction.classification_id=ANY($1::bigint[]) ORDER BY correction.classification_id`, [ids]);
+  expect(corrections).toEqual(ids.map(id => ({ classification_id: id, decision_context: null })));
+  expect(adapter.moveFiles).toHaveBeenCalledTimes(2);
 });
 
 test('saved intent survives a fresh coordinator, one item per tick, no browser needed', async () => {
@@ -119,6 +173,10 @@ test('bound journal backoff is respected; future receipt remains executing', asy
   expect((await batches.getBatchStatus(batch.id)).items[0].status).toBe('executing');
 });
 test.each(['missing', 'malformed', 'mismatched'])('%s receipt fails closed without replay', async kind => {
+  if (kind === 'mismatched') {
+    await useLargeHistoryIds(['9007199254740992', '9007199254740993']);
+    batch = await batches.createBatch(batchItems());
+  }
   await batches.executeBatch(batch.id);
   const { item } = await repository.claim();
   let id = kind === 'malformed' ? 'not-a-uuid' : randomUUID();
@@ -133,6 +191,28 @@ test.each(['missing', 'malformed', 'mismatched'])('%s receipt fails closed witho
   expect((await batches.getBatchStatus(batch.id)).status).toBe('paused');
   expect(adapter.moveFiles).not.toHaveBeenCalled();
   expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+
+test('the coupled History migration preserves an existing numeric receipt and its saved revision', async () => {
+  const sql = await readFile(new URL('../../../../database/migrations/20261122_200000_widen_reclassification_history_links.sql', import.meta.url), 'utf8');
+  await batches.executeBatch(batch.id);
+  const { item } = await repository.claim();
+  const plan = await adapter.prepare(rows[0]);
+  const operation = await moves.reserve(rows[0].id, libraries[1], 'user', plan, item.id);
+
+  await db.withTransaction(async client => {
+    await client.query('ALTER TABLE reclassification_move_operations ALTER COLUMN classification_id TYPE integer');
+    await client.query('ALTER TABLE reclassification_batch_items ALTER COLUMN classification_id TYPE integer');
+    await client.query(sql);
+  });
+
+  expect(await moves.byId(operation.id)).toEqual(operation);
+  await due();
+  expect(await tick()).toEqual({ status: 'completed' });
+  const recovered = (await batches.getBatchStatus(batch.id)).items[0];
+  expect(recovered.classification_id).toBe(rows[0].id);
+  expect(recovered.execution_result).toMatchObject({ moveOperationId: operation.id, moveReconciled: true });
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
 });
 test.each(['pause', 'cancel'])('%s during preparation fences admission and competing workers', async action => {
   const entered = Promise.withResolvers();

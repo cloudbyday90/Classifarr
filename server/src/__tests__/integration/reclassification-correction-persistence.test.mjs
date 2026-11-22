@@ -38,7 +38,10 @@ const execute = () => service.executeReclassification({ classificationId: row.id
 const journal = async () => (await db.query('SELECT * FROM reclassification_move_operations WHERE classification_id=$1 ORDER BY created_at DESC', [row.id])).rows[0];
 const makeDue = () => db.query('UPDATE reclassification_move_operations SET next_attempt_at=NOW()');
 
-test('external verification followed by commit records history, event, evidence and operation together', async () => {
+test.each(['safe', 'large'])('verification commits history, event and bounded evidence together for a %s History ID', async size => {
+  if (size === 'large') {
+    row = (await db.query('UPDATE classification_history SET id=$1 WHERE id=$2 RETURNING *', ['9223372036854775807', row.id])).rows[0];
+  }
   const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 920001 },
     method: 'ai_analysis', status: 'completed', libraryId: libraries[0] });
   await db.query("UPDATE classification_history SET metadata=$1,method='ai_analysis' WHERE id=$2",
@@ -50,7 +53,7 @@ test('external verification followed by commit records history, event, evidence 
     .toEqual([{ identity_key: 'movie:920001' }]);
   expect((await journal()).state).toBe('completed');
   expect((await db.query('SELECT decision_context FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1]])).rows)
-    .toEqual([{ decision_context: { classificationId: row.id, capture } }]);
+    .toEqual([{ decision_context: size === 'safe' ? { classificationId: row.id, capture } : null }]);
   await execute();
   expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
   expect((await db.query('SELECT * FROM classification_corrections WHERE classification_id=$1', [row.id])).rows).toHaveLength(1);
@@ -91,6 +94,7 @@ test('identity drift during external verification cannot commit stale correction
   expect(await service.recoverDue()).toEqual({ status: 'idle' });
 });
 test('correction insert failure rolls back history and completion, then retry captures once', async () => {
+  row = (await db.query('UPDATE classification_history SET id=$1 WHERE id=$2 RETURNING *', ['9223372036854775807', row.id])).rows[0];
   const transaction = database.withTransaction;
   let fail = true;
   database.withTransaction = callback => transaction(client => callback({
@@ -109,6 +113,51 @@ test('correction insert failure rolls back history and completion, then retry ca
   expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
   expect((await db.query('SELECT * FROM classification_corrections WHERE classification_id=$1', [row.id])).rows).toHaveLength(1);
 });
+
+test.each(['delayed', 'lost'])('large History link survives a %s final COMMIT acknowledgement without another move', async mode => {
+  const { createReadinessDatabase } = await import('../helpers/readinessDatabase.mjs');
+  const owner = createReadinessDatabase({ max: 1 });
+  const committed = Promise.withResolvers(), release = Promise.withResolvers();
+  let execution, spy;
+  try {
+    row = (await db.query('UPDATE classification_history SET id=$1 WHERE id=$2 RETURNING *', ['9223372036854775807', row.id])).rows[0];
+    const client = await owner.pool.connect();
+    const nativeQuery = client.query.bind(client);
+    spy = jest.spyOn(client, 'query').mockImplementation(async (sql, params) => {
+      const result = await nativeQuery(sql, params);
+      if (sql === 'COMMIT') {
+        committed.resolve();
+        await release.promise;
+        if (mode === 'lost') throw new Error('Owned lost move acknowledgement');
+      }
+      return result;
+    });
+    client.release();
+    database.withTransaction = owner.withTransaction;
+    execution = execute();
+    const result = mode === 'lost'
+      ? expect(execution).rejects.toMatchObject({ status: 503 })
+      : expect(execution).resolves.toMatchObject({ success: true });
+    await Promise.race([committed.promise, execution.then(() => { throw new Error('Final commit was not observed'); })]);
+    expect(await journal()).toMatchObject({ classification_id: row.id, state: 'completed' });
+    const corrections = () => db.query('SELECT id FROM classification_corrections WHERE classification_id=$1', [row.id]);
+    const saved = (await corrections()).rows;
+    expect(saved).toHaveLength(1);
+    release.resolve();
+    await result;
+
+    await expect(execute()).resolves.toMatchObject({ success: true });
+    expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
+    expect((await corrections()).rows).toEqual(saved);
+    expect(spy.mock.calls.filter(([sql]) => sql === 'COMMIT')).toHaveLength(1);
+  } finally {
+    release.resolve();
+    if (execution) await Promise.allSettled([execution]);
+    spy?.mockRestore();
+    await owner.pool.end();
+  }
+});
+
 test('journal survives history deletion and safely stops recovery', async () => {
   remoteAvailable = false;
   await expect(execute()).rejects.toThrow();

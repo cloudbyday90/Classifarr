@@ -2,17 +2,20 @@ import * as db from '../config/database.mjs';
 import { libraryMappingService } from './libraryMappingService.mjs';
 import { plexService } from './mediaServers/index.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const logger = createLogger('ReclassificationService');
 
 export async function previewReclassification({ classificationId, targetLibraryId }) {
+  const historyId = canonicalDatabaseBigintId(classificationId);
+  if (historyId === null) throw new ValidationError('A valid classification ID is required.');
   const classResult = await db.query(`
     SELECT ch.*, l.name as current_library_name
     FROM classification_history ch
     LEFT JOIN libraries l ON ch.library_id = l.id
     WHERE ch.id = $1
-  `, [classificationId]);
+  `, [historyId]);
 
   if (classResult.rows.length === 0) {
     throw new NotFoundError('Classification not found');

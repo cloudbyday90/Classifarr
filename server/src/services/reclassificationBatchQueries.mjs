@@ -1,6 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { NotFoundError } from '../utils/appError.mjs';
 import { batchOutcomeCountsSql } from './reclassificationBatchMoveOutcomes.mjs';
 import { moveRecoveryJsonSql } from './reclassificationMoveReadModel.mjs';
 
@@ -93,10 +93,6 @@ export async function listBatches(limit = 20) {
 
 export async function createBatch(items, options = {}) {
     const { pauseOnError = true, createdBy = 'user' } = options;
-
-    if (!Array.isArray(items) || items.length === 0) {
-        throw new ValidationError('Items array is required and must not be empty');
-    }
 
     const batch = await db.withTransaction(async (client) => {
         const batchResult = await client.query(`

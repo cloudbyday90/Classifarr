@@ -130,8 +130,20 @@ describe('createBatch', () => {
     await svc.createBatch([{ classificationId: 100, targetLibraryId: 5 }]);
 
     expect(client.query).toHaveBeenCalledWith('BEGIN');
+    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO reclassification_batch_items'),
+      [1, '100', 5, 1]);
     expect(client.query).toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
+  });
+
+  test('validates the full request before checking tables or opening a transaction', async () => {
+    svc.initialized = false;
+    await expect(svc.createBatch([
+      { classificationId: '9223372036854775807', targetLibraryId: 5 },
+      { classificationId: '0100', targetLibraryId: 5 },
+    ])).rejects.toMatchObject({ status: 400 });
+    expect(db.query).not.toHaveBeenCalled();
+    expect(db.pool.connect).not.toHaveBeenCalled();
   });
 
   test('rolls back and re-throws on error', async () => {

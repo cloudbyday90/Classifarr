@@ -69,6 +69,18 @@ describe('reclassificationBatches', () => {
     expect(mockPost).toHaveBeenCalledWith('/reclassification/batch', { items, pauseOnError: false })
   })
 
+  it('preserves exact History IDs in batch requests and status', async () => {
+    const items = ['9007199254740992', '9007199254740993', '9223372036854775807']
+      .map(classificationId => ({ classificationId, targetLibraryId: 5 }))
+    const status = { id: 12, items: items.map(item => ({ classification_id: item.classificationId })) }
+    mockPost.mockResolvedValueOnce({ data: status })
+    mockGetDataRequest.mockResolvedValueOnce(status)
+
+    expect(await createReclassificationBatch(items)).toEqual({ data: status })
+    expect(mockPost).toHaveBeenCalledWith('/reclassification/batch', { items, pauseOnError: true })
+    expect(await getReclassificationBatchStatus(12)).toEqual(status)
+  })
+
   it('validateReclassificationBatch calls POST with batch id in URL', async () => {
     mockPost.mockResolvedValueOnce({ data: { valid: true } })
     const result = await validateReclassificationBatch('b1')

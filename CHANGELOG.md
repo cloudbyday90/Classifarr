@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Reclassification History links** — Preserve exact BIGINT History IDs
+  through move preview, batch execution, and receipt recovery. See the
+  [outcome](docs/architecture/reclassification-history-bigint-outcome.md).
+
 - **Routing outcome persistence** — Preserve exact BIGINT History IDs in
   manual and automatic outcomes and the queued admission marker. See the
   [outcome](docs/architecture/routing-outcome-bigint-outcome.md).

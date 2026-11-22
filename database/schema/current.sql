@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-11-21T14:52:45.085Z
--- Latest Migration: 20261122_190000_widen_manual_routing_check_classification_id.sql
+-- Latest Migration: 20261122_200000_widen_reclassification_history_links.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8623,7 +8623,7 @@ ALTER SEQUENCE public.rag_metrics_id_seq OWNED BY public.rag_metrics.id;
 CREATE TABLE public.reclassification_batch_items (
     id integer NOT NULL,
     batch_id integer,
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     target_library_id integer NOT NULL,
     status character varying(50) DEFAULT 'pending'::character varying,
     validation_result jsonb,
@@ -8706,7 +8706,7 @@ ALTER SEQUENCE public.reclassification_batches_id_seq OWNED BY public.reclassifi
 
 CREATE TABLE public.reclassification_move_operations (
     id uuid NOT NULL,
-    classification_id integer NOT NULL,
+    classification_id bigint NOT NULL,
     target_library_id integer NOT NULL,
     resource_key text NOT NULL,
     plan jsonb NOT NULL,
@@ -19180,6 +19180,7 @@ FROM unnest(ARRAY[
     '20261121_180000_add_retry_lineage_proofs.sql',
     '20261121_190000_add_retry_lineage_refusal_category.sql',
     '20261122_180000_widen_classification_intake_receipt_link.sql',
-    '20261122_190000_widen_manual_routing_check_classification_id.sql'
+    '20261122_190000_widen_manual_routing_check_classification_id.sql',
+    '20261122_200000_widen_reclassification_history_links.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

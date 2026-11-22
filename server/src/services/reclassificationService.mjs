@@ -6,6 +6,7 @@ import { createReclassificationMoveRepository } from './reclassificationMoveRepo
 import { classificationMoveRevision, moveBlocked } from './reclassificationMoveContract.mjs';
 import { previewReclassification, triggerPlexScan } from './reclassificationQueries.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { NotFoundError, ValidationError, AppError } from '../utils/appError.mjs';
 
 export class ReclassificationService {
@@ -30,7 +31,7 @@ export class ReclassificationService {
   }
 
   async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user', batchItemId = null, signal }) {
-    classificationId = positiveDatabaseInteger(classificationId);
+    classificationId = canonicalDatabaseBigintId(classificationId);
     targetLibraryId = positiveDatabaseInteger(targetLibraryId);
     if ((batchItemId !== null && !positiveDatabaseInteger(batchItemId)) || !classificationId || !targetLibraryId || typeof correctedBy !== 'string' ||
         !correctedBy.trim() || correctedBy.length > 100) {
@@ -92,14 +93,16 @@ export class ReclassificationService {
 
   // Internal worker API: exact receipt only, never prepares or moves files.
   async recoverBatchItem({ operationId, batchItemId, classificationId, targetLibraryId, retry = false, signal }) {
-    if (typeof operationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operationId)) {
+    const historyId = canonicalDatabaseBigintId(classificationId);
+    if (!historyId || typeof operationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operationId)) {
       throw moveBlocked('move_journal_missing', 'The batch move receipt is invalid. Inspect the item and restore its recovery evidence before retrying.');
     }
     return this.exclusive(async options => {
       if (signal) options.signal = options.signal ? AbortSignal.any([signal, options.signal]) : signal;
       options.signal?.throwIfAborted();
       const operation = await this.repository.byId(operationId);
-      if (!operation || operation.classification_id !== classificationId || operation.target_library_id !== targetLibraryId) {
+      if (!operation || canonicalDatabaseBigintId(operation.classification_id) !== historyId ||
+          operation.target_library_id !== targetLibraryId) {
         throw moveBlocked('move_journal_missing', 'The batch move receipt is missing or mismatched. Inspect actual placement before retrying; no files were replayed.');
       }
       await this.repository.bind(operation, batchItemId);

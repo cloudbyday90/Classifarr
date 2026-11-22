@@ -1,6 +1,8 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
+import { ValidationError } from '../utils/appError.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { reclassificationService } from './reclassificationService.mjs';
 import { ensureTables as ensureSchema } from './reclassificationBatchSchema.mjs';
 import { createBatchCoordinatorRepository } from './reclassificationBatchCoordinatorRepository.mjs';
@@ -18,6 +20,17 @@ import {
 } from './reclassificationBatchQueries.mjs';
 
 const logger = createLogger('ReclassificationBatchService');
+
+function normalizeBatchItems(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw new ValidationError('Items array is required and must not be empty');
+    }
+    return Array.from(items, item => {
+        const classificationId = canonicalDatabaseBigintId(item?.classificationId);
+        if (classificationId === null) throw new ValidationError('Each batch item requires a valid classification ID.');
+        return { classificationId, targetLibraryId: item.targetLibraryId };
+    });
+}
 
 export class ReclassificationBatchService {
     constructor(deps = {}) {
@@ -40,8 +53,9 @@ export class ReclassificationBatchService {
     }
 
     async createBatch(items, options = {}) {
+        const normalizedItems = normalizeBatchItems(items);
         await this.ensureTables();
-        return queryCreateBatch(items, options);
+        return queryCreateBatch(normalizedItems, options);
     }
 
     async validateBatch(batchId) {

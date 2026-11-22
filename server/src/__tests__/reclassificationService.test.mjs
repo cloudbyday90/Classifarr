@@ -40,6 +40,19 @@ test.each(['missing', 'classification', 'destination'])('%s exact receipt is not
   expect(repository.bind).not.toHaveBeenCalled();
   expect(adapter.moveFiles).not.toHaveBeenCalled();
 });
+test('recovery accepts the canonical string for a legacy numeric receipt', async () => {
+  operation.state = 'completed';
+  expect(await recoverBatch({ classificationId: '1' })).toEqual({ status: 'completed' });
+  expect(repository.completeBatchReceipt).toHaveBeenCalledWith(operation);
+});
+
+test('recovery refuses adjacent large History IDs before binding a receipt', async () => {
+  operation.classification_id = '9007199254740993';
+  await expect(recoverBatch({ classificationId: '9007199254740992' })).rejects.toMatchObject({ code: 'move_journal_missing' });
+  expect(repository.bind).not.toHaveBeenCalled();
+  expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+
 test('completed exact receipt repairs item outcome without touching history or files', async () => {
   operation.state = 'completed';
   expect(await recoverBatch()).toEqual({ status: 'completed' });
@@ -81,7 +94,7 @@ test('coordinator abort during preparation reaches the final reservation boundar
 
 test('new batch moves bind during reservation before file work', async () => {
   await service.executeReclassification({ classificationId: 1, targetLibraryId: 20, batchItemId: 7 });
-  expect(repository.reserve).toHaveBeenCalledWith(1, 20, 'user', operation.plan, 7);
+  expect(repository.reserve).toHaveBeenCalledWith('1', 20, 'user', operation.plan, 7);
   expect(repository.reserve.mock.invocationCallOrder[0]).toBeLessThan(adapter.moveFiles.mock.invocationCallOrder[0]);
 });
 test('existing moves bind a retry before reconciliation without repeating file work', async () => {
@@ -182,7 +195,7 @@ test('scan failure cannot turn a committed move into another correction', async 
   expect(repository.defer).not.toHaveBeenCalled();
   expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Plex scan'), { operationId: operation.id });
 });
-test.each([0, -1, '1x', null])('invalid ID %s is rejected before lock or effects', async classificationId => {
+test.each([0, -1, '1x', null, '01', '9223372036854775808', Number.MAX_SAFE_INTEGER + 1])('invalid ID %s is rejected before lock or effects', async classificationId => {
   await expect(service.executeReclassification({ classificationId, targetLibraryId: 20 })).rejects.toThrow('Valid classification');
   expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
 });
