@@ -6,6 +6,8 @@ import { ClassificationIntakeReceiptRepository } from '../../services/classifica
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 import { ClassificationIntakeDecisionRecovery } from '../../services/classificationIntakeDecisionRecovery.mjs';
 import { FILL_INTAKE_DECISION_CONTEXTS_SQL } from '../../services/classificationIntakeDecisionRecoverySql.mjs';
+import { buildClassificationQueueDecisionWitness } from '../../services/classificationQueueDecisionWitness.mjs';
+import { ClassificationQueueDecisionWitnessRepository } from '../../services/classificationQueueDecisionWitnessRepository.mjs';
 
 let client, libraryId;
 beforeEach(async () => {
@@ -87,15 +89,38 @@ test('source-only original identity is recovered exactly; absent history remains
   expect((await receipt(missing.taskId)).decision_context).toBeNull();
 });
 
-test('an unrepresentable latest classification link cannot abort reconciliation or fall back to an older decision', async () => {
+test('a failed live intake link recovers from the newest exact BIGINT witness', async () => {
   const { taskId, classificationId, repository } = await fixture({ linked: false });
-  const newest = await fixture();
-  await client.query("UPDATE classification_history SET id=9223372036854775807 WHERE id=$1", [newest.classificationId]);
-  await client.query(`INSERT INTO classification_queue_decision_witnesses(queue_task_id,classification_id,witness,fingerprint,created_at)
-    VALUES($1,$2,'{}',$3,NOW()-INTERVAL '1 second'),($1,9223372036854775807,'{}',$3,NOW())`,
-  [taskId, classificationId, 'b'.repeat(64)]);
-  expect(await repository.reconcileClassificationLinks()).toBe(0);
+  const newest = await fixture({ linked: false });
+  const newestId = '9223372036854775807';
+  await client.query('UPDATE classification_history SET id=$1 WHERE id=$2', [newestId, newest.classificationId]);
+  const unavailableService = new ClassificationIntakeReceiptService({ repository: {
+    upsert: async () => { throw new Error('Fixture intake write failure'); },
+  } });
+  expect(await unavailableService.recordClassification(taskId, newestId, null, newest.capture)).toBe(false);
   expect((await receipt(taskId)).classification_id).toBeNull();
+  await client.query(`INSERT INTO classification_queue_decision_witnesses(queue_task_id,classification_id,witness,fingerprint,created_at)
+    VALUES($1,$2,'{}',$3,NOW()-INTERVAL '1 second')`, [taskId, classificationId, 'b'.repeat(64)]);
+  const witness = buildClassificationQueueDecisionWitness({ queueTaskId: taskId,
+    result: { method: 'ai_analysis', confidence: 92.5, needs_clarification: false, needs_retry: false },
+    persistenceState: { status: 'completed', libraryId, libraryName: 'Recovery fixture' } });
+  expect(await new ClassificationQueueDecisionWitnessRepository({ db: client }).persist({ classificationId: newestId, witness }))
+    .toEqual({ persisted: true, reason: null });
+  expect(await repository.reconcileClassificationLinks()).toBe(1);
+  expect(await repository.recoverDecisionContexts()).toBe(0);
+  expect(await receipt(taskId)).toMatchObject({ classification_id: newestId, decision_context: null });
+  expect(await repository.reconcileClassificationLinks()).toBe(0);
+});
+
+test('large linked receipts do not take up the decision-context recovery page', async () => {
+  const large = await fixture({ linked: false });
+  await client.query(`INSERT INTO classification_intake_receipts(queue_task_id,classification_id,source_class,status_id,queued_at)
+    SELECT 1000000+n,9223372036854775807,'manual','completed',NOW() FROM generate_series(1,500) n`);
+  const valid = await fixture();
+  await client.query('UPDATE classification_intake_receipts SET queue_task_id=2000000 WHERE queue_task_id=$1', [valid.taskId]);
+  expect(await large.repository.recoverDecisionContexts()).toBe(1);
+  expect((await receipt(2000000)).decision_context.capture).toEqual(valid.capture);
+  expect((await receipt(1000001)).decision_context).toBeNull();
 });
 
 test('a page of invalid originals does not starve a later valid receipt; repaired originals are reconsidered after wrap', async () => {

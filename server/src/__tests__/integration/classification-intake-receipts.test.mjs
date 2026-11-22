@@ -3,10 +3,62 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { ClassificationIntakeReceiptRepository } from '../../services/classificationIntakeReceiptRepository.mjs';
-import { CLASSIFICATION_INTAKE_RECEIPT_ROWS_SQL } from '../../services/classificationIntakeReceiptReadRepository.mjs';
+import { CLASSIFICATION_INTAKE_RECEIPT_BY_TASK_SQL, CLASSIFICATION_INTAKE_RECEIPT_ROWS_SQL } from '../../services/classificationIntakeReceiptReadRepository.mjs';
+import { ClassificationIntakeReceiptService } from '../../services/classificationIntakeReceiptService.mjs';
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 import { buildFeedbackOutcomeSnapshot } from '../../services/feedbackOutcomeSnapshot.mjs';
 import { readDestinationOutcomes } from '../../services/destinationOutcomeEvaluationRepository.mjs';
+
+test('live intake preserves exact links, numeric snapshots and diagnostic representation', async () => {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [task] } = await client.query(`INSERT INTO task_queue(task_type,payload,priority,source,max_attempts)
+      VALUES('classification','{}',0,'manual',5) RETURNING id`);
+    const service = new ClassificationIntakeReceiptService({ db: client });
+    const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 42 },
+      method: 'ai_analysis', status: 'completed', libraryId: 2 });
+    const comparison = { statusId: 'captured', reasonId: null };
+    const read = async () => (await client.query('SELECT classification_id, decision_context, comparison_status_id FROM classification_intake_receipts')).rows[0];
+    expect(await service.recordClassification(task.id, '2147483647', comparison, capture)).toBe(true);
+    expect(await read()).toEqual({ classification_id: 2147483647, comparison_status_id: 'captured',
+      decision_context: { classificationId: 2147483647, capture } });
+    await client.query("UPDATE task_queue SET status='completed', completed_at=NOW() WHERE id=$1", [task.id]);
+    for (const id of [2147483648, '9007199254740992', '9007199254740993', '9223372036854775807']) {
+      expect(await service.recordClassification(task.id, id, comparison, capture)).toBe(true);
+      expect(await service.recordTerminal(task.id, 'completed')).toBe(true);
+      expect(await read()).toEqual({ classification_id: id, decision_context: null, comparison_status_id: 'captured' });
+      const { rows } = await client.query(CLASSIFICATION_INTAKE_RECEIPT_BY_TASK_SQL, [task.id]);
+      expect(JSON.parse(JSON.stringify(rows[0])).classification_id).toBe(id);
+    }
+    expect((await readDestinationOutcomes(client)).intake).toMatchObject({ queueTasks: 1, missingContextTasks: 1,
+      overall: { knownClassifierDecisions: 0 } });
+  } finally { await client.query('ROLLBACK'); client.release(); }
+});
+
+test('the forward migration preserves populated INTEGER receipt fields and constraints', async () => {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('CREATE TEMP TABLE classification_intake_receipts (LIKE public.classification_intake_receipts INCLUDING ALL)');
+    await client.query('ALTER TABLE classification_intake_receipts ALTER COLUMN classification_id TYPE integer');
+    const context = { classificationId: 2147483647, capture: buildClassificationDestinationDecision({
+      metadata: { media_type: 'movie', tmdb_id: 42 }, method: 'ai_analysis', status: 'completed', libraryId: 2 }) };
+    await client.query(`INSERT INTO classification_intake_receipts
+      (queue_task_id, source_class, status_id, queued_at, classification_id, decision_context)
+      VALUES (1,'manual','completed',NOW(),2147483647,$1), (2,'manual','queued',NOW(),NULL,NULL)`, [context]);
+    const read = async () => (await client.query('SELECT * FROM classification_intake_receipts ORDER BY queue_task_id')).rows;
+    const before = await read();
+    const migration = readFileSync(new URL('../../../../database/migrations/20261122_180000_widen_classification_intake_receipt_link.sql', import.meta.url), 'utf8');
+    await client.query(migration);
+    expect(await read()).toEqual(before);
+    const updated = await client.query(`UPDATE classification_intake_receipts SET classification_id='9223372036854775807'
+      WHERE queue_task_id=2 RETURNING classification_id, pg_typeof(classification_id)::text AS id_type`);
+    expect(updated.rows).toEqual([{ classification_id: '9223372036854775807', id_type: 'bigint' }]);
+    await expect(client.query('UPDATE classification_intake_receipts SET classification_id=0 WHERE queue_task_id=2'))
+      .rejects.toMatchObject({ code: '23514', constraint: 'classification_intake_receipts_classification_id_check' });
+  } finally { await client.query('ROLLBACK'); client.release(); }
+});
 
 test.each(['movie', 'tv'])('%s coverage retains exact saved decisions through terminal events and queue cleanup', async mediaType => {
   const client = await getPool().connect();

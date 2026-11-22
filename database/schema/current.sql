@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-11-21T14:52:45.085Z
--- Latest Migration: 20261121_190000_add_retry_lineage_refusal_category.sql
+-- Latest Migration: 20261122_180000_widen_classification_intake_receipt_link.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3077,7 +3077,7 @@ CREATE TABLE public.classification_history_totals (
 CREATE TABLE public.classification_intake_receipts (
     queue_task_id bigint NOT NULL,
     webhook_log_id bigint,
-    classification_id integer,
+    classification_id bigint,
     source_class text NOT NULL,
     status_id text NOT NULL,
     comparison_status_id text DEFAULT 'not_evaluated'::text NOT NULL,
@@ -19178,6 +19178,7 @@ FROM unnest(ARRAY[
     '20261030_090000_add_automatic_purpose_evaluation.sql',
     '20261102_090000_add_capture_finalization_fence.sql',
     '20261121_180000_add_retry_lineage_proofs.sql',
-    '20261121_190000_add_retry_lineage_refusal_category.sql'
+    '20261121_190000_add_retry_lineage_refusal_category.sql',
+    '20261122_180000_widen_classification_intake_receipt_link.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

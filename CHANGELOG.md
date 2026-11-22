@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Classification intake links** — Preserve exact History IDs in intake
+  receipts and recovery witnesses up to the PostgreSQL BIGINT maximum. Larger
+  IDs can be linked even when the existing decision snapshot is unavailable.
+  See the [outcome](docs/architecture/classification-intake-bigint-outcome.md).
+
 - **Vite development reloads** — Ignore temporary Vue compiler projects in
   the client watcher to preserve browser drafts during parallel validation.
   Keep reloads for watched TypeScript configs. See the

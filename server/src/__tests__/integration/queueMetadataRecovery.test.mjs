@@ -86,6 +86,16 @@ test('requeues once without changing identity or attempt budgets and aligns the 
   expect(await service.run()).toEqual({ state: 'idle', queued: 0 });
   expect(provider.getDetails).toHaveBeenCalledTimes(1);
 });
+
+test('an exact BIGINT intake link prevents metadata retry with no decision context', async () => {
+  const id = await seed();
+  await db.query(`INSERT INTO classification_intake_receipts
+    (queue_task_id,source_class,status_id,queued_at,attempt_count,classification_id)
+    VALUES ($1,'other','failed',NOW(),1,$2)`, [id, '9007199254740993']);
+  expect(await service.run()).toEqual({ state: 'idle', queued: 0 });
+  expect(await ledger(id)).toBeUndefined();
+  expect(provider.getDetails).not.toHaveBeenCalled();
+});
 test('concurrent schedulers cannot claim the same probe; crash retains cooldown and budget', async () => {
   const id = await seed(); await due(id);
   const claims = await Promise.all([repository.claim(), createQueueMetadataRecoveryRepository(db).claim()]);

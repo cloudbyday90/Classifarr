@@ -9,11 +9,27 @@ test('captures only bounded matching original decisions and keeps capture failur
   const service = new ClassificationIntakeReceiptService({ repository });
   const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'tv', tmdb_id: 42 },
     method: 'ai_analysis', status: 'completed', libraryId: 2 });
-  expect(await service.recordClassification(7, 11, null, capture)).toBe(true);
+  expect(await service.recordClassification(7, '11', null, capture)).toBe(true);
   expect(repository.upsert.mock.calls[0][0][6]).toEqual({ classificationId: 11, capture });
+  expect(await service.record({ taskId: 7, classificationId: '11', decisionContext: { classificationId: 11, capture } })).toBe(true);
   expect(await service.record({ taskId: 7, classificationId: 11, decisionContext: { classificationId: 12, capture } })).toBe(false);
   expect(await service.recordClassification(7, 11, null, { ...capture, title: 'private' })).toBe(true);
-  expect(repository.upsert.mock.calls[1][0][6]).toBeNull();
+  expect(repository.upsert.mock.calls[2][0][6]).toBeNull();
+});
+
+test('links canonical BIGINT IDs outside the existing decision-context range', async () => {
+  const repository = { upsert: jest.fn().mockResolvedValue(true) };
+  const service = new ClassificationIntakeReceiptService({ repository });
+  const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'tv', tmdb_id: 42 },
+    method: 'ai_analysis', status: 'completed', libraryId: 2 });
+  for (const id of ['2147483648', '9007199254740991', '9007199254740993', '9223372036854775807']) {
+    expect(await service.recordClassification(7, id, { statusId: 'captured', reasonId: null }, capture)).toBe(true);
+    expect(repository.upsert).toHaveBeenLastCalledWith([7, null, id, 'captured', null, null, null]);
+  }
+  for (const id of [0, 1.5, Number.MAX_SAFE_INTEGER + 1, 42n, ['42'], ' leading ', '42\n', '042', '9223372036854775808']) {
+    expect(await service.recordClassification(7, id, null, capture)).toBe(false);
+  }
+  expect(repository.upsert).toHaveBeenCalledTimes(4);
 });
 
 test('accepts only fixed comparison diagnostics, not arbitrary provider or media text', async () => {
@@ -23,7 +39,7 @@ test('accepts only fixed comparison diagnostics, not arbitrary provider or media
     comparison: { statusId: 'not_captured', reasonId: 'retrieval_unavailable' },
     title: 'Private title', payload: { api_key: 'secret' } })).toBe(true);
   expect(repository.upsert).toHaveBeenCalledWith([
-    7, null, 11, 'not_captured', 'retrieval_unavailable', null, null,
+    7, null, '11', 'not_captured', 'retrieval_unavailable', null, null,
   ]);
   expect(await service.record({ taskId: 7, classificationId: 11,
     comparison: { statusId: 'not_captured', reasonId: 'private endpoint token' } })).toBe(false);

@@ -19,9 +19,9 @@ export const UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL = `
     task.started_at AT TIME ZONE current_setting('TimeZone'),
     task.completed_at AT TIME ZONE current_setting('TimeZone'),
     ${taskStatus('task')},
-    GREATEST(task.attempts, COALESCE($2::integer, 0)), $3::integer,
+    GREATEST(task.attempts, COALESCE($2::integer, 0)), $3::bigint,
     COALESCE($4::text, 'not_evaluated'), $5::text, $6::text,
-    CASE WHEN $3::integer IS NOT NULL THEN statement_timestamp() END, $7::jsonb
+    CASE WHEN $3::bigint IS NOT NULL THEN statement_timestamp() END, $7::jsonb
   FROM task_queue AS task
   WHERE task.id = $1 AND task.task_type = 'classification'
   ON CONFLICT (queue_task_id) DO UPDATE SET
@@ -37,10 +37,10 @@ export const UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL = `
         AND EXCLUDED.attempt_count = receipt.attempt_count THEN receipt.status_id
       ELSE EXCLUDED.status_id END,
     attempt_count = GREATEST(receipt.attempt_count, EXCLUDED.attempt_count),
-    classification_id = COALESCE($3::integer, receipt.classification_id),
+    classification_id = COALESCE($3::bigint, receipt.classification_id),
     decision_context = CASE
-      WHEN $3::integer IS NULL THEN receipt.decision_context
-      WHEN $3::integer = receipt.classification_id THEN COALESCE(receipt.decision_context, $7::jsonb)
+      WHEN $3::bigint IS NULL THEN receipt.decision_context
+      WHEN $3::bigint = receipt.classification_id THEN COALESCE(receipt.decision_context, $7::jsonb)
       ELSE $7::jsonb END,
     comparison_status_id = CASE WHEN $4::text IS NULL THEN receipt.comparison_status_id
       ELSE EXCLUDED.comparison_status_id END,
@@ -98,7 +98,7 @@ export const RECONCILE_CLASSIFICATION_INTAKE_LINKS_SQL = `
     LIMIT 500
   )
   UPDATE classification_intake_receipts AS receipt
-  SET classification_id = latest.classification_id::integer,
+  SET classification_id = latest.classification_id,
     comparison_status_id = CASE
       WHEN latest.comparison_status_id = 'captured' THEN 'captured'
       WHEN latest.comparison_status_id = 'not_captured' AND latest.safe_reason_id IS NOT NULL
@@ -111,7 +111,7 @@ export const RECONCILE_CLASSIFICATION_INTAKE_LINKS_SQL = `
       ELSE receipt.comparison_reason_id END,
     classification_linked_at = statement_timestamp(), updated_at = statement_timestamp()
   FROM latest WHERE receipt.queue_task_id = latest.queue_task_id AND receipt.classification_id IS NULL
-    AND latest.classification_id BETWEEN 1 AND 2147483647
+    AND latest.classification_id > 0
 `;
 
 export const PRUNE_CLASSIFICATION_INTAKE_RECEIPTS_SQL = `

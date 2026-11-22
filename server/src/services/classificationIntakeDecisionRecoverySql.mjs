@@ -1,9 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
+// The original decision context still uses a positive INTEGER classification ID.
 export const READ_INTAKE_DECISION_RECOVERY_SQL = `
   WITH batch AS MATERIALIZED (
     SELECT queue_task_id, classification_id FROM classification_intake_receipts
-    WHERE queue_task_id > $1::bigint AND classification_id IS NOT NULL
+    WHERE queue_task_id > $1::bigint AND classification_id BETWEEN 1 AND 2147483647
       AND decision_context IS NULL
       AND queued_at > statement_timestamp() - INTERVAL '30 days'
       AND queued_at <= statement_timestamp()

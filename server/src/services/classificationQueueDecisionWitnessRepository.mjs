@@ -10,6 +10,7 @@
 
 import * as database from '../config/database.mjs';
 import { validateClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 function asPositiveInteger(value) {
   const numeric = typeof value === 'number' ? value : Number(value);
@@ -22,7 +23,7 @@ export class ClassificationQueueDecisionWitnessRepository {
   }
 
   async persist({ classificationId, witness } = {}) {
-    const normalizedClassificationId = asPositiveInteger(classificationId);
+    const normalizedClassificationId = canonicalDatabaseBigintId(classificationId);
     const witnessValidation = validateClassificationQueueDecisionWitness(witness);
     if (normalizedClassificationId === null || !witnessValidation.ok) {
       return { persisted: false, reason: 'invalid_witness' };

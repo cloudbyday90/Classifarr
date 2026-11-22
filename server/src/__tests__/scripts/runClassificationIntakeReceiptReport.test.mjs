@@ -17,7 +17,11 @@ test('fixed-window report is read-only, bounded and keeps webhook and receipt po
   const { load, close } = runtimeFor(sql => {
     if (sql.includes('GROUP BY status_id')) return [{ status_id: 'completed', event_count: '2' }];
     if (sql.includes('FROM webhook_log')) return [{ status_id: 'queued', event_count: '2' }];
-    if (sql.includes('ORDER BY queued_at')) return Array.from({ length: 3 }, (_, n) => ({ queue_task_id: n + 1 }));
+    if (sql.includes('ORDER BY queued_at')) return [
+      { queue_task_id: 1, classification_id: 2147483647 },
+      { queue_task_id: 2, classification_id: '9007199254740993' },
+      { queue_task_id: 3, classification_id: null },
+    ];
     return [];
   }, queries);
   const report = await runClassificationIntakeReceiptReport({
@@ -25,7 +29,8 @@ test('fixed-window report is read-only, bounded and keeps webhook and receipt po
     now: Date.parse('2026-09-03T00:00:00Z'), load,
   });
   expect(report).toMatchObject({ version: 'classification_intake_receipts_v1', truncated: true,
-    receipts: [{ queue_task_id: 1 }, { queue_task_id: 2 }],
+    receipts: [{ queue_task_id: 1, classification_id: 2147483647 },
+      { queue_task_id: 2, classification_id: '9007199254740993' }],
     notes: ['webhook_groups_are_separate_population', 'missing_receipt_is_not_evidence_of_no_request'] });
   expect(queries[0].sql).toContain('READ ONLY');
   expect(queries.at(-1).params).toEqual(['2026-09-01T00:00:00.000Z', '2026-09-02T00:00:00.000Z', 3]);
@@ -35,9 +40,10 @@ test('fixed-window report is read-only, bounded and keeps webhook and receipt po
 
 test('exact task lookup accepts only a bounded positive database ID', async () => {
   const queries = [];
-  const { load } = runtimeFor(sql => sql.includes('WHERE queue_task_id') ? [{ queue_task_id: '99' }] : [], queries);
+  const row = { queue_task_id: '99', classification_id: '9223372036854775807' };
+  const { load } = runtimeFor(sql => sql.includes('WHERE queue_task_id') ? [row] : [], queries);
   expect(await runClassificationIntakeReceiptReport({ argv: ['--task-id', '99'], load }))
-    .toEqual({ version: 'classification_intake_receipts_v1', task: { queue_task_id: '99' } });
+    .toEqual({ version: 'classification_intake_receipts_v1', task: row });
   expect(queries.at(-1).params).toEqual(['99']);
   for (const value of ['0', '-1', '99 OR 1=1', '9223372036854775808']) {
     await expect(runClassificationIntakeReceiptReport({ argv: [`--task-id=${value}`], load }))

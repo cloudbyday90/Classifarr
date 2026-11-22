@@ -197,6 +197,13 @@ test('an intake decision prevents repair even without a linked classification', 
   await expect(preview()).rejects.toMatchObject({ statusCode: 409 });
 });
 
+test('an exact BIGINT intake link prevents repair with no decision context', async () => {
+  await db.query(`INSERT INTO classification_intake_receipts
+    (queue_task_id,source_class,status_id,queued_at,attempt_count,classification_id)
+    VALUES($1,'manual','failed',NOW(),1,$2)`, [taskId, '9007199254740993']);
+  await expect(preview()).rejects.toMatchObject({ code: 'queue_identity_repair_prior_work' });
+});
+
 test('separate retry rejects competing work and repeat confirmation cannot change its ID', async () => {
   const p = await preview(); const { receipt } = await confirm(p);
   extraTasks.push((await db.query(`INSERT INTO task_queue(task_type,payload) VALUES ('classification','{"tmdb_id":99,"media_type":"movie"}') RETURNING id`)).rows[0].id);
