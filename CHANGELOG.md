@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Suggestion review** — The tuning dashboard opens the proposal from the
+  list and shows supporting evidence to administrators in pages of up to 20
+  references, with keyboard focus and status announcements preserved. See the
+  [outcome](docs/architecture/suggestion-dashboard-evidence-outcome.md).
+
 - **Saved suggestion evidence** — Administrators can read up to 20 linked
   feedback references at a time, with explicit continuation and unavailable
   entries for missing or mismatched feedback. See the

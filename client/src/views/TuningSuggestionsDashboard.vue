@@ -10,7 +10,11 @@
   <div class="tuning-dashboard">
     <div class="header">
       <div>
-        <h1 class="text-2xl font-bold">
+        <h1
+          ref="dashboardHeading"
+          tabindex="-1"
+          class="text-2xl font-bold"
+        >
           Policy Tuning Suggestions
         </h1>
         <p class="text-gray-400 text-sm mt-1">
@@ -105,107 +109,15 @@
       <p>No suggestions found</p>
     </div>
     
-    <!-- Detail modal (simplified) -->
-    <div
+    <SuggestionDetailsDialog
       v-if="selectedSuggestion"
-      class="modal-overlay"
-      @click.self="selectedSuggestion = null"
-    >
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Suggestion Details</h2>
-          <button
-            class="btn-close"
-            @click="selectedSuggestion = null"
-          >
-            ×
-          </button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="detail-section">
-            <h3>{{ selectedSuggestion.suggestion_type }}</h3>
-            <div class="config-detail">
-              <h4>Proposed Change:</h4>
-              <pre>{{ JSON.stringify(selectedSuggestion.suggestion_config, null, 2) }}</pre>
-            </div>
-            
-            <div class="metrics">
-              <div class="metric">
-                <span class="label">Confidence</span>
-                <span class="value">{{ selectedSuggestion.confidence }}%</span>
-              </div>
-              <div class="metric">
-                <span class="label">Expected Impact</span>
-                <span class="value">{{ selectedSuggestion.impact_estimate }}</span>
-              </div>
-              <div class="metric">
-                <span class="label">Evidence</span>
-                <span class="value">{{ selectedSuggestion.supporting_feedback?.length || 0 }} decisions</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Supporting evidence -->
-          <div
-            v-if="selectedSuggestion.supporting_feedback?.length > 0"
-            class="detail-section"
-          >
-            <h3>Supporting Evidence</h3>
-            <p class="help-text">
-              Recent classifications that support this suggestion
-            </p>
-            
-            <div class="evidence-list">
-              <div
-                v-for="feedback in selectedSuggestion.supporting_feedback"
-                :key="feedback.id"
-                class="evidence-item"
-              >
-                <div class="evidence-header">
-                  <span class="title">{{ feedback.title }} ({{ feedback.item_metadata?.release_year }})</span>
-                  <span
-                    class="badge"
-                    :class="feedback.was_correction ? 'correction' : 'confirmed'"
-                  >
-                    {{ feedback.was_correction ? 'Correction' : 'Confirmed' }}
-                  </span>
-                </div>
-                <div class="evidence-details">
-                  <span>Original: {{ feedback.original_library }}</span>
-                  <span>→</span>
-                  <span>Selected: {{ feedback.selected_library }}</span>
-                </div>
-                <div
-                  v-if="feedback.user_reason_text"
-                  class="user-reason"
-                >
-                  "{{ feedback.user_reason_text }}"
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div
-          v-if="selectedSuggestion.status === 'pending'"
-          class="modal-footer"
-        >
-          <button
-            class="btn btn-secondary"
-            @click="showRejectModal(selectedSuggestion)"
-          >
-            Reject
-          </button>
-          <button
-            class="btn btn-success"
-            @click="applySuggestion(selectedSuggestion)"
-          >
-            Apply Suggestion
-          </button>
-        </div>
-      </div>
-    </div>
+      :key="selectedSuggestion.id"
+      :suggestion="selectedSuggestion"
+      :fallback-focus-target="getDetailsFallbackFocus"
+      @close="selectedSuggestion = null"
+      @apply="applySuggestion"
+      @reject="showRejectModal"
+    />
     
     <!-- Reject modal -->
     <RejectModal
@@ -218,9 +130,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, useTemplateRef } from 'vue';
 import api from '@/api';
 import SuggestionCard from '@/components/suggestions/SuggestionCard.vue';
+import SuggestionDetailsDialog from '@/components/suggestions/SuggestionDetailsDialog.vue';
 import RejectModal from '@/components/suggestions/RejectModal.vue';
 import { isSuggestionAdministratorRefusal, isSuggestionReviewConflict } from '@/utils/suggestionReviewErrors';
 
@@ -231,6 +144,7 @@ const statusFilter = ref('pending');
 const policyFilter = ref('');
 const selectedSuggestion = ref(null);
 const rejectingSuggestion = ref(null);
+const dashboardHeading = useTemplateRef('dashboardHeading');
 
 // Note: Filtering is done server-side via loadSuggestions()
 // This computed property is kept for potential client-side filtering in the future
@@ -323,13 +237,12 @@ async function confirmReject(reason) {
   }
 }
 
-async function showDetails(suggestion) {
-  try {
-    const response = await api.getSuggestion(suggestion.id);
-    selectedSuggestion.value = response;
-  } catch (error) {
-    console.error('Failed to load suggestion details:', error);
-  }
+function showDetails(suggestion) {
+  selectedSuggestion.value = suggestion;
+}
+
+function getDetailsFallbackFocus() {
+  return dashboardHeading.value;
 }
 
 onMounted(async () => {
@@ -415,199 +328,4 @@ watch([statusFilter, policyFilter], () => {
   font-size: 1.125rem;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: #2a2a3e;
-  border-radius: 8px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #374151;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #e5e7eb;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  font-size: 2rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-}
-
-.btn-close:hover {
-  color: #e5e7eb;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.detail-section {
-  margin-bottom: 2rem;
-}
-
-.detail-section h3 {
-  color: #e5e7eb;
-  margin-bottom: 1rem;
-}
-
-.detail-section h4 {
-  color: #9ca3af;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.config-detail pre {
-  background: #1a1a2e;
-  padding: 1rem;
-  border-radius: 4px;
-  overflow-x: auto;
-  color: #a5b4fc;
-  font-size: 0.875rem;
-}
-
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.metric {
-  background: #1a1a2e;
-  padding: 1rem;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.metric .label {
-  display: block;
-  color: #9ca3af;
-  font-size: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.metric .value {
-  display: block;
-  color: #e5e7eb;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.help-text {
-  color: #9ca3af;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.evidence-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.evidence-item {
-  background: #1a1a2e;
-  padding: 1rem;
-  border-radius: 4px;
-}
-
-.evidence-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.evidence-header .title {
-  color: #e5e7eb;
-  font-weight: 500;
-}
-
-.badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.badge.correction {
-  background: #fbbf2450;
-  color: #fbbf24;
-}
-
-.badge.confirmed {
-  background: #10b98150;
-  color: #10b981;
-}
-
-.evidence-details {
-  color: #9ca3af;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.user-reason {
-  color: #a5b4fc;
-  font-style: italic;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1.5rem;
-  border-top: 1px solid #374151;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn:hover {
-  opacity: 0.8;
-}
-
-.btn-secondary {
-  background: #4b5563;
-  color: #e5e7eb;
-}
-
-.btn-success {
-  background: #10b981;
-  color: white;
-}
 </style>

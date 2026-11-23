@@ -123,3 +123,13 @@ test('named filters allow viewing superseded history', async () => {
   expect(api.getSuggestions).toHaveBeenLastCalledWith('superseded', '')
   expect(wrapper.find('select[aria-label="Policy"]').exists()).toBe(true)
 })
+
+test('opens proposal details from the selected list row without requesting legacy feedback', async () => {
+  await mountDashboard()
+  await wrapper.findComponent({ name: 'SuggestionCard' }).vm.$emit('view-details', suggestion)
+  const details = wrapper.findComponent({ name: 'SuggestionDetailsDialog' })
+  expect(details.props('suggestion')).toEqual(suggestion)
+  expect(api.getSuggestion).not.toHaveBeenCalled()
+  await details.vm.$emit('close')
+  expect(wrapper.findComponent({ name: 'SuggestionDetailsDialog' }).exists()).toBe(false)
+})

@@ -270,7 +270,8 @@ jobs:
         run: |
           cd client
           node scripts/run-playwright.mjs test browser-tests/shared-form-controls.spec.js \
-            browser-tests/pgvector-startup.spec.js browser-tests/history-manual-routing.spec.js --project chromium --workers 1 --retries 0
+            browser-tests/pgvector-startup.spec.js browser-tests/history-manual-routing.spec.js \
+            browser-tests/suggestion-evidence.spec.js --project chromium --workers 1 --retries 0
 
       - name: Upload client browser test reports
         if: failure()
