@@ -361,6 +361,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Manual analysis capacity tests** — Added isolated measurements of
+  all-policy response size, memory, and overlap with queue and ingestion work.
+  See the [outcome](docs/architecture/manual-suggestion-analysis-capacity-outcome.md).
+
 - **Server HTTP dependency** — Pin standalone Undici to 8.13.1 and verify
   its supported redirect/cache composition and existing transport safeguards.
   See the [outcome](docs/architecture/server-undici-pr-596-outcome.md).
