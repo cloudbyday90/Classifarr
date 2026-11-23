@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Policy Tuning Suggestions** — The dashboard now shows one bounded page at
+  a time, supports All statuses, and loads a proposal when Details opens. Page
+  counts, keyboard navigation, and proposal review use the current results.
+  See the [outcome](docs/architecture/suggestion-dashboard-pagination-outcome.md).
+
 - **Suggestion list API** — Added an opt-in authenticated page with up to 20
   summaries, exact ID continuation, and an explicit all-status filter. Existing
   list callers can continue using their current contract. See the

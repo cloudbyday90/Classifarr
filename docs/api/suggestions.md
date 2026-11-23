@@ -29,6 +29,10 @@ policy and library. Dates are UTC strings or `null`. Non-finite confidence
 values appear as `null`. Use the proposal and evidence reads below for inspection.
 The legacy global list continues to use its confidence-first order and payload.
 
+The tuning dashboard uses this page and loads an individual proposal when the
+user opens Details. Its navigation and counts describe the current page. It
+retains the existing Policy filter for administrators.
+
 ## Read a proposal
 
 Use `GET /api/suggestions/:id/proposal` for a single signed-in proposal lookup.

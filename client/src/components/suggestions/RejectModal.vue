@@ -1,213 +1,70 @@
-<!--
-  Classifarr - AI-powered media classification for the *arr ecosystem
-  Copyright (C) 2024-2026 Classifarr Contributors
-  
-  This program is free software: licensed under GPL-3.0
-  See LICENSE file for details.
--->
-
+<!-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 -->
 <template>
-  <div
-    class="modal-overlay"
-    @click.self="$emit('cancel')"
+  <Modal
+    :model-value="true"
+    title="Reject Suggestion"
+    :close-disabled="busy"
+    :fallback-focus-target="fallbackFocusTarget"
+    @update:model-value="$emit('cancel')"
   >
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Reject Suggestion</h2>
-        <button
-          class="btn-close"
-          @click="$emit('cancel')"
-        >
-          ×
-        </button>
-      </div>
-      
-      <div class="modal-body">
-        <p>Are you sure you want to reject this suggestion?</p>
-        <p class="suggestion-title">
-          {{ suggestionTitle }}
-        </p>
-        
-        <div class="form-group">
-          <label for="reason">Reason for rejection:</label>
-          <textarea 
-            id="reason"
-            v-model="reason"
-            class="form-control"
-            rows="3"
-            placeholder="Optional: Explain why you're rejecting this suggestion"
-          />
-        </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button
-          class="btn btn-secondary"
-          @click="$emit('cancel')"
-        >
-          Cancel
-        </button>
-        <button
-          class="btn btn-danger"
-          @click="confirmReject"
-        >
-          Reject Suggestion
-        </button>
-      </div>
-    </div>
-  </div>
+    <form
+      :id="formId"
+      class="space-y-3"
+      @submit.prevent="submit"
+    >
+      <p class="capitalize wrap-anywhere">
+        {{ suggestion.suggestion_type.replaceAll('_', ' ') }} · {{ suggestion.policy_name }}
+      </p>
+      <label :for="reasonId">Reason for rejection (optional)</label>
+      <textarea
+        :id="reasonId"
+        v-model="reason"
+        class="w-full rounded border border-gray-600 bg-background px-3 py-2"
+        rows="3"
+      />
+    </form>
+
+    <template #footer>
+      <Button
+        variant="secondary"
+        :aria-disabled="busy"
+        @click="cancel"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        variant="error"
+        :form="formId"
+        :aria-disabled="busy"
+      >
+        Reject Suggestion
+      </Button>
+    </template>
+  </Modal>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, useId } from 'vue'
+import Button from '@/components/common/Button.vue'
+import Modal from '@/components/common/Modal.vue'
 
 const props = defineProps({
-  suggestion: {
-    type: Object,
-    required: true
-  }
-});
+  suggestion: { type: Object, required: true },
+  busy: Boolean,
+  fallbackFocusTarget: { type: Function, required: true },
+})
+const emit = defineEmits(['confirm', 'cancel'])
 
-const emit = defineEmits(['confirm', 'cancel']);
+const reason = ref('')
+const formId = `reject-suggestion-${useId()}`
+const reasonId = `${formId}-reason`
 
-const reason = ref('');
+function submit() {
+  if (!props.busy) emit('confirm', reason.value || 'No reason provided')
+}
 
-const suggestionTitle = computed(() => {
-  const config = props.suggestion.suggestion_config;
-  switch (props.suggestion.suggestion_type) {
-    case 'adjust_weight':
-      return `Adjust ${config.signal} weight`;
-    case 'adjust_threshold':
-      return `Adjust ${config.threshold_type} threshold`;
-    case 'create_pattern':
-      return `Create pattern: ${config.pattern_value}`;
-    default:
-      return props.suggestion.suggestion_type;
-  }
-});
-
-function confirmReject() {
-  emit('confirm', reason.value || 'No reason provided');
+function cancel() {
+  if (!props.busy) emit('cancel')
 }
 </script>
-
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: #2a2a3e;
-  border-radius: 8px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #374151;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #e5e7eb;
-}
-
-.btn-close {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  font-size: 2rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-}
-
-.btn-close:hover {
-  color: #e5e7eb;
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-body p {
-  color: #e5e7eb;
-  margin-bottom: 1rem;
-}
-
-.suggestion-title {
-  font-weight: 600;
-  color: #fbbf24;
-}
-
-.form-group {
-  margin-top: 1rem;
-}
-
-.form-group label {
-  display: block;
-  color: #e5e7eb;
-  margin-bottom: 0.5rem;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.5rem;
-  background: #1a1a2e;
-  border: 1px solid #374151;
-  border-radius: 4px;
-  color: #e5e7eb;
-  font-family: inherit;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: #6366f1;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 1.5rem;
-  border-top: 1px solid #374151;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn:hover {
-  opacity: 0.8;
-}
-
-.btn-secondary {
-  background: #4b5563;
-  color: #e5e7eb;
-}
-
-.btn-danger {
-  background: #ef4444;
-  color: white;
-}
-</style>
