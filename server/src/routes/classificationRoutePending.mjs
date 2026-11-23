@@ -14,7 +14,7 @@ import {
 } from './classificationRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
-import { parsePendingResolutionHistoryId } from '../services/pendingResolutionHistoryId.mjs';
+import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 import { recordNativePendingRouteOutcome } from '../services/policyNativePendingRouteOutcomePersistence.mjs';
 import {
   buildPolicyRuntimeQuestionAnswerContract,
@@ -40,7 +40,7 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       return {
         ...item,
         policy_question: policyQuestion,
-        policy_question_answer: parsePendingResolutionHistoryId(item.id) === null
+        policy_question_answer: normalizeDatabaseBigintId(item.id) === null
           ? null
           : buildPolicyRuntimeQuestionAnswerContract({
             classification: item,
@@ -69,7 +69,7 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
   }));
 
   router.post('/pending/:id/resolve', asyncHandler(async (req, res) => {
-    const classificationId = parsePendingResolutionHistoryId(req.params.id);
+    const classificationId = normalizeDatabaseBigintId(req.params.id);
     if (classificationId === null) {
       throw new ValidationError('Invalid classification id');
     }
@@ -102,6 +102,7 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       answerPayload,
       resolveActor(req),
       {
+        allowBigintHistoryId: true,
         authenticated: Boolean(req.user || req.apiKey),
         ...(Number.isInteger(Number(req.user?.id)) && Number(req.user.id) > 0
           ? { operatorAuditActorId: Number(req.user.id) }

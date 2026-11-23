@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { captureRuntimeOutcomeEvaluationTime } from './runtimeOutcomeEvaluationTime.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
@@ -75,12 +76,16 @@ function createAnswerContractError(validation) {
 export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, {
     policyQuestionContext,
     answerContract = null,
+    allowBigintHistoryId = false,
     runtimeDestinationEvidenceCommandService = null,
     runtimeDestinationEvidenceAuthorizationContext = null,
     reviewCorpusCaptureService = null,
     reviewCorpusActorId = null,
 } = {}) {
-    if (parsePendingResolutionHistoryId(classificationId) === null) {
+    const parseHistoryId = allowBigintHistoryId === true && answerContract
+        ? normalizeDatabaseBigintId
+        : parsePendingResolutionHistoryId;
+    if (parseHistoryId(classificationId) === null) {
         throw createStatusError('Invalid classification id', 400, 'invalid_classification_id');
     }
     try {

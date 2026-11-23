@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Web pending-answer admission** — Enable single and bulk web answers
+  for exact History IDs through the BIGINT maximum. Preserve numeric safe
+  IDs and require an exact row binding for large-ID replay.
+  See the [outcome](docs/architecture/pending-web-bigint-admission-outcome.md).
+
 - **Pending-answer History IDs** — Preserve exact IDs in single and bulk
   web requests, reject mismatched answer contracts, and validate exact row
   identity in the shared outcome writer. Existing answer limits still apply.

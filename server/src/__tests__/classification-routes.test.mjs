@@ -214,7 +214,7 @@ describe('Classification Routes - Pending Resolution', () => {
   });
 
   describe('POST /pending/:id/resolve', () => {
-    test.each(['1x', '1.0', '01', '+1', '0', '9007199254740992', '9223372036854775808'])(
+    test.each(['1x', '1.0', '01', '+1', '0', '-1', '1e2', '1\n', '9223372036854775808'])(
       'rejects ambiguous History ID %s before any lookup', async id => {
         await request(app).post(`/api/classification/pending/${encodeURIComponent(id)}/resolve`)
           .send({ contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: 'exact-answer-fingerprint',
@@ -716,7 +716,7 @@ describe('Classification Routes - Pending Resolution', () => {
           destination_library_id: 60,
         },
         'admin',
-        { authenticated: true, operatorAuditActorId: 1 },
+        { authenticated: true, operatorAuditActorId: 1, allowBigintHistoryId: true },
       );
     });
 
@@ -773,13 +773,12 @@ describe('Classification Routes - Pending Resolution', () => {
   });
 
   describe('GET /pending', () => {
-    test('keeps exact large rows visible with the existing unavailable answer state', async () => {
-      const id = '9007199254740993';
+    test.each(['9007199254740993', '9223372036854775807'])('projects an answer bound to exact History ID %s', async id => {
       clarificationService.getPendingClassifications.mockResolvedValueOnce([{
         id, title: 'Large pending classification', media_type: 'movie', policy_question: normalizedPolicyQuestion(),
       }]);
       const { body } = await request(app).get('/api/classification/pending').expect(200);
-      expect(body.items).toEqual([expect.objectContaining({ id, policy_question_answer: null })]);
+      expect(body.items).toMatchObject([{ id, policy_question_answer: { candidate_item: { classification_id: id } } }]);
     });
     test('returns pending items and preserves stale policy-question flags', async () => {
       clarificationService.getPendingClassifications.mockResolvedValueOnce([{

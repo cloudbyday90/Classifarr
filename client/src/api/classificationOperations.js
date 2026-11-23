@@ -57,6 +57,7 @@ export function getLiveFeed(limit = 50) {
 
 export function getPendingClassifications() {
   // Nested cards retain their actual v1/v2 version; presentation utilities validate their semantics.
+  // A question contract's History ID can be a safe number or an exact decimal string.
   return getDataRequest('/classification/pending')
 }
 
@@ -88,6 +89,7 @@ export function getHistoricRouteSafetyRefreshRecentReceipt() {
 }
 
 export function resolvePendingClassification(classificationId, payload) {
+  // The response keeps safe IDs numeric and returns larger IDs as decimal strings.
   const id = canonicalClassificationHistoryId(classificationId)
   if (!id) return Promise.reject(new TypeError('Invalid classification id'))
 

@@ -92,6 +92,23 @@ curl -X POST http://localhost:21324/api/classification/classify \
 
 ---
 
+### Pending classification answers
+
+`GET /api/classification/pending` returns pending items and their current
+`policy_question_answer` contracts where available. `items[].id` and the
+contract's `candidate_item.classification_id` use JSON integers through
+`9007199254740991` and exact decimal strings above that value.
+
+`POST /api/classification/pending/:id/resolve` accepts a canonical positive
+decimal History ID up to `9223372036854775807`. Send the current contract's
+version and fingerprint, the action ID, and the required destination ID.
+The response's `classificationId` uses the same number-or-string convention.
+The server returns the existing completed result on an exact receipt replay
+without routing a second time. Larger IDs require a matching saved row binding.
+[Admission design](../architecture/pending-web-bigint-admission-design.md)
+
+---
+
 ### GET /api/classification/history
 
 Get classification history with filtering and pagination.

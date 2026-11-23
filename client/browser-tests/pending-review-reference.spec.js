@@ -15,7 +15,8 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   const writes = []
   const policyName = `Comedy ${'LongLibraryName'.repeat(8)}`
   const advisoryName = `Movies ${'AnotherLongLibraryName'.repeat(5)}`
-  const answer = pendingReviewReference({ policyName, advisoryName })
+  const id = '9223372036854775807'
+  const answer = { ...pendingReviewReference({ policyName, advisoryName }), candidate_item: { classification_id: id } }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request(), path = new URL(request.url()).pathname
     let data = {}, status = 200
@@ -29,7 +30,7 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
       if (path === '/api/notifications/unread-count') data = { unread: 0 }
       if (['/api/libraries', '/api/classification/progress', '/api/queue/pending', '/api/queue/failed'].includes(path)) data = []
       if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
-      if (path === '/api/classification/pending') data = { items: [{ id: 44, title: 'Synthetic review', year: 2026,
+      if (path === '/api/classification/pending') data = { items: [{ id, title: 'Synthetic review', year: 2026,
         media_type: 'movie', confidence: 100, library_name: 'Mutable unrelated label', policy_question_stale: false,
         policy_question: { question: 'Old contradictory prompt' }, policy_question_answer: answer }] }
       if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
@@ -70,7 +71,7 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   expect(writes).toEqual([])
   await page.keyboard.press('Enter')
   await expect.poll(() => writes.length).toBe(1)
-  expect(writes[0]).toEqual({ path: '/api/classification/pending/44/resolve', method: 'POST', body: {
+  expect(writes[0]).toEqual({ path: `/api/classification/pending/${id}/resolve`, method: 'POST', body: {
     contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: 'abcdefghijklmnopqrstuv',
     action_id: 'confirm_destination', destination_library_id: 8 } })
 })
@@ -79,6 +80,8 @@ for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false
   test(`saved current ${action} bulk=${bulk} ${gap ? 'gap requires choice' : 'uses the fresh destination'} without UI clutter`, async ({ page }) => {
     const selectOnly = action === 'prompt_select'
     const automatic = action === 'auto_classify'
+    const id = bulk ? '9007199254740992' : 46
+    const secondId = '9007199254740993'
     const libraries = [{ id: 101, name: 'Fresh destination', media_type: 'movie', is_active: true },
       { id: 2001, name: 'Earlier destination', media_type: 'movie', is_active: true }]
     const metadata = { tmdb_id: 42, media_type: 'movie', title: 'Owned saved review', policyResult: {
@@ -88,24 +91,24 @@ for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false
         explanation: null, facts: [] } }
     const policy = { action, confidence: automatic ? 90 : 75, thresholds: { auto_classify: 85, prompt: 60, prompt_select: null }, ranked: [candidate] }
     const method = automatic ? 'policy_auto' : selectOnly ? 'policy_recheck' : 'ai_verified'
-    metadata.classification_details = { current_policy_review: { version: automatic ? 'policy.current_review.v3' : selectOnly ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: '46',
+    metadata.classification_details = { current_policy_review: { version: automatic ? 'policy.current_review.v3' : selectOnly ? 'policy.current_review.v2' : 'policy.current_review.v1', classification_id: String(id),
       identity_key: 'movie:42', method, status: gap ? 'evidence_gap' : 'recorded', policy: gap ? null : policy } }
     if (automatic) metadata.classification_details.route_safety = buildClassificationRouteSafetyProjection(evaluateClassificationRouteSafety({
       result: { method, library: libraries[0], policyResult: policy, confidence: 90, ai_authority: { sideEffects: { canRoute: false } } },
     }))
     const question = normalizePolicyRuntimeQuestion({ metadata, libraries, policyResult: policy })
-    const item = { ...metadata, id: 46, method, confidence: automatic ? 90 : 75, library_id: null, status: 'awaiting_decision', metadata,
+    const item = { ...metadata, id, method, confidence: automatic ? 90 : 75, library_id: null, status: 'awaiting_decision', metadata,
       policy_question: question, policy_question_stale: false }
     const answer = buildPolicyRuntimeQuestionAnswerContract({ classification: item, question })
-    const second = { ...item, id: 47, metadata: { ...metadata, classification_details: {
-      ...metadata.classification_details, current_policy_review: { ...metadata.classification_details.current_policy_review, classification_id: '47' },
+    const second = { ...item, id: secondId, metadata: { ...metadata, classification_details: {
+      ...metadata.classification_details, current_policy_review: { ...metadata.classification_details.current_policy_review, classification_id: secondId },
     } } }
     const secondAnswer = buildPolicyRuntimeQuestionAnswerContract({ classification: second, question })
     const writes = []
     await page.route(url => url.pathname.startsWith('/api/'), async route => {
       const req = route.request(), path = new URL(req.url()).pathname
       let data = {}
-      if (req.method() !== 'GET') { writes.push(req.postDataJSON()); data = { success: true, routed: false } }
+      if (req.method() !== 'GET') { writes.push({ path, body: req.postDataJSON() }); data = { success: true, routed: false } }
       else {
         if (path === '/api/setup/status') data = { setupRequired: false }
         if (['/api/auth/me', '/api/user/me'].includes(path)) data = { id: 1, role: 'admin', username: 'fixture-operator' }
@@ -138,7 +141,7 @@ for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false
         const choose = candidates.getByRole('button', { name: 'Use Fresh destination', exact: true })
         await choose.focus(); await expect(choose).toBeFocused(); await page.keyboard.press('Enter')
         await expect.poll(() => writes.length).toBe(1)
-        expect(writes[0]).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+        expect(writes[0].body).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
           action_id: 'confirm_destination', destination_library_id: 101 })
       }
     } else {
@@ -156,9 +159,10 @@ for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false
       await expect(confirm).toBeVisible()
       await confirm.focus(); await page.keyboard.press('Enter')
       await expect.poll(() => writes.length).toBe(bulk ? 2 : 1)
-      expect(writes[0]).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
+      expect(writes.map(write => write.path)).toEqual((bulk ? [id, secondId] : [id]).map(historyId => `/api/classification/pending/${historyId}/resolve`))
+      expect(writes[0].body).toEqual({ contract_version: answer.version, contract_fingerprint: answer.fingerprint,
         action_id: 'confirm_destination', destination_library_id: 101 })
-      if (bulk) expect(writes[1]).toEqual({ contract_version: secondAnswer.version, contract_fingerprint: secondAnswer.fingerprint,
+      if (bulk) expect(writes[1].body).toEqual({ contract_version: secondAnswer.version, contract_fingerprint: secondAnswer.fingerprint,
         action_id: 'confirm_destination', destination_library_id: 101 })
     }
   })
