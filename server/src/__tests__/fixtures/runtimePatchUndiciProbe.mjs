@@ -53,13 +53,21 @@ try {
       else if (req.url === '/loop') { res.writeHead(302, { location: '/loop' }); res.end(); }
       else { seen.push(req.headers); res.end('target'); }
     });
-    // Exercise both compositions, including the normalizer outside redirect
-    // described by GHSA-9v6h-8rgp-m69f.
+    // Keep the older client controls and verify the newer composition guard.
     const redirect = () => interceptors.redirect({ maxRedirections: 3, throwOnMaxRedirect: true,
       stripHeadersOnCrossOriginRedirect: ['x-private'] });
     const entries = [['Host', 'synthetic.invalid'], ['Authorization', 'synthetic-auth'], ['Cookie', 'synthetic=cookie'],
       ['Proxy-Authorization', 'synthetic-proxy'], ['X-Private', 'synthetic-private'], ['X-Control', 'ordinary']];
-    for (const dispatcher of [agent(redirect(), cache()), agent(cache(), redirect())]) {
+    const manifestPath = new URL('./package.json', import.meta.resolve(target));
+    const { version } = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    const dispatchers = [agent(redirect(), cache())];
+    if (version === '8.13.1') {
+      assert.throws(() => agent(cache(), redirect()), { code: 'UND_ERR_INVALID_ARG' });
+    } else {
+      assert.equal(version, '8.12.4');
+      dispatchers.push(agent(cache(), redirect()));
+    }
+    for (const dispatcher of dispatchers) {
       for (const headers of [Object.fromEntries(entries), entries.flat(), entries]) {
         assert.equal((await read(source.origin + '/same', dispatcher, headers)).body, 'target');
         const same = seen.at(-1);

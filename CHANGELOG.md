@@ -295,6 +295,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Server HTTP dependency** — Pin standalone Undici to 8.13.1 and verify
+  its supported redirect/cache composition and existing transport safeguards.
+  See the [outcome](docs/architecture/server-undici-pr-596-outcome.md).
+
 - **Server tooling** — Adopt Knip 6.46.1 and the aligned Testcontainers
   12.2.2 packages after strict install, dependency audit, tooling and isolated
   PostgreSQL checks. See the
