@@ -9,6 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 import {
   getRuntimeQuestionNormalizationStatus,
@@ -182,7 +183,7 @@ function buildCandidateItem(classification = {}) {
   const year = Number(source.year);
 
   return {
-    classification_id: normalizePositiveInteger(source.id),
+    classification_id: normalizeDatabaseBigintId(source.id),
     title: normalizeString(source.title, 280),
     year: Number.isInteger(year) && year >= 1870 && year <= 9999 ? year : null,
     media_type: normalizeString(source.media_type, 32)?.toLowerCase() || null,

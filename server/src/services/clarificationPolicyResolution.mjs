@@ -11,10 +11,13 @@ import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNo
 import {
     POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
     POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS,
-    buildPolicyRuntimeQuestionAnswerOutcome,
     getPolicyRuntimeQuestionAnswerSelectedOption,
     validatePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import {
+    buildPolicyRuntimeQuestionAnswerReceipt,
+    isPolicyRuntimeQuestionAnswerReceiptForClassification,
+} from './policyRuntimeQuestionAnswerReceipt.mjs';
 import {
     buildCurrentLibraryCandidateRetrievalOutcomeAttribution,
 } from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
@@ -41,8 +44,9 @@ function getRecordedRuntimeQuestionAnswer(metadata) {
     return answer && typeof answer === 'object' ? answer : null;
 }
 
-function isIdempotentRuntimeQuestionAnswer(recordedAnswer, answer) {
-    return recordedAnswer?.contract_version === answer?.contractVersion &&
+function isIdempotentRuntimeQuestionAnswer(recordedAnswer, answer, classificationId) {
+    return isPolicyRuntimeQuestionAnswerReceiptForClassification(recordedAnswer, classificationId) &&
+        recordedAnswer.contract_version === answer?.contractVersion &&
         recordedAnswer?.contract_fingerprint === answer?.contractFingerprint &&
         recordedAnswer?.action_id === answer?.actionId &&
         Number(recordedAnswer?.destination_library_id) === Number(answer?.destinationLibraryId);
@@ -124,6 +128,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             const answerIsIdempotent = answerContract && isIdempotentRuntimeQuestionAnswer(
                 getRecordedRuntimeQuestionAnswer(existingMetadata),
                 answerContract,
+                classificationId,
             );
             if (
                 existingClassification.status &&
@@ -374,7 +379,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             final_library_id: selectedLibraryId,
             final_library_name: selectedLibraryName,
             runtime_question_answer: answerContract
-                ? { ...buildPolicyRuntimeQuestionAnswerOutcome(answerContract),
+                ? { ...buildPolicyRuntimeQuestionAnswerReceipt(classification.id, answerContract),
                     evaluation_observed_at: await captureRuntimeOutcomeEvaluationTime(client) }
                 : undefined,
             ...(currentLibraryCandidateRetrievalOutcomeAttribution

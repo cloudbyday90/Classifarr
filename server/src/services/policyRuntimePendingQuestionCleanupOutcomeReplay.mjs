@@ -10,12 +10,16 @@
 
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import {
-  buildPolicyRuntimeQuestionAnswerOutcome,
   getPolicyRuntimeQuestionAnswerSelectedOption,
   isPolicyRuntimeQuestionResolutionAction,
   parsePolicyRuntimeQuestionAnswer,
   validatePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import {
+  buildPolicyRuntimeQuestionAnswerReceipt,
+  isPolicyRuntimeQuestionAnswerReceiptForClassification,
+} from './policyRuntimeQuestionAnswerReceipt.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS,
 } from './policyRuntimePendingQuestionCleanupPlan.mjs';
@@ -73,6 +77,12 @@ async function replayRecordedRuntimeQuestionAnswer({
 
   const metadata = parsePersistedObject(classification.metadata);
   const recordedAnswer = getRecordedRuntimeQuestionAnswer(metadata);
+  if (parsePendingResolutionHistoryId(classification.id) === null ||
+      !isPolicyRuntimeQuestionAnswerReceiptForClassification(recordedAnswer, classification.id)) {
+    return buildRetryRequiredResult(
+      POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,
+    );
+  }
   const parsedAnswer = parsePolicyRuntimeQuestionAnswer(recordedAnswer);
   if (!parsedAnswer.ok) {
     return buildRetryRequiredResult(
@@ -140,7 +150,7 @@ async function replayRecordedRuntimeQuestionAnswer({
     selected_option: selectedOption,
     final_library_id: destination.id,
     final_library_name: destination.name,
-    runtime_question_answer: buildPolicyRuntimeQuestionAnswerOutcome(validation.answer),
+    runtime_question_answer: buildPolicyRuntimeQuestionAnswerReceipt(classification.id, validation.answer),
   }, { client });
   if (outcomeWrite.updated !== true) {
     throw new Error('Could not persist the recorded runtime-question outcome.');

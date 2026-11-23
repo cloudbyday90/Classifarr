@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ValidationError } from '../utils/appError.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS,
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_VERSION,
@@ -48,18 +49,13 @@ const FRESH_RUNTIME_EVALUATION_ACTION_IDS = new Set([
 const REPLAY_RECEIPT_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function normalizePositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
-
 function normalizeClassificationIds(value) {
   if (!Array.isArray(value) || value.length === 0 ||
       value.length > POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_APPLY_MAX_RECORDS) {
     return null;
   }
 
-  const ids = [...new Set(value.map(normalizePositiveInteger))];
+  const ids = [...new Set(value.map(parsePendingResolutionHistoryId))];
   if (ids.length !== value.length || ids.some(id => !id)) return null;
 
   return ids.sort((left, right) => left - right);

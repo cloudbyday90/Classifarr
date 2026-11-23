@@ -86,7 +86,7 @@ describe('policyRuntimePendingQuestionCleanupOutcomeReplay', () => {
       source: 'pending_question_cleanup',
       actor: 'user:7',
       final_library_id: 7,
-      runtime_question_answer: expect.objectContaining({ action_id: 'confirm_destination' }),
+      runtime_question_answer: expect.objectContaining({ action_id: 'confirm_destination', classification_id: 91 }),
     }), { client });
     expect(JSON.stringify(outcomeService.mock?.calls || outcomeService.recordOutcome.mock.calls))
       .not.toContain('learning');
@@ -105,6 +105,19 @@ describe('policyRuntimePendingQuestionCleanupOutcomeReplay', () => {
     });
 
     expect(result).toEqual({
+      resolved: false,
+      retryRequired: true,
+      reasonId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,
+    });
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
+  test('refuses another row’s receipt before any destination or resolution query', async () => {
+    const row = classification(question());
+    row.metadata.classification_details.outcome_link.runtime_question_answer.classification_id = 92;
+    const client = { query: jest.fn() };
+
+    await expect(replayRecordedRuntimeQuestionAnswer({ client, classification: row })).resolves.toEqual({
       resolved: false,
       retryRequired: true,
       reasonId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,

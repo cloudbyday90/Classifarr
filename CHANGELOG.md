@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending-answer replay** — Preserve exact History IDs in fingerprints,
+  bind new receipts to their row, and validate cleanup selections before
+  locking. See the [outcome](docs/architecture/pending-answer-fingerprint-replay-outcome.md).
+
 - **Manual exact-item memory IDs** — Validate the complete History ID before
   learning and preserve exact BIGINT row targeting and receipt replay. See
   the [outcome](docs/architecture/manual-exact-item-memory-id-outcome.md).

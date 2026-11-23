@@ -12,6 +12,9 @@ jest.unstable_mockModule('../../config/database.mjs', () => ({ query, withTransa
 
 const { clarificationService } = await import('../../services/clarificationService.mjs');
 const { registerPendingRoutes } = await import('../../routes/classificationRoutePending.mjs');
+const { registerPendingQuestionCleanupApplyRoute } = await import('../../routes/classificationRoutePendingCleanupApply.mjs');
+const { PolicyRuntimePendingQuestionCleanupApplyService } = await import('../../services/policyRuntimePendingQuestionCleanupApplyService.mjs');
+const { requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
 const { normalizePolicyRuntimeQuestion } = await import('../../services/policyRuntimeQuestionNormalizer.mjs');
 const { buildPolicyRuntimeQuestionAnswerContract } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const { ClassificationOutcomeService } = await import('../../services/classificationOutcomeService.mjs');
@@ -54,11 +57,16 @@ test('HTTP resolves the safe maximum once and preserves row-bound replay beside 
   app.use(express.json());
   app.use((req, _res, next) => { req.user = { id: 1, username: 'owned admin', role: 'admin' }; next(); });
   registerPendingRoutes(app, { db: database, clarificationService, classificationService: { routeToArr }, logger: createMockLogger() });
+  registerPendingQuestionCleanupApplyRoute(app, {
+    policyRuntimePendingQuestionCleanupApplyService: new PolicyRuntimePendingQuestionCleanupApplyService({ db: database }),
+    requireReadWrite,
+  });
   app.use(errorHandler);
   const http = request(app);
   const resolve = (historyId, payload = answer) => http.post(`/pending/${historyId}/resolve`).send(payload);
 
   for (const refused of [`${id}x`, large, adjacent]) await resolve(refused).expect(400);
+  await http.post('/pending-cleanup/apply').send({ classificationIds: [id, adjacent] }).expect(400);
   expect(await snapshot()).toEqual(before);
   expect(routeToArr).not.toHaveBeenCalled();
 
@@ -66,13 +74,29 @@ test('HTTP resolves the safe maximum once and preserves row-bound replay beside 
   expect(first.body).toMatchObject({ classificationId: id, success: true, libraryId: destination.id, shouldRoute: true });
   const saved = await snapshot();
   expect(saved[0]).toMatchObject({ status: 'completed', library_id: destination.id });
-  expect(saved[0].metadata.classification_details.outcome_link.runtime_question_answer).toMatchObject(answer);
+  const recordedAnswer = saved[0].metadata.classification_details.outcome_link.runtime_question_answer;
+  expect(recordedAnswer).toMatchObject({ ...answer, classification_id: id });
   expect(saved.slice(1)).toEqual(before.slice(1));
 
   const replay = await resolve(id).expect(200);
   expect(replay.body).toMatchObject({ classificationId: id, success: true, alreadyResolved: true, idempotent: true, shouldRoute: false });
   await resolve(id, { ...answer, action_id: 'confirm_destination' }).expect(409);
   expect(await snapshot()).toEqual(saved);
+
+  const replaceReceipt = receipt => query(`UPDATE classification_history
+    SET metadata=jsonb_set(metadata,'{classification_details,outcome_link,runtime_question_answer}',$2::jsonb)
+    WHERE id=$1`, [id, JSON.stringify(receipt)]);
+  await replaceReceipt({ ...recordedAnswer, classification_id: id - 1 });
+  const mismatched = await snapshot();
+  await resolve(id).expect(409);
+  expect(await snapshot()).toEqual(mismatched);
+
+  const legacyAnswer = { ...recordedAnswer };
+  delete legacyAnswer.classification_id;
+  await replaceReceipt(legacyAnswer);
+  const legacy = await snapshot();
+  expect((await resolve(id).expect(200)).body).toMatchObject({ alreadyResolved: true, idempotent: true, shouldRoute: false });
+  expect(await snapshot()).toEqual(legacy);
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 

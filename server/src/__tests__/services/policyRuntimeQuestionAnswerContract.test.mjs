@@ -11,6 +11,10 @@ import {
   parsePolicyRuntimeQuestionAnswer,
   validatePolicyRuntimeQuestionAnswer,
 } from '../../services/policyRuntimeQuestionAnswerContract.mjs';
+import {
+  buildPolicyRuntimeQuestionAnswerReceipt,
+  isPolicyRuntimeQuestionAnswerReceiptForClassification,
+} from '../../services/policyRuntimeQuestionAnswerReceipt.mjs';
 import { normalizePolicyRuntimeQuestion } from '../../services/policyRuntimeQuestionNormalizer.mjs';
 
 function normalizedQuestion() {
@@ -133,6 +137,58 @@ describe('policyRuntimeQuestionAnswerContract', () => {
         unavailable_reason: 'learning_guard_required',
       }),
     ]));
+  });
+
+  test.each([
+    [normalizedQuestion, 'CEaggJXg5oW6K7qX1AqKKa', 'PEATr2Rkj7InVFBU3aPb9B'],
+    [nativeQuestion, 'xcXbkSpSHGzCPRvNMwS7TA', 'UJSvS-zHwWicl5Lya_F7O3'],
+  ])('preserves pre-change v1 fingerprint bytes for safe numeric and canonical string IDs', (createQuestion, regular, maximum) => {
+    const question = createQuestion();
+    for (const [id, fingerprint] of [[44, regular], [Number.MAX_SAFE_INTEGER, maximum]]) {
+      for (const input of [id, String(id)]) {
+        expect(buildPolicyRuntimeQuestionAnswerContract({ classification: { ...classification(), id: input }, question }))
+          .toMatchObject({ fingerprint, candidate_item: { classification_id: id } });
+      }
+    }
+  });
+
+  test('uses the exact BIGINT in the contract and distinguishes adjacent rows', () => {
+    const question = normalizedQuestion();
+    const ids = ['9007199254740992', '9007199254740993', '9223372036854775807'];
+    const rows = ids.map(id => ({ ...classification(), id }));
+    const contracts = rows.map(row => buildPolicyRuntimeQuestionAnswerContract({ classification: row, question }));
+    expect(contracts.map(contract => contract.candidate_item.classification_id)).toEqual(ids);
+    expect(new Set(contracts.map(contract => contract.fingerprint)).size).toBe(ids.length);
+
+    const answer = answerFor(contracts[0], POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION, 7);
+    expect(validatePolicyRuntimeQuestionAnswer({ classification: rows[0], question, answer }).ok).toBe(true);
+    expect(validatePolicyRuntimeQuestionAnswer({ classification: rows[1], question, answer }).reason)
+      .toBe(POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.CONTRACT_FINGERPRINT_MISMATCH);
+    expect(validatePolicyRuntimeQuestionAnswer({
+      classification: rows[0], question, answer: { ...answer, contract_fingerprint: 'u60vmSq9iaiWsmczVXH61i' },
+    }).reason).toBe(POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.CONTRACT_FINGERPRINT_MISMATCH);
+  });
+
+  test('rejects noncanonical and unsafe History IDs before hashing', () => {
+    const question = normalizedQuestion();
+    for (const id of [0, true, '044', '44\n', ['44'], Number.MAX_SAFE_INTEGER + 1, '9223372036854775808']) {
+      expect(buildPolicyRuntimeQuestionAnswerContract({ classification: { ...classification(), id }, question })).toBeNull();
+    }
+  });
+
+  test('binds new receipts exactly and permits unbound legacy receipts for safe rows only', () => {
+    const historyId = '9007199254740993';
+    const receipt = buildPolicyRuntimeQuestionAnswerReceipt(historyId, {});
+    expect(receipt.classification_id).toBe(historyId);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification(receipt, historyId)).toBe(true);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification(receipt, '9007199254740992')).toBe(false);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification({}, historyId)).toBe(false);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification({}, 44)).toBe(true);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification({ classification_id: 44 }, '44')).toBe(true);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification({ classification_id: null }, 44)).toBe(false);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification({ classification_id: '044' }, 44)).toBe(false);
+    expect(isPolicyRuntimeQuestionAnswerReceiptForClassification(null, 44)).toBe(false);
+    expect(() => buildPolicyRuntimeQuestionAnswerReceipt(Number(historyId), {})).toThrow(TypeError);
   });
 
   test('rejects stale, unknown, changed, and legacy-label answers before resolution', () => {
