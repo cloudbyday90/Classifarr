@@ -14,7 +14,11 @@ import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { requireAdmin } from '../middleware/auth.mjs';
 import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
 import { MAX_SUGGESTION_EVIDENCE_REFERENCES, readSavedSuggestionEvidencePage } from '../services/savedSuggestionEvidence.mjs';
-import { readSuggestionReviewIds } from './suggestionReviewInput.mjs';
+import { readSavedSuggestionProposal } from '../services/savedSuggestionProposal.mjs';
+import { readSuggestionId, readSuggestionReviewIds } from './suggestionReviewInput.mjs';
+
+// The compatibility decision took effect on November 23, 2026 Eastern.
+const LEGACY_DETAIL_DEPRECATED = `@${Date.UTC(2026, 10, 23, 5) / 1000}`;
 
 export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
   const router = express.Router();
@@ -47,6 +51,28 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     return sendData(res, result.rows);
   }));
 
+  /**
+   * @openapi
+   * /api/suggestions/{id}:
+   *   get:
+   *     tags: [Suggestions]
+   *     deprecated: true
+   *     summary: Read legacy full suggestion detail
+   *     description: >-
+   *       Signed-in clients can migrate proposal and status fields to
+   *       `/api/suggestions/{id}/proposal`. Administrators can read bounded,
+   *       attributed feedback through `/api/suggestions/{id}/evidence`.
+   *       The evidence pages omit raw metadata and free-text notes.
+   *       The legacy response remains during migration with no scheduled removal date.
+   *     parameters:
+   *       - name: id
+   *         in: path
+   *         required: true
+   *         schema: { type: integer }
+   *     responses:
+   *       '200':
+   *         description: Legacy full detail with a Deprecation header
+   */
   router.get('/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
 
@@ -85,10 +111,38 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
       );
     }
 
+    res.set('Deprecation', LEGACY_DETAIL_DEPRECATED);
+    res.append('Link', '</api/docs/>; rel="deprecation"');
     return sendData(res, {
       ...suggestion.rows[0],
       supporting_feedback: feedback.rows,
     });
+  }));
+
+  /**
+   * @openapi
+   * /api/suggestions/{id}/proposal:
+   *   get:
+   *     tags: [Suggestions]
+   *     summary: Read a bounded saved suggestion proposal
+   *     description: >-
+   *       Signed-in members and administrators can read proposal and status fields.
+   *       Unsupported configuration has proposal_status unavailable and a null suggestion_config.
+   *     parameters:
+   *       - name: id
+   *         in: path
+   *         required: true
+   *         schema: { type: integer, minimum: 1, maximum: 2147483647 }
+   *     responses:
+   *       '200': { description: Bounded proposal }
+   *       '400': { description: Invalid suggestion ID }
+   *       '401': { description: Authentication required }
+   *       '404': { description: Suggestion not found }
+   */
+  router.get('/:id/proposal', asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const body = await readSavedSuggestionProposal(db, readSuggestionId(req.params.id));
+    return res.type('json').send(body);
   }));
 
   router.get('/:id/evidence', requireAdmin, asyncHandler(async (req, res) => {

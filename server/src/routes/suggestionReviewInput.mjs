@@ -10,12 +10,16 @@ export function requireSuggestionAdministratorId(actor) {
   return userId;
 }
 
-export function readSuggestionReviewIds(suggestion, actor) {
-  const userId = requireSuggestionAdministratorId(actor);
+export function readSuggestionId(suggestion) {
   const suggestionId = parseCanonicalDatabaseInt32Id(suggestion);
   if (suggestionId === null) {
     throw new ValidationError('Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.');
   }
 
-  return { suggestionId, userId };
+  return suggestionId;
+}
+
+export function readSuggestionReviewIds(suggestion, actor) {
+  const userId = requireSuggestionAdministratorId(actor);
+  return { suggestionId: readSuggestionId(suggestion), userId };
 }

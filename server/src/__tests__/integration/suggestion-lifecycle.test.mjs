@@ -275,6 +275,73 @@ test('saved evidence pages follow stored positions and preserve gaps across feed
     expect(end.body).toEqual({ suggestionId, referenceCount: 22, nextAfterPosition: null, items: [] });
     const legacy = await signedIn(request(app).get(`/api/suggestions/${suggestionId}`), memberToken).expect(200);
     expect(legacy.body.supporting_feedback.find(item => item.id === next.id)).toMatchObject({ user_reason_text: 'omitted note' });
+    expect(legacy.headers.deprecation).toBe(`@${Date.parse('2026-11-23T00:00:00-05:00') / 1000}`);
+    expect(legacy.headers.link).toBe('</api/docs/>; rel="deprecation"');
+    expect(legacy.headers.sunset).toBeUndefined();
+});
+
+test('the signed-in proposal read projects one row without expanding or returning feedback', async () => {
+    const { rows: [feedback] } = await db.query(`SELECT id FROM policy_feedback_log
+        WHERE selected_policy_id=$1 ORDER BY id LIMIT 1`, [policyId]);
+    await db.query(`UPDATE policy_tuning_suggestions SET supporting_feedback_ids=$1,
+        suggestion_config=$2, confidence=74, impact_estimate='Fixture impact', rejection_reason='private note',
+        reviewed_by=$3, created_at='2026-11-23T12:00:00Z' WHERE id=$4`, [[feedback.id, null], {
+        threshold_type: 'auto_classify', current: 85, recommended: 90, reason: 'private rationale', extra: { raw: true },
+    }, userId, suggestionId]);
+    const before = await snapshot();
+    const path = `/api/suggestions/${suggestionId}/proposal`;
+    const read = jest.spyOn(db, 'query');
+    try {
+        await request(app).get(path).expect(401);
+        await signedIn(request(app).get(path), scopedToken).expect(403);
+        for (const id of ['01', '1x', '1.5', '2147483648']) {
+            await signedIn(request(app).get(`/api/suggestions/${id}/proposal`), memberToken).expect(400);
+        }
+        expect(read.mock.calls.filter(([sql]) => sql.includes('policy_tuning_suggestions'))).toEqual([]);
+        const member = await signedIn(request(app).get(path), memberToken).expect(200).expect('Cache-Control', 'no-store');
+        const reads = read.mock.calls.filter(([sql]) => sql.includes('policy_tuning_suggestions'));
+        expect(reads).toHaveLength(1);
+        expect(reads[0][0]).not.toContain('policy_feedback_log');
+        expect(member.headers.deprecation).toBeUndefined();
+        expect(member.body).toEqual({ id: suggestionId, policy_id: policyId, policy_name: 'Primary', library_name: 'Lifecycle',
+            suggestion_type: 'adjust_threshold', status: 'pending', confidence: 74, impact_estimate: 'Fixture impact',
+            created_at: '2026-11-23T12:00:00.000Z', reference_count: 2, proposal_status: 'available',
+            suggestion_config: { threshold_type: 'auto_classify', current: 85, recommended: 90 },
+        });
+        const admin = await signedIn(request(app).get(path)).expect(200);
+        expect(admin.body).toEqual(member.body);
+    } finally {
+        read.mockRestore();
+    }
+    expect(await snapshot()).toEqual(before);
+    await signedIn(request(app).get('/api/suggestions/2147483647/proposal'), memberToken).expect(404);
+    const impact = await signedIn(request(app).get(`/api/suggestions/${suggestionId}/impact`), memberToken).expect(200);
+    expect(impact.headers.deprecation).toBeUndefined();
+});
+
+test('proposal reads preserve known bounded config and report unsupported saved config as unavailable', async () => {
+    const path = `/api/suggestions/${suggestionId}/proposal`;
+    const label = '\u0001';
+    await db.query('UPDATE library_policies SET name=$1 WHERE id=$2', [label.repeat(160), policyId]);
+    await db.query('UPDATE libraries SET name=$1 WHERE id=$2', [label.repeat(180), libraryId]);
+    const weight = { signal: 'rag', current: 0.3, recommended: 0.2 };
+    const pattern = { pattern_type: 'collection', pattern_value: label.repeat(240), confidence: 75 };
+    for (const [type, config, expected] of [
+        ['adjust_weight', { ...weight, comment: 'omitted' }, weight],
+        ['create_pattern', pattern, pattern],
+        ['create_pattern', { ...pattern, pattern_value: 'x'.repeat(241) }, null],
+        ['adjust_weight', { ...weight, recommended: '0.2' }, null],
+        ['adjust_weight', { ...weight, legacy_payload: 'x'.repeat(4096) }, null],
+        ['unknown_type', weight, null],
+    ]) {
+        await db.query('UPDATE policy_tuning_suggestions SET suggestion_type=$1,suggestion_config=$2 WHERE id=$3',
+            [type, config, suggestionId]);
+        const response = await signedIn(request(app).get(path), memberToken).expect(200);
+        expect(response.body).toMatchObject({ suggestion_type: type, proposal_status: expected ? 'available' : 'unavailable',
+            suggestion_config: expected, policy_name: label.repeat(160), library_name: label.repeat(160),
+        });
+        expect(Buffer.byteLength(response.text)).toBeLessThanOrEqual(8 * 1024);
+    }
 });
 
 test('saved evidence keeps the largest valid page bounded and distinguishes unsupported arrays', async () => {

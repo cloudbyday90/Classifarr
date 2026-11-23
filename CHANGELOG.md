@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Suggestion detail API** — Added a bounded proposal read for signed-in
+  callers and a deprecation notice on legacy full detail. See the
+  [migration guide](docs/api/suggestions.md) and
+  [outcome](docs/architecture/legacy-suggestion-detail-migration-outcome.md).
+
 - **Suggestion review** — The tuning dashboard opens the proposal from the
   list and shows supporting evidence to administrators in pages of up to 20
   references, with keyboard focus and status announcements preserved. See the

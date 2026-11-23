@@ -31,6 +31,7 @@ vi.mock('../../api/core', () => ({
 import {
   getSuggestions,
   getSuggestion,
+  getSuggestionProposal,
   getSuggestionEvidence,
   applySuggestion,
   rejectSuggestion,
@@ -96,6 +97,18 @@ describe('adminSuggestions', () => {
     const result = await getSuggestion(5)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/suggestions/5')
     expect(result).toEqual(suggestion)
+  })
+
+  it('reads a bounded proposal using the exact suggestion ID', async () => {
+    const proposal = { id: 2147483647, proposal_status: 'available' }
+    mockGetDataRequest.mockResolvedValueOnce(proposal)
+    await expect(getSuggestionProposal('2147483647')).resolves.toBe(proposal)
+    expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/suggestions/2147483647/proposal')
+  })
+
+  it.each(['01', '3/4', 0, [3], 2147483648])('rejects invalid proposal ID %s before dispatch', async id => {
+    await expect(getSuggestionProposal(id)).rejects.toThrow('Invalid suggestion ID')
+    expect(mockGetDataRequest).not.toHaveBeenCalled()
   })
 
   it('reads one administrator evidence page and follows only an explicit continuation', async () => {

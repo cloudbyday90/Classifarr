@@ -27,6 +27,7 @@ export function getSuggestions(status = 'pending', policyId = null) {
   return getDataRequest('/suggestions', { params })
 }
 
+/** @deprecated Use getSuggestionProposal and the administrator evidence read. */
 export function getSuggestion(id) {
   return getDataRequest(`/suggestions/${id}`)
 }
@@ -36,6 +37,13 @@ const invalidSuggestionId = 'Invalid suggestion ID. Use a whole number from 1 to
 function positiveIntegerId(id) {
   const text = typeof id === 'number' ? String(id) : id
   return typeof text === 'string' && /^[1-9][0-9]{0,9}$/.test(text) && Number(text) <= 2147483647 ? text : null
+}
+
+/** Reads bounded proposal and status fields for a signed-in member or administrator. */
+export function getSuggestionProposal(id) {
+  const text = positiveIntegerId(id)
+  if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
+  return getDataRequest(`/suggestions/${text}/proposal`)
 }
 
 /** Reads one page of saved evidence for administrator review. */
@@ -79,6 +87,7 @@ export function runSuggestionAnalysisSummary(afterPolicyId) {
 const adminSuggestionsApi = {
   getSuggestions,
   getSuggestion,
+  getSuggestionProposal,
   getSuggestionEvidence,
   applySuggestion,
   rejectSuggestion,

@@ -73,7 +73,7 @@ curl -X GET http://localhost:21324/api/system/health/services \
 | API | Description | Status |
 |-----|-------------|--------|
 | **Presets** | Content preset discovery | Covered in Policies API |
-| **Suggestions** | Policy tuning suggestions | Coming soon |
+| **[Suggestions](./suggestions.md)** | Policy tuning proposals and evidence | Legacy detail migration |
 | **Stats** | Policy statistics | Coming soon |
 | **Migration** | Legacy rule migration | Coming soon |
 

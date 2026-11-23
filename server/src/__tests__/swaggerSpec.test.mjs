@@ -38,6 +38,16 @@ const BASE_DEF = {
   info: { title: 'Test', version: '0.0.1' },
 };
 
+test('documents the legacy suggestion migration in the served API spec', async () => {
+  const route = path.resolve(import.meta.dirname, '../routes/suggestionsRouteShared.mjs');
+  const spec = await generateSpec({ definition: BASE_DEF, apis: [route] });
+  const legacy = spec.paths['/api/suggestions/{id}'].get;
+  expect(legacy.deprecated).toBe(true);
+  expect(legacy.description).toContain('/api/suggestions/{id}/proposal');
+  expect(legacy.description).toContain('/api/suggestions/{id}/evidence');
+  expect(spec.paths['/api/suggestions/{id}/proposal'].get.responses['200'].description).toBe('Bounded proposal');
+});
+
 describe('swaggerSpec — DEP0169 regression guard', () => {
   test('source does not reference @apidevtools/swagger-parser', async () => {
     const src = fs.readFileSync(swaggerSpecPath, 'utf8');
