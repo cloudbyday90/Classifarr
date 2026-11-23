@@ -318,40 +318,32 @@ describe('Clarification Lifecycle Integration Tests', () => {
     });
 
     describe('POST /:id/respond', () => {
-        it('records an authenticated response and updates its History row', async () => {
-            const question = await seedQuestion({ response_options: JSON.stringify({
-                yes: { label: 'Yes', confidence_boost: 10 },
-            }) });
+        it('preserves History and recorded responses on retired submissions', async () => {
+            const question = await seedQuestion();
             const { rows: [classification] } = await db.query(`
-                INSERT INTO classification_history (title, media_type, method, status, confidence, tmdb_id)
-                VALUES ('Clarification response fixture', 'movie', 'exact_match', 'pending', 57, 99998)
-                RETURNING id
+                INSERT INTO classification_history (title, media_type, method, status, confidence, tmdb_id, clarification_status)
+                VALUES ('Clarification retirement fixture', 'movie', 'exact_match', 'pending', 57, 99998, 'responded')
+                RETURNING *
             `);
+            await db.query(`INSERT INTO clarification_responses
+                (classification_id, question_id, response_value, response_label, confidence_before, confidence_after)
+                VALUES ($1,$2,'yes','Yes',47,57)`, [classification.id, question.id]);
+            const responses = await clarificationService.getResponses(classification.id);
+            expect(responses).toHaveLength(1);
+            expect(responses[0]).toMatchObject({ response_value: 'yes', confidence_after: 57 });
+
             const endpoint = `/api/clarifications/${classification.id}/respond`;
-            const response = { classificationId: classification.id, questionId: question.id, responseValue: 'yes', confidenceBefore: 57 };
-            const unauthorized = await request(app).post(endpoint).send(response);
-            expect(unauthorized.status).toBe(401);
+            const body = { classificationId: classification.id, questionId: question.id, responseValue: 'yes', confidenceBefore: 57 };
+            await request(app).post(endpoint).send(body).expect(401);
+            for (let submission = 0; submission < 2; submission++) {
+                const retired = await request(app).post(endpoint).set(authHeaders()).send(body)
+                    .expect('Cache-Control', 'no-store').expect(410);
+                expect(retired.body).toMatchObject({ code: 'clarification_response_retired' });
+            }
 
-            const saved = await request(app).post(endpoint).set(authHeaders()).send(response);
-            expect(saved.status).toBe(200);
-            expect(saved.body).toMatchObject({ success: true, confidenceAfter: 67, shouldReclassify: false });
-            const { rows: responses } = await db.query(`SELECT classification_id, question_id, response_value, response_label
-                FROM clarification_responses WHERE classification_id = $1`, [classification.id]);
-            expect(responses).toEqual([{ classification_id: classification.id, question_id: question.id,
-                response_value: 'yes', response_label: 'Yes' }]);
-            const { rows: [updated] } = await db.query('SELECT confidence, clarification_status FROM classification_history WHERE id = $1', [classification.id]);
-            expect(updated.clarification_status).toBe('responded');
-            expect(Number(updated.confidence)).toBe(67);
-        });
-
-        it('returns 400 when required fields are missing', async () => {
-            const res = await request(app)
-                .post('/api/clarifications/1/respond')
-                .set(authHeaders())
-                .send({ classificationId: 1 });
-
-            expect(res.status).toBe(400);
-            expect(res.body.error).toContain('Missing required fields');
+            const { rows: [after] } = await db.query('SELECT * FROM classification_history WHERE id = $1', [classification.id]);
+            expect(after).toEqual(classification);
+            expect(await clarificationService.getResponses(classification.id)).toEqual(responses);
         });
     });
 });

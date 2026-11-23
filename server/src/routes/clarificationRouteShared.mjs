@@ -9,7 +9,7 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
+import { sendData, sendError, sendSuccess } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 
 import { parseInteger, safeParsePolicyQuestion } from './clarificationRouteHelpers.mjs';
@@ -92,23 +92,12 @@ export function createClarificationRouter({
     return sendData(res, questions);
   }));
 
-  router.post('/:id/respond', asyncHandler(async (req, res) => {
-    const { classificationId, questionId, responseValue, discordUserId, confidenceBefore } = req.body;
-
-    if (!classificationId || !questionId || !responseValue) {
-      throw new ValidationError('Missing required fields: classificationId, questionId, responseValue');
-    }
-
-    const result = await clarificationService.recordResponse(
-      parseInteger(classificationId),
-      parseInteger(questionId),
-      responseValue,
-      discordUserId || null,
-      parseInteger(confidenceBefore),
-    );
-
-    return sendData(res, result);
-  }));
+  router.post('/:id/respond', (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    return sendError(res, 'This clarification response endpoint is retired. Open the Classifarr Command Center to review the item.', 410, {
+      code: 'clarification_response_retired',
+    });
+  });
 
   return router;
 }

@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retired HTTP clarification submissions** — The legacy response endpoint
+  now returns `410 Gone` with Command Center guidance. See the
+  [outcome](docs/architecture/legacy-http-clarification-retirement-outcome.md).
+
 - **Retired Discord clarification buttons** — Clicking an old generic
   clarification button now replies privately with directions to the Command
   Center. See the

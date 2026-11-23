@@ -107,6 +107,15 @@ The server returns the existing completed result on an exact receipt replay
 without routing a second time. Larger IDs require a matching saved row binding.
 [Admission design](../architecture/pending-web-bigint-admission-design.md)
 
+### Retired legacy clarification submissions
+
+`POST /api/clarifications/:id/respond` returns `410 Gone` after authentication,
+with `code: "clarification_response_retired"` in the JSON error body. Stop
+submitting to this endpoint. Operators can review current decisions in the
+Classifarr Command Center. API clients can fetch the current pending-answer
+contract and use the pending resolution endpoint above with its own payload.
+Historical responses stay recorded.
+
 ---
 
 ### GET /api/classification/history

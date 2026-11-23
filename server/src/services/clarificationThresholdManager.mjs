@@ -8,7 +8,6 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
@@ -171,68 +170,6 @@ export async function updateThreshold(tier, updates) {
     );
 
     return result.rows[0];
-  });
-}
-
-export async function recordResponse(classificationId, questionId, responseValue, discordUserId, confidenceBefore) {
-  return withServiceCatch(logger, 'Error recording response', async () => {
-    const questionResult = await db.query(
-      `SELECT * FROM clarification_questions WHERE id = $1`,
-      [questionId]
-    );
-
-    if (questionResult.rows.length === 0) {
-      throw new NotFoundError('Question not found');
-    }
-
-    const question = questionResult.rows[0];
-    const responseOptions = question.response_options;
-    const selectedOption = responseOptions[responseValue];
-
-    if (!selectedOption) {
-      throw new ValidationError('Invalid response value');
-    }
-
-    const confidenceBoost = selectedOption.confidence_boost || 0;
-    const confidenceAfter = clampConfidence(confidenceBefore + confidenceBoost);
-
-    const result = await db.query(
-      `INSERT INTO clarification_responses 
-       (classification_id, question_id, discord_user_id, response_value, 
-        response_label, confidence_before, confidence_after)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [
-        classificationId,
-        questionId,
-        discordUserId,
-        responseValue,
-        selectedOption.label,
-        confidenceBefore,
-        confidenceAfter
-      ]
-    );
-
-    await db.query(
-      `UPDATE classification_history 
-       SET clarification_status = $1, confidence = $2
-       WHERE id = $3`,
-      ['responded', confidenceAfter, classificationId]
-    );
-
-    logger.info('Clarification response recorded', {
-      classificationId,
-      questionId,
-      confidenceBefore,
-      confidenceAfter
-    });
-
-    return {
-      success: true,
-      response: result.rows[0],
-      confidenceAfter,
-      shouldReclassify: confidenceAfter >= 70
-    };
   });
 }
 

@@ -67,6 +67,7 @@ Classifarr uses standard HTTP status codes to indicate success or failure.
 | **403** | Forbidden | Insufficient permissions | Use key with appropriate permissions |
 | **404** | Not Found | Resource doesn't exist | Verify resource ID, may have been deleted |
 | **409** | Conflict | Resource conflict (e.g., sync already running) | Wait and retry, or check resource state |
+| **410** | Gone | Endpoint permanently retired | Stop submitting and use the workflow identified in the response |
 | **429** | Too Many Requests | Rate limit exceeded | Wait and retry after delay |
 | **500** | Internal Server Error | Unexpected server error | Retry with exponential backoff |
 | **503** | Service Unavailable | Service temporarily unavailable | Retry after delay, check health endpoint |

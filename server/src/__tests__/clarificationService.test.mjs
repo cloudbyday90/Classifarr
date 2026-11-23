@@ -591,57 +591,6 @@ describe('updateThreshold', () => {
     });
 });
 
-describe('recordResponse', () => {
-    test('records response, updates classification, returns result', async () => {
-        const question = {
-            rows: [{
-                id: 1,
-                response_options: {
-                    yes: { label: 'Yes', confidence_boost: 20 }
-                }
-            }]
-        };
-        const insertedRow = { id: 99, classification_id: 5, response_value: 'yes' };
-        db.query
-            .mockResolvedValueOnce(question)
-            .mockResolvedValueOnce({ rows: [insertedRow] })
-            .mockResolvedValueOnce(createDbRowsResult());
-        const result = await svc.recordResponse(5, 1, 'yes', 'discordUser1', 60);
-        expect(result.success).toBe(true);
-        expect(result.confidenceAfter).toBe(80);
-        expect(result.response).toEqual(insertedRow);
-        expect(result.shouldReclassify).toBe(true);
-    });
-
-    test('clamps confidenceAfter at 100', async () => {
-        db.query
-            .mockResolvedValueOnce({ rows: [{ id: 1, response_options: { yes: { label: 'Yes', confidence_boost: 50 } } }] })
-            .mockResolvedValueOnce({ rows: [{}] })
-            .mockResolvedValueOnce(createDbRowsResult());
-        const result = await svc.recordResponse(5, 1, 'yes', 'u', 90);
-        expect(result.confidenceAfter).toBe(100);
-    });
-
-    test('shouldReclassify=false when confidenceAfter < 70', async () => {
-        db.query
-            .mockResolvedValueOnce({ rows: [{ id: 1, response_options: { no: { label: 'No', confidence_boost: 5 } } }] })
-            .mockResolvedValueOnce({ rows: [{}] })
-            .mockResolvedValueOnce(createDbRowsResult());
-        const result = await svc.recordResponse(5, 1, 'no', 'u', 50);
-        expect(result.shouldReclassify).toBe(false);
-    });
-
-    test('throws when question not found', async () => {
-        db.query.mockResolvedValueOnce(createDbRowsResult());
-        await expect(svc.recordResponse(5, 99, 'yes', 'u', 60)).rejects.toThrow('Question not found');
-    });
-
-    test('throws when response value invalid', async () => {
-        db.query.mockResolvedValueOnce({ rows: [{ id: 1, response_options: { yes: { label: 'Yes' } } }] });
-        await expect(svc.recordResponse(5, 1, 'invalid_option', 'u', 60)).rejects.toThrow('Invalid response value');
-    });
-});
-
 describe('getResponses', () => {
     test('returns joined rows for classificationId', async () => {
         const rows = [{ id: 1, response_value: 'yes' }];

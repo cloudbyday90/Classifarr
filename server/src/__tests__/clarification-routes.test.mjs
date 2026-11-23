@@ -84,31 +84,22 @@ describe('clarification routes', () => {
     expect(clarificationService.matchQuestions).toHaveBeenCalledWith({ genres: ['Documentary'] }, 5);
   });
 
-  test('POST /api/clarifications/:id/respond validates required fields', async () => {
+  test.each([
+    ['1', { classificationId: 1, questionId: 9, responseValue: 'yes', confidenceBefore: 82 }],
+    ['999999', {}],
+  ])('POST /api/clarifications/%s/respond returns a fixed retirement response', async (id, body) => {
     const response = await request(app)
-      .post('/api/clarifications/1/respond')
-      .send({ classificationId: 1, responseValue: 'yes' })
-      .expect(400);
+      .post(`/api/clarifications/${id}/respond`)
+      .send(body)
+      .expect('Cache-Control', 'no-store')
+      .expect(410);
 
-    expect(response.body.error).toMatch(/missing required fields/i);
+    expect(response.body).toEqual({
+      error: 'This clarification response endpoint is retired. Open the Classifarr Command Center to review the item.',
+      code: 'clarification_response_retired',
+    });
+    expect(response.headers.location).toBeUndefined();
+    expect(db.query).not.toHaveBeenCalled();
     expect(clarificationService.recordResponse).not.toHaveBeenCalled();
-  });
-
-  test('POST /api/clarifications/:id/respond records the response', async () => {
-    clarificationService.recordResponse.mockResolvedValueOnce({ success: true });
-
-    const response = await request(app)
-      .post('/api/clarifications/1/respond')
-      .send({
-        classificationId: 5,
-        questionId: 9,
-        responseValue: 'yes',
-        discordUserId: 'user-1',
-        confidenceBefore: 82,
-      })
-      .expect(200);
-
-    expect(response.body).toEqual({ success: true });
-    expect(clarificationService.recordResponse).toHaveBeenCalledWith(5, 9, 'yes', 'user-1', 82);
   });
 });
