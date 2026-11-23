@@ -12,7 +12,9 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { router } = await import('../../routes/feedback.mjs');
 const { router: prompts } = await import('../../routes/prompts.mjs');
 const app = createMountedTestApp({ basePath: '/feedback', router });
-const promptApp = createMountedTestApp({ basePath: '/prompts', router: prompts });
+const promptApp = createMountedTestApp({ basePath: '/prompts', router: prompts,
+    middleware: [(req, _res, next) => { req.user = { role: 'admin' }; next(); }],
+});
 let db, libraryId, originalId, policyId, otherPolicyId, classificationId;
 
 beforeEach(async () => {

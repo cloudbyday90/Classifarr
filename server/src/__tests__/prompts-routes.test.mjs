@@ -54,9 +54,19 @@ describe('Prompts API Routes', () => {
     jest.clearAllMocks();
     app = express();
     app.use(express.json());
+    app.use((req, _res, next) => { req.user = { role: 'admin' }; next(); });
     app.use('/api/prompts', promptsRouter);
     app.use(errorHandler);
   });
+
+  test.each(['42x', '042', '0', '-42', '9223372036854775808'])(
+    'rejects invalid History ID %s from prompt detail and response before database work', async id => {
+      await request(app).get(`/api/prompts/${id}`).expect(400);
+      await request(app).post(`/api/prompts/${id}/respond`).send({ selectedLibraryId: 1 }).expect(400);
+      expect(query).not.toHaveBeenCalled();
+      expect(recordFeedback).not.toHaveBeenCalled();
+    },
+  );
 
   describe('GET /api/prompts/pending', () => {
     test('should return pending prompts with pagination', async () => {

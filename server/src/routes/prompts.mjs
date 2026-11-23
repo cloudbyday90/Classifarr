@@ -18,6 +18,7 @@
 
 import express from 'express';
 import * as db from '../config/database.mjs';
+import { requireAdmin } from '../middleware/auth.mjs';
 import { promptBuilder } from '../services/promptBuilder.mjs';
 import { feedbackAnalysis } from '../services/feedbackAnalysis.mjs';
 import { createPromptsRouter } from './promptsRouteShared.mjs';
@@ -27,4 +28,5 @@ export const router = createPromptsRouter({
   db,
   promptBuilder,
   feedbackAnalysis,
+  requireAdmin,
 });

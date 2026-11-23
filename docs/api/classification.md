@@ -116,6 +116,21 @@ Classifarr Command Center. API clients can fetch the current pending-answer
 contract and use the pending resolution endpoint above with its own payload.
 Historical responses stay recorded.
 
+### Legacy prompt responses
+
+`GET /api/prompts/:id` and `POST /api/prompts/:id/respond` accept canonical
+positive decimal History IDs up to `9223372036854775807`. Keep larger IDs
+as strings in JavaScript. The detail response's `data.id` and the write
+response's `data.classificationId` are numbers through `9007199254740991`
+and strings above that boundary.
+
+Prompt reads require authentication. The response POST requires an
+administrator session and returns `403` to other authenticated users. It
+retains the pending-only pattern and feedback transaction. A completed prompt
+returns `409 PROMPT_NOT_PENDING` on resubmission. Review the current prompt
+before deciding what to do next. The Command Center's pending-decision API
+uses its separate answer contract described above.
+
 ---
 
 ### GET /api/classification/history

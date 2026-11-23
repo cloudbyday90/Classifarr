@@ -18,17 +18,23 @@
 
 import { respondToPrompt } from '../services/promptResponseService.mjs';
 import { projectPromptClassification } from '../services/promptClassificationProjection.mjs';
+import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
-import { requireValidId } from './routeHelpers.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 10;
 const DEFAULT_BATCH_LIMIT = 50;
 const DEFAULT_OFFSET = 0;
 
-export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalysis }) {
+function requirePromptHistoryId(value) {
+  const id = normalizeDatabaseBigintId(value);
+  if (id === null) throw new ValidationError('Invalid prompt ID');
+  return id;
+}
+
+export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalysis, requireAdmin }) {
   const router = express.Router();
 
   router.get('/batch', asyncHandler(async (req, res) => {
@@ -126,7 +132,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
   }));
 
   router.get('/:id', asyncHandler(async (req, res) => {
-    const id = requireValidId(req.params.id, 'prompt ID');
+    const id = requirePromptHistoryId(req.params.id);
 
     const result = await db.query(
       `
@@ -175,8 +181,8 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
     });
   }));
 
-  router.post('/:id/respond', asyncHandler(async (req, res) => {
-    const id = requireValidId(req.params.id, 'prompt ID');
+  router.post('/:id/respond', requireAdmin, asyncHandler(async (req, res) => {
+    const id = requirePromptHistoryId(req.params.id);
     const data = await respondToPrompt({ db, feedbackAnalysis, id, body: req.body });
     return res.json({ success: true, data });
   }));

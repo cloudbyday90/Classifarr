@@ -1,13 +1,23 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
+import { jest, beforeAll, beforeEach, afterEach, test, expect } from '@jest/globals';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const { router } = await import('../../routes/prompts.mjs');
-const app = createMountedTestApp({ basePath: '/api/prompts', router });
+const { authenticateToken } = await import('../../middleware/auth.mjs');
+const { generateAccessToken, generateScopedAccessToken } = await import('../../services/auth.mjs');
+const app = createMountedTestApp({ basePath: '/api/prompts', router, middleware: [authenticateToken] });
 let db, libraryId, otherLibraryId, policyId, otherPolicyId, classificationId;
+let adminToken, userToken, scopedToken;
+
+beforeAll(async () => {
+    const admin = { id: 1, username: 'prompt-fixture-admin', role: 'admin' };
+    adminToken = await generateAccessToken(admin);
+    userToken = await generateAccessToken({ id: 2, username: 'prompt-fixture-user', role: 'user' });
+    scopedToken = await generateScopedAccessToken(admin);
+});
 
 beforeEach(async () => {
     db = getPool();
@@ -24,6 +34,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+    await db.query('DELETE FROM policy_feedback_sources WHERE classification_id IN (SELECT id FROM classification_history WHERE title=$1)', ['Prompt fixture']);
     await db.query('DELETE FROM policy_feedback_log WHERE selected_library_id=ANY($1::integer[])', [[libraryId, otherLibraryId]]);
     await db.query('DELETE FROM classification_history WHERE title=$1', ['Prompt fixture']);
     await db.query('DELETE FROM library_policies WHERE id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
@@ -31,7 +42,9 @@ afterEach(async () => {
 });
 
 const action = (value = 'Fixture Studio', targetLibraryId = libraryId) => ({ type: 'studio', value, targetLibraryId });
+const read = (path, token = adminToken) => request(app).get(`/api/prompts/${path}`).set('Authorization', `Bearer ${token}`);
 const submit = (body = {}, id = classificationId) => request(app).post(`/api/prompts/${id}/respond`)
+    .set('Authorization', `Bearer ${adminToken}`)
     .send({ selectedLibraryId: libraryId, selectedPolicyId: policyId, patternActions: [action()], ...body });
 async function snapshot() {
     return {
@@ -43,24 +56,65 @@ async function snapshot() {
 }
 
 test('reads list, batch and detail against the current schema', async () => {
-    const pending = await request(app).get('/api/prompts/pending');
+    const pending = await read('pending', userToken);
     expect(pending.status).toBe(200);
     expect(pending.body.data.items[0].classification_method).toBe('policy_prompt');
-    const batch = await request(app).get('/api/prompts/batch');
+    const batch = await read('batch', userToken);
     expect(batch.status).toBe(200);
-    const detail = await request(app).get(`/api/prompts/${classificationId}`);
+    const detail = await read(classificationId, userToken);
     expect(detail.status).toBe(200);
     expect(detail.body.data.prompt.topSuggestion).toMatchObject({ libraryId: otherLibraryId, score: 65 });
+});
+
+test('checks response authority before validation or changing classification or learning state', async () => {
+    const url = `/api/prompts/${classificationId}/respond`;
+    const body = { selectedLibraryId: libraryId, patternActions: [action()] };
+    const before = await snapshot();
+    await request(app).post(url).send(body).expect(401);
+    await request(app).post(url).set('X-API-Key', 'isolated-prompt-key').send(body).expect(401);
+    await request(app).post(url).set('Authorization', `Bearer ${userToken}`).send(body).expect(403);
+    await request(app).post('/api/prompts/invalid/respond').set('Authorization', `Bearer ${userToken}`).send({}).expect(403);
+    await request(app).post(url).set('Authorization', `Bearer ${scopedToken}`).send(body).expect(403);
+    expect(await snapshot()).toEqual(before);
+    expect((await db.query('SELECT 1 FROM policy_feedback_sources WHERE classification_id=$1', [classificationId])).rows).toEqual([]);
+});
+
+test.each([
+    ['9007199254740993', '9007199254740992'],
+    ['9223372036854775807', '9223372036854775806'],
+])('reads and commits the exact prompt %s when an adjacent row exists', async (id, neighborId) => {
+    await db.query('UPDATE classification_history SET id=$1 WHERE id=$2', [id, classificationId]);
+    await db.query(`INSERT INTO classification_history(id,tmdb_id,media_type,title,metadata,status)
+        VALUES($1,604,'movie','Prompt fixture','{}','pending')`, [neighborId]);
+    const before = await snapshot();
+    const detail = await read(id, userToken).expect(200);
+    expect(detail.body.data.id).toBe(id);
+    const saved = await submit({}, id).expect(200);
+    expect(saved.body.data.classificationId).toBe(id);
+    const { feedbackId } = saved.body.data;
+    const { rows: receipts } = await db.query(`SELECT classification_id, feedback_id, outcome_snapshot
+        FROM policy_feedback_sources WHERE classification_id=ANY($1::bigint[])`, [[id, neighborId]]);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({ classification_id: id, feedback_id: feedbackId,
+        outcome_snapshot: { classificationId: id, intake: 'prompt' } });
+    const after = await snapshot();
+    expect(after.classifications.find(row => row.id === id)).toMatchObject({ status: 'completed', library_id: libraryId });
+    expect(after.classifications.find(row => row.id === neighborId)).toEqual(before.classifications.find(row => row.id === neighborId));
+    expect((await submit({}, id).expect(409)).body.code).toBe('PROMPT_NOT_PENDING');
+    expect(await snapshot()).toEqual(after);
 });
 
 test('commits distinct actions with correct feedback, classification and learning statistics', async () => {
     const response = await submit({ patternActions: [action(), action(), action('Other Studio', otherLibraryId)] });
     expect(response.status).toBe(200);
+    expect(response.body.data.classificationId).toBe(classificationId);
     expect(response.body.data.patternsCreated).toBe(2);
     const state = await snapshot();
     expect(state.patterns).toHaveLength(2);
-    expect(state.patterns[0]).toMatchObject({ library_id: libraryId, library_name: 'Prompt movies', confidence: '75.00', status: 'approved' });
-    expect(state.patterns[1].library_name).toBe('Other movies');
+    expect(state.patterns).toEqual(expect.arrayContaining([
+        expect.objectContaining({ library_id: libraryId, library_name: 'Prompt movies', confidence: '75.00', status: 'approved' }),
+        expect.objectContaining({ library_id: otherLibraryId, library_name: 'Other movies', confidence: '75.00', status: 'approved' }),
+    ]));
     expect(state.feedback).toHaveLength(1);
     expect(state.feedback[0]).toMatchObject({ id: response.body.data.feedbackId, was_correction: true,
         original_scores: { preset: 65 }, patterns_created: [action(), action('Other Studio', otherLibraryId)] });

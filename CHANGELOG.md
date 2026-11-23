@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Prompt response authority and identity** — Prompt detail and response
+  use exact BIGINT History IDs. Prompt responses now require an administrator
+  session. See the
+  [outcome](docs/architecture/prompt-response-identity-authority-outcome.md).
+
 - **Retired HTTP clarification submissions** — The legacy response endpoint
   now returns `410 Gone` with Command Center guidance. See the
   [outcome](docs/architecture/legacy-http-clarification-retirement-outcome.md).
