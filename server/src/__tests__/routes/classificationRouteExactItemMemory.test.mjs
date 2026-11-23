@@ -95,6 +95,39 @@ describe('classificationRouteExactItemMemory', () => {
     expect(commandService.execute).not.toHaveBeenCalled();
   });
 
+  test.each([
+    '0', '-42', '042', '42text', '42.0', '4e1', '%2B42', '42%20', '4%2F2', '9223372036854775808',
+  ])('rejects invalid History ID %s before dispatch', async pathId => {
+    const commandService = { execute: jest.fn() };
+    const { app, logger } = createApp(commandService);
+
+    const response = await request(app).post(`/api/classification/history/${pathId}/exact-item-memory`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid classification id');
+    expect(commandService.execute).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['%34%32', 42],
+    ['9007199254740991', Number.MAX_SAFE_INTEGER],
+    ['9007199254740992', '9007199254740992'],
+    ['9007199254740993', '9007199254740993'],
+    ['9223372036854775807', '9223372036854775807'],
+  ])('dispatches and logs decoded History ID %s exactly', async (pathId, classificationId) => {
+    const commandService = { execute: jest.fn().mockResolvedValue({ execution: { statusId: 'applied' } }) };
+    const { app, logger } = createApp(commandService);
+
+    await request(app).post(`/api/classification/history/${pathId}/exact-item-memory`).expect(200);
+
+    expect(commandService.execute).toHaveBeenCalledWith(expect.objectContaining({ classificationId }));
+    expect(logger.info).toHaveBeenCalledWith(
+      'Runtime exact-item memory command completed',
+      expect.objectContaining({ classification_id: classificationId }),
+    );
+  });
+
   test('returns a conflict for an outdated resolution without leaking its stored details', async () => {
     const commandService = {
       execute: jest.fn().mockRejectedValue(new PolicyRuntimeExactItemMemoryCommandError(

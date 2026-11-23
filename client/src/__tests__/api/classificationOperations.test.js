@@ -191,10 +191,10 @@ describe('classificationOperations', () => {
     expect(result).toEqual({ data: { resolved: true } })
   })
 
-  it('rememberResolvedExactItem calls the empty-body exact-item command', async () => {
+  it.each([42, '9007199254740993', '9223372036854775807'])('rememberResolvedExactItem sends %s unchanged with no body', async (classificationId) => {
     mockPost.mockResolvedValueOnce({ data: { status: 'applied' } })
-    const result = await rememberResolvedExactItem('p1')
-    expect(mockPost).toHaveBeenCalledWith('/classification/history/p1/exact-item-memory')
+    const result = await rememberResolvedExactItem(classificationId)
+    expect(mockPost).toHaveBeenCalledWith(`/classification/history/${classificationId}/exact-item-memory`)
     expect(result).toEqual({ data: { status: 'applied' } })
   })
 

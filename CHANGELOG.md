@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Manual exact-item memory IDs** — Validate the complete History ID before
+  learning and preserve exact BIGINT row targeting and receipt replay. See
+  the [outcome](docs/architecture/manual-exact-item-memory-id-outcome.md).
+
 - **Resolution learning IDs** — Preserve exact BIGINT History IDs in
   outcome-only resolution evidence and automatic exact-item learning. See
   the [outcome](docs/architecture/resolution-learning-bigint-outcome.md).

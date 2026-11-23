@@ -26,6 +26,7 @@ import {
 import {
   POLICY_RUNTIME_EXACT_ITEM_MEMORY_STATE_REASON_IDS,
 } from '../services/policyRuntimeExactItemMemoryExecutionState.mjs';
+import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 
 function getActor(req) {
   const actor = req.user?.username || req.user?.email || req.user?.id ||
@@ -96,8 +97,8 @@ export function registerExactItemMemoryRoutes(router, {
       throw new ValidationError('Exact-item memory command does not accept request fields');
     }
 
-    const classificationId = Number.parseInt(req.params.id, 10);
-    if (!Number.isInteger(classificationId) || classificationId < 1) {
+    const classificationId = normalizeDatabaseBigintId(req.params.id);
+    if (classificationId === null) {
       throw new ValidationError('Invalid classification id');
     }
 
