@@ -33,23 +33,34 @@ export function getSuggestion(id) {
 
 const invalidSuggestionId = 'Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'
 
-function suggestionReviewId(id) {
+function positiveIntegerId(id) {
   const text = typeof id === 'number' ? String(id) : id
   return typeof text === 'string' && /^[1-9][0-9]{0,9}$/.test(text) && Number(text) <= 2147483647 ? text : null
 }
 
 /** Applies a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function applySuggestion(id) {
-  const text = suggestionReviewId(id)
+  const text = positiveIntegerId(id)
   if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
   return apiClient.post(`/suggestions/${text}/apply`)
 }
 
 /** Rejects a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function rejectSuggestion(id, reason) {
-  const text = suggestionReviewId(id)
+  const text = positiveIntegerId(id)
   if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
   return apiClient.post(`/suggestions/${text}/reject`, { reason })
+}
+
+/** Starts one bounded analysis batch. Supply its continuation only for a new manual request. */
+export function runSuggestionAnalysisSummary(afterPolicyId) {
+  const params = { format: 'summary-v1' }
+  if (afterPolicyId !== undefined) {
+    const text = positiveIntegerId(afterPolicyId)
+    if (!text) return Promise.reject(new TypeError('Invalid analysis continuation policy ID.'))
+    params.afterPolicyId = text
+  }
+  return apiClient.post('/feedback/analyze-all', {}, { params, skipAutomaticRetry: true })
 }
 
 const adminSuggestionsApi = {
@@ -57,6 +68,7 @@ const adminSuggestionsApi = {
   getSuggestion,
   applySuggestion,
   rejectSuggestion,
+  runSuggestionAnalysisSummary,
 }
 
 export default adminSuggestionsApi

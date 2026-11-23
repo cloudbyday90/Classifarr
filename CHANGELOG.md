@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Manual analysis summaries** — Administrators can opt into a bounded
+  response for up to 24 policies at a time, with explicit continuation and
+  per-policy outcomes. See the
+  [outcome](docs/architecture/manual-suggestion-analysis-result-outcome.md).
+
 - **Manual analysis capacity tests** — Added isolated measurements of
   all-policy response size, memory, and overlap with queue and ingestion work.
   See the [outcome](docs/architecture/manual-suggestion-analysis-capacity-outcome.md).

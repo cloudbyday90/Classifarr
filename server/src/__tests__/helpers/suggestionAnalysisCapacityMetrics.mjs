@@ -24,14 +24,15 @@ export function createSuggestionAnalysisSampler() {
 }
 
 /** Count exact wire bytes while leaving the response body unbuffered. */
-export async function measureSuggestionAnalysisHttp(app, token) {
+export async function measureSuggestionAnalysisHttp(app, token, format) {
   const server = app.listen(0, '127.0.0.1');
   try {
     await new Promise((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
     return await new Promise((resolve, reject) => {
       const start = performance.now();
+      const path = format === 'summary-v1' ? '/api/feedback/analyze-all?format=summary-v1' : '/api/feedback/analyze-all';
       const request = httpRequest({ hostname: '127.0.0.1', port: server.address().port,
-        method: 'POST', path: '/api/feedback/analyze-all', signal: AbortSignal.timeout(60_000),
+        method: 'POST', path, signal: AbortSignal.timeout(60_000),
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Content-Length': '2' },
       }, response => {
         let responseBytes = 0;

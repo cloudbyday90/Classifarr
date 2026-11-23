@@ -16,6 +16,8 @@ import { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, a
 import { generateSuggestions, storeSuggestions, getPendingSuggestions, applySuggestion, rejectSuggestion, getImpactMetrics } from './feedbackAnalysisSuggestions.mjs';
 import { updateLearningStats } from './feedbackAnalysisLearning.mjs';
 import { captureSuggestionCohort } from './feedbackAnalysisCohort.mjs';
+import { runManualSuggestionAnalysisSummary, SUGGESTION_ANALYSIS_INSUFFICIENT_FEEDBACK }
+    from './manualSuggestionAnalysisSummary.mjs';
 
 export { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns };
 export { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds };
@@ -159,7 +161,7 @@ export class FeedbackAnalysis {
                     policyId,
                     feedbackCount: feedback.length,
                     suggestions: [],
-                    message: 'Insufficient feedback for meaningful analysis'
+                    message: SUGGESTION_ANALYSIS_INSUFFICIENT_FEEDBACK
                 };
             }
 
@@ -204,6 +206,10 @@ export class FeedbackAnalysis {
     async applySuggestion(...args) { return applySuggestion(...args); }
     async rejectSuggestion(...args) { return rejectSuggestion(...args); }
     async getImpactMetrics(...args) { return getImpactMetrics(...args); }
+
+    async runSummaryAnalysis(afterPolicyId) {
+        return runManualSuggestionAnalysisSummary(db, policyId => this.analyzePolicy(policyId), afterPolicyId);
+    }
 
     async runFullAnalysis() {
         return withServiceCatch(logger, 'Failed to run full analysis', async () => {

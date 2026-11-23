@@ -25,6 +25,8 @@ const profiles = {
 const requestedProfile = process.env.CLASSIFARR_TEST_SUGGESTION_ANALYSIS_PROFILE;
 const name = requestedProfile ?? 'small';
 if (!Object.hasOwn(profiles, name)) throw new Error('invalid_suggestion_analysis_test_profile');
+const format = process.env.CLASSIFARR_TEST_SUGGESTION_ANALYSIS_FORMAT ?? 'detailed';
+if (!['detailed', 'summary-v1'].includes(format)) throw new Error('invalid_suggestion_analysis_test_format');
 
 test('measures a fixed manual suggestion analysis capacity profile', async () => {
   const profile = profiles[name];
@@ -33,18 +35,36 @@ test('measures a fixed manual suggestion analysis capacity profile', async () =>
   const service = createFeedbackAnalysis();
   const token = await generateAccessToken({ id: 1, role: 'admin', username: 'capacity-fixture' });
   const sampler = createSuggestionAnalysisSampler();
+  const reportedWrites = new Map();
   let analysisStarted, responseFinished, ready, analysis, output = null, wire = null, counts;
 
-  async function runMeasuredAnalysis() {
+  async function runMeasuredAnalysis(execute, summarize) {
     sampler.mark('analysisStart');
     analysisStarted = performance.now();
     background.resume();
-    const result = await service.runFullAnalysis();
-    output = summarizeSuggestionAnalysisResults(result, seed);
-    // The seeded corrections each appear in false-positive, missed-positive and new-pattern groups.
-    assert.equal(output.feedbackReferences, profile.policies * profile.keywords * (seed.feedbackRows / 2) * 3);
+    const result = await execute();
+    output = summarize(result);
+    for (const policy of result.results) {
+      reportedWrites.set(policy.policyId, format === 'summary-v1' ? policy.suggestionsCreated : policy.suggestions.length);
+    }
     sampler.mark('beforeSerialization');
     return result;
+  }
+
+  function summarizeDetails(result) {
+    const details = summarizeSuggestionAnalysisResults(result, seed);
+    // Each correction appears in false-positive, missed-positive and new-pattern groups.
+    assert.equal(details.feedbackReferences, profile.policies * profile.keywords * (seed.feedbackRows / 2) * 3);
+    return details;
+  }
+
+  function summarizeBatch(result) {
+    assert.equal(result.policiesAttempted, profile.policies);
+    assert.deepEqual(result.counts, { completed: profile.policies, insufficient_feedback: 0, unconfirmed: 0 });
+    assert.equal(result.nextAfterPolicyId, null);
+    assert.deepEqual(result.results.map(entry => entry.policyId), seed.ids.slice().sort((a, b) => a - b));
+    assert.ok(result.results.every(entry => entry.feedbackCount === seed.feedbackRows));
+    return { policiesAnalyzed: result.policiesAttempted, storedSuggestions: result.results.reduce((count, entry) => count + entry.suggestionsCreated, 0) };
   }
 
   try {
@@ -54,16 +74,21 @@ test('measures a fixed manual suggestion analysis capacity profile', async () =>
       const router = express.Router();
       registerFeedbackAnalysisRoutes(router, {
         runFullAnalysis() {
-          analysis = runMeasuredAnalysis();
+          analysis = runMeasuredAnalysis(() => service.runFullAnalysis(), summarizeDetails);
+          return analysis;
+        },
+        runSummaryAnalysis(afterPolicyId) {
+          analysis = runMeasuredAnalysis(() => service.runSummaryAnalysis(afterPolicyId), summarizeBatch);
           return analysis;
         },
       });
       const app = createIntegrationTestApp({ basePath: '/api/feedback', router, middleware: [authenticateToken] });
-      ({ wire, finishedAt: responseFinished } = await measureSuggestionAnalysisHttp(app, token));
+      ({ wire, finishedAt: responseFinished } = await measureSuggestionAnalysisHttp(app, token, format));
       sampler.mark('afterResponse');
       assert.equal(wire.status, 200);
       assert.ok(wire.responseBytes > 0);
       assert.equal(wire.responseBytes, wire.contentLength);
+      if (format === 'summary-v1') assert.ok(wire.responseBytes <= 4096);
     } else {
       background.resume();
     }
@@ -78,8 +103,13 @@ test('measures a fixed manual suggestion analysis capacity profile', async () =>
     finally { sampler.close(); }
   }
 
-  const saved = await db.query(`SELECT count(*)::integer AS count FROM policy_tuning_suggestions WHERE policy_id=ANY($1::integer[])`, [seed.ids]);
-  assert.equal(saved.rows[0].count, output?.storedSuggestions ?? 0);
+  const { rows: saved } = await db.query(`SELECT policy_id, count(*)::integer AS count FROM policy_tuning_suggestions
+    WHERE policy_id=ANY($1::integer[]) GROUP BY policy_id`, [seed.ids]);
+  assert.equal(saved.length, profile.analysis ? seed.ids.length : 0);
+  for (const row of saved) {
+    assert.equal(row.count, profile.keywords + 1);
+    assert.equal(row.count, reportedWrites.get(row.policy_id));
+  }
   assert.equal(counts.unexpected, 0);
   const { scanCompletedAt, queueCompletedAt } = background.completions();
   assert.equal(queueCompletedAt.length, counts.completed);
@@ -95,6 +125,6 @@ test('measures a fixed manual suggestion analysis capacity profile', async () =>
   }
   if (!profile.background) assert.deepEqual(counts, { inventory: 0, completed: 0, enriched: 0, unexpected: 0 });
 
-  if (requestedProfile) process.stdout.write(`SUGGESTION_ANALYSIS_STUDY ${JSON.stringify({ name, ...profile,
+  if (requestedProfile) process.stdout.write(`SUGGESTION_ANALYSIS_STUDY ${JSON.stringify({ name, format, ...profile,
     feedbackRowsPerPolicy: seed.feedbackRows, output, wire, counts, overlap, memory: sampler.report() })}\n`);
 }, 120_000);

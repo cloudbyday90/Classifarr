@@ -21,6 +21,7 @@ const {
   'applySuggestion',
   'rejectSuggestion',
   'runFullAnalysis',
+  'runSummaryAnalysis',
 ]);
 const {
   getPendingSuggestions,
@@ -28,6 +29,7 @@ const {
   applySuggestion,
   rejectSuggestion,
   runFullAnalysis,
+  runSummaryAnalysis,
 } = feedbackAnalysis;
 const query = jest.fn();
 const recordStandaloneFeedback = jest.fn();
@@ -199,7 +201,29 @@ describe('Feedback Routes', () => {
     const res = await request(app).post('/feedback/analyze-all').send({}).expect(200);
 
     expect(res.body).toEqual({ success: true, analyzed: 6 });
+    expect(runSummaryAnalysis).not.toHaveBeenCalled();
     expect(logger.info.mock.calls).toEqual([['Manual suggestion analysis requested', { actorId: 55, scope: 'enabled_policies' }]]);
+  });
+
+  it('opts into compact summary and preserves the exact continuation', async () => {
+    const result = { format: 'summary-v1', policiesAttempted: 0,
+      counts: { completed: 0, insufficient_feedback: 0, unconfirmed: 0 }, nextAfterPolicyId: null, results: [] };
+    runSummaryAnalysis.mockResolvedValueOnce(result);
+    const response = await request(app).post('/feedback/analyze-all?format=summary-v1&afterPolicyId=2147483647')
+      .send({}).expect(200, { success: true, ...result });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['content-type']).toMatch(/^application\/json/);
+    expect(runSummaryAnalysis).toHaveBeenCalledWith(2147483647);
+    expect(runFullAnalysis).not.toHaveBeenCalled();
+  });
+
+  it.each(['format=summary', 'format=summary-v1&format=summary-v1', 'format=summary-v1&limit=5000',
+    'format=summary-v1&afterPolicyId=01', 'format=summary-v1&afterPolicyId=2147483648',
+    'format=summary-v1&afterPolicyId=1&afterPolicyId=2'])('refuses malformed summary options before analysis (%s)', async params => {
+    await request(app).post(`/feedback/analyze-all?${params}`).send({}).expect(400);
+    expect(runSummaryAnalysis).not.toHaveBeenCalled();
+    expect(runFullAnalysis).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith('Manual suggestion analysis requested', expect.anything());
   });
 
   it('records an accepted request before a failing analysis starts', async () => {
@@ -220,6 +244,8 @@ describe('Feedback Routes', () => {
 
   const policyAnalysis = '/feedback/policies/7/analyze';
   const allPolicyAnalysis = '/feedback/analyze-all';
+  const summaryAnalysis = '/feedback/analyze-all?format=summary-v1';
+  const analysisServices = new Map([[allPolicyAnalysis, runFullAnalysis], [summaryAnalysis, runSummaryAnalysis]]);
   const busyResponse = {
     code: 'SUGGESTION_ANALYSIS_BUSY',
     error: 'Manual analysis is already running. Try again after it finishes.',
@@ -228,11 +254,12 @@ describe('Feedback Routes', () => {
   it.each([
     [policyAnalysis, allPolicyAnalysis], [allPolicyAnalysis, policyAnalysis],
     [policyAnalysis, '/feedback/policies/8/analyze'], [allPolicyAnalysis, allPolicyAnalysis],
+    [allPolicyAnalysis, summaryAnalysis], [summaryAnalysis, policyAnalysis],
   ])('keeps one slot when %s overlaps %s', async (firstPath, secondPath) => {
     const entered = Promise.withResolvers();
     const settle = Promise.withResolvers();
-    const firstService = firstPath === allPolicyAnalysis ? runFullAnalysis : analyzePolicy;
-    const secondService = secondPath === allPolicyAnalysis ? runFullAnalysis : analyzePolicy;
+    const firstService = analysisServices.get(firstPath) ?? analyzePolicy;
+    const secondService = analysisServices.get(secondPath) ?? analyzePolicy;
     firstService.mockImplementationOnce(() => {
       entered.resolve();
       return settle.promise;
@@ -246,7 +273,7 @@ describe('Feedback Routes', () => {
       expect(busy.headers['retry-after']).toBeUndefined();
       await request(app).post('/feedback/policies/07/analyze').send({}).expect(400);
       await request(app).post(policyAnalysis).send({ days: 366 }).expect(400);
-      expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length).toBe(1);
+      expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length + runSummaryAnalysis.mock.calls.length).toBe(1);
       expect(logger.info).toHaveBeenCalledTimes(1);
     } finally {
       settle.resolve({ accepted: 'first' });
@@ -255,7 +282,7 @@ describe('Feedback Routes', () => {
 
     secondService.mockResolvedValueOnce({ accepted: 'later' });
     await request(app).post(secondPath).send({}).expect(200, { success: true, accepted: 'later' });
-    expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length).toBe(2);
+    expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length + runSummaryAnalysis.mock.calls.length).toBe(2);
   });
 
   it('retains its slot after disconnect until the running analysis settles', async () => {

@@ -33,11 +33,34 @@ import {
   getSuggestion,
   applySuggestion,
   rejectSuggestion,
+  runSuggestionAnalysisSummary,
 } from '../../api/adminSuggestions'
 
 describe('adminSuggestions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('posts one explicitly selected summary without automatic replay', async () => {
+    const result = { data: { format: 'summary-v1', nextAfterPolicyId: 42 } }
+    mockPost.mockResolvedValueOnce(result)
+    await expect(runSuggestionAnalysisSummary()).resolves.toBe(result)
+    expect(mockPost).toHaveBeenCalledWith('/feedback/analyze-all', {}, {
+      params: { format: 'summary-v1' }, skipAutomaticRetry: true,
+    })
+  })
+
+  it('uses the exact continuation when explicitly passed', async () => {
+    mockPost.mockResolvedValueOnce({ data: {} })
+    await runSuggestionAnalysisSummary('2147483647')
+    expect(mockPost).toHaveBeenCalledWith('/feedback/analyze-all', {}, {
+      params: { format: 'summary-v1', afterPolicyId: '2147483647' }, skipAutomaticRetry: true,
+    })
+  })
+
+  it.each([null, 0, '01', '1e0', 2147483648])('rejects invalid continuation %s without dispatching', async afterPolicyId => {
+    await expect(runSuggestionAnalysisSummary(afterPolicyId)).rejects.toThrow('Invalid analysis continuation policy ID.')
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it('getSuggestions calls getDataRequest with default status=pending', async () => {

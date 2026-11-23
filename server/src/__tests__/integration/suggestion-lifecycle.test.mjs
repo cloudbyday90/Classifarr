@@ -281,6 +281,54 @@ test('full analysis retains successful writes and ordinary per-policy errors', a
     expect(saved.rows.length).toBeGreaterThan(0);
 });
 
+test('bounded summary visits an ordered active batch and reports uncertain writes without replay', async () => {
+    const path = '/api/feedback/analyze-all?format=summary-v1';
+    await seedSuggestionFeedback(db, otherPolicyId, otherLibraryId);
+    const { rows: extraLibraries } = await db.query(`INSERT INTO libraries(external_id,name,media_type,is_active)
+        SELECT 'summary-fixture-'||n,'Summary fixture '||n,'movie',true FROM generate_series(1,25) n RETURNING id`);
+    const extraIds = extraLibraries.map(row => row.id);
+    const analyze = feedbackAnalysis.analyzePolicy.bind(feedbackAnalysis);
+    const observed = jest.spyOn(feedbackAnalysis, 'analyzePolicy').mockImplementation(async id => {
+        const result = await analyze(id);
+        if (id === otherPolicyId) throw new Error('Synthetic loss of the analysis result after commit');
+        return result;
+    });
+    try {
+        await db.query(`INSERT INTO library_policies(library_id,name,enabled)
+            SELECT id,name,id<>$2 FROM libraries WHERE id=ANY($1::integer[])`, [extraIds, Math.min(...extraIds)]);
+        const expected = (await db.query('SELECT id FROM library_policies WHERE enabled IS TRUE ORDER BY id')).rows.map(row => row.id);
+        expect(expected).toHaveLength(26);
+        await request(app).post(path).send({}).expect(401);
+        await signedIn(request(app).post(path), memberToken).send({}).expect(403);
+        expect(observed).not.toHaveBeenCalled();
+
+        const first = await signedIn(request(app).post(path)).send({}).expect(200);
+        expect(first.headers['cache-control']).toBe('no-store');
+        expect(Buffer.byteLength(first.text)).toBeLessThanOrEqual(4096);
+        expect(first.body).toMatchObject({ success: true, format: 'summary-v1', policiesAttempted: 24,
+            counts: { completed: 1, insufficient_feedback: 22, unconfirmed: 1 }, nextAfterPolicyId: expected[23] });
+        expect(first.body.results.map(entry => entry.policyId)).toEqual(expected.slice(0, 24));
+        expect(first.body.results.find(entry => entry.policyId === policyId)).toMatchObject({ status: 'completed', feedbackCount: 10 });
+        expect(first.body.results.find(entry => entry.policyId === otherPolicyId)).toEqual({
+            policyId: otherPolicyId, status: 'unconfirmed', feedbackCount: null, suggestionsCreated: null,
+        });
+        expect(first.text).not.toContain('Synthetic loss');
+        const otherWrites = await db.query('SELECT id FROM policy_tuning_suggestions WHERE policy_id=$1', [otherPolicyId]);
+        expect(otherWrites.rows.length).toBeGreaterThan(0);
+
+        const next = await signedIn(request(app).post(`${path}&afterPolicyId=${first.body.nextAfterPolicyId}`)).send({}).expect(200);
+        expect(next.body).toMatchObject({ policiesAttempted: 2, nextAfterPolicyId: null });
+        expect(next.body.results.map(entry => entry.policyId)).toEqual(expected.slice(24));
+        const empty = await signedIn(request(app).post(`${path}&afterPolicyId=2147483647`)).send({}).expect(200);
+        expect(empty.body).toMatchObject({ policiesAttempted: 0, nextAfterPolicyId: null, results: [] });
+        expect(observed.mock.calls).toEqual(expected.map(id => [id]));
+    } finally {
+        observed.mockRestore();
+        await db.query('DELETE FROM library_policies WHERE library_id=ANY($1::integer[])', [extraIds]);
+        await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [extraIds]);
+    }
+});
+
 test.each(suggestionPaths)('%s preserves its response and protects the saved outcome across aliases', async base => {
     const otherBase = suggestionPaths.find(path => path !== base);
     const result = { success: true, policyId, type: 'adjust_threshold' };
