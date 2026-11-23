@@ -37,6 +37,7 @@ import { createNamedMockModule } from './helpers/mockFactory.mjs';
 const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
 const mockClarificationService = {
     resolvePolicyQuestion: jest.fn(),
+    resolveRuntimeQuestionAnswer: jest.fn(),
     recordResponse: jest.fn()
 };
 const mockClassificationOutcomeService = { recordOutcome: jest.fn().mockResolvedValue({ updated: true }) };
@@ -131,6 +132,7 @@ beforeEach(() => {
     jest.clearAllMocks();
     db.query.mockReset();
     clarificationService.resolvePolicyQuestion.mockReset();
+    clarificationService.resolveRuntimeQuestionAnswer.mockReset();
     clarificationService.recordResponse.mockReset();
     classificationRoutingService.routeToArr.mockReset();
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
@@ -155,14 +157,35 @@ beforeEach(() => {
 });
 
 describe('handleInteraction', () => {
-    test.each(['ai_answer_01_c_10_current-fingerprint', 'ai_answer_9007199254740993_c_10_current-fingerprint',
-        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0'])(
-        'rejects the raw History segment in %s before lookup', async customId => {
+    const fingerprint = 'abcd_efghijklmnopqrstu';
+    test.each([
+        `ai_answer_01_c_10_${fingerprint}`, `ai_answer_9223372036854775808_c_10_${fingerprint}`,
+        `ai_answer_100_c_10x_${fingerprint}`, `ai_answer_100_c_2147483648_${fingerprint}`,
+        `ai_answer_100_x_10_${fingerprint}`, `ai_answer_100_c_10_${fingerprint}_extra`,
+        `ai_answer_100_c_10_${fingerprint}\n`, 'ai_answer_100_c_10_short',
+        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0',
+    ])(
+        'rejects invalid or unsupported button %s before lookup', async customId => {
             const interaction = makeInteraction({ customId, isButton: () => true });
             await handleInteraction(interaction);
             expect(interaction.reply).toHaveBeenCalledWith({ content: 'Invalid policy question action.', ephemeral: true });
             expect(interaction.deferUpdate).not.toHaveBeenCalled();
             expect(db.query).not.toHaveBeenCalled();
+        },
+    );
+    test.each([100, '9007199254740993', '9223372036854775807'])(
+        'passes exact History ID %s and the entire fingerprint to the resolver', async id => {
+            db.query.mockResolvedValueOnce({ rows: [{ id, discord_message_id: 'owned-message' }] });
+            clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValueOnce({ alreadyResolved: true });
+            const interaction = makeInteraction({ customId: `ai_answer_${id}_c_2147483647_${fingerprint}`,
+                isButton: () => true, message: { id: 'owned-message' } });
+            await handleInteraction(interaction);
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('classification_history'), [id]);
+            expect(clarificationService.resolveRuntimeQuestionAnswer).toHaveBeenCalledWith(id, {
+                contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: fingerprint,
+                action_id: 'confirm_destination', destination_library_id: 2147483647,
+            }, 'testUser', { authenticated: true, allowBigintHistoryId: true });
+            expect(interaction.customId.length).toBeLessThanOrEqual(100);
         },
     );
     test('acknowledgement preserves the existing receipt footer', async () => {

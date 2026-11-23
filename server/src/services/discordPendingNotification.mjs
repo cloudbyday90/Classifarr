@@ -15,7 +15,7 @@ import {
 } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { discordDelivery } from './discordDelivery.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   formatDisplayPercent,
   getColorForConfidence,
@@ -50,9 +50,7 @@ function normalizePolicyQuestion(policyQuestion) {
   return typeof policyQuestion === 'object' ? policyQuestion : null;
 }
 
-function buildPendingDecisionAnswerContract(metadata, result) {
-  const classificationId = parsePendingResolutionHistoryId(result?.classification_id);
-  if (classificationId === null) return null;
+function buildPendingDecisionAnswerContract(metadata, result, classificationId) {
   const question = normalizePolicyQuestion(result?.policy_question || result?.clarification);
 
   return buildPolicyRuntimeQuestionAnswerContract({
@@ -71,8 +69,7 @@ function buildPendingDecisionAnswerContract(metadata, result) {
   });
 }
 
-function buildPendingDecisionComponents(metadata, result) {
-  const answerContract = buildPendingDecisionAnswerContract(metadata, result);
+function buildPendingDecisionComponents(answerContract) {
   const confirmAction = answerContract?.allowed_actions?.find(
     action => action.id === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
   );
@@ -109,9 +106,8 @@ function buildPendingDecisionComponents(metadata, result) {
   return buttons.length > 0 ? [new ActionRowBuilder().addComponents(buttons)] : [];
 }
 
-function buildPendingDecisionEmbed(metadata = {}, result = {}) {
+function buildPendingDecisionEmbed(metadata = {}, result = {}, answerContract) {
   const question = normalizePolicyQuestion(result.policy_question || result.clarification);
-  const answerContract = buildPendingDecisionAnswerContract(metadata, result);
   const title = typeof metadata.title === 'string' && metadata.title.trim()
     ? metadata.title.trim()
     : 'Unknown title';
@@ -259,13 +255,14 @@ export async function sendPendingDecisionNotification(
       return { sent: false, reason: 'disabled' };
     }
 
-    if (!result?.classification_id) {
+    const classificationId = normalizeDatabaseBigintId(result?.classification_id);
+    if (classificationId === null) {
       return { sent: false, reason: 'missing_classification_id' };
     }
 
     const existing = await db.query(
       'SELECT discord_message_id FROM classification_history WHERE id = $1 LIMIT 1',
-      [result.classification_id],
+      [classificationId],
     );
     if (existing.rows[0]?.discord_message_id) {
       return { sent: false, reason: 'already_notified' };
@@ -282,12 +279,13 @@ export async function sendPendingDecisionNotification(
       return { sent: false, reason: 'channel_not_found' };
     }
 
-    const embed = buildPendingDecisionEmbed(metadata, result);
-    const components = buildPendingDecisionComponents(metadata, result);
+    const answerContract = buildPendingDecisionAnswerContract(metadata, result, classificationId);
+    const embed = buildPendingDecisionEmbed(metadata, result, answerContract);
+    const components = buildPendingDecisionComponents(answerContract);
 
     const mentionPayload = buildPendingMentionPayload(config);
     return await discordDelivery.send({
-      classificationId: result.classification_id, kind: 'pending',
+      classificationId, kind: 'pending',
       client, channelId, config, channel, warnFn,
       payload: { ...mentionPayload, embeds: [embed], components },
     });

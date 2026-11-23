@@ -15,7 +15,7 @@ import { processVerification as verificationHandlerProcessVerification } from '.
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
 import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
-import { getPolicyRuntimeQuestionAnswerActionIdFromCode } from './policyRuntimeQuestionAnswerContract.mjs';
+import { parseDiscordPolicyQuestionAnswerButton } from './discordPolicyQuestionAnswerButton.mjs';
 
 const logger = createLogger('discordInteractionHandler');
 
@@ -47,17 +47,12 @@ export async function handleInteraction(interaction) {
             interaction,
           );
         } else if (parts[1] === 'answer') {
-          const classificationId = parts[2];
-          const actionId = getPolicyRuntimeQuestionAnswerActionIdFromCode(parts[3]);
-          const destinationLibraryId = Number.parseInt(parts[4], 10);
-          const contractFingerprint = parts[5];
-          await processPolicyQuestionAnswer({
-            classificationId,
-            destinationLibraryId,
-            contractVersion: 'policy.runtime_question_answer.v1',
-            contractFingerprint,
-            actionId,
-          }, interaction);
+          const answer = parseDiscordPolicyQuestionAnswerButton(customId);
+          if (!answer) {
+            await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
+            return;
+          }
+          await processPolicyQuestionAnswer(answer, interaction);
         }
       } else if (action === 'verify') {
         const subAction = parts[1];

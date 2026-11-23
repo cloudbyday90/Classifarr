@@ -60,13 +60,13 @@ describe('discordPolicyQuestionAnswerHandler', () => {
     mockRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
   });
 
-  test('rejects a button interaction from a message other than the recorded pending notification', async () => {
+  test.each([91, '9007199254740993'])('rejects the wrong notification message for History ID %s', async id => {
     mockDb.query.mockResolvedValueOnce({
-      rows: [{ id: 91, discord_message_id: 'expected-pending-message' }],
+      rows: [{ id, discord_message_id: 'expected-pending-message' }],
     });
     const currentInteraction = interaction();
 
-    await processPolicyQuestionAnswer(answer(), currentInteraction);
+    await processPolicyQuestionAnswer({ ...answer(), classificationId: id }, currentInteraction);
 
     expect(currentInteraction.deferUpdate).toHaveBeenCalledTimes(1);
     expect(currentInteraction.followUp).toHaveBeenCalledWith(expect.objectContaining({
@@ -99,7 +99,7 @@ describe('discordPolicyQuestionAnswerHandler', () => {
         destination_library_id: 7,
       },
       'operator',
-      { authenticated: true },
+      { authenticated: true, allowBigintHistoryId: true },
     );
     expect(mockRouting.routeAfterClarification).not.toHaveBeenCalled();
     expect(currentInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({

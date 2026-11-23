@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord compact answers** — Preserve exact BIGINT History IDs and full
+  fingerprints in fingerprinted answer buttons. Keep stored-message checks
+  and completed replay. See the
+  [outcome](docs/architecture/discord-compact-answer-bigint-outcome.md).
+
 - **Web pending-answer admission** — Enable single and bulk web answers
   for exact History IDs through the BIGINT maximum. Preserve numeric safe
   IDs and require an exact row binding for large-ID replay.

@@ -76,14 +76,27 @@ describe('discordPendingNotification', () => {
     expect(components('9007199254740993')).toEqual([]);
     expect(components(Number.MAX_SAFE_INTEGER)[0].components[0].data.custom_id).toBe('ai_clarify_9007199254740991_0');
   });
-  test('keeps a large pending notification visible without emitting an answer button', async () => {
+  test.each(['9007199254740993', '9223372036854775807'])('emits exact compact buttons for pending History ID %s', async id => {
     const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
     await sendPendingDecisionNotification({ title: 'Large pending classification', media_type: 'movie' }, {
-      classification_id: '9007199254740993', policy_question: normalizedPolicyQuestion(),
+      classification_id: id, policy_question: normalizedPolicyQuestion(),
     }, { client: { channels: { fetch: async () => ({ send }) } },
       channelId: 'synthetic-channel', config: { enabled: true, notify_on_pending_items: true }, warnFn: jest.fn() });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0][0]).toMatchObject({ components: [], embeds: [expect.anything()] });
+    const [row] = send.mock.calls[0][0].components;
+    expect(row.toJSON().components).toMatchObject([15, 14].map(libraryId => ({
+      custom_id: expect.stringMatching(new RegExp(`^ai_answer_${id}_c_${libraryId}_[A-Za-z0-9_-]{22}$`)),
+    })));
+    expect(mockDb.query).toHaveBeenCalledWith(expect.stringContaining('discord_message_id'), [id]);
+  });
+  test.each([Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'])('refuses invalid pending History ID %s before lookup', async id => {
+    mockDb.query.mockClear();
+    const fetch = jest.fn();
+    expect(await sendPendingDecisionNotification({}, { classification_id: id }, {
+      client: { channels: { fetch } }, config: { enabled: true },
+    })).toEqual({ sent: false, reason: 'missing_classification_id' });
+    expect(mockDb.query).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
   test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
     'automatic held %s notification gap=%s preserves current reference and command meaning', async (kind, gap) => {

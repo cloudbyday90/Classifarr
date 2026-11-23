@@ -16,14 +16,9 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { normalizeDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 
 const logger = createLogger('discordPolicyQuestionAnswerHandler');
-
-function normalizePositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
 
 function isAuthorizedDiscordTarget(classification, interaction) {
   const expectedMessageId = String(classification?.discord_message_id || '').trim();
@@ -69,8 +64,8 @@ export async function processPolicyQuestionAnswer({
   contractFingerprint,
   actionId,
 } = {}, interaction) {
-  const normalizedClassificationId = parsePendingResolutionHistoryId(classificationId);
-  const normalizedDestinationLibraryId = normalizePositiveInteger(destinationLibraryId);
+  const normalizedClassificationId = normalizeDatabaseBigintId(classificationId);
+  const normalizedDestinationLibraryId = parseCanonicalDatabaseInt32Id(destinationLibraryId);
   if (!normalizedClassificationId || !normalizedDestinationLibraryId ||
       typeof contractVersion !== 'string' || typeof contractFingerprint !== 'string' ||
       typeof actionId !== 'string') {
@@ -114,7 +109,7 @@ export async function processPolicyQuestionAnswer({
           destination_library_id: normalizedDestinationLibraryId,
         },
         interaction.user?.username || `discord:${interaction.user?.id || 'operator'}`,
-        { authenticated: Boolean(interaction.user?.id) },
+        { authenticated: Boolean(interaction.user?.id), allowBigintHistoryId: true },
       );
     } catch (error) {
       await sendResolutionError(interaction, error);
