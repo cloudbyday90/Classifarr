@@ -49,6 +49,10 @@ test('documents the legacy suggestion migration in the served API spec', async (
   expect(legacy.description).toContain('No removal date is scheduled.');
   expect(legacy.responses['200'].description).toContain('Cache-Control no-store');
   expect(spec.paths['/api/suggestions/{id}/proposal'].get.responses['200'].description).toBe('Bounded proposal');
+  const page = spec.paths['/api/suggestions/page'].get;
+  expect(page.parameters.map(parameter => parameter.name)).toEqual(['status', 'policyId', 'beforeId']);
+  expect(page.parameters[0].schema).toMatchObject({ enum: ['pending', 'applied', 'rejected', 'superseded', 'all'], default: 'pending' });
+  expect(page.responses['200'].description).toContain('nextBeforeId');
 });
 
 describe('swaggerSpec — DEP0169 regression guard', () => {

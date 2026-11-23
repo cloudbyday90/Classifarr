@@ -13,9 +13,11 @@ import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { requireAdmin } from '../middleware/auth.mjs';
 import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import { readSuggestionPage } from '../services/boundedSuggestionList.mjs';
 import { readLegacySuggestionDetail } from '../services/legacySuggestionDetail.mjs';
 import { MAX_SUGGESTION_EVIDENCE_REFERENCES, readSavedSuggestionEvidencePage } from '../services/savedSuggestionEvidence.mjs';
 import { readSavedSuggestionProposal } from '../services/savedSuggestionProposal.mjs';
+import { readSuggestionPageInput } from './suggestionPageInput.mjs';
 import { readSuggestionId, readSuggestionReviewIds } from './suggestionReviewInput.mjs';
 
 // The compatibility decision took effect on November 23, 2026 Eastern.
@@ -50,6 +52,36 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     );
 
     return sendData(res, result.rows);
+  }));
+
+  /**
+   * @openapi
+   * /api/suggestions/page:
+   *   get:
+   *     tags: [Suggestions]
+   *     summary: Read one bounded suggestion page
+   *     description: >-
+   *       Signed-in clients receive up to 20 summaries in descending ID order.
+   *       Pass nextBeforeId as beforeId with the same filters to continue.
+   *     parameters:
+   *       - name: status
+   *         in: query
+   *         schema: { type: string, enum: [pending, applied, rejected, superseded, all], default: pending }
+   *       - name: policyId
+   *         in: query
+   *         schema: { type: integer, minimum: 1, maximum: 2147483647 }
+   *       - name: beforeId
+   *         in: query
+   *         schema: { type: integer, minimum: 1, maximum: 2147483647 }
+   *     responses:
+   *       '200': { description: Bounded items and nullable nextBeforeId }
+   *       '400': { description: Invalid query parameters }
+   *       '401': { description: Authentication required }
+   */
+  router.get('/page', asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const body = await readSuggestionPage(db, readSuggestionPageInput(req.query));
+    return res.type('json').send(body);
   }));
 
   /**

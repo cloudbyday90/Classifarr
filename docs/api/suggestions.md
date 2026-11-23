@@ -3,6 +3,32 @@
 These endpoints accept Classifarr session authentication or a valid access
 token under the existing suggestion route permissions.
 
+## List one page
+
+Use `GET /api/suggestions/page` to receive `{ items, nextBeforeId }`. The page has
+up to 20 summaries ordered by descending suggestion ID, with a 64 KiB JSON limit
+before compression and `Cache-Control: no-store`.
+
+| Optional query parameter | Contract |
+| --- | --- |
+| `status` | `pending` by default. Also accepts `applied`, `rejected`, `superseded`, or `all`. All includes any stored status. |
+| `policyId` | Restrict the page to one policy. |
+| `beforeId` | Select only IDs below this value. Use the prior page's `nextBeforeId` with the same filters. |
+
+Both IDs accept decimal digits without leading zeros from `1` to `2147483647`.
+Empty, repeated, malformed and unknown query parameters yield `400`.
+`nextBeforeId: null` indicates the end of the current results. Omit `beforeId`
+to refresh from the beginning. Pagination reads live data, so policy or status
+changes between requests can affect membership in later pages.
+
+Each summary contains `id`, `policy_id`, `policy_name`, `library_name`,
+`suggestion_type`, `status`, `confidence`, `impact_estimate`, `created_at`,
+`applied_at`, and `superseded_at`. Policy and library labels use at most 160
+characters. The page includes suggestions with a positive ID and a resolvable
+policy and library. Dates are UTC strings or `null`. Non-finite confidence
+values appear as `null`. Use the proposal and evidence reads below for inspection.
+The legacy global list continues to use its confidence-first order and payload.
+
 ## Read a proposal
 
 Use `GET /api/suggestions/:id/proposal` for a single signed-in proposal lookup.

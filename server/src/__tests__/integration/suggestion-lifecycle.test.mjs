@@ -213,6 +213,100 @@ test.each(suggestionPaths)('%s preserves member reads and records the administra
     expect(await snapshot()).toEqual(after);
 });
 
+test('the bounded list authenticates and rejects invalid query shapes before reading suggestions', async () => {
+    const path = '/api/suggestions/page';
+    const read = jest.spyOn(db, 'query');
+    try {
+        await request(app).get(path).expect(401);
+        await signedIn(request(app).get(path), scopedToken).expect(403);
+        for (const query of [
+            'status=', 'status=unknown', 'status=all&status=pending', 'status[]=pending',
+            'policyId=01', 'policyId=1&policyId=1', 'policyId=', 'policyId=2147483648',
+            'beforeId=0', 'beforeId=1e1', 'beforeId=1%0A', 'beforeId=1&beforeId=2',
+            'beforeId%5B%5D=1', 'limit=100',
+        ]) {
+            await signedIn(request(app).get(`${path}?${query}`), memberToken)
+                .expect(400).expect('Cache-Control', 'no-store');
+        }
+        expect(read.mock.calls.filter(([sql]) => typeof sql === 'string' &&
+            sql.includes('policy_tuning_suggestions'))).toEqual([]);
+    } finally {
+        read.mockRestore();
+    }
+    await signedIn(request(app).get(path)).expect(200);
+});
+
+test('the bounded list pages live matches in exact ID order with the legacy lists still available', async () => {
+    const inserted = (await db.query(`INSERT INTO policy_tuning_suggestions
+        (policy_id,suggestion_type,suggestion_config,status,confidence,created_at)
+        SELECT $1,'adjust_threshold','{}',
+            (ARRAY['pending','applied','rejected','superseded'])[1+(n % 4)],
+            CASE WHEN n % 2 = 0 THEN NULL ELSE 100-n END,
+            CASE WHEN n % 2 = 0 THEN NULL ELSE now() END
+        FROM generate_series(1,44) n RETURNING id,status`, [policyId])).rows;
+    await db.query(`INSERT INTO policy_tuning_suggestions(policy_id,suggestion_type,suggestion_config)
+        VALUES($1,'adjust_weight','{}')`, [otherPolicyId]);
+    const expected = [...inserted.map(row => row.id), suggestionId].sort((a, b) => b - a);
+    const path = '/api/suggestions/page';
+    const filters = { status: 'all', policyId };
+    const page = query => signedIn(request(app).get(path).query(query), memberToken)
+        .expect(200).expect('Content-Type', /application\/json/).expect('Cache-Control', 'no-store');
+    const ids = response => response.body.items.map(row => row.id);
+
+    const first = await page(filters);
+    expect(ids(first)).toEqual(expected.slice(0, 20));
+    expect(first.body.nextBeforeId).toBe(expected[19]);
+    const newer = (await db.query(`INSERT INTO policy_tuning_suggestions(policy_id,suggestion_type,suggestion_config)
+        VALUES($1,'adjust_threshold','{}') RETURNING id`, [policyId])).rows[0].id;
+    await db.query('DELETE FROM policy_tuning_suggestions WHERE id=$1', [first.body.nextBeforeId]);
+    const second = await page({ ...filters, beforeId: first.body.nextBeforeId });
+    expect(ids(second)).toEqual(expected.slice(20, 40));
+    expect(second.body.nextBeforeId).toBe(expected[39]);
+    const last = await page({ ...filters, beforeId: second.body.nextBeforeId });
+    expect(ids(last)).toEqual(expected.slice(40));
+    expect(last.body.nextBeforeId).toBeNull();
+    const exact = await page({ ...filters, beforeId: expected[24] });
+    expect(ids(exact)).toEqual(expected.slice(25));
+    expect(exact.body.nextBeforeId).toBeNull();
+    expect(ids(await page(filters))[0]).toBe(newer);
+    expect((await page({ ...filters, beforeId: 1 })).body).toEqual({ items: [], nextBeforeId: null });
+    expect((await page({ ...filters, beforeId: 2147483647 })).body).toEqual((await page(filters)).body);
+    expect((await page({ policyId })).body.items.every(row => row.status === 'pending')).toBe(true);
+    expect(ids(await page({ status: 'applied', policyId }))).toEqual(inserted
+        .filter(row => row.status === 'applied' && row.id !== first.body.nextBeforeId)
+        .map(row => row.id).sort((a, b) => b - a));
+
+    const legacy = await signedIn(request(app).get('/api/suggestions').query({ policyId }), memberToken).expect(200);
+    expect(legacy.body.find(row => row.id === suggestionId)).toHaveProperty('suggestion_config');
+    const policyList = await signedIn(request(app).get(`/api/feedback/policies/${policyId}/suggestions`), memberToken).expect(200);
+    expect(policyList.body).toMatchObject({ policyId, suggestions: expect.any(Array) });
+});
+
+test('the bounded list limits serialized output and excludes saved configuration and feedback fields', async () => {
+    const label = '\u0001'.repeat(161);
+    const path = '/api/suggestions/page';
+    await db.query('UPDATE library_policies SET name=$2 WHERE id=$1', [policyId, label]);
+    await db.query('UPDATE libraries SET name=$2 WHERE id=$1', [libraryId, label]);
+    await db.query(`INSERT INTO policy_tuning_suggestions
+        (policy_id,suggestion_type,suggestion_config,impact_estimate,status,confidence,
+            applied_at,superseded_at,rejection_reason,supporting_feedback_ids)
+        SELECT $1,repeat($2,30),jsonb_build_object('private',repeat('X',70000)),repeat($2,100),
+            repeat($2,20),'NaN'::real,'infinity','2026-11-23T12:00:00Z','private',ARRAY[1,2]
+        FROM generate_series(1,20)`, [policyId, '\u0001']);
+    const result = await signedIn(request(app).get(path).query({ status: 'all', policyId }), memberToken).expect(200);
+    expect(result.body.items).toHaveLength(20);
+    expect(Buffer.byteLength(result.text)).toBeGreaterThan(55 * 1024);
+    expect(Buffer.byteLength(result.text)).toBeLessThanOrEqual(64 * 1024);
+    const row = result.body.items[0];
+    expect(row).toEqual({
+        id: expect.any(Number), policy_id: policyId, policy_name: label.slice(0, 160),
+        library_name: label.slice(0, 160), suggestion_type: '\u0001'.repeat(30), status: '\u0001'.repeat(20),
+        confidence: null, impact_estimate: '\u0001'.repeat(100), created_at: expect.any(String),
+        applied_at: null, superseded_at: '2026-11-23T12:00:00.000Z',
+    });
+    expect(result.body.nextBeforeId).toBe(result.body.items[19].id);
+});
+
 test('the saved evidence route requires a genuine administrator and exact inputs before reading', async () => {
     const detail = `/api/suggestions/${suggestionId}`;
     const evidence = `${detail}/evidence`;

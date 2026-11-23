@@ -401,6 +401,7 @@ describe('api/index.js barrel export validation', () => {
   describe('admin domain', () => {
     it('exposes adminSuggestions functions', () => {
       expectFunction('getSuggestions')
+      expectFunction('getSuggestionPage')
       expectFunction('getSuggestion')
       expectFunction('applySuggestion')
       expectFunction('rejectSuggestion')

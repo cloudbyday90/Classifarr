@@ -30,6 +30,7 @@ vi.mock('../../api/core', () => ({
 
 import {
   getSuggestions,
+  getSuggestionPage,
   getSuggestion,
   getSuggestionProposal,
   getSuggestionEvidence,
@@ -98,6 +99,26 @@ describe('adminSuggestions', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/suggestions/5')
     expect(result).toEqual(suggestion)
   })
+
+  it('reads one pending page by default and sends an explicit all filter and continuation', async () => {
+    const first = { items: [{ id: 2147483647 }], nextBeforeId: 2147483647 }
+    const last = { items: [], nextBeforeId: null }
+    mockGetDataRequest.mockResolvedValueOnce(first).mockResolvedValueOnce(last)
+
+    await expect(getSuggestionPage()).resolves.toBe(first)
+    expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/suggestions/page', { params: { status: 'pending' } })
+    await expect(getSuggestionPage({ status: 'all', policyId: 42, beforeId: first.nextBeforeId })).resolves.toBe(last)
+    expect(mockGetDataRequest).toHaveBeenNthCalledWith(2, '/suggestions/page', {
+      params: { status: 'all', policyId: '42', beforeId: '2147483647' },
+    })
+  })
+
+  it.each([{ status: '' }, { status: ['all'] }, { policyId: '01' }, { beforeId: 2147483648 }, { beforeId: null }])(
+    'rejects invalid suggestion page input %j without dispatch', async options => {
+      await expect(getSuggestionPage(options)).rejects.toThrow(TypeError)
+      expect(mockGetDataRequest).not.toHaveBeenCalled()
+    },
+  )
 
   it('reads a bounded proposal using the exact suggestion ID', async () => {
     const proposal = { id: 2147483647, proposal_status: 'available' }

@@ -33,10 +33,28 @@ export function getSuggestion(id) {
 }
 
 const invalidSuggestionId = 'Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'
+const suggestionPageStatuses = new Set(['pending', 'applied', 'rejected', 'superseded', 'all'])
 
 function positiveIntegerId(id) {
   const text = typeof id === 'number' ? String(id) : id
   return typeof text === 'string' && /^[1-9][0-9]{0,9}$/.test(text) && Number(text) <= 2147483647 ? text : null
+}
+
+/**
+ * Reads one page. Pass nextBeforeId as beforeId with the same filters to continue.
+ * @param {{status?: 'pending'|'applied'|'rejected'|'superseded'|'all', policyId?: number|string, beforeId?: number|string}} [options]
+ */
+export function getSuggestionPage({ status = 'pending', policyId, beforeId } = {}) {
+  if (!suggestionPageStatuses.has(status)) return Promise.reject(new TypeError('Invalid suggestion status.'))
+
+  const params = { status }
+  for (const [key, value] of Object.entries({ policyId, beforeId })) {
+    if (value === undefined) continue
+    const id = positiveIntegerId(value)
+    if (!id) return Promise.reject(new TypeError(`Invalid suggestion page ${key}.`))
+    params[key] = id
+  }
+  return getDataRequest('/suggestions/page', { params })
 }
 
 /** Reads bounded proposal and status fields for a signed-in member or administrator. */
@@ -86,6 +104,7 @@ export function runSuggestionAnalysisSummary(afterPolicyId) {
 
 const adminSuggestionsApi = {
   getSuggestions,
+  getSuggestionPage,
   getSuggestion,
   getSuggestionProposal,
   getSuggestionEvidence,

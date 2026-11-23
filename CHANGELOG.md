@@ -361,6 +361,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Suggestion list API** — Added an opt-in authenticated page with up to 20
+  summaries, exact ID continuation, and an explicit all-status filter. Existing
+  list callers can continue using their current contract. See the
+  [API guide](docs/api/suggestions.md) and
+  [outcome](docs/architecture/bounded-suggestion-list-outcome.md).
+
 - **Legacy suggestion migration** — Documented at least 90 days of compatibility
   after the first public release with the replacements and migration notice.
   Legacy detail now uses `no-store` and returns an explicit set of shipped fields.
