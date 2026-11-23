@@ -32,6 +32,7 @@
 import { jest } from '@jest/globals';
 import { ComponentType, EmbedBuilder } from 'discord.js';
 import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
+import { parseDiscordCompletedButton } from '../services/discordLegacyControlIdentity.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
@@ -256,7 +257,8 @@ describe('handleInteraction', () => {
 
     test.each(['correct_100x', 'verify_yes_01', 'verify_no_9223372036854775808', 'reclassify_100_2147483648',
         'reclassify_100', 'reclassify_100_10_extra', 'correct_100\n', 'verify_no_100_10',
-        'correct_9007199254740992', 'verify_yes_9007199254740992', 'reclassify_9007199254740992_10'])(
+        'correct_9223372036854775808', 'verify_yes_9223372036854775808', 'reclassify_9223372036854775808_10',
+        'correct_100_', 'verify_yes__100', 'verify_YES_100', 'reclassify_100_10\n', 'reclassify_100_+10'])(
         'refuses malformed completed button %s before database work', async customId => {
             const interaction = makeInteraction({ customId, isButton: () => true,
                 message: { id: savedMessageId, components: [{ components: [{ type: ComponentType.Button, customId }] }] } });
@@ -264,6 +266,20 @@ describe('handleInteraction', () => {
             expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
             expect(db.query).not.toHaveBeenCalled();
         });
+
+    test.each([Number.MAX_SAFE_INTEGER, '9007199254740992', '9007199254740993', '9223372036854775807'])(
+        'parses exact History ID %s for each completed button', classificationId => {
+            expect(parseDiscordCompletedButton(`correct_${classificationId}`)).toEqual({
+                action: 'correct', classificationId, notificationKind: 'classification',
+            });
+            expect(parseDiscordCompletedButton(`verify_yes_${classificationId}`)).toEqual({
+                action: 'verify_yes', classificationId, notificationKind: 'confidence',
+            });
+            expect(parseDiscordCompletedButton(`reclassify_${classificationId}_2147483647`)).toEqual({
+                action: 'reclassify', classificationId, notificationKind: 'classification', destinationLibraryId: 2147483647,
+            });
+        },
+    );
 
     test.each([Number.MAX_SAFE_INTEGER, '9007199254740992', '9007199254740993', '9223372036854775807'])(
         'passes exact History ID %s to the verification opener and correction selector', async id => {

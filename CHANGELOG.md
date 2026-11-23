@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord completed decision buttons** — Confirm and reclassify completed
+  items with exact BIGINT History IDs through the existing bound buttons. See
+  the [outcome](docs/architecture/discord-completed-buttons-bigint-outcome.md).
+
 - **Original-decision snapshots** — Preserve exact BIGINT History IDs in
   snapshot capture, bounded intake recovery, and evaluation. See the
   [outcome](docs/architecture/original-decision-snapshot-bigint-outcome.md).

@@ -17,24 +17,25 @@ export function isOfferedDiscordButton(interaction) {
   ));
 }
 
-export function parseDiscordCompletedButton(customId) {
-  if (typeof customId !== 'string') return null;
-  const match = /^(correct|verify_yes|verify_no|reclassify)_([1-9][0-9]{0,18})(?:_([1-9][0-9]{0,9}))?$/.exec(customId);
-  if (!match || match[0] !== customId) return null;
+function completedButton(action, historyId, notificationKind) {
+  const classificationId = normalizeDatabaseBigintId(historyId);
+  return classificationId === null ? null : { action, classificationId, notificationKind };
+}
 
-  const [, action, historyId, libraryId] = match;
-  const classificationId = action === 'verify_no'
-    ? normalizeDatabaseBigintId(historyId)
-    : parsePendingResolutionHistoryId(historyId);
-  if (classificationId === null) return null;
-  if (action === 'reclassify') {
-    const destinationLibraryId = parseCanonicalDatabaseInt32Id(libraryId);
-    if (destinationLibraryId === null) return null;
-    return { action, classificationId, destinationLibraryId, notificationKind: 'classification' };
+export function parseDiscordCompletedButton(customId) {
+  // reclassify_ + 19 History digits + _ + 10 library digits
+  if (typeof customId !== 'string' || customId.length > 41) return null;
+  const parts = customId.split('_');
+  const [verb, first, second] = parts;
+  if (parts.length === 2 && verb === 'correct') return completedButton(verb, first, 'classification');
+  if (parts.length !== 3) return null;
+  if (verb === 'verify' && (first === 'yes' || first === 'no')) {
+    return completedButton(`verify_${first}`, second, 'confidence');
   }
-  if (libraryId !== undefined) return null;
-  const notificationKind = action === 'correct' ? 'classification' : 'confidence';
-  return { action, classificationId, notificationKind };
+  if (verb !== 'reclassify') return null;
+  const button = completedButton(verb, first, 'classification');
+  const destinationLibraryId = parseCanonicalDatabaseInt32Id(second);
+  return button && destinationLibraryId !== null ? { ...button, destinationLibraryId } : null;
 }
 
 export function parseDiscordLegacyClarificationButton(customId) {

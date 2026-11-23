@@ -10,13 +10,16 @@ import { buildClassificationDestinationDecision } from '../../services/classific
 
 let database;
 let beforeWrite;
+let afterWrite;
 let source;
 let destination;
 let delivery;
 const query = (...args) => database.query(...args);
-const withTransaction = (...args) => {
+const withTransaction = async (...args) => {
   beforeWrite?.();
-  return database.withTransaction(...args);
+  const result = await database.withTransaction(...args);
+  afterWrite?.();
+  return result;
 };
 const routeToArr = jest.fn().mockResolvedValue({ attempted: true, routed: true });
 jest.unstable_mockModule('../../config/database.mjs', () => ({ query, withTransaction, default: { query, withTransaction } }));
@@ -40,6 +43,7 @@ beforeAll(async () => {
 beforeEach(() => {
   routeToArr.mockReset().mockResolvedValue({ attempted: true, routed: true });
   beforeWrite = undefined;
+  afterWrite = undefined;
 });
 afterAll(async () => { await database.pool.end(); });
 
@@ -114,8 +118,37 @@ test.each([
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 
+test.each([
+  ['correct', 'classification', '9007199254740995', '9007199254740996'],
+  ['verify_yes', 'confidence', '9223372036854775804', '9223372036854775803'],
+])('%s verifies only its large History row', async (action, kind, id, neighborId) => {
+  await insertHistory(id, messageId, 'completed');
+  await insertDeliveredReceipt(id, 'completed', kind);
+  await insertHistory(neighborId, changedMessageId, 'completed');
+  await insertDeliveredReceipt(neighborId, 'completed', kind, null, changedMessageId);
+  const neighbor = await history(neighborId);
+  const crossed = completedClick(id, action, kind, { messageId: changedMessageId });
+  await handleInteraction(crossed);
+  expect(crossed.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('saved Discord notification') }));
+  expect(routeToArr).not.toHaveBeenCalled();
+
+  const clicks = [completedClick(id, action, kind), completedClick(id, action, kind)];
+  await Promise.all(clicks.map(handleInteraction));
+  expect(clicks.flatMap(click => click.editReply.mock.calls)).toHaveLength(1);
+  expect(clicks.flatMap(click => click.followUp.mock.calls)).toContainEqual([
+    expect.objectContaining({ content: expect.stringContaining('Already processed') }),
+  ]);
+  expect(await history(id)).toMatchObject({ id, status: 'routed', clarification_status: 'confirmed', library_id: source.id,
+    metadata: { classification_details: { outcome_link: { type: 'verified', final_library_id: source.id } } } });
+  expect(await history(neighborId)).toEqual(neighbor);
+  expect(await corrections(id)).toEqual([]);
+  expect(routeToArr).toHaveBeenCalledTimes(1);
+  expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${id}` }),
+    expect.objectContaining({ id: source.id }));
+});
+
 test('verification outcome failure rolls back the History transition and skips routing', async () => {
-  const id = 7143;
+  const id = '9007199254740997';
   await insertHistory(id, messageId, 'completed');
   await insertDeliveredReceipt(id, 'completed', 'confidence');
   const before = await history(id);
@@ -130,6 +163,33 @@ test('verification outcome failure rolls back the History transition and skips r
     expect(await history(id)).toEqual(before);
     expect(routeToArr).not.toHaveBeenCalled();
   } finally { injectedFailure.mockRestore(); }
+});
+
+test.each([
+  ['9007199254741001', 'verify_yes', 'confidence', 'verified'],
+  ['9007199254741002', 'reclassify', 'classification', 'corrected'],
+])('%s does not route or repeat its saved write after a lost acknowledgement', async (id, action, kind, status) => {
+  await insertHistory(id, messageId, 'completed');
+  await insertDeliveredReceipt(id, 'completed', kind);
+  afterWrite = () => {
+    afterWrite = undefined;
+    throw new Error('Fixture discarded the committed write acknowledgement');
+  };
+  const click = completedClick(id, action, kind);
+  await handleInteraction(click);
+  expect(click.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Failed to process') }));
+  expect(click.editReply).not.toHaveBeenCalled();
+  const saved = await history(id);
+  const library = action === 'reclassify' ? destination : source;
+  expect(saved).toMatchObject({ id, status, library_id: library.id, metadata: { classification_details: {
+    outcome_link: { type: status, final_library_id: library.id },
+  } } });
+  const replay = completedClick(id, action, kind);
+  await handleInteraction(replay);
+  expect(replay.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Already processed') }));
+  expect(await history(id)).toEqual(saved);
+  expect(await corrections(id)).toHaveLength(action === 'reclassify' ? 1 : 0);
+  expect(routeToArr).not.toHaveBeenCalled();
 });
 
 test.each([
@@ -155,8 +215,8 @@ test.each([
   expect(routeToArr).not.toHaveBeenCalled();
 });
 
-test.each([[7152, 'reclassify', 'classification'], [7153, 'verify_no', 'confidence']])(
-  'button on row %i rechecks its message while waiting on the History lock', async (id, action, kind) => {
+test.each([['9007199254740998', 'reclassify', 'classification'], [7153, 'verify_no', 'confidence']])(
+  'button on row %s rechecks its message while waiting on the History lock', async (id, action, kind) => {
     await insertHistory(id, messageId, 'completed');
     await insertDeliveredReceipt(id, 'completed', kind);
     const blocker = await database.pool.connect();
@@ -186,9 +246,10 @@ test.each([[7152, 'reclassify', 'classification'], [7153, 'verify_no', 'confiden
 
 test.each([
   [7154, 'reclassify', 'classification'],
+  ['9223372036854775807', 'reclassify', 'classification'],
   [2147483647, 'verify_no', 'confidence'],
   [2147483648, 'verify_no', 'confidence'],
-  ['9223372036854775807', 'verify_no', 'confidence'],
+  ['9223372036854775805', 'verify_no', 'confidence'],
 ])(
   'completed row %s can be corrected through its offered control', async (id, action, kind) => {
     await insertHistory(id, messageId, 'completed');
@@ -222,16 +283,33 @@ test.each([
     expect(routeToArr).toHaveBeenCalledTimes(1);
     expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${id}` }),
       expect.objectContaining({ id: destination.id }));
-    if (action === 'verify_no') {
-      const replay = { ...interaction('selector', id), message: click.message };
-      await handleInteraction(replay);
-      expect(replay.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Already processed') }));
-      expect(await history(id)).toEqual(saved);
-      expect(await corrections(id)).toHaveLength(1);
-      expect(routeToArr).toHaveBeenCalledTimes(1);
-    }
+    const replay = action === 'verify_no' ? { ...interaction('selector', id), message: click.message } : completedClick(id, action, kind);
+    await handleInteraction(replay);
+    expect(replay.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Already processed') }));
+    expect(await history(id)).toEqual(saved);
+    expect(await corrections(id)).toHaveLength(1);
+    expect(routeToArr).toHaveBeenCalledTimes(1);
   },
 );
+
+test.each([
+  ['9007199254740999', 'movie', false], ['9007199254741000', 'tv', true],
+])('direct correction of %s rechecks destination eligibility', async (id, mediaType, active) => {
+  await insertHistory(id, messageId, 'completed');
+  await insertDeliveredReceipt(id, 'completed');
+  const before = await history(id);
+  const click = completedClick(id, 'reclassify', 'classification');
+  try {
+    await query('UPDATE libraries SET media_type=$2,is_active=$3 WHERE id=$1', [destination.id, mediaType, active]);
+    await handleInteraction(click);
+    expect(click.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: 'Library is inactive or has an incompatible media type' }));
+    expect(await history(id)).toEqual(before);
+    expect(await corrections(id)).toEqual([]);
+    expect(routeToArr).not.toHaveBeenCalled();
+  } finally {
+    await query("UPDATE libraries SET media_type='movie',is_active=true WHERE id=$1", [destination.id]);
+  }
+});
 
 test('the delivered classification menu corrects the exact History row among adjacent large IDs', async () => {
   const channelId = '555555555555555555';
