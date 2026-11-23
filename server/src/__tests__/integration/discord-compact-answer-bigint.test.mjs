@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterAll, beforeAll, expect, jest, test } from '@jest/globals';
-import { Options } from 'discord.js';
+import { ActionRow, Options } from 'discord.js';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createDiscordDeliveryRepository } from '../../services/discordDeliveryRepository.mjs';
 import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
@@ -11,8 +11,12 @@ import { buildPolicyRuntimeQuestionReductionFromRuntimeInput } from '../../servi
 
 let database;
 let delivery;
+let beforeAnswerTransaction;
 const query = (...args) => database.query(...args);
-const withTransaction = (...args) => database.withTransaction(...args);
+const withTransaction = (...args) => {
+  beforeAnswerTransaction?.();
+  return database.withTransaction(...args);
+};
 const routeToArr = jest.fn().mockResolvedValue({ attempted: true, routed: true });
 jest.unstable_mockModule('../../config/database.mjs', () => ({ query, withTransaction, default: { query, withTransaction } }));
 jest.unstable_mockModule('../../services/classificationRoutingService.mjs', () => ({ routeToArr }));
@@ -48,7 +52,7 @@ function nativeQuestion(destination) {
 
 function buttonInteraction(customId, message) {
   return {
-    customId, message,
+    customId, message: { ...message, components: message.components.map(row => new ActionRow(row)) },
     isButton: () => true,
     user: { id: '444444444444444444', username: 'owned-operator' },
     deferUpdate: jest.fn(), editReply: jest.fn(), followUp: jest.fn(), reply: jest.fn(),
@@ -94,15 +98,44 @@ test('delivered compact buttons resolve only the exact row and replay without an
     FROM policy_authorized_outcome_source_event_receipts WHERE classification_id=ANY($1::bigint[]) ORDER BY id`, [ids])).rows;
   const before = await snapshot();
   expect(before.map(row => row.discord_message_id)).toEqual(ids.map(id => messages.get(id).id));
-  const wrongMessage = buttonInteraction(customIdFor(targetId), messages.get(firstId));
+  const wrongMessage = buttonInteraction(customIdFor(targetId), { ...messages.get(targetId), id: messages.get(firstId).id });
   await handleInteraction(wrongMessage);
   expect(wrongMessage.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('does not belong') }));
-  const wrongFingerprint = buttonInteraction(customIdFor(firstId).replace(firstId, targetId), messages.get(targetId));
+  const missingOffer = buttonInteraction(customIdFor(firstId), messages.get(targetId));
+  await handleInteraction(missingOffer);
+  expect(missingOffer.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('unavailable') }));
+  const staleCustomId = customIdFor(firstId).replace(firstId, targetId);
+  const staleMessage = { ...messages.get(targetId), components: structuredClone(messages.get(targetId).components) };
+  staleMessage.components[0].components[0].custom_id = staleCustomId;
+  const wrongFingerprint = buttonInteraction(staleCustomId, staleMessage);
   await handleInteraction(wrongFingerprint);
   expect(wrongFingerprint.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('changed') }));
   expect(await snapshot()).toEqual(before);
   expect(await learningReceipts()).toEqual([]);
   expect(routeToArr).not.toHaveBeenCalled();
+
+  const blocking = await database.pool.connect();
+  let handling;
+  try {
+    await blocking.query('BEGIN');
+    await blocking.query('UPDATE classification_history SET discord_message_id=$2 WHERE id=$1', [targetId, '666666666666666666']);
+    const entered = new Promise(resolve => { beforeAnswerTransaction = resolve; });
+    const stale = buttonInteraction(customIdFor(targetId), messages.get(targetId));
+    handling = handleInteraction(stale);
+    await Promise.race([entered, handling.then(() => { throw new Error('expected answer transaction'); })]);
+    await blocking.query('COMMIT');
+    await handling;
+    expect(stale.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('saved Discord notification') }));
+    expect(routeToArr).not.toHaveBeenCalled();
+    expect(await learningReceipts()).toEqual([]);
+  } finally {
+    beforeAnswerTransaction = undefined;
+    await blocking.query('ROLLBACK');
+    blocking.release();
+    await handling;
+  }
+  await query('UPDATE classification_history SET discord_message_id=$2 WHERE id=$1', [targetId, messages.get(targetId).id]);
+  expect(await snapshot()).toEqual(before);
 
   for (const id of [targetId, maxId]) {
     const click = () => buttonInteraction(customIdFor(id), messages.get(id));

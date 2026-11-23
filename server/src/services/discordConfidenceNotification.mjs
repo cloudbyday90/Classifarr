@@ -68,10 +68,10 @@ export async function sendConfidenceBasedNotification(
         [result.classification_id],
       );
       const existingRow = existingNotification.rows[0];
-      if (
-        existingRow?.status === 'awaiting_decision' &&
-        existingRow.discord_message_id
-      ) {
+      if (existingRow?.status === 'awaiting_decision') {
+        if (!existingRow.discord_message_id) {
+          return sendPendingDecisionNotification(metadata, result, { client, channelId, config, warnFn });
+        }
         logger.debug('[Discord] Confidence notification skipped because pending notification already exists', {
           classificationId: result.classification_id,
           messageId: existingRow.discord_message_id,

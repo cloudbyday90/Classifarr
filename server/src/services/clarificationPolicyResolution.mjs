@@ -169,7 +169,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             if (!matchesDiscordLegacyMessage(classification, discordMessageId)) {
                 throw createStatusError(DISCORD_LEGACY_MESSAGE_REQUIRED, 403, 'legacy_discord_message_mismatch');
             }
-            if (classification.policy_question != null || classification.library_id !== selectedLibraryId) {
+            if (!answerContract && (classification.policy_question != null || classification.library_id !== selectedLibraryId)) {
                 throw createStatusError('Policy question is stale and must be retried', 409, 'policy_question_stale');
             }
         }
@@ -250,6 +250,11 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 }
                 answerContract = answerValidation.answer;
                 runtimeQuestionAnswerContract = answerValidation.contract;
+                if (discordMessageId !== undefined && !runtimeQuestionAnswerContract.candidate_destinations.some(
+                    candidate => candidate.library_id === selectedLibraryId
+                )) {
+                    throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.DESTINATION_NOT_CANDIDATE });
+                }
             }
 
             const optionLibraryIds = getQuestionOptionLibraryIds(policyQuestion);

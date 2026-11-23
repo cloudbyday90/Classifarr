@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord library decisions** — Keep the shared library menu for completed
+  corrections. Older pending menus direct operators to Classifarr. Compact
+  answer buttons must be offered on the saved notification and match the
+  current question under the row lock. See the
+  [outcome](docs/architecture/discord-selector-decision-separation-outcome.md).
+
 - **Legacy Discord controls** — Require exact safe History IDs and a matching
   saved notification before applying a clarification button or library
   selection. Recheck the message under the write lock. See the

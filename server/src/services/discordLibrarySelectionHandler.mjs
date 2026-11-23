@@ -12,6 +12,7 @@ import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
+import { VERIFICATION_CORRECTION_PLACEHOLDER } from './discordLibrarySelectionControl.mjs';
 
 const logger = createLogger('discordLibrarySelectionHandler');
 
@@ -58,7 +59,7 @@ export async function showLibrarySelection(classificationId, interaction) {
         new ActionRowBuilder().addComponents(
           new StringSelectMenuBuilder()
             .setCustomId('library_select')
-            .setPlaceholder('Select the correct library...')
+            .setPlaceholder(VERIFICATION_CORRECTION_PLACEHOLDER)
             .addOptions(options),
         ),
       ],

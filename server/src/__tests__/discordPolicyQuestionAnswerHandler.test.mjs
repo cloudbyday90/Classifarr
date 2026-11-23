@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { EmbedBuilder } from 'discord.js';
+import { ComponentType, EmbedBuilder } from 'discord.js';
 import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
 
 import {
@@ -26,28 +26,23 @@ jest.unstable_mockModule('../services/policyNativePendingRouteOutcomePersistence
 
 const { processPolicyQuestionAnswer } = await import('../services/discordPolicyQuestionAnswerHandler.mjs');
 
-function interaction(overrides = {}) {
+const messageId = '111111111111111111';
+const fingerprint = 'abcd_efghijklmnopqrstu';
+
+function interaction(id = 91) {
+  const customId = `ai_answer_${id}_c_7_${fingerprint}`;
   return {
+    customId,
     deferUpdate: jest.fn().mockResolvedValue(undefined),
     editReply: jest.fn().mockResolvedValue(undefined),
     followUp: jest.fn().mockResolvedValue(undefined),
     reply: jest.fn().mockResolvedValue(undefined),
     message: {
-      id: 'discord-message-1',
+      id: messageId,
+      components: [{ components: [{ type: ComponentType.Button, customId }] }],
       embeds: [new EmbedBuilder().setTitle('Pending classification').setFooter({ text: formatDeliveryMarker('91', 'cf_abcdefghijklmnopqrstuv') })],
     },
     user: { id: 'discord-user-1', username: 'operator' },
-    ...overrides,
-  };
-}
-
-function answer() {
-  return {
-    classificationId: 91,
-    destinationLibraryId: 7,
-    contractVersion: 'policy.runtime_question_answer.v1',
-    contractFingerprint: 'server-owned-fingerprint',
-    actionId: 'confirm_destination',
   };
 }
 
@@ -62,11 +57,11 @@ describe('discordPolicyQuestionAnswerHandler', () => {
 
   test.each([91, '9007199254740993'])('rejects the wrong notification message for History ID %s', async id => {
     mockDb.query.mockResolvedValueOnce({
-      rows: [{ id, discord_message_id: 'expected-pending-message' }],
+      rows: [{ id, discord_message_id: '222222222222222222' }],
     });
-    const currentInteraction = interaction();
+    const currentInteraction = interaction(id);
 
-    await processPolicyQuestionAnswer({ ...answer(), classificationId: id }, currentInteraction);
+    await processPolicyQuestionAnswer(currentInteraction);
 
     expect(currentInteraction.deferUpdate).toHaveBeenCalledTimes(1);
     expect(currentInteraction.followUp).toHaveBeenCalledWith(expect.objectContaining({
@@ -76,9 +71,25 @@ describe('discordPolicyQuestionAnswerHandler', () => {
     expect(mockClarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
   });
 
+  test.each(['missing', 'different'])('refuses a %s offered button before lookup', async shape => {
+    const current = interaction();
+    current.message.components = shape === 'missing' ? [] : [{ components: [{ type: ComponentType.Button, customId: 'different' }] }];
+    await processPolicyQuestionAnswer(current);
+    expect(current.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('unavailable') }));
+    expect(mockDb.query).not.toHaveBeenCalled();
+  });
+
+  test('refuses a disabled button before lookup', async () => {
+    const current = interaction();
+    current.message.components[0].components[0].disabled = true;
+    await processPolicyQuestionAnswer(current);
+    expect(current.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('unavailable') }));
+    expect(mockDb.query).not.toHaveBeenCalled();
+  });
+
   test('submits only the contract-bound action to the shared policy resolver', async () => {
     mockDb.query.mockResolvedValueOnce({
-      rows: [{ id: 91, discord_message_id: 'discord-message-1' }],
+      rows: [{ id: 91, discord_message_id: messageId }],
     });
     mockClarificationService.resolveRuntimeQuestionAnswer.mockResolvedValueOnce({
       success: true,
@@ -88,18 +99,18 @@ describe('discordPolicyQuestionAnswerHandler', () => {
     });
     const currentInteraction = interaction();
 
-    await processPolicyQuestionAnswer(answer(), currentInteraction);
+    await processPolicyQuestionAnswer(currentInteraction);
 
     expect(mockClarificationService.resolveRuntimeQuestionAnswer).toHaveBeenCalledWith(
       91,
       {
         contract_version: 'policy.runtime_question_answer.v1',
-        contract_fingerprint: 'server-owned-fingerprint',
+        contract_fingerprint: fingerprint,
         action_id: 'confirm_destination',
         destination_library_id: 7,
       },
       'operator',
-      { authenticated: true, allowBigintHistoryId: true },
+      { authenticated: true, allowBigintHistoryId: true, discordMessageId: messageId },
     );
     expect(mockRouting.routeAfterClarification).not.toHaveBeenCalled();
     expect(currentInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({
@@ -111,7 +122,7 @@ describe('discordPolicyQuestionAnswerHandler', () => {
 
   test('does not repeat routing for an idempotent answer replay', async () => {
     mockDb.query.mockResolvedValueOnce({
-      rows: [{ id: 91, discord_message_id: 'discord-message-1' }],
+      rows: [{ id: 91, discord_message_id: messageId }],
     });
     mockClarificationService.resolveRuntimeQuestionAnswer.mockResolvedValueOnce({
       success: true,
@@ -120,7 +131,7 @@ describe('discordPolicyQuestionAnswerHandler', () => {
     });
     const currentInteraction = interaction();
 
-    await processPolicyQuestionAnswer(answer(), currentInteraction);
+    await processPolicyQuestionAnswer(currentInteraction);
 
     expect(mockRouting.routeAfterClarification).not.toHaveBeenCalled();
     expect(currentInteraction.followUp).toHaveBeenCalledWith(expect.objectContaining({

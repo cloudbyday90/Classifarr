@@ -30,7 +30,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { EmbedBuilder } from 'discord.js';
+import { ComponentType, EmbedBuilder } from 'discord.js';
 import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
@@ -198,7 +198,9 @@ describe('handleInteraction', () => {
     test('refuses a matching selector value without the recorded message', async () => {
         db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, discord_message_id: null }] });
         const interaction = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
-            customId: 'library_select', values: ['100_11'] });
+            customId: 'library_select', values: ['100_11'], message: { id: savedMessageId,
+                components: [{ components: [{ type: ComponentType.StringSelect, customId: 'library_select',
+                    placeholder: 'Or choose a different library...', options: [{ value: '100_11' }] }] }] } });
         await handleInteraction(interaction);
         expect(db.query).toHaveBeenCalledTimes(1);
         expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
@@ -206,16 +208,17 @@ describe('handleInteraction', () => {
     });
     test.each([100, '9007199254740993', '9223372036854775807'])(
         'passes exact History ID %s and the entire fingerprint to the resolver', async id => {
-            db.query.mockResolvedValueOnce({ rows: [{ id, discord_message_id: 'owned-message' }] });
+            db.query.mockResolvedValueOnce({ rows: [{ id, discord_message_id: savedMessageId }] });
             clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValueOnce({ alreadyResolved: true });
-            const interaction = makeInteraction({ customId: `ai_answer_${id}_c_2147483647_${fingerprint}`,
-                isButton: () => true, message: { id: 'owned-message' } });
+            const customId = `ai_answer_${id}_c_2147483647_${fingerprint}`;
+            const interaction = makeInteraction({ customId, isButton: () => true, message: { id: savedMessageId,
+                components: [{ components: [{ type: ComponentType.Button, customId }] }] } });
             await handleInteraction(interaction);
             expect(db.query).toHaveBeenCalledWith(expect.stringContaining('classification_history'), [id]);
             expect(clarificationService.resolveRuntimeQuestionAnswer).toHaveBeenCalledWith(id, {
                 contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: fingerprint,
                 action_id: 'confirm_destination', destination_library_id: 2147483647,
-            }, 'testUser', { authenticated: true, allowBigintHistoryId: true });
+            }, 'testUser', { authenticated: true, allowBigintHistoryId: true, discordMessageId: savedMessageId });
             expect(interaction.customId.length).toBeLessThanOrEqual(100);
         },
     );

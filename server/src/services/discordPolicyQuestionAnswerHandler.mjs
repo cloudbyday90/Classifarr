@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { EmbedBuilder } from 'discord.js';
+import { ComponentType, EmbedBuilder } from 'discord.js';
 import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 
 import * as db from '../config/database.mjs';
@@ -16,18 +16,16 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
-import { normalizeDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { parseDiscordPolicyQuestionAnswerButton } from './discordPolicyQuestionAnswerButton.mjs';
+import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 
 const logger = createLogger('discordPolicyQuestionAnswerHandler');
 
-function isAuthorizedDiscordTarget(classification, interaction) {
-  const expectedMessageId = String(classification?.discord_message_id || '').trim();
-  const interactionMessageId = String(interaction?.message?.id || '').trim();
-
-  return Boolean(expectedMessageId && interactionMessageId && expectedMessageId === interactionMessageId);
-}
-
 async function sendResolutionError(interaction, error) {
+  if (error?.code === 'legacy_discord_message_mismatch') {
+    await interaction.followUp({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
+    return;
+  }
   if (error?.statusCode === 404) {
     await interaction.followUp({ content: 'Classification not found.', ephemeral: true });
     return;
@@ -57,37 +55,36 @@ async function sendResolutionError(interaction, error) {
   });
 }
 
-export async function processPolicyQuestionAnswer({
-  classificationId,
-  destinationLibraryId,
-  contractVersion,
-  contractFingerprint,
-  actionId,
-} = {}, interaction) {
-  const normalizedClassificationId = normalizeDatabaseBigintId(classificationId);
-  const normalizedDestinationLibraryId = parseCanonicalDatabaseInt32Id(destinationLibraryId);
-  if (!normalizedClassificationId || !normalizedDestinationLibraryId ||
-      typeof contractVersion !== 'string' || typeof contractFingerprint !== 'string' ||
-      typeof actionId !== 'string') {
+export async function processPolicyQuestionAnswer(interaction) {
+  const answer = parseDiscordPolicyQuestionAnswerButton(interaction.customId);
+  if (!answer) {
     await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
     return;
   }
+  const offered = interaction.message?.components?.some(row => row.components?.some(component =>
+    component.type === ComponentType.Button && component.customId === interaction.customId && !component.disabled));
+  if (!offered) {
+    await interaction.reply({ content: 'This answer is unavailable on the notification. Open Classifarr to review the item.', ephemeral: true });
+    return;
+  }
+  const { classificationId, destinationLibraryId, contractVersion, contractFingerprint, actionId } = answer;
+  const discordMessageId = interaction.message.id;
 
   try {
     await interaction.deferUpdate();
 
     const classResult = await db.query(
       'SELECT *, policy_question FROM classification_history WHERE id = $1',
-      [normalizedClassificationId],
+      [classificationId],
     );
     const classification = classResult.rows[0];
     if (!classification) {
       await interaction.followUp({ content: 'Classification not found.', ephemeral: true });
       return;
     }
-    if (!isAuthorizedDiscordTarget(classification, interaction)) {
+    if (!matchesDiscordLegacyMessage(classification, discordMessageId)) {
       logger.warn('Discord policy question answer rejected for an unexpected message target', {
-        classificationId: normalizedClassificationId,
+        classificationId,
         expectedMessageId: classification.discord_message_id || null,
         interactionMessageId: interaction?.message?.id || null,
       });
@@ -101,15 +98,15 @@ export async function processPolicyQuestionAnswer({
     let resolveResult;
     try {
       resolveResult = await clarificationService.resolveRuntimeQuestionAnswer(
-        normalizedClassificationId,
+        classificationId,
         {
           contract_version: contractVersion,
           contract_fingerprint: contractFingerprint,
           action_id: actionId,
-          destination_library_id: normalizedDestinationLibraryId,
+          destination_library_id: destinationLibraryId,
         },
         interaction.user?.username || `discord:${interaction.user?.id || 'operator'}`,
-        { authenticated: Boolean(interaction.user?.id), allowBigintHistoryId: true },
+        { authenticated: Boolean(interaction.user?.id), allowBigintHistoryId: true, discordMessageId },
       );
     } catch (error) {
       await sendResolutionError(interaction, error);
@@ -122,11 +119,11 @@ export async function processPolicyQuestionAnswer({
     }
 
     const routingOutcome = resolveResult.shouldRoute
-      ? await routeAfterClarification(normalizedClassificationId)
+      ? await routeAfterClarification(classificationId)
       : { routed: false, reason: 'route_not_applicable', error: null };
     if (resolveResult.nativeResolutionProvenance) {
       await recordNativePendingRouteOutcome({
-        classificationId: normalizedClassificationId,
+        classificationId,
         nativeResolutionProvenance: resolveResult.nativeResolutionProvenance,
         routingOutcome,
       });
@@ -159,7 +156,7 @@ export async function processPolicyQuestionAnswer({
     }
   } catch (error) {
     logger.error('Error processing Discord policy question answer', {
-      classificationId: normalizedClassificationId,
+      classificationId,
       error: error?.message || 'unknown',
     }, { error });
     try {
@@ -171,5 +168,3 @@ export async function processPolicyQuestionAnswer({
     }
   }
 }
-
-export { isAuthorizedDiscordTarget };

@@ -14,6 +14,7 @@ import {
   StringSelectMenuBuilder,
 } from 'discord.js';
 import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { CLASSIFICATION_CORRECTION_PLACEHOLDER } from './discordLibrarySelectionControl.mjs';
 
 export function createTieredComponents(
   classificationId,
@@ -155,7 +156,7 @@ export function createCorrectionComponents(
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('library_select')
-      .setPlaceholder('Or choose a different library...')
+      .setPlaceholder(CLASSIFICATION_CORRECTION_PLACEHOLDER)
       .addOptions(options);
 
     components.push(new ActionRowBuilder().addComponents(selectMenu));

@@ -15,8 +15,9 @@ import { processVerification as verificationHandlerProcessVerification } from '.
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
 import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
-import { parseDiscordPolicyQuestionAnswerButton } from './discordPolicyQuestionAnswerButton.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
+import { getOfferedDiscordCorrectionKind } from './discordLibrarySelectionControl.mjs';
+import { DISCORD_SELECTOR_CORRECTION_REQUIRED } from './discordCompletedSelectorAdmission.mjs';
 import {
   DISCORD_LEGACY_MESSAGE_REQUIRED, parseDiscordLegacyClarificationButton, parseDiscordLibrarySelectValues,
 } from './discordLegacyControlIdentity.mjs';
@@ -50,12 +51,7 @@ export async function handleInteraction(interaction) {
           }
           await processClarificationResponse(answer.classificationId, answer.optionIndex, interaction);
         } else if (parts[1] === 'answer') {
-          const answer = parseDiscordPolicyQuestionAnswerButton(customId);
-          if (!answer) {
-            await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
-            return;
-          }
-          await processPolicyQuestionAnswer(answer, interaction);
+          await processPolicyQuestionAnswer(interaction);
         }
       } else if (action === 'verify') {
         const subAction = parts[1];
@@ -95,7 +91,12 @@ export async function handleInteraction(interaction) {
         await interaction.reply({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
         return;
       }
-      await processCorrection(selection.classificationId, selection.newLibraryId, interaction, { discordMessageId });
+      const selectorNotificationKind = getOfferedDiscordCorrectionKind(interaction);
+      if (!selectorNotificationKind) {
+        await interaction.reply({ content: DISCORD_SELECTOR_CORRECTION_REQUIRED, ephemeral: true });
+        return;
+      }
+      await processCorrection(selection.classificationId, selection.newLibraryId, interaction, { discordMessageId, selectorNotificationKind });
     }
   } catch (error) {
     logger.error('Error handling Discord interaction:', error);
@@ -124,8 +125,8 @@ export async function processClarificationResponse(
   return clarificationHandlerProcessClarificationResponse(classificationId, optionIndex, interaction);
 }
 
-export async function processPolicyQuestionAnswer(answer, interaction) {
-  return policyQuestionAnswerHandlerProcess(answer, interaction);
+export async function processPolicyQuestionAnswer(interaction) {
+  return policyQuestionAnswerHandlerProcess(interaction);
 }
 
 export async function processVerification(classificationId, isCorrect, interaction) {

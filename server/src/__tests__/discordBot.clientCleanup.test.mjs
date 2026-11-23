@@ -71,6 +71,7 @@ function createDiscordJsModule() {
     ActionRowBuilder: class {},
     ButtonBuilder: class {},
     ButtonStyle: {},
+    ComponentType: { Button: 2, StringSelect: 3 },
     StringSelectMenuBuilder: class {},
   };
 }

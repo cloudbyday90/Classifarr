@@ -111,7 +111,7 @@ class ClarificationService {
     classificationId,
     payload,
     resolvedBy,
-    { authenticated = false, operatorAuditActorId = null, allowBigintHistoryId = false } = {},
+    { authenticated = false, operatorAuditActorId = null, allowBigintHistoryId = false, discordMessageId } = {},
   ) {
     const parsed = parsePolicyRuntimeQuestionAnswer(payload);
     if (!parsed.ok) {
@@ -135,6 +135,7 @@ class ClarificationService {
         policyQuestionContext: this.policyQuestionContext,
         answerContract: parsed.answer,
         allowBigintHistoryId,
+        discordMessageId,
         runtimeDestinationEvidenceCommandService: this.runtimeDestinationEvidenceCommandService,
         runtimeDestinationEvidenceAuthorizationContext:
           buildPolicyRuntimeDestinationEvidenceAuthorizationContext({
