@@ -1,12 +1,28 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { requireAdmin } from '../middleware/auth.mjs';
 import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import { tryRunManualSuggestionAnalysis } from '../services/manualSuggestionAnalysisAdmission.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { requireSuggestionAdministratorId } from './suggestionReviewInput.mjs';
 
 const logger = createLogger('FeedbackAnalysisRoutes');
+
+async function respondToManualAnalysis(res, context, analyze) {
+  const admitted = await tryRunManualSuggestionAnalysis(async () => {
+    logger.info('Manual suggestion analysis requested', context);
+    const result = await analyze();
+    res.json({ success: true, ...result });
+  });
+
+  if (!admitted) {
+    return res.status(503).set('Cache-Control', 'no-store').json({
+      code: 'SUGGESTION_ANALYSIS_BUSY',
+      error: 'Manual analysis is already running. Try again after it finishes.',
+    });
+  }
+}
 
 export function registerFeedbackAnalysisRoutes(router, feedbackAnalysis) {
   router.post('/policies/:id/analyze', requireAdmin, asyncHandler(async (req, res) => {
@@ -30,15 +46,13 @@ export function registerFeedbackAnalysisRoutes(router, feedbackAnalysis) {
       throw new ValidationError('Invalid minFeedback parameter. Must be an integer between 1 and 1000.');
     }
 
-    logger.info('Manual suggestion analysis requested', { actorId, scope: 'policy', policyId });
-    const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
-    return res.json({ success: true, ...analysis });
+    return respondToManualAnalysis(res, { actorId, scope: 'policy', policyId },
+      () => feedbackAnalysis.analyzePolicy(policyId, options));
   }));
 
   router.post('/analyze-all', requireAdmin, asyncHandler(async (req, res) => {
     const actorId = requireSuggestionAdministratorId(req.user.id);
-    logger.info('Manual suggestion analysis requested', { actorId, scope: 'enabled_policies' });
-    const results = await feedbackAnalysis.runFullAnalysis();
-    return res.json({ success: true, ...results });
+    return respondToManualAnalysis(res, { actorId, scope: 'enabled_policies' },
+      () => feedbackAnalysis.runFullAnalysis());
   }));
 }

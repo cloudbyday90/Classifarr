@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Manual suggestion analysis** — Both analysis routes share one slot per API
+  process. An overlapping request receives `503` before analysis starts. See
+  the [outcome](docs/architecture/manual-suggestion-analysis-admission-outcome.md).
+
 - **Suggestion rejection and manual analysis** — Both actions require an
   administrator. Rejection records the exact reviewer, and manual analysis
   logs who requested it. See the

@@ -60,11 +60,12 @@ async function snapshot() {
         audit: (await db.query('SELECT * FROM policy_change_log WHERE policy_id=$1 ORDER BY id', [policyId])).rows
     };
 }
-async function waitForReviews(count) {
+async function waitForReviews(count, lockClause = 'FOR UPDATE', blockingPid = null) {
     let waiting = 0;
     for (let attempt = 0; attempt < 100 && waiting < count; attempt++) {
         waiting = (await db.query(`SELECT count(*)::integer count FROM pg_stat_activity WHERE datname=current_database()
-            AND wait_event_type='Lock' AND query LIKE '%FOR UPDATE%' AND cardinality(pg_blocking_pids(pid))>0`)).rows[0].count;
+            AND wait_event_type='Lock' AND query LIKE $1 AND cardinality(pg_blocking_pids(pid))>0
+            AND ($2::integer IS NULL OR $2 = ANY(pg_blocking_pids(pid)))`, [`%${lockClause}%`, blockingPid])).rows[0].count;
         if (waiting < count) await new Promise(resolve => { setTimeout(resolve, 20); });
     }
     expect(waiting).toBe(count);
@@ -239,6 +240,45 @@ test.each(['policy', 'all'])('manual %s analysis requires an exact administrator
     expect(after.suggestion.superseded_at).toBeInstanceOf(Date);
     expect(after.policy).toEqual(before.policy);
     expect(after.audit).toEqual(before.audit);
+});
+
+test('a waiting policy write retains admission and refuses full analysis before dispatch', async () => {
+    const policyPath = `/api/feedback/policies/${policyId}/analyze`;
+    const fullPath = '/api/feedback/analyze-all';
+    const blocker = await db.connect();
+    let first;
+    try {
+        await blocker.query('BEGIN');
+        await blocker.query('SELECT id FROM library_policies WHERE id=$1 FOR NO KEY UPDATE', [policyId]);
+        first = signedIn(request(app).post(policyPath)).send({}).then(response => response);
+        await waitForReviews(1, 'FOR NO KEY UPDATE', blocker.processID);
+        const before = await snapshot();
+        await request(app).post(fullPath).send({}).expect(401);
+        await signedIn(request(app).post(fullPath), memberToken).send({}).expect(403);
+        const busy = await signedIn(request(app).post(fullPath)).send({}).timeout(3000).expect(503);
+        expect(busy.body.code).toBe('SUGGESTION_ANALYSIS_BUSY');
+        expect(await snapshot()).toEqual(before);
+    } finally {
+        try { await blocker.query('ROLLBACK'); }
+        finally { blocker.release(); }
+        if (first) expect(await first).toMatchObject({ status: 200, body: { success: true, policyId } });
+    }
+    await signedIn(request(app).post(fullPath)).send({}).expect(200);
+});
+
+test('full analysis retains successful writes and ordinary per-policy errors', async () => {
+    await seedSuggestionFeedback(db, otherPolicyId, otherLibraryId, 5001);
+    await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);
+    const full = await signedIn(request(app).post('/api/feedback/analyze-all')).send({}).expect(200);
+    expect(full.body.success).toBe(true);
+    expect(full.body.results).toEqual(expect.arrayContaining([
+        expect.objectContaining({ policyId, feedbackCount: 10, suggestions: expect.any(Array) }),
+        expect.objectContaining({ policyId: otherPolicyId, error: expect.stringContaining('exceeds 5,000 rows') }),
+    ]));
+    expect(full.body.policiesAnalyzed).toBe(full.body.results.length);
+    expect((await snapshot()).suggestion).toMatchObject({ status: 'superseded', reviewed_by: null, applied_by: null });
+    const saved = await db.query('SELECT id FROM policy_tuning_suggestions WHERE policy_id=$1 AND status=$2', [policyId, 'pending']);
+    expect(saved.rows.length).toBeGreaterThan(0);
 });
 
 test.each(suggestionPaths)('%s preserves its response and protects the saved outcome across aliases', async base => {

@@ -4,6 +4,8 @@
  */
 
 import request from 'supertest';
+import { request as httpRequest } from 'node:http';
+import { setImmediate } from 'node:timers/promises';
 import { jest } from '@jest/globals';
 import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
@@ -212,5 +214,82 @@ describe('Feedback Routes', () => {
 
     expect(logAtDispatch).toEqual(log);
     expect(logger.info.mock.calls).toEqual(log);
+    runFullAnalysis.mockResolvedValueOnce({ policiesAnalyzed: 0, results: [] });
+    await request(app).post('/feedback/analyze-all').send({}).expect(200);
+  });
+
+  const policyAnalysis = '/feedback/policies/7/analyze';
+  const allPolicyAnalysis = '/feedback/analyze-all';
+  const busyResponse = {
+    code: 'SUGGESTION_ANALYSIS_BUSY',
+    error: 'Manual analysis is already running. Try again after it finishes.',
+  };
+
+  it.each([
+    [policyAnalysis, allPolicyAnalysis], [allPolicyAnalysis, policyAnalysis],
+    [policyAnalysis, '/feedback/policies/8/analyze'], [allPolicyAnalysis, allPolicyAnalysis],
+  ])('keeps one slot when %s overlaps %s', async (firstPath, secondPath) => {
+    const entered = Promise.withResolvers();
+    const settle = Promise.withResolvers();
+    const firstService = firstPath === allPolicyAnalysis ? runFullAnalysis : analyzePolicy;
+    const secondService = secondPath === allPolicyAnalysis ? runFullAnalysis : analyzePolicy;
+    firstService.mockImplementationOnce(() => {
+      entered.resolve();
+      return settle.promise;
+    });
+    const firstResponse = request(app).post(firstPath).send({}).timeout(3000).then(response => response);
+    try {
+      await Promise.race([entered.promise, firstResponse.then(() => { throw new Error('Analysis did not start'); })]);
+      const busy = await request(app).post(secondPath).send({}).timeout(2000).expect(503);
+      expect(busy.body).toEqual(busyResponse);
+      expect(busy.headers['cache-control']).toBe('no-store');
+      expect(busy.headers['retry-after']).toBeUndefined();
+      await request(app).post('/feedback/policies/07/analyze').send({}).expect(400);
+      await request(app).post(policyAnalysis).send({ days: 366 }).expect(400);
+      expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length).toBe(1);
+      expect(logger.info).toHaveBeenCalledTimes(1);
+    } finally {
+      settle.resolve({ accepted: 'first' });
+      expect(await firstResponse).toMatchObject({ status: 200, body: { success: true, accepted: 'first' } });
+    }
+
+    secondService.mockResolvedValueOnce({ accepted: 'later' });
+    await request(app).post(secondPath).send({}).expect(200, { success: true, accepted: 'later' });
+    expect(analyzePolicy.mock.calls.length + runFullAnalysis.mock.calls.length).toBe(2);
+  });
+
+  it('retains its slot after disconnect until the running analysis settles', async () => {
+    const entered = Promise.withResolvers();
+    const settle = Promise.withResolvers();
+    analyzePolicy.mockImplementationOnce(() => {
+      entered.resolve();
+      return settle.promise;
+    });
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise(resolve => { server.once('listening', resolve); });
+    const first = httpRequest({ hostname: '127.0.0.1', port: server.address().port, path: policyAnalysis, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': '2' } });
+    const closed = new Promise(resolve => { first.once('close', resolve); });
+    const responseClosed = new Promise(resolve => { server.once('request', (_req, res) => res.once('close', resolve)); });
+    first.on('error', () => {});
+    first.end('{}');
+    try {
+      await Promise.race([entered.promise, closed.then(() => { throw new Error('Analysis did not start before disconnect'); })]);
+      first.destroy();
+      await responseClosed;
+      await request(server).post(allPolicyAnalysis).send({}).expect(503, busyResponse);
+      expect(runFullAnalysis).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledTimes(1);
+
+      settle.resolve({ accepted: 'first' });
+      await setImmediate();
+      runFullAnalysis.mockResolvedValueOnce({ policiesAnalyzed: 0, results: [] });
+      await request(server).post(allPolicyAnalysis).send({}).expect(200);
+    } finally {
+      settle.resolve({});
+      first.destroy();
+      server.closeAllConnections();
+      await new Promise((resolve, reject) => { server.close(error => error ? reject(error) : resolve()); });
+    }
   });
 });
