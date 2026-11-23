@@ -7,11 +7,9 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
+import { ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { clarificationService } from './clarificationService.mjs';
 import { VERIFICATION_CORRECTION_PLACEHOLDER } from './discordLibrarySelectionControl.mjs';
 import { getDiscordCompletedControlRefusal } from './discordCompletedControlAdmission.mjs';
 
@@ -65,58 +63,6 @@ export async function showLibrarySelection(classificationId, interaction, bindin
       });
     } catch (_replyErr) {
       logger.debug('[Discord] Could not send error reply for library selection', { error: _replyErr.message });
-    }
-  }
-}
-
-export async function processQuestionResponse(
-  classificationId,
-  questionId,
-  responseKey,
-  interaction,
-) {
-  try {
-    await interaction.deferUpdate();
-
-    const classResult = await db.query(
-      'SELECT * FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const classification = classResult.rows[0];
-
-    await clarificationService.recordResponse(
-      classificationId,
-      questionId,
-      responseKey,
-      interaction.user.id,
-      classification.confidence,
-    );
-
-    await interaction.editReply({
-      components: [],
-      embeds: [
-        setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0])
-          .addFields({ name: 'Response', value: responseKey, inline: true }), `\u2705 Answered by ${interaction.user.username}`),
-      ],
-    });
-  } catch (error) {
-    logger.error('Error processing question response:', error);
-    try {
-      await interaction.followUp({
-        content: 'Failed to process response',
-        ephemeral: true,
-      });
-    } catch (_replyErr) {
-      logger.debug('[Discord] Could not send error reply for question response', { error: _replyErr.message });
     }
   }
 }

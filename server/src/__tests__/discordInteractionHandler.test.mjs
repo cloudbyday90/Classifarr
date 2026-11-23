@@ -30,7 +30,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { ComponentType, EmbedBuilder } from 'discord.js';
+import { ComponentType, EmbedBuilder, MessageFlags } from 'discord.js';
 import { formatDeliveryMarker } from '../services/discordDeliveryMarker.mjs';
 import { parseDiscordCompletedButton } from '../services/discordLegacyControlIdentity.mjs';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
@@ -76,7 +76,6 @@ const {
     processCorrection,
     processClarificationResponse,
     showLibrarySelection,
-    processQuestionResponse,
 } = await import('../services/discordInteractionHandler.mjs');
 const db = mockDb;
 const clarificationService = mockClarificationService;
@@ -921,72 +920,23 @@ describe('showLibrarySelection', () => {
     });
 });
 
-// ── processQuestionResponse ───────────────────────────────────────────────────
-
-describe('processQuestionResponse', () => {
-    test('calls deferUpdate before performing DB work', async () => {
-        const callOrder = [];
-
-        db.query.mockImplementationOnce(async () => {
-            callOrder.push('db.query');
-            return { rows: [MOCK_CLASSIFICATION] };
-        });
-
-        const interaction = makeInteraction({
-            deferUpdate: jest.fn().mockImplementation(async () => {
-                callOrder.push('deferUpdate');
-            }),
-        });
-
-        await processQuestionResponse(100, 5, 'yes', interaction);
-
-        expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
-    });
-
-    test('uses editReply for the success message — NOT update() or reply()', async () => {
-        db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
-
-        const interaction = makeInteraction();
-        await processQuestionResponse(100, 5, 'yes', interaction);
-
-        expect(interaction.editReply).toHaveBeenCalledTimes(1);
-        expect(interaction.update).not.toHaveBeenCalled();
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('followUp (not reply) when classification is not found', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
-
-        const interaction = makeInteraction();
-        await processQuestionResponse(100, 5, 'yes', interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ content: 'Classification not found', ephemeral: true })
-        );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('catch block uses followUp, not reply', async () => {
-        db.query.mockRejectedValueOnce(new Error('DB error'));
-
-        const interaction = makeInteraction();
-        await processQuestionResponse(100, 5, 'yes', interaction);
-
-        expect(interaction.followUp).toHaveBeenCalled();
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('no crash when deferUpdate + followUp both throw', async () => {
-        const interaction = makeInteraction({
-            deferUpdate: jest.fn().mockRejectedValue(new Error('Interaction token expired')),
-            followUp: jest.fn().mockRejectedValue(new Error('Unknown interaction')),
-        });
-
-        await expect(
-            processQuestionResponse(100, 5, 'yes', interaction)
-        ).resolves.toBeUndefined();
-
-        expect(interaction.reply).not.toHaveBeenCalled();
+describe('retired generic clarification buttons', () => {
+    test.each(['clarify_100_5_yes', 'clarify'])('replies privately to repeated %s clicks', async customId => {
+        for (let click = 0; click < 2; click++) {
+            const interaction = makeInteraction({ customId, isButton: () => true });
+            await handleInteraction(interaction);
+            expect(interaction.reply).toHaveBeenCalledTimes(1);
+            expect(interaction.reply).toHaveBeenCalledWith({
+                content: 'This clarification button is retired. Open the Classifarr Command Center to review the item.',
+                flags: MessageFlags.Ephemeral,
+            });
+            expect(interaction.deferUpdate).not.toHaveBeenCalled();
+            expect(interaction.update).not.toHaveBeenCalled();
+            expect(interaction.editReply).not.toHaveBeenCalled();
+            expect(interaction.followUp).not.toHaveBeenCalled();
+        }
+        expect(db.query).not.toHaveBeenCalled();
+        expect(clarificationService.recordResponse).not.toHaveBeenCalled();
+        expect(classificationRoutingService.routeToArr).not.toHaveBeenCalled();
     });
 });

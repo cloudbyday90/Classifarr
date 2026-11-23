@@ -66,6 +66,7 @@ function createDiscordJsModule() {
     Client: MockClient,
     DefaultRestOptions: { makeRequest: jest.fn() },
     GatewayIntentBits: { Guilds: 1, GuildMessages: 2 },
+    MessageFlags: { Ephemeral: 64 },
     PermissionFlagsBits: {},
     EmbedBuilder: class {},
     ActionRowBuilder: class {},

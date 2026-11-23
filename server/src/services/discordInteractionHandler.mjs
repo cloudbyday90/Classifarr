@@ -7,13 +7,13 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, MessageFlags } from 'discord.js';
 import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { processCorrection as correctionHandlerProcessCorrection } from './discordCorrectionHandler.mjs';
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
-import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
+import { showLibrarySelection as librarySelectionShowLibrarySelection } from './discordLibrarySelectionHandler.mjs';
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
 import { getOfferedDiscordCorrectionKind } from './discordLibrarySelectionControl.mjs';
@@ -54,15 +54,10 @@ export async function handleInteraction(interaction) {
           ],
         });
       } else if (action === 'clarify') {
-        const classificationId = parseInt(parts[1]);
-        const questionId = parseInt(parts[2]);
-        const responseKey = parts[3];
-        await processQuestionResponse(
-          classificationId,
-          questionId,
-          responseKey,
-          interaction,
-        );
+        await interaction.reply({
+          content: 'This clarification button is retired. Open the Classifarr Command Center to review the item.',
+          flags: MessageFlags.Ephemeral,
+        });
       }
     } else if (interaction.isStringSelectMenu() && interaction.customId === 'library_select') {
       const selection = parseDiscordLibrarySelectValues(interaction.values);
@@ -139,8 +134,4 @@ export async function processVerification(classificationId, interaction, binding
 
 export async function showLibrarySelection(classificationId, interaction, binding) {
   return librarySelectionShowLibrarySelection(classificationId, interaction, binding);
-}
-
-export async function processQuestionResponse(classificationId, questionId, responseKey, interaction) {
-  return librarySelectionProcessQuestionResponse(classificationId, questionId, responseKey, interaction);
 }

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Retired Discord clarification buttons** — Clicking an old generic
+  clarification button now replies privately with directions to the Command
+  Center. See the
+  [outcome](docs/architecture/discord-generic-clarification-retirement-outcome.md).
+
 - **Discord completed decision buttons** — Confirm and reclassify completed
   items with exact BIGINT History IDs through the existing bound buttons. See
   the [outcome](docs/architecture/discord-completed-buttons-bigint-outcome.md).
