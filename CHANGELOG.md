@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native pending provenance** — Preserve exact BIGINT History IDs in
+  resolution and routing outcome evidence. Pending answers retain their
+  current safe-integer limit. See the
+  [outcome](docs/architecture/native-pending-provenance-bigint-outcome.md).
+
 - **Pending resolution IDs** — Validate exact History IDs before web and
   Discord lookup, and hide pending-answer controls for IDs outside the
   current safe range. See the

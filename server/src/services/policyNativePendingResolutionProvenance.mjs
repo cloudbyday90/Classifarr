@@ -39,6 +39,7 @@ import {
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_VERSION =
   'policy.native_pending_resolution_provenance.v1';
@@ -176,7 +177,7 @@ function buildOutcomeOnlyGuard({ classificationId, selection, persistedQuestion 
   const answerOutcomeId = selection?.selectedOutcomeId || ANSWER_OUTCOME_IDS.DO_NOT_LEARN;
   const intake = buildPolicyLearningIntakeEvent({
     sourceId,
-    sourceEventId: buildNativePendingSourceEventId(classificationId),
+    sourceEventId: `classification:${classificationId}`,
     itemId: classificationId,
     answerOutcomeId,
     question: {
@@ -205,14 +206,6 @@ function buildOutcomeOnlyGuard({ classificationId, selection, persistedQuestion 
       ? buildPolicyLearningDecision(guardInput)
       : null,
   };
-}
-
-function buildNativePendingSourceEventId(classificationId) {
-  const normalizedClassificationId = normalizePositiveInteger(classificationId);
-
-  return normalizedClassificationId
-    ? `classification:${normalizedClassificationId}`
-    : 'classification:unknown';
 }
 
 function buildSelectionSummary(selection = null) {
@@ -262,6 +255,13 @@ function buildLearningIntakeSummary(intake = {}) {
 }
 
 function buildRequestTimeDecision({ selection, persistedQuestion, classificationId }) {
+  if (classificationId === null) {
+    return {
+      decision: null,
+      reasonCode: POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_REASON_IDS.INVALID_REQUEST_TIME_DECISION,
+    };
+  }
+
   const questionReductionPlan = asObject(
     asObject(persistedQuestion).runtimeQuestionReductionPlan,
   );
@@ -288,7 +288,7 @@ function buildRequestTimeDecision({ selection, persistedQuestion, classification
         destinationLibraryId: selection.selectedDestination.libraryId,
         destinationLibraryName: selection.selectedDestination.libraryName,
       },
-      sourceEventId: buildNativePendingSourceEventId(classificationId),
+      sourceEventId: `classification:${classificationId}`,
     });
     const decision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
       questionReductionPlan,
@@ -321,7 +321,7 @@ function buildPolicyNativePendingResolutionProvenance({
     return buildNotApplicableResult();
   }
 
-  const classificationId = normalizePositiveInteger(asObject(classification).id);
+  const classificationId = normalizeDatabaseBigintId(asObject(classification).id);
   const normalizedDestination = buildDestination(selectedDestination);
   const selectionResult = buildSelection({
     persistedQuestion,
@@ -333,7 +333,7 @@ function buildPolicyNativePendingResolutionProvenance({
     persistedQuestion,
     classificationId,
   });
-  const fallbackResult = requestTimeResult.decision
+  const fallbackResult = requestTimeResult.decision || classificationId === null
     ? null
     : buildOutcomeOnlyGuard({
       classificationId,

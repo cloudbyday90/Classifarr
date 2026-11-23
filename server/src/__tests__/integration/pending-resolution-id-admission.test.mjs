@@ -14,6 +14,8 @@ const { clarificationService } = await import('../../services/clarificationServi
 const { registerPendingRoutes } = await import('../../routes/classificationRoutePending.mjs');
 const { normalizePolicyRuntimeQuestion } = await import('../../services/policyRuntimeQuestionNormalizer.mjs');
 const { buildPolicyRuntimeQuestionAnswerContract } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
+const { ClassificationOutcomeService } = await import('../../services/classificationOutcomeService.mjs');
+const { recordNativePendingRouteOutcome } = await import('../../services/policyNativePendingRouteOutcomePersistence.mjs');
 const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 
 beforeAll(() => { database = createReadinessDatabase({ max: 4 }); });
@@ -68,4 +70,47 @@ test('HTTP resolves the safe maximum once and preserves row-bound replay beside 
   await resolve(id, { ...answer, action_id: 'confirm_destination' }).expect(409);
   expect(await snapshot()).toEqual(saved);
   expect(routeToArr).toHaveBeenCalledTimes(1);
+});
+
+test('native routing provenance persists only to the exact History row', async () => {
+  const previousId = '9007199254740996';
+  const targetId = '9007199254740997';
+  const { rows: [destination] } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)
+    VALUES ('Owned route destination','pending-native-route-dst','movie',true) RETURNING id,name`);
+  for (const [index, id] of [previousId, targetId].entries()) {
+    await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,library_id,metadata)
+      VALUES($1,$2,$3,'movie','completed',$4,$5::jsonb)`,
+    [id, `Owned route outcome ${index}`, 892019 + index, destination.id, JSON.stringify({ sentinel: id })]);
+  }
+  const snapshot = async () => (await query(`SELECT id, metadata FROM classification_history
+    WHERE id=ANY($1::bigint[]) ORDER BY id`, [[previousId, targetId]])).rows;
+  const before = await snapshot();
+  const outcomeService = new ClassificationOutcomeService({ db: database });
+  const persist = classificationId => recordNativePendingRouteOutcome({
+    classificationId,
+    nativeResolutionProvenance: {
+      statusId: 'outcome_only',
+      selection: { selectedDestination: { libraryId: destination.id, libraryName: destination.name } },
+    },
+    routingOutcome: { attempted: true, routed: true },
+    outcomeService,
+    loggerInstance: createMockLogger(),
+  });
+
+  expect(await persist(`0${targetId}`)).toMatchObject({ persisted: false, reason: 'not_applicable' });
+  expect(await persist(Number(targetId))).toMatchObject({ persisted: false, reason: 'not_applicable' });
+  expect(await snapshot()).toEqual(before);
+
+  expect(await persist(targetId)).toMatchObject({ persisted: true });
+  const after = await snapshot();
+  expect(after[0]).toEqual(before[0]);
+  expect(after[1]).toMatchObject({
+    id: targetId,
+    metadata: {
+      sentinel: targetId,
+      classification_details: {
+        outcome_link: { type: 'native_pending_route', event_type_id: 'route_succeeded', final_library_id: destination.id },
+      },
+    },
+  });
 });

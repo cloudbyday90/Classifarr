@@ -34,6 +34,7 @@ import {
 import {
   POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_STATUS_IDS,
 } from './policyNativePendingResolutionProvenance.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_NATIVE_PENDING_ROUTE_OUTCOME_VERSION =
   'policy.native_pending_route_outcome.v1';
@@ -265,7 +266,7 @@ function buildPolicyNativePendingRouteOutcome({
     );
   }
 
-  const classificationId = normalizePositiveInteger(asObject(classification).id ?? classification);
+  const classificationId = normalizeDatabaseBigintId(asObject(classification).id ?? classification);
   const destination = buildDestination(provenance.selection);
   if (!classificationId || !destination.libraryId || !destination.libraryName) {
     return buildNotApplicableResult(

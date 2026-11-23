@@ -133,6 +133,29 @@ describe('policyNativePendingRouteOutcome', () => {
     );
   });
 
+  test.each(['9007199254740992', '9007199254740993', '9223372036854775807'])(
+    'uses the exact History ID %s for the route event and final outcome', historyId => {
+      const result = buildPolicyNativePendingRouteOutcome(buildInput({ classification: historyId }));
+
+      expect(result).toMatchObject({
+        statusId: POLICY_NATIVE_PENDING_ROUTE_OUTCOME_STATUS_IDS.OUTCOME_ONLY,
+        event: { sourceEventId: `classification:${historyId}` },
+        finalOutcome: { itemId: historyId },
+        learningIntake: { sourceEventId: `classification:${historyId}` },
+        learningGuard: { canWriteLearning: false, profileRefreshQueued: false },
+        audit: { ok: true },
+      });
+    },
+  );
+
+  test('keeps a safe History ID numeric in the route outcome', () => {
+    const numeric = buildPolicyNativePendingRouteOutcome(buildInput());
+    const text = buildPolicyNativePendingRouteOutcome(buildInput({ classification: '42' }));
+
+    expect(text.finalOutcome.itemId).toBe(42);
+    expect(JSON.stringify(text)).toBe(JSON.stringify(numeric));
+  });
+
   test('does not manufacture a route event for a transient or invalid routing result', () => {
     const result = buildPolicyNativePendingRouteOutcome(buildInput({
       routingOutcome: {

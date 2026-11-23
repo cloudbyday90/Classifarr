@@ -138,6 +138,50 @@ describe('policyNativePendingResolutionProvenance', () => {
     expect(result.audit.ok).toBe(true);
   });
 
+  test.each(['9007199254740992', '9007199254740993', '9223372036854775807'])(
+    'retains exact History ID %s in both resolution intake paths', historyId => {
+      const input = buildInput({ classification: { id: historyId } });
+      const validated = buildPolicyNativePendingResolutionProvenance(input);
+      const planVersion = input.persistedQuestion.runtimeQuestionReductionPlan.version;
+      input.persistedQuestion.runtimeQuestionReductionPlan = { version: planVersion };
+      const fallback = buildPolicyNativePendingResolutionProvenance(input);
+
+      expect(validated.requestTimeDecision?.validationOk).toBe(true);
+      expect(fallback.requestTimeDecision).toBeNull();
+      for (const result of [validated, fallback]) {
+        expect(result).toMatchObject({
+          audit: { ok: true },
+          learningIntake: { sourceEventId: `classification:${historyId}` },
+          learningGuard: { canWriteLearning: false, profileRefreshQueued: false },
+        });
+      }
+    },
+  );
+
+  test('preserves native provenance and outcome patch bytes for a safe string ID', () => {
+    const numeric = buildPolicyNativePendingResolutionProvenance(buildInput());
+    const text = buildPolicyNativePendingResolutionProvenance(buildInput({ classification: { id: '42' } }));
+
+    expect(JSON.stringify(text)).toBe(JSON.stringify(numeric));
+    expect(JSON.stringify(buildNativePendingResolutionOutcomePatch(text)))
+      .toBe(JSON.stringify(buildNativePendingResolutionOutcomePatch(numeric)));
+  });
+
+  test.each([null, 0, 1.5, Number.MAX_SAFE_INTEGER + 1, '042', '42\n', '9223372036854775808', true, ['42']])(
+    'refuses native resolution provenance for invalid History ID %p', historyId => {
+      const result = buildPolicyNativePendingResolutionProvenance(buildInput({ classification: { id: historyId } }));
+
+      expect(result.requestTimeDecision).toBeNull();
+      expect(result.learningIntake.sourceEventId).toBeNull();
+      expect(result.audit).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([expect.objectContaining({
+          riskId: POLICY_NATIVE_PENDING_RESOLUTION_PROVENANCE_AUDIT_RISK_IDS.INVALID_LEARNING_INTAKE,
+        })]),
+      });
+    },
+  );
+
   test('records an alternate compatible destination as a reversible manual change', () => {
     const result = buildPolicyNativePendingResolutionProvenance(buildInput({
       selectedDestination: {
