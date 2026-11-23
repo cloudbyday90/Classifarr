@@ -89,6 +89,31 @@ describe('PolicyRuntimeExactItemMemoryAutoLearningService', () => {
     expect(execute).toHaveBeenCalledTimes(1);
   });
 
+  test.each([
+    ['42', 42],
+    ['9007199254740992', '9007199254740992'],
+    ['9007199254740993', '9007199254740993'],
+    ['9223372036854775807', '9223372036854775807'],
+  ])('dispatches exact History ID %s to the existing command', async (input, expected) => {
+    const { execute, service } = createService({ execute: jest.fn().mockResolvedValue({}) });
+
+    await service.record({ ...confirmationInput, classificationId: input });
+
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({ classificationId: expected }));
+  });
+
+  test.each([null, 0, 1.5, true, ['42'], '042', '42\n', Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'])(
+    'does not dispatch an invalid History ID %p', async classificationId => {
+      const { execute, service } = createService();
+
+      await expect(service.record({ ...confirmationInput, classificationId })).resolves.toMatchObject({
+        statusId: POLICY_RUNTIME_EXACT_ITEM_MEMORY_AUTO_LEARNING_STATUS_IDS.NOT_APPLICABLE,
+        reasonCodes: [POLICY_RUNTIME_EXACT_ITEM_MEMORY_AUTO_LEARNING_REASON_IDS.RESOLUTION_NOT_COMPLETED],
+      });
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
+
   test('does not learn from a non-routing action or an unauthenticated actor', async () => {
     const { execute, service } = createService();
 

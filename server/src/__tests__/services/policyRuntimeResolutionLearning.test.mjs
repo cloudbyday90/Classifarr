@@ -97,6 +97,32 @@ describe('policyRuntimeResolutionLearning', () => {
     );
   });
 
+  test.each(['9007199254740992', '9007199254740993', '9223372036854775807'])(
+    'preserves the exact History ID %s in the outcome-only event', classificationId => {
+      const result = buildPolicyRuntimeResolutionLearning(buildInput({ classification: { id: classificationId } }));
+      const sourceEventId = `classification:${classificationId}:runtime-resolution`;
+
+      expect(result).toMatchObject({
+        audit: { ok: true },
+        sourceEventId,
+        intake: { itemId: classificationId, finalOutcome: { itemId: classificationId } },
+        decisionSummary: { canWriteLearning: false, profileRefreshQueued: false },
+      });
+      expect(buildPolicyRuntimeResolutionLearningOutcomePatch(result).runtime_resolution_learning.source_event_id)
+        .toBe(sourceEventId);
+    },
+  );
+
+  test('keeps the safe numeric intake and outcome patch for canonical safe strings', () => {
+    const numeric = buildPolicyRuntimeResolutionLearning(buildInput());
+    const text = buildPolicyRuntimeResolutionLearning(buildInput({ classification: { id: '41' } }));
+
+    expect(text.intake.itemId).toBe(41);
+    expect(JSON.stringify(text)).toBe(JSON.stringify(numeric));
+    expect(JSON.stringify(buildPolicyRuntimeResolutionLearningOutcomePatch(text)))
+      .toBe(JSON.stringify(buildPolicyRuntimeResolutionLearningOutcomePatch(numeric)));
+  });
+
   test('keeps route-not-applicable answers out of learning', () => {
     const result = buildPolicyRuntimeResolutionLearning(buildInput({
       answerContract: { actionId: 'route_not_applicable' },
@@ -110,18 +136,21 @@ describe('policyRuntimeResolutionLearning', () => {
     }));
   });
 
-  test('fails closed when a bounded intake event cannot be formed', () => {
-    const result = buildPolicyRuntimeResolutionLearning(buildInput({
-      classification: { id: null },
-    }));
+  test.each([null, 0, 1.5, true, ['41'], '041', '41\n', Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'])(
+    'fails closed when History ID %p cannot identify a resolution', classificationId => {
+      const result = buildPolicyRuntimeResolutionLearning(buildInput({
+        classification: { id: classificationId },
+      }));
 
-    expect(result).toEqual(expect.objectContaining({
-      ok: false,
-      statusId: 'blocked',
-    }));
-    expect(result.audit.ok).toBe(false);
-    expect(result.audit.issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ riskId: 'runtime_resolution_incomplete_reference' }),
-    ]));
-  });
+      expect(result).toEqual(expect.objectContaining({
+        ok: false,
+        statusId: 'blocked',
+      }));
+      expect(result.audit.ok).toBe(false);
+      expect(result.audit.issues).toEqual(expect.arrayContaining([
+        expect.objectContaining({ riskId: 'runtime_resolution_incomplete_reference' }),
+      ]));
+      expect(result.sourceEventId).toBe('classification:unknown:runtime-resolution');
+    },
+  );
 });

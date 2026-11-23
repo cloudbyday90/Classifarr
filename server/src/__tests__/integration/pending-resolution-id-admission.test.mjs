@@ -16,6 +16,10 @@ const { normalizePolicyRuntimeQuestion } = await import('../../services/policyRu
 const { buildPolicyRuntimeQuestionAnswerContract } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const { ClassificationOutcomeService } = await import('../../services/classificationOutcomeService.mjs');
 const { recordNativePendingRouteOutcome } = await import('../../services/policyNativePendingRouteOutcomePersistence.mjs');
+const { createPolicyRuntimeExactItemMemoryAutoLearningService } =
+  await import('../../services/policyRuntimeExactItemMemoryAutoLearningService.mjs');
+const { PolicyRuntimeExactItemMemoryCommandService } =
+  await import('../../services/policyRuntimeExactItemMemoryCommandService.mjs');
 const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 
 beforeAll(() => { database = createReadinessDatabase({ max: 4 }); });
@@ -113,4 +117,58 @@ test('native routing provenance persists only to the exact History row', async (
       },
     },
   });
+});
+
+test('automatic exact-item learning keeps adjacent History receipts distinct across transactions', async () => {
+  const [firstId, secondId, maxId] = ['9007199254741000', '9007199254741001', '9223372036854775807'];
+  const ids = [firstId, secondId, maxId];
+  const tmdbIds = [892031, 892032, 892033];
+  const fingerprint = 'abcdefghijklmnopqrstuv';
+  const { rows: [destination] } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)
+    VALUES ('Owned memory destination','pending-memory-dst','movie',true) RETURNING id,name`);
+  const metadata = { classification_details: { outcome_link: {
+    type: 'resolved', source: 'policy_question', final_library_id: destination.id, final_library_name: destination.name,
+    runtime_question_answer: {
+      action_id: 'confirm_destination', contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: fingerprint, destination_library_id: destination.id,
+    },
+  } } };
+  for (const [index, id] of ids.entries()) {
+    await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,library_id,library_name,metadata)
+      VALUES($1,$2,$3,'movie','completed',$4,$5,$6::jsonb)`,
+    [id, `Owned learning item ${index}`, tmdbIds[index], destination.id, destination.name, JSON.stringify(metadata)]);
+  }
+
+  const commandService = new PolicyRuntimeExactItemMemoryCommandService({ db: database });
+  const execute = jest.spyOn(commandService, 'execute');
+  const autoLearning = createPolicyRuntimeExactItemMemoryAutoLearningService({ commandService, logger: createMockLogger() });
+  const record = classificationId => autoLearning.record({
+    classificationId, actorId: 'owned-operator', authenticated: true,
+    answerActionId: 'confirm_destination', resolutionSucceeded: true,
+  });
+  const receipts = async () => (await query(`SELECT id, classification_id, source_event_id, command_fingerprint
+    FROM policy_authorized_outcome_source_event_receipts WHERE classification_id=ANY($1::bigint[]) ORDER BY classification_id`, [ids])).rows;
+  const evidence = async () => (await query(`SELECT id, tmdb_id, library_id FROM classification_evidence
+    WHERE scope='item_exact' AND media_type='movie' AND tmdb_id=ANY($1::bigint[]) ORDER BY tmdb_id`, [tmdbIds])).rows;
+  const receiptFor = classificationId => expect.objectContaining({
+    classification_id: classificationId, source_event_id: `runtime_exact_item_memory:${classificationId}:${fingerprint}`,
+  });
+
+  await expect(record(secondId)).resolves.toMatchObject({ statusId: 'recorded' });
+  const savedReceipts = await receipts();
+  const savedEvidence = await evidence();
+  expect(savedReceipts).toEqual([receiptFor(secondId)]);
+  expect(savedEvidence).toEqual([expect.objectContaining({ tmdb_id: tmdbIds[1], library_id: destination.id })]);
+
+  await expect(record(secondId)).resolves.toMatchObject({ statusId: 'already_recorded', exactItemMemoryRecorded: false });
+  await expect(execute.mock.results.at(-1).value).resolves.toMatchObject({ execution: { applied: false, replayed: true } });
+  await expect(record(Number(secondId))).resolves.toMatchObject({ statusId: 'not_applicable' });
+  expect(execute).toHaveBeenCalledTimes(2);
+  expect(await receipts()).toEqual(savedReceipts);
+  expect(await evidence()).toEqual(savedEvidence);
+
+  await expect(record(firstId)).resolves.toMatchObject({ statusId: 'recorded' });
+  await expect(record(maxId)).resolves.toMatchObject({ statusId: 'recorded' });
+  expect(await receipts()).toEqual([receiptFor(firstId), savedReceipts[0], receiptFor(maxId)]);
+  expect((await evidence()).map(row => row.tmdb_id)).toEqual(tmdbIds);
 });

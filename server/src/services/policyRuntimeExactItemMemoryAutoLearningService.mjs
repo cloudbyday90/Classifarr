@@ -19,6 +19,7 @@ import {
 import {
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_RUNTIME_EXACT_ITEM_MEMORY_AUTO_LEARNING_VERSION =
   'policy.runtime_exact_item_memory_auto_learning.v1';
@@ -43,11 +44,6 @@ const LEARNING_ACTION_IDS = new Set([
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION,
 ]);
-
-function normalizePositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
 
 function buildResult({
   statusId,
@@ -91,8 +87,8 @@ function createPolicyRuntimeExactItemMemoryAutoLearningService({
     answerActionId,
     resolutionSucceeded = false,
   } = {}) {
-    const normalizedClassificationId = normalizePositiveInteger(classificationId);
-    if (resolutionSucceeded !== true || !normalizedClassificationId) {
+    const normalizedClassificationId = normalizeDatabaseBigintId(classificationId);
+    if (resolutionSucceeded !== true || normalizedClassificationId === null) {
       return buildResult({
         statusId: POLICY_RUNTIME_EXACT_ITEM_MEMORY_AUTO_LEARNING_STATUS_IDS.NOT_APPLICABLE,
         reasonCodes: [

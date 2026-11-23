@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Resolution learning IDs** — Preserve exact BIGINT History IDs in
+  outcome-only resolution evidence and automatic exact-item learning. See
+  the [outcome](docs/architecture/resolution-learning-bigint-outcome.md).
+
 - **Native pending provenance** — Preserve exact BIGINT History IDs in
   resolution and routing outcome evidence. Pending answers retain their
   current safe-integer limit. See the

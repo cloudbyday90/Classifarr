@@ -30,6 +30,7 @@ import {
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_RUNTIME_RESOLUTION_LEARNING_VERSION =
   'policy.runtime_resolution_learning.v1';
@@ -85,11 +86,9 @@ function uniqueReasonCodes(reasonCodes = []) {
 }
 
 function buildSourceEventId(classificationId) {
-  const normalizedClassificationId = normalizePositiveInteger(classificationId);
-
-  return normalizedClassificationId
-    ? `classification:${normalizedClassificationId}:runtime-resolution`
-    : 'classification:unknown:runtime-resolution';
+  return classificationId === null
+    ? 'classification:unknown:runtime-resolution'
+    : `classification:${classificationId}:runtime-resolution`;
 }
 
 function getQuestionFrameId(question = null) {
@@ -159,7 +158,7 @@ function buildPolicyRuntimeResolutionLearning({
 } = {}) {
   const sourceClassification = asObject(classification);
   const selectedDestination = asObject(destination);
-  const classificationId = normalizePositiveInteger(sourceClassification.id);
+  const classificationId = normalizeDatabaseBigintId(sourceClassification.id);
   const libraryId = normalizePositiveInteger(
     selectedDestination.libraryId ?? selectedDestination.id,
   );
