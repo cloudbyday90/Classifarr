@@ -42,3 +42,6 @@ together. Its route uses `Number.parseInt` on the History path parameter and
 the shared answer contract uses a numeric candidate ID. Test explicit choice,
 bulk confirmation, and saved receipt replay before changing the identifier
 at that boundary. Keep UUIDv7 tied to a distinct, demonstrated requirement.
+
+The [pending-resolution admission repair](pending-resolution-id-admission-outcome.md)
+closes the ambiguous lookup boundary before full BIGINT resolution support.

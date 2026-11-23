@@ -39,7 +39,7 @@ export async function handleInteraction(interaction) {
         );
       } else if (action === 'ai') {
         if (parts[1] === 'clarify') {
-          const classificationId = parseInt(parts[2]);
+          const classificationId = parts[2];
           const optionIndex = parseInt(parts[3]);
           await processClarificationResponse(
             classificationId,
@@ -47,7 +47,7 @@ export async function handleInteraction(interaction) {
             interaction,
           );
         } else if (parts[1] === 'answer') {
-          const classificationId = Number.parseInt(parts[2], 10);
+          const classificationId = parts[2];
           const actionId = getPolicyRuntimeQuestionAnswerActionIdFromCode(parts[3]);
           const destinationLibraryId = Number.parseInt(parts[4], 10);
           const contractFingerprint = parts[5];

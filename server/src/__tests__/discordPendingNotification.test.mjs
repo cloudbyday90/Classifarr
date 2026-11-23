@@ -19,6 +19,7 @@
 import { describe, expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
+import { createTieredComponents } from '../services/discordNotificationComponents.mjs';
 import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
@@ -69,6 +70,21 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
+  test('legacy pending controls require the same supported History ID as the answer handler', () => {
+    const clarification = { options: [{ label: 'Synthetic destination' }] };
+    const components = id => createTieredComponents(id, [], { tier: 'clarify' }, {}, 50, false, clarification);
+    expect(components('9007199254740993')).toEqual([]);
+    expect(components(Number.MAX_SAFE_INTEGER)[0].components[0].data.custom_id).toBe('ai_clarify_9007199254740991_0');
+  });
+  test('keeps a large pending notification visible without emitting an answer button', async () => {
+    const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
+    await sendPendingDecisionNotification({ title: 'Large pending classification', media_type: 'movie' }, {
+      classification_id: '9007199254740993', policy_question: normalizedPolicyQuestion(),
+    }, { client: { channels: { fetch: async () => ({ send }) } },
+      channelId: 'synthetic-channel', config: { enabled: true, notify_on_pending_items: true }, warnFn: jest.fn() });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0]).toMatchObject({ components: [], embeds: [expect.anything()] });
+  });
   test.each([['pending', false], ['confidence', false], ['pending', true], ['confidence', true]])(
     'automatic held %s notification gap=%s preserves current reference and command meaning', async (kind, gap) => {
     const value = await automaticPolicyReviewFixture();

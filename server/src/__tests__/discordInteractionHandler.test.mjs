@@ -155,6 +155,16 @@ beforeEach(() => {
 });
 
 describe('handleInteraction', () => {
+    test.each(['ai_answer_01_c_10_current-fingerprint', 'ai_answer_9007199254740993_c_10_current-fingerprint',
+        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0'])(
+        'rejects the raw History segment in %s before lookup', async customId => {
+            const interaction = makeInteraction({ customId, isButton: () => true });
+            await handleInteraction(interaction);
+            expect(interaction.reply).toHaveBeenCalledWith({ content: 'Invalid policy question action.', ephemeral: true });
+            expect(interaction.deferUpdate).not.toHaveBeenCalled();
+            expect(db.query).not.toHaveBeenCalled();
+        },
+    );
     test('acknowledgement preserves the existing receipt footer', async () => {
         const interaction = makeInteraction({ customId: 'acknowledge_100', isButton: () => true });
         await handleInteraction(interaction);

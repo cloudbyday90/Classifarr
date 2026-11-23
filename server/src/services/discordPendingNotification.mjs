@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { discordDelivery } from './discordDelivery.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import {
   formatDisplayPercent,
   getColorForConfidence,
@@ -50,11 +51,13 @@ function normalizePolicyQuestion(policyQuestion) {
 }
 
 function buildPendingDecisionAnswerContract(metadata, result) {
+  const classificationId = parsePendingResolutionHistoryId(result?.classification_id);
+  if (classificationId === null) return null;
   const question = normalizePolicyQuestion(result?.policy_question || result?.clarification);
 
   return buildPolicyRuntimeQuestionAnswerContract({
     classification: {
-      id: result?.classification_id,
+      id: classificationId,
       title: metadata?.title,
       year: metadata?.year,
       media_type: metadata?.media_type,
@@ -69,7 +72,6 @@ function buildPendingDecisionAnswerContract(metadata, result) {
 }
 
 function buildPendingDecisionComponents(metadata, result) {
-  const classificationId = Number(result?.classification_id);
   const answerContract = buildPendingDecisionAnswerContract(metadata, result);
   const confirmAction = answerContract?.allowed_actions?.find(
     action => action.id === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
@@ -78,8 +80,7 @@ function buildPendingDecisionComponents(metadata, result) {
     POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
   );
 
-  if (!Number.isInteger(classificationId) || classificationId < 1 ||
-      !answerContract || confirmAction?.available !== true || !actionCode) {
+  if (!answerContract || confirmAction?.available !== true || !actionCode) {
     return [];
   }
 
@@ -89,7 +90,7 @@ function buildPendingDecisionComponents(metadata, result) {
       const customId = [
         'ai',
         'answer',
-        classificationId,
+        answerContract.candidate_item.classification_id,
         actionCode,
         destination.library_id,
         answerContract.fingerprint,

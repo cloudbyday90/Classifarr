@@ -689,6 +689,17 @@ describe('getPendingClassifications', () => {
 });
 
 describe('resolvePolicyQuestion', () => {
+    test.each(['01', '1x', '9007199254740993', Number.MAX_SAFE_INTEGER + 1])('refuses invalid ID %p before shared transaction work', async id => {
+        const answer = {
+            contract_version: 'policy.runtime_question_answer.v1',
+            contract_fingerprint: 'current-contract-fingerprint',
+            action_id: 'confirm_destination',
+            destination_library_id: 5,
+        };
+        await expect(svc.resolvePolicyQuestion(id, 5, 'opt', 'admin')).rejects.toMatchObject({ statusCode: 400 });
+        await expect(svc.resolveRuntimeQuestionAnswer(id, answer, 'admin')).rejects.toMatchObject({ statusCode: 400 });
+        expect(db.pool.connect).not.toHaveBeenCalled();
+    });
     test('resolves successfully when classification is awaiting_decision', async () => {
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);

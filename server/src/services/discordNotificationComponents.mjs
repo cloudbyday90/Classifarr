@@ -13,6 +13,7 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
 } from 'discord.js';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
 export function createTieredComponents(
   classificationId,
@@ -30,6 +31,7 @@ export function createTieredComponents(
     clarification.options &&
     clarification.options.length > 0
   ) {
+    if (parsePendingResolutionHistoryId(classificationId) === null) return components;
     const clarificationButtons = clarification.options.map((opt, idx) =>
       new ButtonBuilder()
         .setCustomId(`ai_clarify_${classificationId}_${idx}`)

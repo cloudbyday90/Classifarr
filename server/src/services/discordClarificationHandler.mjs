@@ -16,6 +16,7 @@ import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 
@@ -24,7 +25,12 @@ export async function processClarificationResponse(
   optionIndex,
   interaction,
 ) {
+  classificationId = parsePendingResolutionHistoryId(classificationId);
   try {
+    if (classificationId === null) {
+      await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
+      return;
+    }
     await interaction.deferUpdate();
 
     const classResult = await db.query(

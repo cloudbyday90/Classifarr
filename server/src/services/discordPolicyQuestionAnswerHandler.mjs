@@ -16,6 +16,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
 const logger = createLogger('discordPolicyQuestionAnswerHandler');
 
@@ -68,7 +69,7 @@ export async function processPolicyQuestionAnswer({
   contractFingerprint,
   actionId,
 } = {}, interaction) {
-  const normalizedClassificationId = normalizePositiveInteger(classificationId);
+  const normalizedClassificationId = parsePendingResolutionHistoryId(classificationId);
   const normalizedDestinationLibraryId = normalizePositiveInteger(destinationLibraryId);
   if (!normalizedClassificationId || !normalizedDestinationLibraryId ||
       typeof contractVersion !== 'string' || typeof contractFingerprint !== 'string' ||

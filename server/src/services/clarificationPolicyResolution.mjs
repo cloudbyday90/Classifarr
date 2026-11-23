@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { captureRuntimeOutcomeEvaluationTime } from './runtimeOutcomeEvaluationTime.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
+import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { policyNativePendingResolutionProvenanceService } from './policyNativePendingResolutionProvenance.mjs';
@@ -75,6 +76,9 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
     reviewCorpusCaptureService = null,
     reviewCorpusActorId = null,
 } = {}) {
+    if (parsePendingResolutionHistoryId(classificationId) === null) {
+        throw createStatusError('Invalid classification id', 400, 'invalid_classification_id');
+    }
     try {
         const result = await db.withTransaction(async (client) => {
 

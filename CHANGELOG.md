@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending resolution IDs** — Validate exact History IDs before web and
+  Discord lookup, and hide pending-answer controls for IDs outside the
+  current safe range. See the
+  [outcome](docs/architecture/pending-resolution-id-admission-outcome.md).
+
 - **Historic route-safety refresh** — Preserve exact BIGINT History IDs in
   pagination, controlled retry, and protected receipts. Invalid stored
   lineage ends at the last valid record. See the

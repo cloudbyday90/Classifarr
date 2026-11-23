@@ -14,6 +14,7 @@ import {
 } from './classificationRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
+import { parsePendingResolutionHistoryId } from '../services/pendingResolutionHistoryId.mjs';
 import { recordNativePendingRouteOutcome } from '../services/policyNativePendingRouteOutcomePersistence.mjs';
 import {
   buildPolicyRuntimeQuestionAnswerContract,
@@ -39,12 +40,14 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       return {
         ...item,
         policy_question: policyQuestion,
-        policy_question_answer: buildPolicyRuntimeQuestionAnswerContract({
-          classification: item,
-          question: policyQuestion,
-          isStale: item.policy_question_stale === true,
-          currentContextVersion: item.policy_question_current_context_version,
-        }),
+        policy_question_answer: parsePendingResolutionHistoryId(item.id) === null
+          ? null
+          : buildPolicyRuntimeQuestionAnswerContract({
+            classification: item,
+            question: policyQuestion,
+            isStale: item.policy_question_stale === true,
+            currentContextVersion: item.policy_question_current_context_version,
+          }),
       };
     });
 
@@ -66,11 +69,8 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
   }));
 
   router.post('/pending/:id/resolve', asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const classificationId = Number.parseInt(id, 10);
-
-    if (!Number.isInteger(classificationId) || classificationId < 1) {
+    const classificationId = parsePendingResolutionHistoryId(req.params.id);
+    if (classificationId === null) {
       throw new ValidationError('Invalid classification id');
     }
 
