@@ -65,6 +65,21 @@ function createClient({ classification = classificationRow(), destination = dest
 }
 
 describe('policyRuntimeExactItemMemoryExecutionState', () => {
+  test('refuses inexact or conflicting History selectors before locking any row', async () => {
+    const client = createClient();
+    const otherId = '9007199254740993';
+    for (const selectors of [
+      { classificationId: Number(otherId) },
+      { classificationId: '9223372036854775808' },
+      { classificationId: 42, intake: { finalOutcome: { itemId: '042' } } },
+      { classificationId: 42, intake: { finalOutcome: { itemId: null } } },
+      { classificationId: '9007199254740992', intake: { finalOutcome: { itemId: otherId } } },
+    ]) {
+      expect((await lockPolicyRuntimeExactItemMemoryExecutionState({ client, ...selectors })).ok).toBe(false);
+    }
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
   test('locks and derives every command reference from the completed runtime resolution', async () => {
     const client = createClient();
 
@@ -139,5 +154,20 @@ describe('policyRuntimeExactItemMemoryExecutionState', () => {
       ok: false,
       reasonId: POLICY_RUNTIME_EXACT_ITEM_MEMORY_STATE_REASON_IDS.SOURCE_EVENT_IDENTITY_MISMATCH,
     }));
+  });
+
+  test('keeps matching BIGINT answers and exact event IDs on the locked row', async () => {
+    const id = '9223372036854775807';
+    const classification = classificationRow({ id });
+    classification.metadata.classification_details.outcome_link.runtime_question_answer.classification_id = id;
+    const client = createClient({ classification });
+
+    const result = await lockPolicyRuntimeExactItemMemoryExecutionState({ client, classificationId: id });
+
+    expect(result).toMatchObject({ ok: true, currentState: { classificationId: id,
+      sourceEventId: `runtime_exact_item_memory:${id}:${fingerprint}` } });
+    expect(client.query.mock.calls[0][1]).toEqual([id]);
+    expect(buildPolicyRuntimeExactItemMemorySourceEventId({ classificationId: Number(id), contractFingerprint: fingerprint }))
+      .toBeNull();
   });
 });

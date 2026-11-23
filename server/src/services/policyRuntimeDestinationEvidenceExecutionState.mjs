@@ -17,7 +17,6 @@ import {
 } from './policyRuntimeExactItemMemoryExecutionState.mjs';
 import {
   asObject,
-  normalizeIdentifier,
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
 
@@ -29,7 +28,7 @@ function isPolicyRuntimeDestinationEvidenceSourceEvent({
   const source = asObject(intake);
   const candidate = asObject(source.candidate);
   const expectedSourceEventId = buildPolicyRuntimeDestinationEvidenceSourceEventId({
-    classificationId: normalizeIdentifier(classification.id),
+    classificationId: classification.id,
     contractFingerprint: normalizeString(resolution.contractFingerprint, 64),
     tierId: getPolicyRuntimeDestinationEvidenceTierId(source.answerOutcomeId),
     candidateKey: normalizeString(candidate.key, 160),

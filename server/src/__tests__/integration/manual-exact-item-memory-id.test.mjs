@@ -5,6 +5,7 @@ import request from 'supertest';
 import { errorHandler } from '../../middleware/errorHandler.mjs';
 import { requireReadWrite } from '../../middleware/apiKeyAuth.mjs';
 import { registerExactItemMemoryRoutes } from '../../routes/classificationRouteExactItemMemory.mjs';
+import { PolicyRuntimeDestinationEvidenceCommandService } from '../../services/policyRuntimeDestinationEvidenceCommandService.mjs';
 import { createMockLogger } from '../helpers/mockFactory.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 
@@ -25,6 +26,7 @@ test('manual exact-item HTTP writes and replays only the requested BIGINT Histor
       },
     } } };
     for (const [index, id] of ids.entries()) {
+      metadata.classification_details.outcome_link.runtime_question_answer.classification_id = id;
       await database.query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,library_id,library_name,metadata)
         VALUES($1,$2,$3,'movie','completed',$4,$5,$6::jsonb)`,
       [id, `Owned manual memory ${index}`, tmdbIds[index], destination.id, destination.name, JSON.stringify(metadata)]);
@@ -47,12 +49,22 @@ test('manual exact-item HTTP writes and replays only the requested BIGINT Histor
     const receiptFor = classificationId => expect.objectContaining({
       classification_id: classificationId, source_event_id: `runtime_exact_item_memory:${classificationId}:${fingerprint}`,
     });
+    const unboundAnswer = { ...metadata.classification_details.outcome_link.runtime_question_answer };
+    delete unboundAnswer.classification_id;
+    const replaceAnswer = answer => database.query(`UPDATE classification_history
+      SET metadata=jsonb_set(metadata,'{classification_details,outcome_link,runtime_question_answer}',$2::jsonb)
+      WHERE id=$1`, [target, JSON.stringify(answer)]);
 
     await remember(target).set('x-test-principal', 'read-only').expect(403);
     await remember('9007199254741096').expect(404);
+    await replaceAnswer(unboundAnswer);
+    await remember(target).expect(409);
+    await replaceAnswer({ ...unboundAnswer, classification_id: null });
+    await remember(target).expect(409);
     expect(await receipts()).toEqual([]);
     expect(await evidence()).toEqual([]);
 
+    await replaceAnswer({ ...unboundAnswer, classification_id: target });
     const first = await remember(target).expect(200);
     expect(first.body).toMatchObject({ status: 'applied', replayed: false, exact_item_memory_recorded: true });
     const savedReceipts = await receipts();
@@ -62,6 +74,12 @@ test('manual exact-item HTTP writes and replays only the requested BIGINT Histor
 
     const replay = await remember(target).expect(200);
     expect(replay.body).toMatchObject({ status: 'replayed', replayed: true, exact_item_memory_recorded: false });
+    await replaceAnswer({ ...unboundAnswer, classification_id: neighbor });
+    await remember(target).expect(409);
+    const destinationEvidence = new PolicyRuntimeDestinationEvidenceCommandService({ db: database });
+    expect(await destinationEvidence.execute({ classificationId: target, actorId: 'owned-operator' })).toMatchObject({
+      statusId: 'not_admitted', reasonCodes: ['runtime_exact_item_memory_invalid_runtime_answer'], execution: null,
+    });
     await remember(`${neighbor}text`).expect(400);
     expect(await receipts()).toEqual(savedReceipts);
     expect(await evidence()).toEqual(savedEvidence);

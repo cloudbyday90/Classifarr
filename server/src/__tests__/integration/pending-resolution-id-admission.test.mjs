@@ -158,6 +158,7 @@ test('automatic exact-item learning keeps adjacent History receipts distinct acr
     },
   } } };
   for (const [index, id] of ids.entries()) {
+    metadata.classification_details.outcome_link.runtime_question_answer.classification_id = id;
     await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,library_id,library_name,metadata)
       VALUES($1,$2,$3,'movie','completed',$4,$5,$6::jsonb)`,
     [id, `Owned learning item ${index}`, tmdbIds[index], destination.id, destination.name, JSON.stringify(metadata)]);

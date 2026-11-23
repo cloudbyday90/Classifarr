@@ -13,6 +13,8 @@ import {
   POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION,
   isPolicyRuntimeQuestionResolutionAction,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { isPolicyRuntimeQuestionAnswerReceiptForClassification } from './policyRuntimeQuestionAnswerReceipt.mjs';
 import {
   normalizeIdentifier,
   normalizeString,
@@ -60,7 +62,7 @@ function buildPolicyRuntimeExactItemMemorySourceEventId({
   classificationId,
   contractFingerprint,
 } = {}) {
-  const normalizedClassificationId = normalizeIdentifier(classificationId);
+  const normalizedClassificationId = canonicalDatabaseBigintId(classificationId);
   const fingerprint = normalizeString(contractFingerprint, 64);
 
   return normalizedClassificationId && fingerprint
@@ -83,7 +85,7 @@ function normalizeLockedClassification(row = {}) {
   const source = asObject(row);
 
   return {
-    id: normalizeIdentifier(source.id),
+    id: canonicalDatabaseBigintId(source.id),
     tmdbId: normalizeIdentifier(source.tmdb_id ?? source.tmdbId),
     mediaType: normalizeMediaType(source.media_type ?? source.mediaType),
     status: normalizeString(source.status, 40) || null,
@@ -125,7 +127,8 @@ function normalizeRuntimeResolution(classification = {}) {
     classificationId: source.id,
     contractFingerprint,
   });
-  const validAnswer = contractVersion === POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION &&
+  const validAnswer = isPolicyRuntimeQuestionAnswerReceiptForClassification(answer, source.id) &&
+    contractVersion === POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION &&
     /^[A-Za-z0-9_-]{22}$/.test(contractFingerprint) &&
     isPolicyRuntimeQuestionResolutionAction(actionId) &&
     actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.MARK_EXACT_ITEM_MEMORY &&
@@ -144,8 +147,11 @@ function normalizeRuntimeResolution(classification = {}) {
 }
 
 function expectedClassificationId(intake = {}, classificationId = null) {
-  return normalizeIdentifier(asObject(intake).finalOutcome?.itemId) ||
-    normalizeIdentifier(classificationId);
+  const outcome = asObject(asObject(intake).finalOutcome);
+  const id = canonicalDatabaseBigintId(Object.hasOwn(outcome, 'itemId') ? outcome.itemId : classificationId);
+  if (classificationId !== null && canonicalDatabaseBigintId(classificationId) !== id) return null;
+
+  return id;
 }
 
 async function lockPolicyRuntimeExactItemMemoryExecutionState({
@@ -181,7 +187,7 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
      FOR UPDATE`,
     [lockedClassificationId],
   )));
-  if (!classification.id || !classification.mediaType) {
+  if (classification.id !== lockedClassificationId || !classification.mediaType) {
     return buildBlockedExecutionState(
       POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS.CLASSIFICATION_NOT_FOUND,
     );
@@ -256,7 +262,7 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
       }) === true
       : expectedSourceEventId === resolution.sourceEventId
     : true;
-  if (expectedOutcome.itemId && normalizeIdentifier(expectedOutcome.itemId) !== classification.id ||
+  if (expectedOutcome.itemId && canonicalDatabaseBigintId(expectedOutcome.itemId) !== classification.id ||
       expectedOutcome.destinationLibraryId &&
         normalizeIdentifier(expectedOutcome.destinationLibraryId) !== destination.id ||
       expectedOutcome.destinationLibraryName &&

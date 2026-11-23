@@ -77,15 +77,48 @@ function intake(overrides = {}) {
   };
 }
 
-function createClient() {
+function createClient(classification = classificationRow()) {
   return {
     query: jest.fn()
-      .mockResolvedValueOnce({ rows: [classificationRow()] })
+      .mockResolvedValueOnce({ rows: [classification] })
       .mockResolvedValueOnce({ rows: [destinationRow()] }),
   };
 }
 
 describe('policyRuntimeDestinationEvidenceExecutionState', () => {
+  test('validates the destination evidence event against an exact bound BIGINT row', async () => {
+    const id = '9007199254740993';
+    const classification = classificationRow({ id });
+    classification.metadata.classification_details.outcome_link.runtime_question_answer.classification_id = id;
+    const client = createClient(classification);
+    const original = intake();
+    const sourceEventId = buildPolicyRuntimeDestinationEvidenceSourceEventId({
+      classificationId: id, contractFingerprint: fingerprint,
+      tierId: 'identity_evidence', candidateKey: original.candidate.key,
+    });
+
+    expect(await lockPolicyRuntimeDestinationEvidenceExecutionState({
+      client, intake: { ...original, sourceEventId, finalOutcome: { ...original.finalOutcome, itemId: id } },
+    })).toMatchObject({ ok: true, currentState: { classificationId: id, sourceEventId } });
+    expect(client.query.mock.calls[0][1]).toEqual([id]);
+  });
+
+  test('blocks a receipt bound to another History row before loading the destination', async () => {
+    const classification = classificationRow();
+    classification.metadata.classification_details.outcome_link.runtime_question_answer.classification_id = 43;
+    const client = createClient(classification);
+
+    expect(await lockPolicyRuntimeDestinationEvidenceExecutionState({ client, intake: intake() })).toMatchObject({
+      ok: false,
+      reasonId: POLICY_RUNTIME_EXACT_ITEM_MEMORY_STATE_REASON_IDS.INVALID_RUNTIME_ANSWER,
+    });
+    expect(client.query).toHaveBeenCalledTimes(1);
+    expect(buildPolicyRuntimeDestinationEvidenceSourceEventId({
+      classificationId: Number.MAX_SAFE_INTEGER + 1, contractFingerprint: fingerprint,
+      tierId: 'identity_evidence', candidateKey: 'studio:studio_ghibli',
+    })).toBeNull();
+  });
+
   test('accepts only the derived receipt event and exposes it as the locked state identity', async () => {
     const client = createClient();
     const result = await lockPolicyRuntimeDestinationEvidenceExecutionState({

@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Learning receipt identity** — Require exact History row bindings before
+  exact-item memory or destination evidence uses a saved answer. See the
+  [outcome](docs/architecture/learning-answer-receipt-identity-outcome.md).
+
 - **Pending-answer replay** — Preserve exact History IDs in fingerprints,
   bind new receipts to their row, and validate cleanup selections before
   locking. See the [outcome](docs/architecture/pending-answer-fingerprint-replay-outcome.md).

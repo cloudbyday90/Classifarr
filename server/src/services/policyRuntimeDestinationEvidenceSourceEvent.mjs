@@ -16,10 +16,8 @@ import {
 import {
   POLICY_LEARNING_TIER_IDS,
 } from './policyLearningGuard.mjs';
-import {
-  normalizeIdentifier,
-  normalizeString,
-} from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { normalizeString } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
 
 const TIER_BY_ANSWER_OUTCOME_ID = Object.freeze({
   [ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE]:
@@ -49,7 +47,7 @@ function buildPolicyRuntimeDestinationEvidenceSourceEventId({
   tierId,
   candidateKey,
 } = {}) {
-  const normalizedClassificationId = normalizeIdentifier(classificationId);
+  const normalizedClassificationId = canonicalDatabaseBigintId(classificationId);
   const normalizedFingerprint = normalizeString(contractFingerprint, 64);
   const candidateFingerprint = buildCandidateFingerprint({ tierId, candidateKey });
 
