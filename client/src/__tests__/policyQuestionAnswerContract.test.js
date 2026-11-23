@@ -62,4 +62,17 @@ describe('policyQuestionAnswerContract', () => {
       policy_question_answer: { version: 'unknown', fingerprint: 'x' },
     }))).toBeNull()
   })
+
+  it('requires a supplied candidate History ID to match the card exactly', () => {
+    const answer = item().policy_question_answer
+    const bound = (id, candidateId) => policyQuestionAnswer(item({
+      id, policy_question_answer: { ...answer, candidate_item: { classification_id: candidateId } },
+    }))
+
+    expect(bound('42', 42)).toMatchObject({ fingerprint: answer.fingerprint })
+    expect(bound('9007199254740993', '9007199254740993')).toMatchObject({ fingerprint: answer.fingerprint })
+    expect(bound('9007199254740993', '9007199254740992')).toBeNull()
+    expect(bound('9007199254740992', Number.MAX_SAFE_INTEGER + 1)).toBeNull()
+    expect(bound(42, null)).toBeNull()
+  })
 })

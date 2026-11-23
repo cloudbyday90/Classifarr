@@ -68,6 +68,36 @@ describe('useNeedsAttentionActions composable', () => {
     vi.clearAllMocks()
   })
 
+  it('keeps adjacent exact IDs distinct and stops Confirm All after a later failure', async () => {
+    const ids = ['9007199254740992', '9007199254740993', '9223372036854775807']
+    const items = ids.map(id => {
+      const value = currentItem(id, `Pending ${id}`)
+      value.policy_question_answer.candidate_item = { classification_id: id }
+      return value
+    })
+    const deps = createDeps({ needsAttentionItems: ref(items) })
+    api.resolvePendingClassification
+      .mockResolvedValueOnce({ data: { classificationId: ids[0], routed: true } })
+      .mockRejectedValueOnce(new Error('Answer changed'))
+
+    await expect(useNeedsAttentionActions(deps).confirmAllNeedsAttention()).rejects.toThrow('Answer changed')
+    expect(api.resolvePendingClassification).toHaveBeenCalledTimes(2)
+    expect(api.resolvePendingClassification.mock.calls.map(([id]) => id)).toEqual(ids.slice(0, 2))
+  })
+
+  it('refuses to submit a copied card contract in single and bulk actions', async () => {
+    const value = currentItem('9007199254740993', 'Pending')
+    value.policy_question_answer.candidate_item = { classification_id: '9007199254740992' }
+    const deps = createDeps({ needsAttentionItems: ref([value]) })
+    const actions = useNeedsAttentionActions(deps)
+
+    await actions.resolveWithOption(value, { actionId: 'confirm_destination', destinationLibraryId: 5 })
+    await actions.confirmAllNeedsAttention()
+
+    expect(api.resolvePendingClassification).not.toHaveBeenCalled()
+    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('Confirm All skipped 1 item'))
+  })
+
   it('rejects an answer that does not contain a current contract destination', async () => {
     const deps = createDeps()
     const actions = useNeedsAttentionActions(deps)
@@ -81,19 +111,21 @@ describe('useNeedsAttentionActions composable', () => {
     expect(api.resolvePendingClassification).not.toHaveBeenCalled()
   })
 
-  it('resolveWithOption resolves and sets routing error on partial failure', async () => {
+  it.each([2, '9007199254740993'])('resolves exact ID %s and reports an incomplete route', async id => {
     const deps = createDeps()
     api.resolvePendingClassification.mockResolvedValueOnce({
       data: { routed: false, routingError: 'no_library' },
     })
 
     const actions = useNeedsAttentionActions(deps)
+    const value = currentItem(id, 'Inception')
+    value.policy_question_answer.candidate_item = { classification_id: id }
     await actions.resolveWithOption(
-      currentItem(2, 'Inception'),
+      value,
       { actionId: 'confirm_destination', destinationLibraryId: 5 },
     )
 
-    expect(api.resolvePendingClassification).toHaveBeenCalledWith(2, {
+    expect(api.resolvePendingClassification).toHaveBeenCalledWith(id, {
       contract_version: 'policy.runtime_question_answer.v1',
       contract_fingerprint: 'current-contract-fingerprint',
       action_id: 'confirm_destination',

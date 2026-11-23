@@ -12,6 +12,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
 import { isPlainObject } from '../utils/stringUtils.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   buildCurrentLibraryCandidateRetrievalOutcomeAttributionProjection,
 } from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
@@ -147,7 +148,7 @@ export class ClassificationOutcomeService {
   }
 
   async recordOutcome(classificationId, outcomePatch, { client = null, requireWrite = false } = {}) {
-    if (!Number.isInteger(Number(classificationId)) || Number(classificationId) < 1) {
+    if (canonicalDatabaseBigintId(classificationId) === null) {
       return { updated: false, reason: 'invalid_classification_id' };
     }
     if (!isPlainObject(outcomePatch) || Object.keys(outcomePatch).length === 0) {

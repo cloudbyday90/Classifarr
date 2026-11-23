@@ -17,6 +17,7 @@
  */
 
 import { apiClient, getDataRequest } from './core'
+import { canonicalClassificationHistoryId } from '@/utils/classificationHistoryId'
 
 export function classify(data) {
   return apiClient.post('/classification/classify', data)
@@ -87,7 +88,10 @@ export function getHistoricRouteSafetyRefreshRecentReceipt() {
 }
 
 export function resolvePendingClassification(classificationId, payload) {
-  return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
+  const id = canonicalClassificationHistoryId(classificationId)
+  if (!id) return Promise.reject(new TypeError('Invalid classification id'))
+
+  return apiClient.post(`/classification/pending/${id}/resolve`, payload)
 }
 
 export function rememberResolvedExactItem(classificationId) {

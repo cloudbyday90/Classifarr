@@ -183,12 +183,19 @@ describe('classificationOperations', () => {
     expect(result).toEqual(receipt)
   })
 
-  it('resolvePendingClassification calls POST with id in URL and payload', async () => {
+  it.each([42, '9007199254740992', '9007199254740993', '9223372036854775807'])('resolvePendingClassification sends exact ID %s in the POST path', async (id) => {
     const payload = { label: 'TV Show', confidence: 0.95 }
-    mockPost.mockResolvedValueOnce({ data: { resolved: true } })
-    const result = await resolvePendingClassification('p1', payload)
-    expect(mockPost).toHaveBeenCalledWith('/classification/pending/p1/resolve', payload)
-    expect(result).toEqual({ data: { resolved: true } })
+    mockPost.mockResolvedValueOnce({ data: { resolved: true, classificationId: id } })
+    const result = await resolvePendingClassification(id, payload)
+    expect(mockPost).toHaveBeenCalledWith(`/classification/pending/${id}/resolve`, payload)
+    expect(result).toEqual({ data: { resolved: true, classificationId: id } })
+  })
+
+  it('rejects invalid pending History IDs before making a POST', async () => {
+    for (const id of ['01', '42/resolve', Number.MAX_SAFE_INTEGER + 1, '9223372036854775808']) {
+      await expect(resolvePendingClassification(id, {})).rejects.toThrow('Invalid classification id')
+    }
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it.each([42, '9007199254740993', '9223372036854775807'])('rememberResolvedExactItem sends %s unchanged with no body', async (classificationId) => {

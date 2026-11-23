@@ -77,6 +77,10 @@ test('HTTP resolves the safe maximum once and preserves row-bound replay beside 
   const recordedAnswer = saved[0].metadata.classification_details.outcome_link.runtime_question_answer;
   expect(recordedAnswer).toMatchObject({ ...answer, classification_id: id });
   expect(saved.slice(1)).toEqual(before.slice(1));
+  const learningReceipts = async () => (await query(`SELECT id, source_event_id, command_fingerprint
+    FROM policy_authorized_outcome_source_event_receipts WHERE classification_id=$1 ORDER BY id`, [id])).rows;
+  const savedLearning = await learningReceipts();
+  expect(savedLearning).toHaveLength(1);
 
   const replay = await resolve(id).expect(200);
   expect(replay.body).toMatchObject({ classificationId: id, success: true, alreadyResolved: true, idempotent: true, shouldRoute: false });
@@ -97,6 +101,7 @@ test('HTTP resolves the safe maximum once and preserves row-bound replay beside 
   const legacy = await snapshot();
   expect((await resolve(id).expect(200)).body).toMatchObject({ alreadyResolved: true, idempotent: true, shouldRoute: false });
   expect(await snapshot()).toEqual(legacy);
+  expect(await learningReceipts()).toEqual(savedLearning);
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 
@@ -114,6 +119,9 @@ test('native routing provenance persists only to the exact History row', async (
     WHERE id=ANY($1::bigint[]) ORDER BY id`, [[previousId, targetId]])).rows;
   const before = await snapshot();
   const outcomeService = new ClassificationOutcomeService({ db: database });
+  expect(await outcomeService.recordOutcome(Number(targetId), { type: 'resolved' })).toEqual({
+    updated: false, reason: 'invalid_classification_id',
+  });
   const persist = classificationId => recordNativePendingRouteOutcome({
     classificationId,
     nativeResolutionProvenance: {

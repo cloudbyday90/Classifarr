@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending-answer History IDs** — Preserve exact IDs in single and bulk
+  web requests, reject mismatched answer contracts, and validate exact row
+  identity in the shared outcome writer. Existing answer limits still apply.
+  See the [outcome](docs/architecture/pending-web-bigint-readiness-outcome.md).
+
 - **Learning receipt identity** — Require exact History row bindings before
   exact-item memory or destination evidence uses a saved answer. See the
   [outcome](docs/architecture/learning-answer-receipt-identity-outcome.md).

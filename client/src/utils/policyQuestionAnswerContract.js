@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { canonicalClassificationHistoryId } from './classificationHistoryId'
+
 export const POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION = 'policy.runtime_question_answer.v1'
 
 export const POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS = Object.freeze({
@@ -24,6 +26,13 @@ export function policyQuestionAnswer(item = {}) {
   if (!answer || answer.version !== POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION) return null
   if (typeof answer.fingerprint !== 'string' || !answer.fingerprint) return null
   if (!Array.isArray(answer.allowed_actions) || !Array.isArray(answer.candidate_destinations)) return null
+
+  const candidateHistoryId = answer.candidate_item?.classification_id
+  if (candidateHistoryId !== undefined) {
+    const historyId = canonicalClassificationHistoryId(item.id)
+    if (!historyId || canonicalClassificationHistoryId(candidateHistoryId) !== historyId) return null
+  }
+
   return answer
 }
 
