@@ -1,16 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+export { canonicalClassificationHistoryId as feedbackReviewClassificationId } from './classificationHistoryId'
+
 const exact = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value) &&
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key))
 const integer = value => Number.isInteger(value) && value > 0 && value <= 2147483647
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value)
 const time = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value
 const label = value => typeof value === 'string' && value.length > 0 && value.length <= 255
-export function feedbackReviewClassificationId(value) {
-  if (typeof value === 'number' && !Number.isSafeInteger(value)) return null
-  if (!['number', 'string'].includes(typeof value)) return null
-  const text = String(value)
-  return /^[1-9][0-9]{0,18}$/.test(text) && BigInt(text) <= 9223372036854775807n ? text : null
-}
 export function normalizeFeedbackReview(value, classificationId) {
   if (!exact(value, ['version', 'reviewId', 'issuedAt', 'expiresAt', 'item', 'reference', 'choices']) ||
     value.version !== 'feedback.review.v1' || !uuid(value.reviewId) || !time(value.issuedAt) || !time(value.expiresAt) ||

@@ -11,7 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ValidationError } from '../utils/appError.mjs';
-import { MAX_DATABASE_INT32_ID, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { MAX_DATABASE_BIGINT_ID, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS,
 } from './policyRuntimeHistoricRouteSafetyRefreshInventory.mjs';
@@ -47,12 +47,6 @@ const SAFE_SKIPPED_REASON_IDS = new Set([
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_NOT_REQUIRED_REASON_ID,
 ]);
 
-function positiveInteger(value) {
-  // Preserve result-map compatibility separately from command admission.
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
-
 function normalizeActorId(value) {
   if (typeof value !== 'string') return null;
   const actorId = value.trim();
@@ -65,7 +59,7 @@ function normalizeClassificationIds(value) {
     return null;
   }
 
-  const ids = Array.from(value, parseCanonicalDatabaseInt32Id);
+  const ids = Array.from(value, normalizeDatabaseBigintId);
   if (ids.some(id => !id) || new Set(ids).size !== ids.length) return null;
 
   return ids;
@@ -141,7 +135,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     const ids = normalizeClassificationIds(classificationIds);
     if (!ids) {
       throw new ValidationError(
-        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique canonical integer IDs from 1 to ${MAX_DATABASE_INT32_ID}.`,
+        `classificationIds must contain between 1 and ${POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS} unique canonical integer IDs from 1 to ${MAX_DATABASE_BIGINT_ID}.`,
       );
     }
 
@@ -180,7 +174,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     });
     const resultByClassificationId = new Map(
       (Array.isArray(retryResult?.results) ? retryResult.results : [])
-        .map(result => [positiveInteger(result?.classificationId), result]),
+        .map(result => [normalizeDatabaseBigintId(result?.classificationId), result]),
     );
     const records = ids.map(classificationId => buildExecutionRecord(
       classificationId,

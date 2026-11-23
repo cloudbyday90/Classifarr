@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Historic route-safety refresh** — Preserve exact BIGINT History IDs in
+  pagination, controlled retry, and protected receipts. Invalid stored
+  lineage ends at the last valid record. See the
+  [outcome](docs/architecture/historic-refresh-bigint-outcome.md).
+
 - **Classification retry IDs** — Preserve exact BIGINT History IDs in
   ordinary retry, scheduled recovery, and notification cleanup. Command
   Center bulk retry sends each loaded ID unchanged. See the

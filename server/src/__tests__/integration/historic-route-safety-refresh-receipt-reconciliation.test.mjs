@@ -59,20 +59,31 @@ describe('historic route-safety refresh receipt reconciliation integration', () 
     `);
   });
 
-  test('reconciles a queued receipt through bounded replacement lineage without exposing metadata', async () => {
+  test.each([null, '9223372036854775808', '9'.repeat(40), '00041'])('reconciles a queued receipt with optional invalid trailing link %s', async invalidLink => {
     const sourceInsert = await pool.query(
       `INSERT INTO classification_history (title, year, media_type, method, status, metadata)
        VALUES ('Receipt Source', 2026, 'movie', 'signal_calculation', 'reclassified', '{}'::jsonb)
        RETURNING id`,
     );
-    const sourceClassificationId = sourceInsert.rows[0].id;
+    const sourceClassificationId = invalidLink ? '9223372036854775806' : sourceInsert.rows[0].id;
     const successorInsert = await pool.query(
       `INSERT INTO classification_history (title, year, media_type, method, status, metadata)
        VALUES ('Receipt Successor', 2026, 'movie', 'signal_calculation', 'routed',
                '{"internal":"must-not-be-returned"}'::jsonb)
        RETURNING id`,
     );
-    const successorClassificationId = successorInsert.rows[0].id;
+    const successorClassificationId = invalidLink ? '9223372036854775807' : successorInsert.rows[0].id;
+    if (invalidLink) {
+      await pool.query('UPDATE classification_history SET id=$1 WHERE id=$2', [sourceClassificationId, sourceInsert.rows[0].id]);
+      await pool.query(`UPDATE classification_history SET id=$1,
+        metadata=metadata || jsonb_build_object('classification_details',
+          jsonb_build_object('outcome_link', jsonb_build_object('replacement_classification_id', $3::text)))
+        WHERE id=$2`, [successorClassificationId, successorInsert.rows[0].id, invalidLink]);
+    }
+    if (invalidLink === '00041') {
+      await pool.query(`INSERT INTO classification_history (id,title,media_type,method,status)
+        VALUES (41,'Noncanonical link target','movie','signal_calculation','failed')`);
+    }
     await pool.query(
       `UPDATE classification_history
        SET metadata = jsonb_build_object(

@@ -158,9 +158,9 @@ describe('classificationOperations', () => {
 
   it('executeHistoricRouteSafetyRefresh sends only operator-selected IDs to the bounded command', async () => {
     mockPost.mockResolvedValueOnce({ data: { retryReceipt: 'receipt', records: [] } })
-    const result = await executeHistoricRouteSafetyRefresh(['41', 42])
+    const result = await executeHistoricRouteSafetyRefresh(['9223372036854775807', 42])
     expect(mockPost).toHaveBeenCalledWith('/classification/pending/route-safety-refresh/retry', {
-      classificationIds: ['41', 42],
+      classificationIds: ['9223372036854775807', 42],
     })
     expect(result).toEqual({ data: { retryReceipt: 'receipt', records: [] } })
   })

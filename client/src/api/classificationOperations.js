@@ -72,7 +72,7 @@ export function getHistoricRouteSafetyRefreshInventory(params = {}) {
 }
 
 export function executeHistoricRouteSafetyRefresh(classificationIds) {
-  // The server admits at most 50 unique positive INTEGER IDs; preserve raw scalar types here.
+  // Forward at most 50 unique safe numbers or canonical BIGINT decimal strings.
   return apiClient.post('/classification/pending/route-safety-refresh/retry', { classificationIds })
 }
 

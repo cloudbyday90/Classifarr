@@ -14,6 +14,9 @@ const { createClassificationRouter } = await import('../../routes/classification
 const { requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
 const { errorHandler } = await import('../../middleware/errorHandler.mjs');
 const { PolicyRuntimeHistoricRouteSafetyRefreshExecutionService } = await import('../../services/policyRuntimeHistoricRouteSafetyRefreshExecutionService.mjs');
+const { PolicyRuntimeHistoricRouteSafetyRefreshInventoryService } = await import('../../services/policyRuntimeHistoricRouteSafetyRefreshInventory.mjs');
+const { PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository } = await import('../../services/policyRuntimeHistoricRouteSafetyRefreshReceiptRepository.mjs');
+const { PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService } = await import('../../services/policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService.mjs');
 const { normalizePolicyRuntimeQuestion } = await import('../../services/policyRuntimeQuestionNormalizer.mjs');
 const history = new Set(), receipts = new Set(), links = new Set();
 const mediaIds = ['889970', '889971'];
@@ -56,13 +59,16 @@ function services() {
   const historic = new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({ db: database, classificationRetryService: retry, createReceipt });
   return { db, retry, historic, logger, followupService, createReceipt };
 }
-function app({ retry, historic }, permissions = 'read_write') {
+function app({ retry, historic }, permissions = 'read_write', actorId = 1) {
   const logger = createMockLogger(), application = express(); application.use(express.json());
-  application.use((req, _res, next) => { req.user = { id: 1, role: 'admin', username: 'owned' };
+  application.use((req, _res, next) => { req.user = { id: actorId, role: 'admin', username: 'owned' };
     req.apiKey = { permissions }; next(); });
+  const receiptRepository = new PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository({ db: database });
   application.use('/api/classification', createClassificationRouter({ express, db: database,
     classificationService: {}, classificationRetryService: retry, clarificationService: {},
     createLogger: () => logger, requireReadWrite, reclassificationService: {},
+    policyRuntimeHistoricRouteSafetyRefreshInventoryService: new PolicyRuntimeHistoricRouteSafetyRefreshInventoryService({ db: database }),
+    policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService: new PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService({ db: database, receiptRepository }),
     policyRuntimeHistoricRouteSafetyRefreshExecutionService: historic }));
   application.use(errorHandler); return application;
 }
@@ -144,7 +150,8 @@ test('admitted absent and ineligible targets keep existing skips', async () => {
   expect(await deps.retry.retrySingle({ classificationId: 1 })).toMatchObject({ skipped: true, failed: false, reasonCode: 'status_ineligible' });
   expect(deps.db.withTransaction).toHaveBeenCalledTimes(2); expect((await snapshot()).tasks).toHaveLength(0);
 });
-test.each([['exponent', [1, '1e2']], ['overflow', ['2147483648']], ['duplicate', [1, '1']], ['over limit', Array(51).fill(1)]])(
+test.each([['exponent', [1, '1e2']], ['overflow', ['9223372036854775808']], ['unsafe number', [Number.MAX_SAFE_INTEGER + 1]],
+  ['duplicate', [1, '1']], ['large duplicate', Array(2).fill('9223372036854775807')], ['over limit', Array(51).fill(1)]])(
   'historic %s selection refuses before receipt creation', async (_label, ids) => {
     await seed(1, { historic: true }); const before = await snapshot(), deps = services(), command = jest.spyOn(deps.retry, 'retryClassifications');
     const response = await request(app(deps)).post('/api/classification/pending/route-safety-refresh/retry').send({ classificationIds: ids });
@@ -160,6 +167,40 @@ test('valid historic selections preserve actor-bound queued receipts and numeric
   expect(saved.receipts).toHaveLength(1); expect(saved.receipts[0].requested_record_count).toBe(2);
   expect(saved.items).toEqual([{ classification_id: 1, execution_status: 'queued' }, { classification_id: 100, execution_status: 'queued' }]);
   expect((await query('SELECT actor_id FROM policy_runtime_historic_route_safety_refresh_receipts WHERE receipt_id=$1', [response.body.retryReceipt])).rows[0].actor_id).toBe('user:1');
+});
+
+test('historic paging and a mixed-outcome receipt keep adjacent BIGINT identities distinct', async () => {
+  const penultimate = '9223372036854775806', maximum = '9223372036854775807';
+  await seed(penultimate, { historic: true });
+  await seed(maximum, { historic: true, tmdbId: 889971 });
+  const deps = services(), http = request(app(deps));
+  const base = '/api/classification/pending';
+  const inventory = `${base}/route-safety-refresh-inventory`;
+  const first = await http.get(inventory).query({ limit: 1, cursor: '9223372036854775805' }).expect(200);
+  expect(first.body.pagination).toMatchObject({ nextCursor: penultimate, hasNextPage: true });
+  expect(first.body.records[0]).toMatchObject({ classificationId: penultimate, candidateItem: { classification_id: penultimate } });
+  const second = await http.get(inventory).query({ limit: 1, cursor: first.body.pagination.nextCursor }).expect(200);
+  expect(second.body.records).toEqual([expect.objectContaining({ classificationId: maximum, candidateItem: expect.objectContaining({ classification_id: maximum }) })]);
+  await http.get(inventory).query({ cursor: maximum }).expect(200).expect(res => expect(res.body.records).toEqual([]));
+  for (const cursor of ['', '1e2', '9223372036854775808']) await http.get(inventory).query({ cursor }).expect(400);
+
+  // The locked execution must recheck eligibility after the read-only inventory.
+  await query("UPDATE classification_history SET status='routed' WHERE id=$1", [penultimate]);
+  const submitted = await http.post(`${base}/route-safety-refresh/retry`).send({ classificationIds: [maximum, penultimate] }).expect(200);
+  expect(submitted.body.records).toEqual([
+    { classificationId: maximum, resultStatusId: 'queued', reasonId: 'queued_for_current_runtime_evaluation' },
+    { classificationId: penultimate, resultStatusId: 'skipped', reasonId: 'status_ineligible' },
+  ]);
+  const path = `${base}/route-safety-refresh/receipts/${submitted.body.retryReceipt}`;
+  const saved = await snapshot();
+  const receipt = await http.get(path).expect(200);
+  expect(receipt.body.records).toEqual([
+    expect.objectContaining({ classificationId: penultimate, executionStatusId: 'skipped' }),
+    expect.objectContaining({ classificationId: maximum, executionStatusId: 'queued' }),
+  ]);
+  await request(app(deps, 'read_write', 2)).get(path).expect(404);
+  expect(await snapshot()).toEqual(saved);
+  expect(saved.tasks).toHaveLength(1);
 });
 test.each([{ ids: Array(1) }, { ids: Object.assign(Array(2), { 0: 1 }) }])('direct historic sparse selection %# refuses before receipt work', async ({ ids }) => {
   await seed(1, { historic: true }); const before = await snapshot(), deps = services(), command = jest.spyOn(deps.retry, 'retryClassifications');

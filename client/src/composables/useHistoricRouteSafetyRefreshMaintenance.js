@@ -9,6 +9,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import api from '@/api'
+import { normalizeClassificationHistoryId } from '@/utils/classificationHistoryId'
 import {
   isHistoricRouteSafetyRefreshReceiptInFlight,
 } from '@/utils/historicRouteSafetyRefreshPresentation'
@@ -85,7 +86,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   const currentPageNumber = computed(() => cursorIndex.value + 1)
   const canLoadPreviousPage = computed(() => cursorIndex.value > 0)
   const canLoadNextPage = computed(() => inventory.value?.pagination?.hasNextPage === true &&
-    positiveInteger(inventory.value?.pagination?.nextCursor) !== null)
+    normalizeClassificationHistoryId(inventory.value?.pagination?.nextCursor) !== null)
   const isReceiptInFlight = computed(() => isHistoricRouteSafetyRefreshReceiptInFlight(receipt.value))
 
   function stopReceiptPolling() {
@@ -113,7 +114,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   }
 
   function isSelected(classificationId) {
-    return selectedClassificationIds.value.includes(positiveInteger(classificationId))
+    return selectedClassificationIds.value.includes(normalizeClassificationHistoryId(classificationId))
   }
 
   function clearSelection() {
@@ -122,7 +123,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   }
 
   function toggleSelection(classificationId) {
-    const normalizedId = positiveInteger(classificationId)
+    const normalizedId = normalizeClassificationHistoryId(classificationId)
     if (!normalizedId) return
 
     const selected = new Set(selectedClassificationIds.value)
@@ -146,13 +147,13 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   function selectVisibleRecords() {
     const selected = new Set(selectedClassificationIds.value)
     for (const record of records.value) {
-      const classificationId = positiveInteger(record?.classificationId)
+      const classificationId = normalizeClassificationHistoryId(record?.classificationId)
       if (!classificationId || selected.size >= maximumSelectionCount.value) break
       selected.add(classificationId)
     }
     selectedClassificationIds.value = [...selected]
     selectionMessage.value = selected.size >= maximumSelectionCount.value && records.value.some(
-      record => !selected.has(positiveInteger(record?.classificationId)),
+      record => !selected.has(normalizeClassificationHistoryId(record?.classificationId)),
     )
       ? `Selection is limited to ${maximumSelectionCount.value} records.`
       : ''
@@ -161,7 +162,11 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   async function loadInventory({ reset = false, cursor = undefined } = {}) {
     const requestedCursor = reset
       ? null
-      : (cursor === undefined ? currentCursor() : positiveInteger(cursor))
+      : (cursor === undefined ? currentCursor() : normalizeClassificationHistoryId(cursor))
+    if (!reset && cursor != null && requestedCursor === null) {
+      inventoryError.value = 'Unable to load the historic route-safety inventory.'
+      return null
+    }
     isInventoryLoading.value = true
     inventoryError.value = ''
 
@@ -188,7 +193,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   }
 
   async function loadNextPage() {
-    const nextCursor = positiveInteger(inventory.value?.pagination?.nextCursor)
+    const nextCursor = normalizeClassificationHistoryId(inventory.value?.pagination?.nextCursor)
     if (!canLoadNextPage.value || !nextCursor) return null
 
     cursorHistory.value = [...cursorHistory.value.slice(0, cursorIndex.value + 1), nextCursor]

@@ -52,3 +52,6 @@ History IDs through inventory pagination, selection, execution, actor-bound
 receipt lookup and reconciliation. Test overflow in the existing lineage
 reader and preserve answer fingerprints and replay behavior. Keep BIGINT
 identity until a specific requirement justifies introducing UUIDv7.
+
+The [historic refresh follow-up](historic-refresh-bigint-outcome.md) widens
+that workflow and bounds the stored lineage read.

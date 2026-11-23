@@ -129,6 +129,31 @@ describe('useHistoricRouteSafetyRefreshMaintenance', () => {
     wrapper.unmount()
   })
 
+  it('keeps adjacent BIGINT selections and the next cursor exact', async () => {
+    const previous = '9223372036854775806', next = '9223372036854775807'
+    apiMock.getHistoricRouteSafetyRefreshInventory.mockResolvedValue({
+      ...inventoryReport,
+      records: [{ classificationId: previous }, { classificationId: next }],
+      pagination: { hasNextPage: true, nextCursor: previous },
+    })
+    apiMock.executeHistoricRouteSafetyRefresh.mockResolvedValue({ data: { retryReceipt: RETRY_RECEIPT } })
+    apiMock.getHistoricRouteSafetyRefreshReceipt.mockResolvedValue(receiptReport())
+    const { maintenance, wrapper } = mountMaintenance()
+
+    await maintenance.loadInventory({ reset: true })
+    maintenance.selectVisibleRecords()
+    maintenance.toggleSelection(Number.MAX_SAFE_INTEGER + 1)
+    expect(maintenance.selectedClassificationIds.value).toEqual([previous, next])
+    expect(maintenance.isSelected(next)).toBe(true)
+    await maintenance.loadNextPage()
+    expect(apiMock.getHistoricRouteSafetyRefreshInventory).toHaveBeenLastCalledWith({ cursor: previous, limit: 25 })
+    await maintenance.executeSelected()
+    expect(apiMock.executeHistoricRouteSafetyRefresh).toHaveBeenCalledWith([previous, next])
+    expect(apiMock.getHistoricRouteSafetyRefreshReceipt).toHaveBeenCalledWith(RETRY_RECEIPT)
+
+    wrapper.unmount()
+  })
+
   it('sends only an explicit selected ID list and immediately reads its receipt', async () => {
     apiMock.executeHistoricRouteSafetyRefresh.mockResolvedValue({
       data: { retryReceipt: RETRY_RECEIPT },

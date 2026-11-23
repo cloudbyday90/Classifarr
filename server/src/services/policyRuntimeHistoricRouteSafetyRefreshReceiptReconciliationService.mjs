@@ -9,6 +9,7 @@
  */
 
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_ITEM_STATUS_IDS,
   HISTORIC_ROUTE_SAFETY_REFRESH_RECONCILIATION_STATUS_IDS,
@@ -142,7 +143,7 @@ export function buildHistoricRouteSafetyRefreshReceiptReconciliationReport({
   items = [],
 } = {}) {
   const records = (Array.isArray(items) ? items : []).map((item) => ({
-    classificationId: asPositiveInteger(item.classification_id),
+    classificationId: normalizeDatabaseBigintId(item.classification_id),
     executionStatusId: item.execution_status,
     executionReasonId: item.reason_id || null,
     reconciliationStatusId: deriveHistoricRouteSafetyRefreshReconciliationStatus(item),

@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { ValidationError } from '../utils/appError.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
 } from './policyRuntimeQuestionAnswerContract.mjs';
@@ -67,7 +69,7 @@ function hasOnlyAllowedFields(value, fields) {
 }
 
 function buildRefreshRecord(row = {}) {
-  const classificationId = positiveInteger(row.id);
+  const classificationId = normalizeDatabaseBigintId(row.id);
   if (!classificationId) return null;
 
   const eligibility = evaluateHistoricRouteSafetyRefreshEligibility(row);
@@ -78,7 +80,7 @@ function buildRefreshRecord(row = {}) {
   return {
     classificationId,
     pendingStatus: PENDING_STATUS_IDS.includes(row.status) ? row.status : null,
-    candidateItem: eligibility.candidateItem,
+    candidateItem: eligibility.candidateItem && { ...eligibility.candidateItem, classification_id: classificationId },
     reasonId: POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_REASON_ID,
     retry: {
       actionId: POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.RETRY_CLASSIFICATION,
@@ -148,8 +150,12 @@ export function normalizeHistoricRouteSafetyRefreshInventoryOptions({
   cursor = null,
   limit = POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_DEFAULT_RECORDS,
 } = {}) {
+  const exactCursor = cursor == null ? null : normalizeDatabaseBigintId(cursor);
+  if (cursor != null && exactCursor === null) {
+    throw new ValidationError('Historic route-safety refresh cursor must be a canonical positive BIGINT ID.');
+  }
   return {
-    cursor: positiveInteger(cursor),
+    cursor: exactCursor,
     limit: normalizeBoundedInteger(
       limit,
       POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_DEFAULT_RECORDS,
@@ -190,7 +196,7 @@ export async function loadHistoricRouteSafetyRefreshInventoryRows(dbClient, opti
     cursor,
     limit,
     hasNextPage: rows.length > limit,
-    nextCursor: rows.length > limit ? positiveInteger(pageRows.at(-1)?.id) : null,
+    nextCursor: rows.length > limit ? normalizeDatabaseBigintId(pageRows.at(-1)?.id) : null,
   };
 }
 
@@ -216,7 +222,7 @@ export function buildHistoricRouteSafetyRefreshInventoryReport({
       cursor: options.cursor,
       limit: options.limit,
       hasNextPage: hasNextPage === true,
-      nextCursor: hasNextPage === true ? positiveInteger(nextCursor) : null,
+      nextCursor: hasNextPage === true ? normalizeDatabaseBigintId(nextCursor) : null,
     },
     operatorRetryPlan: {
       actionId: POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.RETRY_CLASSIFICATION,

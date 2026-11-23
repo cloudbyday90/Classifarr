@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { MAX_DATABASE_BIGINT_ID, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_ITEM_STATUS_IDS,
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECENT_RECEIPT_MAX_AGE_SECONDS,
@@ -26,7 +27,6 @@ const {
 } = HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_ITEM_STATUS_IDS;
 
 const FINAL_RECEIPT_ITEM_STATUS_IDS = new Set([QUEUED, SKIPPED, FAILED]);
-const POSITIVE_INTEGER = /^[1-9][0-9]*$/;
 
 function normalizePositiveInteger(value) {
   const parsed = Number(value);
@@ -56,7 +56,7 @@ function normalizeClassificationIds(classificationIds) {
     throw new TypeError('Historic route-safety refresh receipt requires selected classification IDs.');
   }
 
-  const ids = classificationIds.map(normalizePositiveInteger);
+  const ids = Array.from(classificationIds, normalizeDatabaseBigintId);
   if (ids.some(id => !id) || new Set(ids).size !== ids.length) {
     throw new TypeError('Historic route-safety refresh receipt classification IDs must be unique positive integers.');
   }
@@ -69,8 +69,8 @@ function normalizeExecutionRecords(records) {
     throw new TypeError('Historic route-safety refresh receipt requires final execution records.');
   }
 
-  const normalized = records.map((record) => {
-    const classificationId = normalizePositiveInteger(record?.classificationId);
+  const normalized = Array.from(records, (record) => {
+    const classificationId = normalizeDatabaseBigintId(record?.classificationId);
     const executionStatusId = record?.resultStatusId;
     const reasonId = typeof record?.reasonId === 'string' && /^[a-z0-9_]{1,120}$/.test(record.reasonId)
       ? record.reasonId
@@ -140,7 +140,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
   async markRetryQueued({ client, receiptId, classificationId, retryTaskId } = {}) {
     assertQueryClient(client, 'queue recording');
     assertReceiptId(receiptId);
-    const normalizedClassificationId = normalizePositiveInteger(classificationId);
+    const normalizedClassificationId = normalizeDatabaseBigintId(classificationId);
     const normalizedRetryTaskId = normalizePositiveInteger(retryTaskId);
     if (!normalizedClassificationId || !normalizedRetryTaskId) {
       throw new TypeError('Historic route-safety refresh queued retry IDs must be positive integers.');
@@ -279,11 +279,16 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
                   replacement.metadata,
                   retry_lineage.lineage_depth + 1
            FROM retry_lineage
+           CROSS JOIN LATERAL (
+             SELECT retry_lineage.metadata #>> '{classification_details,outcome_link,replacement_classification_id}' AS id
+           ) AS link
            INNER JOIN classification_history AS replacement
              ON replacement.id = CASE
-               WHEN (retry_lineage.metadata #>> '{classification_details,outcome_link,replacement_classification_id}') ~ $2
-                 THEN (retry_lineage.metadata #>> '{classification_details,outcome_link,replacement_classification_id}')::bigint
-               ELSE NULL
+               WHEN octet_length(link.id) BETWEEN 1 AND 19 THEN CASE
+                 WHEN link.id COLLATE "C" ~ '^[1-9][0-9]{0,18}$'
+                   AND (octet_length(link.id) < 19 OR link.id COLLATE "C" <= $2::text)
+                 THEN link.id::bigint
+               END
              END
            WHERE retry_lineage.lineage_depth < 8
          )
@@ -294,7 +299,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
        ) AS runtime ON TRUE
        WHERE item.receipt_id = $1::uuid
        ORDER BY item.classification_id ASC`,
-      [receiptId, POSITIVE_INTEGER.source],
+      [receiptId, MAX_DATABASE_BIGINT_ID.toString()],
     );
 
     return { receipt, items: itemResult.rows };
