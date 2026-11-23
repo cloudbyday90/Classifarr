@@ -290,6 +290,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Server tooling** — Adopt Knip 6.46.1 and the aligned Testcontainers
+  12.2.2 packages after strict install, dependency audit, tooling and isolated
+  PostgreSQL checks. See the
+  [outcome](docs/architecture/server-tooling-pr-597-outcome.md).
+
 - **Published release verification** — Check signed v4 evidence, the exact
   tagged attempt and both registries' current version and `latest` digests
   together with a read-only command. See the
