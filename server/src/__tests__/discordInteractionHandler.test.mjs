@@ -84,6 +84,7 @@ const classificationRoutingService = mockClassificationRoutingService;
 const nativePendingRouteOutcomePersistence = mockNativePendingRouteOutcomePersistence;
 const discordPendingAnswerIntakeService = mockDiscordPendingAnswerIntakeService;
 
+const savedMessageId = '111111111111111111';
 const MOCK_CLASSIFICATION = {
     id: 100,
     library_id: 10,
@@ -94,6 +95,7 @@ const MOCK_CLASSIFICATION = {
     metadata: null,
     confidence: 85,
     policy_question: null,
+    discord_message_id: savedMessageId,
 };
 
 const deliveryMarker = formatDeliveryMarker('100', 'cf_abcdefghijklmnopqrstuv');
@@ -107,8 +109,12 @@ function makeInteraction(overrides = {}) {
         update: jest.fn().mockResolvedValue(undefined),
         user: { username: 'testUser', id: 'user-001' },
         message: {
+            id: savedMessageId,
             embeds: [new EmbedBuilder().setFooter({ text: deliveryMarker })],
-            components: [{ components: [{ label: 'Option A' }, { label: 'Option B' }] }],
+            components: [{ components: [
+                { customId: 'ai_clarify_100_0', label: 'Option A' },
+                { customId: 'ai_clarify_100_1', label: 'Option B' },
+            ] }],
         },
         replied: false,
         deferred: false,
@@ -163,7 +169,8 @@ describe('handleInteraction', () => {
         `ai_answer_100_c_10x_${fingerprint}`, `ai_answer_100_c_2147483648_${fingerprint}`,
         `ai_answer_100_x_10_${fingerprint}`, `ai_answer_100_c_10_${fingerprint}_extra`,
         `ai_answer_100_c_10_${fingerprint}\n`, 'ai_answer_100_c_10_short',
-        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0',
+        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0', 'ai_clarify_100_5',
+        'ai_clarify_100_0x', 'ai_clarify_100_0_extra',
     ])(
         'rejects invalid or unsupported button %s before lookup', async customId => {
             const interaction = makeInteraction({ customId, isButton: () => true });
@@ -173,6 +180,30 @@ describe('handleInteraction', () => {
             expect(db.query).not.toHaveBeenCalled();
         },
     );
+    test.each([[], ['100_10', '100_11'], ['100_10_x'], ['100x_10'], ['100_1e1'],
+        ['100_2147483648'], ['9007199254740993_10']].map(values => ({ values })))('refuses selector values $values before lookup', async ({ values }) => {
+        const interaction = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
+            customId: 'library_select', values });
+        await handleInteraction(interaction);
+        expect(interaction.reply).toHaveBeenCalledWith({ content: 'Invalid library selection', ephemeral: true });
+        expect(db.query).not.toHaveBeenCalled();
+    });
+    test('ignores an unrelated string select menu', async () => {
+        const interaction = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
+            customId: 'unrelated', values: ['100_10'] });
+        await handleInteraction(interaction);
+        expect(interaction.deferUpdate).not.toHaveBeenCalled();
+        expect(db.query).not.toHaveBeenCalled();
+    });
+    test('refuses a matching selector value without the recorded message', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, discord_message_id: null }] });
+        const interaction = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
+            customId: 'library_select', values: ['100_11'] });
+        await handleInteraction(interaction);
+        expect(db.query).toHaveBeenCalledTimes(1);
+        expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
+    });
     test.each([100, '9007199254740993', '9223372036854775807'])(
         'passes exact History ID %s and the entire fingerprint to the resolver', async id => {
             db.query.mockResolvedValueOnce({ rows: [{ id, discord_message_id: 'owned-message' }] });
@@ -454,6 +485,31 @@ describe('processCorrection', () => {
 // ── processClarificationResponse ──────────────────────────────────────────────
 
 describe('processClarificationResponse', () => {
+    test.each([null, '222222222222222222'])('refuses a legacy action when the stored message is %p', async discord_message_id => {
+        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, discord_message_id }] });
+        const interaction = makeInteraction();
+        await processClarificationResponse(100, 0, interaction);
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
+    });
+
+    test('refuses an index with no option on the saved notification', async () => {
+        db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
+        const interaction = makeInteraction();
+        await processClarificationResponse(100, 4, interaction);
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: 'Invalid library selection' }));
+    });
+
+    test('refuses when the option at the presented index has a different button ID', async () => {
+        db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
+        const interaction = makeInteraction();
+        interaction.message.components[0].components[0].customId = 'ai_clarify_100_1';
+        await processClarificationResponse(100, 0, interaction);
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: 'Invalid library selection' }));
+    });
+
     test('calls deferUpdate before performing DB work', async () => {
         const callOrder = [];
 
@@ -493,9 +549,6 @@ describe('processClarificationResponse', () => {
                 rows: [{
                     ...MOCK_CLASSIFICATION,
                     status: 'awaiting_decision',
-                    policy_question: {
-                        options: [{ label: 'Movies', library_id: 10 }]
-                    }
                 }]
             })
             .mockResolvedValueOnce({
@@ -522,9 +575,10 @@ describe('processClarificationResponse', () => {
         expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
             100,
             10,
-            'Movies',
+            'Option A',
             'testUser',
             false,
+            { discordMessageId: savedMessageId },
         );
         expect(classificationRoutingService.routeToArr).toHaveBeenCalledWith(
             expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
@@ -605,9 +659,6 @@ describe('processClarificationResponse', () => {
                 ...MOCK_CLASSIFICATION,
                 status: 'completed',
                 library_id: 10,
-                policy_question: {
-                    options: [{ label: 'Movies', library_id: 10 }]
-                }
             }]
         });
 
@@ -629,9 +680,6 @@ describe('processClarificationResponse', () => {
                 ...MOCK_CLASSIFICATION,
                 status: 'awaiting_decision',
                 library_id: 10,
-                policy_question: {
-                    options: [{ label: 'Movies', library_id: 10 }]
-                }
             }]
         });
         clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleError);
@@ -655,9 +703,6 @@ describe('processClarificationResponse', () => {
                 ...MOCK_CLASSIFICATION,
                 status: 'awaiting_decision',
                 library_id: 10,
-                policy_question: {
-                    options: [{ label: 'Movies', library_id: 10 }]
-                }
             }]
         });
         clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleQuestionError);
@@ -681,9 +726,6 @@ describe('processClarificationResponse', () => {
                 ...MOCK_CLASSIFICATION,
                 status: 'awaiting_decision',
                 library_id: 10,
-                policy_question: {
-                    options: [{ label: 'Movies', library_id: 10 }]
-                }
             }]
         });
         clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(new Error('Database unavailable'));

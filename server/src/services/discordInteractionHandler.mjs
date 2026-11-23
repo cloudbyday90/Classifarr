@@ -16,6 +16,10 @@ import { processClarificationResponse as clarificationHandlerProcessClarificatio
 import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
 import { parseDiscordPolicyQuestionAnswerButton } from './discordPolicyQuestionAnswerButton.mjs';
+import { isDiscordId } from './discordDeliveryContract.mjs';
+import {
+  DISCORD_LEGACY_MESSAGE_REQUIRED, parseDiscordLegacyClarificationButton, parseDiscordLibrarySelectValues,
+} from './discordLegacyControlIdentity.mjs';
 
 const logger = createLogger('discordInteractionHandler');
 
@@ -39,13 +43,12 @@ export async function handleInteraction(interaction) {
         );
       } else if (action === 'ai') {
         if (parts[1] === 'clarify') {
-          const classificationId = parts[2];
-          const optionIndex = parseInt(parts[3]);
-          await processClarificationResponse(
-            classificationId,
-            optionIndex,
-            interaction,
-          );
+          const answer = parseDiscordLegacyClarificationButton(customId);
+          if (!answer) {
+            await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
+            return;
+          }
+          await processClarificationResponse(answer.classificationId, answer.optionIndex, interaction);
         } else if (parts[1] === 'answer') {
           const answer = parseDiscordPolicyQuestionAnswerButton(customId);
           if (!answer) {
@@ -81,14 +84,18 @@ export async function handleInteraction(interaction) {
           interaction,
         );
       }
-    } else if (interaction.isStringSelectMenu()) {
-      const [classificationId, newLibraryId] =
-        interaction.values[0].split('_');
-      await processCorrection(
-        parseInt(classificationId),
-        parseInt(newLibraryId),
-        interaction,
-      );
+    } else if (interaction.isStringSelectMenu() && interaction.customId === 'library_select') {
+      const selection = parseDiscordLibrarySelectValues(interaction.values);
+      if (!selection) {
+        await interaction.reply({ content: 'Invalid library selection', ephemeral: true });
+        return;
+      }
+      const discordMessageId = interaction.message?.id;
+      if (!isDiscordId(discordMessageId)) {
+        await interaction.reply({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
+        return;
+      }
+      await processCorrection(selection.classificationId, selection.newLibraryId, interaction, { discordMessageId });
     }
   } catch (error) {
     logger.error('Error handling Discord interaction:', error);
@@ -105,8 +112,8 @@ export async function handleInteraction(interaction) {
   }
 }
 
-export async function processCorrection(classificationId, newLibraryId, interaction) {
-  return correctionHandlerProcessCorrection(classificationId, newLibraryId, interaction);
+export async function processCorrection(classificationId, newLibraryId, interaction, options = undefined) {
+  return correctionHandlerProcessCorrection(classificationId, newLibraryId, interaction, options);
 }
 
 export async function processClarificationResponse(

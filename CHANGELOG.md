@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Legacy Discord controls** — Require exact safe History IDs and a matching
+  saved notification before applying a clarification button or library
+  selection. Recheck the message under the write lock. See the
+  [outcome](docs/architecture/discord-legacy-control-boundary-outcome.md).
+
 - **Discord compact answers** — Preserve exact BIGINT History IDs and full
   fingerprints in fingerprinted answer buttons. Keep stored-message checks
   and completed replay. See the

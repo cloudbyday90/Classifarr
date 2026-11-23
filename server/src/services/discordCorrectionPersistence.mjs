@@ -1,12 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
+import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 
 /** No Discord or routing I/O inside the transaction. */
-export async function persistDiscordCorrection(db, outcomeService, { classificationId, newLibraryId, actor }) {
+export async function persistDiscordCorrection(db, outcomeService, { classificationId, newLibraryId, actor, discordMessageId }) {
   return db.withTransaction(async client => {
     const { rows: [classification] } = await client.query(
       'SELECT * FROM classification_history WHERE id = $1 FOR UPDATE', [classificationId]);
     if (!classification) return { message: 'Classification not found' };
+    if (discordMessageId !== undefined && !matchesDiscordLegacyMessage(classification, discordMessageId)) {
+      return { message: DISCORD_LEGACY_MESSAGE_REQUIRED };
+    }
     const { rows: [library] } = await client.query(
       'SELECT name, media_type, is_active FROM libraries WHERE id = $1 FOR SHARE', [newLibraryId]);
     if (!library) return { message: 'Library not found' };

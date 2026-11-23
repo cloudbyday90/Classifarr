@@ -12,10 +12,10 @@ import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
-import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
-import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
-import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
+import { parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { isDiscordId } from './discordDeliveryContract.mjs';
+import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
 const logger = createLogger('discordClarificationHandler');
@@ -27,8 +27,13 @@ export async function processClarificationResponse(
 ) {
   classificationId = parsePendingResolutionHistoryId(classificationId);
   try {
-    if (classificationId === null) {
+    if (classificationId === null || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 4) {
       await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
+      return;
+    }
+    const discordMessageId = interaction.message?.id;
+    if (!isDiscordId(discordMessageId)) {
+      await interaction.reply({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
       return;
     }
     await interaction.deferUpdate();
@@ -48,52 +53,27 @@ export async function processClarificationResponse(
 
     const classification = classResult.rows[0];
 
-    let selectedLabel = `Option ${optionIndex + 1}`;
-    let libraryId = classification.library_id;
-    let routingOutcome = { routed: false, reason: null, error: null };
-    let policyQuestion = null;
-
-    if (classification.policy_question) {
-      policyQuestion =
-        typeof classification.policy_question === 'string'
-          ? notificationBuilder.safeParseJson(classification.policy_question)
-          : classification.policy_question;
-
-      // Policy-runtime questions must use the versioned answer contract. An
-      // older Discord button contains only a mutable option index and cannot
-      // safely authorize a policy resolution after the question has changed.
-      if (
-        isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion) ||
-        getRuntimeQuestionNormalizationStatus(policyQuestion).actionable
-      ) {
-        await interaction.followUp({
-          content: 'This policy question must be answered from the latest Classifarr queue state. Retry Classification to refresh it.',
-          ephemeral: true,
-        });
-        return;
-      }
-
-      if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
-        const selectedOption = policyQuestion.options[optionIndex];
-        selectedLabel = selectedOption.label;
-
-        if (selectedOption.library_id) {
-          libraryId = selectedOption.library_id;
-        }
-      }
-    } else {
-      const selectedButton =
-        interaction.message.components[0]?.components[optionIndex];
-      selectedLabel = selectedButton?.label || selectedLabel;
+    if (!matchesDiscordLegacyMessage(classification, discordMessageId)) {
+      await interaction.followUp({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
+      return;
     }
-
-    const existingLibraryId = notificationBuilder.toFiniteNumber(classification.library_id);
-    if (
-      ['completed', 'routed', 'corrected', 'verified'].includes(classification.status) &&
-      existingLibraryId !== null &&
-      libraryId !== null &&
-      existingLibraryId === libraryId
-    ) {
+    // An index-only button carries no proof of a stored policy question.
+    if (classification.policy_question != null) {
+      await interaction.followUp({
+        content: 'This policy question must be answered from the latest Classifarr queue state. Retry Classification to refresh it.',
+        ephemeral: true,
+      });
+      return;
+    }
+    const selectedButton = interaction.message.components?.[0]?.components?.[optionIndex];
+    const selectedLabel = selectedButton?.label;
+    const libraryId = parseCanonicalDatabaseInt32Id(classification.library_id);
+    if (selectedButton?.customId !== `ai_clarify_${classificationId}_${optionIndex}` ||
+        typeof selectedLabel !== 'string' || !selectedLabel.trim() || libraryId === null) {
+      await interaction.followUp({ content: 'Invalid library selection', ephemeral: true });
+      return;
+    }
+    if (['completed', 'routed', 'corrected', 'verified'].includes(classification.status)) {
       await interaction.followUp({
         content: '\u2705 Already processed \u2014 no changes made.',
         ephemeral: true,
@@ -101,6 +81,7 @@ export async function processClarificationResponse(
       return;
     }
 
+    let routingOutcome = { routed: false, reason: null, error: null };
     try {
       const resolveResult = await clarificationService.resolvePolicyQuestion(
         classificationId,
@@ -108,6 +89,7 @@ export async function processClarificationResponse(
         selectedLabel,
         interaction.user.username,
         false,
+        { discordMessageId },
       );
 
       if (resolveResult.alreadyResolved) {
@@ -122,6 +104,10 @@ export async function processClarificationResponse(
         routingOutcome = await routeAfterClarification(classificationId);
       }
     } catch (resolveError) {
+      if (resolveError?.code === 'legacy_discord_message_mismatch') {
+        await interaction.followUp({ content: DISCORD_LEGACY_MESSAGE_REQUIRED, ephemeral: true });
+        return;
+      }
       if (resolveError?.statusCode === 404) {
         await interaction.followUp({
           content: 'Classification not found',
@@ -166,14 +152,8 @@ export async function processClarificationResponse(
       return;
     }
 
-    let libraryName = selectedLabel;
-    if (libraryId) {
-      const libResult = await db.query(
-        'SELECT name FROM libraries WHERE id = $1',
-        [libraryId],
-      );
-      libraryName = libResult.rows[0]?.name || selectedLabel;
-    }
+    const libResult = await db.query('SELECT name FROM libraries WHERE id = $1', [libraryId]);
+    const libraryName = libResult.rows[0]?.name || selectedLabel;
 
     const routingStatusText = routingOutcome.routed
       ? `\u2705 Routed to ${libraryName}`

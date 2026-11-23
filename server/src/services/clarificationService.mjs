@@ -98,9 +98,12 @@ class ClarificationService {
 
   async recordResponse(...args) { return recordResponse(...args); }
 
-  async resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true) {
+  async resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, {
+    discordMessageId,
+  } = {}) {
     return _resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule, {
-      policyQuestionContext: this.policyQuestionContext
+      policyQuestionContext: this.policyQuestionContext,
+      discordMessageId,
     });
   }
 

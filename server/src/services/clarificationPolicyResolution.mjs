@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { policyNativePendingResolutionProvenanceService } from './policyNativePendingResolutionProvenance.mjs';
@@ -77,6 +78,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
     policyQuestionContext,
     answerContract = null,
     allowBigintHistoryId = false,
+    discordMessageId = undefined,
     runtimeDestinationEvidenceCommandService = null,
     runtimeDestinationEvidenceAuthorizationContext = null,
     reviewCorpusCaptureService = null,
@@ -113,7 +115,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             }
 
             const existenceCheck = await client.query(
-                `SELECT status, library_id, library_name, metadata
+                `SELECT status, library_id, library_name, metadata, discord_message_id
                  FROM classification_history
                  WHERE id = $1`,
                 [classificationId]
@@ -126,6 +128,9 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             }
 
             const existingClassification = existenceCheck.rows[0];
+            if (discordMessageId !== undefined && !matchesDiscordLegacyMessage(existingClassification, discordMessageId)) {
+                throw createStatusError(DISCORD_LEGACY_MESSAGE_REQUIRED, 403, 'legacy_discord_message_mismatch');
+            }
             const existingLibraryId = Number(existingClassification.library_id);
             const existingMetadata = typeof existingClassification.metadata === 'string'
                 ? (safeParseJson(existingClassification.metadata) || {})
@@ -160,6 +165,14 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const classification = classResult.rows[0];
+        if (discordMessageId !== undefined) {
+            if (!matchesDiscordLegacyMessage(classification, discordMessageId)) {
+                throw createStatusError(DISCORD_LEGACY_MESSAGE_REQUIRED, 403, 'legacy_discord_message_mismatch');
+            }
+            if (classification.policy_question != null || classification.library_id !== selectedLibraryId) {
+                throw createStatusError('Policy question is stale and must be retried', 409, 'policy_question_stale');
+            }
+        }
         const selectedLibraryResult = await client.query(
             `SELECT id, name, arr_type, media_type, is_active
              FROM libraries
