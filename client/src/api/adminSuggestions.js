@@ -34,6 +34,7 @@ export function getSuggestion(id) {
 
 const invalidSuggestionId = 'Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'
 const suggestionPageStatuses = new Set(['pending', 'applied', 'rejected', 'superseded', 'all'])
+const reviewWriteOptions = { skipAutomaticRetry: true, timeout: 60_000 }
 
 function positiveIntegerId(id) {
   const text = typeof id === 'number' ? String(id) : id
@@ -58,9 +59,10 @@ export function getSuggestionPage({ status = 'pending', policyId, beforeId } = {
 }
 
 /** Reads bounded proposal and status fields for a signed-in member or administrator. */
-export function getSuggestionProposal(id) {
+export function getSuggestionProposal(id, { reconcile = false } = {}) {
   const text = positiveIntegerId(id)
   if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
+  if (reconcile) return getDataRequest(`/suggestions/${text}/proposal`, { skipAutomaticRetry: true, timeout: 10_000 })
   return getDataRequest(`/suggestions/${text}/proposal`)
 }
 
@@ -81,14 +83,14 @@ export function getSuggestionEvidence(id, afterPosition) {
 export function applySuggestion(id) {
   const text = positiveIntegerId(id)
   if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
-  return apiClient.post(`/suggestions/${text}/apply`)
+  return apiClient.post(`/suggestions/${text}/apply`, undefined, reviewWriteOptions)
 }
 
 /** Rejects a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function rejectSuggestion(id, reason) {
   const text = positiveIntegerId(id)
   if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
-  return apiClient.post(`/suggestions/${text}/reject`, { reason })
+  return apiClient.post(`/suggestions/${text}/reject`, { reason }, reviewWriteOptions)
 }
 
 /** Starts one bounded analysis batch. Supply its continuation only for a new manual request. */

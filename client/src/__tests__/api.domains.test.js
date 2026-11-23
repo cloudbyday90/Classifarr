@@ -413,7 +413,7 @@ describe('api domain modules', () => {
     apiClient.post.mockResolvedValueOnce({ data: { ok: true } })
 
     await expect(adminApi.rejectSuggestion(12, 'bad fit')).resolves.toEqual({ data: { ok: true } })
-    expect(apiClient.post).toHaveBeenCalledWith('/suggestions/12/reject', { reason: 'bad fit' })
+    expect(apiClient.post).toHaveBeenCalledWith('/suggestions/12/reject', { reason: 'bad fit' }, { skipAutomaticRetry: true, timeout: 60_000 })
 
     apiClient.post.mockResolvedValueOnce({ data: { id: 4 } })
 

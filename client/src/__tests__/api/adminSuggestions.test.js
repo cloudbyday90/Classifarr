@@ -127,6 +127,15 @@ describe('adminSuggestions', () => {
     expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/suggestions/2147483647/proposal')
   })
 
+  it('checks the same bounded proposal once with a finite wait', async () => {
+    const proposal = { id: 7, status: 'applied' }
+    mockGetDataRequest.mockResolvedValueOnce(proposal)
+    await expect(getSuggestionProposal(7, { reconcile: true })).resolves.toBe(proposal)
+    expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/suggestions/7/proposal', {
+      skipAutomaticRetry: true, timeout: 10_000,
+    })
+  })
+
   it.each(['01', '3/4', 0, [3], 2147483648])('rejects invalid proposal ID %s before dispatch', async id => {
     await expect(getSuggestionProposal(id)).rejects.toThrow('Invalid suggestion ID')
     expect(mockGetDataRequest).not.toHaveBeenCalled()
@@ -157,14 +166,14 @@ describe('adminSuggestions', () => {
   it('applySuggestion calls POST with id in URL', async () => {
     mockPost.mockResolvedValueOnce({ data: { applied: true } })
     const result = await applySuggestion(3)
-    expect(mockPost).toHaveBeenCalledWith('/suggestions/3/apply')
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/3/apply', undefined, { skipAutomaticRetry: true, timeout: 60_000 })
     expect(result).toEqual({ data: { applied: true } })
   })
 
   it('accepts the largest database suggestion ID as exact decimal text', async () => {
     mockPost.mockResolvedValueOnce({ data: { success: true } })
     await applySuggestion('2147483647')
-    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/apply')
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/apply', undefined, { skipAutomaticRetry: true, timeout: 60_000 })
   })
 
   it.each(['03', '3x', '3\n', '2e0', '3/4', '2147483648', 2147483648, 0, -1, 1.5, null, [3]])(
@@ -177,14 +186,14 @@ describe('adminSuggestions', () => {
   it('rejectSuggestion calls POST with id in URL and reason', async () => {
     mockPost.mockResolvedValueOnce({ data: { rejected: true } })
     const result = await rejectSuggestion(7, 'Not applicable')
-    expect(mockPost).toHaveBeenCalledWith('/suggestions/7/reject', { reason: 'Not applicable' })
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/7/reject', { reason: 'Not applicable' }, { skipAutomaticRetry: true, timeout: 60_000 })
     expect(result).toEqual({ data: { rejected: true } })
   })
 
   it('rejects a suggestion at the maximum exact ID without changing the request body', async () => {
     mockPost.mockResolvedValueOnce({ data: { success: true } })
     await rejectSuggestion('2147483647', 'Dismiss')
-    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/reject', { reason: 'Dismiss' })
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/reject', { reason: 'Dismiss' }, { skipAutomaticRetry: true, timeout: 60_000 })
   })
 
   it.each(['03', '3x', '3/4', '2147483648', 0, 1.5, null, [3]])(

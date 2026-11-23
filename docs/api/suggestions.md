@@ -33,6 +33,11 @@ The tuning dashboard uses this page and loads an individual proposal when the
 user opens Details. Its navigation and counts describe the current page. It
 retains the existing Policy filter for administrators.
 
+If a dashboard Apply or Reject response is uncertain, the dashboard reads the
+same suggestion's proposal to check its saved status. Check status repeats only
+that read. The result describes the saved row without attributing its state to
+the original request.
+
 ## Read a proposal
 
 Use `GET /api/suggestions/:id/proposal` for a single signed-in proposal lookup.

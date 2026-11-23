@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Suggestion reviews** — Apply and Reject send one request per confirmation.
+  If the response is uncertain, the dashboard checks the saved status and
+  offers a read-only Check status action. See the
+  [outcome](docs/architecture/suggestion-review-acknowledgement-outcome.md).
+
 - **Policy Tuning Suggestions** — The dashboard now shows one bounded page at
   a time, supports All statuses, and loads a proposal when Details opens. Page
   counts, keyboard navigation, and proposal review use the current results.

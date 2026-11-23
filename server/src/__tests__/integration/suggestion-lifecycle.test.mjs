@@ -213,6 +213,58 @@ test.each(suggestionPaths)('%s preserves member reads and records the administra
     expect(await snapshot()).toEqual(after);
 });
 
+test.each([['apply', 'applied'], ['reject', 'rejected']])(
+    'a dropped %s response leaves one saved transition visible through the proposal route', async (action, status) => {
+        const path = `/api/suggestions/${suggestionId}`;
+        const droppingApp = createMountedTestApp({ basePath: '/api/suggestions', router: suggestionsRouter,
+            middleware: [authenticateToken, (req, res, next) => {
+                if (req.method === 'POST' && req.path === `${path}/${action}`) {
+                    const sendJson = res.json.bind(res);
+                    res.json = body => {
+                        if (res.statusCode !== 200) return sendJson(body);
+                        res.destroy();
+                        return res;
+                    };
+                }
+                next();
+            }] });
+        const write = signedIn(request(droppingApp).post(`${path}/${action}`)).send({ reason: 'Fixture reason' });
+        await expect(write).rejects.toMatchObject({ code: 'ECONNRESET' });
+
+        const saved = await signedIn(request(app).get(`${path}/proposal`)).expect(200).expect('Cache-Control', 'no-store');
+        expect(saved.body).toMatchObject({ id: suggestionId, policy_id: policyId, status });
+        expect(saved.body).not.toHaveProperty('reviewed_by');
+        const after = await snapshot();
+        expect(after.suggestion).toMatchObject({ status, reviewed_by: userId });
+        expect(after.audit).toHaveLength(action === 'apply' ? 1 : 0);
+        expect(after.policy.auto_classify_threshold).toBe(action === 'apply' ? 90 : 85);
+    });
+
+test('a saved pending status can precede completion of the review already in flight', async () => {
+    const path = `/api/suggestions/${suggestionId}`;
+    const blocker = await db.connect();
+    let completion;
+    try {
+        await blocker.query('BEGIN');
+        await blocker.query('SELECT id FROM library_policies WHERE id=$1 FOR UPDATE', [policyId]);
+        const write = signedIn(request(app).post(`${path}/reject`)).send({ reason: 'Fixture reason' });
+        completion = Promise.allSettled([write]);
+        await waitForReviews(1);
+        const whileWaiting = await signedIn(request(app).get(`${path}/proposal`)).expect(200);
+        expect(whileWaiting.body.status).toBe('pending');
+        await blocker.query('COMMIT');
+        const [finished] = await completion;
+        expect(finished.value?.status).toBe(200);
+        const saved = await signedIn(request(app).get(`${path}/proposal`)).expect(200);
+        expect(saved.body.status).toBe('rejected');
+        expect((await snapshot()).suggestion.reviewed_by).toBe(userId);
+    } finally {
+        await blocker.query('ROLLBACK');
+        if (completion) await completion;
+        blocker.release();
+    }
+});
+
 test('the bounded list authenticates and rejects invalid query shapes before reading suggestions', async () => {
     const path = '/api/suggestions/page';
     const read = jest.spyOn(db, 'query');

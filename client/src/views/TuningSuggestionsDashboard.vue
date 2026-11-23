@@ -72,8 +72,28 @@
     </div>
 
     <p
+      role="status"
+      aria-label="Suggestion review status"
+      aria-atomic="true"
+      :class="reviewStatusMessage ? 'text-sm text-gray-300' : 'sr-only'"
+    >
+      {{ reviewStatusMessage }}
+    </p>
+    <Button
+      v-if="reviewStatusMessage"
+      variant="outline-solid"
+      size="sm"
+      :aria-disabled="checkingReviewStatus"
+      class="focus-visible:outline-2 focus-visible:outline-primary aria-disabled:opacity-60"
+      @click="checkReviewStatus"
+    >
+      Check status
+    </Button>
+
+    <p
       ref="listStatus"
       role="status"
+      aria-label="Suggestion page status"
       aria-atomic="true"
       tabindex="-1"
       class="text-sm text-gray-300"
@@ -115,6 +135,7 @@
     </nav>
 
     <section
+      ref="suggestionResults"
       aria-label="Suggestion results"
       :aria-busy="state === 'loading'"
       class="space-y-4"
@@ -151,13 +172,15 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { nextTick, ref, shallowRef, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import api from '@/api'
 import Button from '@/components/common/Button.vue'
 import SuggestionCard from '@/components/suggestions/SuggestionCard.vue'
 import SuggestionDetailsDialog from '@/components/suggestions/SuggestionDetailsDialog.vue'
 import RejectModal from '@/components/suggestions/RejectModal.vue'
 import { useSuggestionPages } from '@/composables/useSuggestionPages'
+import { useSuggestionReviewStatus } from '@/composables/useSuggestionReviewStatus'
+import { acknowledgesSuggestionReview, isUnconfirmedSuggestionReview } from '@/utils/suggestionReviewAcknowledgement'
 import { isSuggestionAdministratorRefusal, isSuggestionReviewConflict } from '@/utils/suggestionReviewErrors'
 
 const policies = ref([])
@@ -172,11 +195,14 @@ const selectedSuggestion = ref(null)
 const rejectingSuggestion = ref(null)
 const dashboardHeading = useTemplateRef('dashboardHeading')
 const listStatus = useTemplateRef('listStatus')
+const suggestionResults = useTemplateRef('suggestionResults')
 let reviewOpener = null
 let active = true
 
 const { page, state, statusMessage, canShowNewer, canShowOlder, showNewer, showOlder, retry, reset } =
   useSuggestionPages(statusFilter, policyFilter)
+const { message: reviewStatusMessage, checking: checkingReviewStatus, check: checkReviewStatus,
+  start: observeReviewStatus, clear: clearReviewStatus } = useSuggestionReviewStatus(refreshAfterObservation)
 
 watch([statusFilter, policyFilter], () => { retryRequest.value = null }, { flush: 'sync' })
 
@@ -239,38 +265,78 @@ function showRejectModal(proposal) {
   selectedSuggestion.value = null
 }
 
-function refreshAfterReview() {
+function closeReview() {
   selectedSuggestion.value = null
   rejectingSuggestion.value = null
+}
+
+async function refreshResults() {
+  const focusedResult = document.activeElement
+  const wasInResults = suggestionResults.value?.contains(focusedResult)
   retryRequest.value = null
-  return reset()
+  const loading = reset()
+  if (wasInResults) {
+    await nextTick()
+    if (active && !focusedResult.isConnected && document.activeElement === document.body) dashboardHeading.value?.focus()
+  }
+  return loading
+}
+
+function refreshAfterReview() {
+  closeReview()
+  return refreshResults()
+}
+
+function refreshAfterObservation(id) {
+  if (selectedSuggestion.value?.id === id || rejectingSuggestion.value?.id === id) closeReview()
+  return refreshResults()
+}
+
+function recoverUnconfirmedReview(suggestion) {
+  closeReview()
+  return observeReviewStatus(suggestion)
+}
+
+async function handleReviewError(error, action, suggestion) {
+  if (!active) return
+  if (isUnconfirmedSuggestionReview(error)) return recoverUnconfirmedReview(suggestion)
+  if (error?.response?.status === 401) {
+    alert('Your session could not authorize the review. Sign in again before submitting a new review.')
+  } else if (isSuggestionAdministratorRefusal(error)) {
+    alert(`Ask a Classifarr administrator to review and ${action} this suggestion.`)
+  } else if (isSuggestionReviewConflict(error)) {
+    await refreshAfterReview()
+    if (!active) return
+    const code = error.response?.data?.code
+    alert(code === 'SUGGESTION_EVIDENCE_BUSY'
+      ? 'Suggestion evidence is being updated. Please try again later.'
+      : code === 'SUGGESTION_EVIDENCE_STALE' || code === 'SUGGESTION_EVIDENCE_REQUIRED'
+        ? 'Suggestion evidence needs refreshing. Run analysis before applying a new suggestion.'
+        : 'This suggestion has changed and was not updated by this request.')
+  } else {
+    console.error(`Failed to ${action} suggestion:`, error)
+    alert(`Failed to ${action} suggestion: ${error.message}`)
+  }
 }
 
 async function reviewSuggestion(action, suggestion, reason) {
   reviewBusy.value = true
+  clearReviewStatus()
   try {
-    if (action === 'apply') await api.applySuggestion(suggestion.id)
-    else await api.rejectSuggestion(suggestion.id, reason)
+    let response
+    try {
+      response = action === 'apply' ? await api.applySuggestion(suggestion.id) : await api.rejectSuggestion(suggestion.id, reason)
+    } catch (error) {
+      await handleReviewError(error, action, suggestion)
+      return
+    }
     if (!active) return
+    if (!acknowledgesSuggestionReview(response, action, suggestion)) {
+      await recoverUnconfirmedReview(suggestion)
+      return
+    }
     alert(action === 'apply' ? 'Suggestion applied successfully!' : 'Suggestion rejected')
     await refreshAfterReview()
-  } catch (error) {
-    if (!active) return
-    if (isSuggestionAdministratorRefusal(error)) {
-      alert(`Ask a Classifarr administrator to review and ${action} this suggestion.`)
-    } else if (isSuggestionReviewConflict(error)) {
-      await refreshAfterReview()
-      if (!active) return
-      const code = error.response?.data?.code
-      alert(code === 'SUGGESTION_EVIDENCE_BUSY'
-        ? 'Suggestion evidence is being updated. Please try again later.'
-        : code === 'SUGGESTION_EVIDENCE_STALE' || code === 'SUGGESTION_EVIDENCE_REQUIRED'
-          ? 'Suggestion evidence needs refreshing. Run analysis before applying a new suggestion.'
-          : 'This suggestion has changed and was not updated by this request.')
-    } else {
-      console.error(`Failed to ${action} suggestion:`, error)
-      alert(`Failed to ${action} suggestion: ${error.message}`)
-    }
   } finally {
     reviewBusy.value = false
   }

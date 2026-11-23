@@ -7,11 +7,14 @@ import { isSuggestionReviewConflict } from '../utils/suggestionReviewErrors'
 
 vi.mock('../api', () => ({ default: {
   getSuggestionPage: vi.fn(), getPolicies: vi.fn(), getUserProfile: vi.fn(),
-  applySuggestion: vi.fn(), rejectSuggestion: vi.fn(),
+  applySuggestion: vi.fn(), rejectSuggestion: vi.fn(), getSuggestionProposal: vi.fn(),
 } }))
 
 const suggestion = { id: 1, policy_id: 2, status: 'pending', suggestion_type: 'adjust_threshold' }
 const proposal = { ...suggestion, proposal_status: 'available', suggestion_config: { recommended: 90 } }
+const applyAck = { status: 200, data: { success: true, result: {
+  success: true, suggestionId: '1', policyId: 2, type: 'adjust_threshold',
+} } }
 const lastPage = { items: [suggestion], nextBeforeId: null }
 const firstPage = {
   items: Array.from({ length: 20 }, (_, index) => ({ ...suggestion, id: 21 - index })),
@@ -166,10 +169,81 @@ test('an administrator applies once after confirmation and then resets the page'
   const applied = wrapper.vm.applySuggestion(proposal)
   await wrapper.vm.applySuggestion(proposal)
   expect(api.applySuggestion).toHaveBeenCalledExactlyOnceWith(suggestion.id)
-  write.resolve({ data: { success: true } })
+  write.resolve(applyAck)
   await applied
   expect(api.getSuggestionPage).toHaveBeenCalledTimes(2)
   expect(alert).toHaveBeenCalledWith('Suggestion applied successfully!')
+  expect(api.getSuggestionProposal).not.toHaveBeenCalled()
+})
+
+test.each([
+  ['connection loss', () => Promise.reject({ isAxiosError: true })],
+  ['server failure', () => Promise.reject({ response: { status: 503 } })],
+  ['request timeout response', () => Promise.reject({ response: { status: 408 } })],
+  ['incorrect acknowledgement', () => Promise.resolve({ ...applyAck, data: { ...applyAck.data,
+    result: { ...applyAck.data.result, policyId: 99 } } })],
+  ['contradictory acknowledgement', () => Promise.resolve({ ...applyAck, data: { ...applyAck.data,
+    result: { ...applyAck.data.result, status: 'rejected' } } })],
+])('an unconfirmed %s observes saved status without granting success', async (_case, reply) => {
+  await mountDashboard()
+  await openDetails()
+  api.applySuggestion.mockImplementationOnce(reply)
+  api.getSuggestionProposal.mockResolvedValueOnce({ ...proposal, status: 'rejected' })
+  await wrapper.vm.applySuggestion(proposal)
+  expect(api.applySuggestion).toHaveBeenCalledExactlyOnceWith(1)
+  expect(api.getSuggestionProposal).toHaveBeenCalledExactlyOnceWith(1, { reconcile: true })
+  expect(wrapper.get('[aria-label="Suggestion review status"]').text()).toContain('Saved status is rejected.')
+  expect(wrapper.findComponent({ name: 'SuggestionDetailsDialog' }).exists()).toBe(false)
+  expect(alert).not.toHaveBeenCalled()
+  expect(api.getSuggestionPage).toHaveBeenCalledTimes(2)
+})
+
+test('a pending snapshot keeps the outcome unknown and status buttons never submit again', async () => {
+  await mountDashboard()
+  await openDetails()
+  wrapper.vm.showRejectModal(proposal)
+  api.rejectSuggestion.mockRejectedValueOnce({ isAxiosError: true, code: 'ECONNABORTED' })
+  api.getSuggestionProposal.mockResolvedValueOnce({ ...proposal, id: 99, status: 'applied' })
+  await wrapper.vm.confirmReject('Dismiss')
+  expect(wrapper.get('[aria-label="Suggestion review status"]').text()).toContain('could not be verified')
+  const checked = Promise.withResolvers()
+  api.getSuggestionProposal.mockReturnValueOnce(checked.promise)
+  const read = wrapper.vm.checkReviewStatus()
+  await wrapper.vm.checkReviewStatus()
+  checked.resolve(proposal)
+  await read
+  expect(wrapper.get('[aria-label="Suggestion review status"]').text()).toContain('may still finish')
+  await wrapper.vm.confirmReject('Dismiss')
+  expect(api.rejectSuggestion).toHaveBeenCalledExactlyOnceWith(1, 'Dismiss')
+  expect(api.getSuggestionProposal).toHaveBeenCalledTimes(2)
+  expect(api.getSuggestionPage).toHaveBeenCalledTimes(1)
+})
+
+test('a session refusal explains sign-in without entering uncertainty recovery', async () => {
+  await mountDashboard()
+  await openDetails()
+  api.applySuggestion.mockRejectedValueOnce({ response: { status: 401 } })
+  await wrapper.vm.applySuggestion(proposal)
+  expect(alert).toHaveBeenCalledExactlyOnceWith('Your session could not authorize the review. Sign in again before submitting a new review.')
+  expect(api.getSuggestionProposal).not.toHaveBeenCalled()
+  expect(wrapper.findComponent({ name: 'SuggestionDetailsDialog' }).exists()).toBe(true)
+})
+
+test('a late terminal observation closes a freshly reopened form for that suggestion', async () => {
+  const statusRead = Promise.withResolvers()
+  await mountDashboard()
+  await openDetails()
+  api.applySuggestion.mockRejectedValueOnce({ isAxiosError: true })
+  api.getSuggestionProposal.mockReturnValueOnce(statusRead.promise)
+  const submitted = wrapper.vm.applySuggestion(proposal)
+  await flushPromises()
+  await openDetails()
+  expect(wrapper.findComponent({ name: 'SuggestionDetailsDialog' }).exists()).toBe(true)
+  statusRead.resolve({ ...proposal, status: 'applied' })
+  await submitted
+  expect(wrapper.findComponent({ name: 'SuggestionDetailsDialog' }).exists()).toBe(false)
+  await wrapper.vm.applySuggestion(proposal)
+  expect(api.applySuggestion).toHaveBeenCalledTimes(1)
 })
 
 test('uses explicit All, combines it with the policy picker, and ignores late filter results', async () => {
@@ -182,7 +256,7 @@ test('uses explicit All, combines it with the policy picker, and ignores late fi
   first.resolve(firstPage)
   await flushPromises()
   expect(api.getSuggestionPage.mock.calls).toEqual([[{ status: 'pending' }], [{ status: 'all' }], [{ status: 'all', policyId: 2 }]])
-  expect(wrapper.get('[role="status"]').text()).toBe('Page 1. 1 suggestion on this page.')
+  expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toBe('Page 1. 1 suggestion on this page.')
   expect(wrapper.findAllComponents({ name: 'SuggestionCard' })).toHaveLength(1)
 })
 
@@ -191,11 +265,11 @@ test('retains the current page on failure, retries the exact cursor, and re-read
   await mountDashboard()
   api.getSuggestionPage.mockRejectedValueOnce(new Error('Unavailable'))
   await wrapper.vm.showOlder()
-  expect(wrapper.get('[role="status"]').text()).toContain('previous results are still shown')
+  expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toContain('previous results are still shown')
   expect(wrapper.findAllComponents({ name: 'SuggestionCard' })).toHaveLength(20)
   api.getSuggestionPage.mockResolvedValueOnce({ items: [], nextBeforeId: null })
   await wrapper.vm.retry()
-  expect(wrapper.get('[role="status"]').text()).toContain('No suggestions at this position')
+  expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toContain('No suggestions at this position')
   await wrapper.vm.showNewer()
   expect(api.getSuggestionPage.mock.calls).toEqual([[{ status: 'pending' }], [{ status: 'pending', beforeId: 2 }],
     [{ status: 'pending', beforeId: 2 }], [{ status: 'pending' }]])
@@ -206,7 +280,7 @@ test('rejects a page that repeats its own boundary', async () => {
   await mountDashboard()
   api.getSuggestionPage.mockResolvedValueOnce({ items: [{ ...suggestion, id: 2 }], nextBeforeId: null })
   await wrapper.vm.showOlder()
-  expect(wrapper.get('[role="status"]').text()).toContain('Could not load the requested page')
+  expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toContain('Could not load the requested page')
   expect(wrapper.findAllComponents({ name: 'SuggestionCard' })).toHaveLength(20)
 })
 
@@ -220,11 +294,11 @@ test('retries the current filter while an obsolete retry is still pending', asyn
   api.getSuggestionPage.mockRejectedValueOnce(new Error('All unavailable'))
   await wrapper.find('select[aria-label="Suggestion status"]').setValue('all')
   await flushPromises()
-  expect(wrapper.get('[role="status"]').text()).toBe('Could not load suggestions.')
+  expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toBe('Could not load suggestions.')
   try {
     await wrapper.vm.retryList(retryEvent)
     expect(api.getSuggestionPage).toHaveBeenNthCalledWith(4, { status: 'all' })
-    expect(wrapper.get('[role="status"]').text()).toBe('Page 1. 1 suggestion on this page.')
+    expect(wrapper.get('[aria-label="Suggestion page status"]').text()).toBe('Page 1. 1 suggestion on this page.')
   } finally {
     oldRetry.resolve(firstPage)
     await obsolete

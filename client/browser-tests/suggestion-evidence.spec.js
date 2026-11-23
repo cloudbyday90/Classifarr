@@ -12,6 +12,7 @@ const firstRequest = '/api/suggestions/page?status=pending'
 async function mockSuggestionRequests(page, role, readEvidence, {
   readPage = () => ({ items: [suggestion], nextBeforeId: null }),
   readProposal = () => ({ status: 200, data: proposal }),
+  apply = () => ({ status: 500, data: {} }),
   reject = () => ({ status: 500, data: {} }),
 } = {}) {
   const reads = []
@@ -34,8 +35,11 @@ async function mockSuggestionRequests(page, role, readEvidence, {
         ({ data, status } = await readProposal(Number(path.split('/')[3])))
       } else if (/^\/api\/suggestions\/\d+\/evidence$/.test(path)) {
         ({ data, status } = await readEvidence(url.searchParams.get('afterPosition')))
-      } else if (path === '/api/suggestions/7/reject' && route.request().method() === 'POST') {
-        ({ data, status } = await reject(route.request().postDataJSON()))
+      } else if (/^\/api\/suggestions\/7\/(apply|reject)$/.test(path) && route.request().method() === 'POST') {
+        const reply = await (path.endsWith('/reject') ? reject(route.request().postDataJSON()) : apply())
+        if (reply.drop) return route.abort('connectionreset')
+        data = reply.data
+        status = reply.status
       }
     }
     await route.fulfill({ status, json: data })
@@ -128,7 +132,7 @@ test('All follows live pages by keyboard and retains focus at the endpoint', asy
   })
   try {
     await page.goto('/tuning-suggestions')
-    const status = page.getByRole('main').getByRole('status')
+    const status = page.getByRole('status', { name: 'Suggestion page status' })
     await expect(status).toHaveText('Page 1. 1 suggestion on this page.')
     await page.getByLabel('Suggestion status').selectOption('all')
     await expect(status).toHaveText('Page 1. 20 suggestions on this page.')
@@ -163,7 +167,10 @@ test('an unavailable proposal can be rejected with keyboard focus restored', asy
   } }), {
     readPage: () => ({ items: reasons.length ? [] : [suggestion], nextBeforeId: null }),
     readProposal: () => ({ status: 200, data: { ...proposal, proposal_status: 'unavailable', suggestion_config: null } }),
-    reject: body => { reasons.push(body.reason); return { status: 200, data: { success: true } } },
+    reject: body => {
+      reasons.push(body.reason)
+      return { status: 200, data: { success: true, result: { success: true, suggestionId: '7', status: 'rejected' } } }
+    },
   })
   await page.goto('/tuning-suggestions')
   const opener = page.getByRole('button', { name: 'View Details' })
@@ -220,4 +227,87 @@ test('closing a loading proposal keeps its response out of the next dialog', asy
   } finally {
     firstProposal.resolve()
   }
+})
+
+test('a dropped Apply response shows the saved state without resending or claiming success', async ({ page }) => {
+  let applied = false
+  const statusRead = Promise.withResolvers()
+  const dialogs = []
+  page.on('dialog', async dialog => { dialogs.push(dialog.type()); await dialog.accept() })
+  const reads = await mockSuggestionRequests(page, 'admin', () => ({ status: 404, data: {} }), {
+    apply: () => { applied = true; return { drop: true } },
+    readProposal: async () => {
+      if (applied) await statusRead.promise
+      return { status: 200, data: { ...proposal, status: applied ? 'applied' : 'pending' } }
+    },
+    readPage: () => ({ items: applied ? [] : [suggestion, { ...suggestion, id: 6 }], nextBeforeId: null }),
+  })
+  try {
+    await page.goto('/tuning-suggestions')
+    const details = page.getByRole('button', { name: 'View Details' })
+    await details.first().press('Enter')
+    await page.getByRole('button', { name: 'Apply Suggestion' }).press('Enter')
+    const status = page.getByRole('status', { name: 'Suggestion review status' })
+    await expect(status).toHaveText(/Checking the saved status/)
+    await details.nth(1).focus()
+    statusRead.resolve()
+    await expect(status).toHaveText(/was not confirmed\. Saved status is applied/)
+    await expect(page.getByRole('heading', { name: 'Policy Tuning Suggestions' })).toBeFocused()
+    expect(reads.filter(path => path.endsWith('/apply'))).toEqual(['/api/suggestions/7/apply'])
+    expect(reads.filter(path => path.endsWith('/proposal'))).toHaveLength(2)
+    expect(dialogs).toEqual(['confirm'])
+  } finally {
+    statusRead.resolve()
+  }
+})
+
+test('an uncertain Reject offers only reads while a later status becomes visible', async ({ page }) => {
+  const reasons = []
+  let proposalReads = 0
+  const reads = await mockSuggestionRequests(page, 'admin', () => ({ status: 404, data: {} }), {
+    reject: body => { reasons.push(body.reason); return { status: 502, data: {} } },
+    readProposal: () => {
+      proposalReads++
+      if (proposalReads === 2) return { status: 503, data: {} }
+      return { status: 200, data: { ...proposal, status: proposalReads > 3 ? 'rejected' : 'pending' } }
+    },
+  })
+  await page.goto('/tuning-suggestions')
+  await page.getByRole('button', { name: 'View Details' }).press('Enter')
+  await page.getByRole('button', { name: 'Reject', exact: true }).press('Enter')
+  await page.getByLabel('Reason for rejection (optional)').fill('Keep the current rules')
+  await page.getByRole('button', { name: 'Reject Suggestion', exact: true }).press('Enter')
+  const status = page.getByRole('status', { name: 'Suggestion review status' })
+  const check = page.getByRole('button', { name: 'Check status' })
+  await expect(status).toHaveText(/saved status could not be verified/)
+  await check.press('Enter')
+  await expect(status).toHaveText(/It was pending when checked/)
+  await check.press('Enter')
+  await expect(status).toHaveText(/Saved status is rejected/)
+  await expect(check).toBeFocused()
+  expect(reads.filter(path => path.endsWith('/proposal'))).toHaveLength(4)
+  expect(reads.filter(path => path.endsWith('/reject'))).toEqual(['/api/suggestions/7/reject'])
+  expect(reasons).toEqual(['Keep the current rules'])
+})
+
+test('a 401 stops review without refreshing or replaying the write', async ({ page }) => {
+  const alerts = []
+  const refreshes = []
+  page.on('dialog', async dialog => {
+    if (dialog.type() === 'alert') alerts.push(dialog.message())
+    await dialog.accept()
+  })
+  page.on('request', request => {
+    if (request.url().endsWith('/api/auth/refresh')) refreshes.push(request.url())
+  })
+  const reads = await mockSuggestionRequests(page, 'admin', () => ({ status: 404, data: {} }), {
+    apply: () => ({ status: 401, data: {} }),
+  })
+  await page.goto('/tuning-suggestions')
+  await page.getByRole('button', { name: 'View Details' }).press('Enter')
+  await page.getByRole('button', { name: 'Apply Suggestion' }).press('Enter')
+  await expect.poll(() => alerts).toEqual(['Your session could not authorize the review. Sign in again before submitting a new review.'])
+  expect(refreshes).toEqual([])
+  expect(reads.filter(path => path.endsWith('/apply'))).toHaveLength(1)
+  expect(reads.filter(path => path.endsWith('/proposal'))).toHaveLength(1)
 })
