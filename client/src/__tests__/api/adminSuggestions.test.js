@@ -31,6 +31,7 @@ vi.mock('../../api/core', () => ({
 import {
   getSuggestions,
   getSuggestion,
+  getSuggestionEvidence,
   applySuggestion,
   rejectSuggestion,
   runSuggestionAnalysisSummary,
@@ -95,6 +96,28 @@ describe('adminSuggestions', () => {
     const result = await getSuggestion(5)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/suggestions/5')
     expect(result).toEqual(suggestion)
+  })
+
+  it('reads one administrator evidence page and follows only an explicit continuation', async () => {
+    const first = { suggestionId: 2147483647, nextAfterPosition: 20, items: [] }
+    const last = { suggestionId: 2147483647, nextAfterPosition: null, items: [] }
+    mockGetDataRequest.mockResolvedValueOnce(first).mockResolvedValueOnce(last)
+    await expect(getSuggestionEvidence('2147483647')).resolves.toBe(first)
+    expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/suggestions/2147483647/evidence')
+    await expect(getSuggestionEvidence(2147483647, first.nextAfterPosition)).resolves.toBe(last)
+    expect(mockGetDataRequest).toHaveBeenNthCalledWith(2, '/suggestions/2147483647/evidence', {
+      params: { afterPosition: '20' },
+    })
+  })
+
+  it.each([null, 0, '01', '1e0', '4/5', [4], 5001])('rejects invalid evidence position %s before sending', async position => {
+    await expect(getSuggestionEvidence(5, position)).rejects.toThrow('Invalid evidence continuation position')
+    expect(mockGetDataRequest).not.toHaveBeenCalled()
+  })
+
+  it('rejects a noncanonical evidence suggestion ID before sending', async () => {
+    await expect(getSuggestionEvidence('5/4')).rejects.toThrow('Invalid suggestion ID')
+    expect(mockGetDataRequest).not.toHaveBeenCalled()
   })
 
   it('applySuggestion calls POST with id in URL', async () => {

@@ -38,6 +38,19 @@ function positiveIntegerId(id) {
   return typeof text === 'string' && /^[1-9][0-9]{0,9}$/.test(text) && Number(text) <= 2147483647 ? text : null
 }
 
+/** Reads one page of saved evidence for administrator review. */
+export function getSuggestionEvidence(id, afterPosition) {
+  const text = positiveIntegerId(id)
+  if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
+  if (afterPosition === undefined) return getDataRequest(`/suggestions/${text}/evidence`)
+
+  const cursor = positiveIntegerId(afterPosition)
+  if (!cursor || Number(cursor) > 5000) {
+    return Promise.reject(new TypeError('Invalid evidence continuation position.'))
+  }
+  return getDataRequest(`/suggestions/${text}/evidence`, { params: { afterPosition: cursor } })
+}
+
 /** Applies a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function applySuggestion(id) {
   const text = positiveIntegerId(id)
@@ -66,6 +79,7 @@ export function runSuggestionAnalysisSummary(afterPolicyId) {
 const adminSuggestionsApi = {
   getSuggestions,
   getSuggestion,
+  getSuggestionEvidence,
   applySuggestion,
   rejectSuggestion,
   runSuggestionAnalysisSummary,

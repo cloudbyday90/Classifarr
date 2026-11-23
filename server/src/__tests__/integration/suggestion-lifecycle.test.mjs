@@ -213,6 +213,99 @@ test.each(suggestionPaths)('%s preserves member reads and records the administra
     expect(await snapshot()).toEqual(after);
 });
 
+test('the saved evidence route requires a genuine administrator and exact inputs before reading', async () => {
+    const detail = `/api/suggestions/${suggestionId}`;
+    const evidence = `${detail}/evidence`;
+    const read = jest.spyOn(db, 'query');
+    try {
+        await request(app).get(evidence).expect(401);
+        await signedIn(request(app).get(evidence), memberToken).expect(403);
+        await signedIn(request(app).get(evidence), scopedToken).expect(403);
+        const invalidActor = await generateAccessToken({ id: '01', username: 'lifecycle-reviewer', role: 'admin' });
+        await signedIn(request(app).get(evidence), invalidActor).expect(403);
+        await signedIn(request(app).get(`/api/suggestions/0${suggestionId}/evidence`)).expect(400);
+        for (const query of ['afterPosition=0', 'afterPosition=01', 'afterPosition=1e0', 'afterPosition=5001',
+            'afterPosition=1&afterPosition=2', 'afterPosition%5B%5D=1', 'limit=20']) {
+            await signedIn(request(app).get(`${evidence}?${query}`)).expect(400);
+        }
+        const evidenceReads = read.mock.calls.filter(([sql]) =>
+            /policy_tuning_suggestions|policy_feedback_log/.test(sql));
+        expect(evidenceReads).toEqual([]);
+    } finally {
+        read.mockRestore();
+    }
+    await signedIn(request(app).get('/api/suggestions/2147483647/evidence')).expect(404);
+    await signedIn(request(app).get(detail), memberToken).expect(200);
+    await db.query('UPDATE policy_tuning_suggestions SET policy_id=NULL WHERE id=$1', [suggestionId]);
+    try {
+        await signedIn(request(app).get(evidence)).expect(404);
+    } finally {
+        await db.query('UPDATE policy_tuning_suggestions SET policy_id=$1 WHERE id=$2', [policyId, suggestionId]);
+    }
+});
+
+test('saved evidence pages follow stored positions and preserve gaps across feedback changes', async () => {
+    const { rows: [first, next, removed] } = await db.query(`SELECT id FROM policy_feedback_log
+        WHERE selected_policy_id=$1 ORDER BY id LIMIT 3`, [policyId]);
+    const [foreign] = await seedSuggestionFeedback(db, otherPolicyId, otherLibraryId, 1);
+    const [wrongLibrary] = await seedSuggestionFeedback(db, policyId, otherLibraryId, 1);
+    const support = [next.id, null, foreign, wrongLibrary, ...Array(16).fill(first.id), removed.id, next.id];
+    await db.query(`UPDATE policy_feedback_log SET title=$1, was_correction=NULL, top_suggestion_library_id=$2,
+        item_metadata='{"private":"omitted"}', user_reason_text='omitted note',
+        prompted_at='2026-11-23T12:34:56Z' WHERE id=$3`, ['Observed title', otherLibraryId, next.id]);
+    await db.query('UPDATE policy_tuning_suggestions SET supporting_feedback_ids=$1 WHERE id=$2', [support, suggestionId]);
+    const before = await snapshot();
+    const path = `/api/suggestions/${suggestionId}/evidence`;
+    const page = await signedIn(request(app).get(path)).expect(200).expect('Cache-Control', 'no-store');
+    expect(page.body).toMatchObject({ suggestionId, referenceCount: 22, nextAfterPosition: 20 });
+    expect(page.body.items.map(item => item.position)).toEqual(Array.from({ length: 20 }, (_, index) => index + 1));
+    const visible = { status: 'available', feedbackId: next.id, title: 'Observed title',
+        promptedAt: '2026-11-23T12:34:56.000Z', wasCorrection: null, originalLibrary: 'Other', selectedLibrary: 'Lifecycle' };
+    expect(page.body.items[0]).toEqual({ position: 1, ...visible });
+    expect(page.body.items.slice(1, 4)).toEqual([2, 3, 4].map(position => ({ position, status: 'unavailable' })));
+    expect(page.body.items.slice(4).map(item => item.feedbackId)).toEqual(Array(16).fill(first.id));
+    expect(await snapshot()).toEqual(before);
+
+    await db.query('DELETE FROM policy_feedback_log WHERE id=$1', [removed.id]);
+    const continuation = await signedIn(request(app).get(path).query({ afterPosition: 20 })).expect(200);
+    expect(continuation.body).toEqual({ suggestionId, referenceCount: 22, nextAfterPosition: null, items: [
+        { position: 21, status: 'unavailable' }, { position: 22, ...visible },
+    ] });
+    const end = await signedIn(request(app).get(path).query({ afterPosition: 5000 })).expect(200);
+    expect(end.body).toEqual({ suggestionId, referenceCount: 22, nextAfterPosition: null, items: [] });
+    const legacy = await signedIn(request(app).get(`/api/suggestions/${suggestionId}`), memberToken).expect(200);
+    expect(legacy.body.supporting_feedback.find(item => item.id === next.id)).toMatchObject({ user_reason_text: 'omitted note' });
+});
+
+test('saved evidence keeps the largest valid page bounded and distinguishes unsupported arrays', async () => {
+    const { rows: [feedback] } = await db.query(`SELECT id FROM policy_feedback_log
+        WHERE selected_policy_id=$1 ORDER BY id LIMIT 1`, [policyId]);
+    const escaped = '\u0001';
+    await db.query('UPDATE libraries SET name=$1 || id::text WHERE id=ANY($2::integer[])',
+        [escaped.repeat(244), [libraryId, otherLibraryId]]);
+    await db.query(`UPDATE policy_feedback_log SET title=$1, top_suggestion_library_id=$2,
+        prompted_at='infinity' WHERE id=$3`, [escaped.repeat(500), otherLibraryId, feedback.id]);
+    await db.query(`UPDATE policy_tuning_suggestions SET supporting_feedback_ids=array_fill($1::integer, ARRAY[5000])
+        WHERE id=$2`, [feedback.id, suggestionId]);
+    const path = `/api/suggestions/${suggestionId}/evidence`;
+    const response = await signedIn(request(app).get(path)).query({ afterPosition: 4980 }).expect(200);
+    expect(response.body).toMatchObject({ suggestionId, referenceCount: 5000, nextAfterPosition: null });
+    expect(response.body.items.map(item => item.position)).toEqual(Array.from({ length: 20 }, (_, index) => 4981 + index));
+    expect(response.body.items[0]).toMatchObject({ title: escaped.repeat(160), originalLibrary: escaped.repeat(80),
+        selectedLibrary: escaped.repeat(80), promptedAt: null });
+    expect(Buffer.byteLength(response.text)).toBeLessThanOrEqual(48 * 1024);
+
+    for (const [support, referenceCount] of [[null, 0], ['{}', 0], ['[0:1]={1,2}', null], ['{{1,2},{3,4}}', null]]) {
+        await db.query('UPDATE policy_tuning_suggestions SET supporting_feedback_ids=$1::integer[] WHERE id=$2', [support, suggestionId]);
+        const page = await signedIn(request(app).get(path)).expect(200);
+        expect(page.body).toEqual({ suggestionId, referenceCount, nextAfterPosition: null, items: [] });
+    }
+    await db.query(`UPDATE policy_tuning_suggestions SET supporting_feedback_ids=array_fill($1::integer, ARRAY[5001])
+        WHERE id=$2`, [feedback.id, suggestionId]);
+    const oversized = await signedIn(request(app).get(path)).expect(200);
+    expect(oversized.body).toEqual({ suggestionId, referenceCount: null, nextAfterPosition: null, items: [] });
+});
+
 test.each(['policy', 'all'])('manual %s analysis requires an exact administrator before superseding a suggestion', async scope => {
     const path = scope === 'policy' ? `/api/feedback/policies/${policyId}/analyze` : '/api/feedback/analyze-all';
     await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);

@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Saved suggestion evidence** — Administrators can read up to 20 linked
+  feedback references at a time, with explicit continuation and unavailable
+  entries for missing or mismatched feedback. See the
+  [outcome](docs/architecture/saved-suggestion-evidence-read-outcome.md).
+
 - **Manual analysis summaries** — Administrators can opt into a bounded
   response for up to 24 policies at a time, with explicit continuation and
   per-policy outcomes. See the

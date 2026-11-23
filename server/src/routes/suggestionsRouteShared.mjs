@@ -10,8 +10,10 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { requireAdmin } from '../middleware/auth.mjs';
+import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import { MAX_SUGGESTION_EVIDENCE_REFERENCES, readSavedSuggestionEvidencePage } from '../services/savedSuggestionEvidence.mjs';
 import { readSuggestionReviewIds } from './suggestionReviewInput.mjs';
 
 export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
@@ -87,6 +89,22 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
       ...suggestion.rows[0],
       supporting_feedback: feedback.rows,
     });
+  }));
+
+  router.get('/:id/evidence', requireAdmin, asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const { suggestionId } = readSuggestionReviewIds(req.params.id, req.user.id);
+    const query = req.query;
+    if (Object.keys(query).some(key => key !== 'afterPosition')) {
+      throw new ValidationError('Use only the optional afterPosition parameter.');
+    }
+    const afterPosition = Object.hasOwn(query, 'afterPosition')
+      ? parseCanonicalDatabaseInt32Id(query.afterPosition) : 0;
+    if (afterPosition === null || afterPosition > MAX_SUGGESTION_EVIDENCE_REFERENCES) {
+      throw new ValidationError(`afterPosition must be a decimal position from 1 to ${MAX_SUGGESTION_EVIDENCE_REFERENCES}.`);
+    }
+    const body = await readSavedSuggestionEvidencePage(db, suggestionId, afterPosition);
+    return res.type('json').send(body);
   }));
 
   // Evidence/lifecycle conflicts propagate as 409; review is never retried here.
