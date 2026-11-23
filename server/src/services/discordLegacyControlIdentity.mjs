@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { ComponentType } from 'discord.js';
-import { parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { normalizeDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
 import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
@@ -19,11 +19,13 @@ export function isOfferedDiscordButton(interaction) {
 
 export function parseDiscordCompletedButton(customId) {
   if (typeof customId !== 'string') return null;
-  const match = /^(correct|verify_yes|verify_no|reclassify)_([1-9][0-9]{0,15})(?:_([1-9][0-9]{0,9}))?$/.exec(customId);
+  const match = /^(correct|verify_yes|verify_no|reclassify)_([1-9][0-9]{0,18})(?:_([1-9][0-9]{0,9}))?$/.exec(customId);
   if (!match || match[0] !== customId) return null;
 
   const [, action, historyId, libraryId] = match;
-  const classificationId = parsePendingResolutionHistoryId(historyId);
+  const classificationId = action === 'verify_no'
+    ? normalizeDatabaseBigintId(historyId)
+    : parsePendingResolutionHistoryId(historyId);
   if (classificationId === null) return null;
   if (action === 'reclassify') {
     const destinationLibraryId = parseCanonicalDatabaseInt32Id(libraryId);
@@ -45,9 +47,9 @@ export function parseDiscordLegacyClarificationButton(customId) {
 
 export function parseDiscordLibrarySelectValues(values) {
   if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== 'string') return null;
-  const match = /^([1-9][0-9]{0,15})_([1-9][0-9]{0,9})$/.exec(values[0]);
+  const match = /^([1-9][0-9]{0,18})_([1-9][0-9]{0,9})$/.exec(values[0]);
   if (!match || match[0] !== values[0]) return null;
-  const classificationId = parsePendingResolutionHistoryId(match[1]);
+  const classificationId = normalizeDatabaseBigintId(match[1]);
   const newLibraryId = parseCanonicalDatabaseInt32Id(match[2]);
   return classificationId === null || newLibraryId === null ? null : { classificationId, newLibraryId };
 }

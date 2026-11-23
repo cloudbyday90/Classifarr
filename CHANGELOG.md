@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord completed corrections** — Carry exact BIGINT History IDs through
+  the verification opener, correction menu, saved receipt, and routing. See
+  the [outcome](docs/architecture/discord-completed-correction-bigint-outcome.md).
+
 - **Discord verification and direct corrections** — Bind the existing
   buttons to the saved completed notification and record verification status
   and outcome together before routing. See the

@@ -185,7 +185,8 @@ describe('handleInteraction', () => {
         },
     );
     test.each([[], ['100_10', '100_11'], ['100_10_x'], ['100x_10'], ['100_1e1'],
-        ['100_2147483648'], ['9007199254740993_10']].map(values => ({ values })))('refuses selector values $values before lookup', async ({ values }) => {
+        ['100_2147483648'], ['9223372036854775808_10'], ['09007199254740993_10'],
+        ['9007199254740993_10\n']].map(values => ({ values })))('refuses selector values $values before lookup', async ({ values }) => {
         const interaction = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
             customId: 'library_select', values });
         await handleInteraction(interaction);
@@ -253,8 +254,9 @@ describe('handleInteraction', () => {
         expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
     });
 
-    test.each(['correct_100x', 'verify_yes_01', 'verify_no_9007199254740992', 'reclassify_100_2147483648',
-        'reclassify_100', 'reclassify_100_10_extra', 'correct_100\n', 'verify_no_100_10'])(
+    test.each(['correct_100x', 'verify_yes_01', 'verify_no_9223372036854775808', 'reclassify_100_2147483648',
+        'reclassify_100', 'reclassify_100_10_extra', 'correct_100\n', 'verify_no_100_10',
+        'correct_9007199254740992', 'verify_yes_9007199254740992', 'reclassify_9007199254740992_10'])(
         'refuses malformed completed button %s before database work', async customId => {
             const interaction = makeInteraction({ customId, isButton: () => true,
                 message: { id: savedMessageId, components: [{ components: [{ type: ComponentType.Button, customId }] }] } });
@@ -262,6 +264,25 @@ describe('handleInteraction', () => {
             expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
             expect(db.query).not.toHaveBeenCalled();
         });
+
+    test.each([Number.MAX_SAFE_INTEGER, '9007199254740992', '9007199254740993', '9223372036854775807'])(
+        'passes exact History ID %s to the verification opener and correction selector', async id => {
+            const customId = `verify_no_${id}`;
+            const opened = makeInteraction({ customId, isButton: () => true,
+                message: { id: savedMessageId, components: [{ components: [{ type: ComponentType.Button, customId }] }] } });
+            await handleInteraction(opened);
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('FOR SHARE'), [id]);
+            db.query.mockClear();
+
+            const value = `${id}_2147483647`;
+            const selected = makeInteraction({ isButton: () => false, isStringSelectMenu: () => true,
+                customId: 'library_select', values: [value], message: { id: savedMessageId,
+                    components: [{ components: [{ type: ComponentType.StringSelect, customId: 'library_select',
+                        placeholder: 'Select the correct library...', options: [{ value }] }] }] } });
+            await handleInteraction(selected);
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE'), [id]);
+        },
+    );
 });
 
 // ── processVerification ───────────────────────────────────────────────────────

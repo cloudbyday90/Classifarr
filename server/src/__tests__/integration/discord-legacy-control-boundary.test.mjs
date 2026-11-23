@@ -6,6 +6,7 @@ import { createDiscordDeliveryRepository } from '../../services/discordDeliveryR
 import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
 import { serializeDiscordDeliveryBody } from '../../services/discordDeliveryBody.mjs';
 import { createCorrectionComponents, createTieredComponents } from '../../services/discordNotificationComponents.mjs';
+import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 
 let database;
 let beforeWrite;
@@ -183,10 +184,19 @@ test.each([[7152, 'reclassify', 'classification'], [7153, 'verify_no', 'confiden
   },
 );
 
-test.each([[7154, 'reclassify', 'classification'], [7155, 'verify_no', 'confidence']])(
-  'completed row %i can still be corrected through its offered control', async (id, action, kind) => {
+test.each([
+  [7154, 'reclassify', 'classification', true],
+  [2147483647, 'verify_no', 'confidence', true],
+  [2147483648, 'verify_no', 'confidence', false],
+  ['9223372036854775807', 'verify_no', 'confidence', false],
+])(
+  'completed row %s can be corrected through its offered control', async (id, action, kind, capturesContext) => {
     await insertHistory(id, messageId, 'completed');
     await insertDeliveredReceipt(id, 'completed', kind);
+    const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 894801 },
+      method: 'ai_analysis', status: 'completed', libraryId: source.id });
+    await query(`UPDATE classification_history SET method='ai_analysis', metadata=metadata || $2::jsonb WHERE id=$1`,
+      [id, JSON.stringify({ classification_details: { destination_decision: capture } })]);
     let click = completedClick(id, action, kind);
     if (action === 'verify_no') {
       await handleInteraction(click);
@@ -195,23 +205,40 @@ test.each([[7154, 'reclassify', 'classification'], [7155, 'verify_no', 'confiden
       expect(routeToArr).not.toHaveBeenCalled();
       click = interaction('selector', id);
       click.message.components = components.map(row => new ActionRow(row.toJSON()));
+      expect(click.message.components[0].components[0].options.map(option => option.value)).toContain(`${id}_${destination.id}`);
     }
     await handleInteraction(click);
     expect(click.editReply).toHaveBeenCalledTimes(1);
     expect(await corrections(id)).toEqual([{ classification_id: id, corrected_library_id: destination.id }]);
-    expect(await history(id)).toMatchObject({ status: 'routed', library_id: destination.id });
+    const saved = await history(id);
+    expect(saved).toMatchObject({ id, status: 'routed', library_id: destination.id, metadata: { classification_details: {
+      outcome_link: { type: 'corrected', final_library_id: destination.id },
+    } } });
+    const evidence = await query(`SELECT o.identity_key,o.selected_library_id,o.decision_context
+      FROM classification_correction_outcomes o JOIN classification_corrections c ON c.id=o.correction_id
+      WHERE c.classification_id=$1`, [id]);
+    expect(evidence.rows).toEqual([{ identity_key: 'movie:894801', selected_library_id: destination.id,
+      decision_context: capturesContext ? { classificationId: id, capture } : null }]);
     expect(routeToArr).toHaveBeenCalledTimes(1);
     expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${id}` }),
       expect.objectContaining({ id: destination.id }));
+    if (action === 'verify_no') {
+      const replay = { ...interaction('selector', id), message: click.message };
+      await handleInteraction(replay);
+      expect(replay.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Already processed') }));
+      expect(await history(id)).toEqual(saved);
+      expect(await corrections(id)).toHaveLength(1);
+      expect(routeToArr).toHaveBeenCalledTimes(1);
+    }
   },
 );
 
-test('the delivered classification menu corrects but a manual confidence menu keeps its original meaning', async () => {
+test('the delivered classification menu corrects the exact History row among adjacent large IDs', async () => {
   const channelId = '555555555555555555';
   const { rows: [config] } = await query(`INSERT INTO notification_config
     (type,enabled,bot_token,channel_id,notify_on_classification,enable_corrections)
     VALUES ('discord',true,'synthetic-token',$1,true,true) RETURNING *`, [channelId]);
-  const [correctionId, manualId] = [7131, 7132];
+  const [correctionId, manualId] = ['9007199254740993', '9007199254740992'];
   const libraries = [source, destination];
   const messages = [];
   const send = async payload => {
@@ -243,11 +270,21 @@ test('the delivered classification menu corrects but a manual confidence menu ke
   expect(await history(manualId)).toEqual(manualBefore);
   expect(await corrections(manualId)).toEqual([]);
 
+  const wrongMessage = click(correctionId, { ...messages[0], id: messages[1].id });
+  await handleInteraction(wrongMessage);
+  expect(wrongMessage.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('saved Discord notification') }));
+  expect(await corrections(correctionId)).toEqual([]);
+  expect(routeToArr).not.toHaveBeenCalled();
+
   const completed = click(correctionId, messages[0]);
   await handleInteraction(completed);
   expect(completed.editReply).toHaveBeenCalledTimes(1);
   expect(await corrections(correctionId)).toEqual([{ classification_id: correctionId, corrected_library_id: destination.id }]);
+  expect(await history(correctionId)).toMatchObject({ id: correctionId, status: 'routed', library_id: destination.id });
+  expect(await history(manualId)).toEqual(manualBefore);
   expect(routeToArr).toHaveBeenCalledTimes(1);
+  expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${correctionId}` }),
+    expect.objectContaining({ id: destination.id }));
 });
 
 test.each([
