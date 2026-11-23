@@ -1,0 +1,17 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import { ForbiddenError, ValidationError } from '../utils/appError.mjs';
+
+export function readSuggestionApplicationIds(suggestion, actor) {
+  const userId = parseCanonicalDatabaseInt32Id(actor);
+  if (userId === null) {
+    throw new ForbiddenError('Valid administrator identity required');
+  }
+
+  const suggestionId = parseCanonicalDatabaseInt32Id(suggestion);
+  if (suggestionId === null) {
+    throw new ValidationError('Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.');
+  }
+
+  return { suggestionId, userId };
+}

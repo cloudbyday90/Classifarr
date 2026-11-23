@@ -13,6 +13,8 @@ import { ValidationError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import { recordStandaloneFeedback } from '../services/standaloneFeedbackService.mjs';
 import { registerFeedbackReviewRoutes } from './feedbackReviewRoutes.mjs';
+import { requireAdmin } from '../middleware/auth.mjs';
+import { readSuggestionApplicationIds } from './suggestionApplicationInput.mjs';
 
 function parseIdParam(value) {
   return Number.parseInt(value, 10);
@@ -102,10 +104,8 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     });
   }));
 
-  router.post('/suggestions/:id/apply', asyncHandler(async (req, res) => {
-    const suggestionId = requireValidId(req.params.id, 'suggestion ID');
-    const userId = req.user.id;
-
+  router.post('/suggestions/:id/apply', requireAdmin, asyncHandler(async (req, res) => {
+    const { suggestionId, userId } = readSuggestionApplicationIds(req.params.id, req.user.id);
     const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
 
     return res.json({

@@ -11,6 +11,8 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { requireAdmin } from '../middleware/auth.mjs';
+import { readSuggestionApplicationIds } from './suggestionApplicationInput.mjs';
 
 export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
   const router = express.Router();
@@ -88,11 +90,10 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
   }));
 
   // Evidence/lifecycle conflicts propagate as 409; review is never retried here.
-  router.post('/:id/apply', asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const userId = req.user?.id || 1;
-
-    const result = await feedbackAnalysis.applySuggestion(id, userId);
+  router.post('/:id/apply', requireAdmin, asyncHandler(async (req, res) => {
+    const { suggestionId, userId } = readSuggestionApplicationIds(req.params.id, req.user.id);
+    // This route exposes the suggestion ID as a string in its nested result.
+    const result = await feedbackAnalysis.applySuggestion(String(suggestionId), userId);
 
     return sendSuccess(res, { result });
   }));

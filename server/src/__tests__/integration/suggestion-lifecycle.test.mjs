@@ -14,14 +14,27 @@ const { captureSuggestionCohort, assertSuggestionCohortCurrent } = await import(
 const { applySuggestion, rejectSuggestion } = await import('../../services/feedbackAnalysisSuggestionApply.mjs');
 const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs');
 const { router: feedbackRouter } = await import('../../routes/feedback.mjs');
-let db, libraryId, otherLibraryId, policyId, otherPolicyId, userId, suggestionId;
+const { authenticateToken } = await import('../../middleware/auth.mjs');
+const { generateAccessToken, generateScopedAccessToken } = await import('../../services/auth.mjs');
+let db, libraryId, otherLibraryId, policyId, otherPolicyId, userId, memberId, suggestionId;
+let adminToken, memberToken, scopedToken;
 const app = createMountedTestApp({ basePath: '/api',
     router: express.Router().use('/suggestions', suggestionsRouter).use('/feedback', feedbackRouter),
-    middleware: [(req, _res, next) => { req.user = { id: userId }; next(); }] });
+    middleware: [authenticateToken] });
+
+function signedIn(httpRequest, token = adminToken) {
+    return httpRequest.set('Authorization', `Bearer ${token}`);
+}
 
 beforeEach(async () => {
     db = getPool();
-    userId = (await db.query("INSERT INTO users(username,password_hash,role) VALUES('lifecycle-reviewer','fixture','admin') RETURNING id")).rows[0].id;
+    const [admin, member] = (await db.query(`INSERT INTO users(username,password_hash,role)
+        VALUES('lifecycle-reviewer','fixture','admin'),('lifecycle-member','fixture','user') RETURNING id,username,role`)).rows;
+    userId = admin.id;
+    memberId = member.id;
+    [adminToken, memberToken, scopedToken] = await Promise.all([
+        generateAccessToken(admin), generateAccessToken(member), generateScopedAccessToken(admin),
+    ]);
     [libraryId, otherLibraryId] = (await db.query(`INSERT INTO libraries(name,external_id,media_type)
         VALUES('Lifecycle','lifecycle-primary','movie'),('Other','lifecycle-other','movie') RETURNING id`)).rows.map(row => row.id);
     [policyId, otherPolicyId] = (await db.query(`INSERT INTO library_policies(library_id,name,auto_classify_threshold,prompt_threshold)
@@ -36,7 +49,7 @@ afterEach(async () => {
     await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM library_policies WHERE id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[libraryId, otherLibraryId]]);
-    await db.query('DELETE FROM users WHERE id=$1', [userId]);
+    await db.query('DELETE FROM users WHERE id=ANY($1::integer[])', [[userId, memberId]]);
 });
 
 const review = action => action === 'apply' ? applySuggestion(suggestionId, userId) : rejectSuggestion(suggestionId, userId, 'Fixture reason');
@@ -158,18 +171,59 @@ test('native intent blocks apply before bookkeeping but allows dismissing the pe
     await expect(review('reject')).resolves.toMatchObject({ status: 'rejected' });
 });
 
-test.each(['/api/suggestions', '/api/feedback/suggestions'])('%s protects baseline and audit data across retries', async base => {
-    expect((await request(app).post(`${base}/${suggestionId}/apply`)).status).toBe(200);
+const suggestionPaths = ['/api/suggestions', '/api/feedback/suggestions'];
+
+test.each(suggestionPaths)('%s denies writes before changing the suggestion, policy or audit', async base => {
+    const path = `${base}/${suggestionId}/apply`;
     const before = await snapshot();
-    await db.query('UPDATE policy_learning_stats SET accuracy_rate=0.9 WHERE policy_id=$1', [policyId]);
-    const response = await request(app).post(`${base}/${suggestionId}/apply`);
-    expect(response.status).toBe(409);
-    expect(response.body.code).toBe('SUGGESTION_NOT_PENDING');
+    await request(app).post(path).expect(401);
+    await signedIn(request(app).post(path), memberToken).expect(403);
+    await signedIn(request(app).post(`${base}/invalid/apply`), memberToken).expect(403);
+    await signedIn(request(app).post(path), scopedToken).expect(403);
+
+    for (const id of [undefined, '01', 0, 2147483648]) {
+        const invalidActor = await generateAccessToken({ id, username: 'lifecycle-reviewer', role: 'admin' });
+        const response = await signedIn(request(app).post(path), invalidActor).expect(403);
+        expect(response.body.error).toBe('Valid administrator identity required');
+    }
+
+    for (const id of [`${suggestionId}x`, `0${suggestionId}`, `${suggestionId}\n`, '0', '-1', '1.5', '1e0', '2147483648']) {
+        const response = await signedIn(request(app).post(`${base}/${encodeURIComponent(id)}/apply`)).expect(400);
+        expect(response.body.error).toContain('1 to 2147483647');
+    }
     expect(await snapshot()).toEqual(before);
-    expect((await request(app).post(`${base}/${suggestionId}/reject`).send({ reason: 'Late request' })).status).toBe(409);
+});
+
+test.each(suggestionPaths)('%s preserves reads and rejection for ordinary users', async base => {
+    const readPath = base === '/api/suggestions' ? `${base}/${suggestionId}` : `/api/feedback/policies/${policyId}/suggestions`;
+    await signedIn(request(app).get(readPath), memberToken).expect(200);
+    await signedIn(request(app).post(`${base}/${suggestionId}/reject`), memberToken).send({ reason: 'Dismiss' }).expect(200);
+    const after = await snapshot();
+    expect(after.suggestion).toMatchObject({ status: 'rejected', reviewed_by: memberId, applied_by: null });
+    expect(after.audit).toEqual([]);
+});
+
+test.each(suggestionPaths)('%s preserves its response and protects the saved outcome across aliases', async base => {
+    const otherBase = suggestionPaths.find(path => path !== base);
+    const result = { success: true, policyId, type: 'adjust_threshold' };
+    const success = await signedIn(request(app).post(`${base}/${suggestionId}/apply`))
+        .send({ userId: memberId }).expect(200);
+    expect(success.body).toEqual(base === '/api/suggestions'
+        ? { success: true, result: { ...result, suggestionId: String(suggestionId) } }
+        : { ...result, suggestionId, message: 'Suggestion applied successfully' });
+    const before = await snapshot();
+    expect(before.suggestion).toMatchObject({ status: 'applied', applied_by: userId, reviewed_by: userId });
+    expect(before.policy.auto_classify_threshold).toBe(90);
+    expect(before.audit).toMatchObject([{ applied_by: userId }]);
+    await db.query('UPDATE policy_learning_stats SET accuracy_rate=0.9 WHERE policy_id=$1', [policyId]);
+    for (const path of [base, otherBase]) {
+        const response = await signedIn(request(app).post(`${path}/${suggestionId}/apply`)).expect(409);
+        expect(response.body.code).toBe('SUGGESTION_NOT_PENDING');
+    }
+    await signedIn(request(app).post(`${base}/${suggestionId}/reject`)).send({ reason: 'Late request' }).expect(409);
     expect(await snapshot()).toEqual(before);
     for (const action of ['apply', 'reject']) {
-        expect((await request(app).post(`${base}/2147483647/${action}`).send({ reason: 'Missing' })).status).toBe(404);
+        await signedIn(request(app).post(`${base}/2147483647/${action}`)).send({ reason: 'Missing' }).expect(404);
     }
 });
 
@@ -197,11 +251,11 @@ test.each([
 test.each(['/api/suggestions', '/api/feedback/suggestions'])('%s rejects legacy evidence but permits rejection', async route => {
     await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);
     const before = await snapshot();
-    const response = await request(app).post(`${route}/${suggestionId}/apply`);
+    const response = await signedIn(request(app).post(`${route}/${suggestionId}/apply`));
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('SUGGESTION_EVIDENCE_REQUIRED');
     expect(await snapshot()).toEqual(before);
-    expect((await request(app).post(`${route}/${suggestionId}/reject`).send({ reason: 'Dismiss' })).status).toBe(200);
+    await signedIn(request(app).post(`${route}/${suggestionId}/reject`)).send({ reason: 'Dismiss' }).expect(200);
 });
 
 test('new feedback and cosmetic edits do not invalidate a frozen cohort', async () => {

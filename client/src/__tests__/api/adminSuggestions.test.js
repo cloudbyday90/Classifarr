@@ -81,6 +81,19 @@ describe('adminSuggestions', () => {
     expect(result).toEqual({ data: { applied: true } })
   })
 
+  it('accepts the largest database suggestion ID as exact decimal text', async () => {
+    mockPost.mockResolvedValueOnce({ data: { success: true } })
+    await applySuggestion('2147483647')
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/apply')
+  })
+
+  it.each(['03', '3x', '3\n', '2e0', '3/4', '2147483648', 2147483648, 0, -1, 1.5, null, [3]])(
+    'rejects inexact or out-of-range IDs before sending a request (%s)', async id => {
+      await expect(applySuggestion(id)).rejects.toThrow('Invalid suggestion ID')
+      expect(mockPost).not.toHaveBeenCalled()
+    },
+  )
+
   it('rejectSuggestion calls POST with id in URL and reason', async () => {
     mockPost.mockResolvedValueOnce({ data: { rejected: true } })
     const result = await rejectSuggestion(7, 'Not applicable')

@@ -49,7 +49,7 @@ describe('Feedback Routes', () => {
       router: feedbackRouter,
       middleware: [
         (req, _res, next) => {
-          req.user = { id: 55 };
+          req.user = { id: 55, role: 'admin' };
           next();
         },
       ],
@@ -151,7 +151,8 @@ describe('Feedback Routes', () => {
   it('rejects invalid suggestion ids for apply', async () => {
     const res = await request(app).post('/feedback/suggestions/nope/apply').send({}).expect(400);
 
-    expect(res.body).toEqual({ error: 'Invalid suggestion ID' });
+    expect(res.body.error).toContain('1 to 2147483647');
+    expect(applySuggestion).not.toHaveBeenCalled();
   });
 
   it('applies suggestions with the authenticated user id', async () => {

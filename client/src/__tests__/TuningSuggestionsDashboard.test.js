@@ -56,6 +56,24 @@ test('policy authority conflicts keep their existing error behavior', async () =
   expect(alert).toHaveBeenCalledWith('Failed to apply suggestion: Policy authority changed')
 })
 
+test.each(['Admin access required', 'Valid administrator identity required'])(
+  'apply refusal explains who can act without repeating the request (%s)', async error => {
+    await mountDashboard()
+    api.applySuggestion.mockRejectedValueOnce({ response: { status: 403, data: { error } } })
+    await wrapper.vm.applySuggestion(suggestion)
+    expect(api.applySuggestion).toHaveBeenCalledTimes(1)
+    expect(api.getSuggestions).toHaveBeenCalledTimes(1)
+    expect(alert).toHaveBeenCalledExactlyOnceWith('Ask a Classifarr administrator to review and apply this suggestion.')
+  },
+)
+
+test('an unrelated forbidden response keeps the ordinary error handling', async () => {
+  await mountDashboard()
+  api.applySuggestion.mockRejectedValueOnce({ message: 'Request failed', response: { status: 403, data: { error: 'CSRF validation failed' } } })
+  await wrapper.vm.applySuggestion(suggestion)
+  expect(alert).toHaveBeenCalledExactlyOnceWith('Failed to apply suggestion: Request failed')
+})
+
 test('existing successful reviews still refresh and canceled apply requests do not run', async () => {
   await mountDashboard()
   confirm.mockReturnValueOnce(false)

@@ -31,9 +31,13 @@ export function getSuggestion(id) {
   return getDataRequest(`/suggestions/${id}`)
 }
 
-/** Propagates missing-target, lifecycle, and evidence conflicts without retrying those responses. */
+/** Applies a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function applySuggestion(id) {
-  return apiClient.post(`/suggestions/${id}/apply`)
+  const text = typeof id === 'number' ? String(id) : id
+  if (typeof text !== 'string' || !/^[1-9][0-9]{0,9}$/.test(text) || Number(text) > 2147483647) {
+    return Promise.reject(new TypeError('Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'))
+  }
+  return apiClient.post(`/suggestions/${text}/apply`)
 }
 
 /** Propagates missing-target, lifecycle, and evidence conflicts without retrying those responses. */

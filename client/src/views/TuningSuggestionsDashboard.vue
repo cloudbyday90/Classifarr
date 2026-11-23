@@ -291,6 +291,11 @@ async function applySuggestion(suggestion) {
     selectedSuggestion.value = null;
     await loadSuggestions();
   } catch (error) {
+    const { status, data } = error.response ?? {};
+    if (status === 403 && ['Admin access required', 'Valid administrator identity required'].includes(data?.error)) {
+      alert('Ask a Classifarr administrator to review and apply this suggestion.');
+      return;
+    }
     if (await recoverReviewConflict(error)) return;
     console.error('Failed to apply suggestion:', error);
     alert('Failed to apply suggestion: ' + error.message);

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Policy suggestion application** — Both Apply endpoints now require
+  administrators, validate exact suggestion IDs, and record the authenticated
+  actor. See the
+  [outcome](docs/architecture/suggestion-application-authority-outcome.md).
+
 - **Prompt response authority and identity** — Prompt detail and response
   use exact BIGINT History IDs. Prompt responses now require an administrator
   session. See the

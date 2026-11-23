@@ -29,16 +29,17 @@ const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs
 const app = createMountedTestApp({
     basePath: '/api/suggestions',
     router: suggestionsRouter,
+    middleware: [(req, _res, next) => { req.user = { id: testUserId, role: 'admin' }; next(); }],
 });
 
 const { captureSuggestionCohort } = await import('../../services/feedbackAnalysisCohort.mjs');
+let testUserId;
 
 describe('Suggestions API Integration Tests', () => {
     let testLibraryId;
     let otherLibraryId;
     let testPolicyId;
     let testSuggestionId;
-    let testUserId;
     let testMediaServerId;
 
     beforeAll(async () => {
