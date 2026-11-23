@@ -280,6 +280,72 @@ test('saved evidence pages follow stored positions and preserve gaps across feed
     expect(legacy.headers.sunset).toBeUndefined();
 });
 
+test('legacy detail preserves shipped fields and ordering when both tables gain private columns', async () => {
+    const { rows: [older, newer] } = await db.query(`SELECT id FROM policy_feedback_log
+        WHERE selected_policy_id=$1 ORDER BY id LIMIT 2`, [policyId]);
+    await db.query("UPDATE policy_feedback_log SET prompted_at='2026-11-22T12:00:00Z' WHERE id=$1", [older.id]);
+    await db.query(`UPDATE policy_feedback_log SET prompted_at='2026-11-23T12:00:00Z',
+        user_reason_text='Legacy note', signal_analysis='{"fixture":true}' WHERE id=$1`, [newer.id]);
+    await db.query('UPDATE policy_tuning_suggestions SET supporting_feedback_ids=$1 WHERE id=$2', [[older.id, newer.id], suggestionId]);
+
+    const path = `/api/suggestions/${suggestionId}`;
+    await request(app).get(path).expect(401);
+    const original = await signedIn(request(app).get(path), memberToken).expect(200).expect('Cache-Control', 'no-store');
+    expect(Object.keys(original.body)).toEqual([
+        'id', 'policy_id', 'suggestion_type', 'suggestion_config', 'supporting_feedback_ids', 'confidence',
+        'impact_estimate', 'status', 'reviewed_at', 'reviewed_by', 'rejection_reason', 'created_at', 'applied_at',
+        'applied_by', 'before_accuracy', 'cohort_fingerprint', 'evidence_fingerprint', 'superseded_at',
+        'policy_name', 'library_name', 'supporting_feedback',
+    ]);
+    const feedback = original.body.supporting_feedback;
+    expect(feedback.map(row => row.id)).toEqual([newer.id, older.id]);
+    expect(Object.keys(feedback[0])).toEqual([
+        'id', 'tmdb_id', 'media_type', 'title', 'item_metadata', 'prompt_type', 'original_scores',
+        'top_suggestion_library_id', 'top_suggestion_score', 'selected_library_id', 'selected_policy_id',
+        'was_correction', 'user_reason', 'user_reason_text', 'patterns_created', 'signal_analysis',
+        'prompted_at', 'responded_at', 'response_time_seconds', 'source', 'original_library', 'selected_library',
+    ]);
+    expect(feedback[0]).toMatchObject({ user_reason_text: 'Legacy note', signal_analysis: { fixture: true } });
+
+    try {
+        await db.query("ALTER TABLE policy_tuning_suggestions ADD COLUMN private_fixture TEXT DEFAULT 'private-suggestion'");
+        await db.query("ALTER TABLE policy_feedback_log ADD COLUMN private_fixture TEXT DEFAULT 'private-feedback'");
+        const next = await signedIn(request(app).get(path), memberToken).expect(200).expect('Cache-Control', 'no-store');
+        expect(next.text).toBe(original.text);
+        expect(next.headers.etag).toBe(original.headers.etag);
+        await signedIn(request(app).head(path), memberToken).expect(200).expect('Cache-Control', 'no-store');
+        const conditional = await signedIn(request(app).get(path), memberToken)
+            .set('If-None-Match', original.headers.etag).expect(304).expect('Cache-Control', 'no-store');
+        expect(conditional.headers.deprecation).toBe(original.headers.deprecation);
+        expect(conditional.headers.sunset).toBeUndefined();
+    } finally {
+        await db.query('ALTER TABLE policy_feedback_log DROP COLUMN IF EXISTS private_fixture');
+        await db.query('ALTER TABLE policy_tuning_suggestions DROP COLUMN IF EXISTS private_fixture');
+    }
+});
+
+test('a suggestion without its analysis snapshot can be read and still cannot be applied', async () => {
+    const { rows: [feedback] } = await db.query('SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 ORDER BY id LIMIT 1', [policyId]);
+    await db.query("UPDATE policy_feedback_log SET prompted_at='2026-07-31T12:00:00Z' WHERE id=$1", [feedback.id]);
+    await db.query(`UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL, evidence_fingerprint=NULL,
+        supporting_feedback_ids=$1, created_at='2026-08-01T12:00:00Z' WHERE id=$2`, [[feedback.id], suggestionId]);
+    const before = await snapshot();
+    const path = `/api/suggestions/${suggestionId}`;
+    const legacy = await signedIn(request(app).get(path), memberToken).expect(200);
+    expect(legacy.body).toMatchObject({ status: 'pending', cohort_fingerprint: null, evidence_fingerprint: null });
+    expect(legacy.body.supporting_feedback.map(row => row.id)).toEqual([feedback.id]);
+    const proposal = await signedIn(request(app).get(`${path}/proposal`), memberToken).expect(200);
+    expect(proposal.body).toMatchObject({ reference_count: 1, proposal_status: 'available',
+        suggestion_config: { threshold_type: 'auto_classify', current: null, recommended: 90 },
+    });
+    await signedIn(request(app).get(`${path}/evidence`), memberToken).expect(403);
+    const evidence = await signedIn(request(app).get(`${path}/evidence`)).expect(200);
+    expect(evidence.body.items).toMatchObject([{ position: 1, feedbackId: feedback.id, status: 'available' }]);
+    const apply = await signedIn(request(app).post(`${path}/apply`)).expect(409);
+    expect(apply.body.code).toBe('SUGGESTION_EVIDENCE_REQUIRED');
+    expect(await snapshot()).toEqual(before);
+});
+
 test('the signed-in proposal read projects one row without expanding or returning feedback', async () => {
     const { rows: [feedback] } = await db.query(`SELECT id FROM policy_feedback_log
         WHERE selected_policy_id=$1 ORDER BY id LIMIT 1`, [policyId]);

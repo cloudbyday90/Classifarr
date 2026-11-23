@@ -47,12 +47,28 @@ and receives `403` when requesting this evidence page.
 ## Migrate from full detail
 
 Successful `GET /api/suggestions/:id` responses carry a dated `Deprecation`
-header and a link to the installation's API documentation. The current
-legacy response and its access remain available during this migration.
-No removal date is scheduled.
+header, a link to the installation's API documentation, and
+`Cache-Control: no-store`. Classifarr supports the current legacy fields and
+member access for at least 90 days from the first public release that ships
+both bounded alternatives, the notice, and this guide. A public, downloadable beta
+qualifies. The window starts at publication. Its end is the earliest review
+point for a possible change. There is no scheduled removal date.
 
 Switch proposal and status reads to `/proposal`. Use `/evidence` for allowed
 feedback review. Account for unavailable references and the new page order.
 If a workflow depends on raw fields or notes, review that requirement before
 switching the integration. The bounded endpoints provide the fields listed
 above.
+
+When reporting a migration gap through the project's issue tracker, include
+the Classifarr version, whether the integration uses member or administrator
+access, the field names it needs, and the task those fields support. Keep
+sample responses, feedback notes, identifiers, credentials, and logs out
+of the report.
+
+Older saved suggestions can still use the bounded reads when their saved
+configuration and references meet those contracts. If an older pending
+suggestion lacks its original analysis snapshot, run the existing analysis
+for its policy to generate a fresh proposal when the current data supports
+one. Apply continues to require current evidence. Existing history stays
+available under its current access rules.

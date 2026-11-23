@@ -45,6 +45,9 @@ test('documents the legacy suggestion migration in the served API spec', async (
   expect(legacy.deprecated).toBe(true);
   expect(legacy.description).toContain('/api/suggestions/{id}/proposal');
   expect(legacy.description).toContain('/api/suggestions/{id}/evidence');
+  expect(legacy.description).toContain('90 days from the first public release');
+  expect(legacy.description).toContain('No removal date is scheduled.');
+  expect(legacy.responses['200'].description).toContain('Cache-Control no-store');
   expect(spec.paths['/api/suggestions/{id}/proposal'].get.responses['200'].description).toBe('Bounded proposal');
 });
 

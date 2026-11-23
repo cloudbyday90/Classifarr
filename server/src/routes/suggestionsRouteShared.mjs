@@ -13,6 +13,7 @@ import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { requireAdmin } from '../middleware/auth.mjs';
 import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import { readLegacySuggestionDetail } from '../services/legacySuggestionDetail.mjs';
 import { MAX_SUGGESTION_EVIDENCE_REFERENCES, readSavedSuggestionEvidencePage } from '../services/savedSuggestionEvidence.mjs';
 import { readSavedSuggestionProposal } from '../services/savedSuggestionProposal.mjs';
 import { readSuggestionId, readSuggestionReviewIds } from './suggestionReviewInput.mjs';
@@ -63,7 +64,9 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
    *       `/api/suggestions/{id}/proposal`. Administrators can read bounded,
    *       attributed feedback through `/api/suggestions/{id}/evidence`.
    *       The evidence pages omit raw metadata and free-text notes.
-   *       The legacy response remains during migration with no scheduled removal date.
+   *       Legacy fields and access are supported for at least 90 days from the first
+   *       public release with both alternatives and the migration notice and guide.
+   *       A public beta qualifies. No removal date is scheduled.
    *     parameters:
    *       - name: id
    *         in: path
@@ -71,52 +74,14 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
    *         schema: { type: integer }
    *     responses:
    *       '200':
-   *         description: Legacy full detail with a Deprecation header
+   *         description: Legacy full detail with Deprecation and Cache-Control no-store headers
    */
   router.get('/:id', asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const suggestion = await db.query(
-      `
-          SELECT pts.*, lp.name as policy_name, l.name as library_name
-          FROM policy_tuning_suggestions pts
-          JOIN library_policies lp ON pts.policy_id = lp.id
-          JOIN libraries l ON lp.library_id = l.id
-          WHERE pts.id = $1
-        `,
-      [id],
-    );
-
-    if (suggestion.rows.length === 0) {
-      throw new NotFoundError('Suggestion not found');
-    }
-
-    const feedbackIds = suggestion.rows[0].supporting_feedback_ids || [];
-    let feedback = { rows: [] };
-
-    if (feedbackIds.length > 0) {
-      feedback = await db.query(
-        `
-            SELECT
-                pfl.*,
-                l.name as original_library,
-                l2.name as selected_library
-            FROM policy_feedback_log pfl
-            LEFT JOIN libraries l ON pfl.top_suggestion_library_id = l.id
-            LEFT JOIN libraries l2 ON pfl.selected_library_id = l2.id
-            WHERE pfl.id = ANY($1)
-            ORDER BY pfl.prompted_at DESC
-          `,
-        [feedbackIds],
-      );
-    }
-
+    const detail = await readLegacySuggestionDetail(db, req.params.id);
+    res.set('Cache-Control', 'no-store');
     res.set('Deprecation', LEGACY_DETAIL_DEPRECATED);
     res.append('Link', '</api/docs/>; rel="deprecation"');
-    return sendData(res, {
-      ...suggestion.rows[0],
-      supporting_feedback: feedback.rows,
-    });
+    return sendData(res, detail);
   }));
 
   /**

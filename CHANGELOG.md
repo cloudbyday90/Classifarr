@@ -361,6 +361,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Changed
 
+- **Legacy suggestion migration** — Documented at least 90 days of compatibility
+  after the first public release with the replacements and migration notice.
+  Legacy detail now uses `no-store` and returns an explicit set of shipped fields.
+  See the [outcome](docs/architecture/legacy-suggestion-support-window-outcome.md).
+
 - **Suggestion detail API** — Added a bounded proposal read for signed-in
   callers and a deprecation notice on legacy full detail. See the
   [migration guide](docs/api/suggestions.md) and
