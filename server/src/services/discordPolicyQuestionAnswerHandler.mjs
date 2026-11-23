@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { ComponentType, EmbedBuilder } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 
 import * as db from '../config/database.mjs';
@@ -17,7 +17,7 @@ import { clarificationService } from './clarificationService.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
 import { parseDiscordPolicyQuestionAnswerButton } from './discordPolicyQuestionAnswerButton.mjs';
-import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
+import { DISCORD_LEGACY_MESSAGE_REQUIRED, isOfferedDiscordButton, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 
 const logger = createLogger('discordPolicyQuestionAnswerHandler');
 
@@ -61,9 +61,7 @@ export async function processPolicyQuestionAnswer(interaction) {
     await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
     return;
   }
-  const offered = interaction.message?.components?.some(row => row.components?.some(component =>
-    component.type === ComponentType.Button && component.customId === interaction.customId && !component.disabled));
-  if (!offered) {
+  if (!isOfferedDiscordButton(interaction)) {
     await interaction.reply({ content: 'This answer is unavailable on the notification. Open Classifarr to review the item.', ephemeral: true });
     return;
   }

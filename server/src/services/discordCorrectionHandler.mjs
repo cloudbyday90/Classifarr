@@ -21,14 +21,14 @@ import {
 
 const logger = createLogger('discordCorrectionHandler');
 
-export async function processCorrection(classificationId, newLibraryId, interaction, { discordMessageId, selectorNotificationKind } = {}) {
+export async function processCorrection(classificationId, newLibraryId, interaction, binding) {
   try {
     await interaction.deferUpdate();
 
     let routingOutcome = { routed: false, reason: null, error: null };
 
     const persisted = await persistDiscordCorrection(db, classificationOutcomeService, {
-      classificationId, newLibraryId, actor: interaction.user.username, discordMessageId, selectorNotificationKind,
+      classificationId, newLibraryId, actor: interaction.user.username, binding,
     });
     if (persisted.message) {
       await interaction.followUp({ content: persisted.message, ephemeral: true });

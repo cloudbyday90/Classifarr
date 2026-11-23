@@ -5,7 +5,7 @@ import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createDiscordDeliveryRepository } from '../../services/discordDeliveryRepository.mjs';
 import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
 import { serializeDiscordDeliveryBody } from '../../services/discordDeliveryBody.mjs';
-import { createTieredComponents } from '../../services/discordNotificationComponents.mjs';
+import { createCorrectionComponents, createTieredComponents } from '../../services/discordNotificationComponents.mjs';
 
 let database;
 let beforeWrite;
@@ -23,6 +23,7 @@ jest.unstable_mockModule('../../services/classificationRoutingService.mjs', () =
 jest.unstable_mockModule('../../services/discordDelivery.mjs', () => ({ discordDelivery: { send: input => delivery.send(input) } }));
 const { handleInteraction } = await import('../../services/discordInteractionHandler.mjs');
 const { sendClassificationNotification } = await import('../../services/discordClassificationNotification.mjs');
+const { classificationOutcomeService } = await import('../../services/classificationOutcomeService.mjs');
 
 const messageId = '111111111111111111';
 const changedMessageId = '222222222222222222';
@@ -35,7 +36,10 @@ beforeAll(async () => {
     RETURNING id,name,media_type`);
   [source, destination] = rows;
 });
-beforeEach(() => { routeToArr.mockClear(); beforeWrite = undefined; });
+beforeEach(() => {
+  routeToArr.mockReset().mockResolvedValue({ attempted: true, routed: true });
+  beforeWrite = undefined;
+});
 afterAll(async () => { await database.pool.end(); });
 
 function interaction(kind, id, savedMessage = messageId, placeholder = 'Or choose a different library...') {
@@ -72,6 +76,135 @@ async function insertDeliveredReceipt(id, previousStatus, kind = 'classification
 const history = async id => (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
 const corrections = async id => (await query(`SELECT classification_id,corrected_library_id
   FROM classification_corrections WHERE classification_id=$1`, [id])).rows;
+
+function completedClick(id, action, kind, options = {}) {
+  const libraries = [source, destination];
+  const rendered = kind === 'classification' ? createCorrectionComponents(id, libraries)
+    : createTieredComponents(id, libraries, { tier: 'verify' });
+  const customId = action === 'reclassify' ? `${action}_${id}_${destination.id}` : `${action}_${id}`;
+  const click = interaction('button', id, options.messageId ?? messageId);
+  const rows = rendered.map(row => row.toJSON());
+  for (const row of rows) {
+    const component = row.components.find(entry => entry.custom_id === customId);
+    if (component && options.disabled) component.disabled = true;
+  }
+  click.customId = customId;
+  click.message.components = options.unoffered ? [] : rows.map(row => new ActionRow(row));
+  return click;
+}
+
+test.each([
+  [Number.MAX_SAFE_INTEGER - 3, 'correct', 'classification'], [7142, 'verify_yes', 'confidence'],
+])('affirmative control %s commits verification and outcome once before routing', async (id, action, kind) => {
+  await insertHistory(id, messageId, 'completed');
+  await insertDeliveredReceipt(id, 'completed', kind);
+  routeToArr.mockImplementationOnce(async () => {
+    expect(await history(id)).toMatchObject({ status: 'verified', clarification_status: 'confirmed',
+      metadata: { classification_details: { outcome_link: { type: 'verified', final_library_id: source.id } } } });
+    return { attempted: true, routed: true };
+  });
+  const clicks = [completedClick(id, action, kind), completedClick(id, action, kind)];
+  await Promise.all(clicks.map(handleInteraction));
+  expect(clicks.flatMap(click => click.editReply.mock.calls)).toHaveLength(1);
+  expect(clicks.flatMap(click => click.followUp.mock.calls)).toEqual(expect.arrayContaining([
+    [expect.objectContaining({ content: expect.stringContaining('Already processed') })],
+  ]));
+  expect(await history(id)).toMatchObject({ status: 'routed', library_id: source.id });
+  expect(routeToArr).toHaveBeenCalledTimes(1);
+});
+
+test('verification outcome failure rolls back the History transition and skips routing', async () => {
+  const id = 7143;
+  await insertHistory(id, messageId, 'completed');
+  await insertDeliveredReceipt(id, 'completed', 'confidence');
+  const before = await history(id);
+  const injectedFailure = jest.spyOn(classificationOutcomeService, 'recordOutcome')
+    .mockImplementationOnce((_id, _outcome, { client }) => client.query('SELECT 1/0'));
+  try {
+    const click = completedClick(id, 'verify_yes', 'confidence');
+    await handleInteraction(click);
+    expect(injectedFailure).toHaveBeenCalledTimes(1);
+    expect(click.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Failed to process verification') }));
+    expect(click.editReply).not.toHaveBeenCalled();
+    expect(await history(id)).toEqual(before);
+    expect(routeToArr).not.toHaveBeenCalled();
+  } finally { injectedFailure.mockRestore(); }
+});
+
+test.each([
+  [7144, 'verify_yes', 'confidence', 'awaiting_decision', 'completed', 'confidence', {}],
+  [7145, 'correct', 'classification', 'completed', 'awaiting_decision', 'classification', {}],
+  [7146, 'verify_yes', 'confidence', 'corrected', 'completed', 'confidence', {}],
+  [7147, 'verify_no', 'confidence', 'completed', 'completed', 'classification', {}],
+  [7148, 'reclassify', 'classification', 'completed', null, null, {}],
+  [7149, 'reclassify', 'classification', 'completed', 'completed', 'classification', { disabled: true }],
+  [7150, 'correct', 'classification', 'completed', 'completed', 'classification', { unoffered: true }],
+  [7151, 'verify_no', 'confidence', 'completed', 'completed', 'confidence', { messageId: changedMessageId }],
+])('completed button on row %i refuses stale or missing evidence', async (id, action, kind, status, previousStatus, receiptKind, options) => {
+  await insertHistory(id, messageId, status);
+  if (previousStatus) await insertDeliveredReceipt(id, previousStatus, receiptKind);
+  const before = await history(id);
+  const click = completedClick(id, action, kind, options);
+  await handleInteraction(click);
+  const reply = options.disabled || options.unoffered ? click.reply : click.followUp;
+  expect(reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
+  expect(click.editReply).not.toHaveBeenCalled();
+  expect(await history(id)).toEqual(before);
+  expect(await corrections(id)).toEqual([]);
+  expect(routeToArr).not.toHaveBeenCalled();
+});
+
+test.each([[7152, 'reclassify', 'classification'], [7153, 'verify_no', 'confidence']])(
+  'button on row %i rechecks its message while waiting on the History lock', async (id, action, kind) => {
+    await insertHistory(id, messageId, 'completed');
+    await insertDeliveredReceipt(id, 'completed', kind);
+    const blocker = await database.pool.connect();
+    let handling;
+    try {
+      await blocker.query('BEGIN');
+      await blocker.query('UPDATE classification_history SET discord_message_id=$2 WHERE id=$1', [id, changedMessageId]);
+      const entered = new Promise(resolve => { beforeWrite = resolve; });
+      const click = completedClick(id, action, kind);
+      handling = handleInteraction(click);
+      await Promise.race([entered, handling.then(() => { throw new Error('expected lock acquisition'); })]);
+      await blocker.query('COMMIT');
+      await handling;
+      expect(click.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('saved Discord notification') }));
+      expect(click.editReply).not.toHaveBeenCalled();
+      expect(await history(id)).toMatchObject({ status: 'completed', library_id: source.id, discord_message_id: changedMessageId });
+      expect(await corrections(id)).toEqual([]);
+      expect(routeToArr).not.toHaveBeenCalled();
+    } finally {
+      beforeWrite = undefined;
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await handling;
+    }
+  },
+);
+
+test.each([[7154, 'reclassify', 'classification'], [7155, 'verify_no', 'confidence']])(
+  'completed row %i can still be corrected through its offered control', async (id, action, kind) => {
+    await insertHistory(id, messageId, 'completed');
+    await insertDeliveredReceipt(id, 'completed', kind);
+    let click = completedClick(id, action, kind);
+    if (action === 'verify_no') {
+      await handleInteraction(click);
+      const [{ components }] = click.editReply.mock.calls[0];
+      expect(await history(id)).toMatchObject({ status: 'completed', library_id: source.id });
+      expect(routeToArr).not.toHaveBeenCalled();
+      click = interaction('selector', id);
+      click.message.components = components.map(row => new ActionRow(row.toJSON()));
+    }
+    await handleInteraction(click);
+    expect(click.editReply).toHaveBeenCalledTimes(1);
+    expect(await corrections(id)).toEqual([{ classification_id: id, corrected_library_id: destination.id }]);
+    expect(await history(id)).toMatchObject({ status: 'routed', library_id: destination.id });
+    expect(routeToArr).toHaveBeenCalledTimes(1);
+    expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${id}` }),
+      expect.objectContaining({ id: destination.id }));
+  },
+);
 
 test('the delivered classification menu corrects but a manual confidence menu keeps its original meaning', async () => {
   const channelId = '555555555555555555';

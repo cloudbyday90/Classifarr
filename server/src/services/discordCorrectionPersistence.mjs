@@ -1,20 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
-import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
-import { canApplyDiscordCompletedSelector, DISCORD_SELECTOR_CORRECTION_REQUIRED } from './discordCompletedSelectorAdmission.mjs';
+import { getDiscordCompletedControlRefusal } from './discordCompletedControlAdmission.mjs';
 
 /** No Discord or routing I/O inside the transaction. */
-export async function persistDiscordCorrection(db, outcomeService, { classificationId, newLibraryId, actor, discordMessageId, selectorNotificationKind }) {
+export async function persistDiscordCorrection(db, outcomeService, { classificationId, newLibraryId, actor, binding }) {
   return db.withTransaction(async client => {
     const { rows: [classification] } = await client.query(
       'SELECT * FROM classification_history WHERE id = $1 FOR UPDATE', [classificationId]);
     if (!classification) return { message: 'Classification not found' };
-    if (discordMessageId !== undefined) {
-      if (!matchesDiscordLegacyMessage(classification, discordMessageId)) return { message: DISCORD_LEGACY_MESSAGE_REQUIRED };
-      if (!await canApplyDiscordCompletedSelector(client, classification, discordMessageId, selectorNotificationKind)) {
-        return { message: DISCORD_SELECTOR_CORRECTION_REQUIRED };
-      }
-    }
+    const refusal = await getDiscordCompletedControlRefusal(client, classification, binding);
+    if (refusal) return { message: refusal };
     const { rows: [library] } = await client.query(
       'SELECT name, media_type, is_active FROM libraries WHERE id = $1 FOR SHARE', [newLibraryId]);
     if (!library) return { message: 'Library not found' };

@@ -17,9 +17,10 @@ import { showLibrarySelection as librarySelectionShowLibrarySelection, processQu
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
 import { getOfferedDiscordCorrectionKind } from './discordLibrarySelectionControl.mjs';
-import { DISCORD_SELECTOR_CORRECTION_REQUIRED } from './discordCompletedSelectorAdmission.mjs';
+import { DISCORD_COMPLETED_BUTTON_REQUIRED, DISCORD_SELECTOR_CORRECTION_REQUIRED } from './discordCompletedControlAdmission.mjs';
 import {
-  DISCORD_LEGACY_MESSAGE_REQUIRED, parseDiscordLegacyClarificationButton, parseDiscordLibrarySelectValues,
+  DISCORD_LEGACY_MESSAGE_REQUIRED, isOfferedDiscordButton, parseDiscordCompletedButton,
+  parseDiscordLegacyClarificationButton, parseDiscordLibrarySelectValues,
 } from './discordLegacyControlIdentity.mjs';
 
 const logger = createLogger('discordInteractionHandler');
@@ -31,17 +32,8 @@ export async function handleInteraction(interaction) {
       const parts = customId.split('_');
       const action = parts[0];
 
-      if (action === 'correct') {
-        const classificationId = parseInt(parts[1]);
-        await processVerification(classificationId, true, interaction);
-      } else if (action === 'reclassify') {
-        const classificationId = parts[1];
-        const newLibraryId = parts[2];
-        await processCorrection(
-          parseInt(classificationId),
-          parseInt(newLibraryId),
-          interaction,
-        );
+      if (action === 'correct' || action === 'reclassify' || action === 'verify') {
+        await handleCompletedButton(interaction);
       } else if (action === 'ai') {
         if (parts[1] === 'clarify') {
           const answer = parseDiscordLegacyClarificationButton(customId);
@@ -52,14 +44,6 @@ export async function handleInteraction(interaction) {
           await processClarificationResponse(answer.classificationId, answer.optionIndex, interaction);
         } else if (parts[1] === 'answer') {
           await processPolicyQuestionAnswer(interaction);
-        }
-      } else if (action === 'verify') {
-        const subAction = parts[1];
-        const classificationId = parseInt(parts[2]);
-        if (subAction === 'yes') {
-          await processVerification(classificationId, true, interaction);
-        } else if (subAction === 'no') {
-          await showLibrarySelection(classificationId, interaction);
         }
       } else if (action === 'acknowledge') {
         const _classificationId = parts[1];
@@ -96,7 +80,9 @@ export async function handleInteraction(interaction) {
         await interaction.reply({ content: DISCORD_SELECTOR_CORRECTION_REQUIRED, ephemeral: true });
         return;
       }
-      await processCorrection(selection.classificationId, selection.newLibraryId, interaction, { discordMessageId, selectorNotificationKind });
+      await processCorrection(selection.classificationId, selection.newLibraryId, interaction, {
+        discordMessageId, notificationKind: selectorNotificationKind, unavailableMessage: DISCORD_SELECTOR_CORRECTION_REQUIRED,
+      });
     }
   } catch (error) {
     logger.error('Error handling Discord interaction:', error);
@@ -110,6 +96,24 @@ export async function handleInteraction(interaction) {
         logger.debug('[Discord] Could not send top-level error reply', { error: _replyErr.message });
       }
     }
+  }
+}
+
+async function handleCompletedButton(interaction) {
+  const control = parseDiscordCompletedButton(interaction.customId);
+  const discordMessageId = interaction.message?.id;
+  if (!control || !isDiscordId(discordMessageId) || !isOfferedDiscordButton(interaction)) {
+    await interaction.reply({ content: DISCORD_COMPLETED_BUTTON_REQUIRED, ephemeral: true });
+    return;
+  }
+
+  const binding = { discordMessageId, notificationKind: control.notificationKind };
+  if (control.action === 'reclassify') {
+    await processCorrection(control.classificationId, control.destinationLibraryId, interaction, binding);
+  } else if (control.action === 'verify_no') {
+    await showLibrarySelection(control.classificationId, interaction, binding);
+  } else {
+    await processVerification(control.classificationId, interaction, binding);
   }
 }
 
@@ -129,12 +133,12 @@ export async function processPolicyQuestionAnswer(interaction) {
   return policyQuestionAnswerHandlerProcess(interaction);
 }
 
-export async function processVerification(classificationId, isCorrect, interaction) {
-  return verificationHandlerProcessVerification(classificationId, isCorrect, interaction);
+export async function processVerification(classificationId, interaction, binding) {
+  return verificationHandlerProcessVerification(classificationId, interaction, binding);
 }
 
-export async function showLibrarySelection(classificationId, interaction) {
-  return librarySelectionShowLibrarySelection(classificationId, interaction);
+export async function showLibrarySelection(classificationId, interaction, binding) {
+  return librarySelectionShowLibrarySelection(classificationId, interaction, binding);
 }
 
 export async function processQuestionResponse(classificationId, questionId, responseKey, interaction) {

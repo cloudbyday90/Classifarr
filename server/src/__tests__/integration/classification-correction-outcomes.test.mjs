@@ -38,6 +38,16 @@ async function outcomes() {
     .filter(row => libraries.some(library => library.id === row.selected_library_id));
 }
 
+async function bindDiscordCorrection(id) {
+  const discordMessageId = '123456789012345678';
+  await client.query('UPDATE classification_history SET discord_message_id=$2 WHERE id=$1', [id, discordMessageId]);
+  await client.query(`INSERT INTO discord_notification_deliveries
+    (classification_id,nonce,bot_user_id,channel_id,notification_kind,state,message_id,previous_status)
+    VALUES ($1,'cf_abcdefghijklmnopqrstuv','222222222222222222','333333333333333333','classification','delivered',$2,'completed')`,
+  [id, discordMessageId]);
+  return { discordMessageId, notificationKind: 'classification' };
+}
+
 test.each(['movie', 'tv'])('new %s outcomes survive mutable history, event cleanup, and history deletion', async type => {
   const row = await history(type), event = await write(row);
   expect(event.id).toBeGreaterThan(0);
@@ -81,13 +91,14 @@ test('a snapshot constraint failure cannot commit the correction event or histor
 
 test('Discord outcome failure rolls back its history and correction through the transaction owner', async () => {
   const row = await history();
+  const binding = await bindDiscordCorrection(row.id);
   const db = { withTransaction: async callback => {
     await client.query('SAVEPOINT discord_correction');
     try { return await callback(client); }
     catch (error) { await client.query('ROLLBACK TO SAVEPOINT discord_correction'); throw error; }
   } };
   await expect(persistDiscordCorrection(db, { recordOutcome: async () => ({ updated: false }) },
-    { classificationId: row.id, newLibraryId: libraries[1].id, actor: 'operator' })).rejects.toThrow('outcome_not_recorded');
+    { classificationId: row.id, newLibraryId: libraries[1].id, actor: 'operator', binding })).rejects.toThrow('outcome_not_recorded');
   expect(await outcomes()).toHaveLength(0);
   expect((await client.query('SELECT library_id FROM classification_history WHERE id=$1', [row.id])).rows[0].library_id).toBe(row.library_id);
 });
@@ -165,8 +176,9 @@ test('Discord retains a deferral without inventing a final destination', async (
   const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 920001 },
     method: 'policy_prompt', status: 'awaiting_decision', libraryId: null });
   const row = await history('movie', { method: 'policy_prompt', metadata: { classification_details: { destination_decision: capture } } });
+  const binding = await bindDiscordCorrection(row.id);
   await persistDiscordCorrection({ withTransaction: callback => callback(client) }, { recordOutcome: async () => ({ updated: true }) },
-    { classificationId: row.id, newLibraryId: libraries[1].id, actor: 'operator' });
+    { classificationId: row.id, newLibraryId: libraries[1].id, actor: 'operator', binding });
   expect((await readCorrectionDestinationDecisions(client)).overall).toMatchObject({ awaitingDecision: 1, completedDecisions: 0 });
 });
 

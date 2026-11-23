@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord verification and direct corrections** — Bind the existing
+  buttons to the saved completed notification and record verification status
+  and outcome together before routing. See the
+  [outcome](docs/architecture/discord-legacy-completed-buttons-outcome.md).
+
 - **Discord library decisions** — Keep the shared library menu for completed
   corrections. Older pending menus direct operators to Classifarr. Compact
   answer buttons must be offered on the saved notification and match the

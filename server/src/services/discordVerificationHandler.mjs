@@ -12,6 +12,7 @@ import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
+import { persistDiscordVerification } from './discordVerificationPersistence.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import {
   DISCORD_PENDING_ANSWER_ACTION_IDS,
@@ -20,54 +21,18 @@ import {
 
 const logger = createLogger('discordVerificationHandler');
 
-export async function processVerification(classificationId, isCorrect, interaction) {
+export async function processVerification(classificationId, interaction, binding) {
   try {
     await interaction.deferUpdate();
 
-    const classResult = await db.query(
-      'SELECT * FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
+    const { classification, message } = await persistDiscordVerification(db, classificationOutcomeService, {
+      classificationId, actor: interaction.user.username, binding,
+    });
+    if (message) {
+      await interaction.followUp({ content: message, ephemeral: true });
       return;
     }
 
-    const classification = classResult.rows[0];
-
-    logger.info('[Discord] Processing verification', {
-      id: classificationId,
-      isCorrect,
-      library_id: classification.library_id,
-      status: classification.status,
-    });
-
-    if (classification.status === 'verified' || classification.status === 'routed') {
-      await interaction.followUp({
-        content: '\u2705 Already processed \u2014 no changes made.',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    await db.query(
-      `UPDATE classification_history 
-       SET status = 'verified',
-           clarification_status = 'confirmed'
-       WHERE id = $1`,
-      [classificationId],
-    );
-    const outcomeRecord = await classificationOutcomeService.recordOutcome(classificationId, {
-      type: 'verified',
-      source: 'discord_verification',
-      actor: interaction.user.username,
-      final_library_id: classification.library_id || null,
-      final_library_name: classification.library_name || null,
-    });
     const pendingAnswerIntake = policyDiscordPendingAnswerIntakeService.build({
       classification,
       destination: {
@@ -75,7 +40,7 @@ export async function processVerification(classificationId, isCorrect, interacti
         libraryName: classification.library_name,
       },
       actionId: DISCORD_PENDING_ANSWER_ACTION_IDS.VERIFY_DESTINATION,
-      finalOutcomeRecorded: outcomeRecord.updated === true,
+      finalOutcomeRecorded: true,
     });
 
     logger.info('Discord verification pending-answer intake evaluated', {
@@ -110,7 +75,7 @@ export async function processVerification(classificationId, isCorrect, interacti
     logger.error('Error processing verification:', error);
     try {
       await interaction.followUp({
-        content: `Failed to process verification: ${error.message || 'Unknown error'}\nClassification ID: ${classificationId}`,
+        content: 'Failed to process verification. Open Classifarr to review the item.',
         ephemeral: true,
       });
     } catch (_replyErr) {

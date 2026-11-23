@@ -62,10 +62,12 @@ test('source labels are scoped and contradictory explicit choices are excluded',
 });
 
 test.each([['movie', false], ['tv', true], ['music', true]])('Discord rejects incompatible destinations %s/%s before writing', async (media_type, is_active) => {
-  const client = { query: jest.fn().mockResolvedValueOnce({ rows: [classification] })
+  const discordMessageId = '123456789012345678';
+  const client = { query: jest.fn().mockResolvedValueOnce({ rows: [{ ...classification, status: 'completed', discord_message_id: discordMessageId }] })
+    .mockResolvedValueOnce({ rowCount: 1 })
     .mockResolvedValueOnce({ rows: [{ name: 'Destination', media_type, is_active }] }) };
   const result = await persistDiscordCorrection({ withTransaction: callback => callback(client) }, {},
-    { classificationId: 1, newLibraryId: 3, actor: 'user' });
+    { classificationId: 1, newLibraryId: 3, actor: 'user', binding: { discordMessageId, notificationKind: 'classification' } });
   expect(result.message).toMatch(/inactive|incompatible/);
-  expect(client.query).toHaveBeenCalledTimes(2);
+  expect(client.query).toHaveBeenCalledTimes(3);
 });

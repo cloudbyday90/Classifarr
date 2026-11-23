@@ -85,6 +85,8 @@ const nativePendingRouteOutcomePersistence = mockNativePendingRouteOutcomePersis
 const discordPendingAnswerIntakeService = mockDiscordPendingAnswerIntakeService;
 
 const savedMessageId = '111111111111111111';
+const confidenceBinding = { discordMessageId: savedMessageId, notificationKind: 'confidence' };
+const classificationBinding = { discordMessageId: savedMessageId, notificationKind: 'classification' };
 const MOCK_CLASSIFICATION = {
     id: 100,
     library_id: 10,
@@ -97,6 +99,8 @@ const MOCK_CLASSIFICATION = {
     policy_question: null,
     discord_message_id: savedMessageId,
 };
+const completedClassification = { ...MOCK_CLASSIFICATION, status: 'completed' };
+const deliveryMatch = { rows: [{ '?column?': 1 }], rowCount: 1 };
 
 const deliveryMarker = formatDeliveryMarker('100', 'cf_abcdefghijklmnopqrstuv');
 let interactions = [];
@@ -228,12 +232,13 @@ describe('handleInteraction', () => {
         expect(interaction.update).toHaveBeenCalledTimes(1);
         expect(interaction.update.mock.calls[0][0].embeds[0].data.footer.text).toContain(deliveryMarker);
     });
-    test('routes the "correct" button through processVerification — DB is queried for classification', async () => {
+    test('routes an offered "correct" button through the History lock', async () => {
         db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'pending' }] })
             .mockResolvedValue({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction({
             customId: 'correct_100',
+            message: { id: savedMessageId, components: [{ components: [{ type: ComponentType.Button, customId: 'correct_100' }] }] },
             isButton: jest.fn(() => true),
             isStringSelectMenu: jest.fn(() => false),
         });
@@ -245,7 +250,18 @@ describe('handleInteraction', () => {
             expect.arrayContaining([100]),
         );
         expect(interaction.update).not.toHaveBeenCalled();
+        expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
     });
+
+    test.each(['correct_100x', 'verify_yes_01', 'verify_no_9007199254740992', 'reclassify_100_2147483648',
+        'reclassify_100', 'reclassify_100_10_extra', 'correct_100\n', 'verify_no_100_10'])(
+        'refuses malformed completed button %s before database work', async customId => {
+            const interaction = makeInteraction({ customId, isButton: () => true,
+                message: { id: savedMessageId, components: [{ components: [{ type: ComponentType.Button, customId }] }] } });
+            await handleInteraction(interaction);
+            expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
+            expect(db.query).not.toHaveBeenCalled();
+        });
 });
 
 // ── processVerification ───────────────────────────────────────────────────────
@@ -268,18 +284,19 @@ describe('processVerification', () => {
             }),
         });
 
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
 
     test('uses editReply for the success embed — NOT update() or reply()', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })
-            .mockResolvedValue({ rows: [], rowCount: 0 });
+            .mockResolvedValueOnce({ rows: [completedClassification] })
+            .mockResolvedValueOnce(deliveryMatch)
+            .mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction();
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -287,19 +304,19 @@ describe('processVerification', () => {
         expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(100, expect.objectContaining({
             type: 'verified',
             source: 'discord_verification',
-        }));
+        }), { client: mockDb, requireWrite: true });
         expect(discordPendingAnswerIntakeService.build).toHaveBeenCalledWith(expect.objectContaining({
-            classification: MOCK_CLASSIFICATION,
+            classification: completedClassification,
             actionId: 'verify_destination',
             finalOutcomeRecorded: true,
         }));
     });
 
     test('idempotency guard: followUp + early exit when status is already "verified"', async () => {
-        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'verified' }] });
+        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'verified' }] }).mockResolvedValueOnce(deliveryMatch);
 
         const interaction = makeInteraction();
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -308,10 +325,10 @@ describe('processVerification', () => {
     });
 
     test('idempotency guard: followUp + early exit when status is already "routed"', async () => {
-        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'routed' }] });
+        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'routed' }] }).mockResolvedValueOnce(deliveryMatch);
 
         const interaction = makeInteraction();
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
@@ -323,7 +340,7 @@ describe('processVerification', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('not found'), ephemeral: true })
@@ -337,7 +354,7 @@ describe('processVerification', () => {
         db.query.mockRejectedValueOnce(new Error('DB connection lost'));
 
         const interaction = makeInteraction();
-        await processVerification(100, true, interaction);
+        await processVerification(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -356,7 +373,7 @@ describe('processVerification', () => {
 
         // The key assertion: the function must resolve without rejecting.
         await expect(
-            processVerification(100, true, interaction)
+            processVerification(100, interaction, confidenceBinding)
         ).resolves.toBeUndefined();
 
         // And it must NEVER use reply() — that was the original cause of the process crash.
@@ -382,19 +399,20 @@ describe('processCorrection', () => {
             }),
         });
 
-        await processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction, classificationBinding);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
 
     test('uses editReply for the success embed — NOT update() or reply()', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })           // classification
+            .mockResolvedValueOnce({ rows: [completedClassification] })
+            .mockResolvedValueOnce(deliveryMatch)
             .mockResolvedValueOnce({ rows: [{ name: 'Series', media_type: MOCK_CLASSIFICATION.media_type, is_active: true }] })
             .mockResolvedValue({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction();
-        await processCorrection(100, 11, interaction);
+        await processCorrection(100, 11, interaction, classificationBinding);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -406,7 +424,7 @@ describe('processCorrection', () => {
             final_library_name: 'Series'
         }), { client: mockDb });
         expect(discordPendingAnswerIntakeService.build).toHaveBeenCalledWith(expect.objectContaining({
-            classification: MOCK_CLASSIFICATION,
+            classification: completedClassification,
             destination: {
                 libraryId: 11,
                 libraryName: 'Series',
@@ -420,7 +438,7 @@ describe('processCorrection', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction, classificationBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -431,11 +449,12 @@ describe('processCorrection', () => {
 
     test('followUp (not reply) when library is not found', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })  // classification found
+            .mockResolvedValueOnce({ rows: [completedClassification] })
+            .mockResolvedValueOnce(deliveryMatch)
             .mockResolvedValueOnce({ rows: [] });                     // library not found
 
         const interaction = makeInteraction();
-        await processCorrection(100, 99, interaction);
+        await processCorrection(100, 99, interaction, classificationBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Library not found', ephemeral: true })
@@ -447,23 +466,24 @@ describe('processCorrection', () => {
     test('idempotency guard: followUp + early exit when correction targets the existing library', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'corrected', library_id: 10 }] })
+            .mockResolvedValueOnce(deliveryMatch)
             .mockResolvedValueOnce({ rows: [{ name: 'Movies', media_type: 'movie', is_active: true }] });
 
         const interaction = makeInteraction();
-        await processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction, classificationBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: expect.stringContaining('Already processed') })
         );
         expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(db.query).toHaveBeenCalledTimes(2);
+        expect(db.query).toHaveBeenCalledTimes(3);
     });
 
     test('catch block uses followUp, not reply', async () => {
         db.query.mockRejectedValueOnce(new Error('DB timeout'));
 
         const interaction = makeInteraction();
-        await processCorrection(100, 10, interaction);
+        await processCorrection(100, 10, interaction, classificationBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -478,7 +498,7 @@ describe('processCorrection', () => {
         });
 
         await expect(
-            processCorrection(100, 10, interaction)
+            processCorrection(100, 10, interaction, classificationBinding)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();
@@ -780,9 +800,9 @@ describe('showLibrarySelection', () => {
 
         db.query.mockImplementationOnce(async () => {
             callOrder.push('db.query');
-            return { rows: [{ media_type: 'movie' }] };
+            return { rows: [completedClassification] };
         });
-        db.query.mockResolvedValueOnce({ rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] });
+        db.query.mockResolvedValueOnce(deliveryMatch).mockResolvedValueOnce({ rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] });
 
         const interaction = makeInteraction({
             deferUpdate: jest.fn().mockImplementation(async () => {
@@ -790,18 +810,19 @@ describe('showLibrarySelection', () => {
             }),
         });
 
-        await showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction, confidenceBinding);
 
         expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
     });
 
     test('uses editReply for the library dropdown — NOT update() or reply()', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [{ media_type: 'movie' }] })
+            .mockResolvedValueOnce({ rows: [completedClassification] })
+            .mockResolvedValueOnce(deliveryMatch)
             .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Movies', media_type: 'movie' }] });
 
         const interaction = makeInteraction();
-        await showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction, confidenceBinding);
 
         expect(interaction.editReply).toHaveBeenCalledTimes(1);
         expect(interaction.update).not.toHaveBeenCalled();
@@ -812,7 +833,7 @@ describe('showLibrarySelection', () => {
         db.query.mockResolvedValueOnce({ rows: [] });
 
         const interaction = makeInteraction();
-        await showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'Classification not found', ephemeral: true })
@@ -823,11 +844,12 @@ describe('showLibrarySelection', () => {
 
     test('followUp (not reply) when no libraries are available for the media type', async () => {
         db.query
-            .mockResolvedValueOnce({ rows: [{ media_type: 'movie' }] })
+            .mockResolvedValueOnce({ rows: [completedClassification] })
+            .mockResolvedValueOnce(deliveryMatch)
             .mockResolvedValueOnce({ rows: [] }); // no libraries
 
         const interaction = makeInteraction();
-        await showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ content: 'No libraries available', ephemeral: true })
@@ -840,7 +862,7 @@ describe('showLibrarySelection', () => {
         db.query.mockRejectedValueOnce(new Error('DB error'));
 
         const interaction = makeInteraction();
-        await showLibrarySelection(100, interaction);
+        await showLibrarySelection(100, interaction, confidenceBinding);
 
         expect(interaction.followUp).toHaveBeenCalledWith(
             expect.objectContaining({ ephemeral: true })
@@ -855,7 +877,7 @@ describe('showLibrarySelection', () => {
         });
 
         await expect(
-            showLibrarySelection(100, interaction)
+            showLibrarySelection(100, interaction, confidenceBinding)
         ).resolves.toBeUndefined();
 
         expect(interaction.reply).not.toHaveBeenCalled();

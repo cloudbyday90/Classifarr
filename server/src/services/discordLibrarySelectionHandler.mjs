@@ -13,42 +13,34 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { VERIFICATION_CORRECTION_PLACEHOLDER } from './discordLibrarySelectionControl.mjs';
+import { getDiscordCompletedControlRefusal } from './discordCompletedControlAdmission.mjs';
 
 const logger = createLogger('discordLibrarySelectionHandler');
 
-export async function showLibrarySelection(classificationId, interaction) {
+export async function showLibrarySelection(classificationId, interaction, binding) {
   try {
     await interaction.deferUpdate();
 
-    const classResult = await db.query(
-      'SELECT media_type FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
+    const result = await db.withTransaction(async client => {
+      const { rows: [classification] } = await client.query(
+        'SELECT id, status, discord_message_id, media_type FROM classification_history WHERE id = $1 FOR SHARE',
+        [classificationId],
+      );
+      if (!classification) return { message: 'Classification not found' };
+      const refusal = await getDiscordCompletedControlRefusal(client, classification, binding);
+      if (refusal) return { message: refusal };
+      const { rows } = await client.query(
+        'SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true',
+        [classification.media_type],
+      );
+      return rows.length ? { libraries: rows } : { message: 'No libraries available' };
+    });
+    if (result.message) {
+      await interaction.followUp({ content: result.message, ephemeral: true });
       return;
     }
 
-    const mediaType = classResult.rows[0].media_type;
-
-    const libResult = await db.query(
-      'SELECT id, name, media_type FROM libraries WHERE media_type = $1 AND is_active = true',
-      [mediaType],
-    );
-
-    if (libResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'No libraries available',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const options = libResult.rows.map((lib) => ({
+    const options = result.libraries.map((lib) => ({
       label: lib.name,
       value: `${classificationId}_${lib.id}`,
       description: `${lib.media_type} library`,
