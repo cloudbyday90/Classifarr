@@ -9,20 +9,17 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { ValidationError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import { recordStandaloneFeedback } from '../services/standaloneFeedbackService.mjs';
 import { registerFeedbackReviewRoutes } from './feedbackReviewRoutes.mjs';
+import { registerFeedbackAnalysisRoutes } from './feedbackAnalysisRoutes.mjs';
 import { requireAdmin } from '../middleware/auth.mjs';
-import { readSuggestionApplicationIds } from './suggestionApplicationInput.mjs';
-
-function parseIdParam(value) {
-  return Number.parseInt(value, 10);
-}
+import { readSuggestionReviewIds } from './suggestionReviewInput.mjs';
 
 export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   const router = express.Router();
   registerFeedbackReviewRoutes(router, { db, feedbackAnalysis });
+  registerFeedbackAnalysisRoutes(router, feedbackAnalysis);
 
   router.post('/', asyncHandler(async (req, res) => {
     const result = await recordStandaloneFeedback({ db, feedbackAnalysis, body: req.body });
@@ -42,33 +39,6 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
       policyId,
       count: suggestions.length,
       suggestions,
-    });
-  }));
-
-  router.post('/policies/:id/analyze', asyncHandler(async (req, res) => {
-    const policyId = requireValidId(req.params.id, 'policy ID');
-
-    const days = parseIdParam(req.body.days);
-    const minFeedback = parseIdParam(req.body.minFeedback);
-
-    const options = {
-      days: Number.isNaN(days) ? 30 : days,
-      minFeedback: Number.isNaN(minFeedback) ? 5 : minFeedback,
-    };
-
-    if (!Number.isInteger(options.days) || options.days < 1 || options.days > 365) {
-      throw new ValidationError('Invalid days parameter. Must be an integer between 1 and 365.');
-    }
-
-    if (!Number.isInteger(options.minFeedback) || options.minFeedback < 1 || options.minFeedback > 1000) {
-      throw new ValidationError('Invalid minFeedback parameter. Must be an integer between 1 and 1000.');
-    }
-
-    const analysis = await feedbackAnalysis.analyzePolicy(policyId, options);
-
-    return res.json({
-      success: true,
-      ...analysis,
     });
   }));
 
@@ -105,7 +75,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   }));
 
   router.post('/suggestions/:id/apply', requireAdmin, asyncHandler(async (req, res) => {
-    const { suggestionId, userId } = readSuggestionApplicationIds(req.params.id, req.user.id);
+    const { suggestionId, userId } = readSuggestionReviewIds(req.params.id, req.user.id);
     const result = await feedbackAnalysis.applySuggestion(suggestionId, userId);
 
     return res.json({
@@ -115,9 +85,8 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
     });
   }));
 
-  router.post('/suggestions/:id/reject', asyncHandler(async (req, res) => {
-    const suggestionId = requireValidId(req.params.id, 'suggestion ID');
-    const userId = req.user.id;
+  router.post('/suggestions/:id/reject', requireAdmin, asyncHandler(async (req, res) => {
+    const { suggestionId, userId } = readSuggestionReviewIds(req.params.id, req.user.id);
     const reason = req.body.reason || 'Not applicable';
 
     const result = await feedbackAnalysis.rejectSuggestion(suggestionId, userId, reason);
@@ -126,15 +95,6 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
       success: true,
       ...result,
       message: 'Suggestion rejected',
-    });
-  }));
-
-  router.post('/analyze-all', asyncHandler(async (_req, res) => {
-    const results = await feedbackAnalysis.runFullAnalysis();
-
-    return res.json({
-      success: true,
-      ...results,
     });
   }));
 

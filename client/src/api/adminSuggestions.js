@@ -31,18 +31,25 @@ export function getSuggestion(id) {
   return getDataRequest(`/suggestions/${id}`)
 }
 
+const invalidSuggestionId = 'Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'
+
+function suggestionReviewId(id) {
+  const text = typeof id === 'number' ? String(id) : id
+  return typeof text === 'string' && /^[1-9][0-9]{0,9}$/.test(text) && Number(text) <= 2147483647 ? text : null
+}
+
 /** Applies a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function applySuggestion(id) {
-  const text = typeof id === 'number' ? String(id) : id
-  if (typeof text !== 'string' || !/^[1-9][0-9]{0,9}$/.test(text) || Number(text) > 2147483647) {
-    return Promise.reject(new TypeError('Invalid suggestion ID. Use a whole number from 1 to 2147483647 in decimal form.'))
-  }
+  const text = suggestionReviewId(id)
+  if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
   return apiClient.post(`/suggestions/${text}/apply`)
 }
 
-/** Propagates missing-target, lifecycle, and evidence conflicts without retrying those responses. */
+/** Rejects a suggestion with a canonical positive INTEGER ID and an administrator session. */
 export function rejectSuggestion(id, reason) {
-  return apiClient.post(`/suggestions/${id}/reject`, { reason })
+  const text = suggestionReviewId(id)
+  if (!text) return Promise.reject(new TypeError(invalidSuggestionId))
+  return apiClient.post(`/suggestions/${text}/reject`, { reason })
 }
 
 const adminSuggestionsApi = {

@@ -35,7 +35,8 @@ jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => feedbackAnaly
 
 jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
+const { logger, module: loggerModule } = createLoggerModuleMock();
+jest.unstable_mockModule('../utils/logger.mjs', () => loggerModule);
 
 const { router: feedbackRouter } = await import('../routes/feedback.mjs');
 
@@ -109,7 +110,9 @@ describe('Feedback Routes', () => {
       .send({})
       .expect(400);
 
-    expect(res.body).toEqual({ error: 'Invalid policy ID' });
+    expect(res.body.error).toContain('1 to 2147483647');
+    expect(analyzePolicy).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith('Manual suggestion analysis requested', expect.anything());
   });
 
   it('applies default analyze options when values are missing', async () => {
@@ -117,11 +120,18 @@ describe('Feedback Routes', () => {
 
     const res = await request(app)
       .post('/feedback/policies/7/analyze')
-      .send({})
+      .send({ actorId: 1, policyId: 42 })
       .expect(200);
 
     expect(analyzePolicy).toHaveBeenCalledWith(7, { days: 30, minFeedback: 5 });
+    expect(logger.info.mock.calls).toEqual([['Manual suggestion analysis requested', { actorId: 55, scope: 'policy', policyId: 7 }]]);
     expect(res.body).toEqual({ success: true, created: 4 });
+  });
+
+  it.each([{ days: 366 }, { minFeedback: 1001 }])('refuses out-of-range options before logging or dispatching analysis', async options => {
+    await request(app).post('/feedback/policies/7/analyze').send(options).expect(400);
+    expect(analyzePolicy).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith('Manual suggestion analysis requested', expect.anything());
   });
 
   it('returns empty stats when no policy stats exist yet', async () => {
@@ -187,5 +197,20 @@ describe('Feedback Routes', () => {
     const res = await request(app).post('/feedback/analyze-all').send({}).expect(200);
 
     expect(res.body).toEqual({ success: true, analyzed: 6 });
+    expect(logger.info.mock.calls).toEqual([['Manual suggestion analysis requested', { actorId: 55, scope: 'enabled_policies' }]]);
+  });
+
+  it('records an accepted request before a failing analysis starts', async () => {
+    const log = [['Manual suggestion analysis requested', { actorId: 55, scope: 'policy', policyId: 7 }]];
+    let logAtDispatch;
+    analyzePolicy.mockImplementationOnce(async () => {
+      logAtDispatch = [...logger.info.mock.calls];
+      throw new Error('Analysis failed');
+    });
+
+    await request(app).post('/feedback/policies/7/analyze').send({}).expect(500);
+
+    expect(logAtDispatch).toEqual(log);
+    expect(logger.info.mock.calls).toEqual(log);
   });
 });

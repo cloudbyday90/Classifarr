@@ -74,6 +74,17 @@ test('an unrelated forbidden response keeps the ordinary error handling', async 
   expect(alert).toHaveBeenCalledExactlyOnceWith('Failed to apply suggestion: Request failed')
 })
 
+test('rejection refusal directs the reviewer to an administrator and keeps the dialog available', async () => {
+  await mountDashboard()
+  wrapper.vm.showRejectModal(suggestion)
+  api.rejectSuggestion.mockRejectedValueOnce({ response: { status: 403, data: { error: 'Admin access required' } } })
+  await wrapper.vm.confirmReject('Dismiss')
+  expect(api.rejectSuggestion).toHaveBeenCalledExactlyOnceWith(suggestion.id, 'Dismiss')
+  expect(api.getSuggestions).toHaveBeenCalledTimes(1)
+  expect(wrapper.findComponent({ name: 'RejectModal' }).exists()).toBe(true)
+  expect(alert).toHaveBeenCalledExactlyOnceWith('Ask a Classifarr administrator to review and reject this suggestion.')
+})
+
 test('existing successful reviews still refresh and canceled apply requests do not run', async () => {
   await mountDashboard()
   confirm.mockReturnValueOnce(false)

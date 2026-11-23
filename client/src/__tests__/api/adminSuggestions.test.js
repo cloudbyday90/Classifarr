@@ -101,6 +101,19 @@ describe('adminSuggestions', () => {
     expect(result).toEqual({ data: { rejected: true } })
   })
 
+  it('rejects a suggestion at the maximum exact ID without changing the request body', async () => {
+    mockPost.mockResolvedValueOnce({ data: { success: true } })
+    await rejectSuggestion('2147483647', 'Dismiss')
+    expect(mockPost).toHaveBeenCalledWith('/suggestions/2147483647/reject', { reason: 'Dismiss' })
+  })
+
+  it.each(['03', '3x', '3/4', '2147483648', 0, 1.5, null, [3]])(
+    'refuses invalid rejection IDs before sending a request (%s)', async id => {
+      await expect(rejectSuggestion(id, 'Dismiss')).rejects.toThrow('Invalid suggestion ID')
+      expect(mockPost).not.toHaveBeenCalled()
+    },
+  )
+
   it.each([
     [applySuggestion, 'SUGGESTION_EVIDENCE_REQUIRED'],
     [applySuggestion, 'SUGGESTION_EVIDENCE_STALE'],

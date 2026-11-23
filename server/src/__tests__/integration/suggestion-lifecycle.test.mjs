@@ -172,13 +172,14 @@ test('native intent blocks apply before bookkeeping but allows dismissing the pe
 });
 
 const suggestionPaths = ['/api/suggestions', '/api/feedback/suggestions'];
+const reviewRoutes = suggestionPaths.flatMap(base => ['apply', 'reject'].map(action => [base, action]));
 
-test.each(suggestionPaths)('%s denies writes before changing the suggestion, policy or audit', async base => {
-    const path = `${base}/${suggestionId}/apply`;
+test.each(reviewRoutes)('%s %s denies writes before changing the suggestion, policy or audit', async (base, action) => {
+    const path = `${base}/${suggestionId}/${action}`;
     const before = await snapshot();
     await request(app).post(path).expect(401);
     await signedIn(request(app).post(path), memberToken).expect(403);
-    await signedIn(request(app).post(`${base}/invalid/apply`), memberToken).expect(403);
+    await signedIn(request(app).post(`${base}/invalid/${action}`), memberToken).expect(403);
     await signedIn(request(app).post(path), scopedToken).expect(403);
 
     for (const id of [undefined, '01', 0, 2147483648]) {
@@ -188,19 +189,56 @@ test.each(suggestionPaths)('%s denies writes before changing the suggestion, pol
     }
 
     for (const id of [`${suggestionId}x`, `0${suggestionId}`, `${suggestionId}\n`, '0', '-1', '1.5', '1e0', '2147483648']) {
-        const response = await signedIn(request(app).post(`${base}/${encodeURIComponent(id)}/apply`)).expect(400);
+        const response = await signedIn(request(app).post(`${base}/${encodeURIComponent(id)}/${action}`)).expect(400);
         expect(response.body.error).toContain('1 to 2147483647');
     }
     expect(await snapshot()).toEqual(before);
 });
 
-test.each(suggestionPaths)('%s preserves reads and rejection for ordinary users', async base => {
+test.each(suggestionPaths)('%s preserves member reads and records the administrator who rejects', async base => {
     const readPath = base === '/api/suggestions' ? `${base}/${suggestionId}` : `/api/feedback/policies/${policyId}/suggestions`;
     await signedIn(request(app).get(readPath), memberToken).expect(200);
-    await signedIn(request(app).post(`${base}/${suggestionId}/reject`), memberToken).send({ reason: 'Dismiss' }).expect(200);
+    const rejection = await signedIn(request(app).post(`${base}/${suggestionId}/reject`))
+        .send({ reason: 'Dismiss', userId: memberId }).expect(200);
+    expect(rejection.body).toEqual(base === '/api/suggestions'
+        ? { success: true, result: { success: true, suggestionId: String(suggestionId), status: 'rejected' } }
+        : { success: true, suggestionId, status: 'rejected', message: 'Suggestion rejected' });
     const after = await snapshot();
-    expect(after.suggestion).toMatchObject({ status: 'rejected', reviewed_by: memberId, applied_by: null });
+    expect(after.suggestion).toMatchObject({ status: 'rejected', reviewed_by: userId, applied_by: null, rejection_reason: 'Dismiss' });
     expect(after.audit).toEqual([]);
+    const otherBase = suggestionPaths.find(path => path !== base);
+    const repeat = await signedIn(request(app).post(`${otherBase}/${suggestionId}/reject`)).send({ reason: 'Later' }).expect(409);
+    expect(repeat.body.code).toBe('SUGGESTION_NOT_PENDING');
+    expect(await snapshot()).toEqual(after);
+});
+
+test.each(['policy', 'all'])('manual %s analysis requires an exact administrator before superseding a suggestion', async scope => {
+    const path = scope === 'policy' ? `/api/feedback/policies/${policyId}/analyze` : '/api/feedback/analyze-all';
+    await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);
+    const before = await snapshot();
+    const missingActor = await generateAccessToken({ username: 'lifecycle-reviewer', role: 'admin' });
+    await request(app).post(path).send({}).expect(401);
+    await signedIn(request(app).post(path), memberToken).send({}).expect(403);
+    await signedIn(request(app).post(path), scopedToken).send({}).expect(403);
+    await signedIn(request(app).post(path), missingActor).send({}).expect(403);
+
+    if (scope === 'policy') {
+        for (const id of [`${policyId}x`, `0${policyId}`, '0', '1.5', '2147483648']) {
+            await signedIn(request(app).post(`/api/feedback/policies/${id}/analyze`)).send({}).expect(400);
+        }
+    }
+    expect(await snapshot()).toEqual(before);
+
+    const response = await signedIn(request(app).post(path)).send({}).expect(200);
+    const analyzed = scope === 'policy' ? response.body : response.body.results.find(result => result.policyId === policyId);
+    expect(response.body.success).toBe(true);
+    expect(analyzed).toMatchObject({ policyId, feedbackCount: 10 });
+    expect(analyzed.suggestions.length).toBeGreaterThan(0);
+    const after = await snapshot();
+    expect(after.suggestion).toMatchObject({ status: 'superseded', reviewed_by: null, reviewed_at: null, applied_by: null });
+    expect(after.suggestion.superseded_at).toBeInstanceOf(Date);
+    expect(after.policy).toEqual(before.policy);
+    expect(after.audit).toEqual(before.audit);
 });
 
 test.each(suggestionPaths)('%s preserves its response and protects the saved outcome across aliases', async base => {

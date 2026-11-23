@@ -4,3 +4,8 @@ export function isSuggestionReviewConflict(error) {
     ['SUGGESTION_NOT_PENDING', 'SUGGESTION_POLICY_CHANGED',
       'SUGGESTION_EVIDENCE_REQUIRED', 'SUGGESTION_EVIDENCE_STALE', 'SUGGESTION_EVIDENCE_BUSY'].includes(error.response.data?.code)
 }
+
+export function isSuggestionAdministratorRefusal(error) {
+  return error?.response?.status === 403 &&
+    ['Admin access required', 'Valid administrator identity required'].includes(error.response.data?.error)
+}

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Suggestion rejection and manual analysis** — Both actions require an
+  administrator. Rejection records the exact reviewer, and manual analysis
+  logs who requested it. See the
+  [outcome](docs/architecture/suggestion-review-mutation-authority-outcome.md).
+
 - **Policy suggestion application** — Both Apply endpoints now require
   administrators, validate exact suggestion IDs, and record the authenticated
   actor. See the

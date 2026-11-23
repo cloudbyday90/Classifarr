@@ -222,7 +222,7 @@ import { ref, computed, onMounted } from 'vue';
 import api from '@/api';
 import SuggestionCard from '@/components/suggestions/SuggestionCard.vue';
 import RejectModal from '@/components/suggestions/RejectModal.vue';
-import { isSuggestionReviewConflict } from '@/utils/suggestionReviewErrors';
+import { isSuggestionAdministratorRefusal, isSuggestionReviewConflict } from '@/utils/suggestionReviewErrors';
 
 const suggestions = ref([]);
 const policies = ref([]);
@@ -291,8 +291,7 @@ async function applySuggestion(suggestion) {
     selectedSuggestion.value = null;
     await loadSuggestions();
   } catch (error) {
-    const { status, data } = error.response ?? {};
-    if (status === 403 && ['Admin access required', 'Valid administrator identity required'].includes(data?.error)) {
+    if (isSuggestionAdministratorRefusal(error)) {
       alert('Ask a Classifarr administrator to review and apply this suggestion.');
       return;
     }
@@ -314,6 +313,10 @@ async function confirmReject(reason) {
     rejectingSuggestion.value = null;
     await loadSuggestions();
   } catch (error) {
+    if (isSuggestionAdministratorRefusal(error)) {
+      alert('Ask a Classifarr administrator to review and reject this suggestion.');
+      return;
+    }
     if (await recoverReviewConflict(error)) return;
     console.error('Failed to reject suggestion:', error);
     alert('Failed to reject suggestion: ' + error.message);
