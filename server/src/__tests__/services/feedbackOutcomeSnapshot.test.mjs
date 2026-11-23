@@ -15,7 +15,9 @@ test('retains only typed original context and validated explicit selection', () 
   expect(readFeedbackOutcomeSnapshot(snapshot)).toEqual(snapshot);
   expect(JSON.stringify(snapshot)).not.toContain('Do not retain');
   expect(buildFeedbackOutcomeSnapshot({ ...source, metadata: {}, library_id: 3 }, 3).decisionContext).toBeNull();
-  expect(buildFeedbackOutcomeSnapshot({ ...source, id: '9223372036854775807' }, 3).decisionContext).toBeNull();
+  const largeSnapshot = buildFeedbackOutcomeSnapshot({ ...source, id: '9223372036854775807' }, 3);
+  expect(largeSnapshot.decisionContext).toEqual({ classificationId: '9223372036854775807', capture });
+  expect(readFeedbackOutcomeSnapshot(largeSnapshot)).toEqual(largeSnapshot);
   expect(buildFeedbackOutcomeSnapshot(null, 3)).toBeNull();
 });
 

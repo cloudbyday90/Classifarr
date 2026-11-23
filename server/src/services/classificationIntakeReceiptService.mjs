@@ -2,9 +2,8 @@
 import { ClassificationIntakeReceiptRepository } from './classificationIntakeReceiptRepository.mjs';
 import { isClassificationIntakeReason } from './classificationIntakeComparison.mjs';
 import { normalizeQueueTaskFailureReasonId } from './queueTaskFailureReason.mjs';
-import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
+import { buildCorrectionDecisionContext, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
-import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 
 const TRANSITIONS = new Set(['queued', 'processing', 'retry_scheduled', 'completed', 'failed']);
 const RECEIPT_WARNING_INTERVAL_MS = 60_000;
@@ -63,9 +62,7 @@ export class ClassificationIntakeReceiptService {
   recordQueued(taskId) { return this.record({ taskId, transition: 'queued' }); }
   recordProcessing(taskId, attempts) { return this.record({ taskId, transition: 'processing', attempts }); }
   recordClassification(taskId, classificationId, comparison, capture = null) {
-    const decisionContext = capture === null ? null : readCorrectionDecisionContext({
-      classificationId: positiveDatabaseInteger(classificationId), capture,
-    });
+    const decisionContext = capture === null ? null : buildCorrectionDecisionContext(classificationId, capture);
     return this.record({ taskId, classificationId, comparison, decisionContext });
   }
   recordTerminal(taskId, transition, attempts = null, failureReasonId = null) {

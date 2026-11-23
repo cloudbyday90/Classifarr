@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { NON_CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
-import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { destinationOutcomeBucket, DESTINATION_OUTCOME_ROW_LIMIT } from './destinationOutcomeGrouping.mjs';
 
 const usable = group => ['completedAgreement', 'completedDisagreement', 'awaitingDecision', 'pendingRetry'].includes(destinationOutcomeBucket(group));
@@ -17,9 +17,9 @@ export function summarizeDestinationIntakeCoverage(rows, outcomeGroups) {
   for (const row of rows) {
     states[Object.hasOwn(states, row.status_id) ? row.status_id : 'unknown']++;
     const context = readCorrectionDecisionContext(row.decision_context);
-    if (!context || context.classificationId !== row.classification_id) {
+    const id = normalizeDatabaseBigintId(row.classification_id);
+    if (!context || context.classificationId !== id) {
       missingContextTasks++;
-      const id = positiveDatabaseInteger(row.classification_id);
       if (id) decisions.set(id, null);
       continue;
     }

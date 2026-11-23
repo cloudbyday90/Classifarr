@@ -43,6 +43,21 @@ test('labels require exact captures and usable unambiguous destinations', () => 
     knownClassifierDecisions: 3, labeledDecisions: 0, unusableOutcome: 3, labelCoverageRate: 0 });
 });
 
+test('missing and foreign contexts affect only the exact receipt among adjacent BIGINT IDs', () => {
+  const first = intake('9007199254740992'), second = intake('9007199254740993');
+  const wrong = { ...first, decision_context: second.decision_context };
+  for (const invalid of [wrong, { ...first, decision_context: null }]) {
+    for (const rows of [[first, second, invalid], [invalid, second, first]]) {
+      expect(evaluateDestinationOutcomes([label(first), label(second)], rows).intake).toMatchObject({
+        invalidOrConflictingDecisionIds: 1, missingContextTasks: 1, labeledDecisionsWithoutCapturedIntake: 1,
+        overall: { knownClassifierDecisions: 1, labeledDecisions: 1 },
+      });
+    }
+  }
+  const legacy = intake(42);
+  expect(evaluateDestinationOutcomes([label(legacy)], [{ ...legacy, classification_id: '42' }]).intake.overall.labeledDecisions).toBe(1);
+});
+
 test('empty, missing, invalid and over-budget intake never creates a rate', () => {
   expect(evaluateDestinationOutcomes([]).intake.overall.labelCoverageRate).toBeNull();
   expect(evaluateDestinationOutcomes([], [{ classification_id: null, decision_context: {}, status_id: 'failed' }]).intake)

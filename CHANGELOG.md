@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Original-decision snapshots** — Preserve exact BIGINT History IDs in
+  snapshot capture, bounded intake recovery, and evaluation. See the
+  [outcome](docs/architecture/original-decision-snapshot-bigint-outcome.md).
+
 - **Discord completed corrections** — Carry exact BIGINT History IDs through
   the verification opener, correction menu, saved receipt, and routing. See
   the [outcome](docs/architecture/discord-completed-correction-bigint-outcome.md).

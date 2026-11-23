@@ -1,10 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
-// The original decision context still uses a positive INTEGER classification ID.
 export const READ_INTAKE_DECISION_RECOVERY_SQL = `
   WITH batch AS MATERIALIZED (
     SELECT queue_task_id, classification_id FROM classification_intake_receipts
-    WHERE queue_task_id > $1::bigint AND classification_id BETWEEN 1 AND 2147483647
+    WHERE queue_task_id > $1::bigint AND classification_id > 0
       AND decision_context IS NULL
       AND queued_at > statement_timestamp() - INTERVAL '30 days'
       AND queued_at <= statement_timestamp()
@@ -21,7 +20,7 @@ export const READ_INTAKE_DECISION_RECOVERY_SQL = `
 export const FILL_INTAKE_DECISION_CONTEXTS_SQL = `
   WITH candidates AS (
     SELECT * FROM jsonb_to_recordset($1::jsonb)
-      AS candidate(queue_task_id bigint, classification_id integer, decision_context jsonb)
+      AS candidate(queue_task_id bigint, classification_id bigint, decision_context jsonb)
   ), ready AS MATERIALIZED (
     SELECT receipt.queue_task_id, candidate.classification_id, candidate.decision_context
     FROM candidates candidate
@@ -31,6 +30,7 @@ export const FILL_INTAKE_DECISION_CONTEXTS_SQL = `
     WHERE receipt.decision_context IS NULL
       AND receipt.queued_at > statement_timestamp() - INTERVAL '30 days'
       AND receipt.queued_at <= statement_timestamp()
+      AND candidate.decision_context->>'classificationId' = receipt.classification_id::text
       AND history.metadata #> '{classification_details,destination_decision}' = candidate.decision_context->'capture'
       AND history.media_type = candidate.decision_context #>> '{capture,mediaType}'
       AND history.method = candidate.decision_context #>> '{capture,method}'

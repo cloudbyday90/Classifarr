@@ -17,14 +17,15 @@ test('captures only bounded matching original decisions and keeps capture failur
   expect(repository.upsert.mock.calls[2][0][6]).toBeNull();
 });
 
-test('links canonical BIGINT IDs outside the existing decision-context range', async () => {
+test('links and captures canonical BIGINT IDs with an exact persisted representation', async () => {
   const repository = { upsert: jest.fn().mockResolvedValue(true) };
   const service = new ClassificationIntakeReceiptService({ repository });
   const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'tv', tmdb_id: 42 },
     method: 'ai_analysis', status: 'completed', libraryId: 2 });
-  for (const id of ['2147483648', '9007199254740991', '9007199254740993', '9223372036854775807']) {
+  for (const [id, classificationId] of [['2147483648', 2147483648], ['9007199254740991', Number.MAX_SAFE_INTEGER],
+    ['9007199254740993', '9007199254740993'], ['9223372036854775807', '9223372036854775807']]) {
     expect(await service.recordClassification(7, id, { statusId: 'captured', reasonId: null }, capture)).toBe(true);
-    expect(repository.upsert).toHaveBeenLastCalledWith([7, null, id, 'captured', null, null, null]);
+    expect(repository.upsert).toHaveBeenLastCalledWith([7, null, id, 'captured', null, null, { classificationId, capture }]);
   }
   for (const id of [0, 1.5, Number.MAX_SAFE_INTEGER + 1, 42n, ['42'], ' leading ', '42\n', '042', '9223372036854775808']) {
     expect(await service.recordClassification(7, id, null, capture)).toBe(false);

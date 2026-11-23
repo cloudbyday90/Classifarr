@@ -44,3 +44,17 @@ test('locks capture to the original typed identity, never to updated library or 
   expect(readCorrectionDecisionContext({ classificationId: 8, capture: build(), token: 'SECRET' })).toBeNull();
   expect(readCorrectionDecisionContext({ classificationId: 8, capture: {} })).toBeNull();
 });
+
+test.each([['2147483648', 2147483648], [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+  ['9007199254740992', '9007199254740992'], ['9007199254740993', '9007199254740993'],
+  ['9223372036854775807', '9223372036854775807']])('round-trips snapshot History ID %s exactly', (id, classificationId) => {
+  const context = { classificationId, capture: build() };
+  expect(captureCorrectionDecisionContext({ ...row(), id })).toEqual(context);
+  expect(readCorrectionDecisionContext(JSON.parse(JSON.stringify(context)))).toEqual(context);
+});
+
+test.each([0, -1, '012', '12', '9007199254740993\n', Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'])(
+  'rejects invalid or noncanonical stored History identity %s', classificationId => {
+    expect(readCorrectionDecisionContext({ classificationId, capture: build() })).toBeNull();
+  },
+);

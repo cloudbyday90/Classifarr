@@ -24,7 +24,7 @@ export function projectPurposeCaseReferences(event) {
     const context = contextForEvent(binding[2], event);
     if (context && (context.capture.status !== 'completed' || context.capture.libraryId !== binding[1] ||
         !CLASSIFIER_CAPTURE_METHODS.includes(context.capture.method))) throw new Error('purpose_cases_reference_binding');
-    // V3 independently binds the served original ID even when int32 decision context cannot represent a BIGINT History ID.
+    // V3 independently binds the served original ID when the optional decision context is unavailable.
     original = { status: 'available', libraryId: binding[1], evidenceKind: 'history_review_original_reference',
       method: context?.capture.method ?? null };
   } else {

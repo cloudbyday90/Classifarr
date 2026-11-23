@@ -182,6 +182,29 @@ test('Discord retains a deferral without inventing a final destination', async (
   expect((await readCorrectionDestinationDecisions(client)).overall).toMatchObject({ awaitingDecision: 1, completedDecisions: 0 });
 });
 
+test('retained correction evidence checks the exact History ID and survives event removal', async () => {
+  const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 920001 },
+    method: 'ai_analysis', status: 'completed', libraryId: libraries[0].id });
+  const ids = ['9007199254740992', '9007199254740993'];
+  const events = [];
+  for (const id of ids) {
+    const original = await history('movie', { method: 'ai_analysis', metadata: { classification_details: { destination_decision: capture } } });
+    const { rows: [large] } = await client.query('UPDATE classification_history SET id=$1 WHERE id=$2 RETURNING *', [id, original.id]);
+    events.push(await write(large));
+  }
+  expect((await readCorrectionDestinationDecisions(client)).overall.completedDisagreement).toBe(2);
+
+  await client.query('UPDATE classification_correction_outcomes SET decision_context=$2 WHERE correction_id=$1',
+    [events[0].id, { classificationId: ids[1], capture }]);
+  expect(await readCorrectionDestinationDecisions(client)).toMatchObject({ missingContextRows: 1,
+    overall: { completedDisagreement: 1, missingContext: 1 } });
+
+  await client.query('UPDATE classification_correction_outcomes SET decision_context=$2 WHERE correction_id=$1',
+    [events[0].id, { classificationId: ids[0], capture }]);
+  await client.query('DELETE FROM classification_corrections WHERE id=$1', [events[0].id]);
+  expect((await readCorrectionDestinationDecisions(client)).overall.completedDisagreement).toBe(2);
+});
+
 test('reader excludes expired/future rows and never resurrects missing original context', async () => {
   const row = await history();
   await write(row);

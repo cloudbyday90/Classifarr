@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { CLASSIFIER_CAPTURE_METHODS, NON_CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
 
@@ -28,9 +29,15 @@ export function buildClassificationDestinationDecision({ metadata, method, statu
 }
 
 export function readCorrectionDecisionContext(value) {
-  if (!exactKeys(value, ['classificationId', 'capture']) || !integer(value.classificationId)) return null;
+  if (!exactKeys(value, ['classificationId', 'capture'])) return null;
+  const classificationId = normalizeDatabaseBigintId(value.classificationId);
+  if (classificationId === null || classificationId !== value.classificationId) return null;
   const capture = readClassificationDestinationDecision(value.capture);
-  return capture ? { classificationId: value.classificationId, capture } : null;
+  return capture ? { classificationId, capture } : null;
+}
+
+export function buildCorrectionDecisionContext(classificationId, capture) {
+  return readCorrectionDecisionContext({ classificationId: normalizeDatabaseBigintId(classificationId), capture });
 }
 
 /** Called with the locked pre-correction row; never reconstruct from mutable library/status. */
@@ -40,5 +47,5 @@ export function captureCorrectionDecisionContext(classification) {
   if (!capture || capture.mediaType !== classification.media_type || capture.method !== classification.method ||
       capture.tmdbId !== positiveDatabaseInteger(classification.tmdb_id) ||
       (classification.tmdb_id != null && capture.tmdbId === null)) return null;
-  return readCorrectionDecisionContext({ classificationId: positiveDatabaseInteger(classification.id), capture });
+  return buildCorrectionDecisionContext(classification.id, capture);
 }

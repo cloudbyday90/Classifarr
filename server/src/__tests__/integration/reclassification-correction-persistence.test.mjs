@@ -53,7 +53,7 @@ test.each(['safe', 'large'])('verification commits history, event and bounded ev
     .toEqual([{ identity_key: 'movie:920001' }]);
   expect((await journal()).state).toBe('completed');
   expect((await db.query('SELECT decision_context FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1]])).rows)
-    .toEqual([{ decision_context: size === 'safe' ? { classificationId: row.id, capture } : null }]);
+    .toEqual([{ decision_context: { classificationId: row.id, capture } }]);
   await execute();
   expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
   expect((await db.query('SELECT * FROM classification_corrections WHERE classification_id=$1', [row.id])).rows).toHaveLength(1);

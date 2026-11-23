@@ -2,6 +2,7 @@
 import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 import { NON_CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 export const DESTINATION_OUTCOME_ROW_LIMIT = 5000;
 
@@ -19,9 +20,9 @@ export function groupDestinationOutcomes(rows) {
   for (const row of rows) {
     if (!['movie', 'tv'].includes(row.media_type)) { excludedMediaRows++; continue; }
     const context = readCorrectionDecisionContext(row.decision_context);
-    if (!context) {
+    const id = normalizeDatabaseBigintId(row.classification_id ?? row.decision_context?.classificationId);
+    if (!context || id !== context.classificationId) {
       missingContextRows++;
-      const id = positiveDatabaseInteger(row.classification_id ?? row.decision_context?.classificationId);
       if (id) {
         const group = groups.get(id) ?? { context: null, mediaType: row.media_type, identities: new Set(), labels: new Set(), rows: 0 };
         group.conflict = true;

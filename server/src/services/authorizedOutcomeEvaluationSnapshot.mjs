@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
-import { readClassificationDestinationDecision, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
+import { buildCorrectionDecisionContext, readClassificationDestinationDecision, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
 
 export const AUTHORIZED_EVALUATION_SOURCE_IDS = Object.freeze(['manual_classification_change', 'operator_confirmation']);
@@ -13,7 +14,7 @@ export function authorizedOutcomeDecisionContext(classification) {
   if (!capture || capture.mediaType !== classification.media_type ||
       capture.tmdbId !== positiveDatabaseInteger(classification.tmdb_id) ||
       (classification.tmdb_id != null && capture.tmdbId === null)) return null;
-  return readCorrectionDecisionContext({ classificationId: positiveDatabaseInteger(classification.id), capture });
+  return buildCorrectionDecisionContext(classification.id, capture);
 }
 
 /** Validate private SQL projections before either evaluation consumer uses them. */
@@ -38,7 +39,7 @@ export function validateAuthorizedOutcomeEvaluationRow(row) {
       !identityValid || !positiveDatabaseInteger(row.selected_library_id) ||
       !['confirmation', 'correction'].includes(evidence.action_kind) || row.was_correction !== (evidence.action_kind === 'correction') ||
       typeof evidence.event_key !== 'string' || !/^(classification_correction:[1-9][0-9]*|runtime_resolution:[1-9][0-9]*:[A-Za-z0-9_-]{22})$/.test(evidence.event_key) ||
-      (row.decision_context != null && (!context || String(context.classificationId) !== String(row.classification_id) ||
+      (row.decision_context != null && (!context || String(context.classificationId) !== canonicalDatabaseBigintId(row.classification_id) ||
         context.capture.mediaType !== type || context.capture.tmdbId !== id))) throw new Error('authorized_evaluation_invalid_snapshot');
 }
 
@@ -50,7 +51,7 @@ export function prepareAuthorizedOutcomeEvaluationRows(rows) {
     if (row.origin !== 'authorized_outcome' || row.authorized_snapshot.snapshot_missing) { output.push(row); continue; }
     const key = row.authorized_snapshot.event_key;
     if (!events.has(key)) events.set(key, new Map());
-    const signature = JSON.stringify([row.classification_id, row.media_type, row.identity_key, row.selected_library_id,
+    const signature = JSON.stringify([canonicalDatabaseBigintId(row.classification_id), row.media_type, row.identity_key, row.selected_library_id,
       row.was_correction, row.decision_context]);
     const copies = events.get(key);
     if (!copies.has(signature)) copies.set(signature, row);

@@ -7,6 +7,7 @@ import pg from 'pg';
 import { getPool } from './setup.mjs';
 import { livePurposeEvaluationFixture } from '../fixtures/purposeOutcomeFixture.mjs';
 import { recordFeedbackSource } from '../../services/feedbackSourceReceipt.mjs';
+import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 import { runAbortableDatabaseRead } from '../../utils/databaseAbortableRead.mjs';
 import { createDatabaseReadCanceller } from '../../utils/databaseReadCancellation.mjs';
 import { runInventoryOutcomeCalibration } from '../../scripts/runInventoryOutcomeCalibration.mjs';
@@ -39,8 +40,11 @@ beforeAll(async () => {
       VALUES($1,2,'movie','movie:42',$2,$2::timestamptz+INTERVAL '720 hours','complete',$3)`, [history.id, payload.capturedAt, payload]);
     const feedbackId = (await client.query('INSERT INTO policy_feedback_log(tmdb_id) VALUES(42) RETURNING id')).rows[0].id;
     const reviewId = randomUUID(), fingerprint = 'a'.repeat(64), now = new Date();
+    const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 42 },
+      method: 'ai_analysis', status: 'completed', libraryId: libraries[0] });
     const snapshot = { version: 'classification.feedback_outcome.v3', classificationId: String(history.id), mediaType: 'movie', tmdbId: 42,
-      selectedLibraryId: libraries[1], decisionContext: null, action: 'correction', intake: 'standalone', reference: {
+      selectedLibraryId: libraries[1], decisionContext: { classificationId: String(history.id), capture },
+      action: 'correction', intake: 'standalone', reference: {
         kind: 'original_automated_destination', libraryId: libraries[0], reviewId, actorFingerprint: fingerprint,
         sourceVersion: 'b'.repeat(64), issuedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 600000).toISOString() } };
     await recordFeedbackSource(client, { classificationId: String(history.id), feedbackId, intake: 'standalone', fingerprint,
@@ -61,7 +65,7 @@ test('real source query keeps BIGINT History original proof, read-only isolation
   }, options));
   expect(result.cases[0]).toMatchObject({ classificationId: String(history.id),
     source: { kind: 'history_review', referenceKind: 'feedback_receipt', id: String(history.id) },
-    original: { status: 'available', libraryId: libraries[0], evidenceKind: 'history_review_original_reference', method: null },
+    original: { status: 'available', libraryId: libraries[0], evidenceKind: 'history_review_original_reference', method: 'ai_analysis' },
     policy: { libraryId: libraries[1] }, assessment: { libraryId: libraries[1] },
     comparisons: { policyVersusChoice: 'agrees', originalVersusChoice: 'differs', policyVersusOriginal: 'differs' } });
   expect(result.evaluation.sampleSize).toBe(1);

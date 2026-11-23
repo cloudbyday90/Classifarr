@@ -185,12 +185,12 @@ test.each([[7152, 'reclassify', 'classification'], [7153, 'verify_no', 'confiden
 );
 
 test.each([
-  [7154, 'reclassify', 'classification', true],
-  [2147483647, 'verify_no', 'confidence', true],
-  [2147483648, 'verify_no', 'confidence', false],
-  ['9223372036854775807', 'verify_no', 'confidence', false],
+  [7154, 'reclassify', 'classification'],
+  [2147483647, 'verify_no', 'confidence'],
+  [2147483648, 'verify_no', 'confidence'],
+  ['9223372036854775807', 'verify_no', 'confidence'],
 ])(
-  'completed row %s can be corrected through its offered control', async (id, action, kind, capturesContext) => {
+  'completed row %s can be corrected through its offered control', async (id, action, kind) => {
     await insertHistory(id, messageId, 'completed');
     await insertDeliveredReceipt(id, 'completed', kind);
     const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 894801 },
@@ -218,7 +218,7 @@ test.each([
       FROM classification_correction_outcomes o JOIN classification_corrections c ON c.id=o.correction_id
       WHERE c.classification_id=$1`, [id]);
     expect(evidence.rows).toEqual([{ identity_key: 'movie:894801', selected_library_id: destination.id,
-      decision_context: capturesContext ? { classificationId: id, capture } : null }]);
+      decision_context: { classificationId: id, capture } }]);
     expect(routeToArr).toHaveBeenCalledTimes(1);
     expect(routeToArr).toHaveBeenCalledWith(expect.objectContaining({ title: `Owned legacy ${id}` }),
       expect.objectContaining({ id: destination.id }));

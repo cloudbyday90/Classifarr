@@ -27,12 +27,12 @@ test('live intake preserves exact links, numeric snapshots and diagnostic repres
     for (const id of [2147483648, '9007199254740992', '9007199254740993', '9223372036854775807']) {
       expect(await service.recordClassification(task.id, id, comparison, capture)).toBe(true);
       expect(await service.recordTerminal(task.id, 'completed')).toBe(true);
-      expect(await read()).toEqual({ classification_id: id, decision_context: null, comparison_status_id: 'captured' });
+      expect(await read()).toEqual({ classification_id: id, decision_context: { classificationId: id, capture }, comparison_status_id: 'captured' });
       const { rows } = await client.query(CLASSIFICATION_INTAKE_RECEIPT_BY_TASK_SQL, [task.id]);
       expect(JSON.parse(JSON.stringify(rows[0])).classification_id).toBe(id);
     }
-    expect((await readDestinationOutcomes(client)).intake).toMatchObject({ queueTasks: 1, missingContextTasks: 1,
-      overall: { knownClassifierDecisions: 0 } });
+    expect((await readDestinationOutcomes(client)).intake).toMatchObject({ queueTasks: 1, missingContextTasks: 0,
+      overall: { knownClassifierDecisions: 1, withoutOutcome: 1 } });
   } finally { await client.query('ROLLBACK'); client.release(); }
 });
 

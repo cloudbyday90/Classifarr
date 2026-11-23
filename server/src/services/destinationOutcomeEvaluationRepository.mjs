@@ -13,9 +13,10 @@ export const CORRECTION_DESTINATION_DECISION_SQL = `
   SELECT c.media_type, c.identity_key, c.selected_library_id,
     CASE WHEN octet_length(c.decision_context::text) <= 1024 THEN c.decision_context END AS decision_context,
     (l.is_active IS TRUE AND l.media_type = c.media_type) AS target_available,
-    NULL::bigint AS classification_id, 'manual_correction'::text AS origin,
+    event.classification_id, 'manual_correction'::text AS origin,
     true AS was_correction, NULL::jsonb AS authorized_snapshot, NULL::integer AS tmdb_id
   FROM classification_correction_outcomes c
+  LEFT JOIN classification_corrections event ON event.id = c.correction_id
   LEFT JOIN libraries l ON l.id = c.selected_library_id
   WHERE c.observed_at > NOW() - INTERVAL '30 days' AND c.observed_at <= NOW()
     AND NOT ${authorizedCorrectionSnapshotExists('c.correction_id')}

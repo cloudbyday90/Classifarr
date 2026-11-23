@@ -107,20 +107,35 @@ test('a failed live intake link recovers from the newest exact BIGINT witness', 
   expect(await new ClassificationQueueDecisionWitnessRepository({ db: client }).persist({ classificationId: newestId, witness }))
     .toEqual({ persisted: true, reason: null });
   expect(await repository.reconcileClassificationLinks()).toBe(1);
+  expect(await repository.recoverDecisionContexts()).toBe(1);
+  expect(await receipt(taskId)).toMatchObject({ classification_id: newestId,
+    decision_context: { classificationId: newestId, capture: newest.capture } });
   expect(await repository.recoverDecisionContexts()).toBe(0);
-  expect(await receipt(taskId)).toMatchObject({ classification_id: newestId, decision_context: null });
   expect(await repository.reconcileClassificationLinks()).toBe(0);
 });
 
-test('large linked receipts do not take up the decision-context recovery page', async () => {
+test('a bounded page of missing large originals advances to the next receipt', async () => {
   const large = await fixture({ linked: false });
   await client.query(`INSERT INTO classification_intake_receipts(queue_task_id,classification_id,source_class,status_id,queued_at)
     SELECT 1000000+n,9223372036854775807,'manual','completed',NOW() FROM generate_series(1,500) n`);
   const valid = await fixture();
   await client.query('UPDATE classification_intake_receipts SET queue_task_id=2000000 WHERE queue_task_id=$1', [valid.taskId]);
+  expect(await large.repository.recoverDecisionContexts()).toBe(0);
   expect(await large.repository.recoverDecisionContexts()).toBe(1);
   expect((await receipt(2000000)).decision_context.capture).toEqual(valid.capture);
   expect((await receipt(1000001)).decision_context).toBeNull();
+});
+
+test('recovery does not bind an adjacent BIGINT snapshot to a different receipt', async () => {
+  const id = '9007199254740992', adjacent = '9007199254740993';
+  const { taskId, classificationId, capture } = await fixture();
+  await client.query('UPDATE classification_history SET id=$1 WHERE id=$2', [id, classificationId]);
+  await client.query('UPDATE classification_intake_receipts SET classification_id=$1 WHERE queue_task_id=$2', [id, taskId]);
+  const candidate = { queue_task_id: taskId, classification_id: id, decision_context: { classificationId: adjacent, capture } };
+  expect((await client.query(FILL_INTAKE_DECISION_CONTEXTS_SQL, [JSON.stringify([candidate])])).rowCount).toBe(0);
+  expect((await receipt(taskId)).decision_context).toBeNull();
+  expect(await new ClassificationIntakeDecisionRecovery({ db: client }).run()).toBe(1);
+  expect((await receipt(taskId)).decision_context).toEqual({ classificationId: id, capture });
 });
 
 test('a page of invalid originals does not starve a later valid receipt; repaired originals are reconsidered after wrap', async () => {
