@@ -90,6 +90,7 @@ export function getHistoricRouteSafetyRefreshRecentReceipt() {
 }
 
 export function resolvePendingClassification(classificationId, payload) {
+  // The answer builder sends a positive INTEGER destination when required.
   // The response keeps safe IDs numeric and returns larger IDs as decimal strings.
   const id = canonicalClassificationHistoryId(classificationId)
   if (!id) return Promise.reject(new TypeError('Invalid classification id'))

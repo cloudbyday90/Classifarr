@@ -111,6 +111,11 @@ test.each([
   const replaceReceipt = receipt => query(`UPDATE classification_history
     SET metadata=jsonb_set(metadata,'{classification_details,outcome_link,runtime_question_answer}',$2::jsonb)
     WHERE id=$1`, [id, JSON.stringify(receipt)]);
+  await replaceReceipt({ ...recordedAnswer, destination_library_id: `0${destination.id}` });
+  const historical = await snapshot();
+  expect((await resolve(id).expect(200)).body).toMatchObject({ idempotent: true, shouldRoute: false });
+  expect(await snapshot()).toEqual(historical);
+
   await replaceReceipt({ ...recordedAnswer, classification_id: neighbors[0] });
   const mismatched = await snapshot();
   await resolve(id).expect(409);
@@ -134,6 +139,41 @@ test.each([
   await resolve(id).expect(409);
   expect(await snapshot()).toEqual(withoutReceipt);
   expect(await learningReceipts()).toEqual(savedLearning);
+  expect(routeToArr).toHaveBeenCalledTimes(1);
+});
+
+test('validates a destination before lookup and accepts the INTEGER maximum as decimal text', async () => {
+  const id = '9007199254741018';
+  const { rows: [destination] } = await query(`INSERT INTO libraries(id,name,external_id,media_type,is_active)
+    VALUES (2147483647,'Owned max destination','pending-max-destination','movie',true)
+    RETURNING id,name,media_type,is_active`);
+  const question = normalizePolicyRuntimeQuestion({ metadata: { media_type: 'movie' }, libraries: [destination],
+    policyResult: { ranked: [{ library_id: destination.id, score: 78 }] } });
+  await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,method,policy_question)
+    VALUES($1,'Owned pending INTEGER maximum',892058,'movie','awaiting_decision','signal_calculation',$2::jsonb)`, [id, JSON.stringify(question)]);
+  const routeToArr = jest.fn().mockResolvedValue({ routed: true });
+  const http = pendingHttp(routeToArr);
+  const { body: list } = await http.get('/pending').expect(200);
+  const contract = list.items.find(row => row.id === id).policy_question_answer;
+  const base = { contract_version: contract.version, contract_fingerprint: contract.fingerprint, action_id: 'confirm_destination' };
+  const resolve = destinationId => http.post(`/pending/${id}/resolve`).send({ ...base, destination_library_id: destinationId });
+  const readRow = async () => (await query('SELECT * FROM classification_history WHERE id=$1', [id])).rows[0];
+  const pending = await readRow();
+  for (const malformed of [[destination.id], `0${destination.id}`, '2147483648']) {
+    await resolve(malformed).expect(400);
+  }
+  expect(await readRow()).toEqual(pending);
+  expect(routeToArr).not.toHaveBeenCalled();
+
+  expect((await resolve(String(destination.id)).expect(200)).body).toMatchObject({
+    classificationId: id, libraryId: destination.id, routed: true,
+  });
+  const saved = await readRow();
+  expect(saved.metadata.classification_details.outcome_link.runtime_question_answer).toMatchObject({
+    ...base, classification_id: id, destination_library_id: destination.id,
+  });
+  expect((await resolve(destination.id).expect(200)).body).toMatchObject({ idempotent: true, shouldRoute: false });
+  expect(await readRow()).toEqual(saved);
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 

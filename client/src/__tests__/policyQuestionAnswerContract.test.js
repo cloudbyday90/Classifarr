@@ -35,6 +35,17 @@ function item(overrides = {}) {
 }
 
 describe('policyQuestionAnswerContract', () => {
+  it.each([true, [7], '07', ' 7', '7e0', '7\n', 2147483648].map(value => [value]))(
+    'does not construct a command for malformed destination %p', destination => {
+      expect(buildPolicyQuestionAnswerPayload(policyQuestionAnswer(item()), 'confirm_destination', destination)).toBeNull()
+    },
+  )
+
+  it('preserves the maximum destination as a numeric payload field', () => {
+    expect(buildPolicyQuestionAnswerPayload(policyQuestionAnswer(item()), 'confirm_destination', '2147483647'))
+      .toMatchObject({ destination_library_id: 2147483647 })
+  })
+
   it('serializes only the server contract version, fingerprint, action ID, and destination ID', () => {
     const payload = buildPolicyQuestionAnswerPayload(
       policyQuestionAnswer(item()),

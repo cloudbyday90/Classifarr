@@ -67,8 +67,7 @@ export function useNeedsAttentionActions({
       return
     }
     const actionId = answerSelection?.actionId
-    const libraryId = Number(answerSelection?.destinationLibraryId || 0)
-    const payload = buildResolutionPayload(item, actionId, libraryId)
+    const payload = buildResolutionPayload(item, actionId, answerSelection?.destinationLibraryId)
     if (!payload) {
       setActionError(`Policy question for "${item.title}" is no longer valid. Retry Classification to refresh it.`)
       return

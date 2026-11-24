@@ -111,6 +111,17 @@ describe('useNeedsAttentionActions composable', () => {
     expect(api.resolvePendingClassification).not.toHaveBeenCalled()
   })
 
+  it('refuses a noncanonical destination in both single and bulk answers', async () => {
+    const item = currentItem(1, 'Pending movie', '05')
+    const deps = createDeps({ needsAttentionItems: ref([item]) })
+    const actions = useNeedsAttentionActions(deps)
+    await actions.resolveWithOption(item, { actionId: 'confirm_destination', destinationLibraryId: '05' })
+    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('no longer valid'))
+    await actions.confirmAllNeedsAttention()
+    expect(deps.setActionError).toHaveBeenLastCalledWith(expect.stringContaining('Confirm All skipped 1 item'))
+    expect(api.resolvePendingClassification).not.toHaveBeenCalled()
+  })
+
   it.each([2, '9007199254740993'])('resolves exact ID %s and reports an incomplete route', async id => {
     const deps = createDeps()
     api.resolvePendingClassification.mockResolvedValueOnce({

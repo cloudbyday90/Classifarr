@@ -12,7 +12,7 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import {
   getPolicyRuntimeQuestionAnswerSelectedOption,
   isPolicyRuntimeQuestionResolutionAction,
-  parsePolicyRuntimeQuestionAnswer,
+  parseRecordedPolicyRuntimeQuestionAnswer,
   validatePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
 import {
@@ -83,7 +83,7 @@ async function replayRecordedRuntimeQuestionAnswer({
       POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,
     );
   }
-  const parsedAnswer = parsePolicyRuntimeQuestionAnswer(recordedAnswer);
+  const parsedAnswer = parseRecordedPolicyRuntimeQuestionAnswer(recordedAnswer);
   if (!parsedAnswer.ok) {
     return buildRetryRequiredResult(
       POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,

@@ -646,6 +646,11 @@ const confirmation = {
 };
 
 describe('resolveRuntimeQuestionAnswer', () => {
+    test.each(['05', 2147483648])('refuses destination %p before opening the transaction', async destination => {
+        await expect(resolveRuntimeQuestionInTransaction(1, { ...confirmation, destination_library_id: destination }, 'admin'))
+            .rejects.toMatchObject({ statusCode: 400 });
+        expect(db.pool.connect).not.toHaveBeenCalled();
+    });
     test.each(['01', '1x', '9223372036854775808', Number.MAX_SAFE_INTEGER + 1])(
         'refuses invalid ID %p before shared transaction work', async id => {
             await expect(svc.resolveRuntimeQuestionAnswer(id, confirmation, 'admin'))

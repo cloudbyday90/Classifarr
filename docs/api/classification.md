@@ -102,6 +102,8 @@ contract's `candidate_item.classification_id` use JSON integers through
 `POST /api/classification/pending/:id/resolve` accepts a canonical positive
 decimal History ID up to `9223372036854775807`. Send the current contract's
 version and fingerprint, the action ID, and the required destination ID.
+Send `destination_library_id` as a positive JSON integer or canonical decimal
+string from `1` through `2147483647`. Invalid values return `400`.
 The response's `classificationId` uses the same number-or-string convention.
 The server returns the existing completed result on an exact receipt replay
 without routing a second time. Larger IDs require a matching saved row binding.

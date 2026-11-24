@@ -511,7 +511,7 @@ function emitResolveOption(item, actionId, destinationLibraryId) {
     item,
     answerSelection: {
       actionId,
-      destinationLibraryId: Number(destinationLibraryId),
+      destinationLibraryId,
     },
   })
 }

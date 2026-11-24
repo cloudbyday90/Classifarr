@@ -75,6 +75,12 @@ function answerFor(contract, actionId, destinationLibraryId) {
 }
 
 describe('policyRuntimeQuestionAnswerContract', () => {
+  test.each([1, '1', 2147483647, '2147483647'])('normalizes exact destination %p', destination => {
+    const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: classification(), question: normalizedQuestion() });
+    expect(parsePolicyRuntimeQuestionAnswer(answerFor(contract, 'change_destination', destination)))
+      .toMatchObject({ ok: true, answer: { destinationLibraryId: Number(destination) } });
+  });
+
   test('projects a normalized question into one bounded server-owned contract', () => {
     const contract = buildPolicyRuntimeQuestionAnswerContract({
       classification: classification(),

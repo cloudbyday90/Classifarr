@@ -9,7 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { normalizeDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 
 import {
   getRuntimeQuestionNormalizationStatus,
@@ -330,7 +330,7 @@ function buildPolicyRuntimeQuestionAnswerContract({
   };
 }
 
-function parsePolicyRuntimeQuestionAnswer(value = {}) {
+function parseAnswerFields(value, parseDestinationId) {
   const source = asObject(value);
   const forbiddenLegacyFields = [
     'selected_option',
@@ -346,7 +346,7 @@ function parsePolicyRuntimeQuestionAnswer(value = {}) {
   const actionId = normalizeString(source.action_id, 80);
   const destinationLibraryId = source.destination_library_id === undefined || source.destination_library_id === null
     ? null
-    : normalizePositiveInteger(source.destination_library_id);
+    : parseDestinationId(source.destination_library_id);
 
   if (!contractVersion || !contractFingerprint || !actionId ||
       !Object.values(POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS).includes(actionId)) {
@@ -370,6 +370,15 @@ function parsePolicyRuntimeQuestionAnswer(value = {}) {
       destinationLibraryId,
     },
   };
+}
+
+function parsePolicyRuntimeQuestionAnswer(value) {
+  return parseAnswerFields(value, parseCanonicalDatabaseInt32Id);
+}
+
+// Stored receipts retain their historical destination decoding during cleanup.
+function parseRecordedPolicyRuntimeQuestionAnswer(value) {
+  return parseAnswerFields(value, normalizePositiveInteger);
 }
 
 function getAction(contract, actionId) {
@@ -494,5 +503,6 @@ export {
   getPolicyRuntimeQuestionAnswerSelectedOption,
   isPolicyRuntimeQuestionResolutionAction,
   parsePolicyRuntimeQuestionAnswer,
+  parseRecordedPolicyRuntimeQuestionAnswer,
   validatePolicyRuntimeQuestionAnswer,
 };

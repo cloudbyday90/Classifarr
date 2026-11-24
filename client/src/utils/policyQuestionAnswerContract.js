@@ -16,9 +16,9 @@ export const POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS = Object.freeze({
   REQUEST_POLICY_EDIT: 'request_policy_edit',
 })
 
-function positiveInteger(value) {
-  const number = Number(value)
-  return Number.isInteger(number) && number > 0 ? number : null
+export function parsePolicyQuestionDestinationId(value) {
+  if (typeof value === 'string' && /^[1-9][0-9]{0,9}$/.test(value)) value = Number(value)
+  return Number.isInteger(value) && value > 0 && value <= 2147483647 ? value : null
 }
 
 export function policyQuestionAnswer(item = {}) {
@@ -49,9 +49,7 @@ export function buildPolicyQuestionAnswerPayload(answer, actionId, destinationLi
   const action = availablePolicyQuestionAnswerAction(answer, actionId)
   if (!action) return null
 
-  const destinationId = destinationLibraryId === null || destinationLibraryId === undefined
-    ? null
-    : positiveInteger(destinationLibraryId)
+  const destinationId = parsePolicyQuestionDestinationId(destinationLibraryId)
   if (action.destination_required === true && !destinationId) return null
   if (action.destination_required !== true && destinationLibraryId !== null && destinationLibraryId !== undefined) {
     return null

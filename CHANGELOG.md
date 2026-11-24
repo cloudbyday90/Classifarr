@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending answer destinations** — Validate exact positive INTEGER library
+  IDs before lookup. The web client follows the same rule, and saved cleanup
+  receipts keep their existing decoding. See the
+  [outcome](docs/architecture/pending-answer-destination-id-outcome.md).
+
 - **Pending question resolution** — Require a versioned answer at the shared
   transaction boundary and use exact BIGINT History IDs throughout. Saved
   replays keep their existing receipt checks. See the

@@ -204,6 +204,16 @@ describe('Classification Routes - Pending Resolution', () => {
   });
 
   describe('POST /pending/:id/resolve', () => {
+    test.each([true, [1], '01', ' 1', '1e0', '0x1', '1\n', 2147483648].map(value => ({ value })))(
+      'rejects invalid destination $value before any lookup', async ({ value }) => {
+        const response = await request(app).post('/api/classification/pending/1/resolve')
+          .send({ contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: 'exact-answer-fingerprint',
+            action_id: 'confirm_destination', destination_library_id: value }).expect(400);
+        expect(response.body.error).toBe('Invalid policy question answer');
+        expect(db.query).not.toHaveBeenCalled();
+        expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
+      },
+    );
     test.each(['1x', '1.0', '01', '+1', '0', '-1', '1e2', '1\n', '9223372036854775808'])(
       'rejects ambiguous History ID %s before any lookup', async id => {
         await request(app).post(`/api/classification/pending/${encodeURIComponent(id)}/resolve`)
@@ -692,7 +702,7 @@ describe('Classification Routes - Pending Resolution', () => {
           contract_version: 'policy.runtime_question_answer.v1',
           contract_fingerprint: 'current-contract-fingerprint',
           action_id: 'confirm_destination',
-          destination_library_id: 60,
+          destination_library_id: '60',
         });
 
       expect(response.status).toBe(200);

@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { parsePolicyQuestionDestinationId } from './policyQuestionAnswerContract'
+
 export const POLICY_RUNTIME_QUESTION_RECOMMENDATION_PRESENTATION_VERSION =
   'policy.runtime_question_recommendation_presentation.v2'
 
@@ -10,12 +12,6 @@ export const POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS = Object.freeze({
   LEADING_CANDIDATE_AVAILABLE: 'leading_candidate_available',
   MANUAL_DESTINATION_SELECTION_REQUIRED: 'manual_destination_selection_required',
 })
-
-function positiveInteger(value) {
-  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value))) return null
-  const number = Number(value)
-  return Number.isSafeInteger(number) && number > 0 && number <= 2147483647 ? number : null
-}
 
 function boundedString(value, maximumLength = 280) {
   if (typeof value !== 'string') return null
@@ -29,7 +25,7 @@ function evidenceScore(value) {
 }
 
 function candidateDestination(value) {
-  const libraryId = positiveInteger(value?.library_id)
+  const libraryId = parsePolicyQuestionDestinationId(value?.library_id)
   const libraryName = boundedString(value?.library_name, 160)
   return libraryId && libraryName ? { library_id: libraryId, library_name: libraryName } : null
 }
@@ -64,7 +60,7 @@ export function policyQuestionRecommendation(answer = {}) {
   if (!reasonId || !message) return null
 
   if (statusId === POLICY_RUNTIME_QUESTION_RECOMMENDATION_STATUS_IDS.LEADING_CANDIDATE_AVAILABLE) {
-    const leadingLibraryId = positiveInteger(source?.leading_destination?.library_id)
+    const leadingLibraryId = parsePolicyQuestionDestinationId(source?.leading_destination?.library_id)
     const score = evidenceScore(source?.leading_destination?.evidence_score)
     const destination = candidateDestinationById(answer).get(leadingLibraryId)
     if (!destination || score === null) return null
@@ -106,7 +102,7 @@ function currentRecommendation(answer) {
       answer.candidate_destinations.length !== destinations.size) return null
   const bind = (value, scored = false) => {
     if (value === null) return null
-    const destination = destinations.get(positiveInteger(value?.library_id))
+    const destination = destinations.get(parsePolicyQuestionDestinationId(value?.library_id))
     const score = evidenceScore(value?.evidence_score)
     return destination && (!scored || score !== null) ? { ...destination, ...(scored ? { evidence_score: score } : {}) } : null
   }

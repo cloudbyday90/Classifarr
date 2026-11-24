@@ -64,7 +64,7 @@ async function readRows(ids) {
   return (await db.query('SELECT * FROM classification_history WHERE id = ANY($1::bigint[]) ORDER BY id', [ids])).rows;
 }
 
-async function recordAnswer(id, { contextVersion, policyId, binding = id } = {}) {
+async function recordAnswer(id, { contextVersion, policyId, binding = id, storedDestinationId = destination.id } = {}) {
   let question = normalizePolicyRuntimeQuestion({
     metadata: { media_type: 'movie' }, libraries: [destination],
     policyResult: { ranked: [{ library_id: destination.id, policy_id: policyId, score: 88 }] },
@@ -80,6 +80,7 @@ async function recordAnswer(id, { contextVersion, policyId, binding = id } = {})
   });
   if (binding === null) delete receipt.classification_id;
   else receipt.classification_id = binding;
+  receipt.destination_library_id = storedDestinationId;
   await db.query('UPDATE classification_history SET metadata = $2::jsonb WHERE id = $1', [id, JSON.stringify({
     classification_details: { outcome_link: { runtime_question_answer: receipt } },
   })]);
@@ -119,7 +120,7 @@ test('previews, locks and repeats mixed batches with exact IDs through BIGINT ma
 test('replays an exact large answer on its own row only', async () => {
   const id = '9007199254741000';
   const neighbor = '9007199254741001';
-  await recordAnswer(id);
+  await recordAnswer(id, { storedDestinationId: `0${destination.id}` });
   await recordAnswer(neighbor);
   const [untouched] = await readRows([neighbor]);
   const { body } = await apply([id]).expect(200);
@@ -127,7 +128,9 @@ test('replays an exact large answer on its own row only', async () => {
   expect(body.sideEffects.learningWritten).toBe(false);
   const [resolved, adjacent] = await readRows([id, neighbor]);
   expect(resolved).toMatchObject({ status: 'completed', library_id: destination.id, policy_question: null });
-  expect(resolved.metadata.classification_details.outcome_link.runtime_question_answer.classification_id).toBe(id);
+  expect(resolved.metadata.classification_details.outcome_link.runtime_question_answer).toMatchObject({
+    classification_id: id, destination_library_id: destination.id,
+  });
   expect(adjacent).toEqual(untouched);
   const { body: repeated } = await apply([id]).expect(200);
   expect(repeated.records).toMatchObject([{ classificationId: id, resultStatusId: 'unchanged' }]);
