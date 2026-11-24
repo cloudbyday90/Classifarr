@@ -33,6 +33,8 @@ import {
   resolveRoutingConfig,
 } from './classificationRoutingService.mjs';
 import { readSelectedClassificationLibraryId } from './classificationSelectedLibrary.mjs';
+import { parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { bindNativeQuestionHandoff } from './nativeQuestionHandoffBinding.mjs';
 
 const POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_VERSION =
   'policy.native_classification_question_handoff.v1';
@@ -92,11 +94,8 @@ function normalizeSignalType(value) {
 }
 
 function findSelectedCandidate(policyResult, libraryId) {
-  const selectedId = normalizePositiveInteger(libraryId);
-  if (!selectedId) return null;
-
   return asArray(policyResult?.ranked).find(candidate =>
-    normalizePositiveInteger(candidate?.library_id) === selectedId
+    parseCanonicalDatabaseInt32Id(candidate?.library_id) === libraryId
   ) || null;
 }
 
@@ -109,8 +108,8 @@ function getNativeRuntimeEvaluation(classificationResult = {}, libraryId) {
     return candidateRuntime;
   }
 
-  const selectedPolicyLibraryId = normalizePositiveInteger(policyResult?.library?.library_id);
-  if (selectedPolicyLibraryId !== normalizePositiveInteger(libraryId)) {
+  const selectedPolicyLibraryId = parseCanonicalDatabaseInt32Id(policyResult?.library?.library_id);
+  if (selectedPolicyLibraryId !== libraryId) {
     return {};
   }
 
@@ -342,23 +341,43 @@ async function buildPolicyNativeClassificationQuestionHandoff({
     });
   }
 
+  const routingLibrary = { ...selectedLibrary };
+  const { statusId: nativeRuntimeStatusId, avoidPenalty, contract } = nativeRuntime;
+  const operatorIntent = buildOperatorIntent(contract);
   const [profileHandoff, resolvedLibrary] = await Promise.all([
     readStoredProfileEvidence(loadProfileEvidence, libraryId),
-    readStoredRoutingConfig(resolveStoredRoutingConfig, selectedLibrary),
+    readStoredRoutingConfig(resolveStoredRoutingConfig, routingLibrary),
   ]);
+  if (readSelectedClassificationLibraryId(result.library) !== libraryId ||
+      getNativeRuntimeEvaluation(result, libraryId) !== nativeRuntime ||
+      nativeRuntime.contract !== contract ||
+      !isAuthoritativeNativeRuntime(nativeRuntime) ||
+      (profileHandoff?.ok === true && parseCanonicalDatabaseInt32Id(profileHandoff.libraryId) !== libraryId) ||
+      (resolvedLibrary && readSelectedClassificationLibraryId(resolvedLibrary) !== libraryId)) {
+    return bindNativeQuestionHandoff(buildResult({
+      statusId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.INVALID_RUNTIME_CONTRACT,
+      profileRead: true,
+      routingConfigRead: typeof resolveStoredRoutingConfig === 'function',
+      reasonCode: 'selected_library_binding_unavailable',
+    }), result, libraryId, { refused: true });
+  }
   const profileInput = buildProfileEvidenceInput(profileHandoff);
+  const runtimeEvidenceInput = {
+    libraryProfile: profileInput.libraryProfile,
+    operatorIntent,
+    profileFreshness: profileInput.profileFreshness,
+  };
+  const classification = buildClassificationState(result);
+  const routing = buildRoutingInput(resolvedLibrary);
+  const policyEvaluation = buildPolicyEvaluation({ statusId: nativeRuntimeStatusId, avoidPenalty }, result);
   let plan;
   try {
-    const evidenceProjection = buildPolicyRuntimeEvidenceProjection({
-      libraryProfile: profileInput.libraryProfile,
-      operatorIntent: buildOperatorIntent(nativeRuntime.contract),
-      profileFreshness: profileInput.profileFreshness,
-    });
+    const evidenceProjection = buildPolicyRuntimeEvidenceProjection(runtimeEvidenceInput);
     const decision = buildPolicyAutomationDecisionFromEvidenceProjection({
       evidenceProjection,
-      classification: buildClassificationState(result),
-      routing: buildRoutingInput(resolvedLibrary),
-      policyEvaluation: buildPolicyEvaluation(nativeRuntime, result),
+      classification,
+      routing,
+      policyEvaluation,
     });
     plan = buildPolicyRuntimeQuestionReductionFromAutomationDecision({
       automationDecision: decision,
@@ -369,28 +388,23 @@ async function buildPolicyNativeClassificationQuestionHandoff({
       profileRead: true,
       routingConfigRead: typeof resolveStoredRoutingConfig === 'function',
       profileAvailable: profileInput.profileAvailable,
-      nativeRuntimeStatusId: nativeRuntime.statusId,
+      nativeRuntimeStatusId,
       reasonCode: 'native_runtime_contract_rejected',
     });
   }
   const questionReductionValidation = validatePolicyRuntimeQuestionReduction(plan);
 
-  const runtimeEvidenceInput = {
-    libraryProfile: profileInput.libraryProfile,
-    operatorIntent: buildOperatorIntent(nativeRuntime.contract),
-    profileFreshness: profileInput.profileFreshness,
-  };
   const queueProducer = queueTask
     ? buildPolicyRuntimeQueueQuestionReductionProducer({
       task: queueTask,
       runtimeEvidenceInput,
-      routing: buildRoutingInput(resolvedLibrary),
-      classification: buildClassificationState(result),
-      policyEvaluation: buildPolicyEvaluation(nativeRuntime, result),
+      routing,
+      classification,
+      policyEvaluation,
     })
     : null;
 
-  return buildResult({
+  const handoff = buildResult({
     statusId: questionReductionValidation.ok
       ? profileInput.profileAvailable
         ? POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.READY
@@ -403,11 +417,12 @@ async function buildPolicyNativeClassificationQuestionHandoff({
     profileRead: true,
     routingConfigRead: typeof resolveStoredRoutingConfig === 'function',
     profileAvailable: profileInput.profileAvailable,
-    nativeRuntimeStatusId: nativeRuntime.statusId,
+    nativeRuntimeStatusId,
     reasonCode: profileInput.profileAvailable
       ? 'native_runtime_plan_built'
       : 'stored_profile_unavailable',
   });
+  return handoff.plan ? bindNativeQuestionHandoff(handoff, result, libraryId) : handoff;
 }
 
 function buildPolicyNativeClassificationQuestionHandoffAudit(result = {}) {

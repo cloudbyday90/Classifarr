@@ -16,7 +16,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { jest } from '@jest/globals';
 import {
   POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS,
 } from '../../services/policyNativeIntentRuntimeEvaluator.mjs';
@@ -97,12 +96,12 @@ function classificationResult(overrides = {}) {
   };
 }
 
-async function buildReviewHandoff(overrides = {}) {
+async function buildReviewHandoff(source = classificationResult()) {
   return buildPolicyNativeClassificationQuestionHandoff({
-    classificationResult: classificationResult(overrides),
-    loadProfileEvidence: jest.fn().mockResolvedValue(currentProfileHandoff()),
-    resolveStoredRoutingConfig: jest.fn().mockResolvedValue({
-      id: 6,
+    classificationResult: source,
+    loadProfileEvidence: async ({ libraryId }) => currentProfileHandoff({ libraryId }),
+    resolveStoredRoutingConfig: async library => ({
+      ...library,
       arr_type: 'radarr',
       arr_id: 3,
       root_folder: '/media/animated',
@@ -116,10 +115,7 @@ describe('policyRuntimeQuestionPersistenceAdmission', () => {
       title: 'Untrusted request title',
       providerPayload: { raw: 'must not persist' },
     });
-    const handoff = await buildReviewHandoff({
-      title: 'Untrusted request title',
-      providerPayload: { raw: 'must not persist' },
-    });
+    const handoff = await buildReviewHandoff(sourceResult);
 
     const result = buildPolicyRuntimeQuestionPersistenceAdmission({
       classificationResult: sourceResult,
@@ -221,12 +217,40 @@ describe('policyRuntimeQuestionPersistenceAdmission', () => {
   });
 
   test.each([undefined, '06', 7])('audits the matching saved destination even when metadata is changed to %p', async (id) => {
+    const source = classificationResult();
     const admission = buildPolicyRuntimeQuestionPersistenceAdmission({
-      classificationResult: classificationResult(), handoff: await buildReviewHandoff(),
+      classificationResult: source, handoff: await buildReviewHandoff(source),
     });
     admission.persistedQuestion.meta.runtime_question_persistence.destinationLibraryId = id;
     expect(buildPolicyRuntimeQuestionPersistenceAdmissionAudit(admission)).toMatchObject({
       ok: false, issues: ['invalid_persisted_question_destination'],
+    });
+  });
+
+  test.each(['changed-selection', 'different-result', 'copied-handoff', 'replaced-plan', 'changed-summary'])(
+    'rejects a structurally valid but unbound %s before creating an envelope', async kind => {
+      const source = classificationResult();
+      let handoff = await buildReviewHandoff(source);
+      let owner = source;
+      if (kind === 'changed-selection') source.library = { id: 7, name: 'Other library' };
+      if (kind === 'different-result') owner = { ...source };
+      if (kind === 'copied-handoff') handoff = structuredClone(handoff);
+      if (kind === 'replaced-plan') handoff.plan = structuredClone(handoff.plan);
+      if (kind === 'changed-summary') handoff.summary.profileAvailable = false;
+
+      expect(buildPolicyRuntimeQuestionPersistenceAdmission({ classificationResult: owner, handoff })).toMatchObject({
+        ok: false, statusId: 'rejected', reasonId: POLICY_RUNTIME_QUESTION_PERSISTENCE_REASON_IDS.HANDOFF_LIBRARY_BINDING_INVALID,
+        persistedQuestion: null, classificationPatch: null, audit: { ok: true },
+      });
+    },
+  );
+
+  test('admits the same live result when its library ID changes to an equivalent canonical string', async () => {
+    const source = classificationResult();
+    const handoff = await buildReviewHandoff(source);
+    source.library = { library_id: '6', library_name: 'Animated Movies' };
+    expect(buildPolicyRuntimeQuestionPersistenceAdmission({ classificationResult: source, handoff })).toMatchObject({
+      ok: true, persistedQuestion: { meta: { runtime_question_persistence: { destinationLibraryId: 6 } } },
     });
   });
 
@@ -277,26 +301,10 @@ describe('policyRuntimeQuestionPersistenceAdmission', () => {
   });
 
   test('does not materialize a question when native automation is already safe to route', async () => {
-    const handoff = await buildPolicyNativeClassificationQuestionHandoff({
-      classificationResult: classificationResult({
-        runtime: nativeRuntime({
-          statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.ACTIVE,
-        }),
-      }),
-      loadProfileEvidence: jest.fn().mockResolvedValue(currentProfileHandoff()),
-      resolveStoredRoutingConfig: jest.fn().mockResolvedValue({
-        id: 6,
-        arr_type: 'radarr',
-        arr_id: 3,
-        root_folder: '/media/animated',
-      }),
-    });
+    const source = classificationResult({ runtime: nativeRuntime({ statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.ACTIVE }) });
+    const handoff = await buildReviewHandoff(source);
     const result = buildPolicyRuntimeQuestionPersistenceAdmission({
-      classificationResult: classificationResult({
-        runtime: nativeRuntime({
-          statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.ACTIVE,
-        }),
-      }),
+      classificationResult: source,
       handoff,
     });
 
@@ -309,9 +317,10 @@ describe('policyRuntimeQuestionPersistenceAdmission', () => {
   });
 
   test('audit rejects an admitted result that reports a persistence side effect', async () => {
+    const source = classificationResult();
     const admission = buildPolicyRuntimeQuestionPersistenceAdmission({
-      classificationResult: classificationResult(),
-      handoff: await buildReviewHandoff(),
+      classificationResult: source,
+      handoff: await buildReviewHandoff(source),
     });
     const audit = buildPolicyRuntimeQuestionPersistenceAdmissionAudit({
       ...admission,

@@ -13,6 +13,7 @@ import { projectLiveInventoryQueryMetadata } from '../services/liveInventoryLear
 import { buildRetryPayload } from '../utils/classificationRetryPayloads.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
 import { rememberSavedCurrentPolicyReview } from '../services/currentPolicyReviewFrameLive.mjs';
+import { bindNativeQuestionHandoff } from '../services/nativeQuestionHandoffBinding.mjs';
 import {
   createClassificationService,
 } from '../services/classificationServiceCore.mjs';
@@ -100,6 +101,10 @@ function buildValidQueueQuestionReduction() {
 
   expect(result.audit.ok).toBe(true);
   return result.queueQuestionReduction;
+}
+
+function boundHandoffBuilder(value) {
+  return jest.fn(async ({ classificationResult }) => bindNativeQuestionHandoff({ ...value }, classificationResult, 6));
 }
 
 function createService({ handoff, admission } = {}) {
@@ -310,7 +315,7 @@ describe('classificationServiceCore native question-reduction handoff', () => {
   test('returns a validated runtime plan without changing the routing decision path', async () => {
     const runtimeQuestionReductionPlan = buildValidRuntimeQuestionReductionPlan();
     const handoff = {
-      build: jest.fn().mockResolvedValue({ plan: runtimeQuestionReductionPlan }),
+      build: boundHandoffBuilder({ plan: runtimeQuestionReductionPlan }),
     };
     const service = createService({ handoff });
 
@@ -370,7 +375,7 @@ describe('classificationServiceCore native question-reduction handoff', () => {
     const runtimeQuestionReductionPlan = buildValidRuntimeQuestionReductionPlan();
     const runtimeQueueQuestionReduction = buildValidQueueQuestionReduction();
     const handoff = {
-      build: jest.fn().mockResolvedValue({
+      build: boundHandoffBuilder({
         plan: runtimeQuestionReductionPlan,
         queueQuestionReduction: runtimeQueueQuestionReduction,
       }),
@@ -415,7 +420,7 @@ describe('classificationServiceCore native question-reduction handoff', () => {
       }),
     };
     const handoff = {
-      build: jest.fn().mockResolvedValue({ plan: runtimeQuestionReductionPlan }),
+      build: boundHandoffBuilder({ plan: runtimeQuestionReductionPlan }),
     };
     const service = createService({ handoff, admission });
 
@@ -446,6 +451,81 @@ describe('classificationServiceCore native question-reduction handoff', () => {
       }),
     }));
   });
+
+  test.each(['changed-selection', 'copied-handoff', 'erased-plan', 'changed-audit', 'changed-version', 'new-side-effect'])(
+    'holds a direct classification with a %s', async kind => {
+    const plan = buildValidRuntimeQuestionReductionPlan();
+    const service = createService({ handoff: { build: async ({ classificationResult }) => {
+      const handoff = bindNativeQuestionHandoff({
+        plan, version: 1, audit: { ok: true }, sideEffects: { routingExecuted: false },
+      }, classificationResult, 6);
+      if (kind === 'copied-handoff') return { ...handoff };
+      if (kind === 'changed-selection') classificationResult.library = { id: 7, name: 'Other library' };
+      if (kind === 'erased-plan') handoff.plan = null;
+      if (kind === 'changed-audit') handoff.audit.ok = false;
+      if (kind === 'changed-version') handoff.version = 2;
+      if (kind === 'new-side-effect') handoff.sideEffects.routingExecuted = true;
+      return handoff;
+    } } });
+    const priorQuestion = { question: 'Existing review question' };
+    const decision = await service.runDecisionTree();
+    decision.policy_question = priorQuestion;
+    const beforeAutomaticRoute = jest.fn();
+
+    const result = await service.classify({ media: { tmdbId: 10674 } }, { beforeAutomaticRoute });
+
+    expect(result).toMatchObject({ destination: { libraryId: null, libraryName: null }, runtimeQuestionReductionPlan: null,
+      runtimeQueueQuestionReduction: null, routingOutcome: { shouldRoute: false } });
+    const saved = service.classificationPersistenceService.logClassification.mock.calls[0][1];
+    expect(saved).toMatchObject({ library: null, needs_clarification: true });
+    expect(saved.policy_question).toBe(priorQuestion);
+    expect(beforeAutomaticRoute).not.toHaveBeenCalled();
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+  });
+
+  test.each(['history', 'route-barrier', 'provider', 'notification'])(
+    'withholds changed proof after the %s await and preserves the actual route outcome', async stage => {
+      const plan = buildValidRuntimeQuestionReductionPlan();
+      const handoff = { build: boundHandoffBuilder({ plan }) };
+      const service = createService({ handoff });
+      const decision = await service.runDecisionTree();
+      const changeSelection = () => { decision.library = { id: 7, name: 'Other library' }; };
+      const beforeAutomaticRoute = jest.fn();
+      if (stage === 'history') {
+        service.classificationPersistenceService.logClassification.mockImplementation(async () => {
+          changeSelection();
+          return 94;
+        });
+      }
+      if (stage === 'route-barrier') beforeAutomaticRoute.mockImplementation(async () => changeSelection());
+      if (stage === 'provider') {
+        service.classificationRoutingService.routeToArr.mockImplementation(async () => {
+          decision.library = null;
+          return { routed: true };
+        });
+      }
+      if (stage === 'notification') {
+        service.discordBot.isInitialized = true;
+        service.discordBot.sendConfidenceBasedNotification = jest.fn(async () => changeSelection());
+      }
+
+      const result = await service.classify({ media: { tmdbId: 10674 } }, { beforeAutomaticRoute });
+
+      const providerEntered = stage === 'provider' || stage === 'notification';
+      expect(result).toMatchObject({
+        destination: { libraryId: null, libraryName: null },
+        runtimeQuestionReductionPlan: null,
+        runtimeQueueQuestionReduction: null,
+        routingOutcome: { shouldRoute: providerEntered },
+      });
+      expect(beforeAutomaticRoute).toHaveBeenCalledTimes(stage === 'history' ? 0 : 1);
+      expect(service.classificationRoutingService.routeToArr).toHaveBeenCalledTimes(providerEntered ? 1 : 0);
+      if (providerEntered) {
+        expect(service.db.query).toHaveBeenCalledWith(expect.any(String), expect.arrayContaining(['routed']));
+        expect(result.routingOutcome.routeResult.routed).toBe(true);
+      }
+    },
+  );
 
   test.each([false, true])('holds a malformed selection and preserves existing review or retry state (retry=%s)', async (needs_retry) => {
     const service = createService();

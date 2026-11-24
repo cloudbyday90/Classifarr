@@ -11,6 +11,12 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native question handoff ownership** — Verify that native review evidence
+  belongs to the selected library after stored reads and before use. When
+  the binding fails, keep the item in operator review without a proposed
+  destination or new native question. See the
+  [outcome](docs/architecture/native-question-handoff-binding-outcome.md).
+
 - **Native question destination selection** — Validate the selected library
   before native lookups and question creation. A malformed selection keeps
   the item in operator review without a proposed destination. See the

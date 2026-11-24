@@ -10,7 +10,8 @@ import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { savedCurrentPolicyReviewMetadata } from './currentPolicyReviewFrameLive.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
-import { holdInvalidSelectedClassificationLibrary } from './classificationSelectedLibrary.mjs';
+import { holdInvalidSelectedClassificationLibrary, holdSelectedClassificationLibraryForReview } from './classificationSelectedLibrary.mjs';
+import { hasCurrentNativeQuestionHandoffBinding, hasNativeQuestionHandoffBinding } from './nativeQuestionHandoffBinding.mjs';
 import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
@@ -198,7 +199,7 @@ export class ClassificationService {
     return { shouldRoute: false, reason: 'threshold_not_met' };
   }
 
-  async routeClassificationResult(classificationId, metadata, result, requireAllConfirmations, beforeRoute) {
+  async routeClassificationResult(classificationId, metadata, result, requireAllConfirmations, beforeRoute, handoff = null) {
     const policyAutoThreshold = this.resolvePolicyAutoThreshold(result);
     const decision = this.buildAutoRouteDecision({
       result,
@@ -231,11 +232,17 @@ export class ClassificationService {
 
     // Commit the queue's write barrier before provider work. Never expire it with a claim.
     await beforeRoute?.(classificationId);
-    const routeResult = await this.routeToArr(metadata, result.library);
+    if (handoff && !hasCurrentNativeQuestionHandoffBinding(handoff, result)) {
+      return { shouldRoute: false, reason: 'no_library', policyAutoThreshold };
+    }
+    const library = result.library;
+    const libraryId = library.id || library.library_id || null;
+    const libraryName = library.name || library.library_name || null;
+    const routeResult = await this.routeToArr(metadata, library);
     this.logger.debug('Auto-route evaluated for classification result', {
       title: metadata?.title || null,
-      libraryId: result.library.id || result.library.library_id || null,
-      libraryName: result.library.name || result.library.library_name || null,
+      libraryId,
+      libraryName,
       method: result.method || null,
       confidence: result.confidence ?? null,
       policyAutoThreshold,
@@ -283,6 +290,8 @@ export class ClassificationService {
       if (queueTask !== null) handoffInput.queueTask = queueTask;
 
       const handoff = await this.policyNativeClassificationQuestionHandoffService.build(handoffInput);
+      if (hasNativeQuestionHandoffBinding(handoff)) return handoff;
+
       const plan = handoff?.plan;
       const validation = plan
         ? validatePolicyRuntimeQuestionReduction(plan)
@@ -296,7 +305,7 @@ export class ClassificationService {
         return null;
       }
 
-      return validation?.ok === true ? handoff : null;
+      return plan ? handoff : null;
     } catch (error) {
       this.logger.warn('Native classification question handoff failed', {
         error: error.message,
@@ -308,7 +317,7 @@ export class ClassificationService {
 
   async buildRuntimeQuestionReductionPlan(result, queueTask = null) {
     const handoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
-    return handoff?.plan || null;
+    return hasCurrentNativeQuestionHandoffBinding(handoff, result) ? handoff.plan : null;
   }
 
   admitRuntimeQuestionPersistence(result, handoff) {
@@ -460,22 +469,17 @@ export class ClassificationService {
       }
 
       const decisionResult = await this.runDecisionTree(metadata, media_type, taskId);
-      const result = holdInvalidSelectedClassificationLibrary(decisionResult);
-      const runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
-      const runtimeQuestionReductionPlan = queueTask === null
-        ? runtimeQuestionHandoff?.plan || null
-        : null;
-      const runtimeQueueQuestionReduction = queueTask !== null &&
-        buildPolicyRuntimeQueueQuestionReductionAudit(
-          runtimeQuestionHandoff?.queueQuestionReduction
-        ).ok === true
-        ? runtimeQuestionHandoff.queueQuestionReduction
-        : null;
-      const runtimeQuestionPersistenceAdmission = this.admitRuntimeQuestionPersistence(
-        result,
-        runtimeQuestionHandoff,
-      );
-
+      let result = holdInvalidSelectedClassificationLibrary(decisionResult);
+      let runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
+      const recheckNativeHandoff = () => {
+        if (runtimeQuestionHandoff && !hasCurrentNativeQuestionHandoffBinding(runtimeQuestionHandoff, result)) {
+          result = holdSelectedClassificationLibraryForReview(result,
+            'The selected library could not be verified. Retry Classification to refresh the destination.');
+          runtimeQuestionHandoff = null;
+        }
+      };
+      recheckNativeHandoff();
+      const runtimeQuestionPersistenceAdmission = this.admitRuntimeQuestionPersistence(result, runtimeQuestionHandoff);
       const classificationId = queueTask
         ? await this.logClassification(metadata, result, startTime, {
           queueTask,
@@ -486,13 +490,16 @@ export class ClassificationService {
 
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
 
+      recheckNativeHandoff();
       const routingOutcome = await this.routeClassificationResult(
         classificationId,
         metadata,
         result,
         requireAllConfirmations,
-        runtimeContext.beforeAutomaticRoute
+        runtimeContext.beforeAutomaticRoute,
+        runtimeQuestionHandoff
       );
+      recheckNativeHandoff();
 
       if (this.discordBot.isInitialized) {
         try {
@@ -544,6 +551,16 @@ export class ClassificationService {
         });
       }
 
+      recheckNativeHandoff();
+      const runtimeQuestionReductionPlan = queueTask === null
+        ? runtimeQuestionHandoff?.plan || null
+        : null;
+      const runtimeQueueQuestionReduction = queueTask !== null &&
+        buildPolicyRuntimeQueueQuestionReductionAudit(
+          runtimeQuestionHandoff?.queueQuestionReduction
+        ).ok === true
+        ? runtimeQuestionHandoff.queueQuestionReduction
+        : null;
       return {
         success: true,
         classification_id: classificationId,

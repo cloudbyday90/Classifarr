@@ -25,6 +25,7 @@ import {
 
 function currentProfileHandoff(overrides = {}) {
   return {
+    libraryId: 6,
     ok: true,
     profileEvidence: {
       libraryProfile: {
@@ -350,6 +351,32 @@ describe('policyNativeClassificationQuestionHandoff', () => {
       plan: null,
     }));
     expect(result.audit.ok).toBe(true);
+  });
+
+  test('takes the routing input before profile reads and refuses a changed selection', async () => {
+    const source = classificationResult();
+    let releaseProfile;
+    const profile = new Promise(resolve => { releaseProfile = resolve; });
+    const loadProfileEvidence = jest.fn().mockReturnValue(profile);
+    const resolveStoredRoutingConfig = jest.fn().mockResolvedValue(mappedLibrary());
+    const pending = buildPolicyNativeClassificationQuestionHandoff({
+      classificationResult: source, loadProfileEvidence, resolveStoredRoutingConfig,
+    });
+    source.library.id = 7;
+    releaseProfile(currentProfileHandoff());
+
+    expect(resolveStoredRoutingConfig).toHaveBeenCalledWith(expect.objectContaining({ id: 6 }));
+    expect(loadProfileEvidence).toHaveBeenCalledWith({ libraryId: 6 });
+    expect(await pending).toMatchObject({ ok: false, reasonCode: 'selected_library_binding_unavailable', plan: null, queueQuestionReduction: null });
+  });
+
+  test.each(['profile', 'routing'])('refuses a %s response for a different library', async source => {
+    const handoff = await buildPolicyNativeClassificationQuestionHandoff({
+      classificationResult: classificationResult(),
+      loadProfileEvidence: jest.fn().mockResolvedValue(currentProfileHandoff({ libraryId: source === 'profile' ? 7 : 6 })),
+      resolveStoredRoutingConfig: jest.fn().mockResolvedValue({ ...mappedLibrary(), id: source === 'routing' ? 7 : 6 }),
+    });
+    expect(handoff).toMatchObject({ ok: false, reasonCode: 'selected_library_binding_unavailable', plan: null });
   });
 
   test.each([{ id: ' 6 ', library_id: 6 }, { library_id: [6] }, { id: { toString: null } }, { id: 2147483648 }])(

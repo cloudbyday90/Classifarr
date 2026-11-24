@@ -45,10 +45,23 @@ function automaticRoute({ routeToArr, beforeRoute, blocked = false, database = d
   }, blocked, beforeRoute);
 }
 
-test('a malformed selected library persists as pending without a route marker or a native question', async () => {
+test.each(['malformed', 'changed-during-read'])('a %s selection persists as pending without a route marker or a native question', async kind => {
   const routeToArr = jest.fn();
-  const loadProfileEvidence = jest.fn();
-  const resolveStoredRoutingConfig = jest.fn();
+  const decision = {
+    library: { id: kind === 'malformed' ? ` ${libraryId} ` : libraryId, name: 'Unverified selection' },
+    confidence: 95, method: 'policy_auto',
+    policyResult: { action: 'auto_classify', library: { library_id: libraryId }, ranked: [{
+      library_id: libraryId, native_intent_runtime: {
+        statusId: 'native_intent_runtime_hard_limit_failed', contract: { source: 'native_intent', validation: { valid: true } },
+      },
+    }] },
+  };
+  const loadProfileEvidence = jest.fn(async ({ libraryId: readId }) => {
+    await Promise.resolve();
+    decision.library.id = libraryId + 1;
+    return { ok: true, libraryId: readId };
+  });
+  const resolveStoredRoutingConfig = jest.fn(async library => library);
   const writer = new ClassificationPersistenceService();
   const logClassification = writer.logClassification.bind(writer);
   jest.spyOn(writer, 'logClassification').mockImplementation((metadata, result, ...rest) => {
@@ -71,10 +84,7 @@ test('a malformed selected library persists as pending without a route marker or
       buildPolicyNativeClassificationQuestionHandoff({ ...input, loadProfileEvidence, resolveStoredRoutingConfig }) },
     policyRuntimeQuestionPersistenceAdmissionService,
   });
-  service.runDecisionTree = jest.fn().mockResolvedValue({
-    library: { id: ` ${libraryId} `, name: 'Unverified selection' }, confidence: 95, method: 'policy_auto',
-    policyResult: { action: 'auto_classify', library: { library_id: libraryId } },
-  });
+  service.runDecisionTree = jest.fn().mockResolvedValue(decision);
 
   const result = await service.classifyQueueTask(task);
   adjacentId = result.classification_id;
@@ -86,8 +96,13 @@ test('a malformed selected library persists as pending without a route marker or
     policy_question: null, pending_reason: expect.stringContaining('Retry Classification') });
   expect((await readTask()).routing_classification_id).toBeNull();
   expect(routeToArr).not.toHaveBeenCalled();
-  expect(loadProfileEvidence).not.toHaveBeenCalled();
-  expect(resolveStoredRoutingConfig).not.toHaveBeenCalled();
+  if (kind === 'malformed') {
+    expect(loadProfileEvidence).not.toHaveBeenCalled();
+    expect(resolveStoredRoutingConfig).not.toHaveBeenCalled();
+  } else {
+    expect(loadProfileEvidence).toHaveBeenCalledWith({ libraryId });
+    expect(resolveStoredRoutingConfig).toHaveBeenCalledWith(expect.objectContaining({ id: libraryId }));
+  }
 });
 
 test.each(['routed', 'arr_add_failed', 'confirmation_required'])('automatic %s patches only the exact History row', async routing => {

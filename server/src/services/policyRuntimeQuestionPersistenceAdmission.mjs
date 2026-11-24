@@ -23,6 +23,7 @@ import {
   readNativePendingQuestionDestination,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { readSelectedClassificationLibraryId } from './classificationSelectedLibrary.mjs';
+import { hasCurrentNativeQuestionHandoffBinding } from './nativeQuestionHandoffBinding.mjs';
 
 const POLICY_RUNTIME_QUESTION_PERSISTENCE_ADMISSION_STATUS_IDS = Object.freeze({
   ADMITTED: 'admitted',
@@ -39,6 +40,7 @@ const POLICY_RUNTIME_QUESTION_PERSISTENCE_REASON_IDS = Object.freeze({
   NO_QUESTION_REQUESTED: 'runtime_question_persistence_no_question_requested',
   INVALID_QUESTION_PLAN: 'runtime_question_persistence_invalid_question_plan',
   NO_SELECTED_LIBRARY: 'runtime_question_persistence_no_selected_library',
+  HANDOFF_LIBRARY_BINDING_INVALID: 'runtime_question_persistence_handoff_library_binding_invalid',
   EXISTING_QUESTION_PRESERVED: 'runtime_question_persistence_existing_question_preserved',
 });
 
@@ -280,6 +282,13 @@ function buildPolicyRuntimeQuestionPersistenceAdmission({
     return buildResult({
       statusId: POLICY_RUNTIME_QUESTION_PERSISTENCE_ADMISSION_STATUS_IDS.REJECTED,
       reasonId: POLICY_RUNTIME_QUESTION_PERSISTENCE_REASON_IDS.NO_SELECTED_LIBRARY,
+    });
+  }
+
+  if (!hasCurrentNativeQuestionHandoffBinding(handoff, classificationResult)) {
+    return buildResult({
+      statusId: POLICY_RUNTIME_QUESTION_PERSISTENCE_ADMISSION_STATUS_IDS.REJECTED,
+      reasonId: POLICY_RUNTIME_QUESTION_PERSISTENCE_REASON_IDS.HANDOFF_LIBRARY_BINDING_INVALID,
     });
   }
 

@@ -10,10 +10,15 @@ export function readSelectedClassificationLibraryId(library) {
 export function holdInvalidSelectedClassificationLibrary(result) {
   if (result.library == null || readSelectedClassificationLibraryId(result.library) !== null) return result;
 
+  return holdSelectedClassificationLibraryForReview(result,
+    'Selected library is invalid. Retry Classification to refresh the destination.');
+}
+
+export function holdSelectedClassificationLibraryForReview(result, pendingReason) {
   return {
     ...result,
     library: null,
     needs_clarification: true,
-    pending_reason: result.pending_reason || 'Selected library is invalid. Retry Classification to refresh the destination.',
+    pending_reason: result.pending_reason || pendingReason,
   };
 }
