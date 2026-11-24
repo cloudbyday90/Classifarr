@@ -5,6 +5,7 @@ import { computeAutomaticSourcePair } from '../../services/automaticSourcePairCo
 import { freezeAutomaticSourcePairCohort, validSourcePairCohort } from '../../services/automaticSourcePairCohort.mjs';
 import { readAutomaticSourcePairReport } from '../../services/automaticSourcePairReport.mjs';
 import { sourcePairFixture, sourcePairSnapshot, sourcePairIdentity } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { createSourcePairTaskError, readSourcePairTaskFailure } from '../../services/automaticSourcePairTaskFailure.mjs';
 
 const captured = (source = sourcePairFixture()) => ({ observedAt: '2026-09-25 01:00:00.123456+00',
   inputs: { source, identity: sourcePairIdentity, configuration: 'a'.repeat(64) } });
@@ -93,6 +94,84 @@ function fixture() {
     withAdmission: jest.fn(async (callback, { signal }) => callback(signal)), evaluate: jest.fn(computeAutomaticSourcePair) };
   return { ...options, worker: createAutomaticSourcePairEvaluation(options) };
 }
+
+test.each(['advisory_lock', 'state_read', 'admission', 'snapshot_read', 'quality_collection', 'evaluation', 'publication'])(
+  'observes the genuine %s rejection without including its details', async stage => {
+    const f = fixture();
+    const error = Object.assign(new Error('PRIVATE SQL and input'), { stage: 'publication', code: '57014' });
+    const rejected = jest.fn().mockRejectedValue(error);
+    const operations = {
+      advisory_lock: () => f.withSessionAdvisoryLock.mockImplementation(rejected),
+      state_read: () => f.repository.readState.mockImplementation(rejected),
+      admission: () => f.withAdmission.mockImplementation(rejected),
+      snapshot_read: () => f.repository.readSnapshot.mockImplementation(rejected),
+      quality_collection: () => { f.repository.collectQuality = rejected; },
+      evaluation: () => f.evaluate.mockImplementation(rejected),
+      publication: () => f.repository.save.mockImplementation(rejected),
+    };
+    operations[stage]();
+    const result = await f.worker.run();
+    expect(result).toEqual({ status: 'failed', reason: 'evaluation_unavailable' });
+    const taskError = createSourcePairTaskError(result);
+    expect(readSourcePairTaskFailure(taskError)).toEqual({ failure: { stage } });
+    expect(taskError).not.toHaveProperty('cause');
+    expect(readSourcePairTaskFailure(createSourcePairTaskError({ ...result, stage }))).toBeNull();
+  },
+);
+
+test('failure-recording error keeps the originating stage and five-minute local fallback', async () => {
+  const f = fixture();
+  const error = new Error('PRIVATE');
+  f.repository.readSnapshot.mockRejectedValue(error);
+  f.repository.fail.mockRejectedValue(error);
+  const first = await f.worker.run();
+  expect(readSourcePairTaskFailure(createSourcePairTaskError(first))).toEqual({
+    failure: { stage: 'failure_record', originStage: 'snapshot_read' },
+  });
+  expect(f.repository.fail).toHaveBeenCalledWith('evaluation_unavailable', expect.any(AbortSignal));
+  expect(await f.worker.run()).toEqual({ status: 'cooldown' });
+});
+
+test.each(['admission', 'advisory_lock'])('later %s rejection does not attribute failure to a successful publication', async stage => {
+  const f = fixture();
+  const error = new Error('PRIVATE');
+  if (stage === 'admission') {
+    f.withAdmission.mockImplementation(async (run, { signal }) => {
+      await run(signal);
+      throw error;
+    });
+  } else {
+    f.withSessionAdvisoryLock.mockImplementation(async (_key, run) => {
+      await run();
+      throw error;
+    });
+  }
+  const result = await f.worker.run();
+  expect(f.repository.save).toHaveBeenCalledTimes(1);
+  expect(readSourcePairTaskFailure(createSourcePairTaskError(result))).toEqual({ failure: { stage } });
+  expect(f.repository.fail).toHaveBeenCalledTimes(stage === 'admission' ? 1 : 0);
+});
+
+test('checks actual publication entry if the admission signal is cancelled after evaluation', async () => {
+  const f = fixture();
+  const controller = new AbortController();
+  f.withAdmission.mockImplementation((run, { signal }) => run(AbortSignal.any([signal, controller.signal])));
+  f.evaluate.mockImplementation((...args) => {
+    queueMicrotask(() => queueMicrotask(() => controller.abort(new Error('automatic_source_pair_deadline'))));
+    return computeAutomaticSourcePair(...args);
+  });
+  expect(await f.worker.run()).toEqual({ status: 'failed', reason: 'deadline' });
+  expect(f.repository.save).not.toHaveBeenCalled();
+});
+
+test('task error formats exactly one allowlisted reason observation', () => {
+  const reason = jest.fn().mockReturnValueOnce('deadline').mockReturnValue('PRIVATE');
+  expect(createSourcePairTaskError({ get reason() { return reason(); } }).message)
+    .toBe('automatic_source_pair_evaluation_unavailable:deadline');
+  expect(reason).toHaveBeenCalledTimes(1);
+  expect(createSourcePairTaskError({ get reason() { throw new Error('PRIVATE'); } }).message)
+    .toBe('automatic_source_pair_evaluation_unavailable:evaluation_unavailable');
+});
 
 test('worker shares lifecycle, admission and no process environment mutations', async () => {
   const f = fixture(), env = { ...process.env };

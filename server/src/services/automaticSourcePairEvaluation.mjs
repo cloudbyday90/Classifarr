@@ -2,6 +2,7 @@
 import { createAutomaticEvaluationWorker } from './automaticEvaluationWorker.mjs';
 import { runAutomaticSourcePairThread } from './automaticSourcePairThreadClient.mjs';
 import { createProgressingSourcePairEvaluation } from './sourcePairWindowProgression.mjs';
+import { bindSourcePairFailureStage } from './automaticSourcePairTaskFailure.mjs';
 
 export const AUTOMATIC_SOURCE_PAIR_LOCK = 0x41535045;
 const deferredCodes = ['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable'];
@@ -17,7 +18,7 @@ export function createAutomaticSourcePairEvaluation({ repository, withSessionAdv
   evaluate = runAutomaticSourcePairThread, now = Date.now }) {
   return createAutomaticEvaluationWorker({ repository, withSessionAdvisoryLock, now,
     runEvaluation: createProgressingSourcePairEvaluation({ repository, evaluate }),
-    lock: AUTOMATIC_SOURCE_PAIR_LOCK, failureCode, deferredCodes,
+    lock: AUTOMATIC_SOURCE_PAIR_LOCK, failureCode, deferredCodes, observeFailure: bindSourcePairFailureStage,
     withEvaluation: (callback, signal) => withAdmission(callback,
       { signal: AbortSignal.any([signal, AbortSignal.timeout(120000)]) }),
   });

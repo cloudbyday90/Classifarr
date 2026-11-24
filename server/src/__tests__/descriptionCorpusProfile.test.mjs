@@ -23,13 +23,13 @@ test('plan output is numeric-only, bounded, and never double-counts inclusive bu
 
 test('samples only fixed categories and owned PIDs, without selecting SQL text', async () => {
   const observer = { query: jest.fn(async () => ({ rows: [
-    { state: 'active', wait_event_type: 'Lock' }, { state: 'active', wait_event_type: null },
+    { state: 'active', wait_event_type: 'Lock', corpus_read: true }, { state: 'active', wait_event_type: null },
     { state: 'idle', wait_event_type: 'Client' }, { state: 'active', wait_event_type: 'private' },
   ] })) };
   const report = await observeCorpusWork(observer, [1, 2], async () => 'complete');
-  expect(report).toMatchObject({ result: 'complete', waits: { samples: 1,
+  expect(report).toMatchObject({ result: 'complete', waits: { samples: 1, peakCorpusReaders: 1,
     categories: { Lock: 1, active_no_wait: 1, not_active: 1, other: 1 } } });
-  expect(observer.query.mock.calls[0][1]).toEqual([[1, 2]]);
+  expect(observer.query.mock.calls[0][1]).toEqual([[1, 2], expect.stringContaining('SELECT msi.media_type')]);
   expect(observer.query.mock.calls[0][0]).not.toMatch(/SELECT.*query,/);
   expect(JSON.stringify(report)).not.toContain('private');
 });

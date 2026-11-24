@@ -72,6 +72,7 @@ test('worker owns admission through save, respects persisted cooldown and stops 
   repository.save.mockImplementation(async () => { events.push('save'); return true; });
   const worker = createAutomaticPurposeEvaluation({ withSessionAdvisoryLock: async (_key, fn) => fn() }, { repository, withAdmission, runThread });
   expect(await worker.run()).toMatchObject({ status: 'evaluated' }); expect(events).toEqual(['admit', 'save', 'release']);
+  expect(runThread).toHaveBeenCalledWith(await repository.readSnapshot.mock.results[0].value, null, expect.any(AbortSignal));
   repository.readState.mockResolvedValue({ cooling_down: true }); expect((await worker.run()).status).toBe('cooldown');
   worker.stop(); expect((await worker.run()).status).toBe('stopped');
 });

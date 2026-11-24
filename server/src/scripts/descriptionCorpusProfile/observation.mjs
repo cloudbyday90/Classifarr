@@ -1,7 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { setTimeout as delay } from 'node:timers/promises';
+import { INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
 
 const WAIT_TYPES = new Set(['Activity', 'BufferPin', 'Client', 'Extension', 'IO', 'IPC', 'Lock', 'LWLock', 'Timeout']);
+const CORPUS_QUERY_PREFIX = INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL.slice(0, 96);
 const number = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 
 /** Deliberately omit expressions, relation/index names, output columns and all raw plan text. */
@@ -29,18 +31,20 @@ export function memorySnapshot() {
   return { rss, heapUsed, heapTotal, external, arrayBuffers };
 }
 
-/** Separate autocommit observer; never query text or reuse a frozen stats snapshot. */
+/** Match active statements on owned sessions in PostgreSQL. Return only a Boolean, never SQL text. */
 export async function observeCorpusWork(observer, pids, work) {
   if (!Array.isArray(pids) || !pids.length || pids.length > 2 || pids.some(pid => !Number.isInteger(pid) || pid < 1)) {
     throw new Error('corpus_profile_pids_invalid');
   }
-  let done = false, samples = 0;
+  let done = false, samples = 0, peakCorpusReaders = 0;
   const categories = {};
   const sampling = (async () => {
     while (!done && samples < 1200) {
-      const { rows } = await observer.query(`SELECT state,wait_event_type FROM pg_stat_activity
-        WHERE pid=ANY($1::integer[])`, [pids]);
+      const { rows } = await observer.query(`SELECT state,wait_event_type,
+        state='active' AND starts_with(query,$2::text) AS corpus_read
+        FROM pg_stat_activity WHERE pid=ANY($1::integer[])`, [pids, CORPUS_QUERY_PREFIX]);
       samples++;
+      peakCorpusReaders = Math.max(peakCorpusReaders, rows.filter(row => row.corpus_read === true).length);
       for (const row of rows) {
         const category = row.state !== 'active' ? 'not_active'
           : row.wait_event_type === null ? 'active_no_wait'
@@ -57,5 +61,5 @@ export async function observeCorpusWork(observer, pids, work) {
   finally { done = true; error = await observed; }
   if (error) throw new Error('corpus_profile_observer_failed');
   if (samples >= 1200) throw new Error('corpus_profile_observer_limit');
-  return { result, waits: { samples, intervalMs: 25, categories } };
+  return { result, waits: { samples, intervalMs: 25, peakCorpusReaders, categories } };
 }

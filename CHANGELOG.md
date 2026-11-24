@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Scheduled source-pair failure diagnostics** — Record the failed operation
+  in the existing scheduler error, including the original stage if saving the
+  failure also fails. See the
+  [outcome](docs/architecture/source-pair-failure-stages-outcome.md).
+
 - **Native question handoff ownership** — Verify that native review evidence
   belongs to the selected library after stored reads and before use. When
   the binding fails, keep the item in operator review without a proposed
@@ -420,6 +425,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
   [verification](docs/architecture/review-recommendation-reference-outcome.md).
 
 ### Changed
+
+- **Description corpus profiler** — Exercise synthetic season mappings and
+  measure concurrent reads of the production SELECT in disposable PostgreSQL.
+  See the [study outcome](docs/architecture/description-corpus-season-load-outcome.md).
 
 - **Suggestion reviews** — Apply and Reject send one request per confirmation.
   If the response is uncertain, the dashboard checks the saved status and

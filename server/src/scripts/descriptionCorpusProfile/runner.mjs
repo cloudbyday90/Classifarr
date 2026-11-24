@@ -18,7 +18,7 @@ export async function verifyCorpusLockControl(db, peer, observer, pid) {
       } catch (error) { return error?.code === '55P03' ? '55P03' : 'unexpected'; }
       finally { await peer.query('ROLLBACK'); }
     });
-    if (observed.result !== '55P03' || !(observed.waits.categories.Lock > 0)) {
+    if (observed.result !== '55P03' || observed.waits.peakCorpusReaders !== 1 || !(observed.waits.categories.Lock > 0)) {
       throw new Error('corpus_profile_lock_control_failed');
     }
     return { code: observed.result, waits: observed.waits };
@@ -38,13 +38,15 @@ export async function runCorpusProfileMeasurements(db, { withClient, size = 6500
     const settings = (await db.query(`SELECT name,setting,unit FROM pg_settings WHERE name IN
       ('jit','work_mem','shared_buffers','max_parallel_workers_per_gather','track_io_timing') ORDER BY name`)).rows;
     const scenarios = [];
-    let fingerprint;
-    for (const fallback of ['sparse', 'all']) {
-      const fixture = await installCorpusProfileFixture(db, size, fallback);
+    let baselineFingerprint;
+    for (const workload of ['sparse', 'all', 'seasons']) {
+      const fixture = await installCorpusProfileFixture(db, size, workload);
       try {
         const warmup = await measureCorpusRead(db, fixture.expectedRows);
-        fingerprint ??= warmup.fingerprint;
-        if (warmup.fingerprint !== fingerprint) throw new Error('corpus_profile_fingerprint_mismatch');
+        const { fingerprint, seasonRows } = warmup;
+        if (seasonRows !== (fixture.seasons?.expectedSeasonRows ?? 0)) throw new Error('corpus_profile_season_count_mismatch');
+        baselineFingerprint ??= fingerprint;
+        if (workload !== 'seasons' && fingerprint !== baselineFingerprint) throw new Error('corpus_profile_fingerprint_mismatch');
         const cycles = [];
         // Alternate order to reduce fixed warm-up/order bias. Exactly six measured cycles.
         for (const concurrency of [1, 2, 2, 1, 1, 2]) {
@@ -71,7 +73,7 @@ export async function runCorpusProfileMeasurements(db, { withClient, size = 6500
       limits: { databaseMemoryBytes: 1024 ** 3, databaseCpus: 2, pids: 256, clients: 3,
         statementTimeoutMs: 15000, lockTimeoutMs: 2000, repetitionsPerConcurrency: 3 },
       limitations: ['synthetic_warmed_data', 'partial_index_set', 'no_foreign_keys_or_triggers',
-        'no_season_mapping_expansion', 'no_application_workers_caches_or_pool', 'host_node_memory_not_container_memory',
+        'no_application_workers_caches_or_pool', 'host_node_memory_not_container_memory',
         'memory_snapshots_not_retained_heap_or_peak', 'wait_samples_not_durations', 'not_a_historic_incident_replay'] };
   }));
 }

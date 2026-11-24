@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { insertCorpusProfileSeasons } from './seasonFixture.mjs';
 
 const TABLES = new Set(['libraries', 'media_server_items', 'classification_history',
   'media_source_observations', 'source_catalog_mappings']);
@@ -15,8 +16,8 @@ export async function requireProfileDatabase(db) {
   }
 }
 
-export async function installCorpusProfileFixture(db, size, fallback) {
-  if (!Number.isInteger(size) || size < 100 || size > 6500 || !['sparse', 'all'].includes(fallback)) {
+export async function installCorpusProfileFixture(db, size, workload) {
+  if (!Number.isInteger(size) || size < 100 || size > 6500 || !['sparse', 'all', 'seasons'].includes(workload)) {
     throw new Error('corpus_profile_fixture_invalid');
   }
   await requireProfileDatabase(db);
@@ -32,6 +33,8 @@ export async function installCorpusProfileFixture(db, size, fallback) {
   if (tables.length !== TABLES.size || indexes.length !== INDEXES.size || keys.length < TABLES.size) {
     throw new Error('corpus_profile_schema_changed');
   }
+  const fallback = workload === 'all' ? 'all' : 'sparse';
+  let seasons = null;
   await db.query('BEGIN');
   try {
     await db.query("SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='2s'");
@@ -53,11 +56,13 @@ export async function installCorpusProfileFixture(db, size, fallback) {
       FROM generate_series(1,$1::integer) i CROSS JOIN generate_series(1,3) n`, [size]);
     await db.query(`INSERT INTO media_source_observations(library_id,media_server_id,external_id,identity_issue,generation)
       SELECT (i-1)%10+1,1,i::text,'conflicting_provider_ids',1 FROM generate_series(500,$1::integer,500) i`, [size]);
+    if (workload === 'seasons') seasons = await insertCorpusProfileSeasons(db, size);
     for (const table of TABLES) await db.query(`ANALYZE description_corpus_profile.${table}`);
     await db.query('COMMIT');
   } catch (error) { await db.query('ROLLBACK'); throw error; }
   return { schemaSha256: createHash('sha256').update(source).digest('hex'), tables: tables.length,
-    constraints: keys.length, indexes: indexes.length, size, fallback, expectedRows: size - Math.floor(size / 500) };
+    constraints: keys.length, indexes: indexes.length, size, fallback, workload, seasons,
+    expectedRows: size - Math.floor(size / 500) + (seasons?.expectedSeasonRows ?? 0) };
 }
 
 export async function removeCorpusProfileFixture(db) {

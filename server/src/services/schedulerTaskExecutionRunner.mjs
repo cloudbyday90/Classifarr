@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readDescriptionRefreshTaskFailure } from './inventoryDescriptionRefreshFailure.mjs';
 import { readRepresentativeRefreshTaskFailure } from './inventoryRepresentativeRefreshFailure.mjs';
+import { readSourcePairTaskFailure } from './automaticSourcePairTaskFailure.mjs';
 
 import {
     elapsedSchedulerMilliseconds,
@@ -68,7 +69,8 @@ export function createSchedulerTaskExecutionRunner({
             return true;
         } catch (error) {
             logger.error(`Failed scheduled task: ${name}`, { error: error.message,
-                ...readDescriptionRefreshTaskFailure(error), ...readRepresentativeRefreshTaskFailure(error) });
+                ...readDescriptionRefreshTaskFailure(error), ...readRepresentativeRefreshTaskFailure(error),
+                ...readSourcePairTaskFailure(error) });
             record(name, SCHEDULER_EXECUTION_OUTCOME_IDS.FAILED,
                 elapsedSchedulerMilliseconds(startedAt));
             return false;

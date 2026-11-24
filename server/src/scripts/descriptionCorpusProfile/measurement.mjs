@@ -40,8 +40,11 @@ export async function measureCorpusRead(db, expectedRows, mode = 'select') {
       throw new Error('corpus_profile_result_mismatch');
     }
     const usage = process.cpuUsage(cpu), after = memorySnapshot();
-    const fingerprint = createHash('sha256').update(JSON.stringify(corpus.documents)).digest('hex');
+    // Several seasons can share the SQL sort key. Compare exact content in document-key order.
+    const documents = corpus.documents.toSorted((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+    const fingerprint = createHash('sha256').update(JSON.stringify(documents)).digest('hex');
     return { mode, queryMs, preparationMs, rows: rows.length, fingerprint,
+      seasonRows: rows.filter(row => row.catalog_scope?.kind === 'season').length,
       processCpuMicros: { user: usage.user, system: usage.system }, before, after };
   } finally { await db.query('ROLLBACK'); }
 }

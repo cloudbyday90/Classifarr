@@ -28,6 +28,9 @@ import { validSourcePairQualityReport } from '../../services/sourcePairQualityRe
 import { runSourcePairQualityThread } from '../../services/sourcePairQualityThreadClient.mjs';
 import { createQualityEvidenceRepository } from '../../services/qualityEvidenceRepository.mjs';
 import { reportQualityEvidence } from '../../services/qualityEvidenceReport.mjs';
+import { registerAutomaticSourcePairSchedule, AUTOMATIC_SOURCE_PAIR_TASK } from '../../services/automaticSourcePairScheduler.mjs';
+import { createSchedulerTaskExecutionRunner } from '../../services/schedulerTaskExecutionRunner.mjs';
+import { LoggerShim, setDb } from '../../utils/logging/loggerShim.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -346,11 +349,37 @@ test('cursor failure rolls back report and history; older publication cannot adv
   expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
   expect((await client.query('SELECT * FROM automatic_source_pair_sweep')).rows).toHaveLength(0);
   expect((await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget')).rows[0]).toEqual({ revision: 0, selection_offset: 0 });
+
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  registerAutomaticSourcePairSchedule(scheduler, { worker });
+  const logger = new LoggerShim({ bindings: () => ({ module: 'SourcePairIntegration' }), error: jest.fn() });
+  const log = jest.fn((...args) => logger.error(...args));
+  const receiptRecorder = { record: jest.fn() };
+  const runner = createSchedulerTaskExecutionRunner({ withSessionAdvisoryLock: database.withSessionAdvisoryLock,
+    logger: { info: jest.fn(), debug: jest.fn(), error: log }, receiptRecorder });
+  setDb({ query: (...args) => client.query(...args) });
+  try {
+    expect(await runner.run({ name: AUTOMATIC_SOURCE_PAIR_TASK, handler: scheduler.schedule.mock.calls[0][2] })).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+    const id = await log.mock.results[0].value;
+    const { rows: [entry] } = await client.query('SELECT metadata FROM error_log WHERE error_id=$1', [id]);
+    expect(entry.metadata).toEqual({ error: 'automatic_source_pair_evaluation_unavailable:evidence_budget',
+      failure: { stage: 'publication' } });
+    expect(receiptRecorder.record).toHaveBeenCalledTimes(1);
+    expect(receiptRecorder.record).toHaveBeenCalledWith(expect.objectContaining({ outcomeId: 'failed' }));
+    expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evidence_budget', failure_count: 1, report: null });
+    expect(await worker.run()).toEqual({ status: 'cooldown' });
+    expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
+    expect((await client.query('SELECT * FROM automatic_source_pair_sweep')).rows).toHaveLength(0);
+    expect((await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget')).rows[0]).toEqual({ revision: 0, selection_offset: 0 });
+  } finally { setDb(null); }
+
   await client.query('ALTER TABLE adjudication_capture_budget DROP CONSTRAINT test_no_advance');
-  expect(await repository.save(result.fingerprint, result.report, snapshot.observedAt, signal, result)).toBe(true);
+  const recoverySnapshot = await repository.readSnapshot(signal);
+  expect(await repository.save(result.fingerprint, result.report, recoverySnapshot.observedAt, signal, result)).toBe(true);
   expect((await client.query('SELECT revision,selection_offset FROM adjudication_capture_budget')).rows[0]).toEqual({ revision: 1, selection_offset: 25 });
   const before = (await client.query('SELECT * FROM automatic_evaluation_history')).rows;
-  expect(await repository.save(result.fingerprint, result.report, snapshot.observedAt, signal, result)).toBe(true);
+  expect(await repository.save(result.fingerprint, result.report, recoverySnapshot.observedAt, signal, result)).toBe(true);
   expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toEqual(before);
   expect((await client.query('SELECT revision FROM adjudication_capture_budget')).rows[0].revision).toBe(1);
   expect((await client.query('SELECT revision FROM automatic_source_pair_sweep')).rows[0].revision).toBe(1);

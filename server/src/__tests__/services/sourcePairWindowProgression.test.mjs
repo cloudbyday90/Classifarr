@@ -5,6 +5,8 @@ import { planSourcePairWindowAdvance, createProgressingSourcePairEvaluation } fr
 import { advanceEvaluatedSourcePairWindow } from '../../services/sourcePairWindowProgressionRepository.mjs';
 import { readAutomaticSourcePairReport } from '../../services/automaticSourcePairReport.mjs';
 import { fingerprintAutomaticSourcePairInputs } from '../../services/automaticSourcePairComputation.mjs';
+import { createAutomaticSourcePairEvaluation } from '../../services/automaticSourcePairEvaluation.mjs';
+import { createSourcePairTaskError, readSourcePairTaskFailure } from '../../services/automaticSourcePairTaskFailure.mjs';
 
 let fixture;
 beforeAll(async () => { fixture = await sourcePairWindowFixture(); });
@@ -92,6 +94,26 @@ test('no candidate avoids a second snapshot; read failure and cancellation canno
   c.repository.readSnapshot.mockImplementation(() => { controller.abort(); return c.snapshot; });
   await expect(c.run(c.snapshot, null, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
   expect(c.result.replayWindow).toBeUndefined();
+});
+
+test.each([false, true])('attributes the rejection that survives the admission wrapper (replaced=%s)', async replaced => {
+  const { snapshot, repository, evaluate } = setup();
+  repository.readState = jest.fn();
+  repository.fail = jest.fn();
+  repository.save = jest.fn();
+  repository.readSnapshot.mockResolvedValueOnce(snapshot).mockRejectedValueOnce(new Error('PRIVATE second read'));
+  const worker = createAutomaticSourcePairEvaluation({ repository, evaluate,
+    withSessionAdvisoryLock: (_key, run) => run(),
+    withAdmission: async (run, { signal }) => {
+      try { return await run(signal); }
+      catch (error) { throw replaced ? new Error('PRIVATE admission') : error; }
+    } });
+  const result = await worker.run();
+  expect(readSourcePairTaskFailure(createSourcePairTaskError(result))).toEqual({
+    failure: { stage: replaced ? 'admission' : 'snapshot_recheck' },
+  });
+  expect(repository.readSnapshot).toHaveBeenCalledTimes(2);
+  expect(repository.save).not.toHaveBeenCalled();
 });
 
 test.each([null, {}, { revision: 0, selectionOffset: 0, nextOffset: 50 },
