@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
+import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 import { createLogger } from './logger.mjs';
 import * as ragErrorHandler from './ragErrorHandler.mjs';
 
@@ -353,9 +354,8 @@ export class RAGLogger {
                 ? Number(event.duration_ms || event.durationMs)
                 : null,
             recoverable,
-            classificationId: Number.isInteger(event.classification_id)
-                ? event.classification_id
-                : (Number.isInteger(event.classificationId) ? event.classificationId : null),
+            classificationId: normalizeDatabaseBigintId(event.classification_id)
+                ?? normalizeDatabaseBigintId(event.classificationId),
             errorStage: stage,
             reasonCode,
             correlationId: event.correlation_id || event.correlationId || null,
@@ -406,11 +406,15 @@ export class RAGLogger {
                 throw error;
             }
 
+            const legacyParams = params.slice(0, 9);
+            if (payload.classificationId !== null) {
+                legacyParams[4] = JSON.stringify({ ...payload.metadata, classificationId: payload.classificationId });
+            }
             await db.query(`
                 INSERT INTO error_log 
                 (level, module, message, stack_trace, metadata, rag_operation, rag_context, duration_ms, recoverable)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            `, params.slice(0, 9));
+            `, legacyParams);
             return true;
         }
     }

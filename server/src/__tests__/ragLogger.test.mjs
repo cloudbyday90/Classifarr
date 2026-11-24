@@ -99,6 +99,33 @@ describe('ragLogger', () => {
         expect(params[13]).toBe('40001');
     });
 
+    test.each([
+        ['safe numeric text', { classification_id: '2147483648' }, 2147483648],
+        ['snake-case precedence', { classification_id: '9007199254740993', classificationId: 42 }, '9007199254740993'],
+        ['camel-case recovery', { classification_id: '042', classificationId: '9223372036854775807' }, '9223372036854775807'],
+        ['unsafe number', { classification_id: Number.MAX_SAFE_INTEGER + 1 }, null],
+        ['out of range', { classificationId: '9223372036854775808' }, null],
+        ['nonpositive', { classification_id: -1, classificationId: 0 }, null],
+        ['malformed inputs', { classification_id: ['42'], classificationId: '42suffix' }, null],
+    ])('logs a stage with the correct native History ID for %s', async (_case, ids, expected) => {
+        const result = await ragLogger.logStageEvent({
+            ...ids,
+            stage: 'policy_recheck',
+            outcome: 'error',
+            reason_code: 'policy_recheck_failed',
+            recoverable: true,
+        });
+
+        expect(result).toEqual({ logged: true, deduped: false });
+        expect(db.query).toHaveBeenCalledTimes(1);
+        const params = db.query.mock.calls[0][1];
+        expect(params[9]).toBe(expected);
+        expect(JSON.parse(params[4])).not.toHaveProperty('classificationId');
+        expect(mockModuleLogger.warn).toHaveBeenCalledWith(
+            expect.any(String), expect.objectContaining({ classificationId: expected }), { skipDbPersist: true },
+        );
+    });
+
     test('uses ERROR level for non-recoverable actionable failures', async () => {
         await ragLogger.logStageEvent({
             stage: 'policy_recheck',
@@ -114,7 +141,7 @@ describe('ragLogger', () => {
         expect(params[13]).toBe('42P01');
     });
 
-    test('deduplicates repeated WARN/ERROR fingerprints within dedupe window', async () => {
+    test('deduplicates repeated WARN/ERROR fingerprints across History IDs within the window', async () => {
         const event = {
             stage: 'retrieval_pass2',
             outcome: 'error',
@@ -123,15 +150,19 @@ describe('ragLogger', () => {
             recoverable: true
         };
 
-        const first = await ragLogger.logStageEvent(event);
-        const second = await ragLogger.logStageEvent(event);
+        const first = await ragLogger.logStageEvent({ ...event, classification_id: '9007199254740992' });
+        const second = await ragLogger.logStageEvent({ ...event, classification_id: '9007199254740993' });
 
         expect(first).toEqual({ logged: true, deduped: false });
         expect(second).toEqual({ logged: false, deduped: true });
         expect(db.query).toHaveBeenCalledTimes(1);
     });
 
-    test('falls back to legacy insert when expanded columns are unavailable', async () => {
+    test.each([
+        [42, { classificationId: 42 }],
+        ['9007199254740993', { classificationId: '9007199254740993' }],
+        ['9223372036854775808', {}],
+    ])('keeps the validated History ID in legacy metadata for %s', async (id, fields) => {
         const schemaError = new Error('column "error_stage" does not exist');
         schemaError.code = '42703';
 
@@ -140,6 +171,7 @@ describe('ragLogger', () => {
             .mockResolvedValueOnce({ rows: [] });
 
         const result = await ragLogger.logStageEvent({
+            classification_id: id,
             stage: 'trace',
             outcome: 'error',
             reason_code: 'trace_build_failed',
@@ -149,6 +181,26 @@ describe('ragLogger', () => {
         expect(result).toEqual({ logged: true, deduped: false });
         expect(db.query).toHaveBeenCalledTimes(2);
         expect(db.query.mock.calls[1][0]).toContain('(level, module, message, stack_trace, metadata, rag_operation, rag_context, duration_ms, recoverable)');
+        const nativeMetadata = JSON.parse(db.query.mock.calls[0][1][4]);
+        const legacyParams = db.query.mock.calls[1][1];
+        expect(legacyParams).toHaveLength(9);
+        expect(JSON.parse(legacyParams[4])).toEqual({ ...nativeMetadata, ...fields });
+    });
+
+    test('keeps an ordinary stage log write failure on the existing failure path', async () => {
+        db.query.mockRejectedValueOnce(Object.assign(new Error('numeric value out of range'), { code: '22003' }));
+        const result = await ragLogger.logStageEvent({
+            classification_id: '9007199254740993',
+            stage: 'trace',
+            outcome: 'error',
+            reason_code: 'trace_build_failed',
+        });
+
+        expect(result).toEqual({ logged: false, deduped: false });
+        expect(db.query).toHaveBeenCalledTimes(1);
+        expect(mockModuleLogger.warn).toHaveBeenCalledWith('Failed to log second-pass stage event', {
+            stage: 'trace', reason_code: 'rag_stage_log_failed',
+        });
     });
 
     test('uses skipDbPersist option on mirror warn/error logger lines', async () => {

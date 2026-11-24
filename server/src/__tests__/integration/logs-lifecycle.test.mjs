@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
-import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp, getPool } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -9,6 +9,9 @@ const authService = await import('../../services/auth.mjs');
 const { authenticateToken, requireAdmin } = await import('../../middleware/auth.mjs');
 const { createLogger } = await import('../../utils/logger.mjs');
 const { createLogsRouter } = await import('../../routes/logsRouteShared.mjs');
+const { persistRagLoopStageEvents } = await import('../../services/classificationPersistenceRagEvents.mjs');
+const { RAGLogger } = await import('../../utils/ragLogger.mjs');
+const ragErrorHandler = await import('../../utils/ragErrorHandler.mjs');
 
 const express = (await import('express')).default;
 const logger = createLogger('logs-integration-test');
@@ -158,6 +161,76 @@ describe('Logs Lifecycle Integration Tests', () => {
         const maxExport = await request(app).get(`/api/logs/export?classificationId=${max}`)
             .set(authHeaders()).expect(200);
         expect(maxExport.body).toMatchObject([{ message: 'maximum typed ID', classification_id: max }]);
+    });
+
+    it('preserves exact History IDs from the RAG producer through the native reader and administrator filters', async () => {
+        const lower = '9007199254740992';
+        const upper = '9007199254740993';
+        const max = '9223372036854775807';
+        const fixtures = [
+            [lower, 'policy_recheck', 'policy_recheck_failed', lower],
+            [upper, 'trace', 'trace_build_failed', upper],
+            [max, 'ai_rerun', 'ai_rerun_failed', max],
+            [Number.MAX_SAFE_INTEGER + 1, 'gate', 'rag_stage_fixture_failed', null],
+        ];
+
+        for (const [classificationId, stage, reasonCode] of fixtures) {
+            await persistRagLoopStageEvents({
+                classificationId,
+                result: { ragLoopLogContext: { events: [{ stage, reason_code: reasonCode, outcome: 'error' }] } },
+            }, ragErrorHandler);
+        }
+
+        const recent = await new RAGLogger().getRecentErrors(10, 'second_pass');
+        expect(recent).toHaveLength(fixtures.length);
+        for (const [, stage, , classificationId] of fixtures) {
+            expect(recent.find((row) => row.stage === stage)).toMatchObject({ stage, classificationId });
+        }
+
+        for (const [id, stage] of fixtures.slice(0, 3)) {
+            const page = await request(app).get(`/api/logs?classificationId=${id}`)
+                .set(authHeaders()).expect(200);
+            expect(page.body.logs).toMatchObject([{ classification_id: id, error_stage: stage }]);
+            expect(page.body.pagination.total).toBe(1);
+            const exported = await request(app).get(`/api/logs/export?classification_id=${id}`)
+                .set(authHeaders()).expect(200);
+            expect(exported.body).toMatchObject([{ classification_id: id, error_stage: stage }]);
+            expect(exported.body[0].metadata).not.toHaveProperty('classificationId');
+        }
+    });
+
+    it('preserves exact History IDs in the older-schema fallback and administrator filters', async () => {
+        const pool = getPool();
+        const connection = await pool.connect();
+        const id = '9007199254740993';
+        try {
+            await connection.query('CREATE TEMP TABLE error_log (LIKE public.error_log INCLUDING DEFAULTS)');
+            await connection.query('ALTER TABLE pg_temp.error_log DROP COLUMN classification_id');
+            // All queries in this test use the same real session so they can see the temporary relation.
+            const query = jest.spyOn(pool, 'query').mockImplementation((...args) => connection.query(...args));
+            try {
+                const result = await new RAGLogger().logStageEvent({
+                    classification_id: id, stage: 'trace', outcome: 'error', reason_code: 'trace_build_failed',
+                });
+                expect(result).toEqual({ logged: true, deduped: false });
+                expect(query).toHaveBeenCalledTimes(2);
+                await expect(query.mock.results[0].value).rejects.toMatchObject({ code: '42703' });
+
+                const page = await request(app).get(`/api/logs?classificationId=${id}`)
+                    .set(authHeaders()).expect(200);
+                expect(page.body.logs).toMatchObject([{ classification_id: id, module: 'RAG' }]);
+                expect(page.body.pagination.total).toBe(1);
+
+                const exported = await request(app).get(`/api/logs/export?classification_id=${id}`)
+                    .set(authHeaders()).expect(200);
+                expect(exported.body).toMatchObject([{ metadata: { classificationId: id }, module: 'RAG' }]);
+                expect(exported.body[0]).not.toHaveProperty('classification_id');
+            } finally {
+                query.mockRestore();
+            }
+        } finally {
+            connection.release(true);
+        }
     });
 
     describe('GET / — list logs', () => {

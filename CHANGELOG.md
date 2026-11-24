@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **History IDs in RAG stage logs** — Preserve exact BIGINT IDs in the
+  standard log write and the older-schema fallback. Invalid IDs leave the
+  diagnostic event unlinked. See the
+  [outcome](docs/architecture/rag-stage-history-id-outcome.md).
+
 - **History IDs in logs** — List and export filters match exact IDs through
   PostgreSQL's BIGINT limit. Large IDs stay exact in the log list, and
   malformed saved IDs no longer break it. See the
