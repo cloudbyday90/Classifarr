@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { fuseInventoryCandidateRanks } from './inventoryCandidateRankFusion.mjs';
 import { meanInventoryProfileFields, scoreInventoryProfileFields } from './inventoryProfileScoring.mjs';
+import { createEvidenceBudgetError, INVENTORY_PROFILE_FEATURE_BUDGET } from './evaluationEvidenceBudget.mjs';
 
 export const INVENTORY_LEARNED_PROFILE_VERSION = 'contrastive_profile_v1';
 const defaultFields = ['genres', 'studio', 'rating'];
@@ -13,7 +14,9 @@ function observe(profile, metadata, weight, budget) {
     if (!values.length) continue;
     profile[field].total += weight;
     for (const term of values) {
-      if (!profile[field].counts.has(term) && ++budget.entries > 250000) throw new Error('inventory_profile_feature_budget');
+      if (!profile[field].counts.has(term) && ++budget.entries > 250000) {
+        throw createEvidenceBudgetError(INVENTORY_PROFILE_FEATURE_BUDGET);
+      }
       profile[field].counts.set(term, (profile[field].counts.get(term) ?? 0) + weight);
     }
   }

@@ -12,7 +12,7 @@ import { recordDescriptionRepresentation } from '../../services/inventoryDescrip
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { discoveryAdmissionFixture as createInventoryDiscoveryAdmission } from '../helpers/discoveryAdmissionFixture.mjs';
 import { resourceAdmissionFixture } from '../helpers/resourceAdmissionFixture.mjs';
-import { sourcePairFixture, sourcePairIdentity as identity } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { sourcePairFixture, sourcePairIdentity as identity, sourcePairProfileBudgetSnapshot } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { captureCachedAdjudication } from '../../services/cachedAdjudicationCapture.mjs';
 import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicationRepository.mjs';
 import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRuntime.mjs';
@@ -29,6 +29,7 @@ import { runSourcePairQualityThread } from '../../services/sourcePairQualityThre
 import { createQualityEvidenceRepository } from '../../services/qualityEvidenceRepository.mjs';
 import { reportQualityEvidence } from '../../services/qualityEvidenceReport.mjs';
 import { registerAutomaticSourcePairSchedule, AUTOMATIC_SOURCE_PAIR_TASK } from '../../services/automaticSourcePairScheduler.mjs';
+import { createSourcePairTaskError, readSourcePairTaskFailure } from '../../services/automaticSourcePairTaskFailure.mjs';
 import { createSchedulerTaskExecutionRunner } from '../../services/schedulerTaskExecutionRunner.mjs';
 import { LoggerShim, setDb } from '../../utils/logging/loggerShim.mjs';
 
@@ -107,6 +108,17 @@ test('an exceeded snapshot library ceiling persists evidence_budget and keeps pu
   expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evidence_budget', failure_count: 1, report: null });
   expect(await worker.run()).toEqual({ status: 'cooldown' });
   expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
+});
+
+test('real child crossing the learned-profile ceiling persists evidence_budget at evaluation', async () => {
+  repository.readSnapshot = async () => sourcePairProfileBudgetSnapshot();
+  const result = await worker.run();
+  expect(result).toEqual({ status: 'failed', reason: 'evidence_budget' });
+  expect(readSourcePairTaskFailure(createSourcePairTaskError(result))).toEqual({ failure: { stage: 'evaluation' } });
+  expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evidence_budget', failure_count: 1, report: null });
+  expect(await worker.run()).toEqual({ status: 'cooldown' });
+  expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
+  expect((await client.query('SELECT * FROM automatic_source_pair_sweep')).rows).toHaveLength(0);
 });
 
 test('history reads isolated readiness and preserves disabled capture budgets and cache', async () => {

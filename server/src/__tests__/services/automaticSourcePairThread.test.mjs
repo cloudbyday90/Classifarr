@@ -3,9 +3,10 @@ import { jest, test, expect } from '@jest/globals';
 import { EventEmitter } from 'node:events';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
 import { runSourcePairQualityThread } from '../../services/sourcePairQualityThreadClient.mjs';
-import { isEvidenceBudgetError } from '../../services/evaluationEvidenceBudget.mjs';
+import { createEvidenceBudgetError, INVENTORY_PROFILE_FEATURE_BUDGET, isEvidenceBudgetError } from '../../services/evaluationEvidenceBudget.mjs';
 import { computeAutomaticSourcePair } from '../../services/automaticSourcePairComputation.mjs';
-import { sourcePairFixture, sourcePairIdentity } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { sourcePairFixture, sourcePairIdentity, sourcePairProfileBudgetSnapshot } from '../fixtures/sourceDescriptionPairFixture.mjs';
+import { sourcePairThreadFailure } from '../../services/automaticSourcePairThreadFailure.mjs';
 
 const snapshot = () => ({ observedAt: '2026-09-25 01:00:00+00', inputs: { source: sourcePairFixture(), identity: sourcePairIdentity } });
 function acknowledgeTransfer(worker) {
@@ -22,6 +23,55 @@ test('real fixed ESM worker returns only bounded aggregates and terminates', asy
   expect(result.report).toMatchObject({ status: 'complete', sampled: 48, limits: { providerCalls: 0, routingWrites: 0 } });
   expect(JSON.stringify(result)).not.toContain('PRIVATE');
 });
+
+test.each([false, true])('real learned-profile overflow retains its proof only for automatic evaluation (capture=%s)', async includePlan => {
+  const error = await runAutomaticSourcePairThread(sourcePairProfileBudgetSnapshot(), null, undefined, { includePlan }).catch(error => error);
+  expect(error).toHaveProperty('message', includePlan ? 'automatic_source_pair_worker_unavailable' : INVENTORY_PROFILE_FEATURE_BUDGET);
+  expect(isEvidenceBudgetError(error, INVENTORY_PROFILE_FEATURE_BUDGET)).toBe(!includePlan);
+  expect(error).not.toHaveProperty('cause');
+});
+
+test('private worker failure uses the minted limit rather than mutable message text', () => {
+  expect(sourcePairThreadFailure(new Error(INVENTORY_PROFILE_FEATURE_BUDGET), false)).toEqual({ failed: true });
+  const otherBudget = createEvidenceBudgetError('evaluation_vector_budget');
+  otherBudget.message = INVENTORY_PROFILE_FEATURE_BUDGET;
+  expect(sourcePairThreadFailure(otherBudget, false)).toEqual({ failed: true });
+  const profileBudget = createEvidenceBudgetError(INVENTORY_PROFILE_FEATURE_BUDGET);
+  profileBudget.message = 'PRIVATE';
+  expect(sourcePairThreadFailure(profileBudget, false)).toEqual({ failure: INVENTORY_PROFILE_FEATURE_BUDGET });
+});
+
+test.each(['valid', 'early', 'unknown', 'mixed', 'extra', 'accessor', 'capture', 'after abort'])(
+  'worker failure frame requires complete transfer and exact shape (%s)', async variant => {
+    let worker;
+    class FakeWorker extends EventEmitter {
+      constructor() {
+        super();
+        worker = this;
+        this.terminate = jest.fn(async () => 0);
+        this.postMessage = jest.fn();
+      }
+    }
+    const controller = new AbortController();
+    const promise = runAutomaticSourcePairThread(snapshot(), null, controller.signal, {
+      WorkerClass: FakeWorker, includePlan: variant === 'capture',
+    }).catch(error => error);
+    if (variant !== 'early') acknowledgeTransfer(worker);
+    const message = { failure: INVENTORY_PROFILE_FEATURE_BUDGET };
+    if (variant === 'unknown') message.failure = 'PRIVATE';
+    if (variant === 'mixed') message.result = computeAutomaticSourcePair(snapshot(), null);
+    if (variant === 'extra') message.extra = 'PRIVATE';
+    if (variant === 'accessor') Object.defineProperty(message, 'failure', { get() { throw new Error('PRIVATE'); } });
+    if (variant === 'after abort') controller.abort();
+    worker.emit('message', message);
+    const error = await promise;
+    const expected = variant === 'valid' ? INVENTORY_PROFILE_FEATURE_BUDGET
+      : variant === 'after abort' ? 'automatic_source_pair_cancelled' : 'automatic_source_pair_worker_unavailable';
+    expect(error).toHaveProperty('message', expected);
+    expect(isEvidenceBudgetError(error, INVENTORY_PROFILE_FEATURE_BUDGET)).toBe(variant === 'valid');
+    expect(worker.terminate).toHaveBeenCalledTimes(1);
+  },
+);
 
 test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker %s always joins and strips error text', async mode => {
   let instance, options;

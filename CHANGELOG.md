@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Source-pair worker budget reporting** — Report a verified learned-profile
+  feature overflow as an evidence-budget failure after the worker receives
+  its complete snapshot. See the
+  [outcome](docs/architecture/source-pair-profile-budget-transport-outcome.md).
+
 - **Source-pair budget classification** — Reserve evidence-budget failures
   for verified limits. Keep unrelated publication failures actionable through
   their existing stage and unavailable reason. See the

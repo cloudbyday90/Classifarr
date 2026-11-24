@@ -8,6 +8,7 @@ import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 import { validCaptureAdmission } from './adjudicationCaptureAdmission.mjs';
 import { prepareEvaluationTransport, MAX_EVALUATION_INPUT_BYTES } from './evaluationVectorTransport.mjs';
 import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
+import { readSourcePairThreadFailure } from './automaticSourcePairThreadFailure.mjs';
 
 /** Fixed-code worker, no provider credentials or inherited preloads, always joined before unlock. */
 export async function runAutomaticSourcePairThread(snapshot, state, signal, { WorkerClass = Worker, timeoutMs = 120000, includePlan = false } = {}) {
@@ -32,6 +33,10 @@ export async function runAutomaticSourcePairThread(snapshot, state, signal, { Wo
       timer = setTimeout(() => finish(reject, new Error('automatic_source_pair_deadline')), timeoutMs);
       worker.on('message', message => {
         if (settled) return;
+        if (Object.hasOwn(message ?? {}, 'failure')) {
+          const budget = !includePlan && sender.complete ? readSourcePairThreadFailure(message) : null;
+          return budget ? finish(reject, budget) : fail();
+        }
         try { if (sender.handle(message)) return; } catch { return fail(); }
         const result = message?.result;
         if (!sender.complete || !result || !readAutomaticSourcePairReport(result.report) || !validSourcePairCohort(result.cohort) ||
