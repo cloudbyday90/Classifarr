@@ -1,4 +1,5 @@
 import * as defaultDb from '../config/database.mjs';
+import { canonicalDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 import {
   buildPolicyLibraryEvidenceRecordCollectionAudit,
 } from './policyLibraryEvidenceRecordContract.mjs';
@@ -40,12 +41,11 @@ const FINAL_OUTCOME_SQL = `
     ch.id,
     ch.status,
     ch.confidence,
-    ch.created_at,
-    ch.updated_at
+    ch.created_at
   FROM classification_history ch
   WHERE ch.library_id = $1
     AND ch.status = ANY($2::text[])
-  ORDER BY COALESCE(ch.updated_at, ch.created_at) DESC, ch.id DESC
+  ORDER BY ch.created_at DESC, ch.id DESC
   LIMIT $3
 `;
 
@@ -92,8 +92,8 @@ function normalizeConfidence(value) {
 
 function buildFinalOutcomeEvidence(row = {}) {
   const record = asPlainObject(row);
-  const classificationId = Number(record.id);
-  if (!Number.isInteger(classificationId) || classificationId < 1) return null;
+  const classificationId = canonicalDatabaseBigintId(record.id);
+  if (classificationId === null) return null;
 
   return {
     key: `classification:${classificationId}`,
@@ -101,17 +101,16 @@ function buildFinalOutcomeEvidence(row = {}) {
     value: typeof record.status === 'string' ? record.status : null,
     count: 1,
     confidence: normalizeConfidence(record.confidence),
-    observedAt: normalizeTimestamp(record.updated_at ?? record.created_at),
+    observedAt: normalizeTimestamp(record.created_at),
     reasonCode: 'persisted_final_outcome',
   };
 }
 
 function buildManualCorrectionEvidence(row = {}) {
   const record = asPlainObject(row);
-  const correctionId = Number(record.id);
-  const classificationId = Number(record.classification_id);
-  if (!Number.isInteger(correctionId) || correctionId < 1 ||
-      !Number.isInteger(classificationId) || classificationId < 1) {
+  const correctionId = parseCanonicalDatabaseInt32Id(record.id);
+  const classificationId = canonicalDatabaseBigintId(record.classification_id);
+  if (correctionId === null || classificationId === null) {
     return null;
   }
 

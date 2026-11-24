@@ -91,6 +91,23 @@ describe('policyLibraryOutcomeEvidenceCollector', () => {
     });
   });
 
+  test('does not make evidence keys from invalid or inexact identifiers', async () => {
+    const valid = '9223372036854775807';
+    const invalidIds = [Number.MAX_SAFE_INTEGER + 1, '9223372036854775808', '0042', true, null];
+    const { collector } = createCollector({
+      finalOutcomes: [valid, ...invalidIds].map((id) => ({ id, status: 'routed' })),
+      manualCorrections: [
+        { id: '2147483647', classification_id: valid },
+        { id: '2147483648', classification_id: valid },
+        ...invalidIds.map((classification_id) => ({ id: 9, classification_id })),
+      ],
+    });
+    const result = await collector.collectLibraryOutcomeEvidence({ libraryId: 42 });
+
+    expect(result.classificationOutcomes.map(({ key }) => key)).toEqual([`classification:${valid}`]);
+    expect(result.manualCorrections.map(({ key }) => key)).toEqual([`correction:2147483647:classification:${valid}`]);
+  });
+
   test('truncates each read independently without copying titles or metadata', async () => {
     const finalOutcomes = Array.from({ length: MAX_LIBRARY_OUTCOME_EVIDENCE_RECORDS + 2 }, (_, index) => ({
       id: index + 1,

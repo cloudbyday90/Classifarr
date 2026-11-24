@@ -34,7 +34,6 @@ describe('policyLibraryPendingAnswerEvidenceCollector', () => {
     const { db, collector } = createCollector([{
       id: 101,
       created_at: '2026-07-09T12:00:00.000Z',
-      updated_at: '2026-07-10T08:00:00.000Z',
       clarification_response: { label: 'Raw answer must not escape' },
       discord_user_id: 'operator value must not escape',
     }]);
@@ -50,7 +49,7 @@ describe('policyLibraryPendingAnswerEvidenceCollector', () => {
         label: 'Persisted resolved pending-item answer',
         value: 'resolved',
         reasonCode: 'persisted_pending_answer_requires_learning_guard',
-        observedAt: '2026-07-10T08:00:00.000Z',
+        observedAt: '2026-07-09T12:00:00.000Z',
       })],
       sideEffects: {
         databaseRead: true,
@@ -145,7 +144,7 @@ describe('policyLibraryPendingAnswerEvidenceCollector', () => {
   });
 
   test('provides review-only answer evidence to the policy evidence envelope', async () => {
-    const { collector } = createCollector([{ id: 1, updated_at: '2026-07-10T08:00:00.000Z' }]);
+    const { collector } = createCollector([{ id: 1, created_at: '2026-07-10T08:00:00.000Z' }]);
     const profileHandoff = await loadPolicyLibraryProfileEvidence({
       libraryId: 42,
       now: Date.parse('2026-07-10T12:00:00.000Z'),

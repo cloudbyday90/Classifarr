@@ -39,7 +39,7 @@ const METADATA_GENRE_SQL = `
   SELECT
     MIN(BTRIM(genre_name)) AS genre_name,
     COUNT(*)::integer AS occurrence_count,
-    MAX(COALESCE(ch.updated_at, ch.created_at)) AS observed_at
+    MAX(ch.created_at) AS observed_at
   FROM classification_history ch
   CROSS JOIN LATERAL UNNEST(COALESCE(ch.genre_names, ARRAY[]::text[])) AS genre_name
   WHERE ch.library_id = $1

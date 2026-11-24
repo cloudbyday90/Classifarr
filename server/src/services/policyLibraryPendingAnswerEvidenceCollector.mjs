@@ -1,4 +1,5 @@
 import * as defaultDb from '../config/database.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   buildPolicyLibraryEvidenceRecordCollectionAudit,
 } from './policyLibraryEvidenceRecordContract.mjs';
@@ -38,8 +39,7 @@ const POLICY_QUESTION_RESOLUTION_TRANSITION = JSON.stringify([
 const RESOLVED_PENDING_ANSWER_SQL = `
   SELECT
     ch.id,
-    ch.created_at,
-    ch.updated_at
+    ch.created_at
   FROM classification_history ch
   WHERE ch.library_id = $1
     AND ch.status = ANY($2::text[])
@@ -53,7 +53,7 @@ const RESOLVED_PENDING_ANSWER_SQL = `
         AND ch.clarification_response IS NOT NULL
       )
     )
-  ORDER BY COALESCE(ch.updated_at, ch.created_at) DESC, ch.id DESC
+  ORDER BY ch.created_at DESC, ch.id DESC
   LIMIT $4
 `;
 
@@ -79,8 +79,8 @@ function normalizeTimestamp(value) {
 
 function buildPendingItemAnswerEvidence(row = {}) {
   const record = asPlainObject(row);
-  const classificationId = Number(record.id);
-  if (!Number.isInteger(classificationId) || classificationId < 1) return null;
+  const classificationId = canonicalDatabaseBigintId(record.id);
+  if (classificationId === null) return null;
 
   return {
     key: `pending_answer:classification:${classificationId}`,
@@ -88,7 +88,7 @@ function buildPendingItemAnswerEvidence(row = {}) {
     value: 'resolved',
     count: 1,
     confidence: null,
-    observedAt: normalizeTimestamp(record.updated_at ?? record.created_at),
+    observedAt: normalizeTimestamp(record.created_at),
     reasonCode: 'persisted_pending_answer_requires_learning_guard',
   };
 }

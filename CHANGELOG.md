@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Policy-library evidence collection** — Use History creation timestamps and
+  preserve exact BIGINT IDs in evidence keys so neighboring rows remain
+  distinct. See the
+  [outcome](docs/architecture/policy-library-evidence-history-ids-outcome.md).
+
 - **History IDs in web-search diagnostics** — Keep exact BIGINT links in
   route decisions and provider health events. Invalid IDs leave the event
   unlinked. See the [outcome](docs/architecture/web-search-history-ids-outcome.md).

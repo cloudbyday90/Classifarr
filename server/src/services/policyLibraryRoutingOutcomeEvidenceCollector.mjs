@@ -1,4 +1,5 @@
 import * as defaultDb from '../config/database.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   buildPolicyLibraryEvidenceRecordCollectionAudit,
 } from './policyLibraryEvidenceRecordContract.mjs';
@@ -56,7 +57,6 @@ const ROUTING_OUTCOME_SQL = `
   SELECT
     ch.id,
     ch.created_at,
-    ch.updated_at,
     CASE
       WHEN ch.status = 'routed'
         OR COALESCE(ch.metadata #>> '{classification_details,routing}', '') = ANY($2::text[])
@@ -75,7 +75,7 @@ const ROUTING_OUTCOME_SQL = `
       OR COALESCE(ch.metadata #>> '{classification_details,routing}', '') = ANY($3::text[])
       OR COALESCE(ch.metadata #>> '{classification_details,routing}', '') = ANY($4::text[])
     )
-  ORDER BY COALESCE(ch.updated_at, ch.created_at) DESC, ch.id DESC
+  ORDER BY ch.created_at DESC, ch.id DESC
   LIMIT $5
 `;
 
@@ -120,12 +120,12 @@ function normalizeTimestamp(value) {
 
 function buildRoutingOutcomeEvidence(row = {}) {
   const record = asPlainObject(row);
-  const classificationId = Number(record.id);
+  const classificationId = canonicalDatabaseBigintId(record.id);
   const outcomeState = typeof record.routing_outcome_state === 'string'
     ? record.routing_outcome_state
     : null;
   const details = ROUTING_OUTCOME_EVIDENCE_DETAILS[outcomeState];
-  if (!Number.isInteger(classificationId) || classificationId < 1 || !details) return null;
+  if (classificationId === null || !details) return null;
 
   return {
     key: `routing_outcome:classification:${classificationId}`,
@@ -133,7 +133,7 @@ function buildRoutingOutcomeEvidence(row = {}) {
     value: outcomeState,
     count: 1,
     confidence: null,
-    observedAt: normalizeTimestamp(record.updated_at ?? record.created_at),
+    observedAt: normalizeTimestamp(record.created_at),
     reasonCode: details.reasonCode,
   };
 }

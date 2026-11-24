@@ -153,7 +153,7 @@ describe('policyLibraryRoutingOutcomeEvidenceCollector', () => {
     const { collector } = createCollector([{
       id: 1,
       routing_outcome_state: ROUTING_OUTCOME_STATE_IDS.SUCCEEDED,
-      updated_at: '2026-07-10T08:00:00.000Z',
+      created_at: '2026-07-10T08:00:00.000Z',
     }]);
     const profileHandoff = await loadPolicyLibraryProfileEvidence({
       libraryId: 42,
