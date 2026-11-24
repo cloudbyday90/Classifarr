@@ -351,4 +351,17 @@ describe('policyNativeClassificationQuestionHandoff', () => {
     }));
     expect(result.audit.ok).toBe(true);
   });
+
+  test.each([{ id: ' 6 ', library_id: 6 }, { library_id: [6] }, { id: { toString: null } }, { id: 2147483648 }])(
+    'refuses a malformed selected library %p before stored reads', async (library) => {
+      const loadProfileEvidence = jest.fn();
+      const resolveStoredRoutingConfig = jest.fn();
+      const result = await buildPolicyNativeClassificationQuestionHandoff({
+        classificationResult: classificationResult({ library }), loadProfileEvidence, resolveStoredRoutingConfig,
+      });
+      expect(result).toMatchObject({ ok: false, plan: null, statusId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.NO_SELECTED_LIBRARY });
+      expect(loadProfileEvidence).not.toHaveBeenCalled();
+      expect(resolveStoredRoutingConfig).not.toHaveBeenCalled();
+    },
+  );
 });

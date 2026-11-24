@@ -7,6 +7,9 @@ const db = await import('../../config/database.mjs');
 const { QueuedRoutingReplayGuard } = await import('../../services/queuedRoutingReplayGuard.mjs');
 const { releaseQueueClaim, completeQueueClaim } = await import('../../services/queueTaskAcknowledgementService.mjs');
 const { ClassificationService } = await import('../../services/classificationServiceCore.mjs');
+const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
+const { buildPolicyNativeClassificationQuestionHandoff } = await import('../../services/policyNativeClassificationQuestionHandoff.mjs');
+const { policyRuntimeQuestionPersistenceAdmissionService } = await import('../../services/policyRuntimeQuestionPersistenceAdmission.mjs');
 let task, historyId, libraryId, adjacentId;
 const guard = () => new QueuedRoutingReplayGuard({ db });
 const readTask = async () => (await getPool().query('SELECT * FROM task_queue WHERE id=$1', [task.id])).rows[0];
@@ -41,6 +44,51 @@ function automaticRoute({ routeToArr, beforeRoute, blocked = false, database = d
     policyResult: { action: 'auto_classify', library: { library_id: libraryId } },
   }, blocked, beforeRoute);
 }
+
+test('a malformed selected library persists as pending without a route marker or a native question', async () => {
+  const routeToArr = jest.fn();
+  const loadProfileEvidence = jest.fn();
+  const resolveStoredRoutingConfig = jest.fn();
+  const writer = new ClassificationPersistenceService();
+  const logClassification = writer.logClassification.bind(writer);
+  jest.spyOn(writer, 'logClassification').mockImplementation((metadata, result, ...rest) => {
+    // Refuse an unexpected completed write before a test could dispatch embeddings.
+    expect(result).toMatchObject({ library: null, needs_clarification: true });
+    return logClassification(metadata, result, ...rest);
+  });
+  const service = new ClassificationService({
+    db, createLogger: () => ({ debug: jest.fn(), error: jest.fn(), info: jest.fn(), warn: jest.fn() }),
+    idleDetector: { recordActivity: jest.fn() },
+    discordBot: { isInitialized: false },
+    clarificationService: { isRequireAllConfirmationsEnabled: jest.fn().mockResolvedValue(false) },
+    classificationRoutingService: { routeToArr },
+    classificationPersistenceService: writer,
+    classificationMetadataService: { parseOverseerrPayload: jest.fn().mockReturnValue({
+      media_type: 'movie', tmdbId: 420006, title: 'Malformed selected library fixture',
+      existingMetadata: { overview: 'Local fixture', genres: ['Animation'] },
+    }) },
+    policyNativeClassificationQuestionHandoffService: { build: input =>
+      buildPolicyNativeClassificationQuestionHandoff({ ...input, loadProfileEvidence, resolveStoredRoutingConfig }) },
+    policyRuntimeQuestionPersistenceAdmissionService,
+  });
+  service.runDecisionTree = jest.fn().mockResolvedValue({
+    library: { id: ` ${libraryId} `, name: 'Unverified selection' }, confidence: 95, method: 'policy_auto',
+    policyResult: { action: 'auto_classify', library: { library_id: libraryId } },
+  });
+
+  const result = await service.classifyQueueTask(task);
+  adjacentId = result.classification_id;
+  expect(result).toMatchObject({ success: true, destination: { libraryId: null, libraryName: null },
+    routingOutcome: { shouldRoute: false }, runtimeQueueQuestionReduction: null });
+  const { rows: [saved] } = await db.query(`SELECT status,library_id,library_name,policy_question,pending_reason
+    FROM classification_history WHERE id=$1`, [adjacentId]);
+  expect(saved).toMatchObject({ status: 'awaiting_decision', library_id: null, library_name: null,
+    policy_question: null, pending_reason: expect.stringContaining('Retry Classification') });
+  expect((await readTask()).routing_classification_id).toBeNull();
+  expect(routeToArr).not.toHaveBeenCalled();
+  expect(loadProfileEvidence).not.toHaveBeenCalled();
+  expect(resolveStoredRoutingConfig).not.toHaveBeenCalled();
+});
 
 test.each(['routed', 'arr_add_failed', 'confirmation_required'])('automatic %s patches only the exact History row', async routing => {
   await useHistoryId('9007199254740993');

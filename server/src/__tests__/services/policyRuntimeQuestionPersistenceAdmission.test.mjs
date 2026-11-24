@@ -189,6 +189,47 @@ describe('policyRuntimeQuestionPersistenceAdmission', () => {
     });
   });
 
+  test.each([
+    [{ id: 6 }, 6],
+    [{ id: '6' }, 6],
+    [{ library_id: '6' }, 6],
+    [{ id: null, library_id: 6 }, 6],
+    [{ id: 6, library_id: 7 }, 6],
+    [{ id: '2147483647' }, 2147483647],
+  ])('writes matching exact destination copies from %p', async (library, expectedId) => {
+    const source = classificationResult({ library: { ...library, name: 'Animated Movies' } });
+    source.policyResult.ranked[0].library_id = expectedId;
+    const handoff = await buildReviewHandoff(source);
+    const result = buildPolicyRuntimeQuestionPersistenceAdmission({ classificationResult: source, handoff });
+    expect(result).toMatchObject({ ok: true, audit: { ok: true }, persistedQuestion: {
+      meta: { runtime_question_persistence: { destinationLibraryId: expectedId } },
+      options: expect.arrayContaining([expect.objectContaining({ outcomeId: 'resolve_current_item', library_id: expectedId })]),
+    } });
+  });
+
+  test.each([
+    { id: ' 6 ', library_id: 6 }, { id: '06' }, { id: '6e0' }, { id: [6] }, { id: true },
+    { id: { toString: null } }, { id: 6.5 }, { id: 0 }, { id: '2147483648' },
+  ])('refuses %p without emitting a question or an admission patch', async (library) => {
+    const result = buildPolicyRuntimeQuestionPersistenceAdmission({
+      classificationResult: classificationResult({ library }), handoff: await buildReviewHandoff(),
+    });
+    expect(result).toMatchObject({
+      ok: false, statusId: 'rejected', reasonId: POLICY_RUNTIME_QUESTION_PERSISTENCE_REASON_IDS.NO_SELECTED_LIBRARY,
+      persistedQuestion: null, classificationPatch: null, audit: { ok: true },
+    });
+  });
+
+  test.each([undefined, '06', 7])('audits the matching saved destination even when metadata is changed to %p', async (id) => {
+    const admission = buildPolicyRuntimeQuestionPersistenceAdmission({
+      classificationResult: classificationResult(), handoff: await buildReviewHandoff(),
+    });
+    admission.persistedQuestion.meta.runtime_question_persistence.destinationLibraryId = id;
+    expect(buildPolicyRuntimeQuestionPersistenceAdmissionAudit(admission)).toMatchObject({
+      ok: false, issues: ['invalid_persisted_question_destination'],
+    });
+  });
+
   test('rejects a handoff that reports a prohibited side effect', async () => {
     const handoff = await buildReviewHandoff();
     const result = buildPolicyRuntimeQuestionPersistenceAdmission({

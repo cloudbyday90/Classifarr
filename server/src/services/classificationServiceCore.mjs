@@ -10,6 +10,7 @@ import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { savedCurrentPolicyReviewMetadata } from './currentPolicyReviewFrameLive.mjs';
 import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from './classificationMetadataFailure.mjs';
 import { mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
+import { holdInvalidSelectedClassificationLibrary } from './classificationSelectedLibrary.mjs';
 import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
@@ -458,7 +459,8 @@ export class ClassificationService {
         metadata.retry_lineage = existingMetadata.retry_lineage || null;
       }
 
-      const result = await this.runDecisionTree(metadata, media_type, taskId);
+      const decisionResult = await this.runDecisionTree(metadata, media_type, taskId);
+      const result = holdInvalidSelectedClassificationLibrary(decisionResult);
       const runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
       const runtimeQuestionReductionPlan = queueTask === null
         ? runtimeQuestionHandoff?.plan || null

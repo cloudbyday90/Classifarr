@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Native question destination selection** — Validate the selected library
+  before native lookups and question creation. A malformed selection keeps
+  the item in operator review without a proposed destination. See the
+  [outcome](docs/architecture/native-question-selected-library-outcome.md).
+
 - **Pending review reads** — Require saved native destinations to match their
   resolve options. Isolate failed freshness lookups and show a read refresh
   when pending reviews are unavailable. See the

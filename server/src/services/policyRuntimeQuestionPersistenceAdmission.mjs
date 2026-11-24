@@ -20,7 +20,9 @@ import {
 import {
   POLICY_RUNTIME_QUESTION_PERSISTENCE_VERSION,
   isPolicyRuntimeQuestionPersistenceEnvelope,
+  readNativePendingQuestionDestination,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { readSelectedClassificationLibraryId } from './classificationSelectedLibrary.mjs';
 
 const POLICY_RUNTIME_QUESTION_PERSISTENCE_ADMISSION_STATUS_IDS = Object.freeze({
   ADMITTED: 'admitted',
@@ -58,11 +60,6 @@ function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function normalizePositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
-}
-
 function normalizeString(value, maximumLength = 160) {
   if (typeof value !== 'string') return '';
 
@@ -83,9 +80,9 @@ function areEquivalentJsonValues(left, right) {
 
 function getSelectedLibrary(classificationResult = {}) {
   const library = asObject(classificationResult.library);
-  const id = normalizePositiveInteger(library.id ?? library.library_id);
+  const id = readSelectedClassificationLibraryId(library);
 
-  if (!id) return null;
+  if (id === null) return null;
 
   return {
     id,
@@ -346,6 +343,8 @@ function buildPolicyRuntimeQuestionPersistenceAdmissionAudit(result = {}) {
     }
     if (!isPolicyRuntimeQuestionPersistenceEnvelope(persistedQuestion)) {
       issues.push('invalid_persisted_question');
+    } else if (!readNativePendingQuestionDestination(persistedQuestion)) {
+      issues.push('invalid_persisted_question_destination');
     }
     if (
       !areEquivalentJsonValues(persistedQuestion.runtimeQuestionReductionPlan, admission.plan) ||

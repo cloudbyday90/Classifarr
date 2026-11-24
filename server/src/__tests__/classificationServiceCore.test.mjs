@@ -446,4 +446,26 @@ describe('classificationServiceCore native question-reduction handoff', () => {
       }),
     }));
   });
+
+  test.each([false, true])('holds a malformed selection and preserves existing review or retry state (retry=%s)', async (needs_retry) => {
+    const service = createService();
+    const policy_question = { question: 'Existing operator question' };
+    const decision = {
+      library: { id: ' 6 ', name: 'Animated Movies' },
+      policyResult: { action: 'auto_classify', library: { library_id: 6 } },
+      confidence: 95, method: 'policy_auto', policy_question, needs_retry,
+    };
+    service.runDecisionTree.mockResolvedValue(decision);
+    const beforeAutomaticRoute = jest.fn();
+
+    const result = await service.classify({ media: { tmdbId: 10674 } }, { beforeAutomaticRoute });
+
+    const saved = service.classificationPersistenceService.logClassification.mock.calls[0][1];
+    expect(saved).toMatchObject({ library: null, needs_clarification: true, needs_retry });
+    expect(saved.policy_question).toBe(policy_question);
+    expect(decision.library.id).toBe(' 6 ');
+    expect(result).toMatchObject({ destination: { libraryId: null, libraryName: null }, routingOutcome: { shouldRoute: false } });
+    expect(beforeAutomaticRoute).not.toHaveBeenCalled();
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+  });
 });

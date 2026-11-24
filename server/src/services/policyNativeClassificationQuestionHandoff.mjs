@@ -32,6 +32,7 @@ import {
 import {
   resolveRoutingConfig,
 } from './classificationRoutingService.mjs';
+import { readSelectedClassificationLibraryId } from './classificationSelectedLibrary.mjs';
 
 const POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_VERSION =
   'policy.native_classification_question_handoff.v1';
@@ -323,9 +324,9 @@ async function buildPolicyNativeClassificationQuestionHandoff({
 } = {}) {
   const result = asObject(classificationResult);
   const selectedLibrary = asObject(result.library);
-  const libraryId = normalizePositiveInteger(selectedLibrary.id ?? selectedLibrary.library_id);
+  const libraryId = readSelectedClassificationLibraryId(selectedLibrary);
 
-  if (!libraryId) {
+  if (libraryId === null) {
     return buildResult({
       statusId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.NO_SELECTED_LIBRARY,
       reasonCode: 'selected_library_unavailable',
