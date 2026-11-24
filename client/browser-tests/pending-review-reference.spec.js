@@ -93,6 +93,67 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   expect(writes[1]).toEqual({ path: '/api/classification/retry', method: 'POST', body: { classificationIds: [staleId], options: {} } })
 })
 
+test('pending review refresh distinguishes loading, unreadable context and a confirmed empty list', async ({ page }) => {
+  const writes = []
+  let snapshots = 0
+  let mode = 'outage'
+  let releaseInitial
+  const initialRead = new Promise(resolve => { releaseInitial = resolve })
+  await page.route(url => url.pathname.startsWith('/api/'), async route => {
+    const request = route.request(), path = new URL(request.url()).pathname
+    let data = {}, status = 200
+    if (request.method() !== 'GET') writes.push(path)
+    if (path === '/api/setup/status') data = { setupRequired: false }
+    if (['/api/auth/me', '/api/user/me'].includes(path)) data = { id: 1, role: 'admin', username: 'fixture-operator' }
+    if (path === '/api/notifications') data = { data: [] }
+    if (path === '/api/notifications/unread-count') data = { unread: 0 }
+    if (['/api/libraries', '/api/classification/progress', '/api/queue/pending', '/api/queue/failed'].includes(path)) data = []
+    if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
+    if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
+    if (path === '/api/classification/pending') {
+      snapshots += 1
+      if (snapshots === 1) await initialRead
+      if (mode === 'outage') {
+        status = 503
+        data = { code: 'pending_reviews_unavailable' }
+      } else if (mode === 'partial') {
+        data = { count: 1, items: [{ id: 79, title: 'Unreadable context', media_type: 'movie',
+          policy_question_stale: true, policy_question_stale_reason: 'policy_context_unavailable', policy_question_answer: null }] }
+      } else {
+        data = { count: 0, items: [] }
+      }
+    }
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) })
+  })
+
+  await page.goto('/')
+  const pending = page.locator('#needs-attention')
+  const exhaustedTransport = page.waitForResponse(response => response.status() === 503 &&
+    new URL(response.url()).pathname === '/api/classification/pending' && snapshots === 4)
+  try {
+    await expect(pending.getByRole('status')).toHaveText('Loading pending reviews…')
+    await expect(pending.getByText('All caught up')).toHaveCount(0)
+  } finally {
+    releaseInitial()
+  }
+  await exhaustedTransport
+  await expect(pending.getByRole('status')).toHaveText('Pending reviews could not be loaded.')
+  await expect(pending.getByText('All caught up')).toHaveCount(0)
+  const refresh = pending.getByRole('button', { name: 'Refresh pending decisions', exact: true })
+  await refresh.focus()
+  await expect(refresh).toBeFocused()
+  mode = 'partial'
+  await page.keyboard.press('Enter')
+  await expect(pending.getByRole('heading', { name: 'Unreadable context' })).toBeVisible()
+  await expect(pending.getByRole('button', { name: 'Retry Classification', exact: true })).toHaveCount(0)
+  await expect(pending.getByRole('button', { name: /^Confirm / })).toHaveCount(0)
+  await refresh.focus()
+  mode = 'empty'
+  await page.keyboard.press('Enter')
+  await expect(pending.getByText('All caught up')).toBeVisible()
+  expect(writes).toEqual([])
+})
+
 for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false], ['auto_classify', false], ['auto_classify', true]]) for (const gap of [false, true]) {
   test(`saved current ${action} bulk=${bulk} ${gap ? 'gap requires choice' : 'uses the fresh destination'} without UI clutter`, async ({ page }) => {
     const selectOnly = action === 'prompt_select'

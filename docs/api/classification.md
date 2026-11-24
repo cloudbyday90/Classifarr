@@ -103,7 +103,15 @@ A saved question with an invalid policy or library context reference remains
 in the list with `policy_question_stale: true`, reason
 `policy_context_invalid`, and no current context version. Retry the item to
 refresh its review before answering. Its answer contract is `null`. Other
-pending items remain available.
+pending items remain available. Native questions also require the separately
+saved destination ID and the resolve option's library ID to agree.
+
+A failed context lookup keeps its rows visible with stale reason
+`policy_context_unavailable` and a `null` answer contract. Refresh the
+pending list to check those items again. A failed primary read returns `503`
+with `pending_reviews_unavailable`, or `DATABASE_STATEMENT_TIMEOUT` with
+`Retry-After` for a statement timeout. A successful empty list returns `200`
+with `count: 0` and `items: []`.
 
 `POST /api/classification/pending/:id/resolve` accepts a canonical positive
 decimal History ID up to `9223372036854775807`. Send the current contract's

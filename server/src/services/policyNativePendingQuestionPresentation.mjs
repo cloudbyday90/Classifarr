@@ -9,7 +9,10 @@
  */
 
 import { ANSWER_OUTCOME_IDS } from './policyQuestionLearningVocabulary.mjs';
-import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
+import {
+  isPolicyRuntimeQuestionPersistenceEnvelope,
+  readNativePendingQuestionDestination,
+} from './policyRuntimeQuestionPersistenceContract.mjs';
 
 const MAX_DESTINATION_NAME_LENGTH = 160;
 
@@ -19,11 +22,6 @@ function normalizeString(value, maxLength = 160) {
   return normalized && normalized.length <= maxLength ? normalized : null;
 }
 
-function normalizePositiveInteger(value) {
-  const numericValue = Number(value);
-  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
-}
-
 function findOutcomeOption(question, outcomeId) {
   const options = Array.isArray(question?.options) ? question.options : [];
   const optionIndex = options.findIndex(option => option?.outcomeId === outcomeId);
@@ -31,7 +29,7 @@ function findOutcomeOption(question, outcomeId) {
 
   const option = options[optionIndex];
   const label = normalizeString(option?.label, 80);
-  return label ? { option, optionIndex, label } : null;
+  return label ? { optionIndex, label } : null;
 }
 
 /**
@@ -46,36 +44,29 @@ export function buildNativePendingQuestionPresentation(question = {}) {
   }
 
   const destination = question.meta?.runtime_question_persistence || {};
-  const destinationLibraryId = normalizePositiveInteger(destination.destinationLibraryId);
+  const resolvedDestination = readNativePendingQuestionDestination(question);
   const destinationLibraryName = normalizeString(
     destination.destinationLibraryName,
     MAX_DESTINATION_NAME_LENGTH,
   );
-  const resolveCurrentItem = findOutcomeOption(
-    question,
-    ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
-  );
+  const resolveLabel = normalizeString(resolvedDestination?.option.label, 80);
   const doNotLearn = findOutcomeOption(question, ANSWER_OUTCOME_IDS.DO_NOT_LEARN);
 
-  if (!destinationLibraryId || !destinationLibraryName || !resolveCurrentItem || !doNotLearn) {
-    return null;
-  }
-
-  if (normalizePositiveInteger(resolveCurrentItem.option.library_id) !== destinationLibraryId) {
+  if (!resolvedDestination || !destinationLibraryName || !resolveLabel || !doNotLearn) {
     return null;
   }
 
   return {
     destination: {
-      libraryId: destinationLibraryId,
+      libraryId: resolvedDestination.libraryId,
       libraryName: destinationLibraryName,
     },
     actions: [
       {
         id: ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM,
         label: `Resolve in ${destinationLibraryName}`,
-        optionIndex: resolveCurrentItem.optionIndex,
-        selectedOptionLabel: resolveCurrentItem.label,
+        optionIndex: resolvedDestination.optionIndex,
+        selectedOptionLabel: resolveLabel,
         style: 'success',
       },
       {

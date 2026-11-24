@@ -58,6 +58,7 @@ export function getLiveFeed(limit = 50) {
 export function getPendingClassifications() {
   // Nested cards retain their actual v1/v2 version; presentation utilities validate their semantics.
   // A question contract's History ID can be a safe number or an exact decimal string.
+  // Primary read failures reject. An empty items array represents a successful read.
   return getDataRequest('/classification/pending')
 }
 

@@ -16,6 +16,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 import { recordNativePendingRouteOutcome } from '../services/policyNativePendingRouteOutcomePersistence.mjs';
+import { POLICY_CONTEXT_UNAVAILABLE } from '../services/pendingQuestionFreshness.mjs';
 import {
   buildPolicyRuntimeQuestionAnswerContract,
   parsePolicyRuntimeQuestionAnswer,
@@ -40,7 +41,8 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       return {
         ...item,
         policy_question: policyQuestion,
-        policy_question_answer: normalizeDatabaseBigintId(item.id) === null
+        policy_question_answer: normalizeDatabaseBigintId(item.id) === null ||
+          item.policy_question_stale_reason === POLICY_CONTEXT_UNAVAILABLE
           ? null
           : buildPolicyRuntimeQuestionAnswerContract({
             classification: item,

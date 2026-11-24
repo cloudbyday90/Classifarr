@@ -5,6 +5,10 @@
  * Policy-question context helper utilities.
  */
 import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+import {
+  isPolicyRuntimeQuestionPersistenceEnvelope,
+  readNativePendingQuestionDestination,
+} from '../services/policyRuntimeQuestionPersistenceContract.mjs';
 
 function inspectReferenceIds(values) {
   const ids = new Set();
@@ -30,7 +34,9 @@ export function extractQuestionContext(question) {
     meta.primary_candidate_library_id,
     meta.question_anchor_library_id,
   ]);
-  if (policies.invalid || libraries.invalid) {
+  const invalidNativeDestination = isPolicyRuntimeQuestionPersistenceEnvelope(parsed) &&
+    !readNativePendingQuestionDestination(parsed);
+  if (policies.invalid || libraries.invalid || invalidNativeDestination) {
     // A partial set cannot prove that the saved question is current.
     return { policyIds: [], libraryIds: [], hasInvalidReferences: true };
   }

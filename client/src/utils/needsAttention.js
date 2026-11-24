@@ -30,6 +30,10 @@ export function policyQuestion(item) {
   }
 }
 
+export function isPendingQuestionContextUnavailable(item) {
+  return item?.policy_question_stale_reason === 'policy_context_unavailable'
+}
+
 export function policyOptions(item) {
   const question = policyQuestion(item)
   return question && Array.isArray(question.options) ? question.options.filter(Boolean) : []

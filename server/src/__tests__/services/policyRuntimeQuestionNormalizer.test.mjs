@@ -104,6 +104,8 @@ describe('policyRuntimeQuestionNormalizer', () => {
       version: POLICY_RUNTIME_QUESTION_PERSISTENCE_VERSION,
       runtimeQuestion: { contractVersion: POLICY_RUNTIME_QUESTION_REDUCTION_VERSION },
       runtimeQuestionReductionPlan: { version: POLICY_RUNTIME_QUESTION_REDUCTION_VERSION },
+      options: [{ outcomeId: 'resolve_current_item', library_id: 7 }],
+      meta: { runtime_question_persistence: { destinationLibraryId: 7 } },
     };
 
     expect(normalizePolicyRuntimeQuestion({ question: nativeQuestion })).toBe(nativeQuestion);

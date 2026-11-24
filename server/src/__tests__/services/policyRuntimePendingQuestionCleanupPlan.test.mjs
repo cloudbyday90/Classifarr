@@ -55,6 +55,7 @@ function nativeQuestion({
       },
       runtime_question_persistence: {
         version: POLICY_RUNTIME_QUESTION_PERSISTENCE_VERSION,
+        destinationLibraryId: libraryId,
       },
     },
   };

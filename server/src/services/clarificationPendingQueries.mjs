@@ -1,7 +1,9 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { safeParseJson, SEED_INTEGRITY_CACHE_TTL_MS } from './clarificationUtils.mjs';
-import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
+import { SEED_INTEGRITY_CACHE_TTL_MS } from './clarificationUtils.mjs';
+import { createPendingQuestionFreshnessReader } from './pendingQuestionFreshness.mjs';
+import { ServiceUnavailableError } from '../utils/appError.mjs';
+import { isDatabaseStatementTimeoutError } from '../utils/databaseStatementTimeout.mjs';
 
 const logger = createLogger('ClarificationQueries');
 
@@ -80,9 +82,10 @@ export async function auditSeedIntegrity(state, { source = 'runtime' } = {}) {
     return summary;
 }
 
-export async function getPendingClassifications(policyQuestionContext) {
+async function loadPendingClassifications() {
+    let result;
     try {
-        const result = await db.query(
+        result = await db.query(
             `SELECT 
                ch.*,
                l.name as suggested_library_name,
@@ -94,65 +97,16 @@ export async function getPendingClassifications(policyQuestionContext) {
                CASE ch.status WHEN 'awaiting_decision' THEN 0 ELSE 1 END,
                ch.created_at DESC`
         );
-        const contextVersionCache = new Map();
-        const {
-            buildQuestionContextCacheKey,
-            extractQuestionContext,
-            getPolicyQuestionContextVersion,
-            isPolicyQuestionStale,
-        } = policyQuestionContext;
-
-        const items = await Promise.all(result.rows.map(async (row) => {
-            const parsedQuestion = row.policy_question
-                ? (typeof row.policy_question === 'string'
-                    ? safeParseJson(row.policy_question)
-                    : row.policy_question)
-                : null;
-
-            if (!parsedQuestion) {
-                return {
-                    ...row,
-                    policy_question: null,
-                    policy_question_stale: false,
-                    policy_question_current_context_version: null,
-                    policy_question_stale_reason: null,
-                };
-            }
-
-            const context = extractQuestionContext(parsedQuestion);
-            const normalizationStatus = getRuntimeQuestionNormalizationStatus(parsedQuestion, context);
-            if (!normalizationStatus.actionable) {
-                return {
-                    ...row,
-                    policy_question: parsedQuestion,
-                    policy_question_stale: true,
-                    policy_question_current_context_version: null,
-                    policy_question_stale_reason: normalizationStatus.reason,
-                };
-            }
-
-            const cacheKey = buildQuestionContextCacheKey(context);
-
-            let currentContextVersion = contextVersionCache.get(cacheKey);
-            if (currentContextVersion === undefined) {
-                currentContextVersion = await getPolicyQuestionContextVersion(db, context);
-                contextVersionCache.set(cacheKey, currentContextVersion);
-            }
-
-            const questionStale = isPolicyQuestionStale(parsedQuestion, currentContextVersion);
-
-            return {
-                ...row,
-                policy_question: parsedQuestion,
-                policy_question_stale: questionStale,
-                policy_question_current_context_version: currentContextVersion,
-                policy_question_stale_reason: questionStale ? 'policy_context_changed' : null,
-            };
-        }));
-
-        return items;
     } catch (error) {
-        logger.error('Error getting pending classifications', { error: error.message });
-        return [];
+        if (isDatabaseStatementTimeoutError(error)) throw error;
+        throw new ServiceUnavailableError('Pending reviews could not be loaded. Refresh pending decisions to try again.', {
+            code: 'pending_reviews_unavailable',
+        });
     }
+    return result.rows;
+}
+
+export async function getPendingClassifications(policyQuestionContext) {
+    const rows = await loadPendingClassifications();
+    return Promise.all(rows.map(createPendingQuestionFreshnessReader(db, policyQuestionContext)));
 }

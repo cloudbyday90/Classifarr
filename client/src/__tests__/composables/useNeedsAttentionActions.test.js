@@ -215,6 +215,25 @@ describe('useNeedsAttentionActions composable', () => {
     expect(api.retryClassifications).toHaveBeenCalledWith(ids)
   })
 
+  it('keeps freshness-read failures out of single and bulk writes', async () => {
+    const unavailable = { ...currentItem('9007199254740993', 'Unavailable'), policy_question_stale_reason: 'policy_context_unavailable' }
+    const healthy = currentItem('9007199254740992', 'Healthy')
+    for (const item of [healthy, unavailable]) item.policy_question_answer.candidate_item = { classification_id: item.id }
+    const deps = createDeps({ needsAttentionItems: ref([healthy, unavailable]) })
+    const actions = useNeedsAttentionActions(deps)
+    api.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
+    api.retryClassifications.mockResolvedValueOnce({ data: { queued: 1 } })
+
+    await actions.resolveWithOption(unavailable, { actionId: 'confirm_destination', destinationLibraryId: 5 })
+    await actions.retryNeedsAttentionItem(unavailable)
+    await actions.confirmAllNeedsAttention()
+    await actions.retryAllNeedsAttention()
+
+    expect(api.resolvePendingClassification.mock.calls.map(([id]) => id)).toEqual([healthy.id])
+    expect(api.retryClassifications.mock.calls).toEqual([[[healthy.id]]])
+    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('Refresh pending decisions'))
+  })
+
   it('confirmAllNeedsAttention sets error for multiple routing warnings', async () => {
     const deps = createDeps({
       needsAttentionItems: ref([

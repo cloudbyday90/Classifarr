@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending review reads** — Require saved native destinations to match their
+  resolve options. Isolate failed freshness lookups and show a read refresh
+  when pending reviews are unavailable. See the
+  [outcome](docs/architecture/pending-review-read-resilience-outcome.md).
+
 - **Pending question freshness** — Keep the pending queue visible when a saved
   policy or library reference is invalid. Affected questions stay retryable,
   and cleanup queues fresh evaluation before an answer can replay. See the

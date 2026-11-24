@@ -218,12 +218,14 @@
             <div class="panel-content">
               <NeedsAttentionPanel
                 :items="needsAttentionItems"
+                :read-state="pendingReadState"
                 :change-mode="changeMode"
                 :manual-library-by-item-id="manualLibraryByItemId"
                 :format-media-type="formatMediaType"
                 :safe-percent="safePercent"
                 :libraries-for-media-type="librariesForMediaType"
                 :is-action-busy="isActionBusy"
+                @refresh-pending="runActionWithBusy('refresh-pending-reviews', refreshPendingClassifications, null)"
                 @toggle-change-mode="toggleChangeMode"
                 @retry-item="retryNeedsAttentionItem"
                 @resolve-option="({ item, answerSelection }) => resolveWithOption(item, answerSelection)"
@@ -405,6 +407,7 @@ const {
   lastUpdatedText,
   needsAttentionItems,
   pendingDecisionCount,
+  pendingReadState,
   aiGenerationTelemetryLine,
   pendingQueueTasks,
   primaryActiveTask,
@@ -415,6 +418,7 @@ const {
   libraryStatusRefreshing,
   refreshLibraryRecovery,
   refreshOperationalData,
+  refreshPendingClassifications,
   recentlyCompletedItems,
   showConfigureMediaServerCta,
   showEnrichmentSection,

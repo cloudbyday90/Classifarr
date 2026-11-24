@@ -62,4 +62,21 @@ describe('nativePendingQuestionPresentation', () => {
     expect(buildNativePendingQuestionPresentation(malformed)).toBeNull()
     expect(isNativePendingQuestion({ question: 'Legacy question' })).toBe(false)
   })
+
+  it.each([undefined, null, '010', [10], { toString: null }, 2147483648, 11])(
+    'refuses an inexact or conflicting saved destination %p', destinationLibraryId => {
+      const question = nativeQuestion()
+      question.meta.runtime_question_persistence.destinationLibraryId = destinationLibraryId
+      expect(buildNativePendingQuestionPresentation(question)).toBeNull()
+    },
+  )
+
+  it('accepts canonical strings and numbers at the INTEGER maximum', () => {
+    const question = nativeQuestion()
+    question.meta.runtime_question_persistence.destinationLibraryId = '2147483647'
+    question.options[0].library_id = 2147483647
+    expect(buildNativePendingQuestionPresentation(question)?.destination.libraryId).toBe(2147483647)
+    question.options[0].library_id = [2147483647]
+    expect(buildNativePendingQuestionPresentation(question)).toBeNull()
+  })
 })

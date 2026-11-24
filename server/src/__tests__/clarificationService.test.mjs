@@ -632,9 +632,13 @@ describe('getPendingClassifications', () => {
         expect(policyQuestionContext.getPolicyQuestionContextVersion).not.toHaveBeenCalled();
     });
 
-    test('returns [] on DB error', async () => {
+    test('separates a successfully empty list from a failed primary read', async () => {
+        db.query.mockResolvedValueOnce({ rows: [] });
+        await expect(svc.getPendingClassifications()).resolves.toEqual([]);
         db.query.mockRejectedValueOnce(new Error('DB error'));
-        expect(await svc.getPendingClassifications()).toEqual([]);
+        await expect(svc.getPendingClassifications()).rejects.toMatchObject({
+            statusCode: 503, code: 'pending_reviews_unavailable',
+        });
     });
 });
 

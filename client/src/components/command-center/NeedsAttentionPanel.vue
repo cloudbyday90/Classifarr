@@ -7,8 +7,23 @@
 -->
 
 <template>
+  <div v-if="readState === 'unavailable' || hasUnavailableContexts">
+    <p role="status">
+      {{ readState === 'unavailable' ? 'Pending reviews could not be loaded.' : 'Some pending reviews could not be checked against current policy.' }}
+    </p>
+    <Button
+      variant="secondary"
+      size="sm"
+      :disabled="isActionBusy('refresh-pending-reviews')"
+      :loading="isActionBusy('refresh-pending-reviews')"
+      @click="$emit('refresh-pending')"
+    >
+      Refresh pending decisions
+    </Button>
+  </div>
+
   <div
-    v-if="items.length"
+    v-if="readState === 'ready' && items.length"
     class="action-queue"
   >
     <article
@@ -44,7 +59,13 @@
       </p>
 
       <div
-        v-if="answerContract(item) || policyQuestion(item)"
+        v-if="isPendingQuestionContextUnavailable(item)"
+        class="action-item-question"
+      >
+        <p>Refresh pending decisions to check this item before answering.</p>
+      </div>
+      <div
+        v-else-if="answerContract(item) || policyQuestion(item)"
         class="action-item-question"
       >
         <p class="question-text">
@@ -146,7 +167,7 @@
       </div>
 
       <div
-        v-if="!item.policy_question_stale && answerContract(item) && changeMode[item.id]"
+        v-if="!item.policy_question_stale && !isPendingQuestionContextUnavailable(item) && answerContract(item) && changeMode[item.id]"
         class="action-item-change"
       >
         <select
@@ -221,7 +242,7 @@
     />
 
     <div
-      v-if="items.length > 1"
+      v-if="items.length > 1 && (hasBulkConfirmableItems || retryableItemCount > 1)"
       class="action-queue-footer"
     >
       <Button
@@ -235,19 +256,20 @@
         Confirm All
       </Button>
       <Button
+        v-if="retryableItemCount > 1"
         variant="warning"
         size="sm"
         :disabled="isActionBusy('retry-all-classifications')"
         :loading="isActionBusy('retry-all-classifications')"
         @click="$emit('retry-all')"
       >
-        Retry Classification All
+        {{ hasUnavailableContexts ? 'Retry available classifications' : 'Retry Classification All' }}
       </Button>
     </div>
   </div>
 
   <div
-    v-else
+    v-else-if="readState === 'ready'"
     class="action-idle"
   >
     <div class="idle-icon">
@@ -271,6 +293,12 @@
       No items awaiting your decision
     </p>
   </div>
+  <p
+    v-else-if="readState === 'loading'"
+    role="status"
+  >
+    Loading pending reviews…
+  </p>
 </template>
 
 <script setup>
@@ -280,6 +308,7 @@ import PolicyScoreExplanationComparison from './PolicyScoreExplanationComparison
 import { computed, nextTick, ref } from 'vue'
 import {
   isQueuedForRetry,
+  isPendingQuestionContextUnavailable,
   policyQuestion,
   primaryNeedsAttentionReason,
   suggestedLibraryLabel as legacySuggestedLibraryLabel,
@@ -305,6 +334,7 @@ import {
 } from '@/utils/policyScoreExplanationComparison'
 
 const props = defineProps({
+  readState: { type: String, default: 'ready' },
   changeMode: {
     type: Object,
     required: true,
@@ -336,6 +366,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'refresh-pending',
   'confirm-all',
   'resolve-option',
   'retry-all',
@@ -440,7 +471,7 @@ function confidenceLabel(item) {
 }
 
 function suggestedLibraryLabel(item) {
-  if (item.policy_question_stale_reason === 'policy_context_invalid') return null
+  if (item.policy_question_stale_reason === 'policy_context_invalid' || isPendingQuestionContextUnavailable(item)) return null
 
   const answer = answerContract(item)
   if (answer?.question?.type === 'native_runtime_question') {
@@ -522,8 +553,10 @@ function manualLibraryValue(itemId) {
   return props.manualLibraryByItemId?.[itemId] ?? ''
 }
 
+const retryableItemCount = computed(() => props.items.filter(item => !isPendingQuestionContextUnavailable(item)).length)
+const hasUnavailableContexts = computed(() => props.readState === 'ready' && retryableItemCount.value < props.items.length)
 const hasBulkConfirmableItems = computed(() => props.items.some(
-  item => Boolean(leadingPolicyQuestionDestination(answerContract(item))) && Boolean(
+  item => !isPendingQuestionContextUnavailable(item) && Boolean(leadingPolicyQuestionDestination(answerContract(item))) && Boolean(
     availablePolicyQuestionAnswerAction(
       answerContract(item),
       POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,

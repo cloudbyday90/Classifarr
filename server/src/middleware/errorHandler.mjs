@@ -8,15 +8,12 @@
  * (at your option) any later version.
  */
 import { createLogger } from '../utils/logger.mjs';
+import { isDatabaseStatementTimeoutError } from '../utils/databaseStatementTimeout.mjs';
 
 const logger = createLogger('ErrorHandler');
 const DATABASE_STATEMENT_TIMEOUT_CODE = 'DATABASE_STATEMENT_TIMEOUT';
 
-export function isDatabaseStatementTimeoutError(err) {
-  return err?.code === '57014'
-    && typeof err.message === 'string'
-    && err.message.toLowerCase().includes('statement timeout');
-}
+export { isDatabaseStatementTimeoutError };
 
 export function getStatusCode(err) {
   return err.statusCode || err.status || err.httpStatus || 500;

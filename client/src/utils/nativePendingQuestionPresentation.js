@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { parsePolicyQuestionDestinationId } from './policyQuestionAnswerContract'
+
 const PERSISTENCE_VERSION = 'policy.runtime_question_persistence.v1'
 const REDUCTION_VERSION = 'policy.runtime_question_reduction.v1'
 const RESOLVE_CURRENT_ITEM = 'resolve_current_item'
@@ -17,11 +19,6 @@ function normalizeString(value, maxLength = 160) {
   if (typeof value !== 'string') return null
   const normalized = value.trim().replace(/\s+/g, ' ')
   return normalized && normalized.length <= maxLength ? normalized : null
-}
-
-function normalizePositiveInteger(value) {
-  const numericValue = Number(value)
-  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null
 }
 
 function findOutcomeOption(question, outcomeId) {
@@ -48,13 +45,13 @@ export function buildNativePendingQuestionPresentation(question = {}) {
   if (!isNativePendingQuestion(question)) return null
 
   const destination = question.meta?.runtime_question_persistence || {}
-  const libraryId = normalizePositiveInteger(destination.destinationLibraryId)
+  const libraryId = parsePolicyQuestionDestinationId(destination.destinationLibraryId)
   const libraryName = normalizeString(destination.destinationLibraryName)
   const resolveCurrentItem = findOutcomeOption(question, RESOLVE_CURRENT_ITEM)
   const doNotLearn = findOutcomeOption(question, DO_NOT_LEARN)
 
   if (!libraryId || !libraryName || !resolveCurrentItem || !doNotLearn) return null
-  if (normalizePositiveInteger(resolveCurrentItem.option.library_id) !== libraryId) return null
+  if (parsePolicyQuestionDestinationId(resolveCurrentItem.option.library_id) !== libraryId) return null
 
   return {
     destination: { libraryId, libraryName },

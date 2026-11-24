@@ -8,6 +8,9 @@
  * (at your option) any later version.
  */
 
+import { parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import { ANSWER_OUTCOME_IDS } from './policyQuestionLearningVocabulary.mjs';
+
 const POLICY_RUNTIME_QUESTION_PERSISTENCE_VERSION =
   'policy.runtime_question_persistence.v1';
 const POLICY_RUNTIME_QUESTION_REDUCTION_VERSION =
@@ -24,8 +27,22 @@ function isPolicyRuntimeQuestionPersistenceEnvelope(value = {}) {
     question.runtimeQuestionReductionPlan?.version === POLICY_RUNTIME_QUESTION_REDUCTION_VERSION;
 }
 
+function readNativePendingQuestionDestination(question) {
+  const libraryId = parseCanonicalDatabaseInt32Id(
+    question.meta?.runtime_question_persistence?.destinationLibraryId,
+  );
+  if (libraryId === null) return null;
+
+  const options = Array.isArray(question.options) ? question.options : [];
+  const optionIndex = options.findIndex(option => option?.outcomeId === ANSWER_OUTCOME_IDS.RESOLVE_CURRENT_ITEM);
+  const option = options[optionIndex];
+  if (parseCanonicalDatabaseInt32Id(option?.library_id) !== libraryId) return null;
+  return { libraryId, option, optionIndex };
+}
+
 export {
   POLICY_RUNTIME_QUESTION_PERSISTENCE_VERSION,
   POLICY_RUNTIME_QUESTION_REDUCTION_VERSION,
   isPolicyRuntimeQuestionPersistenceEnvelope,
+  readNativePendingQuestionDestination,
 };

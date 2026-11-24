@@ -41,6 +41,71 @@ function pendingHttp(routeToArr) {
   return request(app);
 }
 
+test('reports primary read failure and statement timeout separately from a confirmed empty list', async () => {
+  const http = pendingHttp(jest.fn());
+  await http.get('/pending').expect(200, { count: 0, items: [] });
+  const read = jest.spyOn(database, 'query');
+  try {
+    read.mockRejectedValueOnce(new Error('private read failure detail'));
+    await http.get('/pending').expect(503, {
+      error: 'Pending reviews could not be loaded. Refresh pending decisions to try again.',
+      code: 'pending_reviews_unavailable',
+    });
+    read.mockRejectedValueOnce(Object.assign(new Error('canceling statement due to statement timeout'), { code: '57014' }));
+    await http.get('/pending').expect('Retry-After', '1').expect(503, {
+      error: 'Request temporarily unavailable', code: 'DATABASE_STATEMENT_TIMEOUT',
+    });
+  } finally {
+    read.mockRestore();
+  }
+  await http.get('/pending').expect(200, { count: 0, items: [] });
+});
+
+test('blocks only rows sharing an unavailable freshness context and recovers on the next read', async () => {
+  const { rows: libraries } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)
+    VALUES ('Owned unavailable context','pending-context-failure','movie',true),
+           ('Owned healthy context','pending-context-healthy','movie',true)
+    RETURNING id,name,media_type,is_active`);
+  const ids = ['9007199254741040', '9007199254741041', '9007199254741042'];
+  for (const [index, id] of ids.entries()) {
+    const library = libraries[index === 2 ? 1 : 0];
+    const question = normalizePolicyRuntimeQuestion({ metadata: { media_type: 'movie' }, libraries: [library],
+      policyResult: { ranked: [{ library_id: library.id, score: 78 }] } });
+    await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,method,policy_question)
+      VALUES($1,'Owned freshness fixture',$2,'movie','awaiting_decision','signal_calculation',$3::jsonb)`,
+    [id, 892100 + index, JSON.stringify(question)]);
+  }
+  const http = pendingHttp(jest.fn());
+  const pending = async () => (await http.get('/pending').expect(200)).body.items.filter(row => ids.includes(row.id));
+  const baseline = await pending();
+  expect(baseline).toHaveLength(3);
+  const runQuery = database.query;
+  let failedReads = 0;
+  const read = jest.spyOn(database, 'query').mockImplementation((sql, parameters) => {
+    if (sql.includes('AS context_version') && parameters[0].includes(libraries[0].id)) {
+      failedReads += 1;
+      return Promise.reject(new Error('private freshness failure detail'));
+    }
+    return runQuery(sql, parameters);
+  });
+  try {
+    const results = await pending();
+    expect(results).toHaveLength(3);
+    expect(failedReads).toBe(1);
+    expect(results.find(row => row.id === ids[2])).toEqual(baseline.find(row => row.id === ids[2]));
+    for (const id of ids.slice(0, 2)) {
+      expect(results.find(row => row.id === id)).toMatchObject({
+        policy_question_stale: true, policy_question_stale_reason: 'policy_context_unavailable',
+        policy_question_current_context_version: null, policy_question_answer: null,
+      });
+    }
+  } finally {
+    read.mockRestore();
+  }
+  expect(await pending()).toEqual(baseline);
+  await query('DELETE FROM classification_history WHERE id = ANY($1::bigint[])', [ids]);
+});
+
 test.each([
   { id: Number.MAX_SAFE_INTEGER, neighbors: ['9007199254740992', '9007199254740993'], tmdbBase: 892013 },
   { id: '9007199254740995', neighbors: ['9007199254740994', '9007199254740996'], tmdbBase: 892023 },
@@ -234,6 +299,7 @@ test('keeps valid neighbors visible when saved context references are invalid', 
 
 test('native web resolution records its exact answer beside the retained route outcome', async () => {
   const id = '9007199254741017';
+  const malformedIds = ['9007199254741030', '9007199254741031', '9007199254741032'];
   const { rows: [destination] } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)
     VALUES ('Owned native answer','owned-native-answer','movie',true) RETURNING id,name`);
   const plan = buildPolicyRuntimeQuestionReductionFromRuntimeInput({
@@ -262,6 +328,31 @@ test('native web resolution records its exact answer beside the retained route o
     contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: destination.id,
   };
+  const malformedDestinations = [{ toString: null }, `0${destination.id}`, destination.id + 1];
+  for (const [index, badId] of malformedIds.entries()) {
+    const malformedQuestion = structuredClone(question);
+    malformedQuestion.meta.runtime_question_persistence.destinationLibraryId = malformedDestinations[index];
+    await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,method,policy_question)
+      VALUES($1,'Owned malformed native answer',$2,'movie','awaiting_decision','signal_calculation',$3::jsonb)`,
+    [badId, 892080 + index, JSON.stringify(malformedQuestion)]);
+  }
+  question.meta.runtime_question_persistence.destinationLibraryId = String(destination.id);
+  question.options[0].library_id = String(destination.id);
+  await query('UPDATE classification_history SET policy_question=$2::jsonb WHERE id=$1', [id, JSON.stringify(question)]);
+  const { body: mixed } = await http.get('/pending').expect(200);
+  expect(mixed.items.find(row => row.id === id).policy_question_answer).toEqual(contract);
+  const malformedSnapshot = async () => (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [malformedIds])).rows;
+  const retained = await malformedSnapshot();
+  for (const badId of malformedIds) {
+    expect(mixed.items.find(row => row.id === badId)).toMatchObject({
+      policy_question_stale: true, policy_question_stale_reason: 'policy_context_invalid', policy_question_answer: null,
+    });
+    const refusal = await http.post(`/pending/${badId}/resolve`).send(answer).expect(409);
+    expect(refusal.body.code).toBe('policy_question_stale');
+  }
+  expect(await malformedSnapshot()).toEqual(retained);
+  expect(routeToArr).not.toHaveBeenCalled();
+  await query('DELETE FROM classification_history WHERE id = ANY($1::bigint[])', [malformedIds]);
   const resolve = () => http.post(`/pending/${id}/resolve`).send(answer).expect(200);
   expect((await resolve()).body).toMatchObject({ classificationId: id, routed: true });
   const snapshot = async () => (await query('SELECT id, status, metadata FROM classification_history WHERE id=$1', [id])).rows[0];

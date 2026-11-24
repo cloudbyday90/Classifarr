@@ -144,8 +144,11 @@ export function useCommandCenterData({ router }) {
   const upNextCount = computed(() => pendingQueueTasks.value.length)
   const failedQueueTasks = computed(() => Array.isArray(failedTasksData.value) ? failedTasksData.value : [])
   const needsAttentionItems = computed(() => Array.isArray(pendingClassificationData.value?.items) ? pendingClassificationData.value.items : [])
-  const pendingDecisionCount = computed(() => pendingClassificationsError?.value ||
-    !Array.isArray(pendingClassificationData.value?.items) ? null : needsAttentionItems.value.length)
+  const pendingReadState = computed(() => {
+    if (pendingClassificationsError?.value) return 'unavailable'
+    return Array.isArray(pendingClassificationData.value?.items) ? 'ready' : 'loading'
+  })
+  const pendingDecisionCount = computed(() => pendingReadState.value === 'ready' ? needsAttentionItems.value.length : null)
   const aiGenerationStatus = computed(() => aiGenerationStatusData.value || { isActive: false })
   const aiBudget = computed(() => aiUsageData.value?.budget || { limit: null, used: 0, percentUsed: 0 })
   const enrichmentTotal = computed(() => Number(enrichmentStats.value.totalItems || 0))
@@ -380,6 +383,7 @@ export function useCommandCenterData({ router }) {
     liveStats,
     needsAttentionItems,
     pendingDecisionCount,
+    pendingReadState,
     aiGenerationStatus,
     aiGenerationTelemetryLine,
     pendingQueueTasks,

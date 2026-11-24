@@ -75,10 +75,16 @@ describe('Command Center evaluation SWR wiring', () => {
     const result = useCommandCenterData({ router: { push: vi.fn() } })
     const pending = swr.calls.find(call => call.key === 'command-center:pending-classifications')
     expect(pending.options.persist).toBe(false)
+    expect(result.pendingReadState.value).toBe('loading')
     expect(result.pendingDecisionCount.value).toBeNull()
     pending.state.data.value = { items: [{ id: 1 }] }
     expect(result.pendingDecisionCount.value).toBe(1)
     pending.state.error.value = { message: 'denied' }
+    expect(result.pendingReadState.value).toBe('unavailable')
     expect(result.pendingDecisionCount.value).toBeNull()
+    pending.state.data.value = { items: [] }
+    pending.state.error.value = null
+    expect(result.pendingReadState.value).toBe('ready')
+    expect(result.pendingDecisionCount.value).toBe(0)
   })
 })

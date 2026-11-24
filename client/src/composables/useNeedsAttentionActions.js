@@ -5,6 +5,7 @@
 
 import { ref } from 'vue'
 import api from '@/api'
+import { isPendingQuestionContextUnavailable } from '@/utils/needsAttention'
 import {
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
   buildPolicyQuestionAnswerPayload,
@@ -62,6 +63,7 @@ export function useNeedsAttentionActions({
   }
 
   async function resolveWithOption(item, answerSelection) {
+    if (isPendingQuestionContextUnavailable(item)) return
     if (item?.policy_question_stale) {
       setActionError(`Policy question for "${item.title}" must be refreshed before it can be resolved.`)
       return
@@ -85,8 +87,13 @@ export function useNeedsAttentionActions({
       const routingWarnings = []
       const skippedStaleItems = []
       const skippedUnavailableItems = []
+      let skippedContextCount = 0
 
       for (const item of needsAttentionItems.value) {
+        if (isPendingQuestionContextUnavailable(item)) {
+          skippedContextCount += 1
+          continue
+        }
         if (item?.policy_question_stale) {
           skippedStaleItems.push(item)
           continue
@@ -108,8 +115,11 @@ export function useNeedsAttentionActions({
         if (warning) routingWarnings.push(warning)
       }
 
-      if (skippedUnavailableItems.length > 0 || skippedStaleItems.length > 0) {
+      if (skippedUnavailableItems.length > 0 || skippedStaleItems.length > 0 || skippedContextCount > 0) {
         const messages = []
+        if (skippedContextCount > 0) {
+          messages.push(`Confirm All skipped ${skippedContextCount} unverified ${skippedContextCount === 1 ? 'item' : 'items'}. Refresh pending decisions and try again.`)
+        }
         if (skippedUnavailableItems.length > 0) {
           messages.push(`Confirm All skipped ${skippedUnavailableItems.length} item${skippedUnavailableItems.length === 1 ? '' : 's'} without a current leading recommendation; choose a destination or retry Classification.`)
         }
@@ -127,6 +137,7 @@ export function useNeedsAttentionActions({
   }
 
   async function retryNeedsAttentionItem(item) {
+    if (isPendingQuestionContextUnavailable(item)) return
     await runActionWithBusy(`retry-classification-${item.id}`, async () => {
       const response = await api.retryClassifications([item.id])
       const result = Array.isArray(response?.data?.results) ? response.data.results[0] : null
@@ -144,7 +155,7 @@ export function useNeedsAttentionActions({
 
   async function retryAllNeedsAttention() {
     await runActionWithBusy('retry-all-classifications', async () => {
-      const ids = needsAttentionItems.value.map(item => item.id)
+      const ids = needsAttentionItems.value.filter(item => !isPendingQuestionContextUnavailable(item)).map(item => item.id)
 
       if (!ids.length) return
 

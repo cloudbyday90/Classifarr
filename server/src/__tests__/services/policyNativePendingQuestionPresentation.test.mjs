@@ -90,4 +90,21 @@ describe('policyNativePendingQuestionPresentation', () => {
       options: [{ label: 'Movies', library_id: 6 }],
     })).toBeNull();
   });
+
+  test.each([undefined, null, '06', [6], { toString: null }, 2147483648, 7])(
+    'rejects an inexact or conflicting metadata destination %p', (destinationLibraryId) => {
+      const question = nativeQuestion();
+      question.meta.runtime_question_persistence.destinationLibraryId = destinationLibraryId;
+      expect(buildNativePendingQuestionPresentation(question)).toBeNull();
+    },
+  );
+
+  test('preserves exact INTEGER maximum destinations in either canonical encoding', () => {
+    const question = nativeQuestion();
+    question.meta.runtime_question_persistence.destinationLibraryId = '2147483647';
+    question.options[0].library_id = 2147483647;
+    expect(buildNativePendingQuestionPresentation(question)?.destination.libraryId).toBe(2147483647);
+    question.options[0].library_id = [2147483647];
+    expect(buildNativePendingQuestionPresentation(question)).toBeNull();
+  });
 });
