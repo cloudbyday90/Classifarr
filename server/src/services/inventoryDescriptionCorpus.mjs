@@ -4,6 +4,7 @@ import { createInventorySemanticSampler } from './inventorySemanticSampler.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
 import { inventoryCatalogScopeKey } from './inventoryCatalogScope.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false, includeReadinessMetadata = false,
@@ -80,7 +81,8 @@ export function inventoryDescriptionIdentity(item) {
 
 /** Private text and membership in memory only; printable coverage is allowlisted. */
 export function prepareInventoryDescriptionCorpus(rows, { includeSourceItems = false } = {}) {
-  if (!Array.isArray(rows) || rows.length > 50000) throw new Error('inventory_description_corpus_limit_exceeded');
+  if (!Array.isArray(rows)) throw new Error('inventory_description_corpus_limit_exceeded');
+  if (rows.length > 50000) throw createEvidenceBudgetError('inventory_description_corpus_limit_exceeded');
   const identities = new Map();
   for (const row of rows) {
     const key = includeSourceItems ? inventorySourceDescriptionKey(row) : inventoryDescriptionIdentity(row);
@@ -106,7 +108,7 @@ export function prepareInventoryDescriptionCorpus(rows, { includeSourceItems = f
     coverage.shortenedIdentities += Number(shortened);
     documents.push({ key: entry.key, type: entry.type, id: entry.id, libraryIds: [...entry.libraryIds], hash });
   }
-  if (texts.size > 10000) throw new Error('inventory_description_document_limit_exceeded');
+  if (texts.size > 10000) throw createEvidenceBudgetError('inventory_description_document_limit_exceeded');
   coverage.eligibleIdentities = documents.length;
   coverage.uniqueDescriptions = texts.size;
   return { documents, texts, coverage };

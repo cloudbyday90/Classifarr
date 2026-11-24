@@ -5,6 +5,7 @@ import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRow
 import { collectInventoryCandidateMetadata } from './inventoryMetadataCandidates.mjs';
 import { readInventoryTrainingExclusions } from './inventoryTrainingProvenance.mjs';
 import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 
 export const INVENTORY_METADATA_BENCHMARK_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 const LIBRARIES_SQL = `SELECT id, name, media_type FROM libraries
@@ -33,9 +34,9 @@ export async function readDescriptionBenchmarkSnapshot(client, identity, include
     ? buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeEvaluationMetadata, includeSourceItems })
     : INVENTORY_METADATA_BENCHMARK_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
   const corpus = prepareInventoryDescriptionCorpus(rows, { includeSourceItems });
-  if (corpus.texts.size * identity.dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
+  if (corpus.texts.size * identity.dimensions > 20_000_000) throw createEvidenceBudgetError('description_benchmark_vector_budget');
   const libraries = (await client.query(includeEvaluationMetadata ? EVALUATION_LIBRARIES_SQL : LIBRARIES_SQL)).rows;
-  if (libraries.length > 64) throw new Error('description_benchmark_library_budget');
+  if (libraries.length > 64) throw createEvidenceBudgetError('description_benchmark_library_budget');
   const vectorRows = await readInventoryDescriptionVectorRows((sql, params) => client.query(sql, params), identity, [...corpus.texts.keys()]);
   if (requireCompleteCache && vectorRows.length !== corpus.texts.size) throw new Error('description_benchmark_cache_incomplete');
   const provenance = includeTrainingProvenance ? { trainingExclusions: await readInventoryTrainingExclusions(client, corpus.documents) } : {};

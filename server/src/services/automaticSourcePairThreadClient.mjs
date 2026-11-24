@@ -7,13 +7,14 @@ import { validAdjudicationPlan } from './cachedAdjudicationContract.mjs';
 import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 import { validCaptureAdmission } from './adjudicationCaptureAdmission.mjs';
 import { prepareEvaluationTransport, MAX_EVALUATION_INPUT_BYTES } from './evaluationVectorTransport.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 
 /** Fixed-code worker, no provider credentials or inherited preloads, always joined before unlock. */
 export async function runAutomaticSourcePairThread(snapshot, state, signal, { WorkerClass = Worker, timeoutMs = 120000, includePlan = false } = {}) {
   signal?.throwIfAborted();
   const transport = prepareEvaluationTransport(snapshot);
   const workerData = { snapshot: transport.snapshot, vectorManifest: transport.vectorManifest, state, role: 'automatic-source-pair', includePlan };
-  if (serialize(workerData).byteLength > MAX_EVALUATION_INPUT_BYTES) throw new Error('automatic_source_pair_input_budget');
+  if (serialize(workerData).byteLength > MAX_EVALUATION_INPUT_BYTES) throw createEvidenceBudgetError('automatic_source_pair_input_budget');
   const worker = new WorkerClass(new URL('./automaticSourcePairThread.mjs', import.meta.url), {
     workerData,
     env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true,

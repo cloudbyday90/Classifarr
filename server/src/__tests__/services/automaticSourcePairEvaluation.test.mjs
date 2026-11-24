@@ -6,6 +6,8 @@ import { freezeAutomaticSourcePairCohort, validSourcePairCohort } from '../../se
 import { readAutomaticSourcePairReport } from '../../services/automaticSourcePairReport.mjs';
 import { sourcePairFixture, sourcePairSnapshot, sourcePairIdentity } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { createSourcePairTaskError, readSourcePairTaskFailure } from '../../services/automaticSourcePairTaskFailure.mjs';
+import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { readSourceDescriptionEvaluationSnapshot } from '../../services/sourceDescriptionEvaluationRuntime.mjs';
 
 const captured = (source = sourcePairFixture()) => ({ observedAt: '2026-09-25 01:00:00.123456+00',
   inputs: { source, identity: sourcePairIdentity, configuration: 'a'.repeat(64) } });
@@ -186,12 +188,35 @@ test('worker shares lifecycle, admission and no process environment mutations', 
 test.each(['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable',
   'evidence_budget', 'deadline', 'private failure'])('failure %s persists fixed reason without source text', async code => {
   const f = fixture();
-  const error = ['memory_pressure', 'memory_unknown'].includes(code)
+  const error = ['busy', 'memory_pressure', 'memory_unknown'].includes(code)
     ? Object.assign(new Error('inventory_discovery_deferred'), { reason: code })
     : new Error(code === 'deadline' ? 'automatic_source_pair_deadline' : code);
-  f.repository.readSnapshot.mockRejectedValue(error);
+  if (code === 'evidence_budget') {
+    f.repository.readSnapshot.mockImplementation(() => prepareInventoryDescriptionCorpus(Array(50001)));
+  } else {
+    f.repository.readSnapshot.mockRejectedValue(error);
+  }
   const result = await f.worker.run();
   expect(result.status).toBe(['evidence_budget', 'deadline', 'private failure'].includes(code) ? 'failed' : 'deferred');
   expect(f.repository.fail).toHaveBeenCalledWith(code === 'private failure' ? 'evaluation_unavailable' : code, expect.any(AbortSignal));
+  expect(f.repository.save).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['exact limit message', () => { throw new Error('inventory_description_corpus_limit_exceeded'); }],
+  ['not a collection', () => prepareInventoryDescriptionCorpus(null)],
+  ['missing configuration', () => readSourceDescriptionEvaluationSnapshot({ query: async () => ({ rows: [] }) }, sourcePairIdentity)],
+  ['PostgreSQL text', () => { throw Object.assign(new Error('adjudication_capture_budget'), { code: '23514' }); }],
+  ['invented deferral', () => { throw Object.assign(new Error('inventory_discovery_deferred'), { reason: 'evidence_budget' }); }],
+  ['throwing reason', () => {
+    throw Object.defineProperty(new Error('inventory_discovery_deferred'), 'reason', {
+      get() { throw new Error('PRIVATE'); },
+    });
+  }],
+])('stores a generic failure for %s', async (_name, reject) => {
+  const f = fixture();
+  f.repository.readSnapshot.mockImplementation(reject);
+  expect(await f.worker.run()).toEqual({ status: 'failed', reason: 'evaluation_unavailable' });
+  expect(f.repository.fail).toHaveBeenCalledWith('evaluation_unavailable', expect.any(AbortSignal));
   expect(f.repository.save).not.toHaveBeenCalled();
 });

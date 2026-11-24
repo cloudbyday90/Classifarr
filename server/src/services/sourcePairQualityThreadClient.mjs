@@ -6,6 +6,7 @@ import { validSourcePairQualityReport } from './sourcePairQualityReport.mjs';
 import { validQualityEvidence } from './qualityEvidenceContract.mjs';
 import { validQualityReviewPacket } from './qualityReviewPacket.mjs';
 import { prepareEvaluationTransport, MAX_EVALUATION_INPUT_BYTES } from './evaluationVectorTransport.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 
 /** Reuse the offline role's environment/database prohibition, with a fixed quality-only entrypoint. */
 export async function runSourcePairQualityThread(snapshot, protocol = null, reference = null,
@@ -15,7 +16,7 @@ export async function runSourcePairQualityThread(snapshot, protocol = null, refe
   const transport = prepareEvaluationTransport(snapshot);
   const workerData = { role: 'automatic-source-pair', snapshot: transport.snapshot,
     vectorManifest: transport.vectorManifest, protocol, reference, operation };
-  if (serialize(workerData).byteLength > MAX_EVALUATION_INPUT_BYTES) throw new Error('quality_input_budget');
+  if (serialize(workerData).byteLength > MAX_EVALUATION_INPUT_BYTES) throw createEvidenceBudgetError('quality_input_budget');
   const worker = new WorkerClass(new URL('./sourcePairQualityThread.mjs', import.meta.url), {
     workerData,
     env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true,

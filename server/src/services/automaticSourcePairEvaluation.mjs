@@ -3,14 +3,22 @@ import { createAutomaticEvaluationWorker } from './automaticEvaluationWorker.mjs
 import { runAutomaticSourcePairThread } from './automaticSourcePairThreadClient.mjs';
 import { createProgressingSourcePairEvaluation } from './sourcePairWindowProgression.mjs';
 import { bindSourcePairFailureStage } from './automaticSourcePairTaskFailure.mjs';
+import { isEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 
 export const AUTOMATIC_SOURCE_PAIR_LOCK = 0x41535045;
-const deferredCodes = ['busy', 'memory_pressure', 'memory_unknown', 'disabled', 'unsupported_provider', 'representation_unavailable'];
+const discoveryDeferrals = ['busy', 'memory_pressure', 'memory_unknown'];
+const deferredCodes = [...discoveryDeferrals, 'disabled', 'unsupported_provider', 'representation_unavailable'];
 function failureCode(error) {
-  if (error?.message === 'inventory_discovery_deferred') return error.reason;
-  if (deferredCodes.includes(error?.message)) return error.message;
-  if (/budget|limit_exceeded/.test(error?.message ?? '')) return 'evidence_budget';
-  if (error?.name === 'TimeoutError' || error?.message === 'automatic_source_pair_deadline') return 'deadline';
+  if (isEvidenceBudgetError(error)) return 'evidence_budget';
+  try {
+    const message = error?.message;
+    if (message === 'inventory_discovery_deferred') {
+      const reason = error.reason;
+      return discoveryDeferrals.includes(reason) ? reason : 'evaluation_unavailable';
+    }
+    if (deferredCodes.includes(message)) return message;
+    if (error?.name === 'TimeoutError' || message === 'automatic_source_pair_deadline') return 'deadline';
+  } catch { /* Foreign error properties are not required for failure recording. */ }
   return 'evaluation_unavailable';
 }
 

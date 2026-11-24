@@ -2,6 +2,8 @@
 import { jest, test, expect } from '@jest/globals';
 import { EventEmitter } from 'node:events';
 import { runAutomaticSourcePairThread } from '../../services/automaticSourcePairThreadClient.mjs';
+import { runSourcePairQualityThread } from '../../services/sourcePairQualityThreadClient.mjs';
+import { isEvidenceBudgetError } from '../../services/evaluationEvidenceBudget.mjs';
 import { computeAutomaticSourcePair } from '../../services/automaticSourcePairComputation.mjs';
 import { sourcePairFixture, sourcePairIdentity } from '../fixtures/sourceDescriptionPairFixture.mjs';
 
@@ -47,7 +49,13 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
 test('refuses pre-cancelled and over-budget work before creating a worker', async () => {
   const WorkerClass = jest.fn(), controller = new AbortController(); controller.abort();
   await expect(runAutomaticSourcePairThread(snapshot(), null, controller.signal, { WorkerClass })).rejects.toThrow();
-  await expect(runAutomaticSourcePairThread({ private: 'x'.repeat(65 * 1024 * 1024) }, null, undefined, { WorkerClass })).rejects.toThrow('input_budget');
+  const oversized = { private: 'x'.repeat(65 * 1024 * 1024) };
+  const pair = await runAutomaticSourcePairThread(oversized, null, undefined, { WorkerClass }).catch(error => error);
+  const quality = await runSourcePairQualityThread(oversized, null, null, { WorkerClass }).catch(error => error);
+  expect(pair).toHaveProperty('message', 'automatic_source_pair_input_budget');
+  expect(quality).toHaveProperty('message', 'quality_input_budget');
+  expect(isEvidenceBudgetError(pair)).toBe(true);
+  expect(isEvidenceBudgetError(quality)).toBe(true);
   expect(WorkerClass).not.toHaveBeenCalled();
 });
 

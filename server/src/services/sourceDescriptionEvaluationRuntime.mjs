@@ -5,6 +5,7 @@ import { loadFreshInventoryPolicyRuntime, FRESH_POLICY_CONFIG_SQL } from './fres
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { evaluateSourceDescriptionPair } from './sourceDescriptionPairedEvaluation.mjs';
 import { readSourcePairPolicySnapshot } from './sourcePairPolicySnapshot.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 
 export function createSourceDescriptionEvaluationRepository({ withTransaction }) {
   return { async read(identity) {
@@ -18,7 +19,8 @@ export async function readSourceDescriptionEvaluationSnapshot(client, identity, 
     { includeSourceItems: true, requireCompleteCache: false, configureTransaction });
   const config = (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
   const operatorFeedbackRows = (await client.query(INVENTORY_OUTCOME_LABEL_SQL)).rows;
-  if (!config || operatorFeedbackRows.length > INVENTORY_OUTCOME_LABEL_LIMIT) throw new Error('source_pair_snapshot_budget');
+  if (!config) throw new Error('source_pair_snapshot_budget');
+  if (operatorFeedbackRows.length > INVENTORY_OUTCOME_LABEL_LIMIT) throw createEvidenceBudgetError('source_pair_snapshot_budget');
   const policyReplay = includePolicyReplay ? await readSourcePairPolicySnapshot(client) : {};
   return { snapshot, config, operatorFeedbackRows, ...policyReplay };
 }

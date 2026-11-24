@@ -100,6 +100,15 @@ beforeEach(async () => {
 });
 afterEach(() => { worker?.stop(); client?.release(true); client=null; });
 
+test('an exceeded snapshot library ceiling persists evidence_budget and keeps publication empty', async () => {
+  await client.query(`INSERT INTO libraries(id,name,media_type,is_active)
+    SELECT id,'Fixture library '||id,'movie',true FROM generate_series(100,164) id`);
+  expect(await worker.run()).toEqual({ status: 'failed', reason: 'evidence_budget' });
+  expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evidence_budget', failure_count: 1, report: null });
+  expect(await worker.run()).toEqual({ status: 'cooldown' });
+  expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
+});
+
 test('history reads isolated readiness and preserves disabled capture budgets and cache', async () => {
   const relations = ['libraries', 'media_server', 'library_ingestion_state', 'media_source_capture_state',
     'media_server_items', 'media_server_sync_status', 'task_queue'];
@@ -363,11 +372,11 @@ test('cursor failure rolls back report and history; older publication cannot adv
     expect(log).toHaveBeenCalledTimes(1);
     const id = await log.mock.results[0].value;
     const { rows: [entry] } = await client.query('SELECT metadata FROM error_log WHERE error_id=$1', [id]);
-    expect(entry.metadata).toEqual({ error: 'automatic_source_pair_evaluation_unavailable:evidence_budget',
+    expect(entry.metadata).toEqual({ error: 'automatic_source_pair_evaluation_unavailable:evaluation_unavailable',
       failure: { stage: 'publication' } });
     expect(receiptRecorder.record).toHaveBeenCalledTimes(1);
     expect(receiptRecorder.record).toHaveBeenCalledWith(expect.objectContaining({ outcomeId: 'failed' }));
-    expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evidence_budget', failure_count: 1, report: null });
+    expect(await stored()).toMatchObject({ status: 'failed', failure_code: 'evaluation_unavailable', failure_count: 1, report: null });
     expect(await worker.run()).toEqual({ status: 'cooldown' });
     expect((await client.query('SELECT * FROM automatic_evaluation_history')).rows).toHaveLength(0);
     expect((await client.query('SELECT * FROM automatic_source_pair_sweep')).rows).toHaveLength(0);

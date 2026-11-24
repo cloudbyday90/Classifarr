@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { types } from 'node:util';
 import { serialize } from 'node:v8';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 export const MAX_EVALUATION_INPUT_BYTES = 64 * 1024 * 1024; // Non-vector worker envelope.
 export const MAX_EVALUATION_FRAME_BYTES = 1024 * 1024;
 export const MAX_EVALUATION_VECTOR_VALUES = 20_000_000; // Existing corpus admission ceiling.
@@ -13,7 +14,7 @@ const replaceVectors = (snapshot, vectors) => ({ ...snapshot,
 function validateShape(count, dimensions) {
   if (!Number.isInteger(count) || count < 0 || count > 10000 || !Number.isInteger(dimensions) ||
     dimensions < 1 || dimensions > 16000) invalid();
-  if (count * dimensions > MAX_EVALUATION_VECTOR_VALUES) throw new Error('evaluation_vector_budget');
+  if (count * dimensions > MAX_EVALUATION_VECTOR_VALUES) throw createEvidenceBudgetError('evaluation_vector_budget');
 }
 function validateValues(vector, dimensions, packed) {
   if (!(packed ? types.isFloat64Array(vector) : Array.isArray(vector)) || vector.length !== dimensions) invalid();

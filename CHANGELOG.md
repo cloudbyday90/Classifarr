@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Source-pair budget classification** — Reserve evidence-budget failures
+  for verified limits. Keep unrelated publication failures actionable through
+  their existing stage and unavailable reason. See the
+  [outcome](docs/architecture/source-pair-budget-classification-outcome.md).
+
 - **Scheduled source-pair failure diagnostics** — Record the failed operation
   in the existing scheduler error, including the original stage if saving the
   failure also fails. See the

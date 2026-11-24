@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeSignalConfig, mergePresetSignals } from '../utils/policySignals.mjs';
+import { createEvidenceBudgetError } from './evaluationEvidenceBudget.mjs';
 import {
     attachActiveNativeIntentsForPolicies,
 } from './policyNativePolicyReadService.mjs';
@@ -122,7 +123,7 @@ export async function getActivePolicies({ dbClient = db, throwOnError = false, m
             ${movieTvOnly ? 'LIMIT 65' : ''}
         `);
 
-        if (movieTvOnly && result.rows.length > 64) throw new Error('source_pair_policy_budget');
+        if (movieTvOnly && result.rows.length > 64) throw createEvidenceBudgetError('source_pair_policy_budget');
 
         if (result.rows.length === 0) {
             return [];
