@@ -179,9 +179,14 @@ describe('settingsProvidersApi', () => {
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/providers')
     })
 
-    it('getWebSearchProviderRouteDiagnostics calls the diagnostics endpoint', async () => {
-      mockGetDataRequest.mockResolvedValueOnce({ candidates: [] })
-      await getWebSearchProviderRouteDiagnostics()
+    it('getWebSearchProviderRouteDiagnostics preserves exact History IDs from the endpoint', async () => {
+      const diagnostics = {
+        candidates: [],
+        recentDecisions: [{ classificationId: '9007199254740993' }],
+        recentHealthEvents: [{ classificationId: '9007199254740992' }, { classificationId: null }],
+      }
+      mockGetDataRequest.mockResolvedValueOnce(diagnostics)
+      expect(await getWebSearchProviderRouteDiagnostics()).toEqual(diagnostics)
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/web-search/providers/route-diagnostics')
     })
 

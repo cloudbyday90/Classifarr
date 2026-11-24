@@ -9,6 +9,7 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 
 export const WEB_SEARCH_PROVIDER_HEALTH_EVENT_TYPES = Object.freeze({
@@ -95,7 +96,7 @@ export function normalizeWebSearchProviderHealthEventRow(row) {
     retryAfterSeconds: toNonNegativeInteger(row.retry_after_seconds),
     cooldownUntil: toIsoTimestamp(row.cooldown_until),
     correlationId: row.correlation_id || null,
-    classificationId: row.classification_id == null ? null : Number(row.classification_id),
+    classificationId: normalizeDatabaseBigintId(row.classification_id),
     metadata: normalizeMetadata(row.metadata),
     createdAt: toIsoTimestamp(row.created_at),
   };
@@ -185,7 +186,7 @@ export class WebSearchProviderHealthHistory {
         toNonNegativeInteger(input.retryAfterSeconds, null, MAX_RETRY_AFTER_SECONDS),
         toIsoTimestamp(input.cooldownUntil),
         input.correlationId ? String(input.correlationId).slice(0, 120) : null,
-        toInteger(input.classificationId),
+        normalizeDatabaseBigintId(input.classificationId),
         JSON.stringify(normalizeMetadata(input.metadata)),
       ]
     );

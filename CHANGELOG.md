@@ -11,6 +11,10 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **History IDs in web-search diagnostics** — Keep exact BIGINT links in
+  route decisions and provider health events. Invalid IDs leave the event
+  unlinked. See the [outcome](docs/architecture/web-search-history-ids-outcome.md).
+
 - **History IDs in RAG stage logs** — Preserve exact BIGINT IDs in the
   standard log write and the older-schema fallback. Invalid IDs leave the
   diagnostic event unlinked. See the

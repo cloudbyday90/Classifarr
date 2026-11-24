@@ -10,6 +10,7 @@
 
 import { randomUUID } from 'node:crypto';
 import * as defaultDb from '../config/database.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 
 export const WEB_SEARCH_ROUTE_DECISION_OUTCOMES = Object.freeze({
@@ -110,7 +111,7 @@ export function normalizeWebSearchRouteDecisionRow(row) {
     candidates: Array.isArray(row.candidates) ? row.candidates : [],
     attempts: Array.isArray(row.attempts) ? row.attempts : [],
     correlationId: row.correlation_id || null,
-    classificationId: row.classification_id == null ? null : Number(row.classification_id),
+    classificationId: normalizeDatabaseBigintId(row.classification_id),
     errorCode: row.error_code || null,
     errorHttpStatus: toInteger(row.error_http_status),
     durationMs: toNonNegativeInteger(row.duration_ms),
@@ -126,7 +127,7 @@ export function getWebSearchRouteTraceContext(request = {}) {
     purpose: request.purpose || traceContext.purpose || DEFAULT_PURPOSE,
     operation: traceContext.operation || DEFAULT_OPERATION,
     correlationId: traceContext.correlationId ? String(traceContext.correlationId).slice(0, 120) : null,
-    classificationId: toInteger(traceContext.classificationId),
+    classificationId: normalizeDatabaseBigintId(traceContext.classificationId),
   };
 }
 

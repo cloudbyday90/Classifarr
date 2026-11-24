@@ -66,6 +66,7 @@ export function getWebSearchProviderConfigs() {
   return getDataRequest('/settings/web-search/providers')
 }
 
+/** The recent lists carry classificationId as a safe number, exact decimal string, or null. */
 export function getWebSearchProviderRouteDiagnostics() {
   return getDataRequest('/settings/web-search/providers/route-diagnostics')
 }
