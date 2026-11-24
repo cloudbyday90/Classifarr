@@ -430,7 +430,7 @@ function assertPublicationJob(job) {
     '--fail-on-no-commits',
     '--draft',
     '--notes-file',
-    'gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false "${publish_args[@]}"',
+    `gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false "\${publish_args[@]}"`,
     'gh release verify "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --format json',
     'for attempt in 1 2 3 4 5',
   ];
