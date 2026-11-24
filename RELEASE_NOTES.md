@@ -1,6 +1,79 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.49.4-beta`. Package files use semver-safe versions such as `0.49.4-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.49.5-beta`. Package files use semver-safe versions such as `0.49.5-beta`.
+
+## v0.49.5-beta
+
+**Review the current decision, recover retries without repeating routing, and
+browse policy suggestions one page at a time.**
+
+Classifarr reached **22,338 Docker Hub image pulls** on November 24, 2026.
+This count excludes GHCR.
+[Live repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)
+
+### Before upgrading
+
+- Back up persistent appdata, PostgreSQL and the encryption keys. Stop older
+  Classifarr writers sharing the database before upgrading. Normal startup
+  applies five migrations for retry lineage and exact History links in intake,
+  routing checks and reclassification. Restore a matching backup if you need
+  to return to an older schema.
+- Keep the existing Compose or Unraid mounts, ownership and credentials.
+  The production image now uses Node 24.22.3, Alpine 3.24.4, PostgreSQL 18.7
+  and pgvector 0.8.7. It excludes npm and npx. Source installations retain
+  the pinned npm/npx 12.2.2 toolchain and strict lockfile policy.
+- The version remains beta. GitHub lists this version as Latest. Existing
+  deployments update through their configured image channel.
+
+### Review, retry and History
+
+- Command Center uses current policy evidence for eligible rechecks and
+  adopted results. A missing or changed reference leaves the item available
+  for review or retry. An unavailable queue offers a refresh. Explicit choices
+  are still required when the saved policy calls for selection.
+- Fingerprinted Discord answers and completed correction controls check the
+  original notification and offered action. Old clarification buttons point
+  to Command Center. Scripts that send to the retired legacy HTTP clarification
+  endpoint now receive `410 Gone` with the same guidance.
+- Exact History IDs survive supported web and Discord decisions, reclassification,
+  learning receipts, recovery and diagnostics beyond the JavaScript safe integer
+  range. APIs preserve large IDs as strings where needed. Older completed
+  Discord selectors retain their supported safe range.
+- When a retry replaces a History row, verified request and webhook links move
+  with it. The Queue distinguishes a saved replacement with unverified routing
+  from a failed retry. A lost acknowledgement does not trigger another provider
+  write.
+
+### Policy Tuning and classification evidence
+
+- Policy Tuning Suggestions loads bounded list, proposal and evidence pages.
+  Administrators can Apply, Reject or request analysis. After an uncertain
+  review response, **Check status** reads the saved result. Manual analysis
+  admits one run per API process and offers callers a resumable summary.
+- Existing authenticated suggestion detail remains supported for at least
+  90 days from this release. A removal date has not been set. The migration
+  guide covers the new proposal, list and administrator evidence endpoints.
+  [Suggestion API migration guide](https://github.com/cloudbyday90/Classifarr/blob/v0.49.5-beta/docs/api/suggestions.md)
+- Policy rules distinguish declared purpose from observed examples. Corrected
+  matches can change ranking. Private declared terms are visible only to the
+  trusted local adjudication path. Current verification may use fresh policy
+  context when it can be proven; incomplete proof keeps review conservative.
+  The release preserves the existing routing and learning permission checks.
+- Source-pair scheduler errors report the failed stage and distinguish a
+  verified resource limit. The production inventory deadline remains in place.
+  UUIDv7 remains future work and existing identifiers stay compatible.
+
+### Runtime and release verification
+
+Patched Node and builder dependencies replace the npm parser version accepted
+for v0.49.4-beta only. The production image excludes the npm bundle; known
+builder-only advisory findings remain tracked. The release pipeline requires
+both native routing receipts and scheduled recovery on the published arm64
+image before release publication and promotion.
+
+[Full changelog, including deployment, dependency and tooling changes](https://github.com/cloudbyday90/Classifarr/blob/v0.49.5-beta/CHANGELOG.md)
+
+---
 
 ## v0.49.4-beta
 

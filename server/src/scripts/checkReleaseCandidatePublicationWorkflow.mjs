@@ -430,16 +430,27 @@ function assertPublicationJob(job) {
     '--fail-on-no-commits',
     '--draft',
     '--notes-file',
-    'gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false',
+    'gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false "${publish_args[@]}"',
     'gh release verify "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --format json',
     'for attempt in 1 2 3 4 5',
-    '[[ "$RELEASE_TAG" == *-* ]]',
-    '--prerelease',
-    '--latest=false',
   ];
   if (typeof publishStep.run !== 'string' ||
     requiredPublicationFragments.some(fragment => !publishStep.run.includes(fragment))) {
     throw new Error('Create and verify immutable GitHub release must use draft assets, remote-tag verification, and release attestation verification.');
+  }
+  const latestPolicy = [
+    'release_args=()',
+    'publish_args=()',
+    'if [[ "$RELEASE_TAG" == "v0.49.5-beta" ]]; then',
+    'publish_args+=(--latest)',
+    'elif [[ "$RELEASE_TAG" == *-* ]]; then',
+    'release_args+=(--prerelease --latest=false)',
+    'fi',
+  ].join(' ');
+  const normalizedRun = publishStep.run.split('\n')
+    .filter(line => !line.trimStart().startsWith('#')).join(' ').replace(/\s+/g, ' ');
+  if (!normalizedRun.includes(latestPolicy)) {
+    throw new Error('GitHub Latest designation must stay scoped to v0.49.5-beta.');
   }
 }
 

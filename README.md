@@ -3,26 +3,26 @@
 Route every request to the right library with policy-driven decisions you can trust.
 
 ![License](https://img.shields.io/github/license/cloudbyday90/Classifarr)
-![Version](https://img.shields.io/badge/version-v0.49.4--beta-blue.svg)
+![Version](https://img.shields.io/badge/version-v0.49.5--beta-blue.svg)
 ![Docker Pulls](https://img.shields.io/docker/pulls/cloudbyday90/classifarr)
 
 Classifarr is an AI- and RAG-powered media classification and routing service. It runs as the decision layer between request inputs (Overseerr/Jellyseerr webhooks, manual/API submissions, and media sync) and your automation stack, then uses metadata, policy rules, and AI/RAG signals to auto-route high-confidence matches to the correct Radarr/Sonarr destination while sending low-confidence cases to review.
 
 Classifarr supports movies and TV shows. Library-agnostic learning means discovering what belongs in your movie and TV libraries from their contents, without depending on predefined library names or categories. Music libraries and audio items are ignored based on their source media type.
 
-**Source version:** `v0.49.4-beta`. The [published release](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.49.4-beta) is verified. Its tag pipeline, native AMD64/ARM64 routing, signed evidence and both registry `latest` aliases passed verification. Package files use `0.49.4-beta`, while the UI, release notes, and Git tags use `v0.49.4-beta`. This beta adds clearer purpose evidence, explicit History assessments and automatic evaluation summaries, with stronger storage-failure, capture and logging safeguards. It collects prospective evidence for routing improvements without claiming an accuracy rate or repairing historical labels. Read the eight-migration upgrade guidance and known security limits in [RELEASE_NOTES.md](RELEASE_NOTES.md) before updating an existing installation.
+**Source version:** `v0.49.5-beta`. This beta improves pending-review evidence,
+retry recovery and History ID precision, and adds paginated Policy Tuning
+Suggestions. Read the five-migration upgrade guidance and compatibility notes
+before updating an installation. [Release notes](RELEASE_NOTES.md) ·
+[GitHub release and signed evidence](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.49.5-beta)
 
-**21,997 Docker Hub image pulls** as of 2026-11-02 ([repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)). This counts image pulls, not unique installations, and does not include GHCR.
+**22,338 Docker Hub image pulls** as of 2026-11-24. This count excludes GHCR.
+[Repository statistics](https://hub.docker.com/v2/repositories/cloudbyday90/classifarr/)
 
-For v0.49.4-beta only, the maintainer accepts the moderate ip-address finding in
-npm 12.2.1's separate bundled copy, conditional on all other release gates.
-It remains present in that published image; later releases require verified
-remediation. See the [release decision](docs/architecture/release-0.49.4-beta-outcome.md).
-
-Development source now pins npm/npx 12.2.2; the separate
-[assessment outcome](docs/architecture/npm-12-2-2-security-outcome.md) tracks its
-bundled-parser/transport checks and remaining findings. Source changes do not
-update the published beta or a running installation.
+The production image uses Node 24.22.3 and excludes npm/npx. Source and CI
+installs use npm/npx 12.2.2, whose bundled parser fixes the finding accepted for
+v0.49.4-beta only. See the [toolchain assessment](docs/architecture/npm-12-2-2-security-outcome.md)
+and [production image review](docs/architecture/production-image-package-manager-outcome.md).
 
 ## Why Classifarr
 

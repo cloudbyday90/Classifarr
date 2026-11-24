@@ -9,6 +9,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ## [Unreleased]
 
+## [v0.49.5-beta] - 2026-11-24
+
 [Full development record](docs/changelog/CHANGELOG-2026-11-pre-release-0.49.5.md) preserved on 2026-11-24.
 
 **TL;DR** — Pending reviews now use the current policy evidence, retries

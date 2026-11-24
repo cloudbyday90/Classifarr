@@ -227,6 +227,13 @@ and dispatch from a `v*` release tag containing the tag-only guard, never from
 `main`. Do not run cleanup as a release verification test. The guard does not
 retroactively alter historical tagged workflows or replace secret-access controls.
 
+For v0.49.5-beta, the maintainer chose GitHub's full-release designation to set
+the Latest badge while retaining the beta identifier. The tagged workflow
+applies that designation at publication and skips automatic Docker Hub
+retention for this exact tag. The separately approved GitHub release-page
+retention follows the [release design](../../docs/architecture/release-0.49.5-beta-design.md)
+after successful publication verification.
+
 ## 4. Publish only the approved tag
 
 Only after explicit approval, all pre-tag gates pass and the chosen version is

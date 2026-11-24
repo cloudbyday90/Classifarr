@@ -103,6 +103,7 @@ test.each([
   ['cleanup without explicit selection', w => { w.jobs['cleanup-old-releases-manual'].if = "github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')"; }],
   ['cleanup without manual dispatch', w => { w.jobs['cleanup-old-releases-manual'].if = "inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/tags/v')"; }],
   ['bypass automatic cleanup dependencies', w => { w.jobs['cleanup-old-releases'].needs = []; }],
+  ['delete Docker Hub tags during the GitHub-only retention release', w => { w.jobs['cleanup-old-releases'].if = "startsWith(github.ref, 'refs/tags/v')"; }],
   ['run full build on budget dispatch', w => { w.jobs['build-and-test'].if = 'always()'; }],
   ['run database gate on budget dispatch', w => { w.jobs['database-tests'].if = 'always()'; }],
   ['treat budget dispatch as release acceptance', w => { w.jobs['release-acceptance'].if = 'always()'; }],

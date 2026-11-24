@@ -111,7 +111,7 @@ export function validateRuntimeInstallationWorkflow(workflow) {
   }
   assert.equal(jobs['cleanup-old-releases-manual'].if, "github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup' && startsWith(github.ref, 'refs/tags/v')");
   assert.deepEqual(jobs['cleanup-old-releases'].needs, ['docker-release', 'release-candidate-publication', 'promote-published-latest']);
-  assert.equal(jobs['cleanup-old-releases'].if, "startsWith(github.ref, 'refs/tags/v')");
+  assert.equal(jobs['cleanup-old-releases'].if, "startsWith(github.ref, 'refs/tags/v') && github.ref != 'refs/tags/v0.49.5-beta'");
   return true;
 }
 

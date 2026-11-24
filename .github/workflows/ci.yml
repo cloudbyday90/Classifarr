@@ -995,7 +995,11 @@ jobs:
           set -euo pipefail
 
           release_args=()
-          if [[ "$RELEASE_TAG" == *-* ]]; then
+          publish_args=()
+          if [[ "$RELEASE_TAG" == "v0.49.5-beta" ]]; then
+            # Maintainer-approved sidebar designation for this version only.
+            publish_args+=(--latest)
+          elif [[ "$RELEASE_TAG" == *-* ]]; then
             release_args+=(--prerelease --latest=false)
           fi
 
@@ -1009,7 +1013,7 @@ jobs:
             --notes-file ".tmp/release-candidate/${RELEASE_TAG}-notes.md" \
             "${release_args[@]}"
 
-          gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false
+          gh release edit "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --draft=false "${publish_args[@]}"
 
           for attempt in 1 2 3 4 5; do
             if gh release verify "$RELEASE_TAG" --repo "$SOURCE_REPOSITORY" --format json \
@@ -1043,7 +1047,8 @@ jobs:
   cleanup-old-releases:
     name: Cleanup Old Docker Hub Tags
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    # The v0.49.5-beta retention decision covers GitHub release pages only.
+    if: startsWith(github.ref, 'refs/tags/v') && github.ref != 'refs/tags/v0.49.5-beta'
     needs: [docker-release, release-candidate-publication, promote-published-latest]
     permissions: {}
 

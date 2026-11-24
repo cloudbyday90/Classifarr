@@ -171,6 +171,17 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
       .toThrow();
   });
 
+  test('rejects designating other beta releases as Latest', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const step = workflow.jobs['release-candidate-publication'].steps.find(
+      candidate => candidate.name === 'Create and verify immutable GitHub release'
+    );
+    step.run = step.run.replace('"v0.49.5-beta" ]]', 'v*-beta ]]');
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('GitHub Latest designation must stay scoped to v0.49.5-beta.');
+  });
+
   test('rejects generic package-version deletion for the multi-platform image', () => {
     const workflow = structuredClone(loadWorkflow());
     const cleanupJob = workflow.jobs['cleanup-old-releases'];
