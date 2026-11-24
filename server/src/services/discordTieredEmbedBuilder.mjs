@@ -58,15 +58,9 @@ export async function createTieredEmbed(
   const topAlternatives = getTopAlternatives(result, 3);
   const suggestedLibraryName = resolveSuggestedLibraryName(result, topAlternatives);
 
-  if (hasClarification && result.clarification) {
-    const clarification = result.clarification;
-    const mediaTypeLabel =
-      metadata.media_type === 'movie' ? 'movie' : 'TV show';
+  if (hasClarification) {
     embed.setDescription(
-      `\uD83E\uDD14 **I need your help classifying this ${mediaTypeLabel}**\n\n` +
-        `\u26A0\uFE0F **Problem:** ${clarification.problem_summary}\n\n` +
-        `\uD83D\uDCAD **Why I'm asking:** ${clarification.why_uncertain}\n\n` +
-        `\uD83D\uDCC1 **Question:** ${clarification.question}`,
+      'Open the Classifarr Command Center to review this item. If its question is unavailable, use Retry Classification.',
     );
   } else if (tier.tier === 'auto' && !requireAllConfirmations) {
     embed.setDescription(

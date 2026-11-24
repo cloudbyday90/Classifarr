@@ -13,63 +13,15 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
 } from 'discord.js';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import { CLASSIFICATION_CORRECTION_PLACEHOLDER } from './discordLibrarySelectionControl.mjs';
 
 export function createTieredComponents(
   classificationId,
   libraries,
   tier,
-  metadata,
-  confidence,
   requireAllConfirmations = false,
-  clarification = null,
 ) {
   const components = [];
-
-  if (
-    clarification &&
-    clarification.options &&
-    clarification.options.length > 0
-  ) {
-    if (parsePendingResolutionHistoryId(classificationId) === null) return components;
-    const clarificationButtons = clarification.options.map((opt, idx) =>
-      new ButtonBuilder()
-        .setCustomId(`ai_clarify_${classificationId}_${idx}`)
-        .setLabel(opt.label.substring(0, 80))
-        .setStyle(
-          idx === 0
-            ? ButtonStyle.Primary
-            : idx === clarification.options.length - 1
-              ? ButtonStyle.Secondary
-              : ButtonStyle.Primary,
-        ),
-    );
-
-    components.push(
-      new ActionRowBuilder().addComponents(clarificationButtons.slice(0, 5)),
-    );
-
-    if (libraries && libraries.length > 1) {
-      const options = libraries.map((lib) => ({
-        label: lib.name,
-        value: `${classificationId}_${lib.id}`,
-        description: `${lib.media_type} library`,
-      }));
-
-      components.push(
-        new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId('library_select')
-            .setPlaceholder('Or manually select a library...')
-            .addOptions(options),
-        ),
-      );
-    }
-
-    return components;
-  }
-
   const effectiveTier =
     tier.tier === 'auto' && requireAllConfirmations ? 'verify' : tier.tier;
 

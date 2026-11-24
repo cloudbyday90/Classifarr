@@ -2,7 +2,6 @@
 import { ComponentType } from 'discord.js';
 import { normalizeDatabaseBigintId, parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 
 export const DISCORD_LEGACY_MESSAGE_REQUIRED =
   'This action does not belong to the saved Discord notification. Open Classifarr to review the item.';
@@ -36,14 +35,6 @@ export function parseDiscordCompletedButton(customId) {
   const button = completedButton(verb, first, 'classification');
   const destinationLibraryId = parseCanonicalDatabaseInt32Id(second);
   return button && destinationLibraryId !== null ? { ...button, destinationLibraryId } : null;
-}
-
-export function parseDiscordLegacyClarificationButton(customId) {
-  if (typeof customId !== 'string') return null;
-  const match = /^ai_clarify_([1-9][0-9]{0,15})_([0-4])$/.exec(customId);
-  if (!match || match[0] !== customId) return null;
-  const classificationId = parsePendingResolutionHistoryId(match[1]);
-  return classificationId === null ? null : { classificationId, optionIndex: Number(match[2]) };
 }
 
 export function parseDiscordLibrarySelectValues(values) {

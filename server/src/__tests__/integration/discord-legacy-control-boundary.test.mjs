@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { afterAll, beforeAll, beforeEach, expect, jest, test } from '@jest/globals';
-import { ActionRow, ComponentType, EmbedBuilder, Options } from 'discord.js';
+import { ActionRow, ComponentType, EmbedBuilder, MessageFlags, Options } from 'discord.js';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { createDiscordDeliveryRepository } from '../../services/discordDeliveryRepository.mjs';
 import { createDiscordDeliveryService } from '../../services/discordDeliveryService.mjs';
@@ -14,7 +14,7 @@ let afterWrite;
 let source;
 let destination;
 let delivery;
-const query = (...args) => database.query(...args);
+const query = jest.fn((...args) => database.query(...args));
 const withTransaction = async (...args) => {
   beforeWrite?.();
   const result = await database.withTransaction(...args);
@@ -97,6 +97,33 @@ function completedClick(id, action, kind, options = {}) {
   click.message.components = options.unoffered ? [] : rows.map(row => new ActionRow(row));
   return click;
 }
+
+test.each([
+  [Number.MAX_SAFE_INTEGER, null],
+  [7101, { question: 'A saved question from an older producer' }],
+  ['9223372036854775701', { question: 'A saved question from an older producer' }],
+])('a retired clarification for %s always directs review without database access', async (id, question) => {
+  await insertHistory(id);
+  if (question) {
+    await query('UPDATE classification_history SET policy_question=$2::jsonb WHERE id=$1', [id, JSON.stringify(question)]);
+  }
+  await insertDeliveredReceipt(id, 'awaiting_decision', 'confidence', 'awaiting_clarification');
+  const before = await history(id);
+  query.mockClear();
+  beforeWrite = jest.fn();
+
+  const click = interaction('button', id);
+  await handleInteraction(click);
+
+  expect(click.reply).toHaveBeenCalledWith({ content: expect.stringContaining('Classifarr Command Center'), flags: MessageFlags.Ephemeral });
+  expect(click.deferUpdate).not.toHaveBeenCalled();
+  expect(click.editReply).not.toHaveBeenCalled();
+  expect(query).not.toHaveBeenCalled();
+  expect(beforeWrite).not.toHaveBeenCalled();
+  expect(routeToArr).not.toHaveBeenCalled();
+  expect(await history(id)).toEqual(before);
+  expect(await corrections(id)).toEqual([]);
+});
 
 test.each([
   [Number.MAX_SAFE_INTEGER - 3, 'correct', 'classification'], [7142, 'verify_yes', 'confidence'],
@@ -366,21 +393,19 @@ test('the delivered classification menu corrects the exact History row among adj
 });
 
 test.each([
-  ['button', Number.MAX_SAFE_INTEGER, 'awaiting_decision', null, null],
-  ['selector', Number.MAX_SAFE_INTEGER - 1, 'completed', 'classification', null],
-  ['selector', Number.MAX_SAFE_INTEGER - 2, 'routed', 'confidence', 'verify_buttons'],
-])('a bound %s on row %i preserves the exact row and routes only once', async (kind, id, status, deliveryKind, clarificationStatus) => {
+  [Number.MAX_SAFE_INTEGER - 1, 'completed', 'classification', null],
+  [Number.MAX_SAFE_INTEGER - 2, 'routed', 'confidence', 'verify_buttons'],
+])('a bound selector on row %i preserves the exact row and routes only once', async (id, status, deliveryKind, clarificationStatus) => {
     await insertHistory(id, messageId, status);
-    if (deliveryKind) await insertDeliveredReceipt(id, status, deliveryKind, clarificationStatus);
+    await insertDeliveredReceipt(id, status, deliveryKind, clarificationStatus);
     const placeholder = deliveryKind === 'confidence' ? 'Select the correct library...' : undefined;
-    const accepted = interaction(kind, id, messageId, placeholder);
+    const accepted = interaction('selector', id, messageId, placeholder);
     await handleInteraction(accepted);
     expect(accepted.editReply).toHaveBeenCalledTimes(1);
     const saved = await history(id);
-    const chosen = kind === 'button' ? source : destination;
-    expect(saved).toMatchObject({ id, status: 'routed', library_id: chosen.id, discord_message_id: messageId });
-    expect(await corrections(id)).toEqual(kind === 'button' ? [] : [{ classification_id: id, corrected_library_id: chosen.id }]);
-    const replay = interaction(kind, id, messageId, placeholder);
+    expect(saved).toMatchObject({ id, status: 'routed', library_id: destination.id, discord_message_id: messageId });
+    expect(await corrections(id)).toEqual([{ classification_id: id, corrected_library_id: destination.id }]);
+    const replay = interaction('selector', id, messageId, placeholder);
     await handleInteraction(replay);
     expect(replay.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Already processed') }));
     expect(await history(id)).toEqual(saved);
@@ -407,12 +432,11 @@ test.each([
     expect(routeToArr).not.toHaveBeenCalled();
 });
 
-test.each([['button', 7101, null], ['selector', 7102, null],
-  ['button', 7103, changedMessageId], ['selector', 7104, changedMessageId]])(
-  'a %s on History ID %i refuses missing or foreign message evidence', async (kind, id, savedMessage) => {
+test.each([[7102, null], [7104, changedMessageId]])(
+  'a selector on History ID %i refuses missing or foreign message evidence', async (id, savedMessage) => {
     await insertHistory(id, savedMessage);
     const before = await history(id);
-    const rejected = interaction(kind, id);
+    const rejected = interaction('selector', id);
     await handleInteraction(rejected);
     expect(rejected.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
     expect(await history(id)).toEqual(before);
@@ -421,27 +445,23 @@ test.each([['button', 7101, null], ['selector', 7102, null],
   },
 );
 
-test.each([
-  ['button', 7111, 'discord_message_id=$2', changedMessageId, 'Open Classifarr'],
-  ['selector', 7112, 'discord_message_id=$2', changedMessageId, 'Open Classifarr'],
-  ['button', 7113, 'policy_question=$2::jsonb', '{"question":"New review"}', 'stale'],
-  ['button', 7114, 'library_id=$2', () => destination.id, 'stale'],
-])('a %s waiting to write row %i rechecks the locked state', async (kind, id, assignment, value, expected) => {
+test('a selector waiting to write a row rechecks the locked message', async () => {
+  const id = 7112;
   await insertHistory(id);
   const blocked = await database.pool.connect();
   let handling;
   try {
     await blocked.query('BEGIN');
-    await blocked.query(`UPDATE classification_history SET ${assignment} WHERE id=$1`, [id, typeof value === 'function' ? value() : value]);
+    await blocked.query('UPDATE classification_history SET discord_message_id=$2 WHERE id=$1', [id, changedMessageId]);
     const enteringWrite = new Promise(resolve => { beforeWrite = resolve; });
-    const rejected = interaction(kind, id);
+    const rejected = interaction('selector', id);
     handling = handleInteraction(rejected);
     // A result before the writer enters the transaction also fails the assertion.
     await Promise.race([enteringWrite, handling.then(() => { throw new Error('expected locked write'); })]);
     await blocked.query('COMMIT');
     const changed = await history(id);
     await handling;
-    expect(rejected.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining(expected) }));
+    expect(rejected.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
     expect(changed.status).toBe('awaiting_decision');
     expect(await history(id)).toEqual(changed);
     expect(await corrections(id)).toEqual([]);

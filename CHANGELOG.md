@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Discord index-only clarification** — Old option buttons now reply privately
+  with directions to the Command Center. New legacy confidence notices show
+  review guidance without decision controls. See the
+  [outcome](docs/architecture/discord-indexed-clarification-retirement-outcome.md).
+
 - **Pending-question cleanup** — Preserve exact BIGINT History IDs from dry-run
   inventory through apply. Stale or unavailable policy context queues fresh
   evaluation before a saved answer can replay. See the

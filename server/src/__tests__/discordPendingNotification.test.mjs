@@ -19,7 +19,6 @@
 import { describe, expect, jest, test, beforeEach, afterEach } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
-import { createTieredComponents } from '../services/discordNotificationComponents.mjs';
 import { buildPolicyRuntimeQuestionAnswerContract, validatePolicyRuntimeQuestionAnswer } from '../services/policyRuntimeQuestionAnswerContract.mjs';
 import { purposeMatchFixture } from './fixtures/purposeMatchEvidenceFixture.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
@@ -50,6 +49,7 @@ jest.unstable_mockModule('../services/discordDelivery.mjs', () => ({ discordDeli
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
 const { sendConfidenceBasedNotification } = await import('../services/discordConfidenceNotification.mjs');
+const { clarificationService } = await import('../services/clarificationService.mjs');
 const { AIResponseParser } = await import('../services/aiResponseParser.mjs');
 const { buildAiUnavailableResult } = await import('../services/classificationPathServiceShared.mjs');
 
@@ -70,12 +70,30 @@ function normalizedPolicyQuestion() {
 }
 
 describe('discordPendingNotification', () => {
-  test('legacy pending controls require the same supported History ID as the answer handler', () => {
-    const clarification = { options: [{ label: 'Synthetic destination' }] };
-    const components = id => createTieredComponents(id, [], { tier: 'clarify' }, {}, 50, false, clarification);
-    expect(components('9007199254740993')).toEqual([]);
-    expect(components(Number.MAX_SAFE_INTEGER)[0].components[0].data.custom_id).toBe('ai_clarify_9007199254740991_0');
-  });
+  test.each([Number.MAX_SAFE_INTEGER, '9007199254740993'])(
+    'legacy confidence clarification for %s gives guidance without decision controls', async id => {
+      mockDb.query.mockResolvedValueOnce({ rows: [{ status: 'completed' }] });
+      jest.spyOn(clarificationService, 'isRequireAllConfirmationsEnabled').mockResolvedValue(false);
+      jest.spyOn(clarificationService, 'getTierFromPolicyThresholds').mockReturnValue({ tier: 'verify', action: 'verify_buttons' });
+      const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
+      const standard = jest.fn();
+      const result = { classification_id: id, confidence: 55, needs_clarification: true, method: 'ai_fallback',
+        clarification: { question: 'Historical question', problem_summary: 'Uncertain', why_uncertain: 'Similar destinations',
+          options: [{ label: 'Old option' }] },
+        libraries: [{ id: 15, name: 'Movies' }, { id: 14, name: 'Family' }] };
+      await sendConfidenceBasedNotification({ title: 'Legacy fixture', media_type: 'movie' }, result, {
+        client: { channels: { fetch: async () => ({ send }) } }, channelId: 'synthetic-channel',
+        config: { enabled: true, notify_on_classification: true }, warnFn: jest.fn(), sendClassificationNotification: standard,
+      });
+      expect(deliver).toHaveBeenLastCalledWith(expect.objectContaining({ classificationId: id,
+        kind: 'confidence', clarificationStatus: 'awaiting_clarification' }));
+      expect(send).toHaveBeenCalledTimes(1);
+      const [payload] = send.mock.calls[0];
+      expect(payload.components).toEqual([]);
+      expect(payload.embeds[0].toJSON().description).toMatch(/Classifarr Command Center.*Retry Classification/);
+      expect(standard).not.toHaveBeenCalled();
+    },
+  );
   test.each(['9007199254740993', '9223372036854775807'])('emits exact compact buttons for pending History ID %s', async id => {
     const send = jest.fn().mockResolvedValue({ id: 'synthetic-message' });
     await sendPendingDecisionNotification({ title: 'Large pending classification', media_type: 'movie' }, {

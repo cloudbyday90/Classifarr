@@ -74,7 +74,6 @@ const {
     handleInteraction,
     processVerification,
     processCorrection,
-    processClarificationResponse,
     showLibrarySelection,
 } = await import('../services/discordInteractionHandler.mjs');
 const db = mockDb;
@@ -156,7 +155,6 @@ beforeEach(() => {
         audit: { ok: true },
         reasonCodes: [],
     });
-    clarificationService.resolvePolicyQuestion.mockResolvedValue({ shouldRoute: false });
     clarificationService.recordResponse.mockResolvedValue(undefined);
     classificationRoutingService.routeToArr.mockResolvedValue({ routed: true, reason: 'routed' });
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
@@ -173,8 +171,6 @@ describe('handleInteraction', () => {
         `ai_answer_100_c_10x_${fingerprint}`, `ai_answer_100_c_2147483648_${fingerprint}`,
         `ai_answer_100_x_10_${fingerprint}`, `ai_answer_100_c_10_${fingerprint}_extra`,
         `ai_answer_100_c_10_${fingerprint}\n`, 'ai_answer_100_c_10_short',
-        'ai_clarify_100x_0', 'ai_clarify_9007199254740993_0', 'ai_clarify_100_5',
-        'ai_clarify_100_0x', 'ai_clarify_100_0_extra',
     ])(
         'rejects invalid or unsupported button %s before lookup', async customId => {
             const interaction = makeInteraction({ customId, isButton: () => true });
@@ -541,293 +537,6 @@ describe('processCorrection', () => {
     });
 });
 
-// ── processClarificationResponse ──────────────────────────────────────────────
-
-describe('processClarificationResponse', () => {
-    test.each([null, '222222222222222222'])('refuses a legacy action when the stored message is %p', async discord_message_id => {
-        db.query.mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, discord_message_id }] });
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
-        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
-    });
-
-    test('refuses an index with no option on the saved notification', async () => {
-        db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 4, interaction);
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
-        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: 'Invalid library selection' }));
-    });
-
-    test('refuses when the option at the presented index has a different button ID', async () => {
-        db.query.mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] });
-        const interaction = makeInteraction();
-        interaction.message.components[0].components[0].customId = 'ai_clarify_100_1';
-        await processClarificationResponse(100, 0, interaction);
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
-        expect(interaction.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: 'Invalid library selection' }));
-    });
-
-    test('calls deferUpdate before performing DB work', async () => {
-        const callOrder = [];
-
-        db.query.mockImplementationOnce(async () => {
-            callOrder.push('db.query');
-            return { rows: [MOCK_CLASSIFICATION] };
-        });
-        db.query.mockResolvedValue({ rows: [], rowCount: 0 });
-
-        const interaction = makeInteraction({
-            deferUpdate: jest.fn().mockImplementation(async () => {
-                callOrder.push('deferUpdate');
-            }),
-        });
-
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(callOrder.indexOf('deferUpdate')).toBeLessThan(callOrder.indexOf('db.query'));
-    });
-
-    test('uses editReply for the success embed — NOT update() or reply()', async () => {
-        db.query
-            .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })
-            .mockResolvedValue({ rows: [], rowCount: 0 });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.editReply).toHaveBeenCalledTimes(1);
-        expect(interaction.update).not.toHaveBeenCalled();
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('routes through classificationRoutingService when resolvePolicyQuestion requests routing', async () => {
-        db.query
-            .mockResolvedValueOnce({
-                rows: [{
-                    ...MOCK_CLASSIFICATION,
-                    status: 'awaiting_decision',
-                }]
-            })
-            .mockResolvedValueOnce({
-                rows: [{
-                    ...MOCK_CLASSIFICATION,
-                    status: 'completed',
-                    library_id: 10,
-                    arr_type: 'radarr',
-                    arr_id: 22,
-                    library_name: 'Movies',
-                    radarr_settings: { root_folder_path: '/movies', quality_profile_id: 4 },
-                    sonarr_settings: null,
-                    root_folder: '/movies',
-                    quality_profile_id: 4,
-                    metadata: { title: 'Test Movie', media_type: 'movie', tmdb_id: 'tt1234567' }
-                }]
-            })
-            .mockResolvedValueOnce({ rows: [], rowCount: 1 });
-        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({ shouldRoute: true, alreadyResolved: false });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
-            100,
-            10,
-            'Option A',
-            'testUser',
-            false,
-            { discordMessageId: savedMessageId },
-        );
-        expect(classificationRoutingService.routeToArr).toHaveBeenCalledWith(
-            expect.objectContaining({ title: 'Test Movie', media_type: 'movie' }),
-            expect.objectContaining({
-                id: 10,
-                arr_type: 'radarr',
-                arr_id: 22,
-                name: 'Movies'
-            })
-        );
-    });
-
-    test('rejects an old Discord button for a native policy-runtime question', async () => {
-        db.query
-            .mockResolvedValueOnce({
-                rows: [{
-                    ...MOCK_CLASSIFICATION,
-                    status: 'awaiting_decision',
-                    library_id: null,
-                    policy_question: {
-                        version: 'policy.runtime_question_persistence.v1',
-                        options: [
-                            {
-                                label: 'Resolve current item',
-                                outcomeId: 'resolve_current_item',
-                                library_id: 10,
-                            },
-                            {
-                                label: 'Do not learn',
-                                outcomeId: 'do_not_learn',
-                            },
-                        ],
-                        runtimeQuestion: {
-                            contractVersion: 'policy.runtime_question_reduction.v1',
-                        },
-                        runtimeQuestionReductionPlan: {
-                            version: 'policy.runtime_question_reduction.v1',
-                        },
-                        meta: {
-                            runtime_question_persistence: {
-                                destinationLibraryId: 10,
-                                destinationLibraryName: 'Movies',
-                            },
-                        },
-                    },
-                }],
-            });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 1, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({
-                content: expect.stringContaining('latest Classifarr queue state'),
-                ephemeral: true,
-            }),
-        );
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
-        expect(interaction.editReply).not.toHaveBeenCalled();
-    });
-
-    test('followUp (not reply) when classification is not found', async () => {
-        db.query.mockResolvedValueOnce({ rows: [] });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ content: 'Classification not found', ephemeral: true })
-        );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('idempotency guard: followUp + early exit when clarification is already resolved to the same library', async () => {
-        db.query.mockResolvedValueOnce({
-            rows: [{
-                ...MOCK_CLASSIFICATION,
-                status: 'completed',
-                library_id: 10,
-            }]
-        });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ content: expect.stringContaining('Already processed') })
-        );
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
-        expect(interaction.editReply).not.toHaveBeenCalled();
-    });
-
-    test('does not fall back to legacy mutation when resolvePolicyQuestion reports stale resolution', async () => {
-        const staleError = new Error('Classification is no longer awaiting decision');
-        staleError.statusCode = 409;
-        db.query.mockResolvedValueOnce({
-            rows: [{
-                ...MOCK_CLASSIFICATION,
-                status: 'awaiting_decision',
-                library_id: 10,
-            }]
-        });
-        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleError);
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ content: expect.stringContaining('Already processed') })
-        );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(db.query).toHaveBeenCalledTimes(1);
-    });
-
-    test('shows a stale-question retry message instead of already-processed when policy context changed', async () => {
-        const staleQuestionError = new Error('Policy question is stale and must be retried');
-        staleQuestionError.statusCode = 409;
-        staleQuestionError.code = 'policy_question_stale';
-        db.query.mockResolvedValueOnce({
-            rows: [{
-                ...MOCK_CLASSIFICATION,
-                status: 'awaiting_decision',
-                library_id: 10,
-            }]
-        });
-        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(staleQuestionError);
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ content: expect.stringContaining('stale') })
-        );
-        expect(interaction.followUp).not.toHaveBeenCalledWith(
-            expect.objectContaining({ content: expect.stringContaining('Already processed') })
-        );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(db.query).toHaveBeenCalledTimes(1);
-    });
-
-    test('does not fall back to a direct mutation when authoritative resolution fails unexpectedly', async () => {
-        db.query.mockResolvedValueOnce({
-            rows: [{
-                ...MOCK_CLASSIFICATION,
-                status: 'awaiting_decision',
-                library_id: 10,
-            }]
-        });
-        clarificationService.resolvePolicyQuestion.mockRejectedValueOnce(new Error('Database unavailable'));
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({
-                content: expect.stringContaining('No changes were made'),
-                ephemeral: true,
-            })
-        );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-        expect(db.query).toHaveBeenCalledTimes(1);
-    });
-
-    test('catch block uses followUp, not reply', async () => {
-        db.query.mockRejectedValueOnce(new Error('DB error'));
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ ephemeral: true })
-        );
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-
-    test('no crash when deferUpdate + followUp both throw', async () => {
-        const interaction = makeInteraction({
-            deferUpdate: jest.fn().mockRejectedValue(new Error('Interaction token expired')),
-            followUp: jest.fn().mockRejectedValue(new Error('Unknown interaction')),
-        });
-
-        await expect(
-            processClarificationResponse(100, 0, interaction)
-        ).resolves.toBeUndefined();
-
-        expect(interaction.reply).not.toHaveBeenCalled();
-    });
-});
-
 // ── showLibrarySelection ──────────────────────────────────────────────────────
 
 describe('showLibrarySelection', () => {
@@ -920,8 +629,12 @@ describe('showLibrarySelection', () => {
     });
 });
 
-describe('retired generic clarification buttons', () => {
-    test.each(['clarify_100_5_yes', 'clarify'])('replies privately to repeated %s clicks', async customId => {
+describe('retired clarification buttons', () => {
+    test.each([
+        'clarify_100_5_yes', 'clarify', 'ai_clarify_100_0', 'ai_clarify_9007199254740991_4',
+        'ai_clarify_9007199254740993_0', 'ai_clarify_9223372036854775807_1', 'ai_clarify_100x_0',
+        'ai_clarify_100_0_extra',
+    ])('replies privately to repeated %s clicks', async customId => {
         for (let click = 0; click < 2; click++) {
             const interaction = makeInteraction({ customId, isButton: () => true });
             await handleInteraction(interaction);
@@ -937,6 +650,9 @@ describe('retired generic clarification buttons', () => {
         }
         expect(db.query).not.toHaveBeenCalled();
         expect(clarificationService.recordResponse).not.toHaveBeenCalled();
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
+        expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
         expect(classificationRoutingService.routeToArr).not.toHaveBeenCalled();
     });
 });

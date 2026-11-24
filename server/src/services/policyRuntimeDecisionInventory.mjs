@@ -662,18 +662,6 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     normalRuntimeAuthorityAllowed: false,
   },
   {
-    path: 'server/src/services/discordClarificationHandler.mjs',
-    owner: 'runtime-discord',
-    stageId: POLICY_RUNTIME_STAGE_IDS.MANUAL_RESOLUTION,
-    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
-    authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
-    replacementTarget: 'policy question contract and learning guard',
-    riskIds: [
-      'discord_answer_can_resolve_outcome_without_question_freshness',
-    ],
-    normalRuntimeAuthorityAllowed: false,
-  },
-  {
     path: 'server/src/services/discordPendingNotification.mjs',
     owner: 'runtime-discord',
     stageId: POLICY_RUNTIME_STAGE_IDS.QUESTION_GENERATION,

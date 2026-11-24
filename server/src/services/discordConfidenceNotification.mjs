@@ -154,14 +154,8 @@ export async function sendConfidenceBasedNotification(
       hasClarification,
     );
 
-    const components = await createTieredComponents(
-      result.classification_id,
-      result.libraries,
-      tier,
-      metadata,
-      result.confidence,
-      requireAllConfirmations,
-      hasClarification ? result.clarification : null,
+    const components = hasClarification ? [] : createTieredComponents(
+      result.classification_id, result.libraries, tier, requireAllConfirmations,
     );
 
     const status = hasClarification ? 'awaiting_clarification' : tier.action;

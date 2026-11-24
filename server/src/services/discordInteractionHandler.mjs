@@ -12,7 +12,6 @@ import { setDeliveryFooter } from './discordDeliveryPayload.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { processCorrection as correctionHandlerProcessCorrection } from './discordCorrectionHandler.mjs';
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
-import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
 import { showLibrarySelection as librarySelectionShowLibrarySelection } from './discordLibrarySelectionHandler.mjs';
 import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
 import { isDiscordId } from './discordDeliveryContract.mjs';
@@ -20,7 +19,7 @@ import { getOfferedDiscordCorrectionKind } from './discordLibrarySelectionContro
 import { DISCORD_COMPLETED_BUTTON_REQUIRED, DISCORD_SELECTOR_CORRECTION_REQUIRED } from './discordCompletedControlAdmission.mjs';
 import {
   DISCORD_LEGACY_MESSAGE_REQUIRED, isOfferedDiscordButton, parseDiscordCompletedButton,
-  parseDiscordLegacyClarificationButton, parseDiscordLibrarySelectValues,
+  parseDiscordLibrarySelectValues,
 } from './discordLegacyControlIdentity.mjs';
 
 const logger = createLogger('discordInteractionHandler');
@@ -34,17 +33,8 @@ export async function handleInteraction(interaction) {
 
       if (action === 'correct' || action === 'reclassify' || action === 'verify') {
         await handleCompletedButton(interaction);
-      } else if (action === 'ai') {
-        if (parts[1] === 'clarify') {
-          const answer = parseDiscordLegacyClarificationButton(customId);
-          if (!answer) {
-            await interaction.reply({ content: 'Invalid policy question action.', ephemeral: true });
-            return;
-          }
-          await processClarificationResponse(answer.classificationId, answer.optionIndex, interaction);
-        } else if (parts[1] === 'answer') {
-          await processPolicyQuestionAnswer(interaction);
-        }
+      } else if (action === 'ai' && parts[1] === 'answer') {
+        await processPolicyQuestionAnswer(interaction);
       } else if (action === 'acknowledge') {
         const _classificationId = parts[1];
         await interaction.update({
@@ -53,7 +43,7 @@ export async function handleInteraction(interaction) {
             setDeliveryFooter(EmbedBuilder.from(interaction.message.embeds[0]), '\u2705 Acknowledged'),
           ],
         });
-      } else if (action === 'clarify') {
+      } else if (action === 'clarify' || (action === 'ai' && parts[1] === 'clarify')) {
         await interaction.reply({
           content: 'This clarification button is retired. Open the Classifarr Command Center to review the item.',
           flags: MessageFlags.Ephemeral,
@@ -114,14 +104,6 @@ async function handleCompletedButton(interaction) {
 
 export async function processCorrection(classificationId, newLibraryId, interaction, options = undefined) {
   return correctionHandlerProcessCorrection(classificationId, newLibraryId, interaction, options);
-}
-
-export async function processClarificationResponse(
-  classificationId,
-  optionIndex,
-  interaction,
-) {
-  return clarificationHandlerProcessClarificationResponse(classificationId, optionIndex, interaction);
 }
 
 export async function processPolicyQuestionAnswer(interaction) {

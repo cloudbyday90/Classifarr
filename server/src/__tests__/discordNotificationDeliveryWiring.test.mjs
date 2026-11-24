@@ -12,7 +12,7 @@ jest.unstable_mockModule('../services/discordNotificationBuilder.mjs', () => ({ 
 jest.unstable_mockModule('../services/discordPendingNotification.mjs', () => ({ sendPendingDecisionNotification: sendPending }));
 jest.unstable_mockModule('../services/discordTieredEmbedBuilder.mjs', () => ({ createTieredEmbed: async () => embed }));
 jest.unstable_mockModule('../services/discordNotificationComponents.mjs', () => ({
-  createCorrectionComponents: async () => [], createTieredComponents: async () => [],
+  createCorrectionComponents: async () => [], createTieredComponents: () => [],
 }));
 jest.unstable_mockModule('../services/clarificationService.mjs', () => ({ clarificationService: {
   isRequireAllConfirmationsEnabled: async () => false, getTierFromPolicyThresholds: () => tier,
