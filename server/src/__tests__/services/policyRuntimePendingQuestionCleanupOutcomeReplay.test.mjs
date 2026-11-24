@@ -76,6 +76,7 @@ describe('policyRuntimePendingQuestionCleanupOutcomeReplay', () => {
     const result = await replayRecordedRuntimeQuestionAnswer({
       client,
       classification: row,
+      contextEvaluated: true,
       actorId: 'user:7',
       outcomeService,
     });
@@ -101,6 +102,7 @@ describe('policyRuntimePendingQuestionCleanupOutcomeReplay', () => {
     const result = await replayRecordedRuntimeQuestionAnswer({
       client,
       classification: row,
+      contextEvaluated: true,
       actorId: 'user:7',
     });
 

@@ -83,7 +83,7 @@ test.each([
   for (const refused of [`${id}x`, '9223372036854775808']) await resolve(refused).expect(400);
   await resolve(id, answerFor(contractFor(neighbors[0]))).expect(409);
   await resolve('9223372036854775802').expect(404);
-  await http.post('/pending-cleanup/apply').send({ classificationIds: [id, neighbors[0]] }).expect(400);
+  await http.post('/pending-cleanup/apply').send({ classificationIds: [id, '9223372036854775808'] }).expect(400);
   expect(await snapshot()).toEqual(before);
   expect(routeToArr).not.toHaveBeenCalled();
 

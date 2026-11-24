@@ -11,7 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { ValidationError } from '../utils/appError.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS,
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_VERSION,
@@ -55,10 +55,15 @@ function normalizeClassificationIds(value) {
     return null;
   }
 
-  const ids = [...new Set(value.map(parsePendingResolutionHistoryId))];
-  if (ids.length !== value.length || ids.some(id => !id)) return null;
+  const ids = Array.from(value, normalizeDatabaseBigintId);
+  if (ids.includes(null) || new Set(ids).size !== ids.length) return null;
 
-  return ids.sort((left, right) => left - right);
+  // The order is also the row-lock order, so adjacent large IDs must compare exactly.
+  return ids.sort((left, right) => {
+    const leftId = BigInt(left);
+    const rightId = BigInt(right);
+    return leftId < rightId ? -1 : leftId > rightId ? 1 : 0;
+  });
 }
 
 function normalizeActorId(value) {
@@ -160,7 +165,7 @@ export class PolicyRuntimePendingQuestionCleanupApplyService {
     const ids = normalizeClassificationIds(classificationIds);
     if (!ids) {
       throw new ValidationError(
-        `classificationIds must contain between 1 and ${POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_APPLY_MAX_RECORDS} unique positive integers.`,
+        `classificationIds must contain between 1 and ${POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_APPLY_MAX_RECORDS} unique positive History IDs. Use safe numbers or canonical BIGINT decimal strings.`,
       );
     }
     const normalizedActorId = normalizeActorId(actorId);
@@ -215,6 +220,7 @@ export class PolicyRuntimePendingQuestionCleanupApplyService {
             client,
             classification,
             currentContextVersion: currentContext.currentContextVersion,
+            contextEvaluated: currentContext.contextEvaluated,
             actorId: normalizedActorId,
           });
           if (replay.resolved === true) {

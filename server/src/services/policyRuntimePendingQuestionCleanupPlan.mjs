@@ -11,6 +11,7 @@
 import {
   getRuntimeQuestionNormalizationStatus,
 } from './policyRuntimeQuestionNormalizer.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
@@ -274,7 +275,7 @@ function buildPolicyRuntimePendingQuestionCleanupPlan({
   contextEvaluated = false,
 } = {}) {
   const source = asObject(classification);
-  const classificationId = normalizePositiveInteger(source.id);
+  const classificationId = normalizeDatabaseBigintId(source.id);
   const status = normalizeString(source.status, 80).toLowerCase();
 
   if (!classificationId) {
@@ -426,7 +427,7 @@ function buildPolicyRuntimePendingQuestionCleanupPlanAudit(plan = {}) {
   if (!statusIds.includes(source.statusId)) {
     issues.push('invalid_status');
   }
-  if (source.classificationId !== null && !normalizePositiveInteger(source.classificationId)) {
+  if (source.classificationId !== null && normalizeDatabaseBigintId(source.classificationId) === null) {
     issues.push('invalid_classification_id');
   }
   if (!actionIds.includes(source.actionId)) {

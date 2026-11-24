@@ -470,7 +470,7 @@ describe('PolicyRuntimePendingQuestionCleanupApplyService', () => {
 
   test('rejects the entire cleanup selection before opening a transaction if any History ID is inexact', async () => {
     const { service, db, lockClassification } = createService();
-    for (const id of ['9007199254740993', Number.MAX_SAFE_INTEGER + 1, true, '04']) {
+    for (const id of ['9223372036854775808', Number.MAX_SAFE_INTEGER + 1, true, '04', '3']) {
       await expect(service.run({ classificationIds: [3, id] })).rejects.toMatchObject({ statusCode: 400 });
     }
     expect(db.withTransaction).not.toHaveBeenCalled();

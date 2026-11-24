@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending-question cleanup** — Preserve exact BIGINT History IDs from dry-run
+  inventory through apply. Stale or unavailable policy context queues fresh
+  evaluation before a saved answer can replay. See the
+  [outcome](docs/architecture/pending-question-cleanup-history-ids-outcome.md).
+
 - **Policy-library evidence collection** — Use History creation timestamps and
   preserve exact BIGINT IDs in evidence keys so neighboring rows remain
   distinct. See the

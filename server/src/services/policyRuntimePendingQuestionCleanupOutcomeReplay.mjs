@@ -19,7 +19,7 @@ import {
   buildPolicyRuntimeQuestionAnswerReceipt,
   isPolicyRuntimeQuestionAnswerReceiptForClassification,
 } from './policyRuntimeQuestionAnswerReceipt.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
+import { isPolicyQuestionStale } from '../utils/policyQuestionContext.mjs';
 import {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS,
 } from './policyRuntimePendingQuestionCleanupPlan.mjs';
@@ -68,6 +68,7 @@ async function replayRecordedRuntimeQuestionAnswer({
   client,
   classification = {},
   currentContextVersion = null,
+  contextEvaluated = false,
   actorId,
   outcomeService = classificationOutcomeService,
 } = {}) {
@@ -77,8 +78,7 @@ async function replayRecordedRuntimeQuestionAnswer({
 
   const metadata = parsePersistedObject(classification.metadata);
   const recordedAnswer = getRecordedRuntimeQuestionAnswer(metadata);
-  if (parsePendingResolutionHistoryId(classification.id) === null ||
-      !isPolicyRuntimeQuestionAnswerReceiptForClassification(recordedAnswer, classification.id)) {
+  if (!isPolicyRuntimeQuestionAnswerReceiptForClassification(recordedAnswer, classification.id)) {
     return buildRetryRequiredResult(
       POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RUNTIME_ANSWER_INVALID_CURRENT_STATE,
     );
@@ -91,11 +91,16 @@ async function replayRecordedRuntimeQuestionAnswer({
   }
 
   const question = parsePersistedObject(classification.policy_question ?? classification.policyQuestion);
+  if (contextEvaluated !== true) {
+    return buildRetryRequiredResult(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.CURRENT_STATE_UNAVAILABLE);
+  }
+  if (isPolicyQuestionStale(question, currentContextVersion)) {
+    return buildRetryRequiredResult(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.POLICY_CONTEXT_CHANGED);
+  }
   const validation = validatePolicyRuntimeQuestionAnswer({
     classification,
     question,
     answer: parsedAnswer.answer,
-    isStale: false,
     currentContextVersion,
   });
   if (!validation.ok || !isPolicyRuntimeQuestionResolutionAction(validation.answer.actionId)) {

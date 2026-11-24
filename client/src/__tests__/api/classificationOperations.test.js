@@ -138,7 +138,10 @@ describe('classificationOperations', () => {
   })
 
   it('getPendingQuestionCleanupInventory requests the server-owned dry-run report', async () => {
-    const inventory = { mode: 'dry_run', records: [] }
+    const inventory = {
+      mode: 'dry_run',
+      records: [{ classificationId: 42 }, { classificationId: '9007199254740993' }],
+    }
     mockGetDataRequest.mockResolvedValueOnce(inventory)
     const result = await getPendingQuestionCleanupInventory()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/classification/pending-cleanup/inventory')

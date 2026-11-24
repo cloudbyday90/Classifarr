@@ -65,6 +65,7 @@ export function getPendingClassificationCount() {
   return getDataRequest('/classification/pending/count')
 }
 
+/** Dry-run records carry classificationId as a safe number, exact decimal string, or null. */
 export function getPendingQuestionCleanupInventory() {
   return getDataRequest('/classification/pending-cleanup/inventory')
 }

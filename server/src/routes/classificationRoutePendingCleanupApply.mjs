@@ -41,6 +41,7 @@ export function registerPendingQuestionCleanupApplyRoute(router, {
 
   router.post('/pending-cleanup/apply', requireAdmin, requireReadWrite, asyncHandler(async (req, res) => {
     validateApplyBody(req.body);
+    // The service validates the entire selection of safe numbers and exact decimal IDs.
     const result = await policyRuntimePendingQuestionCleanupApplyService.run({
       classificationIds: req.body.classificationIds,
       actorId: getServerActorId(req.user),
